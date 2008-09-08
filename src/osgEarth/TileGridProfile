@@ -1,0 +1,25 @@
+#ifndef OSGEARTH_TILE_GRID_PROFILE_H
+#define OSGEARTH_TILE_GRID_PROFILE_H 1
+
+#include <osgEarth/Common>
+
+namespace osgEarth
+{
+    class TileGridProfile
+    {
+    public:
+        TileGridProfile( double xmin, double ymin, double xmax, double ymax );
+
+        TileGridProfile( const TileGridProfile& rhs );
+
+        double xMin() const;
+        double yMin() const;
+        double xMax() const;
+        double yMax() const;
+
+    private:
+        double xmin, ymin, xmax, ymax;
+    };
+}
+
+#endif // OSGEARTH_TILE_GRID_PROFILE_H

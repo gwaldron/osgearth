@@ -1,0 +1,10 @@
+#ifndef OSGEARTH_COMMON_H
+#define OSGEARTH_COMMON_H 1
+
+#include <osgEarth/Export>
+
+#ifdef WIN32
+#include <windows.h>
+#endif
+
+#endif // OSGEARTH_COMMON_H

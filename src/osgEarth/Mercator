@@ -1,0 +1,79 @@
+#ifndef OSGEARTH_PLUGIN_MSVE_MERCATOR_QUAD_KEY_H
+#define OSGEARTH_PLUGIN_MSVE_MERCATOR_QUAD_KEY_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/PlateCarre>
+#include <string>
+
+namespace osgEarth
+{
+    class MercatorQuadKey
+    {
+    public:
+        MercatorQuadKey() { }
+
+        MercatorQuadKey( const MercatorQuadKey& rhs );
+
+        MercatorQuadKey( const std::string& MercatorQuadKey );
+
+        MercatorQuadKey( unsigned int tile_x, unsigned int tile_y, unsigned int level );
+
+        MercatorQuadKey getSubkey( unsigned int quadrant ) const;
+
+        const std::string& str() const;
+
+        unsigned int getLevelOfDetail() const;
+
+        double getLatitude( unsigned int pixel_y ) const;
+
+        void getTileXY( 
+            unsigned int& out_tile_x,
+            unsigned int& out_tile_y ) const;
+
+        void getGeoExtents(
+            double& lon_min, double& lat_min,
+            double& lon_max, double& lat_max) const;
+
+        void getPixelExtents(
+            unsigned int& xmin,
+            unsigned int& ymin,
+            unsigned int& xmax,
+            unsigned int& ymax) const;
+
+        static int longLatToPixelXY(
+            double lon, double lat, unsigned int lod, 
+            unsigned int& out_x, unsigned int& out_y );
+        
+        static void pixelXYtoTileXY(
+            unsigned int x, unsigned int y,
+            unsigned int& out_tile_x, unsigned int& out_tile_y);
+
+    private:
+        std::string qk;
+    };
+    
+
+    class MercatorTileSource : public osg::Referenced
+    {
+    public:
+        virtual osg::Image* createImage( const MercatorQuadKey& key ) =0;
+
+        virtual osg::HeightField* createHeightField( const MercatorQuadKey& key ) =0;
+    };
+
+
+    class MercatorTileConverter
+    {
+    public:
+        MercatorTileConverter( MercatorTileSource* source );
+
+        osg::Image* createImage( const PlateCarreQuadKey& key );
+
+        osg::HeightField* createHeightField( const PlateCarreQuadKey& key );
+
+    private:
+        osg::ref_ptr<MercatorTileSource> source;
+    };
+}
+
+#endif // OSGEARTH_MERCATOR_H

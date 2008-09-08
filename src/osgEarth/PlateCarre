@@ -1,0 +1,73 @@
+#ifndef OSGEARTH_PLATE_CARRE_QUAD_KEY_H
+#define OSGEARTH_PLATE_CARRE_QUAD_KEY_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileGridProfile>
+#include <osg/Referenced>
+#include <osg/Image>
+#include <osg/Shape>
+#include <osgDB/ReaderWriter>
+#include <string>
+
+namespace osgEarth
+{
+    class PlateCarreQuadKey
+    {
+    public:
+        PlateCarreQuadKey( const PlateCarreQuadKey& rhs );
+
+        PlateCarreQuadKey( const std::string& key_string );
+
+        PlateCarreQuadKey( const std::string& key_string, const TileGridProfile& profile );
+
+        PlateCarreQuadKey getSubkey( unsigned int quadrant ) const;
+
+        const std::string& str() const;
+
+        unsigned int getLevelOfDetail() const;
+
+        bool getGeoExtents(
+            double& out_min_lon,
+            double& out_min_lat,
+            double& out_max_lon,
+            double& out_max_lat ) const;
+
+    private:
+        std::string qk;
+        TileGridProfile profile;
+    };
+
+    
+    class PlateCarreTileSource : public osg::Referenced
+    {
+    public:
+        virtual osg::Image* createImage( const PlateCarreQuadKey& key ) =0;
+
+        virtual osg::HeightField* createHeightField( const PlateCarreQuadKey& key ) =0;
+
+        virtual std::string createURI( const PlateCarreQuadKey& key ) const =0;
+    };
+
+
+    class ReaderWriterPlateCarreTileSource : public PlateCarreTileSource
+    {
+    public:
+        ReaderWriterPlateCarreTileSource(
+            const std::string&                  uri_suffix,
+            const osgDB::ReaderWriter::Options* options =NULL );
+        
+    public:
+        osg::Image* createImage( const PlateCarreQuadKey& key );
+
+        osg::HeightField* createHeightField( const PlateCarreQuadKey& key );
+        
+        std::string createURI( const PlateCarreQuadKey& key ) const;
+
+    private:
+        std::string uri_suffix;
+        std::string source_uri_suffix;
+        osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
+    };
+}
+
+#endif // OSGEARTH_PLATE_CARRE_QUAD_KEY_H

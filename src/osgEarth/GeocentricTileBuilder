@@ -1,0 +1,28 @@
+#ifndef OSGEARTH_TILE_GENERATOR_H
+#define OSGEARTH_TILE_GENERATOR_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/PlateCarre>
+#include <osg/Node>
+
+namespace osgEarth
+{
+    class GeocentricTileBuilder
+    {
+    public:
+        GeocentricTileBuilder(
+            PlateCarreTileSource* image_source,
+            PlateCarreTileSource* field_source );
+
+        osg::Node* create( const PlateCarreQuadKey& qk );
+        
+    private:
+        osg::Node* createQuadrant( const PlateCarreQuadKey& qk );
+
+    private:
+        osg::ref_ptr<PlateCarreTileSource> image_source;
+        osg::ref_ptr<PlateCarreTileSource> field_source;
+    };
+}
+
+#endif // OSGEARTH_TILE_GENERATOR_H

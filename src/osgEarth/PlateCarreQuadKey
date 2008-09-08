@@ -1,0 +1,33 @@
+#ifndef OSGEARTH_PLATE_CARRE_H
+#define OSGEARTH_PLATE_CARRE_H 1
+
+#include <osgEarth/Common>
+#include <string>
+
+namespace osgEarth
+{
+    class PlateCarreQuadKey
+    {
+    public:
+        PlateCarreQuadKey( const PlateCarreQuadKey& rhs );
+
+        PlateCarreQuadKey( const std::string& key_string );
+
+        PlateCarreQuadKey getSubkey( unsigned int quadrant ) const;
+
+        const std::string& str() const;
+
+        unsigned int getLevelOfDetail() const;
+
+        bool getExtents(
+            double& out_min_lon,
+            double& out_min_lat,
+            double& out_max_lon,
+            double& out_max_lat ) const;
+
+    private:
+        std::string qk;
+    };
+}
+
+#endif // OSGEARTH_PLATE_CARRE_QUAD_KEY_H

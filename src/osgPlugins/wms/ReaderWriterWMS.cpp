@@ -13,12 +13,12 @@ class WMSSource : public PlateCarreTileSource
 public:
     WMSSource()
     {
-        prefix = "http://192.168.0.101/tilecache-2.04/tilecache.py";
-        layers = "basic";
-        format = "png";
+        //prefix = "http://192.168.0.101/tilecache-2.04/tilecache.py";
+        //layers = "bluemarble2002";
+        //format = "png";
 
-        //prefix = "http://labs.metacarta.com/wms-c/Basic.py";
-        //layers = "basic"; format = "png";
+        prefix = "http://labs.metacarta.com/wms-c/Basic.py";
+        layers = "basic"; format = "png";
         //layers = "satellite"; format = "jpg";
     }
 

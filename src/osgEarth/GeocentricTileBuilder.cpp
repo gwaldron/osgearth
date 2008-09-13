@@ -51,9 +51,10 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreQuadKey& pc_key )
             hf->getHeightList()[i] = 0.0; //(double)((::rand() % 10000) - 5000);
     }
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
-    hf->setXInterval( (max_lon - min_lon)/7.0 );
-    hf->setYInterval( (max_lat - min_lat)/7.0 );
+    hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
+    hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
     hf->setBorderWidth( 0 );
+    hf->setSkirtHeight( 0 );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( locator );

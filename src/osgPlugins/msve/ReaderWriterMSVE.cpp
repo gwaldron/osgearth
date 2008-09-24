@@ -11,7 +11,7 @@ class MSVESource : public MercatorTileSource
 public:
     MSVESource() { }
 
-    osg::Image* createImage( const MercatorQuadKey& key )
+    osg::Image* createImage( const MercatorCellKey& key )
     {
         std::string q = key.str();
         // a=aerial(jpg), r=map(png), h=hybrid(jpg), t=elev(wmphoto?)
@@ -51,7 +51,7 @@ public:
         return osgDB::readImageFile( buf );
     }
 
-    osg::HeightField* createHeightField( const MercatorQuadKey& key )
+    osg::HeightField* createHeightField( const MercatorCellKey& key )
     {
         //TODO
         return NULL;
@@ -88,7 +88,7 @@ class ReaderWriterMSVE : public osgDB::ReaderWriter
             }
 
             // extract the PC KEY from the filename:
-            PlateCarreQuadKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
+            PlateCarreCellKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
 
             osg::ref_ptr<MercatorTileSource> source = new MSVESource(); //TODO: config/cache it
             MercatorTileConverter converter( source.get() );

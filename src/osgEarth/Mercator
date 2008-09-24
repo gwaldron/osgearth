@@ -7,18 +7,18 @@
 
 namespace osgEarth
 {
-    class MercatorQuadKey
+    class MercatorCellKey
     {
     public:
-        MercatorQuadKey() { }
+        MercatorCellKey() { }
 
-        MercatorQuadKey( const MercatorQuadKey& rhs );
+        MercatorCellKey( const MercatorCellKey& rhs );
 
-        MercatorQuadKey( const std::string& MercatorQuadKey );
+        MercatorCellKey( const std::string& MercatorCellKey );
 
-        MercatorQuadKey( unsigned int tile_x, unsigned int tile_y, unsigned int level );
+        MercatorCellKey( unsigned int tile_x, unsigned int tile_y, unsigned int level );
 
-        MercatorQuadKey getSubkey( unsigned int quadrant ) const;
+        MercatorCellKey getSubkey( unsigned int quadrant ) const;
 
         const std::string& str() const;
 
@@ -56,9 +56,9 @@ namespace osgEarth
     class MercatorTileSource : public osg::Referenced
     {
     public:
-        virtual osg::Image* createImage( const MercatorQuadKey& key ) =0;
+        virtual osg::Image* createImage( const MercatorCellKey& key ) =0;
 
-        virtual osg::HeightField* createHeightField( const MercatorQuadKey& key ) =0;
+        virtual osg::HeightField* createHeightField( const MercatorCellKey& key ) =0;
     };
 
 
@@ -67,9 +67,9 @@ namespace osgEarth
     public:
         MercatorTileConverter( MercatorTileSource* source );
 
-        osg::Image* createImage( const PlateCarreQuadKey& key );
+        osg::Image* createImage( const PlateCarreCellKey& key );
 
-        osg::HeightField* createHeightField( const PlateCarreQuadKey& key );
+        osg::HeightField* createHeightField( const PlateCarreCellKey& key );
 
     private:
         osg::ref_ptr<MercatorTileSource> source;

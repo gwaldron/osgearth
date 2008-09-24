@@ -11,16 +11,16 @@
 
 namespace osgEarth
 {
-    class PlateCarreQuadKey
+    class PlateCarreCellKey
     {
     public:
-        PlateCarreQuadKey( const PlateCarreQuadKey& rhs );
+        PlateCarreCellKey( const PlateCarreCellKey& rhs );
 
-        PlateCarreQuadKey( const std::string& key_string );
+        PlateCarreCellKey( const std::string& key_string );
 
-        PlateCarreQuadKey( const std::string& key_string, const TileGridProfile& profile );
+        PlateCarreCellKey( const std::string& key_string, const TileGridProfile& profile );
 
-        PlateCarreQuadKey getSubkey( unsigned int quadrant ) const;
+        PlateCarreCellKey getSubkey( unsigned int quadrant ) const;
 
         const std::string& str() const;
 
@@ -41,11 +41,11 @@ namespace osgEarth
     class PlateCarreTileSource : public osg::Referenced
     {
     public:
-        virtual osg::Image* createImage( const PlateCarreQuadKey& key ) =0;
+        virtual osg::Image* createImage( const PlateCarreCellKey& key ) =0;
 
-        virtual osg::HeightField* createHeightField( const PlateCarreQuadKey& key ) =0;
+        virtual osg::HeightField* createHeightField( const PlateCarreCellKey& key ) =0;
 
-        virtual std::string createURI( const PlateCarreQuadKey& key ) const =0;
+        virtual std::string createURI( const PlateCarreCellKey& key ) const =0;
     };
 
 
@@ -57,11 +57,11 @@ namespace osgEarth
             const osgDB::ReaderWriter::Options* options =NULL );
         
     public:
-        osg::Image* createImage( const PlateCarreQuadKey& key );
+        osg::Image* createImage( const PlateCarreCellKey& key );
 
-        osg::HeightField* createHeightField( const PlateCarreQuadKey& key );
+        osg::HeightField* createHeightField( const PlateCarreCellKey& key );
         
-        std::string createURI( const PlateCarreQuadKey& key ) const;
+        std::string createURI( const PlateCarreCellKey& key ) const;
 
     private:
         std::string uri_suffix;

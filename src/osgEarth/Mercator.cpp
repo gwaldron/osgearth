@@ -14,17 +14,17 @@ using namespace osgEarth;
 #define MIN_LAT     -85.05112878  
 #define MAX_LAT      85.05112878
 
-MercatorQuadKey::MercatorQuadKey( const MercatorQuadKey& rhs )
+MercatorCellKey::MercatorCellKey( const MercatorCellKey& rhs )
 {
     qk = rhs.qk;
 }
 
-MercatorQuadKey::MercatorQuadKey( const std::string& input )
+MercatorCellKey::MercatorCellKey( const std::string& input )
 {
     qk = input;
 }
 
-MercatorQuadKey::MercatorQuadKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod )
+MercatorCellKey::MercatorCellKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod )
 {       
     std::stringstream ss;
     for( unsigned i = lod; i > 0; i-- )
@@ -44,20 +44,20 @@ MercatorQuadKey::MercatorQuadKey( unsigned int tile_x, unsigned int tile_y, unsi
     qk = ss.str();
 }
 
-MercatorQuadKey
-MercatorQuadKey::getSubkey( unsigned int quadrant ) const
+MercatorCellKey
+MercatorCellKey::getSubkey( unsigned int quadrant ) const
 {
-    return MercatorQuadKey( qk + (char)('0'+quadrant) );
+    return MercatorCellKey( qk + (char)('0'+quadrant) );
 }
 
 const std::string&
-MercatorQuadKey::str() const
+MercatorCellKey::str() const
 {
     return qk;
 }
 
 unsigned int
-MercatorQuadKey::getLevelOfDetail() const
+MercatorCellKey::getLevelOfDetail() const
 {
     return (unsigned int)qk.length();
 }
@@ -69,7 +69,7 @@ unsigned int getMapSize( unsigned int lod )
 }
 
 void
-MercatorQuadKey::getTileXY(unsigned int& out_tile_x,
+MercatorCellKey::getTileXY(unsigned int& out_tile_x,
                            unsigned int& out_tile_y) const
 {
     unsigned int xmin, ymin, xmax, ymax;
@@ -79,7 +79,7 @@ MercatorQuadKey::getTileXY(unsigned int& out_tile_x,
 }
 
 void
-MercatorQuadKey::getPixelExtents(unsigned int& xmin,
+MercatorCellKey::getPixelExtents(unsigned int& xmin,
                                  unsigned int& ymin,
                                  unsigned int& xmax,
                                  unsigned int& ymax) const
@@ -103,7 +103,7 @@ MercatorQuadKey::getPixelExtents(unsigned int& xmin,
 }
 
 void
-MercatorQuadKey::getGeoExtents(double& lon_min, double& lat_min,
+MercatorCellKey::getGeoExtents(double& lon_min, double& lat_min,
                                double& lon_max, double& lat_max) const
 {
     unsigned int xmin, ymin, xmax, ymax;
@@ -116,7 +116,7 @@ MercatorQuadKey::getGeoExtents(double& lon_min, double& lat_min,
 }
 
 double
-MercatorQuadKey::getLatitude( unsigned int pixel_y ) const
+MercatorCellKey::getLatitude( unsigned int pixel_y ) const
 {
     unsigned int lod = getLevelOfDetail();
     double my  = -osg::PI + (1.0 - (double)pixel_y/(double)getMapSize(lod)) * (2.0*osg::PI);
@@ -150,7 +150,7 @@ clamp( double n, double min_value, double max_value )
 }
 
 int
-MercatorQuadKey::longLatToPixelXY(double lon, double lat, unsigned int lod, 
+MercatorCellKey::longLatToPixelXY(double lon, double lat, unsigned int lod, 
                                   unsigned int& out_x, unsigned int& out_y )
 {
     double x = (lon + 180.0) / 360.0;
@@ -173,7 +173,7 @@ MercatorQuadKey::longLatToPixelXY(double lon, double lat, unsigned int lod,
 }
 
 void
-MercatorQuadKey::pixelXYtoTileXY(unsigned int x, unsigned int y,
+MercatorCellKey::pixelXYtoTileXY(unsigned int x, unsigned int y,
                                  unsigned int& out_tile_x,
                                  unsigned int& out_tile_y)
 {
@@ -187,14 +187,14 @@ MercatorQuadKey::pixelXYtoTileXY(unsigned int x, unsigned int y,
 struct MercatorTile
 {
     MercatorTile() { }
-    MercatorTile( MercatorQuadKey& _key, MercatorTileSource* source ) : key( _key )
+    MercatorTile( MercatorCellKey& _key, MercatorTileSource* source ) : key( _key )
     {
         image = source->createImage( key );
         key.getPixelExtents( min_x, min_y, max_x, max_y );
         double dummy;
         key.getGeoExtents( dummy, min_lat, dummy, max_lat );
     }
-    MercatorQuadKey key;
+    MercatorCellKey key;
     osg::ref_ptr<osg::Image> image;
     unsigned int min_x, min_y, max_x, max_y;
     double min_lat, max_lat;
@@ -210,7 +210,7 @@ MercatorTileConverter::MercatorTileConverter( MercatorTileSource* _source )
 }
 
 osg::Image*
-MercatorTileConverter::createImage( const PlateCarreQuadKey& pc_key )
+MercatorTileConverter::createImage( const PlateCarreCellKey& pc_key )
 {
     unsigned int lod = pc_key.getLevelOfDetail();
 
@@ -228,17 +228,17 @@ MercatorTileConverter::createImage( const PlateCarreQuadKey& pc_key )
     // TODO: actually, no need to worry about X tiles, they will be identical
     unsigned int merc_pixel_min_x, merc_pixel_min_y;
     unsigned int merc_pixel_max_x, merc_pixel_max_y;
-    MercatorQuadKey::longLatToPixelXY( dst_min_lon, dst_min_lat, lod, merc_pixel_min_x, merc_pixel_max_y );
-    MercatorQuadKey::longLatToPixelXY( dst_max_lon, dst_max_lat, lod, merc_pixel_max_x, merc_pixel_min_y );
+    MercatorCellKey::longLatToPixelXY( dst_min_lon, dst_min_lat, lod, merc_pixel_min_x, merc_pixel_max_y );
+    MercatorCellKey::longLatToPixelXY( dst_max_lon, dst_max_lat, lod, merc_pixel_max_x, merc_pixel_min_y );
 
     // adjust:
     merc_pixel_max_x--;
     merc_pixel_max_y--;
 
     unsigned int merc_tile_min_x, merc_tile_min_y;
-    MercatorQuadKey::pixelXYtoTileXY( merc_pixel_min_x, merc_pixel_min_y, merc_tile_min_x, merc_tile_min_y );
+    MercatorCellKey::pixelXYtoTileXY( merc_pixel_min_x, merc_pixel_min_y, merc_tile_min_x, merc_tile_min_y );
     unsigned int merc_tile_max_x, merc_tile_max_y;
-    MercatorQuadKey::pixelXYtoTileXY( merc_pixel_max_x, merc_pixel_max_y, merc_tile_max_x, merc_tile_max_y );
+    MercatorCellKey::pixelXYtoTileXY( merc_pixel_max_x, merc_pixel_max_y, merc_tile_max_x, merc_tile_max_y );
     
     // loop through all the overlapping mercator tiles, fetch each one, and copy a portion of it
     // into the destination plate carre tile image. (NOTE: tiles will only overlap in the Y 
@@ -246,7 +246,7 @@ MercatorTileConverter::createImage( const PlateCarreQuadKey& pc_key )
     std::vector<MercatorTile> src_tiles;
     for( unsigned int tile_y = merc_tile_min_y; tile_y <= merc_tile_max_y; tile_y++ )
     {
-        MercatorQuadKey mqk( merc_tile_min_x, tile_y, lod );
+        MercatorCellKey mqk( merc_tile_min_x, tile_y, lod );
         MercatorTile src_tile( mqk, source.get() );
         if ( src_tile.image.valid() )
         {
@@ -290,7 +290,7 @@ MercatorTileConverter::createImage( const PlateCarreQuadKey& pc_key )
 
 
 osg::HeightField*
-MercatorTileConverter::createHeightField( const PlateCarreQuadKey& pc_key )
+MercatorTileConverter::createHeightField( const PlateCarreCellKey& pc_key )
 {
     //TODO
     return NULL;

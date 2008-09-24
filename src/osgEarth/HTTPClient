@@ -1,0 +1,94 @@
+#ifndef OSGEARTH_HTTP_CLIENT_H
+#define OSGEARTH_HTTP_CLIENT_H 1
+
+#include <osgEarth/Common>
+#include <osg/ref_ptr>
+#include <osg/Referenced>
+#include <sstream>
+#include <iostream>
+#include <string>
+#include <map>
+#include <vector>
+
+namespace osgEarth
+{
+    class HTTPRequest : public osg::Referenced
+    {
+    public:
+        HTTPRequest( const std::string& url );
+
+        void addParameter( const std::string& name, const std::string& value ); //, ... );
+        void addParameter( const std::string& name, int value );
+        void addParameter( const std::string& name, double value );
+        
+        typedef std::map<std::string,std::string> Parameters;
+
+        const Parameters& getParameters() const;
+
+        std::string getURL() const;
+        
+    private:
+        Parameters parameters;
+        std::string url;
+    };
+
+
+    class HTTPResponse : public osg::Referenced
+    {
+    public:
+        HTTPResponse( long code );
+
+        long getCode() const;
+
+        bool isOK() const;
+
+        unsigned int getNumParts() const;
+
+        std::istream& getPartStream( unsigned int n ) const;
+
+        unsigned int getPartSize( unsigned int n ) const;
+        
+        const std::string& getPartHeader( unsigned int n, const std::string& name ) const;
+
+    private:
+        struct Part : public osg::Referenced
+        {
+            Part() : size(0) { }
+            typedef std::map<std::string,std::string> Headers;
+            Headers headers;
+            unsigned int size;
+            std::stringstream stream;
+        };
+        typedef std::vector< osg::ref_ptr<Part> > Parts;
+        Parts parts;
+        long response_code;
+
+        friend class HTTPClient;
+    };
+
+
+    class HTTPClient
+    {
+    public:
+        HTTPClient();
+
+        void setProxyHost( const std::string& hostname );
+
+        void setProxyPort( unsigned short port );
+
+        HTTPResponse* get( HTTPRequest* request ) const;
+
+    private:
+        std::string proxy_host;
+        unsigned short proxy_port;
+
+
+    private:
+        void decodeMultipartStream(
+            const std::string&   boundary,
+            HTTPResponse::Part*  input,
+            HTTPResponse::Parts& output) const;
+    };
+}
+
+#endif // OSGEARTH_HTTP_CLIENT_H

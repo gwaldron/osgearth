@@ -6,6 +6,7 @@
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
 #include <osgDB/ReadFile>
+#include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
 #include <osgTerrain/GeometryTechnique>
@@ -20,10 +21,14 @@ GeocentricTileBuilder::GeocentricTileBuilder(PlateCarreTileSource* _image_source
   field_source( _field_source )
 {
     //NOP
+    if ( getenv("OSGEARTH_NO_DEM") )
+        make_dem = false;
+    else
+        make_dem = true;
 }
 
 osg::Node*
-GeocentricTileBuilder::createQuadrant( const PlateCarreQuadKey& pc_key )
+GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
 {
     double min_lon, min_lat, max_lon, max_lat;
     if ( !pc_key.getGeoExtents( min_lon, min_lat, max_lon, max_lat ) )
@@ -41,7 +46,10 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreQuadKey& pc_key )
         osg::DegreesToRadians( max_lat ) );
     locator->setTransformScaledByResolution( false );
 
-    osg::HeightField* hf = field_source->createHeightField( pc_key );
+    osg::HeightField* hf = NULL;
+    if ( make_dem )
+        hf = field_source->createHeightField( pc_key );
+
     if ( !hf )
     {
         // make an empty one if we couldn't fetch it
@@ -114,10 +122,25 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreQuadKey& pc_key )
 }
 
 osg::Node*
-GeocentricTileBuilder::create( const PlateCarreQuadKey& key )
+GeocentricTileBuilder::create( const PlateCarreCellKey& key )
 {
-    osg::CoordinateSystemNode* top = new osg::CoordinateSystemNode();
-    top->setEllipsoidModel( new osg::EllipsoidModel() );
+    osg::Group* top;
+    if ( key.getLevelOfDetail() == 0 )
+    {
+        osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+        csn->setEllipsoidModel( new osg::EllipsoidModel() );
+
+        osgTerrain::Terrain* terrain = new osgTerrain::Terrain();
+        terrain->setVerticalScale( 3.0f );
+        csn->addChild( terrain );
+
+        top = csn;
+    }
+    else
+    {
+        top = new osg::Group();
+        top->setName( key.str() );
+    }
 
     top->addChild( createQuadrant( key.getSubkey( 0 ) ) );
     top->addChild( createQuadrant( key.getSubkey( 1 ) ) );

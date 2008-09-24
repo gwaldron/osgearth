@@ -14,14 +14,15 @@ namespace osgEarth
             PlateCarreTileSource* image_source,
             PlateCarreTileSource* field_source );
 
-        osg::Node* create( const PlateCarreQuadKey& qk );
+        osg::Node* create( const PlateCarreCellKey& qk );
         
     private:
-        osg::Node* createQuadrant( const PlateCarreQuadKey& qk );
+        osg::Node* createQuadrant( const PlateCarreCellKey& qk );
 
     private:
         osg::ref_ptr<PlateCarreTileSource> image_source;
         osg::ref_ptr<PlateCarreTileSource> field_source;
+        bool make_dem;
     };
 }
 

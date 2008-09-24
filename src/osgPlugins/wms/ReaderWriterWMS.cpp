@@ -13,17 +13,25 @@ class WMSSource : public PlateCarreTileSource
 public:
     WMSSource()
     {
-        //prefix = "http://192.168.0.101/tilecache-2.04/tilecache.py";
-        //layers = "bluemarble2002";
-        //format = "png";
+        std::string host = "192.168.0.101";
+        if ( ::getenv( "OSGEARTH_HOST" ) )
+            host = std::string( ::getenv( "OSGEARTH_HOST" ) );
 
-        prefix = "http://labs.metacarta.com/wms-c/Basic.py";
-        layers = "basic"; format = "png";
+        std::stringstream buf;
+        buf << "http://" << host << "/tilecache-2.04/tilecache.py";
+        prefix     = buf.str();
+
+        //prefix = "http://192.168.0.101/tilecache-2.04/tilecache.py";
+        layers = "bluemarble2002-dc";
+        format = "png";
+
+        //prefix = "http://labs.metacarta.com/wms-c/Basic.py";
+        //layers = "basic"; format = "png";
         //layers = "satellite"; format = "jpg";
     }
 
 public:
-    osg::Image* createImage( const PlateCarreQuadKey& key )
+    osg::Image* createImage( const PlateCarreCellKey& key )
     {
         std::string uri = createURI( key );
         osg::Image* image = osgDB::readImageFile( uri );
@@ -34,12 +42,12 @@ public:
         return image;
     }
 
-    osg::HeightField* createHeightField( const PlateCarreQuadKey& key )
+    osg::HeightField* createHeightField( const PlateCarreCellKey& key )
     {
         return NULL;
     }
 
-    std::string createURI( const PlateCarreQuadKey& key ) const
+    std::string createURI( const PlateCarreCellKey& key ) const
     {
         double lon_min, lat_min, lon_max, lat_max;
         key.getGeoExtents( lon_min, lat_min, lon_max, lat_max );
@@ -106,7 +114,7 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
             }
 
             // extract the PC KEY from the filename:
-            PlateCarreQuadKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
+            PlateCarreCellKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
             
             osg::ref_ptr<PlateCarreTileSource> source = new WMSSource(); //TODO: config/cache it
             osg::Image* image = source->createImage( key );

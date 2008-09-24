@@ -3,6 +3,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <string>
+#include <stdlib.h>
 
 using namespace osgEarth;
 
@@ -42,10 +43,12 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( i >= 0 && i < file_name.length()-1 )
             {
                 // the first segment is the quad-key:
-                PlateCarreQuadKey qk( file_name.substr( 0, i ) );
+                PlateCarreCellKey qk( file_name.substr( 0, i ) );
 
                 // the rest is the source identifier:
                 std::string image_source = file_name.substr( i+1 );
+
+                // height field generator:
                 std::string field_source = "wcs.earth";
 
                 // todo: create a std::map, cache the source=>builder mapping so the builder

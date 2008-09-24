@@ -3,6 +3,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
+#include "WCS11Source.h"
 #include <sstream>
 #include <stdlib.h>
 
@@ -47,9 +48,9 @@ class ReaderWriterWCS : public osgDB::ReaderWriter
             }
 
             // extract the PC KEY from the filename:
-            PlateCarreQuadKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
+            PlateCarreCellKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
             
-            osg::ref_ptr<PlateCarreTileSource> source = new WCSSource(); //TODO: config/cache it
+            osg::ref_ptr<WCS11Source> source = new WCS11Source(); //TODO: config/cache it
             osg::HeightField* field = source->createHeightField( key );
             return field? ReadResult( field ) : ReadResult( "Unable to load WCS height field" );
         }

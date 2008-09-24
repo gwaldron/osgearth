@@ -12,47 +12,47 @@ using namespace osgEarth;
 //#define MIN_LAT    -270.0
 //#define MAX_LAT      90.0
 
-PlateCarreQuadKey::PlateCarreQuadKey( const PlateCarreQuadKey& rhs )
+PlateCarreCellKey::PlateCarreCellKey( const PlateCarreCellKey& rhs )
 : qk( rhs.qk ),
   profile( rhs.profile )
 {
     //NOP
 }
 
-PlateCarreQuadKey::PlateCarreQuadKey( const std::string& input )
+PlateCarreCellKey::PlateCarreCellKey( const std::string& input )
 : qk( input ),
   profile( TileGridProfile( -180, -270, 180, 90 ) ) // whole-earth
 {
     //NOP
 }
 
-PlateCarreQuadKey::PlateCarreQuadKey( const std::string& input, const TileGridProfile& _profile )
+PlateCarreCellKey::PlateCarreCellKey( const std::string& input, const TileGridProfile& _profile )
 : qk( input ),
   profile( _profile )
 {
     //NOP
 }
 
-PlateCarreQuadKey
-PlateCarreQuadKey::getSubkey( unsigned int quadrant ) const
+PlateCarreCellKey
+PlateCarreCellKey::getSubkey( unsigned int quadrant ) const
 {
-    return PlateCarreQuadKey( qk + (char)('0' + quadrant) );
+    return PlateCarreCellKey( qk + (char)('0' + quadrant) );
 }
 
 const std::string&
-PlateCarreQuadKey::str() const
+PlateCarreCellKey::str() const
 {
     return qk;
 }
 
 unsigned int
-PlateCarreQuadKey::getLevelOfDetail() const
+PlateCarreCellKey::getLevelOfDetail() const
 {
     return (unsigned int)qk.length();
 }
 
 bool
-PlateCarreQuadKey::getGeoExtents(double& out_min_lon,
+PlateCarreCellKey::getGeoExtents(double& out_min_lon,
                                  double& out_min_lat,
                                  double& out_max_lon,
                                  double& out_max_lat ) const
@@ -93,7 +93,7 @@ ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::st
 }
 
 osg::Image*
-ReaderWriterPlateCarreTileSource::createImage( const PlateCarreQuadKey& key )
+ReaderWriterPlateCarreTileSource::createImage( const PlateCarreCellKey& key )
 {
     std::string uri = key.str() + "." + source_uri_suffix;
     osg::Image* image = NULL;
@@ -107,7 +107,7 @@ ReaderWriterPlateCarreTileSource::createImage( const PlateCarreQuadKey& key )
 }
 
 osg::HeightField*
-ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreQuadKey& key )
+ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreCellKey& key )
 {
     std::string uri = key.str() + "." + source_uri_suffix;
     osg::HeightField* field = NULL;
@@ -121,7 +121,7 @@ ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreQuadKey& ke
 }
 
 std::string
-ReaderWriterPlateCarreTileSource::createURI( const PlateCarreQuadKey& key ) const
+ReaderWriterPlateCarreTileSource::createURI( const PlateCarreCellKey& key ) const
 {
     return key.str() + "." + uri_suffix;
 }

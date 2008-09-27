@@ -2,6 +2,8 @@
 #define OSGEARTH_COMMON_H 1
 
 #include <osgEarth/Export>
+#include <osg/Referenced>
+#include <osg/ref_ptr>
 
 #ifdef WIN32
 #include <windows.h>

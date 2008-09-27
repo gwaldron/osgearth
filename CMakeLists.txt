@@ -61,6 +61,7 @@ ENDIF(CMAKE_SYSTEM MATCHES IRIX)
 FIND_PACKAGE(OpenGL)
 
 FIND_PACKAGE(CURL)
+FIND_PACKAGE(EXPAT)
 
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys
@@ -69,8 +70,6 @@ IF(UNIX)
     # Some Unicies need explicit linkage to the Math library or the build fails.
     FIND_LIBRARY(MATH_LIBRARY m)
 ENDIF(UNIX)
-
-#FIND_PACKAGE(CURL)
 
 # Make the headers visible to everything
 INCLUDE_DIRECTORIES(

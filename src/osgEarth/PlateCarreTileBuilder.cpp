@@ -1,9 +1,7 @@
-#include <osgEarth/GeocentricTileBuilder>
-#include <osgEarth/PlateCarre>
+#include <osgEarth/PlateCarreTileBuilder>
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
-#include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
 #include <osgDB/ReadFile>
 #include <osgTerrain/Terrain>
@@ -15,14 +13,14 @@
 
 using namespace osgEarth;
 
-GeocentricTileBuilder::GeocentricTileBuilder( MapConfig* map, const std::string& url_template ) :
-TileBuilder( map, url_template )
+PlateCarreTileBuilder::PlateCarreTileBuilder( MapConfig* _map, const std::string& _url_template ) :
+TileBuilder( _map, _url_template )
 {
     //NOP
 }
 
 osg::Node*
-GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
+PlateCarreTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
 {
     double min_lon, min_lat, max_lon, max_lat;
     if ( !pc_key.getGeoExtents( min_lon, min_lat, max_lon, max_lat ) )
@@ -32,12 +30,8 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
     }
 
     osgTerrain::Locator* locator = new osgTerrain::Locator();
-    locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-    locator->setTransformAsExtents(
-        osg::DegreesToRadians( min_lon ),
-        osg::DegreesToRadians( min_lat ),
-        osg::DegreesToRadians( max_lon ),
-        osg::DegreesToRadians( max_lat ) );
+    locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC ); // sort of.
+    locator->setTransformAsExtents( min_lon, min_lat, max_lon, max_lat );
     locator->setTransformScaledByResolution( false );
 
     osg::HeightField* hf = NULL;
@@ -52,7 +46,9 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
         hf = new osg::HeightField();
         hf->allocate( 8, 8 );
         for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
-            hf->getHeightList()[i] = 0.0; //(double)((::rand() % 10000) - 5000);
+        {
+            hf->getHeightList()[i] = 0.0; 
+        }
     }
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
@@ -83,78 +79,45 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
         tile->setColorLayer( 0, img_layer );
     }
     
-    osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
-    double x, y, z;
-    ellipsoid->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( (max_lat+min_lat)/2.0 ),
-        osg::DegreesToRadians( (max_lon+min_lon)/2.0 ),
-        0.0,
-        x, y, z );
-    
-    osg::Vec3d centroid( x, y, z );
-
-    double sw_x, sw_y, sw_z;
-    ellipsoid->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( min_lat ),
-        osg::DegreesToRadians( min_lon ),
-        0.0,
-        sw_x, sw_y, sw_z );
+    osg::Vec3d centroid( (max_lon+min_lon)/2.0, (max_lat+min_lat)/2.0, 0 );
 
     double max_range = 1e10;
-    double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
+    double radius = (centroid-osg::Vec3d(min_lon,min_lat,0)).length();
     double min_range = radius*5.0;
-
-    osg::Vec3d normal = centroid;
-    normal.normalize();
-    // dot product: 0 = orthogonal to normal, -1 = equal to normal
-    float deviation = -radius/locator->getEllipsoidModel()->getRadiusPolar();
-            
-    osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
-    ccc->set( centroid, normal, deviation, radius );
-    tile->setCullCallback( ccc );
-
+   
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( centroid );
     plod->addChild( tile, min_range, max_range );
-    plod->setFileName( 1, createURI( pc_key ) ); //image_source->createURI( pc_key ) );
+    plod->setFileName( 1, createURI( pc_key ) );
     plod->setRange( 1, 0.0, min_range );
 
     return plod;
 }
 
 osg::Node*
-GeocentricTileBuilder::createNode( const PlateCarreCellKey& key )
+PlateCarreTileBuilder::createNode( const PlateCarreCellKey& key )
 {
     osg::Group* top;
-    osg::Group* tile_parent;
 
     if ( key.getLevelOfDetail() == 0 )
     {
-        osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
-        csn->setEllipsoidModel( new osg::EllipsoidModel() );
-
         osgTerrain::Terrain* terrain = new osgTerrain::Terrain();
-        //TODO: remove; testing only
         terrain->setVerticalScale( 3.0f );
-        csn->addChild( terrain );
-
-        top = csn;
-        tile_parent = terrain;
+        top = terrain;
     }
     else
     {
         top = new osg::Group();
         top->setName( key.str() );
-        tile_parent = top;
     }
 
-    tile_parent->addChild( createQuadrant( key.getSubkey( 0 ) ) );
-    tile_parent->addChild( createQuadrant( key.getSubkey( 1 ) ) );
+    top->addChild( createQuadrant( key.getSubkey( 0 ) ) );
+    top->addChild( createQuadrant( key.getSubkey( 1 ) ) );
 
     if ( key.getLevelOfDetail() > 0 )
     {
-        tile_parent->addChild( createQuadrant( key.getSubkey( 2 ) ) );
-        tile_parent->addChild( createQuadrant( key.getSubkey( 3 ) ) );
+        top->addChild( createQuadrant( key.getSubkey( 2 ) ) );
+        top->addChild( createQuadrant( key.getSubkey( 3 ) ) );
     }
     return top;
 }

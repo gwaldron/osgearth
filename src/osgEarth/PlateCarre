@@ -45,7 +45,7 @@ namespace osgEarth
 
         virtual osg::HeightField* createHeightField( const PlateCarreCellKey& key ) =0;
 
-        virtual std::string createURI( const PlateCarreCellKey& key ) const =0;
+        //virtual std::string createURI( const PlateCarreCellKey& key ) const =0;
     };
 
 
@@ -53,7 +53,7 @@ namespace osgEarth
     {
     public:
         ReaderWriterPlateCarreTileSource(
-            const std::string&                  uri_suffix,
+            const std::string&                  extension,
             const osgDB::ReaderWriter::Options* options =NULL );
         
     public:
@@ -61,11 +61,11 @@ namespace osgEarth
 
         osg::HeightField* createHeightField( const PlateCarreCellKey& key );
         
-        std::string createURI( const PlateCarreCellKey& key ) const;
+        //std::string createURI( const PlateCarreCellKey& key ) const;
 
     private:
-        std::string uri_suffix;
-        std::string source_uri_suffix;
+        std::string extension;
+        //std::string source_uri_suffix;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
     };
 }

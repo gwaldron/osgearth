@@ -1,0 +1,27 @@
+#ifndef OSGEARTH_PLATE_CARRE_TILE_BUILDER_H
+#define OSGEARTH_PLATE_CARRE_TILE_BUILDER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileBuilder>
+
+namespace osgEarth
+{
+    //note: no export (package internal)
+    class PlateCarreTileBuilder : public TileBuilder
+    {
+    public:
+        PlateCarreTileBuilder( MapConfig* map, const std::string& url_template );
+
+        osg::Node* createNode( const PlateCarreCellKey& key ); /* override */
+        
+    protected:
+        osg::Node* createQuadrant( const PlateCarreCellKey& key );
+
+    //private:
+    //    osg::ref_ptr<PlateCarreTileSource> image_source;
+    //    osg::ref_ptr<PlateCarreTileSource> field_source;
+    //    bool make_dem;
+    };
+}
+
+#endif // OSGEARTH_PLATE_CARRE_TILE_BUILDER_H

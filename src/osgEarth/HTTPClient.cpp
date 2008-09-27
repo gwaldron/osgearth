@@ -347,3 +347,10 @@ HTTPClient::get( HTTPRequest* request ) const
     return response;
 }
 
+
+HTTPResponse*
+HTTPClient::get( const std::string& url ) const
+{
+    osg::ref_ptr<HTTPRequest> req = new HTTPRequest( url );
+    return get( req.get() );
+}

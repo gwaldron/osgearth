@@ -1,0 +1,37 @@
+#ifndef OSGEARTH_TILE_BUILDER_H
+#define OSGEARTH_TILE_BUILDER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/PlateCarre>
+#include <osgEarth/MapConfig>
+#include <vector>
+
+namespace osgEarth
+{
+    class TileBuilder : public osg::Referenced
+    {
+    public:
+        static TileBuilder* create( MapConfig* map, const std::string& url_template );
+        
+    public:
+        virtual osg::Node* createNode( const PlateCarreCellKey& key ) =0;
+
+    protected:
+        TileBuilder( MapConfig* map, const std::string& url_template );
+
+        std::string createURI( const PlateCarreCellKey& key );
+
+    //private:
+    //    osg::Node* createQuadrant( const PlateCarreCellKey& qk );
+    //    osg::Node* createGeocentricQuadrant( const PlateCarreCellKey& qk );
+    //    osg::Node* createPlateCarreQuadrant( const PlateCarreCellKey& qk );
+
+    protected:
+        osg::ref_ptr<MapConfig> map;
+        std::string url_template;
+        std::vector< osg::ref_ptr<PlateCarreTileSource> > image_sources;
+        std::vector< osg::ref_ptr<PlateCarreTileSource> > heightfield_sources;
+    };
+};
+
+#endif // OSGEARTH_TILE_BUILDER_H

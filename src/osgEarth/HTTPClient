@@ -78,6 +78,8 @@ namespace osgEarth
 
         HTTPResponse* get( HTTPRequest* request ) const;
 
+        HTTPResponse* get( const std::string& url ) const;
+
     private:
         std::string proxy_host;
         unsigned short proxy_port;

@@ -84,24 +84,24 @@ PlateCarreCellKey::getGeoExtents(double& out_min_lon,
 
 /*************************************************************************/
 
-ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::string& _uri_suffix,
+ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::string& _extension,
                                                                    const osgDB::ReaderWriter::Options* _options )
-: uri_suffix( _uri_suffix ),
+: extension( _extension ),
   options( _options )
 {
-    source_uri_suffix = osgDB::getNameLessExtension( uri_suffix );
+    //source_uri_suffix = osgDB::getNameLessExtension( uri_suffix );
 }
 
 osg::Image*
 ReaderWriterPlateCarreTileSource::createImage( const PlateCarreCellKey& key )
 {
-    std::string uri = key.str() + "." + source_uri_suffix;
+    std::string uri = key.str() + "." + extension; //source_uri_suffix;
     osg::Image* image = NULL;
 
     image = osgDB::readImageFile( uri, options.get() );
     if ( !image )
     {
-        osg::notify(osg::WARN) << "osgDB::readImageFile FAILED for \"" << uri << "\"" << std::endl;
+        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readImageFile FAILED for \"" << uri << "\"" << std::endl;
     }
     return image;
 }
@@ -109,19 +109,19 @@ ReaderWriterPlateCarreTileSource::createImage( const PlateCarreCellKey& key )
 osg::HeightField*
 ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreCellKey& key )
 {
-    std::string uri = key.str() + "." + source_uri_suffix;
+    std::string uri = key.str() + "." + extension;
     osg::HeightField* field = NULL;
 
     field = osgDB::readHeightFieldFile( uri, options.get() );
     if ( !field )
     {
-        osg::notify(osg::WARN) << "osgDB::readHeightField FAILED for \"" << uri << "\"" << std::endl;
+        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readHeightField FAILED for \"" << uri << "\"" << std::endl;
     }
     return field;
 }
 
-std::string
-ReaderWriterPlateCarreTileSource::createURI( const PlateCarreCellKey& key ) const
-{
-    return key.str() + "." + uri_suffix;
-}
+//std::string
+//ReaderWriterPlateCarreTileSource::createURI( const PlateCarreCellKey& key ) const
+//{
+//    return key.str() + "." + uri_suffix;
+//}

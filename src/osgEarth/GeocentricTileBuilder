@@ -2,27 +2,26 @@
 #define OSGEARTH_TILE_GENERATOR_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/PlateCarre>
+#include <osgEarth/TileBuilder>
 #include <osg/Node>
 
 namespace osgEarth
 {
-    class GeocentricTileBuilder
+    // note: package internal; do not export
+    class GeocentricTileBuilder : public TileBuilder
     {
     public:
-        GeocentricTileBuilder(
-            PlateCarreTileSource* image_source,
-            PlateCarreTileSource* field_source );
+        GeocentricTileBuilder( MapConfig* map, const std::string& url_template );
 
-        osg::Node* create( const PlateCarreCellKey& qk );
+        osg::Node* createNode( const PlateCarreCellKey& key );
         
     private:
-        osg::Node* createQuadrant( const PlateCarreCellKey& qk );
+        osg::Node* createQuadrant( const PlateCarreCellKey& key );
 
-    private:
-        osg::ref_ptr<PlateCarreTileSource> image_source;
-        osg::ref_ptr<PlateCarreTileSource> field_source;
-        bool make_dem;
+    //private:
+    //    osg::ref_ptr<PlateCarreTileSource> image_source;
+    //    osg::ref_ptr<PlateCarreTileSource> field_source;
+    //    bool make_dem;
     };
 }
 

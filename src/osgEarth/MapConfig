@@ -1,0 +1,118 @@
+#ifndef OSGEARTH_MAP_CONFIG_H
+#define OSGEARTH_MAP_CONFIG_H 1
+
+#include <osgEarth/Common>
+#include <map>
+#include <list>
+
+namespace osgEarth
+{
+    typedef std::map<std::string,std::string> SourceProperties;
+
+    /**
+     * Defines a source for image or heightfield data.
+     */
+    class SourceConfig : public osg::Referenced
+    {
+    public:
+        SourceConfig();
+
+        /**
+         * Sets the readable name of the source.
+         */
+        void setName( const std::string& name );
+
+        const std::string& getName() const;
+
+        /**
+         * Sets the driver name for this source. The driver name is the
+         * name of the extension that will load the appropriate osg plugin.
+         */
+        void setDriver( const std::string& driver );
+
+        const std::string& getDriver() const;
+
+        /**
+         * Gets the collection of name/value pairs that the tile generator
+         * will pass to the OSG plugin designated by the driver setting.
+         */
+        SourceProperties& getProperties();
+
+        const SourceProperties& getProperties() const;
+
+    private:
+        std::string name;
+        std::string driver;
+        SourceProperties properties;
+    };
+
+    typedef std::list< osg::ref_ptr<SourceConfig> > SourceConfigList;
+
+
+    class MapConfig : public osg::Referenced
+    {
+    public:
+        enum CoordinateSystemType
+        {
+            CSTYPE_GEOCENTRIC,
+            CSTYPE_PLATE_CARRE
+        };
+
+    public:
+        /**
+         * Constructs a new, empty map configuration.
+         */
+        MapConfig();
+
+        /**
+         * Sets the readable name of the map.
+         */
+        void setName( const std::string& name );
+
+        const std::string& getName() const;
+        
+        /**
+         * Gets the coordinate system type for this map, e.g. round-earth (geocentric)
+         * or flat-earth (plate carre, etc.)
+         *
+         * @return A CoordinateSystemType
+         */
+        const CoordinateSystemType& getCoordinateSystemType() const;
+
+        /**
+         * Sets the coordinate system type for this map.
+         *
+         * @param type
+         *      Type of CS to use for the 3D map
+         */
+        void setCoordinateSystemType( const CoordinateSystemType& type );
+
+        SourceConfigList& getImageSources();
+
+        const SourceConfigList& getImageSources() const;
+
+        SourceConfigList& getHeightFieldSources();
+
+        const SourceConfigList& getHeightFieldSources() const;
+
+
+    private:
+        std::string name;
+        CoordinateSystemType cstype;
+        SourceConfigList image_sources;
+        SourceConfigList heightfield_sources;        
+    };
+
+
+    /**
+     * Creates MapConfig objects from their XML description.
+     */
+    class MapConfigReader
+    {
+    public:
+        static MapConfig* readXml( const std::string& location );
+        static MapConfig* readXml( std::istream& input );
+    };
+};
+
+#endif // OSGEARTH_MAP_CONFIG_H

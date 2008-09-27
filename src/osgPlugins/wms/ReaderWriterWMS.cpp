@@ -8,22 +8,33 @@
 
 using namespace osgEarth;
 
+#define PROPERTY_URL    "url"
+#define PROPERTY_LAYERS "layers"
+#define PROPERTY_STYLE  "style"
+#define PROPERTY_FORMAT "format"
+
 class WMSSource : public PlateCarreTileSource
 {
 public:
-    WMSSource()
+    WMSSource( const osgDB::ReaderWriter::Options* options )
     {
-        std::string host = "192.168.0.101";
-        if ( ::getenv( "OSGEARTH_HOST" ) )
-            host = std::string( ::getenv( "OSGEARTH_HOST" ) );
+        if ( options->getPluginData( PROPERTY_URL ) )
+            prefix = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
-        std::stringstream buf;
-        buf << "http://" << host << "/tilecache-2.04/tilecache.py";
-        prefix     = buf.str();
+        if ( options->getPluginData( PROPERTY_LAYERS ) )
+            layers = std::string( (const char*)options->getPluginData( PROPERTY_LAYERS ) );
+
+        if ( options->getPluginData( PROPERTY_STYLE ) )
+            style = std::string( (const char*)options->getPluginData( PROPERTY_STYLE ) );
+
+        if ( options->getPluginData( PROPERTY_FORMAT ) )
+            format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+        if ( format.empty() )
+            format = "png";
 
         //prefix = "http://192.168.0.101/tilecache-2.04/tilecache.py";
-        layers = "bluemarble2002-dc";
-        format = "png";
+        //layers = "bluemarble2002-dc";
+        //format = "png";
 
         //prefix = "http://labs.metacarta.com/wms-c/Basic.py";
         //layers = "basic"; format = "png";
@@ -61,7 +72,7 @@ public:
             << "?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
             << "&LAYERS=" << layers
             << "&FORMAT=image/" << format
-            << "&STYLES="
+            << "&STYLES=" << style
             << "&SRS=EPSG:4326"
             << "&WIDTH=256"
             << "&HEIGHT=256"
@@ -76,6 +87,7 @@ public:
 private:
     std::string prefix;
     std::string layers;
+    std::string style;
     std::string format;
 };
 
@@ -100,12 +112,12 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
             return readNode( file_name, opt );
         }
 
-        virtual ReadResult readNode(const std::string& file_name, const Options* opt) const
+        virtual ReadResult readNode(const std::string& file_name, const Options* options ) const
         {
             return ReadResult( "WMS: illegal usage (readNode); please use readImage/readHeightField" );
         }
 
-        virtual ReadResult readImage(const std::string& file_name, const Options* opt) const
+        virtual ReadResult readImage(const std::string& file_name, const Options* options ) const
         {
             std::string ext = osgDB::getFileExtension( file_name );
             if ( !acceptsExtension( ext ) )
@@ -116,7 +128,7 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
             // extract the PC KEY from the filename:
             PlateCarreCellKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
             
-            osg::ref_ptr<PlateCarreTileSource> source = new WMSSource(); //TODO: config/cache it
+            osg::ref_ptr<PlateCarreTileSource> source = new WMSSource( options ); //TODO: config/cache it
             osg::Image* image = source->createImage( key );
             return image? ReadResult( image ) : ReadResult( "Unable to load WMS tile" );
 

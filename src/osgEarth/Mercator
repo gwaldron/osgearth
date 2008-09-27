@@ -7,7 +7,7 @@
 
 namespace osgEarth
 {
-    class MercatorCellKey
+    class OSGEARTH_EXPORT MercatorCellKey
     {
     public:
         MercatorCellKey() { }
@@ -53,7 +53,7 @@ namespace osgEarth
     };
     
 
-    class MercatorTileSource : public osg::Referenced
+    class OSGEARTH_EXPORT MercatorTileSource : public osg::Referenced
     {
     public:
         virtual osg::Image* createImage( const MercatorCellKey& key ) =0;
@@ -62,7 +62,7 @@ namespace osgEarth
     };
 
 
-    class MercatorTileConverter
+    class OSGEARTH_EXPORT MercatorTileConverter
     {
     public:
         MercatorTileConverter( MercatorTileSource* source );

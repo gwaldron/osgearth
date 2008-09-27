@@ -11,7 +11,7 @@
 
 namespace osgEarth
 {
-    class XmlNode : public osg::Referenced
+    class OSGEARTH_EXPORT XmlNode : public osg::Referenced
     {
     public:
         XmlNode();
@@ -27,7 +27,7 @@ namespace osgEarth
 
     typedef std::map<std::string,std::string> XmlAttributes;
 
-    class XmlElement : public XmlNode
+    class OSGEARTH_EXPORT XmlElement : public XmlNode
     {
     public:
         XmlElement( const std::string& name );
@@ -73,7 +73,7 @@ namespace osgEarth
     
     typedef std::stack<XmlElement*> XmlElementNoRefStack;
 
-    class XmlText : public XmlNode
+    class OSGEARTH_EXPORT XmlText : public XmlNode
     {
     public:
         XmlText( const std::string& value );
@@ -91,7 +91,7 @@ namespace osgEarth
         std::string value;
     };  
     
-    class XmlDocument : public XmlElement
+    class OSGEARTH_EXPORT XmlDocument : public XmlElement
     {
     public:
         XmlDocument( const std::string& source_uri ="" );

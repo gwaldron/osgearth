@@ -12,7 +12,7 @@
 
 namespace osgEarth
 {
-    class HTTPRequest : public osg::Referenced
+    class OSGEARTH_EXPORT HTTPRequest : public osg::Referenced
     {
     public:
         HTTPRequest( const std::string& url );
@@ -33,7 +33,7 @@ namespace osgEarth
     };
 
 
-    class HTTPResponse : public osg::Referenced
+    class OSGEARTH_EXPORT HTTPResponse : public osg::Referenced
     {
     public:
         HTTPResponse( long code );
@@ -67,7 +67,7 @@ namespace osgEarth
     };
 
 
-    class HTTPClient
+    class OSGEARTH_EXPORT HTTPClient
     {
     public:
         HTTPClient();

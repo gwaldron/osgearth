@@ -5,7 +5,7 @@
 
 namespace osgEarth
 {
-    class TileGridProfile
+    class OSGEARTH_EXPORT TileGridProfile
     {
     public:
         TileGridProfile( double xmin, double ymin, double xmax, double ymax );

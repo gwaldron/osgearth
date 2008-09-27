@@ -11,7 +11,7 @@
 
 namespace osgEarth
 {
-    class PlateCarreCellKey
+    class OSGEARTH_EXPORT PlateCarreCellKey
     {
     public:
         PlateCarreCellKey( const PlateCarreCellKey& rhs );
@@ -38,7 +38,7 @@ namespace osgEarth
     };
 
     
-    class PlateCarreTileSource : public osg::Referenced
+    class OSGEARTH_EXPORT PlateCarreTileSource : public osg::Referenced
     {
     public:
         virtual osg::Image* createImage( const PlateCarreCellKey& key ) =0;
@@ -49,7 +49,7 @@ namespace osgEarth
     };
 
 
-    class ReaderWriterPlateCarreTileSource : public PlateCarreTileSource
+    class OSGEARTH_EXPORT ReaderWriterPlateCarreTileSource : public PlateCarreTileSource
     {
     public:
         ReaderWriterPlateCarreTileSource(

@@ -8,7 +8,7 @@
 
 namespace osgEarth
 {
-    class TileBuilder : public osg::Referenced
+    class OSGEARTH_EXPORT TileBuilder : public osg::Referenced
     {
     public:
         static TileBuilder* create( MapConfig* map, const std::string& url_template );

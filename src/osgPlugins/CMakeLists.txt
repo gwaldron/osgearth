@@ -21,11 +21,13 @@ ENDIF(MSVC80)
 
 SET(TARGET_DEFAULT_PREFIX "osgdb_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Plugins")
+
+#OpenThreads, osg, osgDB and osgUtil are included elsewhere.
 SET(TARGET_COMMON_LIBRARIES 
-    OpenThreads
-    osg 
-    osgDB 
-    osgUtil
+    #OpenThreads
+    #osg 
+    #osgDB 
+    #osgUtil
     osgEarth
 )
 

@@ -12,7 +12,7 @@ namespace osgEarth
     /**
      * Defines a source for image or heightfield data.
      */
-    class SourceConfig : public osg::Referenced
+    class OSGEARTH_EXPORT SourceConfig : public osg::Referenced
     {
     public:
         SourceConfig();
@@ -49,7 +49,7 @@ namespace osgEarth
     typedef std::list< osg::ref_ptr<SourceConfig> > SourceConfigList;
 
 
-    class MapConfig : public osg::Referenced
+    class OSGEARTH_EXPORT MapConfig : public osg::Referenced
     {
     public:
         enum CoordinateSystemType
@@ -107,7 +107,7 @@ namespace osgEarth
     /**
      * Creates MapConfig objects from their XML description.
      */
-    class MapConfigReader
+    class OSGEARTH_EXPORT MapConfigReader
     {
     public:
         static MapConfig* readXml( const std::string& location );

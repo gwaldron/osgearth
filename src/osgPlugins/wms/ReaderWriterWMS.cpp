@@ -12,11 +12,52 @@ using namespace osgEarth;
 #define PROPERTY_LAYERS "layers"
 #define PROPERTY_STYLE  "style"
 #define PROPERTY_FORMAT "format"
+#define PROPERTY_TILE_WIDTH "tile_width"
+#define PROPERTY_TILE_HEIGHT "tile_height"
+
+
+osg::HeightField* imageToHeightField(osg::Image* image)
+{
+	osg::HeightField *hf = new osg::HeightField;
+	if (!image)
+	{
+		osg::notify(osg::WARN) << "Image null, returning empty heightfield" << std::endl;
+		hf->allocate( 8, 8 );
+        for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+            hf->getHeightList()[i] = 0;//(double)((::rand() % 10000) - 5000);
+	}
+	else
+	{
+		//osg::notify(osg::NOTICE) << "Read heightfield image" << std::endl;
+		hf->allocate(image->s(), image->t());
+				
+		for( unsigned int row=0; row < image->t(); row++ ) {
+            //osg::notify(osg::NOTICE) << "ROW " << row << ":\t";
+            for( unsigned int col=0; col < image->s(); col++ ) {
+                unsigned char* ptr = image->data( col, row );
+                if ( image->getPixelSizeInBits() == 16 ) {
+                    short val = (short)*(short*)ptr;
+                    hf->setHeight( col, row, (float)val );
+                    //osg::notify(osg::NOTICE) << val << "\t";
+                }
+                else if ( image->getPixelSizeInBits() == 32 ) {
+                    float val = (float)*(float*)ptr;
+                    hf->setHeight( col, row, val );
+					//osg::notify(osg::NOTICE) << val << "\t";
+                }
+            }
+            //osg::notify(osg::NOTICE) << std::endl;
+        }
+	}
+	return hf;
+}
 
 class WMSSource : public PlateCarreTileSource
 {
 public:
-    WMSSource( const osgDB::ReaderWriter::Options* options )
+	WMSSource( const osgDB::ReaderWriter::Options* options ):
+	  tile_width(256),
+	  tile_height(256)
     {
         if ( options->getPluginData( PROPERTY_URL ) )
             prefix = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
@@ -29,6 +70,21 @@ public:
 
         if ( options->getPluginData( PROPERTY_FORMAT ) )
             format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+
+		if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
+		{
+			std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_WIDTH));
+			strin >> tile_width;
+		}
+
+		if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
+		{
+			std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ));
+			strin >> tile_height;
+		}
+
+
+
         if ( format.empty() )
             format = "png";
 
@@ -55,7 +111,13 @@ public:
 
     osg::HeightField* createHeightField( const PlateCarreCellKey& key )
     {
-        return NULL;
+        std::string uri = createURI( key);
+        osg::Image* image = osgDB::readImageFile( uri );
+        if ( !image )
+        {
+            osg::notify(osg::WARN) << "Failed to read heightfield from " << uri << std::endl;
+        }
+		return (imageToHeightField(image));
     }
 
     std::string createURI( const PlateCarreCellKey& key ) const
@@ -74,8 +136,8 @@ public:
             << "&FORMAT=image/" << format
             << "&STYLES=" << style
             << "&SRS=EPSG:4326"
-            << "&WIDTH=256"
-            << "&HEIGHT=256"
+            << "&WIDTH="<< tile_width
+            << "&HEIGHT="<< tile_height
             << "&BBOX=" << lon_min << "," << lat_min << "," << lon_max << "," << lat_max;
 
         // add this to trick OSG into using the right image loader:
@@ -89,6 +151,9 @@ private:
     std::string layers;
     std::string style;
     std::string format;
+
+	int tile_width;
+	int tile_height;
 };
 
 
@@ -136,9 +201,23 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
             return NULL;
         }
 
-        virtual ReadResult readHeightField(const std::string& file_name, const Options* opt) const
+        virtual ReadResult readHeightField(const std::string& file_name, const Options* options) const
         {
-            return ReadResult::FILE_NOT_HANDLED;
+            std::string ext = osgDB::getFileExtension( file_name );
+            if ( !acceptsExtension( ext ) )
+            {
+                return ReadResult::FILE_NOT_HANDLED;
+            }
+
+            // extract the PC KEY from the filename:
+            PlateCarreCellKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
+            
+            osg::ref_ptr<PlateCarreTileSource> source = new WMSSource( options ); //TODO: config/cache it
+            osg::HeightField* heightField = source->createHeightField( key );
+            return heightField? ReadResult( heightField ) : ReadResult( "Unable to load WMS tile" );
+
+            //TODO
+            return NULL;
         }
 };
 

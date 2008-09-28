@@ -58,7 +58,6 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
     hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
     hf->setBorderWidth( 0 );
-    hf->setSkirtHeight( 0 );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( locator );
@@ -103,6 +102,9 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
     double min_range = radius*5.0;
+
+    //Set the skirt height of the heightfield to the radius of the node
+    hf->setSkirtHeight(radius);
 
     osg::Vec3d normal = centroid;
     normal.normalize();

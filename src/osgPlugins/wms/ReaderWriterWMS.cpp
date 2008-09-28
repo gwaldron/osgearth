@@ -3,6 +3,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <sstream>
 #include <stdlib.h>
 
@@ -14,6 +15,7 @@ using namespace osgEarth;
 #define PROPERTY_FORMAT "format"
 #define PROPERTY_TILE_WIDTH "tile_width"
 #define PROPERTY_TILE_HEIGHT "tile_height"
+#define PROPERTY_CACHE_PATH "cache_path"
 
 
 osg::HeightField* imageToHeightField(osg::Image* image)
@@ -71,6 +73,9 @@ public:
         if ( options->getPluginData( PROPERTY_FORMAT ) )
             format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
+        if ( options->getPluginData( PROPERTY_CACHE_PATH))
+             cache_path = std::string( (const char*)options->getPluginData( PROPERTY_CACHE_PATH ) );
+
 		if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
 		{
 			std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_WIDTH));
@@ -82,8 +87,6 @@ public:
 			std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ));
 			strin >> tile_height;
 		}
-
-
 
         if ( format.empty() )
             format = "png";
@@ -101,23 +104,54 @@ public:
     osg::Image* createImage( const PlateCarreCellKey& key )
     {
         std::string uri = createURI( key );
+
+        //Get the cached filename
+        std::string cachedImage = getCacheFileName(key);
+
+        //Read the image from the cache
+        if (!cache_path.empty())
+        {
+            //Load the cached image if it exists
+            if (osgDB::fileExists(cachedImage))
+            {
+                osg::notify(osg::INFO) << "Reading WMS image from cache " << uri << std::endl;
+                return osgDB::readImageFile(cachedImage);
+            }
+        }
+
         osg::Image* image = osgDB::readImageFile( uri );
         if ( !image )
         {
             osg::notify(osg::WARN) << "Failed to load image from " << uri << std::endl;
+        }
+        else
+        {
+            if (!cache_path.empty())
+            {
+                //Write the image to the cache
+                osgDB::writeImageFile(*image, cachedImage);
+                osg::notify(osg::INFO) << "Wrote WMS image to cache " << uri << std::endl;
+            }
         }
         return image;
     }
 
     osg::HeightField* createHeightField( const PlateCarreCellKey& key )
     {
-        std::string uri = createURI( key);
-        osg::Image* image = osgDB::readImageFile( uri );
-        if ( !image )
+        osg::Image* image = createImage(key);
+        if (!image)
         {
-            osg::notify(osg::WARN) << "Failed to read heightfield from " << uri << std::endl;
+            osg::notify(osg::WARN) << "Failed to read heightfield from " << createURI(key) << std::endl;
         }
-		return (imageToHeightField(image));
+        return (imageToHeightField(image));        
+    }
+
+    std::string getCacheFileName(const PlateCarreCellKey& key) const
+    {
+        std::stringstream buf;
+        //buf << cache_path << "/" << key.str() << ".dds";//<< format;
+        buf << cache_path << "/" << key.str() << "." << format;
+        return buf.str();
     }
 
     std::string createURI( const PlateCarreCellKey& key ) const
@@ -154,6 +188,8 @@ private:
 
 	int tile_width;
 	int tile_height;
+
+    std::string cache_path;
 };
 
 

@@ -149,8 +149,7 @@ public:
     std::string getCacheFileName(const PlateCarreCellKey& key) const
     {
         std::stringstream buf;
-        //buf << cache_path << "/" << key.str() << ".dds";//<< format;
-        buf << cache_path << "/" << key.str() << "." << format;
+        buf << cache_path << "/" << key.str() << ".dds";
         return buf.str();
     }
 

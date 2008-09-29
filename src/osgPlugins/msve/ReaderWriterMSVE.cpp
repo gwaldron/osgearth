@@ -8,8 +8,8 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_URL     "url"
-#define PROPERTY_DATASET "dataset"
+#define PROPERTY_URL        "url"
+#define PROPERTY_DATASET    "dataset"
 #define PROPERTY_CACHE_PATH "cache_path"
 
 class MSVESource : public MercatorTileSource
@@ -30,7 +30,9 @@ public:
         }
 
         if ( dataset.empty() )
-            dataset = "h";
+        {
+            dataset = "a"; // default to the hybrid dataset
+        }
     }
 
     osg::Image* createImage( const MercatorCellKey& key )

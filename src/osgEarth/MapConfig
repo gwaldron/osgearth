@@ -107,14 +107,30 @@ namespace osgEarth
         SourceConfigList& getHeightFieldSources();
 
         const SourceConfigList& getHeightFieldSources() const;
-
+        
+        /**
+        *Sets the skirt ratio to be used when creating height field tiles
+        *
+        *@param skirtRatio
+        *      The skirt ratio; default = 0.02
+        */
+        void setSkirtRatio(const float _skirt_ratio) { skirt_ratio = _skirt_ratio; }
+        
+        /**
+        *Gets the skirt ratio to be used when creating height field tiles
+        *
+        *@return The skirt ratio
+        */
+        float getSkirtRatio() const { return skirt_ratio; }
+        
 
     private:
         std::string name;
         CoordinateSystemType cstype;
         float vertical_scale;
+        float skirt_ratio;      
         SourceConfigList image_sources;
-        SourceConfigList heightfield_sources;        
+        SourceConfigList heightfield_sources;       
     };
 
 

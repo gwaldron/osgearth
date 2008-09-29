@@ -103,8 +103,8 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
     double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
     double min_range = radius*5.0;
 
-    //Set the skirt height of the heightfield to the radius of the node
-    hf->setSkirtHeight(radius);
+    //Set the skirt height of the heightfield
+    hf->setSkirtHeight(radius * map->getSkirtRatio());
 
     osg::Vec3d normal = centroid;
     normal.normalize();

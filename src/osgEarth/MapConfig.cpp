@@ -10,6 +10,7 @@ MapConfig::MapConfig()
 {
     cstype = MapConfig::CSTYPE_GEOCENTRIC;
     vertical_scale = 1.0f;
+    skirt_ratio = 0.02;
 }
 
 void
@@ -126,6 +127,7 @@ SourceConfig::getProperties() const
 #define ELEM_HEIGHTFIELD    "heightfield"
 #define ELEM_VERTICAL_SCALE "vertical_scale"
 #define ATTR_DRIVER         "driver"
+#define ELEM_SKIRT_RATIO    "skirt_ratio"
 
 static SourceConfig*
 readSource( XmlElement* e_source )
@@ -167,6 +169,7 @@ readMap( XmlElement* e_map )
         map->setCoordinateSystemType( MapConfig::CSTYPE_PLATE_CARRE );
 
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
+    map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
 
     XmlNodeList e_images = e_map->getSubElements( ELEM_IMAGE );
     for( XmlNodeList::const_iterator i = e_images.begin(); i != e_images.end(); i++ )
@@ -183,6 +186,7 @@ readMap( XmlElement* e_map )
         if ( heightfield_source )
             map->getHeightFieldSources().push_back( heightfield_source );
     }
+
     return map;
 }
 

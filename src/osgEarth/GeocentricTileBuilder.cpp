@@ -136,8 +136,7 @@ GeocentricTileBuilder::createNode( const PlateCarreCellKey& key )
         csn->setEllipsoidModel( new osg::EllipsoidModel() );
 
         osgTerrain::Terrain* terrain = new osgTerrain::Terrain();
-        //TODO: remove; testing only
-        terrain->setVerticalScale( 3.0f );
+        terrain->setVerticalScale( map->getVerticalScale() );
         csn->addChild( terrain );
 
         top = csn;

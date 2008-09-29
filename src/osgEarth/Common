@@ -4,9 +4,24 @@
 #include <osgEarth/Export>
 #include <osg/Referenced>
 #include <osg/ref_ptr>
+#include <string>
+#include <sstream>
 
 #ifdef WIN32
 #include <windows.h>
 #endif
+
+
+namespace osgEarth
+{
+    template<typename T> static T
+    as( const std::string& str, T default_value )
+    {
+        T temp = default_value;
+        std::istringstream strin( str );
+        if ( !strin.eof() ) strin >> temp;
+        return temp;
+    }
+}
 
 #endif // OSGEARTH_COMMON_H

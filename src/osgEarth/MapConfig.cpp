@@ -9,6 +9,7 @@ using namespace osgEarth;
 MapConfig::MapConfig()
 {
     cstype = MapConfig::CSTYPE_GEOCENTRIC;
+    vertical_scale = 1.0f;
 }
 
 void
@@ -33,6 +34,18 @@ void
 MapConfig::setCoordinateSystemType( const CoordinateSystemType& _cstype )
 {
     cstype = _cstype;
+}
+
+void
+MapConfig::setVerticalScale( float value )
+{
+    vertical_scale = value;
+}
+
+float
+MapConfig::getVerticalScale() const
+{
+    return vertical_scale;
 }
 
 SourceConfigList&
@@ -106,12 +119,13 @@ SourceConfig::getProperties() const
 
 /************************************************************************/
 
-#define ELEM_MAP          "map"
-#define ATTR_NAME         "name"
-#define ATTR_CSTYPE       "type"
-#define ELEM_IMAGE        "image"
-#define ELEM_HEIGHTFIELD  "heightfield"
-#define ATTR_DRIVER       "driver"
+#define ELEM_MAP            "map"
+#define ATTR_NAME           "name"
+#define ATTR_CSTYPE         "type"
+#define ELEM_IMAGE          "image"
+#define ELEM_HEIGHTFIELD    "heightfield"
+#define ELEM_VERTICAL_SCALE "vertical_scale"
+#define ATTR_DRIVER         "driver"
 
 static SourceConfig*
 readSource( XmlElement* e_source )
@@ -151,6 +165,8 @@ readMap( XmlElement* e_map )
         map->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
     else if ( a_cstype == "plate carre" || a_cstype == "flat" || a_cstype == "geographic" || a_cstype == "equirectangular" || a_cstype == "projected" )
         map->setCoordinateSystemType( MapConfig::CSTYPE_PLATE_CARRE );
+
+    map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
 
     XmlNodeList e_images = e_map->getSubElements( ELEM_IMAGE );
     for( XmlNodeList::const_iterator i = e_images.begin(); i != e_images.end(); i++ )

@@ -87,6 +87,19 @@ namespace osgEarth
          */
         void setCoordinateSystemType( const CoordinateSystemType& type );
 
+        /**
+         * Sets the default scale factor for height-field values.
+         *
+         * @param scale
+         *      Multiplier for heights; default = 1.0
+         */
+        void setVerticalScale( float scale );
+
+        /**
+         * Gets the default scale factor for height-field values.
+         */
+        float getVerticalScale() const;
+
         SourceConfigList& getImageSources();
 
         const SourceConfigList& getImageSources() const;
@@ -99,6 +112,7 @@ namespace osgEarth
     private:
         std::string name;
         CoordinateSystemType cstype;
+        float vertical_scale;
         SourceConfigList image_sources;
         SourceConfigList heightfield_sources;        
     };

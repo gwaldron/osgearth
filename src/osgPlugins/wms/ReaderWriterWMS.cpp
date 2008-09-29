@@ -77,16 +77,20 @@ public:
              cache_path = std::string( (const char*)options->getPluginData( PROPERTY_CACHE_PATH ) );
 
 		if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
-		{
-			std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_WIDTH));
-			strin >> tile_width;
-		}
+            tile_width = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_WIDTH ), 256 );
 
-		if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
-		{
-			std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ));
-			strin >> tile_height;
-		}
+        if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
+            tile_height = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ), 256 );
+		//{
+		//	std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_WIDTH));
+		//	strin >> tile_width;
+		//}
+
+		//if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
+		//{
+		//	std::istringstream strin((const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ));
+		//	strin >> tile_height;
+		//}
 
         if ( format.empty() )
             format = "png";

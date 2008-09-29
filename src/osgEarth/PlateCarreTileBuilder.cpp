@@ -102,7 +102,7 @@ PlateCarreTileBuilder::createNode( const PlateCarreCellKey& key )
     if ( key.getLevelOfDetail() == 0 )
     {
         osgTerrain::Terrain* terrain = new osgTerrain::Terrain();
-        terrain->setVerticalScale( 3.0f );
+        terrain->setVerticalScale( map->getVerticalScale() );
         top = terrain;
     }
     else

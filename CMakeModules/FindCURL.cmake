@@ -32,6 +32,7 @@ FIND_PATH(CURL_INCLUDE_DIR curl.h
   /opt/include
 )
 
+#Find the CURL release library
 FIND_LIBRARY(CURL_LIBRARY 
   NAMES curl curllib CURL
   PATHS
@@ -47,6 +48,36 @@ FIND_LIBRARY(CURL_LIBRARY
 )
 FIND_LIBRARY(CURL_LIBRARY 
   NAMES curl CURL curllib
+  PATHS
+    ~/Library/Frameworks
+    /Library/Frameworks
+    /usr/local
+    /usr
+    /sw
+    /opt/local
+    /opt/csw
+    /opt
+    /usr/freeware
+    [HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Session\ Manager\\Environment;CURL_ROOT]/lib
+  PATH_SUFFIXES lib64 lib
+)
+
+#Find the CURL debug library
+FIND_LIBRARY(CURL_LIBRARY_DEBUG
+  NAMES curlD curllibD CURLD
+  PATHS
+  $ENV{CURL_DIR}
+  NO_DEFAULT_PATH
+  PATH_SUFFIXES lib64 lib
+)
+FIND_LIBRARY(CURL_LIBRARY_DEBUG 
+  NAMES curlD CURLD curllibD
+  PATHS ${CMAKE_PREFIX_PATH} # Unofficial: We are proposing this.
+    NO_DEFAULT_PATH
+    PATH_SUFFIXES lib64 lib
+)
+FIND_LIBRARY(CURL_LIBRARY_DEBUG 
+  NAMES curlD CURLD curllibD
   PATHS
     ~/Library/Frameworks
     /Library/Frameworks

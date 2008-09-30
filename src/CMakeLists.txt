@@ -9,3 +9,8 @@ FOREACH( mylibfolder
 ENDFOREACH( mylibfolder )
 
 
+IF(MSVC80)
+  OPTION(OSGEARTH_MSVC_GENERATE_PLUGINS_AND_WRAPPERS_MANIFESTS "Generate or not manifests files under VS8 for dynamically loaded dlls" ON)
+ENDIF(MSVC80)
+
+

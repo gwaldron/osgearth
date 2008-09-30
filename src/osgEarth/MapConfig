@@ -122,7 +122,14 @@ namespace osgEarth
         *@return The skirt ratio
         */
         float getSkirtRatio() const { return skirt_ratio; }
-        
+
+        /**
+        * Sets the path to cache downloaded tiles to
+        */
+        void setCachePath( const std::string& _cache_path );
+
+        const std::string& getCachePath() const;
+       
 
     private:
         std::string name;
@@ -130,7 +137,8 @@ namespace osgEarth
         float vertical_scale;
         float skirt_ratio;      
         SourceConfigList image_sources;
-        SourceConfigList heightfield_sources;       
+        SourceConfigList heightfield_sources;
+        std::string cache_path;
     };
 
 

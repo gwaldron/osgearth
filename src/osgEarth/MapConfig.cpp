@@ -25,6 +25,18 @@ MapConfig::getName() const
     return name;
 }
 
+void
+MapConfig::setCachePath( const std::string& _cache_path )
+{
+    cache_path = _cache_path;
+}
+
+const std::string&
+MapConfig::getCachePath() const
+{
+    return cache_path;
+}
+
 const MapConfig::CoordinateSystemType&
 MapConfig::getCoordinateSystemType() const
 {
@@ -128,6 +140,7 @@ SourceConfig::getProperties() const
 #define ELEM_VERTICAL_SCALE "vertical_scale"
 #define ATTR_DRIVER         "driver"
 #define ELEM_SKIRT_RATIO    "skirt_ratio"
+#define ELEM_CACHE_PATH     "cache_path"
 
 static SourceConfig*
 readSource( XmlElement* e_source )
@@ -170,6 +183,7 @@ readMap( XmlElement* e_map )
 
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
+    map->setCachePath(as<std::string>(e_map->getSubElementText( ELEM_CACHE_PATH ), map->getCachePath()));
 
     XmlNodeList e_images = e_map->getSubElements( ELEM_IMAGE );
     for( XmlNodeList::const_iterator i = e_images.begin(); i != e_images.end(); i++ )
@@ -185,6 +199,22 @@ readMap( XmlElement* e_map )
         SourceConfig* heightfield_source = readSource( static_cast<XmlElement*>( i->get() ) );
         if ( heightfield_source )
             map->getHeightFieldSources().push_back( heightfield_source );
+    }
+
+    //Set the cache path for each of the imagery sources
+    for (SourceConfigList::iterator itr = map->getImageSources().begin();
+         itr != map->getImageSources().end();
+         ++itr)
+    {
+        (*itr)->getProperties()[ELEM_CACHE_PATH] = map->getCachePath();
+    }
+
+    //Set the cache path for each of the heightfield sources
+    for (SourceConfigList::iterator itr = map->getHeightFieldSources().begin();
+        itr != map->getHeightFieldSources().end();
+        ++itr)
+    {
+        (*itr)->getProperties()[ELEM_CACHE_PATH] = map->getCachePath();
     }
 
     return map;

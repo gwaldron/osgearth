@@ -21,6 +21,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
     Common
     Export
+    FileCache
     GeocentricTileBuilder
     HTTPClient
     MapConfig
@@ -35,6 +36,7 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
+    FileCache.cpp
     GeocentricTileBuilder.cpp
     HTTPClient.cpp
     MapConfig.cpp

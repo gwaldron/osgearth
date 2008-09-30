@@ -1,9 +1,12 @@
 #include <osgEarth/Mercator>
+#include <osgEarth/FileCache>
+
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+
 #include <sstream>
 
 using namespace osgEarth;
@@ -25,7 +28,7 @@ public:
             if ( options->getPluginData( PROPERTY_DATASET ) )
                 dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
-            if ( options->getPluginData( PROPERTY_CACHE_PATH))
+            if (options->getPluginData( PROPERTY_CACHE_PATH ))
                 cache_path = std::string( (const char*)options->getPluginData( PROPERTY_CACHE_PATH ) );
         }
 
@@ -39,39 +42,16 @@ public:
     {
         // a=aerial(jpg), r=map(png), h=hybrid(jpg), t=elev(wmphoto?)
 
-        //Get the cached filename
-        std::string cachedImage = getCachedFilename(key);
-
-        //Read the image from the cache if it exists
-        if (!cache_path.empty())
-        {          
-            //Read the file from the cache
-            if (osgDB::fileExists(cachedImage))
-            {
-                osg::notify(osg::INFO) << "Read MSVE tile " << key.str() << " from cache" << std::endl;
-                return osgDB::readImageFile(cachedImage);
-            }
-        }
-
         std::stringstream buf;
 
         std::string format;
 
         buf << url << "/" << dataset << key.str() << "?g=1&";
         buf << "." << getFormat();
-        buf << ".curl";
 
-        osg::Image* image = osgDB::readImageFile( buf.str() );
-        if (image)
-        {
-            //Write to cache
-            if (!cache_path.empty())
-            {
-                osgDB::writeImageFile(*image, cachedImage);
-                osg::notify(osg::INFO) << "Wrote MSVE tile " << key.str() << " to cache " << std::endl;
-            }
-        }
-        return image;
+        //osg::Image* image = osgDB::readImageFile( buf.str() );
+        osgEarth::FileCache fc(cache_path);
+        return fc.readImageFile(buf.str());
     }
 
     std::string getFormat() const
@@ -85,14 +65,6 @@ public:
             return "png";
         }
     }
-
-    std::string getCachedFilename(const MercatorCellKey& key) const
-    {
-        std::stringstream buf;
-        buf << cache_path << "/" << key.str() << "." << getFormat();
-        return buf.str();
-    }
-
 
     //    //sprintf( buf, "http://192.168.0.8/gis/denverglobe/%s.jpg.curl",
     //    //    q.c_str() );

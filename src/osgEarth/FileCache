@@ -6,6 +6,7 @@
 #include <osg/Image>
 #include <osg/Shape>
 #include <osg/Node>
+#include <osgDB/ReaderWriter>
 
 
 namespace osgEarth
@@ -16,9 +17,9 @@ namespace osgEarth
 
         FileCache(const std::string &_cache_path);
 
-        osg::Image*        readImageFile(const std::string& filename);
-        osg::HeightField*  readHeightFieldFile(const std::string& filename);
-        osg::Node*         readNodeFile(const std::string& filename);
+        osg::Image*        readImageFile(const std::string& filename, const osgDB::ReaderWriter::Options* options =NULL );
+        osg::HeightField*  readHeightFieldFile(const std::string& filename, const osgDB::ReaderWriter::Options* options =NULL );
+        osg::Node*         readNodeFile(const std::string& filename, const osgDB::ReaderWriter::Options* options =NULL );
 
         const std::string& getCachePath() const {return cache_path;}
         void setCachePath(const std::string &_cache_path) {cache_path = _cache_path;}

@@ -12,7 +12,7 @@ osgEarth::FileCache::FileCache(const std::string &_cache_path)
     cache_path = _cache_path;
 }
 
-osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename)
+osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, const osgDB::ReaderWriter::Options* options )
 {
     std::string cachedFilename = getCachedImageFilename(filename);
 
@@ -22,12 +22,12 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename)
         if (osgDB::fileExists(cachedFilename))
         {
             osg::notify(osg::INFO) << "Reading " << filename << " from cache" << std::endl;
-            return osgDB::readImageFile(cachedFilename);
+            return osgDB::readImageFile(cachedFilename, options);
         }
     }
 
     //Load the file
-    osg::Image *image = osgDB::readImageFile(filename);
+    osg::Image *image = osgDB::readImageFile(filename, options);
 
     if (image && !cachedFilename.empty())
     {
@@ -43,22 +43,22 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename)
         if (!cachedFilename.empty())
         {
             osg::notify(osg::INFO) << "Writing " << filename << " to cache " << cachedFilename <<  std::endl;
-            osgDB::writeImageFile(*image, cachedFilename);
+            osgDB::writeImageFile(*image, cachedFilename, options);
         }
     }
     return image;
 }
 
-osg::HeightField* osgEarth::FileCache::readHeightFieldFile(const std::string& filename)
+osg::HeightField* osgEarth::FileCache::readHeightFieldFile(const std::string& filename, const osgDB::ReaderWriter::Options* options )
 {
     //TODO:  Cache heightfields
-    return osgDB::readHeightFieldFile(filename);
+    return osgDB::readHeightFieldFile(filename, options);
 }
 
-osg::Node* osgEarth::FileCache::readNodeFile(const std::string& filename)
+osg::Node* osgEarth::FileCache::readNodeFile(const std::string& filename, const osgDB::ReaderWriter::Options* options )
 {
     //TODO:  Cache nodes
-    return osgDB::readNodeFile(filename);
+    return osgDB::readNodeFile(filename, options);
 }
 
 std::string osgEarth::FileCache::getCachedImageFilename(const std::string &filename)

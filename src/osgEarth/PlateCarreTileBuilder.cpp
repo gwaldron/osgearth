@@ -13,8 +13,11 @@
 
 using namespace osgEarth;
 
-PlateCarreTileBuilder::PlateCarreTileBuilder( MapConfig* _map, const std::string& _url_template ) :
-TileBuilder( _map, _url_template )
+PlateCarreTileBuilder::PlateCarreTileBuilder( 
+    MapConfig* _map,
+    const std::string& _url_template,
+    const osgDB::ReaderWriter::Options* _global_options ) :
+TileBuilder( _map, _url_template, _global_options )
 {
     //NOP
 }

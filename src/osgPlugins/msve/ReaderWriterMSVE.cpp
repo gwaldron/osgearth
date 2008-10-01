@@ -1,6 +1,7 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/FileCache>
 
+#include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -18,9 +19,10 @@ using namespace osgEarth;
 class MSVESource : public MercatorTileSource
 {
 public:
-    MSVESource( const osgDB::ReaderWriter::Options* options )
+    MSVESource( const osgDB::ReaderWriter::Options* _options ) :
+      options( _options )
     {
-        if ( options )
+        if ( options.valid() )
         {
             if ( options->getPluginData( PROPERTY_URL ) )
                 url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
@@ -50,8 +52,14 @@ public:
         buf << "." << getFormat();
 
         //osg::Image* image = osgDB::readImageFile( buf.str() );
+
+        osg::notify(osg::INFO) 
+            << "[osgEarth] MSVE: option string = "
+            << (options.valid()? options->getOptionString() : "<empty>")
+            << std::endl;
+
         osgEarth::FileCache fc(cache_path);
-        return fc.readImageFile(buf.str());
+        return fc.readImageFile( buf.str(), options.get() );
     }
 
     std::string getFormat() const
@@ -102,6 +110,7 @@ public:
     }
 
 private:
+    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
     std::string url;
     std::string dataset;
     std::string cache_path;

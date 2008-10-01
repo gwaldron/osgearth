@@ -129,6 +129,14 @@ namespace osgEarth
         void setCachePath( const std::string& _cache_path );
 
         const std::string& getCachePath() const;
+
+        void setProxyHost( const std::string& host );
+
+        const std::string& getProxyHost() const;
+
+        void setProxyPort( unsigned short port );
+
+        unsigned short getProxyPort() const;
        
 
     private:
@@ -139,6 +147,8 @@ namespace osgEarth
         SourceConfigList image_sources;
         SourceConfigList heightfield_sources;
         std::string cache_path;
+        std::string proxy_host;
+        unsigned short proxy_port;
     };
 
 

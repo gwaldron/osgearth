@@ -4,6 +4,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/PlateCarre>
 #include <osgEarth/MapConfig>
+#include <osgDB/ReaderWriter>
 #include <vector>
 
 namespace osgEarth
@@ -11,13 +12,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileBuilder : public osg::Referenced
     {
     public:
-        static TileBuilder* create( MapConfig* map, const std::string& url_template );
+        static TileBuilder* create(
+            MapConfig* map,
+            const std::string& url_template,
+            const osgDB::ReaderWriter::Options* global_options =NULL );
         
     public:
         osg::Node* createNode( const PlateCarreCellKey& key );
 
     protected:
-        TileBuilder( MapConfig* map, const std::string& url_template );
+        TileBuilder( 
+            MapConfig* map, 
+            const std::string& url_template,
+            const osgDB::ReaderWriter::Options* global_options );
 
         std::string createURI( const PlateCarreCellKey& key );
 

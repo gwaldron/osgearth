@@ -11,6 +11,7 @@ MapConfig::MapConfig()
     cstype = MapConfig::CSTYPE_GEOCENTRIC;
     vertical_scale = 1.0f;
     skirt_ratio = 0.02;
+    proxy_port = 8080;
 }
 
 void
@@ -85,6 +86,30 @@ MapConfig::getHeightFieldSources() const
     return heightfield_sources;
 }
 
+void
+MapConfig::setProxyHost( const std::string& value )
+{
+    proxy_host = value;
+}
+
+const std::string&
+MapConfig::getProxyHost() const 
+{
+    return proxy_host;
+}
+
+void
+MapConfig::setProxyPort( unsigned short value )
+{
+    proxy_port = value;
+}
+
+unsigned short
+MapConfig::getProxyPort() const
+{
+    return proxy_port;
+}
+
 /************************************************************************/
 
 
@@ -141,6 +166,8 @@ SourceConfig::getProperties() const
 #define ATTR_DRIVER         "driver"
 #define ELEM_SKIRT_RATIO    "skirt_ratio"
 #define ELEM_CACHE_PATH     "cache_path"
+#define ELEM_PROXY_HOST     "proxy_host"
+#define ELEM_PROXY_PORT     "proxy_port"
 
 static SourceConfig*
 readSource( XmlElement* e_source )
@@ -183,7 +210,10 @@ readMap( XmlElement* e_map )
 
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
-    map->setCachePath(as<std::string>(e_map->getSubElementText( ELEM_CACHE_PATH ), map->getCachePath()));
+    map->setCachePath( as<std::string>( e_map->getSubElementText( ELEM_CACHE_PATH ), map->getCachePath() ) );
+
+    map->setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), map->getProxyHost() ) );
+    map->setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), map->getProxyPort() ) );
 
     XmlNodeList e_images = e_map->getSubElements( ELEM_IMAGE );
     for( XmlNodeList::const_iterator i = e_images.begin(); i != e_images.end(); i++ )

@@ -4,6 +4,7 @@
 #include <osgEarth/Common>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
+#include <osgDB/ReaderWriter>
 #include <sstream>
 #include <iostream>
 #include <string>
@@ -70,7 +71,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT HTTPClient
     {
     public:
-        HTTPClient();
+        HTTPClient( const osgDB::ReaderWriter::Options* options =NULL );
 
         void setProxyHost( const std::string& hostname );
 

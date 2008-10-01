@@ -3,6 +3,8 @@
 #include <osg/Notify>
 #include <curl/curl.h>
 #include <curl/types.h>
+#include <string>
+#include <sstream>
 
 using namespace osgEarth;
 
@@ -141,9 +143,30 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 
 /****************************************************************************/
 
-HTTPClient::HTTPClient()
+HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
 {
     proxy_port = 8080;
+
+    // try to set proxy host/port by reading the CURL proxy options
+    if ( options )
+    {
+        std::istringstream iss( options->getOptionString() );
+        std::string opt;
+        while( iss >> opt )
+        {
+            int index = opt.find( "=" );
+            if( opt.substr( 0, index ) == "OSG_CURL_PROXY" )
+            {
+                setProxyHost( opt.substr( index+1 ) );
+                osg::notify(osg::INFO) << "[osgEarth] HTTPClient: set proxy host = " << proxy_host << std::endl;
+            }
+            else if ( opt.substr( 0, index ) == "OSG_CURL_PROXYPORT" )
+            {
+                setProxyPort( (unsigned short)::atoi( opt.substr( index+1 ).c_str() ) );
+                osg::notify(osg::INFO) << "[osgEarth] HTTPClient: set proxy port = " << proxy_port << std::endl;
+            }
+        }
+    }
 }
 
 void

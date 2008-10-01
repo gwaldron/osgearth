@@ -169,7 +169,7 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
 
         virtual const char* className()
         {
-            return "WMS/WMS-C Reader";
+            return "WMS Reader";
         }
         
         virtual bool acceptsExtension(const std::string& extension) const

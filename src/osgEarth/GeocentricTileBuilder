@@ -11,7 +11,10 @@ namespace osgEarth
     class GeocentricTileBuilder : public TileBuilder
     {
     public:
-        GeocentricTileBuilder( MapConfig* map, const std::string& url_template );
+        GeocentricTileBuilder( 
+            MapConfig* map, 
+            const std::string& url_template,
+            const osgDB::ReaderWriter::Options* options =NULL);
         
     protected:
         osg::Node* createQuadrant( const PlateCarreCellKey& key );

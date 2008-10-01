@@ -18,18 +18,40 @@
 using namespace osgEarth;
 
 TileBuilder*
-TileBuilder::create( MapConfig* map, const std::string& url_template )
+TileBuilder::create( MapConfig* map, const std::string& url_template, const osgDB::ReaderWriter::Options* options )
 {
     TileBuilder* result = NULL;
     if ( map )
     {
+        osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = options ? 
+            new osgDB::ReaderWriter::Options( *local_options ) :
+            NULL;
+
+        // transcribe proxy settings:
+        if ( !map->getProxyHost().empty() )
+        {
+            if ( !local_options.valid() )
+                local_options = new osgDB::ReaderWriter::Options();
+
+            std::stringstream buf;
+            buf << local_options->getOptionString()
+                << "OSG_CURL_PROXY=" << map->getProxyHost() << " "
+                << "OSG_CURL_PROXYPORT=" << map->getProxyPort();
+            local_options->setOptionString( buf.str() );
+        }
+
+        osg::notify(osg::INFO) 
+            << "[osgEarth] TileBuilder: options string = " 
+            << (local_options.valid()? local_options->getOptionString() : "<empty>")
+            << std::endl;
+
         if ( map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC )
         {
-            result = new GeocentricTileBuilder( map, url_template );
+            result = new GeocentricTileBuilder( map, url_template, local_options.get() );
         }
         else
         {
-            result = new PlateCarreTileBuilder( map, url_template );
+            result = new PlateCarreTileBuilder( map, url_template, local_options.get() );
         }
     }
     return result;
@@ -38,29 +60,36 @@ TileBuilder::create( MapConfig* map, const std::string& url_template )
 static void
 addSources(const SourceConfigList& from, 
            std::vector< osg::ref_ptr<PlateCarreTileSource> >& to,
-           const std::string& url_template)
+           const std::string& url_template,
+           const osgDB::ReaderWriter::Options* global_options)
 {        
     for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
     {
         SourceConfig* source = i->get();
-        osgDB::ReaderWriter::Options* options = new osgDB::ReaderWriter::Options();
+
+        osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
+            new osgDB::ReaderWriter::Options( *global_options ) : 
+            new osgDB::ReaderWriter::Options();
+
         for( SourceProperties::const_iterator p = source->getProperties().begin(); p != source->getProperties().end(); p++ )
         {
-            options->setPluginData( p->first, (void*)p->second.c_str() );
-            PlateCarreTileSource* tile_source = new ReaderWriterPlateCarreTileSource( source->getDriver(), options );
+            local_options->setPluginData( p->first, (void*)p->second.c_str() );
+            PlateCarreTileSource* tile_source = new ReaderWriterPlateCarreTileSource( source->getDriver(), local_options.get() );
             to.push_back( tile_source );
         }
     }
 }
 
-TileBuilder::TileBuilder( MapConfig* _map, const std::string& _url_template ) :
+TileBuilder::TileBuilder(MapConfig* _map, 
+                         const std::string& _url_template,
+                         const osgDB::ReaderWriter::Options* options ) :
 map( _map ),
 url_template( _url_template )
 {
     if ( map.valid() )
     {
-        addSources( map->getImageSources(), image_sources, url_template );
-        addSources( map->getHeightFieldSources(), heightfield_sources, url_template );
+        addSources( map->getImageSources(), image_sources, url_template, options );
+        addSources( map->getHeightFieldSources(), heightfield_sources, url_template, options );
     }
 }
 

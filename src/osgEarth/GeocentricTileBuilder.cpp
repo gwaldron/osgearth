@@ -15,6 +15,9 @@
 
 using namespace osgEarth;
 
+//#define WGS84_WKT "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AXIS["Lat",NORTH],AXIS["Long",EAST],AUTHORITY["EPSG","4326"]]
+
+
 GeocentricTileBuilder::GeocentricTileBuilder( MapConfig* map, const std::string& url_template ) :
 TileBuilder( map, url_template )
 {
@@ -124,38 +127,8 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
     return plod;
 }
 
-osg::Node*
-GeocentricTileBuilder::createNode( const PlateCarreCellKey& key )
+std::string
+GeocentricTileBuilder::getProj4String() const
 {
-    osg::Group* top;
-    osg::Group* tile_parent;
-
-    if ( key.getLevelOfDetail() == 0 )
-    {
-        osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
-        csn->setEllipsoidModel( new osg::EllipsoidModel() );
-
-        osgTerrain::Terrain* terrain = new osgTerrain::Terrain();
-        terrain->setVerticalScale( map->getVerticalScale() );
-        csn->addChild( terrain );
-
-        top = csn;
-        tile_parent = terrain;
-    }
-    else
-    {
-        top = new osg::Group();
-        top->setName( key.str() );
-        tile_parent = top;
-    }
-
-    tile_parent->addChild( createQuadrant( key.getSubkey( 0 ) ) );
-    tile_parent->addChild( createQuadrant( key.getSubkey( 1 ) ) );
-
-    if ( key.getLevelOfDetail() > 0 )
-    {
-        tile_parent->addChild( createQuadrant( key.getSubkey( 2 ) ) );
-        tile_parent->addChild( createQuadrant( key.getSubkey( 3 ) ) );
-    }
-    return top;
+    return "+init=epsg:4326";
 }

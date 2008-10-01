@@ -94,30 +94,8 @@ PlateCarreTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
     return plod;
 }
 
-osg::Node*
-PlateCarreTileBuilder::createNode( const PlateCarreCellKey& key )
+std::string
+PlateCarreTileBuilder::getProj4String() const
 {
-    osg::Group* top;
-
-    if ( key.getLevelOfDetail() == 0 )
-    {
-        osgTerrain::Terrain* terrain = new osgTerrain::Terrain();
-        terrain->setVerticalScale( map->getVerticalScale() );
-        top = terrain;
-    }
-    else
-    {
-        top = new osg::Group();
-        top->setName( key.str() );
-    }
-
-    top->addChild( createQuadrant( key.getSubkey( 0 ) ) );
-    top->addChild( createQuadrant( key.getSubkey( 1 ) ) );
-
-    if ( key.getLevelOfDetail() > 0 )
-    {
-        top->addChild( createQuadrant( key.getSubkey( 2 ) ) );
-        top->addChild( createQuadrant( key.getSubkey( 3 ) ) );
-    }
-    return top;
+    return "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0";
 }

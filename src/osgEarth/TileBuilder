@@ -14,17 +14,15 @@ namespace osgEarth
         static TileBuilder* create( MapConfig* map, const std::string& url_template );
         
     public:
-        virtual osg::Node* createNode( const PlateCarreCellKey& key ) =0;
+        osg::Node* createNode( const PlateCarreCellKey& key );
 
     protected:
         TileBuilder( MapConfig* map, const std::string& url_template );
 
         std::string createURI( const PlateCarreCellKey& key );
 
-    //private:
-    //    osg::Node* createQuadrant( const PlateCarreCellKey& qk );
-    //    osg::Node* createGeocentricQuadrant( const PlateCarreCellKey& qk );
-    //    osg::Node* createPlateCarreQuadrant( const PlateCarreCellKey& qk );
+        virtual osg::Node* createQuadrant( const PlateCarreCellKey& key ) =0;
+        virtual std::string getProj4String() const =0;
 
     protected:
         osg::ref_ptr<MapConfig> map;

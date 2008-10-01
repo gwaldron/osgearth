@@ -11,11 +11,11 @@ namespace osgEarth
     {
     public:
         PlateCarreTileBuilder( MapConfig* map, const std::string& url_template );
-
-        osg::Node* createNode( const PlateCarreCellKey& key ); /* override */
         
     protected:
         osg::Node* createQuadrant( const PlateCarreCellKey& key );
+
+        std::string getProj4String() const;
 
     //private:
     //    osg::ref_ptr<PlateCarreTileSource> image_source;

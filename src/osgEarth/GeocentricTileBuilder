@@ -12,16 +12,11 @@ namespace osgEarth
     {
     public:
         GeocentricTileBuilder( MapConfig* map, const std::string& url_template );
-
-        osg::Node* createNode( const PlateCarreCellKey& key );
         
-    private:
+    protected:
         osg::Node* createQuadrant( const PlateCarreCellKey& key );
 
-    //private:
-    //    osg::ref_ptr<PlateCarreTileSource> image_source;
-    //    osg::ref_ptr<PlateCarreTileSource> field_source;
-    //    bool make_dem;
+        std::string getProj4String() const;
     };
 }
 

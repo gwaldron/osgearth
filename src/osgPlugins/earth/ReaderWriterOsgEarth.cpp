@@ -54,13 +54,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( i >= file_name.length() - 1 )
                 return ReadResult::FILE_NOT_HANDLED;
             
-
             std::string earth_file = file_name.substr( i+1 );
             TileBuilderMap::const_iterator k = tile_builders.find( earth_file );
             
             if ( k == tile_builders.end() )
             {
-                // new map - read the config file
                 osg::ref_ptr<MapConfig> map = MapConfigReader::readXml( file_name );
                 if ( map.valid() )
                 {

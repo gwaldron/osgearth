@@ -17,6 +17,51 @@ using namespace osgEarth;
 
 //#define WGS84_WKT "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AXIS["Lat",NORTH],AXIS["Long",EAST],AUTHORITY["EPSG","4326"]]
 
+class HeightFieldRandomizerUpdateCallback : public osg::NodeCallback
+{
+        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        { 
+            double updateTime = 2;
+            double currFrameTime = nv->getFrameStamp()->getReferenceTime();
+            if (currFrameTime - lastUpdateTime >= updateTime)
+            {
+                osgTerrain::TerrainTile* tt = dynamic_cast<osgTerrain::TerrainTile*>(node);
+                if (tt)
+                {
+                    osgTerrain::HeightFieldLayer *hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(tt->getElevationLayer());
+                    if (hfl)
+                    {
+                        osg::HeightField* hf = hfl->getHeightField();
+                        if (hf)
+                        {
+                            //Randomly either add 10 or subtract 10 from the elevation
+                            for (int i = 0; i < hf->getHeightList().size(); ++i)
+                            {
+                                double offset = 50;
+                                double e = hf->getHeightList()[i];
+                                if (rand() %2 == 0)
+                                {
+                                    e += offset;
+                                }
+                                else
+                                {
+                                    e -= offset;
+                                }
+                                hf->getHeightList()[i] = e;
+                            }
+                            hfl->dirty();
+                            tt->setDirty(true);
+                        }
+                    }
+                }
+                lastUpdateTime = currFrameTime;
+            }
+            traverse(node, nv);
+        }
+
+        double lastUpdateTime;
+};
+
 
 GeocentricTileBuilder::GeocentricTileBuilder( 
     MapConfig* map, 
@@ -70,6 +115,10 @@ GeocentricTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
     hf_layer->setHeightField( hf );
 
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+
+#if 0
+    tile->setUpdateCallback(new HeightFieldRandomizerUpdateCallback());
+#endif
     tile->setLocator( locator );
     tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
     tile->setElevationLayer( hf_layer );

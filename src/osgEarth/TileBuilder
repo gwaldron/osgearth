@@ -2,7 +2,7 @@
 #define OSGEARTH_TILE_BUILDER_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/PlateCarre>
+#include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
 #include <osgDB/ReaderWriter>
 #include <vector>
@@ -17,8 +17,9 @@ namespace osgEarth
             const std::string& url_template,
             const osgDB::ReaderWriter::Options* global_options =NULL );
         
-    public:
-        osg::Node* createNode( const PlateCarreCellKey& key );
+        osg::Node* createNode( const TileKey* key );
+
+        MapConfig* getMapConfig() const;
 
     protected:
         TileBuilder( 
@@ -26,16 +27,17 @@ namespace osgEarth
             const std::string& url_template,
             const osgDB::ReaderWriter::Options* global_options );
 
-        std::string createURI( const PlateCarreCellKey& key );
+        std::string createURI( const TileKey* key );
 
-        virtual osg::Node* createQuadrant( const PlateCarreCellKey& key ) =0;
+        virtual void addChildren( osg::Group* parent, const TileKey* key ) =0;
+        virtual osg::Node* createQuadrant( const TileKey* key ) =0;
         virtual std::string getProj4String() const =0;
 
     protected:
         osg::ref_ptr<MapConfig> map;
         std::string url_template;
-        std::vector< osg::ref_ptr<PlateCarreTileSource> > image_sources;
-        std::vector< osg::ref_ptr<PlateCarreTileSource> > heightfield_sources;
+        std::vector< osg::ref_ptr<TileSource> > image_sources;
+        std::vector< osg::ref_ptr<TileSource> > heightfield_sources;
     };
 };
 

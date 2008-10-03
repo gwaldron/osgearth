@@ -52,10 +52,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapConfig : public osg::Referenced
     {
     public:
+        // CS of the 3D scene
         enum CoordinateSystemType
         {
             CSTYPE_GEOCENTRIC,
-            CSTYPE_PLATE_CARRE
+            CSTYPE_GEOGRAPHIC
+        };
+
+        // project of the tile data
+        enum Projection
+        {
+            PROJ_PLATE_CARRE,
+            PROJ_MERCATOR
         };
 
     public:
@@ -72,20 +80,30 @@ namespace osgEarth
         const std::string& getName() const;
         
         /**
-         * Gets the coordinate system type for this map, e.g. round-earth (geocentric)
-         * or flat-earth (plate carre, etc.)
+         * Gets the coordinate system type for the geometry to create for this
+         * map, e.g. round-earth (geocentric) or flat-earth (geographic, etc.)
          *
          * @return A CoordinateSystemType
          */
         const CoordinateSystemType& getCoordinateSystemType() const;
 
         /**
-         * Sets the coordinate system type for this map.
+         * Sets the coordinate system type for the map's final geometry.
          *
          * @param type
          *      Type of CS to use for the 3D map
          */
         void setCoordinateSystemType( const CoordinateSystemType& type );
+       
+        /**
+         * Sets the coordinate system for terrain tiles.
+         */
+        void setTileProjection( const Projection& type );
+
+        /** 
+         * Gets the coordinate system for terrain tiles.
+         */
+        const Projection& getTileProjection() const;
 
         /**
          * Sets the default scale factor for height-field values.
@@ -137,11 +155,22 @@ namespace osgEarth
         void setProxyPort( unsigned short port );
 
         unsigned short getProxyPort() const;
-       
+
+        /**
+         * Sets the minimum tile LOD range as a factor of the tile's radius.
+         * The default value = 6.0.
+         */
+        void setMinTileRangeFactor( float factor );
+
+        /**
+         * Gest the minimum tile LOD range as a factor of the tile's radius.
+         */
+        float getMinTileRangeFactor() const;
 
     private:
         std::string name;
-        CoordinateSystemType cstype;
+        CoordinateSystemType model_cstype;
+        Projection tile_proj;
         float vertical_scale;
         float skirt_ratio;      
         SourceConfigList image_sources;
@@ -149,6 +178,7 @@ namespace osgEarth
         std::string cache_path;
         std::string proxy_host;
         unsigned short proxy_port;
+        float min_tile_range_factor;
     };
 
 

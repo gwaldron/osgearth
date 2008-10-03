@@ -40,7 +40,7 @@ public:
         }
     }
 
-    osg::Image* createImage( const MercatorCellKey& key )
+    osg::Image* createImage( const TileKey* key )
     {
         // a=aerial(jpg), r=map(png), h=hybrid(jpg), t=elev(wmphoto?)
 
@@ -48,7 +48,7 @@ public:
 
         std::string format;
 
-        buf << url << "/" << dataset << key.str() << "?g=1&";
+        buf << url << "/" << dataset << key->str() << "?g=1&";
         buf << "." << getFormat();
 
         //osg::Image* image = osgDB::readImageFile( buf.str() );
@@ -103,7 +103,7 @@ public:
     //    //    gkey.c_str() );        
 
 
-    osg::HeightField* createHeightField( const MercatorCellKey& key )
+    osg::HeightField* createHeightField( const TileKey* key )
     {
         //TODO
         return NULL;
@@ -145,25 +145,35 @@ class ReaderWriterMSVE : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            // extract the PC KEY from the filename:
-            PlateCarreCellKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
+            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName(
+                file_name.substr( 0, file_name.find_first_of( '.' ) ) );
 
-            osg::ref_ptr<MercatorTileSource> source = new MSVESource( options ); //TODO: config/cache it
-            MercatorTileConverter converter( source.get() );
-            osg::Image* image = converter.createImage( key );
+            osg::Image* image = NULL;
+
+            osg::ref_ptr<MercatorTileSource> source = new MSVESource( options );
+            if ( dynamic_cast<PlateCarreTileKey*>( key.get() ) )
+            {
+                MercatorTileConverter converter( source.get() );
+                image = converter.createImage( static_cast<PlateCarreTileKey*>( key.get() ) );
+            }
+            else
+            {
+                image = source->createImage( key.get() );
+            }
+
             return image? ReadResult( image ) : ReadResult( "Unable to load MSVE tile" );
         }
 
         virtual ReadResult readHeightField(const std::string& file_name, const Options* opt) const
         {
-            //TODO
-            return ReadResult( "MSVE: readHeightField NYI" );
+            return ReadResult::FILE_NOT_HANDLED;
+            //NYI
         }
 
         virtual ReadResult readNode(const std::string& file_name, const Options* opt) const
         {
-            //TODO (none)
-            return ReadResult( "MSVE: readNode NYI" );
+            return ReadResult::FILE_NOT_HANDLED;
+            //NYI
         }
 };
 

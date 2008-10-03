@@ -31,7 +31,8 @@ class ReaderWriterWCS : public osgDB::ReaderWriter
 
         virtual ReadResult readNode(const std::string& file_name, const Options* opt) const
         {
-            return ReadResult( "WCS: illegal usage (readNode); please use readImage/readHeightField" );
+            return ReadResult::FILE_NOT_HANDLED;
+            //return ReadResult( "WCS: illegal usage (readNode); please use readImage/readHeightField" );
         }
 
         virtual ReadResult readImage(const std::string& file_name, const Options* opt) const
@@ -47,11 +48,11 @@ class ReaderWriterWCS : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            // extract the PC KEY from the filename:
-            PlateCarreCellKey key( file_name.substr( 0, file_name.find_first_of( '.' ) ) );
-            
+            std::string keystr = file_name.substr( 0, file_name.find_first_of( '.' ) );
+            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName( keystr );
+
             osg::ref_ptr<WCS11Source> source = new WCS11Source(); //TODO: config/cache it
-            osg::HeightField* field = source->createHeightField( key );
+            osg::HeightField* field = source->createHeightField( key.get() );
             return field? ReadResult( field ) : ReadResult( "Unable to load WCS height field" );
         }
 };

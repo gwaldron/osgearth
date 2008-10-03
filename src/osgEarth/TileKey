@@ -1,0 +1,58 @@
+#ifndef OSGEARTH_TILE_KEY_H
+#define OSGEARTH_TILE_KEY_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileGridProfile>
+#include <osg/Referenced>
+#include <osg/Image>
+#include <osg/Shape>
+#include <osgDB/ReaderWriter>
+#include <string>
+
+namespace osgEarth
+{
+    /**
+     * Uniquely identifies a single tile on the globe.
+     */
+    class OSGEARTH_EXPORT TileKey : public osg::Referenced
+    {
+    public:        
+        const std::string& str() const;
+
+        std::string getName() const;
+
+    public:
+        virtual TileKey* getSubkey( unsigned int quadrant ) const =0;
+
+        virtual unsigned int getLevelOfDetail() const =0;
+
+        virtual bool getGeoExtents(
+            double& out_min_lon,
+            double& out_min_lat,
+            double& out_max_lon,
+            double& out_max_lat ) const =0;
+
+        virtual std::string getTypeCode() const =0;
+
+    protected:
+
+        TileKey();
+
+        TileKey( const TileKey& rhs );
+
+        TileKey( const std::string& key, const TileGridProfile& profile );
+
+    protected:
+        std::string key;
+        TileGridProfile profile;
+    };
+
+
+    class OSGEARTH_EXPORT TileKeyFactory
+    {
+    public:
+        static TileKey* createFromName( const std::string& name );
+    };
+}
+
+#endif // OSGEARTH_TILE_KEY_H

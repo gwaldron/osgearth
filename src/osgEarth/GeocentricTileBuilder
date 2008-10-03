@@ -17,7 +17,9 @@ namespace osgEarth
             const osgDB::ReaderWriter::Options* options =NULL);
         
     protected:
-        osg::Node* createQuadrant( const PlateCarreCellKey& key );
+        void addChildren( osg::Group* parent, const TileKey* key );
+
+        osg::Node* createQuadrant( const TileKey* key );
 
         std::string getProj4String() const;
     };

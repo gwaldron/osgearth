@@ -2,37 +2,31 @@
 #define OSGEARTH_PLUGIN_MSVE_MERCATOR_QUAD_KEY_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/TileKey>
 #include <osgEarth/PlateCarre>
+#include <osgTerrain/Locator>
 #include <string>
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT MercatorCellKey
+    class OSGEARTH_EXPORT MercatorTileKey : public TileKey
     {
     public:
-        MercatorCellKey() { }
+        static const std::string TYPE_CODE;
 
-        MercatorCellKey( const MercatorCellKey& rhs );
+        MercatorTileKey( const MercatorTileKey& rhs );
 
-        MercatorCellKey( const std::string& MercatorCellKey );
+        MercatorTileKey( const std::string& key );
 
-        MercatorCellKey( unsigned int tile_x, unsigned int tile_y, unsigned int level );
+        MercatorTileKey( const std::string& key, const TileGridProfile& profile );
 
-        MercatorCellKey getSubkey( unsigned int quadrant ) const;
-
-        const std::string& str() const;
-
-        unsigned int getLevelOfDetail() const;
+        MercatorTileKey( unsigned int tile_x, unsigned int tile_y, unsigned int level );
 
         double getLatitude( unsigned int pixel_y ) const;
 
         void getTileXY( 
             unsigned int& out_tile_x,
             unsigned int& out_tile_y ) const;
-
-        void getGeoExtents(
-            double& lon_min, double& lat_min,
-            double& lon_max, double& lat_max) const;
 
         void getPixelExtents(
             unsigned int& xmin,
@@ -43,22 +37,38 @@ namespace osgEarth
         static int longLatToPixelXY(
             double lon, double lat, unsigned int lod, 
             unsigned int& out_x, unsigned int& out_y );
+
+        static void longLatToUnclampedPixelXY(
+            double lon, double lat, unsigned int lod, 
+            double& out_x, double& out_y );
         
         static void pixelXYtoTileXY(
             unsigned int x, unsigned int y,
             unsigned int& out_tile_x, unsigned int& out_tile_y);
+        
+    public: //overrides
+
+        unsigned int getLevelOfDetail() const;
+
+        bool getGeoExtents(
+            double& lon_min, double& lat_min,
+            double& lon_max, double& lat_max) const;
+        
+        TileKey* getSubkey( unsigned int quadrant ) const;
+
+        std::string getTypeCode() const { return TYPE_CODE; }
 
     private:
-        std::string qk;
+        osg::ref_ptr<TileKey> subkeys[4];
     };
     
 
     class OSGEARTH_EXPORT MercatorTileSource : public osg::Referenced
     {
     public:
-        virtual osg::Image* createImage( const MercatorCellKey& key ) =0;
+        virtual osg::Image* createImage( const TileKey* key ) =0;
 
-        virtual osg::HeightField* createHeightField( const MercatorCellKey& key ) =0;
+        virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
     };
 
 
@@ -67,12 +77,25 @@ namespace osgEarth
     public:
         MercatorTileConverter( MercatorTileSource* source );
 
-        osg::Image* createImage( const PlateCarreCellKey& key );
+        osg::Image* createImage( const PlateCarreTileKey* key );
 
-        osg::HeightField* createHeightField( const PlateCarreCellKey& key );
+        osg::HeightField* createHeightField( const PlateCarreTileKey* key );
 
     private:
         osg::ref_ptr<MercatorTileSource> source;
+    };
+
+
+    class MercatorLocator : public osgTerrain::Locator
+    {
+    public:
+        MercatorLocator( const osgTerrain::Locator& rhs, unsigned int lod);
+
+        bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
+
+    private:
+        unsigned int lod;
+        //osg::ref_ptr<const TileKey> key;
     };
 }
 

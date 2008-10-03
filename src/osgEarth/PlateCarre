@@ -2,7 +2,7 @@
 #define OSGEARTH_PLATE_CARRE_QUAD_KEY_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileGridProfile>
+#include <osgEarth/TileKey>
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osg/Shape>
@@ -11,16 +11,20 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT PlateCarreCellKey
+    class OSGEARTH_EXPORT PlateCarreTileKey : public TileKey
     {
     public:
-        PlateCarreCellKey( const PlateCarreCellKey& rhs );
+        static const std::string TYPE_CODE;
 
-        PlateCarreCellKey( const std::string& key_string );
+        PlateCarreTileKey( const PlateCarreTileKey& rhs );
 
-        PlateCarreCellKey( const std::string& key_string, const TileGridProfile& profile );
+        PlateCarreTileKey( const std::string& key_string );
 
-        PlateCarreCellKey getSubkey( unsigned int quadrant ) const;
+        PlateCarreTileKey( const std::string& key_string, const TileGridProfile& profile );
+
+    public: //overrides
+
+        TileKey* getSubkey( unsigned int quadrant ) const;
 
         const std::string& str() const;
 
@@ -32,42 +36,40 @@ namespace osgEarth
             double& out_max_lon,
             double& out_max_lat ) const;
 
+        std::string getTypeCode() const { return TYPE_CODE; }
+
     private:
-        std::string qk;
-        TileGridProfile profile;
+//        std::string qk;
+//        TileGridProfile profile;
+        osg::ref_ptr<PlateCarreTileKey> subkeys[4];
     };
 
     
-    class OSGEARTH_EXPORT PlateCarreTileSource : public osg::Referenced
-    {
-    public:
-        virtual osg::Image* createImage( const PlateCarreCellKey& key ) =0;
+    //class OSGEARTH_EXPORT PlateCarreTileSource : public osg::Referenced
+    //{
+    //public:
+    //    virtual osg::Image* createImage( const PlateCarreTileKey* key ) =0;
 
-        virtual osg::HeightField* createHeightField( const PlateCarreCellKey& key ) =0;
-
-        //virtual std::string createURI( const PlateCarreCellKey& key ) const =0;
-    };
+    //    virtual osg::HeightField* createHeightField( const PlateCarreTileKey* key ) =0;
+    //};
 
 
-    class OSGEARTH_EXPORT ReaderWriterPlateCarreTileSource : public PlateCarreTileSource
-    {
-    public:
-        ReaderWriterPlateCarreTileSource(
-            const std::string&                  extension,
-            const osgDB::ReaderWriter::Options* options =NULL );
-        
-    public:
-        osg::Image* createImage( const PlateCarreCellKey& key );
+    //class OSGEARTH_EXPORT ReaderWriterPlateCarreTileSource : public PlateCarreTileSource
+    //{
+    //public:
+    //    ReaderWriterPlateCarreTileSource(
+    //        const std::string&                  extension,
+    //        const osgDB::ReaderWriter::Options* options =NULL );
+    //    
+    //public:
+    //    osg::Image* createImage( const PlateCarreTileKey* key );
 
-        osg::HeightField* createHeightField( const PlateCarreCellKey& key );
-        
-        //std::string createURI( const PlateCarreCellKey& key ) const;
+    //    osg::HeightField* createHeightField( const PlateCarreTileKey* key );
 
-    private:
-        std::string extension;
-        //std::string source_uri_suffix;
-        osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    };
+    //private:
+    //    std::string extension;
+    //    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
+    //};
 }
 
 #endif // OSGEARTH_PLATE_CARRE_QUAD_KEY_H

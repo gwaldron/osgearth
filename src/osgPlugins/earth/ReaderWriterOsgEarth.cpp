@@ -1,6 +1,8 @@
 #include <osgEarth/GeocentricTileBuilder>
-#include <osgEarth/PlateCarreTileBuilder>
+#include <osgEarth/GeographicTileBuilder>
 #include <osgEarth/MapConfig>
+#include <osgEarth/PlateCarre>
+#include <osgEarth/Mercator>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -47,7 +49,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             }
 
             TileBuilder* tile_builder = NULL;
-            PlateCarreCellKey key( "" );
+            osg::ref_ptr<TileKey> key;
 
             // try to strip off a cell key:
             unsigned int i = file_name.find_first_of( '.' );
@@ -63,6 +65,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if ( map.valid() )
                 {
                     tile_builder = TileBuilder::create( map.get(), file_name );
+
+                    if ( map->getTileProjection() == MapConfig::PROJ_MERCATOR )
+                        key = new MercatorTileKey( "" );
+                    else
+                        key = new PlateCarreTileKey( "" );
+
+                    // cache the builder
                     const_cast<ReaderWriterEarth*>(this)->tile_builders[ file_name ] = tile_builder;
                 }
                 else
@@ -73,10 +82,10 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             else
             {
                 tile_builder = k->second.get();
-                key = PlateCarreCellKey( file_name.substr( 0, i ) );
+                key = TileKeyFactory::createFromName( file_name.substr( 0, i ) );
             }
 
-            osg::Node* node = tile_builder->createNode( key );
+            osg::Node* node = tile_builder->createNode( key.get() );
             return node? ReadResult( node ) : ReadResult::FILE_NOT_FOUND;
         }
 };

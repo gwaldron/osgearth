@@ -23,13 +23,15 @@ SET(LIB_PUBLIC_HEADERS
     Export
     FileCache
     GeocentricTileBuilder
+    GeographicTileBuilder
     HTTPClient
     MapConfig
     Mercator
     PlateCarre    
-    PlateCarreTileBuilder
     TileBuilder
     TileGridProfile
+    TileKey
+    TileSource
     XmlUtils
 )
 
@@ -38,13 +40,15 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     FileCache.cpp
     GeocentricTileBuilder.cpp
+    GeographicTileBuilder.cpp
     HTTPClient.cpp
     MapConfig.cpp
     Mercator.cpp
     PlateCarre.cpp
-    PlateCarreTileBuilder.cpp
     TileBuilder.cpp
     TileGridProfile.cpp
+    TileKey.cpp
+    TileSource.cpp
     Version.cpp
     XmlUtils.cpp
 )
@@ -52,7 +56,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} ${CURL_INCLUDE_DIR} ${EXPAT_INCLUDE_DIR})
 
 IF (WIN32)
-  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} ${EXPAT_LIBRARY})
+  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} ${EXPAT_LIBRARY} )
 ELSE(WIN32)
   LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} ${EXPAT_LIBRARY} )
 ENDIF(WIN32)

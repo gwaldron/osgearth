@@ -7,52 +7,42 @@
 
 using namespace osgEarth;
 
-//#define MIN_LON    -180.0
-//#define MAX_LON     180.0
-//#define MIN_LAT    -270.0
-//#define MAX_LAT      90.0
+const std::string PlateCarreTileKey::TYPE_CODE = "P";
 
-PlateCarreCellKey::PlateCarreCellKey( const PlateCarreCellKey& rhs )
-: qk( rhs.qk ),
-  profile( rhs.profile )
+PlateCarreTileKey::PlateCarreTileKey( const PlateCarreTileKey& rhs )
+: TileKey( rhs )
 {
     //NOP
 }
 
-PlateCarreCellKey::PlateCarreCellKey( const std::string& input )
-: qk( input ),
-  profile( TileGridProfile( -180, -270, 180, 90 ) ) // whole-earth
+PlateCarreTileKey::PlateCarreTileKey( const std::string& input )
+: TileKey( input, TileGridProfile( -180, -270, 180, 90 ) ) // whole-earth
 {
     //NOP
 }
 
-PlateCarreCellKey::PlateCarreCellKey( const std::string& input, const TileGridProfile& _profile )
-: qk( input ),
-  profile( _profile )
+PlateCarreTileKey::PlateCarreTileKey( const std::string& input, const TileGridProfile& profile )
+: TileKey( input, profile )
 {
     //NOP
 }
 
-PlateCarreCellKey
-PlateCarreCellKey::getSubkey( unsigned int quadrant ) const
+TileKey*
+PlateCarreTileKey::getSubkey( unsigned int quadrant ) const
 {
-    return PlateCarreCellKey( qk + (char)('0' + quadrant) );
-}
-
-const std::string&
-PlateCarreCellKey::str() const
-{
-    return qk;
+    if ( !subkeys[quadrant].valid() )
+        const_cast<PlateCarreTileKey*>(this)->subkeys[quadrant] = new PlateCarreTileKey( key + (char)('0' + quadrant), profile );
+    return subkeys[quadrant].get();
 }
 
 unsigned int
-PlateCarreCellKey::getLevelOfDetail() const
+PlateCarreTileKey::getLevelOfDetail() const
 {
-    return (unsigned int)qk.length();
+    return (unsigned int)key.length();
 }
 
 bool
-PlateCarreCellKey::getGeoExtents(double& out_min_lon,
+PlateCarreTileKey::getGeoExtents(double& out_min_lon,
                                  double& out_min_lat,
                                  double& out_max_lon,
                                  double& out_max_lat ) const
@@ -68,7 +58,7 @@ PlateCarreCellKey::getGeoExtents(double& out_min_lon,
         width /= 2.0;
         height /= 2.0;
 
-        char digit = qk[lod];
+        char digit = key[lod];
         switch( digit )
         {
             case '1': out_min_lon += width; break;
@@ -84,44 +74,37 @@ PlateCarreCellKey::getGeoExtents(double& out_min_lon,
 
 /*************************************************************************/
 
-ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::string& _extension,
-                                                                   const osgDB::ReaderWriter::Options* _options )
-: extension( _extension ),
-  options( _options )
-{
-    //source_uri_suffix = osgDB::getNameLessExtension( uri_suffix );
-}
-
-osg::Image*
-ReaderWriterPlateCarreTileSource::createImage( const PlateCarreCellKey& key )
-{
-    std::string uri = key.str() + "." + extension; //source_uri_suffix;
-    osg::Image* image = NULL;
-
-    image = osgDB::readImageFile( uri, options.get() );
-    if ( !image )
-    {
-        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readImageFile FAILED for \"" << uri << "\"" << std::endl;
-    }
-    return image;
-}
-
-osg::HeightField*
-ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreCellKey& key )
-{
-    std::string uri = key.str() + "." + extension;
-    osg::HeightField* field = NULL;
-
-    field = osgDB::readHeightFieldFile( uri, options.get() );
-    if ( !field )
-    {
-        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readHeightField FAILED for \"" << uri << "\"" << std::endl;
-    }
-    return field;
-}
-
-//std::string
-//ReaderWriterPlateCarreTileSource::createURI( const PlateCarreCellKey& key ) const
+//ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::string& _extension,
+//                                                                   const osgDB::ReaderWriter::Options* _options )
+//: extension( _extension ),
+//  options( _options )
 //{
-//    return key.str() + "." + uri_suffix;
+//}
+//
+//osg::Image*
+//ReaderWriterPlateCarreTileSource::createImage( const PlateCarreTileKey* key )
+//{
+//    std::string uri = key->str() + "." + extension;
+//    osg::Image* image = NULL;
+//
+//    image = osgDB::readImageFile( uri, options.get() );
+//    if ( !image )
+//    {
+//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readImageFile FAILED for \"" << uri << "\"" << std::endl;
+//    }
+//    return image;
+//}
+//
+//osg::HeightField*
+//ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreTileKey* key )
+//{
+//    std::string uri = key->str() + "." + extension;
+//    osg::HeightField* field = NULL;
+//
+//    field = osgDB::readHeightFieldFile( uri, options.get() );
+//    if ( !field )
+//    {
+//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readHeightField FAILED for \"" << uri << "\"" << std::endl;
+//    }
+//    return field;
 //}

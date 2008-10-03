@@ -26,7 +26,7 @@ FIND_PATH(EXPAT_INCLUDE_DIR expat.h
 )
 
 FIND_LIBRARY(EXPAT_LIBRARY
-    NAMES expat expat_i expat-2.0.1
+    NAMES expat expat_i expat-2.0.1 libexpat
     PATHS
     ${EXPAT_DIR}/lib
     $ENV{EXPAT_DIR}/lib

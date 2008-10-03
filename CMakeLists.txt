@@ -61,7 +61,6 @@ ENDIF(CMAKE_SYSTEM MATCHES IRIX)
 FIND_PACKAGE(OpenGL)
 
 FIND_PACKAGE(CURL)
-FIND_PACKAGE(EXPAT)
 
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys
@@ -103,10 +102,10 @@ INCLUDE_DIRECTORIES(
 # Common to all platforms:
 SET(OSG_DIR "" CACHE PATH "set to base osg install path")
 
+FIND_PACKAGE(EXPAT)
 SET(CMAKE_DEBUG_POSTFIX  "d")
 
 FIND_PACKAGE(OSG)
-FIND_PACKAGE(EXPAT)
 #FIND_PACKAGE(GDAL)
 
 ################################################################################

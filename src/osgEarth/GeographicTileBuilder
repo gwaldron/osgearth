@@ -1,5 +1,5 @@
-#ifndef OSGEARTH_PLATE_CARRE_TILE_BUILDER_H
-#define OSGEARTH_PLATE_CARRE_TILE_BUILDER_H 1
+#ifndef OSGEARTH_GEOGRAPHIC_TILE_BUILDER_H
+#define OSGEARTH_GEOGRAPHIC_TILE_BUILDER_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TileBuilder>
@@ -7,19 +7,21 @@
 namespace osgEarth
 {
     //note: no export (package internal)
-    class PlateCarreTileBuilder : public TileBuilder
+    class GeographicTileBuilder : public TileBuilder
     {
     public:
-        PlateCarreTileBuilder( 
+        GeographicTileBuilder( 
             MapConfig* map, 
             const std::string& url_template,
             const osgDB::ReaderWriter::Options* options =NULL);
         
     protected:
-        osg::Node* createQuadrant( const PlateCarreCellKey& key );
+        void addChildren( osg::Group* parent, const TileKey* key );
+
+        osg::Node* createQuadrant( const TileKey* key );
 
         std::string getProj4String() const;
     };
 }
 
-#endif // OSGEARTH_PLATE_CARRE_TILE_BUILDER_H
+#endif // OSGEARTH_GEOGRAPHIC_TILE_BUILDER_H

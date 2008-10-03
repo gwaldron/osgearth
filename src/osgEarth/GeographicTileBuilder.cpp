@@ -1,4 +1,5 @@
-#include <osgEarth/PlateCarreTileBuilder>
+#include <osgEarth/GeographicTileBuilder>
+#include <osgEarth/Mercator>
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
@@ -13,7 +14,7 @@
 
 using namespace osgEarth;
 
-PlateCarreTileBuilder::PlateCarreTileBuilder( 
+GeographicTileBuilder::GeographicTileBuilder( 
     MapConfig* _map,
     const std::string& _url_template,
     const osgDB::ReaderWriter::Options* _global_options ) :
@@ -22,11 +23,27 @@ TileBuilder( _map, _url_template, _global_options )
     //NOP
 }
 
-osg::Node*
-PlateCarreTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
+void
+GeographicTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 {
+    tile_parent->addChild( createQuadrant( key->getSubkey( 0 ) ) );
+    tile_parent->addChild( createQuadrant( key->getSubkey( 1 ) ) );
+
+    if ( key->getLevelOfDetail() > 0 )
+    {
+        tile_parent->addChild( createQuadrant( key->getSubkey( 2 ) ) );
+        tile_parent->addChild( createQuadrant( key->getSubkey( 3 ) ) );
+    }
+}
+
+
+osg::Node*
+GeographicTileBuilder::createQuadrant( const TileKey* key )
+{
+    //const PlateCarreTileKey* pc_key = static_cast<const PlateCarreTileKey*>( key );
+
     double min_lon, min_lat, max_lon, max_lat;
-    if ( !pc_key.getGeoExtents( min_lon, min_lat, max_lon, max_lat ) )
+    if ( !key->getGeoExtents( min_lon, min_lat, max_lon, max_lat ) )
     {
         osg::notify( osg::WARN ) << "GET EXTENTS FAILED!" << std::endl;
         return NULL;
@@ -41,7 +58,9 @@ PlateCarreTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
 
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
-        hf = heightfield_sources[0]->createHeightField( pc_key );
+    {
+        hf = heightfield_sources[0]->createHeightField( key );
+    }
 
     if ( !hf )
     {
@@ -73,12 +92,20 @@ PlateCarreTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
 
     //TODO: select/composite:
     if ( image_sources.size() > 0 )
-        image = image_sources[0]->createImage( pc_key );
+    {
+        image = image_sources[0]->createImage( key );
+    }
 
     if ( image )
     {
+        // use a special image locator to warp the texture coords for mercator tiles :)
+        // WARNING: TODO: this will not persist upn export....we need a nodekit.
+        osgTerrain::Locator* img_locator = locator;
+        if ( dynamic_cast<const MercatorTileKey*>( key ) )
+            img_locator = new MercatorLocator( *locator, key->getLevelOfDetail() );
+
         osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
-        img_layer->setLocator( locator );
+        img_layer->setLocator( img_locator );
         tile->setColorLayer( 0, img_layer );
     }
     
@@ -86,19 +113,19 @@ PlateCarreTileBuilder::createQuadrant( const PlateCarreCellKey& pc_key )
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(min_lon,min_lat,0)).length();
-    double min_range = radius*5.0;
+    double min_range = radius * map->getMinTileRangeFactor();
    
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( centroid );
     plod->addChild( tile, min_range, max_range );
-    plod->setFileName( 1, createURI( pc_key ) );
+    plod->setFileName( 1, createURI( key ) );
     plod->setRange( 1, 0.0, min_range );
 
     return plod;
 }
 
 std::string
-PlateCarreTileBuilder::getProj4String() const
+GeographicTileBuilder::getProj4String() const
 {
     return "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0";
 }

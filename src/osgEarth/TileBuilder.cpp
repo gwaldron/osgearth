@@ -1,6 +1,6 @@
 #include <osgEarth/TileBuilder>
-#include <osgEarth/PlateCarreTileBuilder>
 #include <osgEarth/GeocentricTileBuilder>
+#include <osgEarth/GeographicTileBuilder>
 #include <osgEarth/PlateCarre>
 #include <osg/Image>
 #include <osg/Notify>
@@ -51,7 +51,7 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
         }
         else
         {
-            result = new PlateCarreTileBuilder( map, url_template, local_options.get() );
+            result = new GeographicTileBuilder( map, url_template, local_options.get() );
         }
     }
     return result;
@@ -59,7 +59,7 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
 
 static void
 addSources(const SourceConfigList& from, 
-           std::vector< osg::ref_ptr<PlateCarreTileSource> >& to,
+           std::vector< osg::ref_ptr<TileSource> >& to,
            const std::string& url_template,
            const osgDB::ReaderWriter::Options* global_options)
 {        
@@ -74,7 +74,7 @@ addSources(const SourceConfigList& from,
         for( SourceProperties::const_iterator p = source->getProperties().begin(); p != source->getProperties().end(); p++ )
         {
             local_options->setPluginData( p->first, (void*)p->second.c_str() );
-            PlateCarreTileSource* tile_source = new ReaderWriterPlateCarreTileSource( source->getDriver(), local_options.get() );
+            TileSource* tile_source = new ReaderWriterTileSource( source->getDriver(), local_options.get() );
             to.push_back( tile_source );
         }
     }
@@ -94,22 +94,29 @@ url_template( _url_template )
 }
 
 std::string
-TileBuilder::createURI( const PlateCarreCellKey& key )
+TileBuilder::createURI( const TileKey* key )
 {
-    std::stringstream buf;
-    buf << key.str() << "." << url_template;
-    return buf.str();
+    return key->getName() + "." + url_template;
+    //std::stringstream buf;
+    //buf << key->getTypeCode() << key->str() << "." << url_template;
+    //return buf.str();
 }
 
-
+MapConfig*
+TileBuilder::getMapConfig() const
+{
+    return map.get();
+}
 
 osg::Node*
-TileBuilder::createNode( const PlateCarreCellKey& key )
+TileBuilder::createNode( const TileKey* key )
 {
     osg::Group* top;
     osg::Group* tile_parent;
 
-    if ( key.getLevelOfDetail() == 0 )
+    //osg::notify(osg::NOTICE) << "[osgEarth] TileBuilder::createNode( " << key->str() << ")" << std::endl;
+
+    if ( key->getLevelOfDetail() == 0 )
     {
         osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
         csn->setEllipsoidModel( new osg::EllipsoidModel() );
@@ -126,17 +133,11 @@ TileBuilder::createNode( const PlateCarreCellKey& key )
     else
     {
         top = new osg::Group();
-        top->setName( key.str() );
+        top->setName( key->str() );
         tile_parent = top;
     }
 
-    tile_parent->addChild( createQuadrant( key.getSubkey( 0 ) ) );
-    tile_parent->addChild( createQuadrant( key.getSubkey( 1 ) ) );
+    addChildren( tile_parent, key );
 
-    if ( key.getLevelOfDetail() > 0 )
-    {
-        tile_parent->addChild( createQuadrant( key.getSubkey( 2 ) ) );
-        tile_parent->addChild( createQuadrant( key.getSubkey( 3 ) ) );
-    }
     return top;
 }

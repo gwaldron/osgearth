@@ -1,0 +1,41 @@
+#ifndef OSGEARTH_TILE_SOURCE_H
+#define OSGEARTH_TILE_SOURCE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileKey>
+#include <osg/Referenced>
+#include <osg/Image>
+#include <osg/Shape>
+#include <osgDB/ReaderWriter>
+#include <string>
+
+namespace osgEarth
+{    
+    class OSGEARTH_EXPORT TileSource : public osg::Referenced
+    {
+    public:
+        virtual osg::Image* createImage( const TileKey* key ) =0;
+
+        virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
+    };
+
+
+    class OSGEARTH_EXPORT ReaderWriterTileSource : public TileSource
+    {
+    public:
+        ReaderWriterTileSource(
+            const std::string&                  extension,
+            const osgDB::ReaderWriter::Options* options =NULL );
+        
+    public:
+        osg::Image* createImage( const TileKey* key );
+
+        osg::HeightField* createHeightField( const TileKey* key );
+
+    private:
+        std::string extension;
+        osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
+    };
+}
+
+#endif // OSGEARTH_TILE_SOURCE_H

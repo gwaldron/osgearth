@@ -27,13 +27,13 @@ WCS11Source::WCS11Source()
 
 
 osg::HeightField*
-WCS11Source::createHeightField( const PlateCarreCellKey& key )
+WCS11Source::createHeightField( const TileKey* key )
 {
     osg::ref_ptr<HTTPRequest> request = createRequest( key );
     //std::string uri = createURI( key );
 
     double lon0,lat0,lon1,lat1;
-    key.getGeoExtents(lon0,lat0,lon1,lat1);
+    key->getGeoExtents(lon0,lat0,lon1,lat1);
     //osg::notify(osg::NOTICE) << "TILE: " << key.str() 
     //    << " (" <<lon0<<","<<lat0<<" => "<<lon1<<","<<lat1<<")"<< std::endl;
     //osg::notify(osg::NOTICE) << "URL: " << request->getURL() << std::endl;
@@ -101,12 +101,12 @@ WCS11Source::createHeightField( const PlateCarreCellKey& key )
 }
 
 HTTPRequest*
-WCS11Source::createRequest( const PlateCarreCellKey& key ) const
+WCS11Source::createRequest( const TileKey* key ) const
 {
     std::stringstream buf;
 
     double lon_min, lat_min, lon_max, lat_max;
-    key.getGeoExtents( lon_min, lat_min, lon_max, lat_max );
+    key->getGeoExtents( lon_min, lat_min, lon_max, lat_max );
 
     int lon_samples = 8;
     int lat_samples = 8;

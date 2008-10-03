@@ -8,10 +8,12 @@ using namespace osgEarth;
 
 MapConfig::MapConfig()
 {
-    cstype = MapConfig::CSTYPE_GEOCENTRIC;
+    model_cstype = MapConfig::CSTYPE_GEOCENTRIC;
+    tile_proj = MapConfig::PROJ_PLATE_CARRE;
     vertical_scale = 1.0f;
     skirt_ratio = 0.02;
     proxy_port = 8080;
+    min_tile_range_factor = 6.0;
 }
 
 void
@@ -41,13 +43,25 @@ MapConfig::getCachePath() const
 const MapConfig::CoordinateSystemType&
 MapConfig::getCoordinateSystemType() const
 {
-    return cstype;
+    return model_cstype;
 }
 
 void
-MapConfig::setCoordinateSystemType( const CoordinateSystemType& _cstype )
+MapConfig::setCoordinateSystemType( const CoordinateSystemType& type )
 {
-    cstype = _cstype;
+    model_cstype = type;
+}
+
+const MapConfig::Projection&
+MapConfig::getTileProjection() const 
+{
+    return tile_proj;
+}
+
+void
+MapConfig::setTileProjection( const Projection& proj )
+{
+    tile_proj = proj;
 }
 
 void
@@ -110,6 +124,19 @@ MapConfig::getProxyPort() const
     return proxy_port;
 }
 
+void
+MapConfig::setMinTileRangeFactor( float value )
+{
+    min_tile_range_factor = value;
+}
+
+float
+MapConfig::getMinTileRangeFactor() const
+{
+    return min_tile_range_factor;
+}
+
+
 /************************************************************************/
 
 
@@ -160,9 +187,11 @@ SourceConfig::getProperties() const
 #define ELEM_MAP            "map"
 #define ATTR_NAME           "name"
 #define ATTR_CSTYPE         "type"
+#define ELEM_PROJECTION     "projection"
 #define ELEM_IMAGE          "image"
 #define ELEM_HEIGHTFIELD    "heightfield"
 #define ELEM_VERTICAL_SCALE "vertical_scale"
+#define ELEM_MIN_TILE_RANGE "min_tile_range_factor"
 #define ATTR_DRIVER         "driver"
 #define ELEM_SKIRT_RATIO    "skirt_ratio"
 #define ELEM_CACHE_PATH     "cache_path"
@@ -205,10 +234,17 @@ readMap( XmlElement* e_map )
     std::string a_cstype = e_map->getAttr( ATTR_CSTYPE );
     if ( a_cstype == "geocentric" || a_cstype == "round" || a_cstype == "globe" || a_cstype == "earth" )
         map->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
-    else if ( a_cstype == "plate carre" || a_cstype == "flat" || a_cstype == "geographic" || a_cstype == "equirectangular" || a_cstype == "projected" )
-        map->setCoordinateSystemType( MapConfig::CSTYPE_PLATE_CARRE );
+    else if ( a_cstype == "flat" || a_cstype == "geographic" )
+        map->setCoordinateSystemType( MapConfig::CSTYPE_GEOGRAPHIC );
+
+    std::string proj = e_map->getSubElementText( ELEM_PROJECTION );
+    if ( proj == "plate carre" || proj == "plate carree" || proj == "equirectangular" )
+        map->setTileProjection( MapConfig::PROJ_PLATE_CARRE );
+    else if ( proj == "mercator" || proj == "spherical mercator" )
+        map->setTileProjection( MapConfig::PROJ_MERCATOR );
 
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
+    map->setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), map->getMinTileRangeFactor() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
     map->setCachePath( as<std::string>( e_map->getSubElementText( ELEM_CACHE_PATH ), map->getCachePath() ) );
 

@@ -78,3 +78,82 @@ PlateCarreTileKey::getGeoExtents(double& out_min_lon,
     out_max_lon = out_min_lon + width;
     return true;
 }
+
+osgTerrain::TileID
+PlateCarreTileKey::getTileId() const
+{
+  //Convert the quadkey to a TileId
+
+  //First, convert the base 4 quadkey to a decimal number
+  int mult = 1;
+  int qkdec = 0;
+  for (int i = (key.size()-1); i >= 0; i--)
+  {   
+    //Get current digit for the level
+    char c = key[i];
+    int digit = atoi(&c);
+    qkdec += (mult * digit);
+    mult *= 4;
+  }
+
+  //The bits are interleved
+  int tileX = 0;
+  int tileY = 0;   
+
+  mult = 1;
+  while (qkdec > 0)
+  {
+    //If the bit is a 1, add the appropriate value to tileX
+    if (qkdec & 0x1) tileX += mult;
+
+    //Shift the bits left
+    qkdec = qkdec >> 1;
+
+    //If the bit is a 1, add the appropriate value to tileY
+    if (qkdec & 0x1) tileY += mult;
+
+    //Shift the bits left
+    qkdec = qkdec >> 1;
+   
+    mult *= 2;
+  }
+
+  return osgTerrain::TileID(getLevelOfDetail(), tileX, tileY);
+}
+
+/*************************************************************************/
+
+//ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::string& _extension,
+//                                                                   const osgDB::ReaderWriter::Options* _options )
+//: extension( _extension ),
+//  options( _options )
+//{
+//}
+//
+//osg::Image*
+//ReaderWriterPlateCarreTileSource::createImage( const PlateCarreTileKey* key )
+//{
+//    std::string uri = key->str() + "." + extension;
+//    osg::Image* image = NULL;
+//
+//    image = osgDB::readImageFile( uri, options.get() );
+//    if ( !image )
+//    {
+//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readImageFile FAILED for \"" << uri << "\"" << std::endl;
+//    }
+//    return image;
+//}
+//
+//osg::HeightField*
+//ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreTileKey* key )
+//{
+//    std::string uri = key->str() + "." + extension;
+//    osg::HeightField* field = NULL;
+//
+//    field = osgDB::readHeightFieldFile( uri, options.get() );
+//    if ( !field )
+//    {
+//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readHeightField FAILED for \"" << uri << "\"" << std::endl;
+//    }
+//    return field;
+//}

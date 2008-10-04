@@ -18,49 +18,177 @@ using namespace osgEarth;
 
 //#define WGS84_WKT "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AXIS["Lat",NORTH],AXIS["Long",EAST],AUTHORITY["EPSG","4326"]]
 
-class HeightFieldRandomizerUpdateCallback : public osg::NodeCallback
-{
-        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        { 
-            double updateTime = 2;
-            double currFrameTime = nv->getFrameStamp()->getReferenceTime();
-            if (currFrameTime - lastUpdateTime >= updateTime)
-            {
-                osgTerrain::TerrainTile* tt = dynamic_cast<osgTerrain::TerrainTile*>(node);
-                if (tt)
-                {
-                    osgTerrain::HeightFieldLayer *hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(tt->getElevationLayer());
-                    if (hfl)
-                    {
-                        osg::HeightField* hf = hfl->getHeightField();
-                        if (hf)
-                        {
-                            //Randomly either add 10 or subtract 10 from the elevation
-                            for (int i = 0; i < hf->getHeightList().size(); ++i)
-                            {
-                                double offset = 50;
-                                double e = hf->getHeightList()[i];
-                                if (rand() %2 == 0)
-                                {
-                                    e += offset;
-                                }
-                                else
-                                {
-                                    e -= offset;
-                                }
-                                hf->getHeightList()[i] = e;
-                            }
-                            hfl->dirty();
-                            tt->setDirty(true);
-                        }
-                    }
-                }
-                lastUpdateTime = currFrameTime;
-            }
-            traverse(node, nv);
-        }
 
-        double lastUpdateTime;
+enum CardinalDirection
+{
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST
+};
+
+bool normalizeHeightFields(osg::HeightField* hf1, osg::HeightField *hf2, CardinalDirection direction)
+{
+    //osg::notify(osg::NOTICE) << "normalizeHeightFields " << direction << std::endl;
+    //Check for NULL
+    if (hf1 && hf2)
+    {
+        //Make sure dimensions are equal
+        if (hf1->getNumColumns() == hf2->getNumColumns() && hf1->getNumRows() == hf2->getNumRows())
+        {
+            int width = hf1->getNumColumns();
+            int height = hf1->getNumRows();
+
+            switch (direction)
+            {
+            case NORTH:
+                //Assume hf2 is to the north of hf1
+                for (int c = 0; c < width; ++c)
+                {
+                    float val1 = hf1->getHeight(c, height-1);
+                    float val2 = hf2->getHeight(c, 0);
+                    float val = (val1 + val2) /2.0f;
+                    hf1->setHeight(c, height-1, val);
+                    hf2->setHeight(c, 0, val);
+                }
+                break;
+            case EAST:
+                //Assume hf2 is to the east of hf1
+                for (int r = 0; r < height; ++r)
+                {
+                    float val1 = hf1->getHeight(width-1, r);
+                    float val2 = hf2->getHeight(0, r);
+                    float val = (val1 + val2)/2.0f;
+                    hf1->setHeight(width-1, r, val);
+                    hf2->setHeight(0, r, val);
+                }
+                break;
+            case SOUTH:
+                //Assume hf2 is to the south of hf1
+                for (int c = 0; c < width; ++c)
+                {
+                    float val1 = hf1->getHeight(c, 0);
+                    float val2 = hf2->getHeight(c, height-1);
+                    float val = (val1 + val2) /2.0f;
+                    hf1->setHeight(c, 0, val);
+                    hf2->setHeight(c, height-1, val);
+                }
+                break;
+            case WEST:
+                //Assume hf2 is to the west of hf1
+                for (int r = 0; r < height; ++r)
+                {
+                    float val1 = hf1->getHeight(0, r);
+                    float val2 = hf2->getHeight(width-1, r);
+                    float val = (val1 + val2)/2.0f;
+                    hf1->setHeight(0, r, val);
+                    hf2->setHeight(width-1, r, val);
+                }
+                break;
+            }
+
+            return true;
+        }
+    }
+    return false;
+}
+
+
+class TerrainTileEdgeNormalizerUpdateCallback : public osg::NodeCallback
+{
+public:
+
+    TerrainTileEdgeNormalizerUpdateCallback():
+      _normalizedEast(false),
+          _normalizedNorth(false),
+          _normalizedSouth(false),
+          _normalizedWest(false)
+      {
+      }
+
+
+      bool normalizeEdge(osgTerrain::TerrainTile *tile, CardinalDirection direction)
+      {
+          if (tile && tile->getTerrain())
+          {
+              //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
+              osgEarth::EarthTerrain* et = dynamic_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
+              if (et)
+              {
+                  osgTerrain::TileID id1 = tile->getTileID();
+
+                  int totalTiles = sqrt(pow(4.0, (id1.level)));
+
+                  //Determine the edge TileID
+                  osgTerrain::TileID id2(id1.level, id1.x, id1.y);
+                  if (direction == WEST)
+                  {
+                      id2.x = (id2.x == 0 ? totalTiles-1 : id2.x-1);
+                  }
+                  else if (direction == EAST)
+                  {
+                      id2.x = (id2.x == totalTiles-1 ? 0 : id2.x+1);
+                  }
+                  else if (direction == NORTH)
+                  {
+                      id2.y = (id2.y == 0 ? totalTiles-1 : id2.y-1);
+                  }
+                  else if (direction == SOUTH)
+                  {
+                      id2.y = (id2.y == totalTiles-1 ? 0 : id2.y+1);
+                  }
+
+                  //osg::notify(osg::NOTICE) << "Tile is " << id1.level << " " << id1.x << " " << id1.y << std::endl;
+                  //osg::notify(osg::NOTICE) << "Neighbor tile is " << id2.level << " " << id2.x << " " << id2.y << std::endl;
+
+                  if (tile->getTerrain())
+                  {
+                      //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
+                      osgTerrain::TerrainTile* tile2 = et->getTileOverride(id2);//tile->getTerrain()->getTile(id2);
+
+                      if (tile2)
+                      {
+                          //osg::notify(osg::NOTICE) << "Found neighbor tile " << std::endl;
+                          //This callback will only work if we have a HeightFieldLayer
+                          osgTerrain::HeightFieldLayer *hfl1 = dynamic_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
+                          osgTerrain::HeightFieldLayer *hfl2 = dynamic_cast<osgTerrain::HeightFieldLayer*>(tile2->getElevationLayer());
+
+                          if (hfl1 && hfl2)
+                          {
+                              bool normalized = normalizeHeightFields(hfl1->getHeightField(), hfl2->getHeightField(), direction);
+                              if (normalized)
+                              {
+                                  hfl1->dirty();
+                                  hfl2->dirty();
+                                  tile->setDirty(true);
+                                  tile2->setDirty(true);
+                              }
+                              return normalized;
+                          }
+                      }
+                  }
+              }
+          }
+          return false;
+      }
+
+      virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+      { 
+
+          //TODO:  Normalized corners
+          //TODO:  Look at heightDelta's to assist with normal generation.
+          osgTerrain::TerrainTile* tt = dynamic_cast<osgTerrain::TerrainTile*>(node);
+          if (!_normalizedNorth) _normalizedNorth = normalizeEdge(tt, NORTH);
+          if (!_normalizedSouth) _normalizedSouth = normalizeEdge(tt, SOUTH);
+          if (!_normalizedEast) _normalizedEast = normalizeEdge(tt, EAST);
+          if (!_normalizedWest) _normalizedWest = normalizeEdge(tt, WEST);
+          traverse(node, nv);
+      }
+
+      bool _normalizedWest;
+      bool _normalizedEast;
+      bool _normalizedNorth;
+      bool _normalizedSouth;
 };
 
 GeocentricTileBuilder::GeocentricTileBuilder( 
@@ -132,10 +260,12 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
     hf_layer->setHeightField( hf );
 
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+    tile->setTileID(key->getTileId());
 
-#if 0
-    tile->setUpdateCallback(new HeightFieldRandomizerUpdateCallback());
-#endif
+    //Attach an updatecallback to normalize the edges of TerrainTiles.
+    tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
+    tile->setDataVariance(osg::Object::DYNAMIC);
+
     tile->setLocator( locator );
     tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
     tile->setElevationLayer( hf_layer );

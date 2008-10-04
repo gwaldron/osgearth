@@ -5,10 +5,29 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
 #include <osgDB/ReaderWriter>
+#include <osgTerrain/Terrain>
 #include <vector>
 
 namespace osgEarth
 {
+
+    //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
+    class OSGEARTH_EXPORT EarthTerrain : public osgTerrain::Terrain
+    {
+    public:
+        /** Get the TerrainTile for a given TileID.*/
+        osgTerrain::TerrainTile* getTileOverride(const osgTerrain::TileID& tileID)
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+            TerrainTileMap::iterator itr = _terrainTileMap.find(tileID);
+            if (itr == _terrainTileMap.end()) return 0;
+
+            return itr->second;
+        }
+    };
+
+
     class OSGEARTH_EXPORT TileBuilder : public osg::Referenced
     {
     public:

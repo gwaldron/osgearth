@@ -7,6 +7,7 @@
 #include <osg/Image>
 #include <osg/Shape>
 #include <osgDB/ReaderWriter>
+#include <osgTerrain/TerrainTile>
 #include <string>
 
 namespace osgEarth
@@ -21,7 +22,9 @@ namespace osgEarth
 
         std::string getName() const;
 
+        virtual osgTerrain::TileID getTileId() const = 0;
         const TileGridProfile& getProfile() const;
+
 
         int getMapSizePixels( int lod ) const;
  

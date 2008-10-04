@@ -17,6 +17,7 @@
 
 using namespace osgEarth;
 
+
 TileBuilder*
 TileBuilder::create( MapConfig* map, const std::string& url_template, const osgDB::ReaderWriter::Options* options )
 {
@@ -123,7 +124,7 @@ TileBuilder::createNode( const TileKey* key )
         csn->setCoordinateSystem( getProj4String() );
         csn->setFormat( "PROJ4" );
 
-        osgTerrain::Terrain* terrain = new osgTerrain::Terrain();
+        osgTerrain::Terrain* terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
         terrain->setVerticalScale( map->getVerticalScale() );
         csn->addChild( terrain );
 

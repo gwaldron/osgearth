@@ -106,6 +106,14 @@ MercatorTileKey::getPixelExtents(unsigned int& xmin,
     ymax = py + (delta << 1);
 }
 
+osgTerrain::TileID
+MercatorTileKey::getTileId() const
+{
+    unsigned int x, y;
+    getTileXY(x, y);
+    return osgTerrain::TileID(getLevelOfDetail(), x, y);
+}
+
 bool
 MercatorTileKey::getGeoExtents(double& lon_min, double& lat_min,
                                double& lon_max, double& lat_max) const

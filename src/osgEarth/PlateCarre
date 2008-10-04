@@ -36,6 +36,8 @@ namespace osgEarth
             double& out_max_lon,
             double& out_max_lat ) const;
 
+        osgTerrain::TileID getTileId() const;
+
         std::string getTypeCode() const { return TYPE_CODE; }
 
     private:

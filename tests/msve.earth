@@ -1,6 +1,7 @@
-<map name="MSVE" type="geocentric">
+<map name="MSVE" type="geographic">
 
     <projection>mercator</projection>
+    <min_tile_range_factor>8</min_tile_range_factor>
     
 <!-- uncomment the following two lines to activate a proxy server -->
 <!--
@@ -12,7 +13,7 @@
        <url>http://h0.ortho.tiles.virtualearth.net/tiles</url>
        <dataset>h</dataset>
        <!-- uncomment the following line to enable caching... folder must exist -->
-       <cache_path>f:/temp/osgearthcache/msve_hybrid</cache_path>
+       <!-- <cache_path>f:/temp/osgearthcache/msve_hybrid</cache_path> -->
    </image>
    
 </map>

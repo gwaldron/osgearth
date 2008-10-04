@@ -153,7 +153,7 @@ class ReaderWriterMSVE : public osgDB::ReaderWriter
             osg::ref_ptr<MercatorTileSource> source = new MSVESource( options );
             if ( dynamic_cast<PlateCarreTileKey*>( key.get() ) )
             {
-                MercatorTileConverter converter( source.get() );
+                MercatorTileConverter converter( source.get(), options );
                 image = converter.createImage( static_cast<PlateCarreTileKey*>( key.get() ) );
             }
             else

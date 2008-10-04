@@ -7,7 +7,9 @@
 
 using namespace osgEarth;
 
-#define RESAMPLE_LINEAR 1  // undef me for nearest neighbor
+#define PROPERTY_FILTER     "filter"
+#define VALUE_FILTER_NEAREST      "nearest"
+#define VALUE_FILTER_LINEAR       "linear"
 
 /********************************************************************/
 
@@ -227,7 +229,7 @@ struct MercatorSuperTile : public std::vector<MercatorTile>
         if ( lat < (*this)[0].min_lat ) {
             return 0;
         }
-        for( int i=0; i<size(); i++ ) {
+        for( int i=0; i<(int)size(); i++ ) {
             if ( lat >= (*this)[i].min_lat && lat <= (*this)[i].max_lat ) {
                 (*this)[i].key->longLatToPixelXY( lon, lat, lod, x, y );
                 //osg::notify(osg::NOTICE) << "i=" << i << ", y=" << y << std::endl;
@@ -281,9 +283,29 @@ sharpen( osg::Image* input )
 /********************************************************************/
 
 
-MercatorTileConverter::MercatorTileConverter( MercatorTileSource* _source )
+MercatorTileConverter::MercatorTileConverter(MercatorTileSource* _source,
+                                             const osgDB::ReaderWriter::Options* options )
 {
+    filter = MercatorTileConverter::FILTER_NEAREST_NEIGHBOR;
     source = _source;
+
+    if ( options )
+    {
+        if ( options->getPluginData( PROPERTY_FILTER ) )
+        {
+            std::string filter = (const char*)options->getPluginData( PROPERTY_FILTER );
+            if ( filter == VALUE_FILTER_NEAREST )
+                setFilter( MercatorTileConverter::FILTER_NEAREST_NEIGHBOR );
+            else if ( filter == VALUE_FILTER_LINEAR )
+                setFilter( MercatorTileConverter::FILTER_LINEAR );
+        }
+    }
+}
+
+void
+MercatorTileConverter::setFilter( const MercatorTileConverter::Filter& _filter )
+{
+    filter = _filter;
 }
 
 osg::Image*
@@ -333,73 +355,59 @@ MercatorTileConverter::createImage( const PlateCarreTileKey* pc_key )
 
     if ( supertile.size() > 0 )
     {
-
-#ifdef RESAMPLE_LINEAR
-
-        double dst_lat = dst_max_lat;
-        double dst_lat_interval = (dst_max_lat-dst_min_lat)/(double)dst_tile->t();
-
-        for( int dst_row = dst_tile->t()-1; dst_row >= 0; dst_row--, dst_lat -= dst_lat_interval )
+        if ( filter == MercatorTileConverter::FILTER_LINEAR )
         {
-            int src_row_hi = supertile.getRow( dst_min_lon, dst_lat, lod );
-            int src_row_lo = supertile.getRow( dst_min_lon, dst_lat-dst_lat_interval, lod );
+            double dst_lat = dst_max_lat;
+            double dst_lat_interval = (dst_max_lat-dst_min_lat)/(double)dst_tile->t();
 
-            if ( src_row_hi < 0 || src_row_lo < 0 )
-                continue;
-
-            if ( src_row_hi > supertile.t()-1 ) src_row_hi = supertile.t()-1;
-            if ( src_row_lo < 0 ) src_row_lo = 0;
-
-            for( int b = 0; b < (int)dst_tile->getRowSizeInBytes(); b++ )
+            for( int dst_row = dst_tile->t()-1; dst_row >= 0; dst_row--, dst_lat -= dst_lat_interval )
             {
-                int total = 0, r;
-                for( r = src_row_lo; r <= src_row_hi; r++ )
+                int src_row_hi = supertile.getRow( dst_min_lon, dst_lat, lod );
+                int src_row_lo = supertile.getRow( dst_min_lon, dst_lat-dst_lat_interval, lod );
+
+                if ( src_row_hi < 0 || src_row_lo < 0 )
+                    continue;
+
+                if ( src_row_hi > supertile.t()-1 ) src_row_hi = supertile.t()-1;
+                if ( src_row_lo < 0 ) src_row_lo = 0;
+
+                for( int b = 0; b < (int)dst_tile->getRowSizeInBytes(); b++ )
                 {
-                    total += (int)(supertile.data( 0, r )[b]);
-                }
-                total /= (src_row_hi-src_row_lo+1);
-                dst_tile->data( 0, dst_row )[b] = (unsigned char)total;
-            }
-        }
-
-#else // NEAREST NEIGHBOR
-
-        // loop through all the overlapping mercator tiles, fetch each one, and copy a portion of it
-        // into the destination plate carre tile image. (NOTE: tiles will only overlap in the Y 
-        // direction; X size will always be equal)
-        double dst_lat = dst_max_lat;
-        double dst_lat_interval = (dst_max_lat-dst_min_lat)/(double)dst_tile->t();
-        for( unsigned int dst_row = 0; dst_row < (unsigned int)dst_tile->t(); dst_row++, dst_lat -= dst_lat_interval )
-        {
-            bool copied_line = false;
-
-            // find the src tile and row for dst_lat
-            for( unsigned int j=0; j<src_tiles.size(); j++ )
-            {
-                MercatorTile& src_tile = src_tiles[j];
-
-                if ( dst_lat >= src_tile.min_lat && dst_lat <= src_tile.max_lat )
-                {
-                    unsigned int src_x, src_y;
-                    src_tile.key.longLatToPixelXY( dst_min_lon, dst_lat, lod, src_x, src_y );
-
-                    unsigned int src_row = src_y - src_tile.min_y;
-
-                    if ( src_row < 0 ) src_row = 0;
-                    else if ( src_row > src_tile.image->t()-1 ) src_row = src_tile.image->t()-1;
-
-                    memcpy(
-                        dst_tile->data( 0, (dst_tile->t()-1)-dst_row ),
-                        src_tile.image->data( 0, (src_tile.image->t()-1)-src_row ), 
-                        src_tile.image->getRowSizeInBytes() );
-
-                    break;
+                    int total = 0, r;
+                    for( r = src_row_lo; r <= src_row_hi; r++ )
+                    {
+                        total += (int)(supertile.data( 0, r )[b]);
+                    }
+                    total /= (src_row_hi-src_row_lo+1);
+                    dst_tile->data( 0, dst_row )[b] = (unsigned char)total;
                 }
             }
         }
 
-#endif // RESAMPLE_TYPE
+        else if ( filter == MercatorTileConverter::FILTER_NEAREST_NEIGHBOR )
+        {
+            // loop through all the overlapping mercator tiles, fetch each one, and copy a portion of it
+            // into the destination plate carre tile image. (NOTE: tiles will only overlap in the Y 
+            // direction; X size will always be equal)
+            double dst_lat = dst_max_lat;
+            double dst_lat_interval = (dst_max_lat-dst_min_lat)/(double)dst_tile->t();
+            for( int dst_row = dst_tile->t()-1; dst_row >= 0; dst_row--, dst_lat -= dst_lat_interval )
+            {
+                bool copied_line = false;
 
+                // find the src tile and row for dst_lat
+                int src_row = supertile.getRow( dst_min_lon, dst_lat, lod );
+                 //unsigned int src_row = src_y - src_tile.min_y;
+
+                if ( src_row < 0 ) src_row = 0;
+                else if ( src_row > supertile.t()-1 ) src_row = supertile.t()-1;
+
+                memcpy(
+                    dst_tile->data( 0, dst_row ),
+                    supertile.data( 0, src_row ),
+                    dst_tile->getRowSizeInBytes() );
+            }
+        }
     }
 
     else
@@ -426,6 +434,47 @@ MercatorLocator::MercatorLocator( const osgTerrain::Locator& rhs, unsigned int _
 osgTerrain::Locator(rhs), lod(_lod)
 {
     //NOP
+}
+
+MercatorLocator::MercatorLocator( unsigned int _lod ) :
+lod( _lod )
+{
+    //NOP
+}
+
+bool
+MercatorLocator::convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& world) const
+{
+    switch(_coordinateSystemType)
+    {
+        case(GEOCENTRIC):
+        {
+            return Locator::convertLocalToModel( local, world );
+        }
+        case(GEOGRAPHIC):
+        {        
+            return Locator::convertLocalToModel( local, world );
+            //world = local * _transform;
+
+            //double lon_deg = world.x();
+            //double lat_deg = world.y();
+            //unsigned int px, py;
+            //MercatorTileKey::longLatToPixelXY( lon_deg, lat_deg, lod, px, py );
+            //if ( py % 256 != 0 )
+            //{
+            //    py %= 256;
+            //    world.y() = (256.0-(double)py)/256.0;
+            //    //osg::notify(osg::NOTICE) << "lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", worldy="<<world.y()<<std::endl;
+            //}
+            return true;      
+        }
+        case(PROJECTED):
+        {        
+            return Locator::convertLocalToModel( local, world );
+        }
+    }    
+
+    return false;
 }
 
 bool
@@ -461,6 +510,19 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
     case(GEOGRAPHIC):
         {        
             local = world * _inverse;
+
+            osg::Vec3d w = world;
+            double lon_deg = w.x();
+            double lat_deg = w.y();
+
+            unsigned int px, py;
+            MercatorTileKey::longLatToPixelXY( lon_deg, lat_deg, lod, px, py );
+            if ( py % 256 != 0 )
+            {
+                py %= 256;
+                local.y() = (256.0-(double)py)/256.0;
+               // osg::notify(osg::NOTICE) << "lod="<<lod<<", lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", local.y="<<local.y()<<std::endl;
+            }
 
             return true;      
         }

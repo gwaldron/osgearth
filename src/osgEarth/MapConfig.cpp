@@ -13,7 +13,7 @@ MapConfig::MapConfig()
     vertical_scale = 1.0f;
     skirt_ratio = 0.02;
     proxy_port = 8080;
-    min_tile_range_factor = 6.0;
+    min_tile_range_factor = 8.0;
 }
 
 void
@@ -234,7 +234,7 @@ readMap( XmlElement* e_map )
     std::string a_cstype = e_map->getAttr( ATTR_CSTYPE );
     if ( a_cstype == "geocentric" || a_cstype == "round" || a_cstype == "globe" || a_cstype == "earth" )
         map->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
-    else if ( a_cstype == "flat" || a_cstype == "geographic" )
+    else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" )
         map->setCoordinateSystemType( MapConfig::CSTYPE_GEOGRAPHIC );
 
     std::string proj = e_map->getSubElementText( ELEM_PROJECTION );

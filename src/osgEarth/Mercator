@@ -5,6 +5,8 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/PlateCarre>
 #include <osgTerrain/Locator>
+#include <osgTerrain/TerrainTechnique>
+#include <osgDB/ReaderWriter>
 #include <string>
 
 namespace osgEarth
@@ -75,7 +77,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT MercatorTileConverter
     {
     public:
-        MercatorTileConverter( MercatorTileSource* source );
+        // imagery resampling filter algorithm
+        enum Filter {
+            FILTER_NEAREST_NEIGHBOR,
+            FILTER_LINEAR
+        };
+
+    public:
+        MercatorTileConverter( MercatorTileSource* source, const osgDB::ReaderWriter::Options* options =NULL );
+
+        /**
+         * Sets the image resampling filter to use. Default is FILTER_NEAREST_NEIGHBOR.
+         */
+        void setFilter( const Filter& filter );
 
         osg::Image* createImage( const PlateCarreTileKey* key );
 
@@ -83,14 +97,17 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<MercatorTileSource> source;
+        Filter filter;
     };
 
 
     class MercatorLocator : public osgTerrain::Locator
     {
     public:
+        MercatorLocator( unsigned int lod );
         MercatorLocator( const osgTerrain::Locator& rhs, unsigned int lod);
 
+        bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
         bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
 
     private:

@@ -7,6 +7,10 @@
 namespace osgEarth
 {
     //note: no export (package internal)
+    /**
+     * This tile builder creates tiles in the "Geographic" projection, which
+     * is really a single, flat Plate Carre projection in which x=long, y=lat.
+     */
     class GeographicTileBuilder : public TileBuilder
     {
     public:

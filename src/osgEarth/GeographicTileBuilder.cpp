@@ -29,7 +29,7 @@ GeographicTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
     tile_parent->addChild( createQuadrant( key->getSubkey( 0 ) ) );
     tile_parent->addChild( createQuadrant( key->getSubkey( 1 ) ) );
 
-    if ( key->getLevelOfDetail() > 0 )
+    if ( key->getLevelOfDetail() > 0 || dynamic_cast<const MercatorTileKey*>( key ) )
     {
         tile_parent->addChild( createQuadrant( key->getSubkey( 2 ) ) );
         tile_parent->addChild( createQuadrant( key->getSubkey( 3 ) ) );
@@ -40,8 +40,6 @@ GeographicTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
 osg::Node*
 GeographicTileBuilder::createQuadrant( const TileKey* key )
 {
-    //const PlateCarreTileKey* pc_key = static_cast<const PlateCarreTileKey*>( key );
-
     double min_lon, min_lat, max_lon, max_lat;
     if ( !key->getGeoExtents( min_lon, min_lat, max_lon, max_lat ) )
     {
@@ -49,10 +47,9 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
         return NULL;
     }
 
-    osgTerrain::Locator* locator = new osgTerrain::Locator();
-    locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC ); // sort of.
-    locator->setTransformAsExtents( min_lon, min_lat, max_lon, max_lat );
-    locator->setTransformScaledByResolution( false );
+    osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
+    geo_locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC ); // sort of.
+    geo_locator->setTransformAsExtents( min_lon, min_lat, max_lon, max_lat );
 
     osg::HeightField* hf = NULL;
 
@@ -79,11 +76,11 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     hf->setSkirtHeight( 0 );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
-    hf_layer->setLocator( locator );
+    hf_layer->setLocator( geo_locator );
     hf_layer->setHeightField( hf );
 
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
-    tile->setLocator( locator );
+    tile->setLocator( geo_locator );
     tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
@@ -98,11 +95,9 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
 
     if ( image )
     {
-        // use a special image locator to warp the texture coords for mercator tiles :)
-        // WARNING: TODO: this will not persist upn export....we need a nodekit.
-        osgTerrain::Locator* img_locator = locator;
+        osgTerrain::Locator* img_locator = geo_locator;
         if ( dynamic_cast<const MercatorTileKey*>( key ) )
-            img_locator = new MercatorLocator( *locator, key->getLevelOfDetail() );
+            img_locator = new MercatorLocator( *geo_locator, key->getLevelOfDetail() );
 
         osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
         img_layer->setLocator( img_locator );

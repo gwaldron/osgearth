@@ -13,10 +13,11 @@ using namespace osgEarth;
 
 /********************************************************************/
 
-#define MIN_LON    -180.0
-#define MAX_LON     180.0
-#define MIN_LAT     -85.05112878  
-#define MAX_LAT      85.05112878
+#define MIN_LON -180.0
+#define MAX_LON  180.0
+#define MIN_LAT  -85.05112878  
+#define MAX_LAT   85.05112878
+#define PIXELS_PER_TILE 256
 
 const std::string MercatorTileKey::TYPE_CODE = "M";
 
@@ -26,7 +27,7 @@ TileKey( rhs )
 }
 
 MercatorTileKey::MercatorTileKey( const std::string& key ) :
-TileKey( key, TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT ) )
+TileKey( key, TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT, PIXELS_PER_TILE ) )
 {
 }
 
@@ -54,7 +55,7 @@ MercatorTileKey::MercatorTileKey( unsigned int tile_x, unsigned int tile_y, unsi
     }
 
     key = ss.str();
-    profile = TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT );
+    profile = TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT, PIXELS_PER_TILE );
 }
 
 TileKey*
@@ -71,20 +72,14 @@ MercatorTileKey::getLevelOfDetail() const
     return (unsigned int)key.length();
 }
 
-static 
-unsigned int getMapSize( unsigned int lod )
-{
-    return (unsigned int) 256 << lod;
-}
-
 void
 MercatorTileKey::getTileXY(unsigned int& out_tile_x,
                            unsigned int& out_tile_y) const
 {
     unsigned int xmin, ymin, xmax, ymax;
     getPixelExtents( xmin, ymin, xmax, ymax );
-    out_tile_x = xmin/256;
-    out_tile_y = ymin/256;
+    out_tile_x = xmin/profile.pixelsPerTile();
+    out_tile_y = ymin/profile.pixelsPerTile();
 }
 
 void
@@ -95,7 +90,7 @@ MercatorTileKey::getPixelExtents(unsigned int& xmin,
 {
     unsigned int lod = getLevelOfDetail();
     unsigned int px = 0, py = 0;
-    unsigned int delta = getMapSize( lod ) >> 1;
+    unsigned int delta = getMapSizePixels( lod ) >> 1;
     for( unsigned int i=0; i<lod; i++ )
     {
         switch( key[i] ) {
@@ -142,7 +137,7 @@ double
 MercatorTileKey::getLatitude( unsigned int pixel_y ) const
 {
     unsigned int lod = getLevelOfDetail();
-    double my  = -osg::PI + (1.0 - (double)pixel_y/(double)getMapSize(lod)) * (2.0*osg::PI);
+    double my  = -osg::PI + (1.0 - (double)pixel_y/(double)getMapSizePixels(lod)) * (2.0*osg::PI);
     double deg = osg::RadiansToDegrees( 2.0 * atan( exp( my ) ) - .5*osg::PI );
 
     return deg;
@@ -155,14 +150,14 @@ clamp( double n, double min_value, double max_value )
 }
 
 int
-MercatorTileKey::longLatToPixelXY(double lon, double lat, unsigned int lod, 
+MercatorTileKey::longLatToPixelXY(double lon, double lat, unsigned int lod, int tile_size,
                                   unsigned int& out_x, unsigned int& out_y )
 {
     double x = (lon + 180.0) / 360.0;
     double sin_lat = sin( osg::DegreesToRadians( lat ) );
     double y = 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
 
-    double map_size = (double)getMapSize( lod );
+    double map_size = (double)getMapSizePixels( tile_size, lod );
     
     double raw_x = x * map_size + 0.5;
     double raw_y = y * map_size + 0.5;
@@ -177,27 +172,28 @@ MercatorTileKey::longLatToPixelXY(double lon, double lat, unsigned int lod,
     //return raw_x == clamp_x && raw_y == clamp_y;
 }
 
-void
-MercatorTileKey::longLatToUnclampedPixelXY(double lon, double lat, unsigned int lod, 
-                                           double& out_x, double& out_y )
-{
-    double x = (lon + 180.0) / 360.0;
-    double sin_lat = sin( osg::DegreesToRadians( lat ) );
-    double y = 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
-
-    double map_size = (double)getMapSize( lod );
-    
-    out_x = clamp( x * map_size + 0.5, 0, map_size-1 );
-    out_y = clamp( y * map_size + 0.5, 0, map_size-1 );
-}
+//void
+//MercatorTileKey::longLatToUnclampedPixelXY(double lon, double lat, unsigned int lod, 
+//                                           double& out_x, double& out_y )
+//{
+//    double x = (lon + 180.0) / 360.0;
+//    double sin_lat = sin( osg::DegreesToRadians( lat ) );
+//    double y = 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
+//
+//    double map_size = (double)getMapSizePixels( lod );
+//    
+//    out_x = clamp( x * map_size + 0.5, 0, map_size-1 );
+//    out_y = clamp( y * map_size + 0.5, 0, map_size-1 );
+//}
 
 void
 MercatorTileKey::pixelXYtoTileXY(unsigned int x, unsigned int y,
+                                 int tile_size,
                                  unsigned int& out_tile_x,
                                  unsigned int& out_tile_y)
 {
-    out_tile_x = x/256;
-    out_tile_y = y/256;
+    out_tile_x = x/tile_size;
+    out_tile_y = y/tile_size;
 }
 
 /********************************************************************/
@@ -222,7 +218,7 @@ struct MercatorTile
 
 struct MercatorSuperTile : public std::vector<MercatorTile>
 {
-    MercatorSuperTile() { }
+    MercatorSuperTile(int _tile_size) : tile_size(_tile_size) { }
 
     int getRow( double lon, double lat, unsigned int lod ) {
         unsigned int x,y;
@@ -231,21 +227,26 @@ struct MercatorSuperTile : public std::vector<MercatorTile>
         }
         for( int i=0; i<(int)size(); i++ ) {
             if ( lat >= (*this)[i].min_lat && lat <= (*this)[i].max_lat ) {
-                (*this)[i].key->longLatToPixelXY( lon, lat, lod, x, y );
+                (*this)[i].key->longLatToPixelXY( lon, lat, lod, tile_size, x, y );
                 //osg::notify(osg::NOTICE) << "i=" << i << ", y=" << y << std::endl;
-                return i*256 + 256-(y-(*this)[i].min_y);
+                return i*tile_size + tile_size-(y-(*this)[i].min_y);
             }
         }
         return t()-1;
     }
 
     unsigned char* data( int s, int t ) {
-        return (*this)[t/256].image->data( 0, t%256 );
+        return (*this)[t/tile_size].image->data( 0, t%tile_size );
     }
 
-    int t() { return size()*256; }
+    int t(){ 
+        return size()*tile_size;
+    }
     double min_lat() { return (*this)[0].min_lat; }
     double max_lat() { return (*this)[size()-1].max_lat; }
+
+private:
+    int tile_size;
 };
 
 static osg::Image*
@@ -320,27 +321,28 @@ MercatorTileConverter::createImage( const PlateCarreTileKey* pc_key )
         return NULL;
     }
 
+    int tile_size = pc_key->getProfile().pixelsPerTile();
     osg::ref_ptr<osg::Image> dst_tile = new osg::Image();
-    dst_tile->allocateImage( 256, 256, 1, GL_RGB, GL_UNSIGNED_BYTE );
+    dst_tile->allocateImage( tile_size, tile_size, 1, GL_RGB, GL_UNSIGNED_BYTE );
 
     // determine the mercator tiles that overlap the plate carre tile:
     // TODO: actually, no need to worry about X tiles, they will be identical
     unsigned int merc_pixel_min_x, merc_pixel_min_y;
     unsigned int merc_pixel_max_x, merc_pixel_max_y;
-    MercatorTileKey::longLatToPixelXY( dst_min_lon, dst_min_lat, lod, merc_pixel_min_x, merc_pixel_max_y );
-    MercatorTileKey::longLatToPixelXY( dst_max_lon, dst_max_lat, lod, merc_pixel_max_x, merc_pixel_min_y );
+    MercatorTileKey::longLatToPixelXY( dst_min_lon, dst_min_lat, lod, tile_size, merc_pixel_min_x, merc_pixel_max_y );
+    MercatorTileKey::longLatToPixelXY( dst_max_lon, dst_max_lat, lod, tile_size, merc_pixel_max_x, merc_pixel_min_y );
 
     // adjust:
     merc_pixel_max_x--;
     merc_pixel_max_y--;
 
     unsigned int merc_tile_min_x, merc_tile_min_y;
-    MercatorTileKey::pixelXYtoTileXY( merc_pixel_min_x, merc_pixel_min_y, merc_tile_min_x, merc_tile_min_y );
+    MercatorTileKey::pixelXYtoTileXY( merc_pixel_min_x, merc_pixel_min_y, tile_size, merc_tile_min_x, merc_tile_min_y );
     unsigned int merc_tile_max_x, merc_tile_max_y;
-    MercatorTileKey::pixelXYtoTileXY( merc_pixel_max_x, merc_pixel_max_y, merc_tile_max_x, merc_tile_max_y );
+    MercatorTileKey::pixelXYtoTileXY( merc_pixel_max_x, merc_pixel_max_y, tile_size, merc_tile_max_x, merc_tile_max_y );
     
     // collect all the mercator tiles that overlap the destination plate carre tile:
-    MercatorSuperTile supertile;
+    MercatorSuperTile supertile( tile_size );
     //osg::notify(osg::NOTICE) << "Supertile: " << std::endl;
     for( unsigned int tile_y = merc_tile_min_y; tile_y <= merc_tile_max_y; tile_y++ )
     {
@@ -430,14 +432,14 @@ MercatorTileConverter::createHeightField( const PlateCarreTileKey* pc_key )
 /*********************************************************************/
 
 
-MercatorLocator::MercatorLocator( const osgTerrain::Locator& rhs, unsigned int _lod ) :
-osgTerrain::Locator(rhs), lod(_lod)
+MercatorLocator::MercatorLocator( const osgTerrain::Locator& rhs, int _tile_size, unsigned int _lod ) :
+osgTerrain::Locator(rhs), tile_size( _tile_size ), lod(_lod)
 {
     //NOP
 }
 
-MercatorLocator::MercatorLocator( unsigned int _lod ) :
-lod( _lod )
+MercatorLocator::MercatorLocator( int _tile_size, unsigned int _lod ) :
+tile_size(_tile_size), lod( _lod )
 {
     //NOP
 }
@@ -460,10 +462,10 @@ MercatorLocator::convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& world)
             //double lat_deg = world.y();
             //unsigned int px, py;
             //MercatorTileKey::longLatToPixelXY( lon_deg, lat_deg, lod, px, py );
-            //if ( py % 256 != 0 )
+            //if ( py % tile_size != 0 )
             //{
-            //    py %= 256;
-            //    world.y() = (256.0-(double)py)/256.0;
+            //    py %= tile_size;
+            //    world.y() = ((double)tile_size-(double)py)/(double)tile_size;
             //    //osg::notify(osg::NOTICE) << "lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", worldy="<<world.y()<<std::endl;
             //}
             return true;      
@@ -497,11 +499,11 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
             double lon_deg = osg::RadiansToDegrees(longitude);
             double lat_deg = osg::RadiansToDegrees(latitude);
             unsigned int px, py;
-            MercatorTileKey::longLatToPixelXY( lon_deg, lat_deg, lod, px, py );
-            if ( py % 256 != 0 )
+            MercatorTileKey::longLatToPixelXY( lon_deg, lat_deg, lod, tile_size, px, py );
+            if ( py % tile_size != 0 )
             {
-                py %= 256;
-                local.y() = (256.0-(double)py)/256.0;
+                py %= tile_size;
+                local.y() = ((double)tile_size-(double)py)/(double)tile_size;
                 //osg::notify(osg::NOTICE) << "KEY="<<key->str()<<": lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", localy="<<local.y()<<std::endl;
             }
 
@@ -516,11 +518,11 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
             double lat_deg = w.y();
 
             unsigned int px, py;
-            MercatorTileKey::longLatToPixelXY( lon_deg, lat_deg, lod, px, py );
-            if ( py % 256 != 0 )
+            MercatorTileKey::longLatToPixelXY( lon_deg, lat_deg, lod, tile_size, px, py );
+            if ( py % tile_size != 0 )
             {
-                py %= 256;
-                local.y() = (256.0-(double)py)/256.0;
+                py %= tile_size;
+                local.y() = ((double)tile_size-(double)py)/(double)tile_size;
                // osg::notify(osg::NOTICE) << "lod="<<lod<<", lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", local.y="<<local.y()<<std::endl;
             }
 

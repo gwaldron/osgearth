@@ -8,7 +8,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileGridProfile
     {
     public:
-        TileGridProfile( double xmin, double ymin, double xmax, double ymax );
+        TileGridProfile( double xmin, double ymin, double xmax, double ymax, int px_width );
 
         TileGridProfile( const TileGridProfile& rhs );
 
@@ -16,9 +16,11 @@ namespace osgEarth
         double yMin() const;
         double xMax() const;
         double yMax() const;
+        int    pixelsPerTile() const;
 
     private:
         double xmin, ymin, xmax, ymax;
+        int px_width;
     };
 }
 

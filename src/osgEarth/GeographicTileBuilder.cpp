@@ -47,6 +47,8 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
         return NULL;
     }
 
+    int tile_size = key->getProfile().pixelsPerTile();
+
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
     geo_locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC ); // sort of.
     geo_locator->setTransformAsExtents( min_lon, min_lat, max_lon, max_lat );
@@ -97,7 +99,7 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     {
         osgTerrain::Locator* img_locator = geo_locator;
         if ( dynamic_cast<const MercatorTileKey*>( key ) )
-            img_locator = new MercatorLocator( *geo_locator, key->getLevelOfDetail() );
+            img_locator = new MercatorLocator( *geo_locator, tile_size, key->getLevelOfDetail() );
 
         osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
         img_layer->setLocator( img_locator );

@@ -5,7 +5,7 @@
 using namespace osgEarth;
 
 TileKey::TileKey() :
-profile( TileGridProfile( 0, 0, 0, 0 ) )
+profile( TileGridProfile( 0, 0, 256, 256, 256 ) )
 {
     //NOP
 }
@@ -34,6 +34,24 @@ std::string
 TileKey::getName() const
 {
     return getTypeCode() + str();
+}
+
+const TileGridProfile&
+TileKey::getProfile() const
+{
+    return profile;
+}
+
+int
+TileKey::getMapSizePixels( int lod ) const
+{
+    return getMapSizePixels( profile.pixelsPerTile(), lod );
+}
+
+/*static*/ int
+TileKey::getMapSizePixels( int tile_size, int lod )
+{
+    return tile_size << lod;
 }
 
 /************************************************************************/

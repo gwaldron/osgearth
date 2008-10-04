@@ -95,6 +95,8 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
         return NULL;
     }
 
+    int tile_size = key->getProfile().pixelsPerTile();
+
     osgTerrain::Locator* locator = new osgTerrain::Locator();
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
     locator->setTransformAsExtents(
@@ -154,7 +156,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
         // use a special image locator to warp the texture coords for mercator tiles :)
         // WARNING: TODO: this will not persist upn export....we need a nodekit.
         if ( dynamic_cast<const MercatorTileKey*>( key ) )
-            img_locator = new MercatorLocator( *locator, key->getLevelOfDetail() );
+            img_locator = new MercatorLocator( *locator, tile_size, key->getLevelOfDetail() );
 
         osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
         img_layer->setLocator( img_locator );

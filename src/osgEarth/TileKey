@@ -21,6 +21,12 @@ namespace osgEarth
 
         std::string getName() const;
 
+        const TileGridProfile& getProfile() const;
+
+        int getMapSizePixels( int lod ) const;
+ 
+        static int getMapSizePixels( int tile_size, int lod );
+
     public:
         virtual TileKey* getSubkey( unsigned int quadrant ) const =0;
 
@@ -33,7 +39,7 @@ namespace osgEarth
             double& out_max_lat ) const =0;
 
         virtual std::string getTypeCode() const =0;
-
+        
     protected:
 
         TileKey();

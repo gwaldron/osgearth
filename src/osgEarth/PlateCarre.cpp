@@ -9,6 +9,13 @@ using namespace osgEarth;
 
 const std::string PlateCarreTileKey::TYPE_CODE = "P";
 
+// these bounds form a square tile set; the bottom half of LOD 0 is not used.
+#define MIN_LON -180
+#define MAX_LON  180
+#define MIN_LAT -270
+#define MAX_LAT   90
+#define PIXELS_PER_TILE 256
+
 PlateCarreTileKey::PlateCarreTileKey( const PlateCarreTileKey& rhs )
 : TileKey( rhs )
 {
@@ -16,7 +23,7 @@ PlateCarreTileKey::PlateCarreTileKey( const PlateCarreTileKey& rhs )
 }
 
 PlateCarreTileKey::PlateCarreTileKey( const std::string& input )
-: TileKey( input, TileGridProfile( -180, -270, 180, 90 ) ) // whole-earth
+: TileKey( input, TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT, PIXELS_PER_TILE ) )
 {
     //NOP
 }
@@ -71,40 +78,3 @@ PlateCarreTileKey::getGeoExtents(double& out_min_lon,
     out_max_lon = out_min_lon + width;
     return true;
 }
-
-/*************************************************************************/
-
-//ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::string& _extension,
-//                                                                   const osgDB::ReaderWriter::Options* _options )
-//: extension( _extension ),
-//  options( _options )
-//{
-//}
-//
-//osg::Image*
-//ReaderWriterPlateCarreTileSource::createImage( const PlateCarreTileKey* key )
-//{
-//    std::string uri = key->str() + "." + extension;
-//    osg::Image* image = NULL;
-//
-//    image = osgDB::readImageFile( uri, options.get() );
-//    if ( !image )
-//    {
-//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readImageFile FAILED for \"" << uri << "\"" << std::endl;
-//    }
-//    return image;
-//}
-//
-//osg::HeightField*
-//ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreTileKey* key )
-//{
-//    std::string uri = key->str() + "." + extension;
-//    osg::HeightField* field = NULL;
-//
-//    field = osgDB::readHeightFieldFile( uri, options.get() );
-//    if ( !field )
-//    {
-//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readHeightField FAILED for \"" << uri << "\"" << std::endl;
-//    }
-//    return field;
-//}

@@ -38,14 +38,12 @@ namespace osgEarth
 
         static int longLatToPixelXY(
             double lon, double lat, unsigned int lod, 
+            int tile_size,
             unsigned int& out_x, unsigned int& out_y );
-
-        static void longLatToUnclampedPixelXY(
-            double lon, double lat, unsigned int lod, 
-            double& out_x, double& out_y );
         
         static void pixelXYtoTileXY(
             unsigned int x, unsigned int y,
+            int tile_size,
             unsigned int& out_tile_x, unsigned int& out_tile_y);
         
     public: //overrides
@@ -104,13 +102,14 @@ namespace osgEarth
     class MercatorLocator : public osgTerrain::Locator
     {
     public:
-        MercatorLocator( unsigned int lod );
-        MercatorLocator( const osgTerrain::Locator& rhs, unsigned int lod);
+        MercatorLocator( int tile_size, unsigned int lod );
+        MercatorLocator( const osgTerrain::Locator& rhs, int tile_size, unsigned int lod);
 
         bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
         bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
 
     private:
+        int tile_size;
         unsigned int lod;
         //osg::ref_ptr<const TileKey> key;
     };

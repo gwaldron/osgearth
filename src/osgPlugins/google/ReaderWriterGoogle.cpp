@@ -16,16 +16,16 @@ using namespace osgEarth;
 #define PROPERTY_DATASET    "dataset"
 #define PROPERTY_CACHE_PATH "cache_path"
 
-class MSVESource : public MercatorTileSource
+class GoogleSource : public MercatorTileSource
 {
 public:
-    MSVESource( const osgDB::ReaderWriter::Options* _options ) :
+    GoogleSource( const osgDB::ReaderWriter::Options* _options ) :
       options( _options )
     {
         if ( options.valid() )
         {
-            if ( options->getPluginData( PROPERTY_URL ) )
-                url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+            //if ( options->getPluginData( PROPERTY_URL ) )
+            //    url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
             if ( options->getPluginData( PROPERTY_DATASET ) )
                 dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
@@ -35,79 +35,63 @@ public:
         }
 
         // validate dataset
-        if ( dataset.empty() ) dataset = "h"; // defaul to the "hybrid" dataset (imagery+labels)
-        else if ( dataset == "hybrid" ) dataset = "h";
-        else if ( dataset == "roads" ) dataset = "r";
-        else if ( dataset == "aerial" || dataset == "satellite" ) dataset = "a";
-        else dataset = "h";
-
-        // validate/default URL
-        if ( url.empty() )
-            url = "http://h0.ortho.tiles.virtualearth.net/tiles";
+        if ( dataset.empty() ) dataset = "satellite"; // defaul to the satellite view
     }
 
     osg::Image* createImage( const TileKey* key )
     {
-        // a=aerial(jpg), r=map(png), h=hybrid(jpg), t=elev(wmphoto?)
+        const MercatorTileKey* mkey = static_cast<const MercatorTileKey*>( key );
 
         std::stringstream buf;
+        
+        if ( dataset == "satellite" )
+        {            
+            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            unsigned int tile_x, tile_y;
+            mkey->getTileXY( tile_x, tile_y );
+            int zoom = key->getLevelOfDetail();
 
-        std::string format;
+            buf << "http://khm0.google.com/kh/v=32&hl=en"
+                << "&x=" << tile_x
+                << "&y=" << tile_y
+                << "&z=" << zoom
+                << "&s=Ga&.jpg.curl";
+            
+            // http://khm0.google.com/kh/v=32&hl=en&x=4&y=6&z=4&s=Ga
+        }
+        else if ( dataset == "terrain" )
+        {
+            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            unsigned int tile_x, tile_y;
+            mkey->getTileXY( tile_x, tile_y );
+            buf << "http://mt" << server << ".google.com/mt?v=app.81&hl=en&x="
+                << tile_x << "&y=" << tile_y << "&zoom=" 
+                << 17-key->getLevelOfDetail() << "&.jpg.curl";
+        }
+        else if ( dataset == "labels" )
+        {
+            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            unsigned int tile_x, tile_y;
+            mkey->getTileXY( tile_x, tile_y );
+            int zoom = key->getLevelOfDetail();
 
-        buf << url << "/" << dataset << key->str() << "?g=1&";
-        buf << "." << getFormat();
+            buf << "http://mt3.google.com/mt/v=w2t.83&hl=en"
+                << "&x=" << tile_x
+                << "&y=" << tile_y
+                << "&z=" << zoom
+                << "&s=Ga&.png.curl";
 
-        //osg::Image* image = osgDB::readImageFile( buf.str() );
+            //http://mt3.google.com/mt/v=w2t.83&hl=en&x=3&y=6&z=4&s=Galileo
+        }
 
         osg::notify(osg::INFO) 
-            << "[osgEarth] MSVE: option string = "
+            << "[osgEarth] Google: option string = "
             << (options.valid()? options->getOptionString() : "<empty>")
             << std::endl;
 
         osgEarth::FileCache fc(cache_path);
         return fc.readImageFile( buf.str(), options.get() );
     }
-
-    std::string getFormat() const
-    {
-        if (dataset == "h" || dataset == "a")
-        {
-            return "jpg";
-        }
-        else
-        {
-            return "png";
-        }
-    }
-
-    //    //sprintf( buf, "http://192.168.0.8/gis/denverglobe/%s.jpg.curl",
-    //    //    q.c_str() );
-
-    //    //sprintf( buf, "http://192.168.0.8/gis/denver-source/SpatialData/wgs84/virtualearth/jpg/%s.jpg.curl",
-    //    //    q.c_str() );
-
-    //    // MSVE roads
-    //    //sprintf( buf, "http://h%c.ortho.tiles.virtualearth.net/tiles/r%s?g=1&.png.curl",
-    //    //    q[q.length()-1], q.c_str() );
-
-    //    // MSVE hybrid
-    //    sprintf( buf, "http://h%c.ortho.tiles.virtualearth.net/tiles/h%s?g=1&.jpg.curl",
-    //        q[q.length()-1], q.c_str() );
-
-    //    // Google "terrain" view: (max zoom=17)
-    //    //char server = key.str().length() > 0? key.str()[key.str().length()-1] : '0';
-    //    //unsigned int tile_x, tile_y;
-    //    //key.getTileXY( tile_x, tile_y );
-    //    //sprintf( buf, "http://mt%c.google.com/mt?v=app.81&hl=en&x=%d&y=%d&zoom=%d&.jpg.curl",
-    //    //    server, tile_x, tile_y, 17-key.getLevelOfDetail() );
-
-    //    // Google "satellite" view
-    //    //std::string gkey = key.str();
-    //    //for( int i=0; i<gkey.length(); i++ )
-    //    //    gkey[i] = "qrts"[(int)(gkey[i]-'0')];
-    //    //sprintf( buf, "http://kh0.google.com/kh?n=404&v=8&t=t%s&.jpg.curl",
-    //    //    gkey.c_str() );        
-
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
@@ -117,25 +101,25 @@ public:
 
 private:
     osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    std::string url;
+    //std::string url;
     std::string dataset;
     std::string cache_path;
 };
 
 
-class ReaderWriterMSVE : public osgDB::ReaderWriter
+class ReaderWriterGoogle : public osgDB::ReaderWriter
 {
     public:
-        ReaderWriterMSVE() {}
+        ReaderWriterGoogle() {}
 
         virtual const char* className()
         {
-            return "MSVE Imagery ReaderWriter";
+            return "Google Imagery ReaderWriter";
         }
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "msve" );
+            return osgDB::equalCaseInsensitive( extension, "google" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -156,7 +140,7 @@ class ReaderWriterMSVE : public osgDB::ReaderWriter
 
             osg::Image* image = NULL;
 
-            osg::ref_ptr<MercatorTileSource> source = new MSVESource( options );
+            osg::ref_ptr<MercatorTileSource> source = new GoogleSource( options );
             if ( dynamic_cast<PlateCarreTileKey*>( key.get() ) )
             {
                 MercatorTileConverter converter( source.get(), options );
@@ -167,7 +151,7 @@ class ReaderWriterMSVE : public osgDB::ReaderWriter
                 image = source->createImage( key.get() );
             }
 
-            return image? ReadResult( image ) : ReadResult( "Unable to load MSVE tile" );
+            return image? ReadResult( image ) : ReadResult( "Unable to load Google tile" );
         }
 
         virtual ReadResult readHeightField(const std::string& file_name, const Options* opt) const
@@ -183,4 +167,4 @@ class ReaderWriterMSVE : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(msve, ReaderWriterMSVE)
+REGISTER_OSGPLUGIN(google, ReaderWriterGoogle)

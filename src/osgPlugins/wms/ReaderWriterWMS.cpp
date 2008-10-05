@@ -11,17 +11,19 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_URL         "url"
-#define PROPERTY_LAYERS      "layers"
-#define PROPERTY_STYLE       "style"
-#define PROPERTY_FORMAT      "format"
-#define PROPERTY_TILE_WIDTH  "tile_width"
-#define PROPERTY_TILE_HEIGHT "tile_height"
-#define PROPERTY_CACHE_PATH  "cache_path"
+#define PROPERTY_URL            "url"
+#define PROPERTY_LAYERS         "layers"
+#define PROPERTY_STYLE          "style"
+#define PROPERTY_FORMAT         "format"
+#define PROPERTY_TILE_WIDTH     "tile_width"
+#define PROPERTY_TILE_HEIGHT    "tile_height"
+#define PROPERTY_CACHE_PATH     "cache_path"
+#define PROPERTY_ELEVATION_UNIT "elevation_unit"
 
 
-osg::HeightField* imageToHeightField(osg::Image* image)
+osg::HeightField* imageToHeightField(osg::Image* image, float scaleFactor = 1.0f)
 {
+    //osg::notify(osg::NOTICE) << "Scale factor " << scaleFactor << std::endl;
 	osg::HeightField *hf = new osg::HeightField;
 	if (!image)
 	{
@@ -41,12 +43,12 @@ osg::HeightField* imageToHeightField(osg::Image* image)
                 unsigned char* ptr = image->data( col, row );
                 if ( image->getPixelSizeInBits() == 16 ) {
                     short val = (short)*(short*)ptr;
-                    hf->setHeight( col, row, (float)val );
+                    hf->setHeight( col, row, ((float)val) * scaleFactor );
                     //osg::notify(osg::NOTICE) << val << "\t";
                 }
                 else if ( image->getPixelSizeInBits() == 32 ) {
                     float val = (float)*(float*)ptr;
-                    hf->setHeight( col, row, val );
+                    hf->setHeight( col, row, val * scaleFactor );
 					//osg::notify(osg::NOTICE) << val << "\t";
                 }
             }
@@ -78,14 +80,22 @@ public:
         if ( options->getPluginData( PROPERTY_CACHE_PATH))
              cache_path = std::string( (const char*)options->getPluginData( PROPERTY_CACHE_PATH ) );
 
+        if ( options->getPluginData( PROPERTY_ELEVATION_UNIT))
+             elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
+
 		if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
             tile_width = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_WIDTH ), 256 );
 
         if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
             tile_height = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ), 256 );
-
+        
         if ( format.empty() )
             format = "png";
+
+        if ( elevation_unit.empty())
+        {
+            elevation_unit = "m";
+        }
 
         //prefix = "http://192.168.0.101/tilecache-2.04/tilecache.py";
         //layers = "bluemarble2002-dc";
@@ -120,7 +130,15 @@ public:
         {
             osg::notify(osg::WARN) << "Failed to read heightfield from " << createURI(key) << std::endl;
         }
-        return (imageToHeightField(image));        
+
+        float scaleFactor = 1;
+
+        //Scale the heightfield to meters
+        if (elevation_unit == "ft")
+        {
+            scaleFactor = 0.3048;
+        }
+        return (imageToHeightField(image, scaleFactor));        
     }
 
     std::string createURI( const TileKey* key ) const
@@ -159,6 +177,8 @@ private:
 	int tile_height;
 
     std::string cache_path;
+
+    std::string elevation_unit;
 };
 
 

@@ -192,10 +192,6 @@ public:
           if (!_normalizedEast) _normalizedEast = normalizeEdge(tt, EAST);
           if (!_normalizedWest) _normalizedWest = normalizeEdge(tt, WEST);
 
-          if (_normalizedNorth && _normalizedSouth && _normalizedEast && _normalizedWest)
-          {
-              osg::notify(osg::NOTICE) << "Nothing to see here!" << std::endl;
-          }
           traverse(node, nv);
       }
 

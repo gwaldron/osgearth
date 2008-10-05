@@ -6,6 +6,7 @@
 #include <osg/PagedLOD>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
+#include <osg/Version>
 #include <osgDB/ReadFile>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
@@ -190,6 +191,11 @@ public:
           if (!_normalizedSouth) _normalizedSouth = normalizeEdge(tt, SOUTH);
           if (!_normalizedEast) _normalizedEast = normalizeEdge(tt, EAST);
           if (!_normalizedWest) _normalizedWest = normalizeEdge(tt, WEST);
+
+          if (_normalizedNorth && _normalizedSouth && _normalizedEast && _normalizedWest)
+          {
+              osg::notify(osg::NOTICE) << "Nothing to see here!" << std::endl;
+          }
           traverse(node, nv);
       }
 
@@ -205,7 +211,7 @@ GeocentricTileBuilder::GeocentricTileBuilder(
     const osgDB::ReaderWriter::Options* global_options ) :
 TileBuilder( map, url_template, global_options )
 {
-    //NOP
+    //NOP   
 }
 
 void

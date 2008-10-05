@@ -71,7 +71,7 @@ bool normalizeEdge(osg::HeightField* hf1, osg::HeightField *hf2, CardinalDirecti
             {
             case NORTH:
                 //Assume hf2 is to the north of hf1
-                for (int c = 0; c < width; ++c)
+                for (int c = 1; c < width-1; ++c)
                 {
                     float val1 = hf1->getHeight(c, height-1);
                     float val2 = hf2->getHeight(c, 0);
@@ -82,18 +82,18 @@ bool normalizeEdge(osg::HeightField* hf1, osg::HeightField *hf2, CardinalDirecti
                 break;
             case EAST:
                 //Assume hf2 is to the east of hf1
-                for (int r = 0; r < height; ++r)
+                for (int r = 1; r < height-1; ++r)
                 {
                     float val1 = hf1->getHeight(width-1, r);
                     float val2 = hf2->getHeight(0, r);
                     float val = (val1 + val2)/2.0f;
-                    hf1->setHeight(width-1, r, val);
+                    hf1->setHeight(width-2, r, val);
                     hf2->setHeight(0, r, val);
                 }
                 break;
             case SOUTH:
                 //Assume hf2 is to the south of hf1
-                for (int c = 0; c < width; ++c)
+                for (int c = 1; c < width-1; ++c)
                 {
                     float val1 = hf1->getHeight(c, 0);
                     float val2 = hf2->getHeight(c, height-1);
@@ -104,7 +104,7 @@ bool normalizeEdge(osg::HeightField* hf1, osg::HeightField *hf2, CardinalDirecti
                 break;
             case WEST:
                 //Assume hf2 is to the west of hf1
-                for (int r = 0; r < height; ++r)
+                for (int r = 1; r < height-1; ++r)
                 {
                     float val1 = hf1->getHeight(0, r);
                     float val2 = hf2->getHeight(width-1, r);

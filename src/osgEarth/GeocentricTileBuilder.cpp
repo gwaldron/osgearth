@@ -25,12 +25,39 @@ enum CardinalDirection
     NORTH,
     EAST,
     SOUTH,
-    WEST
+    WEST,
+    NORTH_EAST,
+    NORTH_WEST,
+    SOUTH_EAST,
+    SOUTH_WEST
 };
 
-bool normalizeHeightFields(osg::HeightField* hf1, osg::HeightField *hf2, CardinalDirection direction)
+bool normalizeCorner(osg::HeightField* ll, osg::HeightField* lr, osg::HeightField *ul, osg::HeightField *ur)
 {
-    //osg::notify(osg::NOTICE) << "normalizeHeightFields " << direction << std::endl;
+    //Check for NULL
+    if (ll && lr && ul && ur)
+    {
+        float val1 = ll->getHeight(ll->getNumColumns()-1, ll->getNumRows()-1);
+        float val2 = lr->getHeight(0, lr->getNumRows()-1);
+        float val3 = ul->getHeight(ul->getNumColumns()-1, 0);
+        float val4 = ur->getHeight(0, 0);
+
+        //Average the 4 corners
+        float corner_val = (val1 + val2 + val3 + val4) / 4.0f;
+
+        ll->setHeight(ll->getNumColumns()-1, ll->getNumRows()-1, corner_val);
+        lr->setHeight(0, lr->getNumRows()-1, corner_val);
+        ul->setHeight(ul->getNumColumns()-1, 0, corner_val);
+        ur->setHeight(0, 0, corner_val);
+
+        return true;
+    }
+    return false;
+}
+
+
+bool normalizeEdge(osg::HeightField* hf1, osg::HeightField *hf2, CardinalDirection direction)
+{
     //Check for NULL
     if (hf1 && hf2)
     {
@@ -101,10 +128,99 @@ public:
 
     TerrainTileEdgeNormalizerUpdateCallback():
       _normalizedEast(false),
-          _normalizedNorth(false),
-          _normalizedSouth(false),
-          _normalizedWest(false)
+      _normalizedNorth(false),
+      _normalizedSouth(false),
+      _normalizedWest(false),
+      _normalizedNorthWest(false),
+      _normalizedNorthEast(false),
+      _normalizedSouthWest(false),
+      _normalizedSouthEast(false)
       {
+      }
+
+      bool normalizeCorner(osgTerrain::TerrainTile *tile, CardinalDirection direction)
+      {
+          if (tile && tile->getTerrain())
+          {
+              //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
+              osgEarth::EarthTerrain* et = dynamic_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
+              if (et)
+              {
+                  //Determine the TileID's of the 4 tiles that need to take place in this normalization
+                  osgTerrain::TileID ll_id;
+                  osgTerrain::TileID lr_id;
+                  osgTerrain::TileID ul_id;
+                  osgTerrain::TileID ur_id;
+
+                  if (direction == NORTH_EAST)
+                  {
+                      ll_id = tile->getTileID();
+                      ul_id = getNeighborTile(ll_id, NORTH);
+                      lr_id = getNeighborTile(ll_id, EAST);
+                      ur_id = getNeighborTile(ll_id, NORTH_EAST);
+                  }
+                  else if (direction == NORTH_WEST)
+                  {
+                      lr_id = tile->getTileID();
+                      ll_id = getNeighborTile(lr_id, WEST);
+                      ul_id = getNeighborTile(lr_id, NORTH_WEST);
+                      ur_id = getNeighborTile(lr_id, NORTH);
+                  }
+                  else if (direction = SOUTH_EAST)
+                  {
+                      ul_id = tile->getTileID();
+                      ll_id = getNeighborTile(ul_id, SOUTH);
+                      lr_id = getNeighborTile(ul_id, SOUTH_EAST);
+                      ur_id = getNeighborTile(ul_id, EAST);
+                  }
+                  else if (direction == SOUTH_WEST)
+                  {
+                      ur_id = tile->getTileID();
+                      ul_id = getNeighborTile(ur_id, WEST);
+                      ll_id = getNeighborTile(ur_id, SOUTH_WEST);
+                      lr_id = getNeighborTile(ur_id, SOUTH);
+                  }
+                  else
+                  {
+                      osg::notify(osg::WARN) << "Invalid CardinalDirection passed to normalizeCorner " << direction << std::endl;
+                      return false;
+                  }
+
+                  //Get the terrain tiles
+                  osgTerrain::TerrainTile *ll_tile = et->getTileOverride(ll_id);
+                  osgTerrain::TerrainTile *lr_tile = et->getTileOverride(lr_id);
+                  osgTerrain::TerrainTile *ul_tile = et->getTileOverride(ul_id);
+                  osgTerrain::TerrainTile *ur_tile = et->getTileOverride(ur_id);
+
+                  if (ll_tile && lr_tile && ul_tile && ur_tile)
+                  {
+                      osgTerrain::HeightFieldLayer *ll_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(ll_tile->getElevationLayer());
+                      osgTerrain::HeightFieldLayer *lr_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(lr_tile->getElevationLayer());
+                      osgTerrain::HeightFieldLayer *ul_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(ul_tile->getElevationLayer());
+                      osgTerrain::HeightFieldLayer *ur_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(ur_tile->getElevationLayer());
+
+                      if (ll_hfl && lr_hfl && ul_hfl && ur_hfl)
+                      {
+                          bool normalized = ::normalizeCorner(ll_hfl->getHeightField(), lr_hfl->getHeightField(), ul_hfl->getHeightField(), ur_hfl->getHeightField());
+                          if (normalized)
+                          {
+                              //osg::notify(osg::NOTICE) << "Normalized corner" << std::endl;
+                              ll_hfl->dirty();
+                              lr_hfl->dirty();
+                              ul_hfl->dirty();
+                              ur_hfl->dirty();
+
+                              ll_tile->setDirty(true);
+                              lr_tile->setDirty(true);
+                              ul_tile->setDirty(true);
+                              ur_tile->setDirty(true);
+                          }
+                          return normalized;
+                      }
+                  }
+              }
+          }
+          return false;
       }
 
 
@@ -119,33 +235,7 @@ public:
 
                   osgTerrain::TileID id1 = tile->getTileID();
 
-                  //The name of the lod changed after OSG 2.6 from layer to level
-#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
-                  int level = id1.layer;
-#else
-                  int level = id1.level;
-#endif
-
-                  int totalTiles = sqrt(pow(4.0, (level)));
-
-                  //Determine the edge TileID
-                  osgTerrain::TileID id2(level, id1.x, id1.y);
-                  if (direction == WEST)
-                  {
-                      id2.x = (id2.x == 0 ? totalTiles-1 : id2.x-1);
-                  }
-                  else if (direction == EAST)
-                  {
-                      id2.x = (id2.x == totalTiles-1 ? 0 : id2.x+1);
-                  }
-                  else if (direction == NORTH)
-                  {
-                      id2.y = (id2.y == 0 ? totalTiles-1 : id2.y-1);
-                  }
-                  else if (direction == SOUTH)
-                  {
-                      id2.y = (id2.y == totalTiles-1 ? 0 : id2.y+1);
-                  }
+                  osgTerrain::TileID id2 = getNeighborTile(id1, direction);
 
                   //osg::notify(osg::NOTICE) << "Tile is " << id1.level << " " << id1.x << " " << id1.y << std::endl;
                   //osg::notify(osg::NOTICE) << "Neighbor tile is " << id2.level << " " << id2.x << " " << id2.y << std::endl;
@@ -164,7 +254,7 @@ public:
 
                           if (hfl1 && hfl2)
                           {
-                              bool normalized = normalizeHeightFields(hfl1->getHeightField(), hfl2->getHeightField(), direction);
+                              bool normalized = ::normalizeEdge(hfl1->getHeightField(), hfl2->getHeightField(), direction);
                               if (normalized)
                               {
                                   hfl1->dirty();
@@ -183,22 +273,63 @@ public:
 
       virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
       { 
-
-          //TODO:  Normalized corners
           //TODO:  Look at heightDelta's to assist with normal generation.
           osgTerrain::TerrainTile* tt = dynamic_cast<osgTerrain::TerrainTile*>(node);
           if (!_normalizedNorth) _normalizedNorth = normalizeEdge(tt, NORTH);
           if (!_normalizedSouth) _normalizedSouth = normalizeEdge(tt, SOUTH);
           if (!_normalizedEast) _normalizedEast = normalizeEdge(tt, EAST);
           if (!_normalizedWest) _normalizedWest = normalizeEdge(tt, WEST);
+          if (!_normalizedNorthWest) _normalizedNorthWest = normalizeCorner(tt, NORTH_WEST);
+          if (!_normalizedNorthEast) _normalizedNorthEast = normalizeCorner(tt, NORTH_EAST);
+          if (!_normalizedSouthWest) _normalizedSouthWest = normalizeCorner(tt, SOUTH_WEST);
+          if (!_normalizedSouthEast) _normalizedSouthEast = normalizeCorner(tt, SOUTH_EAST);
 
           traverse(node, nv);
+      }
+
+      osgTerrain::TileID getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const
+      {
+          //The name of the lod changed after OSG 2.6 from layer to level
+#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
+          int level = id.layer;
+#else
+          int level = id.level;
+#endif
+
+          //Determine the edge TileID
+          osgTerrain::TileID id2(level, id.x, id.y);
+          int totalTiles = sqrt(pow(4.0, (level)));
+          if (direction == WEST || direction == SOUTH_WEST || direction == NORTH_WEST)
+          {
+              id2.x = (id2.x == 0 ? totalTiles-1 : id2.x-1);
+          }
+
+          if (direction == EAST || direction == SOUTH_EAST || direction == NORTH_EAST)
+          {
+              id2.x = (id2.x == totalTiles-1 ? 0 : id2.x+1);
+          }
+
+          if (direction == NORTH || direction == NORTH_EAST || direction == NORTH_WEST)
+          {
+              id2.y = (id2.y == 0 ? totalTiles-1 : id2.y-1);
+          }
+
+          if (direction == SOUTH || direction == SOUTH_WEST || direction == SOUTH_EAST)
+          {
+              id2.y = (id2.y == totalTiles-1 ? 0 : id2.y+1);
+          }
+
+          return id2;
       }
 
       bool _normalizedWest;
       bool _normalizedEast;
       bool _normalizedNorth;
       bool _normalizedSouth;
+      bool _normalizedNorthWest;
+      bool _normalizedNorthEast;
+      bool _normalizedSouthWest;
+      bool _normalizedSouthEast;
 };
 
 GeocentricTileBuilder::GeocentricTileBuilder( 

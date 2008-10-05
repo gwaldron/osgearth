@@ -72,12 +72,15 @@ addSources(const SourceConfigList& from,
             new osgDB::ReaderWriter::Options( *global_options ) : 
             new osgDB::ReaderWriter::Options();
 
+        //Setup the plugin options for the source
         for( SourceProperties::const_iterator p = source->getProperties().begin(); p != source->getProperties().end(); p++ )
         {
             local_options->setPluginData( p->first, (void*)p->second.c_str() );
-            TileSource* tile_source = new ReaderWriterTileSource( source->getDriver(), local_options.get() );
-            to.push_back( tile_source );
         }
+
+        //Add the source to the list
+        TileSource* tile_source = new ReaderWriterTileSource( source->getDriver(), local_options.get() );
+        to.push_back( tile_source );
     }
 }
 

@@ -112,6 +112,55 @@ TileBuilder::getMapConfig() const
     return map.get();
 }
 
+
+osg::Node*
+TileBuilder::createCap(const double &min_lat, const double &max_lat, const osg::Vec4ub &color)
+{
+    double min_lon = -180.0;
+    double max_lon = 180.0;
+
+    osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+
+    osgTerrain::Locator* locator = new osgTerrain::Locator();
+    locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+    locator->setTransformAsExtents(
+        osg::DegreesToRadians( min_lon ),
+        osg::DegreesToRadians( min_lat ),
+        osg::DegreesToRadians( max_lon ),
+        osg::DegreesToRadians( max_lat ) );
+
+    osg::HeightField *hf = new osg::HeightField();
+    hf->allocate(32,32);
+    for(unsigned int i=0; i<hf->getHeightList().size(); i++ ) hf->getHeightList()[i] = 0.0;
+
+    hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
+    hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
+    hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
+    hf->setBorderWidth( 0 );
+
+    osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
+    hf_layer->setLocator( locator );
+    hf_layer->setHeightField( hf );
+
+    osg::Image *image = new osg::Image();
+    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    unsigned char *data = image->data(0,0);
+    memcpy(data, color.ptr(), 4);
+
+    osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
+    img_layer->setLocator( locator );
+    img_layer->setFilter( osgTerrain::Layer::LINEAR );
+    tile->setColorLayer( 0, img_layer );
+
+    tile->setLocator( locator );
+    tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
+    tile->setElevationLayer( hf_layer );
+    tile->setRequiresNormals( true );
+
+    return tile;
+
+}
+
 osg::Node*
 TileBuilder::createNode( const TileKey* key )
 {
@@ -130,6 +179,25 @@ TileBuilder::createNode( const TileKey* key )
         osgTerrain::Terrain* terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
         terrain->setVerticalScale( map->getVerticalScale() );
         csn->addChild( terrain );
+
+        const osgEarth::TileGridProfile& profile = key->getProfile();
+        
+        
+
+        //Extend the caps out so they slightly overlap neighboring tiles to hide seams
+        double cap_offset = 0.1;
+        
+        //Draw a "cap" on the bottom of the earth to account for missing tiles
+        if (profile.yMin() > -90)
+        {
+            csn->addChild(createCap(-90, profile.yMin()+cap_offset, osg::Vec4ub(255,255,255,255)));
+        }
+
+        //Draw a "cap" on the top of the earth to account for missing tiles
+        if (profile.yMax() < 90)
+        {   
+            csn->addChild(createCap(profile.yMax()-cap_offset, 90, osg::Vec4ub(2,5,20,255)));
+        }
 
         top = csn;
         tile_parent = terrain;

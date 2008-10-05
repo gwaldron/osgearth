@@ -14,6 +14,8 @@ MapConfig::MapConfig()
     skirt_ratio = 0.02;
     proxy_port = 8080;
     min_tile_range_factor = 8.0;
+    north_cap_color = osg::Vec4ub(2,5,20,255);
+    south_cap_color = osg::Vec4ub(255,255,255,255);
 }
 
 void
@@ -136,6 +138,31 @@ MapConfig::getMinTileRangeFactor() const
     return min_tile_range_factor;
 }
 
+void
+MapConfig::setNorthCapColor(const osg::Vec4ub &color)
+{
+    north_cap_color = color;
+}
+
+const osg::Vec4ub&
+MapConfig::getNorthCapColor() const
+{
+    return north_cap_color;
+}
+
+
+void 
+MapConfig::setSouthCapColor(const osg::Vec4ub &color)
+{
+    south_cap_color = color;
+}
+
+const osg::Vec4ub&
+MapConfig::getSouthCapColor() const
+{
+    return south_cap_color;
+}
+
 
 /************************************************************************/
 
@@ -197,6 +224,9 @@ SourceConfig::getProperties() const
 #define ELEM_CACHE_PATH     "cache_path"
 #define ELEM_PROXY_HOST     "proxy_host"
 #define ELEM_PROXY_PORT     "proxy_port"
+#define ELEM_NORTH_CAP_COLOR "north_cap_color"
+#define ELEM_SOUTH_CAP_COLOR "south_cap_color"
+
 
 static SourceConfig*
 readSource( XmlElement* e_source )
@@ -222,6 +252,22 @@ readSource( XmlElement* e_source )
     }
 
     return source;
+}
+
+
+osg::Vec4ub getColor(const std::string& str, osg::Vec4ub default_value)
+{
+    osg::Vec4ub color = default_value;
+    std::istringstream strin(str);
+    int r, g, b, a;
+    if (strin >> r && strin >> g && strin >> b && strin >> a)
+    {
+        color.r() = (unsigned char)r;
+        color.g() = (unsigned char)g;
+        color.b() = (unsigned char)b;
+        color.a() = (unsigned char)a;
+    }
+    return color;
 }
 
 static MapConfig*
@@ -250,6 +296,11 @@ readMap( XmlElement* e_map )
 
     map->setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), map->getProxyHost() ) );
     map->setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), map->getProxyPort() ) );
+
+    map->setNorthCapColor(getColor(e_map->getSubElementText(ELEM_NORTH_CAP_COLOR ), map->getNorthCapColor()));
+    map->setSouthCapColor(getColor(e_map->getSubElementText(ELEM_SOUTH_CAP_COLOR ), map->getSouthCapColor()));
+
+
 
     XmlNodeList e_images = e_map->getSubElements( ELEM_IMAGE );
     for( XmlNodeList::const_iterator i = e_images.begin(); i != e_images.end(); i++ )

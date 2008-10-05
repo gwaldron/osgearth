@@ -15,5 +15,12 @@
        <!-- uncomment the following line to enable caching... folder must exist -->
        <!-- <cache_path>f:/temp/osgearthcache/msve_hybrid</cache_path> -->
    </image>
-   
+
+   <!--Set the north and south cap colors-->
+
+   <!--
+   <north_cap_color>255 0 0 255</north_cap_color>
+   <south_cap_color>0 255 0 255</south_cap_color>
+   -->
+
 </map>

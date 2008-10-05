@@ -190,13 +190,13 @@ TileBuilder::createNode( const TileKey* key )
         //Draw a "cap" on the bottom of the earth to account for missing tiles
         if (profile.yMin() > -90)
         {
-            csn->addChild(createCap(-90, profile.yMin()+cap_offset, osg::Vec4ub(255,255,255,255)));
+            csn->addChild(createCap(-90, profile.yMin()+cap_offset, map->getSouthCapColor()));
         }
 
         //Draw a "cap" on the top of the earth to account for missing tiles
         if (profile.yMax() < 90)
         {   
-            csn->addChild(createCap(profile.yMax()-cap_offset, 90, osg::Vec4ub(2,5,20,255)));
+            csn->addChild(createCap(profile.yMax()-cap_offset, 90, map->getNorthCapColor()));
         }
 
         top = csn;

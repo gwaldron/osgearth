@@ -115,12 +115,20 @@ public:
               osgEarth::EarthTerrain* et = dynamic_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
               if (et)
               {
+
                   osgTerrain::TileID id1 = tile->getTileID();
 
-                  int totalTiles = sqrt(pow(4.0, (id1.level)));
+                  //The name of the lod changed after OSG 2.6 from layer to level
+#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
+                  int level = id1.layer;
+#else
+                  int level = id1.level;
+#endif
+
+                  int totalTiles = sqrt(pow(4.0, (level)));
 
                   //Determine the edge TileID
-                  osgTerrain::TileID id2(id1.level, id1.x, id1.y);
+                  osgTerrain::TileID id2(level, id1.x, id1.y);
                   if (direction == WEST)
                   {
                       id2.x = (id2.x == 0 ? totalTiles-1 : id2.x-1);

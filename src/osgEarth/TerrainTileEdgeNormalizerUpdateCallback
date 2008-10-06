@@ -1,0 +1,48 @@
+#ifndef OSGEARTH_TERRAIN_TILE_EDGE_NORMALIZATION_CALLBACK
+#define OSGEARTH_TERRAIN_TILE_EDGE_NORMALIZATION_CALLBACK 1
+
+#include <osg/Node>
+#include <osgTerrain/TerrainTile>
+#include <osgEarth/TileBuilder>
+
+#include <osgEarth/Common>
+
+
+namespace osgEarth
+{
+    enum CardinalDirection
+    {
+        NORTH,
+        EAST,
+        SOUTH,
+        WEST,
+        NORTH_EAST,
+        NORTH_WEST,
+        SOUTH_EAST,
+        SOUTH_WEST
+    };
+
+    class OSGEARTH_EXPORT TerrainTileEdgeNormalizerUpdateCallback : public osg::NodeCallback
+    {
+    public:
+        TerrainTileEdgeNormalizerUpdateCallback();
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+
+    protected:
+
+        bool normalizeCorner(osgTerrain::TerrainTile *tile, CardinalDirection direction);
+        bool normalizeEdge(osgTerrain::TerrainTile *tile, CardinalDirection direction);
+        osgTerrain::TileID getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const;
+
+        bool _normalizedWest;
+        bool _normalizedEast;
+        bool _normalizedNorth;
+        bool _normalizedSouth;
+        bool _normalizedNorthWest;
+        bool _normalizedNorthEast;
+        bool _normalizedSouthWest;
+        bool _normalizedSouthEast;
+
+    };
+}
+#endif //OSGEARTH_TERRAIN_TILE_EDGE_NORMALIZATION_CALLBACK

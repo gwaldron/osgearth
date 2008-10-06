@@ -1,5 +1,6 @@
 #include <osgEarth/GeographicTileBuilder>
 #include <osgEarth/Mercator>
+#include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
@@ -90,6 +91,11 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
+    tile->setTileID(key->getTileId());
+
+    //Attach an updatecallback to normalize the edges of TerrainTiles.
+    tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
+    tile->setDataVariance(osg::Object::DYNAMIC);
 
     osg::Image* image = NULL;
 
@@ -115,6 +121,9 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(min_lon,min_lat,0)).length();
     double min_range = radius * map->getMinTileRangeFactor();
+
+    //Set the skirt height of the heightfield
+    hf->setSkirtHeight(radius * map->getSkirtRatio());
    
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( centroid );

@@ -412,27 +412,33 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
 
-    osg::Image* image = NULL;
+    //osg::Image* image = NULL;
 
+    std::vector<osg::Image*> images;
     //TODO: select/composite:
     if ( image_sources.size() > 0 )
     {
-        image = image_sources[0]->createImage( key );
+        for (int i = 0; i < image_sources.size(); ++i)
+        {
+            images.push_back(image_sources[i]->createImage(key));
+        }
     }
 
-    if ( image )
+    if ( images.size() > 0 )
     {
-        osgTerrain::Locator* img_locator = locator;
+        for (int i = 0; i < images.size(); ++i)
+        {
+            osgTerrain::Locator* img_locator = locator;
 
-        // use a special image locator to warp the texture coords for mercator tiles :)
-        // WARNING: TODO: this will not persist upn export....we need a nodekit.
-        if ( dynamic_cast<const MercatorTileKey*>( key ) )
-            img_locator = new MercatorLocator( *locator, tile_size, key->getLevelOfDetail() );
-
-        osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
-        img_layer->setLocator( img_locator );
-        img_layer->setFilter( osgTerrain::Layer::LINEAR );
-        tile->setColorLayer( 0, img_layer );
+            // use a special image locator to warp the texture coords for mercator tiles :)
+            // WARNING: TODO: this will not persist upn export....we need a nodekit.
+            if ( dynamic_cast<const MercatorTileKey*>( key ) )
+                img_locator = new MercatorLocator( *locator, tile_size, key->getLevelOfDetail() );
+            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( images[i] );
+            img_layer->setLocator( img_locator );
+            img_layer->setFilter( osgTerrain::Layer::LINEAR );
+            tile->setColorLayer( i, img_layer );
+        }
     }
     
     osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();

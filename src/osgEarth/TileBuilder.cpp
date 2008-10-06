@@ -8,6 +8,7 @@
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
 #include <osgDB/ReadFile>
+#include <osgFX/MultiTextureControl>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
@@ -180,6 +181,7 @@ TileBuilder::createNode( const TileKey* key )
         terrain->setVerticalScale( map->getVerticalScale() );
         csn->addChild( terrain );
 
+
         const osgEarth::TileGridProfile& profile = key->getProfile();
         
         
@@ -199,7 +201,17 @@ TileBuilder::createNode( const TileKey* key )
             csn->addChild(createCap(profile.yMax()-cap_offset, 90, map->getNorthCapColor()));
         }
 
-        top = csn;
+        //Decorate the scene with a multi-texture control to control blending between textures
+        osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
+        mt->addChild(csn);
+
+        float r = 1.0f/ map->getImageSources().size();
+        for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
+        {
+            mt->setTextureWeight(i, r);
+        }
+
+        top = mt;
         tile_parent = terrain;
     }
     else

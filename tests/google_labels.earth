@@ -1,0 +1,24 @@
+<map name="MSVE" type="geocentric">
+
+    <projection>mercator</projection>
+    <min_tile_range_factor>8</min_tile_range_factor>
+    
+<!-- uncomment the following two lines to activate a proxy server -->
+<!--
+   <proxy_host>80.80.12.123</proxy_host>
+   <proxy_port>80</proxy_port>
+-->
+
+  <image name="Google Earth Satellite" driver="google">
+    <!-- datasets: satellite, terrain, labels -->
+    <dataset>satellite</dataset>
+  </image>
+
+  <image name="Google Earth Labels" driver="google">
+    <!-- datasets: satellite, terrain, labels -->
+    <dataset>labels</dataset>
+  </image>
+
+  <!-- uncomment the following line to enable caching... folder must exist -->
+  <!-- <cache_path>f:/temp/osgearthcache</cache_path> -->
+</map>

@@ -25,6 +25,14 @@ namespace osgEarth
         osg::Node* createQuadrant( const TileKey* key );
 
         std::string getProj4String() const;
+
+
+        /*
+         *Scales the given heightfield's elevation values from meters to degrees
+         *@param hf
+         *     The heightfield to scale
+         */
+        static void scaleHeightFieldToDegrees(osg::HeightField* hf);
     };
 }
 

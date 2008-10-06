@@ -71,6 +71,10 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
             hf->getHeightList()[i] = 0.0; 
         }
     }
+
+    //Scale the heightfield elevations to degrees
+    scaleHeightFieldToDegrees(hf);
+
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
     hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
@@ -125,4 +129,22 @@ std::string
 GeographicTileBuilder::getProj4String() const
 {
     return "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0";
+}
+
+void
+GeographicTileBuilder::scaleHeightFieldToDegrees(osg::HeightField *hf)
+{
+    //The number of degrees in a meter at the equator
+    float scale = 1.0f/111319.0f;
+    if (hf)
+    {
+        for (unsigned int i = 0; i < hf->getHeightList().size(); ++i)
+        {
+            hf->getHeightList()[i] *= scale;
+        }
+    }
+    else
+    {
+        osg::notify(osg::WARN) << "scaleHeightFieldToDegrees heightfield is NULL" << std::endl;
+    }
 }

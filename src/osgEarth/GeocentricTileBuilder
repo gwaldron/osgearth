@@ -21,6 +21,9 @@ namespace osgEarth
 
         osg::Node* createQuadrant( const TileKey* key );
 
+        osg::Node* createCap(const double &min_lat, const double &max_lat, const osg::Vec4ub &color);
+
+
         std::string getProj4String() const;
     };
 }

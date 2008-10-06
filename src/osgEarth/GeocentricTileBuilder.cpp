@@ -341,9 +341,78 @@ TileBuilder( map, url_template, global_options )
     //NOP   
 }
 
+
+osg::Node*
+GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, const osg::Vec4ub &color)
+{
+    double min_lon = -180.0;
+    double max_lon = 180.0;
+
+    osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+
+    osgTerrain::Locator* locator = new osgTerrain::Locator();
+    locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+    locator->setTransformAsExtents(
+        osg::DegreesToRadians( min_lon ),
+        osg::DegreesToRadians( min_lat ),
+        osg::DegreesToRadians( max_lon ),
+        osg::DegreesToRadians( max_lat ) );
+
+    osg::HeightField *hf = new osg::HeightField();
+    hf->allocate(32,32);
+    for(unsigned int i=0; i<hf->getHeightList().size(); i++ ) hf->getHeightList()[i] = 0.0;
+
+    hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
+    hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
+    hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
+    hf->setBorderWidth( 0 );
+
+    osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
+    hf_layer->setLocator( locator );
+    hf_layer->setHeightField( hf );
+
+    osg::Image *image = new osg::Image();
+    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    unsigned char *data = image->data(0,0);
+    memcpy(data, color.ptr(), 4);
+
+    osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
+    img_layer->setLocator( locator );
+    img_layer->setFilter( osgTerrain::Layer::LINEAR );
+    tile->setColorLayer( 0, img_layer );
+
+    tile->setLocator( locator );
+    tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
+    tile->setElevationLayer( hf_layer );
+    tile->setRequiresNormals( true );
+
+    return tile;
+
+}
+
 void
 GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 {
+    if (key->getLevelOfDetail() == 0)
+    {
+        const osgEarth::TileGridProfile& profile = key->getProfile();
+        
+        //Extend the caps out so they slightly overlap neighboring tiles to hide seams
+        double cap_offset = 0.1;
+        
+        //Draw a "cap" on the bottom of the earth to account for missing tiles
+        if (profile.yMin() > -90)
+        {
+            tile_parent->addChild(createCap(-90, profile.yMin()+cap_offset,  map->getSouthCapColor()));
+        }
+
+        //Draw a "cap" on the top of the earth to account for missing tiles
+        if (profile.yMax() < 90)
+        {   
+            tile_parent->addChild(createCap(profile.yMax()-cap_offset, 90, map->getNorthCapColor()));
+        }
+    }
+
     tile_parent->addChild( createQuadrant( key->getSubkey( 0 ) ) );
     tile_parent->addChild( createQuadrant( key->getSubkey( 1 ) ) );
 
@@ -418,7 +487,8 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
     //TODO: select/composite:
     if ( image_sources.size() > 0 )
     {
-        for (int i = 0; i < image_sources.size(); ++i)
+        //Add an image from each image source
+        for (unsigned int i = 0; i < image_sources.size(); ++i)
         {
             images.push_back(image_sources[i]->createImage(key));
         }
@@ -426,7 +496,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
 
     if ( images.size() > 0 )
     {
-        for (int i = 0; i < images.size(); ++i)
+        for (unsigned int i = 0; i < images.size(); ++i)
         {
             osgTerrain::Locator* img_locator = locator;
 

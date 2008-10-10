@@ -24,17 +24,35 @@ TileBuilder( _map, _url_template, _global_options )
     //NOP
 }
 
-void
+bool
 GeographicTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 {
-    tile_parent->addChild( createQuadrant( key->getSubkey( 0 ) ) );
-    tile_parent->addChild( createQuadrant( key->getSubkey( 1 ) ) );
+    osg::ref_ptr<osg::Node> q0 = createQuadrant(key->getSubkey(0));
+    osg::ref_ptr<osg::Node> q1 = createQuadrant(key->getSubkey(1));
+    osg::ref_ptr<osg::Node> q2;
+    osg::ref_ptr<osg::Node> q3;
+
+    bool allQuadrantsCreated = (q0.valid() && q1.valid());
 
     if ( key->getLevelOfDetail() > 0 || dynamic_cast<const MercatorTileKey*>( key ) )
     {
-        tile_parent->addChild( createQuadrant( key->getSubkey( 2 ) ) );
-        tile_parent->addChild( createQuadrant( key->getSubkey( 3 ) ) );
+        q2 = createQuadrant( key->getSubkey( 2 ) );
+        q3 = createQuadrant( key->getSubkey( 3 ) );
+        allQuadrantsCreated = (allQuadrantsCreated && q2.valid() && q3.valid());
     }
+
+    if (allQuadrantsCreated)
+    {
+        if (q0.valid()) tile_parent->addChild(q0.get());
+        if (q1.valid()) tile_parent->addChild(q1.get());
+        if (q2.valid()) tile_parent->addChild(q2.get());
+        if (q3.valid()) tile_parent->addChild(q3.get());
+    }
+    else
+    {
+        osg::notify(osg::INFO) << "Couldn't create all 4 quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+    }
+    return allQuadrantsCreated;
 }
 
 
@@ -49,6 +67,24 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     }
 
     int tile_size = key->getProfile().pixelsPerTile();
+
+    //Create the images
+    std::vector<osg::ref_ptr<osg::Image>> images;
+    //TODO: select/composite:
+    if ( image_sources.size() > 0 )
+    {
+        //Add an image from each image source
+        for (unsigned int i = 0; i < image_sources.size(); ++i)
+        {
+            osg::ref_ptr<osg::Image> image = image_sources[i]->createImage(key);
+            if (!image.valid())
+            {
+                osg::notify(osg::INFO) << "createQuadrant: Could not create image for " << key->str() << std::endl;
+                return NULL;
+            }
+            images.push_back(image);
+        }
+    }
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
     geo_locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC ); // sort of.
@@ -97,23 +133,22 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
     tile->setDataVariance(osg::Object::DYNAMIC);
 
-    osg::Image* image = NULL;
 
-    //TODO: select/composite:
-    if ( image_sources.size() > 0 )
+    if ( images.size() > 0 )
     {
-        image = image_sources[0]->createImage( key );
-    }
+        for (unsigned int i = 0; i < images.size(); ++i)
+        {
+            if (images[i].valid())
+            {
+                osgTerrain::Locator* img_locator = geo_locator;
+                if ( dynamic_cast<const MercatorTileKey*>( key ) )
+                    img_locator = new MercatorLocator( *geo_locator, tile_size, key->getLevelOfDetail() );
 
-    if ( image )
-    {
-        osgTerrain::Locator* img_locator = geo_locator;
-        if ( dynamic_cast<const MercatorTileKey*>( key ) )
-            img_locator = new MercatorLocator( *geo_locator, tile_size, key->getLevelOfDetail() );
-
-        osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
-        img_layer->setLocator( img_locator );
-        tile->setColorLayer( 0, img_layer );
+                osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( images[i].get() );
+                img_layer->setLocator( img_locator );
+                tile->setColorLayer( i, img_layer );
+            }
+        }
     }
     
     osg::Vec3d centroid( (max_lon+min_lon)/2.0, (max_lat+min_lat)/2.0, 0 );

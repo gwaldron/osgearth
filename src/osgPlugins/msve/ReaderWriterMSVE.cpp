@@ -64,7 +64,23 @@ public:
             << std::endl;
 
         osgEarth::FileCache fc(cache_path);
-        return fc.readImageFile( buf.str(), options.get() );
+        osg::Image* image = fc.readImageFile( buf.str(), options.get() );
+        if (!image)
+        {
+            //HACK:  The "no image" image that is returned from MSVE will have a JPG extension but it is really a
+            //       PNG.  Try loading it as a PNG instead
+            osg::notify(osg::INFO) << "Trying to read as a PNG " << std::endl;
+            std::stringstream os;
+            os << osgDB::getNameLessExtension(buf.str()) << ".png";
+
+            image = fc.readImageFile(os.str(), options.get());
+
+            if (image)
+            {
+                osg::notify(osg::INFO) << "Read as a PNG successfully" << std::endl;
+            }
+        }
+        return image;
     }
 
     std::string getFormat() const

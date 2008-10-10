@@ -78,7 +78,7 @@ GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, c
 
 }
 
-void
+bool
 GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 {
     if (key->getLevelOfDetail() == 0)
@@ -101,14 +101,32 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
         }
     }
 
-    tile_parent->addChild( createQuadrant( key->getSubkey( 0 ) ) );
-    tile_parent->addChild( createQuadrant( key->getSubkey( 1 ) ) );
+    osg::ref_ptr<osg::Node> q0 = createQuadrant(key->getSubkey(0));
+    osg::ref_ptr<osg::Node> q1 = createQuadrant(key->getSubkey(1));
+    osg::ref_ptr<osg::Node> q2;
+    osg::ref_ptr<osg::Node> q3;
+
+    bool allQuadrantsCreated = (q0.valid() && q1.valid());
 
     if ( key->getLevelOfDetail() > 0 || dynamic_cast<const MercatorTileKey*>( key ) )
     {
-        tile_parent->addChild( createQuadrant( key->getSubkey( 2 ) ) );
-        tile_parent->addChild( createQuadrant( key->getSubkey( 3 ) ) );
+        q2 = createQuadrant( key->getSubkey( 2 ) );
+        q3 = createQuadrant( key->getSubkey( 3 ) );
+        allQuadrantsCreated = (allQuadrantsCreated && q2.valid() && q3.valid());
     }
+
+    if (allQuadrantsCreated)
+    {
+        if (q0.valid()) tile_parent->addChild(q0.get());
+        if (q1.valid()) tile_parent->addChild(q1.get());
+        if (q2.valid()) tile_parent->addChild(q2.get());
+        if (q3.valid()) tile_parent->addChild(q3.get());
+    }
+    else
+    {
+        osg::notify(osg::INFO) << "Couldn't create all 4 quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+    }
+    return allQuadrantsCreated;
 }
 
 osg::Node*
@@ -122,6 +140,25 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
     }
 
     int tile_size = key->getProfile().pixelsPerTile();
+
+    //Create the images
+    std::vector<osg::ref_ptr<osg::Image>> images;
+    //TODO: select/composite:
+    if ( image_sources.size() > 0 )
+    {
+        //Add an image from each image source
+        for (unsigned int i = 0; i < image_sources.size(); ++i)
+        {
+            osg::ref_ptr<osg::Image> image = image_sources[i]->createImage(key);
+            if (!image.valid())
+            {
+                osg::notify(osg::INFO) << "createQuadrant: Could not create image for " << key->str() << std::endl;
+                return NULL;
+            }
+            images.push_back(image);
+        }
+    }
+
 
     osgTerrain::Locator* locator = new osgTerrain::Locator();
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
@@ -168,33 +205,23 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
 
-    //osg::Image* image = NULL;
-
-    std::vector<osg::Image*> images;
-    //TODO: select/composite:
-    if ( image_sources.size() > 0 )
-    {
-        //Add an image from each image source
-        for (unsigned int i = 0; i < image_sources.size(); ++i)
-        {
-            images.push_back(image_sources[i]->createImage(key));
-        }
-    }
-
     if ( images.size() > 0 )
     {
         for (unsigned int i = 0; i < images.size(); ++i)
         {
-            osgTerrain::Locator* img_locator = locator;
+            if (images[i].valid())
+            {
+                osgTerrain::Locator* img_locator = locator;
 
-            // use a special image locator to warp the texture coords for mercator tiles :)
-            // WARNING: TODO: this will not persist upn export....we need a nodekit.
-            if ( dynamic_cast<const MercatorTileKey*>( key ) )
-                img_locator = new MercatorLocator( *locator, tile_size, key->getLevelOfDetail() );
-            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( images[i] );
-            img_layer->setLocator( img_locator );
-            img_layer->setFilter( osgTerrain::Layer::LINEAR );
-            tile->setColorLayer( i, img_layer );
+                // use a special image locator to warp the texture coords for mercator tiles :)
+                // WARNING: TODO: this will not persist upn export....we need a nodekit.
+                if ( dynamic_cast<const MercatorTileKey*>( key ) )
+                    img_locator = new MercatorLocator( *locator, tile_size, key->getLevelOfDetail() );
+                osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( images[i].get() );
+                img_layer->setLocator( img_locator );
+                img_layer->setFilter( osgTerrain::Layer::LINEAR );
+                tile->setColorLayer( i, img_layer );
+            }
         }
     }
     

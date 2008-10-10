@@ -17,7 +17,7 @@ namespace osgEarth
             const osgDB::ReaderWriter::Options* options =NULL);
         
     protected:
-        void addChildren( osg::Group* parent, const TileKey* key );
+        bool addChildren( osg::Group* parent, const TileKey* key );
 
         osg::Node* createQuadrant( const TileKey* key );
 

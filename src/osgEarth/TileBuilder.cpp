@@ -118,7 +118,7 @@ TileBuilder::getMapConfig() const
 osg::Node*
 TileBuilder::createNode( const TileKey* key )
 {
-    osg::Group* top;
+    osg::ref_ptr<osg::Group> top;
     osg::Group* tile_parent;
 
     //osg::notify(osg::NOTICE) << "[osgEarth] TileBuilder::createNode( " << key->str() << ")" << std::endl;
@@ -151,10 +151,13 @@ TileBuilder::createNode( const TileKey* key )
     {
         top = new osg::Group();
         top->setName( key->str() );
-        tile_parent = top;
+        tile_parent = top.get();
     }
 
-    addChildren( tile_parent, key );
+    if (!addChildren( tile_parent, key ))
+    {
+        top = 0;
+    }
 
-    return top;
+    return top.release();
 }

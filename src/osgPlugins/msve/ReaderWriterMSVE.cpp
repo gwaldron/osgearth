@@ -35,11 +35,10 @@ public:
         }
 
         // validate dataset
-        if ( dataset.empty() ) dataset = "h"; // defaul to the "hybrid" dataset (imagery+labels)
-        else if ( dataset == "hybrid" ) dataset = "h";
+        if ( dataset == "hybrid" ) dataset = "h";
         else if ( dataset == "roads" ) dataset = "r";
         else if ( dataset == "aerial" || dataset == "satellite" ) dataset = "a";
-        else dataset = "h";
+        if ( dataset.empty() ) dataset = "h"; // default to the "hybrid" dataset (imagery+labels)
 
         // validate/default URL
         if ( url.empty() )

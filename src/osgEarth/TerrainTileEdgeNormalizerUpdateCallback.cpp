@@ -1,5 +1,5 @@
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
-
+#include <osg/Version>
 using namespace osgEarth;
 
 

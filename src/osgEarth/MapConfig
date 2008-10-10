@@ -61,7 +61,7 @@ namespace osgEarth
             CSTYPE_GEOGRAPHIC
         };
 
-        // project of the tile data
+        // projection of the tile data
         enum Projection
         {
             PROJ_PLATE_CARRE,

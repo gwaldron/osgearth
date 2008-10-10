@@ -130,7 +130,6 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
         osg::DegreesToRadians( min_lat ),
         osg::DegreesToRadians( max_lon ),
         osg::DegreesToRadians( max_lat ) );
-    //locator->setTransformScaledByResolution( false );
 
     osg::HeightField* hf = NULL;
 

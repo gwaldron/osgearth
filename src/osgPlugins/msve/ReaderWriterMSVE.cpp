@@ -53,8 +53,12 @@ public:
 
         std::string format;
 
-        buf << url << "/" << dataset << key->str() << "?g=1&";
+        buf << url << "/" << dataset << key->str();
+        //Only add the ?g=1 if we are connecting to a server address
+        if (osgDB::containsServerAddress(url)) buf << "?g=1&";
         buf << "." << getFormat();
+
+        osg::notify(osg::INFO) << "Loading MSVE tile " << key->str() << " from " << buf.str() << std::endl;
 
         //osg::Image* image = osgDB::readImageFile( buf.str() );
 

@@ -119,42 +119,47 @@ osg::Node*
 TileBuilder::createNode( const TileKey* key )
 {
     osg::ref_ptr<osg::Group> top;
-    osg::Group* tile_parent;
+    osg::Group* parent = NULL;
 
     //osg::notify(osg::NOTICE) << "[osgEarth] TileBuilder::createNode( " << key->str() << ")" << std::endl;
 
     if ( key->getLevelOfDetail() == 0 )
     {
+        // Note: CSN must always be at the top
         osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
         csn->setEllipsoidModel( new osg::EllipsoidModel() );
         csn->setCoordinateSystem( getProj4String() );
         csn->setFormat( "PROJ4" );
+        parent = csn;
+        top = csn;
+
+        if ( map->getImageSources().size() > 1 )
+        {
+            //Decorate the scene with a multi-texture control to control blending between textures
+            osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
+            parent->addChild( mt );
+
+            float r = 1.0f/ map->getImageSources().size();
+            for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
+            {
+                mt->setTextureWeight(i, r);
+            }
+            parent = mt;
+        }
 
         osgTerrain::Terrain* terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
         terrain->setVerticalScale( map->getVerticalScale() );
-        csn->addChild( terrain );
-
-        //Decorate the scene with a multi-texture control to control blending between textures
-        osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
-        mt->addChild(csn);
-
-        float r = 1.0f/ map->getImageSources().size();
-        for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
-        {
-            mt->setTextureWeight(i, r);
-        }
-
-        top = mt;
-        tile_parent = terrain;
+        parent->addChild( terrain );
+        parent = terrain;
     }
     else
     {
         top = new osg::Group();
         top->setName( key->str() );
-        tile_parent = top.get();
+        parent = top.get();
     }
 
-    if (!addChildren( tile_parent, key ))
+    if (!addChildren( parent, key ))
     {
         top = 0;
     }

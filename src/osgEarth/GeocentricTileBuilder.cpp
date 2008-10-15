@@ -267,8 +267,13 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
     return plod;
 }
 
-std::string
-GeocentricTileBuilder::getProj4String() const
+osg::CoordinateSystemNode*
+GeocentricTileBuilder::createCoordinateSystemNode() const
 {
-    return "+init=epsg:4326";
+    osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+    csn->setEllipsoidModel( new osg::EllipsoidModel() );
+    csn->setCoordinateSystem( "+init=epsg:4326" );
+    csn->setFormat( "PROJ4" );
+    return csn;
 }
+

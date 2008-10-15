@@ -24,7 +24,8 @@ namespace osgEarth
         osg::Node* createCap(const double &min_lat, const double &max_lat, const osg::Vec4ub &color);
 
 
-        std::string getProj4String() const;
+        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+        //std::string getProj4String() const;
     };
 }
 

@@ -19,5 +19,7 @@
    <proxy_port>80</proxy_port>
 -->
 
+   <north_cap_color>179 198 212 255</north_cap_color>
+   <south_cap_color>245 241 230 255</south_cap_color>
    
 </map>

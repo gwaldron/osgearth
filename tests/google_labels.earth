@@ -2,6 +2,9 @@
 
     <projection>mercator</projection>
     <min_tile_range_factor>8</min_tile_range_factor>
+
+  <!-- uncomment the following line to enable caching... folder must exist -->
+  <!-- <cache_path>f:/temp/osgearthcache</cache_path> -->
     
 <!-- uncomment the following two lines to activate a proxy server -->
 <!--
@@ -18,7 +21,8 @@
     <!-- datasets: satellite, terrain, labels -->
     <dataset>labels</dataset>
   </image>
-
-  <!-- uncomment the following line to enable caching... folder must exist -->
-  <!-- <cache_path>f:/temp/osgearthcache</cache_path> -->
+  
+   <north_cap_color>153 179 204 255</north_cap_color>
+   <south_cap_color>255 255 255 255</south_cap_color>
+   
 </map>

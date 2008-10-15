@@ -24,7 +24,8 @@ namespace osgEarth
 
         osg::Node* createQuadrant( const TileKey* key );
 
-        std::string getProj4String() const;
+        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+        //std::string getProj4String() const;
 
 
         /*

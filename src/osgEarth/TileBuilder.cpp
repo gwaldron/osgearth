@@ -126,10 +126,7 @@ TileBuilder::createNode( const TileKey* key )
     if ( key->getLevelOfDetail() == 0 )
     {
         // Note: CSN must always be at the top
-        osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
-        csn->setEllipsoidModel( new osg::EllipsoidModel() );
-        csn->setCoordinateSystem( getProj4String() );
-        csn->setFormat( "PROJ4" );
+        osg::CoordinateSystemNode* csn = createCoordinateSystemNode();
         parent = csn;
         top = csn;
 

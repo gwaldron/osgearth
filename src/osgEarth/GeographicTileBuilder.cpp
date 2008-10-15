@@ -169,10 +169,14 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     return plod;
 }
 
-std::string
-GeographicTileBuilder::getProj4String() const
+osg::CoordinateSystemNode*
+GeographicTileBuilder::createCoordinateSystemNode() const
 {
-    return "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0";
+    osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+    csn->setEllipsoidModel( NULL );
+    csn->setCoordinateSystem( "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0" );
+    csn->setFormat( "PROJ4" );
+    return csn;
 }
 
 void

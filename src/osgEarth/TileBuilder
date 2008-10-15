@@ -59,7 +59,9 @@ namespace osgEarth
         */
         virtual bool addChildren( osg::Group* parent, const TileKey* key ) =0;
         virtual osg::Node* createQuadrant( const TileKey* key ) =0;
-        virtual std::string getProj4String() const =0;
+        //virtual std::string getProj4String() const =0;
+        virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const =0;
+
     protected:
         osg::ref_ptr<MapConfig> map;
         std::string url_template;

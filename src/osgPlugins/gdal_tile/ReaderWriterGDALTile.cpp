@@ -84,7 +84,9 @@ public:
         strcat(temp_file, key->str().c_str());
         strcat(temp_file, ".vrt");
 
-        ss << "gdalwarp -te " << minx << " " << miny << " " << maxx << " " << maxy
+        std::string dest_srs = "EPSG:4326";
+
+        ss << "gdalwarp -t_srs " << dest_srs << " -te " << minx << " " << miny << " " << maxx << " " << maxy
             << " -ts " << tile_width << " " << tile_height
             << " \"" << url << "\"  \"" << temp_file << "\"";
 

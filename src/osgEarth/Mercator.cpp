@@ -17,6 +17,12 @@ using namespace osgEarth;
 #define MAX_LON  180.0
 #define MIN_LAT  -85.05112878  
 #define MAX_LAT   85.05112878
+
+#define MIN_X -20037508.342789244
+#define MIN_Y -20037508.342789244
+#define MAX_X 20037508.342789244
+#define MAX_Y 20037508.342789244
+
 #define PIXELS_PER_TILE 256
 
 const std::string MercatorTileKey::TYPE_CODE = "M";
@@ -104,6 +110,35 @@ MercatorTileKey::getPixelExtents(unsigned int& xmin,
     ymin = py;
     xmax = px + (delta << 1);
     ymax = py + (delta << 1);
+}
+
+void
+MercatorTileKey::getMeterExtents(double &xmin,
+                                 double &ymin,
+                                 double &xmax,
+                                 double &ymax) const
+{
+    unsigned int x,y;
+    getTileXY(x,y);
+
+    double tile_width = MAX_X - MIN_X;
+    double tile_height = MAX_Y - MIN_Y;
+
+    //Determine the width and height of a tile in meters at the given lod
+    for (unsigned int lod = 0; lod < getLevelOfDetail(); ++lod)
+    {
+        tile_width /= 2.0;
+        tile_height /= 2.0;
+    }
+
+    //Get the total number of tiles in each dimension
+    int totalTiles = sqrt(pow(4.0, (double)getLevelOfDetail()));
+
+    xmin = MIN_X + (x * tile_width);
+    xmax = xmin + tile_width;
+
+    ymin = MIN_Y + ((totalTiles - y - 1) * tile_height);
+    ymax = ymin + tile_height;  
 }
 
 osgTerrain::TileID

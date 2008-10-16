@@ -36,6 +36,12 @@ namespace osgEarth
             unsigned int& xmax,
             unsigned int& ymax) const;
 
+        void getMeterExtents(
+            double &xmin,
+            double &ymin,
+            double &xmax,
+            double &ymax) const;
+
         osgTerrain::TileID getTileId() const;
 
         static int longLatToPixelXY(

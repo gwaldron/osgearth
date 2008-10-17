@@ -74,6 +74,41 @@ GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, c
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
 
+
+    osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
+    double x, y, z;
+    ellipsoid->convertLatLongHeightToXYZ(
+        osg::DegreesToRadians( (max_lat+min_lat)/2.0 ),
+        osg::DegreesToRadians( (max_lon+min_lon)/2.0 ),
+        0.0,
+        x, y, z );
+
+    osg::Vec3d centroid( x, y, z );
+
+    double sw_x, sw_y, sw_z;
+    ellipsoid->convertLatLongHeightToXYZ(
+        osg::DegreesToRadians( min_lat ),
+        osg::DegreesToRadians( min_lon ),
+        0.0,
+        sw_x, sw_y, sw_z );
+
+    double max_range = 1e10;
+    double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
+    double min_range = radius * map->getMinTileRangeFactor();
+
+    //Set the skirt height of the heightfield
+    hf->setSkirtHeight(radius * map->getSkirtRatio());
+
+    osg::Vec3d normal = centroid;
+    normal.normalize();
+    // dot product: 0 = orthogonal to normal, -1 = equal to normal
+    float deviation = -radius/locator->getEllipsoidModel()->getRadiusPolar();
+
+    osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
+    ccc->set( centroid, normal, deviation, radius );
+    tile->setCullCallback( ccc );
+
+
     return tile;
 
 }

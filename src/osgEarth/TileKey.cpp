@@ -43,15 +43,21 @@ TileKey::getProfile() const
 }
 
 int
-TileKey::getMapSizePixels( int lod ) const
+TileKey::getMapSizePixels() const
 {
-    return getMapSizePixels( profile.pixelsPerTile(), lod );
+    return getMapSizePixels( profile.pixelsPerTile(), getLevelOfDetail() );
 }
 
 /*static*/ int
 TileKey::getMapSizePixels( int tile_size, int lod )
 {
     return tile_size << lod;
+}
+
+int
+TileKey::getMapSizeTiles() const
+{
+    return getMapSizePixels() / profile.pixelsPerTile();
 }
 
 /************************************************************************/

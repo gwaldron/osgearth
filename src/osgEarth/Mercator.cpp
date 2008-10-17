@@ -96,7 +96,7 @@ MercatorTileKey::getPixelExtents(unsigned int& xmin,
 {
     unsigned int lod = getLevelOfDetail();
     unsigned int px = 0, py = 0;
-    unsigned int delta = getMapSizePixels( lod ) >> 1;
+    unsigned int delta = getMapSizePixels() >> 1;
     for( unsigned int i=0; i<lod; i++ )
     {
         switch( key[i] ) {
@@ -179,8 +179,8 @@ MercatorTileKey::getGeoExtents(double& lon_min, double& lat_min,
 double
 MercatorTileKey::getLatitude( unsigned int pixel_y ) const
 {
-    unsigned int lod = getLevelOfDetail();
-    double my  = -osg::PI + (1.0 - (double)pixel_y/(double)getMapSizePixels(lod)) * (2.0*osg::PI);
+    //unsigned int lod = getLevelOfDetail();
+    double my  = -osg::PI + (1.0 - (double)pixel_y/(double)getMapSizePixels()) * (2.0*osg::PI);
     double deg = osg::RadiansToDegrees( 2.0 * atan( exp( my ) ) - .5*osg::PI );
 
     return deg;
@@ -215,19 +215,6 @@ MercatorTileKey::longLatToPixelXY(double lon, double lat, unsigned int lod, int 
     //return raw_x == clamp_x && raw_y == clamp_y;
 }
 
-//void
-//MercatorTileKey::longLatToUnclampedPixelXY(double lon, double lat, unsigned int lod, 
-//                                           double& out_x, double& out_y )
-//{
-//    double x = (lon + 180.0) / 360.0;
-//    double sin_lat = sin( osg::DegreesToRadians( lat ) );
-//    double y = 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
-//
-//    double map_size = (double)getMapSizePixels( lod );
-//    
-//    out_x = clamp( x * map_size + 0.5, 0, map_size-1 );
-//    out_y = clamp( y * map_size + 0.5, 0, map_size-1 );
-//}
 
 void
 MercatorTileKey::pixelXYtoTileXY(unsigned int x, unsigned int y,

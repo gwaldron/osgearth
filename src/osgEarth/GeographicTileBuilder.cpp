@@ -69,7 +69,7 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     int tile_size = key->getProfile().pixelsPerTile();
 
     //Create the images
-    std::vector<osg::ref_ptr<osg::Image>> images;
+    std::vector<osg::ref_ptr<osg::Image> > images;
     //TODO: select/composite:
     if ( image_sources.size() > 0 )
     {
@@ -80,10 +80,19 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
             if (!image.valid())
             {
                 osg::notify(osg::INFO) << "createQuadrant: Could not create image for " << key->str() << std::endl;
-                return NULL;
+                //return NULL;
             }
-            images.push_back(image);
+            else
+            {
+                images.push_back(image);
+            }
         }
+    }
+
+    // bail out if we couldn't load any images.
+    if ( images.size() == 0 )
+    {
+        return NULL;
     }
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
@@ -133,21 +142,18 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
     tile->setDataVariance(osg::Object::DYNAMIC);
 
-
-    if ( images.size() > 0 )
+    // Add a color layer for each image.
+    for (unsigned int i = 0; i < images.size(); ++i)
     {
-        for (unsigned int i = 0; i < images.size(); ++i)
+        if (images[i].valid())
         {
-            if (images[i].valid())
-            {
-                osgTerrain::Locator* img_locator = geo_locator;
-                if ( dynamic_cast<const MercatorTileKey*>( key ) )
-                    img_locator = new MercatorLocator( *geo_locator, tile_size, key->getLevelOfDetail() );
+            osgTerrain::Locator* img_locator = geo_locator;
+            if ( dynamic_cast<const MercatorTileKey*>( key ) )
+                img_locator = new MercatorLocator( *geo_locator, tile_size, key->getLevelOfDetail() );
 
-                osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( images[i].get() );
-                img_layer->setLocator( img_locator );
-                tile->setColorLayer( i, img_layer );
-            }
+            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( images[i].get() );
+            img_layer->setLocator( img_locator );
+            tile->setColorLayer( i, img_layer );
         }
     }
     

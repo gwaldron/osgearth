@@ -79,6 +79,40 @@ PlateCarreTileKey::getGeoExtents(double& out_min_lon,
     return true;
 }
 
+void
+PlateCarreTileKey::getPixelExtents(unsigned int& xmin,
+                                   unsigned int& ymin,
+                                   unsigned int& xmax,
+                                   unsigned int& ymax) const
+{
+    unsigned int lod = getLevelOfDetail();
+    unsigned int px = 0, py = 0;
+    unsigned int delta = getMapSizePixels() >> 1;
+    for( unsigned int i=0; i<lod; i++ )
+    {
+        switch( key[i] ) {
+            case '1': px += delta; break;
+            case '2': py += delta; break;
+            case '3': px += delta; py += delta; break;
+        }
+        delta >>= 1;
+    }
+    xmin = px;
+    ymin = py;
+    xmax = px + (delta << 1);
+    ymax = py + (delta << 1);
+}
+
+void
+PlateCarreTileKey::getTileXY(unsigned int& out_tile_x,
+                           unsigned int& out_tile_y) const
+{
+    unsigned int xmin, ymin, xmax, ymax;
+    getPixelExtents( xmin, ymin, xmax, ymax );
+    out_tile_x = xmin/profile.pixelsPerTile();
+    out_tile_y = ymin/profile.pixelsPerTile();
+}
+
 osgTerrain::TileID
 PlateCarreTileKey::getTileId() const
 {
@@ -121,39 +155,3 @@ PlateCarreTileKey::getTileId() const
   return osgTerrain::TileID(getLevelOfDetail(), tileX, tileY);
 }
 
-/*************************************************************************/
-
-//ReaderWriterPlateCarreTileSource::ReaderWriterPlateCarreTileSource(const std::string& _extension,
-//                                                                   const osgDB::ReaderWriter::Options* _options )
-//: extension( _extension ),
-//  options( _options )
-//{
-//}
-//
-//osg::Image*
-//ReaderWriterPlateCarreTileSource::createImage( const PlateCarreTileKey* key )
-//{
-//    std::string uri = key->str() + "." + extension;
-//    osg::Image* image = NULL;
-//
-//    image = osgDB::readImageFile( uri, options.get() );
-//    if ( !image )
-//    {
-//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readImageFile FAILED for \"" << uri << "\"" << std::endl;
-//    }
-//    return image;
-//}
-//
-//osg::HeightField*
-//ReaderWriterPlateCarreTileSource::createHeightField( const PlateCarreTileKey* key )
-//{
-//    std::string uri = key->str() + "." + extension;
-//    osg::HeightField* field = NULL;
-//
-//    field = osgDB::readHeightFieldFile( uri, options.get() );
-//    if ( !field )
-//    {
-//        osg::notify(osg::WARN) << "ReaderWriterPlateCarreTileSource: osgDB::readHeightField FAILED for \"" << uri << "\"" << std::endl;
-//    }
-//    return field;
-//}

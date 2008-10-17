@@ -1,23 +1,22 @@
-<map name="MSVE" type="geocentric">
+<map name="Google maps" type="geocentric">
 
     <projection>mercator</projection>
     <min_tile_range_factor>8</min_tile_range_factor>
     
 <!-- uncomment the following two lines to activate a proxy server -->
-<!--
-   <proxy_host>80.80.12.123</proxy_host>
-   <proxy_port>80</proxy_port>
--->
+<!-- <proxy_host>80.80.12.123</proxy_host> -->
+<!-- <proxy_port>80</proxy_port> -->
        
 <!-- uncomment the following line to enable caching... folder must exist -->
 <!-- <cache_path>f:/temp/osgearthcache</cache_path> -->
 
-   <image name="MSVE Public" driver="google">
+   <image name="Google maps" driver="google">
    
        <!-- datasets: satellite, terrain, labels -->
        <dataset>terrain</dataset>
    </image>
    
+   <!-- Matching cap colors -->
    <north_cap_color>153 179 204 255</north_cap_color>
    <south_cap_color>255 255 255 255</south_cap_color>
    

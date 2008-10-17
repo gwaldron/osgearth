@@ -149,10 +149,12 @@ public:
         // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
 
         // build the WMS request:
+        char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
+
         std::stringstream buf;
         buf
-            << prefix
-            << "?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
+            << prefix << sep
+            << "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
             << "&LAYERS=" << layers
             << "&FORMAT=image/" << format
             << "&STYLES=" << style

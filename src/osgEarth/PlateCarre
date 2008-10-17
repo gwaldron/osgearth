@@ -36,42 +36,23 @@ namespace osgEarth
             double& out_max_lon,
             double& out_max_lat ) const;
 
+        void getPixelExtents(
+            unsigned int& xmin,
+            unsigned int& ymin,
+            unsigned int& xmax,
+            unsigned int& ymax) const;
+
+        virtual void getTileXY(
+            unsigned int& out_tile_x,
+            unsigned int& out_tile_y) const;
+
         osgTerrain::TileID getTileId() const;
 
         std::string getTypeCode() const { return TYPE_CODE; }
 
     private:
-//        std::string qk;
-//        TileGridProfile profile;
         osg::ref_ptr<PlateCarreTileKey> subkeys[4];
     };
-
-    
-    //class OSGEARTH_EXPORT PlateCarreTileSource : public osg::Referenced
-    //{
-    //public:
-    //    virtual osg::Image* createImage( const PlateCarreTileKey* key ) =0;
-
-    //    virtual osg::HeightField* createHeightField( const PlateCarreTileKey* key ) =0;
-    //};
-
-
-    //class OSGEARTH_EXPORT ReaderWriterPlateCarreTileSource : public PlateCarreTileSource
-    //{
-    //public:
-    //    ReaderWriterPlateCarreTileSource(
-    //        const std::string&                  extension,
-    //        const osgDB::ReaderWriter::Options* options =NULL );
-    //    
-    //public:
-    //    osg::Image* createImage( const PlateCarreTileKey* key );
-
-    //    osg::HeightField* createHeightField( const PlateCarreTileKey* key );
-
-    //private:
-    //    std::string extension;
-    //    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    //};
 }
 
 #endif // OSGEARTH_PLATE_CARRE_QUAD_KEY_H

@@ -26,8 +26,10 @@ namespace osgEarth
         const TileGridProfile& getProfile() const;
 
 
-        int getMapSizePixels( int lod ) const;
- 
+        int getMapSizePixels() const;
+
+        int getMapSizeTiles() const;
+
         static int getMapSizePixels( int tile_size, int lod );
 
     public:
@@ -40,6 +42,16 @@ namespace osgEarth
             double& out_min_lat,
             double& out_max_lon,
             double& out_max_lat ) const =0;
+
+        virtual void getPixelExtents(
+            unsigned int& xmin,
+            unsigned int& ymin,
+            unsigned int& xmax,
+            unsigned int& ymax) const =0;
+
+        virtual void getTileXY(
+            unsigned int& out_tile_x,
+            unsigned int& out_tile_y) const =0;
 
         virtual std::string getTypeCode() const =0;
         

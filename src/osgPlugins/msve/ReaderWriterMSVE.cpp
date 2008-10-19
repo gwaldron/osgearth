@@ -1,5 +1,6 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/FileCache>
+#include <osgEarth/ImageToHeightFieldConverter>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -15,6 +16,8 @@ using namespace osgEarth;
 #define PROPERTY_URL        "url"
 #define PROPERTY_DATASET    "dataset"
 #define PROPERTY_CACHE_PATH "cache_path"
+
+
 
 class MSVESource : public MercatorTileSource
 {
@@ -38,6 +41,7 @@ public:
         if ( dataset == "hybrid" ) dataset = "h";
         else if ( dataset == "roads" ) dataset = "r";
         else if ( dataset == "aerial" || dataset == "satellite" ) dataset = "a";
+        else if ( dataset == "terrain") dataset = "t";
         if ( dataset.empty() ) dataset = "h"; // default to the "hybrid" dataset (imagery+labels)
 
         // validate/default URL
@@ -51,14 +55,13 @@ public:
 
         std::stringstream buf;
 
-        std::string format;
 
         buf << url << "/" << dataset << key->str();
         //Only add the ?g=1 if we are connecting to a server address
         if (osgDB::containsServerAddress(url)) buf << "?g=1&";
         buf << "." << getFormat();
 
-        osg::notify(osg::INFO) << "Loading MSVE tile " << key->str() << " from " << buf.str() << std::endl;
+        osg::notify(osg::INFO) << "Loading MSVE tile " << key->str() << " from " << buf.str();
 
         //osg::Image* image = osgDB::readImageFile( buf.str() );
 
@@ -92,6 +95,10 @@ public:
         if (dataset == "h" || dataset == "a")
         {
             return "jpg";
+        }
+        else if (dataset == "t")
+        {
+            return "tif";
         }
         else
         {
@@ -130,8 +137,12 @@ public:
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
-        //TODO
-        return NULL;
+        osg::Image* image = createImage(key);
+        if (!image)
+        {
+            osg::notify(osg::WARN) << "Failed to read heightfield from " << key->str() << std::endl;
+        }
+        return (ImageToHeightFieldConverter::convert(image));  
     }
 
 private:
@@ -189,10 +200,32 @@ class ReaderWriterMSVE : public osgDB::ReaderWriter
             return image? ReadResult( image ) : ReadResult( "Unable to load MSVE tile" );
         }
 
-        virtual ReadResult readHeightField(const std::string& file_name, const Options* opt) const
+        virtual ReadResult readHeightField(const std::string& file_name, const Options* options) const
         {
-            return ReadResult::FILE_NOT_HANDLED;
-            //NYI
+            std::string ext = osgDB::getFileExtension( file_name );
+            if ( !acceptsExtension( ext ) )
+            {
+                return ReadResult::FILE_NOT_HANDLED;
+            }
+
+            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName(
+                file_name.substr( 0, file_name.find_first_of( '.' ) ) );
+
+            osg::HeightField* hf = NULL;
+
+            osg::ref_ptr<MercatorTileSource> source = new MSVESource( options );
+            //TODO:  Support PlateCarreTileKeys
+            /*if ( dynamic_cast<PlateCarreTileKey*>( key.get() ) )
+            {
+                MercatorTileConverter converter( source.get(), options );
+                image = converter.createImage( static_cast<PlateCarreTileKey*>( key.get() ) );
+            }
+            else*/
+            {
+                hf = source->createHeightField( key.get() );
+            }
+
+            return hf? ReadResult( hf ) : ReadResult( "Unable to load MSVE tile" );
         }
 
         virtual ReadResult readNode(const std::string& file_name, const Options* opt) const

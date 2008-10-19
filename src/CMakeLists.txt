@@ -1,12 +1,13 @@
 #the old construct SUBDIRS( was substituded by ADD_SUBDIRECTORY that is to be preferred according on CMake docs.
-FOREACH( mylibfolder 
+FOREACH( myfolder
         osgEarth
 	osgPlugins
+        applications
     )
 
-    ADD_SUBDIRECTORY(${mylibfolder})
+    ADD_SUBDIRECTORY(${myfolder})
 
-ENDFOREACH( mylibfolder )
+ENDFOREACH( myfolder)
 
 
 IF(MSVC80)

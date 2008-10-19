@@ -1,0 +1,18 @@
+#ifndef OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER
+#define OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER 1
+
+#include <osgEarth/Export>
+
+#include <osg/Image>
+#include <osg/Shape>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT ImageToHeightFieldConverter
+    {
+    public:
+        static osg::HeightField* convert(osg::Image* image, float scaleFactor = 1.0f); 
+    };
+}
+
+#endif //OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER

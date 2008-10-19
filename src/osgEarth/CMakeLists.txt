@@ -25,6 +25,7 @@ SET(LIB_PUBLIC_HEADERS
     GeocentricTileBuilder
     GeographicTileBuilder
     HTTPClient
+    ImageToHeightFieldConverter
     MapConfig
     Mercator
     PlateCarre    
@@ -43,6 +44,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeocentricTileBuilder.cpp
     GeographicTileBuilder.cpp
     HTTPClient.cpp
+    ImageToHeightFieldConverter.cpp
     MapConfig.cpp
     Mercator.cpp
     PlateCarre.cpp

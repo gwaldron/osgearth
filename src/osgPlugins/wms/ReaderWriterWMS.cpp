@@ -1,4 +1,5 @@
 #include <osgEarth/PlateCarre>
+#include <osgEarth/Mercator>
 #include <osgEarth/FileCache>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
@@ -9,6 +10,7 @@
 #include <osgDB/WriteFile>
 #include <sstream>
 #include <stdlib.h>
+#include <iomanip>
 
 using namespace osgEarth;
 
@@ -106,25 +108,40 @@ public:
 
     std::string createURI( const TileKey* key ) const
     {
-        double lon_min, lat_min, lon_max, lat_max;
-        key->getGeoExtents( lon_min, lat_min, lon_max, lat_max );
+        double minx, miny, maxx, maxy;
+
+
+        const PlateCarreTileKey* pk = dynamic_cast<const PlateCarreTileKey*>(key);
+        const MercatorTileKey* mk = dynamic_cast<const MercatorTileKey*>(key);
+
+        //TODO: Would using getGeoExtents and 4326 work well for both PlateCarre and Mercator?
+        if (pk)
+        {
+            key->getGeoExtents( minx, miny, maxx, maxy );
+        }
+        else if (mk)
+        {
+            mk->getMeterExtents(minx, miny, maxx, maxy);
+        }
 
         // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
 
         // build the WMS request:
         char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
 
+        std::string projection = mk ? "EPSG:900913" : "EPSG:4326";
+
         std::stringstream buf;
         buf
-            << prefix << sep
+            << std::fixed << prefix << sep
             << "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
             << "&LAYERS=" << layers
             << "&FORMAT=image/" << format
             << "&STYLES=" << style
-            << "&SRS=EPSG:4326"
+            << "&SRS=" << projection
             << "&WIDTH="<< tile_width
             << "&HEIGHT="<< tile_height
-            << "&BBOX=" << lon_min << "," << lat_min << "," << lon_max << "," << lat_max;
+            << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
 
         // add this to trick OSG into using the right image loader:
         buf << "&." << format;// << ".curl";
@@ -184,17 +201,9 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
             std::string keystr = file_name.substr( 0, file_name.find_first_of( '.' ) );
             osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName( keystr );
             
-            //TODO: support mercator keys?
-            if ( dynamic_cast<PlateCarreTileKey*>(key.get()) )
-            {
-                osg::ref_ptr<TileSource> source = new WMSSource( options ); //TODO: config/cache it
-                osg::Image* image = source->createImage( key.get() );
-                return image? ReadResult( image ) : ReadResult( "Unable to load WMS tile" );
-            }
-            else
-            {
-                return ReadResult::FILE_NOT_HANDLED;
-            }
+            osg::ref_ptr<TileSource> source = new WMSSource( options ); //TODO: config/cache it
+            osg::Image* image = source->createImage( key.get() );
+            return image? ReadResult( image ) : ReadResult( "Unable to load WMS tile" );
         }
 
         virtual ReadResult readHeightField(const std::string& file_name, const Options* options) const
@@ -207,18 +216,9 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
 
             std::string keystr = file_name.substr( 0, file_name.find_first_of( '.' ) );
             osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName( keystr );
-            
-            //TODO: support mercator keys?
-            if ( dynamic_cast<PlateCarreTileKey*>(key.get()) )
-            {
-                osg::ref_ptr<TileSource> source = new WMSSource( options ); //TODO: config/cache it
-                osg::HeightField* heightField = source->createHeightField( key.get() );
-                return heightField? ReadResult( heightField ) : ReadResult( "Unable to load WMS tile" );
-            }
-            else
-            {
-                return ReadResult::FILE_NOT_HANDLED;
-            }
+            osg::ref_ptr<TileSource> source = new WMSSource( options ); //TODO: config/cache it
+            osg::HeightField* heightField = source->createHeightField( key.get() );
+            return heightField? ReadResult( heightField ) : ReadResult( "Unable to load WMS tile" );
         }
 };
 

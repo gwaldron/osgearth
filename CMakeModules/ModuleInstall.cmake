@@ -33,3 +33,9 @@ INSTALL(
     FILES        ${LIB_PUBLIC_HEADERS}
     DESTINATION ${INSTALL_INCDIR}/${LIB_NAME}
 )
+
+#Install the library to the OSG_DIR as well
+INSTALL(
+	TARGETS ${LIB_NAME}
+	RUNTIME DESTINATION ${OSG_DIR}/bin
+)

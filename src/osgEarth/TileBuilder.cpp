@@ -7,8 +7,9 @@
 #include <osg/PagedLOD>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
-#include <osgDB/ReadFile>
+#include <osg/TexEnvCombine>
 #include <osgFX/MultiTextureControl>
+#include <osgDB/ReadFile>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
@@ -130,8 +131,42 @@ TileBuilder::createNode( const TileKey* key )
         parent = csn;
         top = csn;
 
+        //If there is more than one image source, use TexEnvCombine to blend them together
         if ( map->getImageSources().size() > 1 )
         {
+#if 1
+            osg::StateSet* stateset = parent->getOrCreateStateSet();
+            for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
+            {    
+                //Blend the textures together from the bottom up
+                stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
+                
+                //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
+                osg::TexEnvCombine * tec = new osg::TexEnvCombine;
+                tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                
+                tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
+                tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+                tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+                tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                
+                tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
+                tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
+            }
+
+            //Modulate the result with the primary color to get proper lighting
+            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+            texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+            texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+            texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+            stateset->setTextureAttribute(map->getImageSources().size(), texenv, osg::StateAttribute::ON);
+            stateset->setTextureMode(map->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
+#else
             //Decorate the scene with a multi-texture control to control blending between textures
             osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
             parent->addChild( mt );
@@ -142,6 +177,7 @@ TileBuilder::createNode( const TileKey* key )
                 mt->setTextureWeight(i, r);
             }
             parent = mt;
+#endif
         }
 
         osgTerrain::Terrain* terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();

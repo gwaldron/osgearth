@@ -444,9 +444,12 @@ MercatorTileConverter::createImage( const PlateCarreTileKey* pc_key )
 
     else
     {
-        //TODO: deal with the case of no overlapping tiles
+        //No images from the source could be created, return NULL and let the image be deleted
+        osg::notify(osg::INFO) << "MercatorTileConverter:  No images could be created " << std::endl;
+        return NULL;
     }
 
+    //Imagery was created successfully from the Source, so return the image
     return dst_tile.release();
 }
 

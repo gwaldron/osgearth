@@ -16,10 +16,10 @@ using namespace osgEarth;
 #define PROPERTY_DATASET    "dataset"
 #define PROPERTY_CACHE_PATH "cache_path"
 
-class GoogleSource : public MercatorTileSource
+class YahooSource : public MercatorTileSource
 {
 public:
-    GoogleSource( const osgDB::ReaderWriter::Options* _options ) :
+    YahooSource( const osgDB::ReaderWriter::Options* _options ) :
       options( _options )
     {
         if ( options.valid() )
@@ -35,7 +35,7 @@ public:
         }
 
         // validate dataset
-        if ( dataset.empty() ) dataset = "satellite"; // defaul to the satellite view
+        if ( dataset.empty() ) dataset = "roads"; // defaul to the satellite view
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -44,63 +44,37 @@ public:
 
         std::stringstream buf;
         
-        if ( dataset == "satellite" )
+        if ( dataset == "roads" || dataset == "map" )
         {            
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            // http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl?v=4.1&md=2&x=0&y=0&z=2&r=1
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
+            int size = mkey->getMapSizeTiles();
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://khm0.google.com/kh/v=32&hl=en"
-                << "&x=" << tile_x
-                << "&y=" << tile_y
-                << "&z=" << zoom
-                << "&s=Ga&.jpg.curl";
-            
-            // http://khm0.google.com/kh/v=32&hl=en&x=4&y=6&z=4&s=Ga
+            buf << "http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl"
+                << "?v=4.1&md=2&r=1"
+                << "&x=" << (int)tile_x
+                << "&y=" << (size-1-(int)tile_y) - size/2
+                << "&z=" << zoom + 1
+                << "&.jpg.curl";
         }
-        else if ( dataset == "terrain" )
+        else if ( dataset == "aerial" || dataset == "satellite" )
         {
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
-            buf << "http://mt" << server << ".google.com/mt?v=app.81&hl=en&x="
-                << tile_x << "&y=" << tile_y << "&zoom=" 
-                << 17-key->getLevelOfDetail() << "&.jpg.curl";
-        }
-        else if ( dataset == "labels" )
-        {
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
-            unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
+            int size = mkey->getMapSizeTiles();
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://mt3.google.com/mt/v=w2t.83&hl=en"
-                << "&x=" << tile_x
-                << "&y=" << tile_y
-                << "&z=" << zoom
-                << "&s=Ga&.png.curl";
-
-            //http://mt3.google.com/mt/v=w2t.83&hl=en&x=3&y=6&z=4&s=Galileo
-        }
-        else if ( dataset == "roads" )
-        {
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
-            unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
-            int zoom = key->getLevelOfDetail();
-
-            buf << "http://mt" << server << ".google.com/mt?v=w2.86&hl=en"
-                << "&x=" << tile_x
-                << "&y=" << tile_y
-                << "&z=" << zoom
-                << "&s=Ga&.png.curl";
+            buf << "http://us.maps3.yimg.com/aerial.maps.yimg.com/ximg"
+                << "?v=1.8&s=256&t=a&r=1"
+                << "&x=" << (int)tile_x
+                << "&y=" << (size-1-(int)tile_y) - size/2
+                << "&z=" << zoom + 1
+                << "&.jpg.curl";
         }
 
-        osg::notify(osg::INFO) 
-            << "[osgEarth] Google: option string = "
-            << (options.valid()? options->getOptionString() : "<empty>")
-            << std::endl;
+        //osg::notify(osg::NOTICE) << buf.str() << std::endl;
 
         osgEarth::FileCache fc(cache_path);
         return fc.readImageFile( buf.str(), options.get() );
@@ -120,17 +94,17 @@ private:
 };
 
 
-class ReaderWriterGoogle : public osgDB::ReaderWriter
+class ReaderWriterYahoo : public osgDB::ReaderWriter
 {
     public:
-        ReaderWriterGoogle()
+        ReaderWriterYahoo()
         {
-            supportsExtension( "google", "Google maps imagery" );
+            supportsExtension( "yahoo", "Yahoo maps data" );
         }
 
         virtual const char* className()
         {
-            return "Google Imagery ReaderWriter";
+            return "Yahoo Imagery ReaderWriter";
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -140,7 +114,7 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
 
         virtual ReadResult readImage(const std::string& file_name, const Options* options) const
         {
-            if ( osgDB::getLowerCaseFileExtension( file_name ) != "google" )
+            if ( osgDB::getLowerCaseFileExtension( file_name ) != "yahoo" )
                 return ReadResult::FILE_NOT_HANDLED;
 
             osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName(
@@ -148,7 +122,7 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
 
             osg::Image* image = NULL;
 
-            osg::ref_ptr<MercatorTileSource> source = new GoogleSource( options );
+            osg::ref_ptr<MercatorTileSource> source = new YahooSource( options );
             if ( dynamic_cast<PlateCarreTileKey*>( key.get() ) )
             {
                 MercatorTileConverter converter( source.get(), options );
@@ -159,7 +133,7 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
                 image = source->createImage( key.get() );
             }
 
-            return image? ReadResult( image ) : ReadResult( "Unable to load Google tile" );
+            return image? ReadResult( image ) : ReadResult( "Unable to load Yahoo tile" );
         }
 
         virtual ReadResult readHeightField(const std::string& file_name, const Options* opt) const
@@ -174,4 +148,5 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(google, ReaderWriterGoogle)
+REGISTER_OSGPLUGIN(yahoo, ReaderWriterYahoo)
+

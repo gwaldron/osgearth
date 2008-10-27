@@ -1,4 +1,4 @@
-<map name="Google maps" type="geocentric">
+<map name="Yahoo maps" type="geocentric">
 
     <projection>mercator</projection>
     <min_tile_range_factor>8</min_tile_range_factor>
@@ -10,10 +10,10 @@
 <!-- uncomment the following line to enable caching... folder must exist -->
 <!-- <cache_path>f:/temp/osgearthcache</cache_path> -->
 
-   <image name="Google maps" driver="google">
+   <image name="roads map" driver="yahoo">
    
-       <!-- datasets: satellite, terrain, labels -->
-       <dataset>satellite</dataset>
+       <!-- datasets: roads -->
+       <dataset>roads</dataset>
    </image>
    
    <!-- Matching cap colors -->

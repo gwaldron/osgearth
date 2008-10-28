@@ -51,7 +51,7 @@ public:
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://khm0.google.com/kh/v=32&hl=en"
+            buf << "http://khm" << server << ".google.com/kh/v=32&hl=en"
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom
@@ -75,7 +75,7 @@ public:
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://mt3.google.com/mt/v=w2t.83&hl=en"
+            buf << "http://mt" << server << ".google.com/mt/v=w2t.83&hl=en"
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom

@@ -9,6 +9,8 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
+#include <ctype.h>
+
 #include <sstream>
 
 using namespace osgEarth;
@@ -55,13 +57,27 @@ public:
 
         std::stringstream buf;
 
+        std::string myurl = url;
 
-        buf << url << "/" << dataset << key->str();
+        //Round Robin the server number [0,3]
+        if (osgDB::containsServerAddress(url))
+        {
+          //Assume URL is in the form http://[type][server].ortho.tiles.virtualearth.net/tiles/[type][location].[format]?g=45
+          char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+          if (url.size() >=9 && isdigit(myurl[8]))
+          {
+              myurl[8] = server;
+          }
+        }
+        
+
+
+        buf << myurl << "/" << dataset << key->str();
         //Only add the ?g=1 if we are connecting to a server address
         if (osgDB::containsServerAddress(url)) buf << "?g=1&";
         buf << "." << getFormat();
 
-        osg::notify(osg::INFO) << "Loading MSVE tile " << key->str() << " from " << buf.str();
+        osg::notify(osg::INFO) << "Loading MSVE tile " << key->str() << " from " << buf.str() << std::endl;
 
         //osg::Image* image = osgDB::readImageFile( buf.str() );
 

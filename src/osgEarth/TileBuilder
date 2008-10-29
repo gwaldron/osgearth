@@ -28,6 +28,8 @@ namespace osgEarth
     };
 
 
+    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceList;
+
     class OSGEARTH_EXPORT TileBuilder : public osg::Referenced
     {
     public:
@@ -39,6 +41,9 @@ namespace osgEarth
         osg::Node* createNode( const TileKey* key );
 
         MapConfig* getMapConfig() const;
+
+        TileSourceList &getImageSources() {return image_sources;}
+        TileSourceList &getHeightFieldSources() {return heightfield_sources;}
 
     protected:
         TileBuilder( 
@@ -62,11 +67,13 @@ namespace osgEarth
         //virtual std::string getProj4String() const =0;
         virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const =0;
 
+        
+
     protected:
         osg::ref_ptr<MapConfig> map;
         std::string url_template;
-        std::vector< osg::ref_ptr<TileSource> > image_sources;
-        std::vector< osg::ref_ptr<TileSource> > heightfield_sources;
+        TileSourceList image_sources;
+        TileSourceList heightfield_sources;
     };
 };
 

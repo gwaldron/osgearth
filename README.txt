@@ -25,5 +25,5 @@ RUNNING
 
 - You can edit the files to customize the cache folder and the proxy server if necessary.
 
-Example: osgviewer msve.earth
+Example: osgviewer msve-geocentric.earth
 

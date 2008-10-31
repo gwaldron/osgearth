@@ -74,6 +74,7 @@ ENDIF(UNIX)
 INCLUDE_DIRECTORIES(
     ${OSGEARTH_SOURCE_DIR}/src
     ${OSG_DIR}/include
+    ${OSG_INCLUDE_DIR}
 )
 
 # Common global definitions

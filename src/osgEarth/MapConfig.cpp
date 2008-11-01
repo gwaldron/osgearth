@@ -1,6 +1,9 @@
 #include <osgEarth/MapConfig>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/HTTPClient>
+
+#include <osg/Notify>
+
 #include <osgDB/FileNameUtils>
 #include <fstream>
 
@@ -293,6 +296,19 @@ readMap( XmlElement* e_map )
     map->setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), map->getMinTileRangeFactor() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
     map->setCachePath( as<std::string>( e_map->getSubElementText( ELEM_CACHE_PATH ), map->getCachePath() ) );
+
+    //If the OSGEARTH_FILE_CACHE environment variable is set, override whatever is in the map config.
+    std::string cacheFilePath;
+    const char* fileCachePath = getenv("OSGEARTH_FILE_CACHE");
+    if (fileCachePath) //Env Cache Directory
+    {
+        osg::notify(osg::INFO) << "Overriding cache path with OSGEARTH_FILE_CACHE environment variable " << fileCachePath << std::endl;
+        map->setCachePath(std::string(fileCachePath));
+    }
+
+
+
+
 
     map->setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), map->getProxyHost() ) );
     map->setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), map->getProxyPort() ) );

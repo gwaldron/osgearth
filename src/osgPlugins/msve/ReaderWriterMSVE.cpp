@@ -87,8 +87,8 @@ public:
             << std::endl;
 
         osgEarth::FileCache fc(cache_path);
-        osg::Image* image = fc.readImageFile( buf.str(), options.get() );
-        if (!image)
+        osg::ref_ptr<osg::Image> image = fc.readImageFile( buf.str(), options.get() );
+        /*if (!image)
         {
             //HACK:  The "no image" image that is returned from MSVE will have a JPG extension but it is really a
             //       PNG.  Try loading it as a PNG instead
@@ -96,14 +96,17 @@ public:
             std::stringstream os;
             os << osgDB::getNameLessExtension(buf.str()) << ".png";
 
-            image = fc.readImageFile(os.str(), options.get());
+            image = osgDB::readImageFile(os.str(), options.get());
 
-            if (image)
+            if (image.valid())
             {
                 osg::notify(osg::INFO) << "Read as a PNG successfully" << std::endl;
+                osgDB::writeImageFile(*image, "bad_image.png");
             }
-        }
-        return image;
+        }*/
+
+        if (isBadImage(image.get())) return NULL;
+        return image.release();
     }
 
     std::string getFormat() const
@@ -161,12 +164,51 @@ public:
         return (ImageToHeightFieldConverter::convert(image));  
     }
 
+    /*
+     * Determines if the given image is the "bad" image that MSVE uses to denote no imagery in an area
+     */
+    static bool isBadImage(osg::Image* image)
+    {
+        if (image)
+        {
+            if (!bad_image.valid())
+            {
+                bad_image = osgDB::readImageFile("msve_bad_image.png");
+                if (!bad_image.valid()) osg::notify(osg::WARN) << "Could not load msve_bad_image.png" << std::endl;
+            }
+
+            if (bad_image.valid())
+            {
+                if ((image->s() == bad_image->s()) && (image->t() == bad_image->t()))
+                {
+                    for (int c = 0; c < image->s(); ++c)
+                    {
+                        for (int r = 0; r < image->t(); ++r)
+                        {
+                            if (*image->data(c, r) != *bad_image->data(c, r))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    osg::notify(osg::NOTICE) << "Detected bad image" << std::endl;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }        
+
 private:
     osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
     std::string url;
     std::string dataset;
     std::string cache_path;
+
+    static osg::ref_ptr<osg::Image> bad_image;
 };
+
+osg::ref_ptr<osg::Image> MSVESource::bad_image;
 
 
 class ReaderWriterMSVE : public osgDB::ReaderWriter

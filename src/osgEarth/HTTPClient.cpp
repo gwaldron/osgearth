@@ -377,3 +377,35 @@ HTTPClient::get( const std::string& url ) const
     osg::ref_ptr<HTTPRequest> req = new HTTPRequest( url );
     return get( req.get() );
 }
+
+void
+HTTPClient::downloadFile(const std::string &url, const std::string &filename)
+{
+    osg::ref_ptr<HTTPRequest> request = new HTTPRequest(url);
+
+    // download the data
+    HTTPClient client;
+    osg::ref_ptr<HTTPResponse> response = client.get( request.get() );
+    if ( response.valid() && response->isOK())
+    {
+        unsigned int part_num = response->getNumParts() > 1? 1 : 0;
+        std::istream& input_stream = response->getPartStream( part_num );
+
+        std::ofstream fout;
+        fout.open(filename.c_str(), std::ios::out | std::ios::binary);
+
+        input_stream.seekg (0, std::ios::end);
+        int length = input_stream.tellg();
+        input_stream.seekg (0, std::ios::beg);
+
+        char *buffer = new char[length];
+        input_stream.read(buffer, length);
+        fout.write(buffer, length);
+        delete[] buffer;
+        fout.close();
+    }
+    else
+    {
+      osg::notify(osg::NOTICE) << "Error downloading file " << std::endl;
+    } 
+}

@@ -81,6 +81,11 @@ namespace osgEarth
 
         HTTPResponse* get( const std::string& url ) const;
 
+        /*
+         *Utility method for downloading a URL to a file
+         */
+        static void downloadFile(const std::string& url, const std::string& filename);
+
     private:
         std::string proxy_host;
         unsigned short proxy_port;

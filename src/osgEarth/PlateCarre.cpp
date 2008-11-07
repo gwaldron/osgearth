@@ -42,6 +42,13 @@ PlateCarreTileKey::getSubkey( unsigned int quadrant ) const
     return subkeys[quadrant].get();
 }
 
+TileKey*
+PlateCarreTileKey::getParentKey() const
+{
+    if (getLevelOfDetail() == 1) return NULL;
+    return new PlateCarreTileKey(key.substr(0, key.length()-1));
+}
+
 unsigned int
 PlateCarreTileKey::getLevelOfDetail() const
 {

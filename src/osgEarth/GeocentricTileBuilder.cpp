@@ -20,6 +20,7 @@ using namespace osgEarth;
 
 //#define WGS84_WKT "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AXIS["Lat",NORTH],AXIS["Long",EAST],AUTHORITY["EPSG","4326"]]
 
+
 GeocentricTileBuilder::GeocentricTileBuilder( 
     MapConfig* map, 
     const std::string& url_template,
@@ -145,8 +146,8 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
 
     if ( key->getLevelOfDetail() > 0 || dynamic_cast<const MercatorTileKey*>( key ) )
     {
-        q2 = createQuadrant( key->getSubkey( 2 ) );
-        q3 = createQuadrant( key->getSubkey( 3 ) );
+        q2 = createQuadrant( key->getSubkey( 2 ));
+        q3 = createQuadrant( key->getSubkey( 3 ));
         allQuadrantsCreated = (allQuadrantsCreated && q2.valid() && q3.valid());
     }
 
@@ -165,7 +166,7 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
 }
 
 osg::Node*
-GeocentricTileBuilder::createQuadrant( const TileKey* key )
+GeocentricTileBuilder::createQuadrant( const TileKey* key)
 {
     double min_lon, min_lat, max_lon, max_lat;
     if ( !key->getGeoExtents( min_lon, min_lat, max_lon, max_lat ) )
@@ -217,7 +218,34 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key )
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        hf = heightfield_sources[0]->createHeightField( key );
+        hf = heightfield_sources[0]->createHeightField( key );        
+        
+        if (!hf)
+        {
+            //We could not load a HeightField from the TileSource, but we have higher resolution imagery at this point
+            //So, we will try to interpolate a heightfield from the parent tiles of the key
+            osg::ref_ptr<osg::HeightField> parent_hf;
+            osg::ref_ptr<TileKey> tk = key->getParentKey();
+            osg::notify(osg::INFO) << "Couldn't load heightfield from tile " << key->str() << ", trying to interpolate from parent tiles" << std::endl;
+
+            while (tk.valid())
+            {
+                osg::notify(osg::INFO) << "Trying to interpolate heightfield from " << tk->str() << std::endl;
+                parent_hf = heightfield_sources[0]->createHeightField( tk.get());        
+                if (parent_hf.valid())
+                {
+                    osg::notify(osg::INFO) << "Read heightfield from " << tk->str() << std::endl;
+                    break;
+                }
+                tk = tk->getParentKey();
+            }
+
+            if (tk.valid())
+            {
+                osg::ref_ptr<HeightFieldExtractor> hfe = new HeightFieldExtractor(tk.get(), parent_hf.get());
+                hf = hfe->extractChild(key, parent_hf->getNumColumns(), parent_hf->getNumRows());
+            }
+        }
     }
 
     if ( !hf )

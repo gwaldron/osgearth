@@ -72,6 +72,13 @@ MercatorTileKey::getSubkey( unsigned int quadrant ) const
     return subkeys[quadrant].get();
 }
 
+TileKey*
+MercatorTileKey::getParentKey() const
+{
+    if (getLevelOfDetail() == 1) return NULL;
+    return new MercatorTileKey(key.substr(0, key.length()-1));
+}
+
 unsigned int
 MercatorTileKey::getLevelOfDetail() const
 {

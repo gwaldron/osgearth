@@ -26,6 +26,8 @@ namespace osgEarth
 
         TileKey* getSubkey( unsigned int quadrant ) const;
 
+        TileKey* getParentKey() const;
+
         const std::string& str() const;
 
         unsigned int getLevelOfDetail() const;

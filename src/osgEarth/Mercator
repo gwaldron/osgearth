@@ -61,7 +61,9 @@ namespace osgEarth
         bool getGeoExtents(
             double& lon_min, double& lat_min,
             double& lon_max, double& lat_max) const;
-        
+
+        TileKey* getParentKey() const;
+
         TileKey* getSubkey( unsigned int quadrant ) const;
 
         std::string getTypeCode() const { return TYPE_CODE; }

@@ -199,3 +199,64 @@ TileBuilder::createNode( const TileKey* key )
 
     return top.release();
 }
+
+osg::HeightField*
+TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgEarth::TileKey *key)
+{
+    //Try to create the heightfield with the given key
+    osg::ref_ptr<osg::HeightField> hf;
+    osg::ref_ptr<const TileKey> hf_key = key;
+    hf = tileSource->createHeightField( key );        
+
+    if (!hf.valid())
+    {
+        //We could not load the heightfield from the given key, so try to load from parent tiles
+        hf_key = key->getParentKey();
+
+        while (hf_key.valid())
+        {
+            hf = tileSource->createHeightField(hf_key.get());
+            if (hf.valid()) break;
+            hf_key = hf_key->getParentKey();
+        }
+
+        //Use a HeightFieldExtractor to sample the parent tile
+        if (hf.valid())
+        {
+            osg::ref_ptr<HeightFieldExtractor> hfe = new HeightFieldExtractor(hf_key.get(), hf.get());
+            hf = hfe->extractChild(key, hf->getNumColumns(), hf->getNumRows());
+        }
+    }
+
+    return hf.release();
+}
+
+bool
+TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::TileKey *key, osgEarth::TileBuilder::ImageTileKeyPair &imageTile)
+{
+    //Try to create the image with the given key
+    osg::ref_ptr<osg::Image> image = tileSource->createImage(key);
+    osg::ref_ptr<const TileKey> image_key = key;
+    
+    if (!image.valid())
+    {
+        //Could not directly create the image from the given TileKey, so try to load from parent tiles
+        image_key = key->getParentKey();
+
+        while (image_key.valid())
+        {
+            image = tileSource->createImage(image_key.get());
+            if (image.valid()) break;
+            image_key = image_key->getParentKey();
+        }
+    }
+
+    if (image.valid())
+    {
+        imageTile.first = image.get();
+        imageTile.second = image_key.get();
+        return true;
+    }
+    return false;
+}
+

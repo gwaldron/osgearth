@@ -81,7 +81,7 @@ HeightFieldExtractor::HeightFieldExtractor()
     //NOP
 }
 
-HeightFieldExtractor::HeightFieldExtractor(TileKey *key, osg::HeightField *heightField):
+HeightFieldExtractor::HeightFieldExtractor(const TileKey *key, const osg::HeightField *heightField):
 _key(key),
 _heightField(heightField)
 {

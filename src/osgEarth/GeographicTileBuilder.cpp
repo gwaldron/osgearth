@@ -5,6 +5,7 @@
 #include <osg/Notify>
 #include <osg/PagedLOD>
 #include <osg/CoordinateSystemNode>
+#include <osg/Version>
 #include <osgDB/ReadFile>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
@@ -68,6 +69,8 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
 
     int tile_size = key->getProfile().pixelsPerTile();
 
+    ImageTileList image_tiles;
+
     //Create the images
     std::vector<osg::ref_ptr<osg::Image> > images;
     //TODO: select/composite:
@@ -76,51 +79,85 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
         //Add an image from each image source
         for (unsigned int i = 0; i < image_sources.size(); ++i)
         {
-            osg::ref_ptr<osg::Image> image = image_sources[i]->createImage(key);
-            if (!image.valid())
+            ImageTileKeyPair image_tile(image_sources[i]->createImage(key), key);
+            image_tiles.push_back(image_tile);
+        }
+    }
+
+    //Create the heightfield for the tile
+    osg::ref_ptr<osg::HeightField> hf = NULL;
+    //TODO: select/composite.
+    if ( heightfield_sources.size() > 0 )
+    {
+        hf = heightfield_sources[0]->createHeightField(key);
+    }
+
+
+    //Determine if we've created any images
+    unsigned int numValidImages = 0;
+    for (unsigned int i = 0; i < image_tiles.size(); ++i)
+    {
+        if (image_tiles[i].first.valid()) numValidImages++;
+    }
+
+    //If we couldn't create any imagery of heightfields, bail out
+    if (!hf.valid() && (numValidImages == 0))
+    {
+        osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        return NULL;
+    }
+   
+    //Try to interpolate any missing imagery from parent tiles
+    for (unsigned int i = 0; i < image_sources.size(); ++i)
+    {
+        if (!image_tiles[i].first.valid())
+        {
+            if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
             {
-                osg::notify(osg::INFO) << "createQuadrant: Could not create image for " << key->str() << std::endl;
-                //return NULL;
+                osg::notify(osg::WARN) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
+                return NULL;
             }
             else
             {
-                images.push_back(image);
+                osg::notify(osg::INFO) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
             }
         }
     }
 
-    // bail out if we couldn't load any images.
-    if ( images.size() == 0 )
+    //Fill in missing heightfield information from parent tiles
+    if (!hf.valid())
     {
-        return NULL;
+        //We have no heightfield sources, 
+        if (heightfield_sources.size() == 0)
+        {
+            //Make any empty heightfield if no heightfield source is specified
+            hf = new osg::HeightField();
+            hf->allocate( 8, 8 );
+            for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+                hf->getHeightList()[i] = 0.0; //(double)((::rand() % 10000) - 5000);
+        }
+        else
+        {
+            hf = createValidHeightField(heightfield_sources[0].get(), key);
+            if (!hf.valid())
+            {
+                osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
+                return NULL;
+            }
+            else
+            {
+                osg::notify(osg::INFO) << "Interpolated heightfield TileKey " << key->str() << std::endl;
+            }
+        }
     }
+
+    //Scale the heightfield elevations from meters to degrees
+    scaleHeightFieldToDegrees(hf.get());
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
     geo_locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC ); // sort of.
     geo_locator->setTransformAsExtents( min_lon, min_lat, max_lon, max_lat );
-
-    osg::HeightField* hf = NULL;
-
-    //TODO: select/composite.
-    if ( heightfield_sources.size() > 0 )
-    {
-        hf = heightfield_sources[0]->createHeightField( key );
-    }
-
-    if ( !hf )
-    {
-        // make an empty one if we couldn't fetch it
-        hf = new osg::HeightField();
-        hf->allocate( 8, 8 );
-        for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
-        {
-            hf->getHeightList()[i] = 0.0; 
-        }
-    }
-
-    //Scale the heightfield elevations to degrees
-    scaleHeightFieldToDegrees(hf);
-
+    
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
     hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
@@ -129,7 +166,7 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( geo_locator );
-    hf_layer->setHeightField( hf );
+    hf_layer->setHeightField( hf.get() );
 
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
     tile->setLocator( geo_locator );
@@ -142,17 +179,33 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
     tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
     tile->setDataVariance(osg::Object::DYNAMIC);
 
-    // Add a color layer for each image.
-    for (unsigned int i = 0; i < images.size(); ++i)
+    for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
-        if (images[i].valid())
+        if (image_tiles[i].first->valid())
         {
-            osgTerrain::Locator* img_locator = geo_locator;
-            if ( dynamic_cast<const MercatorTileKey*>( key ) )
-                img_locator = new MercatorLocator( *geo_locator, tile_size, key->getLevelOfDetail() );
+            double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
+            image_tiles[i].second->getGeoExtents(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
 
-            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( images[i].get() );
-            img_layer->setLocator( img_locator );
+            //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
+            osg::ref_ptr<osgTerrain::Locator> img_locator = new osgTerrain::Locator;
+            img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC);
+            img_locator->setTransformAsExtents(img_min_lon, img_min_lat,img_max_lon, img_max_lat);
+
+            // use a special image locator to warp the texture coords for mercator tiles :)
+            // WARNING: TODO: this will not persist upon export....we need a nodekit.
+            if ( dynamic_cast<const MercatorTileKey*>( key ) )
+            {
+                img_locator = new MercatorLocator(*img_locator.get(), tile_size, image_tiles[i].second->getLevelOfDetail() );
+            }
+            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
+            img_layer->setLocator( img_locator.get());
+
+#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
+            img_layer->setFilter( osgTerrain::Layer::LINEAR );
+#else
+            img_layer->setMinFilter(osg::Texture::LINEAR_MIPMAP_LINEAR);
+            img_layer->setMagFilter(osg::Texture::LINEAR);
+#endif
             tile->setColorLayer( i, img_layer );
         }
     }

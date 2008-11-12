@@ -67,7 +67,6 @@ GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, c
 
     osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image );
     img_layer->setLocator( locator );
-    img_layer->setFilter( osgTerrain::Layer::LINEAR );
     tile->setColorLayer( 0, img_layer );
 
     tile->setLocator( locator );
@@ -187,14 +186,6 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         for (unsigned int i = 0; i < image_sources.size(); ++i)
         {
             ImageTileKeyPair image_tile(image_sources[i]->createImage(key), key);
-            /*if (!createValidImage(image_sources[i].get(), key, image_tile))
-            {
-                osg::notify(osg::NOTICE) << "Could not create valid image for tile key" << std::endl;
-            }
-            else
-            {
-                image_tiles.push_back(image_tile);
-            } */
             image_tiles.push_back(image_tile);
         }
     }
@@ -321,7 +312,12 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
                 img_locator = new MercatorLocator(*img_locator.get(), tile_size, image_tiles[i].second->getLevelOfDetail() );
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());
+#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
             img_layer->setFilter( osgTerrain::Layer::LINEAR );
+#else
+            img_layer->setMinFilter(osg::Texture::LINEAR_MIPMAP_LINEAR);
+            img_layer->setMagFilter(osg::Texture::LINEAR);
+#endif
             tile->setColorLayer( i, img_layer );
         }
     }

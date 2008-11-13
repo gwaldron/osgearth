@@ -1,5 +1,6 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/FileCache>
+#include <osgEarth/MapConfig>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -15,13 +16,14 @@ using namespace osgEarth;
 #define PROPERTY_URL        "url"
 #define PROPERTY_LAYER      "layer"
 #define PROPERTY_FORMAT     "format"
-#define PROPERTY_CACHE_PATH "cache_path"
+#define PROPERTY_MAP_CONFIG "map_config"
 
 class TileCacheSource : public TileSource
 {
 public:
     TileCacheSource( const osgDB::ReaderWriter::Options* _options ) :
-      options( _options )
+      options( _options ),
+      map_config(0)
     {
         if ( options.valid() )
         {
@@ -34,8 +36,8 @@ public:
             if ( options->getPluginData( PROPERTY_FORMAT ) )
                 format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
-            if (options->getPluginData( PROPERTY_CACHE_PATH ))
-                cache_path = std::string( (const char*)options->getPluginData( PROPERTY_CACHE_PATH ) );
+            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
+                map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
         }
     }
 
@@ -62,7 +64,10 @@ public:
             format.c_str(),
             ( osgDB::containsServerAddress( url )? ".curl" : "" ) );
 
+        std::string cache_path = map_config ? map_config->getCachePath() : std::string("");
+        bool offline = map_config ? map_config->getOfflineHint() : false;
         osgEarth::FileCache fc( cache_path );
+        fc.setOffline(offline);
         return fc.readImageFile( buf, options.get() );
     }
 
@@ -78,7 +83,7 @@ private:
     std::string url;
     std::string layer;
     std::string format;
-    std::string cache_path;
+    const MapConfig* map_config;
 };
 
 // Reads tiles from a TileCache disk cache.

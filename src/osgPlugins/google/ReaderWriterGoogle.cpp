@@ -1,3 +1,4 @@
+#include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
 #include <osgEarth/FileCache>
 
@@ -14,13 +15,14 @@ using namespace osgEarth;
 
 #define PROPERTY_URL        "url"
 #define PROPERTY_DATASET    "dataset"
-#define PROPERTY_CACHE_PATH "cache_path"
+#define PROPERTY_MAP_CONFIG "map_config"
 
 class GoogleSource : public MercatorTileSource
 {
 public:
     GoogleSource( const osgDB::ReaderWriter::Options* _options ) :
-      options( _options )
+      options( _options ),
+      map_config(0)
     {
         if ( options.valid() )
         {
@@ -30,8 +32,8 @@ public:
             if ( options->getPluginData( PROPERTY_DATASET ) )
                 dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
-            if (options->getPluginData( PROPERTY_CACHE_PATH ))
-                cache_path = std::string( (const char*)options->getPluginData( PROPERTY_CACHE_PATH ) );
+            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
+                map_config = (const MapConfig*)options->getPluginData(PROPERTY_MAP_CONFIG);
         }
 
         // validate dataset
@@ -102,7 +104,11 @@ public:
             << (options.valid()? options->getOptionString() : "<empty>")
             << std::endl;
 
+        std::string cache_path = map_config ? map_config->getCachePath() : std::string("");
+        bool offline = map_config ? map_config->getOfflineHint() : false;
+
         osgEarth::FileCache fc(cache_path);
+        fc.setOffline(offline);
         return fc.readImageFile( buf.str(), options.get() );
     }
 
@@ -116,7 +122,7 @@ private:
     osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
     //std::string url;
     std::string dataset;
-    std::string cache_path;
+    const MapConfig *map_config;
 };
 
 

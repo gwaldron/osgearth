@@ -19,6 +19,7 @@ MapConfig::MapConfig()
     min_tile_range_factor = 8.0;
     north_cap_color = osg::Vec4ub(2,5,20,255);
     south_cap_color = osg::Vec4ub(255,255,255,255);
+    offline_hint = false;
 }
 
 void
@@ -166,6 +167,19 @@ MapConfig::getSouthCapColor() const
     return south_cap_color;
 }
 
+void
+MapConfig::setOfflineHint(const bool &hint)
+{
+    offline_hint = hint;
+}
+
+const bool
+MapConfig::getOfflineHint() const
+
+{
+    return offline_hint;
+}
+
 
 /************************************************************************/
 
@@ -214,21 +228,22 @@ SourceConfig::getProperties() const
 
 /************************************************************************/
 
-#define ELEM_MAP             "map"
-#define ATTR_NAME            "name"
-#define ATTR_CSTYPE          "type"
-#define ELEM_PROJECTION      "projection"
-#define ELEM_IMAGE           "image"
-#define ELEM_HEIGHTFIELD     "heightfield"
-#define ELEM_VERTICAL_SCALE  "vertical_scale"
-#define ELEM_MIN_TILE_RANGE  "min_tile_range_factor"
-#define ATTR_DRIVER          "driver"
-#define ELEM_SKIRT_RATIO     "skirt_ratio"
-#define ELEM_CACHE_PATH      "cache_path"
-#define ELEM_PROXY_HOST      "proxy_host"
-#define ELEM_PROXY_PORT      "proxy_port"
-#define ELEM_NORTH_CAP_COLOR "north_cap_color"
-#define ELEM_SOUTH_CAP_COLOR "south_cap_color"
+#define ELEM_MAP               "map"
+#define ATTR_NAME              "name"
+#define ATTR_CSTYPE            "type"
+#define ELEM_PROJECTION        "projection"
+#define ELEM_IMAGE             "image"
+#define ELEM_HEIGHTFIELD       "heightfield"
+#define ELEM_VERTICAL_SCALE    "vertical_scale"
+#define ELEM_MIN_TILE_RANGE    "min_tile_range_factor"
+#define ATTR_DRIVER            "driver"
+#define ELEM_SKIRT_RATIO       "skirt_ratio"
+#define ELEM_CACHE_PATH        "cache_path"
+#define ELEM_PROXY_HOST        "proxy_host"
+#define ELEM_PROXY_PORT        "proxy_port"
+#define ELEM_NORTH_CAP_COLOR   "north_cap_color"
+#define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
+#define ELEM_CONNECTION_STATUS "connection_status"
 
 
 static SourceConfig*
@@ -292,6 +307,14 @@ readMap( XmlElement* e_map )
     else if ( proj == "mercator" || proj == "spherical mercator" )
         map->setTileProjection( MapConfig::PROJ_MERCATOR );
 
+    std::string conn_status = e_map->getSubElementText(ELEM_CONNECTION_STATUS);
+    if (conn_status == "offline")
+        map->setOfflineHint(true);
+    else
+        map->setOfflineHint(false);
+
+
+
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
     map->setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), map->getMinTileRangeFactor() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
@@ -304,6 +327,17 @@ readMap( XmlElement* e_map )
     {
         osg::notify(osg::INFO) << "Overriding cache path with OSGEARTH_FILE_CACHE environment variable " << fileCachePath << std::endl;
         map->setCachePath(std::string(fileCachePath));
+    }
+
+    //If the OSGEARTH_OFFLINE environment variable is set, override whateve is in the map config
+    const char* offline = getenv("OSGEARTH_OFFLINE");
+    if (offline)
+    {
+        if (strcmp(offline, "YES") == 0)
+        {
+            osg::notify(osg::NOTICE) << "Setting osgEarth to offline mode due to OSGEARTH_OFFLINE environment variable " << std::endl;
+            map->setOfflineHint(true);
+        }
     }
 
 
@@ -333,23 +367,6 @@ readMap( XmlElement* e_map )
         if ( heightfield_source )
             map->getHeightFieldSources().push_back( heightfield_source );
     }
-
-    //Set the cache path for each of the imagery sources
-    for (SourceConfigList::iterator itr = map->getImageSources().begin();
-         itr != map->getImageSources().end();
-         ++itr)
-    {
-        (*itr)->getProperties()[ELEM_CACHE_PATH] = map->getCachePath();
-    }
-
-    //Set the cache path for each of the heightfield sources
-    for (SourceConfigList::iterator itr = map->getHeightFieldSources().begin();
-        itr != map->getHeightFieldSources().end();
-        ++itr)
-    {
-        (*itr)->getProperties()[ELEM_CACHE_PATH] = map->getCachePath();
-    }
-
     return map;
 }
 

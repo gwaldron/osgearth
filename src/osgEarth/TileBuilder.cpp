@@ -61,7 +61,7 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
 }
 
 static void
-addSources(const SourceConfigList& from, 
+addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
            std::vector< osg::ref_ptr<TileSource> >& to,
            const std::string& url_template,
            const osgDB::ReaderWriter::Options* global_options)
@@ -80,6 +80,8 @@ addSources(const SourceConfigList& from,
             local_options->setPluginData( p->first, (void*)p->second.c_str() );
         }
 
+        local_options->setPluginData("map_config", (void*)mapConfig); 
+
         //Add the source to the list
         TileSource* tile_source = new ReaderWriterTileSource( source->getDriver(), local_options.get() );
         to.push_back( tile_source );
@@ -94,8 +96,8 @@ url_template( _url_template )
 {
     if ( map.valid() )
     {
-        addSources( map->getImageSources(), image_sources, url_template, options );
-        addSources( map->getHeightFieldSources(), heightfield_sources, url_template, options );
+        addSources( map, map->getImageSources(), image_sources, url_template, options );
+        addSources( map, map->getHeightFieldSources(), heightfield_sources, url_template, options );
     }
 }
 

@@ -1,4 +1,5 @@
 #include <osgEarth/PlateCarre>
+#include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
 #include <osgEarth/FileCache>
 #include <osgEarth/TileSource>
@@ -20,15 +21,16 @@ using namespace osgEarth;
 #define PROPERTY_FORMAT         "format"
 #define PROPERTY_TILE_WIDTH     "tile_width"
 #define PROPERTY_TILE_HEIGHT    "tile_height"
-#define PROPERTY_CACHE_PATH     "cache_path"
 #define PROPERTY_ELEVATION_UNIT "elevation_unit"
+#define PROPERTY_MAP_CONFIG     "map_config"
 
 class WMSSource : public TileSource
 {
 public:
 	WMSSource( const osgDB::ReaderWriter::Options* options ):
 	  tile_width(256),
-	  tile_height(256)
+	  tile_height(256),
+      map_config(0)
     {
         if ( options->getPluginData( PROPERTY_URL ) )
             prefix = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
@@ -42,8 +44,8 @@ public:
         if ( options->getPluginData( PROPERTY_FORMAT ) )
             format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
-        if ( options->getPluginData( PROPERTY_CACHE_PATH))
-             cache_path = std::string( (const char*)options->getPluginData( PROPERTY_CACHE_PATH ) );
+        if ( options->getPluginData( PROPERTY_MAP_CONFIG))
+             map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
 
         if ( options->getPluginData( PROPERTY_ELEVATION_UNIT))
              elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
@@ -76,9 +78,11 @@ public:
     {
         std::string uri = createURI( key );
 
+        std::string cache_path = map_config ? map_config->getCachePath() : std::string("");
+        bool offline = map_config ? map_config->getOfflineHint() : false;
 
-        //osg::Image* image = osgDB::readImageFile( uri );
         osgEarth::FileCache fc(cache_path);
+        fc.setOffline(offline);
         osg::Image* image = fc.readImageFile(uri);
 
         if ( !image )
@@ -158,7 +162,7 @@ private:
 	int tile_width;
 	int tile_height;
 
-    std::string cache_path;
+    const MapConfig *map_config;
 
     std::string elevation_unit;
 };

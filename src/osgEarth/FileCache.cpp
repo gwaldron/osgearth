@@ -10,6 +10,7 @@ osgEarth::FileCache::FileCache(const std::string &_cache_path)
 {
     image_extension = "dds";
     cache_path = _cache_path;
+    _offline = false;
 }
 
 osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, const osgDB::ReaderWriter::Options* options )
@@ -24,6 +25,13 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
             osg::notify(osg::INFO) << "Reading " << filename << " from cache" << std::endl;
             return osgDB::readImageFile(cachedFilename, options);
         }
+    }
+
+    //Fail if we are in offline mode and the filename contains a server address
+    if (_offline && osgDB::containsServerAddress(filename))
+    {
+        osg::notify(osg::INFO) << "FileCache in offline mode, skipping read of " << filename << std::endl;
+        return 0;
     }
 
     //Load the file

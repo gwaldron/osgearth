@@ -24,11 +24,15 @@ namespace osgEarth
         const std::string& getCachePath() const {return cache_path;}
         void setCachePath(const std::string &_cache_path) {cache_path = _cache_path;}
 
+        void setOffline(bool offline) { _offline = offline;}
+        const bool& getOffline() {return _offline;}
+
     private:
         std::string getCachedFilename(const std::string &filename);
         std::string getCachedImageFilename(const std::string &filename);
         std::string cache_path;
         std::string image_extension;
+        bool _offline;
     };
 }
 

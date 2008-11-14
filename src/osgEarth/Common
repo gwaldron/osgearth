@@ -6,6 +6,7 @@
 #include <osg/ref_ptr>
 #include <string>
 #include <sstream>
+#include <osg/io_utils>
 
 #ifdef WIN32
 #include <windows.h>
@@ -21,6 +22,14 @@ namespace osgEarth
         std::istringstream strin( str );
         if ( !strin.eof() ) strin >> temp;
         return temp;
+    }
+
+    template<typename T> static std::string
+    toString(const T value)
+    {
+        std::stringstream out;
+        out << value;
+        return out.str();
     }
 }
 

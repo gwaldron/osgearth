@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     
 
     //Load the map file
-    osg::ref_ptr<MapConfig> map = MapConfigReader::readXml( filename );
+    osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( filename );
     if ( map.valid() )
     {
         osg::ref_ptr<TileKey> key;

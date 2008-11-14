@@ -56,6 +56,8 @@ namespace osgEarth
         
         std::string getSubElementText( const std::string& tag ) const;
 
+        void addSubElement(const std::string& tag, const std::string& text);
+
     public: // XmlNode
         virtual bool isElement() const { return true; }
 

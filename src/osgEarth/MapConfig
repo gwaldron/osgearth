@@ -237,11 +237,14 @@ namespace osgEarth
     /**
      * Creates MapConfig objects from their XML description.
      */
-    class OSGEARTH_EXPORT MapConfigReader
+    class OSGEARTH_EXPORT MapConfigReaderWriter
     {
     public:
         static MapConfig* readXml( const std::string& location );
         static MapConfig* readXml( std::istream& input );
+
+        static void writeXml(const MapConfig* map, const std::string& location);
+        static void writeXml(const MapConfig* map, std::ostream& output);
     };
 };
 

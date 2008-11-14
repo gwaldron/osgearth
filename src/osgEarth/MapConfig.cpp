@@ -272,6 +272,18 @@ readSource( XmlElement* e_source )
     return source;
 }
 
+static void writeSource( const SourceConfig* source, XmlElement* e_source )
+{
+    e_source->getAttrs()[ATTR_NAME] = source->getName();
+    e_source->getAttrs()[ATTR_DRIVER] = source->getDriver();
+
+    //Add all the properties
+    for (SourceProperties::const_iterator i = source->getProperties().begin(); i != source->getProperties().end(); i++ )
+    {
+        e_source->addSubElement(i->first, i->second);
+    }
+}
+
 
 osg::Vec4ub getColor(const std::string& str, osg::Vec4ub default_value)
 {
@@ -287,6 +299,8 @@ osg::Vec4ub getColor(const std::string& str, osg::Vec4ub default_value)
     }
     return color;
 }
+
+
 
 static MapConfig*
 readMap( XmlElement* e_map )
@@ -320,30 +334,6 @@ readMap( XmlElement* e_map )
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
     map->setCachePath( as<std::string>( e_map->getSubElementText( ELEM_CACHE_PATH ), map->getCachePath() ) );
 
-    //If the OSGEARTH_FILE_CACHE environment variable is set, override whatever is in the map config.
-    std::string cacheFilePath;
-    const char* fileCachePath = getenv("OSGEARTH_FILE_CACHE");
-    if (fileCachePath) //Env Cache Directory
-    {
-        osg::notify(osg::INFO) << "Overriding cache path with OSGEARTH_FILE_CACHE environment variable " << fileCachePath << std::endl;
-        map->setCachePath(std::string(fileCachePath));
-    }
-
-    //If the OSGEARTH_OFFLINE environment variable is set, override whateve is in the map config
-    const char* offline = getenv("OSGEARTH_OFFLINE");
-    if (offline)
-    {
-        if (strcmp(offline, "YES") == 0)
-        {
-            osg::notify(osg::NOTICE) << "Setting osgEarth to offline mode due to OSGEARTH_OFFLINE environment variable " << std::endl;
-            map->setOfflineHint(true);
-        }
-    }
-
-
-
-
-
     map->setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), map->getProxyHost() ) );
     map->setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), map->getProxyPort() ) );
 
@@ -367,11 +357,95 @@ readMap( XmlElement* e_map )
         if ( heightfield_source )
             map->getHeightFieldSources().push_back( heightfield_source );
     }
+
+    //If the OSGEARTH_FILE_CACHE environment variable is set, override whatever is in the map config.
+    std::string cacheFilePath;
+    const char* fileCachePath = getenv("OSGEARTH_FILE_CACHE");
+    if (fileCachePath) //Env Cache Directory
+    {
+        osg::notify(osg::INFO) << "Overriding cache path with OSGEARTH_FILE_CACHE environment variable " << fileCachePath << std::endl;
+        map->setCachePath(std::string(fileCachePath));
+    }
+
+    //If the OSGEARTH_OFFLINE environment variable is set, override whateve is in the map config
+    const char* offline = getenv("OSGEARTH_OFFLINE");
+    if (offline)
+    {
+        if (strcmp(offline, "YES") == 0)
+        {
+            osg::notify(osg::NOTICE) << "Setting osgEarth to offline mode due to OSGEARTH_OFFLINE environment variable " << std::endl;
+            map->setOfflineHint(true);
+        }
+    }
+
     return map;
 }
 
+XmlDocument*
+mapToXmlDocument( const MapConfig *map)
+{
+    //Create the root XML document
+    osg::ref_ptr<XmlDocument> doc = new XmlDocument();
+    
+    //Create the root "map" node
+    osg::ref_ptr<XmlElement> e_map = new XmlElement( "map" );
+    doc->getChildren().push_back( e_map );
+
+    //Write the map's name
+    e_map->getAttrs()[ATTR_NAME] = map->getName();
+
+    //Write the coordinate system
+    std::string cs;
+    if (map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC) cs = "geocentric";
+    else if (map->getCoordinateSystemType() == MapConfig::PROJ_MERCATOR) cs = "geographic";
+    else
+    {
+        osg::notify(osg::NOTICE) << "Unhandled CoordinateSystemType " << std::endl;
+        return NULL;
+    }
+    e_map->getAttrs()[ATTR_CSTYPE] = cs;
+
+    //Write the projection
+    std::string projection;
+    if (map->getTileProjection() == MapConfig::PROJ_PLATE_CARRE) projection = "geographic";
+    else if (map->getTileProjection() == MapConfig::PROJ_MERCATOR) projection = "mercator";
+    e_map->addSubElement( ELEM_PROJECTION, projection );
+
+    //Write out the connection status
+    std::string conn_status = map->getOfflineHint() ? "offline" : "online";
+    e_map->addSubElement( ELEM_CONNECTION_STATUS, conn_status );
+
+    e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map->getVerticalScale() ) );
+    e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map->getMinTileRangeFactor() ) );
+    e_map->addSubElement( ELEM_SKIRT_RATIO, toString<float>( map->getSkirtRatio() ) );
+    e_map->addSubElement( ELEM_CACHE_PATH, map->getCachePath() );
+
+    e_map->addSubElement( ELEM_PROXY_HOST, map->getProxyHost() );
+    e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>(map->getProxyPort() ) );
+    e_map->addSubElement( ELEM_NORTH_CAP_COLOR , toString<osg::Vec4ub>( map->getNorthCapColor() ) );
+    e_map->addSubElement( ELEM_SOUTH_CAP_COLOR , toString<osg::Vec4ub>( map->getSouthCapColor() ) );
+
+    //Write all the image sources
+    for (SourceConfigList::const_iterator i = map->getImageSources().begin(); i != map->getImageSources().end(); i++)
+    {
+        osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_IMAGE );
+        writeSource(i->get(), e_source.get());
+        e_map->getChildren().push_back( e_source );
+    }
+
+    //Write all the heightfield sources
+    for (SourceConfigList::const_iterator i = map->getHeightFieldSources().begin(); i != map->getHeightFieldSources().end(); i++)
+    {
+        osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_HEIGHTFIELD );
+        writeSource(i->get(), e_source.get());
+        e_map->getChildren().push_back( e_source );
+    }
+
+    return doc.release();
+}
+
 MapConfig*
-MapConfigReader::readXml( std::istream& input )
+MapConfigReaderWriter::readXml( std::istream& input )
 {
     MapConfig* map = NULL;
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( input );
@@ -383,7 +457,7 @@ MapConfigReader::readXml( std::istream& input )
 }
 
 MapConfig*
-MapConfigReader::readXml( const std::string& location )
+MapConfigReaderWriter::readXml( const std::string& location )
 {
     MapConfig* map = NULL;
     if ( osgDB::containsServerAddress( location ) )
@@ -401,4 +475,18 @@ MapConfigReader::readXml( const std::string& location )
         map = readXml( in );
     }
     return map;
+}
+
+void
+MapConfigReaderWriter::writeXml(const MapConfig* map, const std::string &location)
+{
+    std::ofstream out(location.c_str());
+    writeXml(map, out);
+}
+
+void
+MapConfigReaderWriter::writeXml(const MapConfig* map, std::ostream &output)
+{
+    osg::ref_ptr<XmlDocument> doc = mapToXmlDocument(map);    
+    doc->store(output);
 }

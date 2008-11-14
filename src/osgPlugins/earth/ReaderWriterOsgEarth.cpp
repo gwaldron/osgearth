@@ -61,7 +61,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             
             if ( k == tile_builders.end() )
             {
-                osg::ref_ptr<MapConfig> map = MapConfigReader::readXml( file_name );
+                osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( file_name );
                 if ( map.valid() )
                 {
                     tile_builder = TileBuilder::create( map.get(), file_name );

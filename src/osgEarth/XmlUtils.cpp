@@ -9,17 +9,17 @@ using namespace osgEarth;
 
 static std::string EMPTY_VALUE = "";
 
-
 std::string
 trim( const std::string& in )
 {
+    std::string whitespace (" \t\f\v\n\r");
     // by Rodrigo C F Dias
     // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
     std::string str = in;
-    std::string::size_type pos = str.find_last_not_of(' ');
+    std::string::size_type pos = str.find_last_not_of( whitespace );
     if(pos != std::string::npos) {
         str.erase(pos + 1);
-        pos = str.find_first_not_of(' ');
+        pos = str.find_first_not_of( whitespace );
         if(pos != std::string::npos) str.erase(0, pos);
     }
     else str.erase(str.begin(), str.end());
@@ -150,6 +150,14 @@ XmlElement::getSubElements( const std::string& name ) const
     return results;
 }
 
+void
+XmlElement::addSubElement(const std::string& tag, const std::string& text)
+{
+    XmlElement *ele = new XmlElement(tag);
+    ele->getChildren().push_back(new XmlText(text));
+    children.push_back(ele);
+}
+
 
 XmlText::XmlText( const std::string& _value )
 {
@@ -269,8 +277,7 @@ XmlDocument::load( std::istream& in )
 static void
 storeNode( XmlNode* node, int depth, std::ostream& out )
 {
-    for( int k=0; k<depth*INDENT; k++ )
-        out << " ";
+    for( int k=0; k<depth*INDENT; k++ ) out << " ";
 
     if ( node->isElement() )
     {
@@ -285,11 +292,13 @@ storeNode( XmlNode* node, int depth, std::ostream& out )
         {
             storeNode( i->get(), depth+1, out );
         }
+        for( int k=0; k<depth*INDENT; k++ ) out << " ";
+        out << "</" << e->getName() << ">" << std::endl;
     }
     else if ( node->isText() )
     {
         XmlText* t = (XmlText*)node;
-        //out << t->getValue() << std::endl;
+        out << t->getValue() << std::endl;
     }
 }
 

@@ -1,0 +1,18 @@
+#ifndef OSGEARTH_IMAGE_UTILS_H
+#define OSGEARTH_IMAGE_UTILS_H 1
+
+#include <osgEarth/Common>
+
+#include <osg/Image>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT ImageUtils
+    {
+    public:
+        static bool canDDSCompress(const osg::Image* image);
+        static osg::Image* convertRGBAtoDDS(const osg::Image* image);
+    };
+}
+
+#endif //OSGEARTH_IMAGE_UTILS_H

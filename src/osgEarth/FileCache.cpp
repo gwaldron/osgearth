@@ -1,4 +1,5 @@
 #include <osgEarth/FileCache>
+#include <osgEarth/ImageUtils>
 
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
@@ -24,7 +25,7 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
         //If the cached file exists, return it
         if (osgDB::fileExists(cachedFilename))
         {
-            osg::notify(osg::NOTICE) << "Reading " << filename << " from cache" << std::endl;
+            osg::notify(osg::INFO) << "Reading " << filename << " from cache" << std::endl;
             return osgDB::readImageFile(cachedFilename, options);
         }
     }
@@ -37,9 +38,10 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
     }
 
     //Load the file
-    osg::Image *image = osgDB::readImageFile(filename, options);
+    osg::ref_ptr<osg::Image> image = osgDB::readImageFile(filename, options);
 
-    if (image && !cachedFilename.empty())
+
+    if (image.valid() && !cachedFilename.empty())
     {
         std::string path = osgDB::getFilePath(cachedFilename);
         //If the path doesn't currently exist or we can't create the path, don't cache the file
@@ -52,11 +54,15 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
         //Write the file to the cache
         if (!cachedFilename.empty())
         {
+            if ((image_extension == "dds") && (ImageUtils::canDDSCompress(image) ) )
+            {
+              image = ImageUtils::convertRGBAtoDDS(image.get());
+            }
             osg::notify(osg::INFO) << "Writing " << filename << " to cache " << cachedFilename <<  std::endl;
-            osgDB::writeImageFile(*image, cachedFilename, options);
+            osgDB::writeImageFile(*image.get(), cachedFilename, options);
         }
     }
-    return image;
+    return image.release();
 }
 
 osg::HeightField* osgEarth::FileCache::readHeightFieldFile(const std::string& filename, const osgDB::ReaderWriter::Options* options )
@@ -74,7 +80,7 @@ osg::Node* osgEarth::FileCache::readNodeFile(const std::string& filename, const 
 std::string osgEarth::FileCache::getCachedImageFilename(const std::string &filename)
 {
     std::string cachedFileName = getCachedFilename(filename);
-    if (!cachedFileName.empty())
+    if (!cachedFileName.empty() && !image_extension.empty())
     {
         cachedFileName = osgDB::getNameLessExtension(cachedFileName);
         std::stringstream buf;

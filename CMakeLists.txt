@@ -108,6 +108,7 @@ SET(CMAKE_DEBUG_POSTFIX  "d")
 
 FIND_PACKAGE(OSG)
 #FIND_PACKAGE(GDAL)
+FIND_PACKAGE(SQUISH)
 
 ################################################################################
 # Create bin and lib directories if required

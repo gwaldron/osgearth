@@ -20,6 +20,7 @@ MapConfig::MapConfig()
     north_cap_color = osg::Vec4ub(2,5,20,255);
     south_cap_color = osg::Vec4ub(255,255,255,255);
     offline_hint = false;
+    filename = "";
 }
 
 void
@@ -35,6 +36,18 @@ MapConfig::getName() const
 }
 
 void
+MapConfig::setFilename(const std::string &_filename)
+{
+    filename = _filename;
+}
+
+const std::string&
+MapConfig::getFilename() const
+{
+    return filename;
+}
+
+void
 MapConfig::setCachePath( const std::string& _cache_path )
 {
     cache_path = _cache_path;
@@ -44,6 +57,22 @@ const std::string&
 MapConfig::getCachePath() const
 {
     return cache_path;
+}
+
+std::string
+MapConfig::getFullCachePath() const
+{
+    //Get the full path to the cache directory
+    std::string real_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle( osgDB::getRealPath( cache_path ) ) );
+    std::string tmp_cache_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle ( cache_path ) );
+
+    //If the full path isn't equal to the cache_path, the path should be relative to the location of the map file
+    if (real_path != tmp_cache_path)
+    {
+        return osgDB::getRealPath( osgDB::concatPaths( osgDB::getFilePath( filename ), tmp_cache_path ) );
+    }
+
+    return real_path;
 }
 
 const MapConfig::CoordinateSystemType&
@@ -474,6 +503,8 @@ MapConfigReaderWriter::readXml( const std::string& location )
         std::ifstream in( location.c_str() );
         map = readXml( in );
     }
+
+    map->setFilename( osgDB::getRealPath( location ) );
     return map;
 }
 

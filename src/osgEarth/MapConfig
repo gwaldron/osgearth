@@ -150,6 +150,12 @@ namespace osgEarth
 
         const std::string& getCachePath() const;
 
+        /**
+        * Gets the absolute path to the file cache.  If a relative cache path is specified, this function
+        * will return the absolute path to the cache that is relative to the location of the map file
+        */
+        std::string getFullCachePath() const;
+
         void setProxyHost( const std::string& host );
 
         const std::string& getProxyHost() const;
@@ -213,8 +219,18 @@ namespace osgEarth
         */
         const bool getOfflineHint() const;
 
+        /*
+        *Sets the absolute filename that the map was loaded from
+        */
+        void setFilename(const std::string &filename);
 
+        /*
+        *Gets the absolute filename that the map was loaded from
+        */
+        const std::string& getFilename() const;
+        
     private:
+        std::string filename;
         std::string name;
         CoordinateSystemType model_cstype;
         Projection tile_proj;

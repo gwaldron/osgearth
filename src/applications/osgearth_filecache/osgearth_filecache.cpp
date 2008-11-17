@@ -1,4 +1,6 @@
 #include <osgDB/ReadFile>
+#include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 
 #include <osg/CoordinateSystemNode>
 #include <osg/io_utils>
@@ -111,20 +113,47 @@ int main(int argc, char** argv)
 
     unsigned int maxLevel = 5;
 
-
     Bounds bounds(-180, -90, 180, 90);
     while (args.read("--max-level", maxLevel));
     while (args.read("-l", maxLevel));
-    while (args.read("--extents", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
-    while (args.read("-e", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+    while (args.read("--bounds", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+    while (args.read("-b", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+
+    std::string export_dir;
+    while (args.read("--export", export_dir));
+    while (args.read("-e", export_dir));
+
+    bool doExport = !export_dir.empty();
 
     osg::notify(osg::NOTICE) << "Caching files within (" << bounds._min.x() << ", " << bounds._min.y() << ") to (" << bounds._max.x() << ", " << bounds._max.y() << ") to level " << maxLevel << std::endl;
-    
 
     //Load the map file
     osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( filename );
     if ( map.valid() )
     {
+        //Modify the MapConfig so that it caches to the export directory
+        if (doExport)
+        {
+            //Write out the destination map file
+            std::string export_map_file = osgDB::concatPaths(export_dir, osgDB::getSimpleFileName( filename) );
+            osg::notify(osg::NOTICE) << "Exporting file to " << export_map_file << std::endl;
+
+            std::string path = osgDB::getFilePath( export_map_file );
+            //If the path doesn't currently exist or we can't create the path, don't cache the file
+            if (!osgDB::fileExists( path ) && !osgDB::makeDirectory( path ) )
+            {
+                osg::notify(osg::NOTICE) << "Couldn't create path " << path << std::endl;
+                return 0;
+            }
+
+            //The caceh will be relative to the output location of the mapfile
+            map->setCachePath(".");
+            map->setOfflineHint(false);
+            MapConfigReaderWriter::writeXml(map.get(), export_map_file); 
+            //Set the filename of the map so relative paths will be relative to the location of the mapfile
+            map->setFilename( osgDB::getRealPath( export_map_file ) );
+        }
+
         osg::ref_ptr<TileKey> key;
 
         if ( map->getTileProjection() == MapConfig::PROJ_MERCATOR )
@@ -137,6 +166,8 @@ int main(int argc, char** argv)
 
 
         processKey(tile_builder.get(), key.get(), bounds, maxLevel);
+
+
 
         return 0;
     }

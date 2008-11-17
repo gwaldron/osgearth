@@ -17,12 +17,14 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
 {
     std::string cachedFilename = getCachedImageFilename(filename);
 
+    //osg::notify(osg::NOTICE) << "Cached Image File for " << filename << " is " << cachedFilename << std::endl;
+
     if (!cachedFilename.empty())
     {
         //If the cached file exists, return it
         if (osgDB::fileExists(cachedFilename))
         {
-            osg::notify(osg::INFO) << "Reading " << filename << " from cache" << std::endl;
+            osg::notify(osg::NOTICE) << "Reading " << filename << " from cache" << std::endl;
             return osgDB::readImageFile(cachedFilename, options);
         }
     }

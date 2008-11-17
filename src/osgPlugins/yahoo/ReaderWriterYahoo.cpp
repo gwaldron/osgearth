@@ -78,7 +78,7 @@ public:
 
         //osg::notify(osg::NOTICE) << buf.str() << std::endl;
 
-        std::string cache_path = map_config ? map_config->getCachePath() : std::string("");
+        std::string cache_path = map_config ? map_config->getFullCachePath() : std::string("");
         bool offline = map_config ? map_config->getOfflineHint() : false;
 
         osgEarth::FileCache fc(cache_path);

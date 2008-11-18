@@ -27,4 +27,4 @@ SET(TARGET_DEFAULT_LABEL_PREFIX "Applications")
 
 ADD_SUBDIRECTORY(earth_tiler)
 ADD_SUBDIRECTORY(osgearth_viewer)
-ADD_SUBDIRECTORY(osgearth_filecache)
+ADD_SUBDIRECTORY(osgearth_export)

@@ -17,8 +17,6 @@
 #include <osgGA/AnimationPathManipulator>
 #include <osgGA/TerrainManipulator>
 
-#include <osgEarth/FeatureOverlayNode>
-
 #include <iostream>
 #include <sstream>
 

@@ -96,8 +96,8 @@ url_template( _url_template )
 {
     if ( map.valid() )
     {
-        addSources( map, map->getImageSources(), image_sources, url_template, options );
-        addSources( map, map->getHeightFieldSources(), heightfield_sources, url_template, options );
+        addSources( map.get(), map->getImageSources(), image_sources, url_template, options );
+        addSources( map.get(), map->getHeightFieldSources(), heightfield_sources, url_template, options );
     }
 }
 

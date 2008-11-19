@@ -54,7 +54,7 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
         //Write the file to the cache
         if (!cachedFilename.empty())
         {
-            if ((image_extension == "dds") && (ImageUtils::canDDSCompress(image) ) )
+            if ((image_extension == "dds") && (ImageUtils::canDDSCompress( image.get() ) ) )
             {
               image = ImageUtils::convertRGBAtoDDS(image.get());
             }

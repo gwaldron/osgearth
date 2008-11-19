@@ -418,7 +418,7 @@ mapToXmlDocument( const MapConfig *map)
     
     //Create the root "map" node
     osg::ref_ptr<XmlElement> e_map = new XmlElement( "map" );
-    doc->getChildren().push_back( e_map );
+    doc->getChildren().push_back( e_map.get() );
 
     //Write the map's name
     e_map->getAttrs()[ATTR_NAME] = map->getName();
@@ -459,7 +459,7 @@ mapToXmlDocument( const MapConfig *map)
     {
         osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_IMAGE );
         writeSource(i->get(), e_source.get());
-        e_map->getChildren().push_back( e_source );
+        e_map->getChildren().push_back( e_source.get() );
     }
 
     //Write all the heightfield sources
@@ -467,7 +467,7 @@ mapToXmlDocument( const MapConfig *map)
     {
         osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_HEIGHTFIELD );
         writeSource(i->get(), e_source.get());
-        e_map->getChildren().push_back( e_source );
+        e_map->getChildren().push_back( e_source.get() );
     }
 
     return doc.release();

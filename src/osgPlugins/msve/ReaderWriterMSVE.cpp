@@ -176,10 +176,15 @@ public:
     {
         if (image)
         {
-            if (!bad_image.valid())
+            static bool tried_to_load_bad_image = false;
+            if (!tried_to_load_bad_image)
             {
-                bad_image = osgDB::readImageFile("msve_bad_image.png");
-                if (!bad_image.valid()) osg::notify(osg::WARN) << "Could not load msve_bad_image.png" << std::endl;
+                if (!bad_image.valid())
+                {
+                    bad_image = osgDB::readImageFile("msve_bad_image.png");
+                    tried_to_load_bad_image = true;
+                    if (!bad_image.valid()) osg::notify(osg::WARN) << "Could not load msve_bad_image.png" << std::endl;
+                }
             }
 
             if (bad_image.valid())

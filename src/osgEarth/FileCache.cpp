@@ -109,7 +109,7 @@ std::string osgEarth::FileCache::getCachedFilename(const std::string &filename)
 {
     std::string cacheFileName;
     //We are only caching files from servers
-    if (osgDB::containsServerAddress(filename))
+    if (osgDB::containsServerAddress(filename) && !cache_path.empty())
     {
         //MD5 hash the URL to avoid very long URLS thats you can typically get with services like WMS
         cacheFileName = cache_path + "/" + md5hash(filename) + "." + osgDB::getFileExtension(filename);

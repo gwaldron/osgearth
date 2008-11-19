@@ -17,7 +17,7 @@ void CacheSeed::seed(MapConfig *map)
     //Create a TileBuilder for the map
     osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::create( map, map->getFilename() );
 
-    processKey( tile_builder, key.get() );
+    processKey( tile_builder.get(), key.get() );
 }
 
 void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)

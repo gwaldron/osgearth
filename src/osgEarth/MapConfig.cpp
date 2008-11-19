@@ -62,6 +62,9 @@ MapConfig::getCachePath() const
 std::string
 MapConfig::getFullCachePath() const
 {
+    //Return early if the cache path is empty
+    if (cache_path.empty()) return cache_path;
+
     //Get the full path to the cache directory
     std::string real_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle( osgDB::getRealPath( cache_path ) ) );
     std::string tmp_cache_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle ( cache_path ) );

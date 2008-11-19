@@ -83,7 +83,7 @@ int main(int argc, char** argv)
         }
 
         //The cache will be relative to the output location of the mapfile
-        map->setCachePath(".");
+        map->setCachePath("cache");
         //Set the map to be offline before writing
         map->setOfflineHint( true );
         //Actually write the mapfile

@@ -1,10 +1,25 @@
 #include <osgEarth/FileCache>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/md5>
 
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
+
+std::string md5hash(std::string filename)
+{
+    MD5 context;
+    unsigned int len = strlen (filename.c_str());
+
+    context.update   ((unsigned char*)filename.c_str(), len);
+    context.finalize ();
+
+    std::stringstream out;
+
+    out << context;
+    return out.str();
+}
 
 
 osgEarth::FileCache::FileCache(const std::string &_cache_path)
@@ -18,7 +33,7 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
 {
     std::string cachedFilename = getCachedImageFilename(filename);
 
-    //osg::notify(osg::NOTICE) << "Cached Image File for " << filename << " is " << cachedFilename << std::endl;
+    //osg::notify(osg::NOTICE) << "\nCached Image File for " << filename << " is " << cachedFilename << std::endl;
 
     if (!cachedFilename.empty())
     {
@@ -96,23 +111,8 @@ std::string osgEarth::FileCache::getCachedFilename(const std::string &filename)
     //We are only caching files from servers
     if (osgDB::containsServerAddress(filename))
     {
-        if (!cache_path.empty())
-        {
-            cacheFileName = cache_path + "/" + 
-                osgDB::getServerAddress(filename) + "/" + 
-                osgDB::getServerFileName(filename);
-        }
+        //MD5 hash the URL to avoid very long URLS thats you can typically get with services like WMS
+        cacheFileName = cache_path + "/" + md5hash(filename) + "." + osgDB::getFileExtension(filename);
     }
-    
-    //Replace any ? with an _ because we can't have filenames with ?  
-    std::replace(cacheFileName.begin(), cacheFileName.end(), '?', '_');
-
-
-    //Remove any : that is not part of the drive specification
-    for (unsigned int i = 0; i < cacheFileName.length(); ++i)
-    {
-        if ((cacheFileName[i] == ':') && (i != 1)) cacheFileName[i] = '_';
-    }
-
     return cacheFileName;
 }

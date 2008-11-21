@@ -8,7 +8,7 @@
   Use tilecache_seed to prepopulate your TileCache cache.
 -->
 
-<map name="TileCache Demo" type="geocentric">
+<map name="TileCache Demo" type="geographic">
    
    <image name="world" driver="tilecache">
        <url>http://pelicanmapping.com/data</url>

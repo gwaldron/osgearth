@@ -1,0 +1,13 @@
+<map name="ESRI ArcGIS Server Map Service Cache Test" type="geocentric">
+
+    <projection>plate carre</projection>
+    
+    <image name="ags map" driver="arcgis_map_cache">
+        <url>http://192.168.0.8/arcgiscache</url>
+        <map>World_PC</map>
+        <format>jpg</format>
+        <tile_width>256</tile_width>
+        <tile_height>256</tile_height>
+    </image>
+   
+</map>

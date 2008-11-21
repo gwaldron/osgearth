@@ -43,6 +43,7 @@ ADD_SUBDIRECTORY(wms)
 ADD_SUBDIRECTORY(gdal_tile)
 ADD_SUBDIRECTORY(tilecache)
 ADD_SUBDIRECTORY(yahoo)
+ADD_SUBDIRECTORY(arcgis_map_cache)
 
 
     

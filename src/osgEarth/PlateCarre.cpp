@@ -112,7 +112,7 @@ PlateCarreTileKey::getPixelExtents(unsigned int& xmin,
 
 void
 PlateCarreTileKey::getTileXY(unsigned int& out_tile_x,
-                           unsigned int& out_tile_y) const
+                             unsigned int& out_tile_y) const
 {
     unsigned int xmin, ymin, xmax, ymax;
     getPixelExtents( xmin, ymin, xmax, ymax );

@@ -41,11 +41,11 @@ GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, c
 
     osgTerrain::Locator* locator = new osgTerrain::Locator();
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-    locator->setTransformAsExtents(
+	locator->setTransform(getTransformFromExtents(
         osg::DegreesToRadians( min_lon ),
         osg::DegreesToRadians( min_lat ),
         osg::DegreesToRadians( max_lon ),
-        osg::DegreesToRadians( max_lat ) );
+        osg::DegreesToRadians( max_lat )));
 
     osg::HeightField *hf = new osg::HeightField();
     hf->allocate(32,32);
@@ -263,11 +263,11 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
            
     osgTerrain::Locator* locator = new osgTerrain::Locator();
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-    locator->setTransformAsExtents(
-        osg::DegreesToRadians( min_lon ),
+	locator->setTransform( getTransformFromExtents(
+		osg::DegreesToRadians( min_lon ),
         osg::DegreesToRadians( min_lat ),
         osg::DegreesToRadians( max_lon ),
-        osg::DegreesToRadians( max_lat ) );
+        osg::DegreesToRadians( max_lat ) ));
 
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
@@ -300,11 +300,11 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = new osgTerrain::Locator;
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-            img_locator->setTransformAsExtents(
+			img_locator->setTransform( getTransformFromExtents(
                 osg::DegreesToRadians( img_min_lon ),
                 osg::DegreesToRadians( img_min_lat ),
                 osg::DegreesToRadians( img_max_lon ),
-                osg::DegreesToRadians( img_max_lat ) );
+                osg::DegreesToRadians( img_max_lat )));
 
             // use a special image locator to warp the texture coords for mercator tiles :)
             // WARNING: TODO: this will not persist upon export....we need a nodekit.

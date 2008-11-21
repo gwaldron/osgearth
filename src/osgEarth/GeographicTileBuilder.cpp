@@ -156,7 +156,8 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
     geo_locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC ); // sort of.
-    geo_locator->setTransformAsExtents( min_lon, min_lat, max_lon, max_lat );
+    //geo_locator->setTransformAsExtents( min_lon, min_lat, max_lon, max_lat );
+	geo_locator->setTransform( getTransformFromExtents( min_lon, min_lat, max_lon, max_lat ) );
     
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
@@ -181,7 +182,7 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
 
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
-        if (image_tiles[i].first->valid())
+        if (image_tiles[i].first.valid())
         {
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
             image_tiles[i].second->getGeoExtents(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
@@ -189,7 +190,8 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = new osgTerrain::Locator;
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOGRAPHIC);
-            img_locator->setTransformAsExtents(img_min_lon, img_min_lat,img_max_lon, img_max_lat);
+            //img_locator->setTransformAsExtents(img_min_lon, img_min_lat,img_max_lon, img_max_lat);
+			img_locator->setTransform( getTransformFromExtents(img_min_lon, img_min_lat,img_max_lon, img_max_lat));
 
             // use a special image locator to warp the texture coords for mercator tiles :)
             // WARNING: TODO: this will not persist upon export....we need a nodekit.

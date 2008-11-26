@@ -107,6 +107,7 @@ bool
 ImageUtils::isCompressed(const osg::Image* image)
 {
     return ((image->getInternalTextureFormat() == GL_COMPRESSED_RGBA_S3TC_DXT5_EXT) ||
+            (image->getInternalTextureFormat() == GL_COMPRESSED_RGBA_S3TC_DXT3_EXT) ||
             (image->getInternalTextureFormat() == GL_COMPRESSED_RGB_S3TC_DXT1_EXT) ||
             (image->getInternalTextureFormat() == GL_COMPRESSED_RGBA_S3TC_DXT1_EXT));
 }

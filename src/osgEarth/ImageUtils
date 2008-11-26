@@ -12,6 +12,8 @@ namespace osgEarth
     public:
         static bool canDDSCompress(const osg::Image* image);
         static osg::Image* convertRGBAtoDDS(const osg::Image* image);
+        static bool isCompressed(const osg::Image* image);
+        static osg::Image* decompress(const osg::Image* image, GLint destFormat);
     };
 }
 

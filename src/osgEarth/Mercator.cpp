@@ -1,5 +1,6 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/PlateCarre>
+#include <osgEarth/ImageUtils>
 #include <osg/Math>
 #include <osg/Notify>
 #include <sstream>
@@ -242,6 +243,10 @@ struct MercatorTile
     MercatorTile( MercatorTileKey* _key, MercatorTileSource* source ) : key( _key )
     {
         image = source->createImage( key.get() );
+        if (image.valid() && osgEarth::ImageUtils::isCompressed(image.get()))
+        {
+            image = osgEarth::ImageUtils::decompress( image.get(), GL_RGB );
+        }
         key->getPixelExtents( min_x, min_y, max_x, max_y );
         double dummy;
         key->getGeoExtents( dummy, min_lat, dummy, max_lat );

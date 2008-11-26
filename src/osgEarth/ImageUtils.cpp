@@ -12,7 +12,7 @@ using namespace osgEarth;
 using namespace squish;
 
 
-bool ImageUtils::canDDSCompress(const osg::Image* image)
+bool ImageUtils::canCompress(const osg::Image* image)
 {
     return (image &&
             (image->getPixelFormat() == GL_RGB || image->getPixelFormat() == GL_RGBA) &&
@@ -21,9 +21,9 @@ bool ImageUtils::canDDSCompress(const osg::Image* image)
 }
 
 osg::Image* 
-ImageUtils::convertRGBAtoDDS(const osg::Image *image)
+ImageUtils::compress(const osg::Image *image, Quality quality)
 {
-    if (!canDDSCompress(image)) return NULL;
+    if (!canCompress(image)) return NULL;
 
     //osg::Timer_t start_tick = osg::Timer::instance()->tick();
 
@@ -49,6 +49,12 @@ ImageUtils::convertRGBAtoDDS(const osg::Image *image)
     
 	int metric = kColourMetricPerceptual;
 	int fit = kColourRangeFit;
+    switch (quality)
+    {
+    case LOW: fit = kColourRangeFit; break;
+    case MED: fit = kColourClusterFit; break;
+    case HIGH: fit = kColourIterativeClusterFit; break;
+    }
 
     int flags = method | metric | fit;
 

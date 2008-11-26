@@ -10,8 +10,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageUtils
     {
     public:
-        static bool canDDSCompress(const osg::Image* image);
-        static osg::Image* convertRGBAtoDDS(const osg::Image* image);
+
+        enum Quality
+        {
+            LOW,
+            MED,
+            HIGH
+        };
+
+        static bool canCompress(const osg::Image* image);
+        static osg::Image* compress(const osg::Image* image, Quality quality);
         static bool isCompressed(const osg::Image* image);
         static osg::Image* decompress(const osg::Image* image, GLint destFormat);
     };

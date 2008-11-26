@@ -36,6 +36,18 @@ int main(int argc, char** argv)
 
     args.getApplicationUsage()->setApplicationName(args.getApplicationName());
 
+    unsigned int maxLevel = 5;
+
+    Bounds bounds(-180, -90, 180, 90);
+    while (args.read("--max-level", maxLevel));
+    while (args.read("-l", maxLevel));
+    while (args.read("--bounds", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+    while (args.read("-b", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+
+    std::string export_dir("export");
+    while (args.read("--export", export_dir));
+    while (args.read("-e", export_dir));
+
     std::string filename;
 
     //Find the input filename
@@ -53,18 +65,6 @@ int main(int argc, char** argv)
         osg::notify(osg::NOTICE) << "Please specify a .earth file to export" << std::endl;
         return 1;
     }
-
-    unsigned int maxLevel = 5;
-
-    Bounds bounds(-180, -90, 180, 90);
-    while (args.read("--max-level", maxLevel));
-    while (args.read("-l", maxLevel));
-    while (args.read("--bounds", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
-    while (args.read("-b", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
-
-    std::string export_dir("export");
-    while (args.read("--export", export_dir));
-    while (args.read("-e", export_dir));
 
     //Load the map file
     osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( filename );

@@ -32,6 +32,16 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    //Read the max level
+    unsigned int maxLevel = 5;
+    while (args.read("--max-level", maxLevel));
+    while (args.read("-l", maxLevel));
+    
+    //Read the bounds
+    Bounds bounds(-180, -90, 180, 90);
+    while (args.read("--bounds", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+    while (args.read("-b", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+
     std::string filename;
     //Find the input filename
     for(int pos=1;pos<args.argc();++pos)
@@ -49,15 +59,6 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    //Read the max level
-    unsigned int maxLevel = 5;
-    while (args.read("--max-level", maxLevel));
-    while (args.read("-l", maxLevel));
-
-    //Read the bounds
-    Bounds bounds(-180, -90, 180, 90);
-    while (args.read("--bounds", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
-    while (args.read("-b", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
 
     //Load the map file
     osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( filename );

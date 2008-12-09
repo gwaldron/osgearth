@@ -1,5 +1,6 @@
 #include <osgEarth/MapConfig>
 #include <osgEarth/TileSource>
+#include <osgEarth/Mercator>
 #include <osgEarth/PlateCarre>
 #include <osgEarth/FileCache>
 
@@ -21,7 +22,7 @@ using namespace osgEarth;
 #define PROPERTY_FORMAT     "format"
 #define PROPERTY_MAP_CONFIG "map_config"
 
-class AGSMapCacheSource : public TileSource
+class AGSMapCacheSource : public MercatorTileSource
 {
 public:
     AGSMapCacheSource( const osgDB::ReaderWriter::Options* _options ) :
@@ -61,12 +62,10 @@ public:
     {
         std::stringstream buf;
 
-        int level = key->getLevelOfDetail()-1;
+        int level = key->getLevelOfDetail();
 
         unsigned int tile_x, tile_y;
         key->getTileXY( tile_x, tile_y );
-        // need to invert the y-tile index
-        //tile_y = key->getMapSizeTiles()/2 - tile_y - 1;
 
         buf << url << "/" << map 
             << "/Layers/" << layer
@@ -134,9 +133,14 @@ class ReaderWriterAGSMapCache : public osgDB::ReaderWriter
 
             osg::Image* image = NULL;
 
+            osg::ref_ptr<MercatorTileSource> source = new AGSMapCacheSource( options );
             if ( dynamic_cast<PlateCarreTileKey*>( key.get() ) )
             {
-                osg::ref_ptr<AGSMapCacheSource> source = new AGSMapCacheSource( options );
+                MercatorTileConverter converter( source.get(), options );
+                image = converter.createImage( static_cast<PlateCarreTileKey*>( key.get() ) );
+            }
+            else
+            {
                 image = source->createImage( key.get() );
             }
 

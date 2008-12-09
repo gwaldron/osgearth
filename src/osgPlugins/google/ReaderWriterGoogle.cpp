@@ -104,6 +104,8 @@ public:
             << (options.valid()? options->getOptionString() : "<empty>")
             << std::endl;
 
+        //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
+
         std::string cache_path = map_config ? map_config->getFullCachePath() : std::string("");
         bool offline = map_config ? map_config->getOfflineHint() : false;
 

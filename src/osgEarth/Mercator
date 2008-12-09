@@ -121,7 +121,6 @@ namespace osgEarth
     private:
         int tile_size;
         unsigned int lod;
-        //osg::ref_ptr<const TileKey> key;
     };
 }
 

@@ -14,7 +14,7 @@
 
    <image name="MSVE Public" driver="msve">
        <url>http://h0.ortho.tiles.virtualearth.net/tiles</url>
-       <dataset>h</dataset>
+       <dataset>hybrid</dataset>
    </image>
    
 </map>

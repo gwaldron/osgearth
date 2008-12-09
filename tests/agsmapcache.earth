@@ -1,13 +1,12 @@
-<map name="ESRI ArcGIS Server Map Service Cache Test" type="geocentric">
+<map name="ESRI ArcGIS Server Map Service Cache Test" type="geographic">
 
-    <projection>plate carre</projection>
+    <projection>mercator</projection>
+    <min_tile_range_factor>6</min_tile_range_factor>
     
     <image name="ags map" driver="arcgis_map_cache">
         <url>http://192.168.0.8/arcgiscache</url>
-        <map>World_PC</map>
-        <format>jpg</format>
-        <tile_width>256</tile_width>
-        <tile_height>256</tile_height>
+        <map>WorldMapMercator</map>
+        <format>png</format>
     </image>
    
 </map>

@@ -19,10 +19,15 @@
 
 #include <osgEarth/FileCache>
 #include <osgEarth/md5>
+#include <osgEarth/HTTPClient>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
+
+//Static HTTPClient used by all FileCache objects
+static osgEarth::HTTPClient s_httpClient;
+static OpenThreads::Mutex s_httpClient_mutex;
 
 std::string md5hash(std::string filename)
 {
@@ -69,11 +74,7 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
         return 0;
     }
 
-    //Load the file
-    osg::ref_ptr<osg::Image> image = osgDB::readImageFile(filename, options);
-
-
-    if (image.valid() && !cachedFilename.empty())
+    if (osgDB::containsServerAddress(filename) && !cachedFilename.empty())
     {
         std::string path = osgDB::getFilePath(cachedFilename);
         //If the path doesn't currently exist or we can't create the path, don't cache the file
@@ -83,14 +84,25 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
             cachedFilename.clear();
         }
 
-        //Write the file to the cache
-        if (!cachedFilename.empty())
-        {
-            osg::notify(osg::INFO) << "Writing " << filename << " to cache " << cachedFilename <<  std::endl;
-            osgDB::writeImageFile(*image.get(), cachedFilename, options);
-        }
+            //Try to download the file
+            if (!cachedFilename.empty())
+            {
+                OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_httpClient_mutex);
+                if (s_httpClient.downloadFile( filename, cachedFilename) )
+                {
+                    //Load the downloaded file
+                    return osgDB::readImageFile(cachedFilename, options);
+                }
+                else
+                {
+                    osg::notify(osg::INFO) << "Could not download " << filename << std::endl;
+                    return 0;
+                }
+            }
     }
-    return image.release();
+
+    //Just use osgDB to read the file
+    return osgDB::readImageFile(filename, options);
 }
 
 osg::HeightField* osgEarth::FileCache::readHeightFieldFile(const std::string& filename, const osgDB::ReaderWriter::Options* options )

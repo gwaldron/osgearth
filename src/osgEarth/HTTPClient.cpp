@@ -17,13 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <curl/curl.h>
+#include <curl/types.h>
 #include <osgEarth/HTTPClient>
 #include <osgDB/Registry>
 #include <osg/Notify>
-#include <curl/curl.h>
-#include <curl/types.h>
 #include <string>
 #include <sstream>
+
+
+
 
 using namespace osgEarth;
 
@@ -164,6 +167,10 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 
 HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
 {
+    curl_handle = curl_easy_init();
+    curl_easy_setopt( curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0" );
+    curl_easy_setopt( curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
+
     proxy_port = 8080;
 
     // try to set proxy host/port by reading the CURL proxy options
@@ -186,6 +193,12 @@ HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
             }
         }
     }
+}
+
+HTTPClient::~HTTPClient()
+{
+    if (curl_handle) curl_easy_cleanup( curl_handle );
+    curl_handle = 0;
 }
 
 void
@@ -334,9 +347,6 @@ HTTPClient::get( HTTPRequest* request ) const
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->stream, std::string() );
 
-    CURL* curl_handle = curl_easy_init();
-    curl_easy_setopt( curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0" );
-    curl_easy_setopt( curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
     curl_easy_setopt( curl_handle, CURLOPT_URL, request->getURL().c_str() );
     curl_easy_setopt( curl_handle, CURLOPT_WRITEDATA, (void*)&sp);
     CURLcode res = curl_easy_perform( curl_handle );
@@ -382,10 +392,6 @@ HTTPClient::get( HTTPRequest* request ) const
             response->parts.push_back( part.get() );
         }
     }
-    
-    curl_easy_cleanup( curl_handle );
-    curl_handle = 0;
-
     return response;
 }
 
@@ -397,14 +403,13 @@ HTTPClient::get( const std::string& url ) const
     return get( req.get() );
 }
 
-void
+bool
 HTTPClient::downloadFile(const std::string &url, const std::string &filename)
 {
     osg::ref_ptr<HTTPRequest> request = new HTTPRequest(url);
 
     // download the data
-    HTTPClient client;
-    osg::ref_ptr<HTTPResponse> response = client.get( request.get() );
+    osg::ref_ptr<HTTPResponse> response = this->get( request.get() );
     if ( response.valid() && response->isOK())
     {
         unsigned int part_num = response->getNumParts() > 1? 1 : 0;
@@ -422,9 +427,11 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
         fout.write(buffer, length);
         delete[] buffer;
         fout.close();
+        return true;
     }
     else
     {
-      osg::notify(osg::NOTICE) << "Error downloading file " << std::endl;
+      osg::notify(osg::INFO) << "Error downloading file " << filename << std::endl;
+      return false;
     } 
 }

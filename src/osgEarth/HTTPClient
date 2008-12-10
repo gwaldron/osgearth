@@ -30,6 +30,8 @@
 #include <map>
 #include <vector>
 
+
+
 namespace osgEarth
 {
     class OSGEARTH_EXPORT HTTPRequest : public osg::Referenced
@@ -91,6 +93,7 @@ namespace osgEarth
     {
     public:
         HTTPClient( const osgDB::ReaderWriter::Options* options =NULL );
+        ~HTTPClient();
 
         void setProxyHost( const std::string& hostname );
 
@@ -103,11 +106,13 @@ namespace osgEarth
         /*
          *Utility method for downloading a URL to a file
          */
-        static void downloadFile(const std::string& url, const std::string& filename);
+        bool downloadFile(const std::string& url, const std::string& filename);
 
     private:
         std::string proxy_host;
         unsigned short proxy_port;
+
+        void *curl_handle;
 
 
     private:

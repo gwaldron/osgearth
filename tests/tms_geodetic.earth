@@ -1,0 +1,6 @@
+<map name="TMS" type="geocentric">
+    <projection>plate carre</projection>
+   <image name="TMS" driver="tms">
+     <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite/</url>
+   </image>
+</map>

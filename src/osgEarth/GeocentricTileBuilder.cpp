@@ -243,8 +243,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         {
             if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
             {
-                osg::notify(osg::WARN) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
-                return NULL;
+                osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
             }
             else
             {
@@ -311,7 +310,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
-        if (image_tiles[i].first->valid())
+        if (image_tiles[i].first.valid())
         {
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
             image_tiles[i].second->getGeoExtents(img_min_lon, img_min_lat, img_max_lon, img_max_lat);

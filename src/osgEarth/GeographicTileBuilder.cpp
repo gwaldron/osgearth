@@ -133,8 +133,7 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
         {
             if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
             {
-                osg::notify(osg::WARN) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
-                return NULL;
+                osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
             }
             else
             {

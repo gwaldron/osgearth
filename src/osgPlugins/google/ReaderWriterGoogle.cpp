@@ -76,7 +76,7 @@ public:
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom
-                << "&s=Ga&.jpg.curl";
+                << "&s=Ga&.jpg";
             
             // http://khm0.google.com/kh/v=32&hl=en&x=4&y=6&z=4&s=Ga
         }
@@ -87,7 +87,7 @@ public:
             mkey->getTileXY( tile_x, tile_y );
             buf << "http://mt" << server << ".google.com/mt?v=app.81&hl=en&x="
                 << tile_x << "&y=" << tile_y << "&zoom=" 
-                << 17-key->getLevelOfDetail() << "&.jpg.curl";
+                << 17-key->getLevelOfDetail() << "&.jpg";
         }
         else if ( dataset == "labels" )
         {
@@ -100,7 +100,7 @@ public:
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom
-                << "&s=Ga&.png.curl";
+                << "&s=Ga&.png";
 
             //http://mt3.google.com/mt/v=w2t.83&hl=en&x=3&y=6&z=4&s=Galileo
         }
@@ -115,7 +115,7 @@ public:
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom
-                << "&s=Ga&.png.curl";
+                << "&s=Ga&.png";
         }
 
         osg::notify(osg::INFO) 

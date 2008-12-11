@@ -94,11 +94,6 @@ public:
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
 
-        if ( osgDB::containsServerAddress( url ) )
-        {
-            buf << ".curl"; // forces use of the CURL plugin to download
-        }
-
         std::string cache_path = map_config ? map_config->getFullCachePath() : std::string("");
         bool offline = map_config ? map_config->getOfflineHint() : false;
 
@@ -162,7 +157,6 @@ class ReaderWriterAGSMapCache : public osgDB::ReaderWriter
             {
                 image = source->createImage( key.get() );
             }
-
             return image? ReadResult( image ) : ReadResult( "Unable to load ArcGIS Server map cache tile" );
         }
 

@@ -167,7 +167,7 @@ public:
             << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
 
         // add this to trick OSG into using the right image loader:
-        buf << "&." << format;// << ".curl";
+        buf << "&." << format;
 
         return buf.str();
     }

@@ -78,7 +78,7 @@ public:
                 << "&x=" << (int)tile_x
                 << "&y=" << (size-1-(int)tile_y) - size/2
                 << "&z=" << zoom + 1
-                << "&.jpg.curl";
+                << "&.jpg";
         }
         else if ( dataset == "aerial" || dataset == "satellite" )
         {
@@ -92,7 +92,7 @@ public:
                 << "&x=" << (int)tile_x
                 << "&y=" << (size-1-(int)tile_y) - size/2
                 << "&z=" << zoom + 1
-                << "&.jpg.curl";
+                << "&.jpg";
         }
 
         //osg::notify(osg::NOTICE) << buf.str() << std::endl;

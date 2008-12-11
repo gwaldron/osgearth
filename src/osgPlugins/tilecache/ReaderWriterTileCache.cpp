@@ -70,7 +70,7 @@ public:
         tile_y = key->getMapSizeTiles() - tile_y - 1;
 
         char buf[2048];
-        sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s%s",
+        sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
             url.c_str(),
             layer.c_str(),
             level,
@@ -80,8 +80,7 @@ public:
             (tile_y / 1000000),
             (tile_y / 1000) % 1000,
             (tile_y % 1000),
-            format.c_str(),
-            ( osgDB::containsServerAddress( url )? ".curl" : "" ) );
+            format.c_str());
 
         std::string cache_path = map_config ? map_config->getFullCachePath() : std::string("");
         bool offline = map_config ? map_config->getOfflineHint() : false;

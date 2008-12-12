@@ -127,7 +127,7 @@ public:
                     //We only want to replace the image with a transparent one if there isn't supposed to be a valid
                     //image in the TileSet.  If the URL is not empty, then there was supposed to be an image and this
                     //should result in a failure
-                    if (url.empty())
+                    if (image_url.empty())
                     {
                         image = new osg::Image();
                         image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);

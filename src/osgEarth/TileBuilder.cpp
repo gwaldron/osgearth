@@ -101,9 +101,19 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 
         local_options->setPluginData("map_config", (void*)mapConfig); 
 
-        //Add the source to the list
-        TileSource* tile_source = new ReaderWriterTileSource( source->getDriver(), local_options.get() );
-        to.push_back( tile_source );
+        //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
+        //For instance, the WMS plugin can be loaded by using ".wms" as the filename
+        TileSource* tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile("." + source->getDriver(), local_options.get()));
+        if (tile_source)
+        {
+            osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;
+            to.push_back( tile_source );
+        }
+        else
+        {
+            osg::notify(osg::NOTICE) << "Warning:  Could not load TileSource from "  << source->getDriver() << std::endl;
+        }
+        
     }
 }
 

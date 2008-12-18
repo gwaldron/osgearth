@@ -122,36 +122,13 @@ class ReaderWriterTileCache : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
         {
-            return readNode( file_name, options );
-        }
-
-        virtual ReadResult readImage(const std::string& file_name, const Options* options) const
-        {
             std::string ext = osgDB::getFileExtension( file_name );
             if ( !acceptsExtension( ext ) )
             {
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName(
-                file_name.substr( 0, file_name.find_first_of( '.' ) ) );
-
-            osg::ref_ptr<TileCacheSource> source = new TileCacheSource( options );
-            osg::Image* image = source->createImage( key.get() );
-
-            return image? ReadResult( image ) : ReadResult( "Unable to load TileCache tile" );
-        }
-
-        virtual ReadResult readHeightField(const std::string& file_name, const Options* opt) const
-        {
-            return ReadResult::FILE_NOT_HANDLED;
-            //NYI
-        }
-
-        virtual ReadResult readNode(const std::string& file_name, const Options* opt) const
-        {
-            return ReadResult::FILE_NOT_HANDLED;
-            //NYI
+            return new TileCacheSource(options);
         }
 };
 

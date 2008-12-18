@@ -161,42 +161,12 @@ class ReaderWriterGDALTile : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& file_name, const Options* opt) const
         {
-            return readNode( file_name, opt );
-        }
-
-        virtual ReadResult readNode(const std::string& file_name, const Options* options ) const
-        {
-            return ReadResult::FILE_NOT_HANDLED;
-        }
-
-        virtual ReadResult readImage(const std::string& file_name, const Options* options ) const
-        {
             std::string ext = osgDB::getFileExtension( file_name );
             if ( !acceptsExtension( ext ) )
             {
                 return ReadResult::FILE_NOT_HANDLED;
             }
-
-            std::string keystr = file_name.substr( 0, file_name.find_first_of( '.' ) );
-            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName( keystr );
-
-            osg::ref_ptr<GDALTileSource> tileSource = new GDALTileSource(options);
-            return tileSource->createImage(key.get());
-        }
-
-        virtual ReadResult readHeightField(const std::string& file_name, const Options* options) const
-        {
-            std::string ext = osgDB::getFileExtension( file_name );
-            if ( !acceptsExtension( ext ) )
-            {
-                return ReadResult::FILE_NOT_HANDLED;
-            }
-
-            std::string keystr = file_name.substr( 0, file_name.find_first_of( '.' ) );
-            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName( keystr );
-
-            osg::ref_ptr<GDALTileSource> tileSource = new GDALTileSource(options);
-            return tileSource->createHeightField(key.get());
+            return new GDALTileSource(opt);
         }
 };
 

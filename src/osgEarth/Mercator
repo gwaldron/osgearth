@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/PlateCarre>
+#include <osgEarth/TileSource>
 #include <osgTerrain/Locator>
 #include <osgTerrain/TerrainTechnique>
 #include <osgDB/ReaderWriter>
@@ -90,16 +91,6 @@ namespace osgEarth
     private:
         osg::ref_ptr<TileKey> subkeys[4];
     };
-    
-
-    class OSGEARTH_EXPORT MercatorTileSource : public osg::Referenced
-    {
-    public:
-        virtual osg::Image* createImage( const TileKey* key ) =0;
-
-        virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
-    };
-
 
     class OSGEARTH_EXPORT MercatorTileConverter
     {
@@ -111,7 +102,7 @@ namespace osgEarth
         };
 
     public:
-        MercatorTileConverter( MercatorTileSource* source, const osgDB::ReaderWriter::Options* options =NULL );
+        MercatorTileConverter( osgEarth::TileSource* source, const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
          * Sets the image resampling filter to use. Default is FILTER_NEAREST_NEIGHBOR.
@@ -123,7 +114,7 @@ namespace osgEarth
         osg::HeightField* createHeightField( const PlateCarreTileKey* key );
 
     private:
-        osg::ref_ptr<MercatorTileSource> source;
+        osg::ref_ptr<osgEarth::TileSource> source;
         Filter filter;
     };
 

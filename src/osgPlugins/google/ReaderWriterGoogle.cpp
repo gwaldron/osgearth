@@ -36,7 +36,7 @@ using namespace osgEarth;
 #define PROPERTY_DATASET    "dataset"
 #define PROPERTY_MAP_CONFIG "map_config"
 
-class GoogleSource : public MercatorTileSource
+class GoogleSource : public TileSource
 {
 public:
     GoogleSource( const osgDB::ReaderWriter::Options* _options ) :
@@ -61,6 +61,13 @@ public:
 
     osg::Image* createImage( const TileKey* key )
     {
+        //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
+        if ( dynamic_cast<const PlateCarreTileKey*>( key ) )
+        {
+            MercatorTileConverter converter( this );
+            return converter.createImage( static_cast<const PlateCarreTileKey*>( key ) );
+        }
+
         const MercatorTileKey* mkey = static_cast<const MercatorTileKey*>( key );
 
         std::stringstream buf;
@@ -162,42 +169,9 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
         {
-            return readNode( file_name, options );
-        }
-
-        virtual ReadResult readImage(const std::string& file_name, const Options* options) const
-        {
             if ( osgDB::getLowerCaseFileExtension( file_name ) != "google" )
                 return ReadResult::FILE_NOT_HANDLED;
-
-            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName(
-                file_name.substr( 0, file_name.find_first_of( '.' ) ) );
-
-            osg::Image* image = NULL;
-
-            osg::ref_ptr<MercatorTileSource> source = new GoogleSource( options );
-            if ( dynamic_cast<PlateCarreTileKey*>( key.get() ) )
-            {
-                MercatorTileConverter converter( source.get(), options );
-                image = converter.createImage( static_cast<PlateCarreTileKey*>( key.get() ) );
-            }
-            else
-            {
-                image = source->createImage( key.get() );
-            }
-
-            return image? ReadResult( image ) : ReadResult( "Unable to load Google tile" );
-        }
-
-        virtual ReadResult readHeightField(const std::string& file_name, const Options* opt) const
-        {
-            return ReadResult::FILE_NOT_HANDLED;
-            //NYI
-        }
-
-        virtual ReadResult readNode(const std::string& file_name, const Options* opt) const
-        {
-            return ReadResult::FILE_NOT_HANDLED;
+            return new GoogleSource(options);
         }
 };
 

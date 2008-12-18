@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osg/Referenced>
+#include <osg/Object>
 #include <osg/Image>
 #include <osg/Shape>
 #include <osgDB/ReaderWriter>
@@ -30,30 +31,19 @@
 
 namespace osgEarth
 {    
-    class OSGEARTH_EXPORT TileSource : public osg::Referenced
+    class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
     public:
-        virtual osg::Image* createImage( const TileKey* key ) =0;
+        virtual osg::Image* createImage( const TileKey* key ) = 0;
+        virtual osg::HeightField* createHeightField( const TileKey* key ) = 0;
 
-        virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
-    };
-
-
-    class OSGEARTH_EXPORT ReaderWriterTileSource : public TileSource
-    {
-    public:
-        ReaderWriterTileSource(
-            const std::string&                  extension,
-            const osgDB::ReaderWriter::Options* options =NULL );
-        
-    public:
-        osg::Image* createImage( const TileKey* key );
-
-        osg::HeightField* createHeightField( const TileKey* key );
-
-    private:
-        std::string extension;
-        osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const TileSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "TileSource"; }
+        virtual const char* libraryName() const { return "osgEarth"; }
+    protected:
+        virtual ~TileSource();
     };
 }
 

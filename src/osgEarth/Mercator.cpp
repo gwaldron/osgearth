@@ -258,7 +258,7 @@ MercatorTileKey::pixelXYtoTileXY(unsigned int x, unsigned int y,
 struct MercatorTile
 {
     MercatorTile() { }
-    MercatorTile( MercatorTileKey* _key, MercatorTileSource* source ) : key( _key )
+    MercatorTile( MercatorTileKey* _key, TileSource* source ) : key( _key )
     {
         image = source->createImage( key.get() );
         key->getPixelExtents( min_x, min_y, max_x, max_y );
@@ -340,7 +340,7 @@ sharpen( osg::Image* input )
 /********************************************************************/
 
 
-MercatorTileConverter::MercatorTileConverter(MercatorTileSource* _source,
+MercatorTileConverter::MercatorTileConverter(TileSource* _source,
                                              const osgDB::ReaderWriter::Options* options )
 {
     filter = MercatorTileConverter::FILTER_NEAREST_NEIGHBOR;

@@ -55,9 +55,9 @@ public:
 class TileMap : public osg::Referenced
 {
 public:
-    std::string getURL(osgEarth::TileKey *tileKey);
+    std::string getURL(const osgEarth::TileKey *tileKey);
 
-    bool intersectsKey(osgEarth::TileKey *tileKey);
+    bool intersectsKey(const osgEarth::TileKey *tileKey);
 
     void computeMinMaxLevel();
 

@@ -80,13 +80,13 @@ void TileMap::computeMinMaxLevel()
 
 
 std::string
-TileMap::getURL(osgEarth::TileKey *tileKey)
+TileMap::getURL(const osgEarth::TileKey *tileKey)
 {
     if (!intersectsKey(tileKey)) return "";
 
     unsigned int zoom = tileKey->getLevelOfDetail();
 
-    PlateCarreTileKey* pc = dynamic_cast<PlateCarreTileKey*>(tileKey);
+    const PlateCarreTileKey* pc = dynamic_cast<const PlateCarreTileKey*>(tileKey);
     if (pc)
     {
         zoom--;
@@ -117,7 +117,7 @@ TileMap::getURL(osgEarth::TileKey *tileKey)
 }
 
 bool
-TileMap::intersectsKey(TileKey *tileKey)
+TileMap::intersectsKey(const TileKey *tileKey)
 {
     double keyMinX, keyMinY, keyMaxX, keyMaxY;
 
@@ -130,7 +130,7 @@ TileMap::intersectsKey(TileKey *tileKey)
 
     if (!inter)
     {
-        MercatorTileKey* mk = dynamic_cast<MercatorTileKey*>(tileKey);
+        const MercatorTileKey* mk = dynamic_cast<const MercatorTileKey*>(tileKey);
         if (mk)
         {
             mk->getMeterExtents(keyMinX, keyMinY, keyMaxX, keyMaxY);

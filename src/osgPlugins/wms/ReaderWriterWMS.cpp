@@ -82,14 +82,6 @@ public:
         {
             elevation_unit = "m";
         }
-
-        //prefix = "http://192.168.0.101/tilecache-2.04/tilecache.py";
-        //layers = "bluemarble2002-dc";
-        //format = "png";
-
-        //prefix = "http://labs.metacarta.com/wms-c/Basic.py";
-        //layers = "basic"; format = "png";
-        //layers = "satellite"; format = "jpg";
     }
 
 public:
@@ -204,44 +196,13 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& file_name, const Options* opt) const
         {
-            return readNode( file_name, opt );
-        }
-
-        virtual ReadResult readNode(const std::string& file_name, const Options* options ) const
-        {
-            return ReadResult::FILE_NOT_HANDLED;
-            //return ReadResult( "WMS: illegal usage (readNode); please use readImage/readHeightField" );
-        }
-
-        virtual ReadResult readImage(const std::string& file_name, const Options* options ) const
-        {
             std::string ext = osgDB::getFileExtension( file_name );
             if ( !acceptsExtension( ext ) )
             {
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            std::string keystr = file_name.substr( 0, file_name.find_first_of( '.' ) );
-            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName( keystr );
-            
-            osg::ref_ptr<TileSource> source = new WMSSource( options ); //TODO: config/cache it
-            osg::Image* image = source->createImage( key.get() );
-            return image? ReadResult( image ) : ReadResult( "Unable to load WMS tile" );
-        }
-
-        virtual ReadResult readHeightField(const std::string& file_name, const Options* options) const
-        {
-            std::string ext = osgDB::getFileExtension( file_name );
-            if ( !acceptsExtension( ext ) )
-            {
-                return ReadResult::FILE_NOT_HANDLED;
-            }
-
-            std::string keystr = file_name.substr( 0, file_name.find_first_of( '.' ) );
-            osg::ref_ptr<TileKey> key = TileKeyFactory::createFromName( keystr );
-            osg::ref_ptr<TileSource> source = new WMSSource( options ); //TODO: config/cache it
-            osg::HeightField* heightField = source->createHeightField( key.get() );
-            return heightField? ReadResult( heightField ) : ReadResult( "Unable to load WMS tile" );
+            return new WMSSource(opt);
         }
 };
 

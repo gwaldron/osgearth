@@ -12,6 +12,7 @@
 FIND_PATH(EXPAT_INCLUDE_DIR expat.h
     ${EXPAT_DIR}/include
     $ENV{EXPAT_DIR}/include
+	$ENV{EXPAT_DIR}/Source/lib #Windows Binary Installer
     $ENV{EXPAT_DIR}
     ~/Library/Frameworks
     /Library/Frameworks
@@ -30,6 +31,7 @@ FIND_LIBRARY(EXPAT_LIBRARY
     PATHS
     ${EXPAT_DIR}/lib
     $ENV{EXPAT_DIR}/lib
+	$ENV{EXPAT_DIR}/bin #Windows Binary Installer
     $ENV{EXPAT_DIR}
     ~/Library/Frameworks
     /Library/Frameworks

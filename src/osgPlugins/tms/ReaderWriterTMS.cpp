@@ -91,7 +91,7 @@ public:
         {
             std::string image_url = _tileMap->getURL( key );
 
-            osg::notify(osg::NOTICE) << "URL " << image_url << std::endl;
+            //osg::notify(osg::NOTICE) << "URL " << image_url << std::endl;
 
             std::string cache_path = _mapConfig ? _mapConfig->getFullCachePath() : std::string("");
             bool offline = _mapConfig ? _mapConfig->getOfflineHint() : false;

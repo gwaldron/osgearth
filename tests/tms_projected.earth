@@ -1,0 +1,5 @@
+<map name="TMS" type="flat">
+   <image name="TMS" driver="tms">
+     <url>http://pelicanmapping.com/downloads/jason/OakRidge_UTM_TMS/tilemapresource.xml</url>
+   </image>
+</map>

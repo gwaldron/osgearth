@@ -25,3 +25,9 @@ using namespace osgEarth;
 TileSource::~TileSource()
 {
 }
+
+const osgEarth::TileGridProfile&
+TileSource::getProfile()
+{
+    return _profile;
+}

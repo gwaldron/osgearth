@@ -69,8 +69,20 @@ public:
             {
                 osg::notify(osg::NOTICE) << "TMSSource:  error reading Tile Map Resource " << _url << std::endl;
             }
+            else
+            {
+                if (_tileMap->_profile != TileGridProfile::PROJECTED)
+                {
+                    //If the source is not projected, then just create the default profile based on the profile type
+                    _profile = TileGridProfile(_tileMap->_profile);
+                }
+                else
+                {
+                    //If the source is projected, then specify the bounds
+                    _profile = TileGridProfile(_tileMap->_minX, _tileMap->_minY, _tileMap->_maxX, _tileMap->_maxY, _tileMap->_format._width, _tileMap->_srs);
+                }
+            }
         }
-
       }
 
     osg::Image* createImage(const osgEarth::TileKey *key)
@@ -78,6 +90,8 @@ public:
         if (_tileMap.valid())
         {
             std::string image_url = _tileMap->getURL( key );
+
+            osg::notify(osg::NOTICE) << "URL " << image_url << std::endl;
 
             std::string cache_path = _mapConfig ? _mapConfig->getFullCachePath() : std::string("");
             bool offline = _mapConfig ? _mapConfig->getOfflineHint() : false;

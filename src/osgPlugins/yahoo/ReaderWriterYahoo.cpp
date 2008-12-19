@@ -43,6 +43,9 @@ public:
       options( _options ),
       map_config(0)
     {
+        //Set the profile to global mercator
+        _profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+
         if ( options.valid() )
         {
             //if ( options->getPluginData( PROPERTY_URL ) )

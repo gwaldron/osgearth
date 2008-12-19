@@ -44,6 +44,13 @@ WCS11Source::WCS11Source()
     osg_format = "tif";
 }
 
+osg::Image*
+WCS11Source::createImage( const TileKey* key)
+{
+    //NYI
+    return 0;
+}
+
 
 osg::HeightField*
 WCS11Source::createHeightField( const TileKey* key )

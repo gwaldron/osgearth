@@ -109,18 +109,6 @@ MapConfig::setCoordinateSystemType( const CoordinateSystemType& type )
     model_cstype = type;
 }
 
-const MapConfig::Projection&
-MapConfig::getTileProjection() const 
-{
-    return tile_proj;
-}
-
-void
-MapConfig::setTileProjection( const Projection& proj )
-{
-    tile_proj = proj;
-}
-
 void
 MapConfig::setVerticalScale( float value )
 {
@@ -366,12 +354,6 @@ readMap( XmlElement* e_map )
     else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" )
         map->setCoordinateSystemType( MapConfig::CSTYPE_GEOGRAPHIC );
 
-    std::string proj = e_map->getSubElementText( ELEM_PROJECTION );
-    if ( proj == "plate carre" || proj == "plate carree" || proj == "equirectangular" )
-        map->setTileProjection( MapConfig::PROJ_PLATE_CARRE );
-    else if ( proj == "mercator" || proj == "spherical mercator" )
-        map->setTileProjection( MapConfig::PROJ_MERCATOR );
-
     std::string conn_status = e_map->getSubElementText(ELEM_CONNECTION_STATUS);
     if (conn_status == "offline")
         map->setOfflineHint(true);
@@ -455,12 +437,6 @@ mapToXmlDocument( const MapConfig *map)
         return NULL;
     }
     e_map->getAttrs()[ATTR_CSTYPE] = cs;
-
-    //Write the projection
-    std::string projection;
-    if (map->getTileProjection() == MapConfig::PROJ_PLATE_CARRE) projection = "geographic";
-    else if (map->getTileProjection() == MapConfig::PROJ_MERCATOR) projection = "mercator";
-    e_map->addSubElement( ELEM_PROJECTION, projection );
 
     //Write out the connection status
     std::string conn_status = map->getOfflineHint() ? "offline" : "online";

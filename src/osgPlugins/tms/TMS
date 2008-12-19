@@ -24,16 +24,9 @@
 #include <iostream>
 #include <osgEarth/Mercator>
 #include <osgEarth/PlateCarre>
+#include <osgEarth/TileGridProfile>
 
 #include <osg/Referenced>
-
-enum Profile
-{
-    NONE,
-    GLOBAL_GEODETIC,
-    GLOBAL_MERCATOR,
-    LOCAL
-};
 
 class TileFormat
 {
@@ -70,8 +63,6 @@ public:
     double _originX, _originY;
     
     double _minX, _minY, _maxX, _maxY;
-    
-    Profile _profile;
 
     typedef std::vector<TileSet> TileSetList;
     TileSetList _tileSets;
@@ -82,6 +73,8 @@ public:
 
     unsigned int _minLevel;
     unsigned int _maxLevel;
+
+    osgEarth::TileGridProfile::ProfileType _profile;
 };
 
 class TileMapReader

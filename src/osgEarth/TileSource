@@ -22,11 +22,11 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
+#include <osgEarth/TileGridProfile>
 #include <osg/Referenced>
 #include <osg/Object>
 #include <osg/Image>
 #include <osg/Shape>
-#include <osgDB/ReaderWriter>
 #include <string>
 
 namespace osgEarth
@@ -36,6 +36,7 @@ namespace osgEarth
     public:
         virtual osg::Image* createImage( const TileKey* key ) = 0;
         virtual osg::HeightField* createHeightField( const TileKey* key ) = 0;
+        virtual const osgEarth::TileGridProfile& getProfile();
 
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
@@ -44,6 +45,7 @@ namespace osgEarth
         virtual const char* libraryName() const { return "osgEarth"; }
     protected:
         virtual ~TileSource();
+        TileGridProfile _profile;
     };
 }
 

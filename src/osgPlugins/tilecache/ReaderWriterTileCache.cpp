@@ -44,6 +44,9 @@ public:
       options( _options ),
       map_config(0)
     {
+        //Set the profile to global geodetic
+        _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+
         if ( options.valid() )
         {
             if ( options->getPluginData( PROPERTY_URL ) )

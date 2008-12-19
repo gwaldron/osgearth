@@ -24,7 +24,7 @@
 using namespace osgEarth;
 
 TileKey::TileKey() :
-profile( TileGridProfile( 0, 0, 256, 256, 256 ) )
+profile( TileGridProfile( 0, 0, 256, 256, 256, "" ) )
 {
     //NOP
 }
@@ -52,7 +52,8 @@ TileKey::str() const
 std::string
 TileKey::getName() const
 {
-    return getTypeCode() + str();
+    //return getTypeCode() + str();
+    return str();
 }
 
 const TileGridProfile&
@@ -80,20 +81,6 @@ TileKey::getMapSizeTiles() const
 }
 
 /************************************************************************/
-
-TileKey*
-TileKeyFactory::createFromName( const std::string& input )
-{
-    TileKey* result = NULL;
-    if ( input.length() >= 1 )
-    {
-        if ( input.substr( 0, 1 ) == PlateCarreTileKey::TYPE_CODE )
-            result = new PlateCarreTileKey( input.substr( 1 ) );
-        else if ( input.substr( 0, 1 ) == MercatorTileKey::TYPE_CODE )
-            result = new MercatorTileKey( input.substr( 1 ) );
-    }
-    return result;
-}
 
 HeightFieldExtractor::HeightFieldExtractor()
 {

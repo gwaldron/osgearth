@@ -31,6 +31,7 @@ SET(LIB_PUBLIC_HEADERS
     MapConfig
     Mercator
     PlateCarre    
+	Projected
     TerrainTileEdgeNormalizerUpdateCallback
     TileBuilder
     TileGridProfile
@@ -52,6 +53,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapConfig.cpp
     Mercator.cpp
     PlateCarre.cpp
+	Projected.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileBuilder.cpp
     TileGridProfile.cpp

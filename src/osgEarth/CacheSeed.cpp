@@ -25,16 +25,9 @@ using namespace osgEarth;
 
 void CacheSeed::seed(MapConfig *map)
 {
-    osg::ref_ptr<TileKey> key;
-
-    //Create the root key
-    if ( map->getTileProjection() == MapConfig::PROJ_MERCATOR )
-        key = new MercatorTileKey( "" );
-    else
-        key = new PlateCarreTileKey( "" );
-
     //Create a TileBuilder for the map
     osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::create( map, map->getFilename() );
+    osg::ref_ptr<TileKey> key = tile_builder->getDataProfile().getTileKey( "" );
 
     processKey( tile_builder.get(), key.get() );
 }

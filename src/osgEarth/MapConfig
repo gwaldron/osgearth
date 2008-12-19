@@ -117,16 +117,6 @@ namespace osgEarth
         void setCoordinateSystemType( const CoordinateSystemType& type );
        
         /**
-         * Sets the coordinate system for terrain tiles.
-         */
-        void setTileProjection( const Projection& type );
-
-        /** 
-         * Gets the coordinate system for terrain tiles.
-         */
-        const Projection& getTileProjection() const;
-
-        /**
          * Sets the default scale factor for height-field values.
          *
          * @param scale

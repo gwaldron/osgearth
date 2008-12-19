@@ -32,11 +32,6 @@ using namespace osgEarth;
 
 /********************************************************************/
 
-#define MIN_LON -180.0
-#define MAX_LON  180.0
-#define MIN_LAT  -85.05112878  
-#define MAX_LAT   85.05112878
-
 #define MIN_X -20037508.342789244
 #define MIN_Y -20037508.342789244
 #define MAX_X 20037508.342789244
@@ -52,7 +47,7 @@ TileKey( rhs )
 }
 
 MercatorTileKey::MercatorTileKey( const std::string& key ) :
-TileKey( key, TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT, PIXELS_PER_TILE ) )
+TileKey( key, TileGridProfile(TileGridProfile::GLOBAL_MERCATOR))
 {
 }
 
@@ -80,7 +75,7 @@ MercatorTileKey::MercatorTileKey( unsigned int tile_x, unsigned int tile_y, unsi
     }
 
     key = ss.str();
-    profile = TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT, PIXELS_PER_TILE );
+    profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
 }
 
 TileKey*

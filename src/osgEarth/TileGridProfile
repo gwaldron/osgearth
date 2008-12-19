@@ -24,10 +24,24 @@
 
 namespace osgEarth
 {
+    class TileKey;
+
     class OSGEARTH_EXPORT TileGridProfile
     {
     public:
-        TileGridProfile( double xmin, double ymin, double xmax, double ymax, int px_width );
+        enum ProfileType
+        {
+            UNKNOWN,
+            GLOBAL_GEODETIC,
+            GLOBAL_MERCATOR,
+            PROJECTED
+        };
+
+        TileGridProfile();
+
+        TileGridProfile( ProfileType type, int px_width = 256 );
+
+        TileGridProfile( double xmin, double ymin, double xmax, double ymax, int _px_width, const std::string& srs );
 
         TileGridProfile( const TileGridProfile& rhs );
 
@@ -36,10 +50,17 @@ namespace osgEarth
         double xMax() const;
         double yMax() const;
         int    pixelsPerTile() const;
+        ProfileType profileType() const;
+        const std::string& srs() const;
 
+        osgEarth::TileKey* getTileKey( const std::string &key ) const;
+
+        static ProfileType getProfileTypeFromSRS(const std::string &srs);
     private:
         double xmin, ymin, xmax, ymax;
         int px_width;
+        std::string _srs;
+        ProfileType _profileType;
     };
 }
 

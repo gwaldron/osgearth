@@ -79,6 +79,59 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
     return result;
 }
 
+const TileGridProfile& TileBuilder::getDataProfile()
+{
+    if (!_profileComputed)
+    {
+        _dataProfile = TileGridProfile(TileGridProfile::UNKNOWN);
+
+        for (TileSourceList::iterator itr = image_sources.begin();
+            itr != image_sources.end();
+            )
+        {
+            if (_dataProfile.profileType() == TileGridProfile::UNKNOWN)
+            {
+                //If we don't have a valid profile yet, just set it to the first TileSource in the list
+                _dataProfile = (*itr)->getProfile();
+            }
+            else
+            {
+                if (_dataProfile.profileType() != (*itr)->getProfile().profileType())
+                {
+                    osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
+                    image_sources.erase(itr);
+                    continue;
+                }
+            }
+             ++itr;
+        }
+
+        for (TileSourceList::iterator itr = heightfield_sources.begin();
+            itr != heightfield_sources.end();
+            )
+        {
+            if (_dataProfile.profileType() == TileGridProfile::UNKNOWN)
+            {
+                //If we don't have a valid profile yet, just set it to the first TileSource in the list
+                _dataProfile = (*itr)->getProfile();
+            }
+            else
+            {
+                if (_dataProfile.profileType() != (*itr)->getProfile().profileType())
+                {
+                    osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
+                    heightfield_sources.erase(itr);
+                    continue;
+                }
+            }
+             ++itr;
+        }
+
+        _profileComputed = true;
+    }
+    return _dataProfile;
+}
+
 static void
 addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
            std::vector< osg::ref_ptr<TileSource> >& to,
@@ -99,15 +152,26 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
             local_options->setPluginData( p->first, (void*)p->second.c_str() );
         }
 
+        //Give plugins access to the MapConfig object
         local_options->setPluginData("map_config", (void*)mapConfig); 
 
+
+        bool foundValidSource = false;
         //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
         //For instance, the WMS plugin can be loaded by using ".wms" as the filename
         TileSource* tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile("." + source->getDriver(), local_options.get()));
         if (tile_source)
         {
             osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;
-            to.push_back( tile_source );
+
+            if (tile_source->getProfile().profileType() != TileGridProfile::UNKNOWN)
+            {
+                to.push_back( tile_source );
+            }
+            else
+            {
+                osg::notify(osg::NOTICE) << "Skipping TileSource with unknown profile " << source->getName() << std::endl;
+            }
         }
         else
         {
@@ -121,7 +185,8 @@ TileBuilder::TileBuilder(MapConfig* _map,
                          const std::string& _url_template,
                          const osgDB::ReaderWriter::Options* options ) :
 map( _map ),
-url_template( _url_template )
+url_template( _url_template ),
+_profileComputed(false)
 {
     if ( map.valid() )
     {

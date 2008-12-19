@@ -78,6 +78,8 @@ namespace osgEarth
         TileSourceList &getImageSources() {return image_sources;}
         TileSourceList &getHeightFieldSources() {return heightfield_sources;}
 
+        const TileGridProfile& getDataProfile();
+
     protected:
         TileBuilder( 
             MapConfig* map, 
@@ -111,6 +113,8 @@ namespace osgEarth
         osg::HeightField* createValidHeightField(TileSource* tileSource, const TileKey *key);
         bool createValidImage(TileSource* tileSource, const TileKey *key, ImageTileKeyPair &imageTile);
 
+        TileGridProfile _dataProfile;
+        bool _profileComputed;
 
         osg::ref_ptr<MapConfig> map;
         std::string url_template;

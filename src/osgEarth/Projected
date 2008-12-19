@@ -17,36 +17,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_PLATE_CARRE_QUAD_KEY_H
-#define OSGEARTH_PLATE_CARRE_QUAD_KEY_H 1
+#ifndef OSGEARTH_PROJECTED_H
+#define OSGEARTH_PROJECTED_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
-#include <osg/Referenced>
 #include <osg/Image>
 #include <osg/Shape>
 #include <string>
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT PlateCarreTileKey : public TileKey
+    class OSGEARTH_EXPORT ProjectedTileKey : public osgEarth::TileKey
     {
     public:
         static const std::string TYPE_CODE;
 
-        PlateCarreTileKey( const PlateCarreTileKey& rhs );
+        ProjectedTileKey( const ProjectedTileKey &rhs);
 
-        PlateCarreTileKey( const std::string& key_string );
-
-        PlateCarreTileKey( const std::string& key_string, const TileGridProfile& profile );
+        ProjectedTileKey( const std::string key_string, const TileGridProfile& profile );
 
     public: //overrides
 
         TileKey* getSubkey( unsigned int quadrant ) const;
 
         TileKey* getParentKey() const;
-
-        const std::string& str() const;
 
         unsigned int getLevelOfDetail() const;
 
@@ -71,8 +66,8 @@ namespace osgEarth
         std::string getTypeCode() const { return TYPE_CODE; }
 
     private:
-        osg::ref_ptr<PlateCarreTileKey> subkeys[4];
+        osg::ref_ptr<ProjectedTileKey> subkeys[4];
     };
 }
 
-#endif // OSGEARTH_PLATE_CARRE_QUAD_KEY_H
+#endif //OSGEARTH_PROJECTED_H

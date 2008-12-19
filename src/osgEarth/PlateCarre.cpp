@@ -28,13 +28,6 @@ using namespace osgEarth;
 
 const std::string PlateCarreTileKey::TYPE_CODE = "P";
 
-// these bounds form a square tile set; the bottom half of LOD 0 is not used.
-#define MIN_LON -180
-#define MAX_LON  180
-#define MIN_LAT -270
-#define MAX_LAT   90
-#define PIXELS_PER_TILE 256
-
 PlateCarreTileKey::PlateCarreTileKey( const PlateCarreTileKey& rhs )
 : TileKey( rhs )
 {
@@ -42,7 +35,7 @@ PlateCarreTileKey::PlateCarreTileKey( const PlateCarreTileKey& rhs )
 }
 
 PlateCarreTileKey::PlateCarreTileKey( const std::string& input )
-: TileKey( input, TileGridProfile( MIN_LON, MIN_LAT, MAX_LON, MAX_LAT, PIXELS_PER_TILE ) )
+: TileKey( input, TileGridProfile(TileGridProfile::GLOBAL_GEODETIC ) )
 {
     //NOP
 }
@@ -142,42 +135,8 @@ PlateCarreTileKey::getTileXY(unsigned int& out_tile_x,
 osgTerrain::TileID
 PlateCarreTileKey::getTileId() const
 {
-  //Convert the quadkey to a TileId
-
-  //First, convert the base 4 quadkey to a decimal number
-  int mult = 1;
-  int qkdec = 0;
-  for (int i = (key.size()-1); i >= 0; i--)
-  {   
-    //Get current digit for the level
-    char c = key[i];
-    int digit = atoi(&c);
-    qkdec += (mult * digit);
-    mult *= 4;
-  }
-
-  //The bits are interleved
-  int tileX = 0;
-  int tileY = 0;   
-
-  mult = 1;
-  while (qkdec > 0)
-  {
-    //If the bit is a 1, add the appropriate value to tileX
-    if (qkdec & 0x1) tileX += mult;
-
-    //Shift the bits left
-    qkdec = qkdec >> 1;
-
-    //If the bit is a 1, add the appropriate value to tileY
-    if (qkdec & 0x1) tileY += mult;
-
-    //Shift the bits left
-    qkdec = qkdec >> 1;
-   
-    mult *= 2;
-  }
-
-  return osgTerrain::TileID(getLevelOfDetail(), tileX, tileY);
+    unsigned int x, y;
+    getTileXY(x, y);
+    return osgTerrain::TileID(getLevelOfDetail(), x, y);
 }
 

@@ -42,7 +42,7 @@ namespace osgEarth
         std::string getName() const;
 
         virtual osgTerrain::TileID getTileId() const = 0;
-        const TileGridProfile& getProfile() const;
+        const osgEarth::TileGridProfile& getProfile() const;
 
 
         int getMapSizePixels() const;
@@ -59,10 +59,10 @@ namespace osgEarth
         virtual unsigned int getLevelOfDetail() const =0;
 
         virtual bool getGeoExtents(
-            double& out_min_lon,
-            double& out_min_lat,
-            double& out_max_lon,
-            double& out_max_lat ) const =0;
+            double& minx,
+            double& miny,
+            double& maxx,
+            double& maxy ) const =0;
 
         virtual void getPixelExtents(
             unsigned int& xmin,
@@ -87,13 +87,6 @@ namespace osgEarth
     protected:
         std::string key;
         TileGridProfile profile;
-    };
-
-
-    class OSGEARTH_EXPORT TileKeyFactory
-    {
-    public:
-        static TileKey* createFromName( const std::string& name );
     };
 
     class OSGEARTH_EXPORT HeightFieldExtractor : public osg::Referenced

@@ -41,6 +41,7 @@ using namespace osgEarth;
 #define PROPERTY_TILE_WIDTH     "tile_width"
 #define PROPERTY_TILE_HEIGHT    "tile_height"
 #define PROPERTY_ELEVATION_UNIT "elevation_unit"
+#define PROPERTY_SRS            "srs"
 #define PROPERTY_MAP_CONFIG     "map_config"
 
 class WMSSource : public TileSource
@@ -74,14 +75,25 @@ public:
 
         if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
             tile_height = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ), 256 );
-        
+
+        if ( options->getPluginData( PROPERTY_SRS ) )
+            srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
+
         if ( format.empty() )
             format = "png";
+
+        if ( srs.empty() )
+        {
+            srs = "EPSG:4326";
+        }
 
         if ( elevation_unit.empty())
         {
             elevation_unit = "m";
         }
+
+        //Set the profile based on on the SRS
+        _profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs), tile_width);
     }
 
 public:
@@ -144,8 +156,6 @@ public:
         // build the WMS request:
         char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
 
-        std::string projection = mk ? "EPSG:900913" : "EPSG:4326";
-
         std::stringstream buf;
         buf
             << std::fixed << prefix << sep
@@ -153,7 +163,7 @@ public:
             << "&LAYERS=" << layers
             << "&FORMAT=image/" << format
             << "&STYLES=" << style
-            << "&SRS=" << projection
+            << "&SRS=" << srs
             << "&WIDTH="<< tile_width
             << "&HEIGHT="<< tile_height
             << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
@@ -169,6 +179,7 @@ private:
     std::string layers;
     std::string style;
     std::string format;
+    std::string srs;
 
 	int tile_width;
 	int tile_height;

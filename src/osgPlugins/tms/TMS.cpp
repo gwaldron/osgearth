@@ -227,10 +227,10 @@ TileMapReader::read(std::istream &in)
     {
         //Read the profile
         std::string profile = e_tile_sets->getAttr( ATTR_PROFILE );
-        if (profile == "global-geodetic") tileMap->_profile = GLOBAL_GEODETIC;
-        else if (profile == "global-mercator") tileMap->_profile = GLOBAL_MERCATOR;
-        else if (profile == "local") tileMap->_profile = LOCAL;
-        else tileMap->_profile = NONE;
+        if (profile == "global-geodetic") tileMap->_profile = TileGridProfile::GLOBAL_GEODETIC;
+        else if (profile == "global-mercator") tileMap->_profile = TileGridProfile::GLOBAL_MERCATOR;
+        else if (profile == "local") tileMap->_profile = TileGridProfile::PROJECTED;
+        else tileMap->_profile = TileGridProfile::UNKNOWN;
 
         //Read each TileSet
         XmlNodeList tile_sets = e_tile_sets->getSubElements( ELEM_TILESET );
@@ -245,8 +245,13 @@ TileMapReader::read(std::istream &in)
         }
     }
 
-    tileMap->computeMinMaxLevel();
+    //Try to compute the profile based on the SRS if there was no PROFILE tag given
+    if (tileMap->_profile == TileGridProfile::UNKNOWN && !tileMap->_srs.empty())
+    {
+        tileMap->_profile = TileGridProfile::getProfileTypeFromSRS(tileMap->_srs);
+    }
 
+    tileMap->computeMinMaxLevel();
 
     return tileMap.release();
 }

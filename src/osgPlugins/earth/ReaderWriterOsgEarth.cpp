@@ -22,6 +22,7 @@
 #include <osgEarth/MapConfig>
 #include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
+#include <osgEarth/Projected>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -93,11 +94,19 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if ( map.valid() )
                 {
                     tile_builder = TileBuilder::create( map.get(), file_name );
-
-                    if ( map->getTileProjection() == MapConfig::PROJ_MERCATOR )
-                        key = new MercatorTileKey( "" );
-                    else
-                        key = new PlateCarreTileKey( "" );
+                    key = tile_builder->getDataProfile().getTileKey( "" );
+                    if (dynamic_cast<PlateCarreTileKey*>(key.get()))
+                    {
+                        osg::notify(osg::NOTICE) << "Geodetic" << std::endl;
+                    }
+                    else if (dynamic_cast<MercatorTileKey*>(key.get()))
+                    {
+                        osg::notify(osg::NOTICE) << "Mercator" << std::endl;
+                    }
+                    else if (dynamic_cast<ProjectedTileKey*>(key.get()))
+                    {
+                        osg::notify(osg::NOTICE) << "Projected" << std::endl;
+                    }
 
                     // cache the builder
                     const_cast<ReaderWriterEarth*>(this)->tile_builders[ file_name ] = tile_builder;
@@ -110,7 +119,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             else
             {
                 tile_builder = k->second.get();
-                key = TileKeyFactory::createFromName( file_name.substr( 0, i ) );
+                key = tile_builder->getDataProfile().getTileKey( file_name.substr( 0, i ) );
             }
 
             osg::Node* node = tile_builder->createNode( key.get() );

@@ -21,6 +21,7 @@
 #define OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_ 1
 
 #include <osgEarth/TileKey>
+#include <osgEarth/TileSource>
 #include <osgEarth/HTTPClient>
 #include <osg/Image>
 #include <osg/Shape>
@@ -28,11 +29,12 @@
 
 using namespace osgEarth;
 
-class WCS11Source : public osg::Referenced // : public PlateCarreTileSource
+class WCS11Source : public TileSource
 {
 public:
     WCS11Source();
     
+    osg::Image* createImage( const TileKey* key );
     osg::HeightField* createHeightField( const TileKey* key );
 
 private:

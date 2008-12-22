@@ -1,6 +1,5 @@
 <map name="MSVE" type="geocentric">
 
-    <projection>plate carre</projection>
     <min_tile_range_factor>8</min_tile_range_factor>
     <vertical_scale>4</vertical_scale>
     

@@ -1,6 +1,5 @@
 <map name="Yahoo maps" type="geocentric">
 
-    <projection>mercator</projection>
     <min_tile_range_factor>8</min_tile_range_factor>
     
 <!-- uncomment the following two lines to activate a proxy server -->

@@ -1,6 +1,5 @@
 <map name="Google with labels" type="geocentric">
 
-    <projection>mercator</projection>
     <min_tile_range_factor>8</min_tile_range_factor>
 
   <!-- uncomment the following line to enable caching... folder must exist -->

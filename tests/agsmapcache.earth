@@ -1,6 +1,5 @@
 <map name="ESRI ArcGIS Server Map Service Cache Test" type="geographic">
 
-    <projection>mercator</projection>
     <min_tile_range_factor>6</min_tile_range_factor>
     
     <image name="ags map" driver="arcgis_map_cache">

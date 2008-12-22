@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     while (args.read("-l", maxLevel));
     
     //Read the bounds
-    Bounds bounds(-180, -90, 180, 90);
+    Bounds bounds(0, 0, 0, 0);
     while (args.read("--bounds", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
     while (args.read("-b", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
 

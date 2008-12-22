@@ -27,6 +27,17 @@ void CacheSeed::seed(MapConfig *map)
 {
     //Create a TileBuilder for the map
     osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::create( map, map->getFilename() );
+    
+    //Set the default bounds to the entire profile if the user didn't override the bounds
+    if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
+        _bounds._max.x() == 0 && _bounds._max.y() == 0)
+    {
+        _bounds._min.x() = tile_builder->getDataProfile().xMin();
+        _bounds._min.y() = tile_builder->getDataProfile().yMin();
+        _bounds._max.x() = tile_builder->getDataProfile().xMax();
+        _bounds._max.y() = tile_builder->getDataProfile().yMax();
+    }
+
     osg::ref_ptr<TileKey> key = tile_builder->getDataProfile().getTileKey( "" );
 
     processKey( tile_builder.get(), key.get() );
@@ -57,7 +68,7 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
         osg::ref_ptr<TileKey> k2;
         osg::ref_ptr<TileKey> k3;
 
-        if (key->getLevelOfDetail() > 0 || dynamic_cast<MercatorTileKey*>(key))
+        if (key->getLevelOfDetail() > 0 || !dynamic_cast<PlateCarreTileKey*>(key))
         {
             k2 = key->getSubkey(2);
             k3 = key->getSubkey(3);

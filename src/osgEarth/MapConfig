@@ -80,13 +80,6 @@ namespace osgEarth
             CSTYPE_GEOGRAPHIC
         };
 
-        // projection of the tile data
-        enum Projection
-        {
-            PROJ_PLATE_CARRE,
-            PROJ_MERCATOR
-        };
-
     public:
         /**
          * Constructs a new, empty map configuration.
@@ -242,7 +235,6 @@ namespace osgEarth
         std::string filename;
         std::string name;
         CoordinateSystemType model_cstype;
-        Projection tile_proj;
         float vertical_scale;
         float skirt_ratio;      
         SourceConfigList image_sources;

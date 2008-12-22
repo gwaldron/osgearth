@@ -31,7 +31,6 @@ using namespace osgEarth;
 MapConfig::MapConfig()
 {
     model_cstype = MapConfig::CSTYPE_GEOCENTRIC;
-    tile_proj = MapConfig::PROJ_PLATE_CARRE;
     vertical_scale = 1.0f;
     skirt_ratio = 0.02;
     proxy_port = 8080;
@@ -270,7 +269,6 @@ SourceConfig::getProperties() const
 #define ELEM_MAP               "map"
 #define ATTR_NAME              "name"
 #define ATTR_CSTYPE            "type"
-#define ELEM_PROJECTION        "projection"
 #define ELEM_IMAGE             "image"
 #define ELEM_HEIGHTFIELD       "heightfield"
 #define ELEM_VERTICAL_SCALE    "vertical_scale"
@@ -430,7 +428,7 @@ mapToXmlDocument( const MapConfig *map)
     //Write the coordinate system
     std::string cs;
     if (map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC) cs = "geocentric";
-    else if (map->getCoordinateSystemType() == MapConfig::PROJ_MERCATOR) cs = "geographic";
+    else if (map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOGRAPHIC) cs = "flat";
     else
     {
         osg::notify(osg::NOTICE) << "Unhandled CoordinateSystemType " << std::endl;

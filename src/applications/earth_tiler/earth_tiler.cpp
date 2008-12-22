@@ -69,8 +69,6 @@ void addTiles(TileKey *key, KeyList &tiles, unsigned int maxLevel)
 
 int main(int argc, char **argv)
 {
-    MapConfig::Projection projection = MapConfig::PROJ_MERCATOR;
-
     //The file to tile
     std::string filename;
     unsigned int tile_width = 256;
@@ -109,15 +107,7 @@ int main(int argc, char **argv)
 
 
     //Create the root TileKey
-    ref_ptr<TileKey> rootKey;
-    if (projection == MapConfig::PROJ_MERCATOR)
-    {
-        rootKey = new MercatorTileKey("");
-    }
-    else
-    {
-        rootKey = new PlateCarreTileKey("");
-    }
+    ref_ptr<TileKey> rootKey = new MercatorTileKey("");
 
     KeyList tiles;
 

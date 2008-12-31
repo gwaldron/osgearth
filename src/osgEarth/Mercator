@@ -46,10 +46,6 @@ namespace osgEarth
 
         double getLatitude( unsigned int pixel_y ) const;
 
-        void getTileXY( 
-            unsigned int& out_tile_x,
-            unsigned int& out_tile_y ) const;
-
         void getPixelExtents(
             unsigned int& xmin,
             unsigned int& ymin,
@@ -62,8 +58,6 @@ namespace osgEarth
             double &xmax,
             double &ymax) const;
 
-        osgTerrain::TileID getTileId() const;
-
         static int longLatToPixelXY(
             double lon, double lat, unsigned int lod, 
             int tile_size,
@@ -75,8 +69,6 @@ namespace osgEarth
             unsigned int& out_tile_x, unsigned int& out_tile_y);
         
     public: //overrides
-
-        unsigned int getLevelOfDetail() const;
 
         bool getGeoExtents(
             double& lon_min, double& lat_min,

@@ -93,22 +93,6 @@ MercatorTileKey::getParentKey() const
     return new MercatorTileKey(key.substr(0, key.length()-1));
 }
 
-unsigned int
-MercatorTileKey::getLevelOfDetail() const
-{
-    return (unsigned int)key.length();
-}
-
-void
-MercatorTileKey::getTileXY(unsigned int& out_tile_x,
-                           unsigned int& out_tile_y) const
-{
-    unsigned int xmin, ymin, xmax, ymax;
-    getPixelExtents( xmin, ymin, xmax, ymax );
-    out_tile_x = xmin/profile.pixelsPerTile();
-    out_tile_y = ymin/profile.pixelsPerTile();
-}
-
 void
 MercatorTileKey::getPixelExtents(unsigned int& xmin,
                                  unsigned int& ymin,
@@ -162,14 +146,6 @@ MercatorTileKey::getMeterExtents(double &xmin,
     ymax = ymin + tile_height;  
 }
 
-osgTerrain::TileID
-MercatorTileKey::getTileId() const
-{
-    unsigned int x, y;
-    getTileXY(x, y);
-    return osgTerrain::TileID(getLevelOfDetail(), x, y);
-}
-
 bool
 MercatorTileKey::getGeoExtents(double& lon_min, double& lat_min,
                                double& lon_max, double& lat_max) const
@@ -200,7 +176,6 @@ MercatorTileKey::getGeoExtents(double& lon_min, double& lat_min,
 double
 MercatorTileKey::getLatitude( unsigned int pixel_y ) const
 {
-    //unsigned int lod = getLevelOfDetail();
     double my  = -osg::PI + (1.0 - (double)pixel_y/(double)getMapSizePixels()) * (2.0*osg::PI);
     double deg = osg::RadiansToDegrees( 2.0 * atan( exp( my ) ) - .5*osg::PI );
 

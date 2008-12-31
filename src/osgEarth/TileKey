@@ -41,7 +41,7 @@ namespace osgEarth
 
         std::string getName() const;
 
-        virtual osgTerrain::TileID getTileId() const = 0;
+        virtual osgTerrain::TileID getTileId() const;
         const osgEarth::TileGridProfile& getProfile() const;
 
 
@@ -56,7 +56,7 @@ namespace osgEarth
 
         virtual TileKey* getParentKey() const = 0;
 
-        virtual unsigned int getLevelOfDetail() const =0;
+        virtual unsigned int getLevelOfDetail() const;
 
         virtual bool getGeoExtents(
             double& minx,
@@ -72,7 +72,7 @@ namespace osgEarth
 
         virtual void getTileXY(
             unsigned int& out_tile_x,
-            unsigned int& out_tile_y) const =0;
+            unsigned int& out_tile_y) const;
 
         virtual std::string getTypeCode() const =0;
         

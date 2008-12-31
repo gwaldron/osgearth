@@ -49,12 +49,6 @@ ProjectedTileKey::getParentKey() const
     return new ProjectedTileKey(key.substr(0, key.length()-1), profile);
 }
 
-unsigned int
-ProjectedTileKey::getLevelOfDetail() const
-{
-    return (unsigned int)key.length();
-}
-
 bool
 ProjectedTileKey::getGeoExtents(
             double& xmin,
@@ -110,20 +104,4 @@ void ProjectedTileKey::getPixelExtents(
     ymin = py;
     xmax = px + (delta << 1);
     ymax = py + (delta << 1);
-}
-
-void ProjectedTileKey::getTileXY(
-                                 unsigned int& out_tile_x,
-                                 unsigned int& out_tile_y) const
-{
-    unsigned int xmin, ymin, xmax, ymax;
-    getPixelExtents( xmin, ymin, xmax, ymax );
-    out_tile_x = xmin/profile.pixelsPerTile();
-    out_tile_y = ymin/profile.pixelsPerTile();
-}
-
-osgTerrain::TileID
-ProjectedTileKey::getTileId() const
-{
-    return osgTerrain::TileID();
 }

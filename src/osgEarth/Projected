@@ -43,8 +43,6 @@ namespace osgEarth
 
         TileKey* getParentKey() const;
 
-        unsigned int getLevelOfDetail() const;
-
         bool getGeoExtents(
             double& out_min_lon,
             double& out_min_lat,
@@ -56,12 +54,6 @@ namespace osgEarth
             unsigned int& ymin,
             unsigned int& xmax,
             unsigned int& ymax) const;
-
-        virtual void getTileXY(
-            unsigned int& out_tile_x,
-            unsigned int& out_tile_y) const;
-
-        osgTerrain::TileID getTileId() const;
 
         std::string getTypeCode() const { return TYPE_CODE; }
 

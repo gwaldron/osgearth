@@ -193,8 +193,6 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         return NULL;
     }
 
-    int tile_size = key->getProfile().pixelsPerTile();
-
     ImageTileList image_tiles;
 
     //TODO: select/composite:
@@ -215,11 +213,6 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     if ( heightfield_sources.size() > 0 )
     {
         hf = heightfield_sources[0]->createHeightField(key);
-        /*HeightFieldTileKeyPair heightFieldTile;
-        if (createValidHeightField(heightfield_sources[0].get(), key, heightFieldTile))
-        {
-            hf = heightFieldTile.first;
-        }*/
     }
 
     //Determine if we've created any images
@@ -327,7 +320,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             // use a special image locator to warp the texture coords for mercator tiles :)
             // WARNING: TODO: this will not persist upon export....we need a nodekit.
             if ( dynamic_cast<const MercatorTileKey*>( key ) )
-                img_locator = new MercatorLocator(*img_locator.get(), tile_size, image_tiles[i].second->getLevelOfDetail() );
+                img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());
 #if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)

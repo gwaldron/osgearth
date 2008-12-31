@@ -61,12 +61,6 @@ PlateCarreTileKey::getParentKey() const
     return new PlateCarreTileKey(key.substr(0, key.length()-1));
 }
 
-unsigned int
-PlateCarreTileKey::getLevelOfDetail() const
-{
-    return (unsigned int)key.length();
-}
-
 bool
 PlateCarreTileKey::getGeoExtents(double& out_min_lon,
                                  double& out_min_lat,
@@ -121,22 +115,3 @@ PlateCarreTileKey::getPixelExtents(unsigned int& xmin,
     xmax = px + (delta << 1);
     ymax = py + (delta << 1);
 }
-
-void
-PlateCarreTileKey::getTileXY(unsigned int& out_tile_x,
-                             unsigned int& out_tile_y) const
-{
-    unsigned int xmin, ymin, xmax, ymax;
-    getPixelExtents( xmin, ymin, xmax, ymax );
-    out_tile_x = xmin/profile.pixelsPerTile();
-    out_tile_y = ymin/profile.pixelsPerTile();
-}
-
-osgTerrain::TileID
-PlateCarreTileKey::getTileId() const
-{
-    unsigned int x, y;
-    getTileXY(x, y);
-    return osgTerrain::TileID(getLevelOfDetail(), x, y);
-}
-

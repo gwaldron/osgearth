@@ -88,8 +88,6 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
 
     //osg::notify(osg::NOTICE) << "DataGridProfile " << _dataProfile.xMin() << ", " << _dataProfile.yMin() << ", " << _dataProfile.xMax() << ", " << _dataProfile.yMax() << std::endl;
 
-    int tile_size = key->getProfile().pixelsPerTile();
-
     ImageTileList image_tiles;
 
     //Create the images
@@ -220,7 +218,7 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
             // WARNING: TODO: this will not persist upon export....we need a nodekit.
             if ( dynamic_cast<const MercatorTileKey*>( key ) )
             {
-                img_locator = new MercatorLocator(*img_locator.get(), tile_size, image_tiles[i].second->getLevelOfDetail() );
+                img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
             }
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());

@@ -80,7 +80,7 @@ public:
             // http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl?v=4.1&md=2&x=0&y=0&z=2&r=1
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
-            int size = mkey->getMapSizeTiles();
+            int size = mkey->getMapSizeTiles(256);
             int zoom = key->getLevelOfDetail();
 
             buf << "http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl"
@@ -94,7 +94,7 @@ public:
         {
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
-            int size = mkey->getMapSizeTiles();
+            int size = mkey->getMapSizeTiles(256);
             int zoom = key->getLevelOfDetail();
 
             buf << "http://us.maps3.yimg.com/aerial.maps.yimg.com/ximg"

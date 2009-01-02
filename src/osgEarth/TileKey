@@ -45,11 +45,11 @@ namespace osgEarth
         const osgEarth::TileGridProfile& getProfile() const;
 
 
-        int getMapSizePixels() const;
+        int getMapSizePixels(const unsigned int &tile_size) const;
 
-        int getMapSizeTiles() const;
+        int getMapSizeTiles(const unsigned int &tile_size) const;
 
-        static int getMapSizePixels( int tile_size, int lod );
+        static int getMapSizePixels( const unsigned int &tile_size, const unsigned int &lod );
 
     public:
         virtual TileKey* getSubkey( unsigned int quadrant ) const =0;
@@ -68,7 +68,8 @@ namespace osgEarth
             unsigned int& xmin,
             unsigned int& ymin,
             unsigned int& xmax,
-            unsigned int& ymax) const =0;
+            unsigned int& ymax,
+            const unsigned int& tile_size) const;
 
         virtual void getTileXY(
             unsigned int& out_tile_x,

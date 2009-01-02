@@ -93,7 +93,7 @@ public:
         }
 
         //Set the profile based on on the SRS
-        _profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs), tile_width);
+        _profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));
     }
 
 public:
@@ -172,6 +172,11 @@ public:
         buf << "&." << format;
 
         return buf.str();
+    }
+
+    virtual int getPixelsPerTile() const
+    {
+        return tile_width;
     }
 
 private:

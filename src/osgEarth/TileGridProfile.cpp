@@ -37,20 +37,16 @@ using namespace osgEarth;
 #define GLOBAL_MERCATOR_MIN_LAT  -85.05112878  
 #define GLOBAL_MERCATOR_MAX_LAT   85.05112878
 
-#define PIXELS_PER_TILE 256
-
-
 TileGridProfile::TileGridProfile():
 xmin(0),
 xmax(0),
 ymin(0),
 ymax(0),
-_profileType(UNKNOWN),
-px_width(PIXELS_PER_TILE)
+_profileType(UNKNOWN)
 {
 }
 
-TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType, int _px_width /*=256*/)
+TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType)
 {
     _profileType = profileType;
     if (_profileType == GLOBAL_GEODETIC)
@@ -69,16 +65,14 @@ TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType, int _
         ymax = GLOBAL_MERCATOR_MAX_LAT;
         _srs = "EPSG:900913";
     }
-    px_width = _px_width;
 }
 
-TileGridProfile::TileGridProfile( double _xmin, double _ymin, double _xmax, double _ymax, int _px_width, const std::string& srs )
+TileGridProfile::TileGridProfile( double _xmin, double _ymin, double _xmax, double _ymax, const std::string& srs )
 {
     xmin = _xmin;
     ymin = _ymin;
     xmax = _xmax;
     ymax = _ymax;
-    px_width = _px_width;
     _profileType = PROJECTED;
     _srs = srs;
 }
@@ -88,7 +82,6 @@ TileGridProfile::TileGridProfile( const TileGridProfile& rhs )
   ymin( rhs.ymin ),
   xmax( rhs.xmax ),
   ymax( rhs.ymax ),
-  px_width( rhs.px_width ),
   _profileType(rhs._profileType),
   _srs(rhs._srs)
 {
@@ -113,11 +106,6 @@ TileGridProfile::xMax() const {
 double
 TileGridProfile::yMax() const {
     return ymax;
-}
-
-int 
-TileGridProfile::pixelsPerTile() const {
-    return px_width;
 }
 
 const std::string&

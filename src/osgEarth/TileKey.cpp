@@ -24,7 +24,7 @@
 using namespace osgEarth;
 
 TileKey::TileKey() :
-profile( TileGridProfile( 0, 0, 256, 256, 256, "" ) )
+profile( TileGridProfile( 0, 0, 256, 256, "" ) )
 {
     //NOP
 }
@@ -63,21 +63,21 @@ TileKey::getProfile() const
 }
 
 int
-TileKey::getMapSizePixels() const
+TileKey::getMapSizePixels(const unsigned int &tile_size) const
 {
-    return getMapSizePixels( profile.pixelsPerTile(), getLevelOfDetail() );
+    return getMapSizePixels( tile_size, getLevelOfDetail() );
 }
 
 /*static*/ int
-TileKey::getMapSizePixels( int tile_size, int lod )
+TileKey::getMapSizePixels(const unsigned int &tile_size, const unsigned int &lod )
 {
     return tile_size << lod;
 }
 
 int
-TileKey::getMapSizeTiles() const
+TileKey::getMapSizeTiles(const unsigned int &tile_size) const
 {
-    return getMapSizePixels() / profile.pixelsPerTile();
+    return getMapSizePixels(tile_size) / tile_size;
 }
 
 void
@@ -136,6 +136,31 @@ unsigned int
 TileKey::getLevelOfDetail() const
 {
     return (unsigned int)key.length();
+}
+
+void
+TileKey::getPixelExtents(unsigned int& xmin,
+                         unsigned int& ymin,
+                         unsigned int& xmax,
+                         unsigned int& ymax,
+                         const unsigned int &tile_size) const
+{
+    unsigned int lod = getLevelOfDetail();
+    unsigned int px = 0, py = 0;
+    unsigned int delta = getMapSizePixels(tile_size) >> 1;
+    for( unsigned int i=0; i<lod; i++ )
+    {
+        switch( key[i] ) {
+            case '1': px += delta; break;
+            case '2': py += delta; break;
+            case '3': px += delta; py += delta; break;
+        }
+        delta >>= 1;
+    }
+    xmin = px;
+    ymin = py;
+    xmax = px + (delta << 1);
+    ymax = py + (delta << 1);
 }
 
 /************************************************************************/

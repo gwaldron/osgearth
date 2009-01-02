@@ -49,12 +49,6 @@ namespace osgEarth
             double& out_max_lon,
             double& out_max_lat ) const;
 
-        void getPixelExtents(
-            unsigned int& xmin,
-            unsigned int& ymin,
-            unsigned int& xmax,
-            unsigned int& ymax) const;
-
         std::string getTypeCode() const { return TYPE_CODE; }
 
     private:

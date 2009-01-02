@@ -91,27 +91,3 @@ PlateCarreTileKey::getGeoExtents(double& out_min_lon,
     out_max_lon = out_min_lon + width;
     return true;
 }
-
-void
-PlateCarreTileKey::getPixelExtents(unsigned int& xmin,
-                                   unsigned int& ymin,
-                                   unsigned int& xmax,
-                                   unsigned int& ymax) const
-{
-    unsigned int lod = getLevelOfDetail();
-    unsigned int px = 0, py = 0;
-    unsigned int delta = getMapSizePixels() >> 1;
-    for( unsigned int i=0; i<lod; i++ )
-    {
-        switch( key[i] ) {
-            case '1': px += delta; break;
-            case '2': py += delta; break;
-            case '3': px += delta; py += delta; break;
-        }
-        delta >>= 1;
-    }
-    xmin = px;
-    ymin = py;
-    xmax = px + (delta << 1);
-    ymax = py + (delta << 1);
-}

@@ -79,7 +79,7 @@ public:
                 else
                 {
                     //If the source is projected, then specify the bounds
-                    _profile = TileGridProfile(_tileMap->_minX, _tileMap->_minY, _tileMap->_maxX, _tileMap->_maxY, _tileMap->_format._width, _tileMap->_srs);
+                    _profile = TileGridProfile(_tileMap->_minX, _tileMap->_minY, _tileMap->_maxX, _tileMap->_maxY, _tileMap->_srs);
                 }
             }
         }
@@ -132,6 +132,11 @@ public:
     {
         //NYI
         return 0;
+    }
+
+    virtual int getPixelsPerTile() const
+    {
+        return _tileMap->_format._width;
     }
 private:
 

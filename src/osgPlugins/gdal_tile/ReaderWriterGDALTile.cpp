@@ -76,6 +76,11 @@ public:
         return NULL;
     }
 
+    virtual int getPixelsPerTile() const
+    {
+        return tile_width;
+    }
+
     std::string createTileFile(const TileKey* key)
     {
         double minx, miny, maxx, maxy;

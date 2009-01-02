@@ -31,6 +31,39 @@
 
 namespace osgEarth
 {
+    /**
+    * Methods for dealing with the Spherical Mercator projection.
+    */
+    class OSGEARTH_EXPORT Mercator
+    {
+    public:
+      /**
+      *Converts a location in spherical mercator projection to lat/lon
+      * @param x
+      *     X coordinate in meters
+      * @param y
+      *     Y coordinate in meters
+      * @param lat
+      *     The output latitude
+      * @param lon
+      *     The output longitude
+      */
+      static void metersToLatLon(const double &x, const double &y, double &lat, double &lon);
+
+      /**
+      *Converts a location in lat/lon to spherical mercator
+      *@param lat
+      *     The latitude
+      *@param lon
+      *     The longitude
+      *@param x
+      *     The output X coordinate in meters
+      *@param y
+      *     The output Y coordinate in meters
+      */
+      static void latLongToMeters(const double &lat, const double &lon, double &x, double &y);
+    };
+
     class OSGEARTH_EXPORT MercatorTileKey : public TileKey
     {
     public:
@@ -43,14 +76,6 @@ namespace osgEarth
         MercatorTileKey( const std::string& key, const TileGridProfile& profile );
 
         MercatorTileKey( unsigned int tile_x, unsigned int tile_y, unsigned int level );
-
-        double getLatitude( unsigned int pixel_y ) const;
-
-        void getPixelExtents(
-            unsigned int& xmin,
-            unsigned int& ymin,
-            unsigned int& xmax,
-            unsigned int& ymax) const;
 
         void getMeterExtents(
             double &xmin,

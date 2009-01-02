@@ -99,33 +99,37 @@ MercatorTileKey::getMeterExtents(double &xmin,
                                  double &xmax,
                                  double &ymax) const
 {
-    unsigned int x,y;
-    getTileXY(x,y);
+    double width =  MAX_X - MIN_X;
+    double height = MAX_Y - MIN_Y;
 
-    double tile_width = MAX_X - MIN_X;
-    double tile_height = MAX_Y - MIN_Y;
-
-    //Determine the width and height of a tile in meters at the given lod
-    for (unsigned int lod = 0; lod < getLevelOfDetail(); ++lod)
+    ymax = MAX_Y;
+    xmin = MIN_X;
+    
+    for( unsigned int lod = 0; lod < getLevelOfDetail(); lod++ )
     {
-        tile_width /= 2.0;
-        tile_height /= 2.0;
+        width /= 2.0;
+        height /= 2.0;
+
+        char digit = key[lod];
+        switch( digit )
+        {
+            case '1': xmin += width; break;
+            case '2': ymax -= height; break;
+            case '3': xmin += width; ymax -= height; break;
+        }
     }
-
-    //Get the total number of tiles in each dimension
-    int totalTiles = sqrt(pow(4.0, (double)getLevelOfDetail()));
-
-    xmin = MIN_X + (x * tile_width);
-    xmax = xmin + tile_width;
-
-    ymin = MIN_Y + ((totalTiles - y - 1) * tile_height);
-    ymax = ymin + tile_height;  
+    ymin = ymax - height;
+    xmax = xmin + width;
 }
 
 void Mercator::metersToLatLon(const double &x, const double &y, double &lat, double &lon)
 {
     lon = x / MAX_X * 180.0;
     lat = osg::RadiansToDegrees( 2.0 * atan( exp( (y / MAX_Y) * osg::PI ) ) - .5*osg::PI );
+
+    //Clamp the values to appropriate ranges.
+    lon = osg::clampBetween(lon, -180.0, 180.0);
+    lat = osg::clampBetween(lat, -90.0, 90.0);
 }
 
 void Mercator::latLongToMeters(const double &lat, const double &lon, double &x, double &y)
@@ -133,6 +137,10 @@ void Mercator::latLongToMeters(const double &lat, const double &lon, double &x, 
     x = lon * MAX_X / 180.0;
     y = log(tan((90 + lat) * osg::PI / 360)) / (osg::PI / 180.0);
     y = y * MAX_Y / 180.0;
+
+    //Clamp the values to appropriate ranges
+    x = osg::clampBetween(x, MIN_X, MAX_X);
+    y = osg::clampBetween(y, MIN_Y, MAX_Y);
 }
 
 bool

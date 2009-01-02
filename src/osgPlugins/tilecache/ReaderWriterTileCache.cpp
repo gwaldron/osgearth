@@ -70,7 +70,7 @@ public:
         key->getTileXY( tile_x, tile_y );
 
         // need to invert the y-tile index
-        tile_y = key->getMapSizeTiles(256) - tile_y - 1;
+        tile_y = key->getMapSizeTiles() - tile_y - 1;
 
         char buf[2048];
         sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",

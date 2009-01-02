@@ -47,7 +47,9 @@ namespace osgEarth
 
         int getMapSizePixels(const unsigned int &tile_size) const;
 
-        int getMapSizeTiles(const unsigned int &tile_size) const;
+        int getMapSizeTiles() const;
+
+        static int getMapSizeTiles(const unsigned int level);
 
         static int getMapSizePixels( const unsigned int &tile_size, const unsigned int &lod );
 

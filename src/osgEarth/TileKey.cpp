@@ -75,53 +75,37 @@ TileKey::getMapSizePixels(const unsigned int &tile_size, const unsigned int &lod
 }
 
 int
-TileKey::getMapSizeTiles(const unsigned int &tile_size) const
+TileKey::getMapSizeTiles() const
 {
-    return getMapSizePixels(tile_size) / tile_size;
+    return getMapSizeTiles(getLevelOfDetail());
+}
+
+int
+TileKey::getMapSizeTiles(const unsigned int level)
+{
+    return sqrt(pow(4.0, (double)(level)));
 }
 
 void
 TileKey::getTileXY(unsigned int& out_tile_x,
                    unsigned int& out_tile_y) const
 {
-  //Convert the quadkey to a TileId
+    int x = 0;
+    int y = 0;
 
-  //First, convert the base 4 quadkey to a decimal number
-  int mult = 1;
-  int qkdec = 0;
-  for (int i = (key.size()-1); i >= 0; i--)
-  {   
-    //Get current digit for the level
-    char c = key[i];
-    int digit = atoi(&c);
-    qkdec += (mult * digit);
-    mult *= 4;
-  }
-
-  //The bits are interleved
-  int tileX = 0;
-  int tileY = 0;   
-
-  mult = 1;
-  while (qkdec > 0)
-  {
-    //If the bit is a 1, add the appropriate value to tileX
-    if (qkdec & 0x1) tileX += mult;
-
-    //Shift the bits left
-    qkdec = qkdec >> 1;
-
-    //If the bit is a 1, add the appropriate value to tileY
-    if (qkdec & 0x1) tileY += mult;
-
-    //Shift the bits left
-    qkdec = qkdec >> 1;
-   
-    mult *= 2;
-  }
-
-  out_tile_x = tileX;
-  out_tile_y = tileY;
+    unsigned int lod = getLevelOfDetail();
+    for( unsigned int i=0; i<lod; i++ )
+    {
+        x*=2;
+        y*=2;
+        switch( key[i] ) {
+            case '1': x += 1; break;
+            case '2': y += 1; break;
+            case '3': x += 1; y += 1; break;
+        }
+    }
+    out_tile_x = x;
+    out_tile_y = y;
 }
 
 osgTerrain::TileID

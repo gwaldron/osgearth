@@ -38,8 +38,7 @@ using namespace osgEarth;
 #define PROPERTY_LAYERS         "layers"
 #define PROPERTY_STYLE          "style"
 #define PROPERTY_FORMAT         "format"
-#define PROPERTY_TILE_WIDTH     "tile_width"
-#define PROPERTY_TILE_HEIGHT    "tile_height"
+#define PROPERTY_TILE_SIZE     "tile_size"
 #define PROPERTY_ELEVATION_UNIT "elevation_unit"
 #define PROPERTY_SRS            "srs"
 #define PROPERTY_MAP_CONFIG     "map_config"
@@ -48,8 +47,7 @@ class WMSSource : public TileSource
 {
 public:
 	WMSSource( const osgDB::ReaderWriter::Options* options ):
-	  tile_width(256),
-	  tile_height(256),
+	  tile_size(256),
       map_config(0)
     {
         if ( options->getPluginData( PROPERTY_URL ) )
@@ -70,11 +68,8 @@ public:
         if ( options->getPluginData( PROPERTY_ELEVATION_UNIT))
              elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
 
-		if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
-            tile_width = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_WIDTH ), 256 );
-
-        if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
-            tile_height = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ), 256 );
+		if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
+            tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
 
         if ( options->getPluginData( PROPERTY_SRS ) )
             srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
@@ -164,8 +159,8 @@ public:
             << "&FORMAT=image/" << format
             << "&STYLES=" << style
             << "&SRS=" << srs
-            << "&WIDTH="<< tile_width
-            << "&HEIGHT="<< tile_height
+            << "&WIDTH="<< tile_size
+            << "&HEIGHT="<< tile_size
             << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
 
         // add this to trick OSG into using the right image loader:
@@ -176,7 +171,7 @@ public:
 
     virtual int getPixelsPerTile() const
     {
-        return tile_width;
+        return tile_size;
     }
 
 private:
@@ -186,8 +181,7 @@ private:
     std::string format;
     std::string srs;
 
-	int tile_width;
-	int tile_height;
+	int tile_size;
 
     const MapConfig *map_config;
 

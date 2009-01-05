@@ -32,7 +32,6 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_URL        "url"
 #define PROPERTY_DATASET    "dataset"
 #define PROPERTY_MAP_CONFIG "map_config"
 
@@ -48,9 +47,6 @@ public:
 
         if ( options.valid() )
         {
-            //if ( options->getPluginData( PROPERTY_URL ) )
-            //    url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
-
             if ( options->getPluginData( PROPERTY_DATASET ) )
                 dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
@@ -123,7 +119,6 @@ public:
 
 private:
     osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    //std::string url;
     std::string dataset;
 
     const MapConfig* map_config;

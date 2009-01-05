@@ -33,27 +33,20 @@
 using namespace osgEarth;
 
 #define PROPERTY_URL            "url"
-#define PROPERTY_TILE_WIDTH     "tile_width"
-#define PROPERTY_TILE_HEIGHT    "tile_height"
-#define PROPERTY_IMAGE_WIDTH     "image_width"
-#define PROPERTY_IMAGE_HEIGHT    "image_height"
+#define PROPERTY_TILE_SIZE     "tile_size"
 
 
 class GDALTileSource : public TileSource
 {
 public:
     GDALTileSource(const osgDB::ReaderWriter::Options* options):
-      tile_width(256),
-      tile_height(256)
+      tile_size(256)
       {
           if ( options->getPluginData( PROPERTY_URL ) )
               url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
-          if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
-              tile_width = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_WIDTH ), 256 );
-
-          if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
-              tile_height = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ), 256 );
+          if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
+              tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -78,7 +71,7 @@ public:
 
     virtual int getPixelsPerTile() const
     {
-        return tile_width;
+        return tile_size;
     }
 
     std::string createTileFile(const TileKey* key)
@@ -111,7 +104,7 @@ public:
         std::string dest_srs = "EPSG:4326";
 
         ss << "gdalwarp -t_srs " << dest_srs << " -te " << minx << " " << miny << " " << maxx << " " << maxy
-            << " -ts " << tile_width << " " << tile_height
+            << " -ts " << tile_size << " " << tile_size
             << " \"" << url << "\"  \"" << temp_file << "\"";
 
         //Remove file if it already exists
@@ -144,8 +137,7 @@ public:
 
 private:
     std::string url;
-    int tile_width;
-    int tile_height;
+    int tile_size;
 };
 
 

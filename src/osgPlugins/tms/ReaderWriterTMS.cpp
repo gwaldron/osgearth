@@ -107,20 +107,14 @@ public:
 
             if (!image.valid())
             {
-                //We couldn't read the image, so check to see if the tile intersects the bounding box 
-                //If it does, simplfy create a transparent texture to make the pager continue subdividing
-                if (_tileMap->intersectsKey( key ) && key->getLevelOfDetail() <= _tileMap->_maxLevel)
+                //We couldn't read the image from the URL or the cache, so check to see if the given key is less than the max level
+                //of the tilemap and create a transparent image.
+                if (key->getLevelOfDetail() <= _tileMap->_maxLevel)
                 {
-                    //We only want to replace the image with a transparent one if there isn't supposed to be a valid
-                    //image in the TileSet.  If the URL is not empty, then there was supposed to be an image and this
-                    //should result in a failure
-                    if (image_url.empty())
-                    {
-                        image = new osg::Image();
-                        image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-                        unsigned char *data = image->data(0,0);
-                        memset(data, 0, 4);
-                    }
+                    image = new osg::Image();
+                    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+                    unsigned char *data = image->data(0,0);
+                    memset(data, 0, 4);
                 }
             }
             return image.release();

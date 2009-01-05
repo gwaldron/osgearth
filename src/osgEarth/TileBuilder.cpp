@@ -96,7 +96,7 @@ const TileGridProfile& TileBuilder::getDataProfile()
             }
             else
             {
-                if (_dataProfile.profileType() != (*itr)->getProfile().profileType())
+                if (_dataProfile != (*itr)->getProfile())
                 {
                     osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
                     image_sources.erase(itr);
@@ -117,7 +117,7 @@ const TileGridProfile& TileBuilder::getDataProfile()
             }
             else
             {
-                if (_dataProfile.profileType() != (*itr)->getProfile().profileType())
+                if (_dataProfile != (*itr)->getProfile())
                 {
                     osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
                     heightfield_sources.erase(itr);
@@ -166,6 +166,7 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 
             if (tile_source->getProfile().profileType() != TileGridProfile::UNKNOWN)
             {
+                tile_source->setName( source->getName() );
                 to.push_back( tile_source );
             }
             else

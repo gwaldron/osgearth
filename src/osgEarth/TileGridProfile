@@ -56,6 +56,10 @@ namespace osgEarth
         osgEarth::TileKey* getTileKey( const std::string &key ) const;
 
         static ProfileType getProfileTypeFromSRS(const std::string &srs);
+
+        bool operator == (const TileGridProfile& rhs) const;
+        bool operator != (const TileGridProfile& rhs) const;
+
     private:
         double xmin, ymin, xmax, ymax;
         

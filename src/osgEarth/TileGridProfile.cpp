@@ -164,3 +164,27 @@ TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::s
     //Assume that if we have an SRS and its not GLOBAL_GEODETIC or GLOBAL_MERCATOR, it's PROJECTED
     return TileGridProfile::PROJECTED;
 }
+
+bool TileGridProfile::operator == (const TileGridProfile& rhs) const
+{
+    if (this == &rhs) return true;
+
+    return (_profileType == rhs._profileType &&
+            _srs == rhs._srs &&
+            xmin == rhs.xmin &&
+            ymin == rhs.ymin &&
+            xmax == rhs.xmax &&
+            ymax == rhs.ymax);
+}
+
+bool TileGridProfile::operator != (const TileGridProfile& rhs) const
+{
+    if (this == &rhs) return false;
+
+        return (_profileType != rhs._profileType ||
+            _srs != rhs._srs ||
+            xmin != rhs.xmin ||
+            ymin != rhs.ymin ||
+            xmax != rhs.xmax ||
+            ymax != rhs.ymax);
+}

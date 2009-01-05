@@ -82,9 +82,7 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
 const TileGridProfile& TileBuilder::getDataProfile()
 {
     if (!_profileComputed)
-    {
-        _dataProfile = TileGridProfile(TileGridProfile::UNKNOWN);
-
+    {        
         for (TileSourceList::iterator itr = image_sources.begin();
             itr != image_sources.end();
             )
@@ -98,9 +96,15 @@ const TileGridProfile& TileBuilder::getDataProfile()
             {
                 if (_dataProfile != (*itr)->getProfile())
                 {
-                    osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
-                    image_sources.erase(itr);
-                    continue;
+                    //If the current profile is geodetic and the TileSource profile is Mercator, then this is a special case
+                    //and we can still use the TileSource.
+                    if (!(_dataProfile.profileType() == TileGridProfile::GLOBAL_GEODETIC &&
+                        (*itr)->getProfile().profileType() == TileGridProfile::GLOBAL_MERCATOR))
+                    {
+                        osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
+                        image_sources.erase(itr);
+                        continue;
+                    }                    
                 }
             }
              ++itr;
@@ -187,12 +191,24 @@ TileBuilder::TileBuilder(MapConfig* _map,
                          const osgDB::ReaderWriter::Options* options ) :
 map( _map ),
 url_template( _url_template ),
-_profileComputed(false)
+_profileComputed(false),
+_dataProfile(TileGridProfile::UNKNOWN)
 {
     if ( map.valid() )
     {
         addSources( map.get(), map->getImageSources(), image_sources, url_template, options );
         addSources( map.get(), map->getHeightFieldSources(), heightfield_sources, url_template, options );
+    }
+
+    if ( map->getProfile() == "global-mercator")
+    {
+        osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_MERCATOR due to profile in MapConfig" << std::endl;
+        _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+    }
+    else if ( map->getProfile() == "global-geodetic")
+    {
+        osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_GEODETIC due to profile in MapConfig" << std::endl;
+        _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
     }
 }
 

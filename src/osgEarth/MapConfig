@@ -230,6 +230,16 @@ namespace osgEarth
         *Gets the absolute filename that the map was loaded from
         */
         const std::string& getFilename() const;
+
+        /*
+         *Gets the profile string.  If the profile string is empty, the profile should be auotmatically computed from the sources
+        */
+        const std::string& getProfile() const;
+
+        /*
+        *Sets the profile string.  If the profile string is empty, the profile should be automatically computed from the sources.
+        */
+        void setProfile(const std::string& profile);
         
     private:
         std::string filename;
@@ -246,6 +256,8 @@ namespace osgEarth
 
         osg::Vec4ub north_cap_color;
         osg::Vec4ub south_cap_color;
+
+        std::string profile;
 
         bool offline_hint;
     };

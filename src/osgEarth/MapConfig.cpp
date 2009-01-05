@@ -39,6 +39,7 @@ MapConfig::MapConfig()
     south_cap_color = osg::Vec4ub(255,255,255,255);
     offline_hint = false;
     filename = "";
+    profile = "";
 }
 
 void
@@ -218,6 +219,17 @@ MapConfig::getOfflineHint() const
     return offline_hint;
 }
 
+const std::string& 
+MapConfig::getProfile() const
+{
+    return profile;
+}
+
+void MapConfig::setProfile(const std::string& profile)
+{
+    this->profile = profile;
+}
+
 
 /************************************************************************/
 
@@ -281,6 +293,7 @@ SourceConfig::getProperties() const
 #define ELEM_NORTH_CAP_COLOR   "north_cap_color"
 #define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
 #define ELEM_CONNECTION_STATUS "connection_status"
+#define ELEM_PROFILE           "profile"
 
 
 static SourceConfig*
@@ -370,6 +383,7 @@ readMap( XmlElement* e_map )
 
     map->setNorthCapColor(getColor(e_map->getSubElementText(ELEM_NORTH_CAP_COLOR ), map->getNorthCapColor()));
     map->setSouthCapColor(getColor(e_map->getSubElementText(ELEM_SOUTH_CAP_COLOR ), map->getSouthCapColor()));
+    map->setProfile( e_map->getSubElementText( ELEM_PROFILE ) );
 
 
 
@@ -449,6 +463,7 @@ mapToXmlDocument( const MapConfig *map)
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>(map->getProxyPort() ) );
     e_map->addSubElement( ELEM_NORTH_CAP_COLOR , toString<osg::Vec4ub>( map->getNorthCapColor() ) );
     e_map->addSubElement( ELEM_SOUTH_CAP_COLOR , toString<osg::Vec4ub>( map->getSouthCapColor() ) );
+    e_map->addSubElement( ELEM_PROFILE, map->getProfile() );
 
     //Write all the image sources
     for (SourceConfigList::const_iterator i = map->getImageSources().begin(); i != map->getImageSources().end(); i++)

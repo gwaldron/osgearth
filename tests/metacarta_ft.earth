@@ -13,8 +13,7 @@
     <layers>worldwind_dem</layers>
     <style>feet_short_int</style>
     <format>tiff</format>
-    <tile_width>32</tile_width>
-    <tile_height>32</tile_height>
+    <tile_size>32</tile_size>
     <!--Elevation unit.  Supported values are ft and m.  Defaults to m if not specified-->
     <elevation_unit>ft</elevation_unit>
   </heightfield>

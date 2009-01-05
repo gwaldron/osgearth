@@ -78,6 +78,8 @@ namespace osgEarth
         TileSourceList &getImageSources() {return image_sources;}
         TileSourceList &getHeightFieldSources() {return heightfield_sources;}
 
+        bool valid();
+
         const TileGridProfile& getDataProfile();
 
     protected:

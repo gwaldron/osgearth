@@ -93,7 +93,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( file_name );
                 if ( map.valid() )
                 {
+                    //Create the TileBuilder.
                     tile_builder = TileBuilder::create( map.get(), file_name );
+                    //Check to see that the TileBuilder is valid.
+                    if (!tile_builder->valid()) return ReadResult::FILE_NOT_HANDLED;
+
                     key = tile_builder->getDataProfile().getTileKey( "" );
                     if (dynamic_cast<PlateCarreTileKey*>(key.get()))
                     {

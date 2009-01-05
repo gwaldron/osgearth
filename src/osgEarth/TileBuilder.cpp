@@ -211,6 +211,22 @@ TileBuilder::getMapConfig() const
 }
 
 
+bool
+TileBuilder::valid()
+{
+    //Check to see if we are trying to do a Geocentric database with a Projected profile.
+    if (getDataProfile().profileType() == TileGridProfile::PROJECTED &&
+        map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
+    {
+        osg::notify(osg::NOTICE) << "Error:  Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
+        return false;
+    }
+
+    //Other cases?
+    return true;
+}
+
+
 
 osg::Node*
 TileBuilder::createNode( const TileKey* key )

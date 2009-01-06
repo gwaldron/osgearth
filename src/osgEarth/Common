@@ -1,0 +1,55 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_COMMON_H
+#define OSGEARTH_COMMON_H 1
+
+#include <osgEarth/Export>
+#include <osg/Referenced>
+#include <osg/ref_ptr>
+#include <string>
+#include <sstream>
+#include <osg/io_utils>
+
+#ifdef WIN32
+#include <windows.h>
+#endif
+
+
+namespace osgEarth
+{
+    template<typename T> static T
+    as( const std::string& str, T default_value )
+    {
+        T temp = default_value;
+        std::istringstream strin( str );
+        if ( !strin.eof() ) strin >> temp;
+        return temp;
+    }
+
+    template<typename T> static std::string
+    toString(const T value)
+    {
+        std::stringstream out;
+        out << value;
+        return out.str();
+    }
+}
+
+#endif // OSGEARTH_COMMON_H

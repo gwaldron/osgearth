@@ -1,0 +1,11 @@
+<map name="ESRI ArcGIS Server Map Service Cache Test" type="geographic">
+
+    <min_tile_range_factor>6</min_tile_range_factor>
+    
+    <image name="ags map" driver="arcgis_map_cache">
+        <url>http://192.168.0.8/arcgiscache</url>
+        <map>WorldMapMercator</map>
+        <format>png</format>
+    </image>
+   
+</map>

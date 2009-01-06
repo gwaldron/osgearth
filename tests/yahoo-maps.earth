@@ -1,0 +1,22 @@
+<map name="Yahoo maps" type="geocentric">
+
+    <min_tile_range_factor>8</min_tile_range_factor>
+    
+<!-- uncomment the following two lines to activate a proxy server -->
+<!-- <proxy_host>80.80.12.123</proxy_host> -->
+<!-- <proxy_port>80</proxy_port> -->
+       
+<!-- uncomment the following line to enable caching... folder must exist -->
+<!-- <cache_path>f:/temp/osgearthcache</cache_path> -->
+
+   <image name="roads map" driver="yahoo">
+   
+       <!-- datasets: roads -->
+       <dataset>roads</dataset>
+   </image>
+   
+   <!-- Matching cap colors -->
+   <north_cap_color>153 179 204 255</north_cap_color>
+   <south_cap_color>255 255 255 255</south_cap_color>
+   
+</map>

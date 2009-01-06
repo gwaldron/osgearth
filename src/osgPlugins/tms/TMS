@@ -1,0 +1,88 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+
+//http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification#global-mercator
+
+#include <vector>
+#include <iostream>
+#include <osgEarth/Mercator>
+#include <osgEarth/PlateCarre>
+#include <osgEarth/TileGridProfile>
+
+#include <osg/Referenced>
+
+class TileFormat
+{
+public:
+    unsigned int _width;
+    unsigned int _height;
+    std::string _mimeType;
+    std::string _extension;
+};
+
+class TileSet
+{
+public:
+    std::string _href;
+    double _unitsPerPixel;
+    unsigned int _order;
+};
+
+class TileMap : public osg::Referenced
+{
+public:
+    std::string getURL(const osgEarth::TileKey *tileKey);
+
+    bool intersectsKey(const osgEarth::TileKey *tileKey);
+
+    void computeMinMaxLevel();
+
+    std::string _tileMapService;
+    std::string _version;
+    std::string _title;
+    std::string _abstract;
+    std::string _srs;
+
+    double _originX, _originY;
+    
+    double _minX, _minY, _maxX, _maxY;
+
+    typedef std::vector<TileSet> TileSetList;
+    TileSetList _tileSets;
+
+    TileFormat _format;
+
+    std::string _filename;
+
+    unsigned int _minLevel;
+    unsigned int _maxLevel;
+
+    osgEarth::TileGridProfile::ProfileType _profile;
+};
+
+class TileMapReader
+{
+public:
+    static TileMap* read( const std::string &location );
+    static TileMap* read( std::istream &in );
+private:
+    TileMapReader();
+    TileMapReader(const TileMapReader &tmr);
+};

@@ -1,0 +1,77 @@
+IF   (DYNAMIC_OSGEARTH)
+    ADD_DEFINITIONS(-DOSGEARTH_LIBRARY)
+ELSE (DYNAMIC_OSGEARTH)
+    ADD_DEFINITIONS(-DOSGEARTH_LIBRARY_STATIC)
+ENDIF(DYNAMIC_OSGEARTH)
+
+OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
+MARK_AS_ADVANCED(CURL_IS_STATIC)
+
+IF(WIN32)
+    SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+    IF(CURL_IS_STATIC)
+        ADD_DEFINITIONS(-DCURL_STATICLIB)
+        SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm)
+    ENDIF(CURL_IS_STATIC)
+ENDIF(WIN32)
+
+SET(LIB_NAME osgEarth)
+
+SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
+SET(LIB_PUBLIC_HEADERS
+	md5
+	CacheSeed
+    Common
+    Export
+    FileCache
+    GeocentricTileBuilder
+    GeographicTileBuilder
+    HTTPClient
+    ImageToHeightFieldConverter
+    MapConfig
+    Mercator
+    PlateCarre    
+	Projected
+    TerrainTileEdgeNormalizerUpdateCallback
+    TileBuilder
+    TileGridProfile
+    TileKey
+    TileSource
+    XmlUtils
+)
+
+ADD_LIBRARY(${LIB_NAME} SHARED
+#    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
+    ${LIB_PUBLIC_HEADERS}
+	md5.cpp
+	CacheSeed.cpp
+    FileCache.cpp
+    GeocentricTileBuilder.cpp
+    GeographicTileBuilder.cpp
+    HTTPClient.cpp
+    ImageToHeightFieldConverter.cpp
+    MapConfig.cpp
+    Mercator.cpp
+    PlateCarre.cpp
+	Projected.cpp
+    TerrainTileEdgeNormalizerUpdateCallback.cpp
+    TileBuilder.cpp
+    TileGridProfile.cpp
+    TileKey.cpp
+    TileSource.cpp
+    Version.cpp
+    XmlUtils.cpp
+)
+
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} ${CURL_INCLUDE_DIR} ${EXPAT_INCLUDE_DIR})
+
+IF (WIN32)
+  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} ${EXPAT_LIBRARY} )
+ELSE(WIN32)
+  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} ${EXPAT_LIBRARY} )
+ENDIF(WIN32)
+
+LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY EXPAT_LIBRARY)
+LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} ${EXPAT_LIBRARY})
+
+INCLUDE(ModuleInstall OPTIONAL)

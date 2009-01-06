@@ -1,0 +1,280 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAP_CONFIG_H
+#define OSGEARTH_MAP_CONFIG_H 1
+
+#include <osgEarth/Common>
+#include <map>
+#include <list>
+
+#include <osg/Vec4ub>
+
+namespace osgEarth
+{
+    typedef std::map<std::string,std::string> SourceProperties;
+
+    /**
+     * Defines a source for image or heightfield data.
+     */
+    class OSGEARTH_EXPORT SourceConfig : public osg::Referenced
+    {
+    public:
+        SourceConfig();
+
+        /**
+         * Sets the readable name of the source.
+         */
+        void setName( const std::string& name );
+
+        const std::string& getName() const;
+
+        /**
+         * Sets the driver name for this source. The driver name is the
+         * name of the extension that will load the appropriate osg plugin.
+         */
+        void setDriver( const std::string& driver );
+
+        const std::string& getDriver() const;
+
+        /**
+         * Gets the collection of name/value pairs that the tile generator
+         * will pass to the OSG plugin designated by the driver setting.
+         */
+        SourceProperties& getProperties();
+
+        const SourceProperties& getProperties() const;
+
+    private:
+        std::string name;
+        std::string driver;
+        SourceProperties properties;
+    };
+
+    typedef std::list< osg::ref_ptr<SourceConfig> > SourceConfigList;
+
+
+    class OSGEARTH_EXPORT MapConfig : public osg::Referenced
+    {
+    public:
+        // CS of the 3D scene
+        enum CoordinateSystemType
+        {
+            CSTYPE_GEOCENTRIC,
+            CSTYPE_GEOGRAPHIC
+        };
+
+    public:
+        /**
+         * Constructs a new, empty map configuration.
+         */
+        MapConfig();
+
+        /**
+         * Sets the readable name of the map.
+         */
+        void setName( const std::string& name );
+
+        const std::string& getName() const;
+        
+        /**
+         * Gets the coordinate system type for the geometry to create for this
+         * map, e.g. round-earth (geocentric) or flat-earth (geographic, etc.)
+         *
+         * @return A CoordinateSystemType
+         */
+        const CoordinateSystemType& getCoordinateSystemType() const;
+
+        /**
+         * Sets the coordinate system type for the map's final geometry.
+         *
+         * @param type
+         *      Type of CS to use for the 3D map
+         */
+        void setCoordinateSystemType( const CoordinateSystemType& type );
+       
+        /**
+         * Sets the default scale factor for height-field values.
+         *
+         * @param scale
+         *      Multiplier for heights; default = 1.0
+         */
+        void setVerticalScale( float scale );
+
+        /**
+         * Gets the default scale factor for height-field values.
+         */
+        float getVerticalScale() const;
+
+        SourceConfigList& getImageSources();
+
+        const SourceConfigList& getImageSources() const;
+
+        SourceConfigList& getHeightFieldSources();
+
+        const SourceConfigList& getHeightFieldSources() const;
+        
+        /**
+        *Sets the skirt ratio to be used when creating height field tiles
+        *
+        *@param skirtRatio
+        *      The skirt ratio; default = 0.02
+        */
+        void setSkirtRatio(const float _skirt_ratio) { skirt_ratio = _skirt_ratio; }
+        
+        /**
+        *Gets the skirt ratio to be used when creating height field tiles
+        *
+        *@return The skirt ratio
+        */
+        float getSkirtRatio() const { return skirt_ratio; }
+
+        /**
+        * Sets the path to cache downloaded tiles to
+        */
+        void setCachePath( const std::string& _cache_path );
+
+        const std::string& getCachePath() const;
+
+        /**
+        * Gets the absolute path to the file cache.  If a relative cache path is specified, this function
+        * will return the absolute path to the cache that is relative to the location of the map file
+        */
+        std::string getFullCachePath() const;
+
+        void setProxyHost( const std::string& host );
+
+        const std::string& getProxyHost() const;
+
+        void setProxyPort( unsigned short port );
+
+        unsigned short getProxyPort() const;
+
+        /**
+         * Sets the minimum tile LOD range as a factor of the tile's radius.
+         * The default value = 6.0.
+         */
+        void setMinTileRangeFactor( float factor );
+
+        /**
+         * Gets the minimum tile LOD range as a factor of the tile's radius.
+         */
+        float getMinTileRangeFactor() const;
+
+        /*
+        * Sets the color of the north cap if one needs to be drawn
+        * @param color
+        *          The color of the north cap
+        */
+        void setNorthCapColor(const osg::Vec4ub &color);
+
+        /*
+        * Gets the color of the north cap
+        * @returns
+        *        The color of the north cap
+        */
+        const osg::Vec4ub& getNorthCapColor() const;
+
+        /*
+        * Sets the color of the south cap if one needs to be drawn
+        * @param color
+        *          The color of the south cap
+        */
+        void setSouthCapColor(const osg::Vec4ub &color);
+
+        /*
+        *Gets the color of the south cap
+        *@returns
+        *        The color of the south cap
+        */
+        const osg::Vec4ub& getSouthCapColor() const;
+
+        /*
+        *Sets whether or not the map should be run in "offline" mode.  When in offline mode, all file requests
+        *should work exclusively off of local data and should not attempt to connect to the network.
+        *@param offlineHint
+        *       Whether or not the map should be run in "offline" mode
+        */
+        void setOfflineHint(const bool &hint);
+
+        /*
+        *Gets whether or not the map should be run in "offline" mode.  When in offline mode, all file requests
+        *should work exclusively off of local data and should not attempt to connect to the network.
+        *@returns
+        *       Whether or not the map should be run in "offline" mode
+        */
+        const bool getOfflineHint() const;
+
+        /*
+        *Sets the absolute filename that the map was loaded from
+        */
+        void setFilename(const std::string &filename);
+
+        /*
+        *Gets the absolute filename that the map was loaded from
+        */
+        const std::string& getFilename() const;
+
+        /*
+         *Gets the profile string.  If the profile string is empty, the profile should be auotmatically computed from the sources
+        */
+        const std::string& getProfile() const;
+
+        /*
+        *Sets the profile string.  If the profile string is empty, the profile should be automatically computed from the sources.
+        */
+        void setProfile(const std::string& profile);
+        
+    private:
+        std::string filename;
+        std::string name;
+        CoordinateSystemType model_cstype;
+        float vertical_scale;
+        float skirt_ratio;      
+        SourceConfigList image_sources;
+        SourceConfigList heightfield_sources;
+        std::string cache_path;
+        std::string proxy_host;
+        unsigned short proxy_port;
+        float min_tile_range_factor;
+
+        osg::Vec4ub north_cap_color;
+        osg::Vec4ub south_cap_color;
+
+        std::string profile;
+
+        bool offline_hint;
+    };
+
+
+    /**
+     * Creates MapConfig objects from their XML description.
+     */
+    class OSGEARTH_EXPORT MapConfigReaderWriter
+    {
+    public:
+        static MapConfig* readXml( const std::string& location );
+        static MapConfig* readXml( std::istream& input );
+
+        static void writeXml(const MapConfig* map, const std::string& location);
+        static void writeXml(const MapConfig* map, std::ostream& output);
+    };
+};
+
+#endif // OSGEARTH_MAP_CONFIG_H

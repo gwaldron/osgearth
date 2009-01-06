@@ -24,6 +24,7 @@
 #include <osg/Notify>
 
 #include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 #include <fstream>
 
 using namespace osgEarth;
@@ -511,6 +512,12 @@ MapConfigReaderWriter::readXml( const std::string& location )
     }
     else
     {
+        if (!osgDB::fileExists(location))
+        {
+            osg::notify(osg::NOTICE) << location << " does not exists " << std::endl;
+            return 0;
+        }
+
         std::ifstream in( location.c_str() );
         map = readXml( in );
     }

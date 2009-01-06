@@ -80,7 +80,7 @@ void TileMap::computeMinMaxLevel()
 
 
 std::string
-TileMap::getURL(const osgEarth::TileKey *tileKey)
+TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
 {
     if (!intersectsKey(tileKey)) return "";
 
@@ -97,7 +97,13 @@ TileMap::getURL(const osgEarth::TileKey *tileKey)
 
     int totalTiles = sqrt(pow(4.0, (double)(zoom)));
 
-    y  = totalTiles - y - 1;
+    //Some TMS like services swap the Y coordinate so 0,0 is the upper left rather than the lower left.  The normal TMS
+    //specification has 0,0 at the bottom left, so inverting Y will make 0,0 in the upper left.
+    //http://code.google.com/apis/maps/documentation/overlays.html#Google_Maps_Coordinates
+    if (!invertY)
+    {
+        y  = totalTiles - y - 1;
+    }
 
     //osg::notify(osg::NOTICE) << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
 

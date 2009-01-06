@@ -48,7 +48,7 @@ public:
 class TileMap : public osg::Referenced
 {
 public:
-    std::string getURL(const osgEarth::TileKey *tileKey);
+    std::string getURL(const osgEarth::TileKey *tileKey, bool invertY);
 
     bool intersectsKey(const osgEarth::TileKey *tileKey);
 

@@ -39,6 +39,7 @@ using namespace osgEarth;
 
 #define PROPERTY_URL        "url"
 #define PROPERTY_MAP_CONFIG "map_config"
+#define PROPERTY_TMS_TYPE   "tms_type"
 
 
 class TMSSource : public TileSource
@@ -46,7 +47,8 @@ class TMSSource : public TileSource
 public:
     TMSSource(const osgDB::ReaderWriter::Options *options):
       _tileMap(0),
-      _mapConfig(0)
+      _mapConfig(0),
+      _invertY(false)
     {
 
         if ( options->getPluginData( PROPERTY_URL ) )
@@ -60,6 +62,16 @@ public:
         //Get the MapConfig
         if (options->getPluginData( PROPERTY_MAP_CONFIG ))
             _mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
+
+        if (options->getPluginData( PROPERTY_TMS_TYPE ) )
+        {
+            std::string tms_type = std::string( (const char*)options->getPluginData( PROPERTY_TMS_TYPE ) );
+            if (tms_type == "google")
+            {
+                _invertY = true;
+                osg::notify(osg::NOTICE) << "TMS driver inverting y" << std::endl;
+            }
+        }
 
 
         if (!_url.empty())
@@ -89,7 +101,7 @@ public:
     {
         if (_tileMap.valid())
         {
-            std::string image_url = _tileMap->getURL( key );
+            std::string image_url = _tileMap->getURL( key, _invertY);
 
             //osg::notify(osg::NOTICE) << "URL " << image_url << std::endl;
 
@@ -107,14 +119,17 @@ public:
 
             if (!image.valid())
             {
-                //We couldn't read the image from the URL or the cache, so check to see if the given key is less than the max level
-                //of the tilemap and create a transparent image.
-                if (key->getLevelOfDetail() <= _tileMap->_maxLevel)
+                if (image_url.empty() || !_tileMap->intersectsKey(key))
                 {
-                    image = new osg::Image();
-                    image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-                    unsigned char *data = image->data(0,0);
-                    memset(data, 0, 4);
+                    //We couldn't read the image from the URL or the cache, so check to see if the given key is less than the max level
+                    //of the tilemap and create a transparent image.
+                    if (key->getLevelOfDetail() <= _tileMap->_maxLevel)
+                    {
+                        image = new osg::Image();
+                        image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+                        unsigned char *data = image->data(0,0);
+                        memset(data, 0, 4);
+                    }
                 }
             }
             return image.release();
@@ -137,6 +152,7 @@ private:
     osg::ref_ptr<TileMap> _tileMap;
     const MapConfig *_mapConfig;
     std::string _url;
+    bool _invertY;
 };
 
 

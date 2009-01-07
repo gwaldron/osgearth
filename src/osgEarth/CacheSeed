@@ -42,7 +42,7 @@ namespace osgEarth
 
 
         return  osg::maximum(_min.x(), minlon) <= osg::minimum(_max.x(),maxlon) &&
-            osg::maximum(_min.y(), minlat) <= osg::minimum(_max.y(), maxlat);
+                osg::maximum(_min.y(), minlat) <= osg::minimum(_max.y(), maxlat);
     }
 
     osg::Vec2d _min;

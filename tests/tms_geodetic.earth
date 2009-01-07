@@ -1,5 +1,12 @@
+<!--
+MetaCarta TMS Feed - Global Mercator
+
+Uses the TMS driver to access a global-mercator dataset.
+Note the trailing "/" on the URL.
+-->
+
 <map name="TMS" type="geocentric">
    <image name="TMS" driver="tms">
-     <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite/</url>
+     <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite-merc/</url>
    </image>
 </map>

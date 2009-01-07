@@ -48,7 +48,51 @@ _profileType(UNKNOWN)
 
 TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType)
 {
+    init( profileType );
+}
+
+TileGridProfile::TileGridProfile( double _xmin, double _ymin, double _xmax, double _ymax, const std::string& srs )
+{
+    xmin = _xmin;
+    ymin = _ymin;
+    xmax = _xmax;
+    ymax = _ymax;
+    _profileType = PROJECTED;
+    _srs = srs;
+}
+
+TileGridProfile::TileGridProfile( const std::string& _string )
+{
+    if ( _string == "global-geodetic" )
+        init( TileGridProfile::GLOBAL_GEODETIC );
+    else if ( _string == "global-mercator" )
+        init( TileGridProfile::GLOBAL_MERCATOR );
+    else
+        init( TileGridProfile::UNKNOWN );
+}
+
+TileGridProfile::TileGridProfile( const TileGridProfile& rhs )
+: xmin( rhs.xmin ),
+  ymin( rhs.ymin ),
+  xmax( rhs.xmax ),
+  ymax( rhs.ymax ),
+  _profileType(rhs._profileType),
+  _srs(rhs._srs)
+{
+    //NOP
+}
+
+bool
+TileGridProfile::isValid() const
+{
+    return _profileType != TileGridProfile::UNKNOWN;
+}
+
+void
+TileGridProfile::init( TileGridProfile::ProfileType profileType )
+{
     _profileType = profileType;
+
     if (_profileType == GLOBAL_GEODETIC)
     {
         xmin = GLOBAL_GEODETIC_MIN_LON;
@@ -65,27 +109,6 @@ TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType)
         ymax = GLOBAL_MERCATOR_MAX_LAT;
         _srs = "EPSG:900913";
     }
-}
-
-TileGridProfile::TileGridProfile( double _xmin, double _ymin, double _xmax, double _ymax, const std::string& srs )
-{
-    xmin = _xmin;
-    ymin = _ymin;
-    xmax = _xmax;
-    ymax = _ymax;
-    _profileType = PROJECTED;
-    _srs = srs;
-}
-
-TileGridProfile::TileGridProfile( const TileGridProfile& rhs )
-: xmin( rhs.xmin ),
-  ymin( rhs.ymin ),
-  xmax( rhs.xmax ),
-  ymax( rhs.ymax ),
-  _profileType(rhs._profileType),
-  _srs(rhs._srs)
-{
-    //NOP
 }
 
 double

@@ -37,9 +37,12 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_URL        "url"
-#define PROPERTY_MAP_CONFIG "map_config"
-#define PROPERTY_TMS_TYPE   "tms_type"
+#define PROPERTY_URL         "url"
+#define PROPERTY_MAP_CONFIG  "map_config"
+#define PROPERTY_TMS_TYPE    "tms_type"
+#define PROPERTY_TILE_WIDTH  "tile_width"
+#define PROPERTY_TILE_HEIGHT "tile_height"
+#define PROPERTY_FORMAT      "format"
 
 
 class TMSSource : public TileSource
@@ -54,32 +57,65 @@ public:
         if ( options->getPluginData( PROPERTY_URL ) )
             _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
+        // width, height, and format are only used if no TMS tile map file can be found:
+        if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
+            _tile_width = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_WIDTH ), 256 );
+
+        if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
+            _tile_height = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ), 256 );
+
+        if ( options->getPluginData( PROPERTY_FORMAT ) )
+            _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+
+        // quit now if there's no URL
         if (_url.empty())
         {
-            osg::notify(osg::WARN) << "ReaderWriterTMS: No URL specified " << std::endl;
+            osg::notify(osg::WARN) << "TMSSource: No URL specified " << std::endl;
         }
-
-        //Get the MapConfig
-        if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-            _mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
-
-        if (options->getPluginData( PROPERTY_TMS_TYPE ) )
+        else
         {
-            std::string tms_type = std::string( (const char*)options->getPluginData( PROPERTY_TMS_TYPE ) );
-            if (tms_type == "google")
+            //Get the MapConfig
+            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
+                _mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
+
+            // There is a "google" TMS type that inverts the Y tile index. Account for it here:
+            if (options->getPluginData( PROPERTY_TMS_TYPE ) )
             {
-                _invertY = true;
-                osg::notify(osg::NOTICE) << "TMS driver inverting y" << std::endl;
+                std::string tms_type = std::string( (const char*)options->getPluginData( PROPERTY_TMS_TYPE ) );
+                if (tms_type == "google")
+                {
+                    _invertY = true;
+                    osg::notify(osg::NOTICE) << "TMS driver inverting y" << std::endl;
+                }
             }
-        }
 
-
-        if (!_url.empty())
-        {
+            // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
             _tileMap = TileMapReader::read( _url );
+
             if (!_tileMap.valid())
             {
-                osg::notify(osg::NOTICE) << "TMSSource:  error reading Tile Map Resource " << _url << std::endl;
+                osg::notify(osg::NOTICE) << "TMSSource: no TileMap found; checking for client-side settings.." << std::endl;
+
+                // If that fails, try to use an explicit profile if one exists. In this case, the map
+                // config must also specify a width, height, and format.
+                TileGridProfile globalProfile( _mapConfig->getProfile() );
+                if ( globalProfile.isValid() )
+                {
+                    _profile = globalProfile;
+                    _tileMap = TileMap::create( _url, _profile.profileType(), _format, _tile_width, _tile_height );
+                    if ( !_tileMap.valid() )
+                    {
+                        osg::notify(osg::NOTICE) << "TMSSource: no TileMap found, and no overrides set" << _mapConfig->getProfile() << std::endl;
+                    }
+                    else
+                    {
+                        //osg::notify(osg::NOTICE) << "TMSSource: Good to go; base url = " << _tileMap->_filename << std::endl;
+                    }
+                }
+                else
+                {
+                    osg::notify(osg::NOTICE) << "TMSSource:  error reading Tile Map Resource " << _url << std::endl;
+                }
             }
             else
             {
@@ -95,15 +131,15 @@ public:
                 }
             }
         }
-      }
+    }
 
     osg::Image* createImage(const osgEarth::TileKey *key)
     {
         if (_tileMap.valid())
         {
             std::string image_url = _tileMap->getURL( key, _invertY);
-
-            //osg::notify(osg::NOTICE) << "URL " << image_url << std::endl;
+                
+            osg::notify(osg::INFO) << "TMSSource: Key=" << key->str() << ", URL=" << image_url << std::endl;
 
             std::string cache_path = _mapConfig ? _mapConfig->getFullCachePath() : std::string("");
             bool offline = _mapConfig ? _mapConfig->getOfflineHint() : false;
@@ -114,7 +150,7 @@ public:
             
             if (!image_url.empty())
             {
-                image = fc.readImageFile( image_url);
+                image = fc.readImageFile( image_url );
             }
 
             if (!image.valid())
@@ -153,6 +189,10 @@ private:
     const MapConfig *_mapConfig;
     std::string _url;
     bool _invertY;
+
+    // these are backups in case no tilemap definition is found
+    std::string _format;
+    int _tile_width, _tile_height;
 };
 
 

@@ -75,6 +75,17 @@ public:
     unsigned int _maxLevel;
 
     osgEarth::TileGridProfile::ProfileType _profile;
+
+    /**
+     * Creates a tile maps corresponding to one of osgEarth's built-in profile types
+     */
+    static TileMap* create(
+        const std::string& url,
+        osgEarth::TileGridProfile::ProfileType type,
+        const std::string& format,
+        int tile_width,
+        int tile_height );
+
 };
 
 class TileMapReader

@@ -39,11 +39,22 @@ namespace osgEarth
 
         TileGridProfile();
 
-        TileGridProfile( ProfileType type);
+        TileGridProfile( ProfileType type );
+
+        /**
+         * Constructs a new profile from a definition string such as "global-mercator" or
+         * "global-geodetic".
+         */
+        TileGridProfile( const std::string& profile_string );
 
         TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs );
 
         TileGridProfile( const TileGridProfile& rhs );
+
+        /**
+         * Returns true if the profile is properly initialized.
+         */
+        bool isValid() const;
 
         double xMin() const;
         double yMin() const;
@@ -65,6 +76,8 @@ namespace osgEarth
         
         std::string _srs;
         ProfileType _profileType;
+
+        void init( ProfileType );
     };
 }
 

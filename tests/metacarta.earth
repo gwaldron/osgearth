@@ -1,21 +1,18 @@
-<map name="MetaCarta sample" type="geocentric">
+<!--
+MetaCarta WMS/TileCache
 
-   <image name="metacarta" driver="wms">
+This shows the basic use of the WMS driver. We are actually using
+WMS to hit a TileCache server, which has all the WMS tiles
+pre-rendered for speed.
+-->
+
+<map name="MetaCarta" type="geocentric">
+
+   <image name="vmap0" driver="wms">
        <url>http://labs.metacarta.com/wms-c/Basic.py</url>
-       <layers>satellite</layers>
-       <format>jpg</format>
+       <layers>basic</layers>
+       <format>png</format>
        <tile_size>256</tile_size>
    </image>
-
-  <heightfield name="WorldWind DEM" driver="wms">
-    <url>http://onearth.jpl.nasa.gov/wms.cgi</url>
-    <layers>worldwind_dem</layers>
-    <style>short_int</style>
-    <format>tiff</format>
-    <tile_size>32</tile_size>
-    <!--Elevation unit.  Supported values are ft and m.  Defaults to m if not specified-->
-    <elevation_unit>m</elevation_unit>
-  </heightfield>
-  <vertical_scale>1</vertical_scale>
-  <!--<cache_path>c:/osgearth_cache</cache_path>-->
+   
 </map>

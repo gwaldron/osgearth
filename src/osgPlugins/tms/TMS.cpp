@@ -82,7 +82,11 @@ void TileMap::computeMinMaxLevel()
 std::string
 TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
 {
-    if (!intersectsKey(tileKey)) return "";
+    if (!intersectsKey(tileKey))
+    {
+        //osg::notify(osg::NOTICE) << "No key intersection for tile key " << tileKey->str() << std::endl;
+        return "";
+    }
 
     unsigned int zoom = tileKey->getLevelOfDetail();
 
@@ -108,17 +112,28 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
     //osg::notify(osg::NOTICE) << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
 
     //Select the correct TileSet
-    for (TileSetList::iterator itr = _tileSets.begin(); itr != _tileSets.end(); ++itr)
-    { 
-        if (itr->_order == zoom)
-        {
-            std::stringstream ss;
-            std::string path = osgDB::getFilePath(_filename);
-            ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format._extension;
-            //osg::notify(osg::NOTICE) << "Returning URL " << ss.str() << std::endl;
-            return ss.str();
+    if ( _tileSets.size() > 0 )
+    {
+        for (TileSetList::iterator itr = _tileSets.begin(); itr != _tileSets.end(); ++itr)
+        { 
+            if (itr->_order == zoom)
+            {
+                std::stringstream ss;
+                std::string path = osgDB::getFilePath(_filename);
+                ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format._extension;
+                //osg::notify(osg::NOTICE) << "Returning URL " << ss.str() << std::endl;
+                return ss.str();
+            }
         }
     }
+    else // Just go with it. No way of knowing the max level.
+    {
+        std::stringstream ss;
+        std::string path = osgDB::getFilePath(_filename);
+        ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format._extension;
+        return ss.str();        
+    }
+
     return "";
 }
 
@@ -146,6 +161,55 @@ TileMap::intersectsKey(const TileKey *tileKey)
 
     return inter;
 }
+
+TileMap*
+TileMap::create(const std::string& url,
+                osgEarth::TileGridProfile::ProfileType type,
+                const std::string& format,
+                int tile_width,
+                int tile_height)
+{
+    TileMap* tileMap = NULL;
+
+    switch( type )
+    {
+    case osgEarth::TileGridProfile::GLOBAL_MERCATOR:
+        tileMap = new TileMap();
+        tileMap->_srs = "EPSG:41001";
+        tileMap->_originX = -20037508.340000;
+        tileMap->_originY = -20037508.340000;
+        tileMap->_minX = -20037508.340000;
+        tileMap->_minY = -20037508.340000;
+        tileMap->_maxX = 20037508.340000;
+        tileMap->_maxY = 20037508.340000;
+        break;
+
+    case osgEarth::TileGridProfile::GLOBAL_GEODETIC:
+        tileMap = new TileMap();
+        tileMap->_srs = "EPSG:4326";
+        tileMap->_originX = -180.0;
+        tileMap->_originY = -90.0;
+        tileMap->_minX = -180.0;
+        tileMap->_minY = -90.0;
+        tileMap->_maxX = 180.0;
+        tileMap->_maxY = 90.0;
+        break;
+    }
+
+    if ( tileMap )
+    {
+        tileMap->_filename = url;
+        tileMap->_format._width = tile_width;
+        tileMap->_format._height = tile_height;
+        tileMap->_format._extension = format;
+    }
+
+    return tileMap;
+}
+
+
+//----------------------------------------------------------------------------
+
 
 TileMap* 
 TileMapReader::read( const std::string &location )
@@ -261,3 +325,5 @@ TileMapReader::read(std::istream &in)
 
     return tileMap.release();
 }
+
+

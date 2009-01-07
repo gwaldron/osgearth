@@ -48,8 +48,9 @@ public:
       options( _options ),
       map_config(0)
     {
-        //Set the profile to global mercator
-        _profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+        //Set the profile to global geodetic.
+        //TODO: read the conf.xml file on the server and decide based on that.
+        _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
 
         if ( options.valid() )
         {
@@ -83,15 +84,16 @@ public:
     osg::Image* createImage( const TileKey* key )
     {
         //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
-        if ( dynamic_cast<const PlateCarreTileKey*>( key ) )
-        {
-            MercatorTileConverter converter( this );
-            return converter.createImage( static_cast<const PlateCarreTileKey*>( key ) );
-        }
+        //if ( dynamic_cast<const PlateCarreTileKey*>( key ) )
+        //{
+        //    MercatorTileConverter converter( this );
+        //    return converter.createImage( static_cast<const PlateCarreTileKey*>( key ) );
+        //}
 
         std::stringstream buf;
 
-        int level = key->getLevelOfDetail();
+        //int level = key->getLevelOfDetail();
+        int level = key->getLevelOfDetail()-1;
 
         unsigned int tile_x, tile_y;
         key->getTileXY( tile_x, tile_y );

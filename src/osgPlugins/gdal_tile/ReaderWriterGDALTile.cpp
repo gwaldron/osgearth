@@ -53,7 +53,7 @@ class GDALTileSource : public TileSource
 public:
     GDALTileSource(const osgDB::ReaderWriter::Options* options):
       tile_size(256),
-          _srsDS(NULL),
+          _srcDS(NULL),
           _warpedDS(NULL)
       {
           static bool s_gdal_registered = false;
@@ -80,8 +80,8 @@ public:
 
 
           //Open the dataset
-          _srsDS = (GDALDataset*)GDALOpen( url.c_str(), GA_ReadOnly );
-          if (!_srsDS )
+          _srcDS = (GDALDataset*)GDALOpen( url.c_str(), GA_ReadOnly );
+          if (!_srcDS )
           {
               osg::notify(osg::NOTICE) << "Failed to open dataset " << url << std::endl;
               return;
@@ -89,8 +89,8 @@ public:
 
           //Create a spatial reference for the source.
           OGRSpatialReference srcRef;
-          std::string srs_wkt = _srsDS->GetProjectionRef();
-          char* importString = strdup(_srsDS->GetProjectionRef());
+          std::string src_wkt = _srcDS->GetProjectionRef();
+          char* importString = strdup(_srcDS->GetProjectionRef());
           srcRef.importFromWkt(&importString);
           free(importString);
 
@@ -132,15 +132,57 @@ public:
               }
           }
 
-          //Create a warped VRT going from the source projection to the destination projection.
-          _warpedDS = _srsDS;//(GDALDataset*)GDALAutoCreateWarpedVRT(_srsDS, srs_wkt.c_str(), t_srs_wkt.c_str(), GRA_NearestNeighbour, 10, NULL);
+          std::string t_srs;
 
-          if (!_warpedDS)
+          //See if we need to autowarp the file to geodetic or mercator
+          TileGridProfile mapProfile(_mapConfig->getProfile());
+          if (mapProfile.profileType() == TileGridProfile::GLOBAL_GEODETIC && _profile.profileType() != TileGridProfile::GLOBAL_GEODETIC)
           {
-              osg::notify(osg::NOTICE) << "Error creating warped VRT " << std::endl;
-              return;
+              char *wkt = NULL;
+              gdRef.exportToWkt(&wkt);
+              t_srs = wkt;
+              OGRFree(wkt);
+              osg::notify(osg::NOTICE) << "Warping " << url << " to global-geodetic " << std::endl;
+              _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+          }
+          if (mapProfile.profileType() == TileGridProfile::GLOBAL_MERCATOR && _profile.profileType() != TileGridProfile::GLOBAL_MERCATOR)
+          {
+              int epsgCodes[3] = {900913, 3785, 41001};
+              bool gotProjection = false;
+              OGRSpatialReference mercRef;
+              for (int i = 0; i < 3; ++i)
+              {
+                  if (OGRERR_NONE == mercRef.importFromEPSG(epsgCodes[i]))
+                  {
+                      gotProjection = true;
+                  }
+              }
+
+              if (gotProjection)
+              {          
+                  char *wkt = NULL;
+                  mercRef.exportToWkt(&wkt);
+                  t_srs = wkt;
+                  OGRFree(wkt);
+                  osg::notify(osg::NOTICE) << "Warping " << url << " to global-mercator " << std::endl;
+                  _profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+              }
+              else
+              {
+                  osg::notify(osg::NOTICE) << "Could not import mercator projection from EPSG code" << std::endl;
+              }
           }
 
+          if (!t_srs.empty())
+          {
+            //Create a warped VRT going from the source projection to the destination projection.
+            _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(_srcDS, src_wkt.c_str(), t_srs.c_str(), GRA_NearestNeighbour, 5.0, NULL);
+          }
+          else
+          {
+              _warpedDS = _srcDS;
+          }
+          
           //Get the geotransform
           _warpedDS->GetGeoTransform(_geotransform);
 
@@ -160,9 +202,12 @@ public:
 
       ~GDALTileSource()
       {
+          if (_warpedDS != _srcDS)
+          {
+              delete _warpedDS;
+          }
           //Close the datasets if it exists
-          if (_srsDS) delete _srsDS;
-          //if (_warpedDS) delete _warpedDS;
+          if (_srcDS) delete _srcDS;
       }
 
       /**
@@ -459,7 +504,7 @@ public:
 
 private:
 
-    GDALDataset* _srsDS;
+    GDALDataset* _srcDS;
     GDALDataset* _warpedDS;
     double _geotransform[6];
 

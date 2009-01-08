@@ -62,6 +62,7 @@ FIND_PACKAGE(OpenGL)
 
 FIND_PACKAGE(CURL)
 FIND_PACKAGE(GDAL)
+FIND_PACKAGE(LIBZIP)
 
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys

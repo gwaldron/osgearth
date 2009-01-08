@@ -57,32 +57,32 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
 
     //osg::notify(osg::NOTICE) << "\nCached Image File for " << filename << " is " << cachedFilename << std::endl;
 
+    osg::ref_ptr<osg::Image> image;
+
     if (!cachedFilename.empty())
     {
-        //If the cached file exists, return it
-        if (osgDB::fileExists(cachedFilename))
-        {
-            osg::notify(osg::INFO) << "Reading " << filename << " from cache" << std::endl;
-            return osgDB::readImageFile(cachedFilename, options);
-        }
+        osg::notify(osg::INFO) << "Reading " << filename << " from cache" << std::endl;
+        image = osgDB::readImageFile(cachedFilename, options);
     }
 
-    //Fail if we are in offline mode and the filename contains a server address
-    if (_offline && osgDB::containsServerAddress(filename))
+    if (!image.valid())
     {
-        osg::notify(osg::INFO) << "FileCache in offline mode, skipping read of " << filename << std::endl;
-        return 0;
-    }
-
-    if (osgDB::containsServerAddress(filename) && !cachedFilename.empty())
-    {
-        std::string path = osgDB::getFilePath(cachedFilename);
-        //If the path doesn't currently exist or we can't create the path, don't cache the file
-        if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
+        //Fail if we are in offline mode and the filename contains a server address
+        if (_offline && osgDB::containsServerAddress(filename))
         {
-            osg::notify(osg::WARN) << "Couldn't create path " << path << std::endl;
-            cachedFilename.clear();
+            osg::notify(osg::INFO) << "FileCache in offline mode, skipping read of " << filename << std::endl;
+            return 0;
         }
+
+        if (osgDB::containsServerAddress(filename) && !cachedFilename.empty())
+        {
+            std::string path = osgDB::getFilePath(cachedFilename);
+            //If the path doesn't currently exist or we can't create the path, don't cache the file
+            if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
+            {
+                osg::notify(osg::WARN) << "Couldn't create path " << path << std::endl;
+                cachedFilename.clear();
+            }
 
             //Try to download the file
             if (!cachedFilename.empty())
@@ -91,7 +91,7 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
                 if (s_httpClient.downloadFile( filename, cachedFilename) )
                 {
                     //Load the downloaded file
-                    return osgDB::readImageFile(cachedFilename, options);
+                    image = osgDB::readImageFile(cachedFilename, options);
                 }
                 else
                 {
@@ -99,10 +99,16 @@ osg::Image* osgEarth::FileCache::readImageFile(const std::string& filename, cons
                     return 0;
                 }
             }
+        }
+
+        if (!image.valid())
+        {
+            //Just use osgDB to read the file
+            image = osgDB::readImageFile(filename, options);
+        }
     }
 
-    //Just use osgDB to read the file
-    return osgDB::readImageFile(filename, options);
+    return image.release();
 }
 
 osg::HeightField* osgEarth::FileCache::readHeightFieldFile(const std::string& filename, const osgDB::ReaderWriter::Options* options )

@@ -44,6 +44,7 @@ ADD_SUBDIRECTORY(tilecache)
 ADD_SUBDIRECTORY(yahoo)
 ADD_SUBDIRECTORY(arcgis_map_cache)
 ADD_SUBDIRECTORY(tms)
+ADD_SUBDIRECTORY(zipfs)
 
 
     

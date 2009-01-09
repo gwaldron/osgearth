@@ -130,7 +130,7 @@ class ReaderWriterYahoo : public osgDB::ReaderWriter
     public:
         ReaderWriterYahoo()
         {
-            supportsExtension( "yahoo", "Yahoo maps data" );
+            supportsExtension( "osgearth_yahoo", "Yahoo maps data" );
         }
 
         virtual const char* className()
@@ -140,12 +140,12 @@ class ReaderWriterYahoo : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
         {
-            if ( osgDB::getLowerCaseFileExtension( file_name ) != "yahoo" )
+            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
             return new YahooSource(options);
         }
 };
 
-REGISTER_OSGPLUGIN(yahoo, ReaderWriterYahoo)
+REGISTER_OSGPLUGIN(osgearth_yahoo, ReaderWriterYahoo)
 

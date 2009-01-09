@@ -136,7 +136,7 @@ class ReaderWriterAGSMapCache : public osgDB::ReaderWriter
     public:
         ReaderWriterAGSMapCache()
         {
-            supportsExtension( "arcgis_map_cache", "ArcGIS Server Map Service Cache" );
+            supportsExtension( "osgearth_arcgis_map_cache", "ArcGIS Server Map Service Cache" );
         }
 
         virtual const char* className()
@@ -146,12 +146,12 @@ class ReaderWriterAGSMapCache : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
         {
-            if ( osgDB::getLowerCaseFileExtension( file_name ) != "arcgis_map_cache" )
+            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
             return new AGSMapCacheSource(options);
         }
 };
 
-REGISTER_OSGPLUGIN(arcgis_map_cache, ReaderWriterAGSMapCache)
+REGISTER_OSGPLUGIN(osgearth_arcgis_map_cache, ReaderWriterAGSMapCache)
 

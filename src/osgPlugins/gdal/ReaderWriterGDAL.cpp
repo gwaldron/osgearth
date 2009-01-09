@@ -530,13 +530,12 @@ public:
 
     virtual bool acceptsExtension(const std::string& extension) const
     {
-        return osgDB::equalCaseInsensitive( extension, "gdal_tile" );
+        return osgDB::equalCaseInsensitive( extension, "osgearth_gdal" );
     }
 
     virtual ReadResult readObject(const std::string& file_name, const Options* opt) const
     {
-        std::string ext = osgDB::getFileExtension( file_name );
-        if ( !acceptsExtension( ext ) )
+        if ( !acceptsExtension( osgDB::getFileExtension( file_name ) ) )
         {
             return ReadResult::FILE_NOT_HANDLED;
         }
@@ -544,4 +543,4 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(gdal_tile, ReaderWriterGDALTile)
+REGISTER_OSGPLUGIN(osgearth_gdal, ReaderWriterGDALTile)

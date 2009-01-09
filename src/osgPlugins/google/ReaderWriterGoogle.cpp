@@ -155,7 +155,7 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
     public:
         ReaderWriterGoogle()
         {
-            supportsExtension( "google", "Google maps imagery" );
+            supportsExtension( "osgearth_google", "Google maps imagery" );
         }
 
         virtual const char* className()
@@ -165,10 +165,10 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
         {
-            if ( osgDB::getLowerCaseFileExtension( file_name ) != "google" )
+            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
             return new GoogleSource(options);
         }
 };
 
-REGISTER_OSGPLUGIN(google, ReaderWriterGoogle)
+REGISTER_OSGPLUGIN(osgearth_google, ReaderWriterGoogle)

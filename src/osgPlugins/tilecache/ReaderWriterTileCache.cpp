@@ -120,7 +120,7 @@ class ReaderWriterTileCache : public osgDB::ReaderWriter
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "tilecache" );
+            return osgDB::equalCaseInsensitive( extension, "osgearth_tilecache" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -135,4 +135,4 @@ class ReaderWriterTileCache : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(tilecache, ReaderWriterTileCache)
+REGISTER_OSGPLUGIN(osgearth_tilecache, ReaderWriterTileCache)

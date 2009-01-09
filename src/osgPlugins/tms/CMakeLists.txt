@@ -7,5 +7,5 @@ SET(TARGET_SRC
  TMS.cpp
  )
 
-SETUP_PLUGIN(tms)
+SETUP_PLUGIN(osgearth_tms)
 

@@ -40,7 +40,7 @@ class ReaderWriterWCS : public osgDB::ReaderWriter
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "wcs" );
+            return osgDB::equalCaseInsensitive( extension, "osgearth_wcs" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* opt) const
@@ -54,4 +54,4 @@ class ReaderWriterWCS : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(wcs, ReaderWriterWCS)
+REGISTER_OSGPLUGIN(osgearth_wcs, ReaderWriterWCS)

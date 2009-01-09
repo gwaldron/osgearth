@@ -4,4 +4,4 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
 
 SET(TARGET_SRC ReaderWriterTileCache.cpp)
 
-SETUP_PLUGIN(tilecache)
+SETUP_PLUGIN(osgearth_tilecache)

@@ -203,7 +203,7 @@ private:
 public:
     ReaderWriterTMS()
     {
-        supportsExtension( "tms", "Tile Map Service" );
+        supportsExtension( "osgearth_tms", "Tile Map Service" );
     }
 
     virtual const char* className()
@@ -213,12 +213,12 @@ public:
 
     virtual ReadResult readObject(const std::string& file_name, const Options* options) const
     {
-        if ( osgDB::getLowerCaseFileExtension( file_name ) != "tms" )
+        if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
         return new TMSSource(options);
     }
 };
 
-REGISTER_OSGPLUGIN(tms, ReaderWriterTMS)
+REGISTER_OSGPLUGIN(osgearth_tms, ReaderWriterTMS)
 

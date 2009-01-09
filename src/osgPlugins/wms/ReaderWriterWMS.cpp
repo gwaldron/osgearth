@@ -201,7 +201,7 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "wms" );
+            return osgDB::equalCaseInsensitive( extension, "osgearth_wms" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* opt) const
@@ -216,4 +216,4 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(wms, ReaderWriterWMS)
+REGISTER_OSGPLUGIN(osgearth_wms, ReaderWriterWMS)

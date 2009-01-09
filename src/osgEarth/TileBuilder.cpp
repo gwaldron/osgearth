@@ -19,7 +19,7 @@
 
 #include <osgEarth/TileBuilder>
 #include <osgEarth/GeocentricTileBuilder>
-#include <osgEarth/GeographicTileBuilder>
+#include <osgEarth/ProjectedTileBuilder>
 #include <osgEarth/PlateCarre>
 #include <osg/Image>
 #include <osg/Notify>
@@ -73,7 +73,7 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
         }
         else
         {
-            result = new GeographicTileBuilder( map, url_template, local_options.get() );
+            result = new ProjectedTileBuilder( map, url_template, local_options.get() );
         }
     }
     return result;

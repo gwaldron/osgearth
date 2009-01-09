@@ -363,8 +363,8 @@ readMap( XmlElement* e_map )
     std::string a_cstype = e_map->getAttr( ATTR_CSTYPE );
     if ( a_cstype == "geocentric" || a_cstype == "round" || a_cstype == "globe" || a_cstype == "earth" )
         map->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
-    else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" )
-        map->setCoordinateSystemType( MapConfig::CSTYPE_GEOGRAPHIC );
+    else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" || a_cstype == "projected")
+        map->setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
 
     std::string conn_status = e_map->getSubElementText(ELEM_CONNECTION_STATUS);
     if (conn_status == "offline")
@@ -443,7 +443,7 @@ mapToXmlDocument( const MapConfig *map)
     //Write the coordinate system
     std::string cs;
     if (map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC) cs = "geocentric";
-    else if (map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOGRAPHIC) cs = "flat";
+    else if (map->getCoordinateSystemType() == MapConfig::CSTYPE_PROJECTED) cs = "projected";
     else
     {
         osg::notify(osg::NOTICE) << "Unhandled CoordinateSystemType " << std::endl;

@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/GeocentricTileBuilder>
-#include <osgEarth/GeographicTileBuilder>
+#include <osgEarth/ProjectedTileBuilder>
 #include <osgEarth/MapConfig>
 #include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>

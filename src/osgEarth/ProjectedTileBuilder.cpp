@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/GeographicTileBuilder>
+#include <osgEarth/ProjectedTileBuilder>
 #include <osgEarth/Mercator>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osg/Image>
@@ -35,7 +35,7 @@
 
 using namespace osgEarth;
 
-GeographicTileBuilder::GeographicTileBuilder( 
+ProjectedTileBuilder::ProjectedTileBuilder( 
     MapConfig* _map,
     const std::string& _url_template,
     const osgDB::ReaderWriter::Options* _global_options ) :
@@ -45,7 +45,7 @@ TileBuilder( _map, _url_template, _global_options )
 }
 
 bool
-GeographicTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
+ProjectedTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 {
     osg::ref_ptr<osg::Node> q0 = createQuadrant(key->getSubkey(0));
     osg::ref_ptr<osg::Node> q1 = createQuadrant(key->getSubkey(1));
@@ -77,7 +77,7 @@ GeographicTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
 
 
 osg::Node*
-GeographicTileBuilder::createQuadrant( const TileKey* key )
+ProjectedTileBuilder::createQuadrant( const TileKey* key )
 {
     double xmin, ymin, xmax, ymax;
     if ( !key->getGeoExtents( xmin, ymin, xmax, ymax ) )
@@ -252,7 +252,7 @@ GeographicTileBuilder::createQuadrant( const TileKey* key )
 }
 
 osg::CoordinateSystemNode*
-GeographicTileBuilder::createCoordinateSystemNode() const
+ProjectedTileBuilder::createCoordinateSystemNode() const
 {
     osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
     csn->setEllipsoidModel( NULL );
@@ -271,7 +271,7 @@ GeographicTileBuilder::createCoordinateSystemNode() const
 }
 
 void
-GeographicTileBuilder::scaleHeightFieldToDegrees(osg::HeightField *hf)
+ProjectedTileBuilder::scaleHeightFieldToDegrees(osg::HeightField *hf)
 {
     //The number of degrees in a meter at the equator
     float scale = 1.0f/111319.0f;

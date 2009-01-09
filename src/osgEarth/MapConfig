@@ -77,7 +77,7 @@ namespace osgEarth
         enum CoordinateSystemType
         {
             CSTYPE_GEOCENTRIC,
-            CSTYPE_GEOGRAPHIC
+            CSTYPE_PROJECTED
         };
 
     public:

@@ -25,13 +25,13 @@ SET(LIB_PUBLIC_HEADERS
     Export
     FileCache
     GeocentricTileBuilder
-    GeographicTileBuilder
     HTTPClient
     ImageToHeightFieldConverter
     MapConfig
     Mercator
     PlateCarre    
 	Projected
+	ProjectedTileBuilder
     TerrainTileEdgeNormalizerUpdateCallback
     TileBuilder
     TileGridProfile
@@ -47,13 +47,13 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	CacheSeed.cpp
     FileCache.cpp
     GeocentricTileBuilder.cpp
-    GeographicTileBuilder.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp
     MapConfig.cpp
     Mercator.cpp
     PlateCarre.cpp
 	Projected.cpp
+	ProjectedTileBuilder.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileBuilder.cpp
     TileGridProfile.cpp

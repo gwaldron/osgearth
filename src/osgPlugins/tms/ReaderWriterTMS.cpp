@@ -40,8 +40,7 @@ using namespace osgEarth;
 #define PROPERTY_URL         "url"
 #define PROPERTY_MAP_CONFIG  "map_config"
 #define PROPERTY_TMS_TYPE    "tms_type"
-#define PROPERTY_TILE_WIDTH  "tile_width"
-#define PROPERTY_TILE_HEIGHT "tile_height"
+#define PROPERTY_TILE_SIZE   "tile_size"
 #define PROPERTY_FORMAT      "format"
 
 
@@ -57,12 +56,9 @@ public:
         if ( options->getPluginData( PROPERTY_URL ) )
             _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
-        // width, height, and format are only used if no TMS tile map file can be found:
-        if ( options->getPluginData( PROPERTY_TILE_WIDTH ) )
-            _tile_width = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_WIDTH ), 256 );
-
-        if ( options->getPluginData( PROPERTY_TILE_HEIGHT ) )
-            _tile_height = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_HEIGHT ), 256 );
+        // tile_size and format are only used if no TMS tile map file can be found:
+        if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
+            _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
 
         if ( options->getPluginData( PROPERTY_FORMAT ) )
             _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
@@ -102,7 +98,7 @@ public:
                 if ( globalProfile.isValid() )
                 {
                     _profile = globalProfile;
-                    _tileMap = TileMap::create( _url, _profile.profileType(), _format, _tile_width, _tile_height );
+                    _tileMap = TileMap::create( _url, _profile.profileType(), _format, _tile_size, _tile_size );
                     if ( !_tileMap.valid() )
                     {
                         osg::notify(osg::NOTICE) << "TMSSource: no TileMap found, and no overrides set" << _mapConfig->getProfile() << std::endl;
@@ -192,7 +188,7 @@ private:
 
     // these are backups in case no tilemap definition is found
     std::string _format;
-    int _tile_width, _tile_height;
+    int _tile_size;
 };
 
 

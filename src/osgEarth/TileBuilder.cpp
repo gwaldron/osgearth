@@ -162,8 +162,8 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 
         bool foundValidSource = false;
         //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
-        //For instance, the WMS plugin can be loaded by using ".wms" as the filename
-        TileSource* tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile("." + source->getDriver(), local_options.get()));
+        //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
+        TileSource* tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile(".osgearth_" + source->getDriver(), local_options.get()));
         if (tile_source)
         {
             osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;

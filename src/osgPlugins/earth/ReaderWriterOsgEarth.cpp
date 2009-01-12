@@ -72,7 +72,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             //instead of using the CURL plugin if the filename contains a URL.  So, if you want to read a URL, you can use the following format
             //osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be necessary for the first level as the other files will have
             //a tilekey prepended to them.
-            if (file_name.find_first_of("server:") == 0)
+            if ((file_name.length() > 7) && (file_name.substr(0, 7) == "server:"))
             {
                 return readNode(file_name.substr(7), options);
             }

@@ -98,8 +98,14 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         //Add an image from each image source
         for (unsigned int i = 0; i < image_sources.size(); ++i)
         {
-            ImageTileKeyPair image_tile(image_sources[i]->createImage(key), key);
-            image_tiles.push_back(image_tile);
+            osg::Image *image = 0;
+            if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
+                key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
+            {
+                image = image_sources[i]->createImage(key);
+            }
+
+            image_tiles.push_back(ImageTileKeyPair(image, key));
         }
     }
 
@@ -131,13 +137,17 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     {
         if (!image_tiles[i].first.valid())
         {
-            if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
+            if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
+                key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
             {
-                osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
-            }
-            else
-            {
-                osg::notify(osg::INFO) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
+                if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
+                {
+                    osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
+                }
+                else
+                {
+                    osg::notify(osg::INFO) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
+                }
             }
         }
     }
@@ -202,6 +212,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
     tile->setDataVariance(osg::Object::DYNAMIC);
 
+    int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
         if (image_tiles[i].first.valid())
@@ -229,7 +240,8 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             img_layer->setMinFilter(osg::Texture::LINEAR_MIPMAP_LINEAR);
             img_layer->setMagFilter(osg::Texture::LINEAR);
 #endif
-            tile->setColorLayer( i, img_layer );
+            tile->setColorLayer( layer, img_layer );
+            layer++;
         }
     }
     

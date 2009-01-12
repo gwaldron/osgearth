@@ -1,0 +1,18 @@
+<!--
+Yahoo level test
+
+Switches between the Yahoo satellite and maps view based on min and max level
+-->
+
+
+<map name="Yahoo Levels" type="geocentric">
+   <image name="yahoo" driver="yahoo">
+     <dataset>satellite</dataset>
+     <max_level>5</max_level>
+   </image> 
+
+   <image name="yahoo" driver="yahoo">
+     <min_level>6</min_level>
+   </image> 
+   <cache_path>c:/osgearth_cache</cache_path>
+</map>

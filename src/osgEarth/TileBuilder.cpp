@@ -170,6 +170,7 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 
             if (tile_source->getProfile().profileType() != TileGridProfile::UNKNOWN)
             {
+                tile_source->init(local_options.get());
                 tile_source->setName( source->getName() );
                 to.push_back( tile_source );
             }

@@ -226,8 +226,11 @@ TileMapReader::read( const std::string &location )
     }
     else
     {
-        std::ifstream in( location.c_str() );
-        tileMap = read( in );
+        if (osgDB::fileExists(location))
+        {
+            std::ifstream in( location.c_str() );
+            tileMap = read( in );
+        }
     }
     if (tileMap)
     {

@@ -22,6 +22,12 @@
 
 using namespace osgEarth;
 
+TileSource::TileSource():
+_minLevel(0),
+_maxLevel(INT_MAX)
+{
+}
+
 TileSource::~TileSource()
 {
 }
@@ -30,4 +36,17 @@ const osgEarth::TileGridProfile&
 TileSource::getProfile()
 {
     return _profile;
+}
+
+#define PROPERTY_MIN_LEVEL "min_level"
+#define PROPERTY_MAX_LEVEL "max_level"
+
+void
+TileSource::init(const osgDB::ReaderWriter::Options* options)
+{
+    if ( options->getPluginData( PROPERTY_MIN_LEVEL ) )
+        _minLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MIN_LEVEL ), 0 );
+
+    if ( options->getPluginData( PROPERTY_MAX_LEVEL ) )
+        _maxLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MAX_LEVEL ), INT_MAX );
 }

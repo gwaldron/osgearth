@@ -231,7 +231,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     //If we couldn't create any imagery of heightfields, bail out
     if (!hf.valid() && (numValidImages == 0))
     {
-        osg::notify(osg::NOTICE) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         return NULL;
     }
    

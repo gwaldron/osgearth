@@ -85,8 +85,12 @@ public:
                 }
             }
 
-            // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-            _tileMap = TileMapReader::read( _url );
+            //Only read the TMS TileMap XML file if it is either a local file or if we are online
+            if (!osgDB::containsServerAddress( _url ) || !_mapConfig->getOfflineHint())
+            {
+                // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
+                _tileMap = TileMapReader::read( _url );
+            }
 
             if (!_tileMap.valid())
             {

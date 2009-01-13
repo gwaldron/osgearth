@@ -219,7 +219,7 @@ TileMapReader::read( const std::string &location )
     {
         HTTPClient client;
         osg::ref_ptr<HTTPResponse> response = client.get( location );
-        if ( response->isOK() && response->getNumParts() > 0 )
+        if (response.valid() && response->isOK() && response->getNumParts() > 0 )
         {
             tileMap = read( response->getPartStream( 0 ) );
         }

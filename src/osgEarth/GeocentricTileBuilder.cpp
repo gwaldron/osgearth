@@ -249,7 +249,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
                 }
                 else
                 {
-                    osg::notify(osg::NOTICE) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
                 }
             }
         }

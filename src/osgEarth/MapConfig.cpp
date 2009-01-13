@@ -512,7 +512,7 @@ MapConfigReaderWriter::readXml( const std::string& location )
     }
     else
     {
-        if (!osgDB::fileExists(location))
+        if (!osgDB::fileExists(location) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
         {
             osg::notify(osg::NOTICE) << location << " does not exists " << std::endl;
             return 0;

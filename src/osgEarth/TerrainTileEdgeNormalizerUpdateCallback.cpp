@@ -19,7 +19,52 @@
 
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osg/Version>
+#include <osg/Timer>
+
 using namespace osgEarth;
+
+
+struct NormalizerStats : public osg::Referenced
+{
+public:
+    NormalizerStats():
+      _maxTimePerFrame(2.0),
+      _currentFrame(-1)
+    {
+    }
+
+    void updateTime(const int &frame, const double &time)
+    {
+        checkFrame(frame);
+        _totalTime += time;
+    }
+
+    bool isTimeRemaining(const int &frame)
+    {
+        checkFrame(frame);
+        return (_totalTime < _maxTimePerFrame);
+    }
+
+    inline void checkFrame(const int &frame)
+    {
+        if (frame != _currentFrame)
+        {            
+            _currentFrame = frame;
+            _totalTime = 0.0;
+        }
+    }
+
+    int _currentFrame;
+    double _totalTime;
+    double _maxTimePerFrame;
+};
+
+NormalizerStats* getNormalizerStats()
+{
+    static osg::ref_ptr<NormalizerStats> s_stats = new  NormalizerStats;
+    return s_stats.get();
+}
+
 
 
 bool normalizeCorner(osg::HeightField* ll, osg::HeightField* lr, osg::HeightField *ul, osg::HeightField *ur)
@@ -243,6 +288,15 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                               bool normalized = ::normalizeEdge(hfl1->getHeightField(), hfl2->getHeightField(), direction);
                               if (normalized)
                               {
+                                  if (tile2->getUpdateCallback())
+                                  {
+                                    TerrainTileEdgeNormalizerUpdateCallback *neighborCallback = static_cast<TerrainTileEdgeNormalizerUpdateCallback*>(tile2->getUpdateCallback());
+                                    if (direction == NORTH) neighborCallback->_normalizedSouth = true;
+                                    else if (direction == SOUTH) neighborCallback->_normalizedNorth = true;
+                                    else if (direction == EAST) neighborCallback->_normalizedWest = true;
+                                    else if (direction == WEST) neighborCallback->_normalizedEast = true;
+                                  }
+
                                   hfl1->dirty();
                                   hfl2->dirty();
                                   tile->setDirty(true);
@@ -258,9 +312,18 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
       }
 
       void TerrainTileEdgeNormalizerUpdateCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
-      { 
+      {         
+          NormalizerStats* stats = getNormalizerStats();
+          if (!stats->isTimeRemaining(nv->getFrameStamp()->getFrameNumber()))
+          {
+              //osg::notify(osg::NOTICE) << "No time left, returning..." << std::endl;
+              return;
+          }
+
+          osg::Timer_t start = osg::Timer::instance()->tick();
           //TODO:  Look at heightDelta's to assist with normal generation.
           osgTerrain::TerrainTile* tt = dynamic_cast<osgTerrain::TerrainTile*>(node);
+
           if (!_normalizedNorth) _normalizedNorth = normalizeEdge(tt, NORTH);
           if (!_normalizedSouth) _normalizedSouth = normalizeEdge(tt, SOUTH);
           if (!_normalizedEast) _normalizedEast = normalizeEdge(tt, EAST);
@@ -270,7 +333,10 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
           if (!_normalizedSouthWest) _normalizedSouthWest = normalizeCorner(tt, SOUTH_WEST);
           if (!_normalizedSouthEast) _normalizedSouthEast = normalizeCorner(tt, SOUTH_EAST);
 
-          traverse(node, nv);
+          osg::Timer_t end = osg::Timer::instance()->tick();
+
+          double frameTime = osg::Timer::instance()->delta_m(start, end);
+          stats->updateTime(nv->getFrameStamp()->getFrameNumber(), frameTime);
       }
 
       osgTerrain::TileID TerrainTileEdgeNormalizerUpdateCallback::getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const

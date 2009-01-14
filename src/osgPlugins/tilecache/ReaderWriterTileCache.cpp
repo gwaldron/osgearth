@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/TileSource>
-#include <osgEarth/FileCache>
 #include <osgEarth/MapConfig>
 
 #include <osg/Notify>
@@ -44,9 +43,6 @@ public:
       options( _options ),
       map_config(0)
     {
-        //Set the profile to global geodetic
-        _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
-
         if ( options.valid() )
         {
             if ( options->getPluginData( PROPERTY_URL ) )
@@ -60,6 +56,13 @@ public:
 
             if (options->getPluginData( PROPERTY_MAP_CONFIG ))
                 map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
+        }
+
+        _profile = TileGridProfile(map_config->getProfile());
+        if (_profile.profileType() == TileGridProfile::UNKNOWN)
+        {
+            //Set the profile to global geodetic if there is no override
+            _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
         }
     }
 
@@ -85,11 +88,10 @@ public:
             (tile_y % 1000),
             format.c_str());
 
-        std::string cache_path = map_config ? map_config->getFullCachePath() : std::string("");
-        bool offline = map_config ? map_config->getOfflineHint() : false;
-        osgEarth::FileCache fc( cache_path );
-        fc.setOffline(offline);
-        return fc.readImageFile( buf, options.get() );
+        //If we are in offline mode, don't connect to the web
+        if (osgDB::containsServerAddress( buf ) && map_config->getOfflineHint()) return 0;
+
+        return osgDB::readImageFile( buf, options.get());
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
@@ -97,6 +99,11 @@ public:
         //TODO
         osg::notify(osg::NOTICE) << "ReaderWriterTileCache::createHeightField() not yet implemented." << std::endl;
         return NULL;
+    }
+
+    virtual std::string getExtension()  const 
+    {
+        return format;
     }
 
 private:

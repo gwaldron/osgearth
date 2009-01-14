@@ -21,13 +21,16 @@
 #include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
+
 #include <osg/Image>
+#include <osg/Timer>
 #include <osg/Notify>
 #include <osg/PagedLOD>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
 #include <osg/Version>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
@@ -206,9 +209,8 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
                 key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
             {
-                image = image_sources[i]->createImage(key);
+                image = image_sources[i]->readImage(key);
             }
-
             image_tiles.push_back(ImageTileKeyPair(image, key));
         }
     }
@@ -218,7 +220,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        hf = heightfield_sources[0]->createHeightField(key);
+        hf = heightfield_sources[0]->readHeightField(key);
     }
 
     //Determine if we've created any images
@@ -243,12 +245,15 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
                 key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
             {
+                //osg::Timer_t start = osg::Timer::instance()->tick();
                 if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
                 {
                     osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
                 }
                 else
                 {
+                    //osg::Timer_t end = osg::Timer::instance()->tick();
+                    //osg::notify(osg::NOTICE) << "TimeToImterpolateImagery: " << osg::Timer::instance()->delta_m(start,end) << std::endl; 
                     osg::notify(osg::INFO) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
                 }
             }
@@ -269,6 +274,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         }
         else
         {
+            //osg::Timer_t start = osg::Timer::instance()->tick();
             hf = createValidHeightField(heightfield_sources[0].get(), key);
             if (!hf.valid())
             {
@@ -277,6 +283,8 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             }
             else
             {
+                //osg::Timer_t end = osg::Timer::instance()->tick();
+                //osg::notify(osg::NOTICE) << "TimeToImterpolateHeightField: " << osg::Timer::instance()->delta_m(start,end) << std::endl; 
                 osg::notify(osg::INFO) << "Interpolated heightfield TileKey " << key->str() << std::endl;
             }
         }
@@ -310,6 +318,9 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
+
+    //Assign the terrain system to the TerrainTile
+    tile->setTerrain( terrain.get() );
 
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)

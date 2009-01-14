@@ -142,6 +142,13 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
            const std::string& url_template,
            const osgDB::ReaderWriter::Options* global_options)
 {        
+    osg::ref_ptr<TileCache> mapCache;
+    if (mapConfig->getCacheConfig())
+    {
+        mapCache = TileCacheFactory::create(mapConfig->getCacheConfig()->getType(), mapConfig->getCacheConfig()->getProperties());
+        mapCache->setMapConfigFilename( mapConfig->getFilename() );
+    }
+
     for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
     {
         SourceConfig* source = i->get();
@@ -170,6 +177,24 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 
             if (tile_source->getProfile().profileType() != TileGridProfile::UNKNOWN)
             {
+                //Load the source cache.
+                osg::ref_ptr<TileCache> sourceCache;
+                if (source->getCacheConfig())
+                {
+                    sourceCache = TileCacheFactory::create(source->getCacheConfig()->getType(), source->getCacheConfig()->getProperties());
+                    sourceCache->setMapConfigFilename( mapConfig->getFilename() );
+                }
+
+                if (sourceCache.valid()) osg::notify(osg::NOTICE) << "Source cache valid " << std::endl;
+
+                //If we don't have a source cache but have a cache at the map level, use that.
+                if (!sourceCache.valid() && mapCache.valid())
+                {
+                    osg::notify(osg::NOTICE) << "Using global map cache in place of source cache " << std::endl;
+                    sourceCache = mapCache;
+                }
+
+                tile_source->setCache(sourceCache.get());
                 tile_source->init(local_options.get());
                 tile_source->setName( source->getName() );
                 to.push_back( tile_source );
@@ -310,10 +335,10 @@ TileBuilder::createNode( const TileKey* key )
 #endif
         }
 
-        osgTerrain::Terrain* terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
+        terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
         terrain->setVerticalScale( map->getVerticalScale() );
-        parent->addChild( terrain );
-        parent = terrain;
+        parent->addChild( terrain.get() );
+        parent = terrain.get();
     }
     else
     {
@@ -336,7 +361,7 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
     //Try to create the heightfield with the given key
     osg::ref_ptr<osg::HeightField> hf;
     osg::ref_ptr<const TileKey> hf_key = key;
-    hf = tileSource->createHeightField( key );        
+    hf = tileSource->readHeightField( key );        
 
     if (!hf.valid())
     {
@@ -345,7 +370,7 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
 
         while (hf_key.valid())
         {
-            hf = tileSource->createHeightField(hf_key.get());
+            hf = tileSource->readHeightField(hf_key.get());
             if (hf.valid()) break;
             hf_key = hf_key->getParentKey();
         }
@@ -365,7 +390,7 @@ bool
 TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::TileKey *key, osgEarth::TileBuilder::ImageTileKeyPair &imageTile)
 {
     //Try to create the image with the given key
-    osg::ref_ptr<osg::Image> image = tileSource->createImage(key);
+    osg::ref_ptr<osg::Image> image = tileSource->readImage(key);
     osg::ref_ptr<const TileKey> image_key = key;
     
     if (!image.valid())
@@ -375,7 +400,7 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::
 
         while (image_key.valid())
         {
-            image = tileSource->createImage(image_key.get());
+            image = tileSource->readImage(image_key.get());
             if (image.valid()) break;
             image_key = image_key->getParentKey();
         }

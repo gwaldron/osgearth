@@ -48,6 +48,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT EarthTerrain : public osgTerrain::Terrain
     {
     public:
+        virtual const char* className() const { return "EarthTerrain"; }
+
         /** Get the TerrainTile for a given TileID.*/
         osgTerrain::TerrainTile* getTileOverride(const osgTerrain::TileID& tileID)
         {
@@ -122,6 +124,8 @@ namespace osgEarth
         std::string url_template;
         TileSourceList image_sources;
         TileSourceList heightfield_sources;
+
+        osg::ref_ptr<osgEarth::EarthTerrain> terrain;
     };
 };
 

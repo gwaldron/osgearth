@@ -31,6 +31,7 @@ namespace osgEarth
     {
     public:
         static osg::HeightField* convert(osg::Image* image, float scaleFactor = 1.0f); 
+        static osg::Image* convert(osg::HeightField* hf, int pixelSize = 16);
     };
 }
 

@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/TileSource>
+#include <osgEarth/ImageToHeightfieldConverter>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -49,4 +50,56 @@ TileSource::init(const osgDB::ReaderWriter::Options* options)
 
     if ( options->getPluginData( PROPERTY_MAX_LEVEL ) )
         _maxLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MAX_LEVEL ), INT_MAX );
+}
+
+osg::Image*
+TileSource::readImage(const osgEarth::TileKey *key)
+{
+    osg::Image *image = 0;
+    if (_cache.valid())
+    {
+        //Try to get the image from the cache.
+        image = _cache->getImage(key, this);
+    }
+
+    if (!image)
+    {
+        //If we didn't get the image from the cache, go ahead and create it.
+        image = createImage(key);
+
+        //Write the image to the cache if we could create one and we have a cache.
+        if (image && _cache.valid())
+        {
+            _cache->setImage(key, this, image);
+        }
+    }
+    return image;
+}
+
+osg::HeightField*
+TileSource::readHeightField(const osgEarth::TileKey *key)
+{
+    osg::HeightField* hf = 0;
+
+    if (_cache.valid())
+    {
+        //Try to get the image from the cache.
+        osg::ref_ptr<osg::Image> image = _cache->getImage(key, this);
+        if (image.valid())
+        {
+            hf = ImageToHeightFieldConverter::convert(image.get());
+        }
+    }
+
+    if (!hf)
+    {
+        hf = createHeightField(key);
+
+        //Write the image to the cache if we could create one and we have a cache.
+        if (hf && _cache.valid())
+        {
+            _cache->setImage(key, this, ImageToHeightFieldConverter::convert(hf));
+        }
+    }
+    return hf;
 }

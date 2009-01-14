@@ -28,6 +28,30 @@
 
 namespace osgEarth
 {
+    typedef std::map<std::string,std::string> CacheProperties;
+
+    /**
+    * Defines the properties for a cache.
+    */
+    class OSGEARTH_EXPORT CacheConfig : public osg::Referenced
+    {
+    public:
+        CacheConfig();
+
+        const std::string& getType() const;
+        void setType(const std::string &type);
+
+        /**
+        * Gets the collection of name/value pairs for the cache.
+        */
+        CacheProperties& getProperties();
+        const CacheProperties& getProperties() const;
+    private:
+        std::string _type;
+        CacheProperties _properties;
+    };
+
+
     typedef std::map<std::string,std::string> SourceProperties;
 
     /**
@@ -61,10 +85,14 @@ namespace osgEarth
 
         const SourceProperties& getProperties() const;
 
+        const CacheConfig* getCacheConfig() const;
+        void setCacheConfig(CacheConfig* cacheConfig);
+
     private:
         std::string name;
         std::string driver;
         SourceProperties properties;
+        osg::ref_ptr<CacheConfig> cache_config;
     };
 
     typedef std::list< osg::ref_ptr<SourceConfig> > SourceConfigList;
@@ -144,19 +172,6 @@ namespace osgEarth
         *@return The skirt ratio
         */
         float getSkirtRatio() const { return skirt_ratio; }
-
-        /**
-        * Sets the path to cache downloaded tiles to
-        */
-        void setCachePath( const std::string& _cache_path );
-
-        const std::string& getCachePath() const;
-
-        /**
-        * Gets the absolute path to the file cache.  If a relative cache path is specified, this function
-        * will return the absolute path to the cache that is relative to the location of the map file
-        */
-        std::string getFullCachePath() const;
 
         void setProxyHost( const std::string& host );
 
@@ -240,7 +255,16 @@ namespace osgEarth
         *Sets the profile string.  If the profile string is empty, the profile should be automatically computed from the sources.
         */
         void setProfile(const std::string& profile);
-        
+
+        /*
+        *Gets the cache config for the map
+        */
+        const CacheConfig* getCacheConfig() const;
+
+        /*
+        *Sets the cache config for the map
+        */
+        void setCacheConfig(CacheConfig* cacheConfig);
     private:
         std::string filename;
         std::string name;
@@ -249,7 +273,6 @@ namespace osgEarth
         float skirt_ratio;      
         SourceConfigList image_sources;
         SourceConfigList heightfield_sources;
-        std::string cache_path;
         std::string proxy_host;
         unsigned short proxy_port;
         float min_tile_range_factor;
@@ -260,6 +283,8 @@ namespace osgEarth
         std::string profile;
 
         bool offline_hint;
+
+        osg::ref_ptr<CacheConfig> cache_config;
     };
 
 

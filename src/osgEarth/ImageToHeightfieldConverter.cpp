@@ -53,3 +53,36 @@ osg::HeightField* ImageToHeightFieldConverter::convert(osg::Image* image, float 
     }
     return NULL;
 }
+
+osg::Image* ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixelSize /*=16*/)
+{
+	if (hf)
+	{
+        int type;
+        if (pixelSize == 16) type = GL_SHORT;
+        else if (pixelSize == 32) type = GL_FLOAT;
+        else type = GL_SHORT;
+
+        osg::Image* image = new osg::Image;
+        image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_LUMINANCE, type);
+
+        for( unsigned int row=0; row < hf->getNumRows(); row++ ) {
+            for( unsigned int col=0; col < hf->getNumColumns(); col++ ) {
+                if (pixelSize == 16)
+                {
+                  short val = (short)hf->getHeight(col,row);
+                  //osg::notify(osg::NOTICE) << "Short val " << val << std::endl;
+                  *((short*)image->data( col, row)) = val;
+                }
+                else if (pixelSize == 32)
+                {
+                    float val = (float)hf->getHeight(col,row);
+                    //osg::notify(osg::NOTICE) << "Float val " << val << std::endl;
+                    *image->data( col, row) = val;
+                }
+            }
+        }
+        return image;
+    }
+    return NULL;
+}

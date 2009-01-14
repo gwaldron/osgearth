@@ -82,14 +82,7 @@ int main(int argc, char** argv)
     //Load the map file
     osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( filename );
     if ( map.valid() )
-    {        
-        //Make sure there is a cache_path specified
-        if (map->getFullCachePath().empty())
-        {
-            osg::notify(osg::NOTICE) << "No cache_path defined for " << filename << ".  Please define a cache_path element or use the OSGEARTH_FILECACHE environment variable." << std::endl;
-            return 1;
-        }
-
+    {                
         //Create the CacheSeed
         osg::ref_ptr<CacheSeed> seed = new CacheSeed();
         seed->setMaxLevel(maxLevel);

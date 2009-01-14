@@ -141,16 +141,14 @@ public:
                 
             osg::notify(osg::INFO) << "TMSSource: Key=" << key->str() << ", URL=" << image_url << std::endl;
 
-            std::string cache_path = _mapConfig ? _mapConfig->getFullCachePath() : std::string("");
-            bool offline = _mapConfig ? _mapConfig->getOfflineHint() : false;
-            osgEarth::FileCache fc(cache_path);
-            fc.setOffline(offline);
             
             osg::ref_ptr<osg::Image> image;
             
             if (!image_url.empty())
             {
-                image = fc.readImageFile( image_url );
+                //If we are in offline mode, don't connect to the web
+                if (osgDB::containsServerAddress( image_url) && _mapConfig->getOfflineHint()) return 0;
+                image = osgDB::readImageFile( image_url );
             }
 
             if (!image.valid())
@@ -183,6 +181,12 @@ public:
     {
         return _tileMap->_format._width;
     }
+
+    virtual std::string getExtension()  const 
+    {
+        return _tileMap->_format._extension;
+    }
+
 private:
 
     osg::ref_ptr<TileMap> _tileMap;

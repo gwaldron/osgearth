@@ -67,37 +67,6 @@ MapConfig::getFilename() const
     return filename;
 }
 
-void
-MapConfig::setCachePath( const std::string& _cache_path )
-{
-    cache_path = _cache_path;
-}
-
-const std::string&
-MapConfig::getCachePath() const
-{
-    return cache_path;
-}
-
-std::string
-MapConfig::getFullCachePath() const
-{
-    //Return early if the cache path is empty
-    if (cache_path.empty()) return cache_path;
-
-    //Get the full path to the cache directory
-    std::string real_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle( osgDB::getRealPath( cache_path ) ) );
-    std::string tmp_cache_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle ( cache_path ) );
-
-    //If the full path isn't equal to the cache_path, the path should be relative to the location of the map file
-    if (real_path != tmp_cache_path)
-    {
-        return osgDB::getRealPath( osgDB::concatPaths( osgDB::getFilePath( filename ), tmp_cache_path ) );
-    }
-
-    return real_path;
-}
-
 const MapConfig::CoordinateSystemType&
 MapConfig::getCoordinateSystemType() const
 {
@@ -231,6 +200,18 @@ void MapConfig::setProfile(const std::string& profile)
     this->profile = profile;
 }
 
+const CacheConfig*
+MapConfig::getCacheConfig() const
+{
+    return cache_config.get();
+}
+
+void
+MapConfig::setCacheConfig(CacheConfig* cacheConfig)
+{
+    cache_config = cacheConfig;
+}
+
 
 /************************************************************************/
 
@@ -276,8 +257,52 @@ SourceConfig::getProperties() const
     return properties;
 }
 
+const CacheConfig*
+SourceConfig::getCacheConfig() const
+{
+    return cache_config.get();
+}
+
+void
+SourceConfig::setCacheConfig(CacheConfig* cacheConfig)
+{
+    cache_config = cacheConfig;
+}
+
 
 /************************************************************************/
+
+
+CacheConfig::CacheConfig()
+{
+}
+const std::string& 
+CacheConfig::getType() const
+{
+    return _type;
+}
+
+void
+CacheConfig::setType(const std::string &type)
+{
+    _type = type;
+}
+
+/**
+* Gets the collection of name/value pairs for the cache.
+*/
+CacheProperties&
+CacheConfig::getProperties()
+{
+    return _properties;
+}
+
+const CacheProperties& CacheConfig::getProperties() const
+{
+    return _properties;
+}
+
+/***********************************************************************/
 
 #define ELEM_MAP               "map"
 #define ATTR_NAME              "name"
@@ -288,7 +313,6 @@ SourceConfig::getProperties() const
 #define ELEM_MIN_TILE_RANGE    "min_tile_range_factor"
 #define ATTR_DRIVER            "driver"
 #define ELEM_SKIRT_RATIO       "skirt_ratio"
-#define ELEM_CACHE_PATH        "cache_path"
 #define ELEM_PROXY_HOST        "proxy_host"
 #define ELEM_PROXY_PORT        "proxy_port"
 #define ELEM_NORTH_CAP_COLOR   "north_cap_color"
@@ -296,6 +320,31 @@ SourceConfig::getProperties() const
 #define ELEM_CONNECTION_STATUS "connection_status"
 #define ELEM_PROFILE           "profile"
 
+#define ELEM_CACHE             "cache"
+#define ATTR_TYPE              "type"
+
+static CacheConfig*
+readCache( XmlElement* e_cache )
+{
+    CacheConfig* cache = new CacheConfig();
+    cache->setType( e_cache->getAttr( ATTR_TYPE ) );
+
+    const XmlNodeList& e_props = e_cache->getChildren();
+    for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
+    {
+        XmlElement* e_prop = dynamic_cast<XmlElement*>( i->get() );
+        if ( e_prop )
+        {
+            std::string name = e_prop->getName();
+            std::string value = e_prop->getText();
+            if ( !name.empty() && !value.empty() )
+            {
+                cache->getProperties()[name] = value;
+            }
+        }
+    }
+    return cache;
+}
 
 static SourceConfig*
 readSource( XmlElement* e_source )
@@ -304,6 +353,13 @@ readSource( XmlElement* e_source )
 
     source->setName( e_source->getAttr( ATTR_NAME ) );
     source->setDriver( e_source->getAttr( ATTR_DRIVER ) );
+
+    //Try to read the cache for the source if one exists
+    XmlElement* e_cache = static_cast<XmlElement*>(e_source->getSubElement( ELEM_CACHE ));
+    if (e_cache)
+    {
+        source->setCacheConfig( readCache( e_cache) );
+    }
 
     const XmlNodeList& e_props = e_source->getChildren();
     for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
@@ -377,7 +433,6 @@ readMap( XmlElement* e_map )
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
     map->setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), map->getMinTileRangeFactor() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
-    map->setCachePath( as<std::string>( e_map->getSubElementText( ELEM_CACHE_PATH ), map->getCachePath() ) );
 
     map->setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), map->getProxyHost() ) );
     map->setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), map->getProxyPort() ) );
@@ -404,13 +459,11 @@ readMap( XmlElement* e_map )
             map->getHeightFieldSources().push_back( heightfield_source );
     }
 
-    //If the OSGEARTH_FILE_CACHE environment variable is set, override whatever is in the map config.
-    std::string cacheFilePath;
-    const char* fileCachePath = getenv("OSGEARTH_FILE_CACHE");
-    if (fileCachePath) //Env Cache Directory
+    //Try to read the global map cache if one is specifiec
+    XmlElement* e_cache = static_cast<XmlElement*>(e_map->getSubElement( ELEM_CACHE ));
+    if (e_cache)
     {
-        osg::notify(osg::INFO) << "Overriding cache path with OSGEARTH_FILE_CACHE environment variable " << fileCachePath << std::endl;
-        map->setCachePath(std::string(fileCachePath));
+        map->setCacheConfig( readCache( e_cache) );
     }
 
     //If the OSGEARTH_OFFLINE environment variable is set, override whateve is in the map config
@@ -458,7 +511,6 @@ mapToXmlDocument( const MapConfig *map)
     e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map->getVerticalScale() ) );
     e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map->getMinTileRangeFactor() ) );
     e_map->addSubElement( ELEM_SKIRT_RATIO, toString<float>( map->getSkirtRatio() ) );
-    e_map->addSubElement( ELEM_CACHE_PATH, map->getCachePath() );
 
     e_map->addSubElement( ELEM_PROXY_HOST, map->getProxyHost() );
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>(map->getProxyPort() ) );

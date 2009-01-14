@@ -20,7 +20,6 @@
 #include <osgEarth/PlateCarre>
 #include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
-#include <osgEarth/FileCache>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgDB/FileNameUtils>
@@ -69,18 +68,10 @@ public:
     {
         std::string uri = createURI( key );
 
-        std::string cache_path = _mapConfig ? _mapConfig->getFullCachePath() : std::string("");
-        bool offline = _mapConfig ? _mapConfig->getOfflineHint() : false;
+        //If we are in offline mode, don't connect to the web
+        if (osgDB::containsServerAddress( uri) && _mapConfig->getOfflineHint()) return 0;
 
-        osgEarth::FileCache fc(cache_path);
-        fc.setOffline(offline);
-        osg::Image* image = fc.readImageFile(uri);
-
-        if ( !image )
-        {
-            osg::notify(osg::WARN) << "Failed to load image from " << uri << std::endl;
-        }
-        return image;
+        return osgDB::readImageFile( uri );
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
@@ -111,6 +102,12 @@ public:
     {
         return 256;
     }
+
+    virtual std::string getExtension()  const 
+    {
+        return _format;
+    }
+
 private:
     std::string _url;
     std::string _dataset;

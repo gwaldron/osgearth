@@ -102,7 +102,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
                 key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
             {
-                image = image_sources[i]->createImage(key);
+                image = image_sources[i]->readImage(key);
             }
 
             image_tiles.push_back(ImageTileKeyPair(image, key));
@@ -114,7 +114,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        hf = heightfield_sources[0]->createHeightField(key);
+        hf = heightfield_sources[0]->readHeightField(key);
     }
 
 
@@ -211,6 +211,9 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     //Attach an updatecallback to normalize the edges of TerrainTiles.
     tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
     tile->setDataVariance(osg::Object::DYNAMIC);
+
+    //Assign the terrain system to the TerrainTile
+    tile->setTerrain( terrain.get() );
 
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)

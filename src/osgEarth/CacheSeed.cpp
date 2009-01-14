@@ -40,6 +40,39 @@ void CacheSeed::seed(MapConfig *map)
 
     osg::ref_ptr<TileKey> key = tile_builder->getDataProfile().getTileKey( "" );
 
+    bool hasCaches = false;
+
+    //Assumes the the TileSource will perform the caching for us when we call createImage
+    for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
+    {
+        if (!itr->get()->getCache())
+        {
+            osg::notify(osg::NOTICE) << "Warning:  Image " << itr->get()->getName() << " has no cache." << std::endl;
+        }
+        else
+        {
+            hasCaches = true;
+        }
+    }
+
+    for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
+    {
+        if (!itr->get()->getCache())
+        {
+            osg::notify(osg::NOTICE) << "Warning:  Heightfield " << itr->get()->getName() << " has no cache." << std::endl;
+        }
+        else
+        {
+            hasCaches = true;
+        }
+    }
+
+    if (!hasCaches)
+    {
+        osg::notify(osg::NOTICE) << "There are no caches specified for the given map.  Please configure a cache in the mapconfig" << std::endl;
+        return;
+    }
+
     processKey( tile_builder.get(), key.get() );
 }
 
@@ -54,12 +87,12 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
             //Assumes the the TileSource will perform the caching for us when we call createImage
             for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
             {
-                osg::ref_ptr<osg::Image> image = itr->get()->createImage(key);
+                osg::ref_ptr<osg::Image> image = itr->get()->readImage(key);
             }
 
             for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
             {
-                osg::ref_ptr<osg::HeightField> heightField = itr->get()->createHeightField(key);
+                osg::ref_ptr<osg::HeightField> heightField = itr->get()->readHeightField(key);
             }
         }
 

@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileGridProfile>
+#include <osgEarth/TileCache>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -45,6 +46,8 @@ namespace osgEarth
         virtual const osgEarth::TileGridProfile& getProfile();
         virtual int getPixelsPerTile() const { return 256; }
 
+        osg::Image *readImage( const TileKey* key );
+        osg::HeightField* readHeightField(const TileKey* key);
 
         const unsigned int& getMinLevel() {return _minLevel;}
         void setMinLevel(unsigned int &minLevel) {_minLevel = minLevel;}
@@ -52,17 +55,25 @@ namespace osgEarth
         const unsigned int& getMaxLevel() {return _maxLevel;}
         void setMaxLevel(unsigned int &maxLevel) {_maxLevel = maxLevel;}
 
+        const TileCache* getCache() {return _cache.get();}
+        void setCache(TileCache* cache) {_cache = cache;}
+
+        virtual std::string getExtension() const {return "";}
+
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const TileSource*>(obj)!=NULL; }
         virtual const char* className() const { return "TileSource"; }
         virtual const char* libraryName() const { return "osgEarth"; }
+    
     protected:
         virtual ~TileSource();
         TileGridProfile _profile;
 
         unsigned int _minLevel;
         unsigned int _maxLevel;
+
+        osg::ref_ptr<TileCache> _cache;
     };
 }
 

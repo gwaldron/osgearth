@@ -21,8 +21,6 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Mercator>
 #include <osgEarth/PlateCarre>
-#include <osgEarth/FileCache>
-
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -106,18 +104,21 @@ public:
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
 
-        std::string cache_path = map_config ? map_config->getFullCachePath() : std::string("");
-        bool offline = map_config ? map_config->getOfflineHint() : false;
+        //If we are in offline mode, don't connect to the web
+        if (osgDB::containsServerAddress( buf.str()) && map_config->getOfflineHint()) return 0;
 
-        osgEarth::FileCache fc(cache_path);
-        fc.setOffline(offline);
-        return fc.readImageFile( buf.str(), options.get() );
+        return osgDB::readImageFile( buf.str(), options.get() );
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
         //TODO
         return NULL;
+    }
+
+    virtual std::string getExtension()  const 
+    {
+        return format;
     }
 
 private:

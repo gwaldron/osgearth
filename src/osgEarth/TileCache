@@ -1,0 +1,91 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TILE_CACHE_H
+#define OSGEARTH_TILE_CACHE_H
+
+#include <osgEarth/Common>
+#include <osgEarth/TileKey>
+#include <osg/Image>
+
+namespace osgEarth
+{
+    class TileSource;
+
+    class OSGEARTH_EXPORT TileCache : public osg::Referenced
+    {
+    public:
+        virtual bool existsInCache(const TileKey* key, const TileSource* source) = 0;
+        virtual osg::Image* getImage(const TileKey* key, const TileSource* source) = 0;
+        virtual void setImage(const TileKey* key, const TileSource* source, const osg::Image* image) = 0;
+
+        virtual const std::string& getMapConfigFilename() {return _mapConfigFilename;}
+        virtual void setMapConfigFilename( const std::string &mapConfigFilename ) { _mapConfigFilename = mapConfigFilename;}
+    protected:
+        std::string _mapConfigFilename;
+    };
+
+    class OSGEARTH_EXPORT DiskCache : public TileCache
+    {
+    public:
+        DiskCache(const std::string &path, const std::string format);
+        virtual bool existsInCache(const TileKey* key, const TileSource* source);
+        virtual osg::Image* getImage(const TileKey* key, const TileSource* source);
+        virtual void setImage(const TileKey* key, const TileSource* source, const osg::Image* image);
+        virtual std::string getFileName(const TileKey* key, const TileSource* source);
+        std::string getFormat(const TileSource* source);
+
+        std::string getPath();
+    protected:
+        std::string _path;
+        std::string _format;
+    };
+
+    class OSGEARTH_EXPORT TMSCache : public DiskCache
+    {
+    public:
+        TMSCache(const std::string &path, const std::string format);
+        virtual std::string getFileName(const TileKey* key, const TileSource* source);
+    };
+
+    class OSGEARTH_EXPORT QuadKeyCache : public DiskCache
+    {
+    public:
+        QuadKeyCache(const std::string &path, const std::string format);
+        virtual std::string getFileName(const TileKey* key, const TileSource* source);
+    };
+
+    class OSGEARTH_EXPORT NullCache : public TileCache
+    {
+    public:
+        NullCache() {}
+        bool existsInCache(const TileKey* key, const TileSource* source) {return false;}
+        osg::Image* getImage(const TileKey* key, const TileSource* source) {return 0;}
+        void setImage(const TileKey* key, const TileSource* source, const osg::Image* image) {};
+    };
+
+    class OSGEARTH_EXPORT TileCacheFactory
+    {
+    public:
+        static TileCache* create(const std::string &type, std::map<std::string,std::string> properties); 
+    };
+}
+
+#endif //OSGEARTH_TILE_CACHE_H
+

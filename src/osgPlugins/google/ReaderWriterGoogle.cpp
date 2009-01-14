@@ -19,8 +19,6 @@
 
 #include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
-#include <osgEarth/FileCache>
-
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -78,20 +76,18 @@ public:
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://khm" << server << ".google.com/kh/v=32&hl=en"
+            buf << "http://khm" << server << ".google.com/kh?v=34&hl=en"
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom
                 << "&s=Ga&.jpg";
-            
-            // http://khm0.google.com/kh/v=32&hl=en&x=4&y=6&z=4&s=Ga
         }
         else if ( dataset == "terrain" )
         {
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
-            buf << "http://mt" << server << ".google.com/mt?v=app.81&hl=en&x="
+            buf << "http://mt" << server << ".google.com/mt?v=w2p.87&hl=en&x="
                 << tile_x << "&y=" << tile_y << "&zoom=" 
                 << 17-key->getLevelOfDetail() << "&.jpg";
         }
@@ -102,13 +98,11 @@ public:
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://mt" << server << ".google.com/mt/v=w2t.83&hl=en"
+            buf << "http://mt" << server << ".google.com/mt?v=w2t.88&hl=en"
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom
-                << "&s=Ga&.png";
-
-            //http://mt3.google.com/mt/v=w2t.83&hl=en&x=3&y=6&z=4&s=Galileo
+                << "&s=G&.png";
         }
         else if ( dataset == "roads" )
         {
@@ -117,7 +111,7 @@ public:
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://mt" << server << ".google.com/mt?v=w2.86&hl=en"
+            buf << "http://mt" << server << ".google.com/mt?v=w2.89&hl=en"
                 << "&x=" << tile_x
                 << "&y=" << tile_y
                 << "&z=" << zoom
@@ -129,18 +123,25 @@ public:
             << (options.valid()? options->getOptionString() : "<empty>")
             << std::endl;
 
-        std::string cache_path = map_config ? map_config->getFullCachePath() : std::string("");
-        bool offline = map_config ? map_config->getOfflineHint() : false;
+        //If we are in offline mode, don't connect to the web
+        if (osgDB::containsServerAddress( buf.str()) && map_config->getOfflineHint()) return 0;
 
-        osgEarth::FileCache fc(cache_path);
-        fc.setOffline(offline);
-        return fc.readImageFile( buf.str(), options.get() );
+        return osgDB::readImageFile ( buf.str(), options.get());
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
         //TODO
         return NULL;
+    }
+
+    virtual std::string getExtension()  const 
+    {
+        if ( dataset == "satellite" ) return "jpg";
+        else if ( dataset == "terrain" ) return "jpg";
+        else if ( dataset == "labels" ) return "png";
+        else if ( dataset == "roads" ) return "png";
+        else return "";
     }
 
 private:

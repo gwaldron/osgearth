@@ -36,6 +36,7 @@ SET(LIB_PUBLIC_HEADERS
     TileBuilder
     TileGridProfile
     TileKey
+    TileCache
     TileSource
     XmlUtils
 )
@@ -56,6 +57,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	ProjectedTileBuilder.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileBuilder.cpp
+    TileCache.cpp
     TileGridProfile.cpp
     TileKey.cpp
     TileSource.cpp

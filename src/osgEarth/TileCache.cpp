@@ -42,7 +42,7 @@ bool DiskCache::existsInCache(const TileKey* key, const TileSource* source)
 osg::Image* DiskCache::getImage(const TileKey* key, const TileSource* source)
 {
     std::string filename = getFileName(key, source);
-    osg::notify(osg::DEBUG_FP) << "TMSCache: getImage " << filename << std::endl;
+    //osg::notify(osg::NOTICE) << "DiskCache: getImage " << filename << std::endl;
     return osgDB::readImageFile(getFileName(key, source));
 }
 
@@ -171,25 +171,25 @@ TileCache* TileCacheFactory::create(const std::string &type, std::map<std::strin
         
         if (type == "tms")
         {
-            osg::notify(osg::NOTICE) << "Returning TMS cache " << std::endl;
+            osg::notify(osg::INFO) << "Returning TMS cache " << std::endl;
             return new TMSCache(path, format);
         }
 
         if (type == "disk")
         {
-            osg::notify(osg::NOTICE) << "Returning disk cache " << std::endl;
+            osg::notify(osg::INFO) << "Returning disk cache " << std::endl;
             return new DiskCache(path, format);
         }
 
         if (type == "quadkey")
         {
-            osg::notify(osg::NOTICE) << "Returning quadkey cache " << std::endl;
+            osg::notify(osg::INFO) << "Returning quadkey cache " << std::endl;
             return new QuadKeyCache(path, format);
         }
     }
     else if (type == "none")
     {
-        osg::notify(osg::NOTICE) << "Returning null cache " << std::endl;
+        osg::notify(osg::INFO) << "Returning null cache " << std::endl;
         return new NullCache();
     }
     return 0;

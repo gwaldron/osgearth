@@ -346,6 +346,17 @@ readCache( XmlElement* e_cache )
     return cache;
 }
 
+static void writeCache( const CacheConfig* cache, XmlElement* e_cache )
+{
+    e_cache->getAttrs()[ATTR_TYPE] = cache->getType();
+
+    //Add all the properties
+    for (CacheProperties::const_iterator i = cache->getProperties().begin(); i != cache->getProperties().end(); i++ )
+    {
+        e_cache->addSubElement(i->first, i->second);
+    }
+}
+
 static SourceConfig*
 readSource( XmlElement* e_source )
 {
@@ -389,7 +400,15 @@ static void writeSource( const SourceConfig* source, XmlElement* e_source )
     {
         e_source->addSubElement(i->first, i->second);
     }
+
+    if (source->getCacheConfig())
+    {
+       XmlElement* e_cache = new XmlElement(ELEM_CACHE);
+       writeCache(source->getCacheConfig(), e_cache);
+       e_source->getChildren().push_back(e_cache);
+    }
 }
+
 
 
 osg::Vec4ub getColor(const std::string& str, osg::Vec4ub default_value)
@@ -532,6 +551,13 @@ mapToXmlDocument( const MapConfig *map)
         osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_HEIGHTFIELD );
         writeSource(i->get(), e_source.get());
         e_map->getChildren().push_back( e_source.get() );
+    }
+
+    if (map->getCacheConfig())
+    {
+        XmlElement* e_cache = new XmlElement(ELEM_CACHE);
+        writeCache(map->getCacheConfig(), e_cache);
+        e_map->getChildren().push_back(e_cache);
     }
 
     return doc.release();

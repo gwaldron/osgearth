@@ -26,24 +26,24 @@ using namespace osgEarth;
 void CacheSeed::seed(MapConfig *map)
 {
     //Create a TileBuilder for the map
-    osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::create( map, map->getFilename() );
+    _tileBuilder = TileBuilder::create( map, map->getFilename() );
     
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
         _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-        _bounds._min.x() = tile_builder->getDataProfile().xMin();
-        _bounds._min.y() = tile_builder->getDataProfile().yMin();
-        _bounds._max.x() = tile_builder->getDataProfile().xMax();
-        _bounds._max.y() = tile_builder->getDataProfile().yMax();
+        _bounds._min.x() = _tileBuilder->getDataProfile().xMin();
+        _bounds._min.y() = _tileBuilder->getDataProfile().yMin();
+        _bounds._max.x() = _tileBuilder->getDataProfile().xMax();
+        _bounds._max.y() = _tileBuilder->getDataProfile().yMax();
     }
 
-    osg::ref_ptr<TileKey> key = tile_builder->getDataProfile().getTileKey( "" );
+    osg::ref_ptr<TileKey> key = _tileBuilder->getDataProfile().getTileKey( "" );
 
     bool hasCaches = false;
 
     //Assumes the the TileSource will perform the caching for us when we call createImage
-    for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
+    for (TileSourceList::iterator itr = _tileBuilder->getImageSources().begin(); itr != _tileBuilder->getImageSources().end(); ++itr)
     {
         if (!itr->get()->getCache())
         {
@@ -55,7 +55,7 @@ void CacheSeed::seed(MapConfig *map)
         }
     }
 
-    for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
+    for (TileSourceList::iterator itr = _tileBuilder->getHeightFieldSources().begin(); itr != _tileBuilder->getHeightFieldSources().end(); ++itr)
     {
         if (!itr->get()->getCache())
         {
@@ -73,7 +73,7 @@ void CacheSeed::seed(MapConfig *map)
         return;
     }
 
-    processKey( tile_builder.get(), key.get() );
+    processKey( _tileBuilder.get(), key.get() );
 }
 
 void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)

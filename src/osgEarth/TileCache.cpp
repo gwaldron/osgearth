@@ -20,6 +20,7 @@
 #include <osgEarth/TileCache>
 #include <osgEarth/PlateCarre>
 #include <osgEarth/TileSource>
+#include <osgEarth/FileUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
@@ -50,18 +51,7 @@ std::string DiskCache::getPath()
 {
     //Return early if the cache path is empty
     if (_path.empty()) return _path;
-
-    //Get the full path to the cache directory
-    std::string real_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle( osgDB::getRealPath( _path ) ) );
-    std::string tmp_cache_path = osgDB::convertToLowerCase( osgDB::convertFileNameToNativeStyle ( _path ) );
-
-    //If the full path isn't equal to the cache_path, the path should be relative to the location of the map file
-    if (real_path != tmp_cache_path)
-    {
-        real_path = osgDB::getRealPath( osgDB::concatPaths( osgDB::getFilePath( _mapConfigFilename ), tmp_cache_path ) );
-    }
-
-    return real_path;
+    return getFullPath(_mapConfigFilename, _path);
 }
 
 void DiskCache::setImage(const TileKey* key, const TileSource* source, const osg::Image* image)

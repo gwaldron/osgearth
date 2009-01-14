@@ -90,11 +90,18 @@ namespace osgEarth
           */
           void seed(MapConfig *map);
 
+          /*
+          *Gets the TileBuilder used the CacheSeed
+          */
+          TileBuilder* getTileBuilder() {return _tileBuilder.get(); }
+
     protected:
         unsigned int _maxLevel;
 
         Bounds _bounds;
         void processKey(TileBuilder* tile_builder, TileKey *key);
+
+        osg::ref_ptr<TileBuilder> _tileBuilder;
     };
 }
 

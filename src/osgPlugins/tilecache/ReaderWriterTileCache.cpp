@@ -19,6 +19,8 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
+#include <osgEarth/ImageToHeightfieldConverter>
+#include <osgEarth/FileUtils>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -91,14 +93,19 @@ public:
         //If we are in offline mode, don't connect to the web
         if (osgDB::containsServerAddress( buf ) && map_config->getOfflineHint()) return 0;
 
-        return osgDB::readImageFile( buf, options.get());
+        std::string path = osgEarth::getFullPath(map_config->getFilename(), buf);
+        return osgDB::readImageFile( path, options.get());
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
-        //TODO
-        osg::notify(osg::NOTICE) << "ReaderWriterTileCache::createHeightField() not yet implemented." << std::endl;
-        return NULL;
+        osg::ref_ptr<osg::Image> image = createImage(key);
+        osg::HeightField* hf = 0;
+        if (image.valid())
+        {
+            hf = ImageToHeightFieldConverter::convert(image.get());
+        }      
+        return hf;
     }
 
     virtual std::string getExtension()  const 

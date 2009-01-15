@@ -24,6 +24,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Export
     FileCache
+	FileUtils
     GeocentricTileBuilder
     HTTPClient
     ImageToHeightFieldConverter
@@ -47,6 +48,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	md5.cpp
 	CacheSeed.cpp
     FileCache.cpp
+	FileUtils.cpp
     GeocentricTileBuilder.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp

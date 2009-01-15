@@ -44,7 +44,7 @@ osg::Image* DiskCache::getImage(const TileKey* key, const TileSource* source)
 {
     std::string filename = getFileName(key, source);
     //osg::notify(osg::NOTICE) << "DiskCache: getImage " << filename << std::endl;
-    return osgDB::readImageFile(getFileName(key, source));
+    return osgDB::readImageFile( filename );
 }
 
 std::string DiskCache::getPath()

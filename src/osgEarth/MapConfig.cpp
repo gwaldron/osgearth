@@ -602,7 +602,12 @@ MapConfigReaderWriter::readXml( const std::string& location )
 
     if (map)
     {
-        map->setFilename( osgDB::getRealPath( location ) );
+        std::string filename = location;
+        if (!osgDB::containsServerAddress(filename))
+        {
+            filename = osgDB::getRealPath( location );
+        }
+        map->setFilename( location );
     }
     return map;
 }

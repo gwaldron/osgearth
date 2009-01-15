@@ -92,8 +92,20 @@ public:
 
         //If we are in offline mode, don't connect to the web
         if (osgDB::containsServerAddress( buf ) && map_config->getOfflineHint()) return 0;
+        
+        std::string path = buf;
 
-        std::string path = osgEarth::getFullPath(map_config->getFilename(), buf);
+        //If we have a relative path and the map file contains a server address, just concat the server path and the cache together.
+        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(map_config->getFilename()))
+        {
+            path = osgDB::getFilePath(map_config->getFilename()) + "/" + path;
+        }
+
+        //If the path doesn't contain a server address, get the full path to the file.
+        if (!osgDB::containsServerAddress(path))
+        {
+            path = osgEarth::getFullPath(map_config->getFilename(), path);
+        }
         return osgDB::readImageFile( path, options.get());
     }
 

@@ -54,7 +54,7 @@ osg::HeightField* ImageToHeightFieldConverter::convert(osg::Image* image, float 
     return NULL;
 }
 
-osg::Image* ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixelSize /*=16*/)
+osg::Image* ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixelSize)
 {
 	if (hf)
 	{
@@ -78,7 +78,7 @@ osg::Image* ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixel
                 {
                     float val = (float)hf->getHeight(col,row);
                     //osg::notify(osg::NOTICE) << "Float val " << val << std::endl;
-                    *image->data( col, row) = val;
+                    *((float*)image->data( col, row)) = val;
                 }
             }
         }

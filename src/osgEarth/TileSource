@@ -35,29 +35,86 @@
 
 namespace osgEarth
 {    
+    /**
+     *A TileSource is an object that can create image and/or heightfield tiles
+     */
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
-    public:
+    public:        
         TileSource();
+
+        /**
+         *Initializes common properties of all TileSources from the given ReaderWriter::Options
+         */
         void init(const osgDB::ReaderWriter::Options* options);
 
+        /**
+         *Creates an image for the given TileKey
+         */
         virtual osg::Image* createImage( const TileKey* key ) = 0;
+
+        /**
+         * Creates a heightfield for the given TileKey
+         */
         virtual osg::HeightField* createHeightField( const TileKey* key ) = 0;
+
+        /**
+         *Gets the TileGridProfile for this TileSource
+         */
         virtual const osgEarth::TileGridProfile& getProfile();
+
+        /**
+         * Gets the number of pixels per tile for this TileSource.  Defaults to 256
+         */
         virtual int getPixelsPerTile() const { return 256; }
 
+        /**
+         * readImage gets an image for the given TileKey by first consulting this TileSource's cache.
+         * If no cache exists or no image exists in the cache for the given key, createImage is called.
+         * If an image is created via createImage and a cache exists, it is written to the cache.
+         */
         osg::Image *readImage( const TileKey* key );
+
+        /**
+         * readHeightfield gets a heightfield for the given TileKey by first consulting this TileSource's cache.
+         * If no cache exists or no heightfield exists in the cache for the given key, createHeightField is called.
+         * If a heightfield is created via createHeightField and a cache exists, it is written to the cache.
+         */
         osg::HeightField* readHeightField(const TileKey* key);
 
+        /**
+         * Gets the minimum level that this TileSource should be displayed at
+         */
         const unsigned int& getMinLevel() {return _minLevel;}
+
+        /**
+         * Sets the minimum level that this TileSource should be display at
+         */
         void setMinLevel(unsigned int &minLevel) {_minLevel = minLevel;}
 
+        /**
+         * Gets the maximum level that this TileSource should be displayed at
+         */
         const unsigned int& getMaxLevel() {return _maxLevel;}
+
+        /**
+         * Sets the maximum level that this TileSource should be displayed at
+         */
         void setMaxLevel(unsigned int &maxLevel) {_maxLevel = maxLevel;}
 
+        /**
+         * Gets the TileCache for this TileSource
+         */
         const TileCache* getCache() {return _cache.get();}
+
+        /**
+         * Sets the TileCache for this TileSource
+         */
         void setCache(TileCache* cache) {_cache = cache;}
 
+        /**
+         * Gets the preferred extension for this TileSource
+         */
         virtual std::string getExtension() const {return "";}
 
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate

@@ -100,7 +100,9 @@ std::string DiskCache::getFileName(const TileKey* key, const TileSource* source)
 }
 
 
-TMSCache::TMSCache(const std::string &path, const std::string format):DiskCache(path, format)
+TMSCache::TMSCache(const std::string &path, const std::string format):
+ DiskCache(path, format),
+ _invertY(false)
 {
 }
 
@@ -109,7 +111,11 @@ std::string TMSCache::getFileName(const TileKey* key, const TileSource* source)
 {
     unsigned int x,y;
     key->getTileXY(x, y);
-    y = key->getMapSizeTiles() - y - 1;
+
+    if (!_invertY)
+    {
+        y = key->getMapSizeTiles() - y - 1;
+    }
     
     unsigned int lod = key->getLevelOfDetail();
     if (dynamic_cast<const PlateCarreTileKey*>(key))
@@ -147,7 +153,7 @@ static bool getProp(const std::map<std::string,std::string> &map, const std::str
 
 TileCache* TileCacheFactory::create(const std::string &type, std::map<std::string,std::string> properties)
 {
-    if (type == "tms" || type == "disk" || type == "quadkey")
+    if (type == "tms" || type == "tilecache" || type == "quadkey" || type.empty())
     {
         std::string path;
         std::string format;
@@ -161,11 +167,19 @@ TileCache* TileCacheFactory::create(const std::string &type, std::map<std::strin
         
         if (type == "tms")
         {
+            TMSCache *cache = new TMSCache(path, format);
+            std::string tms_type; 
+            getProp(properties, "tms_type", tms_type);
+            if (tms_type == "google")
+            {
+                osg::notify(osg::INFO) << "Inverting Y in TMS cache " << std::endl;
+                cache->setInvertY(true);
+            }
             osg::notify(osg::INFO) << "Returning TMS cache " << std::endl;
-            return new TMSCache(path, format);
+            return cache;
         }
 
-        if (type == "disk")
+        if (type == "tilecache" || type.empty())
         {
             osg::notify(osg::INFO) << "Returning disk cache " << std::endl;
             return new DiskCache(path, format);

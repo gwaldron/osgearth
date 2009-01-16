@@ -67,7 +67,8 @@ namespace osgEarth
     /**
      *DiskCache is an implementation of the TileCache class that caches in a format compatible with
      *Metacarta's TileCache "Disk" style caching.  This means that the resulting osgEarth cache can be used by any client
-     *that can consume Metacarta's TileCache Disk style caching.
+     *that can consume Metacarta's TileCache Disk style caching.  Subclasses of DiskCache can simply implement the 
+     *getFileName function to provide different naming schemes.
      *http://tilecache.org/
      */
     class OSGEARTH_EXPORT DiskCache : public TileCache
@@ -139,6 +140,18 @@ namespace osgEarth
          * Gets the filename to cache to for the given TileKey and TileSource
          */
         virtual std::string getFileName(const TileKey* key, const TileSource* source);
+
+        /**
+         * Gets whether or not to invert the y tile index
+         */
+        const bool& getInvertY() {return _invertY; }
+
+        /**
+         * Sets whether or not to invert the y tile index
+         */
+        void setInvertY(const bool &invertY) {_invertY = invertY;}
+    protected:
+        bool _invertY;
     };
 
     /**

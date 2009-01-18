@@ -24,6 +24,8 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
+#include <OpenThreads/ReentrantMutex>
+
 #include <sstream>
 
 #include "zip.h"
@@ -31,6 +33,12 @@
 using namespace osg;
 using namespace osgDB;
 
+static OpenThreads::ReentrantMutex s_mutex;
+
+/**
+* The ZipFS plugin allows you to treat zip files almost like a virtual file system.
+* You can read and write objects from zips using paths like c:/data/models.zip/cow.osg where cow.osg is a file within the models.zip file.
+*/
 class ReaderWriterZipFS : public osgDB::ReaderWriter
 {
 public:
@@ -73,6 +81,40 @@ public:
         return readFile(HEIGHTFIELD, file_name, options);
     }
 
+    virtual WriteResult writeObject(const osg::Object& obj, const std::string& fileName, const osgDB::ReaderWriter::Options* options) const
+    {
+        return writeFile(OBJECT, &obj, fileName, options);
+    }
+
+    virtual WriteResult writeImage(const osg::Image& image, const std::string& fileName, const osgDB::ReaderWriter::Options* options) const
+    {
+        return writeFile(IMAGE, &image, fileName, options);
+    }
+
+    virtual WriteResult writeHeightField(const osg::HeightField& hf, const std::string& fileName, const osgDB::ReaderWriter::Options* options) const
+    {
+        return writeFile(HEIGHTFIELD, &hf, fileName, options);
+    }
+
+    virtual WriteResult writeNode(const osg::Node& node, const std::string& fileName, const osgDB::ReaderWriter::Options* options) const
+    {
+        return writeFile(NODE, &node, fileName,options);
+    }
+
+    WriteResult writeFile(ObjectType objectType, const osg::Object* object, osgDB::ReaderWriter* rw, std::ostream& fout, const osgDB::ReaderWriter::Options* options) const
+    {
+        switch (objectType)
+        {
+        case(OBJECT): return rw->writeObject(*object, fout, options);
+        case(IMAGE): return rw->writeImage(*(dynamic_cast<const osg::Image*>(object)), fout, options);
+        case(HEIGHTFIELD): return rw->writeHeightField(*(dynamic_cast<const osg::HeightField*>(object)), fout, options);
+        case(NODE): return rw->writeNode(*(dynamic_cast<const osg::Node*>(object)), fout,options);
+        default: break;
+        }
+        return WriteResult::FILE_NOT_HANDLED;
+    }
+
+
     ReadResult readFile(ObjectType objectType, osgDB::ReaderWriter* rw, std::istream& fin, const osgDB::ReaderWriter::Options* options) const
     {
         switch (objectType)
@@ -88,6 +130,8 @@ public:
 
     ReadResult readFile(ObjectType objectType, const std::string &fullFileName, const osgDB::ReaderWriter::Options* options) const
     {
+        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(s_mutex);
+
         //This plugin allows you to treat zip files almost like virtual directories.  So, the pathname to the file you want in the zip should
         //be of the format c:\data\myzip.zip\images\foo.png
 
@@ -100,8 +144,12 @@ public:
 
         std::string zipFile = fullFileName.substr(0, len + 4);
         zipFile = osgDB::findDataFile(zipFile);
+        zipFile = osgDB::convertFileNameToNativeStyle( zipFile );
 
-        osg::notify(osg::INFO) << "ReaderWriterZipFS:  ZipFile path is " << zipFile << std::endl;
+        //Return if the file doesn't exist
+        if (!osgDB::fileExists( zipFile )) return ReadResult::FILE_NOT_FOUND;
+
+        osg::notify(osg::INFO) << "ReaderWriterZipFS::readFile  ZipFile path is " << zipFile << std::endl;
 
         std::string zipEntry = fullFileName.substr(len+4);
 
@@ -185,9 +233,91 @@ public:
         }
         else
         {
-            osg::notify(osg::NOTICE) << "Couldn't open zip " << zipFile << std::endl;
+            osg::notify(osg::NOTICE) << "ReaderWriterZipFS::readFile couldn't open zip " << zipFile << " full filename " << fullFileName << std::endl;
         }
         return ReadResult::FILE_NOT_HANDLED;
+    }
+
+    WriteResult writeFile(ObjectType objectType, const osg::Object* object, const std::string& fullFileName, const osgDB::ReaderWriter::Options* options) const
+    {       
+        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(s_mutex);
+
+        std::string::size_type len = fullFileName.find(".zip");
+        if (len == std::string::npos)
+        {
+            osg::notify(osg::INFO) << "ReaderWriterZipFS: Path does not contain zip file" << std::endl;
+            return WriteResult::FILE_NOT_HANDLED;
+        }
+
+        //It is possible that the zip file doesn't currently exist, so we just use getRealPath instead of findDataFile as in the readFile method
+        std::string zipFile = osgDB::getRealPath(fullFileName.substr(0, len + 4));
+
+        osg::notify(osg::INFO) << "ReaderWriterZipFS::writeFile ZipFile path is " << zipFile << std::endl;
+
+        std::string zipEntry = fullFileName.substr(len+4);
+
+
+        //Strip the leading slash from the zip entry
+        if ((zipEntry.length() > 0) && 
+            ((zipEntry[0] == '/') || (zipEntry[0] == '\\')))
+        {
+            zipEntry = zipEntry.substr(1);
+        }
+
+
+        //Lipzip returns filenames with '/' rather than '\\', even on Windows.  So, convert the zip entry to Unix style
+        zipEntry = osgDB::convertFileNameToUnixStyle(zipEntry);
+        osg::notify(osg::INFO) << "Zip Entry " << zipEntry << std::endl;
+
+        //See if we can get a ReaderWriter for the zip entry before we even try to unzip the file
+         ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(osgDB::getFileExtension(zipEntry));
+         if (!rw)
+         {
+             osg::notify(osg::INFO) << "Could not find ReaderWriter for " << zipEntry << std::endl;
+             return WriteResult::FILE_NOT_HANDLED;
+         }
+
+        int err;
+
+        //Open the zip file
+        struct zip* pZip = zip_open(zipFile.c_str(), ZIP_CREATE|ZIP_CHECKCONS, &err);
+        if (pZip)
+        {
+            //Write the data to the stream
+            std::ostringstream strstream;
+            writeFile(objectType, object, rw, strstream, options);
+
+            char *data = new char[strstream.str().length()];
+            memcpy(data, strstream.str().c_str(), strstream.str().size());
+
+            WriteResult wr;
+            struct zip_source *zs = zip_source_buffer(pZip, data, strstream.str().length(), 0);
+            if (zs)
+            {
+                if (zip_add(pZip, zipEntry.c_str(), zs) != -1) 
+                {
+                    wr = WriteResult::FILE_SAVED;
+                }
+                else
+                {
+                  osg::notify(osg::NOTICE) << "Couldn't add zip source " << std::endl;
+                  wr = WriteResult::ERROR_IN_WRITING_FILE;
+                }
+            }
+            else
+            {
+                osg::notify(osg::NOTICE) << "Couldn't create zip source " << std::endl;
+                wr = WriteResult::ERROR_IN_WRITING_FILE;
+            }
+            zip_close(pZip);
+            delete[] data;
+            return wr;
+        }
+        else
+        {
+            osg::notify(osg::NOTICE) << "ReaderWriterZipFS::writeFile couldn't open zip " << zipFile << " full filename " << fullFileName << std::endl;
+        }
+        return WriteResult::FILE_NOT_HANDLED;      
     }
 };
 

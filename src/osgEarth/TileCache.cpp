@@ -196,5 +196,9 @@ TileCache* TileCacheFactory::create(const std::string &type, std::map<std::strin
         osg::notify(osg::INFO) << "Returning null cache " << std::endl;
         return new NullCache();
     }
+    else
+    {
+        osg::notify(osg::NOTICE) << "Unknown cache type " << type << std::endl;
+    }
     return 0;
 }

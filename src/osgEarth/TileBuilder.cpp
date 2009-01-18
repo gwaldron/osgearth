@@ -146,7 +146,10 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
     if (mapConfig->getCacheConfig())
     {
         mapCache = TileCacheFactory::create(mapConfig->getCacheConfig()->getType(), mapConfig->getCacheConfig()->getProperties());
-        mapCache->setMapConfigFilename( mapConfig->getFilename() );
+        if (mapCache.valid())
+        {
+          mapCache->setMapConfigFilename( mapConfig->getFilename() );
+        }
     }
 
     for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
@@ -182,7 +185,10 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
                 if (source->getCacheConfig())
                 {
                     sourceCache = TileCacheFactory::create(source->getCacheConfig()->getType(), source->getCacheConfig()->getProperties());
-                    sourceCache->setMapConfigFilename( mapConfig->getFilename() );
+                    if (sourceCache.valid())
+                    {
+                        sourceCache->setMapConfigFilename( mapConfig->getFilename() );
+                    }
                 }
 
                 if (sourceCache.valid()) osg::notify(osg::NOTICE) << "Source cache valid " << std::endl;

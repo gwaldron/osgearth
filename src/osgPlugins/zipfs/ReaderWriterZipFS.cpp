@@ -252,6 +252,13 @@ public:
         //It is possible that the zip file doesn't currently exist, so we just use getRealPath instead of findDataFile as in the readFile method
         std::string zipFile = osgDB::getRealPath(fullFileName.substr(0, len + 4));
 
+        std::string path = osgDB::getFilePath(zipFile);
+        //If the path doesn't currently exist, create it
+        if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
+        {
+            osg::notify(osg::WARN) << "Couldn't create path " << path << std::endl;
+        }
+
         osg::notify(osg::INFO) << "ReaderWriterZipFS::writeFile ZipFile path is " << zipFile << std::endl;
 
         std::string zipEntry = fullFileName.substr(len+4);

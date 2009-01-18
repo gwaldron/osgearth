@@ -34,15 +34,15 @@ DiskCache::DiskCache(const std::string &path, const std::string format)
     _format = format;
 }
 
-
-bool DiskCache::existsInCache(const TileKey* key, const TileSource* source)
-{
-    return osgDB::fileExists(getFileName(key, source));
-}
-
 osg::Image* DiskCache::getImage(const TileKey* key, const TileSource* source)
 {
     std::string filename = getFileName(key, source);
+
+    //If the path doesn't contain a zip file, check to see that it actually exists on disk
+    if (!osgEarth::isZipPath(filename))
+    {
+        if (!osgDB::fileExists(filename)) return 0;
+    }
     //osg::notify(osg::NOTICE) << "DiskCache: getImage " << filename << std::endl;
     return osgDB::readImageFile( filename );
 }
@@ -59,10 +59,11 @@ void DiskCache::setImage(const TileKey* key, const TileSource* source, const osg
     std::string filename = getFileName(key, source);
     std::string path = osgDB::getFilePath(filename);
     //If the path doesn't currently exist or we can't create the path, don't cache the file
-    if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
+    if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))
     {
         osg::notify(osg::WARN) << "Couldn't create path " << path << std::endl;
     }
+
     osgDB::writeImageFile(*image, filename);
 }
 

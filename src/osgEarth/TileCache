@@ -35,11 +35,6 @@ namespace osgEarth
     {
     public:
         /**
-         * Determines whether or not the given TileKey exists in the cache for the given TileSource
-         */
-        virtual bool existsInCache(const TileKey* key, const TileSource* source) = 0;
-
-        /**
          * Gets the cached image for the given TileKey for the given TileSource.
          * If a cached image does not exist for the given TileKey, this function returns NULL
          */
@@ -82,12 +77,7 @@ namespace osgEarth
          *       The format to cache tiles to (png, jpg, dds, etc).
          */
         DiskCache(const std::string &path, const std::string format);
-       
-        /**
-         * Determines whether or not the given TileKey exists in the cache for the given TileSource
-         */
-        virtual bool existsInCache(const TileKey* key, const TileSource* source);
-        
+             
         /**
          * Gets the cached image for the given TileKey for the given TileSource.
          * If a cached image does not exist for the given TileKey, this function returns NULL
@@ -184,7 +174,6 @@ namespace osgEarth
     {
     public:
         NullCache() {}
-        bool existsInCache(const TileKey* key, const TileSource* source) {return false;}
         osg::Image* getImage(const TileKey* key, const TileSource* source) {return 0;}
         void setImage(const TileKey* key, const TileSource* source, const osg::Image* image) {};
     };

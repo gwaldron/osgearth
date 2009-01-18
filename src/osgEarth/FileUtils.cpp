@@ -42,3 +42,8 @@ std::string osgEarth::getFullPath(const std::string& relativeTo, const std::stri
     fullPath = osgDB::getRealPath(fullPath);    
     return fullPath;
 }
+
+bool osgEarth::isZipPath(const std::string &path)
+{
+    return (path.find(".zip") != std::string::npos);
+}

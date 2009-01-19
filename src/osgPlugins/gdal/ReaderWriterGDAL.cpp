@@ -289,14 +289,6 @@ public:
                   off_y = 0;
               }
 
-              //Check to see if the read width and height are less than the tile size.  If they are, we have reached the maximum
-              //resolution and should not create an image
-              if (width < tile_size && height < tile_size)
-              {
-                  return NULL;
-              }
-
-
               GDALRasterBand* bandRed = findBand(_warpedDS, GCI_RedBand);
               GDALRasterBand* bandGreen = findBand(_warpedDS, GCI_GreenBand);
               GDALRasterBand* bandBlue = findBand(_warpedDS, GCI_BlueBand);
@@ -430,13 +422,6 @@ public:
                   target_height = target_height - int(float(oversize_top) / height * target_height);
                   height = height + off_y;
                   off_y = 0;
-              }
-
-              //Check to see if the read width and height are less than the tile size.  If they are, we have reached the maximum
-              //resolution and should not create a heightfield
-              if (width < tile_size && height < tile_size)
-              {
-                  return NULL;
               }
 
 

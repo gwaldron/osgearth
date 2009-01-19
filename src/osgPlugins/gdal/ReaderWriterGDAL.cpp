@@ -21,6 +21,7 @@
 #include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
 #include <osgEarth/TileSource>
+#include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -77,12 +78,27 @@ public:
               return;
           }
 
+          std::string path = url;
+
+          //Find the full path to the URL
+          //If we have a relative path and the map file contains a server address, just concat the server path and the url together
+          if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(_mapConfig->getFilename()))
+          {
+              path = osgDB::getFilePath(_mapConfig->getFilename()) + "/" + path;
+          }
+
+          //If the path doesn't contain a server address, get the full path to the file.
+          if (!osgDB::containsServerAddress(path))
+          {
+              path = osgEarth::getFullPath(_mapConfig->getFilename(), path);
+          }
+
 
           //Open the dataset
-          _srcDS = (GDALDataset*)GDALOpen( url.c_str(), GA_ReadOnly );
+          _srcDS = (GDALDataset*)GDALOpen( path.c_str(), GA_ReadOnly );
           if (!_srcDS )
           {
-              osg::notify(osg::NOTICE) << "Failed to open dataset " << url << std::endl;
+              osg::notify(osg::NOTICE) << "Failed to open dataset " << path << std::endl;
               return;
           }
 

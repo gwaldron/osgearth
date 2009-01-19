@@ -75,12 +75,17 @@ public:
         if ( options->getPluginData( PROPERTY_SRS ) )
             srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
 
-        //Try to read the WMS capabilities
-        // build the WMS request:
         char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
         std::string capabilitiesRequest = prefix + sep + "service=wms&version=1.1.1&request=GetCapabilities";
 
-        _capabilities = CapabilitiesReader::read(capabilitiesRequest);
+        //Only read the capabilities if we are running online
+        if (!map_config->getOfflineHint())
+        {
+            //Try to read the WMS capabilities
+           _capabilities = CapabilitiesReader::read(capabilitiesRequest);
+        }
+
+
         if (_capabilities.valid())
         {
             osg::notify(osg::INFO) << "Got capabilities from " << capabilitiesRequest << std::endl;

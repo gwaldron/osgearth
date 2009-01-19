@@ -1,0 +1,25 @@
+<!--
+osgEarth Sample : Hi-resolution inset
+
+This example shows how to use a global basemap and superimpose a high-
+resolution imagery inset from a local GeoTIFF file.
+-->
+
+<map name="hi-res inset" type="geocentric">
+
+    <profile>global-geodetic</profile>
+
+    <image name="vmap0" driver="wms">
+        <url>http://labs.metacarta.com/wms-c/Basic.py</url>
+        <layers>basic</layers>
+        <format>png</format>
+        <tile_size>256</tile_size>
+    </image>
+    
+    <image name="boston_inset" driver="gdal">
+        <url>../data/boston-inset.tif</url>
+        <tile_size>256</tile_size>
+        <min_level>5</min_level>
+    </image>
+
+</map>

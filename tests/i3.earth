@@ -1,8 +1,16 @@
+<!--
+osgEarth Sample - i3 Landsat7 natural color composite
+
+This example builds a globe using Landsat7 imagery from a WMS server.
+-->
+
 <map type="geocentric">
+
     <image name="i3 Landsat Composite" driver="wms">
         <url>http://hypercube.telascience.org/cgi-bin/landsat7</url>
         <layers>landsat7</layers>
         <format>jpeg</format>
         <tile_size>256</tile_size>
     </image>
+    
 </map>

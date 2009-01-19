@@ -56,7 +56,7 @@ namespace osgEarth
         /**
          * Creates a heightfield for the given TileKey
          */
-        virtual osg::HeightField* createHeightField( const TileKey* key ) = 0;
+        virtual osg::HeightField* createHeightField( const TileKey* key );
 
         /**
          *Gets the TileGridProfile for this TileSource

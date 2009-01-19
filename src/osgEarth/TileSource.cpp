@@ -103,3 +103,14 @@ TileSource::readHeightField(const osgEarth::TileKey *key)
     }
     return hf;
 }
+
+osg::HeightField* TileSource::createHeightField( const TileKey* key )
+{
+    osg::ref_ptr<osg::Image> image = createImage(key);
+    osg::HeightField* hf = 0;
+    if (image.valid())
+    {
+        hf = ImageToHeightFieldConverter::convert(image.get());
+    }      
+    return hf;
+}

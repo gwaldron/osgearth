@@ -38,7 +38,7 @@ std::string osgEarth::getFullPath(const std::string& relativeTo, const std::stri
         return relativePath;
     }
 
-    std::string fullPath = osgDB::convertFileNameToUnixStyle(osgDB::concatPaths( osgDB::getFilePath( relativeTo ), relativePath));
+    std::string fullPath = osgDB::convertFileNameToUnixStyle(osgDB::concatPaths( osgDB::getFilePath( osgDB::getRealPath( relativeTo )), relativePath));
     fullPath = osgDB::getRealPath(fullPath);    
     return fullPath;
 }

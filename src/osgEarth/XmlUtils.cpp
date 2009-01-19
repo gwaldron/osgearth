@@ -29,7 +29,7 @@ using namespace osgEarth;
 static std::string EMPTY_VALUE = "";
 
 std::string
-trim( const std::string& in )
+osgEarth::trim( const std::string& in )
 {
     std::string whitespace (" \t\f\v\n\r");
     // by Rodrigo C F Dias

@@ -21,7 +21,6 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Mercator>
 #include <osgEarth/PlateCarre>
-#include <osgEarth/FileCache>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>

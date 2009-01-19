@@ -19,11 +19,9 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
-	md5
 	CacheSeed
     Common
     Export
-    FileCache
 	FileUtils
     GeocentricTileBuilder
     HTTPClient
@@ -45,9 +43,7 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
-	md5.cpp
 	CacheSeed.cpp
-    FileCache.cpp
 	FileUtils.cpp
     GeocentricTileBuilder.cpp
     HTTPClient.cpp

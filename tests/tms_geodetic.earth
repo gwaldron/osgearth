@@ -1,12 +1,17 @@
 <!--
-MetaCarta TMS Feed - Global Geodetic
+osgEarth Sample
 
-Uses the TMS driver to access a global-geodetic dataset.
-Note the trailing "/" on the URL.
+MetaCarta TMS Feed - Blue Marble imagery
+
+Uses the TMS driver to access a global-geodetic dataset. Note the trailing "/" on the URL.
+The TMS driver reads all the profile information from an XML config file on the server, so
+usually all you need to do is specifiy a URL.
 -->
 
-<map name="TMS" type="geocentric">
-   <image name="TMS" driver="tms">
-     <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite/</url>
-   </image>
+<map name="TMS Example" type="geocentric">
+
+    <image name="metacarta blue marble" driver="tms">
+        <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite/</url>
+    </image>
+   
 </map>

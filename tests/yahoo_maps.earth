@@ -1,22 +1,26 @@
+<!--
+osgEarth Sample
+
+This example pulls road map tiles from the Yahoo! Maps service.
+
+This is for educational purposes only - it is your responsibility to abide by
+the provider's terms of service when using their data.
+
+Note the use of the <min_tile_range_factor> property - this controls how far away 
+you must be before the next-resolution tile will load. The lower the numer, the
+closer you must be.
+-->
+
 <map name="Yahoo maps" type="geocentric">
 
     <min_tile_range_factor>8</min_tile_range_factor>
     
-<!-- uncomment the following two lines to activate a proxy server -->
-<!-- <proxy_host>80.80.12.123</proxy_host> -->
-<!-- <proxy_port>80</proxy_port> -->
-       
-<!-- uncomment the following line to enable caching... folder must exist -->
-<!-- <cache_path>f:/temp/osgearthcache</cache_path> -->
-
-   <image name="roads map" driver="yahoo">
+    <image name="roads map" driver="yahoo">
+        <dataset>roads</dataset>
+    </image>
    
-       <!-- datasets: roads -->
-       <dataset>roads</dataset>
-   </image>
-   
-   <!-- Matching cap colors -->
-   <north_cap_color>153 179 204 255</north_cap_color>
-   <south_cap_color>255 255 255 255</south_cap_color>
+    <!-- Matching cap colors -->
+    <north_cap_color>128 176 225 255</north_cap_color>
+    <south_cap_color>220 224 233 255</south_cap_color>
    
 </map>

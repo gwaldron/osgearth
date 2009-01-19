@@ -1,7 +1,9 @@
 <!--
-MetaCarta WMS/TileCache
+osgEarth Sample
 
-This shows the basic use of the WMS driver. We are actually using
+MetaCarta WMS/TileCache Service - VMap0
+
+This shows the basic use of the WMS driver. It is actually using
 WMS to hit a TileCache server, which has all the WMS tiles
 pre-rendered for speed.
 -->

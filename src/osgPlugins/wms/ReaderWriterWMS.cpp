@@ -31,6 +31,8 @@
 #include <stdlib.h>
 #include <iomanip>
 
+#include "Capabilities"
+
 using namespace osgEarth;
 
 #define PROPERTY_URL            "url"
@@ -73,6 +75,26 @@ public:
         if ( options->getPluginData( PROPERTY_SRS ) )
             srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
 
+        //Try to read the WMS capabilities
+        // build the WMS request:
+        char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
+        std::string capabilitiesRequest = prefix + sep + "service=wms&version=1.1.1&request=GetCapabilities";
+
+        _capabilities = CapabilitiesReader::read(capabilitiesRequest);
+        if (_capabilities.valid())
+        {
+            osg::notify(osg::INFO) << "Got capabilities from " << capabilitiesRequest << std::endl;
+            if (format.empty())
+            {
+                format = _capabilities->suggestExtension();
+                osg::notify(osg::NOTICE) << "No format specified, capabilities suggested extension " << format << std::endl;
+            }
+        }
+        else
+        {
+            osg::notify(osg::NOTICE) << "Could not read capabilities from WMS service using request " << capabilitiesRequest << std::endl;
+        }
+
         if ( format.empty() )
             format = "png";
 
@@ -85,6 +107,8 @@ public:
         {
             elevation_unit = "m";
         }
+
+
 
         //Set the profile based on on the SRS
         _profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));
@@ -181,6 +205,8 @@ private:
     const MapConfig *map_config;
 
     std::string elevation_unit;
+
+    osg::ref_ptr<Capabilities> _capabilities;
 };
 
 

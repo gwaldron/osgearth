@@ -19,7 +19,6 @@ resolution imagery inset from a local GeoTIFF file.
     <image name="boston_inset" driver="gdal">
         <url>../data/boston-inset.tif</url>
         <tile_size>256</tile_size>
-        <min_level>5</min_level>
     </image>
 
 </map>

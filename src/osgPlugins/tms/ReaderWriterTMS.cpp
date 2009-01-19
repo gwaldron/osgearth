@@ -173,7 +173,7 @@ public:
 
     osg::HeightField* createHeightField(const osgEarth::TileKey *key)
     {
-        //NYI
+        osg::notify(osg::WARN) << "[osgEarth] TMS driver: heightfields not yet supported!" << std::endl;
         return 0;
     }
 

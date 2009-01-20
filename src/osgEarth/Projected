@@ -41,7 +41,7 @@ namespace osgEarth
 
         TileKey* getSubkey( unsigned int quadrant ) const;
 
-        TileKey* getParentKey() const;
+        TileKey* createParentKey() const;
 
         bool getGeoExtents(
             double& out_min_lon,

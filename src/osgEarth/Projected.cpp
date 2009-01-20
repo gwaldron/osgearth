@@ -43,7 +43,7 @@ ProjectedTileKey::getSubkey( unsigned int quadrant ) const
 }
 
 TileKey*
-ProjectedTileKey::getParentKey() const
+ProjectedTileKey::createParentKey() const
 {
     if (getLevelOfDetail() == 1) return NULL;
     return new ProjectedTileKey(key.substr(0, key.length()-1), profile);

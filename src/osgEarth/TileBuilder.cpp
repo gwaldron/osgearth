@@ -372,13 +372,13 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
     if (!hf.valid())
     {
         //We could not load the heightfield from the given key, so try to load from parent tiles
-        hf_key = key->getParentKey();
+        hf_key = key->createParentKey();
 
         while (hf_key.valid())
         {
             hf = tileSource->readHeightField(hf_key.get());
             if (hf.valid()) break;
-            hf_key = hf_key->getParentKey();
+            hf_key = hf_key->createParentKey();
         }
 
         //Use a HeightFieldExtractor to sample the parent tile
@@ -402,13 +402,13 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::
     if (!image.valid())
     {
         //Could not directly create the image from the given TileKey, so try to load from parent tiles
-        image_key = key->getParentKey();
+        image_key = key->createParentKey();
 
         while (image_key.valid())
         {
             image = tileSource->readImage(image_key.get());
             if (image.valid()) break;
-            image_key = image_key->getParentKey();
+            image_key = image_key->createParentKey();
         }
     }
 

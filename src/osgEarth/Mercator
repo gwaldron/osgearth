@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_PLUGIN_MSVE_MERCATOR_QUAD_KEY_H
-#define OSGEARTH_PLUGIN_MSVE_MERCATOR_QUAD_KEY_H 1
+#ifndef OSGEARTH_MERCATOR_H
+#define OSGEARTH_MERCATOR_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>

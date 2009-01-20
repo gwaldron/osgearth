@@ -38,10 +38,6 @@ using namespace osgEarth;
 
 class ReaderWriterEarth : public osgDB::ReaderWriter
 {
-    private:
-        typedef std::map<std::string, osg::ref_ptr<TileBuilder> > TileBuilderMap;
-        TileBuilderMap tile_builders;
-
     public:
         ReaderWriterEarth() {}
 
@@ -77,7 +73,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 return readNode(file_name.substr(7), options);
             }
             
-            TileBuilder* tile_builder = NULL;
             osg::ref_ptr<TileKey> key;
 
             // try to strip off a cell key:
@@ -86,9 +81,12 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             
             std::string earth_file = file_name.substr( i+1 );
-            TileBuilderMap::const_iterator k = tile_builders.find( earth_file );
+
+            //Try to get the cached builder
+            TileBuilder* tile_builder = TileBuilder::getTileBuilderByUrlTemplate( earth_file );
+
             
-            if ( k == tile_builders.end() )
+            if ( !tile_builder )
             {
                 osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( file_name );
 
@@ -96,6 +94,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 {
                     //Create the TileBuilder.
                     tile_builder = TileBuilder::create( map.get(), file_name );
+
                     //Check to see that the TileBuilder is valid.
                     if (!tile_builder->valid()) return ReadResult::FILE_NOT_HANDLED;
 
@@ -112,9 +111,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     {
                         osg::notify(osg::NOTICE) << "Projected" << std::endl;
                     }
-
-                    // cache the builder
-                    const_cast<ReaderWriterEarth*>(this)->tile_builders[ file_name ] = tile_builder;
                 }
                 else
                 {
@@ -123,7 +119,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             }
             else
             {
-                tile_builder = k->second.get();
                 key = tile_builder->getDataProfile().getTileKey( file_name.substr( 0, i ) );
             }
 

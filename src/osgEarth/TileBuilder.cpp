@@ -38,6 +38,9 @@
 
 using namespace osgEarth;
 
+//Store a static list of all the TileBuilder's that have been created.
+typedef std::map<std::string, osg::ref_ptr<TileBuilder> > TileBuilderMap;
+static TileBuilderMap s_tile_builders;
 
 TileBuilder*
 TileBuilder::create( MapConfig* map, const std::string& url_template, const osgDB::ReaderWriter::Options* options )
@@ -76,7 +79,35 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
             result = new ProjectedTileBuilder( map, url_template, local_options.get() );
         }
     }
+
+    //Cache the tile builder
+    s_tile_builders[url_template] = result;
+
     return result;
+}
+
+TileBuilder* TileBuilder::getTileBuilderByUrlTemplate( const std::string &url_template )
+{
+    TileBuilderMap::const_iterator k = s_tile_builders.find( url_template );
+    if (k != s_tile_builders.end()) return k->second.get();
+    return 0;
+}
+
+osg::Node* TileBuilder::readNode( MapConfig* map)
+{
+    //Create a fake filename for this MapConfig by converting the pointer to a string and appending ".earth" to it.
+    std::stringstream filename;
+    filename << &map << ".earth";
+    map->setFilename(filename.str());
+
+    //osg::notify(osg::NOTICE) << "MapFilename is " << map->getFilename() << std::endl;
+
+    //Create the TileBuilder
+    TileBuilder* tileBuilder = TileBuilder::create(map, map->getFilename());
+    if (!tileBuilder->valid()) return 0;
+
+    osg::ref_ptr<TileKey> key = tileBuilder->getDataProfile().getTileKey( "" );
+    return tileBuilder->createNode(key.get());
 }
 
 const TileGridProfile& TileBuilder::getDataProfile()

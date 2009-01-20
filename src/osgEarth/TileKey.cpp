@@ -52,7 +52,6 @@ TileKey::str() const
 std::string
 TileKey::getName() const
 {
-    //return getTypeCode() + str();
     return str();
 }
 

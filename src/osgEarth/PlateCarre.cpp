@@ -55,7 +55,7 @@ PlateCarreTileKey::getSubkey( unsigned int quadrant ) const
 }
 
 TileKey*
-PlateCarreTileKey::getParentKey() const
+PlateCarreTileKey::createParentKey() const
 {
     if (getLevelOfDetail() == 1) return NULL;
     return new PlateCarreTileKey(key.substr(0, key.length()-1));
@@ -67,11 +67,11 @@ PlateCarreTileKey::getGeoExtents(double& out_min_lon,
                                  double& out_max_lon,
                                  double& out_max_lat ) const
 {
-    double width =  profile.xMax() - profile.xMin(); //MAX_LON-MIN_LON;
-    double height = profile.yMax() - profile.yMin(); //MAX_LAT-MIN_LAT;
+    double width =  profile.xMax() - profile.xMin();
+    double height = profile.yMax() - profile.yMin();
 
-    out_max_lat = profile.yMax(); //MAX_LAT;
-    out_min_lon = profile.xMin(); //MIN_LON;
+    out_max_lat = profile.yMax();
+    out_min_lon = profile.xMin();
 
     for( unsigned int lod = 0; lod < getLevelOfDetail(); lod++ )
     {

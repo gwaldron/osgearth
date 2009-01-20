@@ -99,7 +99,7 @@ namespace osgEarth
             double& lon_min, double& lat_min,
             double& lon_max, double& lat_max) const;
 
-        TileKey* getParentKey() const;
+        TileKey* createParentKey() const;
 
         TileKey* getSubkey( unsigned int quadrant ) const;
 

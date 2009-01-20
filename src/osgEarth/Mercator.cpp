@@ -87,7 +87,7 @@ MercatorTileKey::getSubkey( unsigned int quadrant ) const
 }
 
 TileKey*
-MercatorTileKey::getParentKey() const
+MercatorTileKey::createParentKey() const
 {
     if (getLevelOfDetail() == 1) return NULL;
     return new MercatorTileKey(key.substr(0, key.length()-1));

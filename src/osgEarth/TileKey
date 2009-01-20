@@ -37,35 +37,78 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileKey : public osg::Referenced
     {
     public:        
+        /**
+         * Gets the string representation of the key.
+         */
         const std::string& str() const;
 
+        /**
+         * Gets the name of the key. Same as str().
+         */
         std::string getName() const;
 
+        /**
+         * Gets a TileID corresponding to this key.
+         */
         virtual osgTerrain::TileID getTileId() const;
+
+        /**
+         * Gets the profile within which this key is interpreted.
+         */
         const osgEarth::TileGridProfile& getProfile() const;
 
+        /**
+         * Gets the size of the entire map, in pixels, at the level of
+         * detail of this key.
+         */
+        int getMapSizePixels(const unsigned int& tile_size) const;
 
-        int getMapSizePixels(const unsigned int &tile_size) const;
-
+        /**
+         * Gets the size of the entire map, in tiles, at the level of detail
+         * of this key.
+         */
         int getMapSizeTiles() const;
 
+        /**
+         * Gets the size of a map, in tiles, for a specified level of detail.
+         */
         static int getMapSizeTiles(const unsigned int level);
 
+        /**
+         * Gets the size of the map, in pixels, for a given level of detail.
+         */
         static int getMapSizePixels( const unsigned int &tile_size, const unsigned int &lod );
 
     public:
+        /**
+         * Gets a reference to the child key of this key in the specified
+         * quadrant (0, 1, 2, or 3).
+         */
         virtual TileKey* getSubkey( unsigned int quadrant ) const =0;
 
-        virtual TileKey* getParentKey() const = 0;
+        /**
+         * Creates and returns a key that represents the parent tile of this key. The
+         * caller is responsible for deleting the returned object.
+         */
+        virtual TileKey* createParentKey() const = 0;
 
+        /**
+         * Gets the level of detail of the tile represented by this key.
+         */
         virtual unsigned int getLevelOfDetail() const;
 
+        /**
+         * Gets the geospatial extents of the tile representated by this key.
+         */
         virtual bool getGeoExtents(
             double& minx,
             double& miny,
             double& maxx,
             double& maxy ) const =0;
 
+        /**
+         * Gets the extents of this key's tile, in pixels
+         */
         virtual void getPixelExtents(
             unsigned int& xmin,
             unsigned int& ymin,
@@ -73,10 +116,17 @@ namespace osgEarth
             unsigned int& ymax,
             const unsigned int& tile_size) const;
 
+        /**
+         * Gets the X and Y indexes of this tile at its level of detail.
+         */
         virtual void getTileXY(
             unsigned int& out_tile_x,
             unsigned int& out_tile_y) const;
 
+        /**
+         * Gets the "type code" associated with this key.
+         * (to be deprecated)
+         */
         virtual std::string getTypeCode() const =0;
         
     protected:

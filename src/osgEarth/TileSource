@@ -61,7 +61,7 @@ namespace osgEarth
         /**
          *Gets the TileGridProfile for this TileSource
          */
-        virtual const osgEarth::TileGridProfile& getProfile();
+        virtual const osgEarth::TileGridProfile& getProfile() const;
 
         /**
          * Gets the number of pixels per tile for this TileSource.  Defaults to 256

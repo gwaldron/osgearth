@@ -34,7 +34,7 @@ TileSource::~TileSource()
 }
 
 const osgEarth::TileGridProfile&
-TileSource::getProfile()
+TileSource::getProfile() const
 {
     return _profile;
 }

@@ -108,6 +108,7 @@ namespace osgEarth
     protected:
         std::string _path;
         std::string _format;
+        bool _wroteTMS;
     };
 
     /**

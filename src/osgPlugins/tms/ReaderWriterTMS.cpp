@@ -21,6 +21,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Mercator>
 #include <osgEarth/PlateCarre>
+#include <osgEarth/TMS>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -31,8 +32,6 @@
 
 #include <sstream>
 #include <iomanip>
-
-#include "TMS"
 
 using namespace osgEarth;
 
@@ -88,7 +87,7 @@ public:
             if (!osgDB::containsServerAddress( _url ) || !_mapConfig->getOfflineHint())
             {
                 // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-                _tileMap = TileMapReader::read( _url );
+                _tileMap = TileMapReaderWriter::read( _url );
             }
 
             if (!_tileMap.valid())
@@ -118,15 +117,17 @@ public:
             }
             else
             {
-                if (_tileMap->_profile != TileGridProfile::PROJECTED)
+                if (_tileMap->getProfile() != TileGridProfile::PROJECTED)
                 {
                     //If the source is not projected, then just create the default profile based on the profile type
-                    _profile = TileGridProfile(_tileMap->_profile);
+                    _profile = TileGridProfile(_tileMap->getProfile());
                 }
                 else
                 {
+                    double minX, minY, maxX, maxY;
+                    _tileMap->getExtents(minX, minY, maxX, maxY);
                     //If the source is projected, then specify the bounds
-                    _profile = TileGridProfile(_tileMap->_minX, _tileMap->_minY, _tileMap->_maxX, _tileMap->_maxY, _tileMap->_srs);
+                    _profile = TileGridProfile(minX, minY, maxX, maxY, _tileMap->getSRS());
                 }
             }
         }
@@ -138,7 +139,7 @@ public:
         {
             std::string image_url = _tileMap->getURL( key, _invertY);
                 
-            osg::notify(osg::INFO) << "TMSSource: Key=" << key->str() << ", URL=" << image_url << std::endl;
+            //osg::notify(osg::NOTICE) << "TMSSource: Key=" << key->str() << ", URL=" << image_url << std::endl;
 
             
             osg::ref_ptr<osg::Image> image;
@@ -156,7 +157,7 @@ public:
                 {
                     //We couldn't read the image from the URL or the cache, so check to see if the given key is less than the max level
                     //of the tilemap and create a transparent image.
-                    if (key->getLevelOfDetail() <= _tileMap->_maxLevel)
+                    if (key->getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
                         image = new osg::Image();
                         image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -170,20 +171,14 @@ public:
         return 0;
     }
 
-    osg::HeightField* createHeightField(const osgEarth::TileKey *key)
-    {
-        osg::notify(osg::WARN) << "[osgEarth] TMS driver: heightfields not yet supported!" << std::endl;
-        return 0;
-    }
-
     virtual int getPixelsPerTile() const
     {
-        return _tileMap->_format._width;
+        return _tileMap->getFormat().getWidth();
     }
 
     virtual std::string getExtension()  const 
     {
-        return _tileMap->_format._extension;
+        return _tileMap->getFormat().getExtension();
     }
 
 private:

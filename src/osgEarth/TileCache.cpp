@@ -21,6 +21,7 @@
 #include <osgEarth/PlateCarre>
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
+#include <osgEarth/TMS>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
@@ -28,7 +29,8 @@
 
 using namespace osgEarth;
 
-DiskCache::DiskCache(const std::string &path, const std::string format)
+DiskCache::DiskCache(const std::string &path, const std::string format):
+_wroteTMS(false)
 {
     _path = path;
     _format = format;
@@ -58,6 +60,7 @@ void DiskCache::setImage(const TileKey* key, const TileSource* source, const osg
 {
     std::string filename = getFileName(key, source);
     std::string path = osgDB::getFilePath(filename);
+
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))
     {
@@ -65,6 +68,16 @@ void DiskCache::setImage(const TileKey* key, const TileSource* source, const osg
     }
 
     osgDB::writeImageFile(*image, filename);
+
+    if (!_wroteTMS)
+    {
+        std::string tmsFilename = getPath() + "/" + source->getName() + "/tms.xml";
+        osg::notify(osg::INFO) << "Writing TMS path " << tmsFilename << std::endl;
+        osg::ref_ptr<TileMap> tileMap = TileMap::create(source);
+        TileMapReaderWriter::write(tileMap.get(), tmsFilename);
+        _wroteTMS = true;
+    }
+
 }
 
 std::string DiskCache::getFormat(const TileSource* source)
@@ -113,16 +126,26 @@ std::string TMSCache::getFileName(const TileKey* key, const TileSource* source)
     unsigned int x,y;
     key->getTileXY(x, y);
 
-    if (!_invertY)
-    {
-        y = key->getMapSizeTiles() - y - 1;
-    }
-    
     unsigned int lod = key->getLevelOfDetail();
-    if (dynamic_cast<const PlateCarreTileKey*>(key))
+    int totalTiles = TileKey::getMapSizeTiles(lod);
+
+    const PlateCarreTileKey* pc = dynamic_cast<const PlateCarreTileKey*>(key);
+    if (pc)
     {
+        //In global-geodetic TMS, level 0 is two tiles that cover the entire earth.
+        //Level 0 in osgEarth is a single tile that covers the entire earth and extends down to -270,
+        //so osgEarth level 1 is more like TMS level 0.
         lod--;
+
+        //Only half the vertical tiles are used in TMS global-geodetic
+        totalTiles /= 2;
     }
+
+    if ((!_invertY) && lod > 0)
+    {
+        y = totalTiles - y - 1;
+    }
+
     std::stringstream buf;
     buf << getPath() << "/" << source->getName() << "/" << lod << "/" << x << "/" << y << "." << getFormat(source);
     return buf.str();

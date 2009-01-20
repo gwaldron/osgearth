@@ -82,7 +82,7 @@ TileKey::getMapSizeTiles() const
 int
 TileKey::getMapSizeTiles(const unsigned int level)
 {
-    return sqrt(pow(4.0, (double)(level)));
+    return pow(2.0, (double)level);
 }
 
 void

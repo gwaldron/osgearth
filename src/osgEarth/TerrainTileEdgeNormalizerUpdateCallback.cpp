@@ -350,7 +350,8 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
           //Determine the edge TileID
           osgTerrain::TileID id2(level, id.x, id.y);
-          int totalTiles = sqrt(pow(4.0, (level)));
+          int totalTiles = TileKey::getMapSizeTiles(level);
+
           if (direction == WEST || direction == SOUTH_WEST || direction == NORTH_WEST)
           {
               id2.x = (id2.x == 0 ? totalTiles-1 : id2.x-1);

@@ -37,6 +37,7 @@ SET(LIB_PUBLIC_HEADERS
     TileKey
     TileCache
     TileSource
+	TMS
     XmlUtils
 )
 
@@ -59,6 +60,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileGridProfile.cpp
     TileKey.cpp
     TileSource.cpp
+	TMS.cpp
     Version.cpp
     XmlUtils.cpp
 )

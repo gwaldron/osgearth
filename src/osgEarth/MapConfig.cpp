@@ -38,7 +38,7 @@ MapConfig::MapConfig()
     min_tile_range_factor = 8.0;
     north_cap_color = osg::Vec4ub(2,5,20,255);
     south_cap_color = osg::Vec4ub(255,255,255,255);
-    offline_hint = false;
+    cache_only = false;
     filename = "";
     profile = "";
 }
@@ -177,16 +177,16 @@ MapConfig::getSouthCapColor() const
 }
 
 void
-MapConfig::setOfflineHint(const bool &hint)
+MapConfig::setCacheOnly(const bool &cacheOnly)
 {
-    offline_hint = hint;
+    cache_only = cacheOnly;
 }
 
 const bool
-MapConfig::getOfflineHint() const
+MapConfig::getCacheOnly() const
 
 {
-    return offline_hint;
+    return cache_only;
 }
 
 const std::string& 
@@ -317,7 +317,7 @@ const CacheProperties& CacheConfig::getProperties() const
 #define ELEM_PROXY_PORT        "proxy_port"
 #define ELEM_NORTH_CAP_COLOR   "north_cap_color"
 #define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
-#define ELEM_CONNECTION_STATUS "connection_status"
+#define ELEM_CACHE_ONLY        "cache_only"
 #define ELEM_PROFILE           "profile"
 
 #define ELEM_CACHE             "cache"
@@ -441,11 +441,11 @@ readMap( XmlElement* e_map )
     else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" || a_cstype == "projected")
         map->setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
 
-    std::string conn_status = e_map->getSubElementText(ELEM_CONNECTION_STATUS);
-    if (conn_status == "offline")
-        map->setOfflineHint(true);
+    std::string cache_only = e_map->getSubElementText(ELEM_CACHE_ONLY);
+    if (cache_only == "true")
+        map->setCacheOnly(true);
     else
-        map->setOfflineHint(false);
+        map->setCacheOnly(false);
 
 
 
@@ -485,15 +485,11 @@ readMap( XmlElement* e_map )
         map->setCacheConfig( readCache( e_cache) );
     }
 
-    //If the OSGEARTH_OFFLINE environment variable is set, override whateve is in the map config
-    const char* offline = getenv("OSGEARTH_OFFLINE");
-    if (offline)
+    //If the OSGEARTH_CACHE_ONLY environment variable is set, override whateve is in the map config
+    if (getenv("OSGEARTH_CACHE_ONLY") != 0)
     {
-        if (strcmp(offline, "YES") == 0)
-        {
-            osg::notify(osg::NOTICE) << "Setting osgEarth to offline mode due to OSGEARTH_OFFLINE environment variable " << std::endl;
-            map->setOfflineHint(true);
-        }
+        osg::notify(osg::NOTICE) << "Setting osgEarth to cache only mode due to OSGEARTH_CACHE_ONLY environment variable " << std::endl;
+        map->setCacheOnly(true);
     }
 
     return map;
@@ -524,8 +520,7 @@ mapToXmlDocument( const MapConfig *map)
     e_map->getAttrs()[ATTR_CSTYPE] = cs;
 
     //Write out the connection status
-    std::string conn_status = map->getOfflineHint() ? "offline" : "online";
-    e_map->addSubElement( ELEM_CONNECTION_STATUS, conn_status );
+    e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map->getCacheOnly()));
 
     e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map->getVerticalScale() ) );
     e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map->getMinTileRangeFactor() ) );

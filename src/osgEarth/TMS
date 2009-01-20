@@ -22,10 +22,11 @@
 * These classes assist in dealing with the Tile Map Service specification (http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification)
 */
 
+#ifndef OSGEARTH_TMS_H
+#define OSGEARTH_TMS_H 1
+
 #include <vector>
 #include <iostream>
-#include <osgEarth/Mercator>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/TileGridProfile>
 #include <osgEarth/Common>
 
@@ -33,6 +34,7 @@
 
 namespace osgEarth
 {
+    class TileSource;
 
     /**
     *TMS tile format.  Specifies format information of a tile
@@ -360,3 +362,5 @@ namespace osgEarth
         TileMapReaderWriter(const TileMapReaderWriter &tmr);
     };
 }
+
+#endif //OSGEARTH_TMS_H

@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileGridProfile>
-#include <osgEarth/TileCache>
+#include <osgEarth/TMS>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -34,7 +34,8 @@
 #include <string>
 
 namespace osgEarth
-{    
+{   
+
     /**
      *A TileSource is an object that can create image and/or heightfield tiles
      */
@@ -46,7 +47,7 @@ namespace osgEarth
         /**
          *Initializes common properties of all TileSources from the given ReaderWriter::Options
          */
-        void init(const osgDB::ReaderWriter::Options* options);
+        virtual void init(const osgDB::ReaderWriter::Options* options);
 
         /**
          *Creates an image for the given TileKey
@@ -68,19 +69,6 @@ namespace osgEarth
          */
         virtual int getPixelsPerTile() const { return 256; }
 
-        /**
-         * readImage gets an image for the given TileKey by first consulting this TileSource's cache.
-         * If no cache exists or no image exists in the cache for the given key, createImage is called.
-         * If an image is created via createImage and a cache exists, it is written to the cache.
-         */
-        osg::Image *readImage( const TileKey* key );
-
-        /**
-         * readHeightfield gets a heightfield for the given TileKey by first consulting this TileSource's cache.
-         * If no cache exists or no heightfield exists in the cache for the given key, createHeightField is called.
-         * If a heightfield is created via createHeightField and a cache exists, it is written to the cache.
-         */
-        osg::HeightField* readHeightField(const TileKey* key);
 
         /**
          * Gets the minimum level that this TileSource should be displayed at
@@ -103,16 +91,6 @@ namespace osgEarth
         void setMaxLevel(unsigned int &maxLevel) {_maxLevel = maxLevel;}
 
         /**
-         * Gets the TileCache for this TileSource
-         */
-        const TileCache* getCache() {return _cache.get();}
-
-        /**
-         * Sets the TileCache for this TileSource
-         */
-        void setCache(TileCache* cache) {_cache = cache;}
-
-        /**
          * Gets the preferred extension for this TileSource
          */
         virtual std::string getExtension() const {return "";}
@@ -129,8 +107,171 @@ namespace osgEarth
 
         unsigned int _minLevel;
         unsigned int _maxLevel;
+    };
 
-        osg::ref_ptr<TileCache> _cache;
+
+    /**
+    * A CachedTileSource acts as a proxy between a cache and an actual TileSource.
+    * As images and heightfields are requested from a CachedTileSource, it first
+    * consults the cache via the getCachedImage method and returns it
+    */
+    class OSGEARTH_EXPORT CachedTileSource : public TileSource
+    {
+    public:
+        /**
+        *Creates a new CachedTileSource
+        */
+        CachedTileSource(TileSource* tileSource);
+
+        /**
+        *Creates an image for the given TileKey
+        */
+        virtual osg::Image* createImage( const TileKey* key );
+
+        /**
+        * Creates a heightfield for the given TileKey
+        */
+        virtual osg::HeightField* createHeightField( const TileKey* key );
+
+        /**
+        * Gets the number of pixels per tile for this TileSource.
+        */
+        virtual int getPixelsPerTile() const;
+
+        /**
+        * Gets the current MapConfig filename.  This is used for getting relative paths to the MapConfig.
+        */
+        virtual const std::string& getMapConfigFilename() {return _mapConfigFilename;}
+
+        /**
+        * Sets the current MapConfig filename.
+        */
+        virtual void setMapConfigFilename( const std::string &mapConfigFilename ) { _mapConfigFilename = mapConfigFilename;}
+
+        /**
+        *Initializes this CachedTileSource's TileMap.  This should be called after all other setup has been
+        *performed and the name of the CachedTileSource is set.
+        */
+        virtual void initTileMap();
+        
+    protected:
+        /**
+        * Gets an image from the cache for the given key.  Should be implemented by subclasses
+        */
+        virtual osg::Image* getCachedImage( const TileKey* key);
+
+        /**
+        *Add an image to the cache for the given key.  Should be implemented by subclasses.
+        */
+        virtual void writeCachedImage(const TileKey* key, const osg::Image* image);
+
+        osg::ref_ptr<TileMap> _tileMap;
+        osg::ref_ptr<TileSource> _tileSource;
+        std::string _mapConfigFilename;
+    };
+
+
+    /**
+    *DiskCachedTileSource is an implementation of the CachedTileSource class that caches in a format compatible with
+    *Metacarta's TileCache "Disk" style caching.  This means that the resulting osgEarth cache can be used by any client
+    *that can consume Metacarta's TileCache Disk style caching.  Subclasses of DiskCachedTileSource can simply implement the 
+    *getFileName function to provide different naming schemes.
+    *http://tilecache.org/
+    */
+    class OSGEARTH_EXPORT DiskCachedTileSource : public CachedTileSource
+    {
+    public:
+        /**
+        *Creates a new DiskCachedTileSource.
+        *@param path
+        *       The path to the directory to cache to
+        *@param format
+        *       The format to cache tiles to (png, jpg, dds, etc).
+        */
+        DiskCachedTileSource( TileSource* tileSource, const std::string &path, const std::string format);
+
+        /** Initialize the TileMap */
+        virtual void initTileMap();
+
+    protected:
+        virtual osg::Image* getCachedImage( const TileKey* key);
+        virtual void writeCachedImage(const TileKey* key, const osg::Image* image);
+
+        /**
+         * Gets the filename to cache to for the given TileKey and TileSource
+         */
+        virtual std::string getFileName(const TileKey* key );
+
+        virtual std::string getExtension() const;
+
+        virtual std::string getPath();
+
+    protected:
+        std::string getTMSPath();
+
+        std::string _path;
+        std::string _format;
+    };
+
+    /**
+    * TMSCacheTileSource is an implementation of the DiskCachedTileSource class that caches tiles to disk in a style compatible with the TMS specification.
+    * http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
+    */
+    class OSGEARTH_EXPORT TMSCacheTileSource : public DiskCachedTileSource
+    {
+    public:
+        /**
+        *Creates a new TMSCacheTileSource.
+        *@param path
+        *       The path to the directory to cache to
+        *@param format
+        *       The format to cache tiles to (png, jpg, dds, etc).
+        */
+        TMSCacheTileSource( TileSource* tileSource, const std::string &path, const std::string format);
+
+        /**
+        * Gets whether or not to invert the y tile index
+        */
+        const bool& getInvertY() {return _invertY; }
+
+        /**
+        * Sets whether or not to invert the y tile index
+        */
+        void setInvertY(const bool &invertY) {_invertY = invertY;}
+
+    protected:
+        virtual std::string getFileName(const TileKey* key );
+        bool _invertY;
+    };
+
+    /**
+    * QuadKeyCachedTileSource is an implementation of the DiskCachedTileSource class that caches tiles to disk as a directory of images
+    * referenced by their QuadKey string.
+    */
+    class OSGEARTH_EXPORT QuadKeyCachedTileSource : public DiskCachedTileSource
+    {
+    public:
+        QuadKeyCachedTileSource( TileSource* tileSource, const std::string &path, const std::string format);
+    protected:
+        virtual std::string getFileName(const TileKey* key );
+    };
+
+    /**
+    * CachedTileSourceFactory is used to created CachedTileSource's from configuration properties.
+    */
+    class OSGEARTH_EXPORT CachedTileSourceFactory
+    {
+    public:
+        /**
+        *Creates a CachedTileSource of the given type with the given properties.
+        *@param tileSource
+        *       The TileSource to act as a proxy for
+        *@param type
+        *       The type of cache to create
+        *@param properties
+        *       The configuration properties for the cache.
+        */
+        static CachedTileSource* create(TileSource* tileSource, const std::string &type, std::map<std::string,std::string> properties); 
     };
 }
 

@@ -221,20 +221,18 @@ namespace osgEarth
         const osg::Vec4ub& getSouthCapColor() const;
 
         /*
-        *Sets whether or not the map should be run in "offline" mode.  When in offline mode, all file requests
-        *should work exclusively off of local data and should not attempt to connect to the network.
-        *@param offlineHint
-        *       Whether or not the map should be run in "offline" mode
+        *Sets whether or not the map should be run exclusively off of the cache.
+        *@param cacheOnly
+        *       Whether or not the map should be only off of the cache.
         */
-        void setOfflineHint(const bool &hint);
+        void setCacheOnly(const bool &cacheOnly);
 
         /*
-        *Gets whether or not the map should be run in "offline" mode.  When in offline mode, all file requests
-        *should work exclusively off of local data and should not attempt to connect to the network.
+        *Gets whether or not the map should be run exclusively off of the cache.        
         *@returns
         *       Whether or not the map should be run in "offline" mode
         */
-        const bool getOfflineHint() const;
+        const bool getCacheOnly() const;
 
         /*
         *Sets the absolute filename that the map was loaded from
@@ -282,7 +280,7 @@ namespace osgEarth
 
         std::string profile;
 
-        bool offline_hint;
+        bool cache_only;
 
         osg::ref_ptr<CacheConfig> cache_config;
     };

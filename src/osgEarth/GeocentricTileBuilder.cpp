@@ -209,7 +209,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
                 key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
             {
-                image = image_sources[i]->readImage(key);
+                image = image_sources[i]->createImage(key);
             }
             image_tiles.push_back(ImageTileKeyPair(image, key));
         }
@@ -220,7 +220,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        hf = heightfield_sources[0]->readHeightField(key);
+        hf = heightfield_sources[0]->createHeightField(key);
     }
 
     //Determine if we've created any images
@@ -229,6 +229,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     {
         if (image_tiles[i].first.valid()) numValidImages++;
     }
+
 
     //If we couldn't create any imagery of heightfields, bail out
     if (!hf.valid() && (numValidImages == 0))

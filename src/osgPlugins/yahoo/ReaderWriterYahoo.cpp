@@ -101,9 +101,6 @@ public:
         }
 
         //osg::notify(osg::NOTICE) << buf.str() << std::endl;
-
-        if (osgDB::containsServerAddress( buf.str() ) && map_config->getOfflineHint()) return 0;
-
         return osgDB::readImageFile( buf.str(), options.get() );
     }
 

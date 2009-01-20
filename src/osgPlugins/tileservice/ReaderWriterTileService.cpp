@@ -68,9 +68,6 @@ public:
     {
         std::string uri = createURI( key );
 
-        //If we are in offline mode, don't connect to the web
-        if (osgDB::containsServerAddress( uri) && _mapConfig->getOfflineHint()) return 0;
-
         return osgDB::readImageFile( uri );
     }
 

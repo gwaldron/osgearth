@@ -123,9 +123,6 @@ public:
             << (options.valid()? options->getOptionString() : "<empty>")
             << std::endl;
 
-        //If we are in offline mode, don't connect to the web
-        if (osgDB::containsServerAddress( buf.str()) && map_config->getOfflineHint()) return 0;
-
         return osgDB::readImageFile ( buf.str(), options.get());
     }
 

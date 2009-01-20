@@ -22,6 +22,7 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/PlateCarre>
 #include <osgEarth/TMS>
+#include <osgEarth/FileUtils>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -50,7 +51,6 @@ public:
       _mapConfig(0),
       _invertY(false)
     {
-
         if ( options->getPluginData( PROPERTY_URL ) )
             _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
@@ -83,12 +83,24 @@ public:
                 }
             }
 
-            //Only read the TMS TileMap XML file if it is either a local file or if we are online
-            if (!osgDB::containsServerAddress( _url ) || !_mapConfig->getOfflineHint())
+            std::string tmsPath = _url;
+
+            //Find the full path to the URL
+            //If we have a relative path and the map file contains a server address, just concat the server path and the url together
+            if (osgEarth::isRelativePath(tmsPath) && osgDB::containsServerAddress(_mapConfig->getFilename()))
             {
-                // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-                _tileMap = TileMapReaderWriter::read( _url );
+                tmsPath = osgDB::getFilePath(_mapConfig->getFilename()) + "/" + tmsPath;
             }
+
+            //If the path doesn't contain a server address, get the full path to the file.
+            if (!osgDB::containsServerAddress(tmsPath))
+            {
+                tmsPath = osgEarth::getFullPath(_mapConfig->getFilename(), tmsPath);
+            }
+
+
+            // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
+            _tileMap = TileMapReaderWriter::read( tmsPath );
 
             if (!_tileMap.valid())
             {
@@ -146,8 +158,6 @@ public:
             
             if (!image_url.empty())
             {
-                //If we are in offline mode, don't connect to the web
-                if (osgDB::containsServerAddress( image_url) && _mapConfig->getOfflineHint()) return 0;
                 image = osgDB::readImageFile( image_url );
             }
 

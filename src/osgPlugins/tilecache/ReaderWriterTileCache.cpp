@@ -90,9 +90,7 @@ public:
             (tile_y % 1000),
             format.c_str());
 
-        //If we are in offline mode, don't connect to the web
-        if (osgDB::containsServerAddress( buf ) && map_config->getOfflineHint()) return 0;
-        
+       
         std::string path = buf;
 
         //If we have a relative path and the map file contains a server address, just concat the server path and the cache together.

@@ -17,13 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include "TMS"
+
 #include <osg/Notify>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/Common>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/TMS>
+#include <osgEarth/Mercator>
+#include <osgEarth/PlateCarre>
 
 #include <iomanip>
 
@@ -511,6 +514,11 @@ XmlDocument* tileMapToXmlDocument(const TileMap* tileMap)
 void
 TileMapReaderWriter::write(const TileMap* tileMap, const std::string &location)
 {
+    std::string path = osgDB::getFilePath(location);
+    if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
+    {
+        osg::notify(osg::NOTICE) << "Couldn't create path " << std::endl;
+    }
     std::ofstream out(location.c_str());
     write(tileMap, out);
 }

@@ -45,7 +45,7 @@ void CacheSeed::seed(MapConfig *map)
     //Assumes the the TileSource will perform the caching for us when we call createImage
     for (TileSourceList::iterator itr = _tileBuilder->getImageSources().begin(); itr != _tileBuilder->getImageSources().end(); ++itr)
     {
-        if (!itr->get()->getCache())
+        if (!dynamic_cast<CachedTileSource*>(itr->get()))
         {
             osg::notify(osg::NOTICE) << "Warning:  Image " << itr->get()->getName() << " has no cache." << std::endl;
         }
@@ -57,7 +57,7 @@ void CacheSeed::seed(MapConfig *map)
 
     for (TileSourceList::iterator itr = _tileBuilder->getHeightFieldSources().begin(); itr != _tileBuilder->getHeightFieldSources().end(); ++itr)
     {
-        if (!itr->get()->getCache())
+        if (!dynamic_cast<CachedTileSource*>(itr->get()))
         {
             osg::notify(osg::NOTICE) << "Warning:  Heightfield " << itr->get()->getName() << " has no cache." << std::endl;
         }
@@ -82,17 +82,17 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
     {
         osg::notify(osg::NOTICE) << "Processing " << key->str() << std::endl;
 
-        if (key->getLevelOfDetail() != 0)
+        if (key->getLevelOfDetail() > 0 || !dynamic_cast<PlateCarreTileKey*>(key))
         {
             //Assumes the the TileSource will perform the caching for us when we call createImage
             for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
             {
-                osg::ref_ptr<osg::Image> image = itr->get()->readImage(key);
+                osg::ref_ptr<osg::Image> image = itr->get()->createImage(key);
             }
 
             for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
             {
-                osg::ref_ptr<osg::HeightField> heightField = itr->get()->readHeightField(key);
+                osg::ref_ptr<osg::HeightField> heightField = itr->get()->createHeightField(key);
             }
         }
 

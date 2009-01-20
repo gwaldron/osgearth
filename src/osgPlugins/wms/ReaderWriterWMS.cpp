@@ -78,12 +78,8 @@ public:
         char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
         std::string capabilitiesRequest = prefix + sep + "service=wms&version=1.1.1&request=GetCapabilities";
 
-        //Only read the capabilities if we are running online
-        if (!map_config->getOfflineHint())
-        {
-            //Try to read the WMS capabilities
-           _capabilities = CapabilitiesReader::read(capabilitiesRequest);
-        }
+        //Try to read the WMS capabilities
+        _capabilities = CapabilitiesReader::read(capabilitiesRequest);
 
 
         if (_capabilities.valid())
@@ -123,9 +119,6 @@ public:
     osg::Image* createImage( const TileKey* key )
     {
         std::string uri = createURI( key );
-        //If we are in offline mode, don't connect to the web
-        if (osgDB::containsServerAddress( uri) && map_config->getOfflineHint()) return 0;
-
         return osgDB::readImageFile( uri );
     }
 

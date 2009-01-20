@@ -142,15 +142,6 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
            const std::string& url_template,
            const osgDB::ReaderWriter::Options* global_options)
 {        
-    osg::ref_ptr<TileCache> mapCache;
-    if (mapConfig->getCacheConfig())
-    {
-        mapCache = TileCacheFactory::create(mapConfig->getCacheConfig()->getType(), mapConfig->getCacheConfig()->getProperties());
-        if (mapCache.valid())
-        {
-          mapCache->setMapConfigFilename( mapConfig->getFilename() );
-        }
-    }
 
     for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
     {
@@ -169,52 +160,55 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
         //Give plugins access to the MapConfig object
         local_options->setPluginData("map_config", (void*)mapConfig); 
 
-
         bool foundValidSource = false;
-        //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
-        //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
-        TileSource* tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile(".osgearth_" + source->getDriver(), local_options.get()));
-        if (tile_source)
+        osg::ref_ptr<TileSource> tile_source;
+        //Only load the source if we are not running offline
+        if (!mapConfig->getCacheOnly())
         {
+            //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
+            //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
+            tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile(".osgearth_" + source->getDriver(), local_options.get()));
+            if (!tile_source.valid())
+            {
+              osg::notify(osg::NOTICE) << "Warning:  Could not load TileSource from "  << source->getDriver() << std::endl;
+            }
+        }
+
+        if (tile_source.valid())
+        {           
+            //Initialize the source and set its name
+            tile_source->init(local_options.get());
+            tile_source->setName( source->getName() );
             osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;
+        }
 
-            if (tile_source->getProfile().profileType() != TileGridProfile::UNKNOWN)
+        //Configure the cache if necessary
+        osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig() ? source->getCacheConfig() : mapConfig->getCacheConfig();
+
+        osg::ref_ptr<TileSource> sourceToAdd = tile_source;
+
+        //If the cache config is valid, wrap the TileSource with a caching TileSource.
+        if (cacheConfig.valid())
+        {
+            osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(tile_source.get(), cacheConfig->getType(), cacheConfig->getProperties());
+            if (cache.valid())
             {
-                //Load the source cache.
-                osg::ref_ptr<TileCache> sourceCache;
-                if (source->getCacheConfig())
-                {
-                    sourceCache = TileCacheFactory::create(source->getCacheConfig()->getType(), source->getCacheConfig()->getProperties());
-                    if (sourceCache.valid())
-                    {
-                        sourceCache->setMapConfigFilename( mapConfig->getFilename() );
-                    }
-                }
-
-                if (sourceCache.valid()) osg::notify(osg::NOTICE) << "Source cache valid " << std::endl;
-
-                //If we don't have a source cache but have a cache at the map level, use that.
-                if (!sourceCache.valid() && mapCache.valid())
-                {
-                    osg::notify(osg::NOTICE) << "Using global map cache in place of source cache " << std::endl;
-                    sourceCache = mapCache;
-                }
-
-                tile_source->setCache(sourceCache.get());
-                tile_source->init(local_options.get());
-                tile_source->setName( source->getName() );
-                to.push_back( tile_source );
+                cache->init(local_options.get());
+                cache->setName(source->getName());
+                cache->setMapConfigFilename( mapConfig->getFilename() );
+                cache->initTileMap();
+                sourceToAdd = cache.get();
             }
-            else
-            {
-                osg::notify(osg::NOTICE) << "Skipping TileSource with unknown profile " << source->getName() << std::endl;
-            }
+        }
+
+        if (sourceToAdd.valid() && sourceToAdd->getProfile().profileType() != TileGridProfile::UNKNOWN)
+        {
+            to.push_back( sourceToAdd.get() );
         }
         else
         {
-            osg::notify(osg::NOTICE) << "Warning:  Could not load TileSource from "  << source->getDriver() << std::endl;
+            osg::notify(osg::NOTICE) << "Skipping TileSource with unknown profile " << source->getName() << std::endl;
         }
-        
     }
 }
 
@@ -263,11 +257,23 @@ TileBuilder::getMapConfig() const
 bool
 TileBuilder::valid()
 {
+    if (image_sources.size() == 0 && heightfield_sources.size() == 0)
+    {
+        osg::notify(osg::NOTICE) << "Error:  TileBuilder does not contain any image or heightfield sources." << std::endl;
+        return false;
+    }
+
     //Check to see if we are trying to do a Geocentric database with a Projected profile.
     if (getDataProfile().profileType() == TileGridProfile::PROJECTED &&
         map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
         osg::notify(osg::NOTICE) << "Error:  Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
+        return false;
+    }
+
+    if (getDataProfile().profileType() == TileGridProfile::UNKNOWN)
+    {
+        osg::notify(osg::NOTICE) << "Error:  Unknown profile" << std::endl;
         return false;
     }
 
@@ -367,7 +373,7 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
     //Try to create the heightfield with the given key
     osg::ref_ptr<osg::HeightField> hf;
     osg::ref_ptr<const TileKey> hf_key = key;
-    hf = tileSource->readHeightField( key );        
+    hf = tileSource->createHeightField( key );        
 
     if (!hf.valid())
     {
@@ -376,7 +382,7 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
 
         while (hf_key.valid())
         {
-            hf = tileSource->readHeightField(hf_key.get());
+            hf = tileSource->createHeightField(hf_key.get());
             if (hf.valid()) break;
             hf_key = hf_key->createParentKey();
         }
@@ -396,7 +402,7 @@ bool
 TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::TileKey *key, osgEarth::TileBuilder::ImageTileKeyPair &imageTile)
 {
     //Try to create the image with the given key
-    osg::ref_ptr<osg::Image> image = tileSource->readImage(key);
+    osg::ref_ptr<osg::Image> image = tileSource->createImage(key);
     osg::ref_ptr<const TileKey> image_key = key;
     
     if (!image.valid())
@@ -406,7 +412,7 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::
 
         while (image_key.valid())
         {
-            image = tileSource->readImage(image_key.get());
+            image = tileSource->createImage(image_key.get());
             if (image.valid()) break;
             image_key = image_key->createParentKey();
         }

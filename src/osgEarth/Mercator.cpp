@@ -204,7 +204,7 @@ struct MercatorTile
     MercatorTile() { }
     MercatorTile( MercatorTileKey* _key, TileSource* source ) : key( _key )
     {
-        image = source->readImage( key.get() );
+        image = source->createImage( key.get() );
         key->getPixelExtents( min_x, min_y, max_x, max_y, source->getPixelsPerTile() );
         double dummy;
         key->getGeoExtents( dummy, min_lat, dummy, max_lat );

@@ -1,0 +1,58 @@
+<!--
+osgEarth Sample
+
+Advanced caching
+
+This sample shows how to configure different caches for individual layers and how to override a map level cache.
+-->
+
+<map name="imagery and dem sample" type="geocentric">
+    <!--
+	Specify a map level "tms" cache for all images and heightfields.
+	Because no "format" element is present, the preferred format for each layer will be used.
+	--> 
+    <cache type="tms">
+      <path>cache</path>
+    </cache>
+
+    <profile>global-geodetic</profile>
+	
+    <image name="BMNG with Bathymetry" driver="tileservice">
+        <url>http://s0.tileservice.worldwindcentral.com/getTile?</url>
+        <dataset>bmng.topo.bathy.200401</dataset>
+        <format>jpg</format>
+		
+		<!--
+		Specify an individual cache for this layer.
+		We want to cache this layer to png and use google style TMS caching, which inverts the Y tile index.
+		-->
+		<cache type="tms">
+          <path>cache</path>
+		  <tms_type>google</tms_type>
+		  <format>png</format>
+        </cache>
+    </image>  
+	
+	<!--This layer has no cache of its own, so will inherit the map level cache-->
+	 <image name="boston_inset" driver="gdal">
+       <url>../data/boston-inset.tif</url>
+       <tile_size>256</tile_size>
+    </image>
+
+    <heightfield name="WorldWind DEM" driver="wms">
+        <url>http://onearth.jpl.nasa.gov/wms.cgi</url>
+        <layers>worldwind_dem</layers>
+        <style>feet_short_int</style>
+        <format>tiff</format>
+        <tile_size>16</tile_size>
+        <elevation_unit>ft</elevation_unit>
+		
+		<!--Turn off caching for this layer.  This keeps the heightfield from inheriting the map level cache-->
+		<cache type="none"/>
+    </heightfield>
+    
+    <vertical_scale>8</vertical_scale>
+    
+    <skirt_ratio>0.01</skirt_ratio>
+    
+</map>

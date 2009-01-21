@@ -1,0 +1,23 @@
+<!--
+osgEarth Sample
+
+Shows how to set up a simple map level cache
+
+-->
+
+<map name="My Map" type="geocentric">
+
+  <!--Specify a map level "tms" cache for all images and heightfields.--> 
+  <cache type="tms">
+     <path>cache</path>
+	 <!--Uncomment to specify the format to cache to.  Otherwise, the preferred format of the image source will be used-->
+	 <!--<format>png</format>-->
+  </cache>
+
+  <!--Because the bluemarble image doesn't have a cache element of its own, it will inherit the map level cache-->
+  <image name="bluemarble" driver="tms">
+     <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite/</url>       
+  </image>
+  
+</map>
+

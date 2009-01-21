@@ -288,15 +288,6 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                               bool normalized = ::normalizeEdge(hfl1->getHeightField(), hfl2->getHeightField(), direction);
                               if (normalized)
                               {
-                                  if (tile2->getUpdateCallback())
-                                  {
-                                    TerrainTileEdgeNormalizerUpdateCallback *neighborCallback = static_cast<TerrainTileEdgeNormalizerUpdateCallback*>(tile2->getUpdateCallback());
-                                    if (direction == NORTH) neighborCallback->_normalizedSouth = true;
-                                    else if (direction == SOUTH) neighborCallback->_normalizedNorth = true;
-                                    else if (direction == EAST) neighborCallback->_normalizedWest = true;
-                                    else if (direction == WEST) neighborCallback->_normalizedEast = true;
-                                  }
-
                                   hfl1->dirty();
                                   hfl2->dirty();
                                   tile->setDirty(true);
@@ -337,6 +328,8 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
           double frameTime = osg::Timer::instance()->delta_m(start, end);
           stats->updateTime(nv->getFrameStamp()->getFrameNumber(), frameTime);
+
+          traverse(node, nv);
       }
 
       osgTerrain::TileID TerrainTileEdgeNormalizerUpdateCallback::getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const

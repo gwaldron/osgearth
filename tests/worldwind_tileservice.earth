@@ -13,6 +13,7 @@ to use it.
        <url>http://s0.tileservice.worldwindcentral.com/getTile?</url>
        <dataset>bmng.topo.bathy.200401</dataset>
        <format>jpg</format>
+	   <max_level>7</max_level>
    </image>  
    
 </map>

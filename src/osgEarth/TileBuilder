@@ -74,14 +74,14 @@ namespace osgEarth
             const osgDB::ReaderWriter::Options* global_options =NULL );
 
         /**
-        *Finds a created TileBuilder by it's URL template
-        */
+         * Finds a created TileBuilder by it's URL template
+         */
         static TileBuilder* getTileBuilderByUrlTemplate( const std::string &url_template );
 
         /**
-        *Creates a Node from the given MapConfig.  This allows you to programatically create a MapConfig and create a scene graph out of it.
-        *Note:  The filename of the map config will be automatically assigned in this function.
-        */
+         * Creates a Node from the given MapConfig.  This allows you to programatically create a MapConfig and create a scene graph out of it.
+         * Note:  The filename of the map config will be automatically assigned in this function.
+         */
         static osg::Node* readNode( MapConfig* map);
         
         osg::Node* createNode( const TileKey* key );

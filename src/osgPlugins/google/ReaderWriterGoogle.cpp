@@ -31,6 +31,8 @@
 using namespace osgEarth;
 
 #define PROPERTY_DATASET    "dataset"
+#define PROPERTY_VERSION    "version"
+#define PROPERTY_LANGUAGE   "language"
 #define PROPERTY_MAP_CONFIG "map_config"
 
 class GoogleSource : public TileSource
@@ -47,6 +49,14 @@ public:
         {
             if ( options->getPluginData( PROPERTY_DATASET ) )
                 dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
+
+            if ( options->getPluginData( PROPERTY_VERSION ) )
+                version = std::string( (const char*)options->getPluginData( PROPERTY_VERSION ) );
+
+            if ( options->getPluginData( PROPERTY_LANGUAGE ) )
+                language = std::string( (const char*)options->getPluginData( PROPERTY_LANGUAGE ) );
+            else
+                language = "en";
 
             if (options->getPluginData( PROPERTY_MAP_CONFIG ))
                 map_config = (const MapConfig*)options->getPluginData(PROPERTY_MAP_CONFIG);
@@ -71,50 +81,72 @@ public:
         
         if ( dataset == "satellite" )
         {            
+            if ( version.empty() )
+                version = "34";
+
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://khm" << server << ".google.com/kh?v=34&hl=en"
-                << "&x=" << tile_x
-                << "&y=" << tile_y
-                << "&z=" << zoom
+            buf << "http://khm" << server << ".google.com/kh"
+                << "?v="  << version
+                << "&hl=" << language
+                << "&x="  << tile_x
+                << "&y="  << tile_y
+                << "&z="  << zoom
                 << "&s=Ga&.jpg";
         }
         else if ( dataset == "terrain" )
         {
+            if ( version.empty() )
+                version = "w2p.87";
+
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
-            buf << "http://mt" << server << ".google.com/mt?v=w2p.87&hl=en&x="
-                << tile_x << "&y=" << tile_y << "&zoom=" 
-                << 17-key->getLevelOfDetail() << "&.jpg";
+            buf << "http://mt" << server << ".google.com/mt"
+                << "?v="  << version
+                << "&hl=" << language
+                << "&x="  << tile_x
+                << "&y="  << tile_y
+                << "&zoom=" << 17-key->getLevelOfDetail()
+                << "&.jpg";
         }
         else if ( dataset == "labels" )
         {
+            if ( version.empty() )
+                version = "w2t.88";
+
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://mt" << server << ".google.com/mt?v=w2t.88&hl=en"
-                << "&x=" << tile_x
-                << "&y=" << tile_y
-                << "&z=" << zoom
+            buf << "http://mt" << server << ".google.com/mt"
+                << "?v="  << version
+                << "&hl=" << language
+                << "&x="  << tile_x
+                << "&y="  << tile_y
+                << "&z="  << zoom
                 << "&s=G&.png";
         }
         else if ( dataset == "roads" )
         {
+            if ( version.empty() )
+                version = "w2.89";
+
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
             mkey->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
-            buf << "http://mt" << server << ".google.com/mt?v=w2.89&hl=en"
-                << "&x=" << tile_x
-                << "&y=" << tile_y
-                << "&z=" << zoom
+            buf << "http://mt" << server << ".google.com/mt"
+                << "?v="  << version
+                << "&hl=" << language
+                << "&x="  << tile_x
+                << "&y="  << tile_y
+                << "&z="  << zoom
                 << "&s=Ga&.png";
         }
 
@@ -144,6 +176,8 @@ public:
 private:
     osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
     std::string dataset;
+    std::string version;
+    std::string language;
     const MapConfig *map_config;
 };
 

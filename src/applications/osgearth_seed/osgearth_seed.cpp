@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 
     args.getApplicationUsage()->setApplicationName(args.getApplicationName());
     args.getApplicationUsage()->setDescription(args.getApplicationName() + " is an application used to seed a cache for an osgEarth.");
-    args.getApplicationUsage()->setCommandLineUsage(args.getApplicationName()+" [options] filename ...");
+    args.getApplicationUsage()->setCommandLineUsage(args.getApplicationName()+" [options] filename");
     args.getApplicationUsage()->addCommandLineOption("--max-level level","The maximum level to seed down to.");
     args.getApplicationUsage()->addCommandLineOption("-l","Shorthand for --max-level.");
     args.getApplicationUsage()->addCommandLineOption("--bounds minlon minlat maxlon maxlat","The geospatial extents to seed.");

@@ -1,0 +1,27 @@
+<!--
+osgEarth Sample
+
+Demonstrates a mashup between Yahoo maps and Google traffic data.
+
+This is for educational purposes only - it is your responsibility to abide by
+the provider's terms of service when using their data.
+-->
+
+<map name="Traffic" type="geocentric">
+
+    <min_tile_range_factor>8</min_tile_range_factor>
+    
+    <image name="roads map" driver="yahoo">
+        <dataset>roads</dataset>
+    </image>
+
+    <image name="GoogleTraffic" driver="google">
+        <dataset>traffic</dataset>
+        <min_level>6</min_level>
+    </image>
+   
+    <!-- Matching cap colors -->
+    <north_cap_color>128 176 225 255</north_cap_color>
+    <south_cap_color>220 224 233 255</south_cap_color>
+   
+</map>

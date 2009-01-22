@@ -98,6 +98,19 @@ public:
                 << "&z="  << zoom
                 << "&s=Ga&.jpg";
         }
+        else if ( dataset == "traffic" )
+        {
+            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            unsigned int tile_x, tile_y;
+            key->getTileXY( tile_x, tile_y );
+            int zoom = key->getLevelOfDetail();
+
+            buf << "http://mt" << server << ".google.com/mapstt"
+                << "?zoom=" << zoom
+                << "&x="  << tile_x
+                << "&y="  << tile_y
+                << "&.png";
+        }
         else if ( dataset == "terrain" )
         {
             if ( version.empty() )
@@ -171,6 +184,7 @@ public:
         else if ( dataset == "terrain" ) return "jpg";
         else if ( dataset == "labels" ) return "png";
         else if ( dataset == "roads" ) return "png";
+        else if ( dataset == "traffic" ) return "png";
         else return "";
     }
 

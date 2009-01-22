@@ -56,12 +56,23 @@ namespace osgEarth
     {
     public:
         CacheSeed():
+          _minLevel(0),
           _maxLevel(5),
           _bounds(-180, -90, 180, 90)
           {
           }
 
-        /**
+          /**
+          * Sets the minimum level to seed to
+          */
+          void setMinLevel(const unsigned int &minLevel) {_minLevel = minLevel;}
+
+          /**
+          * Gets the minimum level to cache to.
+          */
+          const unsigned int getMinLevel() const {return _minLevel;}
+
+          /**
          * Sets the maximum level to seed to
          */
         void setMaxLevel(const unsigned int &maxLevel) {_maxLevel = maxLevel;}
@@ -70,6 +81,8 @@ namespace osgEarth
          * Gets the maximum level to cache to.
          */
         const unsigned int getMaxLevel() const {return _maxLevel;}
+
+
 
         /**
          * Gets the bounds to seed in
@@ -97,6 +110,7 @@ namespace osgEarth
         TileBuilder* getTileBuilder() {return _tileBuilder.get(); }
 
     protected:
+        unsigned int _minLevel;
         unsigned int _maxLevel;
 
         Bounds _bounds;

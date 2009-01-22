@@ -39,8 +39,8 @@ int main(int argc, char** argv)
     args.getApplicationUsage()->setApplicationName(args.getApplicationName());
     args.getApplicationUsage()->setDescription(args.getApplicationName() + " is an application used to seed a cache for an osgEarth.");
     args.getApplicationUsage()->setCommandLineUsage(args.getApplicationName()+" [options] filename");
+    args.getApplicationUsage()->addCommandLineOption("--min-level level","The minimum level to seed down to.");
     args.getApplicationUsage()->addCommandLineOption("--max-level level","The maximum level to seed down to.");
-    args.getApplicationUsage()->addCommandLineOption("-l","Shorthand for --max-level.");
     args.getApplicationUsage()->addCommandLineOption("--bounds minlon minlat maxlon maxlat","The geospatial extents to seed.");
     args.getApplicationUsage()->addCommandLineOption("-b","Shorthand for --bounds.");
 
@@ -51,10 +51,14 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    
+    //Read the min level
+    unsigned int minLevel = 0;
+    while (args.read("--min-level", minLevel));
+    
     //Read the max level
     unsigned int maxLevel = 5;
     while (args.read("--max-level", maxLevel));
-    while (args.read("-l", maxLevel));
     
     //Read the bounds
     Bounds bounds(0, 0, 0, 0);
@@ -85,6 +89,7 @@ int main(int argc, char** argv)
     {                
         //Create the CacheSeed
         osg::ref_ptr<CacheSeed> seed = new CacheSeed();
+        seed->setMinLevel(minLevel);
         seed->setMaxLevel(maxLevel);
         seed->setBounds(bounds);
         seed->seed( map.get() );

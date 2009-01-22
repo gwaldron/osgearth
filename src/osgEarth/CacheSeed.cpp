@@ -75,7 +75,7 @@ void CacheSeed::seed(MapConfig *map)
 
 void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
 {
-    if (_maxLevel >= key->getLevelOfDetail())
+    if (_minLevel <= key->getLevelOfDetail() && _maxLevel >= key->getLevelOfDetail())
     {
         osg::notify(osg::NOTICE) << "Processing " << key->str() << std::endl;
 
@@ -92,7 +92,10 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
                 osg::ref_ptr<osg::HeightField> heightField = itr->get()->createHeightField(key);
             }
         }
+    }
 
+    if (key->getLevelOfDetail() < _maxLevel)
+    {
         osg::ref_ptr<TileKey> k0 = key->getSubkey(0);
         osg::ref_ptr<TileKey> k1 = key->getSubkey(1);
         osg::ref_ptr<TileKey> k2;

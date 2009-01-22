@@ -19,8 +19,6 @@
 
 #include <osgEarth/TileGridProfile>
 #include <osgEarth/Mercator>
-#include <osgEarth/PlateCarre>
-#include <osgEarth/Projected>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -31,11 +29,10 @@ using namespace osgEarth;
 #define GLOBAL_GEODETIC_MIN_LAT -270
 #define GLOBAL_GEODETIC_MAX_LAT   90
 
-
-#define GLOBAL_MERCATOR_MIN_LON -180.0
-#define GLOBAL_MERCATOR_MAX_LON  180.0
-#define GLOBAL_MERCATOR_MIN_LAT  -85.05112878  
-#define GLOBAL_MERCATOR_MAX_LAT   85.05112878
+#define GLOBAL_MERCATOR_MIN_X -20037508.342789244
+#define GLOBAL_MERCATOR_MIN_Y -20037508.342789244
+#define GLOBAL_MERCATOR_MAX_X 20037508.342789244
+#define GLOBAL_MERCATOR_MAX_Y 20037508.342789244
 
 TileGridProfile::TileGridProfile():
 xmin(0),
@@ -103,10 +100,10 @@ TileGridProfile::init( TileGridProfile::ProfileType profileType )
     }
     else if (_profileType == GLOBAL_MERCATOR)
     {
-        xmin = GLOBAL_MERCATOR_MIN_LON;
-        xmax = GLOBAL_MERCATOR_MAX_LON;
-        ymin = GLOBAL_MERCATOR_MIN_LAT;
-        ymax = GLOBAL_MERCATOR_MAX_LAT;
+        xmin = GLOBAL_MERCATOR_MIN_X;
+        xmax = GLOBAL_MERCATOR_MAX_X;
+        ymin = GLOBAL_MERCATOR_MIN_Y;
+        ymax = GLOBAL_MERCATOR_MAX_Y;
         _srs = "EPSG:900913";
     }
 }
@@ -144,22 +141,7 @@ TileGridProfile::profileType() const {
 TileKey*
 TileGridProfile::getTileKey( const std::string &key ) const
 {
-    if (_profileType == TileGridProfile::GLOBAL_GEODETIC)
-    {
-        return new PlateCarreTileKey( key, *this );
-    }
-    else if (_profileType == TileGridProfile::GLOBAL_MERCATOR)
-    {
-        return new MercatorTileKey( key, *this);
-    }
-    else if (_profileType == TileGridProfile::PROJECTED)
-    {
-        return new ProjectedTileKey( key, *this );
-    }
-    else
-    {
-        return 0;
-    }
+    return new TileKey(key, *this);
 }
 
 TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::string &srs)

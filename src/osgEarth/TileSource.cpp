@@ -20,7 +20,6 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightfieldConverter>
 #include <osgEarth/FileUtils>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
 
 
@@ -292,8 +291,7 @@ std::string TMSCacheTileSource::getFileName(const osgEarth::TileKey *key)
     unsigned int lod = key->getLevelOfDetail();
     int totalTiles = TileKey::getMapSizeTiles(lod);
 
-    const PlateCarreTileKey* pc = dynamic_cast<const PlateCarreTileKey*>(key);
-    if (pc)
+    if ( key->isGeodetic() )
     {
         //In global-geodetic TMS, level 0 is two tiles that cover the entire earth.
         //Level 0 in osgEarth is a single tile that covers the entire earth and extends down to -270,

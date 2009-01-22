@@ -68,14 +68,15 @@ public:
 
     osg::Image* createImage( const TileKey* key )
     {
-        //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
-        if ( dynamic_cast<const PlateCarreTileKey*>( key ) )
+        //If we are given a geodetic key, use the MercatorTileConverter to create the image
+        if ( key->isGeodetic() )
         {
             MercatorTileConverter converter( this );
-            return converter.createImage( static_cast<const PlateCarreTileKey*>( key ) );
+            return converter.createImage( key );
         }
 
-        const MercatorTileKey* mkey = static_cast<const MercatorTileKey*>( key );
+        //Return NULL if we are given a non-mercator key
+        if ( !key->isMercator() ) return 0;
 
         std::stringstream buf;
         
@@ -86,7 +87,7 @@ public:
 
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
+            key->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
             buf << "http://khm" << server << ".google.com/kh"
@@ -104,7 +105,7 @@ public:
 
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
+            key->getTileXY( tile_x, tile_y );
             buf << "http://mt" << server << ".google.com/mt"
                 << "?v="  << version
                 << "&hl=" << language
@@ -120,7 +121,7 @@ public:
 
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
+            key->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
             buf << "http://mt" << server << ".google.com/mt"
@@ -138,7 +139,7 @@ public:
 
             char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
             unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
+            key->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
 
             buf << "http://mt" << server << ".google.com/mt"

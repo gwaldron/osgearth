@@ -28,8 +28,6 @@ SET(LIB_PUBLIC_HEADERS
     ImageToHeightFieldConverter
     MapConfig
     Mercator
-    PlateCarre    
-	Projected
 	ProjectedTileBuilder
     TerrainTileEdgeNormalizerUpdateCallback
     TileBuilder
@@ -50,8 +48,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageToHeightFieldConverter.cpp
     MapConfig.cpp
     Mercator.cpp
-    PlateCarre.cpp
-	Projected.cpp
 	ProjectedTileBuilder.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileBuilder.cpp

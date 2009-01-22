@@ -60,13 +60,14 @@ public:
     osg::Image* createImage( const TileKey* key )
     {
         //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
-        if ( dynamic_cast<const PlateCarreTileKey*>( key ) )
+        if ( key->isGeodetic() )
         {
             MercatorTileConverter converter( this );
-            return converter.createImage( static_cast<const PlateCarreTileKey*>( key ) );
+            return converter.createImage(  key );
         }
 
-        const MercatorTileKey* mkey = static_cast<const MercatorTileKey*>( key );
+        //Return NULL if we are given a non-mercator key
+        if ( !key->isMercator() ) return 0;
 
         std::stringstream buf;
         
@@ -74,8 +75,8 @@ public:
         {            
             // http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl?v=4.1&md=2&x=0&y=0&z=2&r=1
             unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
-            int size = mkey->getMapSizeTiles();
+            key->getTileXY( tile_x, tile_y );
+            int size = key->getMapSizeTiles();
             int zoom = key->getLevelOfDetail();
 
             buf << "http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl"
@@ -88,8 +89,8 @@ public:
         else if ( dataset == "aerial" || dataset == "satellite" )
         {
             unsigned int tile_x, tile_y;
-            mkey->getTileXY( tile_x, tile_y );
-            int size = mkey->getMapSizeTiles();
+            key->getTileXY( tile_x, tile_y );
+            int size = key->getMapSizeTiles();
             int zoom = key->getLevelOfDetail();
 
             buf << "http://us.maps3.yimg.com/aerial.maps.yimg.com/ximg"

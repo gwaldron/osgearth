@@ -20,7 +20,6 @@
 #include <osgEarth/MapConfig>
 #include <osgEarth/TileSource>
 #include <osgEarth/Mercator>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/TMS>
 #include <osgEarth/FileUtils>
 

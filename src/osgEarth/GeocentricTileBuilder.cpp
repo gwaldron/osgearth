@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/GeocentricTileBuilder>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 
@@ -141,20 +140,23 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
     if (key->getLevelOfDetail() == 0)
     {
         const osgEarth::TileGridProfile& profile = key->getProfile();
+
+        double minX, minY, maxX, maxY;
+        key->getGeoExtents(minX, minY, maxX, maxY);
         
         //Extend the caps out so they slightly overlap neighboring tiles to hide seams
         double cap_offset = 0.1;
         
         //Draw a "cap" on the bottom of the earth to account for missing tiles
-        if (profile.yMin() > -90)
+        if (minY > -90)
         {
-            tile_parent->addChild(createCap(-90, profile.yMin()+cap_offset,  map->getSouthCapColor()));
+            tile_parent->addChild(createCap(-90, minY+cap_offset,  map->getSouthCapColor()));
         }
 
         //Draw a "cap" on the top of the earth to account for missing tiles
-        if (profile.yMax() < 90)
+        if (maxY < 90)
         {   
-            tile_parent->addChild(createCap(profile.yMax()-cap_offset, 90, map->getNorthCapColor()));
+            tile_parent->addChild(createCap(maxY-cap_offset, 90, map->getNorthCapColor()));
         }
     }
 
@@ -165,7 +167,7 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
 
     bool allQuadrantsCreated = (q0.valid() && q1.valid());
 
-    if ( key->getLevelOfDetail() > 0 || dynamic_cast<const MercatorTileKey*>( key ) )
+    if ( key->getLevelOfDetail() > 0 || key->isMercator())
     {
         q2 = createQuadrant( key->getSubkey( 2 ));
         q3 = createQuadrant( key->getSubkey( 3 ));
@@ -342,7 +344,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 
             // use a special image locator to warp the texture coords for mercator tiles :)
             // WARNING: TODO: this will not persist upon export....we need a nodekit.
-            if ( dynamic_cast<const MercatorTileKey*>( key ) )
+            if ( key->isMercator() )
                 img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());

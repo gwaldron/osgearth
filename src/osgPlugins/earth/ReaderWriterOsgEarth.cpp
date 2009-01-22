@@ -20,9 +20,7 @@
 #include <osgEarth/GeocentricTileBuilder>
 #include <osgEarth/ProjectedTileBuilder>
 #include <osgEarth/MapConfig>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
-#include <osgEarth/Projected>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -99,15 +97,15 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     if (!tile_builder->valid()) return ReadResult::FILE_NOT_HANDLED;
 
                     key = tile_builder->getDataProfile().getTileKey( "" );
-                    if (dynamic_cast<PlateCarreTileKey*>(key.get()))
+                    if ( key->isGeodetic() )
                     {
                         osg::notify(osg::NOTICE) << "Geodetic" << std::endl;
                     }
-                    else if (dynamic_cast<MercatorTileKey*>(key.get()))
+                    else if ( key->isMercator() )
                     {
                         osg::notify(osg::NOTICE) << "Mercator" << std::endl;
                     }
-                    else if (dynamic_cast<ProjectedTileKey*>(key.get()))
+                    else if ( key->isProjected() )
                     {
                         osg::notify(osg::NOTICE) << "Projected" << std::endl;
                     }

@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/TileSource>
 #include <osgTerrain/Locator>
 #include <osgTerrain/TerrainTechnique>
@@ -62,51 +61,16 @@ namespace osgEarth
       *     The output Y coordinate in meters
       */
       static void latLongToMeters(const double &lat, const double &lon, double &x, double &y);
-    };
 
-    class OSGEARTH_EXPORT MercatorTileKey : public TileKey
-    {
-    public:
-        static const std::string TYPE_CODE;
+      static int longLatToPixelXY(
+          double lon, double lat, unsigned int lod, 
+          int tile_size,
+          unsigned int& out_x, unsigned int& out_y );
 
-        MercatorTileKey( const MercatorTileKey& rhs );
-
-        MercatorTileKey( const std::string& key );
-
-        MercatorTileKey( const std::string& key, const TileGridProfile& profile );
-
-        MercatorTileKey( unsigned int tile_x, unsigned int tile_y, unsigned int level );
-
-        void getMeterExtents(
-            double &xmin,
-            double &ymin,
-            double &xmax,
-            double &ymax) const;
-
-        static int longLatToPixelXY(
-            double lon, double lat, unsigned int lod, 
-            int tile_size,
-            unsigned int& out_x, unsigned int& out_y );
-        
-        static void pixelXYtoTileXY(
-            unsigned int x, unsigned int y,
-            int tile_size,
-            unsigned int& out_tile_x, unsigned int& out_tile_y);
-        
-    public: //overrides
-
-        bool getGeoExtents(
-            double& lon_min, double& lat_min,
-            double& lon_max, double& lat_max) const;
-
-        TileKey* createParentKey() const;
-
-        TileKey* getSubkey( unsigned int quadrant ) const;
-
-        std::string getTypeCode() const { return TYPE_CODE; }
-
-    private:
-        osg::ref_ptr<TileKey> subkeys[4];
+      static void pixelXYtoTileXY(
+          unsigned int x, unsigned int y,
+          int tile_size,
+          unsigned int& out_tile_x, unsigned int& out_tile_y);
     };
 
     class OSGEARTH_EXPORT MercatorTileConverter
@@ -126,9 +90,9 @@ namespace osgEarth
          */
         void setFilter( const Filter& filter );
 
-        osg::Image* createImage( const PlateCarreTileKey* key );
+        osg::Image* createImage( const TileKey* key );
 
-        osg::HeightField* createHeightField( const PlateCarreTileKey* key );
+        osg::HeightField* createHeightField( const TileKey* key );
 
     private:
         osg::ref_ptr<osgEarth::TileSource> source;

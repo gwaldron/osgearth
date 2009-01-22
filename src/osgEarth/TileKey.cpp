@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/TileKey>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
 
 using namespace osgEarth;
@@ -146,6 +145,109 @@ TileKey::getPixelExtents(unsigned int& xmin,
     ymax = py + (delta << 1);
 }
 
+TileKey*
+TileKey::getSubkey( unsigned int quadrant ) const
+{
+    if ( !subkeys[quadrant].valid() )
+        const_cast<TileKey*>(this)->subkeys[quadrant] = new TileKey( key + (char)('0'+quadrant), profile );
+    return subkeys[quadrant].get();
+}
+
+TileKey*
+TileKey::createParentKey() const
+{
+    if (getLevelOfDetail() == 1) return NULL;
+    return new TileKey(key.substr(0, key.length()-1),profile);
+}
+
+
+bool
+TileKey::getGeoExtents(
+            double& xmin,
+            double& ymin,
+            double& xmax,
+            double& ymax) const
+{
+    getNativeExtents(xmin, ymin, xmax, ymax);
+    //Convert meters to degrees if if in Mercator.
+    if (isMercator())
+    {
+        Mercator::metersToLatLon(xmin, ymin, ymin, xmin);
+        Mercator::metersToLatLon(xmax, ymax, ymax, xmax);
+    }
+    return true;
+}
+
+bool
+TileKey::getNativeExtents(
+            double& xmin,
+            double& ymin,
+            double& xmax,
+            double& ymax) const
+{
+    double width =  profile.xMax() - profile.xMin();
+    double height = profile.yMax() - profile.yMin();
+
+    ymax = profile.yMax();
+    xmin = profile.xMin();
+
+    for( unsigned int lod = 0; lod < getLevelOfDetail(); lod++ )
+    {
+        width /= 2.0;
+        height /= 2.0;
+
+        char digit = key[lod];
+        switch( digit )
+        {
+        case '1': xmin += width; break;
+        case '2': ymax -= height; break;
+        case '3': xmin += width; ymax -= height; break;
+        }
+    }
+
+    ymin = ymax - height;
+    xmax = xmin + width;
+
+    return true;
+}
+
+
+TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, TileGridProfile profile)
+{       
+    std::stringstream ss;
+    for( unsigned i = lod; i > 0; i-- )
+    {
+        char digit = '0';
+        unsigned int mask = 1 << (i-1);
+        if ( (tile_x & mask) != 0 )
+        {
+            digit++;
+        }
+        if ( (tile_y & mask) != 0 )
+        {
+            digit += 2;
+        }
+        ss << digit;
+    }
+    key = ss.str();
+    this->profile = profile;
+}
+
+bool TileKey::isGeodetic() const
+{
+    return profile.profileType() == TileGridProfile::GLOBAL_GEODETIC;
+}
+
+bool TileKey::isMercator() const
+{
+    return profile.profileType() == TileGridProfile::GLOBAL_MERCATOR;
+}
+
+bool TileKey::isProjected() const
+{
+    return profile.profileType() == TileGridProfile::PROJECTED;
+}
+
 /************************************************************************/
 
 HeightFieldExtractor::HeightFieldExtractor()
@@ -220,7 +322,7 @@ osg::HeightField*
 HeightFieldExtractor::extractChild(const osgEarth::TileKey* childKey, const unsigned int &width, const unsigned int &height)
 {
     //Check to make sure the child key is a subkey of the parent
-    if ((_key->getTypeCode() == childKey->getTypeCode()) && 
+    if ((_key->getProfile().profileType() == childKey->getProfile().profileType()) && 
         (childKey->str().length() > _key->str().length()) &&
         (childKey->str().find(_key->str()) != 0))
     {

@@ -19,7 +19,6 @@
 
 #include <osgEarth/CacheSeed>
 #include <osgEarth/Mercator>
-#include <osgEarth/PlateCarre>
 
 using namespace osgEarth;
 
@@ -28,17 +27,15 @@ void CacheSeed::seed(MapConfig *map)
     //Create a TileBuilder for the map
     _tileBuilder = TileBuilder::create( map, map->getFilename() );
     
+    osg::ref_ptr<TileKey> key = _tileBuilder->getDataProfile().getTileKey( "" );
+
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
         _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-        _bounds._min.x() = _tileBuilder->getDataProfile().xMin();
-        _bounds._min.y() = _tileBuilder->getDataProfile().yMin();
-        _bounds._max.x() = _tileBuilder->getDataProfile().xMax();
-        _bounds._max.y() = _tileBuilder->getDataProfile().yMax();
+        key->getGeoExtents(_bounds._min.x(), _bounds._min.y(), _bounds._max.x(), _bounds._max.y());
     }
 
-    osg::ref_ptr<TileKey> key = _tileBuilder->getDataProfile().getTileKey( "" );
 
     bool hasCaches = false;
 
@@ -82,7 +79,7 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
     {
         osg::notify(osg::NOTICE) << "Processing " << key->str() << std::endl;
 
-        if (key->getLevelOfDetail() > 0 || !dynamic_cast<PlateCarreTileKey*>(key))
+        if (key->getLevelOfDetail() > 0 || !key->isGeodetic())
         {
             //Assumes the the TileSource will perform the caching for us when we call createImage
             for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
@@ -101,7 +98,7 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
         osg::ref_ptr<TileKey> k2;
         osg::ref_ptr<TileKey> k3;
 
-        if (key->getLevelOfDetail() > 0 || !dynamic_cast<PlateCarreTileKey*>(key))
+        if (key->getLevelOfDetail() > 0 || !key->isGeodetic())
         {
             k2 = key->getSubkey(2);
             k3 = key->getSubkey(3);

@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/PlateCarre>
 #include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
 #include <osgEarth/TileSource>
@@ -145,18 +144,7 @@ public:
         double minx, miny, maxx, maxy;
 
 
-        const PlateCarreTileKey* pk = dynamic_cast<const PlateCarreTileKey*>(key);
-        const MercatorTileKey* mk = dynamic_cast<const MercatorTileKey*>(key);
-
-        //TODO: Would using getGeoExtents and 4326 work well for both PlateCarre and Mercator?
-        if (pk)
-        {
-            key->getGeoExtents( minx, miny, maxx, maxy );
-        }
-        else if (mk)
-        {
-            mk->getMeterExtents(minx, miny, maxx, maxy);
-        }
+        key->getNativeExtents( minx, miny, maxx, maxy);
 
         // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
 

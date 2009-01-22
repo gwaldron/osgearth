@@ -18,7 +18,6 @@
 */
 
 #include <osgEarth/MapConfig>
-#include <osgEarth/PlateCarre>
 #include <osgEarth/Mercator>
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
@@ -246,21 +245,13 @@ public:
       osg::Image* createImage( const TileKey* key )
       {
           OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(s_mutex);
-
+          
           osg::ref_ptr<osg::Image> image;
           if (intersects(key))
           {
-              //Get the meter extents of the tile
+              //Get the extents of the tile
               double xmin, ymin, xmax, ymax;
-              const MercatorTileKey *mtk = dynamic_cast<const MercatorTileKey*>(key);
-              if (mtk)
-              {
-                mtk->getMeterExtents(xmin, ymin, xmax, ymax);
-              }
-              else
-              {
-                  key->getGeoExtents(xmin, ymin, xmax, ymax);
-              }
+              key->getNativeExtents(xmin, ymin, xmax, ymax);
 
               int target_width = tile_size;
               int target_height = tile_size;
@@ -387,15 +378,7 @@ public:
           {
               //Get the meter extents of the tile
               double xmin, ymin, xmax, ymax;
-              const MercatorTileKey *mtk = dynamic_cast<const MercatorTileKey*>(key);
-              if (mtk)
-              {
-                mtk->getMeterExtents(xmin, ymin, xmax, ymax);
-              }
-              else
-              {
-                  key->getGeoExtents(xmin, ymin, xmax, ymax);
-              }
+              key->getNativeExtents(xmin, ymin, xmax, ymax);
 
               int target_width = tile_size;
               int target_height = tile_size;
@@ -483,17 +466,9 @@ public:
 
       bool intersects(const TileKey* key)
       {
-          //Get the meter extents of the tile
+          //Get the native extents of the tile
           double xmin, ymin, xmax, ymax;
-          const MercatorTileKey* mtk = dynamic_cast<const MercatorTileKey*>(key);
-          if (mtk)
-          {
-              mtk->getMeterExtents(xmin, ymin, xmax, ymax);
-          }
-          else
-          {
-              key->getGeoExtents(xmin, ymin, xmax, ymax);
-          }
+          key->getNativeExtents(xmin, ymin, xmax, ymax);
 
           return  osg::maximum(_extentsMin.x(), xmin) <= osg::minimum(_extentsMax.x(),xmax) &&
                   osg::maximum(_extentsMin.y(), ymin) <= osg::minimum(_extentsMax.y(),ymax);

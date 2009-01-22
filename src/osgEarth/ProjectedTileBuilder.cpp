@@ -54,7 +54,7 @@ ProjectedTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 
     bool allQuadrantsCreated = (q0.valid() && q1.valid());
 
-    if ( key->getLevelOfDetail() > 0 || !dynamic_cast<const PlateCarreTileKey*>( key ) )
+    if ( key->getLevelOfDetail() > 0 || !key->isGeodetic() )
     {
         q2 = createQuadrant( key->getSubkey( 2 ) );
         q3 = createQuadrant( key->getSubkey( 3 ) );
@@ -230,7 +230,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
 
             // use a special image locator to warp the texture coords for mercator tiles :)
             // WARNING: TODO: this will not persist upon export....we need a nodekit.
-            if ( dynamic_cast<const MercatorTileKey*>( key ) )
+            if ( key->isMercator() )
             {
                 img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
             }

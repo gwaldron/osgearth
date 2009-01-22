@@ -26,7 +26,6 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/TMS>
 #include <osgEarth/Mercator>
-#include <osgEarth/PlateCarre>
 
 #include <iomanip>
 
@@ -152,8 +151,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
     unsigned int zoom = tileKey->getLevelOfDetail();
     int totalTiles = TileKey::getMapSizeTiles(zoom);
 
-    const PlateCarreTileKey* pc = dynamic_cast<const PlateCarreTileKey*>(tileKey);
-    if (pc)
+    if (tileKey->isGeodetic() )
     {
         //In global-geodetic TMS, level 0 is two tiles that cover the entire earth.
         //Level 0 in osgEarth is a single tile that covers the entire earth and extends down to -270,
@@ -217,12 +215,8 @@ TileMap::intersectsKey(const TileKey *tileKey)
 
     if (!inter)
     {
-        const MercatorTileKey* mk = dynamic_cast<const MercatorTileKey*>(tileKey);
-        if (mk)
-        {
-            mk->getMeterExtents(keyMinX, keyMinY, keyMaxX, keyMaxY);
-            inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
-        }
+        tileKey->getNativeExtents(keyMinX, keyMinY, keyMaxX, keyMaxY);
+        inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
     }
 
     return inter;

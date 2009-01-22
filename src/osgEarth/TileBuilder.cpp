@@ -20,7 +20,6 @@
 #include <osgEarth/TileBuilder>
 #include <osgEarth/GeocentricTileBuilder>
 #include <osgEarth/ProjectedTileBuilder>
-#include <osgEarth/PlateCarre>
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
@@ -273,9 +272,6 @@ std::string
 TileBuilder::createURI( const TileKey* key )
 {
     return key->getName() + "." + url_template;
-    //std::stringstream buf;
-    //buf << key->getTypeCode() << key->str() << "." << url_template;
-    //return buf.str();
 }
 
 MapConfig*

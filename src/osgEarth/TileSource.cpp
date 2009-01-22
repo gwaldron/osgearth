@@ -22,12 +22,12 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Mercator>
 
-
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
+#include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
 
@@ -183,6 +183,9 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
 {
     std::string filename = getFileName( key );
     std::string path = osgDB::getFilePath(filename);
+
+    // serialize cache writes.
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fs_mutex );
 
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))

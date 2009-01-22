@@ -31,6 +31,8 @@
 #include <osg/Shape>
 #include <osgDB/ReadFile>
 
+#include <OpenThreads/Mutex>
+
 #include <string>
 
 namespace osgEarth
@@ -211,6 +213,7 @@ namespace osgEarth
 
         std::string _path;
         std::string _format;
+        OpenThreads::Mutex _fs_mutex;
     };
 
     /**

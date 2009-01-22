@@ -412,9 +412,15 @@ osg::CoordinateSystemNode*
 GeocentricTileBuilder::createCoordinateSystemNode() const
 {
     osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+
+    // TODO: set the CORRECT ellipsoid model, based on the profile/srs:
     csn->setEllipsoidModel( new osg::EllipsoidModel() );
-    csn->setCoordinateSystem( "+init=epsg:4326" );
-    csn->setFormat( "PROJ4" );
+
+    _dataProfile.applyTo( csn );
+
+//    csn->setCoordinateSystem( "+init=epsg:4326" );
+//    csn->setFormat( "PROJ4" );
+
     return csn;
 }
 

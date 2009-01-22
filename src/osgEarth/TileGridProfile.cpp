@@ -170,6 +170,34 @@ TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::s
     return TileGridProfile::PROJECTED;
 }
 
+void
+TileGridProfile::applyTo( osg::CoordinateSystemNode* csn ) const
+{
+    if ( csn )
+    {
+        // first the format:
+        std::string upperSRS = _srs;
+        std::transform( upperSRS.begin(), upperSRS.end(), upperSRS.begin(), toupper );
+
+        if ( upperSRS.length() >= 6 && ( upperSRS.substr( 0, 6 ) == "GEOGCS" || upperSRS.substr( 0, 6 ) == "PROJCS" ) )
+        {
+            csn->setFormat( "WKT" );
+            csn->setCoordinateSystem( _srs );
+        }
+        else if ( upperSRS.length() >= 5 && ( upperSRS.substr( 0, 5 ) == "EPSG:" || upperSRS.substr( 0, 6 ) == "OSGEO:" ) )
+        {
+            csn->setFormat( "PROJ4" );
+            csn->setCoordinateSystem( "init=" + _srs );
+        }
+        else
+        {
+            // unknown/unsupported format
+            csn->setFormat( "UNKNOWN" );
+            csn->setCoordinateSystem( _srs );
+        }
+    }
+}
+
 bool TileGridProfile::operator == (const TileGridProfile& rhs) const
 {
     if (this == &rhs) return true;

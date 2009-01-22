@@ -21,6 +21,7 @@
 #define OSGEARTH_TILE_GRID_PROFILE_H 1
 
 #include <osgEarth/Common>
+#include <osg/CoordinateSystemNode>
 
 namespace osgEarth
 {
@@ -70,6 +71,12 @@ namespace osgEarth
 
         bool operator == (const TileGridProfile& rhs) const;
         bool operator != (const TileGridProfile& rhs) const;
+
+        /**
+         * Applies this profile's format and coordinate system strings to the
+         * provided CSN.
+         */
+        void applyTo( osg::CoordinateSystemNode* csn ) const;
 
     private:
         double xmin, ymin, xmax, ymax;

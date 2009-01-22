@@ -277,18 +277,24 @@ osg::CoordinateSystemNode*
 ProjectedTileBuilder::createCoordinateSystemNode() const
 {
     osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+
+    // OSG wants a null ellipsoid for projected datasets...
     csn->setEllipsoidModel( NULL );
-    if (_dataProfile.profileType() == TileGridProfile::GLOBAL_GEODETIC ||
-        _dataProfile.profileType() == TileGridProfile::GLOBAL_MERCATOR)
-    {   
-        csn->setCoordinateSystem( "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0" );
-        csn->setFormat( "PROJ4" );
-    }
-    else
-    {
-        //TODO:  Set format
-        csn->setCoordinateSystem( _dataProfile.srs() );
-    }
+
+    _dataProfile.applyTo( csn );
+
+    //if (_dataProfile.profileType() == TileGridProfile::GLOBAL_GEODETIC ||
+    //    _dataProfile.profileType() == TileGridProfile::GLOBAL_MERCATOR)
+    //{   
+    //    csn->setCoordinateSystem( "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0" );
+    //    csn->setFormat( "PROJ4" );
+    //}
+    //else
+    //{
+    //    //TODO:  Set format
+    //    csn->setCoordinateSystem( _dataProfile.srs() );
+    //}
+
     return csn;
 }
 

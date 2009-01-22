@@ -109,12 +109,15 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         }
     }
 
+
+    bool hasElevation = false;
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
         hf = heightfield_sources[0]->createHeightField(key);
+        if (hf.valid()) hasElevation = true;
     }
 
 
@@ -174,6 +177,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             }
             else
             {
+                hasElevation = true;
                 osg::notify(osg::INFO) << "Interpolated heightfield TileKey " << key->str() << std::endl;
             }
         }
@@ -208,9 +212,12 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     tile->setRequiresNormals( true );
     tile->setTileID(key->getTileId());
 
-    //Attach an updatecallback to normalize the edges of TerrainTiles.
-    tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
-    tile->setDataVariance(osg::Object::DYNAMIC);
+    if (hasElevation && map->getNormalizeEdges())
+    {
+        //Attach an updatecallback to normalize the edges of TerrainTiles.
+        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
+        tile->setDataVariance(osg::Object::DYNAMIC);
+    }
 
     //Assign the terrain system to the TerrainTile
     tile->setTerrain( terrain.get() );

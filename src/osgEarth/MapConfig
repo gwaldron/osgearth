@@ -159,18 +159,18 @@ namespace osgEarth
         const SourceConfigList& getHeightFieldSources() const;
         
         /**
-        *Sets the skirt ratio to be used when creating height field tiles
-        *
-        *@param skirtRatio
-        *      The skirt ratio; default = 0.02
-        */
+         *Sets the skirt ratio to be used when creating height field tiles
+         *
+         *@param skirtRatio
+         *      The skirt ratio; default = 0.02
+         */
         void setSkirtRatio(const float _skirt_ratio) { skirt_ratio = _skirt_ratio; }
         
         /**
-        *Gets the skirt ratio to be used when creating height field tiles
-        *
-        *@return The skirt ratio
-        */
+         *Gets the skirt ratio to be used when creating height field tiles
+         *
+         *@return The skirt ratio
+         */
         float getSkirtRatio() const { return skirt_ratio; }
 
         void setProxyHost( const std::string& host );
@@ -225,14 +225,24 @@ namespace osgEarth
         *@param cacheOnly
         *       Whether or not the map should be only off of the cache.
         */
-        void setCacheOnly(const bool &cacheOnly);
+        void setCacheOnly(bool cacheOnly);
 
         /*
         *Gets whether or not the map should be run exclusively off of the cache.        
         *@returns
         *       Whether or not the map should be run in "offline" mode
         */
-        const bool getCacheOnly() const;
+        bool getCacheOnly() const;
+
+        /**
+         *Gets whether or not to normalize terrain tile edges
+         */
+        bool getNormalizeEdges() const;
+
+        /**
+         *Sets whether or not to normalize terrain tile edges
+         */
+        void setNormalizeEdges(bool normalizeEdges);
 
         /*
         *Sets the absolute filename that the map was loaded from
@@ -281,6 +291,7 @@ namespace osgEarth
         std::string profile;
 
         bool cache_only;
+        bool normalize_edges;
 
         osg::ref_ptr<CacheConfig> cache_config;
     };

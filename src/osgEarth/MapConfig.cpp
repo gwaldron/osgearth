@@ -39,6 +39,7 @@ MapConfig::MapConfig()
     north_cap_color = osg::Vec4ub(2,5,20,255);
     south_cap_color = osg::Vec4ub(255,255,255,255);
     cache_only = false;
+    normalize_edges = true;
     filename = "";
     profile = "";
 }
@@ -177,12 +178,12 @@ MapConfig::getSouthCapColor() const
 }
 
 void
-MapConfig::setCacheOnly(const bool &cacheOnly)
+MapConfig::setCacheOnly(bool cacheOnly)
 {
     cache_only = cacheOnly;
 }
 
-const bool
+bool
 MapConfig::getCacheOnly() const
 
 {
@@ -211,6 +212,20 @@ MapConfig::setCacheConfig(CacheConfig* cacheConfig)
 {
     cache_config = cacheConfig;
 }
+
+
+bool
+MapConfig::getNormalizeEdges() const
+{
+    return normalize_edges;
+}
+
+void
+MapConfig::setNormalizeEdges(bool normalizeEdges)
+{
+    normalize_edges = normalizeEdges;
+}
+
 
 
 /************************************************************************/
@@ -319,6 +334,7 @@ const CacheProperties& CacheConfig::getProperties() const
 #define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
 #define ELEM_CACHE_ONLY        "cache_only"
 #define ELEM_PROFILE           "profile"
+#define ELEM_NORMALIZE_EDGES   "normalize_edges"
 
 #define ELEM_CACHE             "cache"
 #define ATTR_TYPE              "type"
@@ -444,8 +460,15 @@ readMap( XmlElement* e_map )
     std::string cache_only = e_map->getSubElementText(ELEM_CACHE_ONLY);
     if (cache_only == "true")
         map->setCacheOnly(true);
-    else
+    else if (cache_only == "false")
         map->setCacheOnly(false);
+
+    std::string normalizeEdges = e_map->getSubElementText(ELEM_NORMALIZE_EDGES);
+    if (normalizeEdges == "true")
+        map->setNormalizeEdges(true);
+    else if (normalizeEdges == "false")
+        map->setNormalizeEdges(false);
+
 
 
 
@@ -519,8 +542,9 @@ mapToXmlDocument( const MapConfig *map)
     }
     e_map->getAttrs()[ATTR_CSTYPE] = cs;
 
-    //Write out the connection status
     e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map->getCacheOnly()));
+    e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(map->getNormalizeEdges()));
+
 
     e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map->getVerticalScale() ) );
     e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map->getMinTileRangeFactor() ) );

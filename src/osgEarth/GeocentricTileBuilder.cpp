@@ -217,12 +217,15 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         }
     }
 
+    bool hasElevation = false;
+
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
         hf = heightfield_sources[0]->createHeightField(key);
+        hasElevation = hf.valid();
     }
 
     //Determine if we've created any images
@@ -289,6 +292,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
                 //osg::Timer_t end = osg::Timer::instance()->tick();
                 //osg::notify(osg::NOTICE) << "TimeToImterpolateHeightField: " << osg::Timer::instance()->delta_m(start,end) << std::endl; 
                 osg::notify(osg::INFO) << "Interpolated heightfield TileKey " << key->str() << std::endl;
+                hasElevation = true;
             }
         }
     }
@@ -314,8 +318,11 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     tile->setTileID(key->getTileId());
 
     //Attach an updatecallback to normalize the edges of TerrainTiles.
-    tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
-    tile->setDataVariance(osg::Object::DYNAMIC);
+    if (hasElevation && map->getNormalizeEdges())
+    {
+        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
+        tile->setDataVariance(osg::Object::DYNAMIC);
+    }
 
     tile->setLocator( locator );
     tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );

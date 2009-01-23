@@ -35,6 +35,7 @@
 #include <osgTerrain/Locator>
 #include <osgTerrain/GeometryTechnique>
 #include <sstream>
+#include <string.h>
 #include <stdlib.h>
 
 using namespace osgEarth;

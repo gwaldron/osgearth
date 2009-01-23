@@ -54,7 +54,7 @@ namespace osgEarth
          *@param profile
          *       The profile for the tile
          */
-        TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, TileGridProfile profile);
+        TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, TileGridProfile profile);
 
 
         /**

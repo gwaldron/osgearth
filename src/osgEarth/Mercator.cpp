@@ -22,6 +22,7 @@
 #include <osg/Notify>
 #include <sstream>
 #include <algorithm>
+#include <string.h>
 
 using namespace osgEarth;
 

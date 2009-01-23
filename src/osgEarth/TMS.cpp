@@ -27,6 +27,7 @@
 #include <osgEarth/TMS>
 #include <osgEarth/Mercator>
 
+#include <limits.h>
 #include <iomanip>
 
 using namespace osgEarth;

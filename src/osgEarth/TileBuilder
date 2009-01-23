@@ -153,8 +153,8 @@ namespace osgEarth
 
     protected:
 
-        typedef std::pair<osg::ref_ptr<osg::Image>, osg::ref_ptr<const TileKey>> ImageTileKeyPair;
-        typedef std::pair<osg::ref_ptr<osg::HeightField>, osg::ref_ptr<const TileKey>> HeightFieldTileKeyPair;
+        typedef std::pair<osg::ref_ptr<osg::Image>, osg::ref_ptr<const TileKey> > ImageTileKeyPair;
+        typedef std::pair<osg::ref_ptr<osg::HeightField>, osg::ref_ptr<const TileKey> > HeightFieldTileKeyPair;
         typedef std::vector<ImageTileKeyPair> ImageTileList;
 
         osg::HeightField* createValidHeightField(TileSource* tileSource, const TileKey *key);

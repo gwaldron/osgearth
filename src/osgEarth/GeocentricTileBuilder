@@ -26,25 +26,35 @@
 
 namespace osgEarth
 {
-    // note: package internal; do not export
+    /**
+     * A TileBuilder that generates geocentric (round-earth/global) scene graph components.
+     *
+     * This is a internal class - do not export
+     */
     class GeocentricTileBuilder : public TileBuilder
     {
     public:
+        /**
+         * Constructs a new geocentric tile builder
+         */
         GeocentricTileBuilder( 
             MapConfig* map, 
             const std::string& url_template,
             const osgDB::ReaderWriter::Options* options =NULL);
         
-    protected:
+    protected: // TileBuilder interface
+
         bool addChildren( osg::Group* parent, const TileKey* key );
 
         osg::Node* createQuadrant( const TileKey* key );
 
+        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+
+    private:
+        
+        // Creates a polar geometry cap.
         osg::Node* createCap(const double &min_lat, const double &max_lat, const osg::Vec4ub &color);
 
-
-        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
-        //std::string getProj4String() const;
     };
 }
 

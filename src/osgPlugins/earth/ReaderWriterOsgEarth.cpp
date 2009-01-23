@@ -94,20 +94,21 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     tile_builder = TileBuilder::create( map.get(), file_name );
 
                     //Check to see that the TileBuilder is valid.
-                    if (!tile_builder->valid()) return ReadResult::FILE_NOT_HANDLED;
+                    if (!tile_builder->isValid())
+                        return ReadResult::FILE_NOT_HANDLED;
 
-                    key = tile_builder->getDataProfile().getTileKey( "" );
+                    key = tile_builder->getDataProfile().createTileKey( "" );
                     if ( key->isGeodetic() )
                     {
-                        osg::notify(osg::NOTICE) << "Geodetic" << std::endl;
+                        osg::notify(osg::INFO) << "Geodetic" << std::endl;
                     }
                     else if ( key->isMercator() )
                     {
-                        osg::notify(osg::NOTICE) << "Mercator" << std::endl;
+                        osg::notify(osg::INFO) << "Mercator" << std::endl;
                     }
                     else if ( key->isProjected() )
                     {
-                        osg::notify(osg::NOTICE) << "Projected" << std::endl;
+                        osg::notify(osg::INFO) << "Projected" << std::endl;
                     }
                 }
                 else
@@ -117,7 +118,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             }
             else
             {
-                key = tile_builder->getDataProfile().getTileKey( file_name.substr( 0, i ) );
+                key = tile_builder->getDataProfile().createTileKey( file_name.substr( 0, i ) );
             }
 
             osg::Node* node = tile_builder->createNode( key.get() );

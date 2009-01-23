@@ -27,9 +27,15 @@ namespace osgEarth
 {
     class TileKey;
 
+    /**
+     * A "profile" defines the layout of a data source. The profile conveys the
+     * spatial reference system (SRS), the geospatial extents within that SRS, and
+     * the tiling scheme.
+     */
     class OSGEARTH_EXPORT TileGridProfile
     {
     public:
+        // Built-in profile types.
         enum ProfileType
         {
             UNKNOWN,
@@ -43,13 +49,20 @@ namespace osgEarth
         TileGridProfile( ProfileType type );
 
         /**
-         * Constructs a new profile from a definition string such as "global-mercator" or
+         * Constructs a new profile from a well-known definition string such as "global-mercator" or
          * "global-geodetic".
          */
         TileGridProfile( const std::string& profile_string );
 
+        /**
+         * Constructs a new profile from geospatila extents and an SRS identifier string (such as
+         * a WKT string or an EPSG code.
+         */
         TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs );
 
+        /**
+         * Copy ctor
+         */
         TileGridProfile( const TileGridProfile& rhs );
 
         /**
@@ -57,16 +70,33 @@ namespace osgEarth
          */
         bool isValid() const;
 
+        /**
+         * Gets the extents of the profile
+         */
         double xMin() const;
         double yMin() const;
         double xMax() const;
         double yMax() const;
         
+        /**
+         * Gets the profile type
+         */
         ProfileType profileType() const;
+
+        /**
+         * Gets the spatial reference system string.
+         */
         const std::string& srs() const;
 
-        osgEarth::TileKey* getTileKey( const std::string &key ) const;
+        /**
+         * Creates and returns a new tile key, given a key string. The
+         * caller is responsible for deleting the returned object.
+         */
+        osgEarth::TileKey* createTileKey( const std::string &key ) const;
 
+        /**
+         * Deduces a profile type given an SRS string.
+         */
         static ProfileType getProfileTypeFromSRS(const std::string &srs);
 
         bool operator == (const TileGridProfile& rhs) const;

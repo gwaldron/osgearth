@@ -24,27 +24,28 @@
 
 namespace osgEarth
 {
-    /*
-    *Determines whether or not a given filename is a relative path
-    */
+    /**
+     * Determines whether a given filename is a relative path
+     */
     extern OSGEARTH_EXPORT bool isRelativePath(const std::string &fileName);
 
-    /*
-    *Gets the full path of a file relative to a file
-    *For example, getFullPath("c:\images\vacation.jpg", "..") would return "c:\images".
-    *If relativePath is an absolute path, it is returned
-    *@param relativeTo
-    *       The name of the file to make the path relative to
-    *@param relativePath
-    *       The path relative to relativeTo
-    @returns
-    *       The full path
-    */
+    /**
+     * Gets the full path of a file relative to a file
+     * For example, getFullPath("c:\images\vacation.jpg", "..") would return "c:\images".
+     * If relativePath is an absolute path, it is returned
+     *
+     * @param relativeTo
+     *       The name of the file to make the path relative to
+     * @param relativePath
+     *       The path relative to relativeTo
+     * @returns
+     *       The full path
+     */
     extern OSGEARTH_EXPORT std::string getFullPath(const std::string &relativeTo, const std::string &relativePath);
 
-    /*
-    *Gets whether or not the given path contains a zip file within the path
-    */
+    /**
+     * Gets whether or not the given path contains a zip file within the path
+     */
     extern OSGEARTH_EXPORT bool isZipPath(const std::string &path);
 }
 

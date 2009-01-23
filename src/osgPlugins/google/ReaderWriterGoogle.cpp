@@ -68,10 +68,11 @@ public:
 
     osg::Image* createImage( const TileKey* key )
     {
-        //If we are given a geodetic key, use the MercatorTileConverter to create the image
+        // If we are given a geodetic key, resample the mercator imagery. Some quality
+        // loss will result.
         if ( key->isGeodetic() )
         {
-            MercatorTileConverter converter( this );
+            MercatorToGeodeticTileConverter converter( this );
             return converter.createImage( key );
         }
 

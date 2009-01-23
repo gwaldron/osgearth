@@ -29,28 +29,15 @@
 
 namespace osgEarth
 {
-	/*
-	* Make a MatrixTransform suitable for use with a Locator object based on the given extents.
-	* Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the _inverse member isn't updated
-	* properly.  Calling Locator::setTransform works correctly.
-	*/
-	inline osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY)
-	{
-		osg::Matrixd transform;
-		transform.set(maxX-minX, 0.0,       0.0, 0.0,
-			0.0,       maxY-minY, 0.0, 0.0,
-			0.0,       0.0,       1.0, 0.0,
-			minX,      minY,      0.0, 1.0); 
-		return transform;
-	}
-
-    //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
+    /**
+     * Helper class that works around a bug in OSG pre-2.8.
+     */
     class OSGEARTH_EXPORT EarthTerrain : public osgTerrain::Terrain
     {
     public:
         virtual const char* className() const { return "EarthTerrain"; }
 
-        /** Get the TerrainTile for a given TileID.*/
+        /** Get the TerrainTile for a given TileID. */
         osgTerrain::TerrainTile* getTileOverride(const osgTerrain::TileID& tileID)
         {
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
@@ -63,38 +50,67 @@ namespace osgEarth
     };
 
 
-    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceList;
-
+    /**
+     * TileBuilder is the main workhorse in osgEarth. It generates osg Nodes for
+     * TileKeys.
+     */
     class OSGEARTH_EXPORT TileBuilder : public osg::Referenced
     {
     public:
+        /**
+         * Creates a Node from the given MapConfig.  This allows you to programatically create a
+         * MapConfig and create a paging scene graph out of it.
+         */
+        static osg::Node* readNode( MapConfig* map );
+
+
+    public:
+        /**
+         * Factory method that constructs a TileBuilder instance given a
+         * map configuration.
+         */
         static TileBuilder* create(
             MapConfig* map,
             const std::string& url_template,
             const osgDB::ReaderWriter::Options* global_options =NULL );
 
         /**
-         * Finds a created TileBuilder by it's URL template
+         * Finds a created TileBuilder based it's URL template. The system will cache TileBuilder
+         * instances based on the initial URL or load path so that the .earth plugin can operate
+         * without re-determining the map configuration each tile a new tile is requested.
          */
         static TileBuilder* getTileBuilderByUrlTemplate( const std::string &url_template );
 
         /**
-         * Creates a Node from the given MapConfig.  This allows you to programatically create a MapConfig and create a scene graph out of it.
-         * Note:  The filename of the map config will be automatically assigned in this function.
+         * Creates a node graph for a given TileKey.
          */
-        static osg::Node* readNode( MapConfig* map);
-        
         osg::Node* createNode( const TileKey* key );
 
+        /**
+         * Gets the map configuration with which this tile builder was created.
+         */
         MapConfig* getMapConfig() const;
 
-        TileSourceList &getImageSources() {return image_sources;}
-        TileSourceList &getHeightFieldSources() {return heightfield_sources;}
+        /**
+         * Gets the collection of image tile sources managed by this tile builder.
+         */
+        TileSourceList& getImageSources() {return image_sources;}
 
-        bool valid();
+        /**
+         * Gets the collection of height-field tile sources managed by thie tile builder.
+         */
+        TileSourceList& getHeightFieldSources() {return heightfield_sources;}
 
+        /**
+         * Gets whether this tile builder is legally configured.
+         */
+        bool isValid();
+
+        /**
+         * Gets the "profile" of the map created by this tile builder. The profile defines
+         * the geospatial projection, extents, and the tiling scheme.
+         */
         const TileGridProfile& getDataProfile();
-
         
 
     protected:
@@ -103,10 +119,15 @@ namespace osgEarth
             const std::string& url_template,
             const osgDB::ReaderWriter::Options* global_options );
 
+        /**
+         * Gets a pagedLOD child URI given a tile key.
+         */
         std::string createURI( const TileKey* key );
 
-        /*
-        * Adds any appropriate child nodes to the given parent group for the given TileKey
+        /**
+        * Adds any appropriate child nodes to the given parent group for the given TileKey.
+        * The implementation class must define this method.
+        *
         * @param parent
         *        The parent osg::Group to add the children to
         * @param key
@@ -115,8 +136,17 @@ namespace osgEarth
         *        True if all children were successfully added to the group, false otherwise
         */
         virtual bool addChildren( osg::Group* parent, const TileKey* key ) =0;
+
+        /**
+         * The implementation class must define this function, which creates one of
+         * a child quadrant of a tile node.
+         */
         virtual osg::Node* createQuadrant( const TileKey* key ) =0;
-        //virtual std::string getProj4String() const =0;
+
+        /**
+         * The implementing class must define this method to create a valid
+         * CoordinateSystemNode that will top the scene graph.
+         */
         virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const =0;
 
         
@@ -128,7 +158,10 @@ namespace osgEarth
         typedef std::vector<ImageTileKeyPair> ImageTileList;
 
         osg::HeightField* createValidHeightField(TileSource* tileSource, const TileKey *key);
+
         bool createValidImage(TileSource* tileSource, const TileKey *key, ImageTileKeyPair &imageTile);
+        
+	    osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
 
         TileGridProfile _dataProfile;
         bool _profileComputed;

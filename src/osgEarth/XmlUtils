@@ -28,6 +28,8 @@
 #include <map>
 #include <stack>
 
+// XML support utilites.
+
 namespace osgEarth
 {
     extern OSGEARTH_EXPORT std::string trim( const std::string& in );

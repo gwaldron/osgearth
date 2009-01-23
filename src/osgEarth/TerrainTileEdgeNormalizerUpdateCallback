@@ -41,6 +41,10 @@ namespace osgEarth
         SOUTH_WEST
     };
 
+    /**
+     * Update callback that scans adjacent tiles and adjusts the edge verts so that
+     * they match up. Helps match up mismatched elevation data at tile edges.
+     */
     class OSGEARTH_EXPORT TerrainTileEdgeNormalizerUpdateCallback : public osg::NodeCallback
     {
     public:

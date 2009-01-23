@@ -187,10 +187,11 @@ sharpen( osg::Image* input )
 /********************************************************************/
 
 
-MercatorTileConverter::MercatorTileConverter(TileSource* _source,
-                                             const osgDB::ReaderWriter::Options* options )
+MercatorToGeodeticTileConverter::MercatorToGeodeticTileConverter(
+    TileSource* _source,
+    const osgDB::ReaderWriter::Options* options )
 {
-    filter = MercatorTileConverter::FILTER_NEAREST_NEIGHBOR;
+    filter = MercatorToGeodeticTileConverter::FILTER_NEAREST_NEIGHBOR;
     source = _source;
 
     if ( options )
@@ -199,31 +200,31 @@ MercatorTileConverter::MercatorTileConverter(TileSource* _source,
         {
             std::string filter = (const char*)options->getPluginData( PROPERTY_FILTER );
             if ( filter == VALUE_FILTER_NEAREST )
-                setFilter( MercatorTileConverter::FILTER_NEAREST_NEIGHBOR );
+                setFilter( MercatorToGeodeticTileConverter::FILTER_NEAREST_NEIGHBOR );
             else if ( filter == VALUE_FILTER_LINEAR )
-                setFilter( MercatorTileConverter::FILTER_LINEAR );
+                setFilter( MercatorToGeodeticTileConverter::FILTER_LINEAR );
         }
     }
 }
 
 void
-MercatorTileConverter::setFilter( const MercatorTileConverter::Filter& _filter )
+MercatorToGeodeticTileConverter::setFilter( const MercatorToGeodeticTileConverter::Filter& _filter )
 {
     filter = _filter;
 }
 
 osg::Image*
-MercatorTileConverter::createImage( const TileKey* pc_key )
+MercatorToGeodeticTileConverter::createImage( const TileKey* geodetic_key )
 {
-    if ( !pc_key->isGeodetic() )
+    if ( !geodetic_key->isGeodetic() )
     {
-        osg::notify(osg::WARN) << "MercatorTileConverter only operates on geodetic TileKeys " << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth] MercatorToGeodeticTileConverter only operates on geodetic TileKeys " << std::endl;
     }
 
-    unsigned int lod = pc_key->getLevelOfDetail();
+    unsigned int lod = geodetic_key->getLevelOfDetail();
 
     double dst_min_lon, dst_min_lat, dst_max_lon, dst_max_lat;
-    if ( !pc_key->getGeoExtents( dst_min_lon, dst_min_lat, dst_max_lon, dst_max_lat ) )
+    if ( !geodetic_key->getGeoExtents( dst_min_lon, dst_min_lat, dst_max_lon, dst_max_lat ) )
     {
         osg::notify( osg::WARN ) << "GET EXTENTS FAILED!" << std::endl;
         return NULL;
@@ -265,7 +266,7 @@ MercatorTileConverter::createImage( const TileKey* pc_key )
 
     if ( supertile.size() > 0 )
     {
-        if ( filter == MercatorTileConverter::FILTER_LINEAR )
+        if ( filter == MercatorToGeodeticTileConverter::FILTER_LINEAR )
         {
             double dst_lat = dst_max_lat;
             double dst_lat_interval = (dst_max_lat-dst_min_lat)/(double)dst_tile->t();
@@ -294,7 +295,7 @@ MercatorTileConverter::createImage( const TileKey* pc_key )
             }
         }
 
-        else if ( filter == MercatorTileConverter::FILTER_NEAREST_NEIGHBOR )
+        else if ( filter == MercatorToGeodeticTileConverter::FILTER_NEAREST_NEIGHBOR )
         {
             // loop through all the overlapping mercator tiles, fetch each one, and copy a portion of it
             // into the destination plate carre tile image. (NOTE: tiles will only overlap in the Y 
@@ -323,7 +324,7 @@ MercatorTileConverter::createImage( const TileKey* pc_key )
     else
     {
         //No images from the source could be created, return NULL and let the image be deleted
-        osg::notify(osg::INFO) << "MercatorTileConverter:  No images could be created " << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth] MercatorToGeodeticTileConverter:  No images could be created " << std::endl;
         return NULL;
     }
 
@@ -333,9 +334,10 @@ MercatorTileConverter::createImage( const TileKey* pc_key )
 
 
 osg::HeightField*
-MercatorTileConverter::createHeightField( const TileKey* pc_key )
+MercatorToGeodeticTileConverter::createHeightField( const TileKey* pc_key )
 {
     //TODO
+    osg::notify( osg::WARN ) << "[osgEarth] MercatorToGeodeticTileConverter: heightfields not supported" << std::endl;
     return NULL;
 }
 

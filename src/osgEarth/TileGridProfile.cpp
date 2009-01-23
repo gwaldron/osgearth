@@ -139,7 +139,7 @@ TileGridProfile::profileType() const {
 }
 
 TileKey*
-TileGridProfile::getTileKey( const std::string &key ) const
+TileGridProfile::createTileKey( const std::string &key ) const
 {
     return new TileKey(key, *this);
 }

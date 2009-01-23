@@ -27,7 +27,7 @@ void CacheSeed::seed(MapConfig *map)
     //Create a TileBuilder for the map
     _tileBuilder = TileBuilder::create( map, map->getFilename() );
     
-    osg::ref_ptr<TileKey> key = _tileBuilder->getDataProfile().getTileKey( "" );
+    osg::ref_ptr<TileKey> key = _tileBuilder->getDataProfile().createTileKey( "" );
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&

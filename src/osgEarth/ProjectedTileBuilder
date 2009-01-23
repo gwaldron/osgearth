@@ -29,7 +29,7 @@ namespace osgEarth
     /**
      * This tile builder creates tiles in a flat projection.  It handles both typical projected
      * coordinate systems like UTM as well as the "Geographic" projection, which
-     * is really a single, flat Plate Carre projection in which x=long, y=lat.
+     * is really a simple flat projection in which x=long, y=lat.
      */
     class ProjectedTileBuilder : public TileBuilder
     {
@@ -39,18 +39,18 @@ namespace osgEarth
             const std::string& url_template,
             const osgDB::ReaderWriter::Options* options =NULL);
         
-    protected:
+    protected: // TileBuilder interface
+
         bool addChildren( osg::Group* parent, const TileKey* key );
 
         osg::Node* createQuadrant( const TileKey* key );
 
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
-        //std::string getProj4String() const;
 
-
-        /*
-         *Scales the given heightfield's elevation values from meters to degrees
-         *@param hf
+    protected:
+        /**
+         * Scales the given heightfield's elevation values from meters to degrees
+         * @param hf
          *     The heightfield to scale
          */
         static void scaleHeightFieldToDegrees(osg::HeightField* hf);

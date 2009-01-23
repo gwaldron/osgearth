@@ -27,10 +27,20 @@
 
 namespace osgEarth
 {
+    /**
+     * Utility class that re-interprets an image as a heightfield and vice-versa.
+     */
     class OSGEARTH_EXPORT ImageToHeightFieldConverter
     {
     public:
+        /**
+         * Converts an image to a heightfield.
+         */
         static osg::HeightField* convert(osg::Image* image, float scaleFactor = 1.0f); 
+
+        /**
+         * Converts a heightfield to an image.
+         */
         static osg::Image* convert(osg::HeightField* hf, int pixelSize = 16);
     };
 }

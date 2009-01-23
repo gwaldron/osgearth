@@ -339,6 +339,9 @@ const CacheProperties& CacheConfig::getProperties() const
 #define ELEM_CACHE             "cache"
 #define ATTR_TYPE              "type"
 
+#define VALUE_TRUE             "true"
+#define VALUE_FALSE            "false"
+
 static CacheConfig*
 readCache( XmlElement* e_cache )
 {
@@ -458,15 +461,15 @@ readMap( XmlElement* e_map )
         map->setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
 
     std::string cache_only = e_map->getSubElementText(ELEM_CACHE_ONLY);
-    if (cache_only == "true")
+    if (cache_only == VALUE_TRUE )
         map->setCacheOnly(true);
-    else if (cache_only == "false")
+    else if (cache_only == VALUE_FALSE)
         map->setCacheOnly(false);
 
     std::string normalizeEdges = e_map->getSubElementText(ELEM_NORMALIZE_EDGES);
-    if (normalizeEdges == "true")
+    if (normalizeEdges == VALUE_TRUE)
         map->setNormalizeEdges(true);
-    else if (normalizeEdges == "false")
+    else if (normalizeEdges == VALUE_FALSE)
         map->setNormalizeEdges(false);
 
 
@@ -544,7 +547,6 @@ mapToXmlDocument( const MapConfig *map)
 
     e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map->getCacheOnly()));
     e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(map->getNormalizeEdges()));
-
 
     e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map->getVerticalScale() ) );
     e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map->getMinTileRangeFactor() ) );

@@ -31,15 +31,17 @@
 #include <vector>
 
 
-
 namespace osgEarth
 {
+    /**
+     * An HTTP request for use with the HTTPClient class.
+     */
     class OSGEARTH_EXPORT HTTPRequest : public osg::Referenced
     {
     public:
         HTTPRequest( const std::string& url );
 
-        void addParameter( const std::string& name, const std::string& value ); //, ... );
+        void addParameter( const std::string& name, const std::string& value );
         void addParameter( const std::string& name, int value );
         void addParameter( const std::string& name, double value );
         
@@ -55,6 +57,10 @@ namespace osgEarth
     };
 
 
+    /**
+     * An HTTP response object for use with the HTTPClient class - supports
+     * multi-part mime responses.
+     */
     class OSGEARTH_EXPORT HTTPResponse : public osg::Referenced
     {
     public:
@@ -103,8 +109,8 @@ namespace osgEarth
 
         HTTPResponse* get( const std::string& url ) const;
 
-        /*
-         *Utility method for downloading a URL to a file
+        /**
+         * Convenience method for downloading a URL directly to a file
          */
         bool downloadFile(const std::string& url, const std::string& filename);
 

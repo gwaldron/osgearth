@@ -34,6 +34,7 @@
 
 namespace osgEarth
 {
+    // converts a string to primitive using serialization
     template<typename T> static T
     as( const std::string& str, T default_value )
     {
@@ -43,6 +44,7 @@ namespace osgEarth
         return temp;
     }
 
+    // converts a primitive to a string
     template<typename T> static std::string
     toString(const T value)
     {

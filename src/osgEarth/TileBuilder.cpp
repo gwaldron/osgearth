@@ -103,9 +103,10 @@ osg::Node* TileBuilder::readNode( MapConfig* map)
 
     //Create the TileBuilder
     TileBuilder* tileBuilder = TileBuilder::create(map, map->getFilename());
-    if (!tileBuilder->valid()) return 0;
+    if (!tileBuilder->isValid())
+        return 0;
 
-    osg::ref_ptr<TileKey> key = tileBuilder->getDataProfile().getTileKey( "" );
+    osg::ref_ptr<TileKey> key = tileBuilder->getDataProfile().createTileKey( "" );
     return tileBuilder->createNode(key.get());
 }
 
@@ -281,8 +282,24 @@ TileBuilder::getMapConfig() const
 }
 
 
+// Make a MatrixTransform suitable for use with a Locator object based on the given extents.
+// Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the
+// _inverse member isn't updated properly.  Calling Locator::setTransform works correctly.
+osg::Matrixd
+TileBuilder::getTransformFromExtents(double minX, double minY, double maxX, double maxY) const
+{
+    osg::Matrixd transform;
+    transform.set(
+        maxX-minX, 0.0,       0.0, 0.0,
+        0.0,       maxY-minY, 0.0, 0.0,
+        0.0,       0.0,       1.0, 0.0,
+        minX,      minY,      0.0, 1.0); 
+    return transform;
+}
+
+
 bool
-TileBuilder::valid()
+TileBuilder::isValid()
 {
     if (image_sources.size() == 0 && heightfield_sources.size() == 0)
     {

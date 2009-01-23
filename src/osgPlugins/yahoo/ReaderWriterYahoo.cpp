@@ -59,10 +59,12 @@ public:
 
     osg::Image* createImage( const TileKey* key )
     {
-        //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
+        // If we are given a geodetic key, convert the spherical mercator imagery to geodetic
+        // (some loss of quality will result)
+
         if ( key->isGeodetic() )
         {
-            MercatorTileConverter converter( this );
+            MercatorToGeodeticTileConverter converter( this );
             return converter.createImage(  key );
         }
 

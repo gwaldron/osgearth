@@ -32,7 +32,7 @@
 namespace osgEarth
 {
     /**
-     * Uniquely identifies a single tile on the globe.
+     * Uniquely identifies a single tile on the map, relative to a TileGridProfile.
      */
     class OSGEARTH_EXPORT TileKey : public osg::Referenced
     {

@@ -31,8 +31,8 @@
 namespace osgEarth
 {
     /**
-    * Methods for dealing with the Spherical Mercator projection.
-    */
+     * Methods for dealing with the Spherical Mercator projection.
+     */
     class OSGEARTH_EXPORT Mercator
     {
     public:
@@ -62,18 +62,30 @@ namespace osgEarth
       */
       static void latLongToMeters(const double &lat, const double &lon, double &x, double &y);
 
+      /**
+       * Converts a lat/lon location to an X and Y location for a given detail level.
+       */
       static int longLatToPixelXY(
           double lon, double lat, unsigned int lod, 
           int tile_size,
           unsigned int& out_x, unsigned int& out_y );
 
+      /** 
+       * Calculates the tile indicies for a pixel X,Y location in the mpa.
+       */
       static void pixelXYtoTileXY(
           unsigned int x, unsigned int y,
           int tile_size,
           unsigned int& out_tile_x, unsigned int& out_tile_y);
     };
 
-    class OSGEARTH_EXPORT MercatorTileConverter
+
+    /**
+     * Utility class that lets you generate geodetic tiles from a spherical mercator tile source.
+     * In other words, use this to convert mercator imagery into a geodetic projection.
+     * Some loss of image quality will occur, particularly if the source imagery includes text.
+     */
+    class OSGEARTH_EXPORT MercatorToGeodeticTileConverter
     {
     public:
         // imagery resampling filter algorithm
@@ -83,7 +95,7 @@ namespace osgEarth
         };
 
     public:
-        MercatorTileConverter( osgEarth::TileSource* source, const osgDB::ReaderWriter::Options* options =NULL );
+        MercatorToGeodeticTileConverter( osgEarth::TileSource* source, const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
          * Sets the image resampling filter to use. Default is FILTER_NEAREST_NEIGHBOR.

@@ -225,8 +225,12 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        hf = heightfield_sources[0]->createHeightField(key);
-        hasElevation = hf.valid();
+        if (key->getLevelOfDetail() >= heightfield_sources[0]->getMinLevel() &&
+            key->getLevelOfDetail() <= heightfield_sources[0]->getMaxLevel() )
+        {
+            hf = heightfield_sources[0]->createHeightField(key);
+            hasElevation = hf.valid();
+        }
     }
 
     //Determine if we've created any images
@@ -271,7 +275,9 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if (heightfield_sources.size() == 0)
+        if (heightfield_sources.size() == 0 ||
+            key->getLevelOfDetail() < heightfield_sources[0]->getMinLevel() &&
+            key->getLevelOfDetail() > heightfield_sources[0]->getMaxLevel() )
         {
             //Make any empty heightfield if no heightfield source is specified
             hf = new osg::HeightField();

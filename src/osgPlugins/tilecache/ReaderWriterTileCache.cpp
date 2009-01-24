@@ -19,7 +19,7 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
-#include <osgEarth/ImageToHeightfieldConverter>
+#include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
 
 #include <osg/Notify>

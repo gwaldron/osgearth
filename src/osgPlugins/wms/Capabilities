@@ -126,7 +126,7 @@ namespace osgEarth
         SRSList& getSpatialReferences() {return _spatialReferences;}
 
         /**A list of Layers*/
-        typedef std::vector<osg::ref_ptr<Layer>> LayerList;
+        typedef std::vector< osg::ref_ptr<Layer> > LayerList;
 
         /**
         *Gets this Layer's list of child Layers

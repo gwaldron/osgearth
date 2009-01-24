@@ -32,6 +32,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <string.h>
 
 using namespace osgEarth;
 
@@ -208,7 +209,7 @@ private:
 class ReaderWriterTMS : public osgDB::ReaderWriter
 {
 private:
-    typedef std::map<std::string,osg::ref_ptr<TileMap>> TileMapCache;
+    typedef std::map< std::string,osg::ref_ptr<TileMap> > TileMapCache;
     TileMapCache _tileMapCache;
 
 public:

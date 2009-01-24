@@ -9,8 +9,6 @@ IF(WIN32)
     ENDIF(CURL_IS_STATIC)
 ENDIF(WIN32)
 
-MESSAGE("LIBRARY_OUTPUT_PATH ${LIBRARY_OUTPUT_PATH}")
-
 SET(TARGET_SRC ReaderWriterOsgEarth.cpp )
 #### end var setup  ###
 SETUP_PLUGIN(earth)

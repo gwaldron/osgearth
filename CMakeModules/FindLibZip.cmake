@@ -24,7 +24,7 @@ FIND_PATH(LIBZIP_INCLUDE_DIR zip.h
 )
 
 FIND_LIBRARY(LIBZIP_LIBRARY 
-    NAMES libzip
+    NAMES libzip zip
     PATHS
     $ENV{LIBZIP_DIR}/lib
     $ENV{LIBZIP_DIR}

@@ -27,6 +27,7 @@
 #include <OpenThreads/ReentrantMutex>
 
 #include <sstream>
+#include <string.h>
 
 #include "zip.h"
 

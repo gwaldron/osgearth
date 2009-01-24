@@ -48,12 +48,6 @@ TileKey::str() const
     return key;
 }
 
-std::string
-TileKey::getName() const
-{
-    return str();
-}
-
 const TileGridProfile&
 TileKey::getProfile() const
 {

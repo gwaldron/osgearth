@@ -23,6 +23,10 @@
 #include <osgEarth/Common>
 #include <osg/CoordinateSystemNode>
 
+#define STR_GLOBAL_GEODETIC "global-geodetic"
+#define STR_GLOBAL_MERCATOR "global-mercator"
+#define STR_LOCAL           "local"
+
 namespace osgEarth
 {
     class TileKey;

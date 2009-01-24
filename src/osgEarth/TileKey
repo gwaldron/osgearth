@@ -56,16 +56,10 @@ namespace osgEarth
          */
         TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, TileGridProfile profile);
 
-
         /**
          * Gets the string representation of the key.
          */
         const std::string& str() const;
-
-        /**
-         * Gets the name of the key. Same as str().
-         */
-        std::string getName() const;
 
         /**
          * Gets a TileID corresponding to this key.

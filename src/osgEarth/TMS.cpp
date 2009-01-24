@@ -409,9 +409,9 @@ TileMapReaderWriter::read(std::istream &in)
     {
         //Read the profile
         std::string profile = e_tile_sets->getAttr( ATTR_PROFILE );
-        if (profile == "global-geodetic") tileMap->setProfile( TileGridProfile::GLOBAL_GEODETIC );
-        else if (profile == "global-mercator") tileMap->setProfile( TileGridProfile::GLOBAL_MERCATOR );
-        else if (profile == "local") tileMap->setProfile( TileGridProfile::PROJECTED );
+        if (profile == STR_GLOBAL_GEODETIC) tileMap->setProfile( TileGridProfile::GLOBAL_GEODETIC );
+        else if (profile == STR_GLOBAL_MERCATOR) tileMap->setProfile( TileGridProfile::GLOBAL_MERCATOR );
+        else if (profile == STR_LOCAL) tileMap->setProfile( TileGridProfile::PROJECTED );
         else tileMap->setProfile( TileGridProfile::UNKNOWN );
 
         //Read each TileSet
@@ -479,15 +479,15 @@ XmlDocument* tileMapToXmlDocument(const TileMap* tileMap)
     std::string profileString = "none";
     if (tileMap->getProfile() == TileGridProfile::GLOBAL_GEODETIC)
     {
-        profileString = "global-geodetic";
+        profileString = STR_GLOBAL_GEODETIC;
     }
     else if (tileMap->getProfile() == TileGridProfile::GLOBAL_MERCATOR)
     {
-        profileString = "global-mercator";
+        profileString = STR_GLOBAL_MERCATOR;
     }
     else if (tileMap->getProfile() == TileGridProfile::PROJECTED)
     {
-        profileString = "local";
+        profileString = STR_LOCAL;
     }
     e_tile_sets->getAttrs()[ ATTR_PROFILE ] = profileString;
 

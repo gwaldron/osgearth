@@ -60,9 +60,9 @@ TileGridProfile::TileGridProfile( double _xmin, double _ymin, double _xmax, doub
 
 TileGridProfile::TileGridProfile( const std::string& _string )
 {
-    if ( _string == "global-geodetic" )
+    if ( _string == STR_GLOBAL_GEODETIC )
         init( TileGridProfile::GLOBAL_GEODETIC );
-    else if ( _string == "global-mercator" )
+    else if ( _string == STR_GLOBAL_MERCATOR )
         init( TileGridProfile::GLOBAL_MERCATOR );
     else
         init( TileGridProfile::UNKNOWN );
@@ -187,7 +187,9 @@ TileGridProfile::applyTo( osg::CoordinateSystemNode* csn ) const
         else if ( upperSRS.length() >= 5 && ( upperSRS.substr( 0, 5 ) == "EPSG:" || upperSRS.substr( 0, 6 ) == "OSGEO:" ) )
         {
             csn->setFormat( "PROJ4" );
-            csn->setCoordinateSystem( "init=" + _srs );
+            std::string temp = _srs;
+            std::transform( temp.begin(), temp.end(), temp.begin(), tolower );
+            csn->setCoordinateSystem( "+init=" + temp );
         }
         else
         {

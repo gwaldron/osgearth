@@ -257,12 +257,12 @@ _dataProfile(TileGridProfile::UNKNOWN)
         addSources( map.get(), map->getHeightFieldSources(), heightfield_sources, url_template, options );
     }
 
-    if ( map->getProfile() == "global-mercator")
+    if ( map->getProfile() == STR_GLOBAL_MERCATOR )
     {
         osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_MERCATOR due to profile in MapConfig" << std::endl;
         _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
     }
-    else if ( map->getProfile() == "global-geodetic")
+    else if ( map->getProfile() == STR_GLOBAL_GEODETIC )
     {
         osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_GEODETIC due to profile in MapConfig" << std::endl;
         _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
@@ -272,7 +272,7 @@ _dataProfile(TileGridProfile::UNKNOWN)
 std::string
 TileBuilder::createURI( const TileKey* key )
 {
-    return key->getName() + "." + url_template;
+    return key->str() + "." + url_template;
 }
 
 MapConfig*

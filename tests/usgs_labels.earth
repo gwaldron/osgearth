@@ -1,0 +1,25 @@
+<!--
+osgEarth Sample - Labels using a Transparent WMS layer
+
+Labels in the US. You need to zoom in pretty far to see them.
+-->
+
+<map name="usgs labels" type="geocentric">
+
+    <profile>global-mercator</profile>
+    
+    <image name="imagery" driver="google">
+        <dataset>satellite</dataset>
+    </image>
+    
+    <image name="GNIS" driver="wms">
+        <url>http://imsref.cr.usgs.gov:80/wmsconnector/com.esri.wms.Esrimap/EDC_GNIS?TRANSPARENT=TRUE</url>
+        <tile_size>256</tile_size>
+        <format>png</format>
+        <layers>GNIS_PPL_250_Labels</layers>
+        <srs>epsg:54004</srs>
+        <min_level>9</min_level>
+        <cache type="none"/>
+    </image>
+        
+</map>

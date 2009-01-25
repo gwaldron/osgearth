@@ -50,11 +50,11 @@ public:
                 dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
             if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-                map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG);
+                map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
         }
 
         // validate dataset
-        if ( dataset.empty() ) dataset = "roads"; // defaul to the satellite view
+        if ( dataset.empty() ) dataset = "roads"; // default to the map view
     }
 
     osg::Image* createImage( const TileKey* key )

@@ -170,6 +170,8 @@ HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
     curl_handle = curl_easy_init();
     curl_easy_setopt( curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0" );
     curl_easy_setopt( curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
+    curl_easy_setopt( curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
+    curl_easy_setopt( curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
 
     proxy_port = 8080;
 

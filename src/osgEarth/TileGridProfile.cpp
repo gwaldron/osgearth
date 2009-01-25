@@ -165,14 +165,15 @@ TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::s
     //convert to upper case
     std::transform( upperSRS.begin(), upperSRS.end(), upperSRS.begin(), toupper );
 
-    if (upperSRS == "EPSG:4326")
+    if (upperSRS == "EPSG:4326") //TODO: add other ellipsoids
     {
         return TileGridProfile::GLOBAL_GEODETIC;
     }
-    else if ((upperSRS == "EPSG:41001") ||
+    else if ((upperSRS == "EPSG:41001")  ||
              (upperSRS == "OSGEO:41001") ||
-             (upperSRS == "EPSG:3785") ||
-             (upperSRS == "EPSG:900913"))
+             (upperSRS == "EPSG:3785")   ||
+             (upperSRS == "EPSG:900913") ||
+             (upperSRS == "EPSG:54004") )
     {
         return TileGridProfile::GLOBAL_MERCATOR;
     }

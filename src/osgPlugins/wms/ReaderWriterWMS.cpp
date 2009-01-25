@@ -34,14 +34,15 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_URL            "url"
-#define PROPERTY_LAYERS         "layers"
-#define PROPERTY_STYLE          "style"
-#define PROPERTY_FORMAT         "format"
-#define PROPERTY_TILE_SIZE     "tile_size"
-#define PROPERTY_ELEVATION_UNIT "elevation_unit"
-#define PROPERTY_SRS            "srs"
-#define PROPERTY_MAP_CONFIG     "map_config"
+#define PROPERTY_URL              "url"
+#define PROPERTY_CAPABILITIES_URL "capabilities_url"
+#define PROPERTY_LAYERS           "layers"
+#define PROPERTY_STYLE            "style"
+#define PROPERTY_FORMAT           "format"
+#define PROPERTY_TILE_SIZE        "tile_size"
+#define PROPERTY_ELEVATION_UNIT   "elevation_unit"
+#define PROPERTY_SRS              "srs"
+#define PROPERTY_MAP_CONFIG       "map_config"
 
 class WMSSource : public TileSource
 {
@@ -75,7 +76,7 @@ public:
             srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
 
         char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
-        std::string capabilitiesRequest = prefix + sep + "service=wms&version=1.1.1&request=GetCapabilities";
+        std::string capabilitiesRequest = prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
 
         //Try to read the WMS capabilities
         _capabilities = CapabilitiesReader::read(capabilitiesRequest);

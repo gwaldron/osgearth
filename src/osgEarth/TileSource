@@ -37,7 +37,6 @@
 
 namespace osgEarth
 {   
-
     /**
      * A TileSource is an object that can create image and/or heightfield tiles. Driver 
      * plugins are responsible for creating and returning a TileSource that the TileBuilder
@@ -64,7 +63,7 @@ namespace osgEarth
         virtual osg::HeightField* createHeightField( const TileKey* key );
 
         /**
-         *Gets the TileGridProfile for this TileSource
+         * Gets the TileGridProfile for this TileSource
          */
         virtual const osgEarth::TileGridProfile& getProfile() const;
 
@@ -77,22 +76,22 @@ namespace osgEarth
         /**
          * Gets the minimum level that this TileSource should be displayed at
          */
-        const unsigned int& getMinLevel() {return _minLevel;}
+        unsigned int getMinLevel() const {return _minLevel;}
 
         /**
          * Sets the minimum level that this TileSource should be display at
          */
-        void setMinLevel(unsigned int &minLevel) {_minLevel = minLevel;}
+        void setMinLevel(unsigned int minLevel) {_minLevel = minLevel;}
 
         /**
          * Gets the maximum level that this TileSource should be displayed at
          */
-        const unsigned int& getMaxLevel() {return _maxLevel;}
+        unsigned int getMaxLevel() const {return _maxLevel;}
 
         /**
          * Sets the maximum level that this TileSource should be displayed at
          */
-        void setMaxLevel(unsigned int &maxLevel) {_maxLevel = maxLevel;}
+        void setMaxLevel(unsigned int maxLevel) {_maxLevel = maxLevel;}
 
         /**
          * Gets the preferred extension for this TileSource
@@ -156,8 +155,8 @@ namespace osgEarth
         virtual void setMapConfigFilename( const std::string &mapConfigFilename ) { _mapConfigFilename = mapConfigFilename;}
 
         /**
-        *Initializes this CachedTileSource's TileMap.  This should be called after all other setup has been
-        *performed and the name of the CachedTileSource is set.
+        * Initializes this CachedTileSource's TileMap.  This should be called after all other setup has been
+        * performed and the name of the CachedTileSource is set.
         */
         virtual void initTileMap();
         

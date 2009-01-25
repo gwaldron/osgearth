@@ -188,11 +188,11 @@ sharpen( osg::Image* input )
 /********************************************************************/
 
 
-MercatorToGeodeticTileConverter::MercatorToGeodeticTileConverter(
+MercatorToGeodeticAdapter::MercatorToGeodeticAdapter(
     TileSource* _source,
     const osgDB::ReaderWriter::Options* options )
 {
-    filter = MercatorToGeodeticTileConverter::FILTER_NEAREST_NEIGHBOR;
+    filter = MercatorToGeodeticAdapter::FILTER_NEAREST_NEIGHBOR;
     source = _source;
 
     if ( options )
@@ -201,25 +201,25 @@ MercatorToGeodeticTileConverter::MercatorToGeodeticTileConverter(
         {
             std::string filter = (const char*)options->getPluginData( PROPERTY_FILTER );
             if ( filter == VALUE_FILTER_NEAREST )
-                setFilter( MercatorToGeodeticTileConverter::FILTER_NEAREST_NEIGHBOR );
+                setFilter( MercatorToGeodeticAdapter::FILTER_NEAREST_NEIGHBOR );
             else if ( filter == VALUE_FILTER_LINEAR )
-                setFilter( MercatorToGeodeticTileConverter::FILTER_LINEAR );
+                setFilter( MercatorToGeodeticAdapter::FILTER_LINEAR );
         }
     }
 }
 
 void
-MercatorToGeodeticTileConverter::setFilter( const MercatorToGeodeticTileConverter::Filter& _filter )
+MercatorToGeodeticAdapter::setFilter( const MercatorToGeodeticAdapter::Filter& _filter )
 {
     filter = _filter;
 }
 
 osg::Image*
-MercatorToGeodeticTileConverter::createImage( const TileKey* geodetic_key )
+MercatorToGeodeticAdapter::createImage( const TileKey* geodetic_key )
 {
     if ( !geodetic_key->isGeodetic() )
     {
-        osg::notify(osg::WARN) << "[osgEarth] MercatorToGeodeticTileConverter only operates on geodetic TileKeys " << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth] MercatorToGeodeticAdapter only operates on geodetic TileKeys " << std::endl;
     }
 
     unsigned int lod = geodetic_key->getLevelOfDetail();
@@ -267,7 +267,7 @@ MercatorToGeodeticTileConverter::createImage( const TileKey* geodetic_key )
 
     if ( supertile.size() > 0 )
     {
-        if ( filter == MercatorToGeodeticTileConverter::FILTER_LINEAR )
+        if ( filter == MercatorToGeodeticAdapter::FILTER_LINEAR )
         {
             double dst_lat = dst_max_lat;
             double dst_lat_interval = (dst_max_lat-dst_min_lat)/(double)dst_tile->t();
@@ -296,7 +296,7 @@ MercatorToGeodeticTileConverter::createImage( const TileKey* geodetic_key )
             }
         }
 
-        else if ( filter == MercatorToGeodeticTileConverter::FILTER_NEAREST_NEIGHBOR )
+        else if ( filter == MercatorToGeodeticAdapter::FILTER_NEAREST_NEIGHBOR )
         {
             // loop through all the overlapping mercator tiles, fetch each one, and copy a portion of it
             // into the destination plate carre tile image. (NOTE: tiles will only overlap in the Y 
@@ -325,7 +325,7 @@ MercatorToGeodeticTileConverter::createImage( const TileKey* geodetic_key )
     else
     {
         //No images from the source could be created, return NULL and let the image be deleted
-        osg::notify(osg::INFO) << "[osgEarth] MercatorToGeodeticTileConverter:  No images could be created " << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth] MercatorToGeodeticAdapter:  No images could be created " << std::endl;
         return NULL;
     }
 
@@ -335,10 +335,10 @@ MercatorToGeodeticTileConverter::createImage( const TileKey* geodetic_key )
 
 
 osg::HeightField*
-MercatorToGeodeticTileConverter::createHeightField( const TileKey* pc_key )
+MercatorToGeodeticAdapter::createHeightField( const TileKey* pc_key )
 {
     //TODO
-    osg::notify( osg::WARN ) << "[osgEarth] MercatorToGeodeticTileConverter: heightfields not supported" << std::endl;
+    osg::notify( osg::WARN ) << "[osgEarth] MercatorToGeodeticAdapter: heightfields not supported" << std::endl;
     return NULL;
 }
 

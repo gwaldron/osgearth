@@ -117,31 +117,32 @@ namespace osgEarth
          *        The native coordinates of the profile will be used for Projected profiles.
          */
         virtual bool getGeoExtents(
-            double& minx,
-            double& miny,
-            double& maxx,
-            double& maxy) const;
+            double& out_minx,
+            double& out_miny,
+            double& out_maxx,
+            double& out_maxy) const;
 
         /**
          * Gets the native extents of the tile representated by this key.
+         *
          * Note:  Geodetic profiles will be in Latitude and Longitude in degrees.
          *        Mercator profiles will be in meters.
-         *        Projected profiles will be in the incoming coordinate system.
+         *        Projected profiles will be in the incoming coordinate system's units.
          */
         virtual bool getNativeExtents(
-            double& minx,
-            double& miny,
-            double& maxx,
-            double& maxy) const;
+            double& out_minx,
+            double& out_miny,
+            double& out_maxx,
+            double& out_maxy) const;
 
         /**
          * Gets the extents of this key's tile, in pixels
          */
         virtual void getPixelExtents(
-            unsigned int& xmin,
-            unsigned int& ymin,
-            unsigned int& xmax,
-            unsigned int& ymax,
+            unsigned int& out_minx,
+            unsigned int& out_miny,
+            unsigned int& out_maxx,
+            unsigned int& out_maxy,
             const unsigned int& tile_size) const;
 
         /**
@@ -172,6 +173,7 @@ namespace osgEarth
 
         osg::ref_ptr<TileKey> subkeys[4];
     };
+
 
     class OSGEARTH_EXPORT HeightFieldExtractor : public osg::Referenced
     {

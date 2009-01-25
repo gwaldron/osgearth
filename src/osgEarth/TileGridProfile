@@ -85,7 +85,7 @@ namespace osgEarth
         /**
          * Gets the profile type
          */
-        ProfileType profileType() const;
+        ProfileType getProfileType() const;
 
         /**
          * Gets the spatial reference system string.
@@ -107,16 +107,22 @@ namespace osgEarth
         bool operator != (const TileGridProfile& rhs) const;
 
         /**
+         * Gets the number of tiles that occur at LOD 0. LOD 0 is often a special
+         * case (may be 1, 2, or 4); below that, all tiles are subdivided into 4 quadrants.
+         */
+        unsigned int getNumTilesAtLevel0() const;
+
+        /**
          * Applies this profile's format and coordinate system strings to the
          * provided CSN.
          */
         void applyTo( osg::CoordinateSystemNode* csn ) const;
 
     private:
-        double xmin, ymin, xmax, ymax;
-        
+        double _xmin, _ymin, _xmax, _ymax;        
         std::string _srs;
         ProfileType _profileType;
+        unsigned int _num_tiles_at_lod_0;
 
         void init( ProfileType );
     };

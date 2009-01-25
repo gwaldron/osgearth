@@ -229,17 +229,17 @@ TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, Ti
 
 bool TileKey::isGeodetic() const
 {
-    return profile.profileType() == TileGridProfile::GLOBAL_GEODETIC;
+    return profile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC;
 }
 
 bool TileKey::isMercator() const
 {
-    return profile.profileType() == TileGridProfile::GLOBAL_MERCATOR;
+    return profile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR;
 }
 
 bool TileKey::isProjected() const
 {
-    return profile.profileType() == TileGridProfile::PROJECTED;
+    return profile.getProfileType() == TileGridProfile::PROJECTED;
 }
 
 /************************************************************************/
@@ -316,7 +316,7 @@ osg::HeightField*
 HeightFieldExtractor::extractChild(const osgEarth::TileKey* childKey, const unsigned int &width, const unsigned int &height)
 {
     //Check to make sure the child key is a subkey of the parent
-    if ((_key->getProfile().profileType() == childKey->getProfile().profileType()) && 
+    if ((_key->getProfile().getProfileType() == childKey->getProfile().getProfileType()) && 
         (childKey->str().length() > _key->str().length()) &&
         (childKey->str().find(_key->str()) != 0))
     {

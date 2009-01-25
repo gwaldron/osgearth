@@ -20,6 +20,7 @@
 #include <osgEarth/TileBuilder>
 #include <osgEarth/GeocentricTileBuilder>
 #include <osgEarth/ProjectedTileBuilder>
+#include <osgEarth/Mercator>
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
@@ -85,14 +86,16 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
     return result;
 }
 
-TileBuilder* TileBuilder::getTileBuilderByUrlTemplate( const std::string &url_template )
+TileBuilder*
+TileBuilder::getTileBuilderByUrlTemplate( const std::string& url_template )
 {
     TileBuilderMap::const_iterator k = s_tile_builders.find( url_template );
     if (k != s_tile_builders.end()) return k->second.get();
     return 0;
 }
 
-osg::Node* TileBuilder::readNode( MapConfig* map)
+osg::Node*
+TileBuilder::readNode( MapConfig* map )
 {
     //Create a fake filename for this MapConfig by converting the pointer to a string and appending ".earth" to it.
     std::stringstream filename;
@@ -110,62 +113,70 @@ osg::Node* TileBuilder::readNode( MapConfig* map)
     return tileBuilder->createNode(key.get());
 }
 
-const TileGridProfile& TileBuilder::getDataProfile()
+const TileGridProfile&
+TileBuilder::getDataProfile() const
 {
     if (!_profileComputed)
-    {        
-        for (TileSourceList::iterator itr = image_sources.begin();
-            itr != image_sources.end();
-            )
-        {
-            if (_dataProfile.profileType() == TileGridProfile::UNKNOWN)
-            {
-                //If we don't have a valid profile yet, just set it to the first TileSource in the list
-                _dataProfile = (*itr)->getProfile();
-            }
-            else
-            {
-                if (_dataProfile != (*itr)->getProfile())
-                {
-                    //If the current profile is geodetic and the TileSource profile is Mercator, then this is a special case
-                    //and we can still use the TileSource.
-                    if (!(_dataProfile.profileType() == TileGridProfile::GLOBAL_GEODETIC &&
-                        (*itr)->getProfile().profileType() == TileGridProfile::GLOBAL_MERCATOR))
-                    {
-                        osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
-                        image_sources.erase(itr);
-                        continue;
-                    }                    
-                }
-            }
-             ++itr;
-        }
-
-        for (TileSourceList::iterator itr = heightfield_sources.begin();
-            itr != heightfield_sources.end();
-            )
-        {
-            if (_dataProfile.profileType() == TileGridProfile::UNKNOWN)
-            {
-                //If we don't have a valid profile yet, just set it to the first TileSource in the list
-                _dataProfile = (*itr)->getProfile();
-            }
-            else
-            {
-                if (_dataProfile != (*itr)->getProfile())
-                {
-                    osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
-                    heightfield_sources.erase(itr);
-                    continue;
-                }
-            }
-             ++itr;
-        }
-
-        _profileComputed = true;
+    {
+        const_cast<TileBuilder*>(this)->computeDataProfile();
     }
     return _dataProfile;
 }
+
+void
+TileBuilder::computeDataProfile()
+{
+    for (TileSourceList::iterator itr = image_sources.begin();
+        itr != image_sources.end();
+        )
+    {
+        if (_dataProfile.getProfileType() == TileGridProfile::UNKNOWN)
+        {
+            //If we don't have a valid profile yet, just set it to the first TileSource in the list
+            _dataProfile = (*itr)->getProfile();
+        }
+        else
+        {
+            if (_dataProfile != (*itr)->getProfile())
+            {
+                //If the current profile is geodetic and the TileSource profile is Mercator, then this is a special case
+                //and we can still use the TileSource.
+                if (!(_dataProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC &&
+                    (*itr)->getProfile().getProfileType() == TileGridProfile::GLOBAL_MERCATOR))
+                {
+                    osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
+                    image_sources.erase(itr);
+                    continue;
+                }                    
+            }
+        }
+         ++itr;
+    }
+
+    for (TileSourceList::iterator itr = heightfield_sources.begin();
+        itr != heightfield_sources.end();
+        )
+    {
+        if (_dataProfile.getProfileType() == TileGridProfile::UNKNOWN)
+        {
+            //If we don't have a valid profile yet, just set it to the first TileSource in the list
+            _dataProfile = (*itr)->getProfile();
+        }
+        else
+        {
+            if (_dataProfile != (*itr)->getProfile())
+            {
+                osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
+                heightfield_sources.erase(itr);
+                continue;
+            }
+        }
+         ++itr;
+    }
+
+    _profileComputed = true;
+}
+
 
 static void
 addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
@@ -232,7 +243,7 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
             }
         }
 
-        if (sourceToAdd.valid() && sourceToAdd->getProfile().profileType() != TileGridProfile::UNKNOWN)
+        if (sourceToAdd.valid() && sourceToAdd->getProfile().getProfileType() != TileGridProfile::UNKNOWN)
         {
             to.push_back( sourceToAdd.get() );
         }
@@ -299,29 +310,29 @@ TileBuilder::getTransformFromExtents(double minX, double minY, double maxX, doub
 
 
 bool
-TileBuilder::isValid()
+TileBuilder::isValid() const
 {
-    if (image_sources.size() == 0 && heightfield_sources.size() == 0)
+    if (getImageSources().size() == 0 && getHeightFieldSources().size() == 0)
     {
         osg::notify(osg::NOTICE) << "Error:  TileBuilder does not contain any image or heightfield sources." << std::endl;
         return false;
     }
 
     //Check to see if we are trying to do a Geocentric database with a Projected profile.
-    if (getDataProfile().profileType() == TileGridProfile::PROJECTED &&
+    if (getDataProfile().getProfileType() == TileGridProfile::PROJECTED &&
         map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
         osg::notify(osg::NOTICE) << "Error:  Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
         return false;
     }
 
-    if (getDataProfile().profileType() == TileGridProfile::UNKNOWN)
+    if (getDataProfile().getProfileType() == TileGridProfile::UNKNOWN)
     {
         osg::notify(osg::NOTICE) << "Error:  Unknown profile" << std::endl;
         return false;
     }
 
-    //Other cases?
+    //TODO: Other cases?
     return true;
 }
 
@@ -443,7 +454,9 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
 }
 
 bool
-TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::TileKey *key, osgEarth::TileBuilder::ImageTileKeyPair &imageTile)
+TileBuilder::createValidImage(osgEarth::TileSource* tileSource,
+                              const osgEarth::TileKey *key,
+                              osgEarth::TileBuilder::ImageTileKeyPair &imageTile)
 {
     //Try to create the image with the given key
     osg::ref_ptr<osg::Image> image = tileSource->createImage(key);
@@ -471,3 +484,92 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource, const osgEarth::
     return false;
 }
 
+TileSourceList&
+TileBuilder::getImageSources()
+{
+    return image_sources;
+}
+
+const TileSourceList&
+TileBuilder::getImageSources() const
+{
+    return image_sources;
+}
+
+TileSourceList&
+TileBuilder::getHeightFieldSources()
+{
+    return heightfield_sources;
+}
+
+const TileSourceList&
+TileBuilder::getHeightFieldSources() const
+{
+    return heightfield_sources;
+}
+
+bool
+TileBuilder::hasMoreLevels( const TileKey* key ) const
+{
+    bool more_levels = false;
+    int max_level = 0;
+
+    for( TileSourceList::const_iterator i = getImageSources().begin(); i != getImageSources().end(); i++ )
+    {
+        if ( key->getLevelOfDetail() < i->get()->getMaxLevel() )
+        {
+            more_levels = true;
+            break;
+        }
+    }
+    if ( !more_levels )
+    {
+        for( TileSourceList::const_iterator j = getHeightFieldSources().begin(); j != getHeightFieldSources().end(); j++ )
+        {
+            if ( key->getLevelOfDetail() < j->get()->getMaxLevel() )
+            {
+                more_levels = true;
+                break;
+            }
+        }
+    }
+
+    return more_levels;
+}
+
+bool
+TileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
+{
+    bool all_quadrants_created = false;
+
+    osg::ref_ptr<osg::Node> q0, q1, q2, q3;
+
+    q0 = createQuadrant( key->getSubkey(0) );
+    all_quadrants_created = q0.valid();
+
+    if ( key->getLevelOfDetail() > 0 || key->getProfile().getNumTilesAtLevel0() > 1 )
+    {
+        q1 = createQuadrant( key->getSubkey(1) );
+        all_quadrants_created = all_quadrants_created && q1.valid();
+    }
+
+    if ( key->getLevelOfDetail() > 0 || key->getProfile().getNumTilesAtLevel0() > 2 )
+    {
+        q2 = createQuadrant( key->getSubkey( 2 ));
+        q3 = createQuadrant( key->getSubkey( 3 ));
+        all_quadrants_created = all_quadrants_created && q2.valid() && q3.valid();
+    }
+
+    if (all_quadrants_created)
+    {
+        if (q0.valid()) tile_parent->addChild(q0.get());
+        if (q1.valid()) tile_parent->addChild(q1.get());
+        if (q2.valid()) tile_parent->addChild(q2.get());
+        if (q3.valid()) tile_parent->addChild(q3.get());
+    }
+    else
+    {
+        osg::notify(osg::INFO) << "Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+    }
+    return all_quadrants_created;
+}

@@ -72,7 +72,7 @@ public:
         // loss will result.
         if ( key->isGeodetic() )
         {
-            MercatorToGeodeticTileConverter converter( this );
+            MercatorToGeodeticAdapter converter( this );
             return converter.createImage( key );
         }
 

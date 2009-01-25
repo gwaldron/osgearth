@@ -119,7 +119,7 @@ public:
               osg::notify(osg::NOTICE) << url << " is global-geodetic " << std::endl;
           }
 
-          if (_profile.profileType() == TileGridProfile::UNKNOWN)
+          if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
           {
               bool isMercator = false;
               //Create a spatial reference for Spherical mercator
@@ -150,7 +150,7 @@ public:
 
           //See if we need to autowarp the file to geodetic or mercator
           TileGridProfile mapProfile(_mapConfig->getProfile());
-          if (mapProfile.profileType() == TileGridProfile::GLOBAL_GEODETIC && _profile.profileType() != TileGridProfile::GLOBAL_GEODETIC)
+          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC && _profile.getProfileType() != TileGridProfile::GLOBAL_GEODETIC)
           {
               char *wkt = NULL;
               gdRef.exportToWkt(&wkt);
@@ -159,7 +159,7 @@ public:
               osg::notify(osg::NOTICE) << "Warping " << url << " to global-geodetic " << std::endl;
               _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
           }
-          if (mapProfile.profileType() == TileGridProfile::GLOBAL_MERCATOR && _profile.profileType() != TileGridProfile::GLOBAL_MERCATOR)
+          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR && _profile.getProfileType() != TileGridProfile::GLOBAL_MERCATOR)
           {
               int epsgCodes[3] = {900913, 3785, 41001};
               bool gotProjection = false;
@@ -204,7 +204,7 @@ public:
           pixelToGeo(0.0, _warpedDS->GetRasterYSize(), _extentsMin.x(), _extentsMin.y());
           pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, _extentsMax.x(), _extentsMax.y());
 
-          if (_profile.profileType() == TileGridProfile::UNKNOWN)
+          if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
           {
               _profile = TileGridProfile(_extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y(), _warpedDS->GetProjectionRef());
               osg::notify(osg::NOTICE) << url << " is projected" << std::endl;

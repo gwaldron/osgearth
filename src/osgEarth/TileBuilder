@@ -94,23 +94,25 @@ namespace osgEarth
         /**
          * Gets the collection of image tile sources managed by this tile builder.
          */
-        TileSourceList& getImageSources() {return image_sources;}
+        TileSourceList& getImageSources();
+        const TileSourceList& getImageSources() const;
 
         /**
          * Gets the collection of height-field tile sources managed by thie tile builder.
          */
-        TileSourceList& getHeightFieldSources() {return heightfield_sources;}
+        TileSourceList& getHeightFieldSources();
+        const TileSourceList& getHeightFieldSources() const;
 
         /**
          * Gets whether this tile builder is legally configured.
          */
-        bool isValid();
+        bool isValid() const;
 
         /**
          * Gets the "profile" of the map created by this tile builder. The profile defines
          * the geospatial projection, extents, and the tiling scheme.
          */
-        const TileGridProfile& getDataProfile();
+        const TileGridProfile& getDataProfile() const;
         
 
     protected:
@@ -135,7 +137,7 @@ namespace osgEarth
         * @returns
         *        True if all children were successfully added to the group, false otherwise
         */
-        virtual bool addChildren( osg::Group* parent, const TileKey* key ) =0;
+        virtual bool addChildren( osg::Group* parent, const TileKey* key );
 
         /**
          * The implementation class must define this function, which creates one of
@@ -163,6 +165,9 @@ namespace osgEarth
         
 	    osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
 
+        // checks whether more data exists below the specified key's level of detail
+        bool hasMoreLevels( const TileKey* key ) const;
+
         TileGridProfile _dataProfile;
         bool _profileComputed;
 
@@ -172,6 +177,11 @@ namespace osgEarth
         TileSourceList heightfield_sources;
 
         osg::ref_ptr<osgEarth::EarthTerrain> terrain;
+
+    private:
+
+        void computeDataProfile();
+
     };
 };
 

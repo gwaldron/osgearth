@@ -44,37 +44,6 @@ TileBuilder( _map, _url_template, _global_options )
     //NOP
 }
 
-bool
-ProjectedTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
-{
-    osg::ref_ptr<osg::Node> q0 = createQuadrant(key->getSubkey(0));
-    osg::ref_ptr<osg::Node> q1 = createQuadrant(key->getSubkey(1));
-    osg::ref_ptr<osg::Node> q2;
-    osg::ref_ptr<osg::Node> q3;
-
-    bool allQuadrantsCreated = (q0.valid() && q1.valid());
-
-    if ( key->getLevelOfDetail() > 0 || !key->isGeodetic() )
-    {
-        q2 = createQuadrant( key->getSubkey( 2 ) );
-        q3 = createQuadrant( key->getSubkey( 3 ) );
-        allQuadrantsCreated = (allQuadrantsCreated && q2.valid() && q3.valid());
-    }
-
-    if (allQuadrantsCreated)
-    {
-        if (q0.valid()) tile_parent->addChild(q0.get());
-        if (q1.valid()) tile_parent->addChild(q1.get());
-        if (q2.valid()) tile_parent->addChild(q2.get());
-        if (q3.valid()) tile_parent->addChild(q3.get());
-    }
-    else
-    {
-        osg::notify(osg::INFO) << "Couldn't create all 4 quadrants for " << key->str() << " time to stop subdividing!" << std::endl;    
-    }
-    return allQuadrantsCreated;
-}
-
 
 osg::Node*
 ProjectedTileBuilder::createQuadrant( const TileKey* key )
@@ -116,8 +85,12 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        hf = heightfield_sources[0]->createHeightField(key);
-        if (hf.valid()) hasElevation = true;
+        if (key->getLevelOfDetail() >= heightfield_sources[0]->getMinLevel() &&
+            key->getLevelOfDetail() <= heightfield_sources[0]->getMaxLevel() )
+        {
+            hf = heightfield_sources[0]->createHeightField(key);
+            if (hf.valid()) hasElevation = true;
+        }
     }
 
 
@@ -184,14 +157,14 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if (_dataProfile.profileType() != TileGridProfile::PROJECTED)
+    if (_dataProfile.getProfileType() != TileGridProfile::PROJECTED)
     {
         scaleHeightFieldToDegrees(hf.get());
     }
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
 
-    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (_dataProfile.profileType() == TileGridProfile::PROJECTED) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
+    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (_dataProfile.getProfileType() == TileGridProfile::PROJECTED) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
     geo_locator->setCoordinateSystemType( coordinateSystem );
 	geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     
@@ -264,13 +237,25 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     //Set the skirt height of the heightfield
     hf->setSkirtHeight(radius * map->getSkirtRatio());
    
-    osg::PagedLOD* plod = new osg::PagedLOD();
-    plod->setCenter( centroid );
-    plod->addChild( tile, min_range, max_range );
-    plod->setFileName( 1, createURI( key ) );
-    plod->setRange( 1, 0.0, min_range );
+    //osg::PagedLOD* plod = new osg::PagedLOD();
+    //plod->setCenter( centroid );
+    //plod->addChild( tile, min_range, max_range );
+    //plod->setFileName( 1, createURI( key ) );
+    //plod->setRange( 1, 0.0, min_range );
 
-    return plod;
+    // see if we need to keep subdividing:
+    osg::Node* result = tile;
+    if ( hasMoreLevels( key ) )
+    {
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setCenter( centroid );
+        plod->addChild( tile, min_range, max_range );
+        plod->setFileName( 1, createURI( key ) );
+        plod->setRange( 1, 0.0, min_range );
+        result = plod;
+    }
+
+    return result;
 }
 
 osg::CoordinateSystemNode*
@@ -283,8 +268,8 @@ ProjectedTileBuilder::createCoordinateSystemNode() const
 
     _dataProfile.applyTo( csn );
 
-    //if (_dataProfile.profileType() == TileGridProfile::GLOBAL_GEODETIC ||
-    //    _dataProfile.profileType() == TileGridProfile::GLOBAL_MERCATOR)
+    //if (_dataProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC ||
+    //    _dataProfile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR)
     //{   
     //    csn->setCoordinateSystem( "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0" );
     //    csn->setFormat( "PROJ4" );

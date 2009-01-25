@@ -34,7 +34,7 @@ using namespace osgEarth;
 
 TileSource::TileSource():
 _minLevel(0),
-_maxLevel(INT_MAX)
+_maxLevel(25)
 {
 }
 
@@ -258,7 +258,7 @@ void DiskCachedTileSource::initTileMap()
             if (_tileMap.valid())
             {
                 osg::notify(osg::INFO) << "Loaded TMS file from " << getTMSPath() << std::endl;
-                if (_profile.profileType() == TileGridProfile::UNKNOWN)
+                if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
                 {
                     _profile = TileGridProfile(_tileMap->getProfile());
                 }

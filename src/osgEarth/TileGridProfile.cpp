@@ -35,11 +35,12 @@ using namespace osgEarth;
 #define GLOBAL_MERCATOR_MAX_Y 20037508.342789244
 
 TileGridProfile::TileGridProfile():
-xmin(0),
-xmax(0),
-ymin(0),
-ymax(0),
-_profileType(UNKNOWN)
+_xmin(0),
+_xmax(0),
+_ymin(0),
+_ymax(0),
+_profileType(UNKNOWN),
+_num_tiles_at_lod_0(4)
 {
 }
 
@@ -48,14 +49,15 @@ TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType)
     init( profileType );
 }
 
-TileGridProfile::TileGridProfile( double _xmin, double _ymin, double _xmax, double _ymax, const std::string& srs )
+TileGridProfile::TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs )
 {
-    xmin = _xmin;
-    ymin = _ymin;
-    xmax = _xmax;
-    ymax = _ymax;
+    _xmin = xmin;
+    _ymin = ymin;
+    _xmax = xmax;
+    _ymax = ymax;
     _profileType = PROJECTED;
-    _srs = srs;
+    _srs = srs;    
+    _num_tiles_at_lod_0 = 4;
 }
 
 TileGridProfile::TileGridProfile( const std::string& _string )
@@ -69,12 +71,13 @@ TileGridProfile::TileGridProfile( const std::string& _string )
 }
 
 TileGridProfile::TileGridProfile( const TileGridProfile& rhs )
-: xmin( rhs.xmin ),
-  ymin( rhs.ymin ),
-  xmax( rhs.xmax ),
-  ymax( rhs.ymax ),
+: _xmin( rhs._xmin ),
+  _ymin( rhs._ymin ),
+  _xmax( rhs._xmax ),
+  _ymax( rhs._ymax ),
   _profileType(rhs._profileType),
-  _srs(rhs._srs)
+  _srs(rhs._srs),
+  _num_tiles_at_lod_0( rhs._num_tiles_at_lod_0 )
 {
     //NOP
 }
@@ -88,44 +91,52 @@ TileGridProfile::isValid() const
 void
 TileGridProfile::init( TileGridProfile::ProfileType profileType )
 {
-    _profileType = profileType;
+    _profileType = profileType;    
 
     if (_profileType == GLOBAL_GEODETIC)
     {
-        xmin = GLOBAL_GEODETIC_MIN_LON;
-        xmax = GLOBAL_GEODETIC_MAX_LON;
-        ymin = GLOBAL_GEODETIC_MIN_LAT;
-        ymax = GLOBAL_GEODETIC_MAX_LAT;
+        _xmin = GLOBAL_GEODETIC_MIN_LON;
+        _xmax = GLOBAL_GEODETIC_MAX_LON;
+        _ymin = GLOBAL_GEODETIC_MIN_LAT;
+        _ymax = GLOBAL_GEODETIC_MAX_LAT;
         _srs = "EPSG:4326";
+        _num_tiles_at_lod_0 = 2;
     }
     else if (_profileType == GLOBAL_MERCATOR)
     {
-        xmin = GLOBAL_MERCATOR_MIN_X;
-        xmax = GLOBAL_MERCATOR_MAX_X;
-        ymin = GLOBAL_MERCATOR_MIN_Y;
-        ymax = GLOBAL_MERCATOR_MAX_Y;
+        _xmin = GLOBAL_MERCATOR_MIN_X;
+        _xmax = GLOBAL_MERCATOR_MAX_X;
+        _ymin = GLOBAL_MERCATOR_MIN_Y;
+        _ymax = GLOBAL_MERCATOR_MAX_Y;
         _srs = "EPSG:900913";
+        _num_tiles_at_lod_0 = 4;
     }
+}
+
+unsigned int
+TileGridProfile::getNumTilesAtLevel0() const
+{
+    return _num_tiles_at_lod_0;
 }
 
 double
 TileGridProfile::xMin() const {
-    return xmin;
+    return _xmin;
 }
 
 double
 TileGridProfile::yMin() const {
-    return ymin;
+    return _ymin;
 }
 
 double
 TileGridProfile::xMax() const {
-    return xmax;
+    return _xmax;
 }
 
 double
 TileGridProfile::yMax() const {
-    return ymax;
+    return _ymax;
 }
 
 const std::string&
@@ -134,17 +145,17 @@ TileGridProfile::srs() const {
 }
 
 TileGridProfile::ProfileType
-TileGridProfile::profileType() const {
+TileGridProfile::getProfileType() const {
     return _profileType;
 }
 
 TileKey*
-TileGridProfile::createTileKey( const std::string &key ) const
+TileGridProfile::createTileKey( const std::string& key ) const
 {
     return new TileKey(key, *this);
 }
 
-TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::string &srs)
+TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::string& srs)
 {
     //We have no SRS at all
     if (srs.empty()) return TileGridProfile::UNKNOWN;
@@ -206,10 +217,11 @@ bool TileGridProfile::operator == (const TileGridProfile& rhs) const
 
     return (_profileType == rhs._profileType &&
             _srs == rhs._srs &&
-            xmin == rhs.xmin &&
-            ymin == rhs.ymin &&
-            xmax == rhs.xmax &&
-            ymax == rhs.ymax);
+            _num_tiles_at_lod_0 == rhs._num_tiles_at_lod_0 &&
+            _xmin == rhs._xmin &&
+            _ymin == rhs._ymin &&
+            _xmax == rhs._xmax &&
+            _ymax == rhs._ymax);
 }
 
 bool TileGridProfile::operator != (const TileGridProfile& rhs) const
@@ -217,9 +229,10 @@ bool TileGridProfile::operator != (const TileGridProfile& rhs) const
     if (this == &rhs) return false;
 
         return (_profileType != rhs._profileType ||
+            _num_tiles_at_lod_0 != rhs._num_tiles_at_lod_0 ||
             _srs != rhs._srs ||
-            xmin != rhs.xmin ||
-            ymin != rhs.ymin ||
-            xmax != rhs.xmax ||
-            ymax != rhs.ymax);
+            _xmin != rhs._xmin ||
+            _ymin != rhs._ymin ||
+            _xmax != rhs._xmax ||
+            _ymax != rhs._ymax);
 }

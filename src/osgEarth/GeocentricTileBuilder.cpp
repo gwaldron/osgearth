@@ -138,7 +138,7 @@ GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, c
 bool
 GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 {
-    if (key->getLevelOfDetail() == 0)
+    if ( key->getLevelOfDetail() == 0 )
     {
         const osgEarth::TileGridProfile& profile = key->getProfile();
 
@@ -161,32 +161,7 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
         }
     }
 
-    osg::ref_ptr<osg::Node> q0 = createQuadrant(key->getSubkey(0));
-    osg::ref_ptr<osg::Node> q1 = createQuadrant(key->getSubkey(1));
-    osg::ref_ptr<osg::Node> q2;
-    osg::ref_ptr<osg::Node> q3;
-
-    bool allQuadrantsCreated = (q0.valid() && q1.valid());
-
-    if ( key->getLevelOfDetail() > 0 || key->isMercator())
-    {
-        q2 = createQuadrant( key->getSubkey( 2 ));
-        q3 = createQuadrant( key->getSubkey( 3 ));
-        allQuadrantsCreated = (allQuadrantsCreated && q2.valid() && q3.valid());
-    }
-
-    if (allQuadrantsCreated)
-    {
-        if (q0.valid()) tile_parent->addChild(q0.get());
-        if (q1.valid()) tile_parent->addChild(q1.get());
-        if (q2.valid()) tile_parent->addChild(q2.get());
-        if (q3.valid()) tile_parent->addChild(q3.get());
-    }
-    else
-    {
-        osg::notify(osg::INFO) << "Couldn't create all 4 quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
-    }
-    return allQuadrantsCreated;
+    return TileBuilder::addChildren( tile_parent, key );
 }
 
 osg::Node*
@@ -241,7 +216,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     }
 
 
-    //If we couldn't create any imagery of heightfields, bail out
+    //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0))
     {
         osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
@@ -275,9 +250,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if (heightfield_sources.size() == 0 ||
-            key->getLevelOfDetail() < heightfield_sources[0]->getMinLevel() &&
-            key->getLevelOfDetail() > heightfield_sources[0]->getMaxLevel() )
+        if (heightfield_sources.size() == 0)
         {
             //Make any empty heightfield if no heightfield source is specified
             hf = new osg::HeightField();
@@ -358,8 +331,13 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 
             // use a special image locator to warp the texture coords for mercator tiles :)
             // WARNING: TODO: this will not persist upon export....we need a nodekit.
+
+            // TODO: perhaps we can ask the key/profile to create a locator instead of explicity
+            // checking for mercator..
+
             if ( key->isMercator() )
                 img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
+
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());
 #if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
@@ -406,13 +384,23 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     ccc->set( centroid, normal, deviation, radius );
     tile->setCullCallback( ccc );
 
-    osg::PagedLOD* plod = new osg::PagedLOD();
-    plod->setCenter( centroid );
-    plod->addChild( tile, min_range, max_range );
-    plod->setFileName( 1, createURI( key ) );
-    plod->setRange( 1, 0.0, min_range );
+    // see if we need to keep subdividing:
+    osg::Node* result = tile;
+    if ( hasMoreLevels( key ) )
+    {
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setCenter( centroid );
+        plod->addChild( tile, min_range, max_range );
+        plod->setFileName( 1, createURI( key ) );
+        plod->setRange( 1, 0.0, min_range );
+        result = plod;
+    }
+    else 
+    {
+        //osg::notify(osg::NOTICE) << "[osgEarth] Stopping at level " << key->getLevelOfDetail() << std::endl;
+    }
 
-    return plod;
+    return result;
 }
 
 osg::CoordinateSystemNode*
@@ -424,9 +412,6 @@ GeocentricTileBuilder::createCoordinateSystemNode() const
     csn->setEllipsoidModel( new osg::EllipsoidModel() );
 
     _dataProfile.applyTo( csn );
-
-//    csn->setCoordinateSystem( "+init=epsg:4326" );
-//    csn->setFormat( "PROJ4" );
 
     return csn;
 }

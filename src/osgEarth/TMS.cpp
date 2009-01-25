@@ -273,9 +273,9 @@ TileMap* TileMap::create(const TileSource* tileSource)
     TileMap* tileMap = new TileMap();
 
     tileMap->setTitle( tileSource->getName() );
-    tileMap->setProfile(tileSource->getProfile().profileType());
+    tileMap->setProfile(tileSource->getProfile().getProfileType());
 
-    switch (tileSource->getProfile().profileType())
+    switch (tileSource->getProfile().getProfileType())
     {
     case TileGridProfile::GLOBAL_MERCATOR:
         tileMap->_srs = "EPSG:41001";

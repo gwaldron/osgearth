@@ -112,7 +112,7 @@ public:
                 if ( globalProfile.isValid() )
                 {
                     _profile = globalProfile;
-                    _tileMap = TileMap::create( _url, _profile.profileType(), _format, _tile_size, _tile_size );
+                    _tileMap = TileMap::create( _url, _profile.getProfileType(), _format, _tile_size, _tile_size );
                     if ( !_tileMap.valid() )
                     {
                         osg::notify(osg::NOTICE) << "TMSSource: no TileMap found, and no overrides set" << _mapConfig->getProfile() << std::endl;

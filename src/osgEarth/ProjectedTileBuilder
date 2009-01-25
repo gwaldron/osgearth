@@ -41,7 +41,7 @@ namespace osgEarth
         
     protected: // TileBuilder interface
 
-        bool addChildren( osg::Group* parent, const TileKey* key );
+        //bool addChildren( osg::Group* parent, const TileKey* key );
 
         osg::Node* createQuadrant( const TileKey* key );
 

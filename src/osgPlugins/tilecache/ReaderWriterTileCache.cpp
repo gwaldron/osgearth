@@ -61,7 +61,7 @@ public:
         }
 
         _profile = TileGridProfile(map_config->getProfile());
-        if (_profile.profileType() == TileGridProfile::UNKNOWN)
+        if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
         {
             //Set the profile to global geodetic if there is no override
             _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);

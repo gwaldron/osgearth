@@ -628,7 +628,7 @@ MapConfigReaderWriter::readXml( const std::string& location )
         {
             filename = osgDB::getRealPath( location );
         }
-        map->setFilename( location );
+        map->setFilename( filename );
     }
     return map;
 }

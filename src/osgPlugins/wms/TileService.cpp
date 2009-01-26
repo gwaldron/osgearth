@@ -311,7 +311,7 @@ TileServiceReader::read(std::istream &in)
         return 0;
     }
 
-    addTilePatterns(e_tiledPatterns, tileService.get());
+    addTilePatterns(e_tiledPatterns.get(), tileService.get());
 
     osg::notify(osg::INFO) << "Returning TileService with " << tileService->getPatterns().size() << " patterns " << std::endl;
     return tileService.release();

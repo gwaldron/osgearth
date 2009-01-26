@@ -79,15 +79,15 @@ public:
         std::string capabilitiesRequest = prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
 
         //Try to read the WMS capabilities
-        _capabilities = CapabilitiesReader::read(capabilitiesRequest);
+        capabilities = CapabilitiesReader::read(capabilitiesRequest);
 
 
-        if (_capabilities.valid())
+        if (capabilities.valid())
         {
             osg::notify(osg::INFO) << "Got capabilities from " << capabilitiesRequest << std::endl;
             if (format.empty())
             {
-                format = _capabilities->suggestExtension();
+                format = capabilities->suggestExtension();
                 osg::notify(osg::NOTICE) << "No format specified, capabilities suggested extension " << format << std::endl;
             }
         }
@@ -109,13 +109,15 @@ public:
             elevation_unit = "m";
         }
 
-
-
         //Set the profile based on on the SRS
-        _profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));
+        profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));
     }
 
-public:
+    const TileGridProfile& getProfile() const
+    {
+        return profile;
+    }
+
     osg::Image* createImage( const TileKey* key )
     {
         std::string uri = createURI( key );
@@ -143,7 +145,6 @@ public:
     std::string createURI( const TileKey* key ) const
     {
         double minx, miny, maxx, maxy;
-
 
         key->getNativeExtents( minx, miny, maxx, maxy);
 
@@ -186,14 +187,11 @@ private:
     std::string style;
     std::string format;
     std::string srs;
-
 	int tile_size;
-
-    const MapConfig *map_config;
-
+    const MapConfig* map_config;
     std::string elevation_unit;
-
-    osg::ref_ptr<Capabilities> _capabilities;
+    osg::ref_ptr<Capabilities> capabilities;
+    TileGridProfile profile;
 };
 
 

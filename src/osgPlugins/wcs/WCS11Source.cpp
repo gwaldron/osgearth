@@ -19,6 +19,7 @@
 
 #include "WCS11Source.h"
 #include <osgEarth/HTTPClient>
+#include <osgEarth/ImageToHeightFieldConverter>
 #include <osg/Notify>
 #include <osgDB/Registry>
 #include <iostream>
@@ -26,28 +27,68 @@
 
 using namespace osgEarth;
 
-WCS11Source::WCS11Source()
+#define PROPERTY_MAP_CONFIG     "map_config"
+#define PROPERTY_URL            "url"
+#define PROPERTY_IDENTIFIER     "identifier"
+#define PROPERTY_FORMAT         "format"
+#define PROPERTY_ELEVATION_UNIT "elevation_unit"
+#define PROPERTY_TILE_SIZE      "tile_size"
+#define PROPERTY_SRS            "srs"
+
+WCS11Source::WCS11Source( const osgDB::ReaderWriter::Options* options ) :
+tile_size(16),
+map_config(0),
+profile( TileGridProfile::GLOBAL_GEODETIC )
 {
-    //prefix     = "http://192.168.0.101/cgi-bin/mapserv?map=/var/www/maps/srtm.map";
+    if ( options->getPluginData( PROPERTY_MAP_CONFIG ))
+         map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
 
-    std::string host = "192.168.0.101";
-    if ( ::getenv( "OSGEARTH_HOST" ) )
-        host = std::string( ::getenv( "OSGEARTH_HOST" ) );
+    if ( options->getPluginData( PROPERTY_URL ) )
+        url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
-    std::stringstream buf;
-    buf << "http://" << host << "/cgi-bin/mapserv";
-    prefix     = buf.str();
+    if ( options->getPluginData( PROPERTY_IDENTIFIER ) )
+        identifier = std::string( (const char*)options->getPluginData( PROPERTY_IDENTIFIER ) );
 
-    map_file   = "/var/www/maps/srtm.map";
-    coverage   = "srtm";
-    cov_format = "GEOTIFFINT16";
-    osg_format = "tif";
+    if ( options->getPluginData( PROPERTY_FORMAT ) )
+        cov_format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+
+    if ( options->getPluginData( PROPERTY_ELEVATION_UNIT ) )
+         elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
+
+    if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
+        tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 32 );
+
+    if ( options->getPluginData( PROPERTY_SRS ) )
+        srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
+
+    //TODO: Read GetCapabilities and determine everything from that..
+
+
+    //std::string host = "192.168.0.101";
+    //if ( ::getenv( "OSGEARTH_HOST" ) )
+    //    host = std::string( ::getenv( "OSGEARTH_HOST" ) );
+
+    //std::stringstream buf;
+    //buf << "http://" << host << "/cgi-bin/mapserv";
+    //prefix     = buf.str();
+
+    //map_file   = "/var/www/maps/srtm.map";
+    //coverage   = "srtm";
+    //cov_format = "GEOTIFFINT16";
+    //osg_format = "tif";
+}
+
+const TileGridProfile&
+WCS11Source::getProfile() const
+{
+    return profile;
 }
 
 osg::Image*
 WCS11Source::createImage( const TileKey* key)
 {
     //NYI
+    osg::notify( osg::WARN ) << "[osgEarth] [WCS11] images are not yet supported by the WCS driver." << std::endl;
     return 0;
 }
 
@@ -56,10 +97,10 @@ osg::HeightField*
 WCS11Source::createHeightField( const TileKey* key )
 {
     osg::ref_ptr<HTTPRequest> request = createRequest( key );
-    //std::string uri = createURI( key );
 
     double lon0,lat0,lon1,lat1;
-    key->getGeoExtents(lon0,lat0,lon1,lat1);
+    key->getGeoExtents( lon0, lat0, lon1, lat1 );
+
     //osg::notify(osg::NOTICE) << "TILE: " << key.str() 
     //    << " (" <<lon0<<","<<lat0<<" => "<<lon1<<","<<lat1<<")"<< std::endl;
     //osg::notify(osg::NOTICE) << "URL: " << request->getURL() << std::endl;
@@ -69,7 +110,7 @@ WCS11Source::createHeightField( const TileKey* key )
     osg::ref_ptr<HTTPResponse> response = client.get( request.get() );
     if ( !response.valid() )
     {
-        osg::notify(osg::NOTICE) << "[WCS11] WARNING: HTTP request failed" << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth] [WCS11]: WARNING: HTTP request failed" << std::endl;
         return NULL;
     }
 
@@ -83,44 +124,38 @@ WCS11Source::createHeightField( const TileKey* key )
 
     if ( !reader )
     {
-        osg::notify(osg::NOTICE) << "[WCS11] WARNING: no reader for \"tiff\"" << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth] [WCS11] WARNING: no reader for \"tiff\"" << std::endl;
         return NULL;
     }
 
     osgDB::ReaderWriter::ReadResult result = reader->readImage( input_stream );
     if ( !result.success() )
     {
-        osg::notify(osg::NOTICE) << "[WCS11] WARNING: readImage() failed for Reader " << reader->getName() << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth] [WCS11] WARNING: readImage() failed for Reader " << reader->getName() << std::endl;
         return NULL;
     }
 
     osg::ref_ptr<osg::Image> image = result.getImage();
-
-//    osg::ref_ptr<osg::Image> image = osgDB::readImageFile( uri );
     if ( image.valid() )
     {
-        field = new osg::HeightField();
-        field->allocate( image->s(), image->t() );
+        field = ImageToHeightFieldConverter::convert( image.get() );
 
-        float vert_exag = 1.0f;
+        //field = new osg::HeightField();
+        //field->allocate( image->s(), image->t() );
+        //for( unsigned int row=0; row < image->t(); row++ ) {
+        //    for( unsigned int col=0; col < image->s(); col++ ) {
+        //        unsigned char* ptr = image->data( col, row );
+        //        if ( image->getPixelSizeInBits() == 16 ) {
+        //            short val = (short)*(short*)ptr;
+        //            field->setHeight( col, row, (float)val );
+        //        }
+        //        else if ( image->getPixelSizeInBits() == 32 ) {
+        //            float val = (float)*(float*)ptr;
+        //            field->setHeight( col, row, val );
+        //        }
+        //    }
+        //}
 
-        for( unsigned int row=0; row < image->t(); row++ ) {
-            //osg::notify(osg::NOTICE) << "ROW " << row << ":\t";
-            for( unsigned int col=0; col < image->s(); col++ ) {
-                unsigned char* ptr = image->data( col, row );
-                if ( image->getPixelSizeInBits() == 16 ) {
-                    short val = (short)*(short*)ptr;
-                    field->setHeight( col, row, vert_exag * (float)val );
-              //      osg::notify(osg::NOTICE) << val << "\t";
-                }
-                else if ( image->getPixelSizeInBits() == 32 ) {
-                    float val = (float)*(float*)ptr;
-                    field->setHeight( col, row, vert_exag * val );
-                }
-            }
-            //osg::notify(osg::NOTICE) << std::endl;
-        }
-        //osg::notify(osg::NOTICE) << std::endl;
     }
 
     return field;
@@ -134,34 +169,35 @@ WCS11Source::createRequest( const TileKey* key ) const
     double lon_min, lat_min, lon_max, lat_max;
     key->getGeoExtents( lon_min, lat_min, lon_max, lat_max );
 
-    int lon_samples = 8;
-    int lat_samples = 8;
+    int lon_samples = tile_size;
+    int lat_samples = tile_size;
     double lon_interval = (lon_max-lon_min)/(double)(lon_samples-1);
     double lat_interval = (lat_max-lat_min)/(double)(lat_samples-1);
 
-    HTTPRequest* req = new HTTPRequest( prefix );
+    HTTPRequest* req = new HTTPRequest( url );
 
-    req->addParameter( "map", map_file );
-    req->addParameter( "SERVICE", "WCS" );
-    req->addParameter( "VERSION", "1.1.0" );
-    req->addParameter( "REQUEST", "GetCoverage" );
-    req->addParameter( "IDENTIFIER", coverage );
-    req->addParameter( "FORMAT", cov_format );
-    req->addParameter( "WIDTH", lon_samples );
-    req->addParameter( "HEIGHT", lat_samples );
+    //req->addParameter( "map", map_file );
+    req->addParameter( "SERVICE",    "WCS" );
+    req->addParameter( "VERSION",    "1.1.0" );
+    req->addParameter( "REQUEST",    "GetCoverage" );
+    req->addParameter( "IDENTIFIER", identifier );
+    req->addParameter( "FORMAT",     cov_format );
+    req->addParameter( "WIDTH",      lon_samples );
+    req->addParameter( "HEIGHT",     lat_samples );
 
     buf.str("");
     buf << lat_min << "," << lon_min << "," << lat_max << "," << lon_max << ",urn:ogc:def:crs:EPSG::4326";
     req->addParameter( "BOUNDINGBOX", buf.str() );
 
-    buf.str("");
-    buf << lon_min << "," << lat_min;
+    //buf.str("");
+    //buf << lon_min << "," << lat_min;
     //req->addParameter( "GRIDORIGIN", buf.str() );
 
-    buf.str("");
-    buf << lon_interval << "," << lat_interval;
+    //buf.str("");
+    //buf << lon_interval << "," << lat_interval;
     //req->addParameter( "GRIDOFFSETS", buf.str() );
 
+    //TODO: un-hard-code this
     req->addParameter( "GRIDCS", "urn:ogc:def:crs:EPSG::4326" );
     req->addParameter( "GRIDTYPE", "urn:ogc:def:method:WCS:1.1:2dGridIn2dCrs" );
 

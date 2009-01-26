@@ -42,7 +42,8 @@ class TileServiceSource : public TileSource
 {
 public:
 	TileServiceSource( const osgDB::ReaderWriter::Options* options ):
-      _mapConfig(0)
+    _mapConfig(0),
+    _profile( TileGridProfile::GLOBAL_GEODETIC )
     {
         if ( options->getPluginData( PROPERTY_URL ) )
             _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
@@ -58,8 +59,12 @@ public:
 
          if ( _format.empty() )
             _format = "png";
+    }
 
-         _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+public:
+    const TileGridProfile& getProfile() const
+    {
+        return _profile;
     }
 
 public:
@@ -108,6 +113,7 @@ private:
     std::string _url;
     std::string _dataset;
     std::string _format;
+    TileGridProfile _profile;
     const MapConfig *_mapConfig;
 };
 

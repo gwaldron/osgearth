@@ -40,11 +40,9 @@ class GoogleSource : public TileSource
 public:
     GoogleSource( const osgDB::ReaderWriter::Options* _options ) :
       options( _options ),
-      map_config(0)
+      map_config(0),
+      profile( TileGridProfile::GLOBAL_MERCATOR )
     {
-        //Set the profile to global mercator
-        _profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
-
         if ( options.valid() )
         {
             if ( options->getPluginData( PROPERTY_DATASET ) )
@@ -64,6 +62,11 @@ public:
 
         // validate dataset
         if ( dataset.empty() ) dataset = "satellite"; // defaul to the satellite view
+    }
+
+    const TileGridProfile& getProfile() const
+    {
+        return profile;
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -194,7 +197,8 @@ private:
     std::string dataset;
     std::string version;
     std::string language;
-    const MapConfig *map_config;
+    TileGridProfile profile;
+    const MapConfig* map_config;
 };
 
 

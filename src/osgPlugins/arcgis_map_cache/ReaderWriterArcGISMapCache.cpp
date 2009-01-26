@@ -47,7 +47,7 @@ public:
     {
         //Set the profile to global geodetic.
         //TODO: read the conf.xml file on the server and decide based on that.
-        _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+        profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
 
         if ( options.valid() )
         {
@@ -76,6 +76,11 @@ public:
         // validate dataset
         if ( layer.empty() ) layer = "_alllayers"; // default to the AGS "fused view"
         if ( format.empty() ) format = "png";
+    }
+
+    const TileGridProfile& getProfile() const
+    {
+        return profile;
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -122,6 +127,7 @@ private:
     std::string map;
     std::string layer;
     std::string format;
+    TileGridProfile profile;
 
     const MapConfig* map_config;
 };

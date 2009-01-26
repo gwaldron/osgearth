@@ -20,11 +20,13 @@
 #ifndef OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_
 #define OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_ 1
 
+#include <osgEarth/MapConfig>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>
 #include <osgEarth/HTTPClient>
 #include <osg/Image>
 #include <osg/Shape>
+#include <osgDB/ReaderWriter>
 #include <string>
 
 using namespace osgEarth;
@@ -32,13 +34,25 @@ using namespace osgEarth;
 class WCS11Source : public TileSource
 {
 public:
-    WCS11Source();
+    WCS11Source( const osgDB::ReaderWriter::Options* options );
     
     osg::Image* createImage( const TileKey* key );
     osg::HeightField* createHeightField( const TileKey* key );
 
+public: // TileSource interface
+
+    const osgEarth::TileGridProfile& getProfile() const;
+
 private:
-    std::string prefix, map_file, coverage, cov_format, osg_format;
+    std::string url;
+    std::string identifier;
+    std::string cov_format;
+    std::string osg_format;
+    std::string srs;
+    std::string elevation_unit;
+    int         tile_size;
+    osg::ref_ptr<const MapConfig> map_config;
+    TileGridProfile profile;
 
     HTTPRequest* createRequest( const TileKey* key ) const;
 };

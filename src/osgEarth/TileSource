@@ -65,7 +65,7 @@ namespace osgEarth
         /**
          * Gets the TileGridProfile for this TileSource
          */
-        virtual const osgEarth::TileGridProfile& getProfile() const;
+        virtual const osgEarth::TileGridProfile& getProfile() const =0;
 
         /**
          * Gets the number of pixels per tile for this TileSource.  Defaults to 256
@@ -106,7 +106,6 @@ namespace osgEarth
     
     protected:
         virtual ~TileSource();
-        TileGridProfile _profile;
 
         unsigned int _minLevel;
         unsigned int _maxLevel;
@@ -159,7 +158,12 @@ namespace osgEarth
         * performed and the name of the CachedTileSource is set.
         */
         virtual void initTileMap();
+
+    public: // TileSource interface
+
+        virtual const osgEarth::TileGridProfile& getProfile() const;
         
+
     protected:
         /**
         * Gets an image from the cache for the given key.  Should be implemented by subclasses
@@ -174,6 +178,7 @@ namespace osgEarth
         osg::ref_ptr<TileMap> _tileMap;
         osg::ref_ptr<TileSource> _tileSource;
         std::string _mapConfigFilename;
+        TileGridProfile _profile;
     };
 
 

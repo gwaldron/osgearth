@@ -42,11 +42,11 @@ TileSource::~TileSource()
 {
 }
 
-const osgEarth::TileGridProfile&
-TileSource::getProfile() const
-{
-    return _profile;
-}
+//const osgEarth::TileGridProfile&
+//TileSource::getProfile() const
+//{
+//    return _profile;
+//}
 
 #define PROPERTY_MIN_LEVEL "min_level"
 #define PROPERTY_MAX_LEVEL "max_level"
@@ -82,6 +82,12 @@ _tileSource(tileSource)
     {
         _profile = _tileSource->getProfile();
     }
+}
+
+const osgEarth::TileGridProfile&
+CachedTileSource::getProfile() const
+{
+    return _profile;
 }
 
 osg::Image* CachedTileSource::createImage( const TileKey* key )

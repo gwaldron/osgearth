@@ -104,7 +104,8 @@ std::string Capabilities::suggestExtension()
     return ext;
 }
 
-Layer* Capabilities::getLayerByName(const std::string &name)
+Layer*
+Capabilities::getLayerByName(const std::string &name)
 {
     return ::getLayerByName(name, _layers);
 }

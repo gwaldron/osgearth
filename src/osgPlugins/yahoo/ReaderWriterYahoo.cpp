@@ -37,13 +37,11 @@ using namespace osgEarth;
 class YahooSource : public TileSource
 {
 public:
-    YahooSource( const osgDB::ReaderWriter::Options* _options ) :
-      options( _options ),
-      map_config(0)
+    YahooSource( const osgDB::ReaderWriter::Options* in_options ) :
+      options( in_options ),
+      map_config(0),
+      profile( TileGridProfile::GLOBAL_MERCATOR )
     {
-        //Set the profile to global mercator
-        _profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
-
         if ( options.valid() )
         {
             if ( options->getPluginData( PROPERTY_DATASET ) )
@@ -55,6 +53,11 @@ public:
 
         // validate dataset
         if ( dataset.empty() ) dataset = "roads"; // default to the map view
+    }
+
+    const TileGridProfile& getProfile() const
+    {
+        return profile;
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -109,7 +112,8 @@ public:
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
-        //TODO
+        //NI
+        osg::notify(osg::WARN) << "[osgEarth] [Yahoo] Driver does not support heightfields" << std::endl;
         return NULL;
     }
 
@@ -122,7 +126,7 @@ public:
 private:
     osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
     std::string dataset;
-
+    TileGridProfile profile;
     const MapConfig* map_config;
 };
 

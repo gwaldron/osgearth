@@ -52,8 +52,8 @@ class GDALTileSource : public TileSource
 public:
     GDALTileSource(const osgDB::ReaderWriter::Options* options):
       tile_size(256),
-          _srcDS(NULL),
-          _warpedDS(NULL)
+      srcDS(NULL),
+      warpedDS(NULL)
       {
           static bool s_gdal_registered = false;
           if (!s_gdal_registered)
@@ -69,7 +69,7 @@ public:
               tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
 
           if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-                _mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
+              mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
 
           if (url.empty())
           {
@@ -81,21 +81,21 @@ public:
 
           //Find the full path to the URL
           //If we have a relative path and the map file contains a server address, just concat the server path and the url together
-          if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(_mapConfig->getFilename()))
+          if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(mapConfig->getFilename()))
           {
-              path = osgDB::getFilePath(_mapConfig->getFilename()) + "/" + path;
+              path = osgDB::getFilePath(mapConfig->getFilename()) + "/" + path;
           }
 
           //If the path doesn't contain a server address, get the full path to the file.
           if (!osgDB::containsServerAddress(path))
           {
-              path = osgEarth::getFullPath(_mapConfig->getFilename(), path);
+              path = osgEarth::getFullPath(mapConfig->getFilename(), path);
           }
 
 
           //Open the dataset
-          _srcDS = (GDALDataset*)GDALOpen( path.c_str(), GA_ReadOnly );
-          if (!_srcDS )
+          srcDS = (GDALDataset*)GDALOpen( path.c_str(), GA_ReadOnly );
+          if ( !srcDS )
           {
               osg::notify(osg::NOTICE) << "Failed to open dataset " << path << std::endl;
               return;
@@ -103,8 +103,8 @@ public:
 
           //Create a spatial reference for the source.
           OGRSpatialReference srcRef;
-          std::string src_wkt = _srcDS->GetProjectionRef();
-          char* importString = strdup(_srcDS->GetProjectionRef());
+          std::string src_wkt = srcDS->GetProjectionRef();
+          char* importString = strdup(srcDS->GetProjectionRef());
           srcRef.importFromWkt(&importString);
           free(importString);
 
@@ -115,11 +115,11 @@ public:
           //Try to determine if the profile is Geodetic
           if (gdRef.IsSame(&srcRef))
           {
-              _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+              profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
               osg::notify(osg::NOTICE) << url << " is global-geodetic " << std::endl;
           }
 
-          if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
+          if (profile.getProfileType() == TileGridProfile::UNKNOWN)
           {
               bool isMercator = false;
               //Create a spatial reference for Spherical mercator
@@ -141,7 +141,7 @@ public:
 
               if (isMercator)
               {
-                  _profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+                  profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
                   osg::notify(osg::NOTICE) << url << " is global-mercator" << std::endl;
               }
           }
@@ -149,17 +149,17 @@ public:
           std::string t_srs;
 
           //See if we need to autowarp the file to geodetic or mercator
-          TileGridProfile mapProfile(_mapConfig->getProfile());
-          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC && _profile.getProfileType() != TileGridProfile::GLOBAL_GEODETIC)
+          TileGridProfile mapProfile(mapConfig->getProfile());
+          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC && profile.getProfileType() != TileGridProfile::GLOBAL_GEODETIC)
           {
               char *wkt = NULL;
               gdRef.exportToWkt(&wkt);
               t_srs = wkt;
               OGRFree(wkt);
               osg::notify(osg::NOTICE) << "Warping " << url << " to global-geodetic " << std::endl;
-              _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+              profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
           }
-          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR && _profile.getProfileType() != TileGridProfile::GLOBAL_MERCATOR)
+          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR && profile.getProfileType() != TileGridProfile::GLOBAL_MERCATOR)
           {
               int epsgCodes[3] = {900913, 3785, 41001};
               bool gotProjection = false;
@@ -179,7 +179,7 @@ public:
                   t_srs = wkt;
                   OGRFree(wkt);
                   osg::notify(osg::NOTICE) << "Warping " << url << " to global-mercator " << std::endl;
-                  _profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+                  profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
               }
               else
               {
@@ -190,23 +190,23 @@ public:
           if (!t_srs.empty())
           {
             //Create a warped VRT going from the source projection to the destination projection.
-            _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(_srcDS, src_wkt.c_str(), t_srs.c_str(), GRA_NearestNeighbour, 5.0, NULL);
+            warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(srcDS, src_wkt.c_str(), t_srs.c_str(), GRA_NearestNeighbour, 5.0, NULL);
           }
           else
           {
-              _warpedDS = _srcDS;
+              warpedDS = srcDS;
           }
           
           //Get the geotransform
-          _warpedDS->GetGeoTransform(_geotransform);
+          warpedDS->GetGeoTransform(geotransform);
 
           //Compute the extents
-          pixelToGeo(0.0, _warpedDS->GetRasterYSize(), _extentsMin.x(), _extentsMin.y());
-          pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, _extentsMax.x(), _extentsMax.y());
+          pixelToGeo(0.0, warpedDS->GetRasterYSize(), extentsMin.x(), extentsMin.y());
+          pixelToGeo(warpedDS->GetRasterXSize(), 0.0, extentsMax.x(), extentsMax.y());
 
-          if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
+          if (profile.getProfileType() == TileGridProfile::UNKNOWN)
           {
-              _profile = TileGridProfile(_extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y(), _warpedDS->GetProjectionRef());
+              profile = TileGridProfile(extentsMin.x(), extentsMin.y(), extentsMax.x(), extentsMax.y(), warpedDS->GetProjectionRef());
               osg::notify(osg::NOTICE) << url << " is projected" << std::endl;
           }
 
@@ -216,12 +216,17 @@ public:
 
       ~GDALTileSource()
       {
-          if (_warpedDS != _srcDS)
+          if (warpedDS != srcDS)
           {
-              delete _warpedDS;
+              delete warpedDS;
           }
           //Close the datasets if it exists
-          if (_srcDS) delete _srcDS;
+          if (srcDS) delete srcDS;
+      }
+
+      const TileGridProfile& getProfile() const
+      {
+          return profile;
       }
 
       /**
@@ -238,8 +243,8 @@ public:
 
       void pixelToGeo(double x, double y, double &geoX, double &geoY)
       {
-          geoX = _geotransform[0] + _geotransform[1] * x + _geotransform[2] * y;
-          geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
+          geoX = geotransform[0] + geotransform[1] * x + geotransform[2] * y;
+          geoY = geotransform[3] + geotransform[4] * x + geotransform[5] * y;
       }
 
       osg::Image* createImage( const TileKey* key )
@@ -258,16 +263,16 @@ public:
               int tile_offset_left = 0;
               int tile_offset_top = 0;
 
-              int off_x = int((xmin - _geotransform[0]) / _geotransform[1]);
-              int off_y = int((ymax - _geotransform[3]) / _geotransform[5]);
-              int width = int(((xmax - _geotransform[0]) / _geotransform[1]) - off_x);
-              int height = int(((ymin - _geotransform[3]) / _geotransform[5]) - off_y);
+              int off_x = int((xmin - geotransform[0]) / geotransform[1]);
+              int off_y = int((ymax - geotransform[3]) / geotransform[5]);
+              int width = int(((xmax - geotransform[0]) / geotransform[1]) - off_x);
+              int height = int(((ymin - geotransform[3]) / geotransform[5]) - off_y);
 
-              if (off_x + width > _warpedDS->GetRasterXSize())
+              if (off_x + width > warpedDS->GetRasterXSize())
               {
-                  int oversize_right = off_x + width - _warpedDS->GetRasterXSize();
+                  int oversize_right = off_x + width - warpedDS->GetRasterXSize();
                   target_width = target_width - int(float(oversize_right) / width * target_width);
-                  width = _warpedDS->GetRasterXSize() - off_x;
+                  width = warpedDS->GetRasterXSize() - off_x;
               }
 
               if (off_x < 0)
@@ -279,11 +284,11 @@ public:
                   off_x = 0;
               }
 
-              if (off_y + height > _warpedDS->GetRasterYSize())
+              if (off_y + height > warpedDS->GetRasterYSize())
               {
-                  int oversize_bottom = off_y + height - _warpedDS->GetRasterYSize();
+                  int oversize_bottom = off_y + height - warpedDS->GetRasterYSize();
                   target_height = target_height - osg::round(float(oversize_bottom) / height * target_height);
-                  height = _warpedDS->GetRasterYSize() - off_y;
+                  height = warpedDS->GetRasterYSize() - off_y;
               }
 
 
@@ -296,10 +301,10 @@ public:
                   off_y = 0;
               }
 
-              GDALRasterBand* bandRed = findBand(_warpedDS, GCI_RedBand);
-              GDALRasterBand* bandGreen = findBand(_warpedDS, GCI_GreenBand);
-              GDALRasterBand* bandBlue = findBand(_warpedDS, GCI_BlueBand);
-              GDALRasterBand* bandAlpha = findBand(_warpedDS, GCI_AlphaBand);
+              GDALRasterBand* bandRed = findBand(warpedDS, GCI_RedBand);
+              GDALRasterBand* bandGreen = findBand(warpedDS, GCI_GreenBand);
+              GDALRasterBand* bandBlue = findBand(warpedDS, GCI_BlueBand);
+              GDALRasterBand* bandAlpha = findBand(warpedDS, GCI_AlphaBand);
 
               if (bandRed && bandGreen && bandBlue)
               {
@@ -385,16 +390,16 @@ public:
               int tile_offset_left = 0;
               int tile_offset_top = 0;
 
-              int off_x = int((xmin - _geotransform[0]) / _geotransform[1]);
-              int off_y = int((ymax - _geotransform[3]) / _geotransform[5]);
-              int width = int(((xmax - _geotransform[0]) / _geotransform[1]) - off_x);
-              int height = int(((ymin - _geotransform[3]) / _geotransform[5]) - off_y);
+              int off_x = int((xmin - geotransform[0]) / geotransform[1]);
+              int off_y = int((ymax - geotransform[3]) / geotransform[5]);
+              int width = int(((xmax - geotransform[0]) / geotransform[1]) - off_x);
+              int height = int(((ymin - geotransform[3]) / geotransform[5]) - off_y);
 
-              if (off_x + width > _warpedDS->GetRasterXSize())
+              if (off_x + width > warpedDS->GetRasterXSize())
               {
-                  int oversize_right = off_x + width - _warpedDS->GetRasterXSize();
+                  int oversize_right = off_x + width - warpedDS->GetRasterXSize();
                   target_width = target_width - int(float(oversize_right) / width * target_width);
-                  width = _warpedDS->GetRasterXSize() - off_x;
+                  width = warpedDS->GetRasterXSize() - off_x;
               }
 
               if (off_x < 0)
@@ -406,11 +411,11 @@ public:
                   off_x = 0;
               }
 
-              if (off_y + height > _warpedDS->GetRasterYSize())
+              if (off_y + height > warpedDS->GetRasterYSize())
               {
-                  int oversize_bottom = off_y + height - _warpedDS->GetRasterYSize();
+                  int oversize_bottom = off_y + height - warpedDS->GetRasterYSize();
                   target_height = target_height - osg::round(float(oversize_bottom) / height * target_height);
-                  height = _warpedDS->GetRasterYSize() - off_y;
+                  height = warpedDS->GetRasterYSize() - off_y;
               }
 
 
@@ -425,7 +430,7 @@ public:
 
 
               //Just read from the first band
-              GDALRasterBand* band = _warpedDS->GetRasterBand(1);
+              GDALRasterBand* band = warpedDS->GetRasterBand(1);
 
               float *data = new float[target_width * target_height];
 
@@ -470,8 +475,8 @@ public:
           double xmin, ymin, xmax, ymax;
           key->getNativeExtents(xmin, ymin, xmax, ymax);
 
-          return  osg::maximum(_extentsMin.x(), xmin) <= osg::minimum(_extentsMax.x(),xmax) &&
-                  osg::maximum(_extentsMin.y(), ymin) <= osg::minimum(_extentsMax.y(),ymax);
+          return  osg::maximum(extentsMin.x(), xmin) <= osg::minimum(extentsMax.x(), xmax) &&
+                  osg::maximum(extentsMin.y(), ymin) <= osg::minimum(extentsMax.y(), ymax);
       }
 
 
@@ -479,17 +484,18 @@ public:
 
 private:
 
-    GDALDataset* _srcDS;
-    GDALDataset* _warpedDS;
-    double _geotransform[6];
+    GDALDataset* srcDS;
+    GDALDataset* warpedDS;
+    double       geotransform[6];
 
-    osg::Vec2d _extentsMin;
-    osg::Vec2d _extentsMax;
+    osg::Vec2d extentsMin;
+    osg::Vec2d extentsMax;
 
-    std::string url;
-    int tile_size;
+    std::string     url;
+    int             tile_size;
+    TileGridProfile profile;
 
-    const MapConfig* _mapConfig;
+    const MapConfig* mapConfig;
 };
 
 

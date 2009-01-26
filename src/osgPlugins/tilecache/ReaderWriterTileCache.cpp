@@ -60,12 +60,18 @@ public:
                 map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
         }
 
-        _profile = TileGridProfile(map_config->getProfile());
-        if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
+        profile = TileGridProfile( map_config->getProfile() );
+
+        if (profile.getProfileType() == TileGridProfile::UNKNOWN)
         {
             //Set the profile to global geodetic if there is no override
-            _profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+            profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
         }
+    }
+
+    const TileGridProfile& getProfile() const
+    {
+      return profile;
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -117,6 +123,7 @@ private:
     std::string url;
     std::string layer;
     std::string format;
+    TileGridProfile profile;
     const MapConfig* map_config;
 };
 

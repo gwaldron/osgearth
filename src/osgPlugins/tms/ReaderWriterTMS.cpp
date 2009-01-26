@@ -145,6 +145,11 @@ public:
         }
     }
 
+    const TileGridProfile& getProfile() const
+    {
+        return _profile;
+    }
+
     osg::Image* createImage(const osgEarth::TileKey *key)
     {
         if (_tileMap.valid())
@@ -193,6 +198,7 @@ public:
 
 private:
 
+    TileGridProfile _profile;
     osg::ref_ptr<TileMap> _tileMap;
     const MapConfig *_mapConfig;
     std::string _url;

@@ -23,7 +23,7 @@
 using namespace osgEarth;
 
 TileKey::TileKey() :
-profile( TileGridProfile( 0, 0, 256, 256, "" ) )
+profile( TileGridProfile::UNKNOWN )
 {
     //NOP
 }

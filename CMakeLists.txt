@@ -184,6 +184,16 @@ ELSE (DYNAMIC_OSGEARTH)
     SET(OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC "STATIC")
 ENDIF(DYNAMIC_OSGEARTH)
 
+#Whether or not to copy osgEarth to the OSG_DIR during installation
+# Dynamic vs Static Linking
+OPTION(INSTALL_TO_OSG_DIR "Set to ON to install osgearth to the path defined in the OSG_DIR" OFF)
+IF(INSTALL_TO_OSG_DIR)
+    SET(OSGEARTH_INSTALL_TO_OSG_DIR TRUE)
+ELSE (INSTALL_TO_OSG_DIR)
+    SET(OSGEARTH_INSTALL_TO_OSG_DIR FALSE)
+ENDIF(INSTALL_TO_OSG_DIR)
+
+
 INCLUDE(OsgEarthMacroUtils)
 
 # OE Core

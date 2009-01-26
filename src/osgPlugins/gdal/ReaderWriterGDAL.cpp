@@ -136,7 +136,7 @@ public:
 
               if (!isMercator)
               {
-                  mercRef.importFromEPSG(3785);
+                  mercRef.importFromEPSG(54004);
                   isMercator = mercRef.IsSame(&srcRef) ? true : false;
               }
 
@@ -207,7 +207,7 @@ public:
 
           if (profile.getProfileType() == TileGridProfile::UNKNOWN)
           {
-              profile = TileGridProfile(extentsMin.x(), extentsMin.y(), extentsMax.x(), extentsMax.y(), warpedDS->GetProjectionRef());
+              profile = TileGridProfile(TileGridProfile::PROJECTED, extentsMin.x(), extentsMin.y(), extentsMax.x(), extentsMax.y(), warpedDS->GetProjectionRef());
               osg::notify(osg::NOTICE) << url << " is projected" << std::endl;
           }
 

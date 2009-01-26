@@ -140,17 +140,11 @@ TileBuilder::computeDataProfile()
         }
         else
         {
-            if (_dataProfile != (*itr)->getProfile())
+            if (!_dataProfile.isCompatible((*itr)->getProfile()))
             {
-                //If the current profile is geodetic and the TileSource profile is Mercator, then this is a special case
-                //and we can still use the TileSource.
-                if (!(_dataProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC &&
-                    (*itr)->getProfile().getProfileType() == TileGridProfile::GLOBAL_MERCATOR))
-                {
                     osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
                     image_sources.erase(itr);
                     continue;
-                }                    
             }
         }
          ++itr;
@@ -167,7 +161,7 @@ TileBuilder::computeDataProfile()
         }
         else
         {
-            if (_dataProfile != (*itr)->getProfile())
+            if (!_dataProfile.isCompatible((*itr)->getProfile()))
             {
                 osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
                 heightfield_sources.erase(itr);

@@ -59,10 +59,10 @@ namespace osgEarth
         TileGridProfile( const std::string& profile_string );
 
         /**
-         * Constructs a new profile from geospatila extents and an SRS identifier string (such as
+         * Constructs a new profile from geospatil extents and an SRS identifier string (such as
          * a WKT string or an EPSG code.
          */
-        TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs );
+        TileGridProfile( ProfileType profileType, double xmin, double ymin, double xmax, double ymax, const std::string& srs );
 
         /**
          * Copy ctor
@@ -117,6 +117,21 @@ namespace osgEarth
          * provided CSN.
          */
         void applyTo( osg::CoordinateSystemNode* csn ) const;
+
+        /**
+         *Gets whether or not the TileGridProfile is compatible with the given profile.
+         */
+        bool isCompatible(const TileGridProfile& rhs) const;
+
+        /**
+         *Gets the tile dimensions at the given lod.
+         */
+        void getTileDimensions(unsigned int lod, double &width, double &height) const;
+
+        /**
+         *Gets the intersecting tiles of this TileGridProfile with the given TileKey.
+         */
+        void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey>> &intersectingKeys) const;
 
     private:
         double _xmin, _ymin, _xmax, _ymax;        

@@ -139,7 +139,7 @@ public:
                     double minX, minY, maxX, maxY;
                     _tileMap->getExtents(minX, minY, maxX, maxY);
                     //If the source is projected, then specify the bounds
-                    _profile = TileGridProfile(minX, minY, maxX, maxY, _tileMap->getSRS());
+                    _profile = TileGridProfile(TileGridProfile::PROJECTED, minX, minY, maxX, maxY, _tileMap->getSRS());
                 }
             }
         }

@@ -31,6 +31,7 @@
 #include <iomanip>
 
 #include "Capabilities"
+#include "TileService"
 
 using namespace osgEarth;
 
@@ -75,6 +76,12 @@ public:
         if ( options->getPluginData( PROPERTY_SRS ) )
             srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
 
+        if ( elevation_unit.empty())
+        {
+            elevation_unit = "m";
+        }
+
+
         char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
         std::string capabilitiesRequest = prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
 
@@ -99,18 +106,54 @@ public:
         if ( format.empty() )
             format = "png";
 
+        //Initialize the WMS request prototype
+        std::stringstream buf;
+        buf
+            << std::fixed << prefix << sep
+            << "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
+            << "&LAYERS=" << layers
+            << "&FORMAT=image/" << format
+            << "&STYLES=" << style
+            << "&SRS=" << srs
+            << "&WIDTH="<< tile_size
+            << "&HEIGHT="<< tile_size
+            << "&BBOX=%lf,%lf,%lf,%lf";
+        prototype = buf.str();
+        
         if ( srs.empty() )
         {
             srs = "EPSG:4326";
         }
 
-        if ( elevation_unit.empty())
+        //Initialize the profile to the SRS
+        profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));
+
+        
+        //Try to read the TileService
+        std::string tileServiceRequest = prefix + sep + "request=GetTileService";
+        //osg::notify(osg::NOTICE) << "TileService URL " << tileServiceRequest << std::endl;
+        tileService = TileServiceReader::read(tileServiceRequest);
+        if (tileService.valid())
         {
-            elevation_unit = "m";
+            //osg::notify(osg::NOTICE) << "Read TileService " << std::endl;
+            TileService::TilePatternList patterns;
+            tileService->getMatchingPatterns(layers, format, style, srs, tile_size, tile_size, patterns);
+
+            if (patterns.size() > 0)
+            {
+                profile = TileService::getProfile(patterns);
+                prototype = prefix + sep + patterns[0].getPrototype();
+            }
+        }
+        else
+        {
+            osg::notify(osg::INFO) << "Could not read TileService " << std::endl;
         }
 
-        //Set the profile based on on the SRS
-        profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));
+        prototype = prototype + "&." + format;
+
+
+        //osg::notify(osg::NOTICE) << "Prototype = " << prototype << std::endl;
     }
 
     const TileGridProfile& getProfile() const
@@ -145,30 +188,11 @@ public:
     std::string createURI( const TileKey* key ) const
     {
         double minx, miny, maxx, maxy;
-
         key->getNativeExtents( minx, miny, maxx, maxy);
-
         // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
-
-        // build the WMS request:
-        char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
-
-        std::stringstream buf;
-        buf
-            << std::fixed << prefix << sep
-            << "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
-            << "&LAYERS=" << layers
-            << "&FORMAT=image/" << format
-            << "&STYLES=" << style
-            << "&SRS=" << srs
-            << "&WIDTH="<< tile_size
-            << "&HEIGHT="<< tile_size
-            << "&BBOX=" << minx << "," << miny << "," << maxx << "," << maxy;
-
-        // add this to trick OSG into using the right image loader:
-        buf << "&." << format;
-
-        return buf.str();
+        char buf[2048];
+        sprintf(buf, prototype.c_str(), minx, miny, maxx, maxy);
+        return buf;
     }
 
     virtual int getPixelsPerTile() const
@@ -191,7 +215,9 @@ private:
     const MapConfig* map_config;
     std::string elevation_unit;
     osg::ref_ptr<Capabilities> capabilities;
+    osg::ref_ptr<TileService> tileService;
     TileGridProfile profile;
+    std::string prototype;
 };
 
 

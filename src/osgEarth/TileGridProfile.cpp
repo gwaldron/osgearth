@@ -19,6 +19,7 @@
 
 #include <osgEarth/TileGridProfile>
 #include <osgEarth/Mercator>
+#include <osgDB/FileNameUtils>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -49,13 +50,13 @@ TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType)
     init( profileType );
 }
 
-TileGridProfile::TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs )
+TileGridProfile::TileGridProfile( ProfileType profileType, double xmin, double ymin, double xmax, double ymax, const std::string& srs )
 {
     _xmin = xmin;
     _ymin = ymin;
     _xmax = xmax;
     _ymax = ymax;
-    _profileType = PROJECTED;
+    _profileType = profileType;
     _srs = srs;    
     _num_tiles_at_lod_0 = 4;
 }
@@ -236,4 +237,96 @@ bool TileGridProfile::operator != (const TileGridProfile& rhs) const
             _ymin != rhs._ymin ||
             _xmax != rhs._xmax ||
             _ymax != rhs._ymax);
+}
+
+bool TileGridProfile::isCompatible(const TileGridProfile& rhs) const
+{
+    //Check the case where the profile type and the SRS is exactly the same.
+    if ((_profileType == rhs._profileType) && (osgDB::equalCaseInsensitive(_srs, rhs._srs)))
+    {
+        return true;
+    }
+
+    //Check the special case where we have both mercator and geodetic profiles
+    if (((_profileType == GLOBAL_GEODETIC) && (rhs._profileType == GLOBAL_MERCATOR)) ||
+       ((_profileType == GLOBAL_MERCATOR) && (rhs._profileType == GLOBAL_GEODETIC)))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+void TileGridProfile::getTileDimensions(unsigned int lod, double &width, double &height) const
+{
+    width  = (_xmax - _xmin);
+    height = (_ymax - _ymin);
+
+    for (unsigned int i = 0; i < lod; ++i)
+    {
+        width /= 2.0;
+        height /= 2.0;
+    }
+}
+
+void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey>> &intersectingKeys) const
+{
+    //TODO:  Handle mixing geodetic and mercator tiles
+
+    //Clear the incoming list
+    intersectingKeys.clear();
+
+    //If the profiles are exactly equal, just add the given tile key.
+    if (key->getProfile() == *this)
+    {
+        intersectingKeys.push_back(key);
+        return;
+    }
+
+    if (!isCompatible(key->getProfile()))
+    {
+        osg::notify(osg::NOTICE) << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
+    }
+
+    double keyMinX, keyMinY, keyMaxX, keyMaxY;
+    key->getGeoExtents(keyMinX, keyMinY, keyMaxX, keyMaxY);
+
+    double keyWidth = keyMaxX - keyMinX;
+    double keyHeight = keyMaxY - keyMinY;
+
+    double keyArea = keyWidth * keyHeight;
+
+    int destLOD = -1;
+    double destTileWidth, destTileHeight;
+
+    int currLOD = 0;
+    //Find the lod that most closely matches the incoming tile's LOD
+    while (destLOD < 0)
+    {
+        getTileDimensions(currLOD, destTileWidth,destTileHeight);
+        //osg::notify(osg::NOTICE) << currLOD << "(" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+        double a = destTileWidth * destTileHeight;
+        if (a <= keyArea)
+        {
+            destLOD = currLOD;
+        }
+        currLOD++;
+    }
+
+    //osg::notify(osg::NOTICE) << "Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+    //osg::notify(osg::NOTICE) << "Dest Tiles: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+
+    int tileMinX = (int)floor(keyMinX - _xmin) / destTileWidth;
+    int tileMaxX = (int)ceil(keyMaxX - _xmin) / destTileWidth;
+
+    int tileMinY = (int)floor(_ymax - keyMaxY) / destTileHeight; 
+    int tileMaxY = (int)ceil(_ymax - keyMinY) / destTileHeight; 
+
+    for (int i = tileMinX; i <= tileMaxX; ++i)
+    {
+        for (int j = tileMinY; j <= tileMaxY; ++j)
+        {
+            intersectingKeys.push_back(new TileKey(i, j, destLOD, *this));
+        }
+    }
 }

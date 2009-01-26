@@ -38,9 +38,11 @@
 
 using namespace osgEarth;
 
-//Store a static list of all the TileBuilder's that have been created.
-typedef std::map<std::string, osg::ref_ptr<TileBuilder> > TileBuilderMap;
-static TileBuilderMap s_tile_builders;
+TileBuilder::TileBuilderMap& TileBuilder::getCache()
+{
+  static std::map< std::string, osg::ref_ptr< TileBuilder > > s_cache;
+  return s_cache;
+}
 
 TileBuilder*
 TileBuilder::create( MapConfig* map, const std::string& url_template, const osgDB::ReaderWriter::Options* options )
@@ -81,7 +83,8 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
     }
 
     //Cache the tile builder
-    s_tile_builders[url_template] = result;
+    static TileBuilderMap s_tile_builders;
+    getCache()[url_template] = result;
 
     return result;
 }
@@ -89,8 +92,8 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
 TileBuilder*
 TileBuilder::getTileBuilderByUrlTemplate( const std::string& url_template )
 {
-    TileBuilderMap::const_iterator k = s_tile_builders.find( url_template );
-    if (k != s_tile_builders.end()) return k->second.get();
+    TileBuilderMap::const_iterator k = getCache().find( url_template );
+    if (k != getCache().end()) return k->second.get();
     return 0;
 }
 

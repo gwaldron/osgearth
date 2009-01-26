@@ -151,6 +151,10 @@ namespace osgEarth
          */
         virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const =0;
 
+        /**Store a static list of all the TileBuilder's that have been created*/
+        typedef std::map<std::string, osg::ref_ptr<TileBuilder> > TileBuilderMap;
+        static TileBuilderMap& getCache();
+
         
 
     protected:

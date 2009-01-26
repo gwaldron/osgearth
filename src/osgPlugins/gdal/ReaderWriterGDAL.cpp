@@ -104,9 +104,10 @@ public:
           //Create a spatial reference for the source.
           OGRSpatialReference srcRef;
           std::string src_wkt = srcDS->GetProjectionRef();
-          char* importString = strdup(srcDS->GetProjectionRef());
+          char* projection_string = strdup(src_wkt.c_str());
+          char* importString = projection_string;
           srcRef.importFromWkt(&importString);
-          free(importString);
+          free(projection_string);
 
           //Create a spatial reference for Geodetic
           OGRSpatialReference gdRef;

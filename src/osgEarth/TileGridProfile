@@ -131,7 +131,7 @@ namespace osgEarth
         /**
          *Gets the intersecting tiles of this TileGridProfile with the given TileKey.
          */
-        void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey>> &intersectingKeys) const;
+        void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> > &intersectingKeys) const;
 
     private:
         double _xmin, _ymin, _xmax, _ymax;        

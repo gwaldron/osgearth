@@ -269,7 +269,7 @@ void TileGridProfile::getTileDimensions(unsigned int lod, double &width, double 
     }
 }
 
-void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey>> &intersectingKeys) const
+void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> > &intersectingKeys) const
 {
     //TODO:  Handle mixing geodetic and mercator tiles
 

@@ -174,18 +174,8 @@ TileBuilder::computeDataProfile()
     _profileComputed = true;
 }
 
-
-static void
-addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
-           std::vector< osg::ref_ptr<TileSource> >& to,
-           const std::string& url_template,
-           const osgDB::ReaderWriter::Options* global_options)
-{        
-
-    for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
-    {
-        SourceConfig* source = i->get();
-
+static TileSource* loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::ReaderWriter::Options* global_options)
+{
         osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
             new osgDB::ReaderWriter::Options( *global_options ) : 
             new osgDB::ReaderWriter::Options();
@@ -224,8 +214,6 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
         //Configure the cache if necessary
         osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig() ? source->getCacheConfig() : mapConfig->getCacheConfig();
 
-        osg::ref_ptr<TileSource> sourceToAdd = tile_source;
-
         //If the cache config is valid, wrap the TileSource with a caching TileSource.
         if (cacheConfig.valid())
         {
@@ -236,13 +224,29 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
                 cache->setName(source->getName());
                 cache->setMapConfigFilename( mapConfig->getFilename() );
                 cache->initTileMap();
-                sourceToAdd = cache.get();
+                return cache.release();
             }
         }
 
-        if (sourceToAdd.valid() && sourceToAdd->getProfile().getProfileType() != TileGridProfile::UNKNOWN)
+        return tile_source.release();
+}
+
+
+static void
+addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
+           std::vector< osg::ref_ptr<TileSource> >& to,
+           const osgDB::ReaderWriter::Options* global_options)
+{        
+
+    for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
+    {
+        SourceConfig* source = i->get();
+
+        osg::ref_ptr<TileSource> tileSource = loadSource(mapConfig, source, global_options);
+
+        if (tileSource.valid() && tileSource->getProfile().getProfileType() != TileGridProfile::UNKNOWN)
         {
-            to.push_back( sourceToAdd.get() );
+            to.push_back( tileSource.get() );
         }
         else
         {
@@ -259,21 +263,96 @@ url_template( _url_template ),
 _profileComputed(false),
 _dataProfile(TileGridProfile::UNKNOWN)
 {
-    if ( map.valid() )
+    //Initialize the map profile if one was configured
+    if (map->getProfileConfig())
     {
-        addSources( map.get(), map->getImageSources(), image_sources, url_template, options );
-        addSources( map.get(), map->getHeightFieldSources(), heightfield_sources, url_template, options );
+        //See if the config is set to a well known type
+        std::string namedProfile = map->getProfileConfig()->getNamedProfile();
+        if (!namedProfile.empty())
+        {
+            if (namedProfile == STR_GLOBAL_MERCATOR)
+            {
+                osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_MERCATOR due to profile in MapConfig" << std::endl;
+                _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+            }
+            else if (namedProfile == STR_GLOBAL_GEODETIC)
+            {
+                osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_GEODETIC due to profile in MapConfig" << std::endl;
+                _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+            }
+            else
+            {
+                osg::notify(osg::NOTICE) << namedProfile << " is not a known profile name" << std::endl;
+            }
+        }
+
+        //See if the config specifies a specific layer to use
+        if (!_dataProfile.isValid())
+        {
+            std::string refLayer = map->getProfileConfig()->getRefLayer();
+            if (!refLayer.empty())
+            {
+                //Find the source with the given name
+                osg::ref_ptr<SourceConfig> sourceConfig;
+
+                for (SourceConfigList::const_iterator i = map->getImageSources().begin(); i != map->getImageSources().end(); ++i)
+                {
+                    if (i->get()->getName() == refLayer)
+                    {
+                        sourceConfig = i->get();
+                    }
+                }
+
+                for (SourceConfigList::const_iterator i = map->getHeightFieldSources().begin(); i != map->getHeightFieldSources().end(); ++i)
+                {
+                    if (i->get()->getName() == refLayer)
+                    {
+                        sourceConfig = i->get();
+                    }
+                }
+
+                if (sourceConfig.valid())
+                {
+                    osg::ref_ptr<TileSource> refSource = loadSource(map, sourceConfig.get(), options);
+                    if (refSource.valid())
+                    {
+                      osg::notify(osg::NOTICE) << "Overriding profile to match layer " << refLayer << std::endl;
+                      _dataProfile = refSource->getProfile();
+                    }
+                }
+                else
+                {
+                    osg::notify(osg::NOTICE) << "Could not find reference layer " << refLayer << std::endl;
+                }
+            }
+        }
+
+        //Try to create a profile from the SRS and extents
+        if (!_dataProfile.isValid() )
+        {
+            if (map->getProfileConfig()->areExtentsValid())
+            {
+                double minx, miny, maxx, maxy;
+                map->getProfileConfig()->getExtents( minx, miny, maxx, maxy);
+
+                TileGridProfile::ProfileType profileType = TileGridProfile::getProfileTypeFromSRS( map->getProfileConfig()->getSRS() );
+
+                _dataProfile = TileGridProfile(profileType, minx, miny, maxx, maxy, map->getProfileConfig()->getSRS());
+                if (_dataProfile.isValid())
+                {
+                    osg::notify(osg::NOTICE) << "Overrding profile to match definition " << std::endl;
+                }
+            }
+        }
     }
 
-    if ( map->getProfile() == STR_GLOBAL_MERCATOR )
+    //Set the MapConfig's TileGridProfile to the computed profile so that the TileSource's can query it when they are loaded
+    map->setProfile( _dataProfile );
+
+    if ( map.valid() )
     {
-        osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_MERCATOR due to profile in MapConfig" << std::endl;
-        _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
-    }
-    else if ( map->getProfile() == STR_GLOBAL_GEODETIC )
-    {
-        osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_GEODETIC due to profile in MapConfig" << std::endl;
-        _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+        addSources( map.get(), map->getImageSources(), image_sources, options );
+        addSources( map.get(), map->getHeightFieldSources(), heightfield_sources, options );
     }
 }
 

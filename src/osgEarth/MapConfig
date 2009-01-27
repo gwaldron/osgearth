@@ -21,6 +21,7 @@
 #define OSGEARTH_MAP_CONFIG_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/TileGridProfile>
 #include <map>
 #include <list>
 
@@ -65,6 +66,35 @@ namespace osgEarth
     private:
         std::string _type;
         CacheProperties _properties;
+    };
+
+    class OSGEARTH_EXPORT ProfileConfig : public osg::Referenced
+    {
+    public:
+        ProfileConfig();
+
+        const std::string& getNamedProfile() const;
+        void setNamedProfile( const std::string &namedProfile);
+
+        const std::string& getRefLayer() const;
+        void setRefLayer(const std::string &refLayer);
+
+        const std::string& getSRS() const;
+        void setSRS(const std::string& srs);
+
+        bool areExtentsValid() const;
+
+        void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
+        void setExtents(double minX, double minY, double maxX, double maxY);
+
+    private:
+        std::string _namedProfile;
+        std::string _refLayer;
+        std::string _srs;
+        double _minX;
+        double _minY;
+        double _maxX;
+        double _maxY;
     };
 
 
@@ -323,16 +353,6 @@ namespace osgEarth
         const std::string& getFilename() const;
 
         /*
-         *Gets the profile string.  If the profile string is empty, the profile should be auotmatically computed from the sources
-        */
-        const std::string& getProfile() const;
-
-        /*
-        *Sets the profile string.  If the profile string is empty, the profile should be automatically computed from the sources.
-        */
-        void setProfile(const std::string& profile);
-
-        /*
         *Gets the cache config for the map
         */
         const CacheConfig* getCacheConfig() const;
@@ -341,6 +361,13 @@ namespace osgEarth
         *Sets the cache config for the map
         */
         void setCacheConfig(CacheConfig* cacheConfig);
+
+
+        const ProfileConfig* getProfileConfig() const;
+        void setProfileConfig(ProfileConfig* profileConfig);
+
+        const TileGridProfile& getProfile() const;
+        void setProfile(const TileGridProfile& profile);
 
 
     private:
@@ -358,12 +385,13 @@ namespace osgEarth
         osg::Vec4ub north_cap_color;
         osg::Vec4ub south_cap_color;
 
-        std::string profile;
+        TileGridProfile profile;
 
         bool cache_only;
         bool normalize_edges;
 
         osg::ref_ptr<CacheConfig> cache_config;
+        osg::ref_ptr<ProfileConfig> profile_config;
     };
 
 

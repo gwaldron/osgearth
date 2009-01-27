@@ -41,7 +41,7 @@ MapConfig::MapConfig()
     cache_only = false;
     normalize_edges = true;
     filename = "";
-    profile = "";
+    profile = TileGridProfile::UNKNOWN;
 }
 
 void
@@ -190,17 +190,6 @@ MapConfig::getCacheOnly() const
     return cache_only;
 }
 
-const std::string& 
-MapConfig::getProfile() const
-{
-    return profile;
-}
-
-void MapConfig::setProfile(const std::string& profile)
-{
-    this->profile = profile;
-}
-
 const CacheConfig*
 MapConfig::getCacheConfig() const
 {
@@ -224,6 +213,29 @@ void
 MapConfig::setNormalizeEdges(bool normalizeEdges)
 {
     normalize_edges = normalizeEdges;
+}
+
+const ProfileConfig*
+MapConfig::getProfileConfig() const
+{
+    return profile_config.get();
+}
+
+void
+MapConfig::setProfileConfig(ProfileConfig* profileConfig)
+{
+    profile_config = profileConfig;
+}
+
+const TileGridProfile& MapConfig::getProfile() const
+{
+    return profile;
+}
+
+void
+MapConfig::setProfile(const TileGridProfile& profile)
+{
+    this->profile = profile;
 }
 
 
@@ -319,6 +331,73 @@ const CacheProperties& CacheConfig::getProperties() const
 
 /***********************************************************************/
 
+ProfileConfig::ProfileConfig():
+_minX(DBL_MAX),
+_minY(DBL_MAX),
+_maxX(-DBL_MAX),
+_maxY(-DBL_MAX)
+{
+}
+
+const std::string& ProfileConfig::getNamedProfile() const
+{
+    return _namedProfile;
+}
+
+void
+ProfileConfig::setNamedProfile( const std::string &namedProfile)
+{
+    _namedProfile = namedProfile;
+}
+
+const std::string&
+ProfileConfig::getRefLayer() const
+{
+    return _refLayer;
+}
+
+void
+ProfileConfig::setRefLayer(const std::string &refLayer)
+{
+    _refLayer = refLayer;
+}
+
+const std::string&
+ProfileConfig::getSRS() const
+{
+    return _srs;
+}
+
+void
+ProfileConfig::setSRS(const std::string& srs)
+{
+    _srs = srs;
+}
+
+bool ProfileConfig::areExtentsValid() const
+{
+    return _maxX >= _minX && _maxY >= _minY;
+}
+
+void
+ProfileConfig::getExtents(double &minX, double &minY, double &maxX, double &maxY) const
+{
+    minX = _minX;
+    minY = _minY;
+    maxX = _maxX;
+    maxY = _maxY;
+}
+
+void ProfileConfig::setExtents(double minX, double minY, double maxX, double maxY)
+{
+    _minX = minX;
+    _minY = minY;
+    _maxX = maxX;
+    _maxY = maxY;
+}
+
+/***********************************************************************/
+
 #define ELEM_MAP               "map"
 #define ATTR_NAME              "name"
 #define ATTR_CSTYPE            "type"
@@ -333,7 +412,6 @@ const CacheProperties& CacheConfig::getProperties() const
 #define ELEM_NORTH_CAP_COLOR   "north_cap_color"
 #define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
 #define ELEM_CACHE_ONLY        "cache_only"
-#define ELEM_PROFILE           "profile"
 #define ELEM_NORMALIZE_EDGES   "normalize_edges"
 
 #define ELEM_CACHE             "cache"
@@ -341,6 +419,14 @@ const CacheProperties& CacheConfig::getProperties() const
 
 #define VALUE_TRUE             "true"
 #define VALUE_FALSE            "false"
+
+#define ELEM_PROFILE           "profile"
+#define ATTR_MINX              "minx"
+#define ATTR_MINY              "miny"
+#define ATTR_MAXX              "maxx"
+#define ATTR_MAXY              "maxy"
+#define ATTR_SRS               "srs"
+#define ATTR_USELAYER          "use"
 
 static CacheConfig*
 readCache( XmlElement* e_cache )
@@ -428,6 +514,47 @@ static void writeSource( const SourceConfig* source, XmlElement* e_source )
     }
 }
 
+static ProfileConfig* readProfileConfig( XmlElement* e_profile )
+{
+    ProfileConfig* profile = new ProfileConfig;
+    profile->setNamedProfile( e_profile->getText() );
+    profile->setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
+    profile->setSRS( e_profile->getAttr( ATTR_SRS ) );
+
+    double minx, miny, maxx, maxy;
+    profile->getExtents(minx, miny, maxx, maxy);
+
+    //Get the bounding box
+    minx = as<double>(e_profile->getAttr( ATTR_MINX ), minx);
+    miny = as<double>(e_profile->getAttr( ATTR_MINY ), miny);
+    maxx = as<double>(e_profile->getAttr( ATTR_MAXX ), maxx);
+    maxy = as<double>(e_profile->getAttr( ATTR_MAXY ), maxy);
+
+    profile->setExtents(minx, miny, maxx, maxy);
+
+    return profile;
+}
+
+static void writeProfileConfig(const ProfileConfig* profile, XmlElement* e_profile )
+{
+    e_profile->getChildren().push_back(new XmlText(profile->getNamedProfile()));
+    e_profile->getAttrs()[ATTR_USELAYER] = profile->getRefLayer();
+    e_profile->getAttrs()[ATTR_SRS] = profile->getSRS();
+
+    if (profile->areExtentsValid())
+    {
+        double minx, miny, maxx, maxy;
+        profile->getExtents(minx, miny, maxx, maxy);
+        e_profile->getAttrs()[ATTR_MINX] = toString(minx);
+        e_profile->getAttrs()[ATTR_MINY] = toString(miny);
+        e_profile->getAttrs()[ATTR_MAXX] = toString(maxx);
+        e_profile->getAttrs()[ATTR_MAXX] = toString(maxy);
+    }
+}
+
+
+
+
 
 
 osg::Vec4ub getColor(const std::string& str, osg::Vec4ub default_value)
@@ -484,7 +611,13 @@ readMap( XmlElement* e_map )
 
     map->setNorthCapColor(getColor(e_map->getSubElementText(ELEM_NORTH_CAP_COLOR ), map->getNorthCapColor()));
     map->setSouthCapColor(getColor(e_map->getSubElementText(ELEM_SOUTH_CAP_COLOR ), map->getSouthCapColor()));
-    map->setProfile( e_map->getSubElementText( ELEM_PROFILE ) );
+
+    //Read the profile definition
+    XmlElement* e_profile = static_cast<XmlElement*>(e_map->getSubElement( ELEM_PROFILE ));
+    if (e_profile)
+    {
+        map->setProfileConfig( readProfileConfig( e_profile ) );
+    }
 
 
 
@@ -556,7 +689,6 @@ mapToXmlDocument( const MapConfig *map)
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>(map->getProxyPort() ) );
     e_map->addSubElement( ELEM_NORTH_CAP_COLOR , toString<osg::Vec4ub>( map->getNorthCapColor() ) );
     e_map->addSubElement( ELEM_SOUTH_CAP_COLOR , toString<osg::Vec4ub>( map->getSouthCapColor() ) );
-    e_map->addSubElement( ELEM_PROFILE, map->getProfile() );
 
     //Write all the image sources
     for (SourceConfigList::const_iterator i = map->getImageSources().begin(); i != map->getImageSources().end(); i++)
@@ -579,6 +711,13 @@ mapToXmlDocument( const MapConfig *map)
         XmlElement* e_cache = new XmlElement(ELEM_CACHE);
         writeCache(map->getCacheConfig(), e_cache);
         e_map->getChildren().push_back(e_cache);
+    }
+
+    if (map->getProfileConfig())
+    {
+        XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
+        writeProfileConfig(map->getProfileConfig(), e_profile);
+        e_map->getChildren().push_back(e_profile);
     }
 
     return doc.release();

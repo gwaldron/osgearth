@@ -60,7 +60,7 @@ public:
                 map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
         }
 
-        profile = TileGridProfile( map_config->getProfile() );
+        profile = map_config->getProfile();
 
         if (profile.getProfileType() == TileGridProfile::UNKNOWN)
         {

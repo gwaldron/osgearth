@@ -150,7 +150,7 @@ public:
           std::string t_srs;
 
           //See if we need to autowarp the file to geodetic or mercator
-          TileGridProfile mapProfile(mapConfig->getProfile());
+          TileGridProfile mapProfile = mapConfig->getProfile();
           if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC && profile.getProfileType() != TileGridProfile::GLOBAL_GEODETIC)
           {
               char *wkt = NULL;
@@ -158,7 +158,7 @@ public:
               t_srs = wkt;
               OGRFree(wkt);
               osg::notify(osg::NOTICE) << "Warping " << url << " to global-geodetic " << std::endl;
-              profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+              profile = mapProfile;
           }
           if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR && profile.getProfileType() != TileGridProfile::GLOBAL_MERCATOR)
           {
@@ -180,7 +180,7 @@ public:
                   t_srs = wkt;
                   OGRFree(wkt);
                   osg::notify(osg::NOTICE) << "Warping " << url << " to global-mercator " << std::endl;
-                  profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+                  profile = mapProfile;
               }
               else
               {

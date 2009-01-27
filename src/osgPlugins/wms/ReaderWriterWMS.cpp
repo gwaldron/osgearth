@@ -106,6 +106,12 @@ public:
         if ( format.empty() )
             format = "png";
 
+       
+        if ( srs.empty() )
+        {
+            srs = "EPSG:4326";
+        }
+
         //Initialize the WMS request prototype
         std::stringstream buf;
         buf
@@ -119,11 +125,6 @@ public:
             << "&HEIGHT="<< tile_size
             << "&BBOX=%lf,%lf,%lf,%lf";
         prototype = buf.str();
-        
-        if ( srs.empty() )
-        {
-            srs = "EPSG:4326";
-        }
 
         //Initialize the profile to the SRS
         profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));

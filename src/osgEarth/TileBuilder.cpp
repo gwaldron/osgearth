@@ -313,7 +313,7 @@ _dataProfile(TileGridProfile::UNKNOWN)
 
                 if (sourceConfig.valid())
                 {
-                    osg::ref_ptr<TileSource> refSource = loadSource(map, sourceConfig.get(), options);
+                    osg::ref_ptr<TileSource> refSource = loadSource(map.get(), sourceConfig.get(), options);
                     if (refSource.valid())
                     {
                       osg::notify(osg::NOTICE) << "Overriding profile to match layer " << refLayer << std::endl;

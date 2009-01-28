@@ -196,7 +196,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
                 else
                 {
                     //Determine the intersecting keys and create and extract an appropriate image from the tiles
-                    std::vector<osg::ref_ptr<const TileKey>> intersectingTiles;
+                    std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
                     image_sources[i]->getProfile().getIntersectingTiles(key, intersectingTiles);
                     if (intersectingTiles.size() > 0)
                     {

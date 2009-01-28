@@ -3,6 +3,8 @@
 #include <osgEarth/JsonUtils>
 #include <osg/Notify>
 
+#include <limits.h>
+
 using namespace osgEarth;
 
 

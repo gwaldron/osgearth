@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/ImageUtils>
+#include <string.h>
 
 using namespace osgEarth;
 

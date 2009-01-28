@@ -163,6 +163,11 @@ HTTPResponse::getPartStream( unsigned int n ) const {
     return parts[n]->stream;
 }
 
+std::string
+HTTPResponse::getPartAsString( unsigned int n ) const {
+    return parts[n]->stream.str();
+}
+
 /****************************************************************************/
 
 HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )

@@ -74,6 +74,8 @@ namespace osgEarth
 
         std::istream& getPartStream( unsigned int n ) const;
 
+        std::string getPartAsString( unsigned int n ) const;
+
         unsigned int getPartSize( unsigned int n ) const;
         
         const std::string& getPartHeader( unsigned int n, const std::string& name ) const;

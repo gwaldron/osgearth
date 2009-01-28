@@ -58,7 +58,18 @@ TileGridProfile::TileGridProfile( ProfileType profileType, double xmin, double y
     _ymax = ymax;
     _profileType = profileType;
     _srs = srs;    
-    _num_tiles_at_lod_0 = 4;
+    _num_tiles_at_lod_0 = _profileType == GLOBAL_GEODETIC? 2 : 4;
+}
+
+TileGridProfile::TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs )
+{
+    _xmin = xmin;
+    _ymin = ymin;
+    _xmax = xmax;
+    _ymax = ymax;
+    _profileType = getProfileTypeFromSRS( srs );
+    _srs = srs;    
+    _num_tiles_at_lod_0 = _profileType == GLOBAL_GEODETIC? 2 : 4;
 }
 
 TileGridProfile::TileGridProfile( const std::string& _string )

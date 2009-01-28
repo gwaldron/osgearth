@@ -28,6 +28,7 @@
 using namespace osgEarth;
 using namespace std;
 
+static
 Layer* getLayerByName(const string &name, Layer::LayerList& layers)
 {
     for (Layer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
@@ -154,8 +155,8 @@ CapabilitiesReader::read( const std::string &location )
 
 
 
-
-void readLayers(XmlElement* e, Layer* parentLayer, Layer::LayerList& layers)
+static void
+readLayers(XmlElement* e, Layer* parentLayer, Layer::LayerList& layers)
 {
     XmlNodeList layerNodes = e->getSubElements( ELEM_LAYER );
     for( XmlNodeList::const_iterator i = layerNodes.begin(); i != layerNodes.end(); i++ )

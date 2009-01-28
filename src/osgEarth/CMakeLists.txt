@@ -26,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     GeocentricTileBuilder
     HTTPClient
     ImageToHeightFieldConverter
+    JsonUtils
     MapConfig
     Mercator
 	MultiImage
@@ -47,6 +48,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeocentricTileBuilder.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp
+    JsonUtils.cpp
     MapConfig.cpp
     Mercator.cpp
 	MultiImage.cpp

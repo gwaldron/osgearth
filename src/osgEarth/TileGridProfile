@@ -65,6 +65,12 @@ namespace osgEarth
         TileGridProfile( ProfileType profileType, double xmin, double ymin, double xmax, double ymax, const std::string& srs );
 
         /**
+         * Constructs a new profile from geospatil extents and an SRS identifier string (such as
+         * a WKT string or an EPSG code -- and tries to derive the profile type from the SRS.
+         */
+        TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs );
+
+        /**
          * Copy ctor
          */
         TileGridProfile( const TileGridProfile& rhs );

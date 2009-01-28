@@ -30,6 +30,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 
 using namespace osgEarth;
 
@@ -86,10 +87,15 @@ public:
         unsigned int tile_x, tile_y;
         key->getTileXY( tile_x, tile_y );
 
+        std::string format = map_service.getTileInfo().getFormat();
+        std::transform( format.begin(), format.end(), format.begin(), tolower );
+        if ( format.length() > 3 && format.substr( 0, 3 ) == "png" )
+            format = "png";
+
         buf << url << "/tile"
             << "/" << level
             << "/" << tile_y
-            << "/" << tile_x << "." << map_service.getTileInfo().getFormat();
+            << "/" << tile_x << "." << format;
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
         return osgDB::readImageFile( buf.str(), options.get() );

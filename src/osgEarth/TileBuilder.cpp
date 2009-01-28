@@ -21,6 +21,7 @@
 #include <osgEarth/GeocentricTileBuilder>
 #include <osgEarth/ProjectedTileBuilder>
 #include <osgEarth/Mercator>
+#include <osgEarth/HeightFieldUtils>
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
@@ -518,12 +519,17 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
             hf_key = hf_key->createParentKey();
         }
 
-        //Use a HeightFieldExtractor to sample the parent tile
-        if (hf.valid())
-        {
-            osg::ref_ptr<HeightFieldExtractor> hfe = new HeightFieldExtractor(hf_key.get(), hf.get());
-            hf = hfe->extractChild(key, hf->getNumColumns(), hf->getNumRows());
-        }
+        double minx, miny, maxx, maxy;
+        hf_key->getGeoExtents(minx, miny, maxx, maxy);
+
+        //Need to init this before extracting the heightfield
+        hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+        hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
+        hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
+
+        double key_minx, key_miny, key_maxx, key_maxy;
+        key->getGeoExtents(key_minx, key_miny, key_maxx, key_maxy);
+        hf = HeightFieldUtils::extractHeightField(hf.get(), key_minx, key_miny, key_maxx, key_maxy, hf->getNumColumns(), hf->getNumRows());
     }
 
     return hf.release();

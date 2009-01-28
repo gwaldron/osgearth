@@ -173,22 +173,6 @@ namespace osgEarth
 
         osg::ref_ptr<TileKey> subkeys[4];
     };
-
-
-    class OSGEARTH_EXPORT HeightFieldExtractor : public osg::Referenced
-    {
-    public:
-        HeightFieldExtractor(const TileKey *key, const osg::HeightField *heightField);
-
-        osg::HeightField* extractChild(const TileKey *childKey, const unsigned int &width, const unsigned int &height);
-
-    protected:
-        HeightFieldExtractor();
-        float getInterpolatedValue(const float &c, const float &r);
-
-        osg::ref_ptr<const TileKey> _key;
-        osg::ref_ptr<const osg::HeightField> _heightField;
-    };
 }
 
 #endif // OSGEARTH_TILE_KEY_H

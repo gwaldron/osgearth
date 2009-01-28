@@ -23,7 +23,8 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Export
 	FileUtils
-    GeocentricTileBuilder
+    GeocentricTileBuilder 
+	HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
 	ImageUtils
@@ -47,6 +48,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	CacheSeed.cpp
 	FileUtils.cpp
     GeocentricTileBuilder.cpp
+	HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp
 	ImageUtils.cpp

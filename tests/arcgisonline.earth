@@ -1,0 +1,11 @@
+<!--
+osgEarth sample - ESRI ArcGIS Server REST map services
+-->
+<map name="The World" type="geocentric">
+
+  <image name="NPS" driver="arcgis">
+    <url>http://server.arcgisonline.com/ArcGIS/rest/services/NPS_Physical_World_2D/MapServer</url>
+    <profile>global-geodetic</profile>
+  </image>
+  
+</map>

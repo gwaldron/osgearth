@@ -34,9 +34,7 @@
 using namespace osgEarth;
 
 #define PROPERTY_URL        "url"
-#define PROPERTY_MAP        "map"
-#define PROPERTY_LAYER      "layer"
-#define PROPERTY_FORMAT     "format"
+#define PROPERTY_PROFILE    "profile"
 #define PROPERTY_MAP_CONFIG "map_config"
 
 class ArcGISSource : public TileSource
@@ -57,14 +55,9 @@ public:
             if ( options->getPluginData( PROPERTY_URL ) )
                 url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
-            // the name OR layer id of the layer to request
-            if ( options->getPluginData( PROPERTY_LAYER ) )
-                layer = std::string( (const char*)options->getPluginData( PROPERTY_LAYER ) );
-
-            // the image format (defaults to "png")
-            // TODO: read this from the XML tile schema file
-            if ( options->getPluginData( PROPERTY_FORMAT ) )
-                format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+            // force a profile type
+            if ( options->getPluginData( PROPERTY_PROFILE ) )
+                manual_profile = TileGridProfile( std::string( (const char*)options->getPluginData( PROPERTY_PROFILE ) ) );
         }
 
         // validate dataset
@@ -81,7 +74,7 @@ public:
 
     const TileGridProfile& getProfile() const
     {
-        return map_service.getProfile();
+        return manual_profile.isValid() ? manual_profile : map_service.getProfile();
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -120,6 +113,7 @@ private:
     std::string layer;
     std::string format;
     MapService map_service;
+    TileGridProfile manual_profile;
 
     const MapConfig* map_config;
 };

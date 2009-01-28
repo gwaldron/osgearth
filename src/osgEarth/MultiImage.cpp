@@ -18,37 +18,17 @@
  */
 
 #include <osgEarth/MultiImage>
+#include <osgEarth/ImageUtils>
 #include <osg/Notify>
 #include <osg/io_utils>
 
 using namespace osgEarth;
 
-GeoImage::GeoImage(osg::Image * image, double minX, double minY, double maxX, double maxY)
+GeoImage::GeoImage(osg::Image * image, const TileKey *key)
 {
     _image = image;
-    _minX = minX;
-    _minY = minY;
-    _maxX = maxX;
-    _maxY = maxY;
-}
-
-void GeoImage::pixelToWorld(double pixelX, double pixelY,
-                  double &worldX, double &worldY)
-{
-    worldX = _minX + ((pixelX) / (double)_image->s());
-    worldX = _minY + ((pixelY) / (double)_image->t());        
-}
-
-void GeoImage::worldToPixel(double worldX, double worldY,
-                  double &pixelX, double &pixelY)
-{
-    pixelX = (worldX - _minX) / (_maxX - _minX) * (double)_image->s();
-    pixelY = (worldY - _minY) / (_maxY - _minY) * (double)_image->t();
-}
-
-bool GeoImage::contains(double x, double y)
-{
-    return (_minX <= x && _maxX >= x && _minY <= y && _maxY >= y);
+    key->getGeoExtents(_minX, _minY, _maxX, _maxY);
+    key->getTileXY(_tileX, _tileY);
 }
 
 
@@ -61,62 +41,86 @@ MultiImage::~MultiImage()
 {
 }
 
-osg::Vec4 MultiImage::getColor(double x, double y)
+void MultiImage::getExtents(double &minX, double &minY, double &maxX, double &maxY)
 {
-    osg::Vec4 color(0,0,0,0);
-    int index = 0;
+    minX = DBL_MAX;
+    maxX = -DBL_MAX;
+    minY = DBL_MAX;
+    maxY = -DBL_MAX;
+
     for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
-        if (i->getImage() && i->contains(x,y))
-        {
-            double px, py;
-            i->worldToPixel(x, y, px, py);
-            px = osg::clampBetween(px, 0.0, (double)i->getImage()->s()-1);
-            py = osg::clampBetween(py, 0.0, (double)i->getImage()->t()-1);
-
-            if (px >= 0 && py >= 0)
-            {
-                unsigned char *data = i->getImage()->data((int)px, (int)py);
-                float r = float(*(data + 0))/255.0f;
-                float g = float(*(data + 1))/255.0f;
-                float b = float(*(data + 2))/255.0f;
-                color = osg::Vec4(r,g,b,1);
-                //osg::notify(osg::NOTICE) << "Returning color " << color<< std::endl;
-                break;
-            }
-        }
-        index++;
+        minX = osg::minimum(i->_minX, minX);
+        minY = osg::minimum(i->_minY, minY);
+        maxX = osg::maximum(i->_maxX, maxX);
+        maxY = osg::maximum(i->_maxY, maxY);
     }
-    return color;
 }
 
-osg::Image* MultiImage::createImage(unsigned int width, unsigned int height,
-                                    double minX, double minY, double maxX, double maxY)
+
+osg::Image* MultiImage::createImage(double minx, double miny, double maxx, double maxy)
 {
     if (_images.size() == 0)
     {
         osg::notify(osg::NOTICE) << "MultiImage has no images..." << std::endl;
         return 0;
     }
-    osg::Image* image = new osg::Image;
-    image->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
-    double dx = (maxX - minX) / (double)(width);
-    double dy = (maxY - minY) / (double)(height);
+    unsigned int tileWidth = _images[0]._image->s();
+    unsigned int tileHeight = _images[0]._image->t();
 
-    for (unsigned int c = 0; c < width; ++c)
+    //osg::notify(osg::NOTICE) << "TileDim " << tileWidth << ", " << tileHeight << std::endl;
+
+    unsigned int minTileX = _images[0]._tileX;
+    unsigned int minTileY = _images[0]._tileY;
+    unsigned int maxTileX = _images[0]._tileX;
+    unsigned int maxTileY = _images[0]._tileY;
+
+    //Compute the tile size.
+    for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
-        double gx = minX + (double)c * dx;
-        for (unsigned int r = 0; r < height; ++r)
-        {
-            double gy = minY + (double)r * dy;
-            osg::Vec4 color = getColor(gx, gy);
-            //osg::notify(osg::NOTICE) << "Got color " << color << std::endl;
-            *(image->data(c,r) + 0) = (unsigned char) (color.r()*255.0f);
-            *(image->data(c,r) + 1) = (unsigned char) (color.g()*255.0f);
-            *(image->data(c,r) + 2) = (unsigned char) (color.b()*255.0f);
-            *(image->data(c,r) + 3) = (unsigned char) (color.a()*255.0f);
-        }
+        if (i->_tileX < minTileX) minTileX = i->_tileX;
+        if (i->_tileY < minTileY) minTileY = i->_tileY;
+
+        if (i->_tileX > maxTileX) maxTileX = i->_tileX;
+        if (i->_tileY > maxTileY) maxTileY = i->_tileY;
     }
-    return image;
+
+    unsigned int tilesWide = maxTileX - minTileX + 1;
+    unsigned int tilesHigh = maxTileY - minTileY + 1;
+
+    unsigned int pixelsWide = tilesWide * tileWidth;
+    unsigned int pixelsHigh = tilesHigh * tileHeight;
+
+    //osg::notify(osg::NOTICE) << "Creating image that is " << tilesWide << " x " << tilesHigh << " tiles and " << pixelsWide << ", " << pixelsHigh << " pixels " << std::endl;
+
+    osg::ref_ptr<osg::Image> image = new osg::Image;
+    image->allocateImage(pixelsWide, pixelsHigh, 1, GL_RGB, GL_UNSIGNED_BYTE);
+
+    //Composite the incoming images into the master image
+    for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+    {
+        //Determine the indices in the master image for this image
+        int dstX = (i->_tileX - minTileX) * tileWidth;
+        int dstY = (maxTileY - i->_tileY) * tileHeight;
+        //osg::notify(osg::NOTICE) << "Copying image to " << dstX << ", " << dstY << std::endl;
+        ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
+    }
+   
+    double src_minx, src_miny, src_maxx, src_maxy;
+    getExtents(src_minx, src_miny, src_maxx, src_maxy);
+
+    image = ImageUtils::cropImage(image.get(), src_minx, src_miny, src_maxx, src_maxy, minx, miny, maxx, maxy);
+    //osg::notify(osg::NOTICE) << "Cropped image is " << image->s() << " x " << image->t() << std::endl;
+
+    unsigned int new_s = osg::Image::computeNearestPowerOfTwo(image->s());
+    unsigned int new_t = osg::Image::computeNearestPowerOfTwo(image->t());
+
+    if (new_s != image->s() || new_t != image->t())
+    {
+        //osg::notify(osg::NOTICE) << "Resizing image from " << image->s() << ", " << image->t() << " to " << new_s << ", " << new_t << std::endl;
+        image = ImageUtils::resizeImage(image.get(), new_s, new_t);
+    }
+
+    return image.release();
 }

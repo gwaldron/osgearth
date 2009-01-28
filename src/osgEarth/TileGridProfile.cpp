@@ -307,19 +307,31 @@ void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::
 
     double keyArea = keyWidth * keyHeight;
 
-    int destLOD = -1;
+    int destLOD = 1;
     double destTileWidth, destTileHeight;
+
+    double diff = DBL_MAX;
 
     int currLOD = 0;
     //Find the lod that most closely matches the incoming tile's LOD
-    while (destLOD < 0)
+    while (true)
     {
-        getTileDimensions(currLOD, destTileWidth,destTileHeight);
+        double w, h;
+        getTileDimensions(currLOD, w,h);
         //osg::notify(osg::NOTICE) << currLOD << "(" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
-        double a = destTileWidth * destTileHeight;
-        if (a <= keyArea)
+        double a = w * h;
+        double d = osg::absolute(keyArea - a);
+
+        if (d < diff)
         {
-            destLOD = currLOD;
+          destLOD = currLOD;
+          destTileWidth = w;
+          destTileHeight = h;
+          diff = d;
+        }
+        else
+        {
+            break;
         }
         currLOD++;
     }

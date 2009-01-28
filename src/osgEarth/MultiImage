@@ -20,6 +20,7 @@
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osgEarth/Common>
+#include <osgEarth/TileKey>
 
 #include <vector>
 
@@ -34,37 +35,21 @@ namespace osgEarth
         /**
         *Constructor
         */
-        GeoImage(osg::Image * image, double minX, double minY, double maxX, double maxY);
-
-        /**
-        * Converts pixel to world coordinates.
-        */
-        void pixelToWorld(double pixelX, double pixelY,
-                          double &worldX, double &worldY);
-
-        /**
-        * Converts world coordinates to pixel coordinates
-        */
-        void worldToPixel(double worldX, double worldY,
-                          double &pixelX, double &pixelY);
-
-        /**
-        *Whether or not the GeoImage contains the given coordinates
-        */
-        bool contains(double x, double y);
+        GeoImage(osg::Image * image, const TileKey* key);
 
         /**
         *Gets a reference to the Image held by this GeoImage
         */
         osg::Image* getImage() {return _image.get();}
 
-    protected:
-        osg::ref_ptr<osg::Image> _image;
+        osg::ref_ptr<osg::Image> _image;       
         double _minX, _minY, _maxX, _maxY;
+        unsigned int _tileX;
+        unsigned int _tileY;
     };
 
     /**
-    *Utility class for converting multiple tiles into a single iomage.
+    *Utility class for extracting a single image from a collection of image tiles
     */
     class OSGEARTH_EXPORT MultiImage : public osg::Referenced
     {
@@ -72,15 +57,9 @@ namespace osgEarth
         MultiImage();
 
         /**
-        *Gets the color at the given geo coordinate
-        */
-        osg::Vec4 getColor(double x, double y);
-
-        /**
         *Extracts an image with the given extents
         */
-        osg::Image* createImage(unsigned int width, unsigned int height,
-                                 double minX, double minY, double maxX, double maxY);
+        osg::Image* createImage(double minx, double miny, double maxx, double maxy);
 
         /** A list of GeoImages */
         typedef std::vector<GeoImage> GeoImageList;
@@ -89,6 +68,8 @@ namespace osgEarth
         GeoImageList& getImages() {return _images;}
 
     protected:
+        void getExtents(double &minX, double &minY, double &maxX, double &maxY);
+
         ~MultiImage();
         GeoImageList _images;
     };

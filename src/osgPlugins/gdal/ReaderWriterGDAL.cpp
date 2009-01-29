@@ -187,6 +187,12 @@ public:
                   osg::notify(osg::NOTICE) << "Could not import mercator projection from EPSG code" << std::endl;
               }
           }
+          //TODO:  We need a better way of determining if the SRS's of the profile match.
+          else if ((mapProfile.getProfileType() != TileGridProfile::UNKNOWN) && (mapProfile.srs() == src_wkt))
+          {
+              //If the map profile's SRS actually match, just set our profile to the Map profile.
+              profile = mapProfile;
+          }
 
           if (!t_srs.empty())
           {
@@ -371,6 +377,64 @@ public:
           return image.release();
       }
 
+      bool isValidValue(float v, GDALRasterBand* band)
+      {
+          float noDataValue = -32767.0f;
+          int success;
+          float value = band->GetNoDataValue(&success);
+          if (success)
+          {
+              noDataValue = value;
+          }
+
+          float minValue = -32000.0f;
+
+          if (noDataValue == v) return false;
+          if (v < minValue) return false;
+          return true;
+      }
+
+      float getInterpolatedValue(GDALRasterBand *band, double x, double y)
+      {
+          double invTransform[6];
+          GDALInvGeoTransform(geotransform, invTransform);
+          double r, c;
+          GDALApplyGeoTransform(invTransform, x, y, &c, &r);
+
+          int rowMin = osg::maximum((int)floor(r), 0);
+          int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(warpedDS->GetRasterYSize()-1)), 0);
+          int colMin = osg::maximum((int)floor(c), 0);
+          int colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(warpedDS->GetRasterXSize()-1)), 0);
+
+          if (rowMin > rowMax) rowMin = rowMax;
+          if (colMin > colMax) colMin = colMax;
+
+          float urHeight, llHeight, ulHeight, lrHeight;
+
+          band->RasterIO(GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
+          band->RasterIO(GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
+          band->RasterIO(GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
+          band->RasterIO(GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
+
+          if (!isValidValue(urHeight, band)) urHeight = 0.0f;
+          if (!isValidValue(llHeight, band)) llHeight = 0.0f;
+          if (!isValidValue(ulHeight, band)) ulHeight = 0.0f;
+          if (!isValidValue(lrHeight, band)) lrHeight = 0.0f;
+          
+          double x_rem = c - (int)c;
+          double y_rem = r - (int)r;
+
+          double w00 = (1.0 - y_rem) * (1.0 - x_rem) * (double)llHeight;
+          double w01 = (1.0 - y_rem) * x_rem * (double)lrHeight;
+          double w10 = y_rem * (1.0 - x_rem) * (double)ulHeight;
+          double w11 = y_rem * x_rem * (double)urHeight;
+
+          float result = (float)(w00 + w01 + w10 + w11);
+
+          return result;
+      }
+
+
       osg::HeightField* createHeightField( const TileKey* key )
       {
           OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(s_mutex);
@@ -378,7 +442,6 @@ public:
           //Allocate the heightfield
           osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
           hf->allocate(tile_size, tile_size);
-          for(unsigned int i=0; i<hf->getHeightList().size(); i++ ) hf->getHeightList()[i] = 0.0;
 
           if (intersects(key))
           {
@@ -386,80 +449,22 @@ public:
               double xmin, ymin, xmax, ymax;
               key->getNativeExtents(xmin, ymin, xmax, ymax);
 
-              int target_width = tile_size;
-              int target_height = tile_size;
-              int tile_offset_left = 0;
-              int tile_offset_top = 0;
-
-              int off_x = int((xmin - geotransform[0]) / geotransform[1]);
-              int off_y = int((ymax - geotransform[3]) / geotransform[5]);
-              int width = int(((xmax - geotransform[0]) / geotransform[1]) - off_x);
-              int height = int(((ymin - geotransform[3]) / geotransform[5]) - off_y);
-
-              if (off_x + width > warpedDS->GetRasterXSize())
-              {
-                  int oversize_right = off_x + width - warpedDS->GetRasterXSize();
-                  target_width = target_width - int(float(oversize_right) / width * target_width);
-                  width = warpedDS->GetRasterXSize() - off_x;
-              }
-
-              if (off_x < 0)
-              {
-                  int oversize_left = -off_x;
-                  tile_offset_left = int(float(oversize_left) / width * target_width);
-                  target_width = target_width - int(float(oversize_left) / width * target_width);
-                  width = width + off_x;
-                  off_x = 0;
-              }
-
-              if (off_y + height > warpedDS->GetRasterYSize())
-              {
-                  int oversize_bottom = off_y + height - warpedDS->GetRasterYSize();
-                  target_height = target_height - osg::round(float(oversize_bottom) / height * target_height);
-                  height = warpedDS->GetRasterYSize() - off_y;
-              }
-
-
-              if (off_y < 0)
-              {
-                  int oversize_top = -off_y;
-                  tile_offset_top = int(float(oversize_top) / height * target_height);
-                  target_height = target_height - int(float(oversize_top) / height * target_height);
-                  height = height + off_y;
-                  off_y = 0;
-              }
-
-
               //Just read from the first band
               GDALRasterBand* band = warpedDS->GetRasterBand(1);
 
-              float *data = new float[target_width * target_height];
+              double dx = (xmax - xmin) / (tile_size-1);
+              double dy = (ymax - ymin) / (tile_size-1);
 
-              band->RasterIO(GF_Read, off_x, off_y, width, height, data, target_width, target_height, GDT_Float32, 0, 0);
-
-              for (int src_row = 0, dst_row = tile_offset_top;
-                  src_row < target_height;
-                  src_row++, dst_row++)
+              for (int c = 0; c < tile_size; ++c)
               {
-                  for (int src_col = 0, dst_col = tile_offset_left;
-                      src_col < target_width;
-                      ++src_col, ++dst_col)
+                  double geoX = xmin + (dx * (double)c);
+                  for (int r = 0; r < tile_size; ++r)
                   {
-                      hf->setHeight(dst_col, dst_row, data[src_col + src_row * target_width]);
+                      double geoY = ymin + (dy * (double)r);
+                      float h = getInterpolatedValue(band, geoX, geoY);
+                      hf->setHeight(c, r, h);
                   }
               }
-
-              unsigned int copy_r = hf->getNumRows()-1;
-              for(unsigned int r=0;r<copy_r;++r,--copy_r)
-              {
-                  for(unsigned int c=0;c<hf->getNumColumns();++c)
-                  {
-                      float temp = hf->getHeight(c,r);
-                      hf->setHeight(c,r,hf->getHeight(c,copy_r));
-                      hf->setHeight(c,copy_r,temp);
-                  }
-              }
-              delete []data;
           }
 
           return hf.release();

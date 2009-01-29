@@ -33,7 +33,7 @@ Layer* getLayerByName(const string &name, Layer::LayerList& layers)
 {
     for (Layer::LayerList::iterator i = layers.begin(); i != layers.end(); ++i)
     {
-        if (i->get()->getName() == name) return i->get();
+        if (osgDB::equalCaseInsensitive(i->get()->getName(),name)) return i->get();
         Layer *l = getLayerByName(name, i->get()->getLayers());
         if (l) return l;
     }
@@ -52,11 +52,27 @@ Style::Style(const std::string& name, const std::string &title)
 
 Layer::Layer():
 _parentLayer(0),
-_minX(0),
-_minY(0),
-_maxX(0),
-_maxY(0)
+_minLon(0),
+_minLat(0),
+_maxLon(0),
+_maxLat(0)
 {
+}
+
+void Layer::getLatLonExtents(double &minLon, double &minLat, double &maxLon, double &maxLat)
+{
+    minLon = _minLon;
+    minLat= _minLat;
+    maxLon = _maxLon;
+    maxLat = _maxLat;
+}
+
+void Layer::setLatLonExtents(double minLon, double minLat, double maxLon, double maxLat)
+{
+    _minLon = minLon;
+    _minLat = minLat;
+    _maxLon = maxLon;
+    _maxLat = maxLat;
 }
 
 void Layer::getExtents(double &minX, double &minY, double &maxX, double &maxY)
@@ -67,13 +83,14 @@ void Layer::getExtents(double &minX, double &minY, double &maxX, double &maxY)
     maxY = _maxY;
 }
 
-void Layer::setExtents(const double &minX, const double &minY, const double &maxX, const double &maxY)
+void Layer::setExtents(double minX, double minY, double maxX, double maxY)
 {
     _minX = minX;
     _minY = minY;
     _maxX = maxX;
     _maxY = maxY;
 }
+
 
 Capabilities::Capabilities()
 {
@@ -148,6 +165,7 @@ CapabilitiesReader::read( const std::string &location )
 #define ELEM_SRS "srs"
 #define ELEM_CRS "crs"
 #define ELEM_LATLONBOUNDINGBOX "latlonboundingbox"
+#define ELEM_BOUNDINGBOX "boundingbox"
 #define ATTR_MINX              "minx"
 #define ATTR_MINY              "miny"
 #define ATTR_MAXX              "maxx"
@@ -195,6 +213,17 @@ readLayers(XmlElement* e, Layer* parentLayer, Layer::LayerList& layers)
         }
 
         osg::ref_ptr<XmlElement> e_bb = e_layer->getSubElement( ELEM_LATLONBOUNDINGBOX );
+        if (e_bb.valid())
+        {
+            double minX, minY, maxX, maxY;
+            minX = as<double>(e_bb->getAttr( ATTR_MINX ), 0);
+            minY = as<double>(e_bb->getAttr( ATTR_MINY ), 0);
+            maxX = as<double>(e_bb->getAttr( ATTR_MAXX ), 0);
+            maxY = as<double>(e_bb->getAttr( ATTR_MAXY ), 0);
+            layer->setLatLonExtents(minX, minY, maxX, maxY);
+        }
+
+        e_bb = e_layer->getSubElement( ELEM_BOUNDINGBOX );
         if (e_bb.valid())
         {
             double minX, minY, maxX, maxY;

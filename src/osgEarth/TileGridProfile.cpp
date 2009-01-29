@@ -252,8 +252,8 @@ bool TileGridProfile::operator != (const TileGridProfile& rhs) const
 
 bool TileGridProfile::isCompatible(const TileGridProfile& rhs) const
 {
-    //Check the case where the profile type and the SRS is exactly the same.
-    if ((_profileType == rhs._profileType) && (osgDB::equalCaseInsensitive(_srs, rhs._srs)))
+    //For now, assume that if the profile types are the same, that the maps are compatible.
+    if ((_profileType == rhs._profileType))
     {
         return true;
     }

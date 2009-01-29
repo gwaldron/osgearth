@@ -126,9 +126,41 @@ public:
             << "&BBOX=%lf,%lf,%lf,%lf";
         prototype = buf.str();
 
-        //Initialize the profile to the SRS
-        profile = TileGridProfile(TileGridProfile::getProfileTypeFromSRS(srs));
+        TileGridProfile::ProfileType profileType = TileGridProfile::getProfileTypeFromSRS(srs);
 
+        //If the map profile already defined and the profile types are the same,
+        //assume we will be compatible with the map profile.
+        if (map_config->getProfile().getProfileType() == profileType)
+        {
+            profile = map_config->getProfile();
+        }
+
+
+        if (profile.getProfileType() == TileGridProfile::UNKNOWN)
+        {
+            if (profileType == TileGridProfile::PROJECTED)
+            {
+                if (capabilities.valid())
+                {
+                    Layer* layer = capabilities->getLayerByName(layers);
+                    if (layer)
+                    {
+                        double minx, miny, maxx, maxy;
+                        layer->getExtents(minx, miny, maxx, maxy);
+                        profile = TileGridProfile(TileGridProfile::PROJECTED, minx, miny, maxx, maxy, srs);
+                    }
+                }
+                else
+                {
+                    osg::notify(osg::NOTICE) << "Could not read WMS capabilities, no way of determining valid extents " << std::endl;
+                }
+            }
+            else
+            {
+                //If the profile type is not projected, osgEarth will provide the global extents
+                profile = TileGridProfile(profileType);
+            }
+        }
         
         //Try to read the TileService
         std::string tileServiceRequest = prefix + sep + "request=GetTileService";

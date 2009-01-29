@@ -100,6 +100,16 @@ namespace osgEarth
         void setAbstract(const std::string &abstract) {_abstract = abstract;}
 
         /**
+        *Gets the lat lon extents of the layer
+        */
+        void getLatLonExtents(double &minLon, double &minLat, double &maxLon, double &maxLat);
+
+        /**
+        *Sets the lat lon extents of the layer
+        */
+        void setLatLonExtents(double minLon, double minLat, double maxLon, double maxLat);
+
+        /**
         *Gets the extents of the layer
         */
         void getExtents(double &minX, double &minY, double &maxX, double &maxY);
@@ -107,7 +117,8 @@ namespace osgEarth
         /**
         *Sets the extents of the layer
         */
-        void setExtents(const double &minX, const double &minY, const double &maxX, const double &maxY);
+        void setExtents(double minX, double minY, double maxX, double maxY);
+
 
         /**A list of Styles*/
         typedef std::vector<Style> StyleList;
@@ -153,6 +164,7 @@ namespace osgEarth
         std::string _name;
         std::string _title;
         std::string _abstract;
+        double _minLon, _minLat, _maxLon, _maxLat;
         double _minX, _minY, _maxX, _maxY;
         StyleList _styles;
         SRSList _spatialReferences;

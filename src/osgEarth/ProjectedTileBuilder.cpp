@@ -72,43 +72,8 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
                 key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
             {
-                //If the key profile and the source profile exactly match, simply request the image from the source
-                if (key->getProfile() == image_sources[i]->getProfile())
-                {
-                  image = image_sources[i]->createImage(key);
-                }
-                else
-                {
-                    //Determine the intersecting keys and create and extract an appropriate image from the tiles
-                    std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
-                    image_sources[i]->getProfile().getIntersectingTiles(key, intersectingTiles);
-                    if (intersectingTiles.size() > 0)
-                    {
-                        osg::ref_ptr<MultiImage> mi = new MultiImage;
-                        for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
-                        {
-                            double minX, minY, maxX, maxY;
-                            intersectingTiles[j]->getGeoExtents(minX, minY, maxX, maxY);
-
-                            //osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
-
-                            osg::ref_ptr<osg::Image> img = image_sources[i]->createImage(intersectingTiles[j].get());
-                            if (img.valid())
-                            {
-                                mi->getImages().push_back(GeoImage(img.get(), intersectingTiles[j].get()));
-                            }
-                            else
-                            {
-                                //If we couldn't create an image that is needed to composite, return NULL
-                                osg::notify(osg::INFO) << "Couldn't create image for MultiImage " << std::endl;
-                                return 0;
-                            }
-                        }
-                        image = mi->createImage(xmin, ymin, xmax, ymax);
-                    }
-                }
+                image = createImage(key, image_sources[i].get());
             }
-
             image_tiles.push_back(ImageTileKeyPair(image, key));
         }
     }

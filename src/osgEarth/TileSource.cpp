@@ -266,7 +266,7 @@ void DiskCachedTileSource::initTileMap()
                 osg::notify(osg::INFO) << "Loaded TMS file from " << getTMSPath() << std::endl;
                 if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
                 {
-                    _profile = TileGridProfile(_tileMap->getProfile());
+                    _profile = _tileMap->createProfile();
                 }
             }
         }

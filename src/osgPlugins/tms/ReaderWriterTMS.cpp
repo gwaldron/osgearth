@@ -130,18 +130,7 @@ public:
             }
             else
             {
-                if (_tileMap->getProfile() != TileGridProfile::PROJECTED)
-                {
-                    //If the source is not projected, then just create the default profile based on the profile type
-                    _profile = TileGridProfile(_tileMap->getProfile());
-                }
-                else
-                {
-                    double minX, minY, maxX, maxY;
-                    _tileMap->getExtents(minX, minY, maxX, maxY);
-                    //If the source is projected, then specify the bounds
-                    _profile = TileGridProfile(TileGridProfile::PROJECTED, minX, minY, maxX, maxY, _tileMap->getSRS());
-                }
+                _profile = _tileMap->createProfile();
             }
         }
     }

@@ -84,11 +84,13 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
             //Assumes the the TileSource will perform the caching for us when we call createImage
             for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
             {
-                osg::ref_ptr<osg::Image> image = itr->get()->createImage(key);
+                //osg::ref_ptr<osg::Image> image = itr->get()->createImage(key);
+                osg::ref_ptr<osg::Image> image = tile_builder->createImage(key, itr->get());
             }
 
             for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
             {
+                //TODO:  Handle compatible but non exact heightfield keys
                 osg::ref_ptr<osg::HeightField> heightField = itr->get()->createHeightField(key);
             }
         }

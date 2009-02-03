@@ -113,6 +113,8 @@ namespace osgEarth
          * the geospatial projection, extents, and the tiling scheme.
          */
         const TileGridProfile& getDataProfile() const;
+
+        osg::Image* createImage(const TileKey* key, TileSource* source);
         
 
     protected:
@@ -170,9 +172,6 @@ namespace osgEarth
 
         // checks whether more data exists below the specified key's level of detail
         bool hasMoreLevels( const TileKey* key ) const;
-
-
-        osg::Image* createImage(const TileKey* key, TileSource* source);
 
         TileGridProfile _dataProfile;
         bool _profileComputed;

@@ -59,7 +59,9 @@ _originY(0),
 _minX(0.0),
 _minY(0.0),
 _maxX(0.0),
-_maxY(0.0)
+_maxY(0.0),
+_numTilesHigh(-1),
+_numTilesWide(-1)
 {
 }
 
@@ -166,7 +168,7 @@ void TileMap::computeNumTiles()
 TileGridProfile TileMap::createProfile()
 {
     TileGridProfile profile(_profile, _minX, _minY, _maxX, _maxY, _srs);
-    if (_numTilesWide > 0 && _numTilesHigh > 0)
+    if (_numTilesWide > 0 && _numTilesHigh > 0 && _profile != TileGridProfile::PROJECTED)
     {
         profile.setNumTilesWideAtLod0(_numTilesWide);
         profile.setNumTilesHighAtLod0(_numTilesHigh);

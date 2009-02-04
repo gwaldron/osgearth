@@ -82,8 +82,11 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, float x, float
     //Determine the pixel to sample
     osg::Vec3 origin = hf->getOrigin();
 
-    float px = ((x - origin.x()) / ((float)(hf->getNumColumns() -1) * hf->getXInterval())) * (float)hf->getNumColumns();
-    float py = ((y - origin.y()) / ((float)(hf->getNumRows() -1) * hf->getYInterval())) * (float)hf->getNumRows();
+    float px = (x - origin.x()) / hf->getXInterval();
+    float py = (y - origin.y()) / hf->getYInterval();
+
+    //float px = ((x - origin.x()) / ((float)(hf->getNumColumns() -1) * hf->getXInterval())) * ((float)hf->getNumColumns()-1);
+    //float py = ((y - origin.y()) / ((float)(hf->getNumRows() -1) * hf->getYInterval())) * ((float)hf->getNumRows()-1);
 
     return getHeightAtPixel(hf, px, py);
 }

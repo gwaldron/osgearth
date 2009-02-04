@@ -82,7 +82,7 @@ public:
     {
         std::stringstream buf;
 
-        int level = key->getLevelOfDetail()-1;
+        int level = key->getLevelOfDetail();
 
         unsigned int tile_x, tile_y;
         key->getTileXY( tile_x, tile_y );

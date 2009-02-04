@@ -23,35 +23,32 @@
 using namespace osgEarth;
 
 TileKey::TileKey() :
-profile( TileGridProfile::UNKNOWN )
+_profile( TileGridProfile::UNKNOWN )
 {
     //NOP
 }
 
 TileKey::TileKey( const TileKey& rhs ) :
-key( rhs.key ),
-profile( rhs.profile )
+_x(rhs._x),
+_y(rhs._y),
+_lod(rhs._lod),
+_profile( rhs._profile )
 {
     //NOP
 }
 
-TileKey::TileKey( const std::string& _key, const TileGridProfile& _profile ) :
-key( _key ),
-profile( _profile )
-{
-    //NOP
-}
-
-const std::string&
+std::string
 TileKey::str() const
 {
-    return key;
+    std::stringstream ss;
+    ss << _lod << "_" << _x << "_" << _y;
+    return ss.str();
 }
 
 const TileGridProfile&
 TileKey::getProfile() const
 {
-    return profile;
+    return _profile;
 }
 
 int
@@ -82,36 +79,20 @@ void
 TileKey::getTileXY(unsigned int& out_tile_x,
                    unsigned int& out_tile_y) const
 {
-    int x = 0;
-    int y = 0;
-
-    unsigned int lod = getLevelOfDetail();
-    for( unsigned int i=0; i<lod; i++ )
-    {
-        x*=2;
-        y*=2;
-        switch( key[i] ) {
-            case '1': x += 1; break;
-            case '2': y += 1; break;
-            case '3': x += 1; y += 1; break;
-        }
-    }
-    out_tile_x = x;
-    out_tile_y = y;
+    out_tile_x = _x;
+    out_tile_y = _y;
 }
 
 osgTerrain::TileID
 TileKey::getTileId() const
 {
-    unsigned int x, y;
-    getTileXY(x, y);
-    return osgTerrain::TileID(getLevelOfDetail(), x, y);
+    return osgTerrain::TileID(_lod, _x, _y);
 }
 
 unsigned int
 TileKey::getLevelOfDetail() const
 {
-    return (unsigned int)key.length();
+    return _lod;
 }
 
 void
@@ -121,37 +102,49 @@ TileKey::getPixelExtents(unsigned int& xmin,
                          unsigned int& ymax,
                          const unsigned int &tile_size) const
 {
-    unsigned int lod = getLevelOfDetail();
-    unsigned int px = 0, py = 0;
-    unsigned int delta = getMapSizePixels(tile_size) >> 1;
-    for( unsigned int i=0; i<lod; i++ )
-    {
-        switch( key[i] ) {
-            case '1': px += delta; break;
-            case '2': py += delta; break;
-            case '3': px += delta; py += delta; break;
-        }
-        delta >>= 1;
-    }
-    xmin = px;
-    ymin = py;
-    xmax = px + (delta << 1);
-    ymax = py + (delta << 1);
+    xmin = _x * tile_size;
+    ymin = _y * tile_size;
+    xmax = xmin + tile_size;
+    ymax = ymin + tile_size; 
 }
 
 TileKey*
 TileKey::getSubkey( unsigned int quadrant ) const
 {
-    if ( !subkeys[quadrant].valid() )
-        const_cast<TileKey*>(this)->subkeys[quadrant] = new TileKey( key + (char)('0'+quadrant), profile );
-    return subkeys[quadrant].get();
+    if ( !_subkeys[quadrant].valid() )
+    {
+        unsigned int lod = _lod + 1;
+        unsigned int x = _x * 2;
+        unsigned int y = _y * 2;
+
+        if (quadrant == 1)
+        {
+            x+=1;
+        }
+        else if (quadrant == 2)
+        {
+            y+=1;
+        }
+        else if (quadrant == 3)
+        {
+            x+=1;
+            y+=1;
+        }
+        const_cast<TileKey*>(this)->_subkeys[quadrant] = new TileKey(x, y, lod, _profile);
+    }
+    return _subkeys[quadrant].get();
 }
+
 
 TileKey*
 TileKey::createParentKey() const
 {
-    if (getLevelOfDetail() == 1) return NULL;
-    return new TileKey(key.substr(0, key.length()-1),profile);
+    if (_lod == 0) return NULL;
+
+    unsigned int lod = _lod - 1;
+    unsigned int x = _x / 2;
+    unsigned int y = _y / 2;
+    return new TileKey(x, y, lod, _profile);
 }
 
 
@@ -179,65 +172,36 @@ TileKey::getNativeExtents(
             double& xmax,
             double& ymax) const
 {
-    double width =  profile.xMax() - profile.xMin();
-    double height = profile.yMax() - profile.yMin();
+    double width, height;
+    _profile.getTileDimensions(_lod, width, height);
 
-    ymax = profile.yMax();
-    xmin = profile.xMin();
-
-    for( unsigned int lod = 0; lod < getLevelOfDetail(); lod++ )
-    {
-        width /= 2.0;
-        height /= 2.0;
-
-        char digit = key[lod];
-        switch( digit )
-        {
-        case '1': xmin += width; break;
-        case '2': ymax -= height; break;
-        case '3': xmin += width; ymax -= height; break;
-        }
-    }
-
-    ymin = ymax - height;
+    xmin = _profile.xMin() + (width * (double)_x);
+    ymax = _profile.yMax() - (height * (double)_y);
     xmax = xmin + width;
-
+    ymin = ymax - height;
     return true;
 }
 
 
 TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, TileGridProfile profile)
-{       
-    std::stringstream ss;
-    for( unsigned i = lod; i > 0; i-- )
-    {
-        char digit = '0';
-        unsigned int mask = 1 << (i-1);
-        if ( (tile_x & mask) != 0 )
-        {
-            digit++;
-        }
-        if ( (tile_y & mask) != 0 )
-        {
-            digit += 2;
-        }
-        ss << digit;
-    }
-    key = ss.str();
-    this->profile = profile;
+{
+    _x = tile_x;
+    _y = tile_y;
+    _lod = lod;
+    _profile = profile;
 }
 
 bool TileKey::isGeodetic() const
 {
-    return profile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC;
+    return _profile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC;
 }
 
 bool TileKey::isMercator() const
 {
-    return profile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR;
+    return _profile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR;
 }
 
 bool TileKey::isProjected() const
 {
-    return profile.getProfileType() == TileGridProfile::PROJECTED;
+    return _profile.getProfileType() == TileGridProfile::PROJECTED;
 }

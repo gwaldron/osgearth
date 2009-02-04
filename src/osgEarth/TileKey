@@ -37,12 +37,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileKey : public osg::Referenced
     {
     public:        
-
-        /**
-         *Creates a new TileKey with the given key and profile
-         */
-        TileKey( const std::string& key, const TileGridProfile& profile );
-
         /**
          *Creates a new TileKey with the given tile xy at the specified level of detail
          *@param tile_x
@@ -59,7 +53,7 @@ namespace osgEarth
         /**
          * Gets the string representation of the key.
          */
-        const std::string& str() const;
+        std::string str() const;
 
         /**
          * Gets a TileID corresponding to this key.
@@ -169,9 +163,13 @@ namespace osgEarth
 
     protected:
         std::string key;
-        TileGridProfile profile;
 
-        osg::ref_ptr<TileKey> subkeys[4];
+        unsigned int _lod;
+        unsigned int _x;
+        unsigned int _y;
+        TileGridProfile _profile;
+
+        osg::ref_ptr<TileKey> _subkeys[4];
     };
 }
 

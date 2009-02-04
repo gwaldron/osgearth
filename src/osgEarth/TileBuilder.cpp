@@ -114,8 +114,20 @@ TileBuilder::readNode( MapConfig* map )
     if (!tileBuilder->isValid())
         return 0;
 
-    osg::ref_ptr<TileKey> key = tileBuilder->getDataProfile().createTileKey( "" );
-    return tileBuilder->createNode(key.get());
+    
+    std::vector< osg::ref_ptr<TileKey> > keys;
+    tileBuilder->getDataProfile().getRootKeys(keys);
+    osg::ref_ptr<osg::Group> group = new osg::Group;
+    for (unsigned int i = 0; i < keys.size(); ++i)
+    {
+        osg::Node* node = tileBuilder->createNode(keys[i].get());
+        if (node)
+        {
+            group->addChild(node);
+        }
+    }
+
+    return group->getNumChildren() == keys.size() ? group.release() : NULL;
 }
 
 const TileGridProfile&
@@ -628,20 +640,11 @@ TileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
     osg::ref_ptr<osg::Node> q0, q1, q2, q3;
 
     q0 = createQuadrant( key->getSubkey(0) );
-    all_quadrants_created = q0.valid();
+    q1 = createQuadrant( key->getSubkey(1) );
+    q2 = createQuadrant( key->getSubkey(2) );
+    q3 = createQuadrant( key->getSubkey(3) );
 
-    if ( key->getLevelOfDetail() > 0 || key->getProfile().getNumTilesAtLevel0() > 1 )
-    {
-        q1 = createQuadrant( key->getSubkey(1) );
-        all_quadrants_created = all_quadrants_created && q1.valid();
-    }
-
-    if ( key->getLevelOfDetail() > 0 || key->getProfile().getNumTilesAtLevel0() > 2 )
-    {
-        q2 = createQuadrant( key->getSubkey( 2 ));
-        q3 = createQuadrant( key->getSubkey( 3 ));
-        all_quadrants_created = all_quadrants_created && q2.valid() && q3.valid();
-    }
+    all_quadrants_created = (q0.valid() && q1.valid() && q2.valid() && q3.valid());
 
     if (all_quadrants_created)
     {

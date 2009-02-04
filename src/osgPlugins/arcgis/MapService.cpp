@@ -2,7 +2,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/JsonUtils>
 #include <osg/Notify>
-
+#include <sstream>
 #include <limits.h>
 
 using namespace osgEarth;
@@ -34,12 +34,14 @@ TileInfo::TileInfo()
     //NOP
 }
 
-TileInfo::TileInfo( int _tile_size, const std::string& _format, int _min_level, int _max_level ) :
+TileInfo::TileInfo( int _tile_size, const std::string& _format, int _min_level, int _max_level, int _num_tiles_wide, int _num_tiles_high ) :
 tile_size( _tile_size ),
 format( _format ),
 min_level( _min_level ),
 max_level( _max_level ),
-is_valid( true )
+is_valid( true ),
+num_tiles_wide(_num_tiles_wide),
+num_tiles_high(_num_tiles_high)
 { 
     //NOP
 }
@@ -49,7 +51,9 @@ tile_size( rhs.tile_size ),
 format( rhs.format ),
 min_level( rhs.min_level ),
 max_level( rhs.max_level ),
-is_valid( rhs.is_valid )
+is_valid( rhs.is_valid ),
+num_tiles_wide( rhs.num_tiles_wide ),
+num_tiles_high( rhs.num_tiles_high )
 {
     //NOP
 }
@@ -77,6 +81,16 @@ TileInfo::getMinLevel() const {
 int
 TileInfo::getMaxLevel() const {
     return max_level;
+}
+
+int
+TileInfo::getNumTilesWide() const {
+    return num_tiles_wide;
+}
+
+int
+TileInfo::getNumTilesHigh() const {
+    return num_tiles_high;
 }
                                  
 
@@ -126,8 +140,14 @@ MapService::init( const std::string& _url )
     double xmax = doc["fullExtent"].get("xmax", 0).asDouble();
     double ymax = doc["fullExtent"].get("ymax", 0).asDouble();
     int srs = doc["fullExtent"].get("spatialReference", "").get("wkid", 0).asInt();
+    
+    //Assumes the SRS is going to be an EPSG code
+    std::stringstream ss;
+    ss << "epsg:" << srs;
+    
+    
     if ( xmax > xmin && ymax > ymin && srs != 0 )
-        profile = TileGridProfile( xmin, ymin, xmax, ymax, ""+srs );
+        profile = TileGridProfile( xmin, ymin, xmax, ymax, ss.str() );
     else
         return setError( "Map service does not define a full extent" );
 
@@ -178,8 +198,31 @@ MapService::init( const std::string& _url )
             max_level = level;
     }
 
+    int num_tiles_wide = 1;
+    int num_tiles_high = 1;
+
+    if (j_levels.size() > 0)
+    {
+        int l = j_levels[0u].get("level", -1).asInt();
+        double res = j_levels[0u].get("resolution", 0.0).asDouble();
+        num_tiles_wide = (int)((xmax - xmin) / (res * tile_cols));
+        num_tiles_high = (int)((ymax - ymin) / (res * tile_cols));
+
+        //In case the first level specified isn't level 0, compute the number of tiles at level 0
+        for (int i = 0; i < l; i++)
+        {
+            num_tiles_wide /= 2;
+            num_tiles_high /= 2;
+        }
+
+        profile.setNumTilesWideAtLod0(num_tiles_wide);
+        profile.setNumTilesHighAtLod0(num_tiles_high);
+    }
+
+
+
     // now we're good.
-    tile_info = TileInfo( tile_rows, format, min_level, max_level );
+    tile_info = TileInfo( tile_rows, format, min_level, max_level, num_tiles_wide, num_tiles_high);
     is_valid = true;
     return is_valid;
 }

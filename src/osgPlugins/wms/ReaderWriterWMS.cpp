@@ -168,7 +168,7 @@ public:
         tileService = TileServiceReader::read(tileServiceRequest);
         if (tileService.valid())
         {
-            //osg::notify(osg::NOTICE) << "Read TileService " << std::endl;
+            osg::notify(osg::INFO) << "Read TileService " << std::endl;
             TileService::TilePatternList patterns;
             tileService->getMatchingPatterns(layers, format, style, srs, tile_size, tile_size, patterns);
 

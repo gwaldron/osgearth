@@ -27,13 +27,29 @@ void CacheSeed::seed(MapConfig *map)
     //Create a TileBuilder for the map
     _tileBuilder = TileBuilder::create( map, map->getFilename() );
     
-    osg::ref_ptr<TileKey> key = _tileBuilder->getDataProfile().createTileKey( "" );
+    std::vector< osg::ref_ptr<TileKey> > keys;
+    _tileBuilder->getDataProfile().getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
-        _bounds._max.x() == 0 && _bounds._max.y() == 0)
+      _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-        key->getGeoExtents(_bounds._min.x(), _bounds._min.y(), _bounds._max.x(), _bounds._max.y());
+      _bounds._min.x() = _tileBuilder->getDataProfile().xMin();
+      _bounds._min.y() = _tileBuilder->getDataProfile().yMin();
+      _bounds._max.x() = _tileBuilder->getDataProfile().xMax();
+      _bounds._max.y() = _tileBuilder->getDataProfile().yMax();
+
+      if (_tileBuilder->getDataProfile().getProfileType() == TileGridProfile::GLOBAL_MERCATOR)
+      {
+        double lat,lon;
+        Mercator::metersToLatLon(_bounds._min.x(), _bounds._min.y(), lat, lon);
+        _bounds._min.x() = lon;
+        _bounds._min.y() = lat;
+
+        Mercator::metersToLatLon(_bounds._max.x(), _bounds._max.y(), lat, lon);
+        _bounds._max.x() = lon;
+        _bounds._max.y() = lat;
+      }
     }
 
 
@@ -89,56 +105,52 @@ void CacheSeed::seed(MapConfig *map)
 
     osg::notify(osg::NOTICE) << "Maximum cache level will be " << _maxLevel << std::endl;
 
-    processKey( _tileBuilder.get(), key.get() );
+    for (unsigned int i = 0; i < keys.size(); ++i)
+    {
+      processKey( _tileBuilder.get(), keys[i].get() );
+    }
 }
 
 
 void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
 {
-    unsigned int lod = key->getLevelOfDetail();
+    unsigned int x, y, lod;
+    key->getTileXY(x, y);
+    lod = key->getLevelOfDetail();
 
 //    osg::notify(osg::NOTICE) << "Checking key = " << key->str() << std::endl;
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-        if (lod > 0 || !key->isGeodetic())
+      //Assumes the the TileSource will perform the caching for us when we call createImage
+      for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
+      {
+        TileSource* source = itr->get();
+        if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
         {
-            //Assumes the the TileSource will perform the caching for us when we call createImage
-            for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
-            {
-                TileSource* source = itr->get();
-                if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
-                {
-                    osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << key->str() << std::endl;
-                    osg::ref_ptr<osg::Image> image = tile_builder->createImage(key, source);
-                }
-            }
-
-            for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
-            {
-                //TODO:  Handle compatible but non exact heightfield keys (JB)
-                TileSource* source = itr->get();
-                if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
-                {
-                    osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << key->str() << std::endl;
-                    osg::ref_ptr<osg::HeightField> heightField = source->createHeightField(key);
-                }
-            }
+          osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
+          osg::ref_ptr<osg::Image> image = tile_builder->createImage(key, source);
         }
+      }
+
+      for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
+      {
+        //TODO:  Handle compatible but non exact heightfield keys (JB)
+        TileSource* source = itr->get();
+        if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
+        {
+          osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
+          osg::ref_ptr<osg::HeightField> heightField = source->createHeightField(key);
+        }
+      }
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)
     {
         osg::ref_ptr<TileKey> k0 = key->getSubkey(0);
         osg::ref_ptr<TileKey> k1 = key->getSubkey(1);
-        osg::ref_ptr<TileKey> k2;
-        osg::ref_ptr<TileKey> k3;
-
-        if (key->getLevelOfDetail() > 0 || !key->isGeodetic())
-        {
-            k2 = key->getSubkey(2);
-            k3 = key->getSubkey(3);
-        }
+        osg::ref_ptr<TileKey> k2 = key->getSubkey(2);
+        osg::ref_ptr<TileKey> k3 = key->getSubkey(3);        
 
         //Check to see if the bounds intersects ANY of the tile's children.  If it does, then process all of the children
         //for this level

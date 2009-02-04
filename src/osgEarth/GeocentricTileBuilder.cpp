@@ -142,9 +142,18 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
     if ( key->getLevelOfDetail() == 0 )
     {
         const osgEarth::TileGridProfile& profile = key->getProfile();
+        double minY = profile.yMin();
+        double maxY = profile.yMax();
 
-        double minX, minY, maxX, maxY;
-        key->getGeoExtents(minX, minY, maxX, maxY);
+        //Convert meters to lat/lon if the profile is Mercator
+        if (profile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR)
+        {
+            double lat,lon;
+            Mercator::metersToLatLon(0, minY, lat, lon);
+            minY = lat;
+            Mercator::metersToLatLon(0, maxY, lat, lon);
+            maxY = lat;
+        }
         
         //Extend the caps out so they slightly overlap neighboring tiles to hide seams
         double cap_offset = 0.1;
@@ -188,7 +197,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
                 key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
             {
-                image = createImage(key, image_sources[i].get());                
+                image = createImage(key, image_sources[i].get());    
             }
             image_tiles.push_back(ImageTileKeyPair(image, key));
         }

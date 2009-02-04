@@ -77,11 +77,14 @@ public:
     osg::Image* createImage( const TileKey* key )
     {
         unsigned int level, tile_x, tile_y;
-        level = key->getLevelOfDetail();
+        level = key->getLevelOfDetail() +1;
         key->getTileXY( tile_x, tile_y );
 
+        unsigned int numCols, numRows;
+        key->getProfile().getNumTiles(level, numCols, numRows);
+        
         // need to invert the y-tile index
-        tile_y = key->getMapSizeTiles() - tile_y - 1;
+        tile_y = numRows - tile_y - 1;
 
         char buf[2048];
         sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",

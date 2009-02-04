@@ -96,13 +96,9 @@ namespace osgEarth
         /**
          * Gets the spatial reference system string.
          */
-        const std::string& srs() const;
+        const std::string& srs() const;        
 
-        /**
-         * Creates and returns a new tile key, given a key string. The
-         * caller is responsible for deleting the returned object.
-         */
-        osgEarth::TileKey* createTileKey( const std::string &key ) const;
+        void getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> > &keys) const;
 
         /**
          * Deduces a profile type given an SRS string.
@@ -111,12 +107,6 @@ namespace osgEarth
 
         bool operator == (const TileGridProfile& rhs) const;
         bool operator != (const TileGridProfile& rhs) const;
-
-        /**
-         * Gets the number of tiles that occur at LOD 0. LOD 0 is often a special
-         * case (may be 1, 2, or 4); below that, all tiles are subdivided into 4 quadrants.
-         */
-        unsigned int getNumTilesAtLevel0() const;
 
         /**
          * Applies this profile's format and coordinate system strings to the
@@ -135,15 +125,29 @@ namespace osgEarth
         void getTileDimensions(unsigned int lod, double &width, double &height) const;
 
         /**
+         *Gets the number wide and high at the given lod
+         */
+        void getNumTiles(unsigned int lod, unsigned int &tilesWide, unsigned int &tilesHigh) const;
+
+        /**
          *Gets the intersecting tiles of this TileGridProfile with the given TileKey.
          */
         void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> > &intersectingKeys) const;
+
+        unsigned int getNumTilesWideAtLod0() {return _numTilesWideAtLod0;}
+        void setNumTilesWideAtLod0(unsigned int w) {_numTilesWideAtLod0 = w;}
+
+        unsigned int getNumTilesHighAtLod0() {return _numTilesHighAtLod0;}
+        void setNumTilesHighAtLod0(unsigned int h) {_numTilesHighAtLod0 = h;}
+
 
     private:
         double _xmin, _ymin, _xmax, _ymax;        
         std::string _srs;
         ProfileType _profileType;
-        unsigned int _num_tiles_at_lod_0;
+    
+        unsigned int _numTilesWideAtLod0;
+        unsigned int _numTilesHighAtLod0;
 
         void init( ProfileType );
     };

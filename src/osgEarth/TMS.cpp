@@ -139,16 +139,39 @@ void TileMap::computeMinMaxLevel()
     }
 }
 
+void TileMap::computeNumTiles()
+{
+    _numTilesWide = -1;
+    _numTilesHigh = -1;
+
+    if (_tileSets.size() > 0)
+    {
+        unsigned int level = _tileSets[0].getOrder();
+        double res = _tileSets[0].getUnitsPerPixel();
+
+        _numTilesWide = (int)((_maxX - _minX) / (res * _format.getWidth()));
+        _numTilesHigh = (int)((_maxY - _minY) / (res * _format.getWidth()));
+
+        //In case the first level specified isn't level 0, compute the number of tiles at level 0
+        for (unsigned int i = 0; i < level; i++)
+        {
+            _numTilesWide /= 2;
+            _numTilesHigh /= 2;
+        }
+
+        osg::notify(osg::INFO) << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
+    }
+}
+
 TileGridProfile TileMap::createProfile()
 {
-    if (_profile == TileGridProfile::PROJECTED)
+    TileGridProfile profile(_profile, _minX, _minY, _maxX, _maxY, _srs);
+    if (_numTilesWide > 0 && _numTilesHigh > 0)
     {
-        return TileGridProfile(_profile, _minX, _minY, _maxX, _maxY, _srs);
+        profile.setNumTilesWideAtLod0(_numTilesWide);
+        profile.setNumTilesHighAtLod0(_numTilesHigh);
     }
-    else
-    {
-        return _profile;
-    }
+    return profile;
 }
 
 
@@ -162,18 +185,6 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
     }
 
     unsigned int zoom = tileKey->getLevelOfDetail();
-    int totalTiles = TileKey::getMapSizeTiles(zoom);
-
-    if (tileKey->isGeodetic() )
-    {
-        //In global-geodetic TMS, level 0 is two tiles that cover the entire earth.
-        //Level 0 in osgEarth is a single tile that covers the entire earth and extends down to -270,
-        //so osgEarth level 1 is more like TMS level 0.
-        zoom--;
-
-        //Only half the vertical tiles are used in TMS global-geodetic
-        totalTiles /= 2;
-    }
 
     unsigned int x, y;
     tileKey->getTileXY(x, y);
@@ -183,7 +194,9 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
     //http://code.google.com/apis/maps/documentation/overlays.html#Google_Maps_Coordinates
     if (!invertY)
     {
-        y  = totalTiles - y - 1;
+        unsigned int numRows, numCols;
+        tileKey->getProfile().getNumTiles(tileKey->getLevelOfDetail(), numCols, numRows);
+        y  = numRows - y - 1;
     }
 
     //osg::notify(osg::NOTICE) << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
@@ -235,6 +248,30 @@ TileMap::intersectsKey(const TileKey *tileKey)
     return inter;
 }
 
+void
+TileMap::generateTileSets(unsigned int numLevels)
+{
+    TileGridProfile profile = createProfile();
+
+    _tileSets.clear();
+
+    double width = (_maxX - _minX);
+    double height = (_maxY - _minY);
+
+    for (unsigned int i = 0; i < numLevels; ++i)
+    {
+        unsigned int numCols, numRows;
+        profile.getNumTiles(i, numCols, numRows);
+        double res = (width / (double)numCols) / (double)_format.getWidth();
+
+        TileSet ts;
+        ts.setUnitsPerPixel(res);
+        ts.setOrder(i);
+        _tileSets.push_back(ts);
+    }
+}
+
+
 TileMap*
 TileMap::create(const std::string& url,
                 osgEarth::TileGridProfile::ProfileType type,
@@ -242,40 +279,17 @@ TileMap::create(const std::string& url,
                 int tile_width,
                 int tile_height)
 {
-    TileMap* tileMap = NULL;
+    TileGridProfile profile(type);
 
-    switch( type )
-    {
-    case osgEarth::TileGridProfile::GLOBAL_MERCATOR:
-        tileMap = new TileMap();
-        tileMap->_srs = "EPSG:41001";
-        tileMap->_originX = -20037508.340000;
-        tileMap->_originY = -20037508.340000;
-        tileMap->_minX = -20037508.340000;
-        tileMap->_minY = -20037508.340000;
-        tileMap->_maxX = 20037508.340000;
-        tileMap->_maxY = 20037508.340000;
-        break;
-
-    case osgEarth::TileGridProfile::GLOBAL_GEODETIC:
-        tileMap = new TileMap();
-        tileMap->_srs = "EPSG:4326";
-        tileMap->_originX = -180.0;
-        tileMap->_originY = -90.0;
-        tileMap->_minX = -180.0;
-        tileMap->_minY = -90.0;
-        tileMap->_maxX = 180.0;
-        tileMap->_maxY = 90.0;
-        break;
-    }
-
-    if ( tileMap )
-    {
-        tileMap->_filename = url;
-        tileMap->_format.setWidth( tile_width );
-        tileMap->_format.setHeight( tile_height );
-        tileMap->_format.setExtension( format );        
-    }
+    TileMap* tileMap = new TileMap();
+    tileMap->setProfileType(type);
+    tileMap->setExtents(profile.xMin(), profile.yMin(), profile.xMax(), profile.yMax());
+    tileMap->setOrigin(profile.xMin(), profile.yMin());
+    tileMap->_filename = url;
+    tileMap->_format.setWidth( tile_width );
+    tileMap->_format.setHeight( tile_height );
+    tileMap->_format.setExtension( format );
+        
 
     return tileMap;
 }
@@ -284,44 +298,26 @@ TileMap* TileMap::create(const TileSource* tileSource)
 {
     TileMap* tileMap = new TileMap();
 
+    TileGridProfile profile = tileSource->getProfile();
+
     tileMap->setTitle( tileSource->getName() );
-    tileMap->setProfileType(tileSource->getProfile().getProfileType());
-
-    switch (tileSource->getProfile().getProfileType())
-    {
-    case TileGridProfile::GLOBAL_MERCATOR:
-        tileMap->_srs = "EPSG:41001";
-        tileMap->_originX = -20037508.340000;
-        tileMap->_originY = -20037508.340000;
-        tileMap->_minX = -20037508.340000;
-        tileMap->_minY = -20037508.340000;
-        tileMap->_maxX = 20037508.340000;
-        tileMap->_maxY = 20037508.340000;
-        break;
-
-    case TileGridProfile::GLOBAL_GEODETIC:
-        tileMap->_srs = "EPSG:4326";
-        tileMap->_originX = -180.0;
-        tileMap->_originY = -90.0;
-        tileMap->_minX = -180.0;
-        tileMap->_minY = -90.0;
-        tileMap->_maxX = 180.0;
-        tileMap->_maxY = 90.0;
-        break;
-    case TileGridProfile::PROJECTED:
-        tileMap->_srs = tileSource->getProfile().srs();
-        tileMap->_originX = tileSource->getProfile().xMin();
-        tileMap->_originY = tileSource->getProfile().yMin();
-        tileMap->_minX = tileSource->getProfile().xMin();
-        tileMap->_minY = tileSource->getProfile().yMin();
-        tileMap->_maxX = tileSource->getProfile().xMax();
-        tileMap->_maxY = tileSource->getProfile().yMax();
-        break;
-    }
+    tileMap->setProfileType(profile.getProfileType() );
+    
+    tileMap->_srs = profile.srs();
+    tileMap->_originX = profile.xMin();
+    tileMap->_originY = profile.yMin();
+    tileMap->_minX = profile.xMin();
+    tileMap->_minY = profile.yMin();
+    tileMap->_maxX = profile.xMax();
+    tileMap->_maxY = profile.yMax();
+    tileMap->_numTilesWide = profile.getNumTilesWideAtLod0();
+    tileMap->_numTilesHigh = profile.getNumTilesHighAtLod0();
 
     tileMap->_format.setWidth( tileSource->getPixelsPerTile() );
     tileMap->_format.setHeight( tileSource->getPixelsPerTile() );
     tileMap->_format.setExtension( tileSource->getExtension() );
+
+    tileMap->generateTileSets();
 
     return tileMap;
 }
@@ -446,6 +442,7 @@ TileMapReaderWriter::read(std::istream &in)
     }
 
     tileMap->computeMinMaxLevel();
+    tileMap->computeNumTiles();
 
     return tileMap.release();
 }
@@ -504,7 +501,6 @@ XmlDocument* tileMapToXmlDocument(const TileMap* tileMap)
     e_tile_sets->getAttrs()[ ATTR_PROFILE ] = profileString;
 
 
-    //TODO:  Write Tilesets
     for (TileMap::TileSetList::const_iterator itr = tileMap->getTileSets().begin(); itr != tileMap->getTileSets().end(); ++itr)
     {
         osg::ref_ptr<XmlElement> e_tile_set = new XmlElement( ELEM_TILESET );

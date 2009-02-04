@@ -69,16 +69,17 @@ public:
         return profile;
     }
 
+    char getRandomServer()
+    {
+        //Gets a server from 0 - 3
+        int server = rand() % 4;
+        char serverChar[2];
+        sprintf(serverChar, "%i", server);
+        return serverChar[0];
+    }
+
     osg::Image* createImage( const TileKey* key )
     {
-        // If we are given a geodetic key, resample the mercator imagery. Some quality
-        // loss will result.
-        if ( key->isGeodetic() )
-        {
-            MercatorToGeodeticAdapter converter( this );
-            return converter.createImage( key );
-        }
-
         //Return NULL if we are given a non-mercator key
         if ( !key->isMercator() ) return 0;
 
@@ -89,7 +90,7 @@ public:
             if ( version.empty() )
                 version = "34";
 
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            char server = getRandomServer();
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
@@ -104,7 +105,7 @@ public:
         }
         else if ( dataset == "traffic" )
         {
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            char server = getRandomServer();
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
@@ -120,7 +121,7 @@ public:
             if ( version.empty() )
                 version = "w2p.87";
 
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            char server = getRandomServer();
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
             buf << "http://mt" << server << ".google.com/mt"
@@ -136,7 +137,7 @@ public:
             if ( version.empty() )
                 version = "w2t.88";
 
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            char server = getRandomServer();
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();
@@ -154,7 +155,7 @@ public:
             if ( version.empty() )
                 version = "w2.89";
 
-            char server = key->str().length() > 0? key->str()[key->str().length()-1] : '0';
+            char server = getRandomServer();
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
             int zoom = key->getLevelOfDetail();

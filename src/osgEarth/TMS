@@ -220,6 +220,11 @@ namespace osgEarth
         void computeMinMaxLevel();
 
         /**
+        *Computes the number of tiles at level 0 from the existing TileSets
+        */
+        void computeNumTiles();
+
+        /**
         *Gets the x coordinate of the origin of this TileMap
         */
         double getOriginX() const {return _originX;}
@@ -275,6 +280,26 @@ namespace osgEarth
         */
         void setExtents( double minX, double minY, double maxX, double maxY);
 
+        /**
+        *Gets the number of tiles wide at lod 0
+        */
+        unsigned int getNumTilesWide() const { return _numTilesWide; }
+
+        /**
+        *Sets the number of tiles wide at lod 0
+        */
+        void setNumTilesWide(unsigned int w) { _numTilesWide = w; }
+
+        /**
+        *Gets the number of tiles high at lod 0
+        */
+        unsigned int getNumTilesHigh() const { return _numTilesHigh; }
+
+        /**
+        *Sets the number of tiles high at lod 0
+        */
+        void setNumTilesHigh(unsigned int h) {_numTilesHigh = h;}
+
         osgEarth::TileGridProfile::ProfileType getProfileType() const {return _profile;}
         void setProfileType( osgEarth::TileGridProfile::ProfileType profile ) {_profile = profile;}
 
@@ -313,6 +338,11 @@ namespace osgEarth
         bool intersectsKey(const osgEarth::TileKey *tileKey);
 
         /**
+        *Automatically generates a number of TileSets
+        */
+        void generateTileSets(unsigned int numLevels = 20);
+
+        /**
         * Creates a TileMap corresponding to one of osgEarth's built-in profile types
         */
         static TileMap* create(
@@ -347,6 +377,9 @@ namespace osgEarth
 
         unsigned int _minLevel;
         unsigned int _maxLevel;
+
+        unsigned int _numTilesWide;
+        unsigned int _numTilesHigh;
 
         osgEarth::TileGridProfile::ProfileType _profile;
     };

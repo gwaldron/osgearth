@@ -223,11 +223,15 @@ std::string DiskCachedTileSource::getPath()
 std::string DiskCachedTileSource::getFileName(const TileKey* key )
 {
     unsigned int level, x, y;
-    level = key->getLevelOfDetail();
+    level = key->getLevelOfDetail() +1;
     key->getTileXY( x, y );
 
+    unsigned int numCols, numRows;
+    key->getProfile().getNumTiles(level, numCols, numRows);
+
     // need to invert the y-tile index
-    y = key->getMapSizeTiles() - y - 1;
+    y = numRows - y - 1;
+
 
     char buf[2048];
     sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
@@ -299,26 +303,18 @@ std::string TMSCacheTileSource::getFileName(const osgEarth::TileKey *key)
     key->getTileXY(x, y);
 
     unsigned int lod = key->getLevelOfDetail();
-    int totalTiles = TileKey::getMapSizeTiles(lod);
-
-    if ( key->isGeodetic() )
+    
+    unsigned int numCols, numRows;
+    key->getProfile().getNumTiles(lod, numCols, numRows);
+    if (!_invertY)
     {
-        //In global-geodetic TMS, level 0 is two tiles that cover the entire earth.
-        //Level 0 in osgEarth is a single tile that covers the entire earth and extends down to -270,
-        //so osgEarth level 1 is more like TMS level 0.
-        lod--;
-
-        //Only half the vertical tiles are used in TMS global-geodetic
-        totalTiles /= 2;
-    }
-
-    if ((!_invertY) && lod > 0)
-    {
-        y = totalTiles - y - 1;
+        y = numRows - y - 1;
     }
 
     std::stringstream buf;
     buf << getPath() << "/" << getName() << "/" << lod << "/" << x << "/" << y << "." << getExtension();
+
+    //osg::notify(osg::NOTICE) << "URL for key " << key->str() << " = " << buf.str() << std::endl;
     return buf.str();
 
 }

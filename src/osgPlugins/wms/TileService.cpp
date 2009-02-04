@@ -185,6 +185,9 @@ osgEarth::TileGridProfile TileService::getProfile(TilePatternList &patterns)
       double ymin = topLeftMin.y() - maxHeight;
 
       profile = TileGridProfile(profileType, xmin, ymin, xmax, ymax, patterns[0].getSRS());
+      //The JPL tileservice is a standard quadtree, so it will have a 1x1 grid at level 0
+      profile.setNumTilesHighAtLod0(1);
+      profile.setNumTilesWideAtLod0(1);
     }
     return profile;
 }

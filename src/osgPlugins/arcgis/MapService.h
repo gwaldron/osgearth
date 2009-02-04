@@ -51,7 +51,7 @@ class TileInfo
 public:
     TileInfo();
 
-    TileInfo( int tile_size, const std::string& format, int min_level, int max_level );
+    TileInfo( int tile_size, const std::string& format, int min_level, int max_level, int _num_tiles_wide, int _num_tiles_high );
 
     TileInfo( const TileInfo& rhs );
 
@@ -65,11 +65,17 @@ public:
 
     int getMaxLevel() const;
 
+    int getNumTilesWide() const;
+
+    int getNumTilesHigh() const;
+
 private:
     std::string format;
     int tile_size;
     int min_level, max_level;
     bool is_valid;
+    int num_tiles_wide;
+    int num_tiles_high;
 };
 
 

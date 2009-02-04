@@ -86,7 +86,7 @@ public:
         unsigned int x, y;
         key->getTileXY(x, y);
 
-        unsigned int lod = key->getLevelOfDetail();
+        unsigned int lod = key->getLevelOfDetail()+1;
 
         std::stringstream buf;
         //http://s0.tileservice.worldwindcentral.com/getTile?interface=map&version=1&dataset=bmng.topo.bathy.200401&level=0&x=0&y=0

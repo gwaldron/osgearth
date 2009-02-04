@@ -79,39 +79,6 @@ namespace osgEarth
           unsigned int& out_tile_x, unsigned int& out_tile_y);
     };
 
-
-    /**
-     * Utility class that lets you generate geodetic tiles from a spherical mercator tile source.
-     * In other words, use this to convert mercator imagery into a geodetic projection.
-     * Some loss of image quality will occur, particularly if the source imagery includes text.
-     */
-    class OSGEARTH_EXPORT MercatorToGeodeticAdapter
-    {
-    public:
-        // imagery resampling filter algorithm
-        enum Filter {
-            FILTER_NEAREST_NEIGHBOR,
-            FILTER_LINEAR
-        };
-
-    public:
-        MercatorToGeodeticAdapter( osgEarth::TileSource* source, const osgDB::ReaderWriter::Options* options =NULL );
-
-        /**
-         * Sets the image resampling filter to use. Default is FILTER_NEAREST_NEIGHBOR.
-         */
-        void setFilter( const Filter& filter );
-
-        osg::Image* createImage( const TileKey* key );
-
-        osg::HeightField* createHeightField( const TileKey* key );
-
-    private:
-        osg::ref_ptr<osgEarth::TileSource> source;
-        Filter filter;
-    };
-
-
     class MercatorLocator : public osgTerrain::Locator
     {
     public:

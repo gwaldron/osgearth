@@ -107,7 +107,7 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
             for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
             {
                 TileSource* source = itr->get();
-                if ( lod >= source->getMinLevel() && source->getMaxLevel() <= lod )
+                if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
                 {
                     osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << key->str() << std::endl;
                     osg::ref_ptr<osg::Image> image = tile_builder->createImage(key, source);
@@ -118,7 +118,7 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
             {
                 //TODO:  Handle compatible but non exact heightfield keys (JB)
                 TileSource* source = itr->get();
-                if ( lod >=source->getMinLevel() && source->getMaxLevel() <= lod )
+                if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
                 {
                     osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << key->str() << std::endl;
                     osg::ref_ptr<osg::HeightField> heightField = source->createHeightField(key);

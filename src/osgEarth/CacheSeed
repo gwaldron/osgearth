@@ -30,23 +30,22 @@ namespace osgEarth
     struct Bounds
     {
         Bounds(double minx, double miny, double maxx, double maxy):
-    _min(minx, miny),
-        _max(maxx, maxy)
-    {
-    }
+            _min(minx, miny),
+            _max(maxx, maxy) { }
 
-    bool intersects(TileKey* key)
-    {
-        double minlon, minlat, maxlon, maxlat;
-        key->getGeoExtents(minlon, minlat, maxlon, maxlat);
+        bool intersects(TileKey* key)
+        {
+            double minx, miny, maxx, maxy;
+            key->getGeoExtents( minx, miny, maxx, maxy );
 
+            return ! ( minx >= _max.x() || maxx <= _min.x() || miny >= _max.y() || maxy <= _min.y() );
 
-        return  osg::maximum(_min.x(), minlon) <= osg::minimum(_max.x(),maxlon) &&
-            osg::maximum(_min.y(), minlat) <= osg::minimum(_max.y(), maxlat);
-    }
+            //return  osg::maximum(_min.x(), minlon) <= osg::minimum(_max.x(),maxlon) &&
+            //    osg::maximum(_min.y(), minlat) <= osg::minimum(_max.y(), maxlat);
+        }
 
-    osg::Vec2d _min;
-    osg::Vec2d _max;
+        osg::Vec2d _min;
+        osg::Vec2d _max;
     };
 
     /**
@@ -57,57 +56,55 @@ namespace osgEarth
     public:
         CacheSeed():
           _minLevel(0),
-              _maxLevel(5),
-              _bounds(-180, -90, 180, 90)
-          {
-          }
+          _maxLevel(12),
+          _bounds(-180, -90, 180, 90) { }
 
-          /**
-          * Sets the minimum level to seed to
-          */
-          void setMinLevel(const unsigned int &minLevel) {_minLevel = minLevel;}
+        /**
+        * Sets the minimum level to seed to
+        */
+        void setMinLevel(const unsigned int &minLevel) {_minLevel = minLevel;}
 
-          /**
-          * Gets the minimum level to cache to.
-          */
-          const unsigned int getMinLevel() const {return _minLevel;}
+        /**
+        * Gets the minimum level to cache to.
+        */
+        const unsigned int getMinLevel() const {return _minLevel;}
 
-          /**
-          * Sets the maximum level to seed to
-          */
-          void setMaxLevel(const unsigned int &maxLevel) {_maxLevel = maxLevel;}
+        /**
+        * Sets the maximum level to seed to
+        */
+        void setMaxLevel(const unsigned int &maxLevel) {_maxLevel = maxLevel;}
 
-          /**
-          * Gets the maximum level to cache to.
-          */
-          const unsigned int getMaxLevel() const {return _maxLevel;}
+        /**
+        * Gets the maximum level to cache to.
+        */
+        const unsigned int getMaxLevel() const {return _maxLevel;}
 
 
 
-          /**
-          * Gets the bounds to seed in
-          */
-          const Bounds& getBounds() const { return _bounds; }
+        /**
+        * Gets the bounds to seed in
+        */
+        const Bounds& getBounds() const { return _bounds; }
 
-          /**
-          * Sets the bounds to seed in
-          */
-          void setBounds(const Bounds& bounds) { _bounds = bounds; }
+        /**
+        * Sets the bounds to seed in
+        */
+        void setBounds(const Bounds& bounds) { _bounds = bounds; }
 
-          /**
-          * Sets the bounds to seed in
-          */
-          void setBounds(const double &minLon, const double minLat, const double &maxLon, const double &maxLat) { _bounds = Bounds(minLon, minLat, maxLon, maxLat); }
+        /**
+        * Sets the bounds to seed in
+        */
+        void setBounds(const double &minLon, const double minLat, const double &maxLon, const double &maxLat) { _bounds = Bounds(minLon, minLat, maxLon, maxLat); }
 
-          /**
-          * Performs the seed operation
-          */
-          void seed(MapConfig *map);
+        /**
+        * Performs the seed operation
+        */
+        void seed(MapConfig *map);
 
-          /**
-          * Gets the TileBuilder used the CacheSeed
-          */
-          TileBuilder* getTileBuilder() {return _tileBuilder.get(); }
+        /**
+        * Gets the TileBuilder used the CacheSeed
+        */
+        TileBuilder* getTileBuilder() {return _tileBuilder.get(); }
 
     protected:
         unsigned int _minLevel;

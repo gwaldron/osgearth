@@ -38,29 +38,41 @@ void CacheSeed::seed(MapConfig *map)
 
 
     bool hasCaches = false;
+    int src_min_level = INT_MAX;
+    int src_max_level = 0;
 
     //Assumes the the TileSource will perform the caching for us when we call createImage
     for (TileSourceList::iterator itr = _tileBuilder->getImageSources().begin(); itr != _tileBuilder->getImageSources().end(); ++itr)
     {
-        if (!dynamic_cast<CachedTileSource*>(itr->get()))
+        TileSource* src = itr->get();
+        if (!dynamic_cast<CachedTileSource*>(src))
         {
-            osg::notify(osg::NOTICE) << "Warning:  Image " << itr->get()->getName() << " has no cache." << std::endl;
+            osg::notify(osg::NOTICE) << "Warning:  Image " << src->getName() << " has no cache." << std::endl;
         }
         else
         {
             hasCaches = true;
+            if ( src->getMinLevel() < src_min_level )
+                src_min_level = src->getMinLevel();
+            if ( src->getMaxLevel() > src_max_level )
+                src_max_level = src->getMaxLevel();
         }
     }
 
     for (TileSourceList::iterator itr = _tileBuilder->getHeightFieldSources().begin(); itr != _tileBuilder->getHeightFieldSources().end(); ++itr)
     {
-        if (!dynamic_cast<CachedTileSource*>(itr->get()))
+        TileSource* src = itr->get();
+        if (!dynamic_cast<CachedTileSource*>(src))
         {
-            osg::notify(osg::NOTICE) << "Warning:  Heightfield " << itr->get()->getName() << " has no cache." << std::endl;
+            osg::notify(osg::NOTICE) << "Warning:  Heightfield " << src->getName() << " has no cache." << std::endl;
         }
         else
         {
             hasCaches = true;
+            if ( src->getMinLevel() < src_min_level )
+                src_min_level = src->getMinLevel();
+            if ( src->getMaxLevel() > src_max_level )
+                src_max_level = src->getMaxLevel();
         }
     }
 
@@ -70,25 +82,34 @@ void CacheSeed::seed(MapConfig *map)
         return;
     }
 
+    if ( src_max_level > 0 && src_max_level < _maxLevel )
+    {
+        _maxLevel = src_max_level;
+    }
+
+    osg::notify(osg::NOTICE) << "Maximum cache level will be " << _maxLevel << std::endl;
+
     processKey( _tileBuilder.get(), key.get() );
 }
 
+
 void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
 {
-    if (_minLevel <= key->getLevelOfDetail() && _maxLevel >= key->getLevelOfDetail())
+    unsigned int lod = key->getLevelOfDetail();
+
+//    osg::notify(osg::NOTICE) << "Checking key = " << key->str() << std::endl;
+
+    if ( _minLevel <= lod && _maxLevel >= lod )
     {
-        osg::notify(osg::NOTICE) << "Processing " << key->str() << std::endl;
-
-        unsigned int lod = key->getLevelOfDetail();
-
         if (lod > 0 || !key->isGeodetic())
         {
             //Assumes the the TileSource will perform the caching for us when we call createImage
             for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
             {
                 TileSource* source = itr->get();
-                if ( lod <= source->getMinLevel() && source->getMaxLevel() <= lod )
+                if ( lod >= source->getMinLevel() && source->getMaxLevel() <= lod )
                 {
+                    osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << key->str() << std::endl;
                     osg::ref_ptr<osg::Image> image = tile_builder->createImage(key, source);
                 }
             }
@@ -97,8 +118,9 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
             {
                 //TODO:  Handle compatible but non exact heightfield keys (JB)
                 TileSource* source = itr->get();
-                if ( lod <= source->getMinLevel() && source->getMaxLevel() <= lod )
+                if ( lod >=source->getMinLevel() && source->getMaxLevel() <= lod )
                 {
+                    osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << key->str() << std::endl;
                     osg::ref_ptr<osg::HeightField> heightField = source->createHeightField(key);
                 }
             }

@@ -19,6 +19,7 @@
 
 #include <osgEarth/CacheSeed>
 #include <osgEarth/Mercator>
+#include <limits.h>
 
 using namespace osgEarth;
 

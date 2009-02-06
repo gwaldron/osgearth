@@ -114,20 +114,7 @@ TileBuilder::readNode( MapConfig* map )
     if (!tileBuilder->isValid())
         return 0;
 
-    
-    std::vector< osg::ref_ptr<TileKey> > keys;
-    tileBuilder->getDataProfile().getRootKeys(keys);
-    osg::ref_ptr<osg::Group> group = new osg::Group;
-    for (unsigned int i = 0; i < keys.size(); ++i)
-    {
-        osg::Node* node = tileBuilder->createNode(keys[i].get());
-        if (node)
-        {
-            group->addChild(node);
-        }
-    }
-
-    return group->getNumChildren() == keys.size() ? group.release() : NULL;
+    return tileBuilder->createRootNode();
 }
 
 const TileGridProfile&
@@ -426,90 +413,97 @@ TileBuilder::isValid() const
     return true;
 }
 
+osg::Node*
+TileBuilder::createRootNode()
+{
+  // Note: CSN must always be at the top
+  osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
+
+  //If there is more than one image source, use TexEnvCombine to blend them together
+  if ( map->getImageSources().size() > 1 )
+  {
+#if 1
+    osg::StateSet* stateset = csn->getOrCreateStateSet();
+    for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
+    {    
+      //Blend the textures together from the bottom up
+      stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
+
+      //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
+      osg::TexEnvCombine * tec = new osg::TexEnvCombine;
+      tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+
+      tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
+      tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+      tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+      tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+      tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
+      tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+      stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
+    }
+
+    //Modulate the result with the primary color to get proper lighting
+    osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+    texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+    texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+    texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+    texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+    texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+    stateset->setTextureAttribute(map->getImageSources().size(), texenv, osg::StateAttribute::ON);
+    stateset->setTextureMode(map->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
+#else
+    //Decorate the scene with a multi-texture control to control blending between textures
+    osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
+    parent->addChild( mt );
+
+    float r = 1.0f/ map->getImageSources().size();
+    for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
+    {
+      mt->setTextureWeight(i, r);
+    }
+    parent = mt;
+#endif
+  }
+
+  terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
+  terrain->setVerticalScale( map->getVerticalScale() );
+  csn->addChild( terrain.get() );
+  
+
+  std::vector< osg::ref_ptr<TileKey> > keys;
+  getDataProfile().getRootKeys(keys);
+  int numAdded = 0;
+  for (unsigned int i = 0; i < keys.size(); ++i)
+  {
+    osg::Node* node = createNode( keys[i].get() );
+    if (node)
+    {
+      terrain->addChild(node);
+      numAdded++;
+    }
+    else
+    {
+      osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
+    }
+  }
+
+  return (numAdded == keys.size()) ? csn.release() : NULL;
+}
+
 
 
 osg::Node*
 TileBuilder::createNode( const TileKey* key )
 {
-    osg::ref_ptr<osg::Group> top;
-    osg::Group* parent = NULL;
-
-    //osg::notify(osg::NOTICE) << "[osgEarth] TileBuilder::createNode( " << key->str() << ")" << std::endl;
-
-    if ( key->getLevelOfDetail() == 0 )
+    osg::ref_ptr<osg::Group> parent = new osg::Group;
+    if (!addChildren( parent.get(), key ))
     {
-        // Note: CSN must always be at the top
-        osg::CoordinateSystemNode* csn = createCoordinateSystemNode();
-        parent = csn;
-        top = csn;
-
-        //If there is more than one image source, use TexEnvCombine to blend them together
-        if ( map->getImageSources().size() > 1 )
-        {
-#if 1
-            osg::StateSet* stateset = parent->getOrCreateStateSet();
-            for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
-            {    
-                //Blend the textures together from the bottom up
-                stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
-                
-                //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
-                osg::TexEnvCombine * tec = new osg::TexEnvCombine;
-                tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-                
-                tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
-                tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-
-                tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
-                tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                
-                tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
-                tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-
-                stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
-            }
-
-            //Modulate the result with the primary color to get proper lighting
-            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-            texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
-            texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
-            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-            texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
-            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-            stateset->setTextureAttribute(map->getImageSources().size(), texenv, osg::StateAttribute::ON);
-            stateset->setTextureMode(map->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
-#else
-            //Decorate the scene with a multi-texture control to control blending between textures
-            osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
-            parent->addChild( mt );
-
-            float r = 1.0f/ map->getImageSources().size();
-            for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
-            {
-                mt->setTextureWeight(i, r);
-            }
-            parent = mt;
-#endif
-        }
-
-        terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
-        terrain->setVerticalScale( map->getVerticalScale() );
-        parent->addChild( terrain.get() );
-        parent = terrain.get();
+        parent = 0;
     }
-    else
-    {
-        top = new osg::Group();
-        top->setName( key->str() );
-        parent = top.get();
-    }
-
-    if (!addChildren( parent, key ))
-    {
-        top = 0;
-    }
-
-    return top.release();
+    return parent.release();
 }
 
 osg::HeightField*

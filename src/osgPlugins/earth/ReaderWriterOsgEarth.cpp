@@ -71,8 +71,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 return readNode(file_name.substr(7), options);
             }
             
-            std::vector< osg::ref_ptr<TileKey> > keys;
-
             // try to strip off a cell key:
             unsigned int i = file_name.find_first_of( '.' );
             if ( i >= file_name.length() - 1 )
@@ -82,6 +80,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             //Try to get the cached builder
             TileBuilder* tile_builder = TileBuilder::getTileBuilderByUrlTemplate( earth_file );
+
+            osg::Node* node = 0;
 
             
             if ( !tile_builder )
@@ -97,10 +97,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     if (!tile_builder->isValid())
                         return ReadResult::FILE_NOT_HANDLED;
 
-                    tile_builder->getDataProfile().getRootKeys(keys);
-
-                    osg::notify(osg::INFO) << "Root has " << keys.size() << std::endl;
-
                     if (tile_builder->getDataProfile().getProfileType() == TileGridProfile::GLOBAL_GEODETIC)
                     {
                         osg::notify(osg::INFO) << "Geodetic" << std::endl;
@@ -113,6 +109,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     {
                         osg::notify(osg::INFO) << "Projected" << std::endl;
                     }
+                    node = tile_builder->createRootNode();
                 }
                 else
                 {
@@ -124,23 +121,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 std::string keyString = file_name.substr(0, i);
                 unsigned int lod, x, y;
                 sscanf(keyString.c_str(), "%d_%d_%d", &lod, &x, &y);
-                keys.push_back( new TileKey(x, y, lod, tile_builder->getDataProfile()));
+                osg::ref_ptr<TileKey> key = new TileKey(x, y, lod, tile_builder->getDataProfile());
+                node = tile_builder->createNode(key.get());
             }
 
-            osg::ref_ptr<osg::Group> group = new osg::Group;
-            for (unsigned int i = 0; i < keys.size(); ++i)
-            {
-                osg::Node* node = tile_builder->createNode( keys[i].get() );
-                if (node)
-                {
-                    group->addChild(node);
-                }
-                else
-                {
-                    osg::notify(osg::INFO) << "Couldn't get tile for " << keys[i]->str() << std::endl;
-                }
-            }
-            return (group->getNumChildren() == keys.size()) ? ReadResult(group.release()): ReadResult::FILE_NOT_FOUND;
+            return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;
         }
 };
 

@@ -82,6 +82,11 @@ namespace osgEarth
         static TileBuilder* getTileBuilderByUrlTemplate( const std::string &url_template );
 
         /**
+         * Creates the root node for a TileBuilder
+         */
+        osg::Node* createRootNode();
+
+        /**
          * Creates a node graph for a given TileKey.
          */
         osg::Node* createNode( const TileKey* key );

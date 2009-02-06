@@ -94,10 +94,6 @@ void TilePattern::init()
         }
         _prototype = beforeBB + "%lf,%lf,%lf,%lf" + afterBB;
     }
-
-    //Compute the number of tiles
-    _numTilesX = (int)ceil((_dataMax.x() - _dataMin.x()) / _tileWidth);
-    _numTilesY = (int)ceil((_dataMax.y() - _dataMin.y()) / _tileHeight);
 }
 
 void TilePattern::getTileBounds(const int &x, const int &y, double &minX, double &minY, double &maxX, double &maxY)
@@ -119,14 +115,11 @@ std::string TilePattern::getRequestString(const int &x, const int &y)
     return buf;
 }
 
-void TilePattern::getTiles(const double &minX, const double &minY, const double &maxX, const double &maxY,
-              int &tileMinX, int &tileMinY, int &tileMaxX, int &tileMaxY)
-{
-    tileMinX = (int)(minX - _topLeftMin.x()) / _tileWidth;
-    tileMaxX = (int)(maxX - _topLeftMin.x()) / _tileWidth;
 
-    tileMinY = (int)(_topLeftMax.y() - maxY) / _tileHeight; 
-    tileMaxY = (int)(_topLeftMax.y() - minY) / _tileHeight; 
+TileService::TileService():
+_dataMin(-180, -90),
+_dataMax(180, 90)
+{
 }
 
 void TileService::getMatchingPatterns(const std::string &layers, const std::string &format,
@@ -177,17 +170,23 @@ osgEarth::TileGridProfile TileService::getProfile(TilePatternList &patterns)
           }
       }
 
+      double dataWidth = _dataMax.x() - _dataMin.x();
+      double dataHeight = _dataMax.y() - _dataMin.y();
 
+      double tileWidth = topLeftMax.x() - topLeftMin.x();
+      double tileHeight = topLeftMax.y() - topLeftMin.y();
+
+      unsigned int w = (unsigned int) ceil(dataWidth / tileWidth );
+      unsigned int h = (unsigned int) ceil(dataHeight / tileHeight);
 
       double xmin = topLeftMin.x();
+      double xmax = xmin + (double)w * tileWidth;
       double ymax = topLeftMax.y();
-      double xmax = topLeftMax.x() + maxWidth;
-      double ymin = topLeftMin.y() - maxHeight;
-
+      double ymin = ymax - (double)h * tileHeight;
+      
       profile = TileGridProfile(profileType, xmin, ymin, xmax, ymax, patterns[0].getSRS());
-      //The JPL tileservice is a standard quadtree, so it will have a 1x1 grid at level 0
-      profile.setNumTilesHighAtLod0(1);
-      profile.setNumTilesWideAtLod0(1);
+      profile.setNumTilesWideAtLod0(w);
+      profile.setNumTilesHighAtLod0(h);
     }
     return profile;
 }
@@ -312,6 +311,16 @@ TileServiceReader::read(std::istream &in)
     {
         osg::notify(osg::INFO) << "Could not find TiledPatterns element" << std::endl;
         return 0;
+    }
+
+    //Get the bounding box from the TiledPatterns
+    osg::ref_ptr<XmlElement> e_bb = e_tiledPatterns->getSubElement( ELEM_LATLONBOUNDINGBOX );
+    if (e_bb.valid())
+    {
+      double minX, minY, maxX, maxY;
+      readBoundingBox(e_bb, minX, minY, maxX, maxY);
+      tileService->setDataMin(osg::Vec2d(minX, minY));
+      tileService->setDataMax(osg::Vec2d(maxX, maxY));
     }
 
     addTilePatterns(e_tiledPatterns.get(), tileService.get());

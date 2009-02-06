@@ -168,13 +168,13 @@ public:
         tileService = TileServiceReader::read(tileServiceRequest);
         if (tileService.valid())
         {
-            osg::notify(osg::INFO) << "Read TileService " << std::endl;
+            osg::notify(osg::NOTICE) << "Read TileService " << std::endl;
             TileService::TilePatternList patterns;
             tileService->getMatchingPatterns(layers, format, style, srs, tile_size, tile_size, patterns);
 
             if (patterns.size() > 0)
             {
-                profile = TileService::getProfile(patterns);
+                profile = tileService->getProfile(patterns);
                 prototype = prefix + sep + patterns[0].getPrototype();
             }
         }

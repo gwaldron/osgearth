@@ -49,10 +49,6 @@ public:
     const double& getTileHeight() const { return _tileHeight; }
 
     void getTileBounds(const int &x, const int &y, double &minX, double &minY, double &maxX, double &maxY);
-
-    void getTiles(const double &minX, const double &minY, const double &maxX, const double &maxY,
-                  int &tileMinX, int &tileMinY, int &tileMaxX, int &tileMaxY);
-
     std::string getRequestString(const int &x, const int &y);
 
     const std::string& getLayers() {return _layers;}
@@ -60,14 +56,20 @@ public:
     const std::string& getStyles() {return _styles;}
     const std::string& getSRS() {return _srs;}
 
-    const osg::Vec2d getTopLeftMin() {return _topLeftMin;}
-    const osg::Vec2d getTopLeftMax() {return _topLeftMax;}
+    const osg::Vec2d& getTopLeftMin() {return _topLeftMin;}
+    const osg::Vec2d& getTopLeftMax() {return _topLeftMax;}
 
     
     const int& getImageWidth() {return _imageWidth;}
     const int& getImageHeight() {return _imageHeight;}
 
     const std::string& getPrototype() {return _prototype;}
+
+    const osg::Vec2d &getDataMin() {return _dataMin;}
+    void setDataMin(const osg::Vec2d &min) {_dataMin = min;}
+
+    const osg::Vec2d &getDataMax() {return _dataMax;}
+    void setDataMax(const osg::Vec2d &max) {_dataMax = max;}
 
 private:
     friend class TileServiceReader;
@@ -87,9 +89,6 @@ private:
     double _tileWidth;
     double _tileHeight;
 
-    int _numTilesX;
-    int _numTilesY;
-
     std::string _prototype;
     std::string _pattern;
 
@@ -100,6 +99,7 @@ private:
 class TileService : public osg::Referenced
 {
 public:
+    TileService();
 
     /** A list of TilePatterns */
     typedef std::vector<TilePattern> TilePatternList;
@@ -158,6 +158,27 @@ public:
     void setAccessConstraints(const std::string& accessConstraints) {_accessConstraints = accessConstraints;}
 
     /**
+     *Gets the lower left corner of the data bounding box.
+     */
+    const osg::Vec2d &getDataMin() {return _dataMin;}
+
+    /**
+     *Sets the lower left corner of the data bounding box 
+     */
+    void setDataMin(const osg::Vec2d &min) {_dataMin = min;}
+
+    /**
+     *Gets the upper right corner of the data bounding box.
+     */
+    const osg::Vec2d &getDataMax() {return _dataMax;}
+
+    /**
+    *Sets the upper right corner of the data bounding box.
+    */
+    void setDataMax(const osg::Vec2d &max) {_dataMax = max;}
+
+
+    /**
      *Gets the TilePatterns from this TileService with the matching parameters.
      *@param layers
      *       The WMS layers
@@ -182,7 +203,7 @@ public:
     /**
      *Given a list of patterns with matching parameters, compute a TileGridProfile.
      */
-    static osgEarth::TileGridProfile getProfile(TilePatternList &patterns);
+    osgEarth::TileGridProfile getProfile(TilePatternList &patterns);
 
 private:
     std::string _name;
@@ -190,6 +211,9 @@ private:
     std::string _abstract;
     std::string _version;
     std::string _accessConstraints;
+
+    osg::Vec2d _dataMin;
+    osg::Vec2d _dataMax;
 
     std::vector<TilePattern> _patterns;
 };

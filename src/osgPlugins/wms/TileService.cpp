@@ -318,7 +318,7 @@ TileServiceReader::read(std::istream &in)
     if (e_bb.valid())
     {
       double minX, minY, maxX, maxY;
-      readBoundingBox(e_bb, minX, minY, maxX, maxY);
+      readBoundingBox(e_bb.get(), minX, minY, maxX, maxY);
       tileService->setDataMin(osg::Vec2d(minX, minY));
       tileService->setDataMax(osg::Vec2d(maxX, maxY));
     }

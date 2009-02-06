@@ -20,6 +20,7 @@
 #include <osgEarth/MultiImage>
 #include <osgEarth/ImageUtils>
 #include <osg/Notify>
+#include <osg/Timer>
 #include <osg/io_utils>
 
 using namespace osgEarth;
@@ -97,20 +98,30 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
     osg::ref_ptr<osg::Image> image = new osg::Image;
     image->allocateImage(pixelsWide, pixelsHigh, 1, GL_RGB, GL_UNSIGNED_BYTE);
 
-    //Composite the incoming images into the master image
-    for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
+      //osg::Timer_t start = osg::Timer::instance()->tick();
+      //Composite the incoming images into the master image
+      for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+      {
         //Determine the indices in the master image for this image
         int dstX = (i->_tileX - minTileX) * tileWidth;
         int dstY = (maxTileY - i->_tileY) * tileHeight;
         //osg::notify(osg::NOTICE) << "Copying image to " << dstX << ", " << dstY << std::endl;
         ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
+      }
+      //osg::Timer_t end = osg::Timer::instance()->tick();
+      //osg::notify(osg::NOTICE) << "Mosaic for " << _images.size() << " images took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
     }
    
     double src_minx, src_miny, src_maxx, src_maxy;
     getExtents(src_minx, src_miny, src_maxx, src_maxy);
 
-    image = ImageUtils::cropImage(image.get(), src_minx, src_miny, src_maxx, src_maxy, minx, miny, maxx, maxy);
+    {
+      //osg::Timer_t start = osg::Timer::instance()->tick();
+      image = ImageUtils::cropImage(image.get(), src_minx, src_miny, src_maxx, src_maxy, minx, miny, maxx, maxy);
+      //osg::Timer_t end = osg::Timer::instance()->tick();
+      //osg::notify(osg::NOTICE) << "Crop took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
+    }
     //osg::notify(osg::NOTICE) << "Cropped image is " << image->s() << " x " << image->t() << std::endl;
 
     unsigned int new_s = osg::Image::computeNearestPowerOfTwo(image->s());
@@ -118,8 +129,11 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
 
     if (new_s != image->s() || new_t != image->t())
     {
-        //osg::notify(osg::NOTICE) << "Resizing image from " << image->s() << ", " << image->t() << " to " << new_s << ", " << new_t << std::endl;
-        image = ImageUtils::resizeImage(image.get(), new_s, new_t);
+      //osg::Timer_t start = osg::Timer::instance()->tick();
+      osg::notify(osg::INFO) << "Resizing image from " << image->s() << ", " << image->t() << " to " << new_s << ", " << new_t << std::endl;
+      image = ImageUtils::resizeImage(image.get(), new_s, new_t);
+      //osg::Timer_t end = osg::Timer::instance()->tick();
+      //osg::notify(osg::NOTICE) << "Resize took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
     }
 
     return image.release();

@@ -331,34 +331,27 @@ void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::
     int destLOD = 1;
     double destTileWidth, destTileHeight;
 
-    double diff = DBL_MAX;
-
     int currLOD = 0;
-    //Find the lod that most closely matches the incoming tile's LOD
+    destLOD = currLOD;
+    getTileDimensions(destLOD, destTileWidth, destTileHeight);
+
+    //Find the LOD that most closely matches the area of the incoming key without going under.
     while (true)
     {
+        currLOD++;
         double w, h;
         getTileDimensions(currLOD, w,h);
         //osg::notify(osg::NOTICE) << currLOD << "(" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
         double a = w * h;
-        double d = osg::absolute(keyArea - a);
-
-        if (d < diff)
-        {
-          destLOD = currLOD;
-          destTileWidth = w;
-          destTileHeight = h;
-          diff = d;
-        }
-        else
-        {
-            break;
-        }
-        currLOD++;
+        if (a < keyArea) break;
+        destLOD = currLOD;
+        destTileWidth = w;
+        destTileHeight = h;
     }
 
-    //osg::notify(osg::NOTICE) << "Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
-    //osg::notify(osg::NOTICE) << "Dest Tiles: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+
+    osg::notify(osg::INFO) << "Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+    osg::notify(osg::INFO) << "Dest Tiles: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
     int tileMinX = (int)floor(keyMinX - _xmin) / destTileWidth;
     int tileMaxX = (int)ceil(keyMaxX - _xmin) / destTileWidth;

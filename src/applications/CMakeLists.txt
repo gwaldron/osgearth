@@ -26,3 +26,4 @@ SET(TARGET_DEFAULT_PREFIX "application_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Applications")
 
 ADD_SUBDIRECTORY(osgearth_seed)
+ADD_SUBDIRECTORY(osgearth_clouds)

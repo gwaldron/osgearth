@@ -54,7 +54,7 @@ namespace osgEarth
     }
 
     // template speciallization for a bool to print out "true" or "false"
-    template<> static std::string
+    template<> std::string
       toString<bool>(const bool value)
     {
       return value ? "true" : "false";

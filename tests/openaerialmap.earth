@@ -1,0 +1,12 @@
+<!-- 
+OpenAerialMap
+
+This is an example of connecting to the OpenAerialMap TMS server
+-->
+
+<map name="OpenAerialMap" type="geocentric"> 
+    <image name="OpenAerialMap" driver="tms">
+        <url>http://tile.openaerialmap.org/tiles/1.0.0/openaerialmap-900913/</url>
+		<tms_type>google</tms_type>
+    </image>
+</map>

@@ -55,10 +55,7 @@ namespace osgEarth
 
     // template speciallization for a bool to print out "true" or "false"
     template<> std::string
-      toString<bool>(const bool value)
-    {
-      return value ? "true" : "false";
-    }
+      toString<bool>(const bool value);
 }
 
 #endif // OSGEARTH_COMMON_H

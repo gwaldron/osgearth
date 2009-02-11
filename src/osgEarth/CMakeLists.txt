@@ -46,6 +46,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
 	CacheSeed.cpp
+	Common.cpp
 	FileUtils.cpp
     GeocentricTileBuilder.cpp
 	HeightFieldUtils.cpp

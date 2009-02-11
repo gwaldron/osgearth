@@ -35,7 +35,7 @@
 namespace osgEarth
 {
     // converts a string to primitive using serialization
-    template<typename T> static T
+    template<typename T> inline T
     as( const std::string& str, T default_value )
     {
         T temp = default_value;
@@ -45,7 +45,7 @@ namespace osgEarth
     }
 
     // converts a primitive to a string
-    template<typename T> static std::string
+    template<typename T> inline std::string
     toString(const T value)
     {
         std::stringstream out;
@@ -54,8 +54,11 @@ namespace osgEarth
     }
 
     // template speciallization for a bool to print out "true" or "false"
-    template<> std::string
-      toString<bool>(const bool value);
+    template<> inline std::string
+      toString<bool>(const bool value)
+    {
+      return value ? "true" : "false";
+    }
 }
 
 #endif // OSGEARTH_COMMON_H

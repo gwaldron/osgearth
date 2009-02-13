@@ -213,7 +213,7 @@ static TileSource* loadSource(const MapConfig* mapConfig, const SourceConfig* so
         }
 
         //Configure the cache if necessary
-        osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig() ? source->getCacheConfig() : mapConfig->getCacheConfig();
+        osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig();
 
         //If the cache config is valid, wrap the TileSource with a caching TileSource.
         if (cacheConfig.valid())

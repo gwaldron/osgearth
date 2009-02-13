@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Mercator>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -117,5 +118,67 @@ HeightFieldUtils::extractHeightField(const osg::HeightField* hf,
     }
 
     return result;
+
+}
+
+osg::HeightField* HeightFieldUtils::convertMercatorToGeodetic(const TileKey* key, osg::HeightField* hf)
+{
+  if (!key->isMercator())
+  {
+    osg::notify(osg::NOTICE) << "HeightFieldUtils::convertMercatorToGeodetic can only operate on Mercator TileKeys" << std::endl;
+    return 0;
+  }
+
+  //Get the geographic extents of the heightfield
+  double min_lon, min_lat, max_lon, max_lat;
+  key->getGeoExtents(min_lon, min_lat, max_lon, max_lat);
+
+  //Get the native, meter, extents of the heightfield
+  double min_x, min_y, max_x, max_y;
+  key->getNativeExtents(min_x, min_y, max_x, max_y);
+
+  //Get the native width of the tile
+  double width  = (max_x - min_x);
+  double height = (max_y - min_y);
+
+  double dx = width / (double)(hf->getNumColumns() -1);
+  double dy = height / (double)(hf->getNumRows() -1);
+
+
+  //Allocate the heighfield.  It will have the same dimensions as the incoming heightfield
+  osg::HeightField *result = new osg::HeightField;
+  result->allocate(hf->getNumColumns(), hf->getNumRows());
+
+  double dlon = (max_lon - min_lon) / (double)(hf->getNumColumns() -1);
+  double dlat = (max_lat - min_lat) / (double)(hf->getNumRows() - 1);
+
+
+
+  //Sample at each lat/lon
+  for (unsigned int c = 0; c < hf->getNumColumns(); ++c)
+  {
+    //Determine the longitude sampling point
+    double lon = min_lon + (double)c * dlon;
+
+    for (unsigned int r = 0; r < hf->getNumRows(); ++r)
+    {
+      //Determine the latitude sampling point
+      double lat = min_lat + (double)r * dlat;
+
+      //Convert the lat/lon to mercator
+      double x, y;
+      Mercator::latLongToMeters(lat, lon, x, y);
+
+      //Determine the pixel location
+      float px = (x - min_x) / dx;
+      float py = (y - min_y) / dy;
+      //osg::notify(osg::NOTICE) << "Sampling at (" << px << "," << py << ") for (" << c << "," << r << ")" << std::endl;
+      float h = getHeightAtPixel(hf, px, py);
+      result->setHeight(c, r, h);
+    }
+  }
+
+  return result; 
+
 
 }

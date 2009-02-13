@@ -356,6 +356,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource, const 
         if ((!getProp(properties, "path", path)) || (path.empty()))
         {
             osg::notify(osg::NOTICE) << "No path specified for " << type << " cache " << std::endl;
+            return 0;
         }
 
         getProp(properties, "format", format);

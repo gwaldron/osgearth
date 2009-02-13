@@ -33,6 +33,7 @@ SET(LIB_PUBLIC_HEADERS
     Mercator
 	MultiImage
 	ProjectedTileBuilder
+	Registry
     TerrainTileEdgeNormalizerUpdateCallback
     TileBuilder
     TileGridProfile
@@ -57,6 +58,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Mercator.cpp
 	MultiImage.cpp
 	ProjectedTileBuilder.cpp
+	Registry.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileBuilder.cpp
     TileGridProfile.cpp

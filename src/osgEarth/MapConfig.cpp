@@ -20,6 +20,7 @@
 #include <osgEarth/MapConfig>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Registry>
 
 #include <osg/Notify>
 
@@ -190,7 +191,7 @@ MapConfig::getCacheOnly() const
     return cache_only;
 }
 
-const CacheConfig*
+CacheConfig*
 MapConfig::getCacheConfig() const
 {
     return cache_config.get();
@@ -284,7 +285,7 @@ SourceConfig::getProperties() const
     return properties;
 }
 
-const CacheConfig*
+CacheConfig*
 SourceConfig::getCacheConfig() const
 {
     return cache_config.get();
@@ -327,6 +328,20 @@ CacheConfig::getProperties()
 const CacheProperties& CacheConfig::getProperties() const
 {
     return _properties;
+}
+
+void CacheConfig::inheritFrom(const osgEarth::CacheConfig *rhs)
+{
+  if (!rhs) return;
+
+  //Inherit the type
+  if (!rhs->getType().empty() ) setType( rhs->getType() );
+  
+  //Inherit the properites
+  for (CacheProperties::const_iterator itr = rhs->getProperties().begin(); itr != rhs->getProperties().end(); ++itr)
+  {
+    getProperties()[itr->first] = itr->second;
+  }
 }
 
 /***********************************************************************/
@@ -649,6 +664,34 @@ readMap( XmlElement* e_map )
     {
         osg::notify(osg::NOTICE) << "Setting osgEarth to cache only mode due to OSGEARTH_CACHE_ONLY environment variable " << std::endl;
         map->setCacheOnly(true);
+    }
+
+
+    //Inherit the map CacheConfig with the override from the registry
+    if (Registry::instance()->getCacheConfigOverride())
+    {
+      //If the map doesn't have a CacheConfig, create a new one
+      if (!map->getCacheConfig()) map->setCacheConfig( new CacheConfig() );
+
+      map->getCacheConfig()->inheritFrom( Registry::instance()->getCacheConfigOverride() );
+      osg::notify(osg::NOTICE) << "Overriding Map Cache" << std::endl;
+    }
+
+    if (map->getCacheConfig())
+    {
+      //Inherit the Source CacheConfig's with the map's
+      for (SourceConfigList::iterator itr = map->getImageSources().begin(); itr != map->getImageSources().end(); ++itr)
+      {
+        if (!itr->get()->getCacheConfig()) itr->get()->setCacheConfig( new CacheConfig() );
+        itr->get()->getCacheConfig()->inheritFrom( map->getCacheConfig() );
+      }
+
+      //Inherit the Source CacheConfig's with the map's
+      for (SourceConfigList::iterator itr = map->getHeightFieldSources().begin(); itr != map->getHeightFieldSources().end(); ++itr)
+      {
+        if (!itr->get()->getCacheConfig()) itr->get()->setCacheConfig( new CacheConfig() );
+        itr->get()->getCacheConfig()->inheritFrom( map->getCacheConfig() );
+      }
     }
 
     return map;

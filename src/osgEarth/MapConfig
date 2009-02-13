@@ -63,6 +63,11 @@ namespace osgEarth
          */
         const CacheProperties& getProperties() const;
 
+        /**
+         *Inherits properties from the given CacheConfig
+         */
+        void inheritFrom( const CacheConfig* rhs);
+
     private:
         std::string _type;
         CacheProperties _properties;
@@ -144,7 +149,7 @@ namespace osgEarth
         /**
          * Gets the caching configuration for this source, if one is set.
          */
-        const CacheConfig* getCacheConfig() const;
+        CacheConfig* getCacheConfig() const;
         
         /**
          * Sets the caching configuration for this source. By default a tile
@@ -355,7 +360,7 @@ namespace osgEarth
         /*
         *Gets the cache config for the map
         */
-        const CacheConfig* getCacheConfig() const;
+        CacheConfig* getCacheConfig() const;
 
         /*
         *Sets the cache config for the map

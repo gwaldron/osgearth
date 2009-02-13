@@ -17,27 +17,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_HEIGHTFIELDUTILS_H
-#define OSGEARTH_HEIGHTFIELDUTILS_H
+#ifndef OSGEARTH_REGISTRY
+#define OSGEARTH_REGISTRY 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileKey>
-#include <osg/Shape>
+#include <osgEarth/MapConfig>
+
+#include <osg/Referenced>
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT HeightFieldUtils
-    {
-      public:
-          static float getHeightAtPixel(const osg::HeightField* hf, float c, float r);
-          static float getHeightAtLocation(const osg::HeightField* hf, float x, float y);
+  class OSGEARTH_EXPORT Registry : public osg::Referenced
+  {
+  public:
+    static Registry* instance();
 
-          static osg::HeightField* extractHeightField(const osg::HeightField* hf,
-                                                      double minx, double miny, double max, double maxy,
-                                                      int numCols = -1, int numRows = -1);
+    const CacheConfig* getCacheConfigOverride() { return _cacheConfigOverride.get(); }
+    void setCacheConfigOverride(CacheConfig* cacheConfig) { _cacheConfigOverride = cacheConfig; }
+    
+  protected:
+    virtual ~Registry();
+    Registry();
 
-          static osg::HeightField* convertMercatorToGeodetic(const TileKey* key, osg::HeightField* hf);
-    };
+    osg::ref_ptr<CacheConfig> _cacheConfigOverride;
+  };
 }
 
-#endif //OSGEARTH_HEIGHTFIELDUTILS_H
+#endif //OSGEARTH_REGISTRY

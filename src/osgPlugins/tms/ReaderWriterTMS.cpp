@@ -132,6 +132,14 @@ public:
             {
                 _profile = _tileMap->createProfile();
             }
+
+            //Automatically set the min and max level of the TileMap
+            if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
+            {
+              osg::notify(osg::INFO) << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
+              setMinLevel(_tileMap->getMinLevel());
+              setMaxLevel(_tileMap->getMaxLevel());
+            }
         }
     }
 

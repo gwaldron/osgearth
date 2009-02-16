@@ -103,6 +103,11 @@ namespace osgEarth
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const TileSource*>(obj)!=NULL; }
         virtual const char* className() const { return "TileSource"; }
         virtual const char* libraryName() const { return "osgEarth"; }
+
+        /**
+         * Whether or not the key is valid for the TileSource
+         */
+        virtual bool isKeyValid(const TileKey* key);
     
     protected:
         virtual ~TileSource();

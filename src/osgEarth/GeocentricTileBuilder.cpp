@@ -194,8 +194,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         for (unsigned int i = 0; i < image_sources.size(); ++i)
         {
             osg::Image *image = 0;
-            if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
-                key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
+            if (image_sources[i]->isKeyValid(key))
             {
                 image = createImage(key, image_sources[i].get());    
             }
@@ -210,8 +209,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        if (key->getLevelOfDetail() >= heightfield_sources[0]->getMinLevel() &&
-            key->getLevelOfDetail() <= heightfield_sources[0]->getMaxLevel() )
+        if (heightfield_sources[0]->isKeyValid(key))
         {
             hf = heightfield_sources[0]->createHeightField(key);
             hasElevation = hf.valid();
@@ -238,8 +236,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     {
         if (!image_tiles[i].first.valid())
         {
-            if (key->getLevelOfDetail() >= image_sources[i]->getMinLevel() &&
-                key->getLevelOfDetail() <= image_sources[i]->getMaxLevel())
+            if (image_sources[i]->isKeyValid(key))
             {
                 //osg::Timer_t start = osg::Timer::instance()->tick();
                 if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))

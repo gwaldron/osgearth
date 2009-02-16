@@ -72,6 +72,14 @@ osg::HeightField* TileSource::createHeightField( const TileKey* key )
     return hf;
 }
 
+bool TileSource::isKeyValid(const osgEarth::TileKey *key)
+{
+  if (!key) return false;
+
+  //Check to see that the given tile is within the LOD range for this TileSource
+  return ((key->getLevelOfDetail() >= _minLevel) && (key->getLevelOfDetail() <= _maxLevel));
+}
+
 /************************************************************************/
 
 CachedTileSource::CachedTileSource(TileSource* tileSource):

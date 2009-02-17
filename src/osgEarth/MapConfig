@@ -48,7 +48,7 @@ namespace osgEarth
         const std::string& getType() const;
 
         /**
-         * Sets the cache type identifier ("tms", "tilecache", "quadkey", etc.)
+         * Sets the cache type identifier ("tms", "tilecache", etc.)
          */
         void setType(const std::string &type);
 

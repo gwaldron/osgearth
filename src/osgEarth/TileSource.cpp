@@ -328,20 +328,6 @@ std::string TMSCacheTileSource::getFileName(const osgEarth::TileKey *key)
 }
 
 /****************************************************************************/
-QuadKeyCachedTileSource::QuadKeyCachedTileSource(osgEarth::TileSource *tileSource, const std::string &path, const std::string format):
-DiskCachedTileSource(tileSource, path, format)
-{
-}
-
-std::string QuadKeyCachedTileSource::getFileName(const osgEarth::TileKey *key)
-{
-    std::stringstream buf;
-    buf << getPath() << "/" << getName() << "/" << key->str() << "." << getExtension();
-    return buf.str();
-}
-
-
-/****************************************************************************/
 
 static bool getProp(const std::map<std::string,std::string> &map, const std::string &key, std::string &value)
 {
@@ -356,7 +342,7 @@ static bool getProp(const std::map<std::string,std::string> &map, const std::str
 
 CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource, const std::string &type, std::map<std::string,std::string> properties)
 {
-    if (type == "tms" || type == "tilecache" || type == "quadkey" || type.empty())
+    if (type == "tms" || type == "tilecache" || type.empty())
     {
         std::string path;
         std::string format;
@@ -388,13 +374,6 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource, const 
         {
             osg::notify(osg::INFO) << "Returning disk cache " << std::endl;
             return new DiskCachedTileSource(tileSource, path, format);
-        }
-
-        
-        if (type == "quadkey")
-        {
-            osg::notify(osg::INFO) << "Returning quadkey cache " << std::endl;
-            return new QuadKeyCachedTileSource(tileSource, path, format);
         }
     }
     else if (type == "none")

@@ -262,18 +262,6 @@ namespace osgEarth
     };
 
     /**
-     * QuadKeyCachedTileSource is an implementation of the DiskCachedTileSource class that caches tiles to disk as a directory of images
-     * referenced by their QuadKey string.
-     */
-    class OSGEARTH_EXPORT QuadKeyCachedTileSource : public DiskCachedTileSource
-    {
-    public:
-        QuadKeyCachedTileSource( TileSource* tileSource, const std::string &path, const std::string format);
-    protected:
-        virtual std::string getFileName(const TileKey* key );
-    };
-
-    /**
      * CachedTileSourceFactory is used to created CachedTileSource's from configuration properties.
      */
     class OSGEARTH_EXPORT CachedTileSourceFactory

@@ -48,7 +48,6 @@ void getLatLonExtents(const TileKey* key, double &min_lon, double &min_lat, doub
     key->getGeoExtents(min_lon, min_lat, max_lon, max_lat);
     if (key->isMercator())
     {
-        double lat, lon;
         Mercator::metersToLatLon(min_lon, min_lat, min_lat, min_lon);
         Mercator::metersToLatLon(max_lon, max_lat, max_lat, max_lon);
     }

@@ -206,12 +206,6 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             img_locator->setCoordinateSystemType( coordinateSystem );
 			img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
-            // use a special image locator to warp the texture coords for mercator tiles :)
-            // WARNING: TODO: this will not persist upon export....we need a nodekit.
-            if ( key->isMercator() )
-            {
-                img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
-            }
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());
 

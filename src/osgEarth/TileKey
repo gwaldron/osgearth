@@ -117,19 +117,6 @@ namespace osgEarth
             double& out_maxy) const;
 
         /**
-         * Gets the native extents of the tile representated by this key.
-         *
-         * Note:  Geodetic profiles will be in Latitude and Longitude in degrees.
-         *        Mercator profiles will be in meters.
-         *        Projected profiles will be in the incoming coordinate system's units.
-         */
-        virtual bool getNativeExtents(
-            double& out_minx,
-            double& out_miny,
-            double& out_maxx,
-            double& out_maxy) const;
-
-        /**
          * Gets the extents of this key's tile, in pixels
          */
         virtual void getPixelExtents(

@@ -155,23 +155,6 @@ TileKey::getGeoExtents(
             double& xmax,
             double& ymax) const
 {
-    getNativeExtents(xmin, ymin, xmax, ymax);
-    //Convert meters to degrees if if in Mercator.
-    if (isMercator())
-    {
-        Mercator::metersToLatLon(xmin, ymin, ymin, xmin);
-        Mercator::metersToLatLon(xmax, ymax, ymax, xmax);
-    }
-    return true;
-}
-
-bool
-TileKey::getNativeExtents(
-            double& xmin,
-            double& ymin,
-            double& xmax,
-            double& ymax) const
-{
     double width, height;
     _profile.getTileDimensions(_lod, width, height);
 

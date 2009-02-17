@@ -41,7 +41,7 @@ int main(int argc, char** argv)
     args.getApplicationUsage()->setCommandLineUsage(args.getApplicationName()+" [options] filename");
     args.getApplicationUsage()->addCommandLineOption("--min-level level","The minimum level to seed down to.");
     args.getApplicationUsage()->addCommandLineOption("--max-level level","The maximum level to seed down to.");
-    args.getApplicationUsage()->addCommandLineOption("--bounds minlon minlat maxlon maxlat","The geospatial extents to seed.");
+    args.getApplicationUsage()->addCommandLineOption("--bounds minx miny maxx maxy","The geospatial extents to seed.");
     args.getApplicationUsage()->addCommandLineOption("-b","Shorthand for --bounds.");
 
     // if user request help write it out to cout.

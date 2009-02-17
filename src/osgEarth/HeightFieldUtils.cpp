@@ -135,7 +135,8 @@ osg::HeightField* HeightFieldUtils::convertMercatorToGeodetic(const TileKey* key
 
   //Get the native, meter, extents of the heightfield
   double min_x, min_y, max_x, max_y;
-  key->getNativeExtents(min_x, min_y, max_x, max_y);
+  Mercator::latLongToMeters(min_lat, min_lon, min_x, min_y);
+  Mercator::latLongToMeters(max_lat, max_lon, max_x, max_y);
 
   //Get the native width of the tile
   double width  = (max_x - min_x);

@@ -43,6 +43,17 @@ using namespace osgEarth;
 
 //#define WGS84_WKT "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AXIS["Lat",NORTH],AXIS["Long",EAST],AUTHORITY["EPSG","4326"]]
 
+void getLatLonExtents(const TileKey* key, double &min_lon, double &min_lat, double &max_lon, double &max_lat)
+{
+    key->getGeoExtents(min_lon, min_lat, max_lon, max_lat);
+    if (key->isMercator())
+    {
+        double lat, lon;
+        Mercator::metersToLatLon(min_lon, min_lat, min_lat, min_lon);
+        Mercator::metersToLatLon(max_lon, max_lat, max_lat, max_lon);
+    }
+}
+
 
 GeocentricTileBuilder::GeocentricTileBuilder( 
     MapConfig* map, 
@@ -178,11 +189,7 @@ osg::Node*
 GeocentricTileBuilder::createQuadrant( const TileKey* key)
 {
     double min_lon, min_lat, max_lon, max_lat;
-    if ( !key->getGeoExtents( min_lon, min_lat, max_lon, max_lat ) )
-    {
-        osg::notify( osg::WARN ) << "GET EXTENTS FAILED!" << std::endl;
-        return NULL;
-    }
+    getLatLonExtents( key, min_lon, min_lat, max_lon, max_lat);
 
     ImageTileList image_tiles;
 
@@ -325,7 +332,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         if (image_tiles[i].first.valid())
         {
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
-            image_tiles[i].second->getGeoExtents(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+            getLatLonExtents(image_tiles[i].second.get(), img_min_lon, img_min_lat, img_max_lon, img_max_lat);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = new osgTerrain::Locator;

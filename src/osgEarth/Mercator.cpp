@@ -102,57 +102,6 @@ Mercator::pixelXYtoTileXY(unsigned int x, unsigned int y,
 
 /********************************************************************/
 
-
-struct MercatorTile
-{
-    MercatorTile() { }
-    MercatorTile( TileKey* _key, TileSource* source ) : key( _key )
-    {
-        image = source->createImage( key.get() );
-        key->getPixelExtents( min_x, min_y, max_x, max_y, source->getPixelsPerTile() );
-        double dummy;
-        key->getGeoExtents( dummy, min_lat, dummy, max_lat );
-    }
-    osg::ref_ptr<TileKey> key;
-    osg::ref_ptr<osg::Image> image;
-    unsigned int min_x, min_y, max_x, max_y;
-    double min_lat, max_lat;
-};
-
-
-struct MercatorSuperTile : public std::vector<MercatorTile>
-{
-    MercatorSuperTile(int _tile_size) : tile_size(_tile_size) { }
-
-    int getRow( double lon, double lat, unsigned int lod ) {
-        unsigned int x,y;
-        if ( lat < (*this)[0].min_lat ) {
-            return 0;
-        }
-        for( int i=0; i<(int)size(); i++ ) {
-            if ( lat >= (*this)[i].min_lat && lat <= (*this)[i].max_lat ) {
-                Mercator::longLatToPixelXY( lon, lat, lod, tile_size, x, y );
-                //osg::notify(osg::NOTICE) << "i=" << i << ", y=" << y << std::endl;
-                return i*tile_size + tile_size-(y-(*this)[i].min_y);
-            }
-        }
-        return t()-1;
-    }
-
-    unsigned char* data( int s, int t ) {
-        return (*this)[t/tile_size].image->data( 0, t%tile_size );
-    }
-
-    int t(){ 
-        return size()*tile_size;
-    }
-    double min_lat() { return (*this)[0].min_lat; }
-    double max_lat() { return (*this)[size()-1].max_lat; }
-
-private:
-    int tile_size;
-};
-
 static osg::Image*
 sharpen( osg::Image* input )
 {

@@ -241,9 +241,11 @@ TileMap::intersectsKey(const TileKey *tileKey)
 
     bool inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
 
-    if (!inter)
+    if (!inter && tileKey->isMercator())
     {
-        tileKey->getNativeExtents(keyMinX, keyMinY, keyMaxX, keyMaxY);
+        Mercator::metersToLatLon(keyMinX, keyMinY, keyMinY, keyMinX);
+        Mercator::metersToLatLon(keyMaxX, keyMaxY, keyMaxY, keyMaxX);
+
         inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
     }
 

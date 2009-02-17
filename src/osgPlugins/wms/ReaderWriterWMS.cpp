@@ -221,7 +221,7 @@ public:
     std::string createURI( const TileKey* key ) const
     {
         double minx, miny, maxx, maxy;
-        key->getNativeExtents( minx, miny, maxx, maxy);
+        key->getGeoExtents( minx, miny, maxx, maxy);
         // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
         char buf[2048];
         sprintf(buf, prototype.c_str(), minx, miny, maxx, maxy);

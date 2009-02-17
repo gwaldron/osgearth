@@ -28,7 +28,7 @@ struct NormalizerStats : public osg::Referenced
 {
 public:
     NormalizerStats():
-      _maxTimePerFrame(2.0),
+      _maxTimePerFrame(4.0),
       _currentFrame(-1)
     {
     }
@@ -122,7 +122,7 @@ bool normalizeEdge(osg::HeightField* hf1, osg::HeightField *hf2, CardinalDirecti
                     float val1 = hf1->getHeight(width-1, r);
                     float val2 = hf2->getHeight(0, r);
                     float val = (val1 + val2)/2.0f;
-                    hf1->setHeight(width-2, r, val);
+                    hf1->setHeight(width-1, r, val);
                     hf2->setHeight(0, r, val);
                 }
                 break;
@@ -174,7 +174,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
           if (tile && tile->getTerrain())
           {
               //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
-              osgEarth::EarthTerrain* et = dynamic_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
+              osgEarth::EarthTerrain* et = static_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
               if (et)
               {
                   //Determine the TileID's of the 4 tiles that need to take place in this normalization
@@ -225,22 +225,16 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
                   if (ll_tile && lr_tile && ul_tile && ur_tile)
                   {
-                      osgTerrain::HeightFieldLayer *ll_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(ll_tile->getElevationLayer());
-                      osgTerrain::HeightFieldLayer *lr_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(lr_tile->getElevationLayer());
-                      osgTerrain::HeightFieldLayer *ul_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(ul_tile->getElevationLayer());
-                      osgTerrain::HeightFieldLayer *ur_hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(ur_tile->getElevationLayer());
+                      osgTerrain::HeightFieldLayer *ll_hfl = static_cast<osgTerrain::HeightFieldLayer*>(ll_tile->getElevationLayer());
+                      osgTerrain::HeightFieldLayer *lr_hfl = static_cast<osgTerrain::HeightFieldLayer*>(lr_tile->getElevationLayer());
+                      osgTerrain::HeightFieldLayer *ul_hfl = static_cast<osgTerrain::HeightFieldLayer*>(ul_tile->getElevationLayer());
+                      osgTerrain::HeightFieldLayer *ur_hfl = static_cast<osgTerrain::HeightFieldLayer*>(ur_tile->getElevationLayer());
 
                       if (ll_hfl && lr_hfl && ul_hfl && ur_hfl)
                       {
                           bool normalized = ::normalizeCorner(ll_hfl->getHeightField(), lr_hfl->getHeightField(), ul_hfl->getHeightField(), ur_hfl->getHeightField());
                           if (normalized)
                           {
-                              //osg::notify(osg::NOTICE) << "Normalized corner" << std::endl;
-                              ll_hfl->dirty();
-                              lr_hfl->dirty();
-                              ul_hfl->dirty();
-                              ur_hfl->dirty();
-
                               ll_tile->setDirty(true);
                               lr_tile->setDirty(true);
                               ul_tile->setDirty(true);
@@ -260,7 +254,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
           if (tile && tile->getTerrain())
           {
               //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
-              osgEarth::EarthTerrain* et = dynamic_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
+              osgEarth::EarthTerrain* et = static_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
               if (et)
               {
 
@@ -280,16 +274,14 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                       {
                           //osg::notify(osg::NOTICE) << "Found neighbor tile " << std::endl;
                           //This callback will only work if we have a HeightFieldLayer
-                          osgTerrain::HeightFieldLayer *hfl1 = dynamic_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
-                          osgTerrain::HeightFieldLayer *hfl2 = dynamic_cast<osgTerrain::HeightFieldLayer*>(tile2->getElevationLayer());
+                          osgTerrain::HeightFieldLayer *hfl1 = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
+                          osgTerrain::HeightFieldLayer *hfl2 = static_cast<osgTerrain::HeightFieldLayer*>(tile2->getElevationLayer());
 
                           if (hfl1 && hfl2)
                           {
                               bool normalized = ::normalizeEdge(hfl1->getHeightField(), hfl2->getHeightField(), direction);
                               if (normalized)
                               {
-                                  hfl1->dirty();
-                                  hfl2->dirty();
                                   tile->setDirty(true);
                                   tile2->setDirty(true);
                               }
@@ -313,7 +305,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
           osg::Timer_t start = osg::Timer::instance()->tick();
           //TODO:  Look at heightDelta's to assist with normal generation.
-          osgTerrain::TerrainTile* tt = dynamic_cast<osgTerrain::TerrainTile*>(node);
+          osgTerrain::TerrainTile* tt = static_cast<osgTerrain::TerrainTile*>(node);
 
           if (!_normalizedNorth) _normalizedNorth = normalizeEdge(tt, NORTH);
           if (!_normalizedSouth) _normalizedSouth = normalizeEdge(tt, SOUTH);
@@ -324,13 +316,21 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
           if (!_normalizedSouthWest) _normalizedSouthWest = normalizeCorner(tt, SOUTH_WEST);
           if (!_normalizedSouthEast) _normalizedSouthEast = normalizeCorner(tt, SOUTH_EAST);
 
+          traverse(node, nv);
+
           osg::Timer_t end = osg::Timer::instance()->tick();
 
           double frameTime = osg::Timer::instance()->delta_m(start, end);
+          //osg::notify(osg::NOTICE) << "TileTime: " << frameTime << std::endl;
           stats->updateTime(nv->getFrameStamp()->getFrameNumber(), frameTime);
 
-          traverse(node, nv);
-      }
+          if (_normalizedNorth && _normalizedSouth && _normalizedEast && _normalizedWest && 
+              _normalizedNorthWest && _normalizedNorthEast && _normalizedSouthWest && _normalizedSouthEast)
+          {
+              node->setUpdateCallback(0);
+          }
+      }     
+
 
       osgTerrain::TileID TerrainTileEdgeNormalizerUpdateCallback::getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const
       {

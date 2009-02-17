@@ -22,7 +22,8 @@
 
 using namespace osgEarth;
 
-Registry::Registry()
+Registry::Registry():
+Referenced(true)
 {
 }
 

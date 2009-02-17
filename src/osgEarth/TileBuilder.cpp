@@ -525,17 +525,20 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
             hf_key = hf_key->createParentKey();
         }
 
-        double minx, miny, maxx, maxy;
-        hf_key->getGeoExtents(minx, miny, maxx, maxy);
+        if (hf_key.valid() && hf.valid())
+        {
+          double minx, miny, maxx, maxy;
+          hf_key->getGeoExtents(minx, miny, maxx, maxy);
 
-        //Need to init this before extracting the heightfield
-        hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-        hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
-        hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
+          //Need to init this before extracting the heightfield
+          hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+          hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
+          hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
 
-        double key_minx, key_miny, key_maxx, key_maxy;
-        key->getGeoExtents(key_minx, key_miny, key_maxx, key_maxy);
-        hf = HeightFieldUtils::extractHeightField(hf.get(), key_minx, key_miny, key_maxx, key_maxy, hf->getNumColumns(), hf->getNumRows());
+          double key_minx, key_miny, key_maxx, key_maxy;
+          key->getGeoExtents(key_minx, key_miny, key_maxx, key_maxy);
+          hf = HeightFieldUtils::extractHeightField(hf.get(), key_minx, key_miny, key_maxx, key_maxy, hf->getNumColumns(), hf->getNumRows());
+        }
     }
 
     return hf.release();
@@ -564,7 +567,7 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource,
       }
     }
 
-    if (image.valid())
+    if (image_key.valid() && image.valid())
     {
         imageTile.first = image.get();
         imageTile.second = image_key.get();

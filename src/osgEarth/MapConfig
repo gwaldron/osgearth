@@ -264,6 +264,16 @@ namespace osgEarth
          */
         float getSkirtRatio() const { return skirt_ratio; }
 
+        /**
+         *Sets the sample ratio for height fields
+         */
+        void setSampleRatio(float _sample_ratio);
+
+        /**
+         Gets the sample ratio for height fields
+         */
+        float getSampleRatio() const;
+
         /** 
          * Sets the hostname of a proxy server to use for all HTTP communications.
          */
@@ -367,6 +377,16 @@ namespace osgEarth
         */
         void setCacheConfig(CacheConfig* cacheConfig);
 
+        /**
+         *Gets whether to reproject mercator datasets to geodetic in projected mode
+         */
+        bool getReprojectMercatorToGeodetic() const;
+
+        /**
+         *Sets whether to reproject mercator datasets to geodetic in projected mode
+         */
+        void setReprojectMercatorToGeodetic(bool value);
+
 
         const ProfileConfig* getProfileConfig() const;
         void setProfileConfig(ProfileConfig* profileConfig);
@@ -374,13 +394,13 @@ namespace osgEarth
         const TileGridProfile& getProfile() const;
         void setProfile(const TileGridProfile& profile);
 
-
     private:
         std::string filename;
         std::string name;
         CoordinateSystemType model_cstype;
         float vertical_scale;
-        float skirt_ratio;      
+        float skirt_ratio;   
+        float sample_ratio;
         SourceConfigList image_sources;
         SourceConfigList heightfield_sources;
         std::string proxy_host;
@@ -394,6 +414,8 @@ namespace osgEarth
 
         bool cache_only;
         bool normalize_edges;
+
+        bool reproject_mercator_to_geodetic;
 
         osg::ref_ptr<CacheConfig> cache_config;
         osg::ref_ptr<ProfileConfig> profile_config;

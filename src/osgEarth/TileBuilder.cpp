@@ -470,6 +470,7 @@ TileBuilder::createRootNode()
 
   terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
   terrain->setVerticalScale( map->getVerticalScale() );
+  terrain->setSampleRatio( map->getSampleRatio() );
   csn->addChild( terrain.get() );
   
 

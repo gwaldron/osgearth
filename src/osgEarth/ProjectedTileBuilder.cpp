@@ -36,6 +36,16 @@
 
 using namespace osgEarth;
 
+void getExtents(const TileKey* key, double &min_x, double &min_y, double &max_x, double &max_y, bool reproject_mercator)
+{
+    key->getGeoExtents(min_x, min_y, max_x, max_y);
+    if (key->isMercator() && reproject_mercator)
+    {
+        Mercator::metersToLatLon(min_x, min_y, min_y, min_x);
+        Mercator::metersToLatLon(max_x, max_y, max_y, max_x);
+    }
+}
+
 ProjectedTileBuilder::ProjectedTileBuilder( 
     MapConfig* _map,
     const std::string& _url_template,
@@ -50,11 +60,7 @@ osg::Node*
 ProjectedTileBuilder::createQuadrant( const TileKey* key )
 {
     double xmin, ymin, xmax, ymax;
-    if ( !key->getGeoExtents( xmin, ymin, xmax, ymax ) )
-    {
-        osg::notify( osg::WARN ) << "GET EXTENTS FAILED!" << std::endl;
-        return NULL;
-    }
+    getExtents(key, xmin, ymin, xmax, ymax, getMapConfig()->getReprojectMercatorToGeodetic());
 
     //osg::notify(osg::NOTICE) << "DataGridProfile " << _dataProfile.xMin() << ", " << _dataProfile.yMin() << ", " << _dataProfile.xMax() << ", " << _dataProfile.yMax() << std::endl;
 
@@ -134,7 +140,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         {
             //Make any empty heightfield if no heightfield source is specified
             hf = new osg::HeightField();
-            hf->allocate( 2, 2 );
+            hf->allocate( 8, 8 );
             for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
                 hf->getHeightList()[i] = 0.0; //(double)((::rand() % 10000) - 5000);
         }
@@ -199,12 +205,17 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         if (image_tiles[i].first.valid())
         {
             double img_xmin, img_ymin, img_xmax, img_ymax;
-            image_tiles[i].second->getGeoExtents(img_xmin, img_ymin, img_xmax, img_ymax);
+            getExtents(image_tiles[i].second.get(), img_xmin, img_ymin, img_xmax, img_ymax, getMapConfig()->getReprojectMercatorToGeodetic());
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = new osgTerrain::Locator;
             img_locator->setCoordinateSystemType( coordinateSystem );
 			img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
+
+            if ( key->isMercator() && getMapConfig()->getReprojectMercatorToGeodetic())
+            {
+                img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
+            }
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());

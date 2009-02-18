@@ -34,7 +34,8 @@ MapConfig::MapConfig()
 {
     model_cstype = MapConfig::CSTYPE_GEOCENTRIC;
     vertical_scale = 1.0f;
-    skirt_ratio = 0.02;
+    skirt_ratio = 0.02f;
+    sample_ratio = 1.0f;
     proxy_port = 8080;
     min_tile_range_factor = 5;
     north_cap_color = osg::Vec4ub(2,5,20,255);
@@ -43,6 +44,7 @@ MapConfig::MapConfig()
     normalize_edges = true;
     filename = "";
     profile = TileGridProfile::UNKNOWN;
+    reproject_mercator_to_geodetic = false;
 }
 
 void
@@ -91,6 +93,18 @@ float
 MapConfig::getVerticalScale() const
 {
     return vertical_scale;
+}
+
+void
+MapConfig::setSampleRatio(float _sample_ratio)
+{
+    sample_ratio = _sample_ratio;
+}
+
+float
+MapConfig::getSampleRatio() const
+{
+    return sample_ratio;
 }
 
 SourceConfigList&
@@ -237,6 +251,17 @@ void
 MapConfig::setProfile(const TileGridProfile& profile)
 {
     this->profile = profile;
+}
+
+bool
+MapConfig::getReprojectMercatorToGeodetic() const
+{
+    return reproject_mercator_to_geodetic;
+}
+
+void MapConfig::setReprojectMercatorToGeodetic(bool value)
+{
+    reproject_mercator_to_geodetic = value;
 }
 
 
@@ -422,12 +447,14 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
 #define ELEM_MIN_TILE_RANGE    "min_tile_range_factor"
 #define ATTR_DRIVER            "driver"
 #define ELEM_SKIRT_RATIO       "skirt_ratio"
+#define ELEM_SAMPLE_RATIO      "sample_ratio"
 #define ELEM_PROXY_HOST        "proxy_host"
 #define ELEM_PROXY_PORT        "proxy_port"
 #define ELEM_NORTH_CAP_COLOR   "north_cap_color"
 #define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
 #define ELEM_CACHE_ONLY        "cache_only"
 #define ELEM_NORMALIZE_EDGES   "normalize_edges"
+#define ELEM_REPROJECT_MERCATOR_TO_GEODETIC "reproject_mercator_to_geodetic"
 
 #define ELEM_CACHE             "cache"
 #define ATTR_TYPE              "type"
@@ -614,12 +641,18 @@ readMap( XmlElement* e_map )
     else if (normalizeEdges == VALUE_FALSE)
         map->setNormalizeEdges(false);
 
-
+    std::string reprojectMercator = e_map->getSubElementText(ELEM_REPROJECT_MERCATOR_TO_GEODETIC);
+    if (reprojectMercator == VALUE_TRUE)
+        map->setReprojectMercatorToGeodetic(true);
+    else if (normalizeEdges == VALUE_FALSE)
+        map->setReprojectMercatorToGeodetic(false);
 
 
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
     map->setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), map->getMinTileRangeFactor() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
+    map->setSampleRatio(as<float>(e_map->getSubElementText( ELEM_SAMPLE_RATIO ), map->getSampleRatio()));
+
 
     map->setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), map->getProxyHost() ) );
     map->setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), map->getProxyPort() ) );
@@ -723,10 +756,12 @@ mapToXmlDocument( const MapConfig *map)
 
     e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map->getCacheOnly()));
     e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(map->getNormalizeEdges()));
+    e_map->addSubElement( ELEM_REPROJECT_MERCATOR_TO_GEODETIC, toString<bool>(map->getReprojectMercatorToGeodetic()));
 
     e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map->getVerticalScale() ) );
     e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map->getMinTileRangeFactor() ) );
     e_map->addSubElement( ELEM_SKIRT_RATIO, toString<float>( map->getSkirtRatio() ) );
+    e_map->addSubElement( ELEM_SAMPLE_RATIO, toString<float>( map->getSampleRatio() ) );
 
     e_map->addSubElement( ELEM_PROXY_HOST, map->getProxyHost() );
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>(map->getProxyPort() ) );

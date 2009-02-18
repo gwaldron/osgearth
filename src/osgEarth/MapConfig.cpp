@@ -36,7 +36,7 @@ MapConfig::MapConfig()
     vertical_scale = 1.0f;
     skirt_ratio = 0.02;
     proxy_port = 8080;
-    min_tile_range_factor = 8.0;
+    min_tile_range_factor = 5;
     north_cap_color = osg::Vec4ub(2,5,20,255);
     south_cap_color = osg::Vec4ub(255,255,255,255);
     cache_only = false;

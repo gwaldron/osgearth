@@ -19,6 +19,7 @@
 
 
 #include <osgEarth/Registry>
+#include <osg/Notify>
 
 using namespace osgEarth;
 
@@ -29,10 +30,22 @@ Referenced(true)
 
 Registry::~Registry()
 {
+    osg::notify(osg::NOTICE) << "Destroying osgEarth::Registry " << std::endl;
 }
 
-Registry* Registry::instance()
+Registry* Registry::instance(bool erase)
 {
-  static osg::ref_ptr<Registry> s_registry = new Registry;
-  return s_registry.get();
+    static osg::ref_ptr<Registry> s_registry = new Registry;
+    if (erase) 
+    {   
+        s_registry->destruct();
+        s_registry = 0;
+    }
+    return s_registry.get(); // will return NULL on erase
+}
+
+void Registry::destruct()
+{
+    //Clean up the overriden cache config
+    _cacheConfigOverride = 0;
 }

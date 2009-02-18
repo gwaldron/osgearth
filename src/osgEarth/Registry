@@ -30,7 +30,7 @@ namespace osgEarth
   class OSGEARTH_EXPORT Registry : public osg::Referenced
   {
   public:
-    static Registry* instance();
+    static Registry* instance(bool erase = false);
 
     const CacheConfig* getCacheConfigOverride() { return _cacheConfigOverride.get(); }
     void setCacheConfigOverride(CacheConfig* cacheConfig) { _cacheConfigOverride = cacheConfig; }
@@ -38,6 +38,8 @@ namespace osgEarth
   protected:
     virtual ~Registry();
     Registry();
+
+    void destruct();
 
     osg::ref_ptr<CacheConfig> _cacheConfigOverride;
   };

@@ -205,8 +205,8 @@ MapService::init( const std::string& _url )
     {
         int l = j_levels[0u].get("level", -1).asInt();
         double res = j_levels[0u].get("resolution", 0.0).asDouble();
-        num_tiles_wide = (int)((xmax - xmin) / (res * tile_cols));
-        num_tiles_high = (int)((ymax - ymin) / (res * tile_cols));
+        num_tiles_wide = (int)osg::round((xmax - xmin) / (res * tile_cols));
+        num_tiles_high = (int)osg::round((ymax - ymin) / (res * tile_cols));
 
         //In case the first level specified isn't level 0, compute the number of tiles at level 0
         for (int i = 0; i < l; i++)

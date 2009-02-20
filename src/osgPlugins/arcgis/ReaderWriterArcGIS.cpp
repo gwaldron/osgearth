@@ -78,6 +78,11 @@ public:
         return manual_profile.isValid() ? manual_profile : map_service.getProfile();
     }
 
+    virtual int getPixelsPerTile() const
+    {
+        return map_service.getTileInfo().getTileSize();
+    }
+
     osg::Image* createImage( const TileKey* key )
     {
         std::stringstream buf;

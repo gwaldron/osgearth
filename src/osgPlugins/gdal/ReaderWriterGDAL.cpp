@@ -313,6 +313,8 @@ public:
               GDALRasterBand* bandBlue = findBand(warpedDS, GCI_BlueBand);
               GDALRasterBand* bandAlpha = findBand(warpedDS, GCI_AlphaBand);
 
+              GDALRasterBand* bandGray = findBand(warpedDS, GCI_GrayIndex);
+
               if (bandRed && bandGreen && bandBlue)
               {
                   unsigned char *red = new unsigned char[target_width * target_height];
@@ -359,9 +361,49 @@ public:
                   delete []blue;
                   delete []alpha;
               }
+              else if (bandGray)
+              {
+                  unsigned char *gray = new unsigned char[target_width * target_height];
+                  unsigned char *alpha = new unsigned char[target_width * target_height];
+
+                  //Initialize the alpha values to 255.
+                  memset(alpha, 255, target_width * target_height);
+
+                  bandGray->RasterIO(GF_Read, off_x, off_y, width, height, gray, target_width, target_height, GDT_Byte, 0, 0);
+
+                  if (bandAlpha)
+                  {
+                      bandBlue->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
+                  }
+
+                  image = new osg::Image;
+                  image->allocateImage(tile_size, tile_size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+                  memset(image->data(), 0, image->getImageSizeInBytes());
+
+                  for (int src_row = 0, dst_row = tile_offset_top;
+                      src_row < target_height;
+                      src_row++, dst_row++)
+                  {
+                      for (int src_col = 0, dst_col = tile_offset_left;
+                          src_col < target_width;
+                          ++src_col, ++dst_col)
+                      {
+                          *(image->data(dst_col, dst_row) + 0) = gray[src_col + src_row * target_width];
+                          *(image->data(dst_col, dst_row) + 1) = gray[src_col + src_row * target_width];
+                          *(image->data(dst_col, dst_row) + 2) = gray[src_col + src_row * target_width];
+                          *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                      }
+                  }
+
+                  image->flipVertical();
+
+                  delete []gray;
+                  delete []alpha;
+
+              }
               else
               {
-                  osg::notify(osg::NOTICE) << "Could not find red, green and blue bands in " << url << ".  Cannot create image. " << std::endl;
+                  osg::notify(osg::NOTICE) << "Could not find red, green and blue bands or gray bands in " << url << ".  Cannot create image. " << std::endl;
                   return NULL;
               }
           }

@@ -161,7 +161,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if (_dataProfile.getProfileType() != TileGridProfile::PROJECTED)
+    if (_dataProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC || map->getReprojectMercatorToGeodetic())
     {
         scaleHeightFieldToDegrees(hf.get());
     }

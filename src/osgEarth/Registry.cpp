@@ -30,7 +30,6 @@ Referenced(true)
 
 Registry::~Registry()
 {
-    osg::notify(osg::NOTICE) << "Destroying osgEarth::Registry " << std::endl;
 }
 
 Registry* Registry::instance(bool erase)

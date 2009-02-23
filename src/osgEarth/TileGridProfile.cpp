@@ -243,7 +243,7 @@ bool TileGridProfile::operator == (const TileGridProfile& rhs) const
     if (this == &rhs) return true;
 
     return (_profileType == rhs._profileType &&
-            _srs == rhs._srs &&
+            osgDB::equalCaseInsensitive(_srs, rhs._srs) &&
             _numTilesWideAtLod0 == rhs._numTilesWideAtLod0 &&
             _numTilesHighAtLod0 == rhs._numTilesHighAtLod0 &&
             _xmin == rhs._xmin &&
@@ -259,7 +259,7 @@ bool TileGridProfile::operator != (const TileGridProfile& rhs) const
         return (_profileType != rhs._profileType ||
             _numTilesWideAtLod0 != rhs._numTilesWideAtLod0 ||
             _numTilesHighAtLod0 != rhs._numTilesHighAtLod0 ||
-            _srs != rhs._srs ||
+            !osgDB::equalCaseInsensitive(_srs, rhs._srs) ||
             _xmin != rhs._xmin ||
             _ymin != rhs._ymin ||
             _xmax != rhs._xmax ||

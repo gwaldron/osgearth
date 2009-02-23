@@ -134,10 +134,10 @@ namespace osgEarth
          */
         void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> > &intersectingKeys) const;
 
-        unsigned int getNumTilesWideAtLod0() {return _numTilesWideAtLod0;}
+        unsigned int getNumTilesWideAtLod0() const {return _numTilesWideAtLod0;}
         void setNumTilesWideAtLod0(unsigned int w) {_numTilesWideAtLod0 = w;}
 
-        unsigned int getNumTilesHighAtLod0() {return _numTilesHighAtLod0;}
+        unsigned int getNumTilesHighAtLod0() const {return _numTilesHighAtLod0;}
         void setNumTilesHighAtLod0(unsigned int h) {_numTilesHighAtLod0 = h;}
 
 

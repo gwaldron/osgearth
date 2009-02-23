@@ -37,6 +37,7 @@ using namespace osgEarth;
 
 #define PROPERTY_URL              "url"
 #define PROPERTY_CAPABILITIES_URL "capabilities_url"
+#define PROPERTY_TILESERVICE_URL  "tileservice_url"
 #define PROPERTY_LAYERS           "layers"
 #define PROPERTY_STYLE            "style"
 #define PROPERTY_FORMAT           "format"
@@ -64,6 +65,12 @@ public:
         if ( options->getPluginData( PROPERTY_FORMAT ) )
             format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
+        if ( options->getPluginData( PROPERTY_CAPABILITIES_URL ) )
+             capabilitiesURL = std::string( (const char*)options->getPluginData( PROPERTY_CAPABILITIES_URL ) );
+
+         if ( options->getPluginData( PROPERTY_TILESERVICE_URL ) )
+             tileServiceURL = std::string( (const char*)options->getPluginData( PROPERTY_TILESERVICE_URL ) );
+
         if ( options->getPluginData( PROPERTY_MAP_CONFIG))
              map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
 
@@ -83,15 +90,16 @@ public:
 
 
         char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
-        std::string capabilitiesRequest = prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
+
+        if (capabilitiesURL.empty()) capabilitiesURL = prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
 
         //Try to read the WMS capabilities
-        capabilities = CapabilitiesReader::read(capabilitiesRequest);
+        capabilities = CapabilitiesReader::read(capabilitiesURL);
 
 
         if (capabilities.valid())
         {
-            osg::notify(osg::INFO) << "Got capabilities from " << capabilitiesRequest << std::endl;
+            osg::notify(osg::INFO) << "Got capabilities from " << capabilitiesURL << std::endl;
             if (format.empty())
             {
                 format = capabilities->suggestExtension();
@@ -100,7 +108,7 @@ public:
         }
         else
         {
-            osg::notify(osg::NOTICE) << "Could not read capabilities from WMS service using request " << capabilitiesRequest << std::endl;
+            osg::notify(osg::NOTICE) << "Could not read capabilities from WMS service using request " << capabilitiesURL << std::endl;
         }
 
         if ( format.empty() )
@@ -163,9 +171,9 @@ public:
         }
         
         //Try to read the TileService
-        std::string tileServiceRequest = prefix + sep + "request=GetTileService";
+        if (tileServiceURL.empty()) tileServiceURL = prefix + sep + "request=GetTileService";
         //osg::notify(osg::NOTICE) << "TileService URL " << tileServiceRequest << std::endl;
-        tileService = TileServiceReader::read(tileServiceRequest);
+        tileService = TileServiceReader::read(tileServiceURL);
         if (tileService.valid())
         {
             osg::notify(osg::NOTICE) << "Read TileService " << std::endl;
@@ -186,7 +194,6 @@ public:
         prototype = prototype + "&." + format;
 
 
-        //osg::notify(osg::NOTICE) << "Prototype = " << prototype << std::endl;
     }
 
     const TileGridProfile& getProfile() const
@@ -244,6 +251,8 @@ private:
     std::string style;
     std::string format;
     std::string srs;
+    std::string tileServiceURL;
+    std::string capabilitiesURL;
 	int tile_size;
     const MapConfig* map_config;
     std::string elevation_unit;

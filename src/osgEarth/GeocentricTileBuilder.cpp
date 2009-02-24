@@ -217,7 +217,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     {
         if (heightfield_sources[0]->isKeyValid(key))
         {
-            hf = heightfield_sources[0]->createHeightField(key);
+            hf = createHeightField(key, heightfield_sources[0].get());
             hasElevation = hf.valid();
         }
     }

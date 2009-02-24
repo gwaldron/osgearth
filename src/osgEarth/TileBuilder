@@ -120,6 +120,7 @@ namespace osgEarth
         const TileGridProfile& getDataProfile() const;
 
         osg::Image* createImage(const TileKey* key, TileSource* source);
+        osg::HeightField* createHeightField(const TileKey* key, TileSource* source);
         
 
     protected:

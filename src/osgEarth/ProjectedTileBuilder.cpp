@@ -90,10 +90,10 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     //TODO: select/composite.
     if ( heightfield_sources.size() > 0 )
     {
-        if (heightfield_sources[0]->isKeyValid(key))  
+        if (heightfield_sources[0]->isKeyValid(key))
         {
-            hf = heightfield_sources[0]->createHeightField(key);
-            if (hf.valid()) hasElevation = true;
+            hf = createHeightField(key, heightfield_sources[0].get());
+            hasElevation = hf.valid();
         }
     }
 

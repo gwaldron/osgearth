@@ -32,10 +32,10 @@ using namespace osgEarth;
 
 /********************************************************************/
 
-#define MIN_X -20037508.342789244
-#define MIN_Y -20037508.342789244
-#define MAX_X 20037508.342789244
-#define MAX_Y 20037508.342789244
+#define MIN_X -20037508.34
+#define MIN_Y -20037508.34
+#define MAX_X 20037508.34
+#define MAX_Y 20037508.34
 
 #define PIXELS_PER_TILE 256
 

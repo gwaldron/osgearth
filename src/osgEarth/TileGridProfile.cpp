@@ -29,10 +29,10 @@ using namespace osgEarth;
 #define GLOBAL_GEODETIC_MIN_LAT -90
 #define GLOBAL_GEODETIC_MAX_LAT 90
 
-#define GLOBAL_MERCATOR_MIN_X -20037508.342789244
-#define GLOBAL_MERCATOR_MIN_Y -20037508.342789244
-#define GLOBAL_MERCATOR_MAX_X 20037508.342789244
-#define GLOBAL_MERCATOR_MAX_Y 20037508.342789244
+#define GLOBAL_MERCATOR_MIN_X -20037508.34
+#define GLOBAL_MERCATOR_MIN_Y -20037508.34
+#define GLOBAL_MERCATOR_MAX_X 20037508.43
+#define GLOBAL_MERCATOR_MAX_Y 20037508.34
 
 TileGridProfile::TileGridProfile():
 _xmin(0),
@@ -303,8 +303,6 @@ void TileGridProfile::getNumTiles(unsigned int lod, unsigned int &tilesWide, uns
 
 void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> > &intersectingKeys) const
 {
-    //TODO:  Handle mixing geodetic and mercator tiles
-
     //Clear the incoming list
     intersectingKeys.clear();
 

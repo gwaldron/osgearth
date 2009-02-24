@@ -180,6 +180,51 @@ osg::HeightField* HeightFieldUtils::convertMercatorToGeodetic(const TileKey* key
   }
 
   return result; 
+}
+
+bool HeightFieldUtils::contains(osg::HeightField* hf, double x, double y)
+{
+    if (!hf) return false;
+
+    double minX = hf->getOrigin().x();
+    double minY = hf->getOrigin().y();
+    double maxX = minX + hf->getXInterval() * (double)(hf->getNumColumns()-1);
+    double maxY = minY + hf->getYInterval() * (double)(hf->getNumRows()-1);
+
+    return (x >= minX && x <= maxX && y >= minY && y <= maxY);
+}
+
+osg::HeightField* HeightFieldUtils::compositeHeightField(double minx, double miny, double maxx, double maxy,
+                                       unsigned int numCols, unsigned int numRows,
+                                       std::vector<osg::ref_ptr<osg::HeightField>> &heightFields)
+{
+    if (heightFields.size() == 0) return 0;
+
+    osg::HeightField* hf = new osg::HeightField;
+    hf->allocate(numCols, numRows);
+
+    double dx = (maxx - minx) / (double)(numCols-1);
+    double dy = (maxy - miny) / (double)(numRows-1);
 
 
+    for (unsigned int c = 0; c < numCols; ++c)
+    {
+        double x = minx + (double)c * dx;
+        for (unsigned int r = 0; r < numRows; ++r)
+        {
+            double y = miny + (double)r * dy;
+            double h = 0;
+            for (unsigned int i = 0; i < heightFields.size(); ++i)
+            {
+                osg::HeightField *hf2 = heightFields[i].get();
+                if (contains(hf2, x, y))
+                {
+                    h = HeightFieldUtils::getHeightAtLocation(hf2, x, y);
+                    break;
+                }
+            }
+            hf->setHeight(c, r, h);
+        }
+    }
+    return hf;
 }

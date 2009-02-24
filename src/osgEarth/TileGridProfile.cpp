@@ -353,11 +353,19 @@ void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::
     osg::notify(osg::INFO) << "Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
     osg::notify(osg::INFO) << "Dest Tiles: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
-    int tileMinX = (int)floor(keyMinX - _xmin) / destTileWidth;
-    int tileMaxX = (int)ceil(keyMaxX - _xmin) / destTileWidth;
+    int tileMinX = (int)((keyMinX - _xmin) / destTileWidth);
+    int tileMaxX = (int)((keyMaxX - _xmin) / destTileWidth);
 
-    int tileMinY = (int)floor(_ymax - keyMaxY) / destTileHeight; 
-    int tileMaxY = (int)ceil(_ymax - keyMinY) / destTileHeight; 
+    int tileMinY = (int)((_ymax - keyMaxY) / destTileHeight); 
+    int tileMaxY = (int)((_ymax - keyMinY) / destTileHeight); 
+
+    unsigned int numWide, numHigh;
+    getNumTiles(destLOD, numWide, numHigh);
+
+    tileMinX = osg::clampBetween(tileMinX, 0, (int)numWide-1);
+    tileMaxX = osg::clampBetween(tileMaxX, 0, (int)numWide-1);
+    tileMinY = osg::clampBetween(tileMinY, 0, (int)numHigh-1);
+    tileMaxY = osg::clampBetween(tileMaxY, 0, (int)numHigh-1);
 
     for (int i = tileMinX; i <= tileMaxX; ++i)
     {
@@ -366,4 +374,6 @@ void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::
             intersectingKeys.push_back(new TileKey(i, j, destLOD, *this));
         }
     }
+
+    //osg::notify(osg::NOTICE) << "Found " << intersectingKeys.size() << " keys " << std::endl;
 }

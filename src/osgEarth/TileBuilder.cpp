@@ -723,7 +723,7 @@ osg::HeightField* TileBuilder::createHeightField(const TileKey* key, TileSource*
         source->getProfile().getIntersectingTiles(key, intersectingTiles);
         if (intersectingTiles.size() > 0)
         {
-            std::vector<osg::ref_ptr<osg::HeightField>> heightFields;
+            std::vector<osg::ref_ptr<osg::HeightField> > heightFields;
             for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
             {
                 double minX, minY, maxX, maxY;

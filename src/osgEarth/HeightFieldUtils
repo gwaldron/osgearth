@@ -42,7 +42,7 @@ namespace osgEarth
 
           static osg::HeightField* compositeHeightField(double minx, double miny, double maxx, double maxy,
                                                         unsigned int numCols, unsigned int numRows,
-                                                        std::vector<osg::ref_ptr<osg::HeightField>> &heightFields);
+                                                        std::vector<osg::ref_ptr<osg::HeightField> > &heightFields);
     };
 }
 

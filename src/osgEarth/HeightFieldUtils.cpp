@@ -196,7 +196,7 @@ bool HeightFieldUtils::contains(osg::HeightField* hf, double x, double y)
 
 osg::HeightField* HeightFieldUtils::compositeHeightField(double minx, double miny, double maxx, double maxy,
                                        unsigned int numCols, unsigned int numRows,
-                                       std::vector<osg::ref_ptr<osg::HeightField>> &heightFields)
+                                       std::vector<osg::ref_ptr<osg::HeightField> > &heightFields)
 {
     if (heightFields.size() == 0) return 0;
 

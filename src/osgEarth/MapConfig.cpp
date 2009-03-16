@@ -828,14 +828,11 @@ MapConfigReaderWriter::readXml( const std::string& location )
     }
     else
     {
-        if (!osgDB::fileExists(location) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
+        if (osgDB::fileExists(location) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
         {
-            osg::notify(osg::NOTICE) << location << " does not exists " << std::endl;
-            return 0;
+            std::ifstream in( location.c_str() );
+            map = readXml( in );
         }
-
-        std::ifstream in( location.c_str() );
-        map = readXml( in );
     }
 
     if (map)

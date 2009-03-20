@@ -33,7 +33,12 @@
 #include <gdal_priv.h>
 #include <gdalwarper.h>
 #include <ogr_spatialref.h>
+
+//GDAL proxy is only available after GDAL 1.6
+#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
 #include <gdal_proxy.h>
+#endif
+
 #include <cpl_string.h>
 #include <gdal_vrt.h>
 
@@ -150,6 +155,7 @@ void getFiles(const std::string &file, const std::vector<std::string> &exts, std
 
 
 
+#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
 //Adapted from the gdalbuildvrt application
 GDALDatasetH build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy)
 {
@@ -421,6 +427,7 @@ end:
     CPLFree(projectionRef);
     return hVRTDS;
 }
+#endif
 
 
 class GDALTileSource : public TileSource
@@ -491,16 +498,20 @@ public:
           {
               osg::notify(osg::NOTICE) <<"  " << files[i] << std::endl;
           }
-          
+         
           //If we found more than one file, try to combine them into a single logical dataset
           if (files.size() > 1)
           {
+#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
               srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
               if (!srcDS)
               {
                   osg::notify(osg::NOTICE) << "Failed to build VRT from input datasets" << std::endl;
                   return;
               }
+#else
+              osg::notify(osg::NOTICE) << "GDAL Driver support for directories requires GDAL 1.6 or better" << std::endl;
+#endif
           }
 
           //If we couldn't build a VRT, just try opening the file directly

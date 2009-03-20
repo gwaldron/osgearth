@@ -63,7 +63,7 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
                 local_options = new osgDB::ReaderWriter::Options();
 
             std::stringstream buf;
-            buf << local_options->getOptionString()
+            buf << local_options->getOptionString() << " "
                 << "OSG_CURL_PROXY=" << map->getProxyHost() << " "
                 << "OSG_CURL_PROXYPORT=" << map->getProxyPort();
             local_options->setOptionString( buf.str() );

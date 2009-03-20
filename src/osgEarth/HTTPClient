@@ -105,7 +105,7 @@ namespace osgEarth
 
         void setProxyHost( const std::string& hostname );
 
-        void setProxyPort( unsigned short port );
+        void setProxyPort( const std::string& port );
 
         HTTPResponse* get( HTTPRequest* request ) const;
 
@@ -118,7 +118,7 @@ namespace osgEarth
 
     private:
         std::string proxy_host;
-        unsigned short proxy_port;
+        std::string proxy_port;
 
         void *curl_handle;
 

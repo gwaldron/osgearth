@@ -48,9 +48,8 @@ void getExtents(const TileKey* key, double &min_x, double &min_y, double &max_x,
 
 ProjectedTileBuilder::ProjectedTileBuilder( 
     MapConfig* _map,
-    const std::string& _url_template,
     const osgDB::ReaderWriter::Options* _global_options ) :
-TileBuilder( _map, _url_template, _global_options )
+TileBuilder( _map,_global_options )
 {
     //NOP
 }
@@ -197,7 +196,10 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Assign the terrain system to the TerrainTile
-    tile->setTerrain( terrain.get() );
+    if (terrain.valid())
+    {
+      tile->setTerrain( terrain.get() );
+    }
 
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)

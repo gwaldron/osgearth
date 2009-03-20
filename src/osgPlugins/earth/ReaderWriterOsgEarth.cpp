@@ -46,7 +46,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return osgDB::equalCaseInsensitive( extension, "earth" );
+            return (osgDB::equalCaseInsensitive( extension, "earth" ) ||
+                    osgDB::equalCaseInsensitive( extension, "earth_tile" ));
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -70,28 +71,21 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             {
                 return readNode(file_name.substr(7), options);
             }
-            
-            // try to strip off a cell key:
-            unsigned int i = file_name.find_first_of( '.' );
-            if ( i >= file_name.length() - 1 )
-                return ReadResult::FILE_NOT_HANDLED;
-            
-            std::string earth_file = file_name.substr( i+1 );
-
-            //Try to get the cached builder
-            TileBuilder* tile_builder = TileBuilder::getTileBuilderByUrlTemplate( earth_file );
 
             osg::Node* node = 0;
 
-            
-            if ( !tile_builder )
+            //Reading a earth file defintion
+            if (ext == "earth")
             {
+                //osg::notify(osg::NOTICE) << "Reading Earth File " << std::endl;
+
+                //Read the map file from the filename
                 osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( file_name );
 
                 if ( map.valid() )
                 {
                     //Create the TileBuilder.
-                    tile_builder = TileBuilder::create( map.get(), file_name );
+                    TileBuilder* tile_builder = TileBuilder::create( map.get());
 
                     //Check to see that the TileBuilder is valid.
                     if (!tile_builder->isValid())
@@ -109,23 +103,47 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     {
                         osg::notify(osg::INFO) << "Projected" << std::endl;
                     }
+
+                    //Create the root node for the scene
                     node = tile_builder->createRootNode();
+
+                    //Register the TileBuilder with osgEarth
+                    if (tile_builder && node)
+                    {
+                        TileBuilder::registerTileBuilder(tile_builder, node);
+                    }
                 }
                 else
                 {
                     return ReadResult::FILE_NOT_FOUND;
                 }                
             }
-            else
+            //Reading a specific tile from an existing TileBuilder
+            else if (ext == "earth_tile")
             {
-                std::string keyString = file_name.substr(0, i);
-                unsigned int lod, x, y;
-                sscanf(keyString.c_str(), "%d_%d_%d", &lod, &x, &y);
-                osg::ref_ptr<TileKey> key = new TileKey(x, y, lod, tile_builder->getDataProfile());
-                node = tile_builder->createNode(key.get());
+                std::string tileDef = osgDB::getNameLessExtension(file_name);
+                //osg::notify(osg::NOTICE) << "Reading Tile " << tileDef << std::endl;
+
+                //The tile definition is formatted LOD_X_Y.TILEBUILDER_ID
+
+                unsigned int lod, x, y, tileBuilderId;
+                sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y,&tileBuilderId);
+
+                //Get the TileBuilder from the cache
+                TileBuilder* tile_builder = TileBuilder::getTileBuilderById(tileBuilderId);
+
+                if (tile_builder)
+                {
+                  osg::ref_ptr<TileKey> key = new TileKey(x, y, lod, tile_builder->getDataProfile());
+                  node = tile_builder->createNode(key.get());
+                }
+                else
+                {
+                    osg::notify(osg::NOTICE) << "Error:  Could not find TileBuilder with id=" << tileBuilderId << std::endl;
+                }
             }
 
-            return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;
+            return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;                     
         }
 };
 

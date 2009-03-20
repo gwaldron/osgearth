@@ -36,7 +36,6 @@ namespace osgEarth
     public:
         ProjectedTileBuilder( 
             MapConfig* map, 
-            const std::string& url_template,
             const osgDB::ReaderWriter::Options* options =NULL);
         
     protected: // TileBuilder interface

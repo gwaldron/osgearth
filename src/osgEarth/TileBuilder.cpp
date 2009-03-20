@@ -40,15 +40,46 @@
 
 using namespace osgEarth;
 
-TileBuilder::TileBuilderMap& TileBuilder::getCache()
+static OpenThreads::ReentrantMutex s_tileBuilderCacheMutex;
+static unsigned int s_tileBuilderID = 0;
+
+//Struture that pairs a TileBuilder with an osg::Node
+typedef std::pair<osg::ref_ptr<TileBuilder>,osg::Node*> TileBuilderNodePair;
+typedef std::map<unsigned int, TileBuilderNodePair> TileBuilderCache;
+
+/**
+*The UnregisterTileBuilderObserver whole purpose in life is to listen for when the root node of a TileBuilder
+*has been deleted and unregister the associated TileBuilder
+*/
+class UnregisterTileBuilderObserver : public osg::Observer
 {
-  static std::map< std::string, osg::ref_ptr< TileBuilder > > s_cache;
-  return s_cache;
+    virtual void objectDeleted(void* object)
+    {
+        osg::Node* node = (osg::Node*)object;
+        //Find the TileBuilder for the Node that was deleted
+        TileBuilder* tile_builder = TileBuilder::getTileBuilderByNode(node);
+        if (tile_builder)
+        {
+            //osg::notify(osg::NOTICE) << "Node associated with TileBuilder " << tile_builder->getId() << " deleted" << std::endl;
+            //Unregsiter the TileBuilder
+            TileBuilder::unregisterTileBuilder(tile_builder->getId());
+        }
+    }
+};
+
+static UnregisterTileBuilderObserver s_unregisterTileBuilderObserver;
+
+
+TileBuilderCache& getCache()
+{
+    static TileBuilderCache s_cache;
+    return s_cache;
 }
 
 TileBuilder*
-TileBuilder::create( MapConfig* map, const std::string& url_template, const osgDB::ReaderWriter::Options* options )
+TileBuilder::create( MapConfig* map, const osgDB::ReaderWriter::Options* options )
 {
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
     TileBuilder* result = NULL;
     if ( map )
     {
@@ -76,26 +107,60 @@ TileBuilder::create( MapConfig* map, const std::string& url_template, const osgD
 
         if ( map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC )
         {
-            result = new GeocentricTileBuilder( map, url_template, local_options.get() );
+            result = new GeocentricTileBuilder( map, local_options.get() );
         }
         else
         {
-            result = new ProjectedTileBuilder( map, url_template, local_options.get() );
+            result = new ProjectedTileBuilder( map, local_options.get() );
         }
+
+        result->id = s_tileBuilderID++;
+        osg::notify(osg::INFO) << "TileBuilder::create assigning id " << result->id << " to Tilebuilder " << std::endl;
     }
-
-    //Cache the tile builder
-    static TileBuilderMap s_tile_builders;
-    getCache()[url_template] = result;
-
     return result;
 }
 
-TileBuilder*
-TileBuilder::getTileBuilderByUrlTemplate( const std::string& url_template )
+void
+TileBuilder::registerTileBuilder(TileBuilder* tileBuilder, osg::Node *node)
 {
-    TileBuilderMap::const_iterator k = getCache().find( url_template );
-    if (k != getCache().end()) return k->second.get();
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
+    getCache()[tileBuilder->id] = TileBuilderNodePair(tileBuilder, node);
+    node->addObserver(&s_unregisterTileBuilderObserver);
+    osg::notify(osg::INFO) << "Registered " << tileBuilder->id << std::endl;
+}
+
+void
+TileBuilder::unregisterTileBuilder(unsigned int id)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
+    TileBuilderCache::iterator k = getCache().find( id);
+    if (k != getCache().end())
+    {
+        getCache().erase(k);
+        osg::notify(osg::INFO) << "Unregistered " << id << std::endl;
+    }
+}
+
+TileBuilder*
+TileBuilder::getTileBuilderById(unsigned int id)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
+    TileBuilderCache::const_iterator k = getCache().find( id);
+    if (k != getCache().end()) return k->second.first.get();
+    return 0;
+}
+
+TileBuilder*
+TileBuilder::getTileBuilderByNode(osg::Node* node)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
+    for (TileBuilderCache::const_iterator k = getCache().begin(); k != getCache().end(); ++k)
+    {
+        if (k->second.second == node)
+        {
+            return k->second.first.get();
+        }
+    }
     return 0;
 }
 
@@ -110,11 +175,17 @@ TileBuilder::readNode( MapConfig* map )
     //osg::notify(osg::NOTICE) << "MapFilename is " << map->getFilename() << std::endl;
 
     //Create the TileBuilder
-    TileBuilder* tileBuilder = TileBuilder::create(map, map->getFilename());
+    TileBuilder* tileBuilder = TileBuilder::create(map);
     if (!tileBuilder->isValid())
         return 0;
 
     return tileBuilder->createRootNode();
+}
+
+unsigned int
+TileBuilder::getId() const
+{
+    return id;
 }
 
 const TileGridProfile&
@@ -257,10 +328,8 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 }
 
 TileBuilder::TileBuilder(MapConfig* _map, 
-                         const std::string& _url_template,
                          const osgDB::ReaderWriter::Options* options ) :
 map( _map ),
-url_template( _url_template ),
 _profileComputed(false),
 _dataProfile(TileGridProfile::UNKNOWN)
 {
@@ -360,7 +429,9 @@ _dataProfile(TileGridProfile::UNKNOWN)
 std::string
 TileBuilder::createURI( const TileKey* key )
 {
-    return key->str() + "." + url_template;
+    std::stringstream ss;
+    ss << key->str() << "." <<id<<".earth_tile";
+    return ss.str();
 }
 
 MapConfig*

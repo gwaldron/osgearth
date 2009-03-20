@@ -56,9 +56,8 @@ void getLatLonExtents(const TileKey* key, double &min_lon, double &min_lat, doub
 
 GeocentricTileBuilder::GeocentricTileBuilder( 
     MapConfig* map, 
-    const std::string& url_template,
     const osgDB::ReaderWriter::Options* global_options ) :
-TileBuilder( map, url_template, global_options )
+TileBuilder( map, global_options )
 {
     //NOP   
 }
@@ -323,7 +322,10 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     tile->setRequiresNormals( true );
 
     //Assign the terrain system to the TerrainTile
-    tile->setTerrain( terrain.get() );
+    if (terrain.valid())
+    {
+      tile->setTerrain( terrain.get() );
+    }
 
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)

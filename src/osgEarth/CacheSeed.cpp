@@ -26,7 +26,7 @@ using namespace osgEarth;
 void CacheSeed::seed(MapConfig *map)
 {
     //Create a TileBuilder for the map
-    _tileBuilder = TileBuilder::create( map, map->getFilename() );
+    _tileBuilder = TileBuilder::create( map);
     
     std::vector< osg::ref_ptr<TileKey> > keys;
     _tileBuilder->getDataProfile().getRootKeys(keys);

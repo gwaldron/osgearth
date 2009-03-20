@@ -71,15 +71,12 @@ namespace osgEarth
          */
         static TileBuilder* create(
             MapConfig* map,
-            const std::string& url_template,
             const osgDB::ReaderWriter::Options* global_options =NULL );
 
         /**
-         * Finds a created TileBuilder based it's URL template. The system will cache TileBuilder
-         * instances based on the initial URL or load path so that the .earth plugin can operate
-         * without re-determining the map configuration each tile a new tile is requested.
-         */
-        static TileBuilder* getTileBuilderByUrlTemplate( const std::string &url_template );
+        *Gets the ID for this TileBuilder
+        */
+        unsigned int getId() const;
 
         /**
          * Creates the root node for a TileBuilder
@@ -121,12 +118,21 @@ namespace osgEarth
 
         osg::Image* createImage(const TileKey* key, TileSource* source);
         osg::HeightField* createHeightField(const TileKey* key, TileSource* source);
-        
+
+        //Registers the given TileBuilder with osgEarth.  This should not be called by user code
+        static void registerTileBuilder(TileBuilder* tileBuilder, osg::Node *node);
+        //Unregisters the given TileBuilder.  This should not be called by user code
+        static void unregisterTileBuilder(unsigned int id);
+
+        //Gets the registered TileBuilder by the TileBuilder ID
+        static TileBuilder* getTileBuilderById(unsigned int id);
+
+        //Gets the TileBuilder that is associated with the given node
+        static TileBuilder* getTileBuilderByNode(osg::Node* node);
 
     protected:
         TileBuilder( 
             MapConfig* map, 
-            const std::string& url_template,
             const osgDB::ReaderWriter::Options* global_options );
 
         /**
@@ -159,12 +165,6 @@ namespace osgEarth
          */
         virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const =0;
 
-        /**Store a static list of all the TileBuilder's that have been created*/
-        typedef std::map<std::string, osg::ref_ptr<TileBuilder> > TileBuilderMap;
-        static TileBuilderMap& getCache();
-
-        
-
     protected:
 
         typedef std::pair<osg::ref_ptr<osg::Image>, osg::ref_ptr<const TileKey> > ImageTileKeyPair;
@@ -182,12 +182,14 @@ namespace osgEarth
         TileGridProfile _dataProfile;
         bool _profileComputed;
 
+        unsigned int id;
+
         osg::ref_ptr<MapConfig> map;
-        std::string url_template;
         TileSourceList image_sources;
         TileSourceList heightfield_sources;
 
-        osg::ref_ptr<osgEarth::EarthTerrain> terrain;
+        //Use observer_ptr so the TileBuilder does not prevent the main scene graph from being deleted
+        osg::observer_ptr<osgEarth::EarthTerrain> terrain;
 
     private:
 

@@ -35,6 +35,7 @@
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
 #include <osgTerrain/GeometryTechnique>
+#include <OpenThreads/ReentrantMutex>
 #include <sstream>
 #include <stdlib.h>
 

@@ -88,7 +88,7 @@ public:
         if ( dataset == "satellite" )
         {            
             if ( version.empty() )
-                version = "34";
+                version = "37";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;
@@ -135,7 +135,7 @@ public:
         else if ( dataset == "labels" )
         {
             if ( version.empty() )
-                version = "w2t.88";
+                version = "w2t.92";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;
@@ -153,7 +153,7 @@ public:
         else if ( dataset == "roads" )
         {
             if ( version.empty() )
-                version = "w2.89";
+                version = "w2.92";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;

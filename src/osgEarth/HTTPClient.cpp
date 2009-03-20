@@ -347,6 +347,9 @@ HTTPClient::get( HTTPRequest* request ) const
         std::stringstream buf;
         buf << proxy_host << ":" << proxy_port;
         proxy_addr = buf.str();
+    
+        osg::notify(osg::INFO) << "osgEarth.HTTPClient: setting proxy: " << proxy_addr << std::endl;
+        curl_easy_setopt( curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 
     //osg::notify(osg::NOTICE) << "[HTTPClient] GET " << request->getURL() << std::endl;

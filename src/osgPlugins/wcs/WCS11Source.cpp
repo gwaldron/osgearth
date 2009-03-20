@@ -189,13 +189,13 @@ WCS11Source::createRequest( const TileKey* key ) const
     buf << lat_min << "," << lon_min << "," << lat_max << "," << lon_max << ",urn:ogc:def:crs:EPSG::4326";
     req->addParameter( "BOUNDINGBOX", buf.str() );
 
-    //buf.str("");
-    //buf << lon_min << "," << lat_min;
-    //req->addParameter( "GRIDORIGIN", buf.str() );
+    buf.str("");
+    buf << lon_min << "," << lat_min;
+    req->addParameter( "GRIDORIGIN", buf.str() );
 
-    //buf.str("");
-    //buf << lon_interval << "," << lat_interval;
-    //req->addParameter( "GRIDOFFSETS", buf.str() );
+    buf.str("");
+    buf << lon_interval << "," << lat_interval;
+    req->addParameter( "GRIDOFFSETS", buf.str() );
 
     //TODO: un-hard-code this
     req->addParameter( "GRIDCS", "urn:ogc:def:crs:EPSG::4326" );

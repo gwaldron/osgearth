@@ -74,6 +74,13 @@ namespace osgEarth
          * Copy ctor
          */
         TileGridProfile( const TileGridProfile& rhs );
+        
+        
+        /**
+         * Copy operator
+         */
+        TileGridProfile& operator = ( const TileGridProfile& rhs );
+        
 
         /**
          * Returns true if the profile is properly initialized.
@@ -88,6 +95,11 @@ namespace osgEarth
         double xMax() const;
         double yMax() const;
         
+        /**
+         * Set the profile type
+         */
+        void setProfileType(ProfileType profileType);
+
         /**
          * Gets the profile type
          */

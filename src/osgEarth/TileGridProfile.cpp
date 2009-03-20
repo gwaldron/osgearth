@@ -106,6 +106,23 @@ TileGridProfile::TileGridProfile( const TileGridProfile& rhs )
     //NOP
 }
 
+TileGridProfile& TileGridProfile::operator = ( const TileGridProfile& rhs )
+{
+    if (&rhs==this) return *this;
+    
+    _xmin = rhs._xmin;
+    _ymin = rhs._ymin;
+    _xmax = rhs._xmax;
+    _ymax = rhs._ymax;
+    _profileType = rhs._profileType;
+    _srs = rhs._srs;
+    _numTilesWideAtLod0 = rhs._numTilesWideAtLod0;
+    _numTilesHighAtLod0 = rhs._numTilesHighAtLod0;
+
+    return *this;
+}
+
+
 bool
 TileGridProfile::isValid() const
 {
@@ -161,6 +178,11 @@ TileGridProfile::yMax() const {
 const std::string&
 TileGridProfile::srs() const {
     return _srs;
+}
+
+void TileGridProfile::setProfileType(ProfileType profileType)
+{
+    _profileType = profileType;
 }
 
 TileGridProfile::ProfileType

@@ -35,6 +35,8 @@ namespace osgEarth
         static osg::Image* cropImage(osg::Image* image,
                                      double src_minx, double src_miny, double src_maxx, double src_maxy,
                                      double dst_minx, double dst_miny, double dst_maxx, double dst_maxy);
+
+        static bool isPowerOfTwo(const osg::Image* image);
     };
 }
 

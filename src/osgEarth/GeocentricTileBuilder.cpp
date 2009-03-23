@@ -21,6 +21,7 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osgEarth/MultiImage>
+#include <osgEarth/ImageUtils>
 
 #include <osg/Image>
 #include <osg/Timer>
@@ -355,12 +356,17 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());
+
+            //Turn on linear texture minification if the image is not a power of two due
+            //to the fact that some drivers have issues with npot mip mapping
+            if (!ImageUtils::isPowerOfTwo(image_tiles[i].first.get()))
+            {
 #if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
-            img_layer->setFilter( osgTerrain::Layer::LINEAR );
+                img_layer->setFilter( osgTerrain::Layer::LINEAR );
 #else
-            img_layer->setMinFilter(osg::Texture::LINEAR_MIPMAP_LINEAR);
-            img_layer->setMagFilter(osg::Texture::LINEAR);
+                img_layer->setMinFilter(osg::Texture::LINEAR);
 #endif
+            }
             tile->setColorLayer( layer, img_layer );
             layer++;
         }

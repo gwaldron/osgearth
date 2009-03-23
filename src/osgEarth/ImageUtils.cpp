@@ -108,3 +108,9 @@ osg::Image* ImageUtils::cropImage(osg::Image* image, double src_minx, double src
 
     return cropped;
 }
+
+bool ImageUtils::isPowerOfTwo(const osg::Image* image)
+{
+    return (((image->s() & (image->s()-1))==0) &&
+            ((image->t() & (image->t()-1))==0));
+}

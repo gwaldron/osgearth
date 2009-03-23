@@ -124,7 +124,9 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
     }
     //osg::notify(osg::NOTICE) << "Cropped image is " << image->s() << " x " << image->t() << std::endl;
 
-    unsigned int new_s = osg::Image::computeNearestPowerOfTwo(image->s());
+    //We shouldn't need to manually resize the image if it isn't a power of two.  If the card supports NPOT textures
+    //it should work fine, and if it doesn't, OSG will resize the image for us.
+    /*unsigned int new_s = osg::Image::computeNearestPowerOfTwo(image->s());
     unsigned int new_t = osg::Image::computeNearestPowerOfTwo(image->t());
 
     if (new_s != image->s() || new_t != image->t())
@@ -134,7 +136,7 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
       image = ImageUtils::resizeImage(image.get(), new_s, new_t);
       //osg::Timer_t end = osg::Timer::instance()->tick();
       //osg::notify(osg::NOTICE) << "Resize took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
-    }
+    }*/
 
     return image.release();
 }

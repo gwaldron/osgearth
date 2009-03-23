@@ -155,7 +155,6 @@ void getFiles(const std::string &file, const std::vector<std::string> &exts, std
 
 
 
-#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
 //Adapted from the gdalbuildvrt application
 GDALDatasetH build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy)
 {
@@ -378,7 +377,11 @@ GDALDatasetH build_vrt(std::vector<std::string> &files, ResolutionStrategy resol
             continue;
         const char* dsFileName = files[i].c_str();
 
-        GDALProxyPoolDatasetH hProxyDS =
+        bool isProxy = true;
+
+#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
+        //Use a proxy dataset if possible.  This helps with huge amount of files to keep the # of handles down
+        GDALProxyPoolDatasetH hDS =
                GDALProxyPoolDatasetCreate(dsFileName,
                                          psDatasetProperties[i].nRasterXSize,
                                          psDatasetProperties[i].nRasterYSize,
@@ -387,12 +390,19 @@ GDALDatasetH build_vrt(std::vector<std::string> &files, ResolutionStrategy resol
 
         for(j=0;j<nBands;j++)
         {
-            GDALProxyPoolDatasetAddSrcBandDescription(hProxyDS,
+            GDALProxyPoolDatasetAddSrcBandDescription(hDS,
                                             bandProperties[j].dataType,
                                             psDatasetProperties[i].nBlockXSize,
                                             psDatasetProperties[i].nBlockYSize);
         }
-
+        isProxy = true;
+        osg::notify(osg::INFO) << "Using GDALProxyPoolDatasetH" << std::endl;
+#else
+        osg::notify(osg::INFO) << "Using GDALDataset, no proxy support enabled" << std::endl;
+        //Just open the dataset
+        GDALDatasetH hDS = (GDALDatasetH)GDALOpen(dsFileName, GA_ReadOnly);
+        isProxy = false;
+#endif
         int xoffset = (int)
                 (0.5 + (psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_TOPLEFT_X] - minX) / we_res);
         int yoffset = (int)
@@ -407,7 +417,7 @@ GDALDatasetH build_vrt(std::vector<std::string> &files, ResolutionStrategy resol
             VRTSourcedRasterBandH hVRTBand = (VRTSourcedRasterBandH)GDALGetRasterBand(hVRTDS, j + 1);
 
             /* Place the raster band at the right position in the VRT */
-            VRTAddSimpleSource(hVRTBand, GDALGetRasterBand((GDALDatasetH)hProxyDS, j + 1),
+            VRTAddSimpleSource(hVRTBand, GDALGetRasterBand((GDALDatasetH)hDS, j + 1),
                                0, 0,
                                psDatasetProperties[i].nRasterXSize,
                                psDatasetProperties[i].nRasterYSize,
@@ -415,7 +425,11 @@ GDALDatasetH build_vrt(std::vector<std::string> &files, ResolutionStrategy resol
                                dest_width, dest_height, "near",
                                VRT_NODATA_UNSET);
         }
-        GDALDereferenceDataset(hProxyDS);
+        //Only dereference if it is a proxy dataset
+        if (isProxy)
+        {
+          GDALDereferenceDataset(hDS);
+        }
     }
 end:
     CPLFree(psDatasetProperties);
@@ -427,7 +441,6 @@ end:
     CPLFree(projectionRef);
     return hVRTDS;
 }
-#endif
 
 
 class GDALTileSource : public TileSource
@@ -502,16 +515,12 @@ public:
           //If we found more than one file, try to combine them into a single logical dataset
           if (files.size() > 1)
           {
-#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
               srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
               if (!srcDS)
               {
                   osg::notify(osg::NOTICE) << "Failed to build VRT from input datasets" << std::endl;
                   return;
               }
-#else
-              osg::notify(osg::NOTICE) << "GDAL Driver support for directories requires GDAL 1.6 or better" << std::endl;
-#endif
           }
 
           //If we couldn't build a VRT, just try opening the file directly

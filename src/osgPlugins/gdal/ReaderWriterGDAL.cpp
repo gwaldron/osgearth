@@ -40,7 +40,11 @@
 #endif
 
 #include <cpl_string.h>
+
+//GDAL VRT api is only available after 1.5.0
+#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 5))
 #include <gdal_vrt.h>
+#endif
 
 #include <OpenThreads/ScopedLock>
 #include <OpenThreads/ReentrantMutex>
@@ -153,8 +157,8 @@ void getFiles(const std::string &file, const std::vector<std::string> &exts, std
     }
 }
 
-
-
+//The VRT API is only available after GDAL 1.5.0
+#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 5))
 //Adapted from the gdalbuildvrt application
 GDALDatasetH build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy)
 {
@@ -441,6 +445,7 @@ end:
     CPLFree(projectionRef);
     return hVRTDS;
 }
+#endif
 
 
 class GDALTileSource : public TileSource
@@ -515,12 +520,16 @@ public:
           //If we found more than one file, try to combine them into a single logical dataset
           if (files.size() > 1)
           {
+#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 5))
               srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
               if (!srcDS)
               {
                   osg::notify(osg::NOTICE) << "Failed to build VRT from input datasets" << std::endl;
                   return;
               }
+#else
+              osg::notify(osg::NOTICE) << "GDAL Driver support for directories requires GDAL 1.5.0 or better" << std::endl;
+#endif
           }
 
           //If we couldn't build a VRT, just try opening the file directly

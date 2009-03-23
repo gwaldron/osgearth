@@ -85,7 +85,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if ( map.valid() )
                 {
                     //Create the TileBuilder.
-                    TileBuilder* tile_builder = TileBuilder::create( map.get());
+                    osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::create( map.get());
 
                     //Check to see that the TileBuilder is valid.
                     if (!tile_builder->isValid())
@@ -108,9 +108,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     node = tile_builder->createRootNode();
 
                     //Register the TileBuilder with osgEarth
-                    if (tile_builder && node)
+                    if (tile_builder.valid() && node)
                     {
-                        TileBuilder::registerTileBuilder(tile_builder, node);
+                        TileBuilder::registerTileBuilder(tile_builder.get(), node);
                     }
                 }
                 else
@@ -129,10 +129,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 unsigned int lod, x, y, tileBuilderId;
                 sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y,&tileBuilderId);
 
-                //Get the TileBuilder from the cache
-                TileBuilder* tile_builder = TileBuilder::getTileBuilderById(tileBuilderId);
+                //Get the TileBuilder from the cache.  It is important that we use a ref_ptr here
+                //to prevent the TileBuilder from being deleted while it is is still in use.
+                osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::getTileBuilderById(tileBuilderId);
 
-                if (tile_builder)
+                if (tile_builder.valid())
                 {
                   osg::ref_ptr<TileKey> key = new TileKey(x, y, lod, tile_builder->getDataProfile());
                   node = tile_builder->createNode(key.get());

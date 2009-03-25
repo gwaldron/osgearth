@@ -362,8 +362,8 @@ public:
 
         osgTerrain::TileID tileID(level, tile_x, tile_y);
 
-        osgTerrain::TerrainTile* tile = findTile(tileID, false);
-        if (tile) return tile;
+        osg::ref_ptr<osgTerrain::TerrainTile> tile = findTile(tileID, false);
+        if (tile.valid()) return tile.get();
         
         osg::notify(osg::INFO)<<"Max_x = "<<max_x<<std::endl;
         osg::notify(osg::INFO)<<"Max_y = "<<max_y<<std::endl;
@@ -375,13 +375,15 @@ public:
 
         std::string filename = createTileName(level, tile_x, tile_y);
         
-        
-        if (blacklistedFilenames.count(filename)==1)
         {
-            osg::notify(osg::INFO)<<"file has been found in black list : "<<filename<<std::endl;
+            OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(blacklistMutex);
+            if (blacklistedFilenames.count(filename)==1)
+            {
+                osg::notify(osg::INFO)<<"file has been found in black list : "<<filename<<std::endl;
 
-            insertTile(tileID, 0);
-            return 0;
+                insertTile(tileID, 0);
+                return 0;
+            }
         }
         
         osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename);
@@ -424,6 +426,7 @@ public:
         else
         {
             osg::notify(osg::INFO)<<"Black listing : "<<filename<<std::endl;
+            OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(blacklistMutex);
             blacklistedFilenames.insert(filename);
         }
         
@@ -432,6 +435,7 @@ public:
     
     void insertTile(const osgTerrain::TileID& tileID, osgTerrain::TerrainTile* tile)
     {
+        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(tileMapMutex);
         tileMap[tileID] = tile;
         
         tileFIFO.push_back(tileID);
@@ -450,6 +454,7 @@ public:
 
     osgTerrain::TerrainTile* findTile(const osgTerrain::TileID& tileID, bool insertBlankTileIfNotFound = false)
     {
+        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(tileMapMutex);
         TileMap::iterator itr = tileMap.find(tileID);
         if (itr!=tileMap.end()) return itr->second.get();
 
@@ -474,12 +479,14 @@ public:
     
     typedef std::map<osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileMap;
     TileMap tileMap;
+    OpenThreads::ReentrantMutex tileMapMutex;
     
     typedef std::list<osgTerrain::TileID> TileIDList;
     TileIDList tileFIFO;
     
     typedef std::set<std::string> StringSet;
     StringSet blacklistedFilenames;
+    OpenThreads::ReentrantMutex blacklistMutex;
     
 };
 
@@ -505,8 +512,8 @@ public:
     
     osg::Image* createImage( const TileKey* key )
     {
-        osgTerrain::TerrainTile* tile = vpbDatabase->getTerrainTile(key);                
-        if (tile)
+        osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key);                
+        if (tile.valid())
         {        
             if (layerNum < tile->getNumColorLayers())
             {
@@ -524,8 +531,8 @@ public:
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
-        osgTerrain::TerrainTile* tile = vpbDatabase->getTerrainTile(key);                
-        if (tile)
+        osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key);                
+        if (tile.valid())
         {        
             osgTerrain::Layer* elevationLayer = tile->getElevationLayer();
             osgTerrain::HeightFieldLayer* hfLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(elevationLayer);
@@ -573,6 +580,7 @@ class ReaderWriterVPB : public osgDB::ReaderWriter
             {
                 std::string url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
                 
+                OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(vpbDatabaseMapMutex);
                 osg::observer_ptr<VPBDatabase>& db_ptr = vpbDatabaseMap[url];
                 
                 if (!db_ptr) db_ptr = new VPBDatabase(options);
@@ -588,6 +596,7 @@ class ReaderWriterVPB : public osgDB::ReaderWriter
         }
         
         typedef std::map<std::string, osg::observer_ptr<VPBDatabase> > VPBDatabaseMap;
+        mutable OpenThreads::ReentrantMutex vpbDatabaseMapMutex;
         mutable VPBDatabaseMap vpbDatabaseMap;
 };
 

@@ -376,7 +376,7 @@ public:
         std::string filename = createTileName(level, tile_x, tile_y);
         
         {
-            OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(blacklistMutex);
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(blacklistMutex);
             if (blacklistedFilenames.count(filename)==1)
             {
                 osg::notify(osg::INFO)<<"file has been found in black list : "<<filename<<std::endl;
@@ -426,7 +426,7 @@ public:
         else
         {
             osg::notify(osg::INFO)<<"Black listing : "<<filename<<std::endl;
-            OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(blacklistMutex);
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(blacklistMutex);
             blacklistedFilenames.insert(filename);
         }
         
@@ -435,7 +435,7 @@ public:
     
     void insertTile(const osgTerrain::TileID& tileID, osgTerrain::TerrainTile* tile)
     {
-        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(tileMapMutex);
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(tileMapMutex);
         tileMap[tileID] = tile;
         
         tileFIFO.push_back(tileID);
@@ -454,7 +454,7 @@ public:
 
     osgTerrain::TerrainTile* findTile(const osgTerrain::TileID& tileID, bool insertBlankTileIfNotFound = false)
     {
-        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(tileMapMutex);
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(tileMapMutex);
         TileMap::iterator itr = tileMap.find(tileID);
         if (itr!=tileMap.end()) return itr->second.get();
 
@@ -479,14 +479,14 @@ public:
     
     typedef std::map<osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileMap;
     TileMap tileMap;
-    OpenThreads::ReentrantMutex tileMapMutex;
+    OpenThreads::Mutex tileMapMutex;
     
     typedef std::list<osgTerrain::TileID> TileIDList;
     TileIDList tileFIFO;
     
     typedef std::set<std::string> StringSet;
     StringSet blacklistedFilenames;
-    OpenThreads::ReentrantMutex blacklistMutex;
+    OpenThreads::Mutex blacklistMutex;
     
 };
 
@@ -580,7 +580,7 @@ class ReaderWriterVPB : public osgDB::ReaderWriter
             {
                 std::string url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
                 
-                OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(vpbDatabaseMapMutex);
+                OpenThreads::ScopedLock<OpenThreads::Mutex> lock(vpbDatabaseMapMutex);
                 osg::observer_ptr<VPBDatabase>& db_ptr = vpbDatabaseMap[url];
                 
                 if (!db_ptr) db_ptr = new VPBDatabase(options);
@@ -596,7 +596,7 @@ class ReaderWriterVPB : public osgDB::ReaderWriter
         }
         
         typedef std::map<std::string, osg::observer_ptr<VPBDatabase> > VPBDatabaseMap;
-        mutable OpenThreads::ReentrantMutex vpbDatabaseMapMutex;
+        mutable OpenThreads::Mutex vpbDatabaseMapMutex;
         mutable VPBDatabaseMap vpbDatabaseMap;
 };
 

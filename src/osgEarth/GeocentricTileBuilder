@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileBuilder>
 #include <osg/Node>
+#include <osg/ClusterCullingCallback>
 
 namespace osgEarth
 {
@@ -49,7 +50,7 @@ namespace osgEarth
 
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
-    private:
+        static osg::ClusterCullingCallback* createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et);
         
         // Creates a polar geometry cap.
         osg::Node* createCap(const double &min_lat, const double &max_lat, const osg::Vec4ub &color);

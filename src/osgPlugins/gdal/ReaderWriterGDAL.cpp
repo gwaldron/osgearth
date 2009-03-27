@@ -890,8 +890,14 @@ public:
 
       float getInterpolatedValue(GDALRasterBand *band, double x, double y)
       {
+          double offsetTransform[6];
+          memcpy(offsetTransform, geotransform, 6 * sizeof(double));
+          //Offset the geotransform by half a pixel
+          offsetTransform[0] += 0.5 * geotransform[1];
+          offsetTransform[3] += 0.5 * geotransform[5];
+
           double invTransform[6];
-          GDALInvGeoTransform(geotransform, invTransform);
+          GDALInvGeoTransform(offsetTransform, invTransform);
           double r, c;
           GDALApplyGeoTransform(invTransform, x, y, &c, &r);
 

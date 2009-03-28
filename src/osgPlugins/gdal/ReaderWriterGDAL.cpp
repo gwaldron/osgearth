@@ -56,6 +56,7 @@ using namespace osgEarth;
 #define PROPERTY_TILE_SIZE      "tile_size"
 #define PROPERTY_EXTENTSIONS    "extensions"
 #define PROPERTY_MAP_CONFIG     "map_config"
+#define PROPERTY_INTERPOLATION  "interpolation"
 
 static OpenThreads::ReentrantMutex s_mutex;
 
@@ -93,6 +94,13 @@ typedef struct
     int                    bHasNoData;
     double                 noDataValue;
 } BandProperty;
+
+enum Interpolation
+{
+    AVERAGE,
+    NEAREST,
+    BILINEAR
+};
 
 
 void tokenize(const string& str,
@@ -463,6 +471,8 @@ public:
               s_gdal_registered = true;
           }
 
+          std::string interpOption;
+
           if ( options->getPluginData( PROPERTY_URL ) )
               url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
@@ -472,10 +482,22 @@ public:
           if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
               tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
 
+          if ( options->getPluginData( PROPERTY_INTERPOLATION ) )
+              interpOption = std::string( (const char*)options->getPluginData( PROPERTY_INTERPOLATION ) );
+
+
           if (options->getPluginData( PROPERTY_MAP_CONFIG ))
               mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
 
+          if (interpOption.empty())
+          {
+              interpOption = "average";
+          }
 
+          if (interpOption == "nearest") interpolation = NEAREST;
+          else if (interpOption == "average") interpolation = AVERAGE;
+          else if (interpOption == "bilinear") interpolation = BILINEAR;
+          else interpolation = AVERAGE;
 
           if (url.empty())
           {
@@ -901,38 +923,81 @@ public:
           double r, c;
           GDALApplyGeoTransform(invTransform, x, y, &c, &r);
 
+          float result = 0.0f;
+
           //If the location is outside of the pixel values of the dataset, just return 0
           if (c < 0 || r < 0 || c > warpedDS->GetRasterXSize()-1 || r > warpedDS->GetRasterYSize()-1) return 0;
 
-          int rowMin = osg::maximum((int)floor(r), 0);
-          int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(warpedDS->GetRasterYSize()-1)), 0);
-          int colMin = osg::maximum((int)floor(c), 0);
-          int colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(warpedDS->GetRasterXSize()-1)), 0);
+          if (interpolation == NEAREST)
+          {
+              band->RasterIO(GF_Read, (int)c, (int)r, 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
+          }
+          else
+          {
+              int rowMin = osg::maximum((int)floor(r), 0);
+              int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(warpedDS->GetRasterYSize()-1)), 0);
+              int colMin = osg::maximum((int)floor(c), 0);
+              int colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(warpedDS->GetRasterXSize()-1)), 0);
 
-          if (rowMin > rowMax) rowMin = rowMax;
-          if (colMin > colMax) colMin = colMax;
+              if (rowMin > rowMax) rowMin = rowMax;
+              if (colMin > colMax) colMin = colMax;
 
-          float urHeight, llHeight, ulHeight, lrHeight;
+              float urHeight, llHeight, ulHeight, lrHeight;
 
-          band->RasterIO(GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
-          band->RasterIO(GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
-          band->RasterIO(GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
-          band->RasterIO(GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
+              band->RasterIO(GF_Read, colMin, rowMin, 1, 1, &llHeight, 1, 1, GDT_Float32, 0, 0);
+              band->RasterIO(GF_Read, colMin, rowMax, 1, 1, &ulHeight, 1, 1, GDT_Float32, 0, 0);
+              band->RasterIO(GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
+              band->RasterIO(GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
 
-          if (!isValidValue(urHeight, band)) urHeight = 0.0f;
-          if (!isValidValue(llHeight, band)) llHeight = 0.0f;
-          if (!isValidValue(ulHeight, band)) ulHeight = 0.0f;
-          if (!isValidValue(lrHeight, band)) lrHeight = 0.0f;
-          
-          double x_rem = c - (int)c;
-          double y_rem = r - (int)r;
+              if (!isValidValue(urHeight, band)) urHeight = 0.0f;
+              if (!isValidValue(llHeight, band)) llHeight = 0.0f;
+              if (!isValidValue(ulHeight, band)) ulHeight = 0.0f;
+              if (!isValidValue(lrHeight, band)) lrHeight = 0.0f;
 
-          double w00 = (1.0 - y_rem) * (1.0 - x_rem) * (double)llHeight;
-          double w01 = (1.0 - y_rem) * x_rem * (double)lrHeight;
-          double w10 = y_rem * (1.0 - x_rem) * (double)ulHeight;
-          double w11 = y_rem * x_rem * (double)urHeight;
+              if (interpolation == AVERAGE)
+              {
+                  double x_rem = c - (int)c;
+                  double y_rem = r - (int)r;
 
-          float result = (float)(w00 + w01 + w10 + w11);
+                  double w00 = (1.0 - y_rem) * (1.0 - x_rem) * (double)llHeight;
+                  double w01 = (1.0 - y_rem) * x_rem * (double)lrHeight;
+                  double w10 = y_rem * (1.0 - x_rem) * (double)ulHeight;
+                  double w11 = y_rem * x_rem * (double)urHeight;
+
+                  result = (float)(w00 + w01 + w10 + w11);
+              }
+              else if (interpolation == BILINEAR)
+              {
+                  //Check for exact value
+                  if ((colMax == colMin) && (rowMax == rowMin))
+                  {
+                      //osg::notify(osg::NOTICE) << "Exact value" << std::endl;
+                      result = llHeight;
+                  }
+                  else if (colMax == colMin)
+                  {
+                      //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
+                      //Linear interpolate vertically
+                      result = ((float)rowMax - r) * llHeight + (r - (float)rowMin) * ulHeight;
+                  }
+                  else if (rowMax == rowMin)
+                  {
+                      //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
+                      //Linear interpolate horizontally
+                      result = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
+                  }
+                  else
+                  {
+                      //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
+                      //Bilinear interpolate
+                      float r1 = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
+                      float r2 = ((float)colMax - c) * ulHeight + (c - (float)colMin) * urHeight;
+
+                      //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                      result = ((float)rowMax - r) * r1 + (r - (float)rowMin) * r2;
+                  }
+              }
+          }
 
           return result;
       }
@@ -1004,6 +1069,7 @@ private:
     int             tile_size;
     std::string     extensions;
     TileGridProfile profile;
+    Interpolation   interpolation;
 
     const MapConfig* mapConfig;
 };

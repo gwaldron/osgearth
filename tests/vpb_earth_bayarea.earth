@@ -6,10 +6,6 @@ This example pulls imagery and dems from an online VirtualPlanetBuilder generate
 
 <map name="Virtual Planet Builder model" type="geocentric">
 
-    <cache type="tms">
-       <path>cache</path>
-    </cache>
-
     <image name="imagery layer 0" driver="vpb">
         <url>http://www.openscenegraph.org/data/earth_bayarea/earth.ive</url>
         <primary_split_level>5</primary_split_level>
@@ -20,4 +16,9 @@ This example pulls imagery and dems from an online VirtualPlanetBuilder generate
         <url>http://www.openscenegraph.org/data/earth_bayarea/earth.ive</url>
     </heightfield>
 
+    <!--
+    <cache>
+        <path>cache</path>
+    </cache>
+    -->
 </map>

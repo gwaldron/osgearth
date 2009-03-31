@@ -341,8 +341,8 @@ HTTPClient::get( HTTPRequest* request ) const
 {
     HTTPResponse* response = NULL;
 
+    // Set up proxy server:
     std::string proxy_addr;
-
     if ( !proxy_host.empty() )
     {
         std::stringstream buf;
@@ -353,7 +353,7 @@ HTTPClient::get( HTTPRequest* request ) const
         curl_easy_setopt( curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 
-    //osg::notify(osg::NOTICE) << "[HTTPClient] GET " << request->getURL() << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth.HTTPClient] GET " << request->getURL() << std::endl;
 
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->stream, std::string() );
@@ -385,13 +385,13 @@ HTTPClient::get( HTTPRequest* request ) const
         }
 
         std::string content_type( content_type_cp );
-        //osg::notify(osg::NOTICE) << "[HTTPClient] content-type = \"" << content_type << "\"" << std::endl;
+        //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] content-type = \"" << content_type << "\"" << std::endl;
         if ( content_type == "multipart/mixed; boundary=wcs" ) //todo: parse this.
         {
-            //osg::notify(osg::NOTICE) << "[HTTPClient] detected multipart data; decoding..." << std::endl;
+            //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] detected multipart data; decoding..." << std::endl;
             //TODO: parse out the "wcs" -- this is mapserver-specific
             decodeMultipartStream( "wcs", part.get(), response->parts );
-            //osg::notify(osg::NOTICE) << "[HTTPClient] ....decoded " << response->parts.size() << " parts:" << std::endl;
+            //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] ....decoded " << response->parts.size() << " parts:" << std::endl;
             //for( unsigned int i=0; i<response->getNumParts(); i++ )
             //{
             //    osg::notify(osg::NOTICE) << "  Part " << i << ": " << response->getPartSize(i) << std::endl;
@@ -399,7 +399,7 @@ HTTPClient::get( HTTPRequest* request ) const
         }
         else
         {
-            //osg::notify(osg::NOTICE) << "[HTTPClient] detected single part data" << std::endl;
+            //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] detected single part data" << std::endl;
             response->parts.push_back( part.get() );
         }
     }
@@ -442,7 +442,7 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
     }
     else
     {
-      osg::notify(osg::INFO) << "Error downloading file " << filename << std::endl;
+      osg::notify(osg::WARN) << "[osgEarth.HTTPClient] Error downloading file " << filename << std::endl;
       return false;
     } 
 }

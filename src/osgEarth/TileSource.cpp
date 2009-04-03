@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <limits.h>
+#include <iomanip>
 
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
@@ -207,6 +208,46 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
     {
         osg::notify(osg::WARN) << "Couldn't create path " << path << std::endl;
     }
+
+    //Write out the world file along side the image
+    double minx, miny, maxx, maxy;
+    key->getGeoExtents(minx, miny, maxx, maxy);
+
+    std::string baseFilename = osgDB::getNameLessExtension(filename);
+    std::string ext = osgDB::getFileExtension(filename);
+
+    /*
+    Determine the correct extension for the file type.  Typically, world file extensions
+    consist of the first letter of the extension, followed by the third, then the letter "w".
+    For instance a jpg file's world file would be a jgw file.
+    */
+    std::string worldFileExt = "wld";
+    if (ext.size() >= 3)
+    {
+        worldFileExt[0] = ext[0];
+        worldFileExt[1] = ext[2];
+        worldFileExt[2] = 'w';
+    }
+    std::string worldFileName = baseFilename + "." + worldFileExt;
+    std::ofstream worldFile;
+    worldFile.open(worldFileName.c_str());
+
+    double x_units_per_pixel = (maxx - minx) / (double)image->s();
+    double y_units_per_pixel = -(maxy - miny) / (double)image->t();
+    worldFile << std::fixed << std::setprecision(10)
+              //X direction units per pixel
+              << x_units_per_pixel << std::endl
+              //Rotation about the y axis, in our case 0
+              << "0" << std::endl
+              //Rotation about the x axis, in our case 0
+              << "0" << std::endl
+              //Y direction units per pixel, typically negative
+              << y_units_per_pixel << std::endl
+              //X coordinate of the center of the upper left pixel
+              << minx + 0.5 * x_units_per_pixel << std::endl
+              //Y coordinate of the upper left pixel
+              << maxy + 0.5 * y_units_per_pixel;
+    worldFile.close();
 
     osgDB::writeImageFile(*image, filename);
 }

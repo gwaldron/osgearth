@@ -436,7 +436,7 @@ GeocentricTileBuilder::createCoordinateSystemNode() const
     // TODO: set the CORRECT ellipsoid model, based on the profile/srs:
     csn->setEllipsoidModel( new osg::EllipsoidModel() );
 
-    _dataProfile.applyTo( csn );
+    getMapProfile().applyTo( csn );
 
     return csn;
 }

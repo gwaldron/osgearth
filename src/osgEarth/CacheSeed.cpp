@@ -30,18 +30,18 @@ void CacheSeed::seed(MapConfig *map)
     _tileBuilder = TileBuilder::create( map);
     
     std::vector< osg::ref_ptr<TileKey> > keys;
-    _tileBuilder->getDataProfile().getRootKeys(keys);
+    _tileBuilder->getMapProfile().getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
       _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-      _bounds._min.x() = _tileBuilder->getDataProfile().xMin();
-      _bounds._min.y() = _tileBuilder->getDataProfile().yMin();
-      _bounds._max.x() = _tileBuilder->getDataProfile().xMax();
-      _bounds._max.y() = _tileBuilder->getDataProfile().yMax();
+      _bounds._min.x() = _tileBuilder->getMapProfile().xMin();
+      _bounds._min.y() = _tileBuilder->getMapProfile().yMin();
+      _bounds._max.x() = _tileBuilder->getMapProfile().xMax();
+      _bounds._max.y() = _tileBuilder->getMapProfile().yMax();
 
-      if (_tileBuilder->getDataProfile().getProfileType() == Profile::TYPE_MERCATOR)
+      if (_tileBuilder->getMapProfile().getProfileType() == Profile::TYPE_MERCATOR)
       {
         double lat,lon;
         Mercator::metersToLatLon(_bounds._min.x(), _bounds._min.y(), lat, lon);

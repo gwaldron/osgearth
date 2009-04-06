@@ -162,14 +162,14 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if (_dataProfile == Profile::GLOBAL_GEODETIC || map->getReprojectMercatorToGeodetic())
+    if (getMapProfile() == Profile::GLOBAL_GEODETIC || map->getReprojectMercatorToGeodetic())
     {
         scaleHeightFieldToDegrees(hf.get());
     }
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
 
-    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (_dataProfile.getProfileType() == Profile::TYPE_LOCAL) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
+    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (getMapProfile().getProfileType() == Profile::TYPE_LOCAL) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
     geo_locator->setCoordinateSystemType( coordinateSystem );
 	geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     
@@ -277,7 +277,7 @@ ProjectedTileBuilder::createCoordinateSystemNode() const
     // OSG wants a null ellipsoid for projected datasets...
     csn->setEllipsoidModel( NULL );
 
-    _dataProfile.applyTo( csn );
+    getMapProfile().applyTo( csn );
 
     //if (_dataProfile.getProfileType() == Profile::GLOBAL_GEODETIC ||
     //    _dataProfile.getProfileType() == Profile::GLOBAL_MERCATOR)

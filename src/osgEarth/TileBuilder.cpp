@@ -191,118 +191,124 @@ TileBuilder::getId() const
 }
 
 const Profile&
-TileBuilder::getDataProfile() const
+TileBuilder::getMapProfile() const
 {
     if (!_profileComputed)
     {
-        const_cast<TileBuilder*>(this)->computeDataProfile();
+        const_cast<TileBuilder*>(this)->computeMapProfile();
     }
-    return _dataProfile;
+    return _mapProfile;
 }
 
-void
-TileBuilder::computeDataProfile()
+static Profile
+getSuitableMapProfileFor( const Profile& candidate )
 {
-    for (TileSourceList::iterator itr = image_sources.begin();
-        itr != image_sources.end();
-        )
+    return Profile::createGlobal( candidate.getProfileType() );
+    if ( candidate.getProfileType() == Profile::TYPE_GEODETIC )
+        return Profile::GLOBAL_GEODETIC;
+    else if ( candidate.getProfileType() == Profile::TYPE_MERCATOR )
+        return Profile::GLOBAL_MERCATOR;
+    else
+        return candidate;
+}
+
+// scans all the data sources and selects the most appropriate map profile.
+void
+TileBuilder::computeMapProfile()
+{
+    for( TileSourceList::iterator i = image_sources.begin(); i != image_sources.end(); )
     {
-        if (!_dataProfile.isValid()) //.getProfileType() == Profile::TYPE_UNKNOWN)
+        Profile sourceProfile = (*i)->getProfile();
+
+        if ( !_mapProfile.isValid() )
         {
-            //If we don't have a valid profile yet, just set it to the first TileSource in the list
-            _dataProfile = (*itr)->getProfile();
+            _mapProfile = getSuitableMapProfileFor( sourceProfile );
         }
-        else
+        else if ( !_mapProfile.isCompatibleWith( sourceProfile ) )
         {
-            if (!_dataProfile.isCompatibleWith((*itr)->getProfile()))
-            {
-                    osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
-                    image_sources.erase(itr);
-                    continue;
-            }
+            osg::notify(osg::NOTICE) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+            image_sources.erase(i);
+            continue;
         }
-         ++itr;
+        i++;
     }
 
-    for (TileSourceList::iterator itr = heightfield_sources.begin();
-        itr != heightfield_sources.end();
-        )
-    {
-        if (!_dataProfile.isValid()) //.getProfileType() == Profile::TYPE_UNKNOWN)
+    for (TileSourceList::iterator i = heightfield_sources.begin(); i != heightfield_sources.end(); )
+    {        
+        Profile sourceProfile = (*i)->getProfile();
+
+        if (!_mapProfile.isValid())
         {
-            //If we don't have a valid profile yet, just set it to the first TileSource in the list
-            _dataProfile = (*itr)->getProfile();
+            _mapProfile = getSuitableMapProfileFor( sourceProfile );
         }
-        else
+        else if ( !_mapProfile.isCompatibleWith( sourceProfile ) )
         {
-            if (!_dataProfile.isCompatibleWith((*itr)->getProfile()))
-            {
-                osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
-                heightfield_sources.erase(itr);
-                continue;
-            }
+            osg::notify(osg::NOTICE) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+            heightfield_sources.erase(i);
+            continue;
         }
-         ++itr;
+        i++;
     }
 
     _profileComputed = true;
 }
 
-static TileSource* loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::ReaderWriter::Options* global_options)
+static TileSource*
+loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::ReaderWriter::Options* global_options)
 {
-        osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
-            new osgDB::ReaderWriter::Options( *global_options ) : 
-            new osgDB::ReaderWriter::Options();
+    osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
+        new osgDB::ReaderWriter::Options( *global_options ) : 
+        new osgDB::ReaderWriter::Options();
 
-        //Setup the plugin options for the source
-        for( SourceProperties::const_iterator p = source->getProperties().begin(); p != source->getProperties().end(); p++ )
+    //Setup the plugin options for the source
+    for( SourceProperties::const_iterator p = source->getProperties().begin(); p != source->getProperties().end(); p++ )
+    {
+        local_options->setPluginData( p->first, (void*)p->second.c_str() );
+    }
+
+    //Give plugins access to the MapConfig object
+    local_options->setPluginData("map_config", (void*)mapConfig); 
+
+    bool foundValidSource = false;
+    osg::ref_ptr<TileSource> tile_source;
+    //Only load the source if we are not running offline
+    if (!mapConfig->getCacheOnly())
+    {
+        //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
+        //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
+        tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile(".osgearth_" + source->getDriver(), local_options.get()));
+        if (!tile_source.valid())
         {
-            local_options->setPluginData( p->first, (void*)p->second.c_str() );
+          osg::notify(osg::NOTICE) << "Warning:  Could not load TileSource from "  << source->getDriver() << std::endl;
         }
+    }
 
-        //Give plugins access to the MapConfig object
-        local_options->setPluginData("map_config", (void*)mapConfig); 
+    if (tile_source.valid())
+    {           
+        //Initialize the source and set its name
+        tile_source->init(local_options.get());
+        tile_source->setName( source->getName() );
+        osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;
+    }
 
-        bool foundValidSource = false;
-        osg::ref_ptr<TileSource> tile_source;
-        //Only load the source if we are not running offline
-        if (!mapConfig->getCacheOnly())
+    //Configure the cache if necessary
+    osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig();
+
+    //If the cache config is valid, wrap the TileSource with a caching TileSource.
+    if (cacheConfig.valid())
+    {
+        osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(tile_source.get(), cacheConfig->getType(), cacheConfig->getProperties());
+        if (cache.valid())
         {
-            //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
-            //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
-            tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile(".osgearth_" + source->getDriver(), local_options.get()));
-            if (!tile_source.valid())
-            {
-              osg::notify(osg::NOTICE) << "Warning:  Could not load TileSource from "  << source->getDriver() << std::endl;
-            }
+            cache->init(local_options.get());
+            cache->setName(source->getName());
+            cache->setMapConfigFilename( mapConfig->getFilename() );
+            cache->initTileMap();
+            return cache.release();
         }
+    }
 
-        if (tile_source.valid())
-        {           
-            //Initialize the source and set its name
-            tile_source->init(local_options.get());
-            tile_source->setName( source->getName() );
-            osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;
-        }
-
-        //Configure the cache if necessary
-        osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig();
-
-        //If the cache config is valid, wrap the TileSource with a caching TileSource.
-        if (cacheConfig.valid())
-        {
-            osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(tile_source.get(), cacheConfig->getType(), cacheConfig->getProperties());
-            if (cache.valid())
-            {
-                cache->init(local_options.get());
-                cache->setName(source->getName());
-                cache->setMapConfigFilename( mapConfig->getFilename() );
-                cache->initTileMap();
-                return cache.release();
-            }
-        }
-
-        return tile_source.release();
+    return tile_source.release();
 }
 
 
@@ -333,7 +339,7 @@ TileBuilder::TileBuilder(MapConfig* _map,
                          const osgDB::ReaderWriter::Options* options ) :
 map( _map ),
 _profileComputed(false),
-_dataProfile(Profile::INVALID)
+_mapProfile(Profile::INVALID)
 {
     //Initialize the map profile if one was configured
     if (map->getProfileConfig())
@@ -345,12 +351,12 @@ _dataProfile(Profile::INVALID)
             if (namedProfile == STR_GLOBAL_MERCATOR)
             {
                 osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_MERCATOR due to profile in MapConfig" << std::endl;
-                _dataProfile = Profile(Profile::GLOBAL_MERCATOR);
+                _mapProfile = Profile(Profile::GLOBAL_MERCATOR);
             }
             else if (namedProfile == STR_GLOBAL_GEODETIC)
             {
                 osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_GEODETIC due to profile in MapConfig" << std::endl;
-                _dataProfile = Profile(Profile::GLOBAL_GEODETIC);
+                _mapProfile = Profile(Profile::GLOBAL_GEODETIC);
             }
             else
             {
@@ -359,7 +365,7 @@ _dataProfile(Profile::INVALID)
         }
 
         //See if the config specifies a specific layer to use
-        if (!_dataProfile.isValid())
+        if (!_mapProfile.isValid())
         {
             std::string refLayer = map->getProfileConfig()->getRefLayer();
             if (!refLayer.empty())
@@ -389,7 +395,7 @@ _dataProfile(Profile::INVALID)
                     if (refSource.valid())
                     {
                       osg::notify(osg::NOTICE) << "Overriding profile to match layer " << refLayer << std::endl;
-                      _dataProfile = refSource->getProfile();
+                      _mapProfile = refSource->getProfile();
                     }
                 }
                 else
@@ -400,7 +406,7 @@ _dataProfile(Profile::INVALID)
         }
 
         //Try to create a profile from the SRS and extents
-        if (!_dataProfile.isValid() )
+        if (!_mapProfile.isValid() )
         {
             if (map->getProfileConfig()->areExtentsValid())
             {
@@ -409,8 +415,8 @@ _dataProfile(Profile::INVALID)
 
                 Profile::ProfileType profileType = Profile::getProfileTypeFromSRS( map->getProfileConfig()->getSRS() );
 
-                _dataProfile = Profile::create(profileType, minx, miny, maxx, maxy, map->getProfileConfig()->getSRS());
-                if (_dataProfile.isValid())
+                _mapProfile = Profile::create(profileType, minx, miny, maxx, maxy, map->getProfileConfig()->getSRS());
+                if (_mapProfile.isValid())
                 {
                     osg::notify(osg::NOTICE) << "Overrding profile to match definition " << std::endl;
                 }
@@ -419,7 +425,7 @@ _dataProfile(Profile::INVALID)
     }
 
     //Set the MapConfig's Profile to the computed profile so that the TileSource's can query it when they are loaded
-    map->setProfile( _dataProfile );
+    map->setProfile( _mapProfile );
 
     if ( map.valid() )
     {
@@ -469,14 +475,14 @@ TileBuilder::isValid() const
     }
 
     //Check to see if we are trying to do a Geocentric database with a Projected profile.
-    if (getDataProfile().getProfileType() == Profile::TYPE_LOCAL && 
+    if (getMapProfile().getProfileType() == Profile::TYPE_LOCAL && 
         map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
         osg::notify(osg::NOTICE) << "Error:  Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
         return false;
     }
 
-    if (!getDataProfile().isValid()) //.getProfileType() == Profile::UNKNOWN)
+    if (!getMapProfile().isValid()) //.getProfileType() == Profile::UNKNOWN)
     {
         osg::notify(osg::NOTICE) << "Error:  Unknown profile" << std::endl;
         return false;
@@ -548,7 +554,7 @@ TileBuilder::createRootNode()
   
 
   std::vector< osg::ref_ptr<TileKey> > keys;
-  getDataProfile().getRootKeys(keys);
+  getMapProfile().getRootKeys(keys);
   int numAdded = 0;
   for (unsigned int i = 0; i < keys.size(); ++i)
   {
@@ -731,7 +737,8 @@ TileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
     return all_quadrants_created;
 }
 
-osg::Image* TileBuilder::createImage(const TileKey* key, TileSource* source)
+osg::Image*
+TileBuilder::createImage(const TileKey* key, TileSource* source)
 {
     double dst_minx, dst_miny, dst_maxx, dst_maxy;
     key->getGeoExtents(dst_minx, dst_miny, dst_maxx, dst_maxy);
@@ -775,7 +782,8 @@ osg::Image* TileBuilder::createImage(const TileKey* key, TileSource* source)
     return image.release();
 }
 
-osg::HeightField* TileBuilder::createHeightField(const TileKey* key, TileSource* source)
+osg::HeightField*
+TileBuilder::createHeightField(const TileKey* key, TileSource* source)
 {
     double dst_minx, dst_miny, dst_maxx, dst_maxy;
     key->getGeoExtents(dst_minx, dst_miny, dst_maxx, dst_maxy);

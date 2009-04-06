@@ -99,16 +99,16 @@ public:
 
         if (capabilities.valid())
         {
-            osg::notify(osg::INFO) << "Got capabilities from " << capabilitiesURL << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << capabilitiesURL << std::endl;
             if (format.empty())
             {
                 format = capabilities->suggestExtension();
-                osg::notify(osg::NOTICE) << "No format specified, capabilities suggested extension " << format << std::endl;
+                osg::notify(osg::NOTICE) << "[osgEarth::WMS] No format specified, capabilities suggested extension " << format << std::endl;
             }
         }
         else
         {
-            osg::notify(osg::NOTICE) << "Could not read capabilities from WMS service using request " << capabilitiesURL << std::endl;
+            osg::notify(osg::NOTICE) << "[osgEarth::WMS] Could not read capabilities from WMS service using request " << capabilitiesURL << std::endl;
         }
 
         if ( format.empty() )
@@ -170,13 +170,16 @@ public:
             }
         }
         
-        //Try to read the TileService
-        if (tileServiceURL.empty()) tileServiceURL = prefix + sep + "request=GetTileService";
-        //osg::notify(osg::NOTICE) << "TileService URL " << tileServiceRequest << std::endl;
+        // JPL uses an experimental interface called TileService -- ping to see if that's what
+        // we are trying to read:
+        if (tileServiceURL.empty())
+            tileServiceURL = prefix + sep + "request=GetTileService";
+
+        osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << tileServiceURL << std::endl;
         tileService = TileServiceReader::read(tileServiceURL);
         if (tileService.valid())
         {
-            osg::notify(osg::NOTICE) << "Read TileService " << std::endl;
+            osg::notify(osg::NOTICE) << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
             tileService->getMatchingPatterns(layers, format, style, srs, tile_size, tile_size, patterns);
 
@@ -188,7 +191,7 @@ public:
         }
         else
         {
-            osg::notify(osg::INFO) << "Could not read TileService " << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
         }
 
         prototype = prototype + "&." + format;
@@ -212,7 +215,7 @@ public:
         osg::Image* image = createImage(key);
         if (!image)
         {
-            osg::notify(osg::INFO) << "Failed to read heightfield from " << createURI(key) << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth::WMS] Failed to read heightfield from " << createURI(key) << std::endl;
         }
 
         float scaleFactor = 1;

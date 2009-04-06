@@ -22,7 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
-#include <osgEarth/TileGridProfile>
+#include <osgEarth/Profile>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -62,9 +62,9 @@ namespace osgEarth
         virtual osg::HeightField* createHeightField( const TileKey* key );
 
         /**
-         * Gets the TileGridProfile for this TileSource
+         * Gets the Profile for this TileSource
          */
-        virtual const osgEarth::TileGridProfile& getProfile() const =0;
+        virtual const osgEarth::Profile& getProfile() const =0;
 
         /**
          * Gets the number of pixels per tile for this TileSource.  Defaults to 256

@@ -82,7 +82,7 @@ namespace osgEarth
 
     public: // TileSource interface
 
-        virtual const osgEarth::TileGridProfile& getProfile() const;
+        virtual const osgEarth::Profile& getProfile() const;
         
 
     protected:
@@ -99,7 +99,7 @@ namespace osgEarth
         osg::ref_ptr<TileMap> _tileMap;
         osg::ref_ptr<TileSource> _tileSource;
         std::string _mapConfigFilename;
-        TileGridProfile _profile;
+        Profile _profile;
     };
 
 

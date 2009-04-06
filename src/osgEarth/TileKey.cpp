@@ -23,7 +23,7 @@
 using namespace osgEarth;
 
 TileKey::TileKey() :
-_profile( TileGridProfile::UNKNOWN )
+_profile( Profile::INVALID ) // invalid profile
 {
     //NOP
 }
@@ -45,7 +45,7 @@ TileKey::str() const
     return ss.str();
 }
 
-const TileGridProfile&
+const Profile&
 TileKey::getProfile() const
 {
     return _profile;
@@ -166,7 +166,7 @@ TileKey::getGeoExtents(
 }
 
 
-TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, TileGridProfile profile)
+TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile& profile)
 {
     _x = tile_x;
     _y = tile_y;
@@ -176,15 +176,15 @@ TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, Ti
 
 bool TileKey::isGeodetic() const
 {
-    return _profile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC;
+    return _profile.getProfileType() == Profile::TYPE_GEODETIC; //GLOBAL_GEODETIC;
 }
 
 bool TileKey::isMercator() const
 {
-    return _profile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR;
+    return _profile.getProfileType() == Profile::TYPE_MERCATOR; //GLOBAL_MERCATOR;
 }
 
 bool TileKey::isProjected() const
 {
-    return _profile.getProfileType() == TileGridProfile::PROJECTED;
+    return _profile.getProfileType() == Profile::TYPE_LOCAL; //PROJECTED;
 }

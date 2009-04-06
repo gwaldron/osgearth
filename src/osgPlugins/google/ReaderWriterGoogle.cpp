@@ -41,7 +41,7 @@ public:
     GoogleSource( const osgDB::ReaderWriter::Options* _options ) :
       options( _options ),
       map_config(0),
-      profile( TileGridProfile::GLOBAL_MERCATOR )
+      profile( Profile::GLOBAL_MERCATOR )
     {
         if ( options.valid() )
         {
@@ -64,7 +64,7 @@ public:
         if ( dataset.empty() ) dataset = "satellite"; // defaul to the satellite view
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
         return profile;
     }
@@ -198,7 +198,7 @@ private:
     std::string dataset;
     std::string version;
     std::string language;
-    TileGridProfile profile;
+    Profile profile;
     const MapConfig* map_config;
 };
 

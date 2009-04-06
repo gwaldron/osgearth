@@ -108,12 +108,12 @@ public:
 
                 // If that fails, try to use an explicit profile if one exists. In this case, the map
                 // config must also specify a width, height, and format.
-                TileGridProfile globalProfile = _mapConfig->getProfile();
+                Profile globalProfile = _mapConfig->getProfile();
 
                 if ( globalProfile.isValid() )
                 {
                     _profile = globalProfile;
-                    _tileMap = TileMap::create( _url, _profile.getProfileType(), _format, _tile_size, _tile_size );
+                    _tileMap = TileMap::create( _url, _profile, _format, _tile_size, _tile_size );
                     if ( !_tileMap.valid() )
                     {
                         osg::notify(osg::NOTICE) << "TMSSource: no TileMap found, and no overrides set" << std::endl;
@@ -143,7 +143,7 @@ public:
         }
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
         return _profile;
     }
@@ -196,7 +196,7 @@ public:
 
 private:
 
-    TileGridProfile _profile;
+    Profile _profile;
     osg::ref_ptr<TileMap> _tileMap;
     const MapConfig *_mapConfig;
     std::string _url;

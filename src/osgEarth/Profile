@@ -1,0 +1,198 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TILE_GRID_PROFILE_H
+#define OSGEARTH_TILE_GRID_PROFILE_H 1
+
+#include <osgEarth/Common>
+#include <osg/CoordinateSystemNode>
+
+#define STR_GLOBAL_GEODETIC "global-geodetic"
+#define STR_GLOBAL_MERCATOR "global-mercator"
+#define STR_LOCAL           "local"
+
+namespace osgEarth
+{
+    class TileKey;
+    /**
+     * A "profile" defines the layout of a data source. The profile conveys the
+     * spatial reference system (SRS), the geospatial extents within that SRS, and
+     * the tiling scheme.
+     */
+    class OSGEARTH_EXPORT Profile
+    {
+    public:
+        // profile types:
+        enum ProfileType
+        {
+            TYPE_UNKNOWN,
+            TYPE_GEODETIC,
+            TYPE_MERCATOR,
+            TYPE_LOCAL
+        };
+
+        // Built-in profile definitions:
+        static Profile GLOBAL_GEODETIC;
+        static Profile GLOBAL_MERCATOR;
+        static Profile INVALID;
+
+    public:
+
+        /**
+         * Creates a geodetic profile (global lat/lon) with a custom LOD 0 tile
+         * configuration.
+         */
+        static Profile createGeodetic(
+            unsigned int num_tiles_wide_at_lod0,
+            unsigned int num_tiles_high_at_lod0 );
+
+        /**
+         * Attempts to create a global profile based on the type.
+         */
+        static Profile createGlobal(
+            const ProfileType& type );
+
+        /**
+         * Creates a custom profile from scratch (usually for local/projected data).
+         */
+        static Profile createLocal(
+            double xmin, double ymin, double xmax, double ymax,
+            const std::string& srs,
+            unsigned int x_tiles_at_lod0 =1,
+            unsigned int y_tiles_at_lod0 =1 );
+
+        /**
+         * Creates a completely custom profile spec.
+         */
+        static Profile create(
+            const ProfileType& type,
+            double xmin, double ymin, double xmax, double ymax,
+            const std::string& srs,
+            unsigned int x_tiles_at_lod0 =1,
+            unsigned int y_tiles_at_lod0 =1 );
+
+        /**
+         * Constructs a new profile from a well-known definition string such as "global-geodetic"
+         * or "global-mercator".
+         */
+        static Profile create(
+            const std::string& profile_name );
+
+    public:
+
+        /**
+         * Private CTOR - creates a default, invalid profile
+         * Use one of the "create.." factory methods instead.
+         */
+        Profile();
+
+        /**
+         * Copy contrustor
+         */
+        Profile( const Profile& rhs );
+
+        /**
+         * Returns true if the profile is properly initialized.
+         */
+        bool isValid() const;
+
+        /**
+         * Gets the extents of the profile
+         */
+        double xMin() const;
+        double yMin() const;
+        double xMax() const;
+        double yMax() const;
+        
+
+        /**
+         * Gets the profile type
+         */
+        const ProfileType& getProfileType() const;
+
+        /**
+         * Gets the spatial reference system string.
+         */
+        const std::string& srs() const;        
+
+        /**
+         * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
+         * profile.
+         */
+        void getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) const;
+
+        /**
+         * Deduces a profile type given an SRS string.
+         */
+        static ProfileType getProfileTypeFromSRS(const std::string &srs);
+
+        bool operator == (const Profile& rhs) const;
+
+        bool operator != (const Profile& rhs) const;
+
+        /**
+         * Applies this profile's format and coordinate system strings to the
+         * provided CSN.
+         */
+        void applyTo( osg::CoordinateSystemNode* csn ) const;
+
+        /**
+         *Gets whether or not the Profile is compatible with the given profile.
+         */
+        bool isCompatibleWith(const Profile& rhs) const;
+
+        /**
+         *Gets the tile dimensions at the given lod.
+         */
+        void getTileDimensions(unsigned int lod, double& out_width, double& out_height) const;
+
+        /**
+         *Gets the number wide and high at the given lod
+         */
+        void getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned int& out_tiles_high) const;
+
+        /**
+         *Gets the intersecting tiles of this Profile with the given TileKey.
+         */
+        void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+
+
+
+    private:
+
+        /** Private CTOR - used internally by static create.. factory methods */
+        Profile(
+            ProfileType profileType,
+            double xmin, double ymin, double xmax, double ymax,
+            const std::string& srs,
+            unsigned int x_tiles_at_lod0 =1,
+            unsigned int y_tiles_at_lod0 =1 );
+
+    private:
+        double _xmin, _ymin, _xmax, _ymax;        
+        std::string _srs;
+        ProfileType _profileType;
+        unsigned int _numTilesWideAtLod0;
+        unsigned int _numTilesHighAtLod0;
+
+        void init( ProfileType );
+    };
+}
+
+#endif // OSGEARTH_TILE_GRID_PROFILE_H

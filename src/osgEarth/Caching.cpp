@@ -45,7 +45,7 @@ _tileSource(tileSource)
     }
 }
 
-const osgEarth::TileGridProfile&
+const osgEarth::Profile&
 CachedTileSource::getProfile() const
 {
     return _profile;
@@ -269,7 +269,7 @@ void DiskCachedTileSource::initTileMap()
             if (_tileMap.valid())
             {
                 osg::notify(osg::INFO) << "Loaded TMS file from " << getTMSPath() << std::endl;
-                if (_profile.getProfileType() == TileGridProfile::UNKNOWN)
+                if (!_profile.isValid()) //getProfileType() == Profile::UNKNOWN)
                 {
                     _profile = _tileMap->createProfile();
                 }

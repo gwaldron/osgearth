@@ -62,14 +62,14 @@ public:
 
         profile = map_config->getProfile();
 
-        if (profile.getProfileType() == TileGridProfile::UNKNOWN)
+        if (!profile.isValid()) //.getProfileType() == Profile::UNKNOWN)
         {
             //Set the profile to global geodetic if there is no override
-            profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+            profile = Profile::GLOBAL_GEODETIC;
         }
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
       return profile;
     }
@@ -126,7 +126,7 @@ private:
     std::string url;
     std::string layer;
     std::string format;
-    TileGridProfile profile;
+    Profile profile;
     const MapConfig* map_config;
 };
 

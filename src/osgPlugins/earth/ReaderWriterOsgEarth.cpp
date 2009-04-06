@@ -91,17 +91,17 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     if (!tile_builder->isValid())
                         return ReadResult::FILE_NOT_HANDLED;
 
-                    if (tile_builder->getDataProfile().getProfileType() == TileGridProfile::GLOBAL_GEODETIC)
+                    if (tile_builder->getDataProfile().getProfileType() == Profile::TYPE_GEODETIC)
                     {
-                        osg::notify(osg::INFO) << "Geodetic" << std::endl;
+                        osg::notify(osg::INFO) << "Map profile: Geodetic" << std::endl;
                     }
-                    else if (tile_builder->getDataProfile().getProfileType() == TileGridProfile::GLOBAL_MERCATOR)
+                    else if (tile_builder->getDataProfile().getProfileType() == Profile::TYPE_MERCATOR)
                     {
-                        osg::notify(osg::INFO) << "Mercator" << std::endl;
+                        osg::notify(osg::INFO) << "Map profile: Mercator" << std::endl;
                     }
-                    else if (tile_builder->getDataProfile().getProfileType() == TileGridProfile::PROJECTED)
+                    else if (tile_builder->getDataProfile().getProfileType() == Profile::TYPE_LOCAL)
                     {
-                        osg::notify(osg::INFO) << "Projected" << std::endl;
+                        osg::notify(osg::INFO) << "Map profile: Local/Projected" << std::endl;
                     }
 
                     //Create the root node for the scene

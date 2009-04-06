@@ -41,7 +41,7 @@ void CacheSeed::seed(MapConfig *map)
       _bounds._max.x() = _tileBuilder->getDataProfile().xMax();
       _bounds._max.y() = _tileBuilder->getDataProfile().yMax();
 
-      if (_tileBuilder->getDataProfile().getProfileType() == TileGridProfile::GLOBAL_MERCATOR)
+      if (_tileBuilder->getDataProfile().getProfileType() == Profile::TYPE_MERCATOR)
       {
         double lat,lon;
         Mercator::metersToLatLon(_bounds._min.x(), _bounds._min.y(), lat, lon);

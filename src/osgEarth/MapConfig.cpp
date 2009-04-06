@@ -43,7 +43,7 @@ MapConfig::MapConfig()
     cache_only = false;
     normalize_edges = true;
     filename = "";
-    profile = TileGridProfile::UNKNOWN;
+    profile = Profile::INVALID;
     reproject_mercator_to_geodetic = false;
 }
 
@@ -242,13 +242,13 @@ MapConfig::setProfileConfig(ProfileConfig* profileConfig)
     profile_config = profileConfig;
 }
 
-const TileGridProfile& MapConfig::getProfile() const
+const Profile& MapConfig::getProfile() const
 {
     return profile;
 }
 
 void
-MapConfig::setProfile(const TileGridProfile& profile)
+MapConfig::setProfile(const Profile& profile)
 {
     this->profile = profile;
 }

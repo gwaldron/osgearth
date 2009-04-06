@@ -162,14 +162,14 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if (_dataProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC || map->getReprojectMercatorToGeodetic())
+    if (_dataProfile == Profile::GLOBAL_GEODETIC || map->getReprojectMercatorToGeodetic())
     {
         scaleHeightFieldToDegrees(hf.get());
     }
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
 
-    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (_dataProfile.getProfileType() == TileGridProfile::PROJECTED) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
+    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (_dataProfile.getProfileType() == Profile::TYPE_LOCAL) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
     geo_locator->setCoordinateSystemType( coordinateSystem );
 	geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     
@@ -279,8 +279,8 @@ ProjectedTileBuilder::createCoordinateSystemNode() const
 
     _dataProfile.applyTo( csn );
 
-    //if (_dataProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC ||
-    //    _dataProfile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR)
+    //if (_dataProfile.getProfileType() == Profile::GLOBAL_GEODETIC ||
+    //    _dataProfile.getProfileType() == Profile::GLOBAL_MERCATOR)
     //{   
     //    csn->setCoordinateSystem( "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0" );
     //    csn->setFormat( "PROJ4" );

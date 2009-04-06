@@ -108,7 +108,7 @@ MapService::isValid() const {
     return is_valid;
 }
 
-const TileGridProfile&
+const Profile&
 MapService::getProfile() const {
     return profile;
 }
@@ -145,11 +145,19 @@ MapService::init( const std::string& _url )
     std::stringstream ss;
     ss << "epsg:" << srs;
     
-    
-    if ( xmax > xmin && ymax > ymin && srs != 0 )
-        profile = TileGridProfile( xmin, ymin, xmax, ymax, ss.str() );
-    else
+    if ( ! (xmax > xmin && ymax > ymin && srs != 0 ) )
+    {
         return setError( "Map service does not define a full extent" );
+    }
+    
+
+    //if ( xmax > xmin && ymax > ymin && srs != 0 )
+    //{
+    //}
+    //else
+    //{
+    //    return setError( "Map service does not define a full extent" );
+    //}
 
     // Read the layers list
     Json::Value j_layers = doc["layers"];
@@ -215,9 +223,15 @@ MapService::init( const std::string& _url )
             num_tiles_high /= 2;
         }
 
-        profile.setNumTilesWideAtLod0(num_tiles_wide);
-        profile.setNumTilesHighAtLod0(num_tiles_high);
+        //profile.setNumTilesWideAtLod0(num_tiles_wide);
+        //profile.setNumTilesHighAtLod0(num_tiles_high);
     }
+
+    profile = Profile::create(
+        Profile::getProfileTypeFromSRS(ss.str()),
+        xmin, ymin, xmax, ymax, ss.str(),
+        num_tiles_wide,
+        num_tiles_high);
 
 
 

@@ -20,7 +20,7 @@
 #ifndef OSGEARTH_ARCGIS_MAP_SERVICE_H
 #define OSGEARTH_ARCGIS_MAP_SERVICE_H 1
 
-#include <osgEarth/TileGridProfile>
+#include <osgEarth/Profile>
 #include <list>
 #include "Extent.h"
 
@@ -107,7 +107,7 @@ public:
     /**
      * Gets the data profile associated with this map service.
      */
-    const TileGridProfile& getProfile() const;
+    const Profile& getProfile() const;
 
     /**
      * Gets the tile information for this service.
@@ -117,7 +117,7 @@ public:
 private:
     bool is_valid;
     std::string url;
-    TileGridProfile profile;
+    Profile profile;
     std::string error_msg;
     MapServiceLayerList layers;
     TileInfo tile_info;

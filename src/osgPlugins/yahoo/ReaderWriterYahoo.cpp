@@ -40,7 +40,7 @@ public:
     YahooSource( const osgDB::ReaderWriter::Options* in_options ) :
       options( in_options ),
       map_config(0),
-      profile( TileGridProfile::GLOBAL_MERCATOR )
+      profile( Profile::GLOBAL_MERCATOR )
     {
         if ( options.valid() )
         {
@@ -55,7 +55,7 @@ public:
         if ( dataset.empty() ) dataset = "roads"; // default to the map view
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
         return profile;
     }
@@ -117,7 +117,7 @@ public:
 private:
     osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
     std::string dataset;
-    TileGridProfile profile;
+    Profile profile;
     const MapConfig* map_config;
 };
 

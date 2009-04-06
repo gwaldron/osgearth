@@ -17,83 +17,123 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/TileGridProfile>
+#include <osgEarth/Profile>
 #include <osgEarth/Mercator>
 #include <osgDB/FileNameUtils>
 #include <algorithm>
 
 using namespace osgEarth;
 
-#define GLOBAL_GEODETIC_MIN_LON -180
-#define GLOBAL_GEODETIC_MAX_LON 180
-#define GLOBAL_GEODETIC_MIN_LAT -90
-#define GLOBAL_GEODETIC_MAX_LAT 90
+//#define GEODETIC_MIN_LON -180
+//#define GEODETIC_MAX_LON 180
+//#define GEODETIC_MIN_LAT -90
+//#define GEODETIC_MAX_LAT 90
+//
+//#define GLOBAL_MERCATOR_MIN_X -20037508.34
+//#define GLOBAL_MERCATOR_MIN_Y -20037508.34
+//#define GLOBAL_MERCATOR_MAX_X 20037508.34
+//#define GLOBAL_MERCATOR_MAX_Y 20037508.34
 
-#define GLOBAL_MERCATOR_MIN_X -20037508.34
-#define GLOBAL_MERCATOR_MIN_Y -20037508.34
-#define GLOBAL_MERCATOR_MAX_X 20037508.34
-#define GLOBAL_MERCATOR_MAX_Y 20037508.34
 
-TileGridProfile::TileGridProfile():
-_xmin(0),
-_xmax(0),
-_ymin(0),
-_ymax(0),
-_profileType(UNKNOWN),
-_numTilesWideAtLod0(1),
-_numTilesHighAtLod0(1)
+/** Static profile definitions **/
 
+Profile
+Profile::GLOBAL_GEODETIC = Profile(Profile::TYPE_GEODETIC,
+                                   -180.0, -90.0, 180.0, 90.0,
+                                   "EPSG:4326",
+                                   2, 1 );
+
+Profile
+Profile::GLOBAL_MERCATOR = Profile(Profile::TYPE_MERCATOR,
+                                   -20037508.34, -20037508.34, 20037508.34, 20037508.34,
+                                   "EPSG:900913",
+                                   1, 1 );
+
+Profile
+Profile::INVALID = Profile();
+
+
+Profile
+Profile::createGeodetic(unsigned int numTilesWideAtLod0,
+                        unsigned int numTilesHighAtLod0)
 {
+    Profile p = Profile::GLOBAL_GEODETIC;
+    p._numTilesHighAtLod0 = numTilesHighAtLod0;
+    p._numTilesWideAtLod0 = numTilesWideAtLod0;
+    return p;
 }
 
-TileGridProfile::TileGridProfile(TileGridProfile::ProfileType profileType)
+Profile
+Profile::createGlobal(const ProfileType& type)
 {
-    init( profileType );
+    return
+        type == TYPE_GEODETIC? Profile::GLOBAL_GEODETIC :
+        type == TYPE_MERCATOR? Profile::GLOBAL_MERCATOR :
+        Profile::INVALID;
 }
 
-TileGridProfile::TileGridProfile( ProfileType profileType, double xmin, double ymin, double xmax, double ymax, const std::string& srs )
+
+Profile
+Profile::createLocal(double xmin, double ymin, double xmax, double ymax,
+                     const std::string& srs,
+                     unsigned int numTilesWideAtLod0,
+                     unsigned int numTilesHighAtLod0)
 {
-    _numTilesHighAtLod0 = 1;
-    _numTilesWideAtLod0 = 1;
-    _xmin = xmin;
-    _ymin = ymin;
-    _xmax = xmax;
-    _ymax = ymax;
-    _profileType = profileType;
-    _srs = srs;
-    if (_profileType == GLOBAL_GEODETIC)
-    {
-        _numTilesWideAtLod0 = 2;
-    }
+    return Profile(
+        Profile::TYPE_LOCAL,
+        xmin, ymin, xmax, ymax, srs, numTilesWideAtLod0, numTilesHighAtLod0);
 }
 
-TileGridProfile::TileGridProfile( double xmin, double ymin, double xmax, double ymax, const std::string& srs )
+Profile
+Profile::create(const ProfileType& type,
+                double xmin, double ymin, double xmax, double ymax,
+                const std::string& srs,
+                unsigned int numTilesWideAtLod0,
+                unsigned int numTilesHighAtLod0)
 {
-    _numTilesHighAtLod0 = 1;
-    _numTilesWideAtLod0 = 1;
-    _xmin = xmin;
-    _ymin = ymin;
-    _xmax = xmax;
-    _ymax = ymax;
-    _profileType = getProfileTypeFromSRS( srs );
-    _srs = srs;    
-    if (_profileType == GLOBAL_GEODETIC)
-    {
-        _numTilesWideAtLod0 = 2;
-    }
+    return Profile(type, xmin, ymin, xmax, ymax, srs, numTilesWideAtLod0, numTilesHighAtLod0);
 }
 
-TileGridProfile::TileGridProfile( const std::string& _string )
+
+Profile
+Profile::create( const std::string& wkt ) 
 {
-    if ( _string == STR_GLOBAL_GEODETIC )
-        init( TileGridProfile::GLOBAL_GEODETIC );
-    else if ( _string == STR_GLOBAL_MERCATOR )
-        init( TileGridProfile::GLOBAL_MERCATOR );
+    if ( wkt == STR_GLOBAL_GEODETIC )
+        return Profile::GLOBAL_GEODETIC;
+    else if ( wkt == STR_GLOBAL_MERCATOR )
+        return Profile::GLOBAL_MERCATOR;
     else
-        init( TileGridProfile::UNKNOWN );
+        return Profile();
 }
 
-TileGridProfile::TileGridProfile( const TileGridProfile& rhs )
+/****************************************************************************/
+
+Profile::Profile()
+{
+    // set to UNKNOWN to render it invalid
+    _profileType = Profile::TYPE_UNKNOWN;
+}
+
+
+Profile::Profile(ProfileType profileType,
+                 double xmin, double ymin, double xmax, double ymax,
+                 const std::string& srs,
+                 unsigned int numTilesWideAtLod0,
+                 unsigned int numTilesHighAtLod0)
+{
+    _profileType = profileType;
+    _xmin = xmin;
+    _ymin = ymin;
+    _xmax = xmax;
+    _ymax = ymax;
+    _srs = srs;
+    _numTilesWideAtLod0 = numTilesWideAtLod0;
+    _numTilesHighAtLod0 = numTilesHighAtLod0;
+}
+
+
+// copier
+Profile::Profile( const Profile& rhs )
 : _xmin( rhs._xmin ),
   _ymin( rhs._ymin ),
   _xmax( rhs._xmax ),
@@ -106,107 +146,61 @@ TileGridProfile::TileGridProfile( const TileGridProfile& rhs )
     //NOP
 }
 
-TileGridProfile& TileGridProfile::operator = ( const TileGridProfile& rhs )
-{
-    if (&rhs==this) return *this;
-    
-    _xmin = rhs._xmin;
-    _ymin = rhs._ymin;
-    _xmax = rhs._xmax;
-    _ymax = rhs._ymax;
-    _profileType = rhs._profileType;
-    _srs = rhs._srs;
-    _numTilesWideAtLod0 = rhs._numTilesWideAtLod0;
-    _numTilesHighAtLod0 = rhs._numTilesHighAtLod0;
-
-    return *this;
-}
-
-
 bool
-TileGridProfile::isValid() const
+Profile::isValid() const
 {
-    return _profileType != TileGridProfile::UNKNOWN;
-}
-
-void
-TileGridProfile::init( TileGridProfile::ProfileType profileType )
-{
-    _profileType = profileType; 
-    _numTilesHighAtLod0 = 1;
-    _numTilesWideAtLod0 = 1;
-
-    if (_profileType == GLOBAL_GEODETIC)
-    {
-        _xmin = GLOBAL_GEODETIC_MIN_LON;
-        _xmax = GLOBAL_GEODETIC_MAX_LON;
-        _ymin = GLOBAL_GEODETIC_MIN_LAT;
-        _ymax = GLOBAL_GEODETIC_MAX_LAT;
-        _srs = "EPSG:4326";
-        _numTilesWideAtLod0 = 2;
-    }
-    else if (_profileType == GLOBAL_MERCATOR)
-    {
-        _xmin = GLOBAL_MERCATOR_MIN_X;
-        _xmax = GLOBAL_MERCATOR_MAX_X;
-        _ymin = GLOBAL_MERCATOR_MIN_Y;
-        _ymax = GLOBAL_MERCATOR_MAX_Y;
-        _srs = "EPSG:900913";
-    }
+    return _profileType != Profile::TYPE_UNKNOWN;
 }
 
 double
-TileGridProfile::xMin() const {
+Profile::xMin() const {
     return _xmin;
 }
 
 double
-TileGridProfile::yMin() const {
+Profile::yMin() const {
     return _ymin;
 }
 
 double
-TileGridProfile::xMax() const {
+Profile::xMax() const {
     return _xmax;
 }
 
 double
-TileGridProfile::yMax() const {
+Profile::yMax() const {
     return _ymax;
 }
 
 const std::string&
-TileGridProfile::srs() const {
+Profile::srs() const {
     return _srs;
 }
 
-void TileGridProfile::setProfileType(ProfileType profileType)
-{
-    _profileType = profileType;
-}
-
-TileGridProfile::ProfileType
-TileGridProfile::getProfileType() const {
+const Profile::ProfileType&
+Profile::getProfileType() const {
     return _profileType;
 }
 
-void TileGridProfile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> > &keys) const
+void
+Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) const
 {
-    keys.clear();
+    out_keys.clear();
 
     for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
     {
         for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
         {
-            keys.push_back(new TileKey(c, r, 0, *this));
+            out_keys.push_back(new TileKey(c, r, 0, *this));
         }
     }
 }
 
-TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::string& srs)
+Profile::ProfileType
+Profile::getProfileTypeFromSRS(const std::string& srs)
 {
     //We have no SRS at all
-    if (srs.empty()) return TileGridProfile::UNKNOWN;
+    if (srs.empty()) return Profile::TYPE_UNKNOWN;
 
     std::string upperSRS = srs;
 
@@ -215,7 +209,7 @@ TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::s
 
     if (upperSRS == "EPSG:4326") //TODO: add other ellipsoids
     {
-        return TileGridProfile::GLOBAL_GEODETIC;
+        return Profile::TYPE_GEODETIC;
     }
     else if ((upperSRS == "EPSG:41001")  ||
              (upperSRS == "OSGEO:41001") ||
@@ -223,15 +217,15 @@ TileGridProfile::ProfileType TileGridProfile::getProfileTypeFromSRS(const std::s
              (upperSRS == "EPSG:900913") ||
              (upperSRS == "EPSG:54004") )
     {
-        return TileGridProfile::GLOBAL_MERCATOR;
+        return Profile::TYPE_MERCATOR;
     }
 
-    //Assume that if we have an SRS and its not GLOBAL_GEODETIC or GLOBAL_MERCATOR, it's PROJECTED
-    return TileGridProfile::PROJECTED;
+    //Assume that if we have an SRS and its not GEODETIC or MERCATOR, it's PROJECTED/LOCAL
+    return Profile::TYPE_LOCAL;
 }
 
 void
-TileGridProfile::applyTo( osg::CoordinateSystemNode* csn ) const
+Profile::applyTo( osg::CoordinateSystemNode* csn ) const
 {
     if ( csn )
     {
@@ -260,7 +254,8 @@ TileGridProfile::applyTo( osg::CoordinateSystemNode* csn ) const
     }
 }
 
-bool TileGridProfile::operator == (const TileGridProfile& rhs) const
+bool
+Profile::operator == (const Profile& rhs) const
 {
     if (this == &rhs) return true;
 
@@ -274,7 +269,8 @@ bool TileGridProfile::operator == (const TileGridProfile& rhs) const
             _ymax == rhs._ymax);
 }
 
-bool TileGridProfile::operator != (const TileGridProfile& rhs) const
+bool
+Profile::operator != (const Profile& rhs) const
 {
     if (this == &rhs) return false;
 
@@ -288,7 +284,8 @@ bool TileGridProfile::operator != (const TileGridProfile& rhs) const
             _ymax != rhs._ymax);
 }
 
-bool TileGridProfile::isCompatible(const TileGridProfile& rhs) const
+bool
+Profile::isCompatibleWith(const Profile& rhs) const
 {
     //For now, assume that if the profile types are the same, that the maps are compatible.
     if ((_profileType == rhs._profileType))
@@ -299,43 +296,46 @@ bool TileGridProfile::isCompatible(const TileGridProfile& rhs) const
     return false;
 }
 
-void TileGridProfile::getTileDimensions(unsigned int lod, double &width, double &height) const
+void
+Profile::getTileDimensions(unsigned int lod, double& out_width, double& out_height) const
 {
-    width  = (_xmax - _xmin) / (double)_numTilesWideAtLod0;
-    height = (_ymax - _ymin) / (double)_numTilesHighAtLod0;
+    out_width  = (_xmax - _xmin) / (double)_numTilesWideAtLod0;
+    out_height = (_ymax - _ymin) / (double)_numTilesHighAtLod0;
 
     for (unsigned int i = 0; i < lod; ++i)
     {
-        width /= 2.0;
-        height /= 2.0;
+        out_width /= 2.0;
+        out_height /= 2.0;
     }
 }
 
-void TileGridProfile::getNumTiles(unsigned int lod, unsigned int &tilesWide, unsigned &tilesHigh) const
+void
+Profile::getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned int& out_tiles_high) const
 {
-    tilesWide = _numTilesWideAtLod0;
-    tilesHigh = _numTilesHighAtLod0;
+    out_tiles_wide = _numTilesWideAtLod0;
+    out_tiles_high = _numTilesHighAtLod0;
 
     for (unsigned int i = 0; i < lod; ++i)
     {
-        tilesWide *= 2;
-        tilesHigh *= 2;
+        out_tiles_wide *= 2;
+        out_tiles_high *= 2;
     }
 }
 
-void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> > &intersectingKeys) const
+void
+Profile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
 {
     //Clear the incoming list
-    intersectingKeys.clear();
+    out_intersectingKeys.clear();
 
     //If the profiles are exactly equal, just add the given tile key.
     if (key->getProfile() == *this)
     {
-        intersectingKeys.push_back(key);
+        out_intersectingKeys.push_back(key);
         return;
     }
 
-    if (!isCompatible(key->getProfile()))
+    if (!isCompatibleWith(key->getProfile()))
     {
         osg::notify(osg::NOTICE) << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
     }
@@ -391,7 +391,7 @@ void TileGridProfile::getIntersectingTiles(const TileKey *key, std::vector<osg::
     {
         for (int j = tileMinY; j <= tileMaxY; ++j)
         {
-            intersectingKeys.push_back(new TileKey(i, j, destLOD, *this));
+            out_intersectingKeys.push_back(new TileKey(i, j, destLOD, *this));
         }
     }
 

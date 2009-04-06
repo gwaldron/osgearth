@@ -47,7 +47,7 @@ public:
     {
         //Set the profile to global geodetic.
         //TODO: read the conf.xml file on the server and decide based on that.
-        profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+        profile = Profile(Profile::GLOBAL_GEODETIC);
 
         if ( options.valid() )
         {
@@ -78,7 +78,7 @@ public:
         if ( format.empty() ) format = "png";
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
         return profile;
     }
@@ -127,7 +127,7 @@ private:
     std::string map;
     std::string layer;
     std::string format;
-    TileGridProfile profile;
+    Profile profile;
 
     const MapConfig* map_config;
 };

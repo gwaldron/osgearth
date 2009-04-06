@@ -157,11 +157,10 @@ public:
       secondary_split_level(-1),
       directory_structure(FLAT_TASK_DIRECTORIES),
       maxNumTilesInCache(128),
-      profile( TileGridProfile::GLOBAL_GEODETIC )
+      profile( Profile::GLOBAL_GEODETIC )
     {
-    
-        unsigned int numTilesWideAtLod0 = profile.getNumTilesWideAtLod0();
-        unsigned int numTilesHighAtLod0 = profile.getNumTilesHighAtLod0();
+        unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
+        profile.getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
 
         if ( options.valid() )
         {
@@ -221,24 +220,19 @@ public:
                     osg::notify(osg::INFO)<<"range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<<std::endl;
 
                     srs = locator->getCoordinateSystem();
-
-                    profile = osgEarth::TileGridProfile( 
-                        osg::RadiansToDegrees(min_x), 
-                        osg::RadiansToDegrees(min_y), 
-                        osg::RadiansToDegrees(max_x), 
-                        osg::RadiansToDegrees(max_y),
-                        srs);
                 
+                    osgEarth::Profile::ProfileType ptype = osgEarth::Profile::TYPE_UNKNOWN;
+
                     switch(locator->getCoordinateSystemType())
                     {
                         case(osgTerrain::Locator::GEOCENTRIC):
-                            profile.setProfileType(osgEarth::TileGridProfile::GLOBAL_GEODETIC);
+                            ptype = Profile::TYPE_GEODETIC; //profile.setProfileType(osgEarth::Profile::GLOBAL_GEODETIC);
                             break;
                         case(osgTerrain::Locator::GEOGRAPHIC):
-                            profile.setProfileType(osgEarth::TileGridProfile::PROJECTED);
+                            ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
                             break;
                         case(osgTerrain::Locator::PROJECTED):
-                            profile.setProfileType(osgEarth::TileGridProfile::PROJECTED);
+                            ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
                             break;
                     }
                     double aspectRatio = (max_x-min_x)/(max_y-min_y);
@@ -271,9 +265,16 @@ public:
                     osg::notify(osg::INFO)<<"final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
                     osg::notify(osg::INFO)<<"final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
 
-                    profile.setNumTilesWideAtLod0(numTilesWideAtLod0);
-                    profile.setNumTilesHighAtLod0(numTilesHighAtLod0);
 
+                    profile = osgEarth::Profile::create( 
+                        ptype,
+                        osg::RadiansToDegrees(min_x), 
+                        osg::RadiansToDegrees(min_y), 
+                        osg::RadiansToDegrees(max_x), 
+                        osg::RadiansToDegrees(max_y),
+                        srs,
+                        numTilesWideAtLod0,
+                        numTilesHighAtLod0 );
                 }
                 
             }
@@ -472,7 +473,7 @@ public:
     int secondary_split_level;
     DirectoryStructure directory_structure;
 
-    TileGridProfile profile;
+    Profile profile;
     osg::ref_ptr<osg::Node> root_node;
     
     unsigned int maxNumTilesInCache;
@@ -505,7 +506,7 @@ public:
         }
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
         return vpbDatabase->profile;
     }

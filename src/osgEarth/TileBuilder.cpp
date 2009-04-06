@@ -190,7 +190,7 @@ TileBuilder::getId() const
     return id;
 }
 
-const TileGridProfile&
+const Profile&
 TileBuilder::getDataProfile() const
 {
     if (!_profileComputed)
@@ -207,14 +207,14 @@ TileBuilder::computeDataProfile()
         itr != image_sources.end();
         )
     {
-        if (_dataProfile.getProfileType() == TileGridProfile::UNKNOWN)
+        if (!_dataProfile.isValid()) //.getProfileType() == Profile::TYPE_UNKNOWN)
         {
             //If we don't have a valid profile yet, just set it to the first TileSource in the list
             _dataProfile = (*itr)->getProfile();
         }
         else
         {
-            if (!_dataProfile.isCompatible((*itr)->getProfile()))
+            if (!_dataProfile.isCompatibleWith((*itr)->getProfile()))
             {
                     osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
                     image_sources.erase(itr);
@@ -228,14 +228,14 @@ TileBuilder::computeDataProfile()
         itr != heightfield_sources.end();
         )
     {
-        if (_dataProfile.getProfileType() == TileGridProfile::UNKNOWN)
+        if (!_dataProfile.isValid()) //.getProfileType() == Profile::TYPE_UNKNOWN)
         {
             //If we don't have a valid profile yet, just set it to the first TileSource in the list
             _dataProfile = (*itr)->getProfile();
         }
         else
         {
-            if (!_dataProfile.isCompatible((*itr)->getProfile()))
+            if (!_dataProfile.isCompatibleWith((*itr)->getProfile()))
             {
                 osg::notify(osg::NOTICE) << "Removing incompatible TileSource " << itr->get()->getName() << std::endl;
                 heightfield_sources.erase(itr);
@@ -318,7 +318,7 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 
         osg::ref_ptr<TileSource> tileSource = loadSource(mapConfig, source, global_options);
 
-        if (tileSource.valid() && tileSource->getProfile().getProfileType() != TileGridProfile::UNKNOWN)
+        if (tileSource.valid() && tileSource->getProfile().isValid()) //.getProfileType() != Profile::TYPE_UNKNOWN)
         {
             to.push_back( tileSource.get() );
         }
@@ -333,7 +333,7 @@ TileBuilder::TileBuilder(MapConfig* _map,
                          const osgDB::ReaderWriter::Options* options ) :
 map( _map ),
 _profileComputed(false),
-_dataProfile(TileGridProfile::UNKNOWN)
+_dataProfile(Profile::INVALID)
 {
     //Initialize the map profile if one was configured
     if (map->getProfileConfig())
@@ -345,12 +345,12 @@ _dataProfile(TileGridProfile::UNKNOWN)
             if (namedProfile == STR_GLOBAL_MERCATOR)
             {
                 osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_MERCATOR due to profile in MapConfig" << std::endl;
-                _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+                _dataProfile = Profile(Profile::GLOBAL_MERCATOR);
             }
             else if (namedProfile == STR_GLOBAL_GEODETIC)
             {
                 osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_GEODETIC due to profile in MapConfig" << std::endl;
-                _dataProfile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+                _dataProfile = Profile(Profile::GLOBAL_GEODETIC);
             }
             else
             {
@@ -407,9 +407,9 @@ _dataProfile(TileGridProfile::UNKNOWN)
                 double minx, miny, maxx, maxy;
                 map->getProfileConfig()->getExtents( minx, miny, maxx, maxy);
 
-                TileGridProfile::ProfileType profileType = TileGridProfile::getProfileTypeFromSRS( map->getProfileConfig()->getSRS() );
+                Profile::ProfileType profileType = Profile::getProfileTypeFromSRS( map->getProfileConfig()->getSRS() );
 
-                _dataProfile = TileGridProfile(profileType, minx, miny, maxx, maxy, map->getProfileConfig()->getSRS());
+                _dataProfile = Profile::create(profileType, minx, miny, maxx, maxy, map->getProfileConfig()->getSRS());
                 if (_dataProfile.isValid())
                 {
                     osg::notify(osg::NOTICE) << "Overrding profile to match definition " << std::endl;
@@ -418,7 +418,7 @@ _dataProfile(TileGridProfile::UNKNOWN)
         }
     }
 
-    //Set the MapConfig's TileGridProfile to the computed profile so that the TileSource's can query it when they are loaded
+    //Set the MapConfig's Profile to the computed profile so that the TileSource's can query it when they are loaded
     map->setProfile( _dataProfile );
 
     if ( map.valid() )
@@ -469,14 +469,14 @@ TileBuilder::isValid() const
     }
 
     //Check to see if we are trying to do a Geocentric database with a Projected profile.
-    if (getDataProfile().getProfileType() == TileGridProfile::PROJECTED &&
+    if (getDataProfile().getProfileType() == Profile::TYPE_LOCAL && 
         map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
         osg::notify(osg::NOTICE) << "Error:  Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
         return false;
     }
 
-    if (getDataProfile().getProfileType() == TileGridProfile::UNKNOWN)
+    if (!getDataProfile().isValid()) //.getProfileType() == Profile::UNKNOWN)
     {
         osg::notify(osg::NOTICE) << "Error:  Unknown profile" << std::endl;
         return false;

@@ -58,7 +58,7 @@ public:
 
             // force a profile type
             if ( options->getPluginData( PROPERTY_PROFILE ) )
-                manual_profile = TileGridProfile( std::string( (const char*)options->getPluginData( PROPERTY_PROFILE ) ) );
+                manual_profile = Profile::create( std::string( (const char*)options->getPluginData( PROPERTY_PROFILE ) ) );
         }
 
         // validate dataset
@@ -73,7 +73,7 @@ public:
         }
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
         return manual_profile.isValid() ? manual_profile : map_service.getProfile();
     }
@@ -124,7 +124,7 @@ private:
     std::string layer;
     std::string format;
     MapService map_service;
-    TileGridProfile manual_profile;
+    Profile manual_profile;
 
     const MapConfig* map_config;
 };

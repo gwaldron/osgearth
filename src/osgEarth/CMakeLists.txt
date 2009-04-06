@@ -33,11 +33,11 @@ SET(LIB_PUBLIC_HEADERS
     MapConfig
     Mercator
 	MultiImage
+	Profile
 	ProjectedTileBuilder
 	Registry
     TerrainTileEdgeNormalizerUpdateCallback
     TileBuilder
-    TileGridProfile
     TileKey
     TileSource
 	TMS
@@ -59,11 +59,11 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapConfig.cpp
     Mercator.cpp
 	MultiImage.cpp
+	Profile.cpp
 	ProjectedTileBuilder.cpp
 	Registry.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileBuilder.cpp
-    TileGridProfile.cpp
     TileKey.cpp
     TileSource.cpp
 	TMS.cpp

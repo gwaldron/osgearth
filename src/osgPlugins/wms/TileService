@@ -20,7 +20,7 @@
 #include <osg/Referenced>
 #include <osg/Vec2d>
 
-#include <osgEarth/TileGridProfile>
+#include <osgEarth/Profile>
 
 #include <string>
 #include <vector>
@@ -201,9 +201,9 @@ public:
                              TilePatternList &out_patterns);
 
     /**
-     *Given a list of patterns with matching parameters, compute a TileGridProfile.
+     *Given a list of patterns with matching parameters, compute a Profile.
      */
-    osgEarth::TileGridProfile getProfile(TilePatternList &patterns);
+    osgEarth::Profile getProfile(TilePatternList &patterns);
 
 private:
     std::string _name;

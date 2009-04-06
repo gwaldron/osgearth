@@ -38,7 +38,7 @@ using namespace osgEarth;
 WCS11Source::WCS11Source( const osgDB::ReaderWriter::Options* options ) :
 tile_size(16),
 map_config(0),
-profile( TileGridProfile::GLOBAL_GEODETIC )
+profile( Profile::GLOBAL_GEODETIC )
 {
     if ( options->getPluginData( PROPERTY_MAP_CONFIG ))
          map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
@@ -78,7 +78,7 @@ profile( TileGridProfile::GLOBAL_GEODETIC )
     //osg_format = "tif";
 }
 
-const TileGridProfile&
+const Profile&
 WCS11Source::getProfile() const
 {
     return profile;

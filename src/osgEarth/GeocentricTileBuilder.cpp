@@ -156,12 +156,12 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
 {
     if ( key->getLevelOfDetail() == 0 )
     {
-        const osgEarth::TileGridProfile& profile = key->getProfile();
+        const osgEarth::Profile& profile = key->getProfile();
         double minY = profile.yMin();
         double maxY = profile.yMax();
 
         //Convert meters to lat/lon if the profile is Mercator
-        if (profile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR)
+        if (profile.getProfileType() == Profile::TYPE_MERCATOR)
         {
             double lat,lon;
             Mercator::metersToLatLon(0, minY, lat, lon);

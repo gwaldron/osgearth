@@ -28,7 +28,7 @@
 
 #include <vector>
 #include <iostream>
-#include <osgEarth/TileGridProfile>
+#include <osgEarth/Profile>
 #include <osgEarth/Common>
 
 #include <osg/Referenced>
@@ -300,10 +300,10 @@ namespace osgEarth
         */
         void setNumTilesHigh(unsigned int h) {_numTilesHigh = h;}
 
-        osgEarth::TileGridProfile::ProfileType getProfileType() const {return _profile;}
-        void setProfileType( osgEarth::TileGridProfile::ProfileType profile ) {_profile = profile;}
+        osgEarth::Profile::ProfileType getProfileType() const {return _profile_type;}
+        void setProfileType( osgEarth::Profile::ProfileType type ) {_profile_type = type;}
 
-        TileGridProfile createProfile();
+        Profile createProfile();
 
         /** Gets the TileFormat for this TileMap */
         TileFormat& getFormat() {return _format;}
@@ -347,7 +347,8 @@ namespace osgEarth
         */
         static TileMap* create(
             const std::string& url,
-            osgEarth::TileGridProfile::ProfileType type,
+            const Profile& profile,
+            //osgEarth::Profile::ProfileType type,
             const std::string& format,
             int tile_width,
             int tile_height );
@@ -381,7 +382,7 @@ namespace osgEarth
         unsigned int _numTilesWide;
         unsigned int _numTilesHigh;
 
-        osgEarth::TileGridProfile::ProfileType _profile;
+        osgEarth::Profile::ProfileType _profile_type;
     };
 
     class OSGEARTH_EXPORT TileMapReaderWriter

@@ -134,7 +134,7 @@ public:
             << "&BBOX=%lf,%lf,%lf,%lf";
         prototype = buf.str();
 
-        TileGridProfile::ProfileType profileType = TileGridProfile::getProfileTypeFromSRS(srs);
+        Profile::ProfileType profileType = Profile::getProfileTypeFromSRS(srs);
 
         //If the map profile already defined and the profile types are the same,
         //assume we will be compatible with the map profile.
@@ -144,9 +144,9 @@ public:
         }
 
 
-        if (profile.getProfileType() == TileGridProfile::UNKNOWN)
+        if (!profile.isValid()) //.getProfileType() == Profile::UNKNOWN)
         {
-            if (profileType == TileGridProfile::PROJECTED)
+            if (profileType == Profile::TYPE_LOCAL)
             {
                 if (capabilities.valid())
                 {
@@ -155,7 +155,7 @@ public:
                     {
                         double minx, miny, maxx, maxy;
                         layer->getExtents(minx, miny, maxx, maxy);
-                        profile = TileGridProfile(TileGridProfile::PROJECTED, minx, miny, maxx, maxy, srs);
+                        profile = Profile::createLocal(minx, miny, maxx, maxy, srs);
                     }
                 }
                 else
@@ -166,7 +166,7 @@ public:
             else
             {
                 //If the profile type is not projected, osgEarth will provide the global extents
-                profile = TileGridProfile(profileType);
+                profile = Profile::createGlobal( profileType );
             }
         }
         
@@ -196,7 +196,7 @@ public:
 
     }
 
-    const TileGridProfile& getProfile() const
+    const Profile& getProfile() const
     {
         return profile;
     }
@@ -258,7 +258,7 @@ private:
     std::string elevation_unit;
     osg::ref_ptr<Capabilities> capabilities;
     osg::ref_ptr<TileService> tileService;
-    TileGridProfile profile;
+    Profile profile;
     std::string prototype;
 };
 

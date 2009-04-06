@@ -581,11 +581,11 @@ public:
           //Try to determine if the profile is Geodetic
           if (gdRef.IsSame(&srcRef))
           {
-              profile = TileGridProfile(TileGridProfile::GLOBAL_GEODETIC);
+              profile = Profile::GLOBAL_GEODETIC;
               osg::notify(osg::NOTICE) << url << " is global-geodetic " << std::endl;
           }
 
-          if (profile.getProfileType() == TileGridProfile::UNKNOWN)
+          if (!profile.isValid()) //getProfileType() == Profile::UNKNOWN)
           {
               bool isMercator = false;
               //Create a spatial reference for Spherical mercator
@@ -607,7 +607,7 @@ public:
 
               if (isMercator)
               {
-                  profile = TileGridProfile(TileGridProfile::GLOBAL_MERCATOR);
+                  profile = Profile::GLOBAL_MERCATOR;
                   osg::notify(osg::NOTICE) << url << " is global-mercator" << std::endl;
               }
           }
@@ -615,8 +615,8 @@ public:
           std::string t_srs;
 
           //See if we need to autowarp the file to geodetic or mercator
-          TileGridProfile mapProfile = mapConfig->getProfile();
-          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_GEODETIC && profile.getProfileType() != TileGridProfile::GLOBAL_GEODETIC)
+          Profile mapProfile = mapConfig->getProfile();
+          if (mapProfile.getProfileType() == Profile::TYPE_GEODETIC && profile.getProfileType() != Profile::TYPE_GEODETIC)
           {
               char *wkt = NULL;
               gdRef.exportToWkt(&wkt);
@@ -625,7 +625,7 @@ public:
               osg::notify(osg::NOTICE) << "Warping " << url << " to global-geodetic " << std::endl;
               profile = mapProfile;
           }
-          if (mapProfile.getProfileType() == TileGridProfile::GLOBAL_MERCATOR && profile.getProfileType() != TileGridProfile::GLOBAL_MERCATOR)
+          if (mapProfile.getProfileType() == Profile::TYPE_MERCATOR && profile.getProfileType() != Profile::TYPE_MERCATOR)
           {
               int epsgCodes[3] = {900913, 54004, 41001};
               bool gotProjection = false;
@@ -653,7 +653,7 @@ public:
               }
           }
           //TODO:  We need a better way of determining if the SRS's of the profile match.
-          else if ((mapProfile.getProfileType() != TileGridProfile::UNKNOWN) && (mapProfile.srs() == src_wkt))
+          else if (mapProfile.isValid() && (mapProfile.srs() == src_wkt))
           {
               //If the map profile's SRS actually match, just set our profile to the Map profile.
               profile = mapProfile;
@@ -676,9 +676,9 @@ public:
           pixelToGeo(0.0, warpedDS->GetRasterYSize(), extentsMin.x(), extentsMin.y());
           pixelToGeo(warpedDS->GetRasterXSize(), 0.0, extentsMax.x(), extentsMax.y());
 
-          if (profile.getProfileType() == TileGridProfile::UNKNOWN)
+          if (!profile.isValid()) //getProfileType() == Profile::UNKNOWN)
           {
-              profile = TileGridProfile(TileGridProfile::PROJECTED, extentsMin.x(), extentsMin.y(), extentsMax.x(), extentsMax.y(), warpedDS->GetProjectionRef());
+              profile = Profile::createLocal(extentsMin.x(), extentsMin.y(), extentsMax.x(), extentsMax.y(), warpedDS->GetProjectionRef());
               osg::notify(osg::NOTICE) << url << " is projected" << std::endl;
           }
 
@@ -696,7 +696,7 @@ public:
           if (srcDS) delete srcDS;
       }
 
-      const TileGridProfile& getProfile() const
+      const Profile& getProfile() const
       {
           return profile;
       }
@@ -1068,7 +1068,7 @@ private:
     std::string     url;
     int             tile_size;
     std::string     extensions;
-    TileGridProfile profile;
+    Profile profile;
     Interpolation   interpolation;
 
     const MapConfig* mapConfig;

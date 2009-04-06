@@ -21,7 +21,7 @@
 #define OSGEARTH_TILE_KEY_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileGridProfile>
+#include <osgEarth/Profile>
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osg/Shape>
@@ -32,7 +32,7 @@
 namespace osgEarth
 {
     /**
-     * Uniquely identifies a single tile on the map, relative to a TileGridProfile.
+     * Uniquely identifies a single tile on the map, relative to a Profile.
      */
     class OSGEARTH_EXPORT TileKey : public osg::Referenced
     {
@@ -48,7 +48,7 @@ namespace osgEarth
          *@param profile
          *       The profile for the tile
          */
-        TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, TileGridProfile profile);
+        TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile& profile );
 
         /**
          * Gets the string representation of the key.
@@ -63,7 +63,7 @@ namespace osgEarth
         /**
          * Gets the profile within which this key is interpreted.
          */
-        const osgEarth::TileGridProfile& getProfile() const;
+        const osgEarth::Profile& getProfile() const;
 
         /**
          * Gets the size of the entire map, in pixels, at the level of
@@ -154,7 +154,7 @@ namespace osgEarth
         unsigned int _lod;
         unsigned int _x;
         unsigned int _y;
-        TileGridProfile _profile;
+        Profile _profile;
 
         osg::ref_ptr<TileKey> _subkeys[4];
     };

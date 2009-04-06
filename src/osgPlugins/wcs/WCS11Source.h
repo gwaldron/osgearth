@@ -41,7 +41,7 @@ public:
 
 public: // TileSource interface
 
-    const osgEarth::TileGridProfile& getProfile() const;
+    const osgEarth::Profile& getProfile() const;
 
 private:
     std::string url;
@@ -52,7 +52,7 @@ private:
     std::string elevation_unit;
     int         tile_size;
     osg::ref_ptr<const MapConfig> map_config;
-    TileGridProfile profile;
+    Profile profile;
 
     HTTPRequest* createRequest( const TileKey* key ) const;
 };

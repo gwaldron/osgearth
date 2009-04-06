@@ -16,20 +16,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#ifndef OSGEARTH_COMPOSITING_H
+#define OSGEARTH_COMPOSITING_H 1
 
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
+#include <osgEarth/TileSource>
 
 #include <vector>
 
 namespace osgEarth
 {
     /**
-    *A GeoImage is an image that has a geospatial extents
-    */
-    struct OSGEARTH_EXPORT GeoImage
+     * A GeoImage is an image that has a geospatial extents
+     */
+    struct GeoImage
     {
     public:
         /**
@@ -49,9 +52,9 @@ namespace osgEarth
     };
 
     /**
-    *Utility class for extracting a single image from a collection of image tiles
-    */
-    class OSGEARTH_EXPORT MultiImage : public osg::Referenced
+     * Utility class for extracting a single image from a collection of image tiles
+     */
+    class MultiImage : public osg::Referenced
     {
     public:
         MultiImage();
@@ -73,4 +76,17 @@ namespace osgEarth
         ~MultiImage();
         GeoImageList _images;
     };
+
+
+    class OSGEARTH_EXPORT Compositor
+    {
+    public:
+        Compositor();
+
+        osg::Image* mosaicImages( const TileKey* key, TileSource* source ) const;
+
+        osg::HeightField* compositeHeightFields( const TileKey* key, TileSource* source ) const;
+    };
 }
+
+#endif // OSGEARTH_COMPOSITING_H

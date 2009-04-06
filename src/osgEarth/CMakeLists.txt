@@ -22,6 +22,7 @@ SET(LIB_PUBLIC_HEADERS
     Caching
 	CacheSeed
     Common
+    Compositing
     Export
 	FileUtils
     GeocentricTileBuilder 
@@ -32,7 +33,6 @@ SET(LIB_PUBLIC_HEADERS
     JsonUtils
     MapConfig
     Mercator
-	MultiImage
 	Profile
 	ProjectedTileBuilder
 	Registry
@@ -49,6 +49,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     Caching.cpp
 	CacheSeed.cpp
+	Compositing.cpp
 	FileUtils.cpp
     GeocentricTileBuilder.cpp
 	HeightFieldUtils.cpp
@@ -58,7 +59,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     JsonUtils.cpp
     MapConfig.cpp
     Mercator.cpp
-	MultiImage.cpp
 	Profile.cpp
 	ProjectedTileBuilder.cpp
 	Registry.cpp

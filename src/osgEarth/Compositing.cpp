@@ -17,13 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/MultiImage>
+#include <osgEarth/Compositing>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/HeightFieldUtils>
 #include <osg/Notify>
 #include <osg/Timer>
 #include <osg/io_utils>
 
 using namespace osgEarth;
+
 
 GeoImage::GeoImage(osg::Image * image, const TileKey *key)
 {
@@ -34,6 +36,7 @@ GeoImage::GeoImage(osg::Image * image, const TileKey *key)
 
 
 /***************************************************************************/
+
 MultiImage::MultiImage()
 {
 }
@@ -139,4 +142,99 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
     }*/
 
     return image.release();
+}
+
+
+/***************************************************************************/
+
+Compositor::Compositor()
+{
+    //NOP
+}
+
+osg::Image*
+Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
+{
+    osg::Image* result = NULL;
+    
+    //Determine the intersecting keys and create and extract an appropriate image from the tiles
+    std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
+    source->getProfile().getIntersectingTiles(key, intersectingTiles);
+    if (intersectingTiles.size() > 0)
+    {
+        double dst_minx, dst_miny, dst_maxx, dst_maxy;
+        key->getGeoExtents(dst_minx, dst_miny, dst_maxx, dst_maxy);
+
+        osg::ref_ptr<MultiImage> mi = new MultiImage;
+        for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
+        {
+            double minX, minY, maxX, maxY;
+            intersectingTiles[j]->getGeoExtents(minX, minY, maxX, maxY);
+
+            //osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
+
+            osg::ref_ptr<osg::Image> img = source->createImage(intersectingTiles[j].get());
+            if (img.valid())
+            {
+                mi->getImages().push_back(GeoImage(img.get(), intersectingTiles[j].get()));
+            }
+            else
+            {
+                //If we couldn't create an image that is needed to composite, return NULL
+                osg::notify(osg::INFO) << "Couldn't create image for MultiImage " << std::endl;
+                return 0;
+            }
+        }
+        result = mi->createImage(dst_minx, dst_miny, dst_maxx, dst_maxy);
+    }
+
+    return result;
+}
+
+
+osg::HeightField*
+Compositor::compositeHeightFields( const TileKey* key, TileSource* source ) const
+{        
+    osg::HeightField* result = NULL;
+
+    //Determine the intersecting keys and create and extract an appropriate image from the tiles
+
+    std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
+    source->getProfile().getIntersectingTiles(key, intersectingTiles);
+    if (intersectingTiles.size() > 0)
+    {
+        double dst_minx, dst_miny, dst_maxx, dst_maxy;
+        key->getGeoExtents(dst_minx, dst_miny, dst_maxx, dst_maxy);
+
+        std::vector<osg::ref_ptr<osg::HeightField> > heightFields;
+        for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
+        {
+            double minX, minY, maxX, maxY;
+            intersectingTiles[j]->getGeoExtents(minX, minY, maxX, maxY);
+
+            //osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
+
+            osg::ref_ptr<osg::HeightField> hf = source->createHeightField(intersectingTiles[j].get());
+            if (hf.valid())
+            {
+                //Need to init this before extracting the heightfield
+                hf->setOrigin( osg::Vec3d( minX, minY, 0.0 ) );
+                hf->setXInterval( (maxX - minX)/(double)(hf->getNumColumns()-1) );
+                hf->setYInterval( (maxY - minY)/(double)(hf->getNumRows()-1) );
+                heightFields.push_back(hf.get());
+            }
+            else
+            {
+                //If we couldn't create a heightfield that is needed to composite, return NULL
+                osg::notify(osg::NOTICE) << "Couldn't create heightfield" << std::endl;
+                return 0;
+            }
+        }
+        if (heightFields.size() > 0)
+        {
+            result = HeightFieldUtils::compositeHeightField(dst_minx, dst_miny, dst_maxx, dst_maxy, heightFields[0]->getNumColumns(), heightFields[0]->getNumRows(), heightFields);
+        }
+    }
+
+    return result;
 }

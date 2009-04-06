@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/CacheSeed>
+#include <osgEarth/Caching>
 #include <osgEarth/Mercator>
 #include <limits.h>
 

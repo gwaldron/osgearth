@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_FILTER     "filter"
+#define PROPERTY_FILTER           "filter"
 #define VALUE_FILTER_NEAREST      "nearest"
 #define VALUE_FILTER_LINEAR       "linear"
 

@@ -42,15 +42,20 @@
 
 using namespace osgEarth;
 
-//#define WGS84_WKT "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AXIS["Lat",NORTH],AXIS["Long",EAST],AUTHORITY["EPSG","4326"]]
 
-void getLatLonExtents(const TileKey* key, double &min_lon, double &min_lat, double &max_lon, double &max_lat)
+static void
+getLatLonExtents(const TileKey* key, double &min_lon, double &min_lat, double &max_lon, double &max_lat)
 {
-    key->getGeoExtents(min_lon, min_lat, max_lon, max_lat);
-    if (key->isMercator())
+    if ( key->isMercator() )
     {
-        Mercator::metersToLatLon(min_lon, min_lat, min_lat, min_lon);
-        Mercator::metersToLatLon(max_lon, max_lat, max_lat, max_lon);
+        double xmin, ymin, xmax, ymax;
+        key->getGeoExtents(xmin, ymin, xmax, ymax);
+        Mercator::metersToLatLon(xmin, ymin, min_lat, min_lon);
+        Mercator::metersToLatLon(xmax, ymax, max_lat, max_lon);
+    }
+    else
+    {
+        key->getGeoExtents(min_lon, min_lat, max_lon, max_lat);
     }
 }
 

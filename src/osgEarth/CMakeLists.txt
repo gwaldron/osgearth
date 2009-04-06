@@ -19,6 +19,7 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
+    Caching
 	CacheSeed
     Common
     Export
@@ -46,6 +47,7 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
+    Caching.cpp
 	CacheSeed.cpp
 	FileUtils.cpp
     GeocentricTileBuilder.cpp

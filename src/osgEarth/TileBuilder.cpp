@@ -20,6 +20,7 @@
 #include <osgEarth/TileBuilder>
 #include <osgEarth/GeocentricTileBuilder>
 #include <osgEarth/ProjectedTileBuilder>
+#include <osgEarth/Caching>
 #include <osgEarth/Mercator>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/MultiImage>
@@ -70,7 +71,7 @@ class UnregisterTileBuilderObserver : public osg::Observer
 
 static UnregisterTileBuilderObserver s_unregisterTileBuilderObserver;
 
-
+static
 TileBuilderCache& getCache()
 {
     static TileBuilderCache s_cache;

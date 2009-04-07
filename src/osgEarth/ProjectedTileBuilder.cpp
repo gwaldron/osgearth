@@ -20,7 +20,7 @@
 #include <osgEarth/ProjectedTileBuilder>
 #include <osgEarth/Mercator>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
-#include <osgEarth/MultiImage>
+#include <osgEarth/Compositing>
 #include <osgEarth/ImageUtils>
 #include <osg/Image>
 #include <osg/Notify>

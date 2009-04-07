@@ -258,11 +258,16 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
     char tempbuf[256];
 
     // first thing in the stream should be the boundary.
-    input->stream.read( tempbuf, bstr.size() );
+    input->stream.read( tempbuf, bstr.length() );
+    tempbuf[bstr.length()] = 0;
     line = tempbuf;
     if ( line != bstr )
     {
-        osg::notify(osg::WARN) << "HTTPClient.decodeMultipartStream: protocol violation" << std::endl;
+        osg::notify(osg::WARN)
+            << "HTTPClient.decodeMultipartStream: protocol violation; "
+            << "expecting boundary; instead got: \"" 
+            << line
+            << "\"" << std::endl;
         return;
     }
 
@@ -384,17 +389,23 @@ HTTPClient::get( HTTPRequest* request ) const
             return NULL;
         }
 
+        // NOTE:
+        //   WCS 1.1 specified a "multipart/mixed" response, but ArcGIS Server gives a "multipart/related"
+        //   content type ...
+
         std::string content_type( content_type_cp );
         //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] content-type = \"" << content_type << "\"" << std::endl;
-        if ( content_type == "multipart/mixed; boundary=wcs" ) //todo: parse this.
+        if ( content_type.length() > 9 && ::strstr( content_type.c_str(), "multipart" ) == content_type.c_str() )
+        //if ( content_type == "multipart/mixed; boundary=wcs" ) //todo: parse this.
         {
             //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] detected multipart data; decoding..." << std::endl;
-            //TODO: parse out the "wcs" -- this is mapserver-specific
+            //TODO: parse out the "wcs" -- this is WCS-specific
             decodeMultipartStream( "wcs", part.get(), response->parts );
-            //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] ....decoded " << response->parts.size() << " parts:" << std::endl;
+
+            //osg::notify(osg::INFO) << "[osgEarth.HTTPClient] ....decoded " << response->parts.size() << " parts:" << std::endl;
             //for( unsigned int i=0; i<response->getNumParts(); i++ )
             //{
-            //    osg::notify(osg::NOTICE) << "  Part " << i << ": " << response->getPartSize(i) << std::endl;
+            //    osg::notify(osg::INFO) << "  Part " << i << ": " << response->getPartSize(i) << std::endl;
             //}
         }
         else

@@ -225,7 +225,9 @@ public:
         {
             scaleFactor = 0.3048;
         }
-        return (ImageToHeightFieldConverter::convert(image, scaleFactor));        
+
+        ImageToHeightFieldConverter conv;
+        return conv.convert( image, scaleFactor );
     }
 
     std::string createURI( const TileKey* key ) const

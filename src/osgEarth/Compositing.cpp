@@ -152,6 +152,7 @@ Compositor::Compositor()
     //NOP
 }
 
+
 osg::Image*
 Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
 {

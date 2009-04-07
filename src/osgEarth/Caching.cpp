@@ -51,7 +51,8 @@ CachedTileSource::getProfile() const
     return _profile;
 }
 
-osg::Image* CachedTileSource::createImage( const TileKey* key )
+osg::Image*
+CachedTileSource::createImage( const TileKey* key )
 {
     //Try to get the image from the cache.
     osg::Image *image = getCachedImage( key);
@@ -73,7 +74,8 @@ osg::Image* CachedTileSource::createImage( const TileKey* key )
     return image;
 }
 
-osg::HeightField* CachedTileSource::createHeightField( const TileKey* key )
+osg::HeightField*
+CachedTileSource::createHeightField( const TileKey* key )
 {
     osg::HeightField* hf = 0;
 
@@ -82,7 +84,8 @@ osg::HeightField* CachedTileSource::createHeightField( const TileKey* key )
     if (image.valid())
     {
         osg::notify(osg::INFO) << "Read cached heightfield " << std::endl;
-        hf = ImageToHeightFieldConverter::convert(image.get());
+        ImageToHeightFieldConverter conv;
+        hf = conv.convert(image.get());
     }
 
     //Create the heightfield and write it to the cache
@@ -91,13 +94,15 @@ osg::HeightField* CachedTileSource::createHeightField( const TileKey* key )
         hf = _tileSource->createHeightField( key );
         if (hf)
         {
-            writeCachedImage( key, ImageToHeightFieldConverter::convert(hf) );
+            ImageToHeightFieldConverter conv;
+            writeCachedImage( key, conv.convert(hf) );
         }
     }
     return hf;
 }
 
-osg::Image* CachedTileSource::getCachedImage( const TileKey* key)
+osg::Image*
+CachedTileSource::getCachedImage( const TileKey* key)
 {
     //NOP
     return 0;

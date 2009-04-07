@@ -36,6 +36,7 @@ SET(LIB_PUBLIC_HEADERS
 	Profile
 	ProjectedTileBuilder
 	Registry
+	SpatialReference
     TerrainTileEdgeNormalizerUpdateCallback
     TileBuilder
     TileKey
@@ -62,6 +63,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	Profile.cpp
 	ProjectedTileBuilder.cpp
 	Registry.cpp
+	SpatialReference.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileBuilder.cpp
     TileKey.cpp

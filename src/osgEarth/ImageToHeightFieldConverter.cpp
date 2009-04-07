@@ -18,12 +18,40 @@
  */
 
 #include <osgEarth/ImageToHeightFieldConverter>
-
 #include <osg/Notify>
+#include <limits.h>
 
 using namespace osgEarth;
 
-osg::HeightField* ImageToHeightFieldConverter::convert(osg::Image* image, float scaleFactor)
+static bool
+isNoData( short s )
+{
+    return s == SHRT_MAX || s == SHRT_MIN;
+}
+
+static bool
+isNoData( float f )
+{
+    return f == FLT_MAX || f == FLT_MIN;
+}
+
+
+ImageToHeightFieldConverter::ImageToHeightFieldConverter()
+: _nodata_value( 0.0f ),
+  _replace_nodata( false )
+{
+    //NOP
+}
+
+void
+ImageToHeightFieldConverter::setRemoveNoDataValues( bool which, float f )
+{
+    _nodata_value = f;
+    _replace_nodata = which;
+}
+
+osg::HeightField*
+ImageToHeightFieldConverter::convert(osg::Image* image, float scaleFactor)
 {
     //osg::notify(osg::NOTICE) << "Scale factor " << scaleFactor << std::endl;
 	if (image)
@@ -32,29 +60,78 @@ osg::HeightField* ImageToHeightFieldConverter::convert(osg::Image* image, float 
 		//osg::notify(osg::NOTICE) << "Read heightfield image" << std::endl;
 		hf->allocate(image->s(), image->t());
 				
-		for( unsigned int row=0; row < image->t(); row++ ) {
-            //osg::notify(osg::NOTICE) << "ROW " << row << ":\t";
-            for( unsigned int col=0; col < image->s(); col++ ) {
+        // first create the new heightfield
+		for( unsigned int row=0; row < image->t(); row++ )
+        {
+            for( unsigned int col=0; col < image->s(); col++ )
+            {
                 unsigned char* ptr = image->data( col, row );
-                if ( image->getPixelSizeInBits() == 16 ) {
+                if ( image->getPixelSizeInBits() == 16 )
+                {
                     short val = (short)*(short*)ptr;
-                    hf->setHeight( col, row, ((float)val) * scaleFactor );
-                    //osg::notify(osg::NOTICE) << val << "\t";
+                    if ( _replace_nodata && isNoData( val ) )
+                        hf->setHeight( col, row, FLT_MAX );
+                    else
+                        hf->setHeight( col, row, (float)val );
                 }
-                else if ( image->getPixelSizeInBits() == 32 ) {
+                else if ( image->getPixelSizeInBits() == 32 )
+                {
                     float val = (float)*(float*)ptr;
-                    hf->setHeight( col, row, val * scaleFactor );
-                    //osg::notify(osg::NOTICE) << val << "\t";
+                    if ( _replace_nodata && isNoData( val ) )
+                        hf->setHeight( col, row, FLT_MAX );
+                    else
+                        hf->setHeight( col, row, val );
                 }
             }
-            //osg::notify(osg::NOTICE) << std::endl;
         }
+
+        // scan for and replace NODATA values. This algorithm is terrible but good enough for now
+        if ( _replace_nodata )
+        {
+            for( unsigned int row=0; row < hf->getNumRows(); row++ )
+            {
+                for( unsigned int col=0; col < hf->getNumColumns(); col++ )
+                {
+                    float val = hf->getHeight(col, row);
+                    if ( isNoData( val ) )
+                    {
+                        if ( col > 0 )
+                            val = hf->getHeight(col-1,row);
+                        else if ( col <= hf->getNumColumns()-1 )
+                            val = hf->getHeight(col+1,row);
+
+                        if ( isNoData( val ) )
+                        {
+                            if ( row > 0 )
+                                val = hf->getHeight(col, row-1);
+                            else if ( row < hf->getNumRows()-1 )
+                                val = hf->getHeight(col, row+1);
+                        }
+
+                        if ( isNoData( val ) )
+                        {
+                            val = _nodata_value;
+                        }
+
+                        hf->setHeight( col, row, val );
+                    }
+                }
+            }
+        }
+
+        // finally, apply the scale factor.
+        for( osg::FloatArray::iterator i = hf->getFloatArray()->begin(); i != hf->getFloatArray()->end(); i++ )
+        {
+            (*i) *= scaleFactor;
+        }
+
         return hf;
     }
     return NULL;
 }
 
-osg::Image* ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixelSize)
+osg::Image*
+ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixelSize)
 {
 	if (hf)
 	{
@@ -66,18 +143,18 @@ osg::Image* ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixel
         osg::Image* image = new osg::Image;
         image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_LUMINANCE, type);
 
-        for( unsigned int row=0; row < hf->getNumRows(); row++ ) {
-            for( unsigned int col=0; col < hf->getNumColumns(); col++ ) {
+        for( unsigned int row=0; row < hf->getNumRows(); row++ )
+        {
+            for( unsigned int col=0; col < hf->getNumColumns(); col++ )
+            {
                 if (pixelSize == 16)
                 {
-                  short val = (short)hf->getHeight(col,row);
-                  //osg::notify(osg::NOTICE) << "Short val " << val << std::endl;
-                  *((short*)image->data( col, row)) = val;
+                    short val = (short)hf->getHeight(col,row);
+                    *((short*)image->data( col, row)) = val;
                 }
                 else if (pixelSize == 32)
                 {
                     float val = (float)hf->getHeight(col,row);
-                    //osg::notify(osg::NOTICE) << "Float val " << val << std::endl;
                     *((float*)image->data( col, row)) = val;
                 }
             }

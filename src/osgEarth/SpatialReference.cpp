@@ -17,44 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-
-#include <osgEarth/Registry>
-#include <osg/Notify>
+#include <osgEarth/SpatialReference>
 
 using namespace osgEarth;
 
-Registry::Registry():
-Referenced(true)
-{
-}
-
-Registry::~Registry()
-{
-}
-
-Registry* Registry::instance(bool erase)
-{
-    static osg::ref_ptr<Registry> s_registry = new Registry;
-    if (erase) 
-    {   
-        s_registry->destruct();
-        s_registry = 0;
-    }
-    return s_registry.get(); // will return NULL on erase
-}
-
-void Registry::destruct()
-{
-    //Clean up the overriden cache config
-    _cacheConfigOverride = 0;
-}
-
-const CacheConfig*
-Registry::getCacheConfigOverride() const { 
-    return _cacheConfigOverride.get();
-}
-
-void
-Registry::setCacheConfigOverride(CacheConfig* cacheConfig) {
-    _cacheConfigOverride = cacheConfig;
-}

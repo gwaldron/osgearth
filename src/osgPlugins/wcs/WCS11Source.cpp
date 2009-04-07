@@ -76,7 +76,13 @@ profile( Profile::GLOBAL_GEODETIC )
     //coverage   = "srtm";
     //cov_format = "GEOTIFFINT16";
     //osg_format = "tif";
+
+    if ( cov_format.empty() )
+        cov_format = "image/GeoTIFF";
+
+    osg_format = "tif";
 }
+
 
 const Profile&
 WCS11Source::getProfile() const
@@ -84,82 +90,89 @@ WCS11Source::getProfile() const
     return profile;
 }
 
-osg::Image*
-WCS11Source::createImage( const TileKey* key)
-{
-    //NYI
-    osg::notify( osg::WARN ) << "[osgEarth] [WCS11] images are not yet supported by the WCS driver." << std::endl;
-    return 0;
+
+std::string
+WCS11Source::getExtension() const {
+    return "tif";
 }
 
 
-osg::HeightField*
-WCS11Source::createHeightField( const TileKey* key )
+osg::Image*
+WCS11Source::createImage( const TileKey* key)
 {
     osg::ref_ptr<HTTPRequest> request = createRequest( key );
 
+    osg::notify(osg::INFO) << "[osgEarth::WCS1.1] URL = " << request->getURL() << std::endl;
+
     double lon0,lat0,lon1,lat1;
     key->getGeoExtents( lon0, lat0, lon1, lat1 );
-
-    //osg::notify(osg::NOTICE) << "TILE: " << key.str() 
-    //    << " (" <<lon0<<","<<lat0<<" => "<<lon1<<","<<lat1<<")"<< std::endl;
-    //osg::notify(osg::NOTICE) << "URL: " << request->getURL() << std::endl;
 
     // download the data
     HTTPClient client;
     osg::ref_ptr<HTTPResponse> response = client.get( request.get() );
     if ( !response.valid() )
     {
-        osg::notify(osg::WARN) << "[osgEarth] [WCS11]: WARNING: HTTP request failed" << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth::WCS1.1] WARNING: HTTP request failed" << std::endl;
         return NULL;
     }
 
     unsigned int part_num = response->getNumParts() > 1? 1 : 0;
     std::istream& input_stream = response->getPartStream( part_num );
 
-    // tif reader doesn't support height fields, so read as image and convert
-    osg::HeightField* field = NULL;
-    
+    //TODO: un-hard-code TIFFs
     osgDB::ReaderWriter* reader = osgDB::Registry::instance()->getReaderWriterForExtension( "tiff" );
 
     if ( !reader )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] [WCS11] WARNING: no reader for \"tiff\"" << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::WCS1.1] WARNING: no reader for \"tiff\"" << std::endl;
         return NULL;
     }
 
     osgDB::ReaderWriter::ReadResult result = reader->readImage( input_stream );
     if ( !result.success() )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] [WCS11] WARNING: readImage() failed for Reader " << reader->getName() << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::WCS1.1] WARNING: readImage() failed for Reader " << reader->getName() << std::endl;
         return NULL;
     }
 
-    osg::ref_ptr<osg::Image> image = result.getImage();
+    osg::Image* image = result.getImage();
+    if ( image ) image->ref();
+    return image;
+}
+
+
+osg::HeightField*
+WCS11Source::createHeightField( const TileKey* key )
+{
+    osg::HeightField* field = NULL;
+
+    osg::ref_ptr<osg::Image> image = createImage( key );
     if ( image.valid() )
-    {
-        field = ImageToHeightFieldConverter::convert( image.get() );
-
-        //field = new osg::HeightField();
-        //field->allocate( image->s(), image->t() );
-        //for( unsigned int row=0; row < image->t(); row++ ) {
-        //    for( unsigned int col=0; col < image->s(); col++ ) {
-        //        unsigned char* ptr = image->data( col, row );
-        //        if ( image->getPixelSizeInBits() == 16 ) {
-        //            short val = (short)*(short*)ptr;
-        //            field->setHeight( col, row, (float)val );
-        //        }
-        //        else if ( image->getPixelSizeInBits() == 32 ) {
-        //            float val = (float)*(float*)ptr;
-        //            field->setHeight( col, row, val );
-        //        }
-        //    }
-        //}
-
+    {        
+        ImageToHeightFieldConverter conv;
+        conv.setRemoveNoDataValues( true );
+        field = conv.convert( image.get() );
     }
 
     return field;
 }
+
+/*
+http://server/ArcGIS/services/WorldElevation/MapServer/WCSServer
+    ?SERVICE=WCS
+    &VERSION=1.1.0
+    &REQUEST=GetCoverage
+    &IDENTIFIER=1
+    &FORMAT=image/GeoTIFF
+    &BOUNDINGBOX=-180,-90,0,90,urn:ogc:def:crs:EPSG::4326  // (sic - coord ordering bug in ESRI)
+    &RangeSubset=Field_1:bilinear[Band[1]]
+    &GridBaseCRS=urn:ogc:def:crs:EPSG::4326
+    &GridCS=urn:ogc:def:crs:EPSG::4326
+    &GridType=urn:ogc:def:method:WCS:1.1:2dGridIn2dCrs
+    &GridOrigin=-180,90
+    &GridOffsets=6,-6
+*/
+
 
 HTTPRequest*
 WCS11Source::createRequest( const TileKey* key ) const
@@ -176,30 +189,47 @@ WCS11Source::createRequest( const TileKey* key ) const
 
     HTTPRequest* req = new HTTPRequest( url );
 
-    //req->addParameter( "map", map_file );
     req->addParameter( "SERVICE",    "WCS" );
     req->addParameter( "VERSION",    "1.1.0" );
     req->addParameter( "REQUEST",    "GetCoverage" );
     req->addParameter( "IDENTIFIER", identifier );
     req->addParameter( "FORMAT",     cov_format );
-    req->addParameter( "WIDTH",      lon_samples );
-    req->addParameter( "HEIGHT",     lat_samples );
+
+    req->addParameter( "GridBaseCRS", "urn:ogc:def:crs:EPSG::4326" );
+    req->addParameter( "GridCS",      "urn:ogc:def:crs:EPSG::4326" );
+    req->addParameter( "GridType",    "urn:ogc:def:method:WCS:1.1:2dGridIn2dCrs" );
+
+    // IMPORTANT NOTE:
+    //   For WCS1.1+, the BOUNDINGBOX for geographic CRS's (like WGS84) are expressed
+    //   at minlat,minlon,maxlat,maxlon instead of the usual minx,miny,maxx,maxy.
+    //   So we will somehow need to figure out whether the CRS is geographic.
+    //
+    // MORE IMPORTANT NOTE:
+    //   ESRI's ArcGIS WCS Server doesn't obey the above rule. Their server expects
+    //   minx,miny,maxx,maxy no matter what ...
+
+    // Hack to guess whether it's an ArcGIS Server:
+    bool use_legacy_geog_bbox_encoding = ::strstr( url.c_str(), "/MapServer/WCSServer" ) != NULL;
 
     buf.str("");
-    buf << lat_min << "," << lon_min << "," << lat_max << "," << lon_max << ",urn:ogc:def:crs:EPSG::4326";
+    if ( use_legacy_geog_bbox_encoding )
+        buf << lon_min << "," << lat_min << "," << lon_max << "," << lat_max;
+    else
+        buf << lat_min << "," << lon_min << "," << lat_max << "," << lon_max;
+    buf << ",urn:ogc:def:crs:EPSG::4326";
     req->addParameter( "BOUNDINGBOX", buf.str() );
 
     buf.str("");
-    buf << lon_min << "," << lat_min;
-    req->addParameter( "GRIDORIGIN", buf.str() );
+    buf << lon_min << "," << (lat_min + (lat_max-lat_min));           // note: top-down
+    req->addParameter( "GridOrigin", buf.str() );
 
     buf.str("");
-    buf << lon_interval << "," << lat_interval;
-    req->addParameter( "GRIDOFFSETS", buf.str() );
+    buf << lon_interval << "," << -lat_interval;   // note: top-down
+    req->addParameter( "GridOffsets", buf.str() );
 
-    //TODO: un-hard-code this
-    req->addParameter( "GRIDCS", "urn:ogc:def:crs:EPSG::4326" );
-    req->addParameter( "GRIDTYPE", "urn:ogc:def:method:WCS:1.1:2dGridIn2dCrs" );
+    buf.str("");
+    buf << "Field_1:bilinear[Band[1]]";            // TODO: paramaterize: "bilinear", "nearest"
+    req->addParameter( "RangeSubset", buf.str() );
 
     return req;
 }

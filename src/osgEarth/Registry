@@ -32,8 +32,9 @@ namespace osgEarth
   public:
     static Registry* instance(bool erase = false);
 
-    const CacheConfig* getCacheConfigOverride() { return _cacheConfigOverride.get(); }
-    void setCacheConfigOverride(CacheConfig* cacheConfig) { _cacheConfigOverride = cacheConfig; }
+    const CacheConfig* getCacheConfigOverride() const;
+
+    void setCacheConfigOverride(CacheConfig* cacheConfig);
     
   protected:
     virtual ~Registry();

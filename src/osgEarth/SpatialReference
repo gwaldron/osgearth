@@ -16,45 +16,41 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#ifndef OSGEARTH_SPATIAL_REFERENCE_H
+#define OSGEARTH_SPATIAL_REFERENCE_H 1
 
+#include <osgEarth/Common>
+#include <osg/Referenced>
 
-#include <osgEarth/Registry>
-#include <osg/Notify>
-
-using namespace osgEarth;
-
-Registry::Registry():
-Referenced(true)
+namespace osgEarth
 {
+    //class OSGEARTH_EXPORT SpatialReference : public osg::Referenced
+    //{
+    //public:
+    //    static SpatialReference* create( const std::string& init );
+
+    //protected:
+    //    virtual ~SpatialReference();
+
+    //private:
+    //    SpatialReference( void* handle );
+
+    //    void* _handle;
+    //};
+
+
+    //class OSGEARTH_EXPORT SpatialTransform : public osg::Referenced
+    //{
+    //public:
+    //    SpatialTransform( SpatialReference* from, SpatialReference* to );
+
+    //protected:
+    //    virtual ~SpatialTransform();
+
+    //private:
+    //    void* _handle;
+    //};
 }
 
-Registry::~Registry()
-{
-}
 
-Registry* Registry::instance(bool erase)
-{
-    static osg::ref_ptr<Registry> s_registry = new Registry;
-    if (erase) 
-    {   
-        s_registry->destruct();
-        s_registry = 0;
-    }
-    return s_registry.get(); // will return NULL on erase
-}
-
-void Registry::destruct()
-{
-    //Clean up the overriden cache config
-    _cacheConfigOverride = 0;
-}
-
-const CacheConfig*
-Registry::getCacheConfigOverride() const { 
-    return _cacheConfigOverride.get();
-}
-
-void
-Registry::setCacheConfigOverride(CacheConfig* cacheConfig) {
-    _cacheConfigOverride = cacheConfig;
-}
+#endif // OSGEARTH_SPATIAL_REFERENCE_H

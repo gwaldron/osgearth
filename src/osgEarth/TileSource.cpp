@@ -57,18 +57,21 @@ TileSource::init(const osgDB::ReaderWriter::Options* options)
         _maxLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MAX_LEVEL ), INT_MAX );
 }
 
-osg::HeightField* TileSource::createHeightField( const TileKey* key )
+osg::HeightField*
+TileSource::createHeightField( const TileKey* key )
 {
     osg::ref_ptr<osg::Image> image = createImage(key);
     osg::HeightField* hf = 0;
     if (image.valid())
     {
-        hf = ImageToHeightFieldConverter::convert(image.get());
+        ImageToHeightFieldConverter conv;
+        hf = conv.convert( image.get() );
     }      
     return hf;
 }
 
-bool TileSource::isKeyValid(const osgEarth::TileKey *key)
+bool
+TileSource::isKeyValid(const osgEarth::TileKey *key)
 {
   if (!key) return false;
 

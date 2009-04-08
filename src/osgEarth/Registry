@@ -22,28 +22,33 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/MapConfig>
+#include <OpenThreads/ReentrantMutex>
 
 #include <osg/Referenced>
 
 namespace osgEarth
 {
-  class OSGEARTH_EXPORT Registry : public osg::Referenced
-  {
-  public:
-    static Registry* instance(bool erase = false);
+    class OSGEARTH_EXPORT Registry : public osg::Referenced
+    {
+    public:
+        static Registry* instance(bool erase = false);
 
-    const CacheConfig* getCacheConfigOverride() const;
+        const CacheConfig* getCacheConfigOverride() const;
 
-    void setCacheConfigOverride(CacheConfig* cacheConfig);
-    
-  protected:
-    virtual ~Registry();
-    Registry();
+        void setCacheConfigOverride( CacheConfig* cacheConfig );
 
-    void destruct();
+        inline OpenThreads::ReentrantMutex& getOGRMutex() { return ogrmutex; }
 
-    osg::ref_ptr<CacheConfig> _cacheConfigOverride;
-  };
+    protected:
+        virtual ~Registry();
+        Registry();
+
+        void destruct();
+
+        osg::ref_ptr<CacheConfig> _cacheConfigOverride;
+        OpenThreads::ReentrantMutex ogrmutex;
+
+    };
 }
 
 #endif //OSGEARTH_REGISTRY

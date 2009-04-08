@@ -21,35 +21,58 @@
 
 #include <osgEarth/Common>
 #include <osg/Referenced>
+#include <osg/CoordinateSystemNode>
+#include <OpenThreads/ReentrantMutex>
 
 namespace osgEarth
 {
-    //class OSGEARTH_EXPORT SpatialReference : public osg::Referenced
-    //{
-    //public:
-    //    static SpatialReference* create( const std::string& init );
+    /** 
+     * SpatialReference holds information describing the reference ellipsoid/datum
+     * and the projection of geospatial data.
+     */
+    class OSGEARTH_EXPORT SpatialReference : public osg::Referenced
+    {
+    public:
+        static SpatialReference* create( const std::string& init );
 
-    //protected:
-    //    virtual ~SpatialReference();
+        static SpatialReference* createFromWKT( const std::string& wkt );
 
-    //private:
-    //    SpatialReference( void* handle );
+        static SpatialReference* createFromPROJ4( const std::string& proj4 );
 
-    //    void* _handle;
-    //};
+    public:
 
+        /** Transform a point to another SRS. */
+        bool transformTo(
+            double x, double y,
+            const SpatialReference* to_srs,
+            double& out_x, double& out_y ) const;
 
-    //class OSGEARTH_EXPORT SpatialTransform : public osg::Referenced
-    //{
-    //public:
-    //    SpatialTransform( SpatialReference* from, SpatialReference* to );
+        /** True is this is a geographic SRS (i.e. unprojected lat/long) */
+        bool isGeographic() const;
 
-    //protected:
-    //    virtual ~SpatialTransform();
+        /** True if this is a projected SRS (i.e. local coordinate system) */
+        bool isProjected() const;
 
-    //private:
-    //    void* _handle;
-    //};
+        /** Gets the readable name of this SRS. */
+        const std::string& getName() const;
+
+        /** Gets the underlying reference ellipsoid of this SRS */
+        const osg::EllipsoidModel* getEllipsoid() const;
+
+    protected:
+        virtual ~SpatialReference();
+
+    private:
+        SpatialReference( void* handle, bool take_ownership );
+        void init();
+
+        bool _initialized;
+        void* _handle;
+        bool _owns_handle;
+        bool _is_geographic;
+        std::string _name;
+        osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
+    };
 }
 
 

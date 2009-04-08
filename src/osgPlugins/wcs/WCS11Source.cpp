@@ -228,7 +228,7 @@ WCS11Source::createRequest( const TileKey* key ) const
     req->addParameter( "GridOffsets", buf.str() );
 
     buf.str("");
-    buf << "Field_1:bilinear[Band[1]]";            // TODO: paramaterize: "bilinear", "nearest"
+    buf << "Field_1:bilinear[Band[1]]";            // TODO: paramaterize: "bicubic", "bilinear", "nearest"
     req->addParameter( "RangeSubset", buf.str() );
 
     return req;

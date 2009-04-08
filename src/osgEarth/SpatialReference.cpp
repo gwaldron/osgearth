@@ -21,3 +21,5 @@
 
 using namespace osgEarth;
 
+#include <gdal_priv.h>
+

@@ -35,14 +35,9 @@ namespace osgEarth
     public:
         static SpatialReference* create( const std::string& init );
 
-        static SpatialReference* createFromWKT( const std::string& wkt );
-
-        static SpatialReference* createFromPROJ4( const std::string& proj4 );
-
     public:
-
         /** Transform a point to another SRS. */
-        bool transformTo(
+        bool transform(
             double x, double y,
             const SpatialReference* to_srs,
             double& out_x, double& out_y ) const;
@@ -59,19 +54,46 @@ namespace osgEarth
         /** Gets the underlying reference ellipsoid of this SRS */
         const osg::EllipsoidModel* getEllipsoid() const;
 
+        /** Gets the WKT string */
+        const std::string& getWKT() const;
+
+        /** Gets the initialization type (PROJ4, WKT, etc.) */
+        const std::string& getInitType() const;
+
+        /** Gets the string that was used to initialize this SRS */
+        const std::string& getInitString() const;
+
+        /** Tests this SRS for equivalence with another. */
+        bool isEquivalentTo( const SpatialReference* rhs ) const;
+
+        /** Tests whether this SRS represents a Mercator projection. */
+        bool isMercator() const;
+
     protected:
         virtual ~SpatialReference();
 
     private:
-        SpatialReference( void* handle, bool take_ownership );
+        SpatialReference( void* handle, const std::string& type, const std::string& init_str );
         void init();
 
         bool _initialized;
         void* _handle;
         bool _owns_handle;
         bool _is_geographic;
+        bool _is_mercator;
         std::string _name;
+        std::string _wkt;
+        std::string _init_type;
+        std::string _init_str;
+        std::string _init_str_lc;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
+        
+    private:
+        static SpatialReference* createFromWKT(
+            const std::string& wkt, const std::string& alias );
+
+        static SpatialReference* createFromPROJ4(
+            const std::string& proj4, const std::string& alias );
     };
 }
 

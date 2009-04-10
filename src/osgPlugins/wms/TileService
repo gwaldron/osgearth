@@ -203,7 +203,7 @@ public:
     /**
      *Given a list of patterns with matching parameters, compute a Profile.
      */
-    osgEarth::Profile getProfile(TilePatternList &patterns);
+    const osgEarth::Profile* createProfile(TilePatternList &patterns);
 
 private:
     std::string _name;

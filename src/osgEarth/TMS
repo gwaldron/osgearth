@@ -303,7 +303,7 @@ namespace osgEarth
         osgEarth::Profile::ProfileType getProfileType() const {return _profile_type;}
         void setProfileType( osgEarth::Profile::ProfileType type ) {_profile_type = type;}
 
-        Profile createProfile();
+        const Profile* createProfile();
 
         /** Gets the TileFormat for this TileMap */
         TileFormat& getFormat() {return _format;}
@@ -347,16 +347,18 @@ namespace osgEarth
         */
         static TileMap* create(
             const std::string& url,
-            const Profile& profile,
+            const Profile* profile,
             //osgEarth::Profile::ProfileType type,
             const std::string& format,
             int tile_width,
             int tile_height );
 
         /**
-        *Creates a TileMap based on the parameters of a TileSource
-        */
-        static TileMap* create(const TileSource* tileSource);
+         * Creates a TileMap based on the parameters of a TileSource
+         */
+        static TileMap* create(
+            const TileSource* tileSource,
+            const Profile*    profile );
 
     protected:
         std::string _tileMapService;

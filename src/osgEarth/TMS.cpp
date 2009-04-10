@@ -165,13 +165,12 @@ void TileMap::computeNumTiles()
     }
 }
 
-Profile
+const Profile*
 TileMap::createProfile()
 {
     return Profile::create(
-        _profile_type,
-        _minX, _minY, _maxX, _maxY,
         _srs,
+        _minX, _minY, _maxX, _maxY,
         osg::maximum(_numTilesWide, (unsigned int)1),
         osg::maximum(_numTilesHigh, (unsigned int)1) );
 }
@@ -197,7 +196,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
     if (!invertY)
     {
         unsigned int numRows, numCols;
-        tileKey->getProfile().getNumTiles(tileKey->getLevelOfDetail(), numCols, numRows);
+        tileKey->getProfile()->getNumTiles(tileKey->getLevelOfDetail(), numCols, numRows);
         y  = numRows - y - 1;
     }
 
@@ -255,7 +254,7 @@ TileMap::intersectsKey(const TileKey *tileKey)
 void
 TileMap::generateTileSets(unsigned int numLevels)
 {
-    Profile profile = createProfile();
+    osg::ref_ptr<const Profile> profile = createProfile();
 
     _tileSets.clear();
 
@@ -265,7 +264,7 @@ TileMap::generateTileSets(unsigned int numLevels)
     for (unsigned int i = 0; i < numLevels; ++i)
     {
         unsigned int numCols, numRows;
-        profile.getNumTiles(i, numCols, numRows);
+        profile->getNumTiles(i, numCols, numRows);
         double res = (width / (double)numCols) / (double)_format.getWidth();
 
         TileSet ts;
@@ -278,7 +277,7 @@ TileMap::generateTileSets(unsigned int numLevels)
 
 TileMap*
 TileMap::create(const std::string& url,
-                const Profile& profile,
+                const Profile* profile,
                 const std::string& format,
                 int tile_width,
                 int tile_height)
@@ -286,9 +285,9 @@ TileMap::create(const std::string& url,
     //Profile profile(type);
 
     TileMap* tileMap = new TileMap();
-    tileMap->setProfileType(profile.getProfileType()); //type);
-    tileMap->setExtents(profile.xMin(), profile.yMin(), profile.xMax(), profile.yMax());
-    tileMap->setOrigin(profile.xMin(), profile.yMin());
+    tileMap->setProfileType(profile->getProfileType()); //type);
+    tileMap->setExtents(profile->xMin(), profile->yMin(), profile->xMax(), profile->yMax());
+    tileMap->setOrigin(profile->xMin(), profile->yMin());
     tileMap->_filename = url;
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
@@ -298,25 +297,21 @@ TileMap::create(const std::string& url,
     return tileMap;
 }
 
-TileMap* TileMap::create(const TileSource* tileSource)
+TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
 {
     TileMap* tileMap = new TileMap();
 
-    Profile profile = tileSource->getProfile();
-
     tileMap->setTitle( tileSource->getName() );
-    tileMap->setProfileType(profile.getProfileType() );
+    tileMap->setProfileType( profile->getProfileType() );
     
-    tileMap->_srs = profile.srs();
-    tileMap->_originX = profile.xMin();
-    tileMap->_originY = profile.yMin();
-    tileMap->_minX = profile.xMin();
-    tileMap->_minY = profile.yMin();
-    tileMap->_maxX = profile.xMax();
-    tileMap->_maxY = profile.yMax();
-    profile.getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
-    //tileMap->_numTilesWide = profile.getNumTilesWideAtLod0();
-    //tileMap->_numTilesHigh = profile.getNumTilesHighAtLod0();
+    tileMap->_srs = profile->getSRS()->getInitString(); //srs();
+    tileMap->_originX = profile->xMin();
+    tileMap->_originY = profile->yMin();
+    tileMap->_minX = profile->xMin();
+    tileMap->_minY = profile->yMin();
+    tileMap->_maxX = profile->xMax();
+    tileMap->_maxY = profile->yMax();
+    profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
 
     tileMap->_format.setWidth( tileSource->getPixelsPerTile() );
     tileMap->_format.setHeight( tileSource->getPixelsPerTile() );
@@ -422,9 +417,9 @@ TileMapReaderWriter::read(std::istream &in)
     {
         //Read the profile
         std::string profile = e_tile_sets->getAttr( ATTR_PROFILE );
-        if (profile == STR_GLOBAL_GEODETIC) tileMap->setProfileType( Profile::TYPE_GEODETIC );
-        else if (profile == STR_GLOBAL_MERCATOR) tileMap->setProfileType( Profile::TYPE_MERCATOR );
-        else if (profile == STR_LOCAL) tileMap->setProfileType( Profile::TYPE_LOCAL );
+        if (profile == "global-geodetic") tileMap->setProfileType( Profile::TYPE_GEODETIC );
+        else if (profile == "global-mercator") tileMap->setProfileType( Profile::TYPE_MERCATOR );
+        else if (profile == "local") tileMap->setProfileType( Profile::TYPE_LOCAL );
         else tileMap->setProfileType( Profile::TYPE_UNKNOWN );
 
         //Read each TileSet
@@ -494,15 +489,15 @@ tileMapToXmlDocument(const TileMap* tileMap)
     std::string profileString = "none";
     if (tileMap->getProfileType() == Profile::TYPE_GEODETIC)
     {
-        profileString = STR_GLOBAL_GEODETIC;
+        profileString = "global-geodetic";
     }
     else if (tileMap->getProfileType() == Profile::TYPE_MERCATOR)
     {
-        profileString = STR_GLOBAL_MERCATOR;
+        profileString = "global-mercator";
     }
     else if (tileMap->getProfileType() == Profile::TYPE_LOCAL)
     {
-        profileString = STR_LOCAL;
+        profileString = "local";
     }
     e_tile_sets->getAttrs()[ ATTR_PROFILE ] = profileString;
 

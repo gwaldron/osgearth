@@ -107,7 +107,7 @@ public:
     /**
      * Gets the data profile associated with this map service.
      */
-    const Profile& getProfile() const;
+    const Profile* getProfile() const;
 
     /**
      * Gets the tile information for this service.
@@ -117,7 +117,7 @@ public:
 private:
     bool is_valid;
     std::string url;
-    Profile profile;
+    osg::ref_ptr<const Profile> profile;
     std::string error_msg;
     MapServiceLayerList layers;
     TileInfo tile_info;

@@ -19,6 +19,7 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
+#include <osgEarth/Registry>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
 
@@ -36,42 +37,33 @@ using namespace osgEarth;
 #define PROPERTY_URL        "url"
 #define PROPERTY_LAYER      "layer"
 #define PROPERTY_FORMAT     "format"
-#define PROPERTY_MAP_CONFIG "map_config"
 
 class TileCacheSource : public TileSource
 {
 public:
-    TileCacheSource( const osgDB::ReaderWriter::Options* _options ) :
-      options( _options ),
-      map_config(0)
+    TileCacheSource( const osgDB::ReaderWriter::Options* options ) :
+      TileSource( options )
     {
-        if ( options.valid() )
+        if ( options )
         {
             if ( options->getPluginData( PROPERTY_URL ) )
-                url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+                _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
             if ( options->getPluginData( PROPERTY_LAYER ) )
-                layer = std::string( (const char*)options->getPluginData( PROPERTY_LAYER ) );
+                _layer = std::string( (const char*)options->getPluginData( PROPERTY_LAYER ) );
 
             if ( options->getPluginData( PROPERTY_FORMAT ) )
-                format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
-
-            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-                map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
-        }
-
-        profile = map_config->getProfile();
-
-        if (!profile.isValid()) //.getProfileType() == Profile::UNKNOWN)
-        {
-            //Set the profile to global geodetic if there is no override
-            profile = Profile::GLOBAL_GEODETIC;
+                _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
         }
     }
 
-    const Profile& getProfile() const
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
     {
-      return profile;
+        _configPath = configPath;
+
+        return mapProfile?
+            mapProfile :
+            osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -81,15 +73,15 @@ public:
         key->getTileXY( tile_x, tile_y );
 
         unsigned int numCols, numRows;
-        key->getProfile().getNumTiles(level, numCols, numRows);
+        key->getProfile()->getNumTiles(level, numCols, numRows);
         
         // need to invert the y-tile index
         tile_y = numRows - tile_y - 1;
 
         char buf[2048];
         sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
-            url.c_str(),
-            layer.c_str(),
+            _url.c_str(),
+            _layer.c_str(),
             level,
             (tile_x / 1000000),
             (tile_x / 1000) % 1000,
@@ -97,37 +89,35 @@ public:
             (tile_y / 1000000),
             (tile_y / 1000) % 1000,
             (tile_y % 1000),
-            format.c_str());
+            _format.c_str());
 
        
         std::string path = buf;
 
         //If we have a relative path and the map file contains a server address, just concat the server path and the cache together.
-        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(map_config->getFilename()))
+        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress( _configPath ) )
         {
-            path = osgDB::getFilePath(map_config->getFilename()) + "/" + path;
+            path = osgDB::getFilePath(_configPath) + "/" + path;
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
         if (!osgDB::containsServerAddress(path))
         {
-            path = osgEarth::getFullPath(map_config->getFilename(), path);
+            path = osgEarth::getFullPath(_configPath, path);
         }
-        return osgDB::readImageFile( path, options.get());
+        return osgDB::readImageFile( path, getOptions() );
     }
 
     virtual std::string getExtension()  const 
     {
-        return format;
+        return _format;
     }
 
 private:
-    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    std::string url;
-    std::string layer;
-    std::string format;
-    Profile profile;
-    const MapConfig* map_config;
+    std::string _url;
+    std::string _layer;
+    std::string _format;
+    std::string _configPath;
 };
 
 // Reads tiles from a TileCache disk cache.

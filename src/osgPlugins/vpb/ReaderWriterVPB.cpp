@@ -18,11 +18,13 @@
  */
 
 #include <osgEarth/MapConfig>
-#include <osgEarth/Mercator>
+#include <osgEarth/Registry>
+#include <osgEarth/TileSource>
 
 #include <osg/Notify>
 #include <osg/io_utils>
 #include <osg/Version>
+#include <osgTerrain/Terrain>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -42,6 +44,7 @@ using namespace osgEarth;
 #define PROPERTY_NUM_TILES_WIDE_AT_LOD0 "num_tiles_wide_at_lod0"
 #define PROPERTY_NUM_TILES_HIGH_AT_LOD0 "num_tiles_high_at_lod0"
 
+static
 int getLOD(const osgTerrain::TileID& id)
 {
     //The name of the lod changed after OSG 2.6 from layer to level
@@ -157,10 +160,10 @@ public:
       secondary_split_level(-1),
       directory_structure(FLAT_TASK_DIRECTORIES),
       maxNumTilesInCache(128),
-      profile( Profile::GLOBAL_GEODETIC )
+      profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() )
     {
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
-        profile.getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
+        profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
 
         if ( options.valid() )
         {
@@ -197,7 +200,7 @@ public:
                 
                 osg::notify(osg::INFO)<<"VPBasebase constructor: Loaded root "<<url<<", path="<<path<<" base_name="<<base_name<<" extension="<<extension<<std::endl;
                 
-                std::string srs = profile.srs();
+                std::string srs = profile->getSRS()->getInitString(); //.srs();
                 
                 osg::CoordinateSystemNode* csn = dynamic_cast<osg::CoordinateSystemNode*>(root_node.get());
                 if (csn)
@@ -266,13 +269,22 @@ public:
                     osg::notify(osg::INFO)<<"final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
 
 
+                    //profile = osgEarth::Profile::create( 
+                    //    ptype,
+                    //    osg::RadiansToDegrees(min_x), 
+                    //    osg::RadiansToDegrees(min_y), 
+                    //    osg::RadiansToDegrees(max_x), 
+                    //    osg::RadiansToDegrees(max_y),
+                    //    srs,
+                    //    numTilesWideAtLod0,
+                    //    numTilesHighAtLod0 );
+                    
                     profile = osgEarth::Profile::create( 
-                        ptype,
+                        srs,
                         osg::RadiansToDegrees(min_x), 
                         osg::RadiansToDegrees(min_y), 
                         osg::RadiansToDegrees(max_x), 
                         osg::RadiansToDegrees(max_y),
-                        srs,
                         numTilesWideAtLod0,
                         numTilesHighAtLod0 );
                 }
@@ -350,7 +362,7 @@ public:
         return buf.str();
     }
     
-    osgTerrain::TerrainTile* getTerrainTile(const TileKey* key )
+    osgTerrain::TerrainTile* getTerrainTile( const TileKey* key )
     {
         int level = key->getLevelOfDetail();
         unsigned int tile_x, tile_y;
@@ -473,7 +485,7 @@ public:
     int secondary_split_level;
     DirectoryStructure directory_structure;
 
-    Profile profile;
+    osg::ref_ptr<const Profile> profile;
     osg::ref_ptr<osg::Node> root_node;
     
     unsigned int maxNumTilesInCache;
@@ -495,20 +507,20 @@ class VPBSource : public TileSource
 {
 public:
     VPBSource( VPBDatabase* vpbDatabase, const osgDB::ReaderWriter::Options* in_options) :
+        TileSource(in_options),
         vpbDatabase(vpbDatabase),
-        options(in_options),
         layerNum(0)
     {
-        if ( options.valid() )
+        if ( in_options )
         {
-            if ( options->getPluginData( PROPERTY_LAYER_NUM ) )
-                layerNum = atoi( (const char*)options->getPluginData( PROPERTY_LAYER_NUM ) );
+            if ( in_options->getPluginData( PROPERTY_LAYER_NUM ) )
+                layerNum = atoi( (const char*)in_options->getPluginData( PROPERTY_LAYER_NUM ) );
         }
     }
 
-    const Profile& getProfile() const
+        const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
     {
-        return vpbDatabase->profile;
+        return vpbDatabase->profile.get();
     }
     
     osg::Image* createImage( const TileKey* key )
@@ -554,7 +566,6 @@ public:
 
 private:
     osg::ref_ptr<VPBDatabase>                           vpbDatabase;
-    osg::ref_ptr<const osgDB::ReaderWriter::Options>    options;
     unsigned int                                        layerNum;
 };
 

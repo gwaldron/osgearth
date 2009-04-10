@@ -21,7 +21,9 @@
 
 #include <osg/Referenced>
 #include <osg/Image>
+#include <osg/MixinVector>
 #include <osgEarth/Common>
+#include <osgEarth/SpatialReference>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>
 
@@ -30,15 +32,53 @@
 namespace osgEarth
 {
     /**
-     * A GeoImage is an image that has a geospatial extents
+     * Image paired with a spatial reference.
      */
-    struct GeoImage
+    template<class T>
+    class OSGEARTH_EXPORT GeoObject : public osg::Referenced
     {
     public:
+        GeoObject( T* image, const SpatialReference* srs );
+
+    public:
+        T* get() const;
+
+        const SpatialReference* getSRS() const;
+
+    private:
+        osg::ref_ptr<T> _image;
+        osg::ref_ptr<const SpatialReference> _srs;
+    };
+
+    typedef GeoObject<osg::Image> GeoImage;
+    typedef GeoObject<osg::HeightField> GeoHeightField;
+
+
+    /**
+     * Set of images paired with a spatial reference.
+     */
+    template<typename T>
+    class OSGEARTH_EXPORT GeoObjects : public osg::MixinVector< osg::ref_ptr<T> >
+    {
+    public:
+        GeoObjects( const SpatialReference* srs );
+
+        const SpatialReference* getSRS() const;
+
+    private:
+        osg::ref_ptr<const SpatialReference> _srs;
+    };
+
+    typedef GeoObjects<osg::Image> GeoImages;
+    typedef GeoObjects<osg::HeightField> GeoHeightFields;
+
+
+    struct TileImage
+    {
         /**
         *Constructor
         */
-        GeoImage(osg::Image * image, const TileKey* key);
+        TileImage(osg::Image* image, const TileKey* key);
 
         /**
         *Gets a reference to the Image held by this GeoImage
@@ -65,16 +105,16 @@ namespace osgEarth
         osg::Image* createImage(double minx, double miny, double maxx, double maxy);
 
         /** A list of GeoImages */
-        typedef std::vector<GeoImage> GeoImageList;
+        typedef std::vector<TileImage> TileImageList;
 
         /** Gets the images for this MultiImage */
-        GeoImageList& getImages() {return _images;}
+        TileImageList& getImages() {return _images;}
 
     protected:
         void getExtents(double &minX, double &minY, double &maxX, double &maxY);
 
         ~MultiImage();
-        GeoImageList _images;
+        TileImageList _images;
     };
 
 

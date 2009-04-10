@@ -18,7 +18,8 @@
  */
 
 #include <osgEarth/MapConfig>
-#include <osgEarth/Mercator>
+#include <osgEarth/TileSource>
+#include <osgEarth/Registry>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -32,32 +33,24 @@
 using namespace osgEarth;
 
 #define PROPERTY_DATASET    "dataset"
-#define PROPERTY_MAP_CONFIG "map_config"
 
 class YahooSource : public TileSource
 {
 public:
-    YahooSource( const osgDB::ReaderWriter::Options* in_options ) :
-      options( in_options ),
-      map_config(0),
-      profile( Profile::GLOBAL_MERCATOR )
+    YahooSource( const osgDB::ReaderWriter::Options* options ) :
+    TileSource( options )
     {
-        if ( options.valid() )
-        {
-            if ( options->getPluginData( PROPERTY_DATASET ) )
-                dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
-
-            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-                map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
-        }
+        if ( options->getPluginData( PROPERTY_DATASET ) )
+            _dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
         // validate dataset
-        if ( dataset.empty() ) dataset = "roads"; // default to the map view
+        if ( _dataset.empty() )
+            _dataset = "roads"; // default to the map view
     }
 
-    const Profile& getProfile() const
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
     {
-        return profile;
+        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -67,7 +60,7 @@ public:
 
         std::stringstream buf;
         
-        if ( dataset == "roads" || dataset == "map" )
+        if ( _dataset == "roads" || _dataset == "map" )
         {            
             // http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl?v=4.1&md=2&x=0&y=0&z=2&r=1
             unsigned int tile_x, tile_y;
@@ -82,7 +75,7 @@ public:
                 << "&z=" << zoom + 1
                 << "&.jpg";
         }
-        else if ( dataset == "aerial" || dataset == "satellite" )
+        else if ( _dataset == "aerial" || _dataset == "satellite" )
         {
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
@@ -98,7 +91,7 @@ public:
         }
 
         //osg::notify(osg::NOTICE) << buf.str() << std::endl;
-        return osgDB::readImageFile( buf.str(), options.get() );
+        return osgDB::readImageFile( buf.str(), getOptions() );
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
@@ -115,10 +108,7 @@ public:
     }
 
 private:
-    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    std::string dataset;
-    Profile profile;
-    const MapConfig* map_config;
+    std::string _dataset;
 };
 
 

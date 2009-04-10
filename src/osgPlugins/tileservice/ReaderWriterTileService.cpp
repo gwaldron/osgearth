@@ -21,11 +21,14 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/Registry>
+
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+
 #include <sstream>
 #include <stdlib.h>
 #include <iomanip>
@@ -35,15 +38,13 @@ using namespace osgEarth;
 #define PROPERTY_URL            "url"
 #define PROPERTY_DATASET        "dataset"
 #define PROPERTY_FORMAT         "format"
-#define PROPERTY_MAP_CONFIG     "map_config"
 
 //http://www.worldwindcentral.com/wiki/TileService
 class TileServiceSource : public TileSource
 {
 public:
 	TileServiceSource( const osgDB::ReaderWriter::Options* options ):
-    _mapConfig(0),
-    _profile( Profile::GLOBAL_GEODETIC )
+    TileSource( options )
     {
         if ( options->getPluginData( PROPERTY_URL ) )
             _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
@@ -54,25 +55,20 @@ public:
         if (options->getPluginData( PROPERTY_DATASET ))
             _dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
-        if ( options->getPluginData( PROPERTY_MAP_CONFIG))
-             _mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
-
          if ( _format.empty() )
             _format = "png";
     }
 
 public:
-    const Profile& getProfile() const
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
     {
-        return _profile;
+        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }
 
 public:
     osg::Image* createImage( const TileKey* key )
     {
-        std::string uri = createURI( key );
-
-        return osgDB::readImageFile( uri );
+        return osgDB::readImageFile(  createURI( key ), getOptions() );
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
@@ -113,8 +109,6 @@ private:
     std::string _url;
     std::string _dataset;
     std::string _format;
-    Profile _profile;
-    const MapConfig *_mapConfig;
 };
 
 

@@ -24,6 +24,8 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Compositing>
+#include <osgEarth/Registry>
+
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
@@ -177,8 +179,9 @@ TileBuilder::readNode( MapConfig* map )
     //osg::notify(osg::NOTICE) << "MapFilename is " << map->getFilename() << std::endl;
 
     //Create the TileBuilder
+    //TODO: is this a memory leak??
     TileBuilder* tileBuilder = TileBuilder::create(map);
-    if (!tileBuilder->isValid())
+    if ( !tileBuilder || !tileBuilder->isOK() )
         return 0;
 
     return tileBuilder->createRootNode();
@@ -190,67 +193,165 @@ TileBuilder::getId() const
     return id;
 }
 
-const Profile&
+const Profile*
 TileBuilder::getMapProfile() const
 {
-    if (!_profileComputed)
-    {
-        const_cast<TileBuilder*>(this)->computeMapProfile();
-    }
-    return _mapProfile;
+    return _mapProfile.get();
 }
 
-static Profile
-getSuitableMapProfileFor( const Profile& candidate )
+// locates a tile source by its name
+TileSource*
+TileBuilder::findTileSource( const std::string& name ) const
 {
-    return Profile::createGlobal( candidate.getProfileType() );
-    if ( candidate.getProfileType() == Profile::TYPE_GEODETIC )
-        return Profile::GLOBAL_GEODETIC;
-    else if ( candidate.getProfileType() == Profile::TYPE_MERCATOR )
-        return Profile::GLOBAL_MERCATOR;
+    for( TileSourceList::const_iterator i = _image_sources.begin(); i != _image_sources.end(); i++ )
+        if ( (*i)->getName() == name )
+            return i->get();
+    for( TileSourceList::const_iterator i = _heightfield_sources.begin(); i != _heightfield_sources.end(); i++ )
+        if ( (*i)->getName() == name )
+            return i->get();
+    return 0L;
+}
+
+static const Profile*
+getSuitableMapProfileFor( const Profile* candidate )
+{
+    if ( candidate->getProfileType() == Profile::TYPE_GEODETIC )
+        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    else if ( candidate->getProfileType() == Profile::TYPE_MERCATOR )
+        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
     else
         return candidate;
 }
 
-// scans all the data sources and selects the most appropriate map profile.
+// figures out what the map profile should be. there are multiple ways of setting it.
+// In order of priority:
+//
+//   1. Use an explicit "named" profile (e.g., "global-geodetic")
+//   2. Use the profile of one of the TileSources
+//   3. Use an explicitly defined profile
+//   4. Scan the TileSources and use the first profile found
+//
+// Once we locate the profile to use, set the MAP profile accordingly. If the map profile
+// is not LOCAL/PROJECTED, it must be one of the NAMED profiles (global-geodetic/mercator).
+// This is done so that caches are stored consistently.
+//
 void
-TileBuilder::computeMapProfile()
+TileBuilder::initializeTileSources()
 {
-    for( TileSourceList::iterator i = image_sources.begin(); i != image_sources.end(); )
+    TileSource* ref_source = NULL;
+
+    // First check for an explicit profile declaration:
+    if ( _map->getProfileConfig() )
     {
-        Profile sourceProfile = (*i)->getProfile();
-
-        if ( !_mapProfile.isValid() )
+        // Check for a "well known named" profile:
+        std::string namedProfile = _map->getProfileConfig()->getNamedProfile();
+        if ( !namedProfile.empty() )
         {
-            _mapProfile = getSuitableMapProfileFor( sourceProfile );
+            _mapProfile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
+            if ( _mapProfile.valid() )
+            {
+                osg::notify(osg::INFO) << "[osgEarth] Set map profile to " << namedProfile << std::endl;
+            }
+            else
+            {
+                osg::notify(osg::WARN) << "[osgEarth] " << namedProfile << " is not a known profile name" << std::endl;
+                //TODO: continue on? or fail here?
+            }
         }
-        else if ( !_mapProfile.isCompatibleWith( sourceProfile ) )
+
+        // Check for a TileSource reference (i.e. get the map profile from a particular TileSource)
+        if ( !_mapProfile.valid() )
         {
-            osg::notify(osg::NOTICE) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
-            image_sources.erase(i);
+            std::string refLayer = _map->getProfileConfig()->getRefLayer();
+            if (!refLayer.empty())
+            {
+                ref_source = findTileSource( refLayer );
+                if ( ref_source )
+                {
+                    const Profile* ref_profile = ref_source->initProfile( NULL, _map->getFilename() );
+                    if ( ref_profile )
+                    {
+                        _mapProfile = getSuitableMapProfileFor( ref_profile );
+                        osg::notify(osg::INFO) << "[osgEarth] Setting profile from \"" << refLayer << "\"" << std::endl;
+                    }
+                }
+                else
+                {
+                    osg::notify(osg::WARN) << "[osgEarth] Source \"" << refLayer << "\" did not return a valid profile" << std::endl;
+                }
+            }
+            else
+            {
+                osg::notify(osg::WARN) << "[osgEarth] Cannot set map profile from unknown layer " << refLayer << std::endl;
+                //TODO: continue on, or fail?
+            }
+        }
+
+        // Try to create a profile from an explicit definition (the SRS and extents)
+        if ( !_mapProfile.valid() )
+        {
+            if ( _map->getProfileConfig()->areExtentsValid() )
+            {
+                double minx, miny, maxx, maxy;
+                _map->getProfileConfig()->getExtents( minx, miny, maxx, maxy );
+
+                // TODO: should we restrict this? This is fine for LOCAL/PROJECTED, but since we are not
+                // constraining non-local map profiles to the "well known" types, should we let the user
+                // override that? probably...
+                _mapProfile = Profile::create( _map->getProfileConfig()->getSRS(), minx, miny, maxx, maxy );
+
+                if ( _mapProfile.valid() )
+                {
+                    osg::notify( osg::INFO ) << "[osgEarth::TileBuilder] Set map profile from SRS: " 
+                        << _mapProfile->getSRS()->getName() << std::endl;
+                }
+            }
+        }
+    }
+
+    // At this point we MIGHT have a profile.
+
+    // Finally, try scanning the loaded sources and taking the first one we get. At the
+    // same time, remove any incompatible sources.
+
+    for( TileSourceList::iterator i = _image_sources.begin(); i != _image_sources.end(); )
+    {
+        // skip the reference source since we already initialized it
+        if ( i->get() == ref_source ) continue;
+
+        osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
+
+        if ( !_mapProfile.valid() && sourceProfile.valid() )
+        {
+            _mapProfile = getSuitableMapProfileFor( sourceProfile.get() );
+        }
+        else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
+        {
+            osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+            _image_sources.erase(i);
             continue;
         }
         i++;
     }
 
-    for (TileSourceList::iterator i = heightfield_sources.begin(); i != heightfield_sources.end(); )
+    for (TileSourceList::iterator i = _heightfield_sources.begin(); i != _heightfield_sources.end(); )
     {        
-        Profile sourceProfile = (*i)->getProfile();
+        if ( i->get() == ref_source ) continue;
 
-        if (!_mapProfile.isValid())
+        osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
+
+        if ( !_mapProfile.valid() && sourceProfile.valid() )
         {
             _mapProfile = getSuitableMapProfileFor( sourceProfile );
         }
-        else if ( !_mapProfile.isCompatibleWith( sourceProfile ) )
+        else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
         {
-            osg::notify(osg::NOTICE) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
-            heightfield_sources.erase(i);
+            osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+            _heightfield_sources.erase(i);
             continue;
         }
         i++;
     }
-
-    _profileComputed = true;
 }
 
 static TileSource*
@@ -266,11 +367,9 @@ loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::
         local_options->setPluginData( p->first, (void*)p->second.c_str() );
     }
 
-    //Give plugins access to the MapConfig object
-    local_options->setPluginData("map_config", (void*)mapConfig); 
-
     bool foundValidSource = false;
     osg::ref_ptr<TileSource> tile_source;
+
     //Only load the source if we are not running offline
     if (!mapConfig->getCacheOnly())
     {
@@ -286,7 +385,7 @@ loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::
     if (tile_source.valid())
     {           
         //Initialize the source and set its name
-        tile_source->init(local_options.get());
+        //tile_source->init(local_options.get());
         tile_source->setName( source->getName() );
         osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;
     }
@@ -297,13 +396,18 @@ loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::
     //If the cache config is valid, wrap the TileSource with a caching TileSource.
     if (cacheConfig.valid())
     {
-        osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(tile_source.get(), cacheConfig->getType(), cacheConfig->getProperties());
+        osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(
+            tile_source.get(),
+            cacheConfig->getType(),
+            cacheConfig->getProperties(),
+            local_options.get() );
+
         if (cache.valid())
         {
-            cache->init(local_options.get());
+            //cache->init(local_options.get());
             cache->setName(source->getName());
             cache->setMapConfigFilename( mapConfig->getFilename() );
-            cache->initTileMap();
+            //cache->initTileMap(); //gw: moved to the TileSource::createProfile() method...
             return cache.release();
         }
     }
@@ -324,114 +428,34 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
 
         osg::ref_ptr<TileSource> tileSource = loadSource(mapConfig, source, global_options);
 
-        if (tileSource.valid() && tileSource->getProfile().isValid()) //.getProfileType() != Profile::TYPE_UNKNOWN)
-        {
+        if ( tileSource.valid() )
             to.push_back( tileSource.get() );
-        }
-        else
-        {
-            osg::notify(osg::NOTICE) << "Skipping TileSource with unknown profile " << source->getName() << std::endl;
-        }
+        
+        //&& tileSource->getProfile())
+        //{
+        //    to.push_back( tileSource.get() );
+        //}
+        //else
+        //{
+        //    osg::notify(osg::NOTICE) << "Skipping TileSource with unknown profile " << source->getName() << std::endl;
+        //}
     }
 }
 
-TileBuilder::TileBuilder(MapConfig* _map, 
+TileBuilder::TileBuilder(MapConfig* map, 
                          const osgDB::ReaderWriter::Options* options ) :
-map( _map ),
-_profileComputed(false),
-_mapProfile(Profile::INVALID)
+_map( map )
 {
-    //Initialize the map profile if one was configured
-    if (map->getProfileConfig())
-    {
-        //See if the config is set to a well known type
-        std::string namedProfile = map->getProfileConfig()->getNamedProfile();
-        if (!namedProfile.empty())
-        {
-            if (namedProfile == STR_GLOBAL_MERCATOR)
-            {
-                osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_MERCATOR due to profile in MapConfig" << std::endl;
-                _mapProfile = Profile(Profile::GLOBAL_MERCATOR);
-            }
-            else if (namedProfile == STR_GLOBAL_GEODETIC)
-            {
-                osg::notify(osg::NOTICE) << "Overriding profile to GLOBAL_GEODETIC due to profile in MapConfig" << std::endl;
-                _mapProfile = Profile(Profile::GLOBAL_GEODETIC);
-            }
-            else
-            {
-                osg::notify(osg::NOTICE) << namedProfile << " is not a known profile name" << std::endl;
-            }
-        }
+    if ( !map )
+        return;
 
-        //See if the config specifies a specific layer to use
-        if (!_mapProfile.isValid())
-        {
-            std::string refLayer = map->getProfileConfig()->getRefLayer();
-            if (!refLayer.empty())
-            {
-                //Find the source with the given name
-                osg::ref_ptr<SourceConfig> sourceConfig;
+    addSources( _map.get(), _map->getImageSources(), _image_sources, options );
+    addSources( _map.get(), _map->getHeightFieldSources(), _heightfield_sources, options );
 
-                for (SourceConfigList::const_iterator i = map->getImageSources().begin(); i != map->getImageSources().end(); ++i)
-                {
-                    if (i->get()->getName() == refLayer)
-                    {
-                        sourceConfig = i->get();
-                    }
-                }
-
-                for (SourceConfigList::const_iterator i = map->getHeightFieldSources().begin(); i != map->getHeightFieldSources().end(); ++i)
-                {
-                    if (i->get()->getName() == refLayer)
-                    {
-                        sourceConfig = i->get();
-                    }
-                }
-
-                if (sourceConfig.valid())
-                {
-                    osg::ref_ptr<TileSource> refSource = loadSource(map.get(), sourceConfig.get(), options);
-                    if (refSource.valid())
-                    {
-                      osg::notify(osg::NOTICE) << "Overriding profile to match layer " << refLayer << std::endl;
-                      _mapProfile = refSource->getProfile();
-                    }
-                }
-                else
-                {
-                    osg::notify(osg::NOTICE) << "Could not find reference layer " << refLayer << std::endl;
-                }
-            }
-        }
-
-        //Try to create a profile from the SRS and extents
-        if (!_mapProfile.isValid() )
-        {
-            if (map->getProfileConfig()->areExtentsValid())
-            {
-                double minx, miny, maxx, maxy;
-                map->getProfileConfig()->getExtents( minx, miny, maxx, maxy);
-
-                Profile::ProfileType profileType = Profile::getProfileTypeFromSRS( map->getProfileConfig()->getSRS() );
-
-                _mapProfile = Profile::create(profileType, minx, miny, maxx, maxy, map->getProfileConfig()->getSRS());
-                if (_mapProfile.isValid())
-                {
-                    osg::notify(osg::NOTICE) << "Overrding profile to match definition " << std::endl;
-                }
-            }
-        }
-    }
+    initializeTileSources();
 
     //Set the MapConfig's Profile to the computed profile so that the TileSource's can query it when they are loaded
-    map->setProfile( _mapProfile );
-
-    if ( map.valid() )
-    {
-        addSources( map.get(), map->getImageSources(), image_sources, options );
-        addSources( map.get(), map->getHeightFieldSources(), heightfield_sources, options );
-    }
+    _map->setProfile( _mapProfile.get() );
 }
 
 std::string
@@ -445,7 +469,7 @@ TileBuilder::createURI( const TileKey* key )
 MapConfig*
 TileBuilder::getMapConfig() const
 {
-    return map.get();
+    return _map.get();
 }
 
 
@@ -466,25 +490,25 @@ TileBuilder::getTransformFromExtents(double minX, double minY, double maxX, doub
 
 
 bool
-TileBuilder::isValid() const
+TileBuilder::isOK() const
 {
+    if ( !_mapProfile.valid() )
+    {
+        osg::notify(osg::NOTICE) << "Error: Unable to determine a map profile." << std::endl;
+        return false;
+    }
+
     if (getImageSources().size() == 0 && getHeightFieldSources().size() == 0)
     {
-        osg::notify(osg::NOTICE) << "Error:  TileBuilder does not contain any image or heightfield sources." << std::endl;
+        osg::notify(osg::NOTICE) << "Error: TileBuilder does not contain any image or heightfield sources." << std::endl;
         return false;
     }
 
     //Check to see if we are trying to do a Geocentric database with a Projected profile.
-    if (getMapProfile().getProfileType() == Profile::TYPE_LOCAL && 
-        map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
+    if ( _mapProfile->getProfileType() == Profile::TYPE_LOCAL && 
+         _map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
-        osg::notify(osg::NOTICE) << "Error:  Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
-        return false;
-    }
-
-    if (!getMapProfile().isValid()) //.getProfileType() == Profile::UNKNOWN)
-    {
-        osg::notify(osg::NOTICE) << "Error:  Unknown profile" << std::endl;
+        osg::notify(osg::NOTICE) << "Error: Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
         return false;
     }
 
@@ -495,82 +519,83 @@ TileBuilder::isValid() const
 osg::Node*
 TileBuilder::createRootNode()
 {
-  // Note: CSN must always be at the top
-  osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
+    // Note: CSN must always be at the top
+    osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
 
-  //If there is more than one image source, use TexEnvCombine to blend them together
-  if ( map->getImageSources().size() > 1 )
-  {
+    //If there is more than one image source, use TexEnvCombine to blend them together
+    if ( _map->getImageSources().size() > 1 )
+    {
 #if 1
-    osg::StateSet* stateset = csn->getOrCreateStateSet();
-    for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
-    {    
-      //Blend the textures together from the bottom up
-      stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
+        osg::StateSet* stateset = csn->getOrCreateStateSet();
+        for (unsigned int i = 0; i < _map->getImageSources().size(); ++i)
+        {    
+            //Blend the textures together from the bottom up
+            stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
 
-      //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
-      osg::TexEnvCombine * tec = new osg::TexEnvCombine;
-      tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+            //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
+            osg::TexEnvCombine * tec = new osg::TexEnvCombine;
+            tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
 
-      tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
-      tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+            tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
+            tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
 
-      tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
-      tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+            tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+            tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
 
-      tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
-      tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+            tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
+            tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
 
-      stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
-    }
+            stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
+        }
 
-    //Modulate the result with the primary color to get proper lighting
-    osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-    texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
-    texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
-    texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-    texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
-    texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-    stateset->setTextureAttribute(map->getImageSources().size(), texenv, osg::StateAttribute::ON);
-    stateset->setTextureMode(map->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
+        //Modulate the result with the primary color to get proper lighting
+        osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+        texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+        texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+        texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+        texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+        texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+        stateset->setTextureAttribute(_map->getImageSources().size(), texenv, osg::StateAttribute::ON);
+        stateset->setTextureMode(_map->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
 #else
-    //Decorate the scene with a multi-texture control to control blending between textures
-    osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
-    parent->addChild( mt );
+        //Decorate the scene with a multi-texture control to control blending between textures
+        osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
+        parent->addChild( mt );
 
-    float r = 1.0f/ map->getImageSources().size();
-    for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
-    {
-      mt->setTextureWeight(i, r);
-    }
-    parent = mt;
+        float r = 1.0f/ map->getImageSources().size();
+        for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
+        {
+            mt->setTextureWeight(i, r);
+        }
+        parent = mt;
 #endif
-  }
-
-  terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
-  terrain->setVerticalScale( map->getVerticalScale() );
-  terrain->setSampleRatio( map->getSampleRatio() );
-  csn->addChild( terrain.get() );
-  
-
-  std::vector< osg::ref_ptr<TileKey> > keys;
-  getMapProfile().getRootKeys(keys);
-  int numAdded = 0;
-  for (unsigned int i = 0; i < keys.size(); ++i)
-  {
-    osg::Node* node = createNode( keys[i].get() );
-    if (node)
-    {
-      terrain->addChild(node);
-      numAdded++;
     }
-    else
-    {
-      osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
-    }
-  }
 
-  return (numAdded == keys.size()) ? csn.release() : NULL;
+    _terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
+    _terrain->setVerticalScale( _map->getVerticalScale() );
+    _terrain->setSampleRatio( _map->getSampleRatio() );
+    csn->addChild( _terrain.get() );
+
+
+    std::vector< osg::ref_ptr<TileKey> > keys;
+    getMapProfile()->getRootKeys(keys);
+
+    int numAdded = 0;
+    for (unsigned int i = 0; i < keys.size(); ++i)
+    {
+        osg::Node* node = createNode( keys[i].get() );
+        if (node)
+        {
+            _terrain->addChild(node);
+            numAdded++;
+        }
+        else
+        {
+            osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
+        }
+    }
+
+    return (numAdded == keys.size()) ? csn.release() : NULL;
 }
 
 
@@ -659,25 +684,25 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource,
 TileSourceList&
 TileBuilder::getImageSources()
 {
-    return image_sources;
+    return _image_sources;
 }
 
 const TileSourceList&
 TileBuilder::getImageSources() const
 {
-    return image_sources;
+    return _image_sources;
 }
 
 TileSourceList&
 TileBuilder::getHeightFieldSources()
 {
-    return heightfield_sources;
+    return _heightfield_sources;
 }
 
 const TileSourceList&
 TileBuilder::getHeightFieldSources() const
 {
-    return heightfield_sources;
+    return _heightfield_sources;
 }
 
 bool
@@ -744,7 +769,7 @@ TileBuilder::createImage(const TileKey* key, TileSource* source)
     osg::ref_ptr<osg::Image> image;
 
     //If the key profile and the source profile exactly match, simply request the image from the source
-    if (key->getProfile() == source->getProfile())
+    if (key->getProfile()->isEquivalentTo( source->getProfile() ) )
     {
         image = source->createImage(key);
     }
@@ -763,7 +788,7 @@ TileBuilder::createHeightField(const TileKey* key, TileSource* source)
     osg::ref_ptr<osg::HeightField> hf;
 
     //If the key profile and the source profile exactly match, simply request the heightfield from the source
-    if (key->getProfile() == source->getProfile())
+    if ( key->getProfile()->isEquivalentTo( source->getProfile() ) )
     {
         hf = source->createHeightField(key);
     }

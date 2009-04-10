@@ -27,7 +27,7 @@
 using namespace osgEarth;
 
 
-GeoImage::GeoImage(osg::Image * image, const TileKey *key)
+TileImage::TileImage(osg::Image* image, const TileKey *key)
 {
     _image = image;
     key->getGeoExtents(_minX, _minY, _maxX, _maxY);
@@ -52,7 +52,7 @@ void MultiImage::getExtents(double &minX, double &minY, double &maxX, double &ma
     minY = DBL_MAX;
     maxY = -DBL_MAX;
 
-    for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+    for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
         minX = osg::minimum(i->_minX, minX);
         minY = osg::minimum(i->_minY, minY);
@@ -81,7 +81,7 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
     unsigned int maxTileY = _images[0]._tileY;
 
     //Compute the tile size.
-    for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+    for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
     {
         if (i->_tileX < minTileX) minTileX = i->_tileX;
         if (i->_tileY < minTileY) minTileY = i->_tileY;
@@ -104,7 +104,7 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
     {
       //osg::Timer_t start = osg::Timer::instance()->tick();
       //Composite the incoming images into the master image
-      for (GeoImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+      for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
       {
         //Determine the indices in the master image for this image
         int dstX = (i->_tileX - minTileX) * tileWidth;
@@ -160,7 +160,7 @@ Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
     
     //Determine the intersecting keys and create and extract an appropriate image from the tiles
     std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
-    source->getProfile().getIntersectingTiles(key, intersectingTiles);
+    source->getProfile()->getIntersectingTiles(key, intersectingTiles);
     if (intersectingTiles.size() > 0)
     {
         double dst_minx, dst_miny, dst_maxx, dst_maxy;
@@ -177,7 +177,7 @@ Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
             osg::ref_ptr<osg::Image> img = source->createImage(intersectingTiles[j].get());
             if (img.valid())
             {
-                mi->getImages().push_back(GeoImage(img.get(), intersectingTiles[j].get()));
+                mi->getImages().push_back(TileImage(img.get(), intersectingTiles[j].get()));
             }
             else
             {
@@ -201,7 +201,7 @@ Compositor::compositeHeightFields( const TileKey* key, TileSource* source ) cons
     //Determine the intersecting keys and create and extract an appropriate image from the tiles
 
     std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
-    source->getProfile().getIntersectingTiles(key, intersectingTiles);
+    source->getProfile()->getIntersectingTiles(key, intersectingTiles);
     if (intersectingTiles.size() > 0)
     {
         double dst_minx, dst_miny, dst_maxx, dst_maxy;

@@ -22,8 +22,7 @@
 
 using namespace osgEarth;
 
-TileKey::TileKey() :
-_profile( Profile::INVALID ) // invalid profile
+TileKey::TileKey()
 {
     //NOP
 }
@@ -45,10 +44,10 @@ TileKey::str() const
     return ss.str();
 }
 
-const Profile&
+const Profile*
 TileKey::getProfile() const
 {
-    return _profile;
+    return _profile.get();
 }
 
 int
@@ -130,7 +129,7 @@ TileKey::getSubkey( unsigned int quadrant ) const
             x+=1;
             y+=1;
         }
-        const_cast<TileKey*>(this)->_subkeys[quadrant] = new TileKey(x, y, lod, _profile);
+        const_cast<TileKey*>(this)->_subkeys[quadrant] = new TileKey(x, y, lod, _profile.get());
     }
     return _subkeys[quadrant].get();
 }
@@ -144,7 +143,7 @@ TileKey::createParentKey() const
     unsigned int lod = _lod - 1;
     unsigned int x = _x / 2;
     unsigned int y = _y / 2;
-    return new TileKey(x, y, lod, _profile);
+    return new TileKey(x, y, lod, _profile.get());
 }
 
 
@@ -156,17 +155,17 @@ TileKey::getGeoExtents(
             double& ymax) const
 {
     double width, height;
-    _profile.getTileDimensions(_lod, width, height);
+    _profile->getTileDimensions(_lod, width, height);
 
-    xmin = _profile.xMin() + (width * (double)_x);
-    ymax = _profile.yMax() - (height * (double)_y);
+    xmin = _profile->xMin() + (width * (double)_x);
+    ymax = _profile->yMax() - (height * (double)_y);
     xmax = xmin + width;
     ymin = ymax - height;
     return true;
 }
 
 
-TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile& profile)
+TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile* profile)
 {
     _x = tile_x;
     _y = tile_y;
@@ -176,15 +175,15 @@ TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, co
 
 bool TileKey::isGeodetic() const
 {
-    return _profile.getProfileType() == Profile::TYPE_GEODETIC; //GLOBAL_GEODETIC;
+    return _profile->getProfileType() == Profile::TYPE_GEODETIC; //GLOBAL_GEODETIC;
 }
 
 bool TileKey::isMercator() const
 {
-    return _profile.getProfileType() == Profile::TYPE_MERCATOR; //GLOBAL_MERCATOR;
+    return _profile->getProfileType() == Profile::TYPE_MERCATOR; //GLOBAL_MERCATOR;
 }
 
 bool TileKey::isProjected() const
 {
-    return _profile.getProfileType() == Profile::TYPE_LOCAL; //PROJECTED;
+    return _profile->getProfileType() == Profile::TYPE_LOCAL; //PROJECTED;
 }

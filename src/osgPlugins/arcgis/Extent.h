@@ -26,20 +26,20 @@ public:
     Extent() :
       is_valid(false) { }
 
-    Extent( double _xmin, double _ymin, double _xmax, double _ymax, const std::string& _srs ) :
+      Extent( double _xmin, double _ymin, double _xmax, double _ymax, const std::string& _srs ) :
       xmin(_xmin), ymin(_ymin), xmax(_xmax), ymax(_ymax), srs_str(_srs), is_valid(true) { }
 
-    Extent( const Extent& rhs ) :
+      Extent( const Extent& rhs ) :
       xmin(rhs.xmin), ymin(rhs.ymin), xmax(rhs.xmax), ymax(rhs.ymax), srs_str(rhs.srs_str), is_valid(rhs.is_valid) { }
 
-    double xMin() const { return xmin; }
-    double yMin() const { return ymin; }
-    double xMax() const { return xmax; }
-    double yMax() const { return ymax; }
+      double xMin() const { return xmin; }
+      double yMin() const { return ymin; }
+      double xMax() const { return xmax; }
+      double yMax() const { return ymax; }
 
-    const std::string& srs() { return srs_str; }
+      const std::string& srs() { return srs_str; }
 
-    bool isValid() const { return is_valid; }
+      bool isValid() const { return is_valid; }
 
 private:
     double xmin, ymin, xmax, ymax;

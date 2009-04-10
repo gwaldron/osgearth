@@ -48,7 +48,7 @@ namespace osgEarth
          *@param profile
          *       The profile for the tile
          */
-        TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile& profile );
+        TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile* profile );
 
         /**
          * Gets the string representation of the key.
@@ -63,7 +63,7 @@ namespace osgEarth
         /**
          * Gets the profile within which this key is interpreted.
          */
-        const osgEarth::Profile& getProfile() const;
+        const osgEarth::Profile* getProfile() const;
 
         /**
          * Gets the size of the entire map, in pixels, at the level of
@@ -154,7 +154,7 @@ namespace osgEarth
         unsigned int _lod;
         unsigned int _x;
         unsigned int _y;
-        Profile _profile;
+        osg::ref_ptr<const Profile> _profile;
 
         osg::ref_ptr<TileKey> _subkeys[4];
     };

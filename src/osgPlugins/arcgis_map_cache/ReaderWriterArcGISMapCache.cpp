@@ -20,6 +20,7 @@
 #include <osgEarth/MapConfig>
 #include <osgEarth/TileSource>
 #include <osgEarth/Mercator>
+#include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -36,53 +37,51 @@ using namespace osgEarth;
 #define PROPERTY_MAP        "map"
 #define PROPERTY_LAYER      "layer"
 #define PROPERTY_FORMAT     "format"
-#define PROPERTY_MAP_CONFIG "map_config"
 
 class AGSMapCacheSource : public TileSource
 {
 public:
-    AGSMapCacheSource( const osgDB::ReaderWriter::Options* _options ) :
-      options( _options ),
-      map_config(0)
+    AGSMapCacheSource( const osgDB::ReaderWriter::Options* options ) :
+      TileSource( options )
     {
-        //Set the profile to global geodetic.
-        //TODO: read the conf.xml file on the server and decide based on that.
-        profile = Profile(Profile::GLOBAL_GEODETIC);
-
-        if ( options.valid() )
+        if ( options )
         {
             // this is the AGS virtual directory pointing to the map cache
             if ( options->getPluginData( PROPERTY_URL ) )
-                url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+                _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
             // the name of the map service cache
             if ( options->getPluginData( PROPERTY_MAP ) )
-                map = std::string( (const char*)options->getPluginData( PROPERTY_MAP ) );
+                _map = std::string( (const char*)options->getPluginData( PROPERTY_MAP ) );
 
             // the layer, or null to use the fused "_alllayers" cache
             if ( options->getPluginData( PROPERTY_LAYER ) )
-                layer = std::string( (const char*)options->getPluginData( PROPERTY_LAYER ) );
+                _layer = std::string( (const char*)options->getPluginData( PROPERTY_LAYER ) );
 
             // the image format (defaults to "png")
             // TODO: read this from the XML tile schema file
             if ( options->getPluginData( PROPERTY_FORMAT ) )
-                format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+                _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
-
-            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-                map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
+            //if (options->getPluginData( PROPERTY_MAP_CONFIG ))
+            //    map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
         }
 
         // validate dataset
-        if ( layer.empty() ) layer = "_alllayers"; // default to the AGS "fused view"
-        if ( format.empty() ) format = "png";
+        if ( _layer.empty() )
+            _layer = "_alllayers"; // default to the AGS "fused view"
+
+        if ( _format.empty() )
+            _format = "png";
     }
 
-    const Profile& getProfile() const
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
     {
-        return profile;
+        //Set the profile to global geodetic.
+        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }
 
+    // override
     osg::Image* createImage( const TileKey* key )
     {
         //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
@@ -100,36 +99,34 @@ public:
         unsigned int tile_x, tile_y;
         key->getTileXY( tile_x, tile_y );
 
-        buf << url << "/" << map 
-            << "/Layers/" << layer
+        buf << _url << "/" << _map 
+            << "/Layers/" << _layer
             << "/L" << std::hex << std::setw(2) << std::setfill('0') << level
             << "/R" << std::hex << std::setw(8) << std::setfill('0') << tile_y
-            << "/C" << std::hex << std::setw(8) << std::setfill('0') << tile_x << "." << format;
+            << "/C" << std::hex << std::setw(8) << std::setfill('0') << tile_x << "." << _format;
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
-        return osgDB::readImageFile( buf.str(), options.get() );
+        return osgDB::readImageFile( buf.str(), getOptions() );
     }
 
+    // override
     osg::HeightField* createHeightField( const TileKey* key )
     {
         //TODO
         return NULL;
     }
 
+    // override
     virtual std::string getExtension()  const 
     {
-        return format;
+        return _format;
     }
 
 private:
-    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    std::string url;
-    std::string map;
-    std::string layer;
-    std::string format;
-    Profile profile;
-
-    const MapConfig* map_config;
+    std::string _url;
+    std::string _map;
+    std::string _layer;
+    std::string _format;
 };
 
 

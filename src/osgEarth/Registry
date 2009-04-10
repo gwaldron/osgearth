@@ -39,6 +39,12 @@ namespace osgEarth
 
         inline OpenThreads::ReentrantMutex& getOGRMutex() { return ogrmutex; }
 
+        const Profile* getNamedProfile( const std::string& name ) const;
+
+        const Profile* getGlobalGeodeticProfile() const;
+
+        const Profile* getGlobalMercatorProfile() const;
+
     protected:
         virtual ~Registry();
         Registry();
@@ -47,6 +53,9 @@ namespace osgEarth
 
         osg::ref_ptr<CacheConfig> _cacheConfigOverride;
         OpenThreads::ReentrantMutex ogrmutex;
+
+        osg::ref_ptr<const Profile> _global_geodetic_profile;
+        osg::ref_ptr<const Profile> _global_mercator_profile;
 
     };
 }

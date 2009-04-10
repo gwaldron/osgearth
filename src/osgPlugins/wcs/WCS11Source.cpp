@@ -20,6 +20,7 @@
 #include "WCS11Source.h"
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/Registry>
 #include <iostream>
@@ -27,7 +28,6 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_MAP_CONFIG     "map_config"
 #define PROPERTY_URL            "url"
 #define PROPERTY_IDENTIFIER     "identifier"
 #define PROPERTY_FORMAT         "format"
@@ -36,30 +36,26 @@ using namespace osgEarth;
 #define PROPERTY_SRS            "srs"
 
 WCS11Source::WCS11Source( const osgDB::ReaderWriter::Options* options ) :
-tile_size(16),
-map_config(0),
-profile( Profile::GLOBAL_GEODETIC )
+TileSource( options ),
+_tile_size(16)
 {
-    if ( options->getPluginData( PROPERTY_MAP_CONFIG ))
-         map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
-
     if ( options->getPluginData( PROPERTY_URL ) )
-        url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+        _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
     if ( options->getPluginData( PROPERTY_IDENTIFIER ) )
-        identifier = std::string( (const char*)options->getPluginData( PROPERTY_IDENTIFIER ) );
+        _identifier = std::string( (const char*)options->getPluginData( PROPERTY_IDENTIFIER ) );
 
     if ( options->getPluginData( PROPERTY_FORMAT ) )
-        cov_format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+        _cov_format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
     if ( options->getPluginData( PROPERTY_ELEVATION_UNIT ) )
-         elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
+        _elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
 
     if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
-        tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 32 );
+        _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 32 );
 
     if ( options->getPluginData( PROPERTY_SRS ) )
-        srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
+        _srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
 
     //TODO: Read GetCapabilities and determine everything from that..
 
@@ -77,28 +73,30 @@ profile( Profile::GLOBAL_GEODETIC )
     //cov_format = "GEOTIFFINT16";
     //osg_format = "tif";
 
-    if ( cov_format.empty() )
-        cov_format = "image/GeoTIFF";
+    if ( _cov_format.empty() )
+        _cov_format = "image/GeoTIFF";
 
-    osg_format = "tif";
+    _osg_format = "tif";
 }
 
 
-const Profile&
-WCS11Source::getProfile() const
+const Profile*
+WCS11Source::createProfile( const Profile* mapProfile, const std::string& configPath )
 {
-    return profile;
+    //TODO: once we read GetCapabilities.. this will change..
+    return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
 }
 
 
 std::string
-WCS11Source::getExtension() const {
+WCS11Source::getExtension() const
+{
     return "tif";
 }
 
 
 osg::Image*
-WCS11Source::createImage( const TileKey* key)
+WCS11Source::createImage( const TileKey* key )
 {
     osg::ref_ptr<HTTPRequest> request = createRequest( key );
 
@@ -128,7 +126,7 @@ WCS11Source::createImage( const TileKey* key)
         return NULL;
     }
 
-    osgDB::ReaderWriter::ReadResult result = reader->readImage( input_stream );
+    osgDB::ReaderWriter::ReadResult result = reader->readImage( input_stream, getOptions() );
     if ( !result.success() )
     {
         osg::notify(osg::NOTICE) << "[osgEarth::WCS1.1] WARNING: readImage() failed for Reader " << reader->getName() << std::endl;
@@ -182,18 +180,18 @@ WCS11Source::createRequest( const TileKey* key ) const
     double lon_min, lat_min, lon_max, lat_max;
     key->getGeoExtents( lon_min, lat_min, lon_max, lat_max );
 
-    int lon_samples = tile_size;
-    int lat_samples = tile_size;
+    int lon_samples = _tile_size;
+    int lat_samples = _tile_size;
     double lon_interval = (lon_max-lon_min)/(double)(lon_samples-1);
     double lat_interval = (lat_max-lat_min)/(double)(lat_samples-1);
 
-    HTTPRequest* req = new HTTPRequest( url );
+    HTTPRequest* req = new HTTPRequest( _url );
 
     req->addParameter( "SERVICE",    "WCS" );
     req->addParameter( "VERSION",    "1.1.0" );
     req->addParameter( "REQUEST",    "GetCoverage" );
-    req->addParameter( "IDENTIFIER", identifier );
-    req->addParameter( "FORMAT",     cov_format );
+    req->addParameter( "IDENTIFIER", _identifier );
+    req->addParameter( "FORMAT",     _cov_format );
 
     req->addParameter( "GridBaseCRS", "urn:ogc:def:crs:EPSG::4326" );
     req->addParameter( "GridCS",      "urn:ogc:def:crs:EPSG::4326" );
@@ -209,7 +207,7 @@ WCS11Source::createRequest( const TileKey* key ) const
     //   minx,miny,maxx,maxy no matter what ...
 
     // Hack to guess whether it's an ArcGIS Server:
-    bool use_legacy_geog_bbox_encoding = ::strstr( url.c_str(), "/MapServer/WCSServer" ) != NULL;
+    bool use_legacy_geog_bbox_encoding = _url.find( "/MapServer/WCSServer" ) != std::string::npos;
 
     buf.str("");
     if ( use_legacy_geog_bbox_encoding )

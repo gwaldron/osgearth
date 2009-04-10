@@ -108,9 +108,9 @@ MapService::isValid() const {
     return is_valid;
 }
 
-const Profile&
+const Profile*
 MapService::getProfile() const {
-    return profile;
+    return profile.get();
 }
 
 const TileInfo&
@@ -228,8 +228,8 @@ MapService::init( const std::string& _url )
     }
 
     profile = Profile::create(
-        Profile::getProfileTypeFromSRS(ss.str()),
-        xmin, ymin, xmax, ymax, ss.str(),
+        ss.str(),
+        xmin, ymin, xmax, ymax,
         num_tiles_wide,
         num_tiles_high);
 

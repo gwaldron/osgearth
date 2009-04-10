@@ -391,8 +391,8 @@ namespace osgEarth
         const ProfileConfig* getProfileConfig() const;
         void setProfileConfig(ProfileConfig* profileConfig);
 
-        const Profile& getProfile() const;
-        void setProfile(const Profile& profile);
+        const Profile* getProfile() const;
+        void setProfile(const Profile* profile);
 
     private:
         std::string filename;
@@ -410,7 +410,7 @@ namespace osgEarth
         osg::Vec4ub north_cap_color;
         osg::Vec4ub south_cap_color;
 
-        Profile profile;
+        osg::ref_ptr<const Profile> profile;
 
         bool cache_only;
         bool normalize_edges;

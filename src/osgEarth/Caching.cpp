@@ -35,21 +35,36 @@ using namespace osgEarth;
 
 
 
-CachedTileSource::CachedTileSource(TileSource* tileSource):
+CachedTileSource::CachedTileSource(TileSource* tileSource, const osgDB::ReaderWriter::Options* options) :
+TileSource(options),
 _tileSource(tileSource)
 {
-    //Initialize the profile if the TileSource is valid
-    if (_tileSource.valid())
-    {
-        _profile = _tileSource->getProfile();
-    }
+    //NOP
 }
 
-const osgEarth::Profile&
-CachedTileSource::getProfile() const
+
+const Profile* 
+CachedTileSource::createProfile( const Profile* mapProfile, const std::string& configPath )
 {
-    return _profile;
+    const Profile* ts_profile = _tileSource.valid()? _tileSource->initProfile( mapProfile, configPath ) : 0;
+    const Profile* loaded_profile = loadTileMap();
+
+    if ( ts_profile && loaded_profile && !ts_profile->isEquivalentTo( loaded_profile ) )
+    {
+        osg::notify(osg::WARN) 
+            << "[osgEarth::Cache] The cache does not match the datasource for \"" 
+            << this->getName() << "\"" << std::endl;
+        return NULL;
+    }
+
+    // if we are "live", store the profile to the tilemap file.
+    if ( ts_profile )
+        storeTileMap( ts_profile );
+
+    // return the profile from the cache if we have one.
+    return loaded_profile? loaded_profile : ts_profile;
 }
+
 
 osg::Image*
 CachedTileSource::createImage( const TileKey* key )
@@ -113,7 +128,13 @@ void CachedTileSource::writeCachedImage(const TileKey* key, const osg::Image* im
     //NOP
 }
 
-void CachedTileSource::initTileMap()
+const Profile*
+CachedTileSource::loadTileMap()
+{
+    return NULL;
+}
+
+void CachedTileSource::storeTileMap( const Profile* profile )
 {
     //NOP
 }
@@ -133,8 +154,11 @@ int CachedTileSource::getPixelsPerTile() const
 
 
 /************************************************************************/
-DiskCachedTileSource::DiskCachedTileSource( TileSource* tileSource, const std::string &path, const std::string format):
-CachedTileSource(tileSource)
+DiskCachedTileSource::DiskCachedTileSource(TileSource* tileSource,
+                                           const std::string &path,
+                                           const std::string format,
+                                           const osgDB::ReaderWriter::Options* options) :
+CachedTileSource(tileSource, options)
 {
     _path = path;
     _format = format;
@@ -233,7 +257,7 @@ std::string DiskCachedTileSource::getFileName(const TileKey* key )
     key->getTileXY( x, y );
 
     unsigned int numCols, numRows;
-    key->getProfile().getNumTiles(level, numCols, numRows);
+    key->getProfile()->getNumTiles(level, numCols, numRows);
 
     // need to invert the y-tile index
     y = numRows - y - 1;
@@ -259,11 +283,15 @@ std::string DiskCachedTileSource::getTMSPath()
     return getPath() + "/" + getName() + "/tms.xml";
 }
 
-void DiskCachedTileSource::initTileMap()
+
+const Profile*
+DiskCachedTileSource::loadTileMap()
 {
+    const Profile* existing_cache_profile = NULL;
+
     std::string tmsFile = getTMSPath();
 
-    osg::notify(osg::INFO) << "TileMap file is " << tmsFile << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::DiskCache] TileMap file is " << tmsFile << std::endl;
 
     if (osgDB::fileExists( tmsFile ) )
     {
@@ -273,32 +301,35 @@ void DiskCachedTileSource::initTileMap()
             _tileMap = TileMapReaderWriter::read(getTMSPath());
             if (_tileMap.valid())
             {
-                osg::notify(osg::INFO) << "Loaded TMS file from " << getTMSPath() << std::endl;
-                if (!_profile.isValid()) //getProfileType() == Profile::UNKNOWN)
-                {
-                    _profile = _tileMap->createProfile();
-                }
+                osg::notify(osg::INFO) << "[osgEarth::DiskCache] Loaded TMS file from " << getTMSPath() << std::endl;
+                existing_cache_profile = _tileMap->createProfile();
             }
         }
     }
+    return existing_cache_profile;
+}
 
+void
+DiskCachedTileSource::storeTileMap( const Profile* profile )
+{
     //Write the TMS file to disk if it doesn't exist
-    if (!osgDB::fileExists(tmsFile))
+    if ( !osgDB::fileExists( getTMSPath() ) && _tileSource.valid() )
     {
-        if (_tileSource.valid())
-        {
-            osg::notify(osg::INFO) << "Writing TMS file to  " << tmsFile << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::DiskCache] Writing TMS file to  " << getTMSPath() << std::endl;
             //_tileMap = TileMap::create(_tileSource.get());
-            _tileMap = TileMap::create( this );
-            TileMapReaderWriter::write(_tileMap.get(), tmsFile);
-        }
+        _tileMap = TileMap::create( this, profile );
+        TileMapReaderWriter::write(_tileMap.get(), getTMSPath() );
     }
 }
 
+
 /****************************************************************************/
 
-TMSCacheTileSource::TMSCacheTileSource(osgEarth::TileSource *tileSource, const std::string &path, const std::string format):
-DiskCachedTileSource(tileSource, path, format),
+TMSCacheTileSource::TMSCacheTileSource(osgEarth::TileSource *tileSource, 
+                                       const std::string &path, 
+                                       const std::string format,
+                                       const osgDB::ReaderWriter::Options* options) :
+DiskCachedTileSource(tileSource, path, format, options),
 _invertY(false)
 {
 }
@@ -311,7 +342,7 @@ std::string TMSCacheTileSource::getFileName(const osgEarth::TileKey *key)
     unsigned int lod = key->getLevelOfDetail();
     
     unsigned int numCols, numRows;
-    key->getProfile().getNumTiles(lod, numCols, numRows);
+    key->getProfile()->getNumTiles(lod, numCols, numRows);
     if (!_invertY)
     {
         y = numRows - y - 1;
@@ -338,7 +369,10 @@ static bool getProp(const std::map<std::string,std::string> &map, const std::str
     return false;
 }
 
-CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource, const std::string &type, std::map<std::string,std::string> properties)
+CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
+                                                  const std::string &type,
+                                                  std::map<std::string,std::string> properties,
+                                                  const osgDB::ReaderWriter::Options* options)
 {
     if (type == "tms" || type == "tilecache" || type.empty())
     {
@@ -356,7 +390,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource, const 
         
         if (type == "tms" || type.empty())
         {
-            TMSCacheTileSource *cache = new TMSCacheTileSource(tileSource, path, format);
+            TMSCacheTileSource *cache = new TMSCacheTileSource(tileSource, path, format, options);
             std::string tms_type; 
             getProp(properties, "tms_type", tms_type);
             if (tms_type == "google")
@@ -371,7 +405,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource, const 
         if (type == "tilecache")
         {
             osg::notify(osg::INFO) << "Returning disk cache " << std::endl;
-            return new DiskCachedTileSource(tileSource, path, format);
+            return new DiskCachedTileSource(tileSource, path, format, options);
         }
     }
     else if (type == "none")

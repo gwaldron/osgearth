@@ -23,8 +23,14 @@
 
 using namespace osgEarth;
 
+
+#define STR_GLOBAL_GEODETIC "global-geodetic"
+#define STR_GLOBAL_MERCATOR "global-mercator"
+#define STR_LOCAL           "local"
+
+
 Registry::Registry():
-Referenced(true)
+osg::Referenced(true)
 {
 }
 
@@ -57,4 +63,41 @@ Registry::getCacheConfigOverride() const {
 void
 Registry::setCacheConfigOverride(CacheConfig* cacheConfig) {
     _cacheConfigOverride = cacheConfig;
+}
+
+const Profile*
+Registry::getGlobalGeodeticProfile() const
+{
+    if ( !_global_geodetic_profile.valid() )
+    {
+        const_cast<Registry*>(this)->_global_geodetic_profile = Profile::create(
+            "epsg:4326",
+            -180.0, -90.0, 180.0, 90.0,
+            2, 1 );
+    }
+    return _global_geodetic_profile.get();
+}
+
+const Profile*
+Registry::getGlobalMercatorProfile() const
+{
+    if ( !_global_mercator_profile.valid() )
+    {
+        const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+            "epsg:900913",
+            -20037508.34, -20037508.34, 20037508.34, 20037508.34,
+            1, 1 );
+    }
+    return _global_mercator_profile.get();
+}
+
+const Profile*
+Registry::getNamedProfile( const std::string& name ) const
+{
+    if ( name == STR_GLOBAL_GEODETIC )
+        return getGlobalGeodeticProfile();
+    else if ( name == STR_GLOBAL_MERCATOR )
+        return getGlobalMercatorProfile();
+    else
+        return NULL;
 }

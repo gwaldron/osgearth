@@ -108,13 +108,13 @@ namespace osgEarth
         /**
          * Gets whether this tile builder is legally configured.
          */
-        bool isValid() const;
+        bool isOK() const;
 
         /**
          * Gets the "profile" of the map created by this tile builder. The profile defines
          * the geospatial projection, extents, and the tiling scheme.
          */
-        const Profile& getMapProfile() const;
+        const Profile* getMapProfile() const;
 
         osg::Image* createImage(const TileKey* key, TileSource* source);
         osg::HeightField* createHeightField(const TileKey* key, TileSource* source);
@@ -179,21 +179,24 @@ namespace osgEarth
         // checks whether more data exists below the specified key's level of detail
         bool hasMoreLevels( const TileKey* key ) const;
 
-        Profile _mapProfile;
-        bool _profileComputed;
+        //Profile _mapProfile;
+        //bool _profileComputed;
 
         unsigned int id;
 
-        osg::ref_ptr<MapConfig> map;
-        TileSourceList image_sources;
-        TileSourceList heightfield_sources;
+        osg::ref_ptr<MapConfig> _map;
+        TileSourceList _image_sources;
+        TileSourceList _heightfield_sources;
 
         //Use observer_ptr so the TileBuilder does not prevent the main scene graph from being deleted
-        osg::observer_ptr<osgEarth::EarthTerrain> terrain;
+        osg::observer_ptr<osgEarth::EarthTerrain> _terrain;
 
     private:
 
-        void computeMapProfile();
+        osg::ref_ptr<const Profile> _mapProfile;
+
+        void initializeTileSources();
+        TileSource* findTileSource( const std::string& name ) const;
 
     };
 };

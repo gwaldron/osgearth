@@ -36,25 +36,28 @@ using namespace osgEarth;
 #define PROPERTY_MIN_LEVEL "min_level"
 #define PROPERTY_MAX_LEVEL "max_level"
 
+#define DEFAULT_MIN_LEVEL 0
+#define DEFAULT_MAX_LEVEL 25
 
-TileSource::TileSource():
-_minLevel(0),
-_maxLevel(25)
+
+TileSource::TileSource(const osgDB::ReaderWriter::Options* options) :
+_options( options ),
+_minLevel( DEFAULT_MIN_LEVEL ),
+_maxLevel( DEFAULT_MAX_LEVEL )
 {
+    if ( options )
+    {
+        if ( options->getPluginData( PROPERTY_MIN_LEVEL ) )
+            _minLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MIN_LEVEL ), _minLevel );
+   
+        if ( options->getPluginData( PROPERTY_MAX_LEVEL ) )
+            _maxLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MAX_LEVEL ), _maxLevel );
+    }
 }
 
 TileSource::~TileSource()
 {
-}
-
-void
-TileSource::init(const osgDB::ReaderWriter::Options* options)
-{
-    if ( options->getPluginData( PROPERTY_MIN_LEVEL ) )
-        _minLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MIN_LEVEL ), 0 );
-
-    if ( options->getPluginData( PROPERTY_MAX_LEVEL ) )
-        _maxLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MAX_LEVEL ), INT_MAX );
+    //NOP
 }
 
 osg::HeightField*
@@ -77,4 +80,23 @@ TileSource::isKeyValid(const osgEarth::TileKey *key)
 
   //Check to see that the given tile is within the LOD range for this TileSource
   return ((key->getLevelOfDetail() >= _minLevel) && (key->getLevelOfDetail() <= _maxLevel));
+}
+
+const Profile*
+TileSource::initProfile( const Profile* mapProfile, const std::string& configPath )
+{
+    _profile = createProfile( mapProfile, configPath );
+    return _profile.get();
+}
+
+const Profile*
+TileSource::getProfile() const
+{
+    return _profile.get();
+}
+
+const osgDB::ReaderWriter::Options*
+TileSource::getOptions() const
+{
+    return _options.get();
 }

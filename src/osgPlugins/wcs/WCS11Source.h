@@ -44,18 +44,17 @@ public:
 
 public: // TileSource interface
 
-    const osgEarth::Profile& getProfile() const;
+    // override
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
 
 private:
-    std::string url;
-    std::string identifier;
-    std::string cov_format;
-    std::string osg_format;
-    std::string srs;
-    std::string elevation_unit;
-    int         tile_size;
-    osg::ref_ptr<const MapConfig> map_config;
-    Profile profile;
+    std::string _url;
+    std::string _identifier;
+    std::string _cov_format;
+    std::string _osg_format;
+    std::string _srs;
+    std::string _elevation_unit;
+    int         _tile_size;
 
     HTTPRequest* createRequest( const TileKey* key ) const;
 };

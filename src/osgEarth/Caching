@@ -47,7 +47,9 @@ namespace osgEarth
         /**
         *Creates a new CachedTileSource
         */
-        CachedTileSource(TileSource* tileSource);
+        CachedTileSource(
+            TileSource* tileSource,
+            const osgDB::ReaderWriter::Options* options =NULL);
 
         /**
         *Creates an image for the given TileKey
@@ -74,18 +76,22 @@ namespace osgEarth
         */
         virtual void setMapConfigFilename( const std::string &mapConfigFilename ) { _mapConfigFilename = mapConfigFilename;}
 
-        /**
-        * Initializes this CachedTileSource's TileMap.  This should be called after all other setup has been
-        * performed and the name of the CachedTileSource is set.
-        */
-        virtual void initTileMap();
-
     public: // TileSource interface
 
-        virtual const osgEarth::Profile& getProfile() const;
+        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
         
 
     protected:
+        /**
+         * Initializes this CachedTileSource's TileMap.  This should be called after all other setup has been
+         * performed and the name of the CachedTileSource is set.
+         * (now called by createProfile -GW)
+         */
+        //virtual void initTileMap();
+
+        virtual const Profile* loadTileMap();
+        virtual void storeTileMap( const Profile* );
+
         /**
         * Gets an image from the cache for the given key.  Should be implemented by subclasses
         */
@@ -99,7 +105,7 @@ namespace osgEarth
         osg::ref_ptr<TileMap> _tileMap;
         osg::ref_ptr<TileSource> _tileSource;
         std::string _mapConfigFilename;
-        Profile _profile;
+        //osg::ref_ptr<const Profile> _profile;
     };
 
 
@@ -120,10 +126,14 @@ namespace osgEarth
         *@param format
         *       The format to cache tiles to (png, jpg, dds, etc).
         */
-        DiskCachedTileSource( TileSource* tileSource, const std::string &path, const std::string format);
+        DiskCachedTileSource(
+            TileSource* tileSource, 
+            const std::string &path,
+            const std::string format,
+            const osgDB::ReaderWriter::Options* options =NULL);
 
         /** Initialize the TileMap */
-        virtual void initTileMap();
+        //virtual void initTileMap();
 
     protected:
         virtual osg::Image* getCachedImage( const TileKey* key);
@@ -137,6 +147,10 @@ namespace osgEarth
         virtual std::string getExtension() const;
 
         virtual std::string getPath();
+
+        
+        virtual const Profile* loadTileMap();
+        virtual void storeTileMap( const Profile* );
 
     protected:
         std::string getTMSPath();
@@ -160,7 +174,11 @@ namespace osgEarth
         *@param format
         *       The format to cache tiles to (png, jpg, dds, etc).
         */
-        TMSCacheTileSource( TileSource* tileSource, const std::string &path, const std::string format);
+        TMSCacheTileSource( 
+            TileSource* tileSource, 
+            const std::string &path, 
+            const std::string format,
+            const osgDB::ReaderWriter::Options* options =NULL);
 
         /**
         * Gets whether or not to invert the y tile index
@@ -192,7 +210,11 @@ namespace osgEarth
         *@param properties
         *       The configuration properties for the cache.
         */
-        static CachedTileSource* create(TileSource* tileSource, const std::string &type, std::map<std::string,std::string> properties); 
+        static CachedTileSource* create(
+            TileSource* tileSource,
+            const std::string &type,
+            std::map<std::string,std::string> properties,
+            const osgDB::ReaderWriter::Options* options =NULL);
     };
 }
 

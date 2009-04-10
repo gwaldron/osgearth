@@ -43,7 +43,6 @@ MapConfig::MapConfig()
     cache_only = false;
     normalize_edges = true;
     filename = "";
-    profile = Profile::INVALID;
     reproject_mercator_to_geodetic = false;
 }
 
@@ -242,13 +241,14 @@ MapConfig::setProfileConfig(ProfileConfig* profileConfig)
     profile_config = profileConfig;
 }
 
-const Profile& MapConfig::getProfile() const
+const Profile*
+MapConfig::getProfile() const
 {
-    return profile;
+    return profile.get();
 }
 
 void
-MapConfig::setProfile(const Profile& profile)
+MapConfig::setProfile(const Profile* profile)
 {
     this->profile = profile;
 }

@@ -44,149 +44,135 @@ using namespace osgEarth;
 #define PROPERTY_TILE_SIZE        "tile_size"
 #define PROPERTY_ELEVATION_UNIT   "elevation_unit"
 #define PROPERTY_SRS              "srs"
-#define PROPERTY_MAP_CONFIG       "map_config"
 
 class WMSSource : public TileSource
 {
 public:
 	WMSSource( const osgDB::ReaderWriter::Options* options ):
-	  tile_size(256),
-      map_config(0)
+    TileSource( options ),
+    _tile_size(256)
     {
         if ( options->getPluginData( PROPERTY_URL ) )
-            prefix = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+            _prefix = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
         if ( options->getPluginData( PROPERTY_LAYERS ) )
-            layers = std::string( (const char*)options->getPluginData( PROPERTY_LAYERS ) );
+            _layers = std::string( (const char*)options->getPluginData( PROPERTY_LAYERS ) );
 
         if ( options->getPluginData( PROPERTY_STYLE ) )
-            style = std::string( (const char*)options->getPluginData( PROPERTY_STYLE ) );
+            _style = std::string( (const char*)options->getPluginData( PROPERTY_STYLE ) );
 
         if ( options->getPluginData( PROPERTY_FORMAT ) )
-            format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+            _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
         if ( options->getPluginData( PROPERTY_CAPABILITIES_URL ) )
-             capabilitiesURL = std::string( (const char*)options->getPluginData( PROPERTY_CAPABILITIES_URL ) );
+            _capabilitiesURL = std::string( (const char*)options->getPluginData( PROPERTY_CAPABILITIES_URL ) );
 
-         if ( options->getPluginData( PROPERTY_TILESERVICE_URL ) )
-             tileServiceURL = std::string( (const char*)options->getPluginData( PROPERTY_TILESERVICE_URL ) );
-
-        if ( options->getPluginData( PROPERTY_MAP_CONFIG))
-             map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
+        if ( options->getPluginData( PROPERTY_TILESERVICE_URL ) )
+            _tileServiceURL = std::string( (const char*)options->getPluginData( PROPERTY_TILESERVICE_URL ) );
 
         if ( options->getPluginData( PROPERTY_ELEVATION_UNIT))
-             elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
+            _elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
 
 		if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
-            tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
+            _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
 
         if ( options->getPluginData( PROPERTY_SRS ) )
-            srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
+            _srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
 
-        if ( elevation_unit.empty())
-        {
-            elevation_unit = "m";
-        }
+        if ( _elevation_unit.empty())
+            _elevation_unit = "m";
+    }
 
+    /** override */
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    {
+        osg::ref_ptr<const Profile> result;
 
-        char sep = prefix.find_first_of('?') == std::string::npos? '?' : '&';
+        char sep = _prefix.find_first_of('?') == std::string::npos? '?' : '&';
 
-        if (capabilitiesURL.empty()) capabilitiesURL = prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
+        if ( _capabilitiesURL.empty() )
+            _capabilitiesURL = _prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
 
         //Try to read the WMS capabilities
-        capabilities = CapabilitiesReader::read(capabilitiesURL);
-
-
-        if (capabilities.valid())
+        osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read(_capabilitiesURL);
+        if ( !capabilities.valid() )
         {
-            osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << capabilitiesURL << std::endl;
-            if (format.empty())
-            {
-                format = capabilities->suggestExtension();
-                osg::notify(osg::NOTICE) << "[osgEarth::WMS] No format specified, capabilities suggested extension " << format << std::endl;
-            }
-        }
-        else
-        {
-            osg::notify(osg::NOTICE) << "[osgEarth::WMS] Could not read capabilities from WMS service using request " << capabilitiesURL << std::endl;
+            osg::notify(osg::WARN) << "[osgEarth::WMS] Unable to read WMS GetCapabilities; failing." << std::endl;
+            return NULL;
         }
 
-        if ( format.empty() )
-            format = "png";
+        osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << _capabilitiesURL << std::endl;
+        if (_format.empty())
+        {
+            _format = capabilities->suggestExtension();
+            osg::notify(osg::NOTICE) << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _format << std::endl;
+        }
 
+        if ( _format.empty() )
+            _format = "png";
        
-        if ( srs.empty() )
-        {
-            srs = "EPSG:4326";
-        }
+        if ( _srs.empty() )
+            _srs = "epsg:4326";
 
         //Initialize the WMS request prototype
         std::stringstream buf;
         buf
-            << std::fixed << prefix << sep
+            << std::fixed << _prefix << sep
             << "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
-            << "&LAYERS=" << layers
-            << "&FORMAT=image/" << format
-            << "&STYLES=" << style
-            << "&SRS=" << srs
-            << "&WIDTH="<< tile_size
-            << "&HEIGHT="<< tile_size
+            << "&LAYERS=" << _layers
+            << "&FORMAT=image/" << _format
+            << "&STYLES=" << _style
+            << "&SRS=" << _srs
+            << "&WIDTH="<< _tile_size
+            << "&HEIGHT="<< _tile_size
             << "&BBOX=%lf,%lf,%lf,%lf";
-        prototype = buf.str();
+        _prototype = buf.str();
 
-        Profile::ProfileType profileType = Profile::getProfileTypeFromSRS(srs);
-
-        //If the map profile already defined and the profile types are the same,
-        //assume we will be compatible with the map profile.
-        if (map_config->getProfile().getProfileType() == profileType)
+        osg::ref_ptr<const Profile> candidate = Profile::create( _srs );
+        if ( mapProfile && mapProfile->isCompatibleWith( candidate.get() ) )
         {
-            profile = map_config->getProfile();
+            result = mapProfile;
+        }
+
+        // Next, try to glean the extents from the layer list
+        if ( !result.valid() )
+        {
+            //TODO: "layers" mights be a comma-separated list. need to loop through and
+            //combine the extents?? yes
+            Layer* layer = capabilities->getLayerByName( _layers );
+            if ( layer )
+            {
+                double minx, miny, maxx, maxy;
+                layer->getExtents(minx, miny, maxx, maxy);
+                result = Profile::create( _srs, minx, miny, maxx, maxy );
+            }
         }
 
 
-        if (!profile.isValid()) //.getProfileType() == Profile::UNKNOWN)
+        // Last resort: create a global extent profile (only valid for global maps)
+        if ( !result.valid() )
         {
-            if (profileType == Profile::TYPE_LOCAL)
-            {
-                if (capabilities.valid())
-                {
-                    Layer* layer = capabilities->getLayerByName(layers);
-                    if (layer)
-                    {
-                        double minx, miny, maxx, maxy;
-                        layer->getExtents(minx, miny, maxx, maxy);
-                        profile = Profile::createLocal(minx, miny, maxx, maxy, srs);
-                    }
-                }
-                else
-                {
-                    osg::notify(osg::NOTICE) << "Could not read WMS capabilities, no way of determining valid extents " << std::endl;
-                }
-            }
-            else
-            {
-                //If the profile type is not projected, osgEarth will provide the global extents
-                profile = Profile::createGlobal( profileType );
-            }
+            result = candidate.get();
         }
         
+
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
-        if (tileServiceURL.empty())
-            tileServiceURL = prefix + sep + "request=GetTileService";
+        if (_tileServiceURL.empty())
+            _tileServiceURL = _prefix + sep + "request=GetTileService";
 
-        osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << tileServiceURL << std::endl;
-        tileService = TileServiceReader::read(tileServiceURL);
-        if (tileService.valid())
+        osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << _tileServiceURL << std::endl;
+        _tileService = TileServiceReader::read(_tileServiceURL);
+        if (_tileService.valid())
         {
             osg::notify(osg::NOTICE) << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
-            tileService->getMatchingPatterns(layers, format, style, srs, tile_size, tile_size, patterns);
+            _tileService->getMatchingPatterns(_layers, _format, _style, _srs, _tile_size, _tile_size, patterns);
 
             if (patterns.size() > 0)
             {
-                profile = tileService->getProfile(patterns);
-                prototype = prefix + sep + patterns[0].getPrototype();
+                result = _tileService->createProfile( patterns );
+                _prototype = _prefix + sep + patterns[0].getPrototype();
             }
         }
         else
@@ -194,22 +180,19 @@ public:
             osg::notify(osg::INFO) << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
         }
 
-        prototype = prototype + "&." + format;
+        //TODO: won't need this for OSG 2.9+, b/c of mime-type support
+        _prototype = _prototype + "&." + _format;
 
-
+        return result.release();
     }
 
-    const Profile& getProfile() const
-    {
-        return profile;
-    }
-
+    /** override */
     osg::Image* createImage( const TileKey* key )
     {
-        std::string uri = createURI( key );
-        return osgDB::readImageFile( uri );
+        return osgDB::readImageFile( createURI( key ), getOptions() );
     }
 
+    /** override */
     osg::HeightField* createHeightField( const TileKey* key )
     {
         osg::Image* image = createImage(key);
@@ -221,7 +204,7 @@ public:
         float scaleFactor = 1;
 
         //Scale the heightfield to meters
-        if (elevation_unit == "ft")
+        if (_elevation_unit == "ft")
         {
             scaleFactor = 0.3048;
         }
@@ -236,35 +219,34 @@ public:
         key->getGeoExtents( minx, miny, maxx, maxy);
         // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
         char buf[2048];
-        sprintf(buf, prototype.c_str(), minx, miny, maxx, maxy);
+        sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);
         return buf;
     }
 
     virtual int getPixelsPerTile() const
     {
-        return tile_size;
+        return _tile_size;
     }
 
     virtual std::string getExtension()  const 
     {
-        return format;
+        return _format;
     }
 
 private:
-    std::string prefix;
-    std::string layers;
-    std::string style;
-    std::string format;
-    std::string srs;
-    std::string tileServiceURL;
-    std::string capabilitiesURL;
-	int tile_size;
-    const MapConfig* map_config;
-    std::string elevation_unit;
-    osg::ref_ptr<Capabilities> capabilities;
-    osg::ref_ptr<TileService> tileService;
-    Profile profile;
-    std::string prototype;
+    std::string _prefix;
+    std::string _layers;
+    std::string _style;
+    std::string _format;
+    std::string _srs;
+    std::string _tileServiceURL;
+    std::string _capabilitiesURL;
+	int _tile_size;
+    const MapConfig* _map_config;
+    std::string _elevation_unit;
+    osg::ref_ptr<TileService> _tileService;
+    osg::ref_ptr<const Profile> _profile;
+    std::string _prototype;
 };
 
 

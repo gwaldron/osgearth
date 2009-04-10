@@ -37,7 +37,6 @@
 using namespace osgEarth;
 
 #define PROPERTY_URL         "url"
-#define PROPERTY_MAP_CONFIG  "map_config"
 #define PROPERTY_TMS_TYPE    "tms_type"
 #define PROPERTY_TILE_SIZE   "tile_size"
 #define PROPERTY_FORMAT      "format"
@@ -46,9 +45,8 @@ using namespace osgEarth;
 class TMSSource : public TileSource
 {
 public:
-    TMSSource(const osgDB::ReaderWriter::Options *options):
-      _tileMap(0),
-      _mapConfig(0),
+    TMSSource(const osgDB::ReaderWriter::Options* options):
+      TileSource(options),
       _invertY(false)
     {
         if ( options->getPluginData( PROPERTY_URL ) )
@@ -61,6 +59,16 @@ public:
         if ( options->getPluginData( PROPERTY_FORMAT ) )
             _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
 
+        if (options->getPluginData( PROPERTY_TMS_TYPE ) )
+        {
+            std::string tms_type = std::string( (const char*)options->getPluginData( PROPERTY_TMS_TYPE ) );
+            if (tms_type == "google")
+            {
+                _invertY = true;
+                osg::notify(osg::INFO) << "[osgEarth::TMS] TMS driver inverting y" << std::endl;
+            }
+        }
+
         // quit now if there's no URL
         if (_url.empty())
         {
@@ -68,85 +76,67 @@ public:
         }
         else
         {
-            //Get the MapConfig
-            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-                _mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
+        }
+    }
 
-            // There is a "google" TMS type that inverts the Y tile index. Account for it here:
-            if (options->getPluginData( PROPERTY_TMS_TYPE ) )
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    {
+        const Profile* result = NULL;
+
+        std::string tmsPath = _url;
+
+        //Find the full path to the URL
+        //If we have a relative path and the map file contains a server address, just concat the server path and the url together
+        if (osgEarth::isRelativePath(tmsPath) && osgDB::containsServerAddress(configPath))
+        {
+            tmsPath = osgDB::getFilePath(configPath) + "/" + tmsPath;
+        }
+
+        //If the path doesn't contain a server address, get the full path to the file.
+        if (!osgDB::containsServerAddress(tmsPath))
+        {
+            tmsPath = osgEarth::getFullPath(configPath, tmsPath);
+        }
+
+        // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
+        _tileMap = TileMapReaderWriter::read( tmsPath );
+
+        if (!_tileMap.valid())
+        {
+            osg::notify(osg::NOTICE) << "[osgEarth::TMS] No TileMap found; checking for client-side settings.." << std::endl;
+
+            // If that fails, try to use an explicit profile if one exists. In this case, the map
+            // config must also specify a width, height, and format.
+            if ( mapProfile )
             {
-                std::string tms_type = std::string( (const char*)options->getPluginData( PROPERTY_TMS_TYPE ) );
-                if (tms_type == "google")
+                result = mapProfile;
+                _tileMap = TileMap::create( _url, mapProfile, _format, _tile_size, _tile_size );
+                if ( !_tileMap.valid() )
                 {
-                    _invertY = true;
-                    osg::notify(osg::NOTICE) << "TMS driver inverting y" << std::endl;
-                }
-            }
-
-            std::string tmsPath = _url;
-
-            //Find the full path to the URL
-            //If we have a relative path and the map file contains a server address, just concat the server path and the url together
-            if (osgEarth::isRelativePath(tmsPath) && osgDB::containsServerAddress(_mapConfig->getFilename()))
-            {
-                tmsPath = osgDB::getFilePath(_mapConfig->getFilename()) + "/" + tmsPath;
-            }
-
-            //If the path doesn't contain a server address, get the full path to the file.
-            if (!osgDB::containsServerAddress(tmsPath))
-            {
-                tmsPath = osgEarth::getFullPath(_mapConfig->getFilename(), tmsPath);
-            }
-
-
-            // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-            _tileMap = TileMapReaderWriter::read( tmsPath );
-
-            if (!_tileMap.valid())
-            {
-                osg::notify(osg::NOTICE) << "TMSSource: no TileMap found; checking for client-side settings.." << std::endl;
-
-                // If that fails, try to use an explicit profile if one exists. In this case, the map
-                // config must also specify a width, height, and format.
-                Profile globalProfile = _mapConfig->getProfile();
-
-                if ( globalProfile.isValid() )
-                {
-                    _profile = globalProfile;
-                    _tileMap = TileMap::create( _url, _profile, _format, _tile_size, _tile_size );
-                    if ( !_tileMap.valid() )
-                    {
-                        osg::notify(osg::NOTICE) << "TMSSource: no TileMap found, and no overrides set" << std::endl;
-                    }
-                    else
-                    {
-                        //osg::notify(osg::NOTICE) << "TMSSource: Good to go; base url = " << _tileMap->_filename << std::endl;
-                    }
-                }
-                else
-                {
-                    osg::notify(osg::NOTICE) << "TMSSource:  error reading Tile Map Resource " << _url << std::endl;
+                    osg::notify(osg::WARN) << "[osgEarth::TMS] No TileMap found, and no overrides set" << std::endl;
                 }
             }
             else
             {
-                _profile = _tileMap->createProfile();
-            }
-
-            //Automatically set the min and max level of the TileMap
-            if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
-            {
-              osg::notify(osg::INFO) << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
-              setMinLevel(_tileMap->getMinLevel());
-              setMaxLevel(_tileMap->getMaxLevel());
+                osg::notify(osg::NOTICE) << "[osgEarth::TMS] Error reading Tile Map Resource " << _url << std::endl;
             }
         }
+        else
+        {
+            result = _tileMap->createProfile();
+        }
+
+        //Automatically set the min and max level of the TileMap
+        if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
+        {
+          osg::notify(osg::INFO) << "[osgEarth::TMS] TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
+          setMinLevel(_tileMap->getMinLevel());
+          setMaxLevel(_tileMap->getMaxLevel());
+        }
+
+        return result;
     }
 
-    const Profile& getProfile() const
-    {
-        return _profile;
-    }
 
     osg::Image* createImage(const osgEarth::TileKey *key)
     {
@@ -161,7 +151,7 @@ public:
             
             if (!image_url.empty())
             {
-                image = osgDB::readImageFile( image_url );
+                image = osgDB::readImageFile( image_url, getOptions() );
             }
 
             if (!image.valid())
@@ -196,9 +186,7 @@ public:
 
 private:
 
-    Profile _profile;
     osg::ref_ptr<TileMap> _tileMap;
-    const MapConfig *_mapConfig;
     std::string _url;
     bool _invertY;
 

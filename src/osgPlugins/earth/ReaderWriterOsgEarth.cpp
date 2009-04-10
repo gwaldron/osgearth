@@ -88,18 +88,18 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::create( map.get());
 
                     //Check to see that the TileBuilder is valid.
-                    if (!tile_builder->isValid())
+                    if ( !tile_builder->isOK() )
                         return ReadResult::FILE_NOT_HANDLED;
 
-                    if (tile_builder->getMapProfile().getProfileType() == Profile::TYPE_GEODETIC)
+                    if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_GEODETIC)
                     {
                         osg::notify(osg::INFO) << "Map profile: Geodetic" << std::endl;
                     }
-                    else if (tile_builder->getMapProfile().getProfileType() == Profile::TYPE_MERCATOR)
+                    else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_MERCATOR)
                     {
                         osg::notify(osg::INFO) << "Map profile: Mercator" << std::endl;
                     }
-                    else if (tile_builder->getMapProfile().getProfileType() == Profile::TYPE_LOCAL)
+                    else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_LOCAL)
                     {
                         osg::notify(osg::INFO) << "Map profile: Local/Projected" << std::endl;
                     }

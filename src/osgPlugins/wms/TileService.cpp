@@ -142,10 +142,12 @@ void TileService::getMatchingPatterns(const std::string &layers, const std::stri
     }
 }
 
-osgEarth::Profile TileService::getProfile(TilePatternList &patterns)
+const Profile*
+TileService::createProfile(TilePatternList &patterns)
 {
     //Assume that all the values in the patterns are equal except for the bounding boxes
-    Profile profile;
+    const Profile* profile = NULL;
+
     if (patterns.size() > 0)
     {
       Profile::ProfileType profileType = Profile::getProfileTypeFromSRS(patterns[0].getSRS());
@@ -184,8 +186,9 @@ osgEarth::Profile TileService::getProfile(TilePatternList &patterns)
       double ymax = topLeftMax.y();
       double ymin = ymax - (double)h * tileHeight;
       
-      profile = Profile::create(profileType, xmin, ymin, xmax, ymax, patterns[0].getSRS(), w, h);
+      profile = Profile::create( patterns[0].getSRS(), xmin, ymin, xmax, ymax, w, h);
     }
+
     return profile;
 }
 

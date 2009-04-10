@@ -132,10 +132,10 @@ GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, c
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
-    double min_range = radius * map->getMinTileRangeFactor();
+    double min_range = radius * _map->getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * map->getSkirtRatio());
+    hf->setSkirtHeight(radius * _map->getSkirtRatio());
 
     osg::Vec3d normal = centroid;
     normal.normalize();
@@ -156,12 +156,12 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
 {
     if ( key->getLevelOfDetail() == 0 )
     {
-        const osgEarth::Profile& profile = key->getProfile();
-        double minY = profile.yMin();
-        double maxY = profile.yMax();
+        const Profile* profile = key->getProfile();
+        double minY = profile->yMin();
+        double maxY = profile->yMax();
 
         //Convert meters to lat/lon if the profile is Mercator
-        if (profile.getProfileType() == Profile::TYPE_MERCATOR)
+        if (profile->getProfileType() == Profile::TYPE_MERCATOR)
         {
             double lat,lon;
             Mercator::metersToLatLon(0, minY, lat, lon);
@@ -176,13 +176,13 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
         //Draw a "cap" on the bottom of the earth to account for missing tiles
         if (minY > -90)
         {
-            tile_parent->addChild(createCap(-90, minY+cap_offset,  map->getSouthCapColor()));
+            tile_parent->addChild(createCap(-90, minY+cap_offset, _map->getSouthCapColor()));
         }
 
         //Draw a "cap" on the top of the earth to account for missing tiles
         if (maxY < 90)
         {   
-            tile_parent->addChild(createCap(maxY-cap_offset, 90, map->getNorthCapColor()));
+            tile_parent->addChild(createCap(maxY-cap_offset, 90, _map->getNorthCapColor()));
         }
     }
 
@@ -199,15 +199,15 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 
     //TODO: select/composite:
     //Create the images for the tile
-    if ( image_sources.size() > 0 )
+    if ( _image_sources.size() > 0 )
     {
         //Add an image from each image source
-        for (unsigned int i = 0; i < image_sources.size(); ++i)
+        for (unsigned int i = 0; i < _image_sources.size(); ++i)
         {
             osg::Image *image = 0;
-            if (image_sources[i]->isKeyValid(key))
+            if (_image_sources[i]->isKeyValid(key))
             {
-                image = createImage(key, image_sources[i].get());    
+                image = createImage(key, _image_sources[i].get());    
             }
             image_tiles.push_back(ImageTileKeyPair(image, key));
         }
@@ -218,11 +218,11 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
     //TODO: select/composite.
-    if ( heightfield_sources.size() > 0 )
+    if ( _heightfield_sources.size() > 0 )
     {
-        if (heightfield_sources[0]->isKeyValid(key))
+        if (_heightfield_sources[0]->isKeyValid(key))
         {
-            hf = createHeightField(key, heightfield_sources[0].get());
+            hf = createHeightField(key, _heightfield_sources[0].get());
             hasElevation = hf.valid();
         }
     }
@@ -242,15 +242,15 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         return NULL;
     }
    
-    //Try to interpolate any missing imagery from parent tiles
-    for (unsigned int i = 0; i < image_sources.size(); ++i)
+    //Try to interpolate any missing _image_sources from parent tiles
+    for (unsigned int i = 0; i < _image_sources.size(); ++i)
     {
         if (!image_tiles[i].first.valid())
         {
-            if (image_sources[i]->isKeyValid(key))
+            if (_image_sources[i]->isKeyValid(key))
             {
                 //osg::Timer_t start = osg::Timer::instance()->tick();
-                if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
+                if (!createValidImage(_image_sources[i].get(), key, image_tiles[i]))
                 {
                     osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
                 }
@@ -268,7 +268,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if (heightfield_sources.size() == 0)
+        if (_heightfield_sources.size() == 0)
         {
             //Make any empty heightfield if no heightfield source is specified
             hf = new osg::HeightField();
@@ -279,7 +279,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         else
         {
             //osg::Timer_t start = osg::Timer::instance()->tick();
-            hf = createValidHeightField(heightfield_sources[0].get(), key);
+            hf = createValidHeightField(_heightfield_sources[0].get(), key);
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -316,7 +316,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     tile->setTileID(key->getTileId());
 
     //Attach an updatecallback to normalize the edges of TerrainTiles.
-    if (hasElevation && map->getNormalizeEdges())
+    if (hasElevation && _map->getNormalizeEdges())
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
@@ -328,9 +328,9 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     tile->setRequiresNormals( true );
 
     //Assign the terrain system to the TerrainTile
-    if (terrain.valid())
+    if (_terrain.valid())
     {
-      tile->setTerrain( terrain.get() );
+        tile->setTerrain( _terrain.get() );
     }
 
     int layer = 0;
@@ -396,10 +396,10 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
-    double min_range = radius * map->getMinTileRangeFactor();
+    double min_range = radius * _map->getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * map->getSkirtRatio());
+    hf->setSkirtHeight(radius * _map->getSkirtRatio());
 
     osg::Vec3d normal = centroid;
     normal.normalize();
@@ -434,9 +434,8 @@ GeocentricTileBuilder::createCoordinateSystemNode() const
     osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
 
     // TODO: set the CORRECT ellipsoid model, based on the profile/srs:
-    csn->setEllipsoidModel( new osg::EllipsoidModel() );
-
-    getMapProfile().applyTo( csn );
+    getMapProfile()->applyTo( csn );
+    csn->setEllipsoidModel( (osg::EllipsoidModel*)getMapProfile()->getSRS()->getEllipsoid() );
 
     return csn;
 }

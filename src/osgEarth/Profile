@@ -21,11 +21,8 @@
 #define OSGEARTH_TILE_GRID_PROFILE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
-
-#define STR_GLOBAL_GEODETIC "global-geodetic"
-#define STR_GLOBAL_MERCATOR "global-mercator"
-#define STR_LOCAL           "local"
 
 namespace osgEarth
 {
@@ -35,7 +32,7 @@ namespace osgEarth
      * spatial reference system (SRS), the geospatial extents within that SRS, and
      * the tiling scheme.
      */
-    class OSGEARTH_EXPORT Profile
+    class OSGEARTH_EXPORT Profile : public osg::Referenced
     {
     public:
         // profile types:
@@ -47,70 +44,22 @@ namespace osgEarth
             TYPE_LOCAL
         };
 
-        // Built-in profile definitions:
-        static Profile GLOBAL_GEODETIC;
-        static Profile GLOBAL_MERCATOR;
-        static Profile INVALID;
-
     public:
-
-        /**
-         * Creates a geodetic profile (global lat/lon) with a custom LOD 0 tile
-         * configuration.
-         */
-        static Profile createGeodetic(
-            unsigned int num_tiles_wide_at_lod0,
-            unsigned int num_tiles_high_at_lod0 );
-
-        /**
-         * Attempts to create a global profile based on the type.
-         */
-        static Profile createGlobal(
-            const ProfileType& type );
-
-        /**
-         * Creates a custom profile from scratch (usually for local/projected data).
-         */
-        static Profile createLocal(
+        static Profile* create(
+            const std::string& srs_string,
             double xmin, double ymin, double xmax, double ymax,
-            const std::string& srs,
-            unsigned int x_tiles_at_lod0 =1,
-            unsigned int y_tiles_at_lod0 =1 );
+            unsigned int numTilesWideAtLod0 =1,
+            unsigned int numTilesHighAtLod0 =1 );
 
-        /**
-         * Creates a completely custom profile spec.
-         */
-        static Profile create(
-            const ProfileType& type,
-            double xmin, double ymin, double xmax, double ymax,
-            const std::string& srs,
-            unsigned int x_tiles_at_lod0 =1,
-            unsigned int y_tiles_at_lod0 =1 );
-
-        /**
-         * Constructs a new profile from a well-known definition string such as "global-geodetic"
-         * or "global-mercator".
-         */
-        static Profile create(
-            const std::string& profile_name );
-
-    public:
-
-        /**
-         * Private CTOR - creates a default, invalid profile
-         * Use one of the "create.." factory methods instead.
-         */
-        Profile();
-
-        /**
-         * Copy contrustor
-         */
-        Profile( const Profile& rhs );
+        static Profile* create(
+            const std::string& srs_string,
+            unsigned int numTilesWideAtLod0 =1,
+            unsigned int numTilesHighAtLod0 =1 );
 
         /**
          * Returns true if the profile is properly initialized.
          */
-        bool isValid() const;
+        bool isOK() const;
 
         /**
          * Gets the extents of the profile
@@ -120,16 +69,17 @@ namespace osgEarth
         double xMax() const;
         double yMax() const;
         
+        const SpatialReference* getSRS() const;
 
         /**
          * Gets the profile type
          */
-        const ProfileType& getProfileType() const;
+        ProfileType getProfileType() const;
 
         /**
          * Gets the spatial reference system string.
          */
-        const std::string& srs() const;        
+        //const std::string& srs() const;        
 
         /**
          * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
@@ -142,9 +92,9 @@ namespace osgEarth
          */
         static ProfileType getProfileTypeFromSRS(const std::string &srs);
 
-        bool operator == (const Profile& rhs) const;
+        //bool operator == (const Profile& rhs) const;
 
-        bool operator != (const Profile& rhs) const;
+        //bool operator != (const Profile& rhs) const;
 
         /**
          * Applies this profile's format and coordinate system strings to the
@@ -153,9 +103,15 @@ namespace osgEarth
         void applyTo( osg::CoordinateSystemNode* csn ) const;
 
         /**
-         *Gets whether or not the Profile is compatible with the given profile.
+         * Gets whether or not the Profile is "compatible" with the given profile, i.e.,
+         * whether tiles can be mapped between the two profiles.
          */
-        bool isCompatibleWith(const Profile& rhs) const;
+        bool isCompatibleWith( const Profile* rhs ) const;
+
+        /**
+         * Gets whether the two profiles can be treated as equivalent.
+         */
+        bool isEquivalentTo( const Profile* rhs ) const;
 
         /**
          *Gets the tile dimensions at the given lod.
@@ -173,25 +129,24 @@ namespace osgEarth
         void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
 
 
+    private:       
 
-    private:
-
-        /** Private CTOR - used internally by static create.. factory methods */
         Profile(
-            ProfileType profileType,
+            //ProfileType profileType,
+            const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
-            const std::string& srs,
             unsigned int x_tiles_at_lod0 =1,
             unsigned int y_tiles_at_lod0 =1 );
 
     private:
         double _xmin, _ymin, _xmax, _ymax;        
-        std::string _srs;
-        ProfileType _profileType;
+        //ProfileType _profileType;
         unsigned int _numTilesWideAtLod0;
         unsigned int _numTilesHighAtLod0;
+//        std::string _srs;
+        osg::ref_ptr<const SpatialReference> _srs;
 
-        void init( ProfileType );
+        //void init( ProfileType );
     };
 }
 

@@ -18,138 +18,101 @@
  */
 
 #include <osgEarth/Profile>
-#include <osgEarth/Mercator>
+#include <osgEarth/Registry>
+#include <osgEarth/TileKey>
+#include <osgEarth/SpatialReference>
 #include <osgDB/FileNameUtils>
 #include <algorithm>
 
 using namespace osgEarth;
 
-//#define GEODETIC_MIN_LON -180
-//#define GEODETIC_MAX_LON 180
-//#define GEODETIC_MIN_LAT -90
-//#define GEODETIC_MAX_LAT 90
-//
-//#define GLOBAL_MERCATOR_MIN_X -20037508.34
-//#define GLOBAL_MERCATOR_MIN_Y -20037508.34
-//#define GLOBAL_MERCATOR_MAX_X 20037508.34
-//#define GLOBAL_MERCATOR_MAX_Y 20037508.34
 
+// FACTORY METHODS:
 
-/** Static profile definitions **/
-
-Profile
-Profile::GLOBAL_GEODETIC = Profile(Profile::TYPE_GEODETIC,
-                                   -180.0, -90.0, 180.0, 90.0,
-                                   "EPSG:4326",
-                                   2, 1 );
-
-Profile
-Profile::GLOBAL_MERCATOR = Profile(Profile::TYPE_MERCATOR,
-                                   -20037508.34, -20037508.34, 20037508.34, 20037508.34,
-                                   "EPSG:900913",
-                                   1, 1 );
-
-Profile
-Profile::INVALID = Profile();
-
-
-Profile
-Profile::createGeodetic(unsigned int numTilesWideAtLod0,
-                        unsigned int numTilesHighAtLod0)
-{
-    Profile p = Profile::GLOBAL_GEODETIC;
-    p._numTilesHighAtLod0 = numTilesHighAtLod0;
-    p._numTilesWideAtLod0 = numTilesWideAtLod0;
-    return p;
-}
-
-Profile
-Profile::createGlobal(const ProfileType& type)
-{
-    return
-        type == TYPE_GEODETIC? Profile::GLOBAL_GEODETIC :
-        type == TYPE_MERCATOR? Profile::GLOBAL_MERCATOR :
-        Profile::INVALID;
-}
-
-
-Profile
-Profile::createLocal(double xmin, double ymin, double xmax, double ymax,
-                     const std::string& srs,
-                     unsigned int numTilesWideAtLod0,
-                     unsigned int numTilesHighAtLod0)
-{
-    return Profile(
-        Profile::TYPE_LOCAL,
-        xmin, ymin, xmax, ymax, srs, numTilesWideAtLod0, numTilesHighAtLod0);
-}
-
-Profile
-Profile::create(const ProfileType& type,
+Profile*
+Profile::create(const std::string& init_string,
                 double xmin, double ymin, double xmax, double ymax,
-                const std::string& srs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    return Profile(type, xmin, ymin, xmax, ymax, srs, numTilesWideAtLod0, numTilesHighAtLod0);
+    return new Profile(
+        //getProfileTypeFromSRS( init_string ),
+        SpatialReference::create( init_string ),
+        xmin, ymin, xmax, ymax,
+        numTilesWideAtLod0,
+        numTilesHighAtLod0 );
 }
 
-
-Profile
-Profile::create( const std::string& wkt ) 
+Profile*
+Profile::create(const std::string& init_string,
+                unsigned int numTilesWideAtLod0,
+                unsigned int numTilesHighAtLod0)
 {
-    if ( wkt == STR_GLOBAL_GEODETIC )
-        return Profile::GLOBAL_GEODETIC;
-    else if ( wkt == STR_GLOBAL_MERCATOR )
-        return Profile::GLOBAL_MERCATOR;
-    else
-        return Profile();
+    const Profile* named = osgEarth::Registry::instance()->getNamedProfile( init_string );
+    if ( named )
+        return const_cast<Profile*>( named );
+
+    osg::ref_ptr<const SpatialReference> _srs = SpatialReference::create( init_string );
+    if ( _srs.valid() && _srs->isGeographic() )
+    {
+        return new Profile(
+            //getProfileTypeFromSRS( init_string ),
+            _srs.get(),
+            -180.0, -90.0, 180.0, 90.0 );
+    }
+    return 0;
 }
 
 /****************************************************************************/
 
-Profile::Profile()
-{
-    // set to UNKNOWN to render it invalid
-    _profileType = Profile::TYPE_UNKNOWN;
-}
 
-
-Profile::Profile(ProfileType profileType,
+Profile::Profile(//ProfileType profileType,
+                 const SpatialReference* srs,
                  double xmin, double ymin, double xmax, double ymax,
-                 const std::string& srs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0)
 {
-    _profileType = profileType;
+//    _profileType = profileType;
+    _srs = srs;
     _xmin = xmin;
     _ymin = ymin;
     _xmax = xmax;
     _ymax = ymax;
-    _srs = srs;
     _numTilesWideAtLod0 = numTilesWideAtLod0;
     _numTilesHighAtLod0 = numTilesHighAtLod0;
 }
 
-
-// copier
-Profile::Profile( const Profile& rhs )
-: _xmin( rhs._xmin ),
-  _ymin( rhs._ymin ),
-  _xmax( rhs._xmax ),
-  _ymax( rhs._ymax ),
-  _profileType(rhs._profileType),
-  _srs(rhs._srs),
-  _numTilesWideAtLod0(rhs._numTilesWideAtLod0),
-  _numTilesHighAtLod0(rhs._numTilesHighAtLod0)
+Profile::ProfileType
+Profile::getProfileType() const
 {
-    //NOP
+    return
+        _srs.valid() && _srs->isGeographic() ? TYPE_GEODETIC :
+        _srs.valid() && _srs->isMercator() ? TYPE_MERCATOR :
+        _srs.valid() && _srs->isProjected() ? TYPE_LOCAL :
+        TYPE_UNKNOWN;
 }
 
+//Profile::Profile(const std::string& srs_string,
+//                 double xmin, double ymin, double xmax, double ymax,
+//                 unsigned int numTilesWideAtLod0,
+//                 unsigned int numTilesHighAtLod0)
+//{
+//    _profileType = getProfileTypeFromSRS( srs_string );
+//    _srs = SpatialReference::create( srs_string );
+//    _xmin = xmin;
+//    _ymin = ymin;
+//    _xmax = xmax;
+//    _ymax = ymax;
+//    _numTilesWideAtLod0 = numTilesWideAtLod0;
+//    _numTilesHighAtLod0 = numTilesHighAtLod0;
+//}
+
 bool
-Profile::isValid() const
+Profile::isOK() const
 {
-    return _profileType != Profile::TYPE_UNKNOWN;
+    return _srs.valid();
+        //_profileType != Profile::TYPE_UNKNOWN &&
+        //_srs.valid();
 }
 
 double
@@ -172,15 +135,20 @@ Profile::yMax() const {
     return _ymax;
 }
 
-const std::string&
-Profile::srs() const {
-    return _srs;
+const SpatialReference*
+Profile::getSRS() const {
+    return _srs.get();
 }
 
-const Profile::ProfileType&
-Profile::getProfileType() const {
-    return _profileType;
-}
+//const std::string&
+//Profile::srs() const {
+//    return _srs;
+//}
+
+//const Profile::ProfileType&
+//Profile::getProfileType() const {
+//    return _profileType;
+//}
 
 void
 Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) const
@@ -191,37 +159,21 @@ Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) c
     {
         for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
         {
-            out_keys.push_back(new TileKey(c, r, 0, *this));
+            out_keys.push_back(new TileKey(c, r, 0, this));
         }
     }
 }
 
+//TODO: DEPRECATE THIS and replace by examining the SRS itself.
 Profile::ProfileType
-Profile::getProfileTypeFromSRS(const std::string& srs)
+Profile::getProfileTypeFromSRS(const std::string& srs_string)
 {
-    //We have no SRS at all
-    if (srs.empty()) return Profile::TYPE_UNKNOWN;
-
-    std::string upperSRS = srs;
-
-    //convert to upper case
-    std::transform( upperSRS.begin(), upperSRS.end(), upperSRS.begin(), toupper );
-
-    if (upperSRS == "EPSG:4326") //TODO: add other ellipsoids
-    {
-        return Profile::TYPE_GEODETIC;
-    }
-    else if ((upperSRS == "EPSG:41001")  ||
-             (upperSRS == "OSGEO:41001") ||
-             (upperSRS == "EPSG:3785")   ||
-             (upperSRS == "EPSG:900913") ||
-             (upperSRS == "EPSG:54004") )
-    {
-        return Profile::TYPE_MERCATOR;
-    }
-
-    //Assume that if we have an SRS and its not GEODETIC or MERCATOR, it's PROJECTED/LOCAL
-    return Profile::TYPE_LOCAL;
+    osg::ref_ptr<SpatialReference> srs = SpatialReference::create( srs_string );
+    return 
+        srs.valid() && srs->isGeographic()? Profile::TYPE_GEODETIC :
+        srs.valid() && srs->isMercator()? Profile::TYPE_MERCATOR :
+        srs.valid() && srs->isProjected()? Profile::TYPE_LOCAL :
+        Profile::TYPE_UNKNOWN;
 }
 
 void
@@ -229,71 +181,33 @@ Profile::applyTo( osg::CoordinateSystemNode* csn ) const
 {
     if ( csn )
     {
-        // first the format:
-        std::string upperSRS = _srs;
-        std::transform( upperSRS.begin(), upperSRS.end(), upperSRS.begin(), toupper );
-
-        if ( upperSRS.length() >= 6 && ( upperSRS.substr( 0, 6 ) == "GEOGCS" || upperSRS.substr( 0, 6 ) == "PROJCS" ) )
-        {
-            csn->setFormat( "WKT" );
-            csn->setCoordinateSystem( _srs );
-        }
-        else if ( upperSRS.length() >= 5 && ( upperSRS.substr( 0, 5 ) == "EPSG:" || upperSRS.substr( 0, 6 ) == "OSGEO:" ) )
-        {
-            csn->setFormat( "PROJ4" );
-            std::string temp = _srs;
-            std::transform( temp.begin(), temp.end(), temp.begin(), tolower );
-            csn->setCoordinateSystem( "+init=" + temp );
-        }
-        else
-        {
-            // unknown/unsupported format
-            csn->setFormat( "UNKNOWN" );
-            csn->setCoordinateSystem( _srs );
-        }
+        csn->setFormat( _srs->getInitType() );
+        csn->setCoordinateSystem( _srs->getInitString() );
     }
 }
 
 bool
-Profile::operator == (const Profile& rhs) const
+Profile::isCompatibleWith( const Profile* rhs ) const
 {
-    if (this == &rhs) return true;
-
-    return (_profileType == rhs._profileType &&
-            osgDB::equalCaseInsensitive(_srs, rhs._srs) &&
-            _numTilesWideAtLod0 == rhs._numTilesWideAtLod0 &&
-            _numTilesHighAtLod0 == rhs._numTilesHighAtLod0 &&
-            _xmin == rhs._xmin &&
-            _ymin == rhs._ymin &&
-            _xmax == rhs._xmax &&
-            _ymax == rhs._ymax);
+    return
+        rhs &&
+        isOK() && rhs->isOK() &&
+        getProfileType() == rhs->getProfileType();
 }
 
 bool
-Profile::operator != (const Profile& rhs) const
+Profile::isEquivalentTo( const Profile* rhs ) const
 {
-    if (this == &rhs) return false;
-
-        return (_profileType != rhs._profileType ||
-            _numTilesWideAtLod0 != rhs._numTilesWideAtLod0 ||
-            _numTilesHighAtLod0 != rhs._numTilesHighAtLod0 ||
-            !osgDB::equalCaseInsensitive(_srs, rhs._srs) ||
-            _xmin != rhs._xmin ||
-            _ymin != rhs._ymin ||
-            _xmax != rhs._xmax ||
-            _ymax != rhs._ymax);
-}
-
-bool
-Profile::isCompatibleWith(const Profile& rhs) const
-{
-    //For now, assume that if the profile types are the same, that the maps are compatible.
-    if ((_profileType == rhs._profileType))
-    {
-        return true;
-    }
-
-    return false;
+    return
+        rhs &&
+        _xmin == rhs->_xmin && 
+        _ymin == rhs->_ymin &&
+        _xmax == rhs->_xmax &&
+        _ymax == rhs->_ymax &&
+        _numTilesWideAtLod0 == rhs->_numTilesWideAtLod0 &&
+        _numTilesHighAtLod0 == rhs->_numTilesHighAtLod0 &&
+        _srs && rhs->_srs &&
+        _srs->isEquivalentTo( rhs->_srs );
 }
 
 void
@@ -329,13 +243,13 @@ Profile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const
     out_intersectingKeys.clear();
 
     //If the profiles are exactly equal, just add the given tile key.
-    if (key->getProfile() == *this)
+    if ( isEquivalentTo( key->getProfile() ) )
     {
         out_intersectingKeys.push_back(key);
         return;
     }
 
-    if (!isCompatibleWith(key->getProfile()))
+    if ( !isCompatibleWith( key->getProfile() ) )
     {
         osg::notify(osg::NOTICE) << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
     }
@@ -391,7 +305,7 @@ Profile::getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const
     {
         for (int j = tileMinY; j <= tileMaxY; ++j)
         {
-            out_intersectingKeys.push_back(new TileKey(i, j, destLOD, *this));
+            out_intersectingKeys.push_back(new TileKey(i, j, destLOD, this));
         }
     }
 

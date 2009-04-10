@@ -18,7 +18,9 @@
  */
 
 #include <osgEarth/MapConfig>
-#include <osgEarth/Mercator>
+#include <osgEarth/TileSource>
+#include <osgEarth/Registry>
+
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -33,49 +35,35 @@ using namespace osgEarth;
 #define PROPERTY_DATASET    "dataset"
 #define PROPERTY_VERSION    "version"
 #define PROPERTY_LANGUAGE   "language"
-#define PROPERTY_MAP_CONFIG "map_config"
 
 class GoogleSource : public TileSource
 {
 public:
-    GoogleSource( const osgDB::ReaderWriter::Options* _options ) :
-      options( _options ),
-      map_config(0),
-      profile( Profile::GLOBAL_MERCATOR )
+    GoogleSource( const osgDB::ReaderWriter::Options* options ) :
+      TileSource( options )
     {
-        if ( options.valid() )
+        if ( options )
         {
             if ( options->getPluginData( PROPERTY_DATASET ) )
-                dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
+                _dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
             if ( options->getPluginData( PROPERTY_VERSION ) )
-                version = std::string( (const char*)options->getPluginData( PROPERTY_VERSION ) );
+                _version = std::string( (const char*)options->getPluginData( PROPERTY_VERSION ) );
 
             if ( options->getPluginData( PROPERTY_LANGUAGE ) )
-                language = std::string( (const char*)options->getPluginData( PROPERTY_LANGUAGE ) );
+                _language = std::string( (const char*)options->getPluginData( PROPERTY_LANGUAGE ) );
             else
-                language = "en";
-
-            if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-                map_config = (const MapConfig*)options->getPluginData(PROPERTY_MAP_CONFIG);
+                _language = "en";
         }
 
         // validate dataset
-        if ( dataset.empty() ) dataset = "satellite"; // defaul to the satellite view
+        if ( _dataset.empty() )
+            _dataset = "satellite"; // defaul to the satellite view
     }
 
-    const Profile& getProfile() const
+    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
     {
-        return profile;
-    }
-
-    char getRandomServer()
-    {
-        //Gets a server from 0 - 3
-        int server = rand() % 4;
-        char serverChar[2];
-        sprintf(serverChar, "%i", server);
-        return serverChar[0];
+        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -85,10 +73,10 @@ public:
 
         std::stringstream buf;
         
-        if ( dataset == "satellite" )
+        if ( _dataset == "satellite" )
         {            
-            if ( version.empty() )
-                version = "37";
+            if ( _version.empty() )
+                _version = "37";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;
@@ -96,14 +84,14 @@ public:
             int zoom = key->getLevelOfDetail();
 
             buf << "http://khm" << server << ".google.com/kh"
-                << "?v="  << version
-                << "&hl=" << language
+                << "?v="  << _version
+                << "&hl=" << _language
                 << "&x="  << tile_x
                 << "&y="  << tile_y
                 << "&z="  << zoom
                 << "&s=Ga&.jpg";
         }
-        else if ( dataset == "traffic" )
+        else if ( _dataset == "traffic" )
         {
             char server = getRandomServer();
             unsigned int tile_x, tile_y;
@@ -116,26 +104,26 @@ public:
                 << "&y="  << tile_y
                 << "&.png";
         }
-        else if ( dataset == "terrain" )
+        else if ( _dataset == "terrain" )
         {
-            if ( version.empty() )
-                version = "w2p.87";
+            if ( _version.empty() )
+                _version = "w2p.87";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
             buf << "http://mt" << server << ".google.com/mt"
-                << "?v="  << version
-                << "&hl=" << language
+                << "?v="  << _version
+                << "&hl=" << _language
                 << "&x="  << tile_x
                 << "&y="  << tile_y
                 << "&zoom=" << 17-key->getLevelOfDetail()
                 << "&.jpg";
         }
-        else if ( dataset == "labels" )
+        else if ( _dataset == "labels" )
         {
-            if ( version.empty() )
-                version = "w2t.92";
+            if ( _version.empty() )
+                _version = "w2t.92";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;
@@ -143,17 +131,17 @@ public:
             int zoom = key->getLevelOfDetail();
 
             buf << "http://mt" << server << ".google.com/mt"
-                << "?v="  << version
-                << "&hl=" << language
+                << "?v="  << _version
+                << "&hl=" << _language
                 << "&x="  << tile_x
                 << "&y="  << tile_y
                 << "&z="  << zoom
                 << "&s=G&.png";
         }
-        else if ( dataset == "roads" )
+        else if ( _dataset == "roads" )
         {
-            if ( version.empty() )
-                version = "w2.92";
+            if ( _version.empty() )
+                _version = "w2.92";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;
@@ -161,20 +149,20 @@ public:
             int zoom = key->getLevelOfDetail();
 
             buf << "http://mt" << server << ".google.com/mt"
-                << "?v="  << version
-                << "&hl=" << language
+                << "?v="  << _version
+                << "&hl=" << _language
                 << "&x="  << tile_x
                 << "&y="  << tile_y
                 << "&z="  << zoom
                 << "&s=Ga&.png";
         }
 
-        osg::notify(osg::INFO) 
-            << "[osgEarth] Google: option string = "
-            << (options.valid()? options->getOptionString() : "<empty>")
-            << std::endl;
+        //osg::notify(osg::INFO) 
+        //    << "[osgEarth] Google: option string = "
+        //    << (options.valid()? options->getOptionString() : "<empty>")
+        //    << std::endl;
 
-        return osgDB::readImageFile ( buf.str(), options.get());
+        return osgDB::readImageFile( buf.str(), getOptions() );
     }
 
     osg::HeightField* createHeightField( const TileKey* key )
@@ -185,21 +173,28 @@ public:
 
     virtual std::string getExtension()  const 
     {
-        if ( dataset == "satellite" ) return "jpg";
-        else if ( dataset == "terrain" ) return "jpg";
-        else if ( dataset == "labels" ) return "png";
-        else if ( dataset == "roads" ) return "png";
-        else if ( dataset == "traffic" ) return "png";
+        if ( _dataset == "satellite" ) return "jpg";
+        else if ( _dataset == "terrain" ) return "jpg";
+        else if ( _dataset == "labels" ) return "png";
+        else if ( _dataset == "roads" ) return "png";
+        else if ( _dataset == "traffic" ) return "png";
         else return "";
     }
 
 private:
-    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
-    std::string dataset;
-    std::string version;
-    std::string language;
-    Profile profile;
-    const MapConfig* map_config;
+    char getRandomServer()
+    {
+        //Gets a server from 0 - 3
+        int server = rand() % 4;
+        char serverChar[2];
+        sprintf(serverChar, "%i", server);
+        return serverChar[0];
+    }
+
+private:
+    std::string _dataset;
+    std::string _version;
+    std::string _language;
 };
 
 

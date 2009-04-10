@@ -69,16 +69,17 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
 
     //Create the images
     std::vector<osg::ref_ptr<osg::Image> > images;
+
     //TODO: select/composite:
-    if ( image_sources.size() > 0 )
+    if ( _image_sources.size() > 0 )
     {
         //Add an image from each image source
-        for (unsigned int i = 0; i < image_sources.size(); ++i)
+        for (unsigned int i = 0; i < _image_sources.size(); ++i)
         {
             osg::Image *image = 0;
-            if (image_sources[i]->isKeyValid(key))
+            if (_image_sources[i]->isKeyValid(key))
             {
-                image = createImage(key, image_sources[i].get());
+                image = createImage(key, _image_sources[i].get());
             }
             image_tiles.push_back(ImageTileKeyPair(image, key));
         }
@@ -89,11 +90,11 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
     //TODO: select/composite.
-    if ( heightfield_sources.size() > 0 )
+    if ( _heightfield_sources.size() > 0 )
     {
-        if (heightfield_sources[0]->isKeyValid(key))
+        if ( _heightfield_sources[0]->isKeyValid(key))
         {
-            hf = createHeightField(key, heightfield_sources[0].get());
+            hf = createHeightField(key, _heightfield_sources[0].get());
             hasElevation = hf.valid();
         }
     }
@@ -114,14 +115,14 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
    
     //Try to interpolate any missing imagery from parent tiles
-    for (unsigned int i = 0; i < image_sources.size(); ++i)
+    for (unsigned int i = 0; i < _image_sources.size(); ++i)
     {
         if (!image_tiles[i].first.valid())
         {
  
-          if (image_sources[i]->isKeyValid(key))
+          if (_image_sources[i]->isKeyValid(key))
           {
-            if (!createValidImage(image_sources[i].get(), key, image_tiles[i]))
+            if (!createValidImage(_image_sources[i].get(), key, image_tiles[i]))
             {
               osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
             }
@@ -137,7 +138,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if (heightfield_sources.size() == 0)
+        if (_heightfield_sources.size() == 0)
         {
             //Make any empty heightfield if no heightfield source is specified
             hf = new osg::HeightField();
@@ -147,7 +148,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         }
         else
         {
-            hf = createValidHeightField(heightfield_sources[0].get(), key);
+            hf = createValidHeightField(_heightfield_sources[0].get(), key);
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -162,14 +163,14 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if (getMapProfile() == Profile::GLOBAL_GEODETIC || map->getReprojectMercatorToGeodetic())
+    if ( getMapProfile()->getProfileType() == Profile::TYPE_GEODETIC || _map->getReprojectMercatorToGeodetic() )
     {
-        scaleHeightFieldToDegrees(hf.get());
+        scaleHeightFieldToDegrees( hf.get() );
     }
 
     osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
 
-    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (getMapProfile().getProfileType() == Profile::TYPE_LOCAL) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
+    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (getMapProfile()->getProfileType() == Profile::TYPE_LOCAL) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
     geo_locator->setCoordinateSystemType( coordinateSystem );
 	geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     
@@ -190,7 +191,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     tile->setRequiresNormals( true );
     tile->setTileID(key->getTileId());
 
-    if (hasElevation && map->getNormalizeEdges())
+    if (hasElevation && _map->getNormalizeEdges())
     {
         //Attach an updatecallback to normalize the edges of TerrainTiles.
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
@@ -198,9 +199,9 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Assign the terrain system to the TerrainTile
-    if (terrain.valid())
+    if (_terrain.valid())
     {
-      tile->setTerrain( terrain.get() );
+        tile->setTerrain( _terrain.get() );
     }
 
     int layer = 0;
@@ -243,16 +244,10 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(xmin,ymin,0)).length();
-    double min_range = radius * map->getMinTileRangeFactor();
+    double min_range = radius * _map->getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * map->getSkirtRatio());
-   
-    //osg::PagedLOD* plod = new osg::PagedLOD();
-    //plod->setCenter( centroid );
-    //plod->addChild( tile, min_range, max_range );
-    //plod->setFileName( 1, createURI( key ) );
-    //plod->setRange( 1, 0.0, min_range );
+    hf->setSkirtHeight(radius * _map->getSkirtRatio());
 
     // see if we need to keep subdividing:
     osg::Node* result = tile;
@@ -277,19 +272,7 @@ ProjectedTileBuilder::createCoordinateSystemNode() const
     // OSG wants a null ellipsoid for projected datasets...
     csn->setEllipsoidModel( NULL );
 
-    getMapProfile().applyTo( csn );
-
-    //if (_dataProfile.getProfileType() == Profile::GLOBAL_GEODETIC ||
-    //    _dataProfile.getProfileType() == Profile::GLOBAL_MERCATOR)
-    //{   
-    //    csn->setCoordinateSystem( "+proj=eqc +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0" );
-    //    csn->setFormat( "PROJ4" );
-    //}
-    //else
-    //{
-    //    //TODO:  Set format
-    //    csn->setCoordinateSystem( _dataProfile.srs() );
-    //}
+    getMapProfile()->applyTo( csn );
 
     return csn;
 }

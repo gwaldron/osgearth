@@ -190,8 +190,10 @@ public:
         // validate dataset
         if (!url.empty())
         {
-            root_node = osgDB::readNodeFile(url);
-            
+            osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
+            localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
+            root_node = osgDB::readNodeFile(url, localOptions.get());
+
             if (root_node.valid())
             {
                 path = osgDB::getFilePath(url);
@@ -399,7 +401,11 @@ public:
             }
         }
         
-        osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename);
+
+        osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
+        localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
+
+        osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename, localOptions.get());
 
         if (node.valid())
         {
@@ -416,7 +422,7 @@ public:
             double center_x = (min_x + max_x)*0.5;
             double center_y = (min_y + max_y)*0.5;
 
-            osg::Vec3d local(0.5,0.5,0.0);            
+            osg::Vec3d local(0.5,0.5,0.0);
             for(unsigned int i=0; i<ct._terrainTiles.size(); ++i)
             {
                 osgTerrain::TerrainTile* tile = ct._terrainTiles[i].get();
@@ -430,7 +436,7 @@ public:
                     osgTerrain::TileID local_tileID(level, local_x, local_y);
                     
                     tile->setTileID(local_tileID);
-                    insertTile(local_tileID, tile);                    
+                    insertTile(local_tileID, tile);
                 }
 
             }
@@ -450,29 +456,31 @@ public:
     {
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock(tileMapMutex);
         tileMap[tileID] = tile;
-        
+
         tileFIFO.push_back(tileID);
-        
+
         if (tileFIFO.size()>maxNumTilesInCache)
         {
             osgTerrain::TileID tileToRemove = tileFIFO.front();
-            tileFIFO.pop_front();            
+            tileFIFO.pop_front();
             tileMap.erase(tileToRemove);
-            
+
             osg::notify(osg::INFO)<<"Pruned tileID ("<<getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
         }
-        
+
         osg::notify(osg::INFO)<<"insertedTile tileFIFO.size()=="<<tileFIFO.size()<<std::endl;
     }
 
     osgTerrain::TerrainTile* findTile(const osgTerrain::TileID& tileID, bool insertBlankTileIfNotFound = false)
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(tileMapMutex);
-        TileMap::iterator itr = tileMap.find(tileID);
-        if (itr!=tileMap.end()) return itr->second.get();
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(tileMapMutex);
+            TileMap::iterator itr = tileMap.find(tileID);
+            if (itr!=tileMap.end()) return itr->second.get();
+        }
 
         if (insertBlankTileIfNotFound) insertTile(tileID, 0);
-        
+
         return 0;
     }
 

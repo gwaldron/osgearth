@@ -74,12 +74,7 @@ namespace osgEarth
         /**
          * Gets the profile type
          */
-        ProfileType getProfileType() const;
-
-        /**
-         * Gets the spatial reference system string.
-         */
-        //const std::string& srs() const;        
+        ProfileType getProfileType() const;  
 
         /**
          * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
@@ -91,16 +86,6 @@ namespace osgEarth
          * Deduces a profile type given an SRS string.
          */
         static ProfileType getProfileTypeFromSRS(const std::string &srs);
-
-        //bool operator == (const Profile& rhs) const;
-
-        //bool operator != (const Profile& rhs) const;
-
-        /**
-         * Applies this profile's format and coordinate system strings to the
-         * provided CSN.
-         */
-        void applyTo( osg::CoordinateSystemNode* csn ) const;
 
         /**
          * Gets whether or not the Profile is "compatible" with the given profile, i.e.,

@@ -140,16 +140,6 @@ Profile::getSRS() const {
     return _srs.get();
 }
 
-//const std::string&
-//Profile::srs() const {
-//    return _srs;
-//}
-
-//const Profile::ProfileType&
-//Profile::getProfileType() const {
-//    return _profileType;
-//}
-
 void
 Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) const
 {
@@ -174,16 +164,6 @@ Profile::getProfileTypeFromSRS(const std::string& srs_string)
         srs.valid() && srs->isMercator()? Profile::TYPE_MERCATOR :
         srs.valid() && srs->isProjected()? Profile::TYPE_LOCAL :
         Profile::TYPE_UNKNOWN;
-}
-
-void
-Profile::applyTo( osg::CoordinateSystemNode* csn ) const
-{
-    if ( csn )
-    {
-        csn->setFormat( _srs->getInitType() );
-        csn->setCoordinateSystem( _srs->getInitString() );
-    }
 }
 
 bool

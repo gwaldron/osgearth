@@ -223,6 +223,35 @@ SpatialReference::isMercator() const
     return _is_mercator;
 }
 
+osg::CoordinateSystemNode*
+SpatialReference::createCoordinateSystemNode() const
+{
+    osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
+    if ( !_wkt.empty() )
+    {
+        csn->setFormat( "WKT" );
+        csn->setCoordinateSystem( _wkt );
+    }
+    else if ( !_proj4.empty() )
+    {
+        csn->setFormat( "PROJ4" );
+        csn->setCoordinateSystem( _proj4 );
+    }
+    else
+    {
+        csn->setFormat( _init_type );
+        csn->setCoordinateSystem( _init_str );
+    }
+    
+    csn->setEllipsoidModel( _ellipsoid.get() );
+    
+    return csn;
+}
+
 
 bool
 SpatialReference::transform( double x, double y, const SpatialReference* out_srs, double& out_x, double& out_y ) const
@@ -306,6 +335,13 @@ SpatialReference::init()
     {
         _wkt = wktbuf;
         OGRFree( wktbuf );
+    }
+    
+    char* proj4buf;
+    if ( OSRExportToProj4( _handle, &proj4buf ) == OGRERR_NONE )
+    {
+        _proj4 = proj4buf;
+        OGRFree( proj4buf );
     }
 
     _initialized = true;

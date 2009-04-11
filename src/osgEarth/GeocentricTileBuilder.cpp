@@ -431,13 +431,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 osg::CoordinateSystemNode*
 GeocentricTileBuilder::createCoordinateSystemNode() const
 {
-    osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
-
-    // TODO: set the CORRECT ellipsoid model, based on the profile/srs:
-    getMapProfile()->applyTo( csn );
-    csn->setEllipsoidModel( (osg::EllipsoidModel*)getMapProfile()->getSRS()->getEllipsoid() );
-
-    return csn;
+    return getMapProfile()->getSRS()->createCoordinateSystemNode();
 }
 
 osg::ClusterCullingCallback*

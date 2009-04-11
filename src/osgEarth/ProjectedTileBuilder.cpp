@@ -267,12 +267,11 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
 osg::CoordinateSystemNode*
 ProjectedTileBuilder::createCoordinateSystemNode() const
 {
-    osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+    osg::CoordinateSystemNode* csn = getMapProfile()->getSRS()->createCoordinateSystemNode();
 
-    // OSG wants a null ellipsoid for projected datasets...
+    // Setting the ellipsoid to NULL indicates that the CS should be interpreted 
+    // as PROJECTED instead of GEOGRAPHIC.
     csn->setEllipsoidModel( NULL );
-
-    getMapProfile()->applyTo( csn );
 
     return csn;
 }
@@ -281,6 +280,7 @@ void
 ProjectedTileBuilder::scaleHeightFieldToDegrees(osg::HeightField *hf)
 {
     //The number of degrees in a meter at the equator
+    //TODO: adjust this calculation based on the actual EllipsoidModel.
     float scale = 1.0f/111319.0f;
     if (hf)
     {

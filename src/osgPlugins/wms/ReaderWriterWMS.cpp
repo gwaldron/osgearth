@@ -128,8 +128,10 @@ public:
             << "&BBOX=%lf,%lf,%lf,%lf";
         _prototype = buf.str();
 
-        osg::ref_ptr<const Profile> candidate = Profile::create( _srs );
-        if ( mapProfile && mapProfile->isCompatibleWith( candidate.get() ) )
+        // first check whether the map + WMS source are the same SRS:
+        // TODO: deprecate this once we start using native profiles.
+        osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create( _srs );
+        if ( wms_srs.valid() && mapProfile && mapProfile->getSRS()->isEquivalentTo( wms_srs.get() ) )
         {
             result = mapProfile;
         }
@@ -148,11 +150,10 @@ public:
             }
         }
 
-
         // Last resort: create a global extent profile (only valid for global maps)
-        if ( !result.valid() )
+        if ( !result.valid() && wms_srs->isGeographic() && mapProfile && mapProfile->getProfileType() != Profile::TYPE_LOCAL )
         {
-            result = candidate.get();
+            result = mapProfile;
         }
         
 

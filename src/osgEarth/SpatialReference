@@ -69,6 +69,9 @@ namespace osgEarth
         /** Tests whether this SRS represents a Mercator projection. */
         bool isMercator() const;
 
+        /** Creates a new CSN based on this spatial reference. */
+        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+
     protected:
         virtual ~SpatialReference();
 
@@ -83,6 +86,7 @@ namespace osgEarth
         bool _is_mercator;
         std::string _name;
         std::string _wkt;
+        std::string _proj4;
         std::string _init_type;
         std::string _init_str;
         std::string _init_str_lc;

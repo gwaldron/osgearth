@@ -263,7 +263,7 @@ TileBuilder::initializeTileSources()
         if ( !_mapProfile.valid() )
         {
             std::string refLayer = _map->getProfileConfig()->getRefLayer();
-            if (!refLayer.empty())
+            if ( !refLayer.empty() )
             {
                 ref_source = findTileSource( refLayer );
                 if ( ref_source )
@@ -277,13 +277,8 @@ TileBuilder::initializeTileSources()
                 }
                 else
                 {
-                    osg::notify(osg::WARN) << "[osgEarth] Source \"" << refLayer << "\" did not return a valid profile" << std::endl;
+                    osg::notify(osg::WARN) << "[osgEarth] Source \"" << refLayer << "\" does not have a valid profile" << std::endl;
                 }
-            }
-            else
-            {
-                osg::notify(osg::WARN) << "[osgEarth] Cannot set map profile from unknown layer " << refLayer << std::endl;
-                //TODO: continue on, or fail?
             }
         }
 
@@ -328,7 +323,7 @@ TileBuilder::initializeTileSources()
         else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
         {
             osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
-            _image_sources.erase(i);
+            i =_image_sources.erase(i);
             continue;
         }
         i++;
@@ -347,7 +342,7 @@ TileBuilder::initializeTileSources()
         else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
         {
             osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
-            _heightfield_sources.erase(i);
+            i = _heightfield_sources.erase(i);
             continue;
         }
         i++;

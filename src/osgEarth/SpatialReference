@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osg/Referenced>
 #include <osg/CoordinateSystemNode>
+#include <osgTerrain/Locator>
 #include <OpenThreads/ReentrantMutex>
 
 namespace osgEarth
@@ -71,6 +72,9 @@ namespace osgEarth
 
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+
+        /** Creates a new Locator object based on this spatial reference. */
+        osgTerrain::Locator* createLocator() const;
 
     protected:
         virtual ~SpatialReference();

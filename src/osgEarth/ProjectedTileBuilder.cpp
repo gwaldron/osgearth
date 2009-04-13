@@ -168,10 +168,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         scaleHeightFieldToDegrees( hf.get() );
     }
 
-    osgTerrain::Locator* geo_locator = new osgTerrain::Locator();
-
-    osgTerrain::Locator::CoordinateSystemType coordinateSystem = (getMapProfile()->getProfileType() == Profile::TYPE_LOCAL) ? osgTerrain::Locator::PROJECTED : osgTerrain::Locator::GEOGRAPHIC;
-    geo_locator->setCoordinateSystemType( coordinateSystem );
+    osgTerrain::Locator* geo_locator = getMapProfile()->getSRS()->createLocator();
 	geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     
     hf->setOrigin( osg::Vec3d( xmin, ymin, 0.0 ) );
@@ -213,9 +210,8 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             getExtents(image_tiles[i].second.get(), img_xmin, img_ymin, img_xmax, img_ymax, getMapConfig()->getReprojectMercatorToGeodetic());
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator = new osgTerrain::Locator;
-            img_locator->setCoordinateSystemType( coordinateSystem );
-			img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
+            osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
+            img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
             if ( key->isMercator() && getMapConfig()->getReprojectMercatorToGeodetic())
             {
@@ -223,7 +219,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             }
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
-            img_layer->setLocator( img_locator.get());
+            img_layer->setLocator( img_locator.get() );
 
             //Turn on linear texture minification if the image is not a power of two due
             //to the fact that some drivers have issues with npot mip mapping

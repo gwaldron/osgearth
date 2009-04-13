@@ -77,7 +77,7 @@ GeocentricTileBuilder::createCap(const double &min_lat, const double &max_lat, c
 
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
 
-    osgTerrain::Locator* locator = new osgTerrain::Locator();
+    osgTerrain::Locator* locator = getMapProfile()->getSRS()->createLocator();
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 	locator->setTransform(getTransformFromExtents(
         osg::DegreesToRadians( min_lon ),
@@ -295,7 +295,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         }
     }
            
-    osgTerrain::Locator* locator = new osgTerrain::Locator();
+    osgTerrain::Locator* locator = getMapProfile()->getSRS()->createLocator();    
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 	locator->setTransform( getTransformFromExtents(
 		osg::DegreesToRadians( min_lon ),
@@ -342,7 +342,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             getLatLonExtents(image_tiles[i].second.get(), img_min_lon, img_min_lat, img_max_lon, img_max_lat);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator = new osgTerrain::Locator;
+            osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 			img_locator->setTransform( getTransformFromExtents(
                 osg::DegreesToRadians( img_min_lon ),

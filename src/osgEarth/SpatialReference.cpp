@@ -252,6 +252,15 @@ SpatialReference::createCoordinateSystemNode() const
     return csn;
 }
 
+osgTerrain::Locator*
+SpatialReference::createLocator() const
+{
+    osgTerrain::Locator* locator = new osgTerrain::Locator();
+    locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
+    locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
+    // note: not setting the format/cs on purpose.
+    return locator;
+}
 
 bool
 SpatialReference::transform( double x, double y, const SpatialReference* out_srs, double& out_x, double& out_y ) const

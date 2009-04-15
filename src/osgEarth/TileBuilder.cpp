@@ -312,19 +312,20 @@ TileBuilder::initializeTileSources()
     for( TileSourceList::iterator i = _image_sources.begin(); i != _image_sources.end(); )
     {
         // skip the reference source since we already initialized it
-        if ( i->get() == ref_source ) continue;
-
-        osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
-
-        if ( !_mapProfile.valid() && sourceProfile.valid() )
+        if ( i->get() != ref_source )
         {
-            _mapProfile = getSuitableMapProfileFor( sourceProfile.get() );
-        }
-        else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
-        {
-            osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
-            i =_image_sources.erase(i);
-            continue;
+            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
+
+            if ( !_mapProfile.valid() && sourceProfile.valid() )
+            {
+                _mapProfile = getSuitableMapProfileFor( sourceProfile.get() );
+            }
+            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
+            {
+                osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+                i =_image_sources.erase(i);
+                continue;
+            }
         }
         i++;
     }

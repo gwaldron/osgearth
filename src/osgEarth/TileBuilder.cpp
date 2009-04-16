@@ -25,6 +25,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Compositing>
 #include <osgEarth/Registry>
+#include <osgEarth/ImageUtils>
 
 #include <osg/Image>
 #include <osg/Notify>
@@ -332,19 +333,20 @@ TileBuilder::initializeTileSources()
 
     for (TileSourceList::iterator i = _heightfield_sources.begin(); i != _heightfield_sources.end(); )
     {        
-        if ( i->get() == ref_source ) continue;
-
-        osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
-
-        if ( !_mapProfile.valid() && sourceProfile.valid() )
+        if ( i->get() != ref_source )
         {
-            _mapProfile = getSuitableMapProfileFor( sourceProfile );
-        }
-        else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
-        {
-            osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
-            i = _heightfield_sources.erase(i);
-            continue;
+            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
+
+            if ( !_mapProfile.valid() && sourceProfile.valid() )
+            {
+                _mapProfile = getSuitableMapProfileFor( sourceProfile );
+            }
+            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
+            {
+                osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+                i = _heightfield_sources.erase(i);
+                continue;
+            }
         }
         i++;
     }
@@ -651,26 +653,24 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource,
                               osgEarth::TileBuilder::ImageTileKeyPair &imageTile)
 {
     //Try to create the image with the given key
-    osg::ref_ptr<osg::Image> image;
-    
     osg::ref_ptr<const TileKey> image_key = key;
-    
-    if (!image.valid())
+
+    osg::ref_ptr<GeoImage> geo_image;
+
+    while (image_key.valid())
     {
-      while (image_key.valid())
-      {
-        if (tileSource->isKeyValid(image_key.get()))
+        if ( tileSource->isKeyValid(image_key.get()) )
         {
-          image = createImage(image_key.get(), tileSource);
+            geo_image = createGeoImage( image_key.get(), tileSource );
+            //image = createImage(image_key.get(), tileSource);
         }
-        if (image.valid()) break;
+        if (geo_image.valid()) break;
         image_key = image_key->createParentKey();
-      }
     }
 
-    if (image_key.valid() && image.valid())
+    if (image_key.valid() && geo_image.valid())
     {
-        imageTile.first = image.get();
+        imageTile.first = geo_image.get();
         imageTile.second = image_key.get();
         return true;
     }
@@ -759,23 +759,66 @@ TileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 }
 
 
-osg::Image*
-TileBuilder::createImage(const TileKey* key, TileSource* source)
+GeoImage*
+TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
 {
-    osg::ref_ptr<osg::Image> image;
+    GeoImage* result = NULL;
+    const Profile* mapProfile = mapKey->getProfile();
 
     //If the key profile and the source profile exactly match, simply request the image from the source
-    if (key->getProfile()->isEquivalentTo( source->getProfile() ) )
+    if ( mapProfile->isEquivalentTo( source->getProfile() ) )
     {
-        image = source->createImage(key);
+        osg::Image* image = source->createImage( mapKey );
+        if ( image )
+        {
+            result = new GeoImage( 
+                image,
+                mapProfile->getSRS(),
+                mapProfile->xMin(), mapProfile->yMin(), mapProfile->xMax(), mapProfile->yMax() );
+        }
     }
+
+    // Otherwise, we need to process the tiles.
     else
     {
         Compositor comp;
-        image = comp.mosaicImages( key, source );
+        osg::ref_ptr<GeoImage> mosaic = comp.mosaicImages( mapKey, source );
+
+        if ( mosaic.valid() )
+        {
+            if ( ! mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS() ) )
+            {
+                // TODO: reproject the mosaic (unless we're doing the special mercator-locator thing,
+                // which we'll need a setting to enable/disable).
+            }
+
+            // crop to fit the map key extents. (NOTE: if we reproject the geo_image, there will be no need to
+            // actually reproject the extents below)
+
+            double xmin, ymin, xmax, ymax;
+            mapKey->getGeoExtents( xmin, ymin, xmax, ymax );
+
+            source->getProfile()->clampAndTransformExtents(
+                xmin, ymin, xmax, ymax, mapKey->getProfile()->getSRS() );
+
+            osg::Image* image = ImageUtils::cropImage(
+                mosaic->getImage(),
+                mosaic->xMin(), mosaic->yMin(), mosaic->xMax(), mosaic->yMax(),
+                xmin, ymin, xmax, ymax );
+
+            if ( image )
+            {
+                result = new GeoImage(
+                    image,
+                    mosaic->getSRS(),
+                    xmin, ymin, xmax, ymax );
+            }
+        }
     }
-    return image.release();
+
+    return result;
 }
+
 
 
 osg::HeightField*

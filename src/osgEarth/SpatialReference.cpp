@@ -85,6 +85,7 @@ SpatialReference::create( const std::string& init )
         low == "epsg:54004" || low == "epsg:9804" || low == "epsg:9805")
     {
         return createFromPROJ4(
+            //"+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs", init );
             "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs", init );
     }
 
@@ -121,6 +122,16 @@ _initialized( false )
     //TODO
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
+}
+
+SpatialReference::SpatialReference(void* handle) :
+_handle( handle ),
+_owns_handle( true ),
+_initialized( false )
+{
+    init();
+    _init_type = "WKT";
+    _init_str = getWKT();
 }
 
 SpatialReference::~SpatialReference()
@@ -213,6 +224,34 @@ SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
     // last resort, since it requires the lock
     OGR_SCOPE_LOCK();
     return TRUE == ::OSRIsSame( _handle, rhs->_handle );
+}
+
+const SpatialReference*
+SpatialReference::getGeographicSRS() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
+    if ( _is_geographic )
+        return this;
+
+    if ( !_geo_srs.valid() )
+    {
+        OGR_SCOPE_LOCK();
+
+        void* new_handle = OSRNewSpatialReference( NULL );
+        int err = OSRCopyGeogCSFrom( new_handle, _handle );
+        if ( err == OGRERR_NONE )
+        {
+            const_cast<SpatialReference*>(this)->_geo_srs = new SpatialReference( new_handle );
+        }
+        else
+        {
+            OSRDestroySpatialReference( new_handle );
+        }
+    }
+
+    return _geo_srs.get();
 }
 
 bool
@@ -338,6 +377,15 @@ SpatialReference::init()
 
     std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0, true );
     _is_mercator = !proj.empty() && proj.find("mercator")==0;
+
+    if ( _name == "unnamed" )
+    {
+        _name =
+            _is_geographic? "Geographic CS" :
+            _is_mercator? "Mercator CS" :
+            ( !proj.empty()? proj : "Projected CS" );
+    }
+
 
     char* wktbuf;
     if ( OSRExportToWkt( _handle, &wktbuf ) == OGRERR_NONE )

@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
+#include <osgEarth/Compositing>
 #include <osgDB/ReaderWriter>
 #include <osgTerrain/Terrain>
 #include <vector>
@@ -116,7 +117,9 @@ namespace osgEarth
          */
         const Profile* getMapProfile() const;
 
-        osg::Image* createImage(const TileKey* key, TileSource* source);
+        //osg::Image* createImage(const TileKey* key, TileSource* source);
+        GeoImage* createGeoImage(const TileKey* key, TileSource* source);
+
         osg::HeightField* createHeightField(const TileKey* key, TileSource* source);
 
         //Registers the given TileBuilder with osgEarth.  This should not be called by user code
@@ -167,7 +170,7 @@ namespace osgEarth
 
     protected:
 
-        typedef std::pair<osg::ref_ptr<osg::Image>, osg::ref_ptr<const TileKey> > ImageTileKeyPair;
+        typedef std::pair<osg::ref_ptr<GeoImage>, osg::ref_ptr<const TileKey> > ImageTileKeyPair;
         typedef std::vector<ImageTileKeyPair> ImageTileList;
 
         osg::HeightField* createValidHeightField(TileSource* tileSource, const TileKey *key);

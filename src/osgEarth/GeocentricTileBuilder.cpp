@@ -204,10 +204,12 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         //Add an image from each image source
         for (unsigned int i = 0; i < _image_sources.size(); ++i)
         {
-            osg::Image *image = 0;
+            GeoImage* image = NULL;
+            //osg::Image *image = 0;
             if (_image_sources[i]->isKeyValid(key))
             {
-                image = createImage(key, _image_sources[i].get());    
+                //image = createImage(key, _image_sources[i].get());    
+                image = createGeoImage( key, _image_sources[i].get() );
             }
             image_tiles.push_back(ImageTileKeyPair(image, key));
         }
@@ -350,21 +352,25 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
                 osg::DegreesToRadians( img_max_lon ),
                 osg::DegreesToRadians( img_max_lat )));
 
-            // use a special image locator to warp the texture coords for mercator tiles :)
-            // WARNING: TODO: this will not persist upon export....we need a nodekit.
+            GeoImage* geo_image = image_tiles[i].first.get();
 
-            // TODO: perhaps we can ask the key/profile to create a locator instead of explicity
-            // checking for mercator..
+            // Use a special locator for mercator images (instead of reprojecting)
+            if ( geo_image->getSRS()->isMercator() )
+            {
+                img_locator = new MercatorLocator(
+                    *img_locator.get(),
+                    geo_image->getImage()->t(),
+                    image_tiles[i].second->getLevelOfDetail() );
+            }
 
-            if ( key->isMercator() )
-                img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
+            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
 
-            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( image_tiles[i].first.get());
             img_layer->setLocator( img_locator.get());
+
 
             //Turn on linear texture minification if the image is not a power of two due
             //to the fact that some drivers have issues with npot mip mapping
-            if (!ImageUtils::isPowerOfTwo(image_tiles[i].first.get()))
+            if (!ImageUtils::isPowerOfTwo( geo_image->getImage() ) ) //image_tiles[i].first.get()))
             {
 #if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
                 img_layer->setFilter( osgTerrain::Layer::LINEAR );

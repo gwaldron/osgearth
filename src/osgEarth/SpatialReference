@@ -70,6 +70,9 @@ namespace osgEarth
         /** Tests whether this SRS represents a Mercator projection. */
         bool isMercator() const;
 
+        /** Gets a reference to this SRS's underlying geographic SRS. */
+        const SpatialReference* getGeographicSRS() const;
+
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
@@ -81,6 +84,7 @@ namespace osgEarth
 
     private:
         SpatialReference( void* handle, const std::string& type, const std::string& init_str );
+        SpatialReference( void* handle );
         void init();
 
         bool _initialized;
@@ -95,6 +99,7 @@ namespace osgEarth
         std::string _init_str;
         std::string _init_str_lc;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
+        osg::ref_ptr<SpatialReference> _geo_srs;
         
     private:
         static SpatialReference* createFromWKT(

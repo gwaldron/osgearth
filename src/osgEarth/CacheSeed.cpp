@@ -124,27 +124,27 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-      //Assumes the the TileSource will perform the caching for us when we call createImage
-      for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
-      {
-        TileSource* source = itr->get();
-        if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
+        //Assumes the the TileSource will perform the caching for us when we call createImage
+        for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
         {
-          osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
-          osg::ref_ptr<osg::Image> image = tile_builder->createImage(key, source);
+            TileSource* source = itr->get();
+            if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
+            {
+                osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
+                osg::ref_ptr<GeoImage> image = tile_builder->createGeoImage(key, source);
+            }
         }
-      }
 
-      for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
-      {
-        //TODO:  Handle compatible but non exact heightfield keys (JB)
-        TileSource* source = itr->get();
-        if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
+        for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
         {
-          osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
-          osg::ref_ptr<osg::HeightField> heightField = source->createHeightField(key);
+            //TODO:  Handle compatible but non exact heightfield keys (JB)
+            TileSource* source = itr->get();
+            if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
+            {
+                osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
+                osg::ref_ptr<osg::HeightField> heightField = source->createHeightField(key);
+            }
         }
-      }
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)

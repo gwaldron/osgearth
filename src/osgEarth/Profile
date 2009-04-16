@@ -62,13 +62,24 @@ namespace osgEarth
         bool isOK() const;
 
         /**
-         * Gets the extents of the profile
+         * Gets the extents of the profile (in the profile's SRS)
          */
         double xMin() const;
         double yMin() const;
         double xMax() const;
         double yMax() const;
+
+        /**
+         * Gets the extents of the profile (in lat/long)
+         */
+        double longMin() const;
+        double latMin() const;
+        double longMax() const;
+        double latMax() const;
         
+        /**
+         * Gets the spatial reference system underlying this profile.
+         */
         const SpatialReference* getSRS() const;
 
         /**
@@ -113,6 +124,15 @@ namespace osgEarth
          */
         void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
 
+        /** 
+         * Clamps the incoming extents to the extents of this profile, and converts the extents to be
+         * expressed in this profile's SRS.
+         * Returns true if the clamping operation succeeded. The inputs are replaced with the results,
+         * and are rendered invalid if the method returns false.
+         */
+        bool clampAndTransformExtents( 
+            double& xmin, double& ymin, double& xmax, double& ymax,
+            const SpatialReference* srs ) const;
 
     private:       
 
@@ -125,10 +145,10 @@ namespace osgEarth
 
     private:
         double _xmin, _ymin, _xmax, _ymax;        
-        //ProfileType _profileType;
+        bool _is_latlon_ext_computed;
+        double _latmin, _longmin, _latmax, _longmax;
         unsigned int _numTilesWideAtLod0;
         unsigned int _numTilesHighAtLod0;
-//        std::string _srs;
         osg::ref_ptr<const SpatialReference> _srs;
 
         //void init( ProfileType );

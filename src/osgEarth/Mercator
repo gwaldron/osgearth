@@ -77,6 +77,15 @@ namespace osgEarth
           unsigned int x, unsigned int y,
           int tile_size,
           unsigned int& out_tile_x, unsigned int& out_tile_y);
+
+      /**
+       * Given an extent and a lat/lon, calculate the Mercator U and V coordinates of
+       * the lat/lon within that extent.
+       */
+      static void getUV(
+          double minlon, double minlat, double maxlon, double maxlat,
+          double lon, double lat,
+          double& out_u, double& out_v);
     };
 
     class MercatorLocator : public osgTerrain::Locator

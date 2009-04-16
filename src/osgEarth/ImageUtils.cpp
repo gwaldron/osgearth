@@ -22,7 +22,8 @@
 
 using namespace osgEarth;
 
-bool ImageUtils::copyAsSubImage( osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
+bool
+ImageUtils::copyAsSubImage( osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
 {
     if (!src || !dst || 
         src->getPacking() != dst->getPacking() || 

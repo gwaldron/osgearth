@@ -26,6 +26,48 @@
 
 using namespace osgEarth;
 
+GeoImage::GeoImage(osg::Image* image,
+                   const SpatialReference* srs,
+                   double xmin, double ymin, double xmax, double ymax) :
+_image(image),
+_srs(srs),
+_xmin(xmin),_ymin(ymin),_xmax(xmax),_ymax(ymax)
+{
+    //NOP
+}
+
+osg::Image*
+GeoImage::getImage() const {
+    return _image.get();
+}
+
+const SpatialReference*
+GeoImage::getSRS() const {
+    return _srs.get(); 
+}
+
+double
+GeoImage::xMin() const {
+    return _xmin;
+}
+
+double
+GeoImage::yMin() const {
+    return _ymin;
+}
+
+double
+GeoImage::xMax() const {
+    return _xmax; 
+}
+
+double
+GeoImage::yMax() const {
+    return _ymax; 
+}
+
+
+/***************************************************************************/
 
 TileImage::TileImage(osg::Image* image, const TileKey *key)
 {
@@ -59,6 +101,56 @@ void MultiImage::getExtents(double &minX, double &minY, double &maxX, double &ma
         maxX = osg::maximum(i->_maxX, maxX);
         maxY = osg::maximum(i->_maxY, maxY);
     }
+}
+
+osg::Image*
+MultiImage::createImage()
+{
+    if (_images.size() == 0)
+    {
+        osg::notify(osg::NOTICE) << "MultiImage has no images..." << std::endl;
+        return 0;
+    }
+
+    unsigned int tileWidth = _images[0]._image->s();
+    unsigned int tileHeight = _images[0]._image->t();
+
+    //osg::notify(osg::NOTICE) << "TileDim " << tileWidth << ", " << tileHeight << std::endl;
+
+    unsigned int minTileX = _images[0]._tileX;
+    unsigned int minTileY = _images[0]._tileY;
+    unsigned int maxTileX = _images[0]._tileX;
+    unsigned int maxTileY = _images[0]._tileY;
+
+    //Compute the tile size.
+    for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+    {
+        if (i->_tileX < minTileX) minTileX = i->_tileX;
+        if (i->_tileY < minTileY) minTileY = i->_tileY;
+
+        if (i->_tileX > maxTileX) maxTileX = i->_tileX;
+        if (i->_tileY > maxTileY) maxTileY = i->_tileY;
+    }
+
+    unsigned int tilesWide = maxTileX - minTileX + 1;
+    unsigned int tilesHigh = maxTileY - minTileY + 1;
+
+    unsigned int pixelsWide = tilesWide * tileWidth;
+    unsigned int pixelsHigh = tilesHigh * tileHeight;
+
+    osg::ref_ptr<osg::Image> image = new osg::Image;
+    image->allocateImage(pixelsWide, pixelsHigh, 1, GL_RGB, GL_UNSIGNED_BYTE);
+
+    //Composite the incoming images into the master image
+    for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+    {
+        //Determine the indices in the master image for this image
+        int dstX = (i->_tileX - minTileX) * tileWidth;
+        int dstY = (maxTileY - i->_tileY) * tileHeight;
+        ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
+    }
+
+    return image.release();
 }
 
 
@@ -153,13 +245,15 @@ Compositor::Compositor()
 }
 
 
-osg::Image*
+GeoImage*
 Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
 {
-    osg::Image* result = NULL;
-    
-    //Determine the intersecting keys and create and extract an appropriate image from the tiles
+    GeoImage* result = NULL;
+    osg::Image* image = NULL;
+
+    // Determine the intersecting keys and create and extract an appropriate image from the tiles
     std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
+
     source->getProfile()->getIntersectingTiles(key, intersectingTiles);
     if (intersectingTiles.size() > 0)
     {
@@ -186,7 +280,16 @@ Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
                 return 0;
             }
         }
-        result = mi->createImage(dst_minx, dst_miny, dst_maxx, dst_maxy);
+
+        //result = mi->createImage(dst_minx, dst_miny, dst_maxx, dst_maxy);
+
+        double rxmin, rymin, rxmax, rymax;
+        mi->getExtents( rxmin, rymin, rxmax, rymax );
+
+        result = new GeoImage(
+            mi->createImage(),
+            source->getProfile()->getSRS(),
+            rxmin, rymin, rxmax, rymax );
     }
 
     return result;

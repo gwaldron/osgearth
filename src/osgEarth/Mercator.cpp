@@ -32,10 +32,14 @@ using namespace osgEarth;
 
 /********************************************************************/
 
-#define MIN_X -20037508.34
-#define MIN_Y -20037508.34
-#define MAX_X 20037508.34
-#define MAX_Y 20037508.34
+#define MIN_X -20037508.342789248
+#define MIN_Y -20037508.342789248
+#define MAX_X 20037508.342789248
+#define MAX_Y 20037508.342789248
+
+#define MERC_MAX_LAT  85.084059050110383
+#define MERC_MIN_LAT -85.084059050110383
+
 
 #define PIXELS_PER_TILE 256
 
@@ -90,11 +94,41 @@ Mercator::longLatToPixelXY(double lon, double lat, unsigned int lod, int tile_si
 }
 
 
+static double
+lonToU(double lon) {
+    return (lon + 180.0) / 360.0;
+}
+
+static double
+latToV(double lat) {
+    double sin_lat = sin( osg::DegreesToRadians( lat ) );
+    return 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
+}
+
+
+void
+Mercator::getUV(double minlon, double minlat, double maxlon, double maxlat,
+                double lon, double lat,
+                double& out_u, double& out_v)
+{
+    double umin = lonToU( minlon );
+    double umax = lonToU( maxlon );
+    double vmax = latToV( osg::clampBetween( minlat, MERC_MIN_LAT, MERC_MAX_LAT ) );
+    double vmin = latToV( osg::clampBetween( maxlat, MERC_MIN_LAT, MERC_MAX_LAT ) );
+
+    double ulon = lonToU( lon );
+    double vlat = latToV( osg::clampBetween( lat, MERC_MIN_LAT, MERC_MAX_LAT ) );
+
+    out_u = (ulon-umin)/(umax-umin);
+    out_v = (vlat-vmin)/(vmax-vmin);
+}
+
+
 void
 Mercator::pixelXYtoTileXY(unsigned int x, unsigned int y,
-                                 int tile_size,
-                                 unsigned int& out_tile_x,
-                                 unsigned int& out_tile_y)
+                          int tile_size,
+                          unsigned int& out_tile_x,
+                          unsigned int& out_tile_y)
 {
     out_tile_x = x/tile_size;
     out_tile_y = y/tile_size;
@@ -193,7 +227,7 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
     switch(_coordinateSystemType)
     {
     case(GEOCENTRIC):
-        {        
+        {
             double longitude, latitude, height;
 
             _ellipsoidModel->convertXYZToLatLongHeight(world.x(), world.y(), world.z(),
@@ -203,17 +237,43 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 
             double lon_deg = osg::RadiansToDegrees(longitude);
             double lat_deg = osg::RadiansToDegrees(latitude);
-            unsigned int px, py;
-            Mercator::longLatToPixelXY( lon_deg, lat_deg, lod, tile_size, px, py );
-            if ( py % tile_size != 0 )
-            {
-                py %= tile_size;
-                local.y() = ((double)tile_size-(double)py)/(double)tile_size;
-                //osg::notify(osg::NOTICE) << "KEY="<<key->str()<<": lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", localy="<<local.y()<<std::endl;
-            }
+            double xr, yr;
+            Mercator::getUV(
+                osg::RadiansToDegrees(_transform(3,0)),
+                osg::RadiansToDegrees(_transform(3,1)),
+                osg::RadiansToDegrees(_transform(3,0)+_transform(0,0)),
+                osg::RadiansToDegrees(_transform(3,1)+_transform(1,1)),
+                lon_deg, lat_deg,
+                xr, yr );
 
-            return true;      
+            // x is unchanged for mercator
+            local.y() = 1.0-yr;
+            return true;
         }
+
+    //case(GEOCENTRIC):
+    //    {
+    //        double longitude, latitude, height;
+
+    //        _ellipsoidModel->convertXYZToLatLongHeight(world.x(), world.y(), world.z(),
+    //            latitude, longitude, height );
+
+    //        local = osg::Vec3d(longitude, latitude, height) * _inverse;
+
+    //        double lon_deg = osg::RadiansToDegrees(longitude);
+    //        double lat_deg = osg::RadiansToDegrees(latitude);
+    //        unsigned int px, py;
+    //        Mercator::longLatToPixelXY( lon_deg, lat_deg, lod, tile_size, px, py );
+    //        if ( py % tile_size != 0 )
+    //        {
+    //            py %= tile_size;
+    //            local.y() = ((double)tile_size-(double)py)/(double)tile_size;
+    //            //osg::notify(osg::NOTICE) << "KEY="<<key->str()<<": lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", localy="<<local.y()<<std::endl;
+    //        }
+
+    //        return true;      
+    //    }
+
     case(GEOGRAPHIC):
         {        
             local = world * _inverse;
@@ -222,17 +282,40 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
             double lon_deg = w.x();
             double lat_deg = w.y();
 
-            unsigned int px, py;
-            Mercator::longLatToPixelXY( lon_deg, lat_deg, lod, tile_size, px, py );
-            if ( py % tile_size != 0 )
-            {
-                py %= tile_size;
-                local.y() = ((double)tile_size-(double)py)/(double)tile_size;
-               // osg::notify(osg::NOTICE) << "lod="<<lod<<", lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", local.y="<<local.y()<<std::endl;
-            }
+            double xr, yr;
+            Mercator::getUV(
+                osg::RadiansToDegrees(_transform(3,0)),
+                osg::RadiansToDegrees(_transform(3,1)),
+                osg::RadiansToDegrees(_transform(3,0)+_transform(0,0)),
+                osg::RadiansToDegrees(_transform(3,1)+_transform(1,1)),
+                lon_deg, lat_deg,
+                xr, yr );
 
-            return true;      
+            // x is unchanged for mercator
+            local.y() = 1.0-yr;
+            return true;
         }
+
+    //case(GEOGRAPHIC):
+    //    {        
+    //        local = world * _inverse;
+
+    //        osg::Vec3d w = world;
+    //        double lon_deg = w.x();
+    //        double lat_deg = w.y();
+
+    //        unsigned int px, py;
+    //        Mercator::longLatToPixelXY( lon_deg, lat_deg, lod, tile_size, px, py );
+    //        if ( py % tile_size != 0 )
+    //        {
+    //            py %= tile_size;
+    //            local.y() = ((double)tile_size-(double)py)/(double)tile_size;
+    //           // osg::notify(osg::NOTICE) << "lod="<<lod<<", lat="<<lat_deg<<", lon="<<lon_deg<<", py="<<py<<", local.y="<<local.y()<<std::endl;
+    //        }
+
+    //        return true;      
+    //    }
+
     case(PROJECTED):
         {        
             local = world * _inverse;

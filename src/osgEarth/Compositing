@@ -31,46 +31,48 @@
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT GeoExtent
+    {
+    public:
+        GeoExtent(
+            const SpatialReference* srs,
+            double xmin, double ymin,
+            double xmax, double ymax );
+
+        const SpatialReference* getSRS() const;
+
+        double xMin() const;
+        double yMin() const;
+        double xMax() const;
+        double yMax() const;
+    };
+
     /**
      * Image paired with a spatial reference.
      */
-    template<class T>
-    class OSGEARTH_EXPORT GeoObject : public osg::Referenced
+    class OSGEARTH_EXPORT GeoImage : public osg::Referenced
     {
     public:
-        GeoObject( T* image, const SpatialReference* srs );
+        GeoImage(
+            osg::Image* image, const SpatialReference* srs, 
+            double xmin, double ymin,
+            double xmax, double ymax );
 
     public:
-        T* get() const;
+        osg::Image* getImage() const;
 
         const SpatialReference* getSRS() const;
 
-    private:
-        osg::ref_ptr<T> _image;
-        osg::ref_ptr<const SpatialReference> _srs;
-    };
-
-    typedef GeoObject<osg::Image> GeoImage;
-    typedef GeoObject<osg::HeightField> GeoHeightField;
-
-
-    /**
-     * Set of images paired with a spatial reference.
-     */
-    template<typename T>
-    class OSGEARTH_EXPORT GeoObjects : public osg::MixinVector< osg::ref_ptr<T> >
-    {
-    public:
-        GeoObjects( const SpatialReference* srs );
-
-        const SpatialReference* getSRS() const;
+        double xMin() const;
+        double yMin() const;
+        double xMax() const;
+        double yMax() const;
 
     private:
+        osg::ref_ptr<osg::Image> _image;
         osg::ref_ptr<const SpatialReference> _srs;
+        double _xmin, _ymin, _xmax, _ymax;
     };
-
-    typedef GeoObjects<osg::Image> GeoImages;
-    typedef GeoObjects<osg::HeightField> GeoHeightFields;
 
 
     struct TileImage
@@ -104,14 +106,17 @@ namespace osgEarth
         */
         osg::Image* createImage(double minx, double miny, double maxx, double maxy);
 
+        osg::Image* createImage();
+
         /** A list of GeoImages */
         typedef std::vector<TileImage> TileImageList;
 
         /** Gets the images for this MultiImage */
         TileImageList& getImages() {return _images;}
 
-    protected:
         void getExtents(double &minX, double &minY, double &maxX, double &maxY);
+
+    protected:
 
         ~MultiImage();
         TileImageList _images;
@@ -123,7 +128,9 @@ namespace osgEarth
     public:
         Compositor();
 
-        osg::Image* mosaicImages( const TileKey* key, TileSource* source ) const;
+        GeoImage* mosaicImages( const TileKey* mapKey, TileSource* source ) const;
+
+        //osg::Image* mosaicImages( const TileKey* key, TileSource* source ) const;
 
         osg::HeightField* compositeHeightFields( const TileKey* key, TileSource* source ) const;
     };

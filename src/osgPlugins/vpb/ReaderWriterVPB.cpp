@@ -43,6 +43,7 @@ using namespace osgEarth;
 #define PROPERTY_LAYER_NUM              "layer"
 #define PROPERTY_NUM_TILES_WIDE_AT_LOD0 "num_tiles_wide_at_lod0"
 #define PROPERTY_NUM_TILES_HIGH_AT_LOD0 "num_tiles_high_at_lod0"
+#define PROPERTY_BASE_NAME              "base_name"
 
 static
 int getLOD(const osgTerrain::TileID& id)
@@ -185,6 +186,11 @@ public:
                 
                 osg::notify(osg::NOTICE)<<"dir_string="<<dir_string<<" result "<<directory_structure<<std::endl;
             }
+
+            if ( options->getPluginData( PROPERTY_BASE_NAME ) )
+            {
+                this->base_name = as<std::string>((const char*)options->getPluginData( PROPERTY_BASE_NAME ), "" );
+            }
         }
 
         // validate dataset
@@ -197,7 +203,8 @@ public:
             if (root_node.valid())
             {
                 path = osgDB::getFilePath(url);
-                base_name = osgDB::getStrippedName(url);
+                if ( base_name.empty() )
+                    base_name = osgDB::getStrippedName(url);
                 extension = osgDB::getFileExtension(url);
                 
                 osg::notify(osg::INFO)<<"VPBasebase constructor: Loaded root "<<url<<", path="<<path<<" base_name="<<base_name<<" extension="<<extension<<std::endl;
@@ -269,18 +276,7 @@ public:
 
                     osg::notify(osg::INFO)<<"final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
                     osg::notify(osg::INFO)<<"final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
-
-
-                    //profile = osgEarth::Profile::create( 
-                    //    ptype,
-                    //    osg::RadiansToDegrees(min_x), 
-                    //    osg::RadiansToDegrees(min_y), 
-                    //    osg::RadiansToDegrees(max_x), 
-                    //    osg::RadiansToDegrees(max_y),
-                    //    srs,
-                    //    numTilesWideAtLod0,
-                    //    numTilesHighAtLod0 );
-                    
+                   
                     profile = osgEarth::Profile::create( 
                         srs,
                         osg::RadiansToDegrees(min_x), 

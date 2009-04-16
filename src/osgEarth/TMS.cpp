@@ -237,7 +237,7 @@ TileMap::intersectsKey(const TileKey *tileKey)
     //Check to see if the key overlaps the bounding box using lat/lon.  This is necessary to check even in 
     //Mercator situations in case the BoundingBox is described using lat/lon coordinates such as those produced by GDAL2Tiles
     //This should be considered a bug on the TMS production side, but we can work around it for now...
-    tileKey->getGeoExtents(keyMinX, keyMinY, keyMaxX, keyMaxY);
+    tileKey->getGeoExtent().getBounds(keyMinX, keyMinY, keyMaxX, keyMaxY);
 
     bool inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
 

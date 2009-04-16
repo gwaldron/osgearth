@@ -192,7 +192,7 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
 
     //Write out the world file along side the image
     double minx, miny, maxx, maxy;
-    key->getGeoExtents(minx, miny, maxx, maxy);
+    key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
 
     std::string baseFilename = osgDB::getNameLessExtension(filename);
     std::string ext = osgDB::getFileExtension(filename);

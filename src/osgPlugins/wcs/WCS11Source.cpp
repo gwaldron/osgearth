@@ -103,7 +103,7 @@ WCS11Source::createImage( const TileKey* key )
     osg::notify(osg::INFO) << "[osgEarth::WCS1.1] URL = " << request->getURL() << std::endl;
 
     double lon0,lat0,lon1,lat1;
-    key->getGeoExtents( lon0, lat0, lon1, lat1 );
+    key->getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
 
     // download the data
     HTTPClient client;
@@ -178,7 +178,7 @@ WCS11Source::createRequest( const TileKey* key ) const
     std::stringstream buf;
 
     double lon_min, lat_min, lon_max, lat_max;
-    key->getGeoExtents( lon_min, lat_min, lon_max, lat_max );
+    key->getGeoExtent().getBounds( lon_min, lat_min, lon_max, lat_max );
 
     int lon_samples = _tile_size;
     int lat_samples = _tile_size;

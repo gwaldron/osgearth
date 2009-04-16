@@ -60,6 +60,8 @@ namespace osgEarth
         /** Returns this extent transformed into another spatial reference. */
         GeoExtent transform( const SpatialReference* to_srs ) const;
 
+        void getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const;
+
     public:
         static GeoExtent INVALID;
 

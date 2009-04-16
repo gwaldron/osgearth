@@ -131,7 +131,7 @@ osg::HeightField* HeightFieldUtils::convertMercatorToGeodetic(const TileKey* key
 
   //Get the geographic extents of the heightfield
   double min_lon, min_lat, max_lon, max_lat;
-  key->getGeoExtents(min_lon, min_lat, max_lon, max_lat);
+  key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
 
   //Get the native, meter, extents of the heightfield
   double min_x, min_y, max_x, max_y;

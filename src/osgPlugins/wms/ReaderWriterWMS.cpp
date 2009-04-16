@@ -21,6 +21,7 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -146,7 +147,25 @@ public:
             {
                 double minx, miny, maxx, maxy;
                 layer->getExtents(minx, miny, maxx, maxy);
-                result = Profile::create( _srs, minx, miny, maxx, maxy );
+
+                //Check to see if the profile is equivalent to global-geodetic
+                if (wms_srs->isGeographic())
+                {
+                  osg::ref_ptr<const Profile> globalGeodetic = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+                  if (minx == globalGeodetic->getExtent().xMin() &&
+                      miny == globalGeodetic->getExtent().yMin() &&
+                      maxx == globalGeodetic->getExtent().xMax() &&
+                      maxy == globalGeodetic->getExtent().yMax())
+                  {
+                      //They are equivalent so just use the global geodetic extent
+                      result = globalGeodetic.get();
+                  }
+                }
+
+                if (!result.valid())
+                {
+                    result = Profile::create( _srs, minx, miny, maxx, maxy );
+                }
             }
         }
 
@@ -217,7 +236,7 @@ public:
     std::string createURI( const TileKey* key ) const
     {
         double minx, miny, maxx, maxy;
-        key->getGeoExtents( minx, miny, maxx, maxy);
+        key->getGeoExtent().getBounds( minx, miny, maxx, maxy);
         // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
         char buf[2048];
         sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);

@@ -32,7 +32,7 @@ using namespace osgEarth;
 TileImage::TileImage(osg::Image* image, const TileKey *key)
 {
     _image = image;
-    key->getGeoExtents(_minX, _minY, _maxX, _maxY);
+    key->getGeoExtent().getBounds(_minX, _minY, _maxX, _maxY);
     key->getTileXY(_tileX, _tileY);
 }
 
@@ -196,13 +196,13 @@ Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
     if (intersectingTiles.size() > 0)
     {
         double dst_minx, dst_miny, dst_maxx, dst_maxy;
-        key->getGeoExtents(dst_minx, dst_miny, dst_maxx, dst_maxy);
+        key->getGeoExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 
         osg::ref_ptr<MultiImage> mi = new MultiImage;
         for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
         {
             double minX, minY, maxX, maxY;
-            intersectingTiles[j]->getGeoExtents(minX, minY, maxX, maxY);
+            intersectingTiles[j]->getGeoExtent().getBounds(minX, minY, maxX, maxY);
 
             //osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
@@ -245,13 +245,13 @@ Compositor::compositeHeightFields( const TileKey* key, TileSource* source ) cons
     if (intersectingTiles.size() > 0)
     {
         double dst_minx, dst_miny, dst_maxx, dst_maxy;
-        key->getGeoExtents(dst_minx, dst_miny, dst_maxx, dst_maxy);
+        key->getGeoExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 
         std::vector<osg::ref_ptr<osg::HeightField> > heightFields;
         for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
         {
             double minX, minY, maxX, maxY;
-            intersectingTiles[j]->getGeoExtents(minX, minY, maxX, maxY);
+            intersectingTiles[j]->getGeoExtent().getBounds(minX, minY, maxX, maxY);
 
             //osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 

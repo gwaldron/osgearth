@@ -631,7 +631,7 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
         if (hf_key.valid() && hf.valid())
         {
           double minx, miny, maxx, maxy;
-          hf_key->getGeoExtents(minx, miny, maxx, maxy);
+          hf_key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
 
           //Need to init this before extracting the heightfield
           hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
@@ -639,7 +639,7 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
           hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
 
           double key_minx, key_miny, key_maxx, key_maxy;
-          key->getGeoExtents(key_minx, key_miny, key_maxx, key_maxy);
+          key->getGeoExtent().getBounds(key_minx, key_miny, key_maxx, key_maxy);
           hf = HeightFieldUtils::extractHeightField(hf.get(), key_minx, key_miny, key_maxx, key_maxy, hf->getNumColumns(), hf->getNumRows());
         }
     }

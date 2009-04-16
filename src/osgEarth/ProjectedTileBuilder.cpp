@@ -40,7 +40,7 @@ using namespace osgEarth;
 static
 void getExtents(const TileKey* key, double &min_x, double &min_y, double &max_x, double &max_y, bool reproject_mercator)
 {
-    key->getGeoExtents(min_x, min_y, max_x, max_y);
+    key->getGeoExtent().getBounds(min_x, min_y, max_x, max_y);
     if (key->isMercator() && reproject_mercator)
     {
         Mercator::metersToLatLon(min_x, min_y, min_y, min_x);

@@ -124,6 +124,15 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
     return GeoExtent(); // invalid
 }
 
+void
+GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const
+{
+    xmin = _xmin;
+    ymin = _ymin;
+    xmax = _xmax;
+    ymax = _ymax;
+}
+
 /***************************************************************************/
 
 

@@ -49,13 +49,13 @@ getLatLonExtents(const TileKey* key, double &min_lon, double &min_lat, double &m
     if ( key->isMercator() )
     {
         double xmin, ymin, xmax, ymax;
-        key->getGeoExtents(xmin, ymin, xmax, ymax);
+        key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
         Mercator::metersToLatLon(xmin, ymin, min_lat, min_lon);
         Mercator::metersToLatLon(xmax, ymax, max_lat, max_lon);
     }
     else
     {
-        key->getGeoExtents(min_lon, min_lat, max_lon, max_lat);
+        key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
     }
 }
 

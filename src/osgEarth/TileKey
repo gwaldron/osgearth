@@ -106,20 +106,9 @@ namespace osgEarth
         virtual unsigned int getLevelOfDetail() const;
 
         /**
-         * Gets the geospatial extents of the tile representated by this key.
-         * Note:  Latitude and Longitude in degrees will be returned for both Mercator and Geodetic profiles.
-         *        The native coordinates of the profile will be used for Projected profiles.
-         */
-        virtual bool getGeoExtents(
-            double& out_minx,
-            double& out_miny,
-            double& out_maxx,
-            double& out_maxy) const;
-
-        /**
          * Gets the geospatial extents of the tile represented by this key.
          */
-        GeoExtent getGeoExtent() const;
+        const GeoExtent& getGeoExtent() const;
 
         /**
          * Gets the extents of this key's tile, in pixels
@@ -160,6 +149,7 @@ namespace osgEarth
         unsigned int _x;
         unsigned int _y;
         osg::ref_ptr<const Profile> _profile;
+        GeoExtent _extent;
 
         osg::ref_ptr<TileKey> _subkeys[4];
     };

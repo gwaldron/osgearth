@@ -31,7 +31,8 @@ TileKey::TileKey( const TileKey& rhs ) :
 _x(rhs._x),
 _y(rhs._y),
 _lod(rhs._lod),
-_profile( rhs._profile )
+_profile( rhs._profile ),
+_extent( rhs._extent)
 {
     //NOP
 }
@@ -146,36 +147,10 @@ TileKey::createParentKey() const
     return new TileKey(x, y, lod, _profile.get());
 }
 
-
-bool
-TileKey::getGeoExtents(
-            double& xmin,
-            double& ymin,
-            double& xmax,
-            double& ymax) const
-{
-    double width, height;
-    _profile->getTileDimensions(_lod, width, height);
-
-    xmin = _profile->getExtent().xMin() + (width * (double)_x);
-    ymax = _profile->getExtent().yMax() - (height * (double)_y);
-    xmax = xmin + width;
-    ymin = ymax - height;
-    return true;
-}
-
-GeoExtent
+const GeoExtent&
 TileKey::getGeoExtent() const
 {
-    double width, height;
-    _profile->getTileDimensions(_lod, width, height);
-
-    double xmin = _profile->getExtent().xMin() + (width * (double)_x);
-    double ymax = _profile->getExtent().yMax() - (height * (double)_y);
-    double xmax = xmin + width;
-    double ymin = ymax - height;
-
-    return GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
+    return _extent;
 }
 
 TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile* profile)
@@ -184,6 +159,17 @@ TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, co
     _y = tile_y;
     _lod = lod;
     _profile = profile;
+
+    //Compute the extent
+    double width, height;
+    _profile->getTileDimensions(_lod, width, height);
+
+    double xmin = _profile->getExtent().xMin() + (width * (double)_x);
+    double ymax = _profile->getExtent().yMax() - (height * (double)_y);
+    double xmax = xmin + width;
+    double ymin = ymax - height;
+
+    _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
 }
 
 bool TileKey::isGeodetic() const

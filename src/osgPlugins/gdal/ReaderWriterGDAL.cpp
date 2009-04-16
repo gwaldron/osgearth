@@ -671,7 +671,7 @@ public:
         {
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
-            key->getGeoExtents(xmin, ymin, xmax, ymax);
+            key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
             int target_width = _tile_size;
             int target_height = _tile_size;
@@ -958,7 +958,7 @@ public:
         {
             //Get the meter extents of the tile
             double xmin, ymin, xmax, ymax;
-            key->getGeoExtents(xmin, ymin, xmax, ymax);
+            key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
             //Just read from the first band
             GDALRasterBand* band = _warpedDS->GetRasterBand(1);
@@ -990,7 +990,7 @@ public:
     {
         //Get the native extents of the tile
         double xmin, ymin, xmax, ymax;
-        key->getGeoExtents(xmin, ymin, xmax, ymax);
+        key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
         return  osg::maximum(_extentsMin.x(), xmin) <= osg::minimum(_extentsMax.x(), xmax) &&
             osg::maximum(_extentsMin.y(), ymin) <= osg::minimum(_extentsMax.y(), ymax);

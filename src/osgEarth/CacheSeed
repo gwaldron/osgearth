@@ -36,7 +36,7 @@ namespace osgEarth
         bool intersects(TileKey* key)
         {
             double minx, miny, maxx, maxy;
-            key->getGeoExtents( minx, miny, maxx, maxy );
+            key->getGeoExtent().getBounds( minx, miny, maxx, maxy );
 
             return ! ( minx >= _max.x() || maxx <= _min.x() || miny >= _max.y() || maxy <= _min.y() );
 

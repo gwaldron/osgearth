@@ -21,6 +21,7 @@
 #define OSGEARTH_TILE_GRID_PROFILE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoData>
 #include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
 
@@ -64,18 +65,28 @@ namespace osgEarth
         /**
          * Gets the extents of the profile (in the profile's SRS)
          */
-        double xMin() const;
-        double yMin() const;
-        double xMax() const;
-        double yMax() const;
+        //double xMin() const;
+        //double yMin() const;
+        //double xMax() const;
+        //double yMax() const;
+
+        /**
+         * Gets the extent of the profile (in the profile's SRS)
+         */
+        const GeoExtent& getExtent() const;
 
         /**
          * Gets the extents of the profile (in lat/long)
          */
-        double longMin() const;
-        double latMin() const;
-        double longMax() const;
-        double latMax() const;
+        //double longMin() const;
+        //double latMin() const;
+        //double longMax() const;
+        //double latMax() const;
+
+        /**
+         * Gets the extent of the profile (in lat/long.)
+         */
+        const GeoExtent& getLatLongExtent() const;
         
         /**
          * Gets the spatial reference system underlying this profile.
@@ -125,33 +136,26 @@ namespace osgEarth
         void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
 
         /** 
-         * Clamps the incoming extents to the extents of this profile, and converts the extents to be
-         * expressed in this profile's SRS.
-         * Returns true if the clamping operation succeeded. The inputs are replaced with the results,
-         * and are rendered invalid if the method returns false.
+         * Clamps the incoming extents to the extents of this profile, and then converts the 
+         * clamped extents to this profile's SRS, and returns the result. Returned GeoExtent::INVALID
+         * if the transformation fails.
          */
-        bool clampAndTransformExtents( 
-            double& xmin, double& ymin, double& xmax, double& ymax,
-            const SpatialReference* srs ) const;
+        GeoExtent clampAndTransformExtent( const GeoExtent& input ) const;
 
     private:       
 
         Profile(
-            //ProfileType profileType,
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
             unsigned int x_tiles_at_lod0 =1,
             unsigned int y_tiles_at_lod0 =1 );
 
     private:
-        double _xmin, _ymin, _xmax, _ymax;        
-        bool _is_latlon_ext_computed;
-        double _latmin, _longmin, _latmax, _longmax;
+        GeoExtent _extent;
+        GeoExtent _latlong_extent;
         unsigned int _numTilesWideAtLod0;
         unsigned int _numTilesHighAtLod0;
-        osg::ref_ptr<const SpatialReference> _srs;
-
-        //void init( ProfileType );
+        //osg::ref_ptr<const SpatialReference> _srs;
     };
 }
 

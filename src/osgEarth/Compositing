@@ -23,7 +23,7 @@
 #include <osg/Image>
 #include <osg/MixinVector>
 #include <osgEarth/Common>
-#include <osgEarth/SpatialReference>
+#include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>
 
@@ -31,50 +31,6 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT GeoExtent
-    {
-    public:
-        GeoExtent(
-            const SpatialReference* srs,
-            double xmin, double ymin,
-            double xmax, double ymax );
-
-        const SpatialReference* getSRS() const;
-
-        double xMin() const;
-        double yMin() const;
-        double xMax() const;
-        double yMax() const;
-    };
-
-    /**
-     * Image paired with a spatial reference.
-     */
-    class OSGEARTH_EXPORT GeoImage : public osg::Referenced
-    {
-    public:
-        GeoImage(
-            osg::Image* image, const SpatialReference* srs, 
-            double xmin, double ymin,
-            double xmax, double ymax );
-
-    public:
-        osg::Image* getImage() const;
-
-        const SpatialReference* getSRS() const;
-
-        double xMin() const;
-        double yMin() const;
-        double xMax() const;
-        double yMax() const;
-
-    private:
-        osg::ref_ptr<osg::Image> _image;
-        osg::ref_ptr<const SpatialReference> _srs;
-        double _xmin, _ymin, _xmax, _ymax;
-    };
-
-
     struct TileImage
     {
         /**

@@ -771,10 +771,7 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
         osg::Image* image = source->createImage( mapKey );
         if ( image )
         {
-            result = new GeoImage( 
-                image,
-                mapProfile->getSRS(),
-                mapProfile->xMin(), mapProfile->yMin(), mapProfile->xMax(), mapProfile->yMax() );
+            result = new GeoImage( image, mapProfile->getExtent() );
         }
     }
 
@@ -795,24 +792,11 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
             // crop to fit the map key extents. (NOTE: if we reproject the geo_image, there will be no need to
             // actually reproject the extents below)
 
-            double xmin, ymin, xmax, ymax;
-            mapKey->getGeoExtents( xmin, ymin, xmax, ymax );
+            GeoExtent clampedMapExt =
+                source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
 
-            source->getProfile()->clampAndTransformExtents(
-                xmin, ymin, xmax, ymax, mapKey->getProfile()->getSRS() );
-
-            osg::Image* image = ImageUtils::cropImage(
-                mosaic->getImage(),
-                mosaic->xMin(), mosaic->yMin(), mosaic->xMax(), mosaic->yMax(),
-                xmin, ymin, xmax, ymax );
-
-            if ( image )
-            {
-                result = new GeoImage(
-                    image,
-                    mosaic->getSRS(),
-                    xmin, ymin, xmax, ymax );
-            }
+            result = mosaic->crop( 
+                clampedMapExt.xMin(), clampedMapExt.yMin(), clampedMapExt.xMax(), clampedMapExt.yMax() );
         }
     }
 

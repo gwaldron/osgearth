@@ -36,7 +36,6 @@ Profile::create(const std::string& init_string,
                 unsigned int numTilesHighAtLod0)
 {
     return new Profile(
-        //getProfileTypeFromSRS( init_string ),
         SpatialReference::create( init_string ),
         xmin, ymin, xmax, ymax,
         numTilesWideAtLod0,
@@ -71,27 +70,27 @@ Profile::Profile(const SpatialReference* srs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0)
 {
-    _srs = srs;
-    _xmin = xmin;
-    _ymin = ymin;
-    _xmax = xmax;
-    _ymax = ymax;
+    _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
+    //_srs = srs;
+    //_xmin = xmin;
+    //_ymin = ymin;
+    //_xmax = xmax;
+    //_ymax = ymax;
     _numTilesWideAtLod0 = numTilesWideAtLod0;
     _numTilesHighAtLod0 = numTilesHighAtLod0;
 
     // automatically calculate the lat/long extents:
     if ( srs->isGeographic() )
     {
-        _longmin = xmin;
-        _latmin = ymin;
-        _longmax = xmax;
-        _latmax = ymax;
+        //_longmin = xmin;
+        //_latmin = ymin;
+        //_longmax = xmax;
+        //_latmax = ymax;
+        _latlong_extent = _extent;
     }
     else
     {
-        osg::ref_ptr<const SpatialReference> geo_srs = srs->getGeographicSRS();
-        srs->transform( xmin, ymin, geo_srs.get(), _longmin, _latmin );
-        srs->transform( xmax, ymax, geo_srs.get(), _longmax, _latmax );
+        _latlong_extent = _extent.transform( _extent.getSRS()->getGeographicSRS() );
     }
 }
 
@@ -99,61 +98,25 @@ Profile::ProfileType
 Profile::getProfileType() const
 {
     return
-        _srs.valid() && _srs->isGeographic() ? TYPE_GEODETIC :
-        _srs.valid() && _srs->isMercator() ? TYPE_MERCATOR :
-        _srs.valid() && _srs->isProjected() ? TYPE_LOCAL :
+        _extent.isValid() && _extent.getSRS()->isGeographic() ? TYPE_GEODETIC :
+        _extent.isValid() && _extent.getSRS()->isMercator() ? TYPE_MERCATOR :
+        _extent.isValid() && _extent.getSRS()->isProjected() ? TYPE_LOCAL :
         TYPE_UNKNOWN;
 }
 
 bool
-Profile::isOK() const
-{
-    return _srs.valid();
-}
-
-double
-Profile::xMin() const {
-    return _xmin;
-}
-
-double
-Profile::yMin() const {
-    return _ymin;
-}
-
-double
-Profile::xMax() const {
-    return _xmax;
-}
-
-double
-Profile::yMax() const {
-    return _ymax;
-}
-
-double
-Profile::latMin() const {
-    return _latmin;
-}
-
-double
-Profile::longMin() const {
-    return _longmin;
-}
-
-double
-Profile::latMax() const {
-    return _latmax;
-}
-
-double
-Profile::longMax() const {
-    return _longmax;
+Profile::isOK() const {
+    return _extent.isValid();
 }
 
 const SpatialReference*
 Profile::getSRS() const {
-    return _srs.get();
+    return _extent.getSRS();
+}
+
+const GeoExtent&
+Profile::getExtent() const {
+    return _extent;
 }
 
 void
@@ -201,21 +164,17 @@ Profile::isEquivalentTo( const Profile* rhs ) const
 {
     return
         rhs &&
-        _xmin == rhs->_xmin && 
-        _ymin == rhs->_ymin &&
-        _xmax == rhs->_xmax &&
-        _ymax == rhs->_ymax &&
+        _extent.isValid() && rhs->getExtent().isValid() &&
+        _extent == rhs->getExtent() &&
         _numTilesWideAtLod0 == rhs->_numTilesWideAtLod0 &&
-        _numTilesHighAtLod0 == rhs->_numTilesHighAtLod0 &&
-        _srs && rhs->_srs &&
-        _srs->isEquivalentTo( rhs->_srs );
+        _numTilesHighAtLod0 == rhs->_numTilesHighAtLod0;
 }
 
 void
 Profile::getTileDimensions(unsigned int lod, double& out_width, double& out_height) const
 {
-    out_width  = (_xmax - _xmin) / (double)_numTilesWideAtLod0;
-    out_height = (_ymax - _ymin) / (double)_numTilesHighAtLod0;
+    out_width  = (_extent.xMax() - _extent.xMin()) / (double)_numTilesWideAtLod0;
+    out_height = (_extent.yMax() - _extent.yMin()) / (double)_numTilesHighAtLod0;
 
     for (unsigned int i = 0; i < lod; ++i)
     {
@@ -237,62 +196,36 @@ Profile::getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned in
     }
 }
 
-bool
-Profile::clampAndTransformExtents(double& xmin, double& ymin, 
-                                  double& xmax, double& ymax, 
-                                  const SpatialReference* srs ) const
+GeoExtent
+Profile::clampAndTransformExtent( const GeoExtent& input ) const
 {
-    int err = 0;
+    // do the clamping in LAT/LONG.
     const SpatialReference* geo_srs = getSRS()->getGeographicSRS();
 
-    // transform the input extents to LAT/LONG:
-    double inMinLong, inMinLat, inMaxLong, inMaxLat;
-    if ( srs->isGeographic() )
-    {
-        inMinLat = ymin;
-        inMinLong = xmin;
-        inMaxLat = ymax;
-        inMaxLong = xmax;
-    }
-    else
-    {
-        err = 0;
-        err += srs->transform( xmin, ymin, geo_srs, inMinLong, inMinLat )? 0 : 1;
-        err += srs->transform( xmax, ymax, geo_srs, inMaxLong, inMaxLat )? 0 : 1;
-        if ( err > 0 )
-        {
-            osg::notify(osg::WARN) << "[osgEarth::Profile] cannot transform "
-                << xmin << "," << ymin << " from "
-                << srs->getName() << " to " << geo_srs->getName()
-                << std::endl;
-            return false;
-        }
-    }
+    // get the input in lat/long:
+    GeoExtent gcs_input =
+        input.getSRS()->isGeographic()?
+        input :
+        input.transform( geo_srs );
 
-    // clamp to the source's geographic extents:
-    inMinLat = osg::clampBetween( inMinLat, latMin(), latMax() );
-    inMaxLat = osg::clampBetween( inMaxLat, latMin(), latMax() );
-    inMinLong = osg::clampBetween( inMinLong, longMin(), longMax() );
-    inMaxLong = osg::clampBetween( inMaxLong, longMin(), longMax() );
+    if ( !gcs_input.isValid() )
+        return GeoExtent::INVALID;
 
-    if ( !srs->isEquivalentTo( getSRS() ) )
-    {
-        // now transform the clamped values into this profile's SRS
-        err = 0;
-        err += geo_srs->transform( inMinLong, inMinLat, getSRS(), xmin, ymin )? 0 : 1;
-        err += geo_srs->transform( inMaxLong, inMaxLat, getSRS(), xmax, ymax )? 0 : 1;
-        if ( err > 0 )
-        {
-            osg::notify(osg::WARN) << "[osgEarth::Profile] cannot transform "
-                << inMinLong << "," << inMinLat << " from "
-                << geo_srs->getName() << " to " << getSRS()->getName()
-                << std::endl;
-            return false;
-        }
-    }
+    // clamp it to the profile's extents:
+    GeoExtent clamped_gcs_input = GeoExtent(
+        gcs_input.getSRS(),
+        osg::clampBetween( gcs_input.xMin(), _latlong_extent.xMin(), _latlong_extent.xMax() ),
+        osg::clampBetween( gcs_input.yMin(), _latlong_extent.yMin(), _latlong_extent.yMax() ),
+        osg::clampBetween( gcs_input.xMax(), _latlong_extent.xMin(), _latlong_extent.xMax() ),
+        osg::clampBetween( gcs_input.yMax(), _latlong_extent.yMin(), _latlong_extent.yMax() ) );
 
-    return true;
+    // finally, transform the clamped extent into this profile's SRS and return it.
+    return
+        clamped_gcs_input.getSRS()->isEquivalentTo( this->getSRS() )?
+        clamped_gcs_input :
+        clamped_gcs_input.transform( this->getSRS() );
 }
+
 
 void
 Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
@@ -309,72 +242,29 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
         return;
     }
 
+    //TODO: put this back in???
     //if ( !isCompatibleWith( key->getProfile() ) )
     //{
     //    osg::notify(osg::NOTICE) << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
     //}
 
-    double keyMinX, keyMinY, keyMaxX, keyMaxY;
-    key->getGeoExtents( keyMinX, keyMinY, keyMaxX, keyMaxY );
+    GeoExtent key_ext = key->getGeoExtent();
 
-    const SpatialReference* key_srs = key->getProfile()->getSRS();
+    //double keyMinX, keyMinY, keyMaxX, keyMaxY;
+    //key->getGeoExtents( keyMinX, keyMinY, keyMaxX, keyMaxY );
+    //const SpatialReference* key_srs = key->getProfile()->getSRS();
 
     // reproject into the profile's SRS if necessary:
-    if ( ! getSRS()->isEquivalentTo( key_srs ) )
+    if ( ! getSRS()->isEquivalentTo( key_ext.getSRS() ) )
     {
         // localize the extents and clamp them to legal values
-        if ( !clampAndTransformExtents( keyMinX, keyMinY, keyMaxX, keyMaxY, key_srs ) )
+        key_ext = clampAndTransformExtent( key_ext );
+        if ( !key_ext.isValid() )
             return;
-
-        //int err = 0;
-        //const SpatialReference* geo_srs = getSRS()->getGeographicSRS();
-
-        //// transform the KEY extents to LAT/LONG:
-        //double keyMinLat, keyMinLong, keyMaxLat, keyMaxLong;
-        //if ( key_srs->isGeographic() )
-        //{
-        //    keyMinLat = keyMinY;
-        //    keyMinLong = keyMinX;
-        //    keyMaxLat = keyMaxY;
-        //    keyMaxLong = keyMaxX;
-        //}
-        //else
-        //{
-        //    err = 0;
-        //    err += key_srs->transform( keyMinX, keyMinY, geo_srs, keyMinLong, keyMinLat )? 0 : 1;
-        //    err += key_srs->transform( keyMaxX, keyMaxY, geo_srs, keyMaxLong, keyMaxLat )? 0 : 1;
-        //    if ( err > 0 )
-        //    {
-        //        osg::notify(osg::WARN) << "[osgEarth::Profile] cannot transform "
-        //            << keyMinX << "," << keyMinY << " from "
-        //            << key_srs->getName() << " to " << geo_srs->getName()
-        //            << std::endl;
-        //        return;
-        //    }
-        //}
-
-        //// clamp to the source's geographic extents:
-        //keyMinLat = osg::clampBetween( keyMinLat, latMin(), latMax() );
-        //keyMaxLat = osg::clampBetween( keyMaxLat, latMin(), latMax() );
-        //keyMinLong = osg::clampBetween( keyMinLong, longMin(), longMax() );
-        //keyMaxLong = osg::clampBetween( keyMaxLong, longMin(), longMax() );
-
-        //// now transform the clamped values BACK into this profile's SRS:
-        //err = 0;
-        //err += geo_srs->transform( keyMinLong, keyMinLat, getSRS(), keyMinX, keyMinY )? 0 : 1;
-        //err += geo_srs->transform( keyMaxLong, keyMaxLat, getSRS(), keyMaxX, keyMaxY )? 0 : 1;
-        //if ( err > 0 )
-        //{
-        //    osg::notify(osg::WARN) << "[osgEarth::Profile] cannot transform "
-        //        << keyMinLong << "," << keyMinLat << " from "
-        //        << geo_srs->getName() << " to " << getSRS()->getName()
-        //        << std::endl;
-        //    return;
-        //}
     }
 
-    double keyWidth = keyMaxX - keyMinX;
-    double keyHeight = keyMaxY - keyMinY;
+    double keyWidth = key_ext.xMax() - key_ext.xMin();
+    double keyHeight = key_ext.yMax() - key_ext.yMin();
 
     double keyArea = keyWidth * keyHeight;
 
@@ -403,11 +293,11 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
     osg::notify(osg::INFO) << std::fixed << "  Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
     osg::notify(osg::INFO) << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
-    int tileMinX = (int)((keyMinX - _xmin) / destTileWidth);
-    int tileMaxX = (int)((keyMaxX - _xmin) / destTileWidth);
+    int tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
+    int tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
 
-    int tileMinY = (int)((_ymax - keyMaxY) / destTileHeight); 
-    int tileMaxY = (int)((_ymax - keyMinY) / destTileHeight); 
+    int tileMinY = (int)((_extent.yMax() - key_ext.yMax()) / destTileHeight); 
+    int tileMaxY = (int)((_extent.yMax() - key_ext.yMin()) / destTileHeight); 
 
     unsigned int numWide, numHigh;
     getNumTiles(destLOD, numWide, numHigh);

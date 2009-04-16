@@ -26,46 +26,6 @@
 
 using namespace osgEarth;
 
-GeoImage::GeoImage(osg::Image* image,
-                   const SpatialReference* srs,
-                   double xmin, double ymin, double xmax, double ymax) :
-_image(image),
-_srs(srs),
-_xmin(xmin),_ymin(ymin),_xmax(xmax),_ymax(ymax)
-{
-    //NOP
-}
-
-osg::Image*
-GeoImage::getImage() const {
-    return _image.get();
-}
-
-const SpatialReference*
-GeoImage::getSRS() const {
-    return _srs.get(); 
-}
-
-double
-GeoImage::xMin() const {
-    return _xmin;
-}
-
-double
-GeoImage::yMin() const {
-    return _ymin;
-}
-
-double
-GeoImage::xMax() const {
-    return _xmax; 
-}
-
-double
-GeoImage::yMax() const {
-    return _ymax; 
-}
-
 
 /***************************************************************************/
 
@@ -194,44 +154,22 @@ osg::Image* MultiImage::createImage(double minx, double miny, double maxx, doubl
     image->allocateImage(pixelsWide, pixelsHigh, 1, GL_RGB, GL_UNSIGNED_BYTE);
 
     {
-      //osg::Timer_t start = osg::Timer::instance()->tick();
-      //Composite the incoming images into the master image
-      for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
-      {
-        //Determine the indices in the master image for this image
-        int dstX = (i->_tileX - minTileX) * tileWidth;
-        int dstY = (maxTileY - i->_tileY) * tileHeight;
-        //osg::notify(osg::NOTICE) << "Copying image to " << dstX << ", " << dstY << std::endl;
-        ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
-      }
-      //osg::Timer_t end = osg::Timer::instance()->tick();
-      //osg::notify(osg::NOTICE) << "Mosaic for " << _images.size() << " images took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
+        //Composite the incoming images into the master image
+        for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+        {
+            //Determine the indices in the master image for this image
+            int dstX = (i->_tileX - minTileX) * tileWidth;
+            int dstY = (maxTileY - i->_tileY) * tileHeight;
+            ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
+        }
     }
-   
+
     double src_minx, src_miny, src_maxx, src_maxy;
     getExtents(src_minx, src_miny, src_maxx, src_maxy);
 
     {
-      //osg::Timer_t start = osg::Timer::instance()->tick();
-      image = ImageUtils::cropImage(image.get(), src_minx, src_miny, src_maxx, src_maxy, minx, miny, maxx, maxy);
-      //osg::Timer_t end = osg::Timer::instance()->tick();
-      //osg::notify(osg::NOTICE) << "Crop took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
+        image = ImageUtils::cropImage(image.get(), src_minx, src_miny, src_maxx, src_maxy, minx, miny, maxx, maxy);
     }
-    //osg::notify(osg::NOTICE) << "Cropped image is " << image->s() << " x " << image->t() << std::endl;
-
-    //We shouldn't need to manually resize the image if it isn't a power of two.  If the card supports NPOT textures
-    //it should work fine, and if it doesn't, OSG will resize the image for us.
-    /*unsigned int new_s = osg::Image::computeNearestPowerOfTwo(image->s());
-    unsigned int new_t = osg::Image::computeNearestPowerOfTwo(image->t());
-
-    if (new_s != image->s() || new_t != image->t())
-    {
-      //osg::Timer_t start = osg::Timer::instance()->tick();
-      osg::notify(osg::INFO) << "Resizing image from " << image->s() << ", " << image->t() << " to " << new_s << ", " << new_t << std::endl;
-      image = ImageUtils::resizeImage(image.get(), new_s, new_t);
-      //osg::Timer_t end = osg::Timer::instance()->tick();
-      //osg::notify(osg::NOTICE) << "Resize took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
-    }*/
 
     return image.release();
 }
@@ -288,8 +226,7 @@ Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
 
         result = new GeoImage(
             mi->createImage(),
-            source->getProfile()->getSRS(),
-            rxmin, rymin, rxmax, rymax );
+            GeoExtent( source->getProfile()->getSRS(), rxmin, rymin, rxmax, rymax ) );
     }
 
     return result;

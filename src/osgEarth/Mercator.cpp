@@ -136,39 +136,6 @@ Mercator::pixelXYtoTileXY(unsigned int x, unsigned int y,
 
 /********************************************************************/
 
-static osg::Image*
-sharpen( osg::Image* input )
-{
-    int filter[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };
-    osg::Image* output = new osg::Image( *input );
-    for( int t=1; t<input->t()-1; t++ )
-    {
-        for( int s=1; s<input->s()-1; s++ )
-        {
-            int pixels[9] = {
-                *(int*)input->data(s-1,t-1), *(int*)input->data(s,t-1), *(int*)input->data(s+1,t-1),
-                *(int*)input->data(s-1,t  ), *(int*)input->data(s,t  ), *(int*)input->data(s+1,t  ),
-                *(int*)input->data(s-1,t+1), *(int*)input->data(s,t+1), *(int*)input->data(s+1,t+1) };
-
-            int shifts[4] = { 0, 8, 16, 32 };
-
-            for( int c=0; c<4; c++ ) // components
-            {
-                int mask = 0xff << shifts[c];
-                int sum = 0;
-                for( int i=0; i<9; i++ )
-                {
-                    sum += ((pixels[i] & mask) >> shifts[c]) * filter[i];
-                }
-                sum = sum > 255? 255 : sum < 0? 0 : sum;
-                output->data(s,t)[c] = sum;
-            }
-        }
-    }
-    return output;
-}
-
-/*********************************************************************/
 
 
 MercatorLocator::MercatorLocator( const osgTerrain::Locator& rhs, int _tile_size, unsigned int _lod ) :

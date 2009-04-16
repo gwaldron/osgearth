@@ -28,14 +28,40 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageUtils
     {
     public:
-        static bool copyAsSubImage( osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row );
+        /**
+         * Copys a portion of one image into another.
+         */
+        static bool copyAsSubImage(
+            const osg::Image* src, 
+            osg::Image* dst, 
+            int dst_start_col, int dst_start_row );
 
-        static osg::Image* resizeImage( osg::Image* input, unsigned int new_s, unsigned int new_t );
+        /**
+         * Resizes an image using nearest-neighbor resampling. Returns a new image, leaving
+         * the input image unaltered.
+         */
+        static osg::Image* resizeImage(
+            const osg::Image* input, 
+            unsigned int new_s, unsigned int new_t );
 
-        static osg::Image* cropImage(osg::Image* image,
-                                     double src_minx, double src_miny, double src_maxx, double src_maxy,
-                                     double dst_minx, double dst_miny, double dst_maxx, double dst_maxy);
+        /**
+         * Crops the input image to the dimensions provided and returns a
+         * new image. Returns a new image, leaving the input image unaltered.
+         */
+        static osg::Image* cropImage(
+            const osg::Image* image,
+            double src_minx, double src_miny, double src_maxx, double src_maxy,
+            double dst_minx, double dst_miny, double dst_maxx, double dst_maxy);
 
+        /**
+         * Creates and returns a copy of the input image after applying a
+         * sharpening filter. Returns a new image, leaving the input image unaltered.
+         */
+        static osg::Image* sharpenImage( const osg::Image* image );
+
+        /**
+         * Gets whether the input image's dimensions are powers of 2.
+         */
         static bool isPowerOfTwo(const osg::Image* image);
     };
 }

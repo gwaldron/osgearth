@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2009 Pelican Ventures, Inc.
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 
 #include <osgEarth/CacheSeed>
 #include <osgEarth/Caching>
@@ -28,30 +28,32 @@ void CacheSeed::seed(MapConfig *map)
 {
     //Create a TileBuilder for the map
     _tileBuilder = TileBuilder::create( map);
-    
+
     std::vector< osg::ref_ptr<TileKey> > keys;
     _tileBuilder->getMapProfile()->getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
-      _bounds._max.x() == 0 && _bounds._max.y() == 0)
+        _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-      _bounds._min.x() = _tileBuilder->getMapProfile()->xMin();
-      _bounds._min.y() = _tileBuilder->getMapProfile()->yMin();
-      _bounds._max.x() = _tileBuilder->getMapProfile()->xMax();
-      _bounds._max.y() = _tileBuilder->getMapProfile()->yMax();
+        const GeoExtent& mapEx = _tileBuilder->getMapProfile()->getExtent();
 
-      if (_tileBuilder->getMapProfile()->getProfileType() == Profile::TYPE_MERCATOR)
-      {
-        double lat,lon;
-        Mercator::metersToLatLon(_bounds._min.x(), _bounds._min.y(), lat, lon);
-        _bounds._min.x() = lon;
-        _bounds._min.y() = lat;
+        _bounds._min.x() = mapEx.xMin();
+        _bounds._min.y() = mapEx.yMin();
+        _bounds._max.x() = mapEx.xMax();
+        _bounds._max.y() = mapEx.yMax();
 
-        Mercator::metersToLatLon(_bounds._max.x(), _bounds._max.y(), lat, lon);
-        _bounds._max.x() = lon;
-        _bounds._max.y() = lat;
-      }
+        if (_tileBuilder->getMapProfile()->getProfileType() == Profile::TYPE_MERCATOR)
+        {
+            double lat,lon;
+            Mercator::metersToLatLon(_bounds._min.x(), _bounds._min.y(), lat, lon);
+            _bounds._min.x() = lon;
+            _bounds._min.y() = lat;
+
+            Mercator::metersToLatLon(_bounds._max.x(), _bounds._max.y(), lat, lon);
+            _bounds._max.x() = lon;
+            _bounds._max.y() = lat;
+        }
     }
 
 
@@ -109,7 +111,7 @@ void CacheSeed::seed(MapConfig *map)
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-      processKey( _tileBuilder.get(), keys[i].get() );
+        processKey( _tileBuilder.get(), keys[i].get() );
     }
 }
 
@@ -120,7 +122,7 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
     key->getTileXY(x, y);
     lod = key->getLevelOfDetail();
 
-//    osg::notify(osg::NOTICE) << "Checking key = " << key->str() << std::endl;
+    //    osg::notify(osg::NOTICE) << "Checking key = " << key->str() << std::endl;
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {

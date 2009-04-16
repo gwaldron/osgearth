@@ -26,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     Export
 	FileUtils
     GeocentricTileBuilder 
+    GeoData
 	HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
@@ -53,6 +54,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	Compositing.cpp
 	FileUtils.cpp
     GeocentricTileBuilder.cpp
+    GeoData.cpp
 	HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp

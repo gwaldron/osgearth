@@ -23,7 +23,7 @@
 using namespace osgEarth;
 
 bool
-ImageUtils::copyAsSubImage( osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
+ImageUtils::copyAsSubImage( const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
 {
     if (!src || !dst || 
         src->getPacking() != dst->getPacking() || 
@@ -37,7 +37,7 @@ ImageUtils::copyAsSubImage( osg::Image* src, osg::Image* dst, int dst_start_col,
 
     for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
     {
-        void* src_data = src->data( 0, src_row, 0 );
+        const void* src_data = src->data( 0, src_row, 0 );
         void* dst_data = dst->data( dst_start_col, dst_row, 0 );
         memcpy( dst_data, src_data, src->getRowSizeInBytes() );
     }
@@ -45,7 +45,8 @@ ImageUtils::copyAsSubImage( osg::Image* src, osg::Image* dst, int dst_start_col,
     return true;
 }
 
-osg::Image* ImageUtils::resizeImage( osg::Image* input, unsigned int new_s, unsigned int new_t )
+osg::Image*
+ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned int new_t )
 {
     osg::Image* output = NULL;
 
@@ -85,8 +86,10 @@ osg::Image* ImageUtils::resizeImage( osg::Image* input, unsigned int new_s, unsi
     return output;
 }
 
-osg::Image* ImageUtils::cropImage(osg::Image* image, double src_minx, double src_miny, double src_maxx, double src_maxy,
-                                                     double dst_minx, double dst_miny, double dst_maxx, double dst_maxy)
+osg::Image*
+ImageUtils::cropImage(const osg::Image* image,
+                      double src_minx, double src_miny, double src_maxx, double src_maxy,
+                      double dst_minx, double dst_miny, double dst_maxx, double dst_maxy)
 {
     int windowX       = osg::maximum( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0);
     int windowY       = osg::maximum( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0);
@@ -102,7 +105,7 @@ osg::Image* ImageUtils::cropImage(osg::Image* image, double src_minx, double src
     
     for (int src_row = windowY, dst_row=0; dst_row < windowHeight; src_row++, dst_row++)
     {
-        void* src_data = image->data(windowX, src_row, 0);
+        const void* src_data = image->data(windowX, src_row, 0);
         void* dst_data = cropped->data(0, dst_row, 0);
         memcpy( dst_data, src_data, cropped->getRowSizeInBytes());
     }
@@ -110,8 +113,42 @@ osg::Image* ImageUtils::cropImage(osg::Image* image, double src_minx, double src
     return cropped;
 }
 
-bool ImageUtils::isPowerOfTwo(const osg::Image* image)
+bool
+ImageUtils::isPowerOfTwo(const osg::Image* image)
 {
     return (((image->s() & (image->s()-1))==0) &&
             ((image->t() & (image->t()-1))==0));
+}
+
+
+osg::Image*
+ImageUtils::sharpenImage( const osg::Image* input )
+{
+    int filter[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };
+    osg::Image* output = new osg::Image( *input );
+    for( int t=1; t<input->t()-1; t++ )
+    {
+        for( int s=1; s<input->s()-1; s++ )
+        {
+            int pixels[9] = {
+                *(int*)input->data(s-1,t-1), *(int*)input->data(s,t-1), *(int*)input->data(s+1,t-1),
+                *(int*)input->data(s-1,t  ), *(int*)input->data(s,t  ), *(int*)input->data(s+1,t  ),
+                *(int*)input->data(s-1,t+1), *(int*)input->data(s,t+1), *(int*)input->data(s+1,t+1) };
+
+            int shifts[4] = { 0, 8, 16, 32 };
+
+            for( int c=0; c<4; c++ ) // components
+            {
+                int mask = 0xff << shifts[c];
+                int sum = 0;
+                for( int i=0; i<9; i++ )
+                {
+                    sum += ((pixels[i] & mask) >> shifts[c]) * filter[i];
+                }
+                sum = sum > 255? 255 : sum < 0? 0 : sum;
+                output->data(s,t)[c] = sum;
+            }
+        }
+    }
+    return output;
 }

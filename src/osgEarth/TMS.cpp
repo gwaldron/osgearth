@@ -22,6 +22,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/Common>
+#include <osgEarth/GeoData>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/TMS>
@@ -284,10 +285,12 @@ TileMap::create(const std::string& url,
 {
     //Profile profile(type);
 
+    const GeoExtent& ex = profile->getExtent();
+
     TileMap* tileMap = new TileMap();
     tileMap->setProfileType(profile->getProfileType()); //type);
-    tileMap->setExtents(profile->xMin(), profile->yMin(), profile->xMax(), profile->yMax());
-    tileMap->setOrigin(profile->xMin(), profile->yMin());
+    tileMap->setExtents(ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax());
+    tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
@@ -303,14 +306,16 @@ TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
 
     tileMap->setTitle( tileSource->getName() );
     tileMap->setProfileType( profile->getProfileType() );
+
+    const GeoExtent& ex = profile->getExtent();
     
     tileMap->_srs = profile->getSRS()->getInitString(); //srs();
-    tileMap->_originX = profile->xMin();
-    tileMap->_originY = profile->yMin();
-    tileMap->_minX = profile->xMin();
-    tileMap->_minY = profile->yMin();
-    tileMap->_maxX = profile->xMax();
-    tileMap->_maxY = profile->yMax();
+    tileMap->_originX = ex.xMin();
+    tileMap->_originY = ex.yMin();
+    tileMap->_minX = ex.xMin();
+    tileMap->_minY = ex.yMin();
+    tileMap->_maxX = ex.xMax();
+    tileMap->_maxY = ex.yMax();
     profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
 
     tileMap->_format.setWidth( tileSource->getPixelsPerTile() );

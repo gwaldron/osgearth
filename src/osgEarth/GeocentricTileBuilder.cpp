@@ -157,8 +157,8 @@ GeocentricTileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key 
     if ( key->getLevelOfDetail() == 0 )
     {
         const Profile* profile = key->getProfile();
-        double minY = profile->yMin();
-        double maxY = profile->yMax();
+        double minY = profile->getExtent().yMin();
+        double maxY = profile->getExtent().yMax();
 
         //Convert meters to lat/lon if the profile is Mercator
         if (profile->getProfileType() == Profile::TYPE_MERCATOR)

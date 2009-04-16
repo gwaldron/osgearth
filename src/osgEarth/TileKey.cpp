@@ -157,13 +157,26 @@ TileKey::getGeoExtents(
     double width, height;
     _profile->getTileDimensions(_lod, width, height);
 
-    xmin = _profile->xMin() + (width * (double)_x);
-    ymax = _profile->yMax() - (height * (double)_y);
+    xmin = _profile->getExtent().xMin() + (width * (double)_x);
+    ymax = _profile->getExtent().yMax() - (height * (double)_y);
     xmax = xmin + width;
     ymin = ymax - height;
     return true;
 }
 
+GeoExtent
+TileKey::getGeoExtent() const
+{
+    double width, height;
+    _profile->getTileDimensions(_lod, width, height);
+
+    double xmin = _profile->getExtent().xMin() + (width * (double)_x);
+    double ymax = _profile->getExtent().yMax() - (height * (double)_y);
+    double xmax = xmin + width;
+    double ymin = ymax - height;
+
+    return GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
+}
 
 TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile* profile)
 {

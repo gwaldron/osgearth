@@ -78,6 +78,7 @@ Registry::getGlobalGeodeticProfile() const
     return _global_geodetic_profile.get();
 }
 
+
 #define MERC_LIMIT 20037508.342789248
 
 const Profile*
@@ -86,7 +87,7 @@ Registry::getGlobalMercatorProfile() const
     if ( !_global_mercator_profile.valid() )
     {
         const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-            "epsg:900913",
+            "spherical-mercator",
             -MERC_LIMIT, -MERC_LIMIT, MERC_LIMIT, MERC_LIMIT,
             1, 1 );
     }

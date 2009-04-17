@@ -95,7 +95,7 @@ SpatialReference::create( const std::string& init )
     osg::ref_ptr<SpatialReference> srs;
 
     // shortcut for spherical-mercator:
-    if (low == "epsg:900913" || low == "epsg:3785" || low == "epsg:41001" || low == "spherical-meractor")
+    if (low == "spherical-mercator" || low == "epsg:900913" || low == "epsg:3785" || low == "epsg:41001")
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         srs = createFromPROJ4(
@@ -104,7 +104,7 @@ SpatialReference::create( const std::string& init )
             "Spherical Mercator" );
     }
 
-    // ellipsoidal mercator:
+    // ellipsoidal ("world") mercator:
     else if (low == "epsg:54004" || low == "epsg:9804" || low == "epsg:3832")
     {
         srs = createFromPROJ4(

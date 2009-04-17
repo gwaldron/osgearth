@@ -391,6 +391,8 @@ loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::
     //Configure the cache if necessary
     osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig();
 
+    osg::ref_ptr<TileSource> topSource = tile_source.get();
+
     //If the cache config is valid, wrap the TileSource with a caching TileSource.
     if (cacheConfig.valid())
     {
@@ -406,11 +408,13 @@ loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::
             cache->setName(source->getName());
             cache->setMapConfigFilename( mapConfig->getFilename() );
             //cache->initTileMap(); //gw: moved to the TileSource::createProfile() method...
-            return cache.release();
+            topSource = cache.get();
         }
     }
 
-    return tile_source.release();
+    MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get());
+    return memCachedSource;
+
 }
 
 

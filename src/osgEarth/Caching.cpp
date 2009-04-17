@@ -418,3 +418,77 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
     }
     return 0;
 }
+
+/****************************************************************************/
+
+MemCachedTileSource::MemCachedTileSource(osgEarth::TileSource *tileSource):
+CachedTileSource(tileSource),
+_maxNumTilesInCache(50)
+{
+}
+
+MemCachedTileSource::~MemCachedTileSource()
+{
+}
+
+const Profile* MemCachedTileSource::createProfile( const Profile* mapProfile, const std::string& configPath )
+{
+    if (_tileSource.valid()) return _tileSource->createProfile(mapProfile, configPath);
+    return 0;
+}
+
+osg::Image* MemCachedTileSource::getCachedImage( const TileKey* key)
+{
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+    //osg::notify(osg::NOTICE) << "List contains: " << _images.size() << std::endl;
+
+    std::string id = key->str();
+    //Find the image in the cache
+    //ImageCache::iterator itr = _images.find(id);
+    KeyToIteratorMap::iterator itr = _keyToIterMap.find(id);
+    if (itr != _keyToIterMap.end())
+    {
+        CachedImage entry = *itr->second;
+        _images.erase(itr->second);
+        _images.push_front(entry);
+        itr->second = _images.begin();
+        //osg::notify(osg::NOTICE)<<"Getting from memcache "<< key->str() <<std::endl;
+        return const_cast<osg::Image*>(itr->second->_image.get());
+    }
+    return 0;
+}
+
+void MemCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image* image)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);      
+
+    std::string id = key->str();
+
+    CachedImage entry;
+    entry._image = const_cast<osg::Image*>(image);
+    entry._key = id;
+    _images.push_front(entry);
+
+    _keyToIterMap[id] = _images.begin();
+
+    if (_images.size() > _maxNumTilesInCache)
+    {
+        CachedImage toRemove = _images.back();
+        _images.pop_back();
+        _keyToIterMap.erase(toRemove._key);
+    }
+}
+
+
+unsigned int MemCachedTileSource::getMaxNumTilesInCache() const
+{
+    return _maxNumTilesInCache;
+}
+
+void MemCachedTileSource::setMaxNumTilesInCache(unsigned int max)
+{
+    _maxNumTilesInCache = max;
+}

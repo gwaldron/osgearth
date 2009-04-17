@@ -38,8 +38,6 @@ namespace osgEarth
 
           static bool contains(osg::HeightField* hf, double x, double y);
 
-          static osg::HeightField* convertMercatorToGeodetic(const TileKey* key, osg::HeightField* hf);
-
           static osg::HeightField* compositeHeightField(double minx, double miny, double maxx, double maxy,
                                                         unsigned int numCols, unsigned int numRows,
                                                         std::vector<osg::ref_ptr<osg::HeightField> > &heightFields);

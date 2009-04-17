@@ -24,10 +24,12 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/TMS>
 
+
 #include <osg/Referenced>
 #include <osg/Object>
 #include <osg/Image>
 #include <osg/Shape>
+#include <osg/Timer>
 #include <osgDB/ReadFile>
 
 #include <OpenThreads/Mutex>
@@ -193,6 +195,39 @@ namespace osgEarth
     protected:
         virtual std::string getFileName(const TileKey* key );
         bool _invertY;
+    };
+
+    class OSGEARTH_EXPORT MemCachedTileSource : public CachedTileSource
+    {
+    public:
+        MemCachedTileSource(TileSource* tileSource);
+
+        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
+
+        unsigned int getMaxNumTilesInCache() const;
+        void setMaxNumTilesInCache(unsigned int max);
+
+    protected:
+        virtual ~MemCachedTileSource();
+       
+        virtual osg::Image* getCachedImage( const TileKey* key);
+
+        virtual void writeCachedImage(const TileKey* key, const osg::Image* image);
+
+        struct CachedImage
+        {
+            std::string _key;
+            osg::ref_ptr<osg::Image> _image;
+        };
+
+        typedef std::list<CachedImage> ImageList;
+        ImageList _images;
+        
+        typedef std::map<std::string,ImageList::iterator> KeyToIteratorMap;
+        KeyToIteratorMap _keyToIterMap;
+
+        unsigned int _maxNumTilesInCache;
+        OpenThreads::Mutex _mutex;
     };
 
     /**

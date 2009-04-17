@@ -19,7 +19,7 @@
 
 #include <osgEarth/GeoData>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Mercator>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -133,6 +133,25 @@ GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) con
     ymax = _ymax;
 }
 
+bool
+GeoExtent::contains(const SpatialReference* srs, double x, double y)
+{
+    double local_x, local_y;
+    if (srs->isEquivalentTo(_srs.get()))
+    {
+        //No need to transform
+        local_x = x;
+        local_y = y;
+    }
+    else
+    {
+        srs->transform(x, y, _srs.get(), local_x, local_y);
+        //osgEarth::Mercator::latLongToMeters(y, x, local_x, local_y);        
+    }
+
+    return (local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax);
+}
+
 /***************************************************************************/
 
 
@@ -170,4 +189,58 @@ GeoImage::crop( double xmin, double ymin, double xmax, double ymax ) const
     return new_image?
         new GeoImage( new_image, GeoExtent( _extent.getSRS(), xmin, ymin, xmax, ymax ) ) :
         NULL;
+}
+
+
+/***************************************************************************/
+GeoHeightField::GeoHeightField(osg::HeightField* heightField, const GeoExtent& extent)
+{
+    _extent = extent;
+    _heightField = heightField;
+
+    double minx, miny, maxx, maxy;
+    _extent.getBounds(minx, miny, maxx, maxy);
+
+    _heightField->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+    _heightField->setXInterval( (maxx - minx)/(double)(_heightField->getNumColumns()-1) );
+    _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
+    _heightField->setBorderWidth( 0 );
+}
+
+bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double x, double y, ElevationInterpolation interp, float &elevation)
+{
+    double local_x, local_y;
+    if (_extent.getSRS()->isEquivalentTo(srs))
+    {
+        //No need to transform
+        local_x = x;
+        local_y = y;
+    }
+    else
+    {
+        if (!srs->transform(x, y, _extent.getSRS(), local_x, local_y)) return false;
+    }
+
+    if (_extent.contains(_extent.getSRS(), local_x, local_y))
+    {
+        elevation = HeightFieldUtils::getHeightAtLocation(_heightField.get(), local_x, local_y, interp);
+        return true;
+    }
+    else
+    {
+        elevation = 0.0f;
+        return false;
+    }
+}
+
+const GeoExtent&
+GeoHeightField::getGeoExtent() const
+{
+    return _extent;
+}
+
+const osg::HeightField*
+GeoHeightField::getHeightField() const
+{
+    return _heightField.get();
 }

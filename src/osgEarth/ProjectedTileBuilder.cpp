@@ -86,16 +86,11 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     bool hasElevation = false;
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
-    //TODO: select/composite.
-    if ( _heightfield_sources.size() > 0 )
+    if ( _elevationManager.valid() && _heightfield_sources.size() > 0 )
     {
-        if ( _heightfield_sources[0]->isKeyValid(key))
-        {
-            hf = createHeightField(key, _heightfield_sources[0].get());
-            hasElevation = hf.valid();
-        }
+        hf = _elevationManager->getHeightField(key, 0, 0, false);
+        hasElevation = hf.valid();
     }
-
 
     //Determine if we've created any images
     unsigned int numValidImages = 0;
@@ -145,7 +140,8 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         }
         else
         {
-            hf = createValidHeightField(_heightfield_sources[0].get(), key);
+            //Try to get a heightfield again, but this time fallback on parent tiles
+            hf = _elevationManager->getHeightField(key, 0, 0, true);
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -154,7 +150,6 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             else
             {
                 hasElevation = true;
-                osg::notify(osg::INFO) << "Interpolated heightfield TileKey " << key->str() << std::endl;
             }
         }
     }

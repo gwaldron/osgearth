@@ -85,10 +85,6 @@ namespace osgEarth
         Compositor();
 
         GeoImage* mosaicImages( const TileKey* mapKey, TileSource* source ) const;
-
-        //osg::Image* mosaicImages( const TileKey* key, TileSource* source ) const;
-
-        osg::HeightField* compositeHeightFields( const TileKey* key, TileSource* source ) const;
     };
 }
 

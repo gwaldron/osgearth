@@ -218,15 +218,12 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     bool hasElevation = false;
 
     //Create the heightfield for the tile
-    osg::ref_ptr<osg::HeightField> hf = NULL;
+    osg::ref_ptr<osg::HeightField> hf;
     //TODO: select/composite.
-    if ( _heightfield_sources.size() > 0 )
+    if ( _elevationManager.valid() && _heightfield_sources.size() > 0 )
     {
-        if (_heightfield_sources[0]->isKeyValid(key))
-        {
-            hf = createHeightField(key, _heightfield_sources[0].get());
-            hasElevation = hf.valid();
-        }
+        hf = _elevationManager->getHeightField(key, 0, 0, false);
+        hasElevation = hf.valid();
     }
 
     //Determine if we've created any images
@@ -280,8 +277,8 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         }
         else
         {
-            //osg::Timer_t start = osg::Timer::instance()->tick();
-            hf = createValidHeightField(_heightfield_sources[0].get(), key);
+            //Try to get a heightfield again, but this time fallback on parent tiles
+            hf = _elevationManager->getHeightField(key, 0, 0, true);
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -289,9 +286,6 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             }
             else
             {
-                //osg::Timer_t end = osg::Timer::instance()->tick();
-                //osg::notify(osg::NOTICE) << "TimeToImterpolateHeightField: " << osg::Timer::instance()->delta_m(start,end) << std::endl; 
-                osg::notify(osg::INFO) << "Interpolated heightfield TileKey " << key->str() << std::endl;
                 hasElevation = true;
             }
         }

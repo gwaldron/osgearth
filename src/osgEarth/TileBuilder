@@ -24,6 +24,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
 #include <osgEarth/Compositing>
+#include <osgEarth/ElevationManager>
 #include <osgDB/ReaderWriter>
 #include <osgTerrain/Terrain>
 #include <vector>
@@ -120,7 +121,7 @@ namespace osgEarth
         //osg::Image* createImage(const TileKey* key, TileSource* source);
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
 
-        osg::HeightField* createHeightField(const TileKey* key, TileSource* source);
+        //osg::HeightField* createHeightField(const TileKey* key, TileSource* source);
 
         //Registers the given TileBuilder with osgEarth.  This should not be called by user code
         static void registerTileBuilder(TileBuilder* tileBuilder, osg::Node *node);
@@ -132,6 +133,11 @@ namespace osgEarth
 
         //Gets the TileBuilder that is associated with the given node
         static TileBuilder* getTileBuilderByNode(osg::Node* node);
+
+        /**
+         *Gets the ElevationManager for this TileBuilder
+         */
+        ElevationManager* getElevationManager();
 
     protected:
         TileBuilder( 
@@ -173,8 +179,6 @@ namespace osgEarth
         typedef std::pair<osg::ref_ptr<GeoImage>, osg::ref_ptr<const TileKey> > ImageTileKeyPair;
         typedef std::vector<ImageTileKeyPair> ImageTileList;
 
-        osg::HeightField* createValidHeightField(TileSource* tileSource, const TileKey *key);
-
         bool createValidImage(TileSource* tileSource, const TileKey *key, ImageTileKeyPair &imageTile);
         
 	    osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
@@ -193,6 +197,10 @@ namespace osgEarth
 
         //Use observer_ptr so the TileBuilder does not prevent the main scene graph from being deleted
         osg::observer_ptr<osgEarth::EarthTerrain> _terrain;
+
+        osg::ref_ptr<osgEarth::ElevationManager> _elevationManager;
+
+
 
     private:
 

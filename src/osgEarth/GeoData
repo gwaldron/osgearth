@@ -21,8 +21,11 @@
 
 #include <osg/Referenced>
 #include <osg/Image>
+#include <osg/Shape>
 #include <osgEarth/Common>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/HeightfieldUtils>
+
 
 namespace osgEarth
 {
@@ -62,6 +65,8 @@ namespace osgEarth
 
         void getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const;
 
+        bool contains(const SpatialReference* srs, double x, double y);
+
     public:
         static GeoExtent INVALID;
 
@@ -90,6 +95,25 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<osg::Image> _image;
+        GeoExtent _extent;
+    };
+
+    /**
+     * A georeferenced heightfield
+     */
+    class OSGEARTH_EXPORT GeoHeightField : public osg::Referenced
+    {
+    public:
+        GeoHeightField(osg::HeightField* heightField, const GeoExtent& extent);
+
+        bool getElevation(const SpatialReference* srs, double x, double y, ElevationInterpolation interp, float &elevation);
+
+        const GeoExtent& getGeoExtent() const;
+
+        const osg::HeightField* getHeightField() const;
+
+    protected:
+        osg::ref_ptr<osg::HeightField> _heightField;
         GeoExtent _extent;
     };
 }

@@ -24,61 +24,83 @@
 using namespace osgEarth;
 
 float
-HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, float c, float r)
+HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, float c, float r, ElevationInterpolation interpolation)
 {
-    //osg::notify(osg::INFO) << "getInterpolateValue: (" << c << ", " << r << ")" << std::endl;
-    int rowMin = osg::maximum((int)floor(r), 0);
-    int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(hf->getNumRows()-1)), 0);
-    int colMin = osg::maximum((int)floor(c), 0);
-    int colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(hf->getNumColumns()-1)), 0);
-
-    if (rowMin > rowMax) rowMin = rowMax;
-    if (colMin > colMax) colMin = colMax;
-
-    float urHeight = hf->getHeight(colMax, rowMax);
-    float llHeight = hf->getHeight(colMin, rowMin);
-    float ulHeight = hf->getHeight(colMin, rowMax);
-    float lrHeight = hf->getHeight(colMax, rowMin);
-
-    //osg::notify(osg::INFO) << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
-
-    float result = 0.0f;
-
-    //Check for exact value
-    if ((colMax == colMin) && (rowMax == rowMin))
+    float result = 0.0;
+    if (interpolation == NEAREST)
     {
-        //osg::notify(osg::NOTICE) << "Exact value" << std::endl;
-        result = hf->getHeight((int)c, (int)r);
-    }
-    else if (colMax == colMin)
-    {
-        //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
-        //Linear interpolate vertically
-        result = ((float)rowMax - r) * llHeight + (r - (float)rowMin) * ulHeight;
-    }
-    else if (rowMax == rowMin)
-    {
-        //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
-        //Linear interpolate horizontally
-        result = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
+        //Nearest interpolation
+        result = hf->getHeight((unsigned int)c, (unsigned int)r);
     }
     else
     {
-        //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
-        //Bilinear interpolate
-        float r1 = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
-        float r2 = ((float)colMax - c) * ulHeight + (c - (float)colMin) * urHeight;
+        //osg::notify(osg::INFO) << "getHeightAtPixel: (" << c << ", " << r << ")" << std::endl;
+        int rowMin = osg::maximum((int)floor(r), 0);
+        int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(hf->getNumRows()-1)), 0);
+        int colMin = osg::maximum((int)floor(c), 0);
+        int colMax = osg::maximum(osg::minimum((int)ceil(c), (int)(hf->getNumColumns()-1)), 0);
 
-        //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+        if (rowMin > rowMax) rowMin = rowMax;
+        if (colMin > colMax) colMin = colMax;
 
-        result = ((float)rowMax - r) * r1 + (r - (float)rowMin) * r2;
+        float urHeight = hf->getHeight(colMax, rowMax);
+        float llHeight = hf->getHeight(colMin, rowMin);
+        float ulHeight = hf->getHeight(colMin, rowMax);
+        float lrHeight = hf->getHeight(colMax, rowMin);
+
+        //osg::notify(osg::INFO) << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
+
+        if (interpolation == BILINEAR)
+        {
+            //Check for exact value
+            if ((colMax == colMin) && (rowMax == rowMin))
+            {
+                //osg::notify(osg::NOTICE) << "Exact value" << std::endl;
+                result = hf->getHeight((int)c, (int)r);
+            }
+            else if (colMax == colMin)
+            {
+                //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
+                //Linear interpolate vertically
+                result = ((float)rowMax - r) * llHeight + (r - (float)rowMin) * ulHeight;
+            }
+            else if (rowMax == rowMin)
+            {
+                //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
+                //Linear interpolate horizontally
+                result = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
+            }
+            else
+            {
+                //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
+                //Bilinear interpolate
+                float r1 = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
+                float r2 = ((float)colMax - c) * ulHeight + (c - (float)colMin) * urHeight;
+
+                //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+
+                result = ((float)rowMax - r) * r1 + (r - (float)rowMin) * r2;
+            }
+        }
+        else if (interpolation == AVERAGE)
+        {
+            double x_rem = c - (int)c;
+            double y_rem = r - (int)r;
+
+            double w00 = (1.0 - y_rem) * (1.0 - x_rem) * (double)llHeight;
+            double w01 = (1.0 - y_rem) * x_rem * (double)lrHeight;
+            double w10 = y_rem * (1.0 - x_rem) * (double)ulHeight;
+            double w11 = y_rem * x_rem * (double)urHeight;
+
+            result = (float)(w00 + w01 + w10 + w11);
+        }
     }
 
     return result;
 }
 
 float
-HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, float x, float y)
+HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, float x, float y, ElevationInterpolation interpolation)
 {
     //Determine the pixel to sample
     osg::Vec3 origin = hf->getOrigin();
@@ -86,84 +108,5 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, float x, float
     float px = (x - origin.x()) / hf->getXInterval();
     float py = (y - origin.y()) / hf->getYInterval();
 
-    //float px = ((x - origin.x()) / ((float)(hf->getNumColumns() -1) * hf->getXInterval())) * ((float)hf->getNumColumns()-1);
-    //float py = ((y - origin.y()) / ((float)(hf->getNumRows() -1) * hf->getYInterval())) * ((float)hf->getNumRows()-1);
-
-    return getHeightAtPixel(hf, px, py);
-}
-
-osg::HeightField* 
-HeightFieldUtils::extractHeightField(const osg::HeightField* hf,
-                                     double minx, double miny, double maxx, double maxy,
-                                     int numCols, int numRows)
-{
-    if (numCols < 0) numCols = (int)((maxx - minx) / hf->getXInterval()) + 1;
-    if (numRows < 0) numRows = (int)((maxy - miny) / hf->getYInterval()) + 1;
-
-    osg::HeightField* result = new osg::HeightField;
-    result->allocate(numCols, numRows);
-
-    float dx = (maxx - minx) / (numCols-1);
-    float dy = (maxy - miny) / (numRows-1);
-    
-    for (int c = 0; c < numCols; ++c)
-    {
-        float x = minx + (float)c * dx;
-        for (int r = 0; r < numRows; ++r)
-        {
-            float y = miny + (float)r * dy;
-            float height = getHeightAtLocation(hf, x, y);
-            result->setHeight(c,r, height);
-        }
-    }
-
-    return result;
-
-}
-
-bool HeightFieldUtils::contains(osg::HeightField* hf, double x, double y)
-{
-    if (!hf) return false;
-
-    double minX = hf->getOrigin().x();
-    double minY = hf->getOrigin().y();
-    double maxX = minX + hf->getXInterval() * (double)(hf->getNumColumns()-1);
-    double maxY = minY + hf->getYInterval() * (double)(hf->getNumRows()-1);
-
-    return (x >= minX && x <= maxX && y >= minY && y <= maxY);
-}
-
-osg::HeightField* HeightFieldUtils::compositeHeightField(double minx, double miny, double maxx, double maxy,
-                                       unsigned int numCols, unsigned int numRows,
-                                       std::vector<osg::ref_ptr<osg::HeightField> > &heightFields)
-{
-    if (heightFields.size() == 0) return 0;
-
-    osg::HeightField* hf = new osg::HeightField;
-    hf->allocate(numCols, numRows);
-
-    double dx = (maxx - minx) / (double)(numCols-1);
-    double dy = (maxy - miny) / (double)(numRows-1);
-
-
-    for (unsigned int c = 0; c < numCols; ++c)
-    {
-        double x = minx + (double)c * dx;
-        for (unsigned int r = 0; r < numRows; ++r)
-        {
-            double y = miny + (double)r * dy;
-            double h = 0;
-            for (unsigned int i = 0; i < heightFields.size(); ++i)
-            {
-                osg::HeightField *hf2 = heightFields[i].get();
-                if (contains(hf2, x, y))
-                {
-                    h = HeightFieldUtils::getHeightAtLocation(hf2, x, y);
-                    break;
-                }
-            }
-            hf->setHeight(c, r, h);
-        }
-    }
-    return hf;
+    return getHeightAtPixel(hf, px, py, interpolation);
 }

@@ -331,6 +331,12 @@ TileBuilder::initializeTileSources()
         i++;
     }
 
+    //Create the elevation manager
+    if (_heightfield_sources.size() > 0)
+    {
+        _elevationManager = new ElevationManager;
+    }
+
     for (TileSourceList::iterator i = _heightfield_sources.begin(); i != _heightfield_sources.end(); )
     {        
         if ( i->get() != ref_source )
@@ -348,6 +354,7 @@ TileBuilder::initializeTileSources()
                 continue;
             }
         }
+        _elevationManager->getElevationSources().push_back(i->get());
         i++;
     }
 }
@@ -415,6 +422,7 @@ loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::
     MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get());
     return memCachedSource;
 
+    //return tile_source.release();
 }
 
 
@@ -613,7 +621,7 @@ TileBuilder::createNode( const TileKey* key )
     return parent.release();
 }
 
-osg::HeightField*
+/*osg::HeightField*
 TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgEarth::TileKey *key)
 {
     //Try to create the heightfield with the given key
@@ -649,7 +657,7 @@ TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgE
     }
 
     return hf.release();
-}
+}*/
 
 bool
 TileBuilder::createValidImage(osgEarth::TileSource* tileSource,
@@ -806,9 +814,7 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
 
     return result;
 }
-
-
-
+/*
 osg::HeightField*
 TileBuilder::createHeightField(const TileKey* key, TileSource* source)
 {
@@ -825,4 +831,4 @@ TileBuilder::createHeightField(const TileKey* key, TileSource* source)
         hf = comp.compositeHeightFields( key, source );
     }
     return hf.release();
-}
+}*/

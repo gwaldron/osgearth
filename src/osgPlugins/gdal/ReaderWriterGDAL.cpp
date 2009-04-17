@@ -97,12 +97,6 @@ typedef struct
     double                 noDataValue;
 } BandProperty;
 
-enum Interpolation
-{
-    AVERAGE,
-    NEAREST,
-    BILINEAR
-};
 
 static void
 tokenize(const string& str,
@@ -977,7 +971,6 @@ public:
                 }
             }
         }
-
         return hf.release();
     }
 
@@ -1009,7 +1002,7 @@ private:
     std::string     _url;
     int             _tile_size;
     std::string     _extensions;
-    Interpolation   _interpolation;
+    ElevationInterpolation   _interpolation;
 };
 
 

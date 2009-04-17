@@ -17,27 +17,42 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_HEIGHTFIELDUTILS_H
-#define OSGEARTH_HEIGHTFIELDUTILS_H
+#ifndef OSGEARTH_ELEVATIONMANAGER_H
+#define OSGEARTH_ELEVATIONMANAGER_H
 
-#include <osgEarth/Common>
-#include <osg/Shape>
+#include <osg/Referenced>
+#include <osgEarth/Export>
+#include <osgEarth/TileSource>
+
 
 namespace osgEarth
 {
-    enum OSGEARTH_EXPORT ElevationInterpolation
+    class OSGEARTH_EXPORT ElevationManager : public osg::Referenced
     {
-        AVERAGE,
-        NEAREST,
-        BILINEAR
-    };
+    public:
 
-    class OSGEARTH_EXPORT HeightFieldUtils
-    {
-      public:
-          static float getHeightAtPixel(const osg::HeightField* hf, float c, float r, ElevationInterpolation interpoltion = BILINEAR);
-          static float getHeightAtLocation(const osg::HeightField* hf, float x, float y, ElevationInterpolation interpolation = BILINEAR);
+        enum SamplePolicy
+        {
+            FIRST_VALID,
+            HIGHEST,
+            LOWEST,
+            AVERAGE
+        };
+        
+        ElevationManager();
+
+        osg::HeightField* getHeightField(const TileKey* key, unsigned int cols = 0, unsigned int rows = 0, bool fallback = false);
+
+        osgEarth::TileSourceList& getElevationSources();
+
+        void setSamplePolicy(SamplePolicy samplePolicy);
+        SamplePolicy getSamplePolicy();
+
+    protected:
+        osgEarth::TileSourceList _elevationSources;
+
+        SamplePolicy _samplePolicy;
     };
 }
 
-#endif //OSGEARTH_HEIGHTFIELDUTILS_H
+#endif

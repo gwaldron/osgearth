@@ -34,15 +34,21 @@ using namespace osgEarth;
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getOGRMutex() )
 
 
+SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
+{
+    static SpatialReferenceCache s_cache;
+    return s_cache;
+}
+
 SpatialReference*
-SpatialReference::createFromPROJ4( const std::string& init, const std::string& init_alias )
+SpatialReference::createFromPROJ4( const std::string& init, const std::string& init_alias, const std::string& name )
 {
     SpatialReference* result = NULL;
     OGR_SCOPE_LOCK();
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
 	{
-        result = new SpatialReference( handle, "PROJ4", init_alias );
+        result = new SpatialReference( handle, "PROJ4", init_alias, name );
 	}
 	else 
 	{
@@ -52,14 +58,8 @@ SpatialReference::createFromPROJ4( const std::string& init, const std::string& i
     return result;
 }
 
-SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
-{
-    static SpatialReferenceCache s_cache;
-    return s_cache;
-}
-
 SpatialReference*
-SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias )
+SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
 {
     SpatialReference* result = NULL;
     OGR_SCOPE_LOCK();
@@ -69,7 +69,7 @@ SpatialReference::createFromWKT( const std::string& init, const std::string& ini
 	strcpy( buf, init.c_str() );
 	if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
 	{
-        result = new SpatialReference( handle, "WKT", init_alias );
+        result = new SpatialReference( handle, "WKT", init_alias, name );
 	}
 	else 
 	{
@@ -94,26 +94,50 @@ SpatialReference::create( const std::string& init )
 
     osg::ref_ptr<SpatialReference> srs;
 
-    // shortcut some well-known codes:
-    if (low == "epsg:900913" || low == "epsg:3785" || low == "epsg:41001" ||
-        low == "epsg:54004" || low == "epsg:9804" || low == "epsg:9805")
+    // shortcut for spherical-mercator:
+    if (low == "epsg:900913" || low == "epsg:3785" || low == "epsg:41001" || low == "spherical-meractor")
+    {
+        // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
+        srs = createFromPROJ4(
+            "+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs",
+            init,
+            "Spherical Mercator" );
+    }
+
+    // ellipsoidal mercator:
+    else if (low == "epsg:54004" || low == "epsg:9804" || low == "epsg:3832")
     {
         srs = createFromPROJ4(
-            //"+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs", init );
-            "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs", init );
+            "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
+            init,
+            "World Mercator" );
     }
+
+    // common WGS84:
     else if (low == "epsg:4326" || low == "wgs84")
     {
-        srs = createFromPROJ4( "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs", init );
+        srs = createFromPROJ4(
+            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+            init,
+            "WGS84" );
     }
+
     else if ( low.find( "+" ) == 0 )
+    {
         srs = createFromPROJ4( low, init );
+    }
     else if ( low.find( "epsg:" ) == 0 || low.find( "osgeo:" ) == 0 )
+    {
         srs = createFromPROJ4( "+init=" + low, init );
+    }
     else if ( low.find( "projcs" ) == 0 || low.find( "geogcs" ) == 0 )
+    {
         srs = createFromWKT( init, init );
+    }
     else
+    {
         return NULL;
+    }
 
     getSpatialReferenceCache()[init] = srs;
     return srs.get();
@@ -124,11 +148,13 @@ SpatialReference::create( const std::string& init )
 
 SpatialReference::SpatialReference(void* handle, 
                                    const std::string& init_type,
-                                   const std::string& init_str) :
+                                   const std::string& init_str,
+                                   const std::string& name ) :
 _handle( handle ),
 _init_type( init_type ),
 _init_str( init_str ),
 _owns_handle( true ),
+_name( name ),
 _initialized( false )
 {
     //TODO
@@ -402,9 +428,12 @@ SpatialReference::init()
     double semi_minor_axis = OSRGetSemiMinor( _handle, &err );
     _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
 
-    _name = _is_geographic? 
-        getOGRAttrValue( _handle, "GEOGCS", 0 ) : 
-        getOGRAttrValue( _handle, "PROJCS", 0 );
+    if ( _name.empty() || _name == "unnamed" )
+    {
+        _name = _is_geographic? 
+            getOGRAttrValue( _handle, "GEOGCS", 0 ) : 
+            getOGRAttrValue( _handle, "PROJCS", 0 );
+    }
 
     std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0, true );
     _is_mercator = !proj.empty() && proj.find("mercator")==0;

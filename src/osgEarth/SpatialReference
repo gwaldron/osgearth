@@ -83,7 +83,7 @@ namespace osgEarth
         virtual ~SpatialReference();
 
     private:
-        SpatialReference( void* handle, const std::string& type, const std::string& init_str );
+        SpatialReference( void* handle, const std::string& type, const std::string& init_str, const std::string& name );
         SpatialReference( void* handle );
         void init();
 
@@ -110,10 +110,10 @@ namespace osgEarth
         static SpatialReferenceCache& getSpatialReferenceCache();
 
         static SpatialReference* createFromWKT(
-            const std::string& wkt, const std::string& alias );
+            const std::string& wkt, const std::string& alias, const std::string& name ="" );
 
         static SpatialReference* createFromPROJ4(
-            const std::string& proj4, const std::string& alias );
+            const std::string& proj4, const std::string& alias, const std::string& name ="" );
     };
 }
 

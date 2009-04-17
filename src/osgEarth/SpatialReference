@@ -100,8 +100,15 @@ namespace osgEarth
         std::string _init_str_lc;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference> _geo_srs;
+
+        typedef std::map<std::string,void*> TransformHandleCache;
+        TransformHandleCache _transformHandleCache;
         
     private:
+
+        typedef std::map<std::string,osg::ref_ptr<SpatialReference>> SpatialReferenceCache;
+        static SpatialReferenceCache& getSpatialReferenceCache();
+
         static SpatialReference* createFromWKT(
             const std::string& wkt, const std::string& alias );
 

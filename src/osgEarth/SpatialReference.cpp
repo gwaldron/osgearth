@@ -30,7 +30,6 @@ using namespace osgEarth;
 
 #define WKT_
 
-
 #define OGR_SCOPE_LOCK() \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getOGRMutex() )
 
@@ -51,6 +50,12 @@ SpatialReference::createFromPROJ4( const std::string& init, const std::string& i
 		OSRDestroySpatialReference( handle );
 	}
     return result;
+}
+
+SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
+{
+    static SpatialReferenceCache s_cache;
+    return s_cache;
 }
 
 SpatialReference*
@@ -80,31 +85,38 @@ SpatialReference::create( const std::string& init )
     std::string low = init;
     std::transform( low.begin(), low.end(), low.begin(), ::tolower );
 
+    std::map<std::string,osg::ref_ptr<SpatialReference>>::iterator itr = getSpatialReferenceCache().find(init);
+    if (itr != getSpatialReferenceCache().end())
+    {
+        osg::notify(osg::NOTICE) << "Returning cached SRS" << std::endl;
+        return itr->second.get();
+    }
+
+    osg::ref_ptr<SpatialReference> srs;
+
     // shortcut some well-known codes:
     if (low == "epsg:900913" || low == "epsg:3785" || low == "epsg:41001" ||
         low == "epsg:54004" || low == "epsg:9804" || low == "epsg:9805")
     {
-        return createFromPROJ4(
+        srs = createFromPROJ4(
             //"+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs", init );
             "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs", init );
     }
-
-    if (low == "epsg:4326" || low == "wgs84")
+    else if (low == "epsg:4326" || low == "wgs84")
     {
-        return createFromPROJ4( "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs", init );
+        srs = createFromPROJ4( "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs", init );
     }
-
-    if ( low.find( "+" ) == 0 )
-        return createFromPROJ4( low, init );
-
-    if ( low.find( "epsg:" ) == 0 || low.find( "osgeo:" ) == 0 )
-        return createFromPROJ4( "+init=" + low, init );
-
-    if ( low.find( "projcs" ) == 0 || low.find( "geogcs" ) == 0 )
-        return createFromWKT( init, init );
-
+    else if ( low.find( "+" ) == 0 )
+        srs = createFromPROJ4( low, init );
+    else if ( low.find( "epsg:" ) == 0 || low.find( "osgeo:" ) == 0 )
+        srs = createFromPROJ4( "+init=" + low, init );
+    else if ( low.find( "projcs" ) == 0 || low.find( "geogcs" ) == 0 )
+        srs = createFromWKT( init, init );
     else
         return NULL;
+
+    getSpatialReferenceCache()[init] = srs;
+    return srs.get();
 }
 
 /****************************************************************************/
@@ -129,6 +141,7 @@ _handle( handle ),
 _owns_handle( true ),
 _initialized( false )
 {
+    setThreadSafeReferenceCounting(true);
     init();
     _init_type = "WKT";
     _init_str = getWKT();
@@ -139,7 +152,15 @@ SpatialReference::~SpatialReference()
 	if ( _handle && _owns_handle )
 	{
       OGR_SCOPE_LOCK();
+
+      for (TransformHandleCache::iterator itr = _transformHandleCache.begin(); itr != _transformHandleCache.end(); ++itr)
+      {
+          OCTDestroyCoordinateTransformation(itr->second);
+      }
+
       OSRDestroySpatialReference( _handle );
+
+      
 	}
 	_handle = NULL;
 }
@@ -309,7 +330,19 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 
     OGR_SCOPE_LOCK();
 
-    void* xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle );
+    void* xform_handle = NULL;
+    TransformHandleCache::iterator::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
+    if (itr != _transformHandleCache.end())
+    {
+        osg::notify(osg::INFO) << "[osgEarth::SpatialReference] using cached transform handle" << std::endl;
+        xform_handle = itr->second;
+    }
+    else
+    {
+        xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
+        const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
+    }
+
     if ( !xform_handle )
     {
         osg::notify( osg::WARN )
@@ -317,7 +350,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
             << "    From => " << getName() << std::endl
             << "    To   => " << out_srs->getName() << std::endl;
         return false;
-    }
+        }
 
     double temp_x = x;
     double temp_y = y;
@@ -337,8 +370,6 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
             << std::endl;
         result = false;
     }
-
-    OCTDestroyCoordinateTransformation( xform_handle );
     return result;
 }
 

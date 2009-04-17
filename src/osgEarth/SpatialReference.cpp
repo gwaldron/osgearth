@@ -88,7 +88,7 @@ SpatialReference::create( const std::string& init )
     std::map<std::string,osg::ref_ptr<SpatialReference>>::iterator itr = getSpatialReferenceCache().find(init);
     if (itr != getSpatialReferenceCache().end())
     {
-        osg::notify(osg::NOTICE) << "Returning cached SRS" << std::endl;
+        //osg::notify(osg::NOTICE) << "Returning cached SRS" << std::endl;
         return itr->second.get();
     }
 

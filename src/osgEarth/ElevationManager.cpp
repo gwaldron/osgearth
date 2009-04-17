@@ -175,7 +175,6 @@ ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols
                         result /= (float)elevations.size();
                     }
                 }
-                if (result <= -result) result = 0.0f;
                 hf->setHeight(c, r, result);
             }
         }

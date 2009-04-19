@@ -100,7 +100,7 @@ SpatialReference::create( const std::string& init )
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         // adjusted +a by ONE to work around osg manipulator error until we can figure out why.. GW
         srs = createFromPROJ4(
-            "+proj=merc +a=6378138 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs",
+            "+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs",
             init,
             "Spherical Mercator" );
     }
@@ -427,7 +427,11 @@ SpatialReference::init()
     int err;
     double semi_major_axis = OSRGetSemiMajor( _handle, &err );
     double semi_minor_axis = OSRGetSemiMinor( _handle, &err );
-    _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
+    // there's a problem in one or more of the OSG manipulators that causes intersection errors
+    // if the ellipsoid model is a perfect sphere. This "fudge factor" works around that for now
+    // without affecting the math too much.
+    double fudge_factor = semi_major_axis == semi_minor_axis? 0.0001 : 0.0;
+    _ellipsoid = new osg::EllipsoidModel( semi_major_axis + fudge_factor, semi_minor_axis );
 
     if ( _name.empty() || _name == "unnamed" )
     {

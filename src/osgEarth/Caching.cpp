@@ -152,6 +152,12 @@ int CachedTileSource::getPixelsPerTile() const
     return TileSource::getPixelsPerTile();
 }
 
+bool CachedTileSource::isKeyValid(const TileKey* key)
+{
+    if (_tileSource.valid()) return _tileSource->isKeyValid(key);
+    return false;
+}
+
 
 /************************************************************************/
 DiskCachedTileSource::DiskCachedTileSource(TileSource* tileSource,

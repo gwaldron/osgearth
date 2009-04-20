@@ -81,6 +81,8 @@ namespace osgEarth
     public: // TileSource interface
 
         virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
+
+        virtual bool isKeyValid(const TileKey* key);
         
 
     protected:

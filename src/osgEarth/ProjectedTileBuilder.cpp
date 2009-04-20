@@ -134,7 +134,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         {
             //Make any empty heightfield if no heightfield source is specified
             hf = new osg::HeightField();
-            hf->allocate( 8, 8 );
+            hf->allocate( 16, 16 );
             for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
                 hf->getHeightList()[i] = 0.0; //(double)((::rand() % 10000) - 5000);
         }

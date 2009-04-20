@@ -8,7 +8,7 @@ WMS to hit a TileCache server, which has all the WMS tiles
 pre-rendered for speed.
 -->
 
-<map name="MetaCarta" type="flat">
+<map name="MetaCarta" type="geocentric">
 
    <image name="vmap0" driver="wms">
        <url>http://labs.metacarta.com/wms-c/Basic.py</url>

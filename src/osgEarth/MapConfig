@@ -404,8 +404,6 @@ namespace osgEarth
         bool cache_only;
         bool normalize_edges;
 
-        bool reproject_mercator_to_geodetic;
-
         osg::ref_ptr<CacheConfig> cache_config;
         osg::ref_ptr<ProfileConfig> profile_config;
     };

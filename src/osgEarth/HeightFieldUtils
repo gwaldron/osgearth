@@ -22,9 +22,13 @@
 
 #include <osgEarth/Common>
 #include <osg/Shape>
+#include <osgTerrain/ValidDataOperator>
 
 namespace osgEarth
 {
+   #define NO_DATA_VALUE -FLT_MAX
+
+
     enum OSGEARTH_EXPORT ElevationInterpolation
     {
         AVERAGE,
@@ -37,6 +41,59 @@ namespace osgEarth
       public:
           static float getHeightAtPixel(const osg::HeightField* hf, float c, float r, ElevationInterpolation interpoltion = BILINEAR);
           static float getHeightAtLocation(const osg::HeightField* hf, float x, float y, ElevationInterpolation interpolation = BILINEAR);
+    };
+
+    /**
+     *A collection of ValidDataOperators.  All operators must pass to be considered valid.
+     */
+    struct OSGEARTH_EXPORT CompositeValidValueOperator : public osgTerrain::ValidDataOperator
+    {
+        typedef std::vector<osg::ref_ptr<osgTerrain::ValidDataOperator>> ValidDataOperatorList;
+        ValidDataOperatorList& getOperators() { return _operators;}
+
+        virtual bool operator() (float value) const
+        {
+            for (ValidDataOperatorList::const_iterator itr = _operators.begin(); itr != _operators.end(); ++itr)
+            {
+                if (!(*itr->get())(value)) return false;
+            }
+            return true;
+        }
+
+        ValidDataOperatorList _operators;
+    };
+
+    struct OSGEARTH_EXPORT ReplaceInvalidDataOperator : public osg::Referenced
+    {
+        ReplaceInvalidDataOperator();
+
+        virtual void operator()(osg::HeightField* heightField);
+
+        osgTerrain::ValidDataOperator* getValidDataOperator() { return _validDataOperator.get(); }
+        void setValidDataOperator(osgTerrain::ValidDataOperator* validDataOperator) { _validDataOperator = validDataOperator; }
+
+        float getReplaceWith() { return _replaceWith; }
+        void setReplaceWith( float replaceWith ) { _replaceWith = replaceWith; }
+
+        osg::ref_ptr<osgTerrain::ValidDataOperator> _validDataOperator;
+        float _replaceWith;
+    };
+
+    struct OSGEARTH_EXPORT FillNoDataOperator : public osg::Referenced
+    {
+        FillNoDataOperator();
+
+        virtual void operator()(osg::HeightField* heightField);
+
+        osgTerrain::ValidDataOperator* getValidDataOperator() { return _validDataOperator.get(); }
+        void setValidDataOperator(osgTerrain::ValidDataOperator* validDataOperator) { _validDataOperator = validDataOperator; }
+
+        float getDefaultValue() { return _defaultValue; }
+        void setDefaultValue(float defaultValue) { _defaultValue = defaultValue; }
+
+        osg::ref_ptr<osgTerrain::ValidDataOperator> _validDataOperator;
+
+        float _defaultValue;
     };
 }
 

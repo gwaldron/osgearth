@@ -94,6 +94,15 @@ namespace osgEarth
          */
         void setMaxLevel(unsigned int maxLevel) {_maxLevel = maxLevel;}
 
+        float getNoDataValue();
+        void  setNoDataValue(float noDataValue);
+
+        float getNoDataMinValue();
+        void setNoDataMinValue(float noDataMinValue);
+
+        float getNoDataMaxValue();
+        void  setNoDataMaxValue(float noDataMaxValue);     
+
         /**
          * Gets the preferred extension for this TileSource
          */
@@ -125,6 +134,10 @@ namespace osgEarth
         const Profile* initProfile( const Profile* mapProfile, const std::string& configPath );
         friend class TileBuilder;
         friend class CachedTileSource;
+
+        float _noDataValue;
+        float _noDataMinValue;
+        float _noDataMaxValue;
     };
 
     

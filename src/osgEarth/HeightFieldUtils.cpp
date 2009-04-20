@@ -48,6 +48,12 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, float c, float r,
         float ulHeight = hf->getHeight(colMin, rowMax);
         float lrHeight = hf->getHeight(colMax, rowMin);
 
+        //Make sure not to use NoData in the interpolation
+        if (urHeight == NO_DATA_VALUE || llHeight == NO_DATA_VALUE || ulHeight == NO_DATA_VALUE || lrHeight == NO_DATA_VALUE)
+        {
+            return NO_DATA_VALUE;
+        }
+
         //osg::notify(osg::INFO) << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
 
         if (interpolation == BILINEAR)
@@ -109,4 +115,73 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, float x, float
     float py = (y - origin.y()) / hf->getYInterval();
 
     return getHeightAtPixel(hf, px, py, interpolation);
+}
+
+
+/******************************************************************************************/
+
+ReplaceInvalidDataOperator::ReplaceInvalidDataOperator():
+_replaceWith(0.0f)
+{
+}
+
+void
+ReplaceInvalidDataOperator::operator ()(osg::HeightField *heightField)
+{
+    if (heightField && _validDataOperator.valid())
+    {
+        for (unsigned int i = 0; i < heightField->getHeightList().size(); ++i)
+        {
+            float elevation = heightField->getHeightList()[i];
+            if (!(*_validDataOperator)(elevation))
+            {
+                heightField->getHeightList()[i] = _replaceWith;
+            }
+        }
+    }
+}
+
+
+/******************************************************************************************/
+FillNoDataOperator::FillNoDataOperator():
+_defaultValue(0.0f)
+{
+}
+
+void
+FillNoDataOperator::operator ()(osg::HeightField *heightField)
+{
+    if (heightField && _validDataOperator)
+    {
+        for( unsigned int row=0; row < heightField->getNumRows(); row++ )
+        {
+            for( unsigned int col=0; col < heightField->getNumColumns(); col++ )
+            {
+                float val = heightField->getHeight(col, row);
+
+                if (!(*_validDataOperator)(val))
+                {
+                    if ( col > 0 )
+                        val = heightField->getHeight(col-1,row);
+                    else if ( col <= heightField->getNumColumns()-1 )
+                        val = heightField->getHeight(col+1,row);
+
+                    if (!(*_validDataOperator)(val))
+                    {
+                        if ( row > 0 )
+                            val = heightField->getHeight(col, row-1);
+                        else if ( row < heightField->getNumRows()-1 )
+                            val = heightField->getHeight(col, row+1);
+                    }
+
+                    if (!(*_validDataOperator)(val))
+                    {
+                        val = _defaultValue;
+                    }
+
+                    heightField->setHeight( col, row, val );
+                }
+            }
+        }
+    }
 }

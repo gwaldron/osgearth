@@ -8,7 +8,7 @@ using namespace osgEarth;
 
 
 ElevationManager::ElevationManager():
-_samplePolicy(HIGHEST)
+_samplePolicy(FIRST_VALID)
 {
 }
 
@@ -40,6 +40,16 @@ GeoHeightField* createGeoHeightField(const TileKey* key, TileSource* source, boo
             osg::HeightField* hf = source->createHeightField(hf_key.get());
             if (hf)
             {
+                //Modify the heightfield data so that is contains a standard value for NO_DATA
+                osg::ref_ptr<CompositeValidValueOperator> ops = new CompositeValidValueOperator;
+                ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
+                ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
+                
+                ReplaceInvalidDataOperator o;
+                o.setReplaceWith(NO_DATA_VALUE);
+                o.setValidDataOperator(ops);
+                o(hf);
+
                 return new GeoHeightField(hf, hf_key->getGeoExtent());
             }
         }
@@ -128,21 +138,25 @@ ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols
             {
                 double geoY = miny + (dy * (double)r);
 
-                float result = 0.0f;
+                bool hasValidData = false;
 
+                //Collect elevations from all of the sources
                 std::vector<float> elevations;
-
                 for (std::vector<osg::ref_ptr<GeoHeightField>>::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
                     float elevation = 0.0f;
                     if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, BILINEAR, elevation))
                     {
-                        elevations.push_back(elevation);
-                        //osg::notify(osg::NOTICE) << "Got elevation " << elevation << std::endl;
-                        //if (elevation > -100000) break;
+                        if (elevation != NO_DATA_VALUE)
+                        {
+                            elevations.push_back(elevation);
+                        }
                     }
                 }
 
+                float result = NO_DATA_VALUE;
+
+                //The list of elevations only contains valid values
                 if (elevations.size() > 0)
                 {
                     if (_samplePolicy == FIRST_VALID)
@@ -179,6 +193,15 @@ ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols
             }
         }
     }
+
+    //Attempt to fill NoData holes if they exists
+    //FillNoDataOperator  fndo;
+    //fndo.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
+    //fndo(hf);
+    ReplaceInvalidDataOperator o;
+    o.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
+    o(hf);
+
 
     return hf;
 }

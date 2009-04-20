@@ -863,7 +863,7 @@ public:
         float result = 0.0f;
 
         //If the location is outside of the pixel values of the dataset, just return 0
-        if (c < 0 || r < 0 || c > _warpedDS->GetRasterXSize()-1 || r > _warpedDS->GetRasterYSize()-1) return 0;
+        if (c < 0 || r < 0 || c > _warpedDS->GetRasterXSize()-1 || r > _warpedDS->GetRasterYSize()-1) return NO_DATA_VALUE;
 
         if (_interpolation == NEAREST)
         {
@@ -886,10 +886,21 @@ public:
             band->RasterIO(GF_Read, colMax, rowMin, 1, 1, &lrHeight, 1, 1, GDT_Float32, 0, 0);
             band->RasterIO(GF_Read, colMax, rowMax, 1, 1, &urHeight, 1, 1, GDT_Float32, 0, 0);
 
+            /*
             if (!isValidValue(urHeight, band)) urHeight = 0.0f;
             if (!isValidValue(llHeight, band)) llHeight = 0.0f;
             if (!isValidValue(ulHeight, band)) ulHeight = 0.0f;
             if (!isValidValue(lrHeight, band)) lrHeight = 0.0f;
+            */
+            if (!isValidValue(urHeight, band) || (!isValidValue(llHeight, band)) ||(!isValidValue(ulHeight, band)) || (!isValidValue(lrHeight, band)))
+            {
+                return NO_DATA_VALUE;
+            }
+
+
+
+
+
 
             if (_interpolation == AVERAGE)
             {
@@ -971,6 +982,10 @@ public:
                 }
             }
         }
+        else
+        {
+            for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+        }
         return hf.release();
     }
 
@@ -985,8 +1000,7 @@ public:
         double xmin, ymin, xmax, ymax;
         key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
-        return  osg::maximum(_extentsMin.x(), xmin) <= osg::minimum(_extentsMax.x(), xmax) &&
-            osg::maximum(_extentsMin.y(), ymin) <= osg::minimum(_extentsMax.y(), ymax);
+        return ! ( xmin >= _extentsMax.x() || xmax <= _extentsMin.x() || ymin >= _extentsMax.y() || ymax <= _extentsMin.y() );        
     }
 
 

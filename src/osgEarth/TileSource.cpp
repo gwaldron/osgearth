@@ -35,6 +35,10 @@ using namespace osgEarth;
 
 #define PROPERTY_MIN_LEVEL "min_level"
 #define PROPERTY_MAX_LEVEL "max_level"
+#define PROPERTY_NODATA_VALUE "nodata_value"
+#define PROPERTY_NODATA_MIN "nodata_min"
+#define PROPERTY_NODATA_MAX "nodata_max"
+
 
 #define DEFAULT_MIN_LEVEL 0
 #define DEFAULT_MAX_LEVEL 25
@@ -43,7 +47,10 @@ using namespace osgEarth;
 TileSource::TileSource(const osgDB::ReaderWriter::Options* options) :
 _options( options ),
 _minLevel( DEFAULT_MIN_LEVEL ),
-_maxLevel( DEFAULT_MAX_LEVEL )
+_maxLevel( DEFAULT_MAX_LEVEL ),
+_noDataValue(SHRT_MIN),
+_noDataMinValue(-FLT_MAX),
+_noDataMaxValue(FLT_MAX)
 {
     if ( options )
     {
@@ -52,6 +59,17 @@ _maxLevel( DEFAULT_MAX_LEVEL )
    
         if ( options->getPluginData( PROPERTY_MAX_LEVEL ) )
             _maxLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MAX_LEVEL ), _maxLevel );
+
+        if ( options->getPluginData( PROPERTY_NODATA_VALUE ) )
+            _noDataValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_VALUE ), _noDataValue);
+
+        if ( options->getPluginData( PROPERTY_NODATA_MIN ) )
+            _noDataMinValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_MIN ), _noDataMinValue);
+
+        if ( options->getPluginData( PROPERTY_NODATA_MAX ) )
+            _noDataMaxValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_MAX ), _noDataMaxValue);
+
+        osg::notify(osg::NOTICE) << "NoData " << _noDataValue << "  (" << _noDataMinValue << " to " << _noDataMaxValue << ")" << std::endl;
     }
 }
 
@@ -99,4 +117,40 @@ const osgDB::ReaderWriter::Options*
 TileSource::getOptions() const
 {
     return _options.get();
+}
+
+float
+TileSource::getNoDataValue()
+{
+    return _noDataValue;
+}
+
+void
+TileSource::setNoDataValue(float noDataValue)
+{
+    _noDataValue;
+}
+
+float
+TileSource::getNoDataMinValue()
+{
+    return _noDataMinValue;
+}
+
+void
+TileSource::setNoDataMinValue(float noDataMinValue)
+{
+    _noDataMinValue = noDataMinValue;
+}
+
+float
+TileSource::getNoDataMaxValue()
+{
+    return _noDataMaxValue;
+}
+
+void 
+TileSource::setNoDataMaxValue(float noDataMaxValue)
+{
+    _noDataMaxValue = noDataMaxValue;
 }

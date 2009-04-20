@@ -43,6 +43,19 @@ Profile::create(const std::string& init_string,
 }
 
 Profile*
+Profile::create(const SpatialReference* srs,
+                double xmin, double ymin, double xmax, double ymax,
+                unsigned int numTilesWideAtLod0,
+                unsigned int numTilesHighAtLod0)
+{
+    return new Profile(
+        srs,
+        xmin, ymin, xmax, ymax,
+        numTilesWideAtLod0,
+        numTilesHighAtLod0 );
+}
+
+Profile*
 Profile::create(const std::string& init_string,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
@@ -55,7 +68,6 @@ Profile::create(const std::string& init_string,
     if ( _srs.valid() && _srs->isGeographic() )
     {
         return new Profile(
-            //getProfileTypeFromSRS( init_string ),
             _srs.get(),
             -180.0, -90.0, 180.0, 90.0 );
     }
@@ -71,27 +83,13 @@ Profile::Profile(const SpatialReference* srs,
                  unsigned int numTilesHighAtLod0)
 {
     _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
-    //_srs = srs;
-    //_xmin = xmin;
-    //_ymin = ymin;
-    //_xmax = xmax;
-    //_ymax = ymax;
     _numTilesWideAtLod0 = numTilesWideAtLod0;
     _numTilesHighAtLod0 = numTilesHighAtLod0;
 
     // automatically calculate the lat/long extents:
-    if ( srs->isGeographic() )
-    {
-        //_longmin = xmin;
-        //_latmin = ymin;
-        //_longmax = xmax;
-        //_latmax = ymax;
-        _latlong_extent = _extent;
-    }
-    else
-    {
-        _latlong_extent = _extent.transform( _extent.getSRS()->getGeographicSRS() );
-    }
+    _latlong_extent = srs->isGeographic()?
+        _extent :
+        _extent.transform( _extent.getSRS()->getGeographicSRS() );
 }
 
 Profile::ProfileType
@@ -117,6 +115,11 @@ Profile::getSRS() const {
 const GeoExtent&
 Profile::getExtent() const {
     return _extent;
+}
+
+const GeoExtent&
+Profile::getLatLongExtent() const {
+    return _latlong_extent;
 }
 
 void

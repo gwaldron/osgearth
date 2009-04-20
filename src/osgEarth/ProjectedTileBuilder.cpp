@@ -208,7 +208,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             GeoImage* geo_image = image_tiles[i].first;
             if ( geo_image->getSRS()->isMercator() && getMapConfig()->getReprojectMercatorToGeodetic() )
             {
-                img_locator = new MercatorLocator(*img_locator.get(), geo_image->getImage()->t(), image_tiles[i].second->getLevelOfDetail() );
+                img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
             }
 
             //if ( key->isMercator() && getMapConfig()->getReprojectMercatorToGeodetic())

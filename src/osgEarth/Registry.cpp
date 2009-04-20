@@ -19,6 +19,7 @@
 
 
 #include <osgEarth/Registry>
+#include <osgEarth/Mercator>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -79,17 +80,18 @@ Registry::getGlobalGeodeticProfile() const
 }
 
 
-#define MERC_LIMIT 20037508.342789248
-
 const Profile*
 Registry::getGlobalMercatorProfile() const
 {
     if ( !_global_mercator_profile.valid() )
     {
+        // automatically figure out proper mercator extents:
+        const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
+        double e, dummy;
+        srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );
+        
         const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-            "spherical-mercator",
-            -MERC_LIMIT, -MERC_LIMIT, MERC_LIMIT, MERC_LIMIT,
-            1, 1 );
+            srs, -e, -e, e, e, 1, 1 );
     }
     return _global_mercator_profile.get();
 }

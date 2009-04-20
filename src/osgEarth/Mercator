@@ -33,8 +33,11 @@ namespace osgEarth
     /**
      * Methods for dealing with the Spherical Mercator projection.
      */
-    class OSGEARTH_EXPORT Mercator
+    class Mercator
     {
+    public:
+        static const double MIN_X, MIN_Y, MAX_X, MAX_Y;
+
     public:
       /**
       *Converts a location in spherical mercator projection to lat/lon
@@ -82,24 +85,22 @@ namespace osgEarth
        * Given an extent and a lat/lon, calculate the Mercator U and V coordinates of
        * the lat/lon within that extent.
        */
-      static void getUV(
-          double minlon, double minlat, double maxlon, double maxlat,
-          double lon, double lat,
-          double& out_u, double& out_v);
+      //static void getUV(
+      //    double minlon, double minlat, double maxlon, double maxlat,
+      //    double lon, double lat,
+      //    double& out_u, double& out_v);
     };
 
     class MercatorLocator : public osgTerrain::Locator
     {
     public:
-        MercatorLocator( int tile_size, unsigned int lod );
-        MercatorLocator( const osgTerrain::Locator& rhs, int tile_size, unsigned int lod);
+        MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& image_extent );
 
         bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
         bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
 
     private:
-        int tile_size;
-        unsigned int lod;
+        GeoExtent _image_ext;
     };
 }
 

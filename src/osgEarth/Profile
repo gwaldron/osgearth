@@ -53,6 +53,12 @@ namespace osgEarth
             unsigned int numTilesHighAtLod0 =1 );
 
         static Profile* create(
+            const SpatialReference* srs,
+            double xmin, double ymin, double xmax, double ymax,
+            unsigned int numTilesWideAtLod0 =1,
+            unsigned int numTilesHighAtLod0 =1 );
+
+        static Profile* create(
             const std::string& srs_string,
             unsigned int numTilesWideAtLod0 =1,
             unsigned int numTilesHighAtLod0 =1 );
@@ -63,25 +69,9 @@ namespace osgEarth
         bool isOK() const;
 
         /**
-         * Gets the extents of the profile (in the profile's SRS)
-         */
-        //double xMin() const;
-        //double yMin() const;
-        //double xMax() const;
-        //double yMax() const;
-
-        /**
          * Gets the extent of the profile (in the profile's SRS)
          */
         const GeoExtent& getExtent() const;
-
-        /**
-         * Gets the extents of the profile (in lat/long)
-         */
-        //double longMin() const;
-        //double latMin() const;
-        //double longMax() const;
-        //double latMax() const;
 
         /**
          * Gets the extent of the profile (in lat/long.)

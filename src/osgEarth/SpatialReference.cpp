@@ -430,8 +430,9 @@ SpatialReference::init()
     // there's a problem in one or more of the OSG manipulators that causes intersection errors
     // if the ellipsoid model is a perfect sphere. This "fudge factor" works around that for now
     // without affecting the math too much.
-    double fudge_factor = semi_major_axis == semi_minor_axis? 0.0001 : 0.0;
-    _ellipsoid = new osg::EllipsoidModel( semi_major_axis + fudge_factor, semi_minor_axis );
+    //double fudge_factor = semi_major_axis == semi_minor_axis? 0.0001 : 0.0;
+    //_ellipsoid = new osg::EllipsoidModel( semi_major_axis + fudge_factor, semi_minor_axis );
+    _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
 
     if ( _name.empty() || _name == "unnamed" )
     {

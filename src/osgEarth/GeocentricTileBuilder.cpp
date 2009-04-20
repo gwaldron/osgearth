@@ -351,10 +351,12 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             // Use a special locator for mercator images (instead of reprojecting)
             if ( geo_image->getSRS()->isMercator() )
             {
-                img_locator = new MercatorLocator(
-                    *img_locator.get(),
-                    geo_image->getImage()->t(),
-                    image_tiles[i].second->getLevelOfDetail() );
+                img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
+
+                //img_locator = new MercatorLocator(
+                //    *img_locator.get(),
+                //    geo_image->getImage()->t(),
+                //    image_tiles[i].second->getLevelOfDetail() );
             }
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );

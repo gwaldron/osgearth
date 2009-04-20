@@ -114,65 +114,65 @@ MultiImage::createImage()
 }
 
 
-osg::Image* MultiImage::createImage(double minx, double miny, double maxx, double maxy)
-{
-    if (_images.size() == 0)
-    {
-        osg::notify(osg::NOTICE) << "MultiImage has no images..." << std::endl;
-        return 0;
-    }
-
-    unsigned int tileWidth = _images[0]._image->s();
-    unsigned int tileHeight = _images[0]._image->t();
-
-    //osg::notify(osg::NOTICE) << "TileDim " << tileWidth << ", " << tileHeight << std::endl;
-
-    unsigned int minTileX = _images[0]._tileX;
-    unsigned int minTileY = _images[0]._tileY;
-    unsigned int maxTileX = _images[0]._tileX;
-    unsigned int maxTileY = _images[0]._tileY;
-
-    //Compute the tile size.
-    for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
-    {
-        if (i->_tileX < minTileX) minTileX = i->_tileX;
-        if (i->_tileY < minTileY) minTileY = i->_tileY;
-
-        if (i->_tileX > maxTileX) maxTileX = i->_tileX;
-        if (i->_tileY > maxTileY) maxTileY = i->_tileY;
-    }
-
-    unsigned int tilesWide = maxTileX - minTileX + 1;
-    unsigned int tilesHigh = maxTileY - minTileY + 1;
-
-    unsigned int pixelsWide = tilesWide * tileWidth;
-    unsigned int pixelsHigh = tilesHigh * tileHeight;
-
-    //osg::notify(osg::NOTICE) << "Creating image that is " << tilesWide << " x " << tilesHigh << " tiles and " << pixelsWide << ", " << pixelsHigh << " pixels " << std::endl;
-
-    osg::ref_ptr<osg::Image> image = new osg::Image;
-    image->allocateImage(pixelsWide, pixelsHigh, 1, GL_RGB, GL_UNSIGNED_BYTE);
-
-    {
-        //Composite the incoming images into the master image
-        for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
-        {
-            //Determine the indices in the master image for this image
-            int dstX = (i->_tileX - minTileX) * tileWidth;
-            int dstY = (maxTileY - i->_tileY) * tileHeight;
-            ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
-        }
-    }
-
-    double src_minx, src_miny, src_maxx, src_maxy;
-    getExtents(src_minx, src_miny, src_maxx, src_maxy);
-
-    {
-        image = ImageUtils::cropImage(image.get(), src_minx, src_miny, src_maxx, src_maxy, minx, miny, maxx, maxy);
-    }
-
-    return image.release();
-}
+//osg::Image* MultiImage::createImage(double minx, double miny, double maxx, double maxy)
+//{
+//    if (_images.size() == 0)
+//    {
+//        osg::notify(osg::NOTICE) << "MultiImage has no images..." << std::endl;
+//        return 0;
+//    }
+//
+//    unsigned int tileWidth = _images[0]._image->s();
+//    unsigned int tileHeight = _images[0]._image->t();
+//
+//    //osg::notify(osg::NOTICE) << "TileDim " << tileWidth << ", " << tileHeight << std::endl;
+//
+//    unsigned int minTileX = _images[0]._tileX;
+//    unsigned int minTileY = _images[0]._tileY;
+//    unsigned int maxTileX = _images[0]._tileX;
+//    unsigned int maxTileY = _images[0]._tileY;
+//
+//    //Compute the tile size.
+//    for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+//    {
+//        if (i->_tileX < minTileX) minTileX = i->_tileX;
+//        if (i->_tileY < minTileY) minTileY = i->_tileY;
+//
+//        if (i->_tileX > maxTileX) maxTileX = i->_tileX;
+//        if (i->_tileY > maxTileY) maxTileY = i->_tileY;
+//    }
+//
+//    unsigned int tilesWide = maxTileX - minTileX + 1;
+//    unsigned int tilesHigh = maxTileY - minTileY + 1;
+//
+//    unsigned int pixelsWide = tilesWide * tileWidth;
+//    unsigned int pixelsHigh = tilesHigh * tileHeight;
+//
+//    //osg::notify(osg::NOTICE) << "Creating image that is " << tilesWide << " x " << tilesHigh << " tiles and " << pixelsWide << ", " << pixelsHigh << " pixels " << std::endl;
+//
+//    osg::ref_ptr<osg::Image> image = new osg::Image;
+//    image->allocateImage(pixelsWide, pixelsHigh, 1, GL_RGB, GL_UNSIGNED_BYTE);
+//
+//    {
+//        //Composite the incoming images into the master image
+//        for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)
+//        {
+//            //Determine the indices in the master image for this image
+//            int dstX = (i->_tileX - minTileX) * tileWidth;
+//            int dstY = (maxTileY - i->_tileY) * tileHeight;
+//            ImageUtils::copyAsSubImage(i->getImage(), image.get(), dstX, dstY);
+//        }
+//    }
+//
+//    double src_minx, src_miny, src_maxx, src_maxy;
+//    getExtents(src_minx, src_miny, src_maxx, src_maxy);
+//
+//    {
+//        image = ImageUtils::cropImage(image.get(), src_minx, src_miny, src_maxx, src_maxy, minx, miny, maxx, maxy);
+//    }
+//
+//    return image.release();
+//}
 
 
 /***************************************************************************/

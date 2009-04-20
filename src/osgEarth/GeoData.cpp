@@ -100,6 +100,16 @@ GeoExtent::yMax() const {
     return _ymax; 
 }
 
+double
+GeoExtent::width() const {
+    return _xmax - _xmin;
+}
+
+double
+GeoExtent::height() const {
+    return _ymax - _ymin;
+}
+
 GeoExtent
 GeoExtent::transform( const SpatialReference* to_srs ) const 
 {       
@@ -178,9 +188,36 @@ GeoImage::getExtent() const {
 }
 
 
+//GeoImage*
+//GeoImage::crop( double xmin, double ymin, double xmax, double ymax ) const
+//{
+//    osg::Image* new_image = ImageUtils::cropImage(
+//        _image.get(),
+//        _extent.xMin(), _extent.yMin(), _extent.xMax(), _extent.yMax(),
+//        xmin, ymin, xmax, ymax );
+//
+//    return new_image?
+//        new GeoImage( new_image, GeoExtent( _extent.getSRS(), xmin, ymin, xmax, ymax ) ) :
+//        NULL;
+//}
+
 GeoImage*
 GeoImage::crop( double xmin, double ymin, double xmax, double ymax ) const
 {
+    // calculate the resolution of the image:
+    double res_s = _extent.width()/(double)_image->s();
+    double res_t = _extent.height()/(double)_image->t();
+    
+    // adjust the cropping extents to be an even multiple of the resolution, erring
+    // on the large side:
+    xmin -= fmod( xmin-_extent.xMin(), res_s );
+    ymin -= fmod( ymin-_extent.yMin(), res_t );
+    double r = fmod( xmax-_extent.xMin(), res_s );
+    xmax += r > 0.0? res_s - r : 0.0;
+    r = fmod( ymax-_extent.yMin(), res_t );
+    ymax += r > 0.0? res_t - r : 0.0;
+
+    // crop the image using the adjusted window:
     osg::Image* new_image = ImageUtils::cropImage(
         _image.get(),
         _extent.xMin(), _extent.yMin(), _extent.xMax(), _extent.yMax(),

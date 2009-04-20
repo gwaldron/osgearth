@@ -96,6 +96,13 @@ ImageUtils::cropImage(const osg::Image* image,
     int windowWidth   = osg::minimum( (int)ceil(  (dst_maxx - src_minx) / (src_maxx - src_minx) * (double)image->s()), image->s()) - windowX;
     int windowHeight  = osg::minimum( (int)ceil(  (dst_maxy - src_miny) / (src_maxy - src_miny) * (double)image->t()), image->t()) - windowY;
 
+    //double res_s = (src_maxx-src_minx)/(double)image->s();
+    //double res_t = (src_maxy-src_miny)/(double)image->t();
+    //int windowX = osg::clampBetween( (int)( (dst_minx-src_minx)/res_s ), 0, image->s() );
+    //int windowY = osg::clampBetween( (int)( (dst_miny-src_miny)/res_t ), 0, image->t() );
+    //int windowWidth = osg::clampBetween( (int)((dst_maxx-src_minx)/res_s), 0, image->s() ) - windowX;
+    //int windowHeight= osg::clampBetween( (int)((dst_maxy-src_miny)/res_t), 0, image->t() ) - windowY;
+
     //osg::notify(osg::NOTICE) << "Copying from " << windowX << ", " << windowY << ", " << windowWidth << ", " << windowHeight << std::endl;
 
     //Allocate the croppped image

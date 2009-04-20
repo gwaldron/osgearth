@@ -783,7 +783,7 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
         osg::Image* image = source->createImage( mapKey );
         if ( image )
         {
-            result = new GeoImage( image, mapProfile->getExtent() );
+            result = new GeoImage( image, mapKey->getGeoExtent() ); //( image, mapProfile->getExtent() );
         }
     }
 
@@ -809,6 +809,8 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
 
             result = mosaic->crop( 
                 clampedMapExt.xMin(), clampedMapExt.yMin(), clampedMapExt.xMax(), clampedMapExt.yMax() );
+
+            //result = mosaic.release();
         }
     }
 

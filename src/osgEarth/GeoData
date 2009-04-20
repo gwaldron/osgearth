@@ -58,6 +58,9 @@ namespace osgEarth
         double xMax() const;
         double yMax() const;
 
+        double width() const;
+        double height() const;
+
         bool isValid() const;
 
         /** Returns this extent transformed into another spatial reference. */

@@ -37,17 +37,6 @@
 
 using namespace osgEarth;
 
-static
-void getExtents(const TileKey* key, double &min_x, double &min_y, double &max_x, double &max_y, bool reproject_mercator)
-{
-    key->getGeoExtent().getBounds(min_x, min_y, max_x, max_y);
-    if (key->isMercator() && reproject_mercator)
-    {
-        Mercator::metersToLatLon(min_x, min_y, min_y, min_x);
-        Mercator::metersToLatLon(max_x, max_y, max_y, max_x);
-    }
-}
-
 ProjectedTileBuilder::ProjectedTileBuilder( 
     MapConfig* _map,
     const osgDB::ReaderWriter::Options* _global_options ) :
@@ -61,7 +50,7 @@ osg::Node*
 ProjectedTileBuilder::createQuadrant( const TileKey* key )
 {
     double xmin, ymin, xmax, ymax;
-    getExtents(key, xmin, ymin, xmax, ymax, getMapConfig()->getReprojectMercatorToGeodetic());
+    key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
     //osg::notify(osg::NOTICE) << "DataGridProfile " << _dataProfile.xMin() << ", " << _dataProfile.yMin() << ", " << _dataProfile.xMax() << ", " << _dataProfile.yMax() << std::endl;
 
@@ -155,7 +144,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if ( getMapProfile()->getProfileType() == Profile::TYPE_GEODETIC || _map->getReprojectMercatorToGeodetic() )
+    if ( getMapProfile()->getSRS()->isGeographic() )
     {
         scaleHeightFieldToDegrees( hf.get() );
     }
@@ -199,22 +188,17 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         if (image_tiles[i].first.valid())
         {
             double img_xmin, img_ymin, img_xmax, img_ymax;
-            getExtents(image_tiles[i].second.get(), img_xmin, img_ymin, img_xmax, img_ymax, getMapConfig()->getReprojectMercatorToGeodetic());
+            image_tiles[i].second.get()->getGeoExtent().getBounds(img_xmin, img_ymin, img_xmax, img_ymax);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
             img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
             GeoImage* geo_image = image_tiles[i].first;
-            if ( geo_image->getSRS()->isMercator() && getMapConfig()->getReprojectMercatorToGeodetic() )
+            if ( geo_image->getSRS()->isMercator() )
             {
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
             }
-
-            //if ( key->isMercator() && getMapConfig()->getReprojectMercatorToGeodetic())
-            //{
-            //    img_locator = new MercatorLocator(*img_locator.get(), image_tiles[i].first->s(), image_tiles[i].second->getLevelOfDetail() );
-            //}
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
             img_layer->setLocator( img_locator.get() );

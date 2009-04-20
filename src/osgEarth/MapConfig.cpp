@@ -43,7 +43,6 @@ MapConfig::MapConfig()
     cache_only = false;
     normalize_edges = true;
     filename = "";
-    reproject_mercator_to_geodetic = false;
 }
 
 void
@@ -253,18 +252,6 @@ MapConfig::setProfile(const Profile* profile)
     this->profile = profile;
 }
 
-bool
-MapConfig::getReprojectMercatorToGeodetic() const
-{
-    return reproject_mercator_to_geodetic;
-}
-
-void MapConfig::setReprojectMercatorToGeodetic(bool value)
-{
-    reproject_mercator_to_geodetic = value;
-}
-
-
 
 /************************************************************************/
 
@@ -454,7 +441,6 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
 #define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
 #define ELEM_CACHE_ONLY        "cache_only"
 #define ELEM_NORMALIZE_EDGES   "normalize_edges"
-#define ELEM_REPROJECT_MERCATOR_TO_GEODETIC "reproject_mercator_to_geodetic"
 
 #define ELEM_CACHE             "cache"
 #define ATTR_TYPE              "type"
@@ -641,13 +627,6 @@ readMap( XmlElement* e_map )
     else if (normalizeEdges == VALUE_FALSE)
         map->setNormalizeEdges(false);
 
-    std::string reprojectMercator = e_map->getSubElementText(ELEM_REPROJECT_MERCATOR_TO_GEODETIC);
-    if (reprojectMercator == VALUE_TRUE)
-        map->setReprojectMercatorToGeodetic(true);
-    else if (normalizeEdges == VALUE_FALSE)
-        map->setReprojectMercatorToGeodetic(false);
-
-
     map->setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), map->getVerticalScale() ) );
     map->setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), map->getMinTileRangeFactor() ) );
     map->setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), map->getSkirtRatio()));
@@ -756,7 +735,6 @@ mapToXmlDocument( const MapConfig *map)
 
     e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map->getCacheOnly()));
     e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(map->getNormalizeEdges()));
-    e_map->addSubElement( ELEM_REPROJECT_MERCATOR_TO_GEODETIC, toString<bool>(map->getReprojectMercatorToGeodetic()));
 
     e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map->getVerticalScale() ) );
     e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map->getMinTileRangeFactor() ) );

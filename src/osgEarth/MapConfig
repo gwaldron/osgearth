@@ -377,17 +377,6 @@ namespace osgEarth
         */
         void setCacheConfig(CacheConfig* cacheConfig);
 
-        /**
-         *Gets whether to reproject mercator datasets to geodetic in projected mode
-         */
-        bool getReprojectMercatorToGeodetic() const;
-
-        /**
-         *Sets whether to reproject mercator datasets to geodetic in projected mode
-         */
-        void setReprojectMercatorToGeodetic(bool value);
-
-
         const ProfileConfig* getProfileConfig() const;
         void setProfileConfig(ProfileConfig* profileConfig);
 

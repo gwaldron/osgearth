@@ -132,6 +132,8 @@ namespace osgEarth
          */
         GeoExtent clampAndTransformExtent( const GeoExtent& input ) const;
 
+        std::string toString() const;
+
     private:       
 
         Profile(

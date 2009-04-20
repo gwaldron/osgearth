@@ -23,6 +23,7 @@
 #include <osgEarth/SpatialReference>
 #include <osgDB/FileNameUtils>
 #include <algorithm>
+#include <sstream>
 
 using namespace osgEarth;
 
@@ -120,6 +121,17 @@ Profile::getExtent() const {
 const GeoExtent&
 Profile::getLatLongExtent() const {
     return _latlong_extent;
+}
+
+std::string
+Profile::toString() const
+{
+    std::stringstream buf;
+    buf << "[srs=" << _extent.getSRS()->getName() << ", min=" << _extent.xMin() << "," << _extent.yMin()
+        << " max=" << _extent.xMax() << "," << _extent.yMax()
+        << " lod0=" << _numTilesWideAtLod0 << "," << _numTilesHighAtLod0
+        << "]";
+    return buf.str();
 }
 
 void

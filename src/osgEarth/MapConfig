@@ -158,11 +158,24 @@ namespace osgEarth
          */
         void setCacheConfig(CacheConfig* cacheConfig);
 
+        /**
+         * Gets the explicity profile override configuration for this source.
+         */
+        ProfileConfig* getProfileConfig() const;
+
+        /** 
+         * Sets an explicity profile for this source. Usually the source will report
+         * its own profile; but in rare cases you may need to explicity override it
+         * using this method.
+         */
+        void setProfileConfig( ProfileConfig* conf );
+
     private:
         std::string name;
         std::string driver;
         SourceProperties properties;
         osg::ref_ptr<CacheConfig> cache_config;
+        osg::ref_ptr<ProfileConfig> profile_config;
     };
 
     typedef std::list< osg::ref_ptr<SourceConfig> > SourceConfigList;

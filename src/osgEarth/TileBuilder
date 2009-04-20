@@ -204,7 +204,19 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _mapProfile;
 
         void initializeTileSources();
+
         TileSource* findTileSource( const std::string& name ) const;
+        
+        TileSource* loadSource(
+            const MapConfig* mapConfig,
+            const SourceConfig* source,
+            const osgDB::ReaderWriter::Options* global_options);
+
+        void addSources(
+            const MapConfig* mapConfig,
+            const SourceConfigList& from, 
+            std::vector< osg::ref_ptr<TileSource> >& to,
+            const osgDB::ReaderWriter::Options* global_options);
 
     };
 };

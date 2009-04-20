@@ -309,6 +309,16 @@ SourceConfig::setCacheConfig(CacheConfig* cacheConfig)
     cache_config = cacheConfig;
 }
 
+ProfileConfig*
+SourceConfig::getProfileConfig() const {
+    return profile_config.get();
+}
+
+void
+SourceConfig::setProfileConfig( ProfileConfig* in_profile_conf ) {
+    profile_config = in_profile_conf;
+}
+    
 
 /************************************************************************/
 
@@ -490,6 +500,48 @@ static void writeCache( const CacheConfig* cache, XmlElement* e_cache )
     }
 }
 
+static ProfileConfig* readProfileConfig( XmlElement* e_profile )
+{
+    ProfileConfig* profile = new ProfileConfig;
+    profile->setNamedProfile( e_profile->getText() );
+    profile->setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
+
+    std::string srs_text = e_profile->getText();
+    std::string srs_attr = e_profile->getAttr( ATTR_SRS );
+    profile->setSRS( !srs_attr.empty()? srs_attr : srs_text );
+
+    double minx, miny, maxx, maxy;
+    profile->getExtents(minx, miny, maxx, maxy);
+
+    //Get the bounding box
+    minx = as<double>(e_profile->getAttr( ATTR_MINX ), minx);
+    miny = as<double>(e_profile->getAttr( ATTR_MINY ), miny);
+    maxx = as<double>(e_profile->getAttr( ATTR_MAXX ), maxx);
+    maxy = as<double>(e_profile->getAttr( ATTR_MAXY ), maxy);
+
+    profile->setExtents(minx, miny, maxx, maxy);
+
+    return profile;
+}
+
+static void writeProfileConfig(const ProfileConfig* profile, XmlElement* e_profile )
+{
+    e_profile->getChildren().push_back(new XmlText(profile->getNamedProfile()));
+    e_profile->getAttrs()[ATTR_USELAYER] = profile->getRefLayer();
+    e_profile->getAttrs()[ATTR_SRS] = profile->getSRS();
+
+    if (profile->areExtentsValid())
+    {
+        double minx, miny, maxx, maxy;
+        profile->getExtents(minx, miny, maxx, maxy);
+        e_profile->getAttrs()[ATTR_MINX] = toString(minx);
+        e_profile->getAttrs()[ATTR_MINY] = toString(miny);
+        e_profile->getAttrs()[ATTR_MAXX] = toString(maxx);
+        e_profile->getAttrs()[ATTR_MAXX] = toString(maxy);
+    }
+}
+
+
 static SourceConfig*
 readSource( XmlElement* e_source )
 {
@@ -503,6 +555,13 @@ readSource( XmlElement* e_source )
     if (e_cache)
     {
         source->setCacheConfig( readCache( e_cache) );
+    }
+
+    // Check for an explicit profile override:
+    XmlElement* e_profile = static_cast<XmlElement*>( e_source->getSubElement( ELEM_PROFILE ) );
+    if ( e_profile )
+    {
+        source->setProfileConfig( readProfileConfig( e_profile ) );
     }
 
     const XmlNodeList& e_props = e_source->getChildren();
@@ -541,48 +600,6 @@ static void writeSource( const SourceConfig* source, XmlElement* e_source )
        e_source->getChildren().push_back(e_cache);
     }
 }
-
-static ProfileConfig* readProfileConfig( XmlElement* e_profile )
-{
-    ProfileConfig* profile = new ProfileConfig;
-    profile->setNamedProfile( e_profile->getText() );
-    profile->setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
-    profile->setSRS( e_profile->getAttr( ATTR_SRS ) );
-
-    double minx, miny, maxx, maxy;
-    profile->getExtents(minx, miny, maxx, maxy);
-
-    //Get the bounding box
-    minx = as<double>(e_profile->getAttr( ATTR_MINX ), minx);
-    miny = as<double>(e_profile->getAttr( ATTR_MINY ), miny);
-    maxx = as<double>(e_profile->getAttr( ATTR_MAXX ), maxx);
-    maxy = as<double>(e_profile->getAttr( ATTR_MAXY ), maxy);
-
-    profile->setExtents(minx, miny, maxx, maxy);
-
-    return profile;
-}
-
-static void writeProfileConfig(const ProfileConfig* profile, XmlElement* e_profile )
-{
-    e_profile->getChildren().push_back(new XmlText(profile->getNamedProfile()));
-    e_profile->getAttrs()[ATTR_USELAYER] = profile->getRefLayer();
-    e_profile->getAttrs()[ATTR_SRS] = profile->getSRS();
-
-    if (profile->areExtentsValid())
-    {
-        double minx, miny, maxx, maxy;
-        profile->getExtents(minx, miny, maxx, maxy);
-        e_profile->getAttrs()[ATTR_MINX] = toString(minx);
-        e_profile->getAttrs()[ATTR_MINY] = toString(miny);
-        e_profile->getAttrs()[ATTR_MAXX] = toString(maxx);
-        e_profile->getAttrs()[ATTR_MAXX] = toString(maxy);
-    }
-}
-
-
-
-
 
 
 osg::Vec4ub getColor(const std::string& str, osg::Vec4ub default_value)

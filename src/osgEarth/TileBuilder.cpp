@@ -328,6 +328,14 @@ TileBuilder::initializeTileSources()
                 continue;
             }
         }
+
+        if ( osg::getNotifyLevel() >= osg::INFO )
+        {
+            std::string prof_str = i->get()->getProfile()? i->get()->getProfile()->toString() : "none";
+            osg::notify(osg::INFO)
+                << "Tile source \"" << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
+        }
+        
         i++;
     }
 
@@ -354,13 +362,24 @@ TileBuilder::initializeTileSources()
                 continue;
             }
         }
+
         _elevationManager->getElevationSources().push_back(i->get());
+
+        if ( osg::getNotifyLevel() >= osg::INFO )
+        {
+            std::string prof_str = i->get()->getProfile()? i->get()->getProfile()->toString() : "none";
+            osg::notify(osg::INFO)
+                << "Tile source \"" << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
+        }
+        
         i++;
     }
 }
 
-static TileSource*
-loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::ReaderWriter::Options* global_options)
+TileSource*
+TileBuilder::loadSource(const MapConfig* mapConfig,
+                        const SourceConfig* source,
+                        const osgDB::ReaderWriter::Options* global_options)
 {
     osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
         new osgDB::ReaderWriter::Options( *global_options ) : 
@@ -420,18 +439,37 @@ loadSource(const MapConfig* mapConfig, const SourceConfig* source, const osgDB::
     }
 
     MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get());
-    return memCachedSource;
+    memCachedSource->setName( topSource->getName() );
 
-    //return tile_source.release();
+    // Finally, install an override profile if the caller requested one. This will override the profile
+    // that the TileSource reports.
+    if ( source->getProfileConfig() )
+    {
+        osg::ref_ptr<const Profile> override_profile =
+            osgEarth::Registry::instance()->getNamedProfile( source->getProfileConfig()->getSRS() );
+
+        if ( !override_profile.valid() )
+        {
+            double xmin, ymin, xmax, ymax;
+            source->getProfileConfig()->getExtents( xmin, ymin, xmax, ymax );
+            override_profile = Profile::create( source->getProfileConfig()->getSRS(), xmin, ymin, xmax, ymax );
+        }
+
+        if ( override_profile.valid() )
+        {
+            memCachedSource->setOverrideProfile( override_profile.get() );
+        }
+    }
+
+    return memCachedSource;
 }
 
 
-static void
-addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
-           std::vector< osg::ref_ptr<TileSource> >& to,
-           const osgDB::ReaderWriter::Options* global_options)
+void
+TileBuilder::addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
+                        std::vector< osg::ref_ptr<TileSource> >& to,
+                        const osgDB::ReaderWriter::Options* global_options)
 {        
-
     for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
     {
         SourceConfig* source = i->get();
@@ -439,16 +477,9 @@ addSources(const MapConfig* mapConfig, const SourceConfigList& from,
         osg::ref_ptr<TileSource> tileSource = loadSource(mapConfig, source, global_options);
 
         if ( tileSource.valid() )
+        {
             to.push_back( tileSource.get() );
-        
-        //&& tileSource->getProfile())
-        //{
-        //    to.push_back( tileSource.get() );
-        //}
-        //else
-        //{
-        //    osg::notify(osg::NOTICE) << "Skipping TileSource with unknown profile " << source->getName() << std::endl;
-        //}
+        }
     }
 }
 

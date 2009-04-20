@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
+#include <osgEarth/MapConfig>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -124,14 +125,19 @@ namespace osgEarth
         
         const osgDB::ReaderWriter::Options* getOptions() const;
 
+    private:
         unsigned int _minLevel;
         unsigned int _maxLevel;
 
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _options;
 
-        
-        const Profile* initProfile( const Profile* mapProfile, const std::string& configPath );
+        const Profile* initProfile(
+            const Profile*     mapProfile,
+            const std::string& configPath );
+
+        void setOverrideProfile( const Profile* profile );
+
         friend class TileBuilder;
         friend class CachedTileSource;
 

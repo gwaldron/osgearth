@@ -10,12 +10,9 @@ the provider's terms of service when using their data.
 
 <map name="Google" type="geocentric">
 
+    <profile>global-geodetic</profile>
     <image name="Google maps satellite imagery" driver="google">
        <dataset>satellite</dataset>
     </image>
-   
-    <!-- Matching cap colors -->
-    <north_cap_color>21 22 68 255</north_cap_color>
-    <south_cap_color>220 220 220 255</south_cap_color>
-   
+    
 </map>

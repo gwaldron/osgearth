@@ -21,8 +21,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
-#include <osgEarth/Mercator>
-
+#include <osgEarth/Registry>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
@@ -38,6 +37,7 @@ using namespace osgEarth;
 #define PROPERTY_NODATA_VALUE "nodata_value"
 #define PROPERTY_NODATA_MIN "nodata_min"
 #define PROPERTY_NODATA_MAX "nodata_max"
+#define PROPERTY_PROFILE    "profile"
 
 
 #define DEFAULT_MIN_LEVEL 0
@@ -98,10 +98,24 @@ TileSource::isKeyValid(const osgEarth::TileKey *key)
   return ((key->getLevelOfDetail() >= _minLevel) && (key->getLevelOfDetail() <= _maxLevel));
 }
 
+void
+TileSource::setOverrideProfile( const Profile* overrideProfile )
+{
+    _profile = overrideProfile;
+}
+
 const Profile*
 TileSource::initProfile( const Profile* mapProfile, const std::string& configPath )
 {
-    _profile = createProfile( mapProfile, configPath );
+    // we always call createProfile, but only USE its return value if the user did
+    // not supply an override profile. Why? because the user might do other driver-
+    // initialization things in the createProfile code.
+    osg::ref_ptr<const Profile> new_profile = createProfile( mapProfile, configPath );
+    if ( !_profile.valid() )
+    {
+        _profile = new_profile.get();
+    }
+
     return _profile.get();
 }
 

@@ -91,18 +91,21 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     if ( !tile_builder->isOK() )
                         return ReadResult::FILE_NOT_HANDLED;
 
-                    if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_GEODETIC)
-                    {
-                        osg::notify(osg::INFO) << "Map profile: Geodetic" << std::endl;
-                    }
-                    else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_MERCATOR)
-                    {
-                        osg::notify(osg::INFO) << "Map profile: Mercator" << std::endl;
-                    }
-                    else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_LOCAL)
-                    {
-                        osg::notify(osg::INFO) << "Map profile: Local/Projected" << std::endl;
-                    }
+                    osg::notify( osg::INFO ) << "Map profile = " << tile_builder->getMapProfile()->toString()
+                        << std::endl;
+
+                    //if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_GEODETIC)
+                    //{
+                    //    osg::notify(osg::INFO) << "Map profile: Geodetic" << std::endl;
+                    //}
+                    //else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_MERCATOR)
+                    //{
+                    //    osg::notify(osg::INFO) << "Map profile: Mercator" << std::endl;
+                    //}
+                    //else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_LOCAL)
+                    //{
+                    //    osg::notify(osg::INFO) << "Map profile: Local/Projected" << std::endl;
+                    //}
 
                     //Create the root node for the scene
                     node = tile_builder->createRootNode();

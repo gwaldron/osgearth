@@ -13,14 +13,11 @@ closer you must be.
 
 <map name="Yahoo maps" type="geocentric">
 
+    <profile>global-geodetic</profile>
     <min_tile_range_factor>8</min_tile_range_factor>
     
     <image name="roads map" driver="yahoo">
         <dataset>roads</dataset>
     </image>
-   
-    <!-- Matching cap colors -->
-    <north_cap_color>128 176 225 255</north_cap_color>
-    <south_cap_color>220 224 233 255</south_cap_color>
    
 </map>

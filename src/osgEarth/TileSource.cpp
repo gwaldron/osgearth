@@ -68,8 +68,6 @@ _noDataMaxValue(FLT_MAX)
 
         if ( options->getPluginData( PROPERTY_NODATA_MAX ) )
             _noDataMaxValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_MAX ), _noDataMaxValue);
-
-        osg::notify(osg::NOTICE) << "NoData " << _noDataValue << "  (" << _noDataMinValue << " to " << _noDataMaxValue << ")" << std::endl;
     }
 }
 

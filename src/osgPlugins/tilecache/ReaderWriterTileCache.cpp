@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/TileSource>
-#include <osgEarth/MapConfig>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>

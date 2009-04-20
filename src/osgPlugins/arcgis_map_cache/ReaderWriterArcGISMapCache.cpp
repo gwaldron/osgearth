@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/MapConfig>
 #include <osgEarth/TileSource>
 #include <osgEarth/Mercator>
 #include <osgEarth/Registry>
@@ -62,9 +61,6 @@ public:
             // TODO: read this from the XML tile schema file
             if ( options->getPluginData( PROPERTY_FORMAT ) )
                 _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
-
-            //if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-            //    map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
         }
 
         // validate dataset

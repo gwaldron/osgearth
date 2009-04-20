@@ -17,7 +17,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
@@ -485,9 +484,6 @@ public:
             if ( options->getPluginData( PROPERTY_INTERPOLATION ) )
                 interpOption = std::string( (const char*)options->getPluginData( PROPERTY_INTERPOLATION ) );
         }
-
-        //if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-        //    _mapConfig = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
 
         if (interpOption.empty())
         {

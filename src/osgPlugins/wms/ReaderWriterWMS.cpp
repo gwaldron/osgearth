@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
@@ -262,7 +261,6 @@ private:
     std::string _tileServiceURL;
     std::string _capabilitiesURL;
 	int _tile_size;
-    const MapConfig* _map_config;
     std::string _elevation_unit;
     osg::ref_ptr<TileService> _tileService;
     osg::ref_ptr<const Profile> _profile;

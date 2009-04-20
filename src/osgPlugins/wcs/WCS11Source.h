@@ -20,7 +20,6 @@
 #ifndef OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_
 #define OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_ 1
 
-#include <osgEarth/MapConfig>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>
 #include <osgEarth/HTTPClient>

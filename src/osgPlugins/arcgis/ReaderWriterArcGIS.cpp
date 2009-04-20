@@ -44,10 +44,6 @@ public:
     {
         if ( options )
         {
-            // global map configuration
-            //if (options->getPluginData( PROPERTY_MAP_CONFIG ))
-            //    map_config = (const MapConfig*)options->getPluginData( PROPERTY_MAP_CONFIG );
-
             // this is the ArcGIS REST services URL for the map service,
             // e.g. http://server/ArcGIS/rest/services/Layer/MapServer
             if ( options->getPluginData( PROPERTY_URL ) )
@@ -143,7 +139,6 @@ private:
     std::string _format;
     MapService _map_service;
     //osg::ref_ptr<const Profile> manual_profile;
-    //const MapConfig* map_config;
 };
 
 

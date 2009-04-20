@@ -47,11 +47,30 @@ namespace osgEarth
         /**
          * Crops the input image to the dimensions provided and returns a
          * new image. Returns a new image, leaving the input image unaltered.
+         * Note:  The input destination bounds are modified to reflect the bounds of the
+         *        actual output image.  Due to the fact that you cannot crop in the middle of a pixel
+         *        The specified destination extents and the output extents may vary slightly.
+         *@param src_minx
+         *       The minimum x coordinate of the input image.
+         *@param src_miny
+         *       The minimum y coordinate of the input image.
+         *@param src_maxx
+         *       The maximum x coordinate of the input image.
+         *@param src_maxy
+         *       The maximum y coordinate of the input image.
+         *@param dst_minx
+         *       The desired minimum x coordinate of the cropped image.
+         *@param dst_miny
+         *       The desired minimum y coordinate of the cropped image.
+         *@param dst_maxx
+         *       The desired maximum x coordinate of the cropped image.
+         *@param dst_maxy
+         *       The desired maximum y coordinate of the cropped image.
          */
         static osg::Image* cropImage(
             const osg::Image* image,
             double src_minx, double src_miny, double src_maxx, double src_maxy,
-            double dst_minx, double dst_miny, double dst_maxx, double dst_maxy);
+            double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy);
 
         /**
          * Creates and returns a copy of the input image after applying a

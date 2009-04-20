@@ -118,10 +118,7 @@ namespace osgEarth
          */
         const Profile* getMapProfile() const;
 
-        //osg::Image* createImage(const TileKey* key, TileSource* source);
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
-
-        //osg::HeightField* createHeightField(const TileKey* key, TileSource* source);
 
         //Registers the given TileBuilder with osgEarth.  This should not be called by user code
         static void registerTileBuilder(TileBuilder* tileBuilder, osg::Node *node);

@@ -783,7 +783,7 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
         osg::Image* image = source->createImage( mapKey );
         if ( image )
         {
-            result = new GeoImage( image, mapKey->getGeoExtent() ); //( image, mapProfile->getExtent() );
+            result = new GeoImage( image, mapKey->getGeoExtent() );
         }
     }
 
@@ -807,8 +807,7 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
             GeoExtent clampedMapExt =
                 source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
 
-            result = mosaic->crop( 
-                clampedMapExt.xMin(), clampedMapExt.yMin(), clampedMapExt.xMax(), clampedMapExt.yMax() );
+            result = mosaic->crop( clampedMapExt.xMin(), clampedMapExt.yMin(), clampedMapExt.xMax(), clampedMapExt.yMax() );
 
             //result = mosaic.release();
         }
@@ -816,21 +815,3 @@ TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
 
     return result;
 }
-/*
-osg::HeightField*
-TileBuilder::createHeightField(const TileKey* key, TileSource* source)
-{
-    osg::ref_ptr<osg::HeightField> hf;
-
-    //If the key profile and the source profile exactly match, simply request the heightfield from the source
-    if ( key->getProfile()->isEquivalentTo( source->getProfile() ) )
-    {
-        hf = source->createHeightField(key);
-    }
-    else
-    {
-        Compositor comp;
-        hf = comp.compositeHeightFields( key, source );
-    }
-    return hf.release();
-}*/

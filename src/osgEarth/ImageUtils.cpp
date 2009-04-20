@@ -89,19 +89,22 @@ ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned i
 osg::Image*
 ImageUtils::cropImage(const osg::Image* image,
                       double src_minx, double src_miny, double src_maxx, double src_maxy,
-                      double dst_minx, double dst_miny, double dst_maxx, double dst_maxy)
+                      double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy)
 {
+    //Compute the desired cropping rectangle
     int windowX       = osg::maximum( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0);
     int windowY       = osg::maximum( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0);
     int windowWidth   = osg::minimum( (int)ceil(  (dst_maxx - src_minx) / (src_maxx - src_minx) * (double)image->s()), image->s()) - windowX;
     int windowHeight  = osg::minimum( (int)ceil(  (dst_maxy - src_miny) / (src_maxy - src_miny) * (double)image->t()), image->t()) - windowY;
 
-    //double res_s = (src_maxx-src_minx)/(double)image->s();
-    //double res_t = (src_maxy-src_miny)/(double)image->t();
-    //int windowX = osg::clampBetween( (int)( (dst_minx-src_minx)/res_s ), 0, image->s() );
-    //int windowY = osg::clampBetween( (int)( (dst_miny-src_miny)/res_t ), 0, image->t() );
-    //int windowWidth = osg::clampBetween( (int)((dst_maxx-src_minx)/res_s), 0, image->s() ) - windowX;
-    //int windowHeight= osg::clampBetween( (int)((dst_maxy-src_miny)/res_t), 0, image->t() ) - windowY;
+    //Compute the actual bounds of the area we are computing
+    double res_s = (src_maxx - src_minx) / (double)image->s();
+    double res_t = (src_maxy - src_miny) / (double)image->t();
+
+    dst_minx = src_minx + (double)windowX * res_s;
+    dst_miny = src_miny + (double)windowY * res_t;
+    dst_maxx = dst_minx + (double)windowWidth * res_s;
+    dst_maxy = dst_miny + (double)windowHeight * res_t;
 
     //osg::notify(osg::NOTICE) << "Copying from " << windowX << ", " << windowY << ", " << windowWidth << ", " << windowHeight << std::endl;
 

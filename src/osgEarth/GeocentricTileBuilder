@@ -44,17 +44,11 @@ namespace osgEarth
         
     protected: // TileBuilder interface
 
-        bool addChildren( osg::Group* parent, const TileKey* key );
-
         osg::Node* createQuadrant( const TileKey* key );
 
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
-        static osg::ClusterCullingCallback* createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et);
-        
-        // Creates a polar geometry cap.
-        osg::Node* createCap(const double &min_lat, const double &max_lat, const osg::Vec4ub &color);
-
+        static osg::ClusterCullingCallback* createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et);       
     };
 }
 

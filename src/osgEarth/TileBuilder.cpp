@@ -241,8 +241,15 @@ TileBuilder::initializeTileSources()
 {
     TileSource* ref_source = NULL;
 
+    //Geocentric maps are always going to be rendered in the global-geodetic profile
+    if (_map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
+    {
+        _mapProfile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        osg::notify(osg::INFO) << "[osgEarth] Setting Profile to global-geodetic for geocentric scene" << std::endl;
+    }
+
     // First check for an explicit profile declaration:
-    if ( _map->getProfileConfig() )
+    if ( !_mapProfile.valid() && _map->getProfileConfig() )
     {
         // Check for a "well known named" profile:
         std::string namedProfile = _map->getProfileConfig()->getNamedProfile();

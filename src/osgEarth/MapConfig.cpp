@@ -38,8 +38,6 @@ MapConfig::MapConfig()
     sample_ratio = 1.0f;
     proxy_port = 8080;
     min_tile_range_factor = 5;
-    north_cap_color = osg::Vec4ub(2,5,20,255);
-    south_cap_color = osg::Vec4ub(255,255,255,255);
     cache_only = false;
     normalize_edges = true;
     filename = "";
@@ -163,31 +161,6 @@ float
 MapConfig::getMinTileRangeFactor() const
 {
     return min_tile_range_factor;
-}
-
-void
-MapConfig::setNorthCapColor(const osg::Vec4ub &color)
-{
-    north_cap_color = color;
-}
-
-const osg::Vec4ub&
-MapConfig::getNorthCapColor() const
-{
-    return north_cap_color;
-}
-
-
-void 
-MapConfig::setSouthCapColor(const osg::Vec4ub &color)
-{
-    south_cap_color = color;
-}
-
-const osg::Vec4ub&
-MapConfig::getSouthCapColor() const
-{
-    return south_cap_color;
 }
 
 void
@@ -447,8 +420,6 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
 #define ELEM_SAMPLE_RATIO      "sample_ratio"
 #define ELEM_PROXY_HOST        "proxy_host"
 #define ELEM_PROXY_PORT        "proxy_port"
-#define ELEM_NORTH_CAP_COLOR   "north_cap_color"
-#define ELEM_SOUTH_CAP_COLOR   "south_cap_color"
 #define ELEM_CACHE_ONLY        "cache_only"
 #define ELEM_NORMALIZE_EDGES   "normalize_edges"
 
@@ -653,9 +624,6 @@ readMap( XmlElement* e_map )
     map->setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), map->getProxyHost() ) );
     map->setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), map->getProxyPort() ) );
 
-    map->setNorthCapColor(getColor(e_map->getSubElementText(ELEM_NORTH_CAP_COLOR ), map->getNorthCapColor()));
-    map->setSouthCapColor(getColor(e_map->getSubElementText(ELEM_SOUTH_CAP_COLOR ), map->getSouthCapColor()));
-
     //Read the profile definition
     XmlElement* e_profile = static_cast<XmlElement*>(e_map->getSubElement( ELEM_PROFILE ));
     if (e_profile)
@@ -760,8 +728,6 @@ mapToXmlDocument( const MapConfig *map)
 
     e_map->addSubElement( ELEM_PROXY_HOST, map->getProxyHost() );
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>(map->getProxyPort() ) );
-    e_map->addSubElement( ELEM_NORTH_CAP_COLOR , toString<osg::Vec4ub>( map->getNorthCapColor() ) );
-    e_map->addSubElement( ELEM_SOUTH_CAP_COLOR , toString<osg::Vec4ub>( map->getSouthCapColor() ) );
 
     //Write all the image sources
     for (SourceConfigList::const_iterator i = map->getImageSources().begin(); i != map->getImageSources().end(); i++)

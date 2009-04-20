@@ -319,34 +319,6 @@ namespace osgEarth
         float getMinTileRangeFactor() const;
 
         /**
-         * Sets the color of the north cap if one needs to be drawn
-         * @param color
-         *          The color of the north cap
-         */
-        void setNorthCapColor(const osg::Vec4ub &color);
-
-        /**
-         * Gets the color of the north cap
-         * @returns
-         *        The color of the north cap
-         */
-        const osg::Vec4ub& getNorthCapColor() const;
-
-        /*
-        * Sets the color of the south cap if one needs to be drawn
-        * @param color
-        *          The color of the south cap
-        */
-        void setSouthCapColor(const osg::Vec4ub &color);
-
-        /**
-         * Gets the color of the south cap
-         * @returns
-         *        The color of the south cap
-         */
-        const osg::Vec4ub& getSouthCapColor() const;
-
-        /**
          * Sets whether or not the map should be run exclusively off of the cache.
          * @param cacheOnly
          *       Whether or not the map should be only off of the cache.
@@ -408,9 +380,6 @@ namespace osgEarth
         std::string proxy_host;
         unsigned short proxy_port;
         float min_tile_range_factor;
-
-        osg::Vec4ub north_cap_color;
-        osg::Vec4ub south_cap_color;
 
         osg::ref_ptr<const Profile> profile;
 

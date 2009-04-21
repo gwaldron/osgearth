@@ -63,7 +63,8 @@ osg::HeightField*
 ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols /*=0*/, unsigned int rows/*=0*/, bool fallback /*=false*/)
 {
     //Collect the heightfields
-    std::vector<osg::ref_ptr<GeoHeightField>> heightFields;
+    typedef std::vector< osg::ref_ptr<GeoHeightField> > HeightFields;
+    HeightFields heightFields;
     for (TileSourceList::iterator itr = _elevationSources.begin(); itr != _elevationSources.end(); ++itr)
     {
         //If the profile is exactly the same, just grab the the key
@@ -110,7 +111,7 @@ ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols
             width = 0;
             height = 0;
 
-            for (std::vector<osg::ref_ptr<GeoHeightField>>::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
+            for (HeightFields::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
             {
                 if (itr->get()->getHeightField()->getNumColumns() > width) width = itr->get()->getHeightField()->getNumColumns();
                 if (itr->get()->getHeightField()->getNumRows() > height) height = itr->get()->getHeightField()->getNumRows();
@@ -142,7 +143,7 @@ ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols
 
                 //Collect elevations from all of the sources
                 std::vector<float> elevations;
-                for (std::vector<osg::ref_ptr<GeoHeightField>>::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
+                for (HeightFields::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
                     float elevation = 0.0f;
                     if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, BILINEAR, elevation))

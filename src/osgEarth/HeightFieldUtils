@@ -48,7 +48,7 @@ namespace osgEarth
      */
     struct OSGEARTH_EXPORT CompositeValidValueOperator : public osgTerrain::ValidDataOperator
     {
-        typedef std::vector<osg::ref_ptr<osgTerrain::ValidDataOperator>> ValidDataOperatorList;
+        typedef std::vector<osg::ref_ptr<osgTerrain::ValidDataOperator> > ValidDataOperatorList;
         ValidDataOperatorList& getOperators() { return _operators;}
 
         virtual bool operator() (float value) const

@@ -22,7 +22,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgDB/Registry>
 #include <osg/Notify>
-#include <string>
+#include <string.h>
 #include <sstream>
 
 

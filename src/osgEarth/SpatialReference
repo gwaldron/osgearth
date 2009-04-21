@@ -106,7 +106,7 @@ namespace osgEarth
         
     private:
 
-        typedef std::map<std::string,osg::ref_ptr<SpatialReference>> SpatialReferenceCache;
+        typedef std::map< std::string, osg::ref_ptr<SpatialReference> > SpatialReferenceCache;
         static SpatialReferenceCache& getSpatialReferenceCache();
 
         static SpatialReference* createFromWKT(

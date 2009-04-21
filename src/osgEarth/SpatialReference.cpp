@@ -85,7 +85,7 @@ SpatialReference::create( const std::string& init )
     std::string low = init;
     std::transform( low.begin(), low.end(), low.begin(), ::tolower );
 
-    std::map<std::string,osg::ref_ptr<SpatialReference>>::iterator itr = getSpatialReferenceCache().find(init);
+    SpatialReferenceCache::iterator itr = getSpatialReferenceCache().find(init);
     if (itr != getSpatialReferenceCache().end())
     {
         //osg::notify(osg::NOTICE) << "Returning cached SRS" << std::endl;
@@ -358,7 +358,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     OGR_SCOPE_LOCK();
 
     void* xform_handle = NULL;
-    TransformHandleCache::iterator::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
+    TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
         osg::notify(osg::INFO) << "[osgEarth::SpatialReference] using cached transform handle" << std::endl;

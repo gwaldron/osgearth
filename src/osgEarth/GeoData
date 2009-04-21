@@ -24,7 +24,7 @@
 #include <osg/Shape>
 #include <osgEarth/Common>
 #include <osgEarth/SpatialReference>
-#include <osgEarth/HeightfieldUtils>
+#include <osgEarth/HeightFieldUtils>
 
 
 namespace osgEarth

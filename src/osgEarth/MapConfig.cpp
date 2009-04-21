@@ -39,7 +39,7 @@ MapConfig::MapConfig()
     proxy_port = 8080;
     min_tile_range_factor = 5;
     cache_only = false;
-    normalize_edges = true;
+    normalize_edges = false;
     filename = "";
 }
 

@@ -638,7 +638,10 @@ readMap( XmlElement* e_map )
     {
         SourceConfig* image_source = readSource( static_cast<XmlElement*>( i->get() ) );
         if ( image_source )
+        {
+            image_source->getProperties()["default_tile_size"] = "256";
             map->getImageSources().push_back( image_source );
+        }
     }
 
     XmlNodeList e_heightfields = e_map->getSubElements( ELEM_HEIGHTFIELD );
@@ -646,7 +649,10 @@ readMap( XmlElement* e_map )
     {
         SourceConfig* heightfield_source = readSource( static_cast<XmlElement*>( i->get() ) );
         if ( heightfield_source )
+        {
+            heightfield_source->getProperties()["default_tile_size"] = "32";
             map->getHeightFieldSources().push_back( heightfield_source );
+        }
     }
 
     //Try to read the global map cache if one is specifiec

@@ -34,6 +34,7 @@ using namespace osgEarth;
 #define PROPERTY_ELEVATION_UNIT "elevation_unit"
 #define PROPERTY_TILE_SIZE      "tile_size"
 #define PROPERTY_SRS            "srs"
+#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
 
 WCS11Source::WCS11Source( const osgDB::ReaderWriter::Options* options ) :
 TileSource( options ),
@@ -51,8 +52,16 @@ _tile_size(16)
     if ( options->getPluginData( PROPERTY_ELEVATION_UNIT ) )
         _elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
 
+    //Try to read the tile size
     if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
+    {
         _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 32 );
+    }
+    //If the tile size wasn't specified, use the default tile size if it was specified
+    else if ( options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ) )
+    {
+        _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ), 32 );
+    }
 
     if ( options->getPluginData( PROPERTY_SRS ) )
         _srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );

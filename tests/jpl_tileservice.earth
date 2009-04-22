@@ -6,19 +6,9 @@
 -->
 
 <map name="JPL" type="geocentric">
-   
-   <!--The profile used by the JPL has the entire world at 256x256 degrees, so override profile to global-geodetic to avoid wrapping around the earth -->
-   <profile>global-geodetic</profile>
-
+  
    <!--Decrease the min_tile_range_factor so tiles don't come in so early-->
    <min_tile_range_factor>5</min_tile_range_factor>
-
-   <!--
-   Because osgEarth will use multiple tiles from the JPL source to create a single map tile, it is important to cache the images for speed
-   -->
-   <cache>
-     <path>cache</path>
-   </cache>
 
    <!--
     Specify the JPL source.  There are certain patterns that are pre-tiled.

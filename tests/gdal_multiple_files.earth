@@ -30,7 +30,6 @@ Note:  There are tons of NoData areas in the sample terrain files, so expect see
 	  
 	    <!--Tell the GDAL driver to just look for tifs-->
 	    <extensions>tif</extensions>  
-        <tile_size>32</tile_size>
 
     </heightfield>
     

@@ -14,17 +14,14 @@ This example tests the loading of multiple heightfields
 
     <heightfield name = "mt_fuji" driver = "gdal">
       <url>..\data\terrain\mt_fuji_90m.tif</url>
-      <tile_size>32</tile_size>
     </heightfield>
 
     <heightfield name = "mt_rainier" driver = "gdal">
       <url>..\data\terrain\mt_rainier_90m.tif</url>
-      <tile_size>32</tile_size>
     </heightfield>
 
     <heightfield name = "mt_everest" driver = "gdal">
       <url>..\data\terrain\mt_everest_90m.tif</url>
-      <tile_size>32</tile_size>
      </heightfield>
     
     <vertical_scale>1.5</vertical_scale>

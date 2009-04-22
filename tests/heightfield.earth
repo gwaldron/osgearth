@@ -28,7 +28,6 @@ A couple notes:
         <layers>worldwind_dem</layers>
         <style>feet_short_int</style>
         <format>tiff</format>
-        <tile_size>16</tile_size>
         <elevation_unit>ft</elevation_unit>
     </heightfield>
     

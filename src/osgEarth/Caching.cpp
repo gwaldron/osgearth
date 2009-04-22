@@ -429,7 +429,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
 
 MemCachedTileSource::MemCachedTileSource(osgEarth::TileSource *tileSource):
 CachedTileSource(tileSource),
-_maxNumTilesInCache(50)
+_maxNumTilesInCache(16)
 {
 }
 

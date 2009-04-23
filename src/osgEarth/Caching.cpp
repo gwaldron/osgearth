@@ -152,13 +152,6 @@ int CachedTileSource::getPixelsPerTile() const
     return TileSource::getPixelsPerTile();
 }
 
-bool CachedTileSource::isKeyValid(const TileKey* key)
-{
-    if (_tileSource.valid()) return _tileSource->isKeyValid(key);
-    return false;
-}
-
-
 /************************************************************************/
 DiskCachedTileSource::DiskCachedTileSource(TileSource* tileSource,
                                            const std::string &path,
@@ -427,8 +420,8 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
 
 /****************************************************************************/
 
-MemCachedTileSource::MemCachedTileSource(osgEarth::TileSource *tileSource):
-CachedTileSource(tileSource),
+MemCachedTileSource::MemCachedTileSource(osgEarth::TileSource *tileSource, const osgDB::ReaderWriter::Options* options):
+CachedTileSource(tileSource,options),
 _maxNumTilesInCache(16)
 {
 }

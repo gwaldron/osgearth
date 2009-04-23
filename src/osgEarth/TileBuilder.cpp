@@ -445,7 +445,7 @@ TileBuilder::loadSource(const MapConfig* mapConfig,
         }
     }
 
-    MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get());
+    MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get(), local_options.get());
     memCachedSource->setName( topSource->getName() );
 
     // Finally, install an override profile if the caller requested one. This will override the profile

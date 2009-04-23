@@ -81,8 +81,6 @@ namespace osgEarth
     public: // TileSource interface
 
         virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
-
-        virtual bool isKeyValid(const TileKey* key);
         
 
     protected:
@@ -202,7 +200,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT MemCachedTileSource : public CachedTileSource
     {
     public:
-        MemCachedTileSource(TileSource* tileSource);
+        MemCachedTileSource(
+            TileSource* tileSource,
+            const osgDB::ReaderWriter::Options* options =NULL);
 
         virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
 

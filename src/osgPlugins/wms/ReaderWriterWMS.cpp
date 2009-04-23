@@ -121,7 +121,7 @@ public:
             _format = "png";
        
         if ( _srs.empty() )
-            _srs = "epsg:4326";
+            _srs = "EPSG:4326";
 
         //Initialize the WMS request prototype
         std::stringstream buf;

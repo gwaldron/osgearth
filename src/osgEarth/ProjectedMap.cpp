@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/ProjectedTileBuilder>
+#include <osgEarth/ProjectedMap>
 #include <osgEarth/Mercator>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osgEarth/Compositing>
@@ -37,17 +37,17 @@
 
 using namespace osgEarth;
 
-ProjectedTileBuilder::ProjectedTileBuilder( 
-    MapConfig* _map,
-    const osgDB::ReaderWriter::Options* _global_options ) :
-TileBuilder( _map,_global_options )
+ProjectedMap::ProjectedMap( 
+    MapConfig* mapConfig,
+    const osgDB::ReaderWriter::Options* global_options ) :
+Map( mapConfig,global_options )
 {
     //NOP
 }
 
 
 osg::Node*
-ProjectedTileBuilder::createQuadrant( const TileKey* key )
+ProjectedMap::createQuadrant( const TileKey* key )
 {
     double xmin, ymin, xmax, ymax;
     key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
@@ -105,12 +105,12 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
                 GeoImage* image = createValidGeoImage(_image_sources[i].get(), key);
                 if (image)
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedTileBuilder] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
                     image_tiles.push_back(image);
                 }
                 else
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedTileBuilder] Could not get valid image from image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Could not get valid image from image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
                 }
             }
         }
@@ -145,12 +145,12 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if ( getMapProfile()->getSRS()->isGeographic() )
+    if ( getProfile()->getSRS()->isGeographic() )
     {
         scaleHeightFieldToDegrees( hf.get() );
     }
 
-    osgTerrain::Locator* geo_locator = getMapProfile()->getSRS()->createLocator();
+    osgTerrain::Locator* geo_locator = getProfile()->getSRS()->createLocator();
 	geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     
     hf->setOrigin( osg::Vec3d( xmin, ymin, 0.0 ) );
@@ -170,7 +170,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     tile->setRequiresNormals( true );
     tile->setTileID(key->getTileId());
 
-    if (hasElevation && _map->getNormalizeEdges())
+    if (hasElevation && _mapConfig->getNormalizeEdges())
     {
         //Attach an updatecallback to normalize the edges of TerrainTiles.
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
@@ -191,11 +191,11 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             double img_xmin, img_ymin, img_xmax, img_ymax;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
+            osg::ref_ptr<osgTerrain::Locator> img_locator = getProfile()->getSRS()->createLocator();
 
             GeoImage* geo_image = image_tiles[i].get();
             //Special case for when the map is geographic and the image is Mercator
-            if ( getMapProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
+            if ( getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
             {
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
                 //Transform the mercator extents to geographic
@@ -229,10 +229,10 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(xmin,ymin,0)).length();
-    double min_range = radius * _map->getMinTileRangeFactor();
+    double min_range = radius * _mapConfig->getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * _map->getSkirtRatio());
+    hf->setSkirtHeight(radius * _mapConfig->getSkirtRatio());
 
     // see if we need to keep subdividing:
     osg::Node* result = tile;
@@ -250,9 +250,9 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
 }
 
 osg::CoordinateSystemNode*
-ProjectedTileBuilder::createCoordinateSystemNode() const
+ProjectedMap::createCoordinateSystemNode() const
 {
-    osg::CoordinateSystemNode* csn = getMapProfile()->getSRS()->createCoordinateSystemNode();
+    osg::CoordinateSystemNode* csn = getProfile()->getSRS()->createCoordinateSystemNode();
 
     // Setting the ellipsoid to NULL indicates that the CS should be interpreted 
     // as PROJECTED instead of GEOGRAPHIC.
@@ -262,7 +262,7 @@ ProjectedTileBuilder::createCoordinateSystemNode() const
 }
 
 void
-ProjectedTileBuilder::scaleHeightFieldToDegrees(osg::HeightField *hf)
+ProjectedMap::scaleHeightFieldToDegrees(osg::HeightField *hf)
 {
     //The number of degrees in a meter at the equator
     //TODO: adjust this calculation based on the actual EllipsoidModel.

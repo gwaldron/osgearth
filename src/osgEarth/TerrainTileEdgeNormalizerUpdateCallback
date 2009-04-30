@@ -22,7 +22,6 @@
 
 #include <osg/Node>
 #include <osgTerrain/TerrainTile>
-#include <osgEarth/TileBuilder>
 
 #include <osgEarth/Common>
 

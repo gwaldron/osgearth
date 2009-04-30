@@ -26,17 +26,17 @@ using namespace osgEarth;
 
 void CacheSeed::seed(MapConfig *map)
 {
-    //Create a TileBuilder for the map
-    _tileBuilder = TileBuilder::create( map);
+    //Create a Map for the map
+    _map = Map::create( map);
 
     std::vector< osg::ref_ptr<TileKey> > keys;
-    _tileBuilder->getMapProfile()->getRootKeys(keys);
+    _map->getProfile()->getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
         _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-        const GeoExtent& mapEx = _tileBuilder->getMapProfile()->getExtent();
+        const GeoExtent& mapEx = _map->getProfile()->getExtent();
 
         _bounds._min.x() = mapEx.xMin();
         _bounds._min.y() = mapEx.yMin();
@@ -50,7 +50,7 @@ void CacheSeed::seed(MapConfig *map)
     int src_max_level = 0;
 
     //Assumes the the TileSource will perform the caching for us when we call createImage
-    for (TileSourceList::iterator itr = _tileBuilder->getImageSources().begin(); itr != _tileBuilder->getImageSources().end(); ++itr)
+    for (TileSourceList::iterator itr = _map->getImageSources().begin(); itr != _map->getImageSources().end(); ++itr)
     {
         TileSource* src = itr->get();
         if (!dynamic_cast<CachedTileSource*>(src))
@@ -67,7 +67,7 @@ void CacheSeed::seed(MapConfig *map)
         }
     }
 
-    for (TileSourceList::iterator itr = _tileBuilder->getHeightFieldSources().begin(); itr != _tileBuilder->getHeightFieldSources().end(); ++itr)
+    for (TileSourceList::iterator itr = _map->getHeightFieldSources().begin(); itr != _map->getHeightFieldSources().end(); ++itr)
     {
         TileSource* src = itr->get();
         if (!dynamic_cast<CachedTileSource*>(src))
@@ -99,12 +99,12 @@ void CacheSeed::seed(MapConfig *map)
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( _tileBuilder.get(), keys[i].get() );
+        processKey( _map.get(), keys[i].get() );
     }
 }
 
 
-void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
+void CacheSeed::processKey(Map* map, TileKey *key)
 {
     unsigned int x, y, lod;
     key->getTileXY(x, y);
@@ -115,17 +115,17 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
         //Assumes the the TileSource will perform the caching for us when we call createImage
-        for (TileSourceList::iterator itr = tile_builder->getImageSources().begin(); itr != tile_builder->getImageSources().end(); ++itr)
+        for (TileSourceList::iterator itr = map->getImageSources().begin(); itr != map->getImageSources().end(); ++itr)
         {
             TileSource* source = itr->get();
             if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
             {
                 osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
-                osg::ref_ptr<GeoImage> image = tile_builder->createGeoImage(key, source);
+                osg::ref_ptr<GeoImage> image = map->createGeoImage(key, source);
             }
         }
 
-        for (TileSourceList::iterator itr = tile_builder->getHeightFieldSources().begin(); itr != tile_builder->getHeightFieldSources().end(); ++itr)
+        for (TileSourceList::iterator itr = map->getHeightFieldSources().begin(); itr != map->getHeightFieldSources().end(); ++itr)
         {
             //TODO:  Handle compatible but non exact heightfield keys (JB)
             TileSource* source = itr->get();
@@ -151,10 +151,10 @@ void CacheSeed::processKey(TileBuilder* tile_builder, TileKey *key)
             (k2.valid() && _bounds.intersects(k2.get())) ||
             (k3.valid() && _bounds.intersects(k3.get())))
         {
-            if (k0.valid()) processKey(tile_builder, k0.get()); 
-            if (k1.valid()) processKey(tile_builder, k1.get()); 
-            if (k2.valid()) processKey(tile_builder, k2.get()); 
-            if (k3.valid()) processKey(tile_builder, k3.get()); 
+            if (k0.valid()) processKey(map, k0.get()); 
+            if (k1.valid()) processKey(map, k1.get()); 
+            if (k2.valid()) processKey(map, k2.get()); 
+            if (k3.valid()) processKey(map, k3.get()); 
         }
     }
 }

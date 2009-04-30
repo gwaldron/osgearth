@@ -39,7 +39,7 @@ namespace osgEarth
 {   
     /**
      * A TileSource is an object that can create image and/or heightfield tiles. Driver 
-     * plugins are responsible for creating and returning a TileSource that the TileBuilder
+     * plugins are responsible for creating and returning a TileSource that the Map
      * will then use to create tiles for tile keys.
      */
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
@@ -48,7 +48,7 @@ namespace osgEarth
         TileSource( const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
-         * The TileBuilder calls this method ONCE so that the TileSource can
+         * The Map calls this method ONCE so that the TileSource can
          * initialize its profile.
          */
         virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath ) =0;
@@ -138,7 +138,7 @@ namespace osgEarth
 
         void setOverrideProfile( const Profile* profile );
 
-        friend class TileBuilder;
+        friend class Map;
         friend class CachedTileSource;
 
         float _noDataValue;

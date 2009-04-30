@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/GeocentricTileBuilder>
+#include <osgEarth/GeocentricMap>
 #include <osgEarth/Mercator>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osgEarth/Compositing>
@@ -43,16 +43,16 @@
 using namespace osgEarth;
 
 
-GeocentricTileBuilder::GeocentricTileBuilder( 
-    MapConfig* map, 
+GeocentricMap::GeocentricMap( 
+    MapConfig* mapConfig, 
     const osgDB::ReaderWriter::Options* global_options ) :
-TileBuilder( map, global_options )
+Map( mapConfig, global_options )
 {
     //NOP   
 }
 
 osg::Node*
-GeocentricTileBuilder::createQuadrant( const TileKey* key)
+GeocentricMap::createQuadrant( const TileKey* key)
 {
     double min_lon, min_lat, max_lon, max_lat;
     key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
@@ -113,12 +113,12 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
                 GeoImage* image = createValidGeoImage(_image_sources[i].get(), key);
                 if (image)
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::GeocentricTileBuilder] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
                     image_tiles.push_back(image);
                 }
                 else
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::GeocentricTileBuilder] Could not get valid image from image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Could not get valid image from image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
                 }
             }
         }
@@ -152,7 +152,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         }
     }
            
-    osgTerrain::Locator* locator = getMapProfile()->getSRS()->createLocator();    
+    osgTerrain::Locator* locator = getProfile()->getSRS()->createLocator();    
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 	locator->setTransform( getTransformFromExtents(
 		osg::DegreesToRadians( min_lon ),
@@ -173,7 +173,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     tile->setTileID(key->getTileId());
 
     //Attach an updatecallback to normalize the edges of TerrainTiles.
-    if (hasElevation && _map->getNormalizeEdges())
+    if (hasElevation && _mapConfig->getNormalizeEdges())
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
@@ -198,7 +198,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
+            osg::ref_ptr<osgTerrain::Locator> img_locator = getProfile()->getSRS()->createLocator();
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 			
             GeoImage* geo_image = image_tiles[i].get();
@@ -260,10 +260,10 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
-    double min_range = radius * _map->getMinTileRangeFactor();
+    double min_range = radius * _mapConfig->getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * _map->getSkirtRatio());
+    hf->setSkirtHeight(radius * _mapConfig->getSkirtRatio());
 
     osg::Vec3d normal = centroid;
     normal.normalize();
@@ -293,13 +293,13 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
 }
 
 osg::CoordinateSystemNode*
-GeocentricTileBuilder::createCoordinateSystemNode() const
+GeocentricMap::createCoordinateSystemNode() const
 {
-    return getMapProfile()->getSRS()->createCoordinateSystemNode();
+    return getProfile()->getSRS()->createCoordinateSystemNode();
 }
 
 osg::ClusterCullingCallback*
-GeocentricTileBuilder::createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et)
+GeocentricMap::createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et)
 {
     //This code is a very slightly modified version of the DestinationTile::createClusterCullingCallback in VirtualPlanetBuilder.
     osg::HeightField* grid = ((osgTerrain::HeightFieldLayer*)tile->getElevationLayer())->getHeightField();

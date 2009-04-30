@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_TILE_BUILDER_H
-#define OSGEARTH_TILE_BUILDER_H 1
+#ifndef OSGEARTH_MAP_H
+#define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
@@ -53,35 +53,34 @@ namespace osgEarth
 
 
     /**
-     * TileBuilder is the main workhorse in osgEarth. It generates osg Nodes for
-     * TileKeys.
+     * Map is the main workhorse in osgEarth. It generates osg Nodes for TileKeys.
      */
-    class OSGEARTH_EXPORT TileBuilder : public osg::Referenced
+    class OSGEARTH_EXPORT Map : public osg::Referenced
     {
     public:
         /**
          * Creates a Node from the given MapConfig.  This allows you to programatically create a
          * MapConfig and create a paging scene graph out of it.
          */
-        static osg::Node* readNode( MapConfig* map );
+        static osg::Node* readNode( MapConfig* mapConfig );
 
 
     public:
         /**
-         * Factory method that constructs a TileBuilder instance given a
+         * Factory method that constructs a Map instance given a
          * map configuration.
          */
-        static TileBuilder* create(
-            MapConfig* map,
+        static Map* create(
+            MapConfig* mapConfig,
             const osgDB::ReaderWriter::Options* global_options =NULL );
 
         /**
-        *Gets the ID for this TileBuilder
+        *Gets the ID for this Map
         */
         unsigned int getId() const;
 
         /**
-         * Creates the root node for a TileBuilder
+         * Creates the root node for a Map
          */
         osg::Node* createRootNode();
 
@@ -91,53 +90,53 @@ namespace osgEarth
         osg::Node* createNode( const TileKey* key );
 
         /**
-         * Gets the map configuration with which this tile builder was created.
+         * Gets the map configuration with which this map was created.
          */
         MapConfig* getMapConfig() const;
 
         /**
-         * Gets the collection of image tile sources managed by this tile builder.
+         * Gets the collection of image tile sources managed by this map.
          */
         TileSourceList& getImageSources();
         const TileSourceList& getImageSources() const;
 
         /**
-         * Gets the collection of height-field tile sources managed by thie tile builder.
+         * Gets the collection of height-field tile sources managed by this map.
          */
         TileSourceList& getHeightFieldSources();
         const TileSourceList& getHeightFieldSources() const;
 
         /**
-         * Gets whether this tile builder is legally configured.
+         * Gets whether this map is legally configured.
          */
         bool isOK() const;
 
         /**
-         * Gets the "profile" of the map created by this tile builder. The profile defines
+         * Gets the "profile" of the map. The profile defines
          * the geospatial projection, extents, and the tiling scheme.
          */
-        const Profile* getMapProfile() const;
+        const Profile* getProfile() const;
 
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
 
-        //Registers the given TileBuilder with osgEarth.  This should not be called by user code
-        static void registerTileBuilder(TileBuilder* tileBuilder, osg::Node *node);
-        //Unregisters the given TileBuilder.  This should not be called by user code
-        static void unregisterTileBuilder(unsigned int id);
+        //Registers the given Map with osgEarth.  This should not be called by user code
+        static void registerMap(Map* Map, osg::Node *node);
+        //Unregisters the given Map.  This should not be called by user code
+        static void unregisterMap(unsigned int id);
 
-        //Gets the registered TileBuilder by the TileBuilder ID
-        static TileBuilder* getTileBuilderById(unsigned int id);
+        //Gets the registered Map by the Map ID
+        static Map* getMapById(unsigned int id);
 
-        //Gets the TileBuilder that is associated with the given node
-        static TileBuilder* getTileBuilderByNode(osg::Node* node);
+        //Gets the Map that is associated with the given node
+        static Map* getMapByNode(osg::Node* node);
 
         /**
-         *Gets the ElevationManager for this TileBuilder
+         *Gets the ElevationManager for this Map
          */
         ElevationManager* getElevationManager();
 
     protected:
-        TileBuilder( 
+        Map( 
             MapConfig* map, 
             const osgDB::ReaderWriter::Options* global_options );
 
@@ -179,16 +178,13 @@ namespace osgEarth
         // checks whether more data exists below the specified key's level of detail
         bool hasMoreLevels( const TileKey* key ) const;
 
-        //Profile _mapProfile;
-        //bool _profileComputed;
-
         unsigned int id;
 
-        osg::ref_ptr<MapConfig> _map;
+        osg::ref_ptr<MapConfig> _mapConfig;
         TileSourceList _image_sources;
         TileSourceList _heightfield_sources;
 
-        //Use observer_ptr so the TileBuilder does not prevent the main scene graph from being deleted
+        //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
         osg::observer_ptr<osgEarth::EarthTerrain> _terrain;
 
         osg::ref_ptr<osgEarth::ElevationManager> _elevationManager;
@@ -197,7 +193,7 @@ namespace osgEarth
 
     private:
 
-        osg::ref_ptr<const Profile> _mapProfile;
+        osg::ref_ptr<const Profile> _profile;
 
         void initializeTileSources();
 
@@ -217,4 +213,4 @@ namespace osgEarth
     };
 };
 
-#endif // OSGEARTH_TILE_BUILDER_H
+#endif // OSGEARTH_MAP_H

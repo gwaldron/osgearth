@@ -26,21 +26,21 @@ SET(LIB_PUBLIC_HEADERS
 	ElevationManager
     Export
 	FileUtils
-    GeocentricTileBuilder 
+    GeocentricMap
     GeoData
 	HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
 	ImageUtils
     JsonUtils
+	Map
     MapConfig
     Mercator
 	Profile
-	ProjectedTileBuilder
+	ProjectedMap
 	Registry
 	SpatialReference
     TerrainTileEdgeNormalizerUpdateCallback
-    TileBuilder
     TileKey
     TileSource
 	TMS
@@ -55,21 +55,21 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	Compositing.cpp
 	ElevationManager.cpp
 	FileUtils.cpp
-    GeocentricTileBuilder.cpp
+    GeocentricMap.cpp
     GeoData.cpp
 	HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp
 	ImageUtils.cpp
     JsonUtils.cpp
+	Map.cpp
     MapConfig.cpp
     Mercator.cpp
 	Profile.cpp
-	ProjectedTileBuilder.cpp
+	ProjectedMap.cpp
 	Registry.cpp
 	SpatialReference.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
-    TileBuilder.cpp
     TileKey.cpp
     TileSource.cpp
 	TMS.cpp

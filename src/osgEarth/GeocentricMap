@@ -17,32 +17,32 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_TILE_GENERATOR_H
-#define OSGEARTH_TILE_GENERATOR_H 1
+#ifndef OSGEARTH_GEOCENTRIC_MAP_H
+#define OSGEARTH_GEOCENTRIC_MAP_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileBuilder>
+#include <osgEarth/Map>
 #include <osg/Node>
 #include <osg/ClusterCullingCallback>
 
 namespace osgEarth
 {
     /**
-     * A TileBuilder that generates geocentric (round-earth/global) scene graph components.
+     * A Map that generates geocentric (round-earth/global) scene graph components.
      *
      * This is a internal class - do not export
      */
-    class GeocentricTileBuilder : public TileBuilder
+    class GeocentricMap : public Map
     {
     public:
         /**
-         * Constructs a new geocentric tile builder
+         * Constructs a new geocentric map
          */
-        GeocentricTileBuilder( 
-            MapConfig* map, 
+        GeocentricMap( 
+            MapConfig* mapConfig, 
             const osgDB::ReaderWriter::Options* options =NULL);
         
-    protected: // TileBuilder interface
+    protected: // Map interface
 
         osg::Node* createQuadrant( const TileKey* key );
 
@@ -52,4 +52,4 @@ namespace osgEarth
     };
 }
 
-#endif // OSGEARTH_TILE_GENERATOR_H
+#endif // OSGEARTH_GEOCENTRIC_MAP_H

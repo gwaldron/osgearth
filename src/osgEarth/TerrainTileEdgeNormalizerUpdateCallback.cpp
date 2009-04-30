@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
+#include <osgEarth/Map>
 #include <osg/Version>
 #include <osg/Timer>
 

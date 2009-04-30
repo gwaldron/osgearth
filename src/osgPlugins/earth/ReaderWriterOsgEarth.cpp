@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/GeocentricTileBuilder>
-#include <osgEarth/ProjectedTileBuilder>
+#include <osgEarth/GeocentricMap>
+#include <osgEarth/ProjectedMap>
 #include <osgEarth/MapConfig>
 #include <osgEarth/Mercator>
 #include <osgDB/FileNameUtils>
@@ -80,40 +80,40 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 //osg::notify(osg::NOTICE) << "Reading Earth File " << std::endl;
 
                 //Read the map file from the filename
-                osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( file_name );
+                osg::ref_ptr<MapConfig> mapConfig = MapConfigReaderWriter::readXml( file_name );
 
-                if ( map.valid() )
+                if ( mapConfig.valid() )
                 {
-                    //Create the TileBuilder.
-                    osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::create( map.get());
+                    //Create the Map.
+                    osg::ref_ptr<Map> map = Map::create( mapConfig.get());
 
-                    //Check to see that the TileBuilder is valid.
-                    if ( !tile_builder->isOK() )
+                    //Check to see that the Map is valid.
+                    if ( !map->isOK() )
                         return ReadResult::FILE_NOT_HANDLED;
 
-                    osg::notify( osg::INFO ) << "Map profile = " << tile_builder->getMapProfile()->toString()
+                    osg::notify( osg::INFO ) << "Map profile = " << map->getProfile()->toString()
                         << std::endl;
 
-                    //if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_GEODETIC)
+                    //if (map->getProfile()->getProfileType() == Profile::TYPE_GEODETIC)
                     //{
                     //    osg::notify(osg::INFO) << "Map profile: Geodetic" << std::endl;
                     //}
-                    //else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_MERCATOR)
+                    //else if (map->getProfile()->getProfileType() == Profile::TYPE_MERCATOR)
                     //{
                     //    osg::notify(osg::INFO) << "Map profile: Mercator" << std::endl;
                     //}
-                    //else if (tile_builder->getMapProfile()->getProfileType() == Profile::TYPE_LOCAL)
+                    //else if (map->getProfile()->getProfileType() == Profile::TYPE_LOCAL)
                     //{
                     //    osg::notify(osg::INFO) << "Map profile: Local/Projected" << std::endl;
                     //}
 
                     //Create the root node for the scene
-                    node = tile_builder->createRootNode();
+                    node = map->createRootNode();
 
                     //Register the TileBuilder with osgEarth
-                    if (tile_builder.valid() && node)
+                    if (map.valid() && node)
                     {
-                        TileBuilder::registerTileBuilder(tile_builder.get(), node);
+                        Map::registerMap(map.get(), node);
                     }
                 }
                 else
@@ -129,21 +129,21 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 //The tile definition is formatted LOD_X_Y.TILEBUILDER_ID
 
-                unsigned int lod, x, y, tileBuilderId;
-                sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y,&tileBuilderId);
+                unsigned int lod, x, y, id;
+                sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y,&id);
 
-                //Get the TileBuilder from the cache.  It is important that we use a ref_ptr here
-                //to prevent the TileBuilder from being deleted while it is is still in use.
-                osg::ref_ptr<TileBuilder> tile_builder = TileBuilder::getTileBuilderById(tileBuilderId);
+                //Get the Map from the cache.  It is important that we use a ref_ptr here
+                //to prevent the Map from being deleted while it is is still in use.
+                osg::ref_ptr<Map> map = Map::getMapById(id);
 
-                if (tile_builder.valid())
+                if (map.valid())
                 {
-                  osg::ref_ptr<TileKey> key = new TileKey(x, y, lod, tile_builder->getMapProfile());
-                  node = tile_builder->createNode(key.get());
+                  osg::ref_ptr<TileKey> key = new TileKey(x, y, lod, map->getProfile());
+                  node = map->createNode(key.get());
                 }
                 else
                 {
-                    osg::notify(osg::NOTICE) << "Error:  Could not find TileBuilder with id=" << tileBuilderId << std::endl;
+                    osg::notify(osg::NOTICE) << "Error:  Could not find Map with id=" << id << std::endl;
                 }
             }
 

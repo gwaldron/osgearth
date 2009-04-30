@@ -17,9 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/TileBuilder>
-#include <osgEarth/GeocentricTileBuilder>
-#include <osgEarth/ProjectedTileBuilder>
+#include <osgEarth/Map>
+#include <osgEarth/GeocentricMap>
+#include <osgEarth/ProjectedMap>
 #include <osgEarth/Caching>
 #include <osgEarth/Mercator>
 #include <osgEarth/HeightFieldUtils>
@@ -45,100 +45,100 @@
 
 using namespace osgEarth;
 
-static OpenThreads::ReentrantMutex s_tileBuilderCacheMutex;
-static unsigned int s_tileBuilderID = 0;
+static OpenThreads::ReentrantMutex s_mapCacheMutex;
+static unsigned int s_mapID = 0;
 
-//Struture that pairs a TileBuilder with an osg::Node
-typedef std::pair<osg::ref_ptr<TileBuilder>,osg::Node*> TileBuilderNodePair;
-typedef std::map<unsigned int, TileBuilderNodePair> TileBuilderCache;
+//Struture that pairs a Map with an osg::Node
+typedef std::pair<osg::ref_ptr<Map>,osg::Node*> MapNodePair;
+typedef std::map<unsigned int, MapNodePair> MapCache;
 
 /**
-*The UnregisterTileBuilderObserver whole purpose in life is to listen for when the root node of a TileBuilder
-*has been deleted and unregister the associated TileBuilder
+*The UnregisterMapObserver whole purpose in life is to listen for when the root node of a Map
+*has been deleted and unregister the associated Map
 */
-class UnregisterTileBuilderObserver : public osg::Observer
+class UnregisterMapObserver : public osg::Observer
 {
     virtual void objectDeleted(void* object)
     {
         osg::Node* node = (osg::Node*)object;
-        //Find the TileBuilder for the Node that was deleted
-        TileBuilder* tile_builder = TileBuilder::getTileBuilderByNode(node);
-        if (tile_builder)
+        //Find the Map for the Node that was deleted
+        Map* map = Map::getMapByNode(node);
+        if (map)
         {
-            //osg::notify(osg::NOTICE) << "Node associated with TileBuilder " << tile_builder->getId() << " deleted" << std::endl;
-            //Unregsiter the TileBuilder
-            TileBuilder::unregisterTileBuilder(tile_builder->getId());
+            //osg::notify(osg::NOTICE) << "Node associated with Map " << Map->getId() << " deleted" << std::endl;
+            //Unregsiter the Map
+            Map::unregisterMap(map->getId());
         }
     }
 };
 
-static UnregisterTileBuilderObserver s_unregisterTileBuilderObserver;
+static UnregisterMapObserver s_unregisterMapObserver;
 
 static
-TileBuilderCache& getCache()
+MapCache& getCache()
 {
-    static TileBuilderCache s_cache;
+    static MapCache s_cache;
     return s_cache;
 }
 
-TileBuilder*
-TileBuilder::create( MapConfig* map, const osgDB::ReaderWriter::Options* options )
+Map*
+Map::create( MapConfig* mapConfig, const osgDB::ReaderWriter::Options* options )
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
-    TileBuilder* result = NULL;
-    if ( map )
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    Map* result = NULL;
+    if ( mapConfig )
     {
         osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = options ? 
             new osgDB::ReaderWriter::Options( *local_options ) :
             NULL;
 
         // transcribe proxy settings:
-        if ( !map->getProxyHost().empty() )
+        if ( !mapConfig->getProxyHost().empty() )
         {
             if ( !local_options.valid() )
                 local_options = new osgDB::ReaderWriter::Options();
 
             std::stringstream buf;
             buf << local_options->getOptionString() << " "
-                << "OSG_CURL_PROXY=" << map->getProxyHost() << " "
-                << "OSG_CURL_PROXYPORT=" << map->getProxyPort();
+                << "OSG_CURL_PROXY=" << mapConfig->getProxyHost() << " "
+                << "OSG_CURL_PROXYPORT=" << mapConfig->getProxyPort();
             local_options->setOptionString( buf.str() );
         }
 
         osg::notify(osg::INFO) 
-            << "[osgEarth] TileBuilder: options string = " 
+            << "[osgEarth] Map: options string = " 
             << (local_options.valid()? local_options->getOptionString() : "<empty>")
             << std::endl;
 
-        if ( map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC )
+        if ( mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC )
         {
-            result = new GeocentricTileBuilder( map, local_options.get() );
+            result = new GeocentricMap( mapConfig, local_options.get() );
         }
         else
         {
-            result = new ProjectedTileBuilder( map, local_options.get() );
+            result = new ProjectedMap( mapConfig, local_options.get() );
         }
 
-        result->id = s_tileBuilderID++;
-        osg::notify(osg::INFO) << "TileBuilder::create assigning id " << result->id << " to Tilebuilder " << std::endl;
+        result->id = s_mapID++;
+        osg::notify(osg::INFO) << "Map::create assigning id " << result->id << " to Map " << std::endl;
     }
     return result;
 }
 
 void
-TileBuilder::registerTileBuilder(TileBuilder* tileBuilder, osg::Node *node)
+Map::registerMap(Map* map, osg::Node *node)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
-    getCache()[tileBuilder->id] = TileBuilderNodePair(tileBuilder, node);
-    node->addObserver(&s_unregisterTileBuilderObserver);
-    osg::notify(osg::INFO) << "Registered " << tileBuilder->id << std::endl;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    getCache()[map->id] = MapNodePair(map, node);
+    node->addObserver(&s_unregisterMapObserver);
+    osg::notify(osg::INFO) << "Registered " << map->id << std::endl;
 }
 
 void
-TileBuilder::unregisterTileBuilder(unsigned int id)
+Map::unregisterMap(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
-    TileBuilderCache::iterator k = getCache().find( id);
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    MapCache::iterator k = getCache().find( id);
     if (k != getCache().end())
     {
         getCache().erase(k);
@@ -146,20 +146,20 @@ TileBuilder::unregisterTileBuilder(unsigned int id)
     }
 }
 
-TileBuilder*
-TileBuilder::getTileBuilderById(unsigned int id)
+Map*
+Map::getMapById(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
-    TileBuilderCache::const_iterator k = getCache().find( id);
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    MapCache::const_iterator k = getCache().find( id);
     if (k != getCache().end()) return k->second.first.get();
     return 0;
 }
 
-TileBuilder*
-TileBuilder::getTileBuilderByNode(osg::Node* node)
+Map*
+Map::getMapByNode(osg::Node* node)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_tileBuilderCacheMutex);
-    for (TileBuilderCache::const_iterator k = getCache().begin(); k != getCache().end(); ++k)
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    for (MapCache::const_iterator k = getCache().begin(); k != getCache().end(); ++k)
     {
         if (k->second.second == node)
         {
@@ -170,39 +170,39 @@ TileBuilder::getTileBuilderByNode(osg::Node* node)
 }
 
 osg::Node*
-TileBuilder::readNode( MapConfig* map )
+Map::readNode( MapConfig* mapConfig )
 {
     //Create a fake filename for this MapConfig by converting the pointer to a string and appending ".earth" to it.
     std::stringstream filename;
-    filename << &map << ".earth";
-    map->setFilename(filename.str());
+    filename << &mapConfig << ".earth";
+    mapConfig->setFilename(filename.str());
 
     //osg::notify(osg::NOTICE) << "MapFilename is " << map->getFilename() << std::endl;
 
-    //Create the TileBuilder
+    //Create the Map
     //TODO: is this a memory leak??
-    TileBuilder* tileBuilder = TileBuilder::create(map);
-    if ( !tileBuilder || !tileBuilder->isOK() )
+    Map* map = Map::create(mapConfig);
+    if ( !map || !map->isOK() )
         return 0;
 
-    return tileBuilder->createRootNode();
+    return map->createRootNode();
 }
 
 unsigned int
-TileBuilder::getId() const
+Map::getId() const
 {
     return id;
 }
 
 const Profile*
-TileBuilder::getMapProfile() const
+Map::getProfile() const
 {
-    return _mapProfile.get();
+    return _profile.get();
 }
 
 // locates a tile source by its name
 TileSource*
-TileBuilder::findTileSource( const std::string& name ) const
+Map::findTileSource( const std::string& name ) const
 {
     for( TileSourceList::const_iterator i = _image_sources.begin(); i != _image_sources.end(); i++ )
         if ( (*i)->getName() == name )
@@ -237,26 +237,26 @@ getSuitableMapProfileFor( const Profile* candidate )
 // This is done so that caches are stored consistently.
 //
 void
-TileBuilder::initializeTileSources()
+Map::initializeTileSources()
 {
     TileSource* ref_source = NULL;
 
     //Geocentric maps are always going to be rendered in the global-geodetic profile
-    if (_map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
+    if (_mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
-        _mapProfile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         osg::notify(osg::INFO) << "[osgEarth] Setting Profile to global-geodetic for geocentric scene" << std::endl;
     }
 
     // First check for an explicit profile declaration:
-    if ( !_mapProfile.valid() && _map->getProfileConfig() )
+    if ( !_profile.valid() && _mapConfig->getProfileConfig() )
     {
         // Check for a "well known named" profile:
-        std::string namedProfile = _map->getProfileConfig()->getNamedProfile();
+        std::string namedProfile = _mapConfig->getProfileConfig()->getNamedProfile();
         if ( !namedProfile.empty() )
         {
-            _mapProfile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
-            if ( _mapProfile.valid() )
+            _profile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
+            if ( _profile.valid() )
             {
                 osg::notify(osg::INFO) << "[osgEarth] Set map profile to " << namedProfile << std::endl;
             }
@@ -268,18 +268,18 @@ TileBuilder::initializeTileSources()
         }
 
         // Check for a TileSource reference (i.e. get the map profile from a particular TileSource)
-        if ( !_mapProfile.valid() )
+        if ( !_profile.valid() )
         {
-            std::string refLayer = _map->getProfileConfig()->getRefLayer();
+            std::string refLayer = _mapConfig->getProfileConfig()->getRefLayer();
             if ( !refLayer.empty() )
             {
                 ref_source = findTileSource( refLayer );
                 if ( ref_source )
                 {
-                    const Profile* ref_profile = ref_source->initProfile( NULL, _map->getFilename() );
+                    const Profile* ref_profile = ref_source->initProfile( NULL, _mapConfig->getFilename() );
                     if ( ref_profile )
                     {
-                        _mapProfile = getSuitableMapProfileFor( ref_profile );
+                        _profile = getSuitableMapProfileFor( ref_profile );
                         osg::notify(osg::INFO) << "[osgEarth] Setting profile from \"" << refLayer << "\"" << std::endl;
                     }
                 }
@@ -291,22 +291,22 @@ TileBuilder::initializeTileSources()
         }
 
         // Try to create a profile from an explicit definition (the SRS and extents)
-        if ( !_mapProfile.valid() )
+        if ( !_profile.valid() )
         {
-            if ( _map->getProfileConfig()->areExtentsValid() )
+            if ( _mapConfig->getProfileConfig()->areExtentsValid() )
             {
                 double minx, miny, maxx, maxy;
-                _map->getProfileConfig()->getExtents( minx, miny, maxx, maxy );
+                _mapConfig->getProfileConfig()->getExtents( minx, miny, maxx, maxy );
 
                 // TODO: should we restrict this? This is fine for LOCAL/PROJECTED, but since we are not
                 // constraining non-local map profiles to the "well known" types, should we let the user
                 // override that? probably...
-                _mapProfile = Profile::create( _map->getProfileConfig()->getSRS(), minx, miny, maxx, maxy );
+                _profile = Profile::create( _mapConfig->getProfileConfig()->getSRS(), minx, miny, maxx, maxy );
 
-                if ( _mapProfile.valid() )
+                if ( _profile.valid() )
                 {
-                    osg::notify( osg::INFO ) << "[osgEarth::TileBuilder] Set map profile from SRS: " 
-                        << _mapProfile->getSRS()->getName() << std::endl;
+                    osg::notify( osg::INFO ) << "[osgEarth::Map] Set map profile from SRS: " 
+                        << _profile->getSRS()->getName() << std::endl;
                 }
             }
         }
@@ -322,13 +322,13 @@ TileBuilder::initializeTileSources()
         // skip the reference source since we already initialized it
         if ( i->get() != ref_source )
         {
-            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
+            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _profile.get(), _mapConfig->getFilename() );
 
-            if ( !_mapProfile.valid() && sourceProfile.valid() )
+            if ( !_profile.valid() && sourceProfile.valid() )
             {
-                _mapProfile = getSuitableMapProfileFor( sourceProfile.get() );
+                _profile = getSuitableMapProfileFor( sourceProfile.get() );
             }
-            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile.get() ) )
+            else if ( !sourceProfile.valid() || !_profile->isCompatibleWith( sourceProfile.get() ) )
             {
                 osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
                 i =_image_sources.erase(i);
@@ -356,13 +356,13 @@ TileBuilder::initializeTileSources()
     {        
         if ( i->get() != ref_source )
         {
-            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _mapProfile.get(), _map->getFilename() );
+            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _profile.get(), _mapConfig->getFilename() );
 
-            if ( !_mapProfile.valid() && sourceProfile.valid() )
+            if ( !_profile.valid() && sourceProfile.valid() )
             {
-                _mapProfile = getSuitableMapProfileFor( sourceProfile.get() );
+                _profile = getSuitableMapProfileFor( sourceProfile.get() );
             }
-            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile.get() ) )
+            else if ( !sourceProfile.valid() || !_profile->isCompatibleWith( sourceProfile.get() ) )
             {
                 osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
                 i = _heightfield_sources.erase(i);
@@ -384,7 +384,7 @@ TileBuilder::initializeTileSources()
 }
 
 TileSource*
-TileBuilder::loadSource(const MapConfig* mapConfig,
+Map::loadSource(const MapConfig* mapConfig,
                         const SourceConfig* source,
                         const osgDB::ReaderWriter::Options* global_options)
 {
@@ -473,9 +473,9 @@ TileBuilder::loadSource(const MapConfig* mapConfig,
 
 
 void
-TileBuilder::addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
-                        std::vector< osg::ref_ptr<TileSource> >& to,
-                        const osgDB::ReaderWriter::Options* global_options)
+Map::addSources(const MapConfig* mapConfig, const SourceConfigList& from, 
+                std::vector< osg::ref_ptr<TileSource> >& to,
+                const osgDB::ReaderWriter::Options* global_options)
 {        
     for( SourceConfigList::const_iterator i = from.begin(); i != from.end(); i++ )
     {
@@ -490,24 +490,24 @@ TileBuilder::addSources(const MapConfig* mapConfig, const SourceConfigList& from
     }
 }
 
-TileBuilder::TileBuilder(MapConfig* map, 
-                         const osgDB::ReaderWriter::Options* options ) :
-_map( map )
+Map::Map(MapConfig* mapConfig, 
+         const osgDB::ReaderWriter::Options* options ) :
+_mapConfig( mapConfig )
 {
-    if ( !map )
+    if ( !mapConfig )
         return;
 
-    addSources( _map.get(), _map->getImageSources(), _image_sources, options );
-    addSources( _map.get(), _map->getHeightFieldSources(), _heightfield_sources, options );
+    addSources( _mapConfig.get(), _mapConfig->getImageSources(), _image_sources, options );
+    addSources( _mapConfig.get(), _mapConfig->getHeightFieldSources(), _heightfield_sources, options );
 
     initializeTileSources();
 
     //Set the MapConfig's Profile to the computed profile so that the TileSource's can query it when they are loaded
-    _map->setProfile( _mapProfile.get() );
+    _mapConfig->setProfile( _profile.get() );
 }
 
 std::string
-TileBuilder::createURI( const TileKey* key )
+Map::createURI( const TileKey* key )
 {
     std::stringstream ss;
     ss << key->str() << "." <<id<<".earth_tile";
@@ -515,9 +515,9 @@ TileBuilder::createURI( const TileKey* key )
 }
 
 MapConfig*
-TileBuilder::getMapConfig() const
+Map::getMapConfig() const
 {
-    return _map.get();
+    return _mapConfig.get();
 }
 
 
@@ -525,7 +525,7 @@ TileBuilder::getMapConfig() const
 // Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the
 // _inverse member isn't updated properly.  Calling Locator::setTransform works correctly.
 osg::Matrixd
-TileBuilder::getTransformFromExtents(double minX, double minY, double maxX, double maxY) const
+Map::getTransformFromExtents(double minX, double minY, double maxX, double maxY) const
 {
     osg::Matrixd transform;
     transform.set(
@@ -538,9 +538,9 @@ TileBuilder::getTransformFromExtents(double minX, double minY, double maxX, doub
 
 
 bool
-TileBuilder::isOK() const
+Map::isOK() const
 {
-    if ( !_mapProfile.valid() )
+    if ( !_profile.valid() )
     {
         osg::notify(osg::NOTICE) << "Error: Unable to determine a map profile." << std::endl;
         return false;
@@ -548,13 +548,13 @@ TileBuilder::isOK() const
 
     if (getImageSources().size() == 0 && getHeightFieldSources().size() == 0)
     {
-        osg::notify(osg::NOTICE) << "Error: TileBuilder does not contain any image or heightfield sources." << std::endl;
+        osg::notify(osg::NOTICE) << "Error: Map does not contain any image or heightfield sources." << std::endl;
         return false;
     }
 
     //Check to see if we are trying to do a Geocentric database with a Projected profile.
-    if ( _mapProfile->getProfileType() == Profile::TYPE_LOCAL && 
-         _map->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
+    if ( _profile->getProfileType() == Profile::TYPE_LOCAL && 
+         _mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
         osg::notify(osg::NOTICE) << "Error: Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
         return false;
@@ -565,17 +565,17 @@ TileBuilder::isOK() const
 }
 
 osg::Node*
-TileBuilder::createRootNode()
+Map::createRootNode()
 {
     // Note: CSN must always be at the top
     osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
 
     //If there is more than one image source, use TexEnvCombine to blend them together
-    if ( _map->getImageSources().size() > 1 )
+    if ( _mapConfig->getImageSources().size() > 1 )
     {
 #if 1
         osg::StateSet* stateset = csn->getOrCreateStateSet();
-        for (unsigned int i = 0; i < _map->getImageSources().size(); ++i)
+        for (unsigned int i = 0; i < _mapConfig->getImageSources().size(); ++i)
         {    
             //Blend the textures together from the bottom up
             stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
@@ -603,8 +603,8 @@ TileBuilder::createRootNode()
         texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
         texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
         texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-        stateset->setTextureAttribute(_map->getImageSources().size(), texenv, osg::StateAttribute::ON);
-        stateset->setTextureMode(_map->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
+        stateset->setTextureAttribute(_mapConfig->getImageSources().size(), texenv, osg::StateAttribute::ON);
+        stateset->setTextureMode(_mapConfig->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
 #else
         //Decorate the scene with a multi-texture control to control blending between textures
         osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
@@ -620,13 +620,13 @@ TileBuilder::createRootNode()
     }
 
     _terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
-    _terrain->setVerticalScale( _map->getVerticalScale() );
-    _terrain->setSampleRatio( _map->getSampleRatio() );
+    _terrain->setVerticalScale( _mapConfig->getVerticalScale() );
+    _terrain->setSampleRatio( _mapConfig->getSampleRatio() );
     csn->addChild( _terrain.get() );
 
 
     std::vector< osg::ref_ptr<TileKey> > keys;
-    getMapProfile()->getRootKeys(keys);
+    getProfile()->getRootKeys(keys);
 
     int numAdded = 0;
     for (unsigned int i = 0; i < keys.size(); ++i)
@@ -649,7 +649,7 @@ TileBuilder::createRootNode()
 
 
 osg::Node*
-TileBuilder::createNode( const TileKey* key )
+Map::createNode( const TileKey* key )
 {
     osg::ref_ptr<osg::Group> parent = new osg::Group;
     if (!addChildren( parent.get(), key ))
@@ -660,7 +660,7 @@ TileBuilder::createNode( const TileKey* key )
 }
 
 GeoImage*
-TileBuilder::createValidGeoImage(TileSource* tileSource, const TileKey* key)
+Map::createValidGeoImage(TileSource* tileSource, const TileKey* key)
 {
     //Try to create the image with the given key
     osg::ref_ptr<const TileKey> image_key = key;
@@ -679,31 +679,31 @@ TileBuilder::createValidGeoImage(TileSource* tileSource, const TileKey* key)
 }
 
 TileSourceList&
-TileBuilder::getImageSources()
+Map::getImageSources()
 {
     return _image_sources;
 }
 
 const TileSourceList&
-TileBuilder::getImageSources() const
+Map::getImageSources() const
 {
     return _image_sources;
 }
 
 TileSourceList&
-TileBuilder::getHeightFieldSources()
+Map::getHeightFieldSources()
 {
     return _heightfield_sources;
 }
 
 const TileSourceList&
-TileBuilder::getHeightFieldSources() const
+Map::getHeightFieldSources() const
 {
     return _heightfield_sources;
 }
 
 bool
-TileBuilder::hasMoreLevels( const TileKey* key ) const
+Map::hasMoreLevels( const TileKey* key ) const
 {
     bool more_levels = false;
     int max_level = 0;
@@ -732,7 +732,7 @@ TileBuilder::hasMoreLevels( const TileKey* key ) const
 }
 
 bool
-TileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
+Map::addChildren( osg::Group* tile_parent, const TileKey* key )
 {
     bool all_quadrants_created = false;
 
@@ -761,7 +761,7 @@ TileBuilder::addChildren( osg::Group* tile_parent, const TileKey* key )
 
 
 GeoImage*
-TileBuilder::createGeoImage(const TileKey* mapKey, TileSource* source)
+Map::createGeoImage(const TileKey* mapKey, TileSource* source)
 {
     GeoImage* result = NULL;
     const Profile* mapProfile = mapKey->getProfile();

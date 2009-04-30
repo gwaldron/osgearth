@@ -17,30 +17,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_PROJECTED_TILE_BUILDER_H
-#define OSGEARTH_PROJECTED_TILE_BUILDER_H 1
+#ifndef OSGEARTH_PROJECTED_MAP_H
+#define OSGEARTH_PROJECTED_MAP_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileBuilder>
+#include <osgEarth/Map>
 
 namespace osgEarth
 {
     //note: no export (package internal)
     /**
-     * This tile builder creates tiles in a flat projection.  It handles both typical projected
+     * This map creates tiles in a flat projection.  It handles both typical projected
      * coordinate systems like UTM as well as the "Geographic" projection, which
      * is really a simple flat projection in which x=long, y=lat.
      */
-    class ProjectedTileBuilder : public TileBuilder
+    class ProjectedMap : public Map
     {
     public:
-        ProjectedTileBuilder( 
-            MapConfig* map, 
+        ProjectedMap( 
+            MapConfig* mapConfig, 
             const osgDB::ReaderWriter::Options* options =NULL);
         
-    protected: // TileBuilder interface
-
-        //bool addChildren( osg::Group* parent, const TileKey* key );
+    protected: // Map interface
 
         osg::Node* createQuadrant( const TileKey* key );
 
@@ -56,4 +54,4 @@ namespace osgEarth
     };
 }
 
-#endif // OSGEARTH_PROJECTED_TILE_BUILDER_H
+#endif // OSGEARTH_PROJECTED_MAP_H

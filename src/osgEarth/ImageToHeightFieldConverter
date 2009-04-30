@@ -51,7 +51,7 @@ namespace osgEarth
         /**
          * Converts a heightfield to an image.
          */
-        osg::Image* convert(osg::HeightField* hf, int pixelSize = 16);
+        osg::Image* convert(osg::HeightField* hf, int pixelSize = 32);
 
     private:
         bool  _replace_nodata;

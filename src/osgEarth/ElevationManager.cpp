@@ -65,15 +65,23 @@ ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols
     //Collect the heightfields
     typedef std::vector< osg::ref_ptr<GeoHeightField> > HeightFields;
     HeightFields heightFields;
+
+    std::vector<bool> foundElevation;
+    foundElevation.reserve(_elevationSources.size());
+
+    int sourceIndex = 0;
     for (TileSourceList::iterator itr = _elevationSources.begin(); itr != _elevationSources.end(); ++itr)
     {
+        foundElevation.push_back(false);
+
         //If the profile is exactly the same, just grab the the key
         if (itr->get()->getProfile()->isEquivalentTo(key->getProfile()))
         {   
-            GeoHeightField *hf = createGeoHeightField(key, itr->get(), fallback);
+            GeoHeightField *hf = createGeoHeightField(key, itr->get(), false);
             if (hf)
             {
                 heightFields.push_back(hf);
+                foundElevation[sourceIndex] = true;
             }
         }
         else
@@ -85,17 +93,70 @@ ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols
             {
                 for (unsigned int i = 0; i < intersectingTiles.size(); ++i)
                 {
-                    GeoHeightField *hf = createGeoHeightField(intersectingTiles[i].get(), itr->get(), fallback);
+                    GeoHeightField *hf = createGeoHeightField(intersectingTiles[i].get(), itr->get(), false);
                     if (hf)
                     {
                         heightFields.push_back(hf);
+                        foundElevation[sourceIndex] = true;
+                    }
+                }
+            }
+        }
+        sourceIndex++;
+    }
+
+    //Count the number of valid sources
+    unsigned int numValidSources = 0;
+    for (unsigned int i = 0; i < foundElevation.size(); ++i)
+    {
+        if (foundElevation[i]) numValidSources ++;
+    }
+
+    osg::notify(osg::INFO) << "[osgEarth::ElevationManager] found " << numValidSources << " out of " << _elevationSources.size() << std::endl;
+
+    //If we didn't find any heightfields and we weren't explicity asked to fall back, just return NULL to signal that subdivision should stop
+    if (numValidSources == 0 && !fallback) return NULL;
+
+    //We have either been asked to fallback to previous levels
+    for (unsigned int i = 0; i < foundElevation.size(); ++i)
+    {
+        if (!foundElevation[i])
+        {
+            TileSource* source = _elevationSources[i].get();
+
+            //If the profile is exactly the same, just grab the the key
+            if (source->getProfile()->isEquivalentTo(key->getProfile()))
+            {   
+                GeoHeightField *hf = createGeoHeightField(key, source, true);
+                if (hf)
+                {
+                    heightFields.push_back(hf);
+                    osg::notify(osg::INFO) << "[osgEarth::ElevationManager] had to fall back on elevation source " << i << " for " << key->str() <<  std::endl;
+                }
+            }
+            else
+            {
+                //Determine the intersecting keys
+                std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
+                source->getProfile()->getIntersectingTiles(key, intersectingTiles);
+                if (intersectingTiles.size() > 0)
+                {
+                    for (unsigned int i = 0; i < intersectingTiles.size(); ++i)
+                    {
+                        GeoHeightField *hf = createGeoHeightField(intersectingTiles[i].get(), source, true);
+                        if (hf)
+                        {
+                            heightFields.push_back(hf);
+                            osg::notify(osg::INFO) << "[osgEarth::ElevationManager] had to fall back on elevation source " << i << " for " << key->str() <<  std::endl;
+                        }
                     }
                 }
             }
         }
     }
+   
 
-    //osg::notify(osg::NOTICE) << "getHeightField found " << heightFields.size() << " tiles" << std::endl;
+    osg::notify(osg::INFO) << "getHeightField found " << heightFields.size() << " tiles" << std::endl;
 
     osg::HeightField *hf = NULL;
 

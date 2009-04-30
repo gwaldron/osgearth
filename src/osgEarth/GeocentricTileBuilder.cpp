@@ -57,7 +57,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     double min_lon, min_lat, max_lon, max_lat;
     key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
 
-    ImageTileList image_tiles;
+    GeoImageList image_tiles;
 
     //TODO: select/composite:
     //Create the images for the tile
@@ -73,7 +73,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
                 //image = createImage(key, _image_sources[i].get());    
                 image = createGeoImage( key, _image_sources[i].get() );
             }
-            image_tiles.push_back(ImageTileKeyPair(image, key));
+            image_tiles.push_back(image);
         }
     }
 
@@ -92,7 +92,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     unsigned int numValidImages = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
-        if (image_tiles[i].first.valid()) numValidImages++;
+        if (image_tiles[i].valid()) numValidImages++;
     }
 
 
@@ -106,20 +106,19 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     //Try to interpolate any missing _image_sources from parent tiles
     for (unsigned int i = 0; i < _image_sources.size(); ++i)
     {
-        if (!image_tiles[i].first.valid())
+        if (!image_tiles[i].valid())
         {
             if (_image_sources[i]->isKeyValid(key))
             {
-                //osg::Timer_t start = osg::Timer::instance()->tick();
-                if (!createValidImage(_image_sources[i].get(), key, image_tiles[i]))
+                GeoImage* image = createValidGeoImage(_image_sources[i].get(), key);
+                if (image)
                 {
-                    osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::GeocentricTileBuilder] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    image_tiles.push_back(image);
                 }
                 else
                 {
-                    //osg::Timer_t end = osg::Timer::instance()->tick();
-                    //osg::notify(osg::NOTICE) << "TimeToImterpolateImagery: " << osg::Timer::instance()->delta_m(start,end) << std::endl; 
-                    osg::notify(osg::INFO) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::GeocentricTileBuilder] Could not get valid image from image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
                 }
             }
         }
@@ -194,32 +193,33 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
-        if (image_tiles[i].first.valid())
+        if (image_tiles[i].valid())
         {
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
-            image_tiles[i].second.get()->getGeoExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-			img_locator->setTransform( getTransformFromExtents(
-                osg::DegreesToRadians( img_min_lon ),
-                osg::DegreesToRadians( img_min_lat ),
-                osg::DegreesToRadians( img_max_lon ),
-                osg::DegreesToRadians( img_max_lat )));
-
-            GeoImage* geo_image = image_tiles[i].first.get();
+			
+            GeoImage* geo_image = image_tiles[i].get();
 
             // Use a special locator for mercator images (instead of reprojecting)
             if ( geo_image->getSRS()->isMercator() )
             {
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
-
-                //img_locator = new MercatorLocator(
-                //    *img_locator.get(),
-                //    geo_image->getImage()->t(),
-                //    image_tiles[i].second->getLevelOfDetail() );
+                //Transform the mercator extents to geographic
+                image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS()).getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
             }
+            else
+            {
+                image_tiles[i]->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+            }
+            img_locator->setTransform( getTransformFromExtents(
+                osg::DegreesToRadians( img_min_lon ),
+                osg::DegreesToRadians( img_min_lat ),
+                osg::DegreesToRadians( img_max_lon ),
+                osg::DegreesToRadians( img_max_lat )));
+
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
 

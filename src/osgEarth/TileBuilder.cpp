@@ -659,48 +659,8 @@ TileBuilder::createNode( const TileKey* key )
     return parent.release();
 }
 
-/*osg::HeightField*
-TileBuilder::createValidHeightField(osgEarth::TileSource* tileSource, const osgEarth::TileKey *key)
-{
-    //Try to create the heightfield with the given key
-    osg::ref_ptr<osg::HeightField> hf;
-    osg::ref_ptr<const TileKey> hf_key = key;
-
-    if (!hf.valid())
-    {
-        while (hf_key.valid())
-        {
-            if (tileSource->isKeyValid(hf_key.get()))
-            {
-              hf = createHeightField(hf_key.get(), tileSource);
-            }
-            if (hf.valid()) break;
-            hf_key = hf_key->createParentKey();
-        }
-
-        if (hf_key.valid() && hf.valid())
-        {
-          double minx, miny, maxx, maxy;
-          hf_key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
-
-          //Need to init this before extracting the heightfield
-          hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-          hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
-          hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
-
-          double key_minx, key_miny, key_maxx, key_maxy;
-          key->getGeoExtent().getBounds(key_minx, key_miny, key_maxx, key_maxy);
-          hf = HeightFieldUtils::extractHeightField(hf.get(), key_minx, key_miny, key_maxx, key_maxy, hf->getNumColumns(), hf->getNumRows());
-        }
-    }
-
-    return hf.release();
-}*/
-
-bool
-TileBuilder::createValidImage(osgEarth::TileSource* tileSource,
-                              const osgEarth::TileKey *key,
-                              osgEarth::TileBuilder::ImageTileKeyPair &imageTile)
+GeoImage*
+TileBuilder::createValidGeoImage(TileSource* tileSource, const TileKey* key)
 {
     //Try to create the image with the given key
     osg::ref_ptr<const TileKey> image_key = key;
@@ -712,19 +672,10 @@ TileBuilder::createValidImage(osgEarth::TileSource* tileSource,
         if ( tileSource->isKeyValid(image_key.get()) )
         {
             geo_image = createGeoImage( image_key.get(), tileSource );
-            //image = createImage(image_key.get(), tileSource);
+            if (geo_image.valid()) return geo_image.release();
         }
-        if (geo_image.valid()) break;
         image_key = image_key->createParentKey();
     }
-
-    if (image_key.valid() && geo_image.valid())
-    {
-        imageTile.first = geo_image.get();
-        imageTile.second = image_key.get();
-        return true;
-    }
-    return false;
 }
 
 TileSourceList&

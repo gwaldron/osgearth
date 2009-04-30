@@ -54,7 +54,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
 
     //osg::notify(osg::NOTICE) << "DataGridProfile " << _dataProfile.xMin() << ", " << _dataProfile.yMin() << ", " << _dataProfile.xMax() << ", " << _dataProfile.yMax() << std::endl;
 
-    ImageTileList image_tiles;
+    GeoImageList image_tiles;
 
     //TODO: select/composite:
     if ( _image_sources.size() > 0 )
@@ -67,7 +67,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             {
                 image = createGeoImage(key, _image_sources[i].get());
             }
-            image_tiles.push_back(ImageTileKeyPair(image, key));
+            image_tiles.push_back(image);
         }
     }
 
@@ -85,7 +85,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     unsigned int numValidImages = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
-        if (image_tiles[i].first.valid()) numValidImages++;
+        if (image_tiles[i].valid()) numValidImages++;
     }
 
     //If we couldn't create any imagery of heightfields, bail out
@@ -95,23 +95,24 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
         return NULL;
     }
    
-    //Try to interpolate any missing imagery from parent tiles
+    //Try to interpolate any missing _image_sources from parent tiles
     for (unsigned int i = 0; i < _image_sources.size(); ++i)
     {
-        if (!image_tiles[i].first.valid())
+        if (!image_tiles[i].valid())
         {
- 
-          if (_image_sources[i]->isKeyValid(key))
-          {
-            if (!createValidImage(_image_sources[i].get(), key, image_tiles[i]))
+            if (_image_sources[i]->isKeyValid(key))
             {
-              osg::notify(osg::INFO) << "Could not get valid image from image source " << i << " for TileKey " << key->str() << std::endl;
+                GeoImage* image = createValidGeoImage(_image_sources[i].get(), key);
+                if (image)
+                {
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedTileBuilder] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    image_tiles.push_back(image);
+                }
+                else
+                {
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedTileBuilder] Could not get valid image from image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                }
             }
-            else
-            {
-              osg::notify(osg::INFO) << "Interpolated imagery from image source " << i << " for TileKey " << key->str() << std::endl;
-            }
-          }
         }
     }
 
@@ -185,20 +186,26 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
-        if (image_tiles[i].first.valid())
+        if (image_tiles[i].valid())
         {
             double img_xmin, img_ymin, img_xmax, img_ymax;
-            image_tiles[i].second.get()->getGeoExtent().getBounds(img_xmin, img_ymin, img_xmax, img_ymax);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
-            img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
-            GeoImage* geo_image = image_tiles[i].first.get();
-            if ( geo_image->getSRS()->isMercator() )
+            GeoImage* geo_image = image_tiles[i].get();
+            //Special case for when the map is geographic and the image is Mercator
+            if ( getMapProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
             {
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
+                //Transform the mercator extents to geographic
+                image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS()).getBounds(img_xmin, img_ymin, img_xmax, img_ymax);
             }
+            else
+            {
+              image_tiles[i]->getExtent().getBounds(img_xmin, img_ymin, img_xmax, img_ymax);
+            }
+            img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
             img_layer->setLocator( img_locator.get() );

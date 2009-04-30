@@ -101,6 +101,8 @@ namespace osgEarth
         GeoExtent _extent;
     };
 
+    typedef std::vector< osg::ref_ptr<GeoImage> > GeoImageList;
+
     /**
      * A georeferenced heightfield
      */

@@ -172,11 +172,7 @@ namespace osgEarth
         virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const =0;
 
     protected:
-
-        typedef std::pair<osg::ref_ptr<GeoImage>, osg::ref_ptr<const TileKey> > ImageTileKeyPair;
-        typedef std::vector<ImageTileKeyPair> ImageTileList;
-
-        bool createValidImage(TileSource* tileSource, const TileKey *key, ImageTileKeyPair &imageTile);
+        GeoImage* createValidGeoImage(TileSource* tileSource, const TileKey* key);
         
 	    osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
 

@@ -48,31 +48,8 @@ using namespace osgEarth;
 static OpenThreads::ReentrantMutex s_mapCacheMutex;
 static unsigned int s_mapID = 0;
 
-//Struture that pairs a Map with an osg::Node
-typedef std::pair<osg::ref_ptr<Map>,osg::Node*> MapNodePair;
-typedef std::map<unsigned int, MapNodePair> MapCache;
-
-/**
-*The UnregisterMapObserver whole purpose in life is to listen for when the root node of a Map
-*has been deleted and unregister the associated Map
-*/
-class UnregisterMapObserver : public osg::Observer
-{
-    virtual void objectDeleted(void* object)
-    {
-        osg::Node* node = (osg::Node*)object;
-        //Find the Map for the Node that was deleted
-        Map* map = Map::getMapByNode(node);
-        if (map)
-        {
-            //osg::notify(osg::NOTICE) << "Node associated with Map " << Map->getId() << " deleted" << std::endl;
-            //Unregsiter the Map
-            Map::unregisterMap(map->getId());
-        }
-    }
-};
-
-static UnregisterMapObserver s_unregisterMapObserver;
+//Caches the Maps that have been created
+typedef std::map<unsigned int, osg::observer_ptr<Map>> MapCache;
 
 static
 MapCache& getCache()
@@ -118,19 +95,17 @@ Map::create( MapConfig* mapConfig, const osgDB::ReaderWriter::Options* options )
         {
             result = new ProjectedMap( mapConfig, local_options.get() );
         }
-
-        result->id = s_mapID++;
-        osg::notify(osg::INFO) << "Map::create assigning id " << result->id << " to Map " << std::endl;
+        result->initialize();
+        if (result->getNumChildren() > 0) return result;
     }
-    return result;
+    return NULL;
 }
 
 void
-Map::registerMap(Map* map, osg::Node *node)
+Map::registerMap(Map* map)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
-    getCache()[map->id] = MapNodePair(map, node);
-    node->addObserver(&s_unregisterMapObserver);
+    getCache()[map->id] = map;
     osg::notify(osg::INFO) << "Registered " << map->id << std::endl;
 }
 
@@ -151,21 +126,7 @@ Map::getMapById(unsigned int id)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
     MapCache::const_iterator k = getCache().find( id);
-    if (k != getCache().end()) return k->second.first.get();
-    return 0;
-}
-
-Map*
-Map::getMapByNode(osg::Node* node)
-{
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
-    for (MapCache::const_iterator k = getCache().begin(); k != getCache().end(); ++k)
-    {
-        if (k->second.second == node)
-        {
-            return k->second.first.get();
-        }
-    }
+    if (k != getCache().end()) return k->second.get();
     return 0;
 }
 
@@ -185,7 +146,7 @@ Map::readNode( MapConfig* mapConfig )
     if ( !map || !map->isOK() )
         return 0;
 
-    return map->createRootNode();
+    return map;
 }
 
 unsigned int
@@ -502,8 +463,19 @@ _mapConfig( mapConfig )
 
     initializeTileSources();
 
+    id = s_mapID++;
+
     //Set the MapConfig's Profile to the computed profile so that the TileSource's can query it when they are loaded
     _mapConfig->setProfile( _profile.get() );
+
+    //Register the map
+    registerMap(this);
+}
+
+Map::~Map()
+{
+    //osg::notify(osg::NOTICE) << "Deleting Map " << getId() << std::endl;
+    unregisterMap(getId());
 }
 
 std::string
@@ -518,6 +490,11 @@ MapConfig*
 Map::getMapConfig() const
 {
     return _mapConfig.get();
+}
+
+osg::CoordinateSystemNode* Map::createCoordinateSystemNode() const
+{
+    return new osg::CoordinateSystemNode();
 }
 
 
@@ -563,89 +540,6 @@ Map::isOK() const
     //TODO: Other cases?
     return true;
 }
-
-osg::Node*
-Map::createRootNode()
-{
-    // Note: CSN must always be at the top
-    osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
-
-    //If there is more than one image source, use TexEnvCombine to blend them together
-    if ( _mapConfig->getImageSources().size() > 1 )
-    {
-#if 1
-        osg::StateSet* stateset = csn->getOrCreateStateSet();
-        for (unsigned int i = 0; i < _mapConfig->getImageSources().size(); ++i)
-        {    
-            //Blend the textures together from the bottom up
-            stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
-
-            //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
-            osg::TexEnvCombine * tec = new osg::TexEnvCombine;
-            tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-
-            tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
-            tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-
-            tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
-            tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-
-            tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
-            tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-
-            stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
-        }
-
-        //Modulate the result with the primary color to get proper lighting
-        osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-        texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
-        texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
-        texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-        texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
-        texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-        stateset->setTextureAttribute(_mapConfig->getImageSources().size(), texenv, osg::StateAttribute::ON);
-        stateset->setTextureMode(_mapConfig->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
-#else
-        //Decorate the scene with a multi-texture control to control blending between textures
-        osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
-        parent->addChild( mt );
-
-        float r = 1.0f/ map->getImageSources().size();
-        for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
-        {
-            mt->setTextureWeight(i, r);
-        }
-        parent = mt;
-#endif
-    }
-
-    _terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
-    _terrain->setVerticalScale( _mapConfig->getVerticalScale() );
-    _terrain->setSampleRatio( _mapConfig->getSampleRatio() );
-    csn->addChild( _terrain.get() );
-
-
-    std::vector< osg::ref_ptr<TileKey> > keys;
-    getProfile()->getRootKeys(keys);
-
-    int numAdded = 0;
-    for (unsigned int i = 0; i < keys.size(); ++i)
-    {
-        osg::Node* node = createNode( keys[i].get() );
-        if (node)
-        {
-            _terrain->addChild(node);
-            numAdded++;
-        }
-        else
-        {
-            osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
-        }
-    }
-
-    return (numAdded == keys.size()) ? csn.release() : NULL;
-}
-
 
 
 osg::Node*
@@ -729,6 +623,91 @@ Map::hasMoreLevels( const TileKey* key ) const
     }
 
     return more_levels;
+}
+
+void
+Map::initialize()
+{    
+        // Note: CSN must always be at the top
+    osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
+
+    //If there is more than one image source, use TexEnvCombine to blend them together
+    if ( _mapConfig->getImageSources().size() > 1 )
+    {
+#if 1
+        osg::StateSet* stateset = csn->getOrCreateStateSet();
+        for (unsigned int i = 0; i < _mapConfig->getImageSources().size(); ++i)
+        {    
+            //Blend the textures together from the bottom up
+            stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
+
+            //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
+            osg::TexEnvCombine * tec = new osg::TexEnvCombine;
+            tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+
+            tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
+            tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+            tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+            tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+            tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
+            tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+            stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
+        }
+
+        //Modulate the result with the primary color to get proper lighting
+        osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+        texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+        texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+        texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+        texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+        texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+        stateset->setTextureAttribute(_mapConfig->getImageSources().size(), texenv, osg::StateAttribute::ON);
+        stateset->setTextureMode(_mapConfig->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
+#else
+        //Decorate the scene with a multi-texture control to control blending between textures
+        osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
+        parent->addChild( mt );
+
+        float r = 1.0f/ map->getImageSources().size();
+        for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
+        {
+            mt->setTextureWeight(i, r);
+        }
+        parent = mt;
+#endif
+    }
+
+    _terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
+    _terrain->setVerticalScale( _mapConfig->getVerticalScale() );
+    _terrain->setSampleRatio( _mapConfig->getSampleRatio() );
+    csn->addChild( _terrain.get() );
+
+
+    std::vector< osg::ref_ptr<TileKey> > keys;
+    getProfile()->getRootKeys(keys);
+
+    int numAdded = 0;
+    for (unsigned int i = 0; i < keys.size(); ++i)
+    {
+        osg::Node* node = createNode( keys[i].get() );
+        if (node)
+        {
+            _terrain->addChild(node);
+            numAdded++;
+        }
+        else
+        {
+            osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
+        }
+    }
+
+    if (numAdded == keys.size())
+    {
+        addChild(csn.release());
+    }
 }
 
 bool

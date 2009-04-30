@@ -55,7 +55,7 @@ namespace osgEarth
     /**
      * Map is the main workhorse in osgEarth. It generates osg Nodes for TileKeys.
      */
-    class OSGEARTH_EXPORT Map : public osg::Referenced
+    class OSGEARTH_EXPORT Map : public osg::Group
     {
     public:
         /**
@@ -78,11 +78,6 @@ namespace osgEarth
         *Gets the ID for this Map
         */
         unsigned int getId() const;
-
-        /**
-         * Creates the root node for a Map
-         */
-        osg::Node* createRootNode();
 
         /**
          * Creates a node graph for a given TileKey.
@@ -120,15 +115,12 @@ namespace osgEarth
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
 
         //Registers the given Map with osgEarth.  This should not be called by user code
-        static void registerMap(Map* Map, osg::Node *node);
+        static void registerMap(Map* Map);
         //Unregisters the given Map.  This should not be called by user code
         static void unregisterMap(unsigned int id);
 
         //Gets the registered Map by the Map ID
         static Map* getMapById(unsigned int id);
-
-        //Gets the Map that is associated with the given node
-        static Map* getMapByNode(osg::Node* node);
 
         /**
          *Gets the ElevationManager for this Map
@@ -139,6 +131,8 @@ namespace osgEarth
         Map( 
             MapConfig* map, 
             const osgDB::ReaderWriter::Options* global_options );
+
+        virtual ~Map();
 
         /**
          * Gets a pagedLOD child URI given a tile key.
@@ -168,7 +162,10 @@ namespace osgEarth
          * The implementing class must define this method to create a valid
          * CoordinateSystemNode that will top the scene graph.
          */
-        virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const =0;
+        virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+
+        //Initializes the scene graph for this Map after it has been contstructed
+        virtual void initialize();
 
     protected:
         GeoImage* createValidGeoImage(TileSource* tileSource, const TileKey* key);

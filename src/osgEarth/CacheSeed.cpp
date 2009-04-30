@@ -42,18 +42,6 @@ void CacheSeed::seed(MapConfig *map)
         _bounds._min.y() = mapEx.yMin();
         _bounds._max.x() = mapEx.xMax();
         _bounds._max.y() = mapEx.yMax();
-
-        if (_tileBuilder->getMapProfile()->getProfileType() == Profile::TYPE_MERCATOR)
-        {
-            double lat,lon;
-            Mercator::metersToLatLon(_bounds._min.x(), _bounds._min.y(), lat, lon);
-            _bounds._min.x() = lon;
-            _bounds._min.y() = lat;
-
-            Mercator::metersToLatLon(_bounds._max.x(), _bounds._max.y(), lat, lon);
-            _bounds._max.x() = lon;
-            _bounds._max.y() = lat;
-        }
     }
 
 

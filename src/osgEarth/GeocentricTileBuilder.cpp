@@ -43,23 +43,6 @@
 using namespace osgEarth;
 
 
-static void
-getLatLonExtents(const TileKey* key, double &min_lon, double &min_lat, double &max_lon, double &max_lat)
-{
-    if ( key->isMercator() )
-    {
-        double xmin, ymin, xmax, ymax;
-        key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
-        Mercator::metersToLatLon(xmin, ymin, min_lat, min_lon);
-        Mercator::metersToLatLon(xmax, ymax, max_lat, max_lon);
-    }
-    else
-    {
-        key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
-    }
-}
-
-
 GeocentricTileBuilder::GeocentricTileBuilder( 
     MapConfig* map, 
     const osgDB::ReaderWriter::Options* global_options ) :
@@ -72,7 +55,7 @@ osg::Node*
 GeocentricTileBuilder::createQuadrant( const TileKey* key)
 {
     double min_lon, min_lat, max_lon, max_lat;
-    getLatLonExtents( key, min_lon, min_lat, max_lon, max_lat);
+    key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
 
     ImageTileList image_tiles;
 
@@ -214,7 +197,7 @@ GeocentricTileBuilder::createQuadrant( const TileKey* key)
         if (image_tiles[i].first.valid())
         {
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
-            getLatLonExtents(image_tiles[i].second.get(), img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+            image_tiles[i].second.get()->getGeoExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();

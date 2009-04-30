@@ -26,77 +26,8 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_FILTER           "filter"
-#define VALUE_FILTER_NEAREST      "nearest"
-#define VALUE_FILTER_LINEAR       "linear"
-
-/********************************************************************/
-
-const double Mercator::MIN_X = -20037508.34; //2789248;
-const double Mercator::MIN_Y = -20037508.34; //2789248;
-const double Mercator::MAX_X =  20037508.34; //2789248;
-const double Mercator::MAX_Y =  20037508.34; //2789248;
-
 #define MERC_MAX_LAT  85.084059050110383
 #define MERC_MIN_LAT -85.084059050110383
-
-
-#define PIXELS_PER_TILE 256
-
-void Mercator::metersToLatLon(const double &x, const double &y, double &lat, double &lon)
-{
-    lon = x / MAX_X * 180.0;
-    lat = osg::RadiansToDegrees( 2.0 * atan( exp( (y / MAX_Y) * osg::PI ) ) - .5*osg::PI );
-
-    //Clamp the values to appropriate ranges.
-    lon = osg::clampBetween(lon, -180.0, 180.0);
-    lat = osg::clampBetween(lat, -90.0, 90.0);
-}
-
-void Mercator::latLongToMeters(const double &lat, const double &lon, double &x, double &y)
-{
-    x = lon * MAX_X / 180.0;
-    y = log(tan((90 + lat) * osg::PI / 360)) / (osg::PI / 180.0);
-    y = y * MAX_Y / 180.0;
-
-    //Clamp the values to appropriate ranges
-    x = osg::clampBetween(x, MIN_X, MAX_X);
-    y = osg::clampBetween(y, MIN_Y, MAX_Y);
-}
-
-int
-Mercator::longLatToPixelXY(double lon, double lat, unsigned int lod, int tile_size,
-                                  unsigned int& out_x, unsigned int& out_y )
-{
-    double x = (lon + 180.0) / 360.0;
-    double sin_lat = sin( osg::DegreesToRadians( lat ) );
-    double y = 0.5 - log( (1+sin_lat) / (1-sin_lat) ) / (4*osg::PI);
-
-    double map_size = (double)TileKey::getMapSizePixels( tile_size, lod );
-    
-    double raw_x = x * map_size + 0.5;
-    double raw_y = y * map_size + 0.5;
-
-    double clamp_x = osg::clampBetween(raw_x, (double)0, map_size - 1);
-    double clamp_y = osg::clampBetween(raw_y, (double)0, map_size - 1);
-
-    out_x = (unsigned int)clamp_x;
-    out_y = (unsigned int)clamp_y;
-
-    return raw_y < clamp_y? -1 : raw_y > clamp_y ? 1 : 0;
-}
-
-void
-Mercator::pixelXYtoTileXY(unsigned int x, unsigned int y,
-                          int tile_size,
-                          unsigned int& out_tile_x,
-                          unsigned int& out_tile_y)
-{
-    out_tile_x = x/tile_size;
-    out_tile_y = y/tile_size;
-}
-
-/********************************************************************/
 
 static double
 lonToU(double lon) {

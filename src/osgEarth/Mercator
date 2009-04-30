@@ -30,67 +30,6 @@
 
 namespace osgEarth
 {
-    /**
-     * Methods for dealing with the Spherical Mercator projection.
-     */
-    class Mercator
-    {
-    public:
-        static const double MIN_X, MIN_Y, MAX_X, MAX_Y;
-
-    public:
-      /**
-      *Converts a location in spherical mercator projection to lat/lon
-      * @param x
-      *     X coordinate in meters
-      * @param y
-      *     Y coordinate in meters
-      * @param lat
-      *     The output latitude
-      * @param lon
-      *     The output longitude
-      */
-      static void metersToLatLon(const double &x, const double &y, double &lat, double &lon);
-
-      /**
-      *Converts a location in lat/lon to spherical mercator
-      *@param lat
-      *     The latitude
-      *@param lon
-      *     The longitude
-      *@param x
-      *     The output X coordinate in meters
-      *@param y
-      *     The output Y coordinate in meters
-      */
-      static void latLongToMeters(const double &lat, const double &lon, double &x, double &y);
-
-      /**
-       * Converts a lat/lon location to an X and Y location for a given detail level.
-       */
-      static int longLatToPixelXY(
-          double lon, double lat, unsigned int lod, 
-          int tile_size,
-          unsigned int& out_x, unsigned int& out_y );
-
-      /** 
-       * Calculates the tile indicies for a pixel X,Y location in the mpa.
-       */
-      static void pixelXYtoTileXY(
-          unsigned int x, unsigned int y,
-          int tile_size,
-          unsigned int& out_tile_x, unsigned int& out_tile_y);
-
-      /**
-       * Given an extent and a lat/lon, calculate the Mercator U and V coordinates of
-       * the lat/lon within that extent.
-       */
-      //static void getUV(
-      //    double minlon, double minlat, double maxlon, double maxlat,
-      //    double lon, double lat,
-      //    double& out_u, double& out_v);
-    };
-
     class MercatorLocator : public osgTerrain::Locator
     {
     public:

@@ -243,9 +243,8 @@ TileMap::intersectsKey(const TileKey *tileKey)
 
     if (!inter && tileKey->isMercator())
     {
-        Mercator::metersToLatLon(keyMinX, keyMinY, keyMinY, keyMinX);
-        Mercator::metersToLatLon(keyMaxX, keyMaxY, keyMaxY, keyMaxX);
-
+        tileKey->getProfile()->getSRS()->transform(keyMinX, keyMinY, tileKey->getProfile()->getSRS()->getGeographicSRS(), keyMinX, keyMinY);
+        tileKey->getProfile()->getSRS()->transform(keyMaxX, keyMaxY, tileKey->getProfile()->getSRS()->getGeographicSRS(), keyMaxX, keyMaxY);
         inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
     }
 

@@ -194,7 +194,7 @@ ProjectedTileBuilder::createQuadrant( const TileKey* key )
             osg::ref_ptr<osgTerrain::Locator> img_locator = getMapProfile()->getSRS()->createLocator();
             img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
-            GeoImage* geo_image = image_tiles[i].first;
+            GeoImage* geo_image = image_tiles[i].first.get();
             if ( geo_image->getSRS()->isMercator() )
             {
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );

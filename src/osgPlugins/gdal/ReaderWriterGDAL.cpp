@@ -605,7 +605,7 @@ public:
             profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
         }
 
-        if ( profile && !profile->getSRS()->isEquivalentTo( src_srs ) )
+        if ( profile && !profile->getSRS()->isEquivalentTo( src_srs.get() ) )
         {
             _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(
                 _srcDS,

@@ -151,7 +151,7 @@ _defaultValue(0.0f)
 void
 FillNoDataOperator::operator ()(osg::HeightField *heightField)
 {
-    if (heightField && _validDataOperator)
+    if (heightField && _validDataOperator.valid())
     {
         for( unsigned int row=0; row < heightField->getNumRows(); row++ )
         {

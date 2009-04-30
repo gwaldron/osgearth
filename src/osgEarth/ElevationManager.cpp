@@ -47,7 +47,7 @@ GeoHeightField* createGeoHeightField(const TileKey* key, TileSource* source, boo
                 
                 ReplaceInvalidDataOperator o;
                 o.setReplaceWith(NO_DATA_VALUE);
-                o.setValidDataOperator(ops);
+                o.setValidDataOperator(ops.get());
                 o(hf);
 
                 return new GeoHeightField(hf, hf_key->getGeoExtent());

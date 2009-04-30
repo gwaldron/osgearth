@@ -328,7 +328,7 @@ TileBuilder::initializeTileSources()
             {
                 _mapProfile = getSuitableMapProfileFor( sourceProfile.get() );
             }
-            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
+            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile.get() ) )
             {
                 osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
                 i =_image_sources.erase(i);
@@ -360,9 +360,9 @@ TileBuilder::initializeTileSources()
 
             if ( !_mapProfile.valid() && sourceProfile.valid() )
             {
-                _mapProfile = getSuitableMapProfileFor( sourceProfile );
+                _mapProfile = getSuitableMapProfileFor( sourceProfile.get() );
             }
-            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile ) )
+            else if ( !sourceProfile.valid() || !_mapProfile->isCompatibleWith( sourceProfile.get() ) )
             {
                 osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
                 i = _heightfield_sources.erase(i);

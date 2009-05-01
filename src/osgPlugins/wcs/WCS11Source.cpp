@@ -223,20 +223,23 @@ WCS11Source::createRequest( const TileKey* key ) const
         buf << lon_min << "," << lat_min << "," << lon_max << "," << lat_max;
     else
         buf << lat_min << "," << lon_min << "," << lat_max << "," << lon_max;
-    buf << ",urn:ogc:def:crs:EPSG::4326";
+    buf << ",EPSG:4326";
+    //buf << ",urn:ogc:def:crs:EPSG::4326";
     req->addParameter( "BOUNDINGBOX", buf.str() );
 
     buf.str("");
     buf << lon_min << "," << (lat_min + (lat_max-lat_min));           // note: top-down
+    //buf << lon_min << "," << lat_min;
     req->addParameter( "GridOrigin", buf.str() );
 
     buf.str("");
     buf << lon_interval << "," << -lat_interval;   // note: top-down
+    //buf << lon_interval << "," << lat_interval;
     req->addParameter( "GridOffsets", buf.str() );
 
-    buf.str("");
-    buf << "Field_1:bilinear[Band[1]]";            // TODO: paramaterize: "bicubic", "bilinear", "nearest"
-    req->addParameter( "RangeSubset", buf.str() );
+    //buf.str("");
+    //buf << "raster:bilinear[Band[1]]";            // TODO: paramaterize: "bicubic", "bilinear", "nearest"
+    //req->addParameter( "RangeSubset", buf.str() );
 
     return req;
 }

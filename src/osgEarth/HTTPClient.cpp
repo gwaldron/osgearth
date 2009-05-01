@@ -119,7 +119,7 @@ HTTPRequest::getURL() const
     buf << url;
     for( Parameters::const_iterator i = parameters.begin(); i != parameters.end(); i++ )
     {
-        buf << ( i == parameters.begin()? "?" : "&" );
+        buf << ( i == parameters.begin() && url.find( "?" ) == std::string::npos? "?" : "&" );
         buf << i->first << "=" << i->second;
     }
     return buf.str();

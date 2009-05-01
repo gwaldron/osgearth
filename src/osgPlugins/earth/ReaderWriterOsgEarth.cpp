@@ -108,13 +108,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     //}
 
                     //Create the root node for the scene
-                    node = map->createRootNode();
-
-                    //Register the TileBuilder with osgEarth
-                    if (map.valid() && node)
-                    {
-                        Map::registerMap(map.get(), node);
-                    }
+                    node = map.release();
                 }
                 else
                 {

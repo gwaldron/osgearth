@@ -216,15 +216,16 @@ WCS11Source::createRequest( const TileKey* key ) const
     //   minx,miny,maxx,maxy no matter what ...
 
     // Hack to guess whether it's an ArcGIS Server:
-    bool use_legacy_geog_bbox_encoding = _url.find( "/MapServer/WCSServer" ) != std::string::npos;
-
     buf.str("");
-    if ( use_legacy_geog_bbox_encoding )
-        buf << lon_min << "," << lat_min << "," << lon_max << "," << lat_max;
-    else
-        buf << lat_min << "," << lon_min << "," << lat_max << "," << lon_max;
-    buf << ",EPSG:4326";
+
+    //bool use_legacy_geog_bbox_encoding = _url.find( "/MapServer/WCSServer" ) != std::string::npos;
+    //if ( use_legacy_geog_bbox_encoding )
+    //    buf << lon_min << "," << lat_min << "," << lon_max << "," << lat_max;
+    //else
+    //    buf << lat_min << "," << lon_min << "," << lat_max << "," << lon_max;
     //buf << ",urn:ogc:def:crs:EPSG::4326";
+
+    buf << lon_min << "," << lat_min << "," << lon_max << "," << lat_max << ",EPSG:4326";
     req->addParameter( "BOUNDINGBOX", buf.str() );
 
     buf.str("");

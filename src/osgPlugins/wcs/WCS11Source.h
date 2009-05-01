@@ -53,6 +53,7 @@ private:
     std::string _osg_format;
     std::string _srs;
     std::string _elevation_unit;
+    std::string _range_subset;
     int         _tile_size;
 
     HTTPRequest* createRequest( const TileKey* key ) const;

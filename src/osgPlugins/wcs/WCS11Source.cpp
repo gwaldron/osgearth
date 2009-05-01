@@ -35,6 +35,7 @@ using namespace osgEarth;
 #define PROPERTY_TILE_SIZE      "tile_size"
 #define PROPERTY_SRS            "srs"
 #define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
+#define PROPERTY_RANGE_SUBSET   "range_subset"
 
 WCS11Source::WCS11Source( const osgDB::ReaderWriter::Options* options ) :
 TileSource( options ),
@@ -65,6 +66,9 @@ _tile_size(16)
 
     if ( options->getPluginData( PROPERTY_SRS ) )
         _srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
+
+    if (options->getPluginData( PROPERTY_RANGE_SUBSET ) )
+        _range_subset = std::string( (const char*)options->getPluginData( PROPERTY_RANGE_SUBSET ) );
 
     //TODO: Read GetCapabilities and determine everything from that..
 
@@ -109,7 +113,7 @@ WCS11Source::createImage( const TileKey* key )
 {
     osg::ref_ptr<HTTPRequest> request = createRequest( key );
 
-    osg::notify(osg::INFO) << "[osgEarth::WCS1.1] URL = " << request->getURL() << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::WCS1.1] Key=" << key->str() << " URL = " << request->getURL() << std::endl;
 
     double lon0,lat0,lon1,lat1;
     key->getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
@@ -238,9 +242,10 @@ WCS11Source::createRequest( const TileKey* key ) const
     //buf << lon_interval << "," << lat_interval;
     req->addParameter( "GridOffsets", buf.str() );
 
-    //buf.str("");
-    //buf << "raster:bilinear[Band[1]]";            // TODO: paramaterize: "bicubic", "bilinear", "nearest"
-    //req->addParameter( "RangeSubset", buf.str() );
+    if (!_range_subset.empty())
+    {
+        req->addParameter( "RangeSubset", _range_subset );
+    }
 
     return req;
 }

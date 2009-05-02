@@ -80,7 +80,22 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 //osg::notify(osg::NOTICE) << "Reading Earth File " << std::endl;
 
                 //Read the map file from the filename
-                osg::ref_ptr<MapConfig> mapConfig = MapConfigReaderWriter::readXml( file_name );
+                osg::ref_ptr<MapConfig> mapConfig;
+                
+                if ( file_name == "__globe.earth" )
+                {
+                    mapConfig = new MapConfig();
+                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
+                }
+                else if ( file_name == "__flat.earth" )
+                {
+                    mapConfig = new MapConfig();
+                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
+                }
+                else
+                {
+                    mapConfig = MapConfigReaderWriter::readXml( file_name );
+                }
 
                 if ( mapConfig.valid() )
                 {

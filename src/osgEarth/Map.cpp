@@ -523,11 +523,11 @@ Map::isOK() const
         return false;
     }
 
-    if (getImageSources().size() == 0 && getHeightFieldSources().size() == 0)
-    {
-        osg::notify(osg::NOTICE) << "Error: Map does not contain any image or heightfield sources." << std::endl;
-        return false;
-    }
+    //if (getImageSources().size() == 0 && getHeightFieldSources().size() == 0)
+    //{
+    //    osg::notify(osg::NOTICE) << "Error: Map does not contain any image or heightfield sources." << std::endl;
+    //    return false;
+    //}
 
     //Check to see if we are trying to do a Geocentric database with a Projected profile.
     if ( _profile->getProfileType() == Profile::TYPE_LOCAL && 

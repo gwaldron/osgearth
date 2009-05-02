@@ -52,6 +52,8 @@ ProjectedMap::createQuadrant( const TileKey* key )
     double xmin, ymin, xmax, ymax;
     key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
+    bool empty_map = _image_sources.size() == 0 && _heightfield_sources.size() == 0;
+
     //osg::notify(osg::NOTICE) << "DataGridProfile " << _dataProfile.xMin() << ", " << _dataProfile.yMin() << ", " << _dataProfile.xMax() << ", " << _dataProfile.yMax() << std::endl;
 
     GeoImageList image_tiles;
@@ -88,7 +90,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
         if (image_tiles[i].valid()) numValidImages++;
     }
 
-    //If we couldn't create any imagery of heightfields, bail out
+    // If we couldn't create any imagery of heightfields, bail out
     if (!hf.valid() && (numValidImages == 0))
     {
         osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
@@ -236,7 +238,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
 
     // see if we need to keep subdividing:
     osg::Node* result = tile;
-    if ( hasMoreLevels( key ) )
+    if ( hasMoreLevels( key ) || empty_map )
     {
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( centroid );

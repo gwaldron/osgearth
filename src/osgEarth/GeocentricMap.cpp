@@ -59,6 +59,8 @@ GeocentricMap::createQuadrant( const TileKey* key)
 
     GeoImageList image_tiles;
 
+    bool empty_map = _image_sources.size() == 0 && _heightfield_sources.size() == 0;
+
     //TODO: select/composite:
     //Create the images for the tile
     if ( _image_sources.size() > 0 )
@@ -99,8 +101,8 @@ GeocentricMap::createQuadrant( const TileKey* key)
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0))
     {
-        osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
-        return NULL;
+        //osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        //return NULL;
     }
    
     //Try to interpolate any missing _image_sources from parent tiles
@@ -275,7 +277,7 @@ GeocentricMap::createQuadrant( const TileKey* key)
 
     // see if we need to keep subdividing:
     osg::Node* result = tile;
-    if ( hasMoreLevels( key ) )
+    if ( hasMoreLevels( key ) || empty_map )
     {
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( centroid );
@@ -283,10 +285,6 @@ GeocentricMap::createQuadrant( const TileKey* key)
         plod->setFileName( 1, createURI( key ) );
         plod->setRange( 1, 0.0, min_range );
         result = plod;
-    }
-    else 
-    {
-        //osg::notify(osg::NOTICE) << "[osgEarth] Stopping at level " << key->getLevelOfDetail() << std::endl;
     }
 
     return result;

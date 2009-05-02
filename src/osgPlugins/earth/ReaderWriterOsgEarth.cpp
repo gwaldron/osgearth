@@ -138,8 +138,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 //The tile definition is formatted LOD_X_Y.TILEBUILDER_ID
 
-                unsigned int lod, x, y, id;
-                sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y,&id);
+                unsigned int face, lod, x, y, id;
+                sscanf(tileDef.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
 
                 //Get the Map from the cache.  It is important that we use a ref_ptr here
                 //to prevent the Map from being deleted while it is is still in use.
@@ -147,7 +147,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if (map.valid())
                 {
-                  osg::ref_ptr<TileKey> key = new TileKey(x, y, lod, map->getProfile());
+                  osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, map->getProfile());
                   node = map->createNode(key.get());
                 }
                 else

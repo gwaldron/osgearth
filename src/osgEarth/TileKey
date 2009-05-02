@@ -39,16 +39,24 @@ namespace osgEarth
     public:        
         /**
          *Creates a new TileKey with the given tile xy at the specified level of detail
+         * 
+         *@param face
+         *       Face index of the tile
+         *@param lod
+         *       The level of detail (subdivision recursion level) of the tile
          *@param tile_x
          *       The x index of the tile
          *@param tile_y
          *       The y index of the tile
-         *@param lod
-         *       The level of detail of the tile
          *@param profile
          *       The profile for the tile
          */
-        TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile* profile );
+        TileKey(
+            unsigned int face,
+            unsigned int lod,
+            unsigned int tile_x,
+            unsigned int tile_y,
+            const Profile* profile );
 
         /**
          * Gets the string representation of the key.
@@ -101,6 +109,11 @@ namespace osgEarth
         virtual TileKey* createParentKey() const;
 
         /**
+         * Gets the face index of the tile represented by this key.
+         */
+        virtual unsigned int getFace() const;
+
+        /**
          * Gets the level of detail of the tile represented by this key.
          */
         virtual unsigned int getLevelOfDetail() const;
@@ -145,6 +158,7 @@ namespace osgEarth
     protected:
         std::string key;
 
+        unsigned int _face;
         unsigned int _lod;
         unsigned int _x;
         unsigned int _y;

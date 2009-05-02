@@ -40,9 +40,13 @@ _extent( rhs._extent)
 std::string
 TileKey::str() const
 {
-    std::stringstream ss;
-    ss << _lod << "_" << _x << "_" << _y;
-    return ss.str();
+    if ( key.empty() )
+    {
+        std::stringstream ss;
+        ss << _face << "_" << _lod << "_" << _x << "_" << _y;
+        const_cast<TileKey*>(this)->key = ss.str();
+    }
+    return key;
 }
 
 const Profile*
@@ -86,7 +90,15 @@ TileKey::getTileXY(unsigned int& out_tile_x,
 osgTerrain::TileID
 TileKey::getTileId() const
 {
+    //TODO: will this be an issue with multi-face? perhaps not since each face will
+    // exist within its own scene graph.. ?
     return osgTerrain::TileID(_lod, _x, _y);
+}
+
+unsigned int
+TileKey::getFace() const
+{
+    return _face;
 }
 
 unsigned int
@@ -130,7 +142,7 @@ TileKey::getSubkey( unsigned int quadrant ) const
             x+=1;
             y+=1;
         }
-        const_cast<TileKey*>(this)->_subkeys[quadrant] = new TileKey(x, y, lod, _profile.get());
+        const_cast<TileKey*>(this)->_subkeys[quadrant] = new TileKey( _face, lod, x, y, _profile.get());
     }
     return _subkeys[quadrant].get();
 }
@@ -144,7 +156,7 @@ TileKey::createParentKey() const
     unsigned int lod = _lod - 1;
     unsigned int x = _x / 2;
     unsigned int y = _y / 2;
-    return new TileKey(x, y, lod, _profile.get());
+    return new TileKey( _face, lod, x, y, _profile.get());
 }
 
 const GeoExtent&
@@ -153,8 +165,9 @@ TileKey::getGeoExtent() const
     return _extent;
 }
 
-TileKey::TileKey( unsigned int tile_x, unsigned int tile_y, unsigned int lod, const Profile* profile)
+TileKey::TileKey( unsigned int face, unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
 {
+    _face = face;
     _x = tile_x;
     _y = tile_y;
     _lod = lod;

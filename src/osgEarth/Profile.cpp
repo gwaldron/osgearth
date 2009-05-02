@@ -143,7 +143,8 @@ Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) c
     {
         for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
         {
-            out_keys.push_back(new TileKey(c, r, 0, this));
+            //TODO: upgrade to support multi-face profile:
+            out_keys.push_back(new TileKey(0, 0, c, r, this)); // face, lod, x, y, profile
         }
     }
 }
@@ -328,7 +329,8 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
     {
         for (int j = tileMinY; j <= tileMaxY; ++j)
         {
-            out_intersectingKeys.push_back(new TileKey(i, j, destLOD, this));
+            //TODO: does not support multi-face destination keys.
+            out_intersectingKeys.push_back( new TileKey(0, destLOD, i, j, this) );
         }
     }
 

@@ -39,7 +39,10 @@ namespace osgEarth
         // the globe.
         bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
 
+        void setFaceExtent( const GeoExtent& extent );
+
     private:
+        GeoExtent _face_extent;
     };
 }
 

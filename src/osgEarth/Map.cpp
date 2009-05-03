@@ -773,26 +773,22 @@ Map::createGeoImage(const TileKey* mapKey, TileSource* source)
 
         if ( mosaic.valid() )
         {
-            if ( ! mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS() ) )
+            if ( ! (mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS()) ) &&
+                !(mosaic->getSRS()->isMercator() && mapKey->getProfile()->getSRS()->isGeographic() ) )
             {
-                //If the image is Mercator and the Map is Geographic, we can account for this by using a special
-                //MercatorLocator, so we don't actually need to reproject the imagery.
-                if (mosaic->getSRS()->isMercator() && mapKey->getProfile()->getSRS()->isGeographic())
-                {
-                   // crop to fit the map key extents
-                   GeoExtent clampedMapExt = source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
-                   result = mosaic->crop(clampedMapExt.xMin(), clampedMapExt.yMin(),
-                                         clampedMapExt.xMax(), clampedMapExt.yMax());
-                }
-                else
-                {
-                    //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
-                    //crop the image to the correct extents, so there is no need to crop after reprojection.
-                    //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/mosaic_" + mapKey->str() + ".png");
-                    result = mosaic->reproject( mapKey->getProfile()->getSRS(), &mapKey->getGeoExtent() );
-                    //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/reprojected_" + mapKey->str() + ".png");
-                    //osg::notify(osg::NOTICE) << "Reprojected mosaic" << std::endl;
-                }
+                //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
+                //crop the image to the correct extents, so there is no need to crop after reprojection.
+                //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/mosaic_" + mapKey->str() + ".png");
+                result = mosaic->reproject( mapKey->getProfile()->getSRS(), &mapKey->getGeoExtent() );
+                //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/reprojected_" + mapKey->str() + ".png");
+                //osg::notify(osg::NOTICE) << "Reprojected mosaic" << std::endl;
+            }
+            else
+            {
+                // crop to fit the map key extents
+                GeoExtent clampedMapExt = source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
+                result = mosaic->crop(clampedMapExt.xMin(), clampedMapExt.yMin(),
+                    clampedMapExt.xMax(), clampedMapExt.yMax());
             }
         }
     }

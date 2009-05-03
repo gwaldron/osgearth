@@ -166,31 +166,14 @@ Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, i
 {
     out_keys.clear();
 
-    //if ( _face_profiles.size() > 0 )
-    //{
-    //    for( unsigned int f = 0; f < _face_profiles.size(); f++ )
-    //    {
-    //        for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
-    //        {
-    //            for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
-    //            {
-    //                //TODO: upgrade to support multi-face profile:
-    //                out_keys.push_back( new TileKey(f, 0, c, r, _face_profiles[f].get() ) ); // face, lod, x, y, profile
-    //            }
-    //        }
-    //    }
-    //}
-    //else
-    //{
-        for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
+    for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
+    {
+        for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
         {
-            for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
-            {
-                //TODO: upgrade to support multi-face profile:
-                out_keys.push_back( new TileKey(face, 0, c, r, this) ); // face, lod, x, y, profile
-            }
+            //TODO: upgrade to support multi-face profile:
+            out_keys.push_back( new TileKey(face, 0, c, r, this) ); // face, lod, x, y, profile
         }
-    //}
+    }
 }
 
 //TODO: DEPRECATE THIS and replace by examining the SRS itself.

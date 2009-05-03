@@ -50,7 +50,7 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
     {
         // test: the face extent:
         GeoExtent face_extent(
-            NULL, -180.0, 45.0, 180.0, 90.0 );
+            NULL, -180.0, 45.0, -90, 90.0 );
 
         // first expand the local coords into the tile's frame:
         GeoExtent tile_extent(
@@ -72,7 +72,7 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
         gridPoint.y() = n_tile_ext.yMin() + local.y() * n_tile_ext.height();
         gridPoint.z() = local.z();
 
-        //osg::Vec3d gridPoint = local;
+        //gridPoint = local;
         osg::Vec3d s = gridPoint;
         double offset = 0.0;
 
@@ -122,16 +122,6 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
             osg::DegreesToRadians( modelPoint.x() ),
             modelPoint.z(),
             world.x(), world.y(), world.z() );
-
-        //double lat = tile_extent.yMax() - tile_extent.height() * local.x();
-        //double theta = atan2( local.x(), local.y() );
-        //double lon = tile_extent.xMin() + tile_extent.width() * sin( theta );
-
-        //_ellipsoidModel->convertLatLongHeightToXYZ(
-        //    osg::DegreesToRadians(lat),
-        //    osg::DegreesToRadians(lon),
-        //    local.z(),
-        //    world.x(), world.y(), world.z() );
 
         return true;
     }

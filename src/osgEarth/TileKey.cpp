@@ -28,9 +28,10 @@ TileKey::TileKey()
 }
 
 TileKey::TileKey( const TileKey& rhs ) :
+_face(rhs._face),
+_lod(rhs._lod),
 _x(rhs._x),
 _y(rhs._y),
-_lod(rhs._lod),
 _profile( rhs._profile ),
 _extent( rhs._extent)
 {
@@ -40,13 +41,13 @@ _extent( rhs._extent)
 std::string
 TileKey::str() const
 {
-    if ( key.empty() )
+    if ( _key.empty() )
     {
         std::stringstream ss;
         ss << _face << "_" << _lod << "_" << _x << "_" << _y;
-        const_cast<TileKey*>(this)->key = ss.str();
+        const_cast<TileKey*>(this)->_key = ss.str();
     }
-    return key;
+    return _key;
 }
 
 const Profile*

@@ -75,6 +75,19 @@ Profile::create(const std::string& init_string,
     return 0;
 }
 
+Profile*
+Profile::createCube(const SpatialReference* geog_srs)
+{
+    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0 ); //-180.0, -90.0, 180.0, 90.0 );
+    //result->_face_profiles.push_back( new Profile( geog_srs, -180.0, -45.0, -90.0, 45.0 ) );
+    //result->_face_profiles.push_back( new Profile( geog_srs,  -90.0, -45.0,   0.0, 45.0 ) );
+    //result->_face_profiles.push_back( new Profile( geog_srs,    0.0, -45.0,  90.0, 45.0 ) );
+    //result->_face_profiles.push_back( new Profile( geog_srs,   90.0, -45.0, 180.0, 45.0 ) );
+    result->_face_profiles.push_back( new Profile( SpatialReference::create( "square-polar" ), -180.0, 45.0, 180.0, 90.0, 4, 1 ) );
+    //result->_face_profiles.push_back( new Profile( SpatialReference::create( "square-polar" ), -180.0, -90.0, 180.0, -45.0 ) );
+    return result;
+}
+
 /****************************************************************************/
 
 
@@ -134,19 +147,50 @@ Profile::toString() const
     return buf.str();
 }
 
+int
+Profile::getNumFaces() const
+{
+    return _face_profiles.size() > 0? _face_profiles.size() : 1;
+}
+
+const Profile*
+Profile::getFaceProfile( int face ) const
+{
+    return _face_profiles.size() > 0 && face < _face_profiles.size() ?
+        _face_profiles[face] :
+        this;
+}
+
 void
-Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) const
+Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, int face) const
 {
     out_keys.clear();
 
-    for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
-    {
-        for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
+    //if ( _face_profiles.size() > 0 )
+    //{
+    //    for( unsigned int f = 0; f < _face_profiles.size(); f++ )
+    //    {
+    //        for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
+    //        {
+    //            for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
+    //            {
+    //                //TODO: upgrade to support multi-face profile:
+    //                out_keys.push_back( new TileKey(f, 0, c, r, _face_profiles[f].get() ) ); // face, lod, x, y, profile
+    //            }
+    //        }
+    //    }
+    //}
+    //else
+    //{
+        for (unsigned int c = 0; c < _numTilesWideAtLod0; ++c)
         {
-            //TODO: upgrade to support multi-face profile:
-            out_keys.push_back(new TileKey(0, 0, c, r, this)); // face, lod, x, y, profile
+            for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
+            {
+                //TODO: upgrade to support multi-face profile:
+                out_keys.push_back( new TileKey(face, 0, c, r, this) ); // face, lod, x, y, profile
+            }
         }
-    }
+    //}
 }
 
 //TODO: DEPRECATE THIS and replace by examining the SRS itself.

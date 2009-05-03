@@ -23,6 +23,7 @@ SET(LIB_PUBLIC_HEADERS
 	CacheSeed
     Common
     Compositing
+    Cube
 	ElevationManager
     Export
 	FileUtils
@@ -53,6 +54,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Caching.cpp
 	CacheSeed.cpp
 	Compositing.cpp
+	Cube.cpp
 	ElevationManager.cpp
 	FileUtils.cpp
     GeocentricMap.cpp

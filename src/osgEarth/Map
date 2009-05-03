@@ -182,7 +182,7 @@ namespace osgEarth
         TileSourceList _heightfield_sources;
 
         //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
-        osg::observer_ptr<osgEarth::EarthTerrain> _terrain;
+        std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > _terrains;
 
         osg::ref_ptr<osgEarth::ElevationManager> _elevationManager;
 

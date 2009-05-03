@@ -19,6 +19,7 @@
 
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Registry>
+#include <osgEarth/Cube>
 #include <OpenThreads/ScopedLock>
 #include <osg/Notify>
 #include <ogr_api.h>
@@ -121,6 +122,16 @@ SpatialReference::create( const std::string& init )
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
             init,
             "WGS84" );
+    }
+
+    // our custom square polar projection for cube rendering:
+    else if ( low == "square-polar" )
+    {
+        //TODO: replace this --- this is a stub for now
+        srs = createFromPROJ4(
+            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
+            init,
+            "Square Polar" );
     }
 
     else if ( low.find( "+" ) == 0 )
@@ -342,7 +353,16 @@ SpatialReference::createCoordinateSystemNode() const
 osgTerrain::Locator*
 SpatialReference::createLocator() const
 {
-    osgTerrain::Locator* locator = new osgTerrain::Locator();
+    osgTerrain::Locator* locator = NULL;
+    if ( _name == "Square Polar" )
+    {
+        locator = new SquarePolarLocator();
+    }
+    else
+    {
+        locator = new osgTerrain::Locator();
+    }
+    //osgTerrain::Locator* locator = new osgTerrain::Locator();
     locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
     locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
     // note: not setting the format/cs on purpose.

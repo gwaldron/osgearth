@@ -27,6 +27,7 @@ using namespace osgEarth;
 
 #define STR_GLOBAL_GEODETIC "global-geodetic"
 #define STR_GLOBAL_MERCATOR "global-mercator"
+#define STR_CUBE            "cube"
 #define STR_LOCAL           "local"
 
 
@@ -97,12 +98,25 @@ Registry::getGlobalMercatorProfile() const
 }
 
 const Profile*
+Registry::getCubeProfile() const
+{
+    if ( !_cube_profile.valid() )
+    {
+        const SpatialReference* srs = SpatialReference::create( "epsg:4326" );
+        const_cast<Registry*>(this)->_cube_profile = Profile::createCube( srs );
+    }
+    return _cube_profile.get();
+}
+
+const Profile*
 Registry::getNamedProfile( const std::string& name ) const
 {
     if ( name == STR_GLOBAL_GEODETIC )
         return getGlobalGeodeticProfile();
     else if ( name == STR_GLOBAL_MERCATOR )
         return getGlobalMercatorProfile();
+    else if ( name == STR_CUBE )
+        return getCubeProfile();
     else
         return NULL;
 }

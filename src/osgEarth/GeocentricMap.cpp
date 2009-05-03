@@ -19,6 +19,7 @@
 
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/Mercator>
+#include <osgEarth/Cube>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osgEarth/Compositing>
 #include <osgEarth/ImageUtils>
@@ -52,7 +53,7 @@ Map( mapConfig, global_options )
 }
 
 osg::Node*
-GeocentricMap::createQuadrant( const TileKey* key)
+GeocentricMap::createQuadrant( const TileKey* key )
 {
     double min_lon, min_lat, max_lon, max_lat;
     key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
@@ -153,8 +154,13 @@ GeocentricMap::createQuadrant( const TileKey* key)
             }
         }
     }
+
+    osg::ref_ptr<osgTerrain::Locator> locator = key->getProfile()->getSRS()->createLocator();
+
+    // TESTING.
+    //if ( key->getProfile()->getSRS()->getName() == "Square Polar" )
+    //    locator = new SquarePolarLocator( *locator.get() );
            
-    osgTerrain::Locator* locator = getProfile()->getSRS()->createLocator();    
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 	locator->setTransform( getTransformFromExtents(
 		osg::DegreesToRadians( min_lon ),
@@ -187,9 +193,10 @@ GeocentricMap::createQuadrant( const TileKey* key)
     tile->setRequiresNormals( true );
 
     //Assign the terrain system to the TerrainTile
-    if (_terrain.valid())
+    osgTerrain::Terrain* terrain = _terrains[key->getFace()].get();
+    if ( terrain )
     {
-        tile->setTerrain( _terrain.get() );
+        tile->setTerrain( terrain );
     }
 
     int layer = 0;
@@ -200,7 +207,7 @@ GeocentricMap::createQuadrant( const TileKey* key)
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator = getProfile()->getSRS()->createLocator();
+            osg::ref_ptr<osgTerrain::Locator> img_locator = key->getProfile()->getSRS()->createLocator();
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 			
             GeoImage* geo_image = image_tiles[i].get();

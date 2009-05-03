@@ -180,10 +180,9 @@ ProjectedMap::createQuadrant( const TileKey* key )
     }
 
     //Assign the terrain system to the TerrainTile
-    if (_terrain.valid())
-    {
-        tile->setTerrain( _terrain.get() );
-    }
+    osgTerrain::Terrain* terrain = _terrains[key->getFace()].get();
+    if ( terrain )
+        tile->setTerrain( terrain );
 
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)

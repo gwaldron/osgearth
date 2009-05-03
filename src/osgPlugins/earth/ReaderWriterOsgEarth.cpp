@@ -92,6 +92,15 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     mapConfig = new MapConfig();
                     mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
                 }
+                else if ( file_name == "__cube.earth" )
+                {
+                    mapConfig = new MapConfig();
+                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
+                    ProfileConfig* conf = new ProfileConfig();
+                    conf->setNamedProfile( "cube" );
+                    mapConfig->setProfileConfig( conf );
+                    mapConfig->setNormalizeEdges( false );
+                }
                 else
                 {
                     mapConfig = MapConfigReaderWriter::readXml( file_name );
@@ -147,7 +156,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if (map.valid())
                 {
-                  osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, map->getProfile());
+                  const Profile* face_profile = map->getProfile()->getFaceProfile( face );
+                  osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
                   node = map->createNode(key.get());
                 }
                 else

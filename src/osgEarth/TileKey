@@ -156,7 +156,7 @@ namespace osgEarth
         TileKey( const TileKey& rhs );
 
     protected:
-        std::string key;
+        std::string _key;
 
         unsigned int _face;
         unsigned int _lod;

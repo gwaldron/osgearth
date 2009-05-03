@@ -17,39 +17,30 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_GEOCENTRIC_MAP_H
-#define OSGEARTH_GEOCENTRIC_MAP_H 1
+#ifndef OSGEARTH_CUBE_H
+#define OSGEARTH_CUBE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Map>
-#include <osg/Node>
-#include <osg/ClusterCullingCallback>
+#include <osgEarth/TileKey>
+#include <osgTerrain/Locator>
 
 namespace osgEarth
 {
-    /**
-     * A Map that generates geocentric (round-earth/global) scene graph components.
-     *
-     * This is a internal class - do not export
-     */
-    class GeocentricMap : public Map
+    class SquarePolarLocator : public osgTerrain::Locator
     {
     public:
-        /**
-         * Constructs a new geocentric map
-         */
-        GeocentricMap( 
-            MapConfig* mapConfig, 
-            const osgDB::ReaderWriter::Options* options =NULL);
-        
-    protected: // Map interface
+        SquarePolarLocator(); // const osgTerrain::Locator& prototype );
 
-        virtual osg::Node* createQuadrant( const TileKey* key );
+        // This method will generate geocentric vertex coordinates, given local tile
+        // coordinates (0=>1).
+        bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& world) const;
 
-        virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+        // This method will generate the texture coordinates for a given location on
+        // the globe.
+        bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
 
-        static osg::ClusterCullingCallback* createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et);       
+    private:
     };
 }
 
-#endif // OSGEARTH_GEOCENTRIC_MAP_H
+#endif // OSGEARTH_CUBE_H

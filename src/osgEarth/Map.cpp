@@ -49,7 +49,7 @@ static OpenThreads::ReentrantMutex s_mapCacheMutex;
 static unsigned int s_mapID = 0;
 
 //Caches the Maps that have been created
-typedef std::map<unsigned int, osg::observer_ptr<Map>> MapCache;
+typedef std::map<unsigned int, osg::observer_ptr<Map> > MapCache;
 
 static
 MapCache& getCache()
@@ -203,7 +203,8 @@ Map::initializeTileSources()
     TileSource* ref_source = NULL;
 
     //Geocentric maps are always going to be rendered in the global-geodetic profile
-    if (_mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
+    if (_mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC &&
+        ( _mapConfig->getProfileConfig() == NULL || _mapConfig->getProfileConfig()->getNamedProfile() != "cube" ) )
     {
         _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         osg::notify(osg::INFO) << "[osgEarth] Setting Profile to global-geodetic for geocentric scene" << std::endl;
@@ -680,31 +681,38 @@ Map::initialize()
 #endif
     }
 
-    _terrain = new osgEarth::EarthTerrain;//new osgTerrain::Terrain();
-    _terrain->setVerticalScale( _mapConfig->getVerticalScale() );
-    _terrain->setSampleRatio( _mapConfig->getSampleRatio() );
-    csn->addChild( _terrain.get() );
-
-
-    std::vector< osg::ref_ptr<TileKey> > keys;
-    getProfile()->getRootKeys(keys);
-
-    int numAdded = 0;
-    for (unsigned int i = 0; i < keys.size(); ++i)
+    int faces_ok = 0;
+    for( int face = 0; face < getProfile()->getNumFaces(); face++ )
     {
-        osg::Node* node = createNode( keys[i].get() );
-        if (node)
+        EarthTerrain* terrain = new EarthTerrain;//new osgTerrain::Terrain();
+        terrain->setVerticalScale( _mapConfig->getVerticalScale() );
+        terrain->setSampleRatio( _mapConfig->getSampleRatio() );
+        csn->addChild( terrain );
+        _terrains.push_back( terrain );
+
+        std::vector< osg::ref_ptr<TileKey> > keys;
+        getProfile()->getFaceProfile( face )->getRootKeys( keys, face );
+
+        int numAdded = 0;
+        for (unsigned int i = 0; i < keys.size(); ++i)
         {
-            _terrain->addChild(node);
-            numAdded++;
+            osg::Node* node = createNode( keys[i].get() );
+            if (node)
+            {
+                terrain->addChild(node);
+                numAdded++;
+            }
+            else
+            {
+                osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
+            }
         }
-        else
-        {
-            osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
-        }
+        if ( numAdded == keys.size() )
+            faces_ok++;
     }
 
-    if (numAdded == keys.size())
+    if ( faces_ok == getProfile()->getNumFaces() )
+//    if (numAdded == keys.size())
     {
         addChild(csn.release());
     }

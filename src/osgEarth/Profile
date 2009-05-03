@@ -24,6 +24,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
+#include <vector>
 
 namespace osgEarth
 {
@@ -63,6 +64,9 @@ namespace osgEarth
             unsigned int numTilesWideAtLod0 =1,
             unsigned int numTilesHighAtLod0 =1 );
 
+        static Profile* createCube(
+            const SpatialReference* geog_srs);
+
         /**
          * Returns true if the profile is properly initialized.
          */
@@ -89,10 +93,20 @@ namespace osgEarth
         ProfileType getProfileType() const;  
 
         /**
+         * Gets the number of faces in this profile.
+         */
+        int getNumFaces() const;
+
+        /**
+         * Gets the profile assigned to a specific face, if this is a multi-face profile.
+         */
+        const Profile* getFaceProfile( int face ) const;
+
+        /**
          * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
          * profile.
          */
-        void getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys) const;
+        void getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, int face =0) const;
 
         /**
          * Deduces a profile type given an SRS string.
@@ -147,7 +161,8 @@ namespace osgEarth
         GeoExtent _latlong_extent;
         unsigned int _numTilesWideAtLod0;
         unsigned int _numTilesHighAtLod0;
-        //osg::ref_ptr<const SpatialReference> _srs;
+
+        std::vector< osg::ref_ptr<Profile> > _face_profiles;
     };
 }
 

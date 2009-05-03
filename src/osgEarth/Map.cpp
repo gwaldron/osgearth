@@ -35,6 +35,7 @@
 #include <osg/TexEnvCombine>
 #include <osgFX/MultiTextureControl>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
@@ -290,9 +291,9 @@ Map::initializeTileSources()
             {
                 _profile = getSuitableMapProfileFor( sourceProfile.get() );
             }
-            else if ( !sourceProfile.valid() || !_profile->isCompatibleWith( sourceProfile.get() ) )
+            else if ( !sourceProfile.valid() )
             {
-                osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+                osg::notify(osg::WARN) << "[osgEarth] Removing invalid TileSource " << i->get()->getName() << std::endl;
                 i =_image_sources.erase(i);
                 continue;
             }
@@ -324,9 +325,9 @@ Map::initializeTileSources()
             {
                 _profile = getSuitableMapProfileFor( sourceProfile.get() );
             }
-            else if ( !sourceProfile.valid() || !_profile->isCompatibleWith( sourceProfile.get() ) )
+            else if ( !sourceProfile.valid() )
             {
-                osg::notify(osg::WARN) << "[osgEarth] Removing incompatible TileSource " << i->get()->getName() << std::endl;
+                osg::notify(osg::WARN) << "[osgEarth] Removing invalid TileSource " << i->get()->getName() << std::endl;
                 i = _heightfield_sources.erase(i);
                 continue;
             }
@@ -571,6 +572,7 @@ Map::createValidGeoImage(TileSource* tileSource, const TileKey* key)
         }
         image_key = image_key->createParentKey();
     }
+    return 0;
 }
 
 TileSourceList&
@@ -773,19 +775,25 @@ Map::createGeoImage(const TileKey* mapKey, TileSource* source)
         {
             if ( ! mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS() ) )
             {
-                // TODO: reproject the mosaic (unless we're doing the special mercator-locator thing,
-                // which we'll need a setting to enable/disable).
+                //If the image is Mercator and the Map is Geographic, we can account for this by using a special
+                //MercatorLocator, so we don't actually need to reproject the imagery.
+                if (mosaic->getSRS()->isMercator() && mapKey->getProfile()->getSRS()->isGeographic())
+                {
+                   // crop to fit the map key extents
+                   GeoExtent clampedMapExt = source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
+                   result = mosaic->crop(clampedMapExt.xMin(), clampedMapExt.yMin(),
+                                         clampedMapExt.xMax(), clampedMapExt.yMax());
+                }
+                else
+                {
+                    //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
+                    //crop the image to the correct extents, so there is no need to crop after reprojection.
+                    //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/mosaic_" + mapKey->str() + ".png");
+                    result = mosaic->reproject( mapKey->getProfile()->getSRS(), &mapKey->getGeoExtent() );
+                    //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/reprojected_" + mapKey->str() + ".png");
+                    //osg::notify(osg::NOTICE) << "Reprojected mosaic" << std::endl;
+                }
             }
-
-            // crop to fit the map key extents. (NOTE: if we reproject the geo_image, there will be no need to
-            // actually reproject the extents below)
-
-            GeoExtent clampedMapExt =
-                source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
-
-            result = mosaic->crop( clampedMapExt.xMin(), clampedMapExt.yMin(), clampedMapExt.xMax(), clampedMapExt.yMax() );
-
-            //result = mosaic.release();
         }
     }
 

@@ -150,8 +150,6 @@ TileService::createProfile(TilePatternList &patterns)
 
     if (patterns.size() > 0)
     {
-      Profile::ProfileType profileType = Profile::getProfileTypeFromSRS(patterns[0].getSRS());
-
       double maxWidth = -1;
       double maxHeight = -1;
 

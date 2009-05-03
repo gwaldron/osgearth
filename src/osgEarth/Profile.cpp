@@ -189,20 +189,6 @@ Profile::getProfileTypeFromSRS(const std::string& srs_string)
 }
 
 bool
-Profile::isCompatibleWith( const Profile* rhs ) const
-{
-    bool types_compatible =
-        getProfileType() == rhs->getProfileType() ||
-        getProfileType() == Profile::TYPE_GEODETIC && rhs->getProfileType() == Profile::TYPE_MERCATOR ||
-        getProfileType() == Profile::TYPE_MERCATOR && rhs->getProfileType() == Profile::TYPE_GEODETIC;
-
-    return
-        rhs &&
-        isOK() && rhs->isOK() &&
-        types_compatible;
-}
-
-bool
 Profile::isEquivalentTo( const Profile* rhs ) const
 {
     return

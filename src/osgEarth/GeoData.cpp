@@ -21,6 +21,10 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Mercator>
 #include <osg/Notify>
+#include <gdal_priv.h>
+#include <gdalwarper.h>
+#include <ogr_spatialref.h>
+
 
 using namespace osgEarth;
 
@@ -72,7 +76,9 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 
 bool
 GeoExtent::isValid() const {
-    return _srs.valid();
+    return _srs.valid() &&
+           _xmin < _xmax &&
+           _ymin < _ymax;
 }
 
 const SpatialReference*
@@ -204,6 +210,154 @@ GeoImage::crop( double xmin, double ymin, double xmax, double ymax ) const
     return new_image?
         new GeoImage( new_image, GeoExtent( _extent.getSRS(), destXMin, destYMin, destXMax, destYMax ) ) :
         NULL;
+}
+
+osg::Image* createImageFromDataset(GDALDataset* ds)
+{
+    //Allocate the image
+    osg::Image *image = new osg::Image;
+    image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+    ds->RasterIO(GF_Read, 0, 0, image->s(), image->t(), (void*)image->data(), image->s(), image->t(), GDT_Byte, 4, NULL, 4, 4 * image->s(), 1);
+    ds->FlushCache();
+
+    image->flipVertical();
+
+    return image;
+}
+
+GDALDataset* createMemDS(int width, int height, double minX, double minY, double maxX, double maxY, const std::string &projection)
+{
+    //Get the MEM driver
+    GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
+    if (!memDriver)
+    {
+        osg::notify(osg::NOTICE) << "Could not get MEM driver" << std::endl;
+    }
+
+    //Create the in memory dataset.
+    GDALDataset* ds = memDriver->Create("", width, height, 4, GDT_Byte, 0);
+
+    //Initialize the color interpretation
+    ds->GetRasterBand(1)->SetColorInterpretation(GCI_RedBand);
+    ds->GetRasterBand(2)->SetColorInterpretation(GCI_GreenBand);
+    ds->GetRasterBand(3)->SetColorInterpretation(GCI_BlueBand);
+    ds->GetRasterBand(4)->SetColorInterpretation(GCI_AlphaBand);
+
+    //Initialize the geotransform
+    double geotransform[6];
+    double x_units_per_pixel = (maxX - minX) / (double)width;
+    double y_units_per_pixel = (maxY - minY) / (double)height;
+    geotransform[0] = minX;
+    geotransform[1] = x_units_per_pixel;
+    geotransform[2] = 0;
+    geotransform[3] = maxY;
+    geotransform[4] = 0;
+    geotransform[5] = -y_units_per_pixel;
+    ds->SetGeoTransform(geotransform);
+    ds->SetProjection(projection.c_str());
+
+    return ds;
+}
+
+GDALDataset* createDataSetFromImage(const osg::Image* image, double minX, double minY, double maxX, double maxY, const std::string &projection)
+{
+    //Clone the incoming image
+    osg::ref_ptr<osg::Image> clonedImage = new osg::Image(*image);
+
+    //Flip the image
+    clonedImage->flipVertical();  
+
+    GDALDataset* srcDS = createMemDS(image->s(), image->t(), minX, minY, maxX, maxY, projection);
+
+    //Write the image data into the memory dataset
+    //If the image is already RGBA, just read all 4 bands in one call
+    if (image->getPixelFormat() == GL_RGBA)
+    {
+        srcDS->RasterIO(GF_Write, 0, 0, clonedImage->s(), clonedImage->t(), (void*)clonedImage->data(), clonedImage->s(), clonedImage->t(), GDT_Byte, 4, NULL, 4, 4 * image->s(), 1);
+    }
+    else if (image->getPixelFormat() == GL_RGB)
+    {    
+        //osg::notify(osg::NOTICE) << "Reprojecting RGB " << std::endl;
+        //Read the read, green and blue bands
+        srcDS->RasterIO(GF_Write, 0, 0, clonedImage->s(), clonedImage->t(), (void*)clonedImage->data(), clonedImage->s(), clonedImage->t(), GDT_Byte, 3, NULL, 3, 3 * image->s(), 1);
+
+        //Initialize the alpha values to 255.
+        unsigned char *alpha = new unsigned char[clonedImage->s() * clonedImage->t()];
+        memset(alpha, 255, clonedImage->s() * clonedImage->t());
+
+        GDALRasterBand* alphaBand = srcDS->GetRasterBand(4);
+        alphaBand->RasterIO(GF_Write, 0, 0, clonedImage->s(), clonedImage->t(), alpha, clonedImage->s(),clonedImage->t(), GDT_Byte, 0, 0);
+
+        delete[] alpha;
+    }
+    srcDS->FlushCache();
+
+    return srcDS;
+}
+
+osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
+                           const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY)
+{
+    //Create a dataset from the source image
+    GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
+
+
+    void* transformer = GDALCreateGenImgProjTransformer(srcDS, NULL, NULL, destWKT.c_str(), 1, 0, 0);
+
+    double outgeotransform[6];
+    double extents[4];
+    int width,height;
+    GDALSuggestedWarpOutput2(srcDS,
+                             GDALGenImgProjTransform, transformer,
+                             outgeotransform,
+                             &width,
+                             &height,
+                             extents,
+                             0);
+
+   
+    GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
+
+    GDALReprojectImage(srcDS, NULL,
+                       destDS, NULL,
+                       //GDALResampleAlg::GRA_NearestNeighbour,
+                       GDALResampleAlg::GRA_Bilinear,
+                       0,0,0,0,0);                    
+
+    osg::Image* result = createImageFromDataset(destDS);
+    
+    delete srcDS;
+    delete destDS;
+    
+    GDALDestroyGenImgProjTransformer(transformer);
+
+    return result;
+}    
+
+
+
+GeoImage*
+GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) const
+{
+    GDALAllRegister();
+    
+    GeoExtent destExtent;
+    if (to_extent)
+    {
+        destExtent = *to_extent;
+    }
+    else
+    {
+         destExtent = getExtent().transform(to_srs);    
+    }
+   
+    osg::Image* resultImage = reprojectImage(getImage(),
+                                       getSRS()->getWKT(),
+                                       getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
+                                       to_srs->getWKT(),
+                                       destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax());
+    return new GeoImage(resultImage, destExtent);
 }
 
 

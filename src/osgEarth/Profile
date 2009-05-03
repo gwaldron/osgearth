@@ -114,12 +114,6 @@ namespace osgEarth
         static ProfileType getProfileTypeFromSRS(const std::string &srs);
 
         /**
-         * Gets whether or not the Profile is "compatible" with the given profile, i.e.,
-         * whether tiles can be mapped between the two profiles.
-         */
-        bool isCompatibleWith( const Profile* rhs ) const;
-
-        /**
          * Gets whether the two profiles can be treated as equivalent.
          */
         bool isEquivalentTo( const Profile* rhs ) const;

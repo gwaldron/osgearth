@@ -96,6 +96,8 @@ namespace osgEarth
 
         GeoImage* crop( double xmin, double ymin, double xmax, double ymax ) const;
 
+        GeoImage* reproject(const SpatialReference* to_srs, const GeoExtent* to_extent = 0) const;
+
     private:
         osg::ref_ptr<osg::Image> _image;
         GeoExtent _extent;

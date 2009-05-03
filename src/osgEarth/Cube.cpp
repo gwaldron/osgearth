@@ -48,6 +48,10 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
 
     if ( _coordinateSystemType == GEOCENTRIC )
     {
+        // test: the face extent:
+        GeoExtent face_extent(
+            NULL, -180.0, 45.0, 180.0, 90.0 );
+
         // first expand the local coords into the tile's frame:
         GeoExtent tile_extent(
             NULL,
@@ -56,8 +60,20 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
             osg::RadiansToDegrees(_transform(3,0)+_transform(0,0)),
             osg::RadiansToDegrees(_transform(3,1)+_transform(1,1) ) );
 
-        osg::Vec3d gridPoint = local;
-        osg::Vec3d s = local;
+        GeoExtent n_tile_ext(
+            NULL,
+            (tile_extent.xMin()-face_extent.xMin())/face_extent.width(),
+            (tile_extent.yMin()-face_extent.yMin())/face_extent.height(),
+            (tile_extent.xMax()-face_extent.xMin())/face_extent.width(),
+            (tile_extent.yMax()-face_extent.yMin())/face_extent.height() );
+
+        osg::Vec3d gridPoint;
+        gridPoint.x() = n_tile_ext.xMin() + local.x() * n_tile_ext.width();
+        gridPoint.y() = n_tile_ext.yMin() + local.y() * n_tile_ext.height();
+        gridPoint.z() = local.z();
+
+        //osg::Vec3d gridPoint = local;
+        osg::Vec3d s = gridPoint;
         double offset = 0.0;
 
         if ( gridPoint.x() < gridPoint.y() )

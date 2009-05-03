@@ -26,6 +26,18 @@
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT CubeGridUtils
+    {
+    public:
+        static bool LatLonToFaceCoord(const osg::Vec2d& LatLon, osg::Vec2d& Coord, int& Face);
+        static bool FaceCoordToLatLon(const osg::Vec2d& Coord, const int Face, osg::Vec2d& LatLon);
+    protected:
+        CubeGridUtils();
+    };
+
+
+
+
     class SquarePolarLocator : public osgTerrain::Locator
     {
     public:

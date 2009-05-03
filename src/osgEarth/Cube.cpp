@@ -200,7 +200,8 @@ bool CubeGridUtils::FaceCoordToLatLon(const Vec2d& Coord, const int Face, Vec2d&
 
 /********************************************************************************************/
 
-SquarePolarLocator::SquarePolarLocator()
+SquarePolarLocator::SquarePolarLocator(unsigned int face):
+_face(face)
 //const osgTerrain::Locator& prototype ) :
 //osgTerrain::Locator( prototype )
 {
@@ -223,7 +224,28 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
 
     if ( _coordinateSystemType == GEOCENTRIC )
     {
-        // test: the face extent:
+        //Convert the NDC coordinate into face space
+        osg::Vec3d faceCoord = local * _transform;
+
+        osg::Vec2d latLon;
+        CubeGridUtils::FaceCoordToLatLon(osg::Vec2d(faceCoord.x(), faceCoord.y()), _face, latLon);
+
+        //osg::notify(osg::NOTICE) << "LatLon=" << latLon <<  std::endl;
+
+        /*world.x() = latLon.y();
+        world.y() = latLon.x();
+        world.z() = 0;*/
+
+        // convert to geocentric:
+        _ellipsoidModel->convertLatLongHeightToXYZ(
+            osg::DegreesToRadians( latLon.x() ),
+            osg::DegreesToRadians( latLon.y() ),
+            local.z(),
+            world.x(), world.y(), world.z() );
+        //osg::notify(osg::NOTICE) << "XYZ " << world << std::endl;
+        return true;
+
+        /*// test: the face extent:
         GeoExtent face_extent(
             NULL, -180.0, 45.0, -90, 90.0 );
 
@@ -298,9 +320,9 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
             modelPoint.z(),
             world.x(), world.y(), world.z() );
 
-        return true;
-    }
-    return false;
+        return true;*/
+    }    
+    return true;
 }
 
 

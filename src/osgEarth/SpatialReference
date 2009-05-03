@@ -77,12 +77,12 @@ namespace osgEarth
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
         /** Creates a new Locator object based on this spatial reference. */
-        osgTerrain::Locator* createLocator() const;
+        virtual osgTerrain::Locator* createLocator() const;
 
     protected:
         virtual ~SpatialReference();
 
-    private:
+    protected:
         SpatialReference( void* handle, const std::string& type, const std::string& init_str, const std::string& name );
         SpatialReference( void* handle );
         void init();
@@ -114,6 +114,16 @@ namespace osgEarth
 
         static SpatialReference* createFromPROJ4(
             const std::string& proj4, const std::string& alias, const std::string& name ="" );
+    };
+
+    class FaceSpatialReference : public SpatialReference
+    {
+    public:
+        FaceSpatialReference(unsigned int face);
+
+        virtual osgTerrain::Locator* createLocator() const;
+    protected:
+        unsigned int _face;
     };
 }
 

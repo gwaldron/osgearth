@@ -41,7 +41,7 @@ namespace osgEarth
     class SquarePolarLocator : public osgTerrain::Locator
     {
     public:
-        SquarePolarLocator(); // const osgTerrain::Locator& prototype );
+        SquarePolarLocator(unsigned int face); // const osgTerrain::Locator& prototype );
 
         // This method will generate geocentric vertex coordinates, given local tile
         // coordinates (0=>1).
@@ -55,6 +55,7 @@ namespace osgEarth
 
     private:
         GeoExtent _face_extent;
+        unsigned int _face;
     };
 }
 

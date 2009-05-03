@@ -160,13 +160,26 @@ GeocentricMap::createQuadrant( const TileKey* key )
     // TESTING.
     //if ( key->getProfile()->getSRS()->getName() == "Square Polar" )
     //    locator = new SquarePolarLocator( *locator.get() );
-           
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-	locator->setTransform( getTransformFromExtents(
-		osg::DegreesToRadians( min_lon ),
-        osg::DegreesToRadians( min_lat ),
-        osg::DegreesToRadians( max_lon ),
-        osg::DegreesToRadians( max_lat ) ));
+
+    bool isCube = dynamic_cast<SquarePolarLocator*>(locator.get()) != NULL;
+
+    if (isCube)
+    {
+        locator->setTransform( getTransformFromExtents(
+            min_lon,
+            min_lat,
+            max_lon,
+            max_lat));
+    }
+    else
+    {
+        locator->setTransform( getTransformFromExtents(
+            osg::DegreesToRadians( min_lon ),
+            osg::DegreesToRadians( min_lat ),
+            osg::DegreesToRadians( max_lon ),
+            osg::DegreesToRadians( max_lat )));;
+    }
 
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
@@ -223,6 +236,8 @@ GeocentricMap::createQuadrant( const TileKey* key )
             {
                 image_tiles[i]->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
             }
+
+            //TODO:  Check for cube grid here?
             img_locator->setTransform( getTransformFromExtents(
                 osg::DegreesToRadians( img_min_lon ),
                 osg::DegreesToRadians( img_min_lat ),
@@ -251,43 +266,29 @@ GeocentricMap::createQuadrant( const TileKey* key )
     }
     
     osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
-    double x, y, z;
-    ellipsoid->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( (max_lat+min_lat)/2.0 ),
-        osg::DegreesToRadians( (max_lon+min_lon)/2.0 ),
-        0.0,
-        x, y, z );
-    
-    osg::Vec3d centroid( x, y, z );
 
-    double sw_x, sw_y, sw_z;
-    ellipsoid->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( min_lat ),
-        osg::DegreesToRadians( min_lon ),
-        0.0,
-        sw_x, sw_y, sw_z );
 
+    osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
-    double radius = (centroid-osg::Vec3d(sw_x,sw_y,sw_z)).length();
+    double radius = bs.radius();
     double min_range = radius * _mapConfig->getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
     hf->setSkirtHeight(radius * _mapConfig->getSkirtRatio());
 
-    osg::Vec3d normal = centroid;
-    normal.normalize();
-    // dot product: 0 = orthogonal to normal, -1 = equal to normal
-    float deviation = -radius/locator->getEllipsoidModel()->getRadiusPolar();
-            
-    osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
-    tile->setCullCallback( ccc );
+    if (!isCube)
+    {
+        //TODO:  Work on cluster culling computation for cube faces
+        osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
+        tile->setCullCallback( ccc );
+    }
 
     // see if we need to keep subdividing:
     osg::Node* result = tile;
     if ( hasMoreLevels( key ) || empty_map )
     {
         osg::PagedLOD* plod = new osg::PagedLOD();
-        plod->setCenter( centroid );
+        plod->setCenter( bs.center() );
         plod->addChild( tile, min_range, max_range );
         plod->setFileName( 1, createURI( key ) );
         plod->setRange( 1, 0.0, min_range );

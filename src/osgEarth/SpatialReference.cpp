@@ -356,7 +356,7 @@ SpatialReference::createLocator() const
     osgTerrain::Locator* locator = NULL;
     if ( _name == "Square Polar" )
     {
-        locator = new SquarePolarLocator();
+        //locator = new SquarePolarLocator();
     }
     else
     {
@@ -488,4 +488,15 @@ SpatialReference::init()
     }
 
     _initialized = true;
+}
+
+FaceSpatialReference::FaceSpatialReference(unsigned int face):
+SpatialReference(0),
+_face(face)
+{
+}
+
+osgTerrain::Locator* FaceSpatialReference::createLocator() const
+{
+    return new SquarePolarLocator(_face);
 }

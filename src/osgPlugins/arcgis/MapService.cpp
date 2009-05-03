@@ -122,7 +122,7 @@ bool
 MapService::init( const std::string& _url )
 {
     url = _url;
-    std::string json_url = url + "?f=json";  // request the data in JSON format
+    std::string json_url = url + "?f=json&pretty=true";  // request the data in JSON format
 
     HTTPClient client;
     osg::ref_ptr<HTTPResponse> response = client.get( json_url );

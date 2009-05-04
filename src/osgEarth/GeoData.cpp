@@ -322,7 +322,7 @@ osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, doubl
     GDALReprojectImage(srcDS, NULL,
                        destDS, NULL,
                        //GDALResampleAlg::GRA_NearestNeighbour,
-                       GDALResampleAlg::GRA_Bilinear,
+                       GRA_Bilinear,
                        0,0,0,0,0);                    
 
     osg::Image* result = createImageFromDataset(destDS);

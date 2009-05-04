@@ -26,7 +26,7 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT CubeGridUtils
+    class CubeGridUtils
     {
     public:
         static bool LatLonToFaceCoord(const osg::Vec2d& LatLon, osg::Vec2d& Coord, int& Face);
@@ -36,12 +36,10 @@ namespace osgEarth
     };
 
 
-
-
-    class SquarePolarLocator : public osgTerrain::Locator
+    class CubeFaceLocator : public osgTerrain::Locator
     {
     public:
-        SquarePolarLocator(unsigned int face); // const osgTerrain::Locator& prototype );
+        CubeFaceLocator(unsigned int face);
 
         // This method will generate geocentric vertex coordinates, given local tile
         // coordinates (0=>1).
@@ -51,12 +49,22 @@ namespace osgEarth
         // the globe.
         bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
 
-        void setFaceExtent( const GeoExtent& extent );
-
     private:
-        GeoExtent _face_extent;
         unsigned int _face;
     };
+    
+
+    class CubeFaceSpatialReference : public SpatialReference
+    {
+    public:
+        CubeFaceSpatialReference(unsigned int face);
+
+        virtual osgTerrain::Locator* createLocator( double xmin, double ymin, double xmax, double ymax ) const;
+
+    protected:
+        unsigned int _face;
+    };
+
 }
 
 #endif // OSGEARTH_CUBE_H

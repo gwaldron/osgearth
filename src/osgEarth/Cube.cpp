@@ -200,26 +200,19 @@ bool CubeGridUtils::FaceCoordToLatLon(const Vec2d& Coord, const int Face, Vec2d&
 
 /********************************************************************************************/
 
-SquarePolarLocator::SquarePolarLocator(unsigned int face):
+CubeFaceLocator::CubeFaceLocator(unsigned int face):
 _face(face)
-//const osgTerrain::Locator& prototype ) :
-//osgTerrain::Locator( prototype )
 {
-    // assumption: incoming key and image extent are square polar.
+    //NOP
 }
 
-void
-SquarePolarLocator::setFaceExtent( const GeoExtent& face_extent )
-{
-    _face_extent = face_extent;
-}
 
 bool
-SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world ) const
+CubeFaceLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world ) const
 {
 #if ((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION < 8))
     // OSG 2.7 bug workaround: bug fix in Locator submitted by GW
-    const_cast<SquarePolarLocator*>(this)->_inverse.invert( _transform );
+    const_cast<CubeFaceLocator*>(this)->_inverse.invert( _transform );
 #endif
 
     if ( _coordinateSystemType == GEOCENTRIC )
@@ -232,10 +225,6 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
 
         //osg::notify(osg::NOTICE) << "LatLon=" << latLon <<  std::endl;
 
-        /*world.x() = latLon.y();
-        world.y() = latLon.x();
-        world.z() = 0;*/
-
         // convert to geocentric:
         _ellipsoidModel->convertLatLongHeightToXYZ(
             osg::DegreesToRadians( latLon.x() ),
@@ -244,94 +233,17 @@ SquarePolarLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& wo
             world.x(), world.y(), world.z() );
         //osg::notify(osg::NOTICE) << "XYZ " << world << std::endl;
         return true;
-
-        /*// test: the face extent:
-        GeoExtent face_extent(
-            NULL, -180.0, 45.0, -90, 90.0 );
-
-        // first expand the local coords into the tile's frame:
-        GeoExtent tile_extent(
-            NULL,
-            osg::RadiansToDegrees(_transform(3,0)),
-            osg::RadiansToDegrees(_transform(3,1)),
-            osg::RadiansToDegrees(_transform(3,0)+_transform(0,0)),
-            osg::RadiansToDegrees(_transform(3,1)+_transform(1,1) ) );
-
-        GeoExtent n_tile_ext(
-            NULL,
-            (tile_extent.xMin()-face_extent.xMin())/face_extent.width(),
-            (tile_extent.yMin()-face_extent.yMin())/face_extent.height(),
-            (tile_extent.xMax()-face_extent.xMin())/face_extent.width(),
-            (tile_extent.yMax()-face_extent.yMin())/face_extent.height() );
-
-        osg::Vec3d gridPoint;
-        gridPoint.x() = n_tile_ext.xMin() + local.x() * n_tile_ext.width();
-        gridPoint.y() = n_tile_ext.yMin() + local.y() * n_tile_ext.height();
-        gridPoint.z() = local.z();
-
-        //gridPoint = local;
-        osg::Vec3d s = gridPoint;
-        double offset = 0.0;
-
-        if ( gridPoint.x() < gridPoint.y() )
-        {
-            if ( gridPoint.x() + gridPoint.y() < 1.0 )
-            {
-                s.x() = 1.0 - gridPoint.y();
-                s.y() = gridPoint.x();
-                offset += 3;
-            }
-            else
-            {
-                s.y() = 1.0 - gridPoint.y();
-                s.x() = 1.0 - gridPoint.x();
-                offset += 2;
-            }
-        }
-        else if ( gridPoint.x() + gridPoint.y() >= 1.0 )
-        {
-            s.x() = gridPoint.y();
-            s.y() = 1.0 - gridPoint.x();
-            offset += 1.0;
-        }
-
-        s.x() -= s.y();
-        if ( s.y() != 0.5 )
-        {
-            s.x() *= 0.5/(0.5 - s.y());
-        }
-
-        s.x() = 0.25 * ( s.x() + offset );
-        s.y() = 0.5  * ( s.y() + 1.5 );
-
-
-        //TODO: account for south face...
-
-        // convert to lat/lon:
-        osg::Vec3d modelPoint;
-        modelPoint.x() = s.x() * 360.0 - 180.0;
-        modelPoint.y() = s.y() * 180.0 - 90.0;
-        modelPoint.z() = gridPoint.z();
-
-        // convert to geocentric:
-        _ellipsoidModel->convertLatLongHeightToXYZ(
-            osg::DegreesToRadians( modelPoint.y() ),
-            osg::DegreesToRadians( modelPoint.x() ),
-            modelPoint.z(),
-            world.x(), world.y(), world.z() );
-
-        return true;*/
     }    
     return true;
 }
 
 
 bool
-SquarePolarLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
+CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
 {
 #if ((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION < 8))
     // OSG 2.7 bug workaround: bug fix in Locator submitted by GW
-    const_cast<SquarePolarLocator*>(this)->_inverse.invert( _transform );
+    const_cast<CubeFaceLocator*>(this)->_inverse.invert( _transform );
 #endif
 
     switch(_coordinateSystemType)
@@ -361,3 +273,29 @@ SquarePolarLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& loc
     return false;
 }
 
+
+/********************************************************************************************/
+
+
+CubeFaceSpatialReference::CubeFaceSpatialReference(unsigned int face) :
+SpatialReference(0),
+_face(face)
+{
+
+}
+
+osgTerrain::Locator*
+CubeFaceSpatialReference::createLocator( double xmin, double ymin, double xmax, double ymax ) const
+{
+    osgTerrain::Locator* result = new CubeFaceLocator( _face );
+
+    osg::Matrixd transform;
+    transform.set(
+        xmax-xmin, 0.0,       0.0, 0.0,
+        0.0,       ymax-ymin, 0.0, 0.0,
+        0.0,       0.0,       1.0, 0.0,
+        xmin,      ymin,      0.0, 1.0); 
+    result->setTransform( transform );
+
+    return result;
+}

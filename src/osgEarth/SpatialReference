@@ -38,16 +38,19 @@ namespace osgEarth
 
     public:
         /** Transform a point to another SRS. */
-        bool transform(
+        virtual bool transform(
             double x, double y,
             const SpatialReference* to_srs,
             double& out_x, double& out_y ) const;
 
         /** True is this is a geographic SRS (i.e. unprojected lat/long) */
-        bool isGeographic() const;
+        virtual bool isGeographic() const;
 
         /** True if this is a projected SRS (i.e. local coordinate system) */
-        bool isProjected() const;
+        virtual bool isProjected() const;
+
+        /** Tests whether this SRS represents a Mercator projection. */
+        bool isMercator() const;
 
         /** Gets the readable name of this SRS. */
         const std::string& getName() const;
@@ -65,10 +68,7 @@ namespace osgEarth
         const std::string& getInitString() const;
 
         /** Tests this SRS for equivalence with another. */
-        bool isEquivalentTo( const SpatialReference* rhs ) const;
-
-        /** Tests whether this SRS represents a Mercator projection. */
-        bool isMercator() const;
+        virtual bool isEquivalentTo( const SpatialReference* rhs ) const;
 
         /** Gets a reference to this SRS's underlying geographic SRS. */
         const SpatialReference* getGeographicSRS() const;
@@ -77,7 +77,7 @@ namespace osgEarth
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
         /** Creates a new Locator object based on this spatial reference. */
-        virtual osgTerrain::Locator* createLocator() const;
+        virtual osgTerrain::Locator* createLocator( double xmin, double ymin, double xmax, double ymax ) const;
 
     protected:
         virtual ~SpatialReference();
@@ -116,15 +116,6 @@ namespace osgEarth
             const std::string& proj4, const std::string& alias, const std::string& name ="" );
     };
 
-    class FaceSpatialReference : public SpatialReference
-    {
-    public:
-        FaceSpatialReference(unsigned int face);
-
-        virtual osgTerrain::Locator* createLocator() const;
-    protected:
-        unsigned int _face;
-    };
 }
 
 

@@ -152,8 +152,9 @@ ProjectedMap::createQuadrant( const TileKey* key )
         scaleHeightFieldToDegrees( hf.get() );
     }
 
-    osgTerrain::Locator* geo_locator = getProfile()->getSRS()->createLocator();
-	geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
+    osgTerrain::Locator* geo_locator = getProfile()->getSRS()->createLocator(
+        xmin, ymin, xmax, ymax );
+	//geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     
     hf->setOrigin( osg::Vec3d( xmin, ymin, 0.0 ) );
     hf->setXInterval( (xmax - xmin)/(double)(hf->getNumColumns()-1) );
@@ -192,21 +193,24 @@ ProjectedMap::createQuadrant( const TileKey* key )
             double img_xmin, img_ymin, img_xmax, img_ymax;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator = getProfile()->getSRS()->createLocator();
+            osg::ref_ptr<osgTerrain::Locator> img_locator;
 
             GeoImage* geo_image = image_tiles[i].get();
             //Special case for when the map is geographic and the image is Mercator
             if ( getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
             {
-                img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
                 //Transform the mercator extents to geographic
-                image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS()).getBounds(img_xmin, img_ymin, img_xmax, img_ymax);
+                GeoExtent geog_ext = image_tiles[i]->getExtent().transform( image_tiles[i]->getExtent().getSRS()->getGeographicSRS() );
+                geog_ext.getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
+                img_locator = getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
+                img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
             }
             else
             {
-              image_tiles[i]->getExtent().getBounds(img_xmin, img_ymin, img_xmax, img_ymax);
+                image_tiles[i]->getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
+                img_locator = getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
             }
-            img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
+            //img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
             img_layer->setLocator( img_locator.get() );

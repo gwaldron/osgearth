@@ -155,31 +155,32 @@ GeocentricMap::createQuadrant( const TileKey* key )
         }
     }
 
-    osg::ref_ptr<osgTerrain::Locator> locator = key->getProfile()->getSRS()->createLocator();
+    osg::ref_ptr<osgTerrain::Locator> locator = key->getProfile()->getSRS()->createLocator(
+        min_lon, min_lat, max_lon, max_lat );
 
     // TESTING.
     //if ( key->getProfile()->getSRS()->getName() == "Square Polar" )
     //    locator = new SquarePolarLocator( *locator.get() );
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-    bool isCube = dynamic_cast<SquarePolarLocator*>(locator.get()) != NULL;
+    bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
 
-    if (isCube)
-    {
-        locator->setTransform( getTransformFromExtents(
-            min_lon,
-            min_lat,
-            max_lon,
-            max_lat));
-    }
-    else
-    {
-        locator->setTransform( getTransformFromExtents(
-            osg::DegreesToRadians( min_lon ),
-            osg::DegreesToRadians( min_lat ),
-            osg::DegreesToRadians( max_lon ),
-            osg::DegreesToRadians( max_lat )));;
-    }
+    //if (isCube)
+    //{
+    //    locator->setTransform( getTransformFromExtents(
+    //        min_lon,
+    //        min_lat,
+    //        max_lon,
+    //        max_lat));
+    //}
+    //else
+    //{
+    //    locator->setTransform( getTransformFromExtents(
+    //        osg::DegreesToRadians( min_lon ),
+    //        osg::DegreesToRadians( min_lat ),
+    //        osg::DegreesToRadians( max_lon ),
+    //        osg::DegreesToRadians( max_lat ) ) );
+    //}
 
     hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
     hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
@@ -220,29 +221,33 @@ GeocentricMap::createQuadrant( const TileKey* key )
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator = key->getProfile()->getSRS()->createLocator();
-            img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+            osg::ref_ptr<osgTerrain::Locator> img_locator; // = key->getProfile()->getSRS()->createLocator();
 			
             GeoImage* geo_image = image_tiles[i].get();
 
             // Use a special locator for mercator images (instead of reprojecting)
             if ( geo_image->getSRS()->isMercator() )
             {
+                GeoExtent geog_ext = image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS());
+                geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat );
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
                 //Transform the mercator extents to geographic
-                image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS()).getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
             }
             else
             {
                 image_tiles[i]->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat );
             }
 
+            img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+
             //TODO:  Check for cube grid here?
-            img_locator->setTransform( getTransformFromExtents(
-                osg::DegreesToRadians( img_min_lon ),
-                osg::DegreesToRadians( img_min_lat ),
-                osg::DegreesToRadians( img_max_lon ),
-                osg::DegreesToRadians( img_max_lat )));
+            //img_locator->setTransform( getTransformFromExtents(
+            //    osg::DegreesToRadians( img_min_lon ),
+            //    osg::DegreesToRadians( img_min_lat ),
+            //    osg::DegreesToRadians( img_max_lon ),
+            //    osg::DegreesToRadians( img_max_lat )));
 
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );

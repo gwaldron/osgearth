@@ -350,22 +350,41 @@ SpatialReference::createCoordinateSystemNode() const
     return csn;
 }
 
-osgTerrain::Locator*
-SpatialReference::createLocator() const
+// Make a MatrixTransform suitable for use with a Locator object based on the given extents.
+// Calling Locator::setTransformAsExtents doesn't work with OSG 2.6 due to the fact that the
+// _inverse member isn't updated properly.  Calling Locator::setTransform works correctly.
+static osg::Matrixd
+getTransformFromExtents(double minX, double minY, double maxX, double maxY)
 {
-    osgTerrain::Locator* locator = NULL;
-    if ( _name == "Square Polar" )
-    {
-        //locator = new SquarePolarLocator();
-    }
-    else
-    {
-        locator = new osgTerrain::Locator();
-    }
-    //osgTerrain::Locator* locator = new osgTerrain::Locator();
+    osg::Matrixd transform;
+    transform.set(
+        maxX-minX, 0.0,       0.0, 0.0,
+        0.0,       maxY-minY, 0.0, 0.0,
+        0.0,       0.0,       1.0, 0.0,
+        minX,      minY,      0.0, 1.0); 
+    return transform;
+}
+
+osgTerrain::Locator*
+SpatialReference::createLocator(  double xmin, double ymin, double xmax, double ymax ) const
+{
+    osgTerrain::Locator* locator = new osgTerrain::Locator();
     locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
     locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
     // note: not setting the format/cs on purpose.
+
+    if ( isGeographic() )
+    {
+        locator->setTransform( getTransformFromExtents(
+            osg::DegreesToRadians( xmin ),
+            osg::DegreesToRadians( ymin ),
+            osg::DegreesToRadians( xmax ),
+            osg::DegreesToRadians( ymax ) ) );
+    }
+    else
+    {
+        locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
+    }
     return locator;
 }
 
@@ -488,15 +507,4 @@ SpatialReference::init()
     }
 
     _initialized = true;
-}
-
-FaceSpatialReference::FaceSpatialReference(unsigned int face):
-SpatialReference(0),
-_face(face)
-{
-}
-
-osgTerrain::Locator* FaceSpatialReference::createLocator() const
-{
-    return new SquarePolarLocator(_face);
 }

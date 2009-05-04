@@ -108,7 +108,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
                 if (image)
                 {
                     osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
-                    image_tiles.push_back(image);
+                    image_tiles[i] = image;
                 }
                 else
                 {

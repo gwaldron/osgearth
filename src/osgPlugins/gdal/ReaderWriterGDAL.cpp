@@ -460,7 +460,8 @@ public:
       TileSource( options ),
       _tile_size(256),
       _srcDS(NULL),
-      _warpedDS(NULL)
+      _warpedDS(NULL),
+      _maxDataLevel(30)
     {
         static bool s_gdal_registered = false;
         if (!s_gdal_registered)
@@ -639,12 +640,40 @@ public:
                 << _warpedDS->GetProjectionRef() << std::endl;
         }
 
+        //Compute the min and max data levels
+        double resolutionX = (_extentsMax.x() - _extentsMin.x()) / (double)_warpedDS->GetRasterXSize();
+        double resolutionY = (_extentsMax.y() - _extentsMin.y()) / (double)_warpedDS->GetRasterYSize();
+
+        double maxResolution = osg::maximum(resolutionX, resolutionY);
+
+        //osg::notify(osg::NOTICE) << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+
+        unsigned int max_level = 30;
+        for (unsigned int i = 0; i < max_level; ++i)
+        {
+            _maxDataLevel = i;
+            double w, h;
+            profile->getTileDimensions(i, w, h);
+            double resX = (w / (double)_tile_size);
+            double resY = (h / (double)_tile_size);
+            
+            if (resX < maxResolution || resY < maxResolution)
+            {
+                break;
+            }
+        }
+
+        //osg::notify(osg::NOTICE) << "Max Data Level=" << _maxDataLevel << std::endl;
+
+
+
+
         return profile;
     }
 
 
     /**
-    * Finds a raster band based on color interpretation
+    * Finds a raster band based on color interpretation 
     */
     static GDALRasterBand* findBand(GDALDataset *ds, GDALColorInterp colorInterp)
     {
@@ -664,6 +693,12 @@ public:
     osg::Image* createImage( const TileKey* key )
     {
         OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(s_mutex);
+
+        if (key->getLevelOfDetail() > _maxDataLevel)
+        {
+            //osg::notify(osg::NOTICE) << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+            return NULL;
+        }
 
         osg::ref_ptr<osg::Image> image;
         if (intersects(key))
@@ -715,7 +750,7 @@ public:
                 off_y = 0;
             }
 
-            //osg::notify(osg::NOTICE) << "ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
+            osg::notify(osg::INFO) << "ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
 
             //Return if parameters are out of range.
             if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0) return 0;
@@ -1022,6 +1057,8 @@ private:
     int             _tile_size;
     std::string     _extensions;
     ElevationInterpolation   _interpolation;
+
+    unsigned int _maxDataLevel;
 };
 
 

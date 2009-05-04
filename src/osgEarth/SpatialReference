@@ -103,6 +103,9 @@ namespace osgEarth
 
         typedef std::map<std::string,void*> TransformHandleCache;
         TransformHandleCache _transformHandleCache;
+
+        virtual bool preTransform(double &x, double &y) const {return true;}
+        virtual bool postTransform(double &x, double &y) const { return true;}
         
     private:
 
@@ -114,6 +117,8 @@ namespace osgEarth
 
         static SpatialReference* createFromPROJ4(
             const std::string& proj4, const std::string& alias, const std::string& name ="" );
+
+        static SpatialReference* createCube(unsigned int face);
     };
 
 }

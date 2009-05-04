@@ -60,6 +60,26 @@ SpatialReference::createFromPROJ4( const std::string& init, const std::string& i
 }
 
 SpatialReference*
+SpatialReference::createCube(unsigned int face)
+{
+    std::string init = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+
+    SpatialReference* result = NULL;
+    OGR_SCOPE_LOCK();
+	void* handle = OSRNewSpatialReference( NULL );
+    if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
+	{
+        result = new CubeFaceSpatialReference( handle, face );
+	}
+	else 
+	{
+		osg::notify(osg::WARN) << "Unable to create spatial reference from PROJ4: " << init << std::endl;
+		OSRDestroySpatialReference( handle );
+	}
+    return result;
+}
+
+SpatialReference*
 SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
 {
     SpatialReference* result = NULL;
@@ -123,15 +143,12 @@ SpatialReference::create( const std::string& init )
             init,
             "WGS84" );
     }
-
     // our custom square polar projection for cube rendering:
-    else if ( low == "square-polar" )
+    else if ( ( low.size() == 11 ) && (low.substr(0,10) == "world-cube") )
     {
-        //TODO: replace this --- this is a stub for now
-        srs = createFromPROJ4(
-            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
-            init,
-            "Square Polar" );
+        //Try to extract a face from the string.
+        unsigned int face = atoi(&low[10]);
+        srs = createCube( face );
     }
 
     else if ( low.find( "+" ) == 0 )
@@ -396,6 +413,8 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 
     OGR_SCOPE_LOCK();
 
+    preTransform(x, y);
+
     void* xform_handle = NULL;
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
@@ -428,6 +447,8 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
         result = true;
         out_x = temp_x;
         out_y = temp_y;
+
+        out_srs->postTransform(out_x, out_y);
     }
     else
     {

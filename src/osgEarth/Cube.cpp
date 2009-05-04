@@ -277,8 +277,8 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 /********************************************************************************************/
 
 
-CubeFaceSpatialReference::CubeFaceSpatialReference(unsigned int face) :
-SpatialReference(0),
+CubeFaceSpatialReference::CubeFaceSpatialReference(void *handle, unsigned int face) :
+SpatialReference(handle),
 _face(face)
 {
 
@@ -298,4 +298,46 @@ CubeFaceSpatialReference::createLocator( double xmin, double ymin, double xmax, 
     result->setTransform( transform );
 
     return result;
+}
+
+bool
+CubeFaceSpatialReference::preTransform(double &x, double &y) const
+{
+    //Convert the incoming points from face coordinates to lat/lon
+    osg::Vec2d latLon;
+    bool success = CubeGridUtils::FaceCoordToLatLon(osg::Vec2d(x,y), _face, latLon);
+    if (!success)
+    {
+        osg::notify(osg::WARN) << "[osgEarth::CubeFaceSpatialReference could not transform face coordinates to lat lon" << std::endl;
+        return false;
+    }
+    x = latLon.y();
+    y = latLon.x();
+    return true;
+}
+
+bool
+CubeFaceSpatialReference::postTransform(double &x, double &y) const
+{
+    //Convert the incoming points from lat/lon to face coordinates
+    int face;
+    osg::Vec2d coord;
+    bool success = CubeGridUtils::LatLonToFaceCoord(osg::Vec2d(y,x), coord, face);
+    if (!success)
+    {
+        osg::notify(osg::WARN) << "[osgEarth::CubeFaceSpatialReference could not transform face coordinates to lat lon" << std::endl;
+        return false;
+    }
+
+    //Make sure the face is the same as the computed face
+    if (_face != face)
+    {
+        osg::notify(osg::WARN) << "[osgEarth::CubeFaceSpatialReference lat lon " << y << ", " << x << " outside bounds for Cube face " << _face << std::endl;
+        return false;
+    }
+    
+    x = coord.x();
+    y = coord.y();
+
+    return true;
 }

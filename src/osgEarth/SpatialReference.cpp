@@ -284,6 +284,16 @@ SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
     if ( this == rhs )
         return true;
 
+    const CubeFaceSpatialReference* cube_lhs = dynamic_cast< const CubeFaceSpatialReference*>(this);
+    const CubeFaceSpatialReference* cube_rhs = dynamic_cast< const CubeFaceSpatialReference*>(rhs);
+
+    if (cube_lhs && !cube_rhs) return false;
+    if (cube_rhs && !cube_lhs) return false;
+    if (cube_lhs && cube_rhs)
+    {
+        return cube_lhs->getFace() == cube_rhs->getFace();
+    }
+
     if ( _init_str_lc == rhs->_init_str_lc )
         return true;
 
@@ -419,7 +429,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        osg::notify(osg::INFO) << "[osgEarth::SpatialReference] using cached transform handle" << std::endl;
+        osg::notify(osg::DEBUG_INFO) << "[osgEarth::SpatialReference] using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else

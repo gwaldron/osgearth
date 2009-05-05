@@ -74,7 +74,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
             if (_image_sources[i]->isKeyValid(key))
             {
                 //image = createImage(key, _image_sources[i].get());    
-                image = createGeoImage( key, _image_sources[i].get() );
+                image = createGeoImage( key, _image_sources[i].get() );                
             }
             image_tiles.push_back(image);
         }
@@ -103,7 +103,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
         osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
-        return NULL;
+        //return NULL;
     }
    
     //Try to interpolate any missing _image_sources from parent tiles

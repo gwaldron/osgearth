@@ -121,10 +121,32 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
 {       
     if ( isValid() && to_srs )
     {
-        double to_xmin, to_ymin, to_xmax, to_ymax;
+        /*double to_xmin, to_ymin, to_xmax, to_ymax;
         int err = 0;
         err += _srs->transform( _xmin, _ymin, to_srs, to_xmin, to_ymin )? 0 : 1;
         err += _srs->transform( _xmax, _ymax, to_srs, to_xmax, to_ymax )? 0 : 1;
+        */
+
+        double ll_x, ll_y;
+        double ul_x, ul_y;
+        double ur_x, ur_y;
+        double lr_x, lr_y;
+        int err = 0;
+        err += _srs->transform(_xmin, _ymin, to_srs, ll_x, ll_y) ? 0: 1;
+        err += _srs->transform(_xmin, _ymax, to_srs, ul_x, ul_y) ? 0: 1;
+        err += _srs->transform(_xmax, _ymax, to_srs, ur_x, ur_y) ? 0: 1;
+        err += _srs->transform(_xmax, _ymin, to_srs, lr_x, lr_y) ? 0: 1;
+
+        double to_xmin = osg::minimum(ll_x, osg::minimum(ul_x, osg::minimum(ur_x, lr_x) ) );
+        double to_ymin = osg::minimum(ll_y, osg::minimum(ul_y, osg::minimum(ur_y, lr_y) ) );
+        double to_xmax = osg::maximum(ll_x, osg::maximum(ul_x, osg::maximum(ur_x, lr_x) ) );
+        double to_ymax = osg::maximum(ll_y, osg::maximum(ul_y, osg::maximum(ur_y, lr_y) ) );
+
+        osg::notify(osg::NOTICE) << "Transformed extent " 
+            << to_xmin << ", " << to_ymin << "  to " << to_xmax << ", " << to_ymax << std::endl;
+
+
+
         if ( err > 0 )
         {
             osg::notify(osg::WARN)
@@ -335,6 +357,54 @@ osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, doubl
     return result;
 }    
 
+osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent)
+{
+    unsigned int width = 256;
+    unsigned int height = 256;
+
+    osg::Image *result = new osg::Image();
+    result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+    double dx = (dest_extent.xMax() - dest_extent.xMin()) / (double)width;
+    double dy = (dest_extent.yMax() - dest_extent.yMin()) / (double)height;
+
+    for (unsigned int c = 0; c < width; ++c)
+    {
+        double dest_x = dest_extent.xMin() + (double)c * dx;
+        for (unsigned int r = 0; r < height; ++r)
+        {
+            double dest_y = dest_extent.yMin() + (double)r * dy;
+
+            double src_x, src_y;
+
+            //Convert the requested sample point to the SRS of the source image
+            dest_extent.getSRS()->transform(dest_x, dest_y, src_extent.getSRS(), src_x, src_y);
+
+            //Find the pixel in the source image that would correspond to that location
+            double px = (((src_x - src_extent.xMin()) / (src_extent.xMax() - src_extent.xMin())) * (double)image->s());
+            double py = (((src_y - src_extent.yMin()) / (src_extent.yMax() - src_extent.yMin())) * (double)image->t());
+
+            osg::Vec4 color(0,0,0,0);
+
+            int px_i = (int)px;
+            int py_i = (int)py;
+
+            if (px_i >= 0 && px_i < image->s() &&
+                py_i >= 0 && py_i < image->t())
+            {
+                //osg::notify(osg::NOTICE) << "Sampling pixel " << px << "," << py << std::endl;
+                color = image->getColor(px_i, py_i);
+            }
+
+            result->data(c, r)[0] = (unsigned char)(color.r() * 255);
+            result->data(c, r)[1] = (unsigned char)(color.g() * 255);
+            result->data(c, r)[2] = (unsigned char)(color.b() * 255);
+            result->data(c, r)[3] = (unsigned char)(color.a() * 255);
+        }
+    }
+    return result;
+}
+
 
 
 GeoImage*
@@ -351,12 +421,20 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) 
     {
          destExtent = getExtent().transform(to_srs);    
     }
+
+    osg::notify(osg::NOTICE) << "Reprojecting image " << std::endl;
    
-    osg::Image* resultImage = reprojectImage(getImage(),
+    /*osg::Image* resultImage = reprojectImage(getImage(),
                                        getSRS()->getWKT(),
                                        getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
                                        to_srs->getWKT(),
-                                       destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax());
+                                       destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax());*/
+    osg::Image* resultImage = manualReproject(getImage(), getExtent(), *to_extent);
+
+    if (resultImage)
+    {
+        osg::notify(osg::NOTICE) << "Reprojected image ok " << std::endl;
+    }
     return new GeoImage(resultImage, destExtent);
 }
 

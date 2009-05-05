@@ -231,6 +231,9 @@ CubeFaceLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world
             osg::DegreesToRadians( latLon.y() ),
             local.z(),
             world.x(), world.y(), world.z() );
+        /*world.x() = faceCoord.x();
+        world.y() = faceCoord.y();
+        world.z() = 0.0;*/
         //osg::notify(osg::NOTICE) << "XYZ " << world << std::endl;
         return true;
     }    
@@ -249,14 +252,38 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
     switch(_coordinateSystemType)
     {
     case(GEOCENTRIC):
-        {
-            //TODO: implement this correctly... this is just stub code from Locator
+        {         
             double longitude, latitude, height;
 
-            _ellipsoidModel->convertXYZToLatLongHeight(world.x(), world.y(), world.z(),
-                latitude, longitude, height );
+            _ellipsoidModel->convertXYZToLatLongHeight(world.x(), world.y(), world.z(), latitude, longitude, height );
+            int face;
+            osg::Vec2d coord;
 
-            local = osg::Vec3d(longitude, latitude, height) * _inverse;
+            /*coord.x() = world.x();
+            coord.y() = world.y();
+            height = world.z();*/
+
+
+            bool success = CubeGridUtils::LatLonToFaceCoord(osg::Vec2d(osg::RadiansToDegrees(latitude), osg::RadiansToDegrees(longitude)), coord, face);
+            if (!success)
+            {
+                osg::notify(osg::NOTICE) << "Couldn't convert to face coords " << std::endl;
+            }
+            if (face != _face)
+            {
+                osg::notify(osg::NOTICE) << "Face should be " << _face << " but is " << face << std::endl;
+            }
+
+            //osg::notify(osg::NOTICE) << "Coord= " << coord << std::endl;
+            local = osg::Vec3d(coord.x(), coord.y(), height) * _inverse;
+            if (local.x() < 0 || local.y() < 0 || local.x() > 1 || local.y() > 1)
+            {
+                osg::notify(osg::NOTICE) << "Local Coord out of range:  " << osg::RadiansToDegrees(latitude) << ", " << osg::RadiansToDegrees(longitude) << " coord=" << coord << "  " <<  "local=" << local << std::endl;
+                local.x() = 0;
+                local.y() = 0;
+                local.z() = 0;
+            }
+            //osg::notify(osg::NOTICE) << "Local= " << local << std::endl;
             return true;
         }
 

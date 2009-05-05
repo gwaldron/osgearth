@@ -208,6 +208,7 @@ Map::initializeTileSources()
         ( _mapConfig->getProfileConfig() == NULL || _mapConfig->getProfileConfig()->getNamedProfile() != "cube" ) )
     {
         _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        //_profile = osgEarth::Registry::instance()->getCubeProfile();
         osg::notify(osg::INFO) << "[osgEarth] Setting Profile to global-geodetic for geocentric scene" << std::endl;
     }
 
@@ -780,7 +781,7 @@ Map::createGeoImage(const TileKey* mapKey, TileSource* source)
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
                 //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/mosaic_" + mapKey->str() + ".png");
                 result = mosaic->reproject( mapKey->getProfile()->getSRS(), &mapKey->getGeoExtent() );
-                //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/reprojected_" + mapKey->str() + ".png");
+                //osgDB::writeImageFile(*result->getImage(), "c:/temp/reprojected_" + mapKey->str() + ".png");
                 //osg::notify(osg::NOTICE) << "Reprojected mosaic" << std::endl;
             }
             else

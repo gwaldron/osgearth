@@ -37,13 +37,16 @@ using namespace osgEarth;
 */
 bool CubeGridUtils::LatLonToFaceCoord(const Vec2d& LatLon, osg::Vec2d& Coord, int& Face)
 {
-    Vec2d latlon((LatLon[LAT]+90)/180, (LatLon[LON]+180)/360);
+    Vec2d latlon((LatLon[LAT]+90.0)/180.0, (LatLon[LON]+180.0)/360.0);
 
     // normalized latitude and longitude
     if(latlon[LAT] < 0 || latlon[LAT] > 1)
         return false; // out of range latitude coordinate
     if(latlon[LON] < 0 || latlon[LAT] > 1)
         return false; // out of range longitude coordinate
+
+    int origFace = Face;
+
 
     int face_x = (int)(4 * latlon[LON]);
     int face_y = (int)(2 * latlon[LAT] + 0.5);
@@ -55,6 +58,7 @@ bool CubeGridUtils::LatLonToFaceCoord(const Vec2d& LatLon, osg::Vec2d& Coord, in
         Face = face_y < 1 ? 5 : 4;
     Coord.x() = 4 * latlon[LON] - face_x;
     Coord.y() = 2 * latlon[LAT] - 0.5;
+
     if(Face < 4) // equatorial calculations done
         return true;
     double tmp;
@@ -79,6 +83,8 @@ bool CubeGridUtils::LatLonToFaceCoord(const Vec2d& LatLon, osg::Vec2d& Coord, in
         case 3: // left side; swap and reverse lon
             tmp = Coord.x();
             Coord.x() = 0.5 - Coord.y();
+            Coord.y() = 1 - tmp;
+            break;
         }
     }
     else // south polar face
@@ -93,7 +99,7 @@ bool CubeGridUtils::LatLonToFaceCoord(const Vec2d& LatLon, osg::Vec2d& Coord, in
             Coord.y() = tmp;
             break;
         case 1: // top
-            Coord.x() = 0.5 + Coord.y();
+            Coord.y() = 0.5 + Coord.y();
             break;
         case 2: // right
             tmp = Coord.x();
@@ -256,15 +262,17 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
             double longitude, latitude, height;
 
             _ellipsoidModel->convertXYZToLatLongHeight(world.x(), world.y(), world.z(), latitude, longitude, height );
-            int face;
+            int face=-1;
             osg::Vec2d coord;
 
             /*coord.x() = world.x();
             coord.y() = world.y();
             height = world.z();*/
 
+            double latDeg = osg::RadiansToDegrees(latitude);
+            double lonDeg = osg::RadiansToDegrees(longitude);
 
-            bool success = CubeGridUtils::LatLonToFaceCoord(osg::Vec2d(osg::RadiansToDegrees(latitude), osg::RadiansToDegrees(longitude)), coord, face);
+            bool success = CubeGridUtils::LatLonToFaceCoord(osg::Vec2d(latDeg, lonDeg), coord, face);
             if (!success)
             {
                 osg::notify(osg::NOTICE) << "Couldn't convert to face coords " << std::endl;
@@ -274,14 +282,23 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
                 osg::notify(osg::NOTICE) << "Face should be " << _face << " but is " << face << std::endl;
             }
 
+            osg::Vec2d latLon;
+            CubeGridUtils::FaceCoordToLatLon(coord, _face, latLon);
+            
+            if (!osg::equivalent(latLon.x(), latDeg, 0.05) || 
+                !osg::equivalent(latLon.y(), lonDeg, 0.05))
+            {
+                osg::notify(osg::NOTICE) << "Incoming = " << latDeg << ", " << lonDeg << "  Computed: " << latLon << std::endl;
+            }
+
             //osg::notify(osg::NOTICE) << "Coord= " << coord << std::endl;
             local = osg::Vec3d(coord.x(), coord.y(), height) * _inverse;
             if (local.x() < 0 || local.y() < 0 || local.x() > 1 || local.y() > 1)
             {
-                osg::notify(osg::NOTICE) << "Local Coord out of range:  " << osg::RadiansToDegrees(latitude) << ", " << osg::RadiansToDegrees(longitude) << " coord=" << coord << "  " <<  "local=" << local << std::endl;
-                local.x() = 0;
-                local.y() = 0;
-                local.z() = 0;
+                //osg::notify(osg::NOTICE) << "Local Coord out of range:  " << osg::RadiansToDegrees(latitude) << ", " << osg::RadiansToDegrees(longitude) << " coord=" << coord << "  " <<  "local=" << local << std::endl;
+                //local.x() = 0;
+                //local.y() = 0;
+                //local.z() = 0;
             }
             //osg::notify(osg::NOTICE) << "Local= " << local << std::endl;
             return true;

@@ -370,6 +370,13 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
     double dx = (dest_extent.xMax() - dest_extent.xMin()) / (double)width;
     double dy = (dest_extent.yMax() - dest_extent.yMin()) / (double)height;
 
+    unsigned int numPixels = width * height;
+    
+    double *destPointsX = new double[numPixels];
+    double *destPointsY = new double[numPixels];
+
+    //Compute the destination sample points.
+    unsigned int pixel = 0;
     for (unsigned int c = 0; c < width; ++c)
     {
         double dest_x = dest_extent.xMin() + (double)c * dx;
@@ -377,10 +384,27 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
         {
             double dest_y = dest_extent.yMin() + (double)r * dy;
 
-            double src_x, src_y;
+            destPointsX[pixel] = dest_x;
+            destPointsY[pixel] = dest_y;
+            pixel++;            
+        }
+    }
 
-            //Convert the requested sample point to the SRS of the source image
-            dest_extent.getSRS()->transform(dest_x, dest_y, src_extent.getSRS(), src_x, src_y);
+    //Reproject the destination points to the source coordinate system
+    double* srcPointsX = new double[numPixels];
+    double* srcPointsY = new double[numPixels];
+    memcpy(srcPointsX, destPointsX, sizeof(double) * numPixels);
+    memcpy(srcPointsY, destPointsY, sizeof(double) * numPixels);
+
+    dest_extent.getSRS()->transform(src_extent.getSRS(), srcPointsX, srcPointsY, numPixels);
+
+    pixel = 0;
+    for (unsigned int c = 0; c < width; ++c)
+    {
+        for (unsigned int r = 0; r < height; ++r)
+        {   
+            double src_x = srcPointsX[pixel];
+            double src_y = srcPointsY[pixel];
 
             //Find the pixel in the source image that would correspond to that location
             double px = (((src_x - src_extent.xMin()) / (src_extent.xMax() - src_extent.xMin())) * (double)(image->s()-1));
@@ -475,8 +499,17 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
             result->data(c, r)[1] = (unsigned char)(color.g() * 255);
             result->data(c, r)[2] = (unsigned char)(color.b() * 255);
             result->data(c, r)[3] = (unsigned char)(color.a() * 255);
+
+            pixel++;            
         }
     }
+
+    
+
+    delete[] srcPointsX;
+    delete[] srcPointsY;
+    delete[] destPointsX;
+    delete[] destPointsY;
     return result;
 }
 

@@ -470,6 +470,62 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     return result;
 }
 
+bool
+SpatialReference::transform(const SpatialReference* out_srs, double* x, double *y, unsigned int numPoints) const
+{
+    //TODO: should we check for equivalence here, or leave that to the caller?
+    // (Or, does OGR do the test under the hood itself?)
+    OGR_SCOPE_LOCK();
+
+    for (unsigned int i = 0; i < numPoints; ++i)
+    {
+        preTransform(x[i], y[i]);
+    }
+
+    void* xform_handle = NULL;
+    TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
+    if (itr != _transformHandleCache.end())
+    {
+        osg::notify(osg::DEBUG_INFO) << "[osgEarth::SpatialReference] using cached transform handle" << std::endl;
+        xform_handle = itr->second;
+    }
+    else
+    {
+        xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
+        const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
+    }
+
+    if ( !xform_handle )
+    {
+        osg::notify( osg::WARN )
+            << "[osgEarth::SpatialReference] SRS xform not possible" << std::endl
+            << "    From => " << getName() << std::endl
+            << "    To   => " << out_srs->getName() << std::endl;
+        return false;
+        }
+
+    double *temp_z = new double[numPoints];
+    bool result;
+
+    if ( OCTTransform( xform_handle, numPoints, x, y, temp_z ) )
+    {
+        result = true;
+        for (unsigned int i = 0; i < numPoints; ++i)
+        {
+            out_srs->postTransform(x[i], y[i]);
+        }
+    }
+    else
+    {
+        osg::notify( osg::WARN ) << "[osgEarth::SpatialReference] Failed to xform a point from "
+            << getName() << " to " << out_srs->getName()
+            << std::endl;
+        result = false;
+    }
+    delete[] temp_z;
+    return result;
+}
+
 static std::string
 getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
 {

@@ -142,7 +142,7 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
         double to_xmax = osg::maximum(ll_x, osg::maximum(ul_x, osg::maximum(ur_x, lr_x) ) );
         double to_ymax = osg::maximum(ll_y, osg::maximum(ul_y, osg::maximum(ur_y, lr_y) ) );
 
-        osg::notify(osg::NOTICE) << "Transformed extent " 
+        osg::notify(osg::INFO) << "Transformed extent " 
             << to_xmin << ", " << to_ymin << "  to " << to_xmax << ", " << to_ymax << std::endl;
 
 
@@ -321,6 +321,8 @@ GDALDataset* createDataSetFromImage(const osg::Image* image, double minX, double
 osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
                            const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY)
 {
+    GDALAllRegister();
+
     //Create a dataset from the source image
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
 
@@ -381,8 +383,8 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
             dest_extent.getSRS()->transform(dest_x, dest_y, src_extent.getSRS(), src_x, src_y);
 
             //Find the pixel in the source image that would correspond to that location
-            double px = (((src_x - src_extent.xMin()) / (src_extent.xMax() - src_extent.xMin())) * (double)image->s());
-            double py = (((src_y - src_extent.yMin()) / (src_extent.yMax() - src_extent.yMin())) * (double)image->t());
+            double px = (((src_x - src_extent.xMin()) / (src_extent.xMax() - src_extent.xMin())) * (double)(image->s()-1));
+            double py = (((src_y - src_extent.yMin()) / (src_extent.yMax() - src_extent.yMin())) * (double)(image->t()-1));
 
             osg::Vec4 color(0,0,0,0);
 
@@ -394,6 +396,10 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
             {
                 //osg::notify(osg::NOTICE) << "Sampling pixel " << px << "," << py << std::endl;
                 color = image->getColor(px_i, py_i);
+            }
+            else
+            {
+                osg::notify(osg::NOTICE) << "Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
             }
 
             result->data(c, r)[0] = (unsigned char)(color.r() * 255);
@@ -409,9 +415,7 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
 
 GeoImage*
 GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) const
-{
-    GDALAllRegister();
-    
+{  
     GeoExtent destExtent;
     if (to_extent)
     {
@@ -422,7 +426,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) 
          destExtent = getExtent().transform(to_srs);    
     }
 
-    osg::notify(osg::NOTICE) << "Reprojecting image " << std::endl;
+    //osg::notify(osg::NOTICE) << "Reprojecting image " << std::endl;
    
     /*osg::Image* resultImage = reprojectImage(getImage(),
                                        getSRS()->getWKT(),
@@ -430,11 +434,6 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) 
                                        to_srs->getWKT(),
                                        destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax());*/
     osg::Image* resultImage = manualReproject(getImage(), getExtent(), *to_extent);
-
-    if (resultImage)
-    {
-        osg::notify(osg::NOTICE) << "Reprojected image ok " << std::endl;
-    }
     return new GeoImage(resultImage, destExtent);
 }
 

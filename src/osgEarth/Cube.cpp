@@ -59,6 +59,12 @@ bool CubeGridUtils::LatLonToFaceCoord(const Vec2d& LatLon, osg::Vec2d& Coord, in
     Coord.x() = 4 * latlon[LON] - face_x;
     Coord.y() = 2 * latlon[LAT] - 0.5;
 
+    //NOTE:  This differs slightly from the GeoMatrix code.  We want -45 to always be considered in Face 5
+    if (osg::equivalent(LatLon[LAT],-45))
+    {
+        Face = 5;
+    }
+
     if(Face < 4) // equatorial calculations done
         return true;
     double tmp;
@@ -282,25 +288,7 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
                 osg::notify(osg::NOTICE) << "Face should be " << _face << " but is " << face << std::endl;
             }
 
-            osg::Vec2d latLon;
-            CubeGridUtils::FaceCoordToLatLon(coord, _face, latLon);
-            
-            if (!osg::equivalent(latLon.x(), latDeg, 0.05) || 
-                !osg::equivalent(latLon.y(), lonDeg, 0.05))
-            {
-                osg::notify(osg::NOTICE) << "Incoming = " << latDeg << ", " << lonDeg << "  Computed: " << latLon << std::endl;
-            }
-
-            //osg::notify(osg::NOTICE) << "Coord= " << coord << std::endl;
             local = osg::Vec3d(coord.x(), coord.y(), height) * _inverse;
-            if (local.x() < 0 || local.y() < 0 || local.x() > 1 || local.y() > 1)
-            {
-                //osg::notify(osg::NOTICE) << "Local Coord out of range:  " << osg::RadiansToDegrees(latitude) << ", " << osg::RadiansToDegrees(longitude) << " coord=" << coord << "  " <<  "local=" << local << std::endl;
-                //local.x() = 0;
-                //local.y() = 0;
-                //local.z() = 0;
-            }
-            //osg::notify(osg::NOTICE) << "Local= " << local << std::endl;
             return true;
         }
 

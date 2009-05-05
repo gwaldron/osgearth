@@ -61,7 +61,7 @@ namespace osgEarth
 
         virtual osgTerrain::Locator* createLocator( double xmin, double ymin, double xmax, double ymax ) const;
 
-        unsigned int getFace() { return _face; }
+        unsigned int getFace() const { return _face; }
 
         virtual bool isGeographic() { return false; }
         virtual bool isProjected() { return true; }

@@ -112,7 +112,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     osg::ref_ptr<Map> map = Map::create( mapConfig.get());
 
                     //Check to see that the Map is valid.
-                    if ( !map->isOK() )
+                    if (!map.valid() || !map->isOK() )
                         return ReadResult::FILE_NOT_HANDLED;
 
                     osg::notify( osg::INFO ) << "Map profile = " << map->getProfile()->toString()

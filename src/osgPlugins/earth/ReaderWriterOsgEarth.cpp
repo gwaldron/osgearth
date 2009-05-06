@@ -95,11 +95,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 else if ( file_name == "__cube.earth" )
                 {
                     mapConfig = new MapConfig();
-                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
-                    ProfileConfig* conf = new ProfileConfig();
-                    conf->setNamedProfile( "cube" );
-                    mapConfig->setProfileConfig( conf );
-                    mapConfig->setNormalizeEdges( false );
+                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC_CUBE );
                 }
                 else
                 {

@@ -353,8 +353,12 @@ osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, doubl
 
 osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent)
 {
-    unsigned int width = 512;
-    unsigned int height = 512;
+    //TODO:  Compute the optimal destination size
+    unsigned int width = osg::minimum(image->s(), image->t());
+    unsigned int height = osg::minimum(image->s(), image->t());        
+
+
+    //osg::notify(osg::NOTICE) << "Reprojecting image that is " << image->s() << " x " << image->t() << std::endl;
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -488,6 +492,10 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
                         color[i] = ((float)rowMax -py) * r1 + (py - (float)rowMin) * r2;
                     }
                 }
+            }
+            else
+            {
+                //osg::notify(osg::NOTICE) << "Pixel out of range" << std::endl;
             }
 
             result->data(c, r)[0] = (unsigned char)(color.r() * 255);

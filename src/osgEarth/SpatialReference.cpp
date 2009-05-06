@@ -418,8 +418,8 @@ SpatialReference::createLocator(  double xmin, double ymin, double xmax, double 
 bool
 SpatialReference::transform( double x, double y, const SpatialReference* out_srs, double& out_x, double& out_y ) const
 {        
-    //TODO: should we check for equivalence here, or leave that to the caller?
-    // (Or, does OGR do the test under the hood itself?)
+    //Check for equivalence and return if the coordinate systems are the same.
+    if (isEquivalentTo(out_srs)) return true;
 
     OGR_SCOPE_LOCK();
 
@@ -473,8 +473,9 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 bool
 SpatialReference::transform(const SpatialReference* out_srs, double* x, double *y, unsigned int numPoints) const
 {
-    //TODO: should we check for equivalence here, or leave that to the caller?
-    // (Or, does OGR do the test under the hood itself?)
+    //Check for equivalence and return if the coordinate systems are the same.
+    if (isEquivalentTo(out_srs)) return true;
+    
     OGR_SCOPE_LOCK();
 
     for (unsigned int i = 0; i < numPoints; ++i)

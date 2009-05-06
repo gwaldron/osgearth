@@ -44,6 +44,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainTileEdgeNormalizerUpdateCallback
     TileKey
     TileSource
+    TileSourceFactory
 	TMS
     XmlUtils
 )
@@ -74,6 +75,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileKey.cpp
     TileSource.cpp
+    TileSourceFactory.cpp
 	TMS.cpp
     Version.cpp
     XmlUtils.cpp

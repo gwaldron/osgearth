@@ -419,7 +419,12 @@ bool
 SpatialReference::transform( double x, double y, const SpatialReference* out_srs, double& out_x, double& out_y ) const
 {        
     //Check for equivalence and return if the coordinate systems are the same.
-    if (isEquivalentTo(out_srs)) return true;
+    if (isEquivalentTo(out_srs))
+    {
+        out_x = x;
+        out_y = y;
+        return true;
+    }
 
     OGR_SCOPE_LOCK();
 

@@ -175,18 +175,7 @@ bool
 GeoExtent::contains(const SpatialReference* srs, double x, double y)
 {
     double local_x, local_y;
-    if (srs->isEquivalentTo(_srs.get()))
-    {
-        //No need to transform
-        local_x = x;
-        local_y = y;
-    }
-    else
-    {
-        srs->transform(x, y, _srs.get(), local_x, local_y);
-        //osgEarth::Mercator::latLongToMeters(y, x, local_x, local_y);        
-    }
-
+    if (!srs->transform(x, y, _srs.get(), local_x, local_y)) return false;
     return (local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax);
 }
 
@@ -558,16 +547,7 @@ GeoHeightField::GeoHeightField(osg::HeightField* heightField, const GeoExtent& e
 bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double x, double y, ElevationInterpolation interp, float &elevation)
 {
     double local_x, local_y;
-    if (_extent.getSRS()->isEquivalentTo(srs))
-    {
-        //No need to transform
-        local_x = x;
-        local_y = y;
-    }
-    else
-    {
-        if (!srs->transform(x, y, _extent.getSRS(), local_x, local_y)) return false;
-    }
+    if (!srs->transform(x, y, _extent.getSRS(), local_x, local_y)) return false;
 
     if (_extent.contains(_extent.getSRS(), local_x, local_y))
     {

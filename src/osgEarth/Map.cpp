@@ -88,7 +88,8 @@ Map::create( MapConfig* mapConfig, const osgDB::ReaderWriter::Options* options )
             << (local_options.valid()? local_options->getOptionString() : "<empty>")
             << std::endl;
 
-        if ( mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC )
+        if (mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || 
+            mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
         {
             result = new GeocentricMap( mapConfig, local_options.get() );
         }
@@ -204,12 +205,15 @@ Map::initializeTileSources()
     TileSource* ref_source = NULL;
 
     //Geocentric maps are always going to be rendered in the global-geodetic profile
-    if (_mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC &&
-        ( _mapConfig->getProfileConfig() == NULL || _mapConfig->getProfileConfig()->getNamedProfile() != "cube" ) )
+    if (_mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC )
     {
         _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-        //_profile = osgEarth::Registry::instance()->getCubeProfile();
         osg::notify(osg::INFO) << "[osgEarth] Setting Profile to global-geodetic for geocentric scene" << std::endl;
+    }
+    else if ( _mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
+    {
+        _profile = osgEarth::Registry::instance()->getCubeProfile();
+        osg::notify(osg::INFO) << "[osgEarth] Using cube profile for geocentric scene" << std::endl;
     }
 
     // First check for an explicit profile declaration:

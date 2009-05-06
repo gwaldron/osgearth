@@ -602,6 +602,8 @@ readMap( XmlElement* e_map )
         map->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
     else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" || a_cstype == "projected")
         map->setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
+    else if ( a_cstype == "cube" )
+        map->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC_CUBE );
 
     std::string cache_only = e_map->getSubElementText(ELEM_CACHE_ONLY);
     if (cache_only == VALUE_TRUE )

@@ -192,6 +192,7 @@ namespace osgEarth
         enum CoordinateSystemType
         {
             CSTYPE_GEOCENTRIC,
+            CSTYPE_GEOCENTRIC_CUBE,
             CSTYPE_PROJECTED
         };
 

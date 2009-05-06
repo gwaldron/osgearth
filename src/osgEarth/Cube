@@ -63,8 +63,8 @@ namespace osgEarth
 
         unsigned int getFace() const { return _face; }
 
-        virtual bool isGeographic() { return false; }
-        virtual bool isProjected() { return true; }
+        virtual bool isGeographic() const { return false; }
+        virtual bool isProjected() const { return true; }
 
         virtual bool preTransform(double &x, double &y) const;
         virtual bool postTransform(double &x, double &y) const;

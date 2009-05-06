@@ -20,7 +20,10 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Mercator>
+#include <osgEarth/Cube>
+
 #include <osg/Notify>
+
 #include <gdal_priv.h>
 #include <gdalwarper.h>
 #include <ogr_spatialref.h>
@@ -350,8 +353,8 @@ osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, doubl
 
 osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent)
 {
-    unsigned int width = 256;
-    unsigned int height = 256;
+    unsigned int width = 512;
+    unsigned int height = 512;
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -404,85 +407,88 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
 
             osg::Vec4 color(0,0,0,0);
 
-            int rowMin = osg::maximum((int)floor(py), 0);
-            int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
-            int colMin = osg::maximum((int)floor(px), 0);
-            int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s()-1)), 0);
-
-            if (rowMin > rowMax) rowMin = rowMax;
-            if (colMin > colMax) colMin = colMax;
-
-            osg::Vec4 urColor = image->getColor(colMax, rowMax);
-            osg::Vec4 llColor = image->getColor(colMin, rowMin);
-            osg::Vec4 ulColor = image->getColor(colMin, rowMax);
-            osg::Vec4 lrColor = image->getColor(colMax, rowMin);
-
-            /*Average Interpolation*/
-            /*double x_rem = px - (int)px;
-            double y_rem = py - (int)py;
-
-            double w00 = (1.0 - y_rem) * (1.0 - x_rem);
-            double w01 = (1.0 - y_rem) * x_rem;
-            double w10 = y_rem * (1.0 - x_rem);
-            double w11 = y_rem * x_rem;
-            double wsum = w00 + w01 + w10 + w11;
-            wsum = 1.0/wsum;
-
-            color.r() = (w00 * llColor.r() + w01 * lrColor.r() + w10 * ulColor.r() + w11 * urColor.r()) * wsum;
-            color.g() = (w00 * llColor.g() + w01 * lrColor.g() + w10 * ulColor.g() + w11 * urColor.g()) * wsum;
-            color.b() = (w00 * llColor.b() + w01 * lrColor.b() + w10 * ulColor.b() + w11 * urColor.b()) * wsum;
-            color.a() = (w00 * llColor.a() + w01 * lrColor.a() + w10 * ulColor.a() + w11 * urColor.a()) * wsum;*/
-
-            /*Nearest Neighbor Interpolation*/
-            if (px_i >= 0 && px_i < image->s() &&
-                py_i >= 0 && py_i < image->t())
+            if (px_i >= 0 && py_i >= 0 && px_i < image->s() && py_i < image->t())
             {
+                int rowMin = osg::maximum((int)floor(py), 0);
+                int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
+                int colMin = osg::maximum((int)floor(px), 0);
+                int colMax = osg::maximum(osg::minimum((int)ceil(px), (int)(image->s()-1)), 0);
+
+                if (rowMin > rowMax) rowMin = rowMax;
+                if (colMin > colMax) colMin = colMax;
+
+                osg::Vec4 urColor = image->getColor(colMax, rowMax);
+                osg::Vec4 llColor = image->getColor(colMin, rowMin);
+                osg::Vec4 ulColor = image->getColor(colMin, rowMax);
+                osg::Vec4 lrColor = image->getColor(colMax, rowMin);
+
+                /*Average Interpolation*/
+                /*double x_rem = px - (int)px;
+                double y_rem = py - (int)py;
+
+                double w00 = (1.0 - y_rem) * (1.0 - x_rem);
+                double w01 = (1.0 - y_rem) * x_rem;
+                double w10 = y_rem * (1.0 - x_rem);
+                double w11 = y_rem * x_rem;
+                double wsum = w00 + w01 + w10 + w11;
+                wsum = 1.0/wsum;
+
+                color.r() = (w00 * llColor.r() + w01 * lrColor.r() + w10 * ulColor.r() + w11 * urColor.r()) * wsum;
+                color.g() = (w00 * llColor.g() + w01 * lrColor.g() + w10 * ulColor.g() + w11 * urColor.g()) * wsum;
+                color.b() = (w00 * llColor.b() + w01 * lrColor.b() + w10 * ulColor.b() + w11 * urColor.b()) * wsum;
+                color.a() = (w00 * llColor.a() + w01 * lrColor.a() + w10 * ulColor.a() + w11 * urColor.a()) * wsum;*/
+
+                /*Nearest Neighbor Interpolation*/
+                /*if (px_i >= 0 && px_i < image->s() &&
+                py_i >= 0 && py_i < image->t())
+                {
                 //osg::notify(osg::NOTICE) << "Sampling pixel " << px << "," << py << std::endl;
                 color = image->getColor(px_i, py_i);
-            }
-            else
-            {
+                }
+                else
+                {
                 osg::notify(osg::NOTICE) << "Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
-            }
+                }*/
 
-            /*Bilinear interpolation*/
-            //Check for exact value
-            /*if ((colMax == colMin) && (rowMax == rowMin))
-            {
-                //osg::notify(osg::NOTICE) << "Exact value" << std::endl;
-                color = image->getColor(px_i, py_i);
-            }
-            else if (colMax == colMin)
-            {
-                //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
-                //Linear interpolate vertically
-                for (unsigned int i = 0; i < 4; ++i)
+                /*Bilinear interpolation*/
+                //Check for exact value
+                if ((colMax == colMin) && (rowMax == rowMin))
                 {
-                    color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
+                    //osg::notify(osg::NOTICE) << "Exact value" << std::endl;
+                    color = image->getColor(px_i, py_i);
                 }
-            }
-            else if (rowMax == rowMin)
-            {
-                //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
-                //Linear interpolate horizontally
-                for (unsigned int i = 0; i < 4; ++i)
+                else if (colMax == colMin)
                 {
-                    color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
+                    //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
+                    //Linear interpolate vertically
+                    for (unsigned int i = 0; i < 4; ++i)
+                    {
+                        color[i] = ((float)rowMax - py) * llColor[i] + (py - (float)rowMin) * ulColor[i];
+                    }
                 }
-            }
-            else
-            {
-                //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
-                //Bilinear interpolate
-                for (unsigned int i = 0; i < 4; ++i)
+                else if (rowMax == rowMin)
                 {
-                float r1 = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
-                float r2 = ((float)colMax - px) * ulColor[i] + (px - (float)colMin) * urColor[i];
+                    //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
+                    //Linear interpolate horizontally
+                    for (unsigned int i = 0; i < 4; ++i)
+                    {
+                        color[i] = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
+                    }
+                }
+                else
+                {
+                    //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
+                    //Bilinear interpolate
+                    for (unsigned int i = 0; i < 4; ++i)
+                    {
+                        float r1 = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
+                        float r2 = ((float)colMax - px) * ulColor[i] + (px - (float)colMin) * urColor[i];
 
-                //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
-                color[i] = ((float)rowMax -py) * r1 + (py - (float)rowMin) * r2;
+                        //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                        color[i] = ((float)rowMax -py) * r1 + (py - (float)rowMin) * r2;
+                    }
                 }
-            }*/
+            }
 
             result->data(c, r)[0] = (unsigned char)(color.r() * 255);
             result->data(c, r)[1] = (unsigned char)(color.g() * 255);
@@ -517,14 +523,23 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) 
          destExtent = getExtent().transform(to_srs);    
     }
 
-    //osg::notify(osg::NOTICE) << "Reprojecting image " << std::endl;
-   
-    /*osg::Image* resultImage = reprojectImage(getImage(),
-                                       getSRS()->getWKT(),
-                                       getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
-                                       to_srs->getWKT(),
-                                       destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax());*/
-    osg::Image* resultImage = manualReproject(getImage(), getExtent(), *to_extent);
+    const CubeFaceSpatialReference* to_cube = dynamic_cast<const CubeFaceSpatialReference*>(to_srs);
+
+    osg::Image* resultImage = 0;
+    if (to_cube)
+    {
+        //osg::notify(osg::NOTICE) << "Doing cube reprojection" << std::endl;
+        resultImage = manualReproject(getImage(), getExtent(), *to_extent);
+    }
+    else
+    {
+        //osg::notify(osg::NOTICE) << "Doing GDAL reprojection" << std::endl;
+        resultImage = reprojectImage(getImage(),
+            getSRS()->getWKT(),
+            getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
+            to_srs->getWKT(),
+            destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax());
+    }   
     return new GeoImage(resultImage, destExtent);
 }
 

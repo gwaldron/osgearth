@@ -141,6 +141,7 @@ namespace osgEarth
         friend class Map;
         friend class CachedTileSource;
         friend class DirectReadTileSource;
+        friend class TileSourceFactory;
 
         float _noDataValue;
         float _noDataMinValue;

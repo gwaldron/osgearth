@@ -20,6 +20,7 @@
 #ifndef OSGEARTH_TILE_SOURCE_FACTORY_H
 #define OSGEARTH_TILE_SOURCE_FACTORY_H 1
 
+#include <osgEarth/Export>
 #include <osgEarth/Common>
 #include <osgEarth/MapConfig>
 #include <osgEarth/TileSource>
@@ -30,8 +31,22 @@ namespace osgEarth
      * Creates TileSource instances and chains them together to create
      * tile source "pipelines" for data access and processing.
      */
-    class TileSourceFactory
+    class OSGEARTH_EXPORT TileSourceFactory
     {
+    public:
+        /**
+        *Creates a new TileSource for use in a osgEarth Map
+        */
+        TileSource* createMapTileSource( const MapConfig* mapConfig,
+                                         const SourceConfig* source,
+                                         const osgDB::ReaderWriter::Options* global_options);
+
+        /**
+        *Creates a new TileSource that will handle all image reprojection, cropping, etc to get to the Map Profile.
+        */
+        TileSource* createDirectReadTileSource( const MapConfig* mapConfig,
+                                                const SourceConfig* source,
+                                                const osgDB::ReaderWriter::Options* global_options);
     };
 }
 

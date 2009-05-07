@@ -1,0 +1,68 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DIRECTREADTILESOURCE_H
+#define OSGEARTH_DIRECTREADTILESOURCE_H 1
+
+#include <osgEarth/Export>
+#include <osgEarth/TileSource>
+
+namespace osgEarth
+{
+    /**
+    *The DirectReadTileSource is a TileSource that converts tiles from one tile profile to another, 
+    *handling all reprojection, cropping, resizing, and compositing operations needed to convert from one tile to another
+    *This is useful for batch processing and converting of tiles where the exact tile must be returned.
+    */
+    class OSGEARTH_EXPORT DirectReadTileSource : public TileSource
+    {
+    public:
+        DirectReadTileSource(TileSource* tileSource,
+                             unsigned int tileSize,
+                             const osgDB::ReaderWriter::Options* options =NULL
+                             );
+
+        /**
+         * The Map calls this method ONCE so that the TileSource can
+         * initialize its profile.
+         */
+        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
+
+        /**
+         * Creates an image for the given TileKey
+         */
+        virtual osg::Image* createImage( const TileKey* key );
+
+        /**
+         * Creates a heightfield for the given TileKey
+         */
+        virtual osg::HeightField* createHeightField( const TileKey* key );
+
+        /**
+         * Gets the number of pixels per tile for this TileSource.  Defaults to 256
+         */
+        virtual int getPixelsPerTile() const;
+
+    private:
+        osg::ref_ptr<TileSource> _tileSource;
+        osg::ref_ptr<const Profile> _profile;
+        unsigned int _tileSize;
+    };
+}
+
+#endif //OSGEARTH_DIRECTREADTILESOURCE_H

@@ -94,14 +94,14 @@ namespace osgEarth
 
         const SpatialReference* getSRS() const;
 
-        //GeoImage* crop( double xmin, double ymin, double xmax, double ymax ) const;
-
         GeoImage* crop( const GeoExtent& extent,
                         bool exact = false,
                         unsigned int width = 0,
                         unsigned int height = 0) const;
 
         GeoImage* reproject(const SpatialReference* to_srs, const GeoExtent* to_extent = 0, unsigned int width = 0, unsigned int height = 0) const;
+
+        osg::Image* takeImage();
 
     private:
         osg::ref_ptr<osg::Image> _image;
@@ -123,6 +123,8 @@ namespace osgEarth
         const GeoExtent& getGeoExtent() const;
 
         const osg::HeightField* getHeightField() const;
+
+        osg::HeightField* takeHeightField();
 
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;

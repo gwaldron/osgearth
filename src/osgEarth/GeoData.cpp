@@ -591,6 +591,12 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     return new GeoImage(resultImage, destExtent);
 }
 
+osg::Image*
+GeoImage::takeImage()
+{
+    return _image.release();
+}
+
 
 /***************************************************************************/
 GeoHeightField::GeoHeightField(osg::HeightField* heightField, const GeoExtent& extent)
@@ -634,4 +640,10 @@ const osg::HeightField*
 GeoHeightField::getHeightField() const
 {
     return _heightField.get();
+}
+
+osg::HeightField*
+GeoHeightField::takeHeightField()
+{
+    return _heightField.release();
 }

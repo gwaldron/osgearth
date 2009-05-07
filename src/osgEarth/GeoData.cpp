@@ -208,22 +208,56 @@ GeoImage::getExtent() const {
 }
 
 GeoImage*
-GeoImage::crop( double xmin, double ymin, double xmax, double ymax ) const
+GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height  ) const
 {
-    double destXMin = xmin;
-    double destYMin = ymin;
-    double destXMax = xmax;
-    double destYMax = ymax;
+    //Check for equivalence
+    if ( extent.getSRS()->isEquivalentTo( getSRS() ) )
+    {
+        //If we want an exact crop or they want to specify the output size of the image, use GDAL
+        if (exact || width != 0 || height != 0 )
+        {
+            osg::notify(osg::INFO) << "[osgEarth::GeoImage::crop] Performing exact crop" << std::endl;
 
-    osg::Image* new_image = ImageUtils::cropImage(
-        _image.get(),
-        _extent.xMin(), _extent.yMin(), _extent.xMax(), _extent.yMax(),
-        destXMin, destYMin, destXMax, destYMax );
+            //Suggest an output image size
+            if (width == 0 || height == 0)
+            {
+                double xRes = (getExtent().xMax() - getExtent().xMin()) / (double)_image->s();
+                double yRes = (getExtent().yMax() - getExtent().yMin()) / (double)_image->t();
 
-    //The destination extents may be different than the input extents due to not being able to crop along pixel boundaries.
-    return new_image?
-        new GeoImage( new_image, GeoExtent( _extent.getSRS(), destXMin, destYMin, destXMax, destYMax ) ) :
-        NULL;
+                width =  osg::maximum(1u, (unsigned int)((extent.xMax() - extent.xMin()) / xRes));
+                height = osg::maximum(1u, (unsigned int)((extent.yMax() - extent.yMin()) / yRes));
+
+                osg::notify(osg::INFO) << "[osgEarth::GeoImage::crop] Computed output image size " << width << "x" << height << std::endl;
+            }
+
+            //Note:  Passing in the current SRS simply forces GDAL to not do any warping
+            return reproject( getSRS(), &extent, width, height);
+        }
+        else
+        {
+            osg::notify(osg::INFO) << "[osgEarth::GeoImage::crop] Performing non-exact crop " << std::endl;
+            //If an exact crop is not desired, we can use the faster image cropping code that does no resampling.
+            double destXMin = extent.xMin();
+            double destYMin = extent.yMin();
+            double destXMax = extent.xMax();
+            double destYMax = extent.yMax();
+
+            osg::Image* new_image = ImageUtils::cropImage(
+                _image.get(),
+                _extent.xMin(), _extent.yMin(), _extent.xMax(), _extent.yMax(),
+                destXMin, destYMin, destXMax, destYMax );
+
+            //The destination extents may be different than the input extents due to not being able to crop along pixel boundaries.
+            return new_image?
+                new GeoImage( new_image, GeoExtent( getSRS(), destXMin, destYMin, destXMax, destYMax ) ) :
+            NULL;
+        }
+    }
+    else
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
+        return NULL;
+    }
 }
 
 osg::Image* createImageFromDataset(GDALDataset* ds)
@@ -311,7 +345,8 @@ GDALDataset* createDataSetFromImage(const osg::Image* image, double minX, double
 }
 
 osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
-                           const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY)
+                           const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
+                           int width = 0, int height = 0)
 {
     GDALAllRegister();
 
@@ -319,19 +354,20 @@ osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, doubl
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
 
 
-    void* transformer = GDALCreateGenImgProjTransformer(srcDS, NULL, NULL, destWKT.c_str(), 1, 0, 0);
-
-    double outgeotransform[6];
-    double extents[4];
-    int width,height;
-    GDALSuggestedWarpOutput2(srcDS,
-                             GDALGenImgProjTransform, transformer,
-                             outgeotransform,
-                             &width,
-                             &height,
-                             extents,
-                             0);
-
+    if (width == 0 || height == 0)
+    {
+        double outgeotransform[6];
+        double extents[4];
+        void* transformer = GDALCreateGenImgProjTransformer(srcDS, srcWKT.c_str(), NULL, destWKT.c_str(), 1, 0, 0);
+        GDALSuggestedWarpOutput2(srcDS,
+            GDALGenImgProjTransform, transformer,
+            outgeotransform,
+            &width,
+            &height,
+            extents,
+            0);
+        GDALDestroyGenImgProjTransformer(transformer);
+    }
    
     GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
 
@@ -344,18 +380,21 @@ osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, doubl
     osg::Image* result = createImageFromDataset(destDS);
     
     delete srcDS;
-    delete destDS;
-    
-    GDALDestroyGenImgProjTransformer(transformer);
+    delete destDS;  
 
     return result;
 }    
 
-osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent)
+osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent,
+                            unsigned int width = 0, unsigned int height = 0)
 {
     //TODO:  Compute the optimal destination size
-    unsigned int width = osg::minimum(image->s(), image->t());
-    unsigned int height = osg::minimum(image->s(), image->t());        
+    if (width == 0 || height == 0)
+    {
+        //If no width and height are specified, just use the minimum dimension for the image
+        width = osg::minimum(image->s(), image->t());
+        height = osg::minimum(image->s(), image->t());        
+    }
 
 
     //osg::notify(osg::NOTICE) << "Reprojecting image that is " << image->s() << " x " << image->t() << std::endl;
@@ -519,7 +558,7 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
 
 
 GeoImage*
-GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) const
+GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, unsigned int width, unsigned int height) const
 {  
     GeoExtent destExtent;
     if (to_extent)
@@ -537,7 +576,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) 
     if (to_cube)
     {
         //osg::notify(osg::NOTICE) << "Doing cube reprojection" << std::endl;
-        resultImage = manualReproject(getImage(), getExtent(), *to_extent);
+        resultImage = manualReproject(getImage(), getExtent(), *to_extent, width, height);
     }
     else
     {
@@ -546,7 +585,8 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent) 
             getSRS()->getWKT(),
             getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),
             to_srs->getWKT(),
-            destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax());
+            destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax(),
+            width, height);
     }   
     return new GeoImage(resultImage, destExtent);
 }

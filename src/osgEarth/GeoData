@@ -63,6 +63,19 @@ namespace osgEarth
 
         bool isValid() const;
 
+        /**
+         * Returns true is that extent is in a Geographic (lat/long) SRS and it spans
+         * the international date line.
+         */
+        bool crossesDateLine() const;
+
+        /**
+         * If this extent crosses the international date line, populates two extents, one for
+         * each side, and returns true. Otherwise returns false and leaves the reference
+         * parameters untouched.
+         */
+        bool splitAcrossDateLine( GeoExtent& first, GeoExtent& second ) const;
+
         /** Returns this extent transformed into another spatial reference. */
         GeoExtent transform( const SpatialReference* to_srs ) const;
 

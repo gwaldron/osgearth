@@ -54,7 +54,7 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
     osg::ref_ptr<TileSource> tile_source;
 
     //Only load the source if we are not running offline
-    if (!mapConfig->getCacheOnly())
+    if ( !mapConfig || !mapConfig->getCacheOnly() )
     {
         //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
         //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
@@ -89,10 +89,9 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
 
         if (cache.valid())
         {
-            //cache->init(local_options.get());
             cache->setName(source->getName());
-            cache->setMapConfigFilename( mapConfig->getFilename() );
-            //cache->initTileMap(); //gw: moved to the TileSource::createProfile() method...
+            if ( mapConfig )
+                cache->setMapConfigFilename( mapConfig->getFilename() );
             topSource = cache.get();
         }
     }
@@ -124,15 +123,15 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
 }
 
 TileSource*
-TileSourceFactory::createDirectReadTileSource( const MapConfig* mapConfig,
-                                               const SourceConfig* source,
-                                               const osgDB::ReaderWriter::Options* global_options)
+TileSourceFactory::createDirectReadTileSource(const SourceConfig* source,
+                                              const Profile* profile,
+                                              const osgDB::ReaderWriter::Options* global_options)
 {
     //Create the map source
-    TileSource* mapSource = createMapTileSource( mapConfig, source, global_options );
+    TileSource* mapSource = createMapTileSource( NULL, source, global_options );
 
     //Wrap it in a DirectTileSource that will convert to the map's profile
-    return new DirectReadTileSource(mapSource, 256, global_options);
-
-    return 0;
+    TileSource* tileSource = new DirectReadTileSource(mapSource, 256, global_options);
+    tileSource->initProfile( profile, std::string() );
+    return tileSource;
 }

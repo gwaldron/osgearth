@@ -210,6 +210,58 @@ bool CubeGridUtils::FaceCoordToLatLon(const Vec2d& Coord, const int Face, Vec2d&
     return true;
 }
 
+
+//bool CubeGridUtils::FaceCoordToLatLon(const Vec2d& c, const int face, Vec2d& LatLon)
+//{
+//    double u, v;
+//
+//    if ( c.x() > 1 || c.x() < 0 || c.y() > 1 || c.y() < 0 )
+//        return false;
+//
+//    if ( face < 4 )
+//    {
+//        u = ( c.x() + face ) * 0.25;
+//        v = ( c.y() + 0.5 ) * 0.5;
+//    }
+//
+//    else if ( face == 4 )
+//    {
+//        if ( c.x() >= c.y() )
+//        {
+//            if ( c.x() + c.y() <= 1 ) // Q0
+//            {
+//                u = c.x()/4;
+//                v = .75 + c.y()/2;
+//            }
+//            else // Q1
+//            {
+//                u = .25 + c.y()/4;
+//                v = .75 + (1.0-c.x())/2;
+//            }
+//        }
+//        else
+//        {
+//            if ( 1.0-c.x() >= 1.0-c.y() ) // Q2
+//            {
+//                u = .5 + (1.0-c.x())/4;
+//                v = .75 + (1.0-c.y())/2;
+//            }
+//            else // Q3
+//            {
+//                u = .75 + (1.0-c.y())/4;
+//                v = .75 + c.x()/2;
+//            }
+//        }
+//    }
+//    else
+//    {
+//        return false;
+//    }
+//    LatLon[LON] = u * 360 - 180; // convert to degrees
+//    LatLon[LAT] = v * 180 - 90;
+//    return true;
+//}
+
 /********************************************************************************************/
 
 CubeFaceLocator::CubeFaceLocator(unsigned int face):
@@ -372,4 +424,62 @@ CubeFaceSpatialReference::postTransform(double &x, double &y) const
     y = coord.y();
 
     return true;
+}
+
+#define LL 0
+#define LR 1
+#define UR 2
+#define UL 3
+#define SMALLEST( W,X,Y,Z ) osg::minimum(W, osg::minimum( X, osg::minimum( Y, Z ) ) )
+#define LARGEST( W,X,Y,Z ) osg::maximum(W, osg::maximum( X, osg::maximum( Y, Z ) ) )
+
+bool
+CubeFaceSpatialReference::transformExtent(const SpatialReference* to_srs,
+                                          double& in_out_xmin,
+                                          double& in_out_ymin,
+                                          double& in_out_xmax,
+                                          double& in_out_ymax) const
+{
+    if ( _face < 4 )
+        return SpatialReference::transformExtent( to_srs, in_out_xmin, in_out_ymin, in_out_xmax, in_out_ymax );
+
+    bool ok = true;
+
+    double x[4] = { in_out_xmin, in_out_xmax, in_out_xmax, in_out_xmin };
+    double y[4] = { in_out_ymin, in_out_ymin, in_out_ymax, in_out_ymax };
+
+    bool north = _face == 4;
+    bool crosses_pole = x[LL] < 0.5 && x[UR] > 0.5 && y[LL] < 0.5 && y[UR] > 0.5;
+    bool crosses_date_line = x[UL]+(1-y[UL]) < 1.0 && (1-x[LR])+y[LR] < 1.0 && x[LL]+y[LL] < 1.0;
+
+    if ( crosses_pole ) // full x extent.
+    {
+        to_srs->getGeographicSRS()->transform( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
+        to_srs->getGeographicSRS()->transform( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
+    }
+
+    else if ( transformPoints( to_srs, x, y, 4 ) )
+    {
+        in_out_ymin = SMALLEST( y[0], y[1], y[2], y[3] );
+        in_out_ymax = LARGEST( y[0], y[1], y[2], y[3] );
+
+        // check to see whether the extent crosses the date line boundary. If so,
+        // make the UL corner the southwest and the LR corner the east.
+        if ( crosses_date_line )
+        {
+            in_out_xmin = x[UL];
+            in_out_xmax = x[LR];
+        }
+        else
+        {
+            in_out_xmin = SMALLEST( x[0], x[1], x[2], x[3] );
+            in_out_xmax = LARGEST( x[0], x[1], x[2], x[3] );
+        }
+    }
+    else
+    {
+        // point xform failed
+        ok = false;
+    }
+    return ok;
 }

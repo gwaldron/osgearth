@@ -78,10 +78,14 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 }
 
 bool
-GeoExtent::isValid() const {
-    return _srs.valid() &&
-           _xmin < _xmax &&
-           _ymin < _ymax;
+GeoExtent::isValid() const
+{
+    // it's legal for _xmin > _xmax in lat/long; that means it
+    // spans the date line.
+    return 
+        _srs.valid() &&
+        _ymin < _ymax &&
+        ( _xmin < _xmax || _srs->isGeographic() );
 }
 
 const SpatialReference*
@@ -110,13 +114,33 @@ GeoExtent::yMax() const {
 }
 
 double
-GeoExtent::width() const {
-    return _xmax - _xmin;
+GeoExtent::width() const
+{
+    return crossesDateLine()?
+        (180-_xmin) + (_xmax+180) :
+        _xmax - _xmin;
 }
 
 double
-GeoExtent::height() const {
+GeoExtent::height() const
+{
     return _ymax - _ymin;
+}
+
+bool
+GeoExtent::crossesDateLine() const {
+    return _srs.valid() && _srs->isGeographic() && _xmax < _xmin;
+}
+
+bool
+GeoExtent::splitAcrossDateLine( GeoExtent& out_first, GeoExtent& out_second ) const
+{
+    if ( !crossesDateLine() )
+        return false;
+
+    out_first = GeoExtent( _srs.get(), _xmin, _ymin, 180.0, _ymax );
+    out_second = GeoExtent( _srs.get(), -180.0, _ymin, _xmax, _ymax );
+    return true;
 }
 
 GeoExtent
@@ -124,43 +148,14 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
 {       
     if ( isValid() && to_srs )
     {
-        /*double to_xmin, to_ymin, to_xmax, to_ymax;
-        int err = 0;
-        err += _srs->transform( _xmin, _ymin, to_srs, to_xmin, to_ymin )? 0 : 1;
-        err += _srs->transform( _xmax, _ymax, to_srs, to_xmax, to_ymax )? 0 : 1;
-        */
-
-        double ll_x, ll_y;
-        double ul_x, ul_y;
-        double ur_x, ur_y;
-        double lr_x, lr_y;
-        int err = 0;
-        err += _srs->transform(_xmin, _ymin, to_srs, ll_x, ll_y) ? 0: 1;
-        err += _srs->transform(_xmin, _ymax, to_srs, ul_x, ul_y) ? 0: 1;
-        err += _srs->transform(_xmax, _ymax, to_srs, ur_x, ur_y) ? 0: 1;
-        err += _srs->transform(_xmax, _ymin, to_srs, lr_x, lr_y) ? 0: 1;
-
-        double to_xmin = osg::minimum(ll_x, osg::minimum(ul_x, osg::minimum(ur_x, lr_x) ) );
-        double to_ymin = osg::minimum(ll_y, osg::minimum(ul_y, osg::minimum(ur_y, lr_y) ) );
-        double to_xmax = osg::maximum(ll_x, osg::maximum(ul_x, osg::maximum(ur_x, lr_x) ) );
-        double to_ymax = osg::maximum(ll_y, osg::maximum(ul_y, osg::maximum(ur_y, lr_y) ) );
-
-        osg::notify(osg::INFO) << "Transformed extent " 
-            << to_xmin << ", " << to_ymin << "  to " << to_xmax << ", " << to_ymax << std::endl;
-
-
-
-        if ( err > 0 )
+        double xmin = _xmin, ymin = _ymin;
+        double xmax = _xmax, ymax = _ymax;
+        
+        if ( _srs->transformExtent( to_srs, xmin, ymin, xmax, ymax ) )
         {
-            osg::notify(osg::WARN)
-                << "[osgEarth] Warning, failed to transform an extent from "
-                << _srs->getName() << " to "
-                << to_srs->getName() << std::endl;
+            return GeoExtent( to_srs, xmin, ymin, xmax, ymax );
         }
-        else
-        {
-            return GeoExtent( to_srs, to_xmin, to_ymin, to_xmax, to_ymax );
-        }
+
     }
     return GeoExtent(); // invalid
 }
@@ -174,12 +169,14 @@ GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) con
     ymax = _ymax;
 }
 
+//TODO:: support crossesDateLine!
 bool
 GeoExtent::contains(const SpatialReference* srs, double x, double y)
 {
     double local_x, local_y;
     if (!srs->transform(x, y, _srs.get(), local_x, local_y)) return false;
-    return (local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax);
+    return
+        (local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax);
 }
 
 /***************************************************************************/
@@ -431,7 +428,7 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
     memcpy(srcPointsX, destPointsX, sizeof(double) * numPixels);
     memcpy(srcPointsY, destPointsY, sizeof(double) * numPixels);
 
-    dest_extent.getSRS()->transform(src_extent.getSRS(), srcPointsX, srcPointsY, numPixels);
+    dest_extent.getSRS()->transformPoints(src_extent.getSRS(), srcPointsX, srcPointsY, numPixels);
 
     pixel = 0;
     for (unsigned int c = 0; c < width; ++c)

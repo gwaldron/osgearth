@@ -69,6 +69,12 @@ namespace osgEarth
         virtual bool preTransform(double &x, double &y) const;
         virtual bool postTransform(double &x, double &y) const;
 
+        virtual bool transformExtent(const SpatialReference* to_srs,
+                                          double& in_out_xmin,
+                                          double& in_out_ymin,
+                                          double& in_out_xmax,
+                                          double& in_out_ymax) const;
+
     protected:
         unsigned int _face;
     };

@@ -245,8 +245,8 @@ std::string DiskCachedTileSource::getExtension() const
 std::string DiskCachedTileSource::getPath()
 {
     //Return early if the cache path is empty
-    if (_path.empty()) return _path;
-    return getFullPath(_mapConfigFilename, _path);
+    if (_path.empty() || _mapConfigFilename.empty() ) return _path;
+    else return getFullPath(_mapConfigFilename, _path);
 }
 
 std::string DiskCachedTileSource::getFileName(const TileKey* key )

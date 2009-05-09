@@ -234,6 +234,15 @@ SourceConfig::SourceConfig()
     //NOP
 }
 
+SourceConfig::SourceConfig(const std::string& name,
+                           const std::string& driver,
+                           const SourceProperties& props )
+{
+    setName( name );
+    setDriver( driver );
+    properties = props;
+}
+
 void
 SourceConfig::setName( const std::string& _name )
 {

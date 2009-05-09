@@ -35,18 +35,24 @@ namespace osgEarth
     {
     public:
         /**
-        *Creates a new TileSource for use in a osgEarth Map
+        * Creates a new TileSource for use in a osgEarth Map. This is an internal method;
+        * don't call from outside the osgEarth library.
+        * TODO: make this package-internal scope 
         */
-        TileSource* createMapTileSource( const MapConfig* mapConfig,
-                                         const SourceConfig* source,
-                                         const osgDB::ReaderWriter::Options* global_options);
+        TileSource* createMapTileSource(
+            const MapConfig* mapConfig,
+            const SourceConfig* source,
+            const osgDB::ReaderWriter::Options* global_options =NULL );
 
         /**
-        *Creates a new TileSource that will handle all image reprojection, cropping, etc to get to the Map Profile.
+        * Creates a new TileSource that can be used outside the osgEarth Map framework, providing 
+        * direct access to back-end data sources. The object will handle all image reprojection,
+        * cropping, etc automatically.
         */
-        TileSource* createDirectReadTileSource( const MapConfig* mapConfig,
-                                                const SourceConfig* source,
-                                                const osgDB::ReaderWriter::Options* global_options);
+        TileSource* createDirectReadTileSource(
+            const SourceConfig* source,
+            const Profile* profile,
+            const osgDB::ReaderWriter::Options* global_options =NULL );
     };
 }
 

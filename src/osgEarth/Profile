@@ -149,8 +149,15 @@ namespace osgEarth
             double xmin, double ymin, double xmax, double ymax,
             unsigned int x_tiles_at_lod0 =1,
             unsigned int y_tiles_at_lod0 =1 );
+        
+
+        void addIntersectingTiles(
+            const GeoExtent& key_ext,
+            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+
 
     private:
+
         GeoExtent _extent;
         GeoExtent _latlong_extent;
         unsigned int _numTilesWideAtLod0;

@@ -476,7 +476,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 }
 
 bool
-SpatialReference::transform(const SpatialReference* out_srs, double* x, double *y, unsigned int numPoints) const
+SpatialReference::transformPoints(const SpatialReference* out_srs, double* x, double *y, unsigned int numPoints) const
 {
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs)) return true;
@@ -530,6 +530,18 @@ SpatialReference::transform(const SpatialReference* out_srs, double* x, double *
     }
     delete[] temp_z;
     return result;
+}
+
+bool
+SpatialReference::transformExtent(const SpatialReference* to_srs,
+                                  double& in_out_xmin,
+                                  double& in_out_ymin,
+                                  double& in_out_xmax,
+                                  double& in_out_ymax) const
+{
+    double x[2] = { in_out_xmin, in_out_xmax };
+    double y[2] = { in_out_ymin, in_out_ymax };
+    return transformPoints( to_srs, x, y, 2 );
 }
 
 static std::string

@@ -52,6 +52,7 @@ namespace osgEarth
         TileSource* createDirectReadTileSource(
             const SourceConfig* source,
             const Profile* profile,
+            unsigned int tileSize =256,
             const osgDB::ReaderWriter::Options* global_options =NULL );
     };
 }

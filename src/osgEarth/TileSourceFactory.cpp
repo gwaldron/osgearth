@@ -125,13 +125,15 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
 TileSource*
 TileSourceFactory::createDirectReadTileSource(const SourceConfig* source,
                                               const Profile* profile,
+                                              unsigned int tileSize,
                                               const osgDB::ReaderWriter::Options* global_options)
 {
     //Create the map source
     TileSource* mapSource = createMapTileSource( NULL, source, global_options );
 
     //Wrap it in a DirectTileSource that will convert to the map's profile
-    TileSource* tileSource = new DirectReadTileSource(mapSource, 256, global_options);
+    TileSource* tileSource = new DirectReadTileSource( mapSource, tileSize, global_options );
     tileSource->initProfile( profile, std::string() );
+    tileSource->setName( source->getName() );
     return tileSource;
 }

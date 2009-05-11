@@ -80,12 +80,7 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 bool
 GeoExtent::isValid() const
 {
-    // it's legal for _xmin > _xmax in lat/long; that means it
-    // spans the date line.
-    return 
-        _srs.valid() &&
-        _ymin < _ymax &&
-        ( _xmin < _xmax || _srs->isGeographic() );
+    return _srs.valid();
 }
 
 const SpatialReference*
@@ -128,19 +123,38 @@ GeoExtent::height() const
 }
 
 bool
-GeoExtent::crossesDateLine() const {
-    return _srs.valid() && _srs->isGeographic() && _xmax < _xmin;
+GeoExtent::crossesDateLine() const
+{
+    return _xmax < _xmin;
+    //return _srs.valid() && _srs->isGeographic() && _xmax < _xmin;
 }
 
 bool
 GeoExtent::splitAcrossDateLine( GeoExtent& out_first, GeoExtent& out_second ) const
 {
-    if ( !crossesDateLine() )
-        return false;
+    bool success = false;
 
-    out_first = GeoExtent( _srs.get(), _xmin, _ymin, 180.0, _ymax );
-    out_second = GeoExtent( _srs.get(), -180.0, _ymin, _xmax, _ymax );
-    return true;
+    if ( crossesDateLine() )
+    {
+        if ( _srs->isGeographic() )
+        {
+            out_first = GeoExtent( _srs.get(), _xmin, _ymin, 180.0, _ymax );
+            out_second = GeoExtent( _srs.get(), -180.0, _ymin, _xmax, _ymax );
+            success = true;
+        }
+        else
+        {
+            GeoExtent latlong_extent = transform( _srs->getGeographicSRS() );
+            GeoExtent first, second;
+            if ( latlong_extent.splitAcrossDateLine( first, second ) )
+            {
+                out_first = first.transform( _srs.get() );
+                out_second = second.transform( _srs.get() );
+                success = out_first.isValid() && out_second.isValid();
+            }
+        }
+    }
+    return success;
 }
 
 GeoExtent
@@ -428,6 +442,7 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
     memcpy(srcPointsX, destPointsX, sizeof(double) * numPixels);
     memcpy(srcPointsY, destPointsY, sizeof(double) * numPixels);
 
+    // NOTE: some of the points may be out of range... gw
     dest_extent.getSRS()->transformPoints(src_extent.getSRS(), srcPointsX, srcPointsY, numPixels);
 
     pixel = 0;

@@ -284,8 +284,12 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
 
     double keyWidth = key_ext.width();
     double keyHeight = key_ext.height();
-
     double keyArea = keyWidth * keyHeight;
+
+    // bail out if the key has a null extent. This might happen is the original key represents an
+    // area in one profile that is out of bounds in this profile.
+    if ( keyArea <= 0.0 )
+        return;
 
     int destLOD = 1;
     double destTileWidth, destTileHeight;
@@ -307,7 +311,6 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         destTileWidth = w;
         destTileHeight = h;
     }
-
 
     //osg::notify(osg::INFO) << std::fixed << "  Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
     //osg::notify(osg::INFO) << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;

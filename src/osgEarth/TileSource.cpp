@@ -90,6 +90,12 @@ TileSource::createHeightField( const TileKey* key )
 }
 
 bool
+TileSource::isOK() const 
+{
+    return getProfile() != NULL;
+}
+
+bool
 TileSource::isKeyValid(const osgEarth::TileKey *key)
 {
   if (!key) return false;

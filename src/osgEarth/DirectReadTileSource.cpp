@@ -34,8 +34,9 @@ _tileSource(tileSource)
 osg::Image*
 DirectReadTileSource::createImage(const osgEarth::TileKey *key)
 {
-    //If the destination profile and the underlying TileSource profile are the same, simply request the image and return.
-    if (_profile->isEquivalentTo( _tileSource->getProfile() ) )
+    //If the destination profile and the underlying TileSource profile are the same,
+    // simply request the image and return.
+    if ( key->getProfile()->isEquivalentTo( _tileSource->getProfile() ) )
     {
         return _tileSource->createImage( key );
     }
@@ -46,7 +47,12 @@ DirectReadTileSource::createImage(const osgEarth::TileKey *key)
 
     if ( mosaic.valid() )
     {        
-        osg::ref_ptr<GeoImage> image = mosaic->reproject( key->getProfile()->getSRS(), &key->getGeoExtent()); 
+        osg::ref_ptr<GeoImage> image = mosaic->reproject(
+            key->getProfile()->getSRS(),
+            &key->getGeoExtent(),
+            _tileSize,
+            _tileSize );
+
         if (image.valid())
         {
             return image->takeImage();

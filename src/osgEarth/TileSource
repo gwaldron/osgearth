@@ -71,6 +71,13 @@ namespace osgEarth
     public:
 
         /**
+         * Returns True if this tile source initialized properly and has a valid
+         * profile.
+         */
+        bool isOK() const;
+        bool isValid() const { return isOK(); }
+
+        /**
          * Gets the Profile that was originally created by initProfile()
          */
         const Profile* getProfile() const;

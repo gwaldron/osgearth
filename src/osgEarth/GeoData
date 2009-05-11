@@ -112,7 +112,11 @@ namespace osgEarth
                         unsigned int width = 0,
                         unsigned int height = 0) const;
 
-        GeoImage* reproject(const SpatialReference* to_srs, const GeoExtent* to_extent = 0, unsigned int width = 0, unsigned int height = 0) const;
+        GeoImage* reproject(
+            const SpatialReference* to_srs,
+            const GeoExtent* to_extent = 0,
+            unsigned int width = 0,
+            unsigned int height = 0) const;
 
         osg::Image* takeImage();
 

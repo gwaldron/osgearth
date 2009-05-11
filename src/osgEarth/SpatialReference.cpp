@@ -541,7 +541,15 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
 {
     double x[2] = { in_out_xmin, in_out_xmax };
     double y[2] = { in_out_ymin, in_out_ymax };
-    return transformPoints( to_srs, x, y, 2 );
+    bool ok = transformPoints( to_srs, x, y, 2 );
+    if ( ok )
+    {
+        in_out_xmin = x[0];
+        in_out_ymin = y[0];
+        in_out_xmax = x[1];
+        in_out_ymax = y[1];
+    }
+    return ok;
 }
 
 static std::string

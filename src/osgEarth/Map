@@ -25,6 +25,9 @@
 #include <osgEarth/MapConfig>
 #include <osgEarth/Compositing>
 #include <osgEarth/ElevationManager>
+#include <osgEarth/Layer>
+
+#include <OpenThreads/ReadWriteMutex>
 #include <osgDB/ReaderWriter>
 #include <osgTerrain/Terrain>
 #include <vector>
@@ -49,6 +52,20 @@ namespace osgEarth
 
             return itr->second;
         }
+
+        typedef std::vector< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
+
+        void getTerrainTiles( TerrainTileList &tiles )
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+            for(TerrainTileSet::iterator itr = _terrainTileSet.begin();
+                itr != _terrainTileSet.end();
+                ++itr)
+            {
+                tiles.push_back( (*itr) );
+            }
+        }
     };
 
 
@@ -62,8 +79,7 @@ namespace osgEarth
          * Creates a Node from the given MapConfig.  This allows you to programatically create a
          * MapConfig and create a paging scene graph out of it.
          */
-        static osg::Node* readNode( MapConfig* mapConfig );
-
+        static osg::Node* readNode( MapConfig* mapConfig );     
 
     public:
         /**
@@ -90,18 +106,6 @@ namespace osgEarth
         MapConfig* getMapConfig() const;
 
         /**
-         * Gets the collection of image tile sources managed by this map.
-         */
-        TileSourceList& getImageSources();
-        const TileSourceList& getImageSources() const;
-
-        /**
-         * Gets the collection of height-field tile sources managed by this map.
-         */
-        TileSourceList& getHeightFieldSources();
-        const TileSourceList& getHeightFieldSources() const;
-
-        /**
          * Gets whether this map is legally configured.
          */
         bool isOK() const;
@@ -123,9 +127,40 @@ namespace osgEarth
         static Map* getMapById(unsigned int id);
 
         /**
-         *Gets the ElevationManager for this Map
+         * Adds the given layer to the end of the Layer list
          */
-        ElevationManager* getElevationManager();
+        void addLayer( Layer* layer );
+
+        /**
+         * Removes the given layer from this Map's Layer List.
+         */
+        void removeLayer( Layer* layer );
+
+        /**
+         *Moves the given layer to the given position in this Map's Layer list.
+         */
+        void moveLayer( Layer* layer, int position );
+
+        /**
+         *Gets the number of layers contained in this Map
+         */
+        unsigned int getNumLayers() const;
+
+        /**
+         *Gets the Layer at the given position in this Map.
+         */
+        Layer* getLayer( unsigned int i ) const;
+
+        /**
+         *Get a list of all ImageLayers in this Map.  The ImageLayers will be returned in the order in which they appear in the Layer list
+         */
+        void getImageLayers( ImageLayerList &layers );
+
+        /**
+         *Get a list of all ElevationLayers in this Map.  The ElevationLayers will be returned in the order in which they appear in the Layer list
+         */
+        void getElevationLayers( ElevationLayerList &layers );
+
 
     protected:
         Map( 
@@ -173,29 +208,31 @@ namespace osgEarth
 	    osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
 
         // checks whether more data exists below the specified key's level of detail
-        bool hasMoreLevels( const TileKey* key ) const;
+        bool hasMoreLevels( const TileKey* key );
 
         unsigned int id;
 
         osg::ref_ptr<MapConfig> _mapConfig;
-        TileSourceList _image_sources;
-        TileSourceList _heightfield_sources;
 
         //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
         std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > _terrains;
 
         osg::ref_ptr<osgEarth::ElevationManager> _elevationManager;
 
+        //The list of layers contained by the map;        
+        LayerList _layers;
+        OpenThreads::ReadWriteMutex _layersMutex;
 
+        osg::ref_ptr< const osgDB::ReaderWriter::Options > _options;
+
+        osg::HeightField* getHeightField( const TileKey* key, bool fallback );
 
     private:
 
         osg::ref_ptr<const Profile> _profile;
 
-        void initializeTileSources();
+        void initializeLayers();
 
-        TileSource* findTileSource( const std::string& name ) const;
-        
         TileSource* loadSource(
             const MapConfig* mapConfig,
             const SourceConfig* source,
@@ -206,7 +243,6 @@ namespace osgEarth
             const SourceConfigList& from, 
             std::vector< osg::ref_ptr<TileSource> >& to,
             const osgDB::ReaderWriter::Options* global_options);
-
     };
 };
 

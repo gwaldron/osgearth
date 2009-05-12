@@ -1,0 +1,123 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGTERRAIN_EARTHTERRAINTECHNIQUE
+#define OSGTERRAIN_EARTHTERRAINTECHNIQUE 1
+
+#include <osg/MatrixTransform>
+#include <osg/Geode>
+#include <osg/Geometry>
+
+#include <osgTerrain/TerrainTechnique>
+#include <osgTerrain/Locator>
+#include <osgEarth/Export>
+
+namespace osgEarth {
+
+    class OSGEARTH_EXPORT EarthTerrainTechnique : public osgTerrain::TerrainTechnique
+{
+    public:
+
+        EarthTerrainTechnique();
+
+        /** Copy constructor using CopyOp to manage deep vs shallow copy.*/
+        EarthTerrainTechnique(const EarthTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+        
+        META_Object(osgEarth, EarthTerrainTechnique);
+        
+        virtual void init();
+        
+        virtual osgTerrain::Locator* computeMasterLocator();
+        
+        virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
+        
+        virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+        
+        virtual void applyColorLayers();
+        
+        virtual void applyTransparency();
+        
+        virtual void smoothGeometry();
+
+        virtual void update(osgUtil::UpdateVisitor* nv);
+
+        virtual void cull(osgUtil::CullVisitor* nv);
+
+        /** Traverse the terain subgraph.*/
+        virtual void traverse(osg::NodeVisitor& nv);
+
+        virtual void cleanSceneGraph();
+
+        void setFilterBias(float filterBias);
+        float getFilterBias() const { return _filterBias; }
+        
+        void setFilterWidth(float filterWidth);
+        float getFilterWidth() const { return _filterWidth; }
+
+        void setFilterMatrix(const osg::Matrix3& matrix);
+        osg::Matrix3& getFilterMatrix() { return _filterMatrix; }
+        const osg::Matrix3& getFilterMatrix() const { return _filterMatrix; }
+        
+        enum FilterType
+        {
+            GAUSSIAN,
+            SMOOTH,
+            SHARPEN
+        };
+        
+        void setFilterMatrixAs(FilterType filterType);
+
+        inline OpenThreads::Mutex& getMutex() {return _mutex;}
+
+
+    private:
+
+        virtual ~EarthTerrainTechnique();
+
+        struct BufferData
+        {
+            osg::ref_ptr<osg::MatrixTransform>  _transform;
+            osg::ref_ptr<osg::Geode>            _geode;
+            osg::ref_ptr<osg::Geometry>         _geometry;
+        };
+        
+        unsigned int                        _currentReadOnlyBuffer;
+        unsigned int                        _currentWriteBuffer;
+        
+        BufferData                          _bufferData[2];
+        
+        void swapBuffers();
+
+        inline BufferData& getReadOnlyBuffer() { return _bufferData[_currentReadOnlyBuffer]; }
+        inline BufferData& getWriteBuffer() { return _bufferData[_currentWriteBuffer]; }
+        
+                
+        float                               _filterBias;
+        osg::ref_ptr<osg::Uniform>          _filterBiasUniform;
+        float                               _filterWidth;
+        osg::ref_ptr<osg::Uniform>          _filterWidthUniform;
+        osg::Matrix3                        _filterMatrix;
+        osg::ref_ptr<osg::Uniform>          _filterMatrixUniform;
+
+        OpenThreads::Mutex                  _mutex;
+};
+
+}
+
+#endif

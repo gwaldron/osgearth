@@ -35,6 +35,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageToHeightFieldConverter
 	ImageUtils
     JsonUtils
+	Layer
 	Map
     MapConfig
     Mercator
@@ -67,6 +68,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageToHeightFieldConverter.cpp
 	ImageUtils.cpp
     JsonUtils.cpp
+	Layer.cpp
 	Map.cpp
     MapConfig.cpp
     Mercator.cpp

@@ -132,7 +132,7 @@ namespace osgEarth
         
         const osgDB::ReaderWriter::Options* getOptions() const;
 
-    private:
+    public:
         unsigned int _minLevel;
         unsigned int _maxLevel;
 

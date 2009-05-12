@@ -22,6 +22,9 @@
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osgEarth/Compositing>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Layer>
+#include <osgEarth/EarthTerrainTechnique>
+
 #include <osg/Image>
 #include <osg/Notify>
 #include <osg/PagedLOD>
@@ -36,6 +39,7 @@
 #include <stdlib.h>
 
 using namespace osgEarth;
+using namespace OpenThreads;
 
 ProjectedMap::ProjectedMap( 
     MapConfig* mapConfig,
@@ -49,25 +53,33 @@ Map( mapConfig,global_options )
 osg::Node*
 ProjectedMap::createQuadrant( const TileKey* key )
 {
+    ScopedReadLock lock(_layersMutex);
     double xmin, ymin, xmax, ymax;
     key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
-    bool empty_map = _image_sources.size() == 0 && _heightfield_sources.size() == 0;
+     //Collect the image layers
+    ImageLayerList imageLayers;
+    getImageLayers( imageLayers );
+
+    ElevationLayerList elevationLayers;
+    getElevationLayers( elevationLayers );
+
+    bool empty_map = imageLayers.size() == 0 && elevationLayers.size() == 0;
 
     //osg::notify(osg::NOTICE) << "DataGridProfile " << _dataProfile.xMin() << ", " << _dataProfile.yMin() << ", " << _dataProfile.xMax() << ", " << _dataProfile.yMax() << std::endl;
 
     GeoImageList image_tiles;
 
     //TODO: select/composite:
-    if ( _image_sources.size() > 0 )
+    if ( imageLayers.size() > 0 )
     {
         //Add an image from each image source
-        for (unsigned int i = 0; i < _image_sources.size(); ++i)
+        for (unsigned int i = 0; i < imageLayers.size(); ++i)
         {
             GeoImage* image = NULL;
-            if (_image_sources[i]->isKeyValid(key))
+            if (imageLayers[i]->getTileSource()->isKeyValid(key))
             {
-                image = createGeoImage(key, _image_sources[i].get());
+                image = createGeoImage(key, imageLayers[i]->getTileSource());
             }
             image_tiles.push_back(image);
         }
@@ -77,9 +89,9 @@ ProjectedMap::createQuadrant( const TileKey* key )
     bool hasElevation = false;
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
-    if ( _elevationManager.valid() && _heightfield_sources.size() > 0 )
+    if ( _elevationManager.valid() && elevationLayers.size() > 0 )
     {
-        hf = _elevationManager->getHeightField(key, 0, 0, false);
+        hf = getHeightField(key, false);
         hasElevation = hf.valid();
     }
 
@@ -97,22 +109,22 @@ ProjectedMap::createQuadrant( const TileKey* key )
         return NULL;
     }
    
-    //Try to interpolate any missing _image_sources from parent tiles
-    for (unsigned int i = 0; i < _image_sources.size(); ++i)
+    //Try to interpolate any missing image layers from parent tiles
+    for (unsigned int i = 0; i < imageLayers.size(); ++i)
     {
         if (!image_tiles[i].valid())
         {
-            if (_image_sources[i]->isKeyValid(key))
+            if (imageLayers[i]->getTileSource()->isKeyValid(key))
             {
-                GeoImage* image = createValidGeoImage(_image_sources[i].get(), key);
+                GeoImage* image = createValidGeoImage(imageLayers[i]->getTileSource(), key);
                 if (image)
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Using fallback image for image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Using fallback image for image source " << imageLayers[i]->getName() << " for TileKey " << key->str() << std::endl;
                     image_tiles[i] = image;
                 }
                 else
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Could not get valid image from image source " << _image_sources[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Could not get valid image from image source " << imageLayers[i]->getName() << " for TileKey " << key->str() << std::endl;
                 }
             }
         }
@@ -122,7 +134,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if (_heightfield_sources.size() == 0)
+        if (elevationLayers.size() == 0)
         {
             //Make any empty heightfield if no heightfield source is specified
             hf = new osg::HeightField();
@@ -133,7 +145,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = _elevationManager->getHeightField(key, 0, 0, true);
+            hf = getHeightField( key, true );
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -160,7 +172,6 @@ ProjectedMap::createQuadrant( const TileKey* key )
     hf->setXInterval( (xmax - xmin)/(double)(hf->getNumColumns()-1) );
     hf->setYInterval( (ymax - ymin)/(double)(hf->getNumRows()-1) );
     hf->setBorderWidth( 0 );
-    hf->setSkirtHeight( 0 );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( geo_locator );
@@ -168,9 +179,11 @@ ProjectedMap::createQuadrant( const TileKey* key )
 
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
     tile->setLocator( geo_locator );
-    tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
+    //tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
+    tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique() );
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
+    tile->setDataVariance(osg::Object::DYNAMIC);
     tile->setTileID(key->getTileId());
 
     if (hasElevation && _mapConfig->getNormalizeEdges())
@@ -212,7 +225,8 @@ ProjectedMap::createQuadrant( const TileKey* key )
             }
             //img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
-            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
+            //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
+            osgTerrain::ImageLayer* img_layer = new osgEarth::osgEarthImageLayer(imageLayers[i]->getId(), geo_image->getImage() );
             img_layer->setLocator( img_locator.get() );
 
             //Turn on linear texture minification if the image is not a power of two due
@@ -235,6 +249,8 @@ ProjectedMap::createQuadrant( const TileKey* key )
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(xmin,ymin,0)).length();
     double min_range = radius * _mapConfig->getMinTileRangeFactor();
+
+    osg::notify(osg::NOTICE) << "Radius " << radius << std::endl;
 
     //Set the skirt height of the heightfield
     hf->setSkirtHeight(radius * _mapConfig->getSkirtRatio());

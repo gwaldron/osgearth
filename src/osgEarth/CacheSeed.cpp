@@ -20,6 +20,7 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/Caching>
 #include <osgEarth/Mercator>
+#include <osgEarth/Layer>
 #include <limits.h>
 
 using namespace osgEarth;
@@ -49,10 +50,13 @@ void CacheSeed::seed(MapConfig *map)
     int src_min_level = INT_MAX;
     int src_max_level = 0;
 
+    ImageLayerList imageLayers;
+    _map->getImageLayers( imageLayers );
+
     //Assumes the the TileSource will perform the caching for us when we call createImage
-    for (TileSourceList::iterator itr = _map->getImageSources().begin(); itr != _map->getImageSources().end(); ++itr)
+    for (ImageLayerList::iterator itr = imageLayers.begin(); itr != imageLayers.end(); ++itr)
     {
-        TileSource* src = itr->get();
+        TileSource* src = itr->get()->getTileSource();
         if (!dynamic_cast<CachedTileSource*>(src))
         {
             osg::notify(osg::NOTICE) << "Warning:  Image " << src->getName() << " has no cache." << std::endl;
@@ -67,9 +71,12 @@ void CacheSeed::seed(MapConfig *map)
         }
     }
 
-    for (TileSourceList::iterator itr = _map->getHeightFieldSources().begin(); itr != _map->getHeightFieldSources().end(); ++itr)
+    ElevationLayerList elevationLayers;
+    _map->getElevationLayers( elevationLayers );
+
+    for (ElevationLayerList::iterator itr = elevationLayers.begin(); itr != elevationLayers.end(); ++itr)
     {
-        TileSource* src = itr->get();
+        TileSource* src = itr->get()->getTileSource();
         if (!dynamic_cast<CachedTileSource*>(src))
         {
             osg::notify(osg::NOTICE) << "Warning:  Heightfield " << src->getName() << " has no cache." << std::endl;
@@ -114,10 +121,13 @@ void CacheSeed::processKey(Map* map, TileKey *key)
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
+        ImageLayerList imageLayers;
+        map->getImageLayers( imageLayers );
+
         //Assumes the the TileSource will perform the caching for us when we call createImage
-        for (TileSourceList::iterator itr = map->getImageSources().begin(); itr != map->getImageSources().end(); ++itr)
+        for (ImageLayerList::iterator itr = imageLayers.begin(); itr != imageLayers.end(); ++itr)
         {
-            TileSource* source = itr->get();
+            TileSource* source = itr->get()->getTileSource();
             if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
             {
                 osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
@@ -125,10 +135,13 @@ void CacheSeed::processKey(Map* map, TileKey *key)
             }
         }
 
-        for (TileSourceList::iterator itr = map->getHeightFieldSources().begin(); itr != map->getHeightFieldSources().end(); ++itr)
+        ElevationLayerList elevationLayers;
+        map->getElevationLayers( elevationLayers );
+
+        for (ElevationLayerList::iterator itr = elevationLayers.begin(); itr != elevationLayers.end(); ++itr)
         {
             //TODO:  Handle compatible but non exact heightfield keys (JB)
-            TileSource* source = itr->get();
+            TileSource* source = itr->get()->getTileSource();
             if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
             {
                 osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;

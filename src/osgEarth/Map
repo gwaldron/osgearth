@@ -161,6 +161,11 @@ namespace osgEarth
          */
         void getElevationLayers( ElevationLayerList &layers );
 
+        /**
+         *Creates a TileSource with the given SourceConfig
+         */
+        TileSource* createTileSource( SourceConfig* sourceConfig );
+
 
     protected:
         Map( 
@@ -232,11 +237,6 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
 
         void initializeLayers();
-
-        TileSource* loadSource(
-            const MapConfig* mapConfig,
-            const SourceConfig* source,
-            const osgDB::ReaderWriter::Options* global_options);
 
         void addSources(
             const MapConfig* mapConfig,

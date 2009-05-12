@@ -133,10 +133,12 @@ public:
                     TileSourceFactory factory;
                     SourceProperties props;
                     props["url"] = "../data/boston-inset.tif";
-                    osg::ref_ptr<SourceConfig> sourceConfig = new SourceConfig("overlay", "gdal", props);
-                    osg::ref_ptr<TileSource> tileSource = factory.createMapTileSource( _map->getMapConfig(), sourceConfig.get() );
-                    tileSource->initProfile( _map->getProfile() , _map->getMapConfig()->getFilename() );
-                    _map->addLayer( new osgEarth::ImageLayer( tileSource.get() ) );
+
+                    osg::ref_ptr<TileSource> tileSource = _map->createTileSource( new SourceConfig("overlay", "gdal", props ) );
+                    if (tileSource.valid())
+                    {
+                      _map->addLayer( new osgEarth::ImageLayer( tileSource.get() ) );
+                    }
                     return true;
                 }
                 else if (ea.getKey()=='e')
@@ -156,10 +158,13 @@ public:
                     SourceProperties props;
                     props["url"] = "../data/terrain/mt_rainier_90m.tif";
                     props["tile_size"] = "32";
-                    osg::ref_ptr<SourceConfig> sourceConfig = new SourceConfig("overlay", "gdal", props);
-                    osg::ref_ptr<TileSource> tileSource = factory.createMapTileSource( _map->getMapConfig(), sourceConfig.get() );
-                    tileSource->initProfile( _map->getProfile() , _map->getMapConfig()->getFilename() );
-                    _map->addLayer( new osgEarth::ElevationLayer( tileSource.get() ) );
+
+                    osg::ref_ptr<TileSource> tileSource = _map->createTileSource( new SourceConfig("mt_rainier", "gdal", props ) );
+                    if (tileSource.valid() )
+                    {
+                        _map->addLayer( new osgEarth::ElevationLayer( tileSource.get() ) );
+                    }
+
                     return true;
                 }
                 return false;

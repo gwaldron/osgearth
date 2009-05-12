@@ -1074,3 +1074,22 @@ Map::getHeightField( const TileKey* key, bool fallback )
     }
     return em->getHeightField( key, 0, 0, fallback );
 }
+
+TileSource*
+Map::createTileSource(osgEarth::SourceConfig *sourceConfig)
+{
+    //Create the TileSource
+    TileSourceFactory factory;
+    osg::ref_ptr<TileSource> tileSource = factory.createMapTileSource(_mapConfig.get(), sourceConfig, _options.get());
+
+    if (tileSource.valid())
+    {
+        const Profile* profile = tileSource->initProfile( getProfile(), getMapConfig()->getFilename() );
+        if (!profile)
+        {
+            osg::notify(osg::NOTICE) << "Could not initialize profile " << std::endl;
+            tileSource = NULL;
+        }
+    }
+    return tileSource.release();
+}

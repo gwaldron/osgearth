@@ -256,18 +256,12 @@ ProjectedMap::createQuadrant( const TileKey* key )
     hf->setSkirtHeight(radius * _mapConfig->getSkirtRatio());
 
     // see if we need to keep subdividing:
-    osg::Node* result = tile;
-    if ( hasMoreLevels( key ) || empty_map )
-    {
-        osg::PagedLOD* plod = new osg::PagedLOD();
-        plod->setCenter( centroid );
-        plod->addChild( tile, min_range, max_range );
-        plod->setFileName( 1, createURI( key ) );
-        plod->setRange( 1, 0.0, min_range );
-        result = plod;
-    }
-
-    return result;
+    osg::PagedLOD* plod = new osg::PagedLOD();
+    plod->setCenter( centroid );
+    plod->addChild( tile, min_range, max_range );
+    plod->setFileName( 1, createURI( key ) );
+    plod->setRange( 1, 0.0, min_range );
+    return plod;
 }
 
 osg::CoordinateSystemNode*

@@ -307,20 +307,15 @@ GeocentricMap::createQuadrant( const TileKey* key )
     }
 
     // see if we need to keep subdividing:
-    osg::Node* result = tile;
-    if ( hasMoreLevels( key ) || empty_map )
-    {
-        osg::PagedLOD* plod = new osg::PagedLOD();
-        plod->setCenter( bs.center() );
-        plod->addChild( tile, min_range, max_range );
-        plod->setFileName( 1, createURI( key ) );
-        plod->setRange( 1, 0.0, min_range );
-        result = plod;
-    }
+    osg::PagedLOD* plod = new osg::PagedLOD();
+    plod->setCenter( bs.center() );
+    plod->addChild( tile, min_range, max_range );
+    plod->setFileName( 1, createURI( key ) );
+    plod->setRange( 1, 0.0, min_range );
 
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] End" << std::endl;
 
-    return result;
+    return plod;
 }
 
 osg::CoordinateSystemNode*

@@ -24,30 +24,31 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Compositing
     Cube
-	DirectReadTileSource
-	ElevationManager
+    DirectReadTileSource 
+    EarthTerrainTechnique
+    ElevationManager
     Export
-	FileUtils
+    FileUtils
     GeocentricMap
     GeoData
-	HeightFieldUtils
+    HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
-	ImageUtils
+    ImageUtils
     JsonUtils
-	Layer
-	Map
+    Layer
+    Map
     MapConfig
     Mercator
-	Profile
-	ProjectedMap
-	Registry
-	SpatialReference
+    Profile
+    ProjectedMap
+    Registry
+    SpatialReference
     TerrainTileEdgeNormalizerUpdateCallback
     TileKey
     TileSource
     TileSourceFactory
-	TMS
+    TMS
     XmlUtils
 )
 
@@ -55,32 +56,33 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     Caching.cpp
-	CacheSeed.cpp
-	Compositing.cpp
-	Cube.cpp
-	DirectReadTileSource.cpp
-	ElevationManager.cpp
-	FileUtils.cpp
+    CacheSeed.cpp
+    Compositing.cpp
+    Cube.cpp
+    DirectReadTileSource.cpp
+    EarthTerrainTechnique.cpp
+    ElevationManager.cpp
+    FileUtils.cpp
     GeocentricMap.cpp
     GeoData.cpp
-	HeightFieldUtils.cpp
+    HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp
-	ImageUtils.cpp
+    ImageUtils.cpp
     JsonUtils.cpp
-	Layer.cpp
-	Map.cpp
+    Layer.cpp
+    Map.cpp
     MapConfig.cpp
     Mercator.cpp
-	Profile.cpp
-	ProjectedMap.cpp
-	Registry.cpp
-	SpatialReference.cpp
+    Profile.cpp
+    ProjectedMap.cpp
+    Registry.cpp
+    SpatialReference.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileKey.cpp
     TileSource.cpp
     TileSourceFactory.cpp
-	TMS.cpp
+    TMS.cpp
     Version.cpp
     XmlUtils.cpp
 )

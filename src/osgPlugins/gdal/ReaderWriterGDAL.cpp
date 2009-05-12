@@ -48,8 +48,8 @@
 #include <gdal_vrt.h>
 #endif
 
-#include <OpenThreads/ScopedLock>
-#include <OpenThreads/ReentrantMutex>
+//#include <OpenThreads/ScopedLock>
+//#include <OpenThreads/ReentrantMutex>
 
 using namespace std;
 using namespace osgEarth;
@@ -60,7 +60,8 @@ using namespace osgEarth;
 #define PROPERTY_INTERPOLATION  "interpolation"
 #define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
 
-static OpenThreads::ReentrantMutex s_mutex;
+//static OpenThreads::ReentrantMutex s_mutex;
+
 
 #define GEOTRSFRM_TOPLEFT_X            0
 #define GEOTRSFRM_WE_RES               1
@@ -167,6 +168,8 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, std::vec
 static GDALDatasetH
 build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy)
 {
+    GDAL_SCOPED_LOCK;
+
     char* projectionRef = NULL;
     int nBands = 0;
     BandProperty* bandProperties = NULL;
@@ -463,12 +466,12 @@ public:
       _warpedDS(NULL),
       _maxDataLevel(30)
     {
-        static bool s_gdal_registered = false;
-        if (!s_gdal_registered)
-        {
-            GDALAllRegister();
-            s_gdal_registered = true;
-        }
+        //static bool s_gdal_registered = false;
+        //if (!s_gdal_registered)
+        //{
+        //    GDALAllRegister();
+        //    s_gdal_registered = true;
+        //}
 
         std::string interpOption;
 
@@ -510,6 +513,8 @@ public:
 
     ~GDALTileSource()
     {
+        GDAL_SCOPED_LOCK;
+
         if (_warpedDS != _srcDS)
         {
             delete _warpedDS;
@@ -521,6 +526,8 @@ public:
 
     const Profile* createProfile( const Profile* mapProfile, const std::string& confPath )
     {   
+        GDAL_SCOPED_LOCK;
+
         if (_url.empty())
         {
             osg::notify(osg::WARN) << "[osgEarth::GDAL] No URL or directory specified " << std::endl;
@@ -585,6 +592,17 @@ public:
             return NULL;
         }
 
+
+        //Create a spatial reference for the source.
+        osg::ref_ptr<SpatialReference> src_srs = SpatialReference::create( _srcDS->GetProjectionRef() );
+        
+        // assert SRS is present
+        if ( !src_srs.valid() )
+        {
+            osg::notify(osg::WARN) << "[osgEarth::GDAL] Dataset has no spatial reference information: " << path << std::endl;
+            return NULL;
+        }
+
         const Profile* profile = NULL;
 
         // If the map already defines a profile, simply take it on.
@@ -593,8 +611,6 @@ public:
             profile = mapProfile;
         }
 
-        //Create a spatial reference for the source.
-        osg::ref_ptr<SpatialReference> src_srs = SpatialReference::create( _srcDS->GetProjectionRef() );
 
         if ( !profile && src_srs->isGeographic() )
         {
@@ -677,6 +693,8 @@ public:
     */
     static GDALRasterBand* findBand(GDALDataset *ds, GDALColorInterp colorInterp)
     {
+        GDAL_SCOPED_LOCK;
+
         for (int i = 1; i <= ds->GetRasterCount(); ++i)
         {
             if (ds->GetRasterBand(i)->GetColorInterpretation() == colorInterp) return ds->GetRasterBand(i);
@@ -692,7 +710,7 @@ public:
 
     osg::Image* createImage( const TileKey* key )
     {
-        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(s_mutex);
+        GDAL_SCOPED_LOCK;
 
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
@@ -871,6 +889,8 @@ public:
 
     bool isValidValue(float v, GDALRasterBand* band)
     {
+        GDAL_SCOPED_LOCK;
+
         float noDataValue = -32767.0f;
         int success;
         float value = band->GetNoDataValue(&success);
@@ -889,6 +909,8 @@ public:
 
     float getInterpolatedValue(GDALRasterBand *band, double x, double y)
     {
+        GDAL_SCOPED_LOCK;
+
         double offsetTransform[6];
         memcpy(offsetTransform, _geotransform, 6 * sizeof(double));
         //Offset the _geotransform by half a pixel
@@ -993,7 +1015,7 @@ public:
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
-        OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(s_mutex);
+        GDAL_SCOPED_LOCK;
 
         //Allocate the heightfield
         osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;

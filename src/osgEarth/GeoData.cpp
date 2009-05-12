@@ -19,7 +19,7 @@
 
 #include <osgEarth/GeoData>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/Mercator>
+#include <osgEarth/Registry>
 #include <osgEarth/Cube>
 
 #include <osg/Notify>
@@ -271,8 +271,11 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     }
 }
 
-osg::Image* createImageFromDataset(GDALDataset* ds)
+static osg::Image*
+createImageFromDataset(GDALDataset* ds)
 {
+    // called internally -- GDAL lock not required
+
     //Allocate the image
     osg::Image *image = new osg::Image;
     image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -285,7 +288,8 @@ osg::Image* createImageFromDataset(GDALDataset* ds)
     return image;
 }
 
-GDALDataset* createMemDS(int width, int height, double minX, double minY, double maxX, double maxY, const std::string &projection)
+static GDALDataset*
+createMemDS(int width, int height, double minX, double minY, double maxX, double maxY, const std::string &projection)
 {
     //Get the MEM driver
     GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
@@ -319,7 +323,8 @@ GDALDataset* createMemDS(int width, int height, double minX, double minY, double
     return ds;
 }
 
-GDALDataset* createDataSetFromImage(const osg::Image* image, double minX, double minY, double maxX, double maxY, const std::string &projection)
+static GDALDataset*
+createDataSetFromImage(const osg::Image* image, double minX, double minY, double maxX, double maxY, const std::string &projection)
 {
     //Clone the incoming image
     osg::ref_ptr<osg::Image> clonedImage = new osg::Image(*image);
@@ -355,11 +360,12 @@ GDALDataset* createDataSetFromImage(const osg::Image* image, double minX, double
     return srcDS;
 }
 
-osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
-                           const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
-                           int width = 0, int height = 0)
+static osg::Image*
+reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, double srcMinY, double srcMaxX, double srcMaxY,
+               const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
+               int width = 0, int height = 0)
 {
-    GDALAllRegister();
+    GDAL_SCOPED_LOCK;
 
     //Create a dataset from the source image
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
@@ -396,8 +402,9 @@ osg::Image* reprojectImage(osg::Image* srcImage, const std::string srcWKT, doubl
     return result;
 }    
 
-osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent,
-                            unsigned int width = 0, unsigned int height = 0)
+static osg::Image*
+manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoExtent& dest_extent,
+                unsigned int width = 0, unsigned int height = 0)
 {
     //TODO:  Compute the optimal destination size
     if (width == 0 || height == 0)
@@ -442,8 +449,10 @@ osg::Image* manualReproject(const osg::Image* image, const GeoExtent& src_extent
     memcpy(srcPointsX, destPointsX, sizeof(double) * numPixels);
     memcpy(srcPointsY, destPointsY, sizeof(double) * numPixels);
 
-    // NOTE: some of the points may be out of range... gw
-    dest_extent.getSRS()->transformPoints(src_extent.getSRS(), srcPointsX, srcPointsY, numPixels);
+    // NOTE: some of the points may be out of range (for Mercator esp.) so we are setting 
+    // "ignore errors" to true to suppress any error messages from the transform. This is OK
+    // b/c it will discard those out-of-bounds points anyway.
+    dest_extent.getSRS()->transformPoints( src_extent.getSRS(), srcPointsX, srcPointsY, numPixels, true );
 
     pixel = 0;
     for (unsigned int c = 0; c < width; ++c)

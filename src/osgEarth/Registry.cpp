@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Mercator>
 #include <osg/Notify>
+#include <gdal_priv.h>
 
 using namespace osgEarth;
 
@@ -31,9 +32,11 @@ using namespace osgEarth;
 #define STR_LOCAL           "local"
 
 
-Registry::Registry():
-osg::Referenced(true)
+Registry::Registry() :
+osg::Referenced(true),
+_gdal_registered( false )
 {
+    GDALAllRegister();
 }
 
 Registry::~Registry()
@@ -43,11 +46,13 @@ Registry::~Registry()
 Registry* Registry::instance(bool erase)
 {
     static osg::ref_ptr<Registry> s_registry = new Registry;
+
     if (erase) 
     {   
         s_registry->destruct();
         s_registry = 0;
     }
+
     return s_registry.get(); // will return NULL on erase
 }
 

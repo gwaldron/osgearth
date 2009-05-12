@@ -31,9 +31,6 @@ using namespace osgEarth;
 
 #define WKT_
 
-#define OGR_SCOPE_LOCK() \
-    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getOGRMutex() )
-
 
 SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
 {
@@ -45,7 +42,7 @@ SpatialReference*
 SpatialReference::createFromPROJ4( const std::string& init, const std::string& init_alias, const std::string& name )
 {
     SpatialReference* result = NULL;
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
 	{
@@ -65,7 +62,7 @@ SpatialReference::createCube(unsigned int face)
     std::string init = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
 
     SpatialReference* result = NULL;
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
 	{
@@ -83,7 +80,7 @@ SpatialReference*
 SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
 {
     SpatialReference* result = NULL;
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
 	void* handle = OSRNewSpatialReference( NULL );
     char buf[4096];
     char* buf_ptr = &buf[0];
@@ -206,7 +203,7 @@ SpatialReference::~SpatialReference()
 {
 	if ( _handle && _owns_handle )
 	{
-      OGR_SCOPE_LOCK();
+      GDAL_SCOPED_LOCK;
 
       for (TransformHandleCache::iterator itr = _transformHandleCache.begin(); itr != _transformHandleCache.end(); ++itr)
       {
@@ -308,7 +305,7 @@ SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
     }
 
     // last resort, since it requires the lock
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
     return TRUE == ::OSRIsSame( _handle, rhs->_handle );
 }
 
@@ -323,7 +320,7 @@ SpatialReference::getGeographicSRS() const
 
     if ( !_geo_srs.valid() )
     {
-        OGR_SCOPE_LOCK();
+        GDAL_SCOPED_LOCK;
 
         void* new_handle = OSRNewSpatialReference( NULL );
         int err = OSRCopyGeogCSFrom( new_handle, _handle );
@@ -426,7 +423,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
         return true;
     }
 
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
 
     preTransform(x, y);
 
@@ -450,7 +447,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
             << "    From => " << getName() << std::endl
             << "    To   => " << out_srs->getName() << std::endl;
         return false;
-        }
+    }
 
     double temp_x = x;
     double temp_y = y;
@@ -476,12 +473,15 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 }
 
 bool
-SpatialReference::transformPoints(const SpatialReference* out_srs, double* x, double *y, unsigned int numPoints) const
+SpatialReference::transformPoints(const SpatialReference* out_srs,
+                                  double* x, double* y,
+                                  unsigned int numPoints,
+                                  bool ignore_errors ) const
 {
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs)) return true;
     
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
 
     for (unsigned int i = 0; i < numPoints; ++i)
     {
@@ -513,9 +513,11 @@ SpatialReference::transformPoints(const SpatialReference* out_srs, double* x, do
     double *temp_z = new double[numPoints];
     bool result;
 
-    if ( OCTTransform( xform_handle, numPoints, x, y, temp_z ) )
+    result = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
+
+    if ( result || ignore_errors )
     {
-        result = true;
+//        result = true;
         for (unsigned int i = 0; i < numPoints; ++i)
         {
             out_srs->postTransform(x[i], y[i]);
@@ -526,7 +528,6 @@ SpatialReference::transformPoints(const SpatialReference* out_srs, double* x, do
         osg::notify( osg::WARN ) << "[osgEarth::SpatialReference] Failed to xform a point from "
             << getName() << " to " << out_srs->getName()
             << std::endl;
-        result = false;
     }
     delete[] temp_z;
     return result;
@@ -555,7 +556,7 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
 static std::string
 getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
 {
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
 	const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
     if ( val )
     {
@@ -572,7 +573,7 @@ getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool low
 void
 SpatialReference::init()
 {
-    OGR_SCOPE_LOCK();
+    GDAL_SCOPED_LOCK;
     
     _is_geographic = OSRIsGeographic( _handle ) != 0;
     

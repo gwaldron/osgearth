@@ -23,8 +23,12 @@
 #include <osgEarth/Common>
 #include <osgEarth/MapConfig>
 #include <OpenThreads/ReentrantMutex>
+#include <OpenThreads/ScopedLock>
 
 #include <osg/Referenced>
+
+#define GDAL_SCOPED_LOCK \
+    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )
 
 namespace osgEarth
 {
@@ -37,7 +41,7 @@ namespace osgEarth
 
         void setCacheConfigOverride( CacheConfig* cacheConfig );
 
-        inline OpenThreads::ReentrantMutex& getOGRMutex() { return ogrmutex; }
+        inline OpenThreads::ReentrantMutex& getGDALMutex() { return _gdal_mutex; }
 
         const Profile* getNamedProfile( const std::string& name ) const;
 
@@ -54,7 +58,8 @@ namespace osgEarth
         void destruct();
 
         osg::ref_ptr<CacheConfig> _cacheConfigOverride;
-        OpenThreads::ReentrantMutex ogrmutex;
+        OpenThreads::ReentrantMutex _gdal_mutex;
+        bool _gdal_registered;
 
         osg::ref_ptr<const Profile> _global_geodetic_profile;
         osg::ref_ptr<const Profile> _global_mercator_profile;

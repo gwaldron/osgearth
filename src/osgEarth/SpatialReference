@@ -46,7 +46,8 @@ namespace osgEarth
         virtual bool transformPoints(
             const SpatialReference* to_srs, 
             double* x, double *y,
-            unsigned int numPoints) const;
+            unsigned int numPoints,
+            bool ignore_errors =false) const;
 
         virtual bool transformExtent(
             const SpatialReference* to_srs,

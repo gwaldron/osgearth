@@ -57,7 +57,7 @@ Map( mapConfig, global_options )
 osg::Node*
 GeocentricMap::createQuadrant( const TileKey* key )
 {
-    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Begin" << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Begin " << key->str() << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Waiting for lock..." << std::endl;
     ScopedReadLock lock(_layersMutex);
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Obtained Lock" << std::endl;
@@ -98,7 +98,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf;
     //TODO: select/composite.
-    if ( _elevationManager.valid() && elevationLayers.size() > 0 )
+    if ( elevationLayers.size() > 0 )
     {
         hf = getHeightField( key, false );
         //hf = _elevationManager->getHeightField(key, 0, 0, false);
@@ -147,11 +147,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
         //We have no heightfield sources, 
         if (elevationLayers.size() == 0)
         {
-            //Make any empty heightfield if no heightfield source is specified
-            hf = new osg::HeightField();
-            hf->allocate( 16, 16 );
-            for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
-                hf->getHeightList()[i] = 0.0; //(double)((::rand() % 10000) - 5000);
+            hf = getEmptyHeightField( key );
         }
         else
         {
@@ -196,10 +192,10 @@ GeocentricMap::createQuadrant( const TileKey* key )
     //        osg::DegreesToRadians( max_lat ) ) );
     //}
 
-    hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
-    hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
-    hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
-    hf->setBorderWidth( 0 );
+    //hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
+    //hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
+    //hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
+    //hf->setBorderWidth( 0 );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( locator );

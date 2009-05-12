@@ -662,7 +662,7 @@ public:
 
         double maxResolution = osg::maximum(resolutionX, resolutionY);
 
-        //osg::notify(osg::NOTICE) << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+        osg::notify(osg::INFO) << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
         unsigned int max_level = 30;
         for (unsigned int i = 0; i < max_level; ++i)
@@ -679,7 +679,7 @@ public:
             }
         }
 
-        //osg::notify(osg::NOTICE) << "Max Data Level=" << _maxDataLevel << std::endl;
+        osg::notify(osg::INFO) << "Max Data Level=" << _maxDataLevel << std::endl;
 
 
 
@@ -710,13 +710,14 @@ public:
 
     osg::Image* createImage( const TileKey* key )
     {
-        GDAL_SCOPED_LOCK;
-
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
             //osg::notify(osg::NOTICE) << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
+
+        GDAL_SCOPED_LOCK;
+
 
         osg::ref_ptr<osg::Image> image;
         if (intersects(key))
@@ -1015,6 +1016,12 @@ public:
 
     osg::HeightField* createHeightField( const TileKey* key )
     {
+        if (key->getLevelOfDetail() > _maxDataLevel)
+        {
+            //osg::notify(osg::NOTICE) << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+            return NULL;
+        }
+
         GDAL_SCOPED_LOCK;
 
         //Allocate the heightfield

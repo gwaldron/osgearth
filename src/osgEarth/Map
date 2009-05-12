@@ -24,7 +24,6 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/MapConfig>
 #include <osgEarth/Compositing>
-#include <osgEarth/ElevationManager>
 #include <osgEarth/Layer>
 
 #include <OpenThreads/ReadWriteMutex>
@@ -222,8 +221,6 @@ namespace osgEarth
         //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
         std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > _terrains;
 
-        osg::ref_ptr<osgEarth::ElevationManager> _elevationManager;
-
         //The list of layers contained by the map;        
         LayerList _layers;
         OpenThreads::ReadWriteMutex _layersMutex;
@@ -231,6 +228,8 @@ namespace osgEarth
         osg::ref_ptr< const osgDB::ReaderWriter::Options > _options;
 
         osg::HeightField* getHeightField( const TileKey* key, bool fallback );
+
+        osg::HeightField* getEmptyHeightField( const TileKey* key );
 
     private:
 

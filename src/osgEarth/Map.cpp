@@ -29,6 +29,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/EarthTerrainTechnique>
+#include <osgEarth/ElevationManager>
 
 #include <osg/Image>
 #include <osg/Notify>
@@ -360,7 +361,7 @@ Map::initialize()
     osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
 
     //If there is more than one image source, use TexEnvCombine to blend them together
-    if ( _mapConfig->getImageSources().size() > 1 )
+    //if ( _mapConfig->getImageSources().size() > 1 )
     {
 #if 1
         osg::StateSet* stateset = csn->getOrCreateStateSet();
@@ -816,10 +817,9 @@ Map::addLayer( Layer* layer )
                     if (heightFieldLayer)
                     {
                         osg::HeightField* hf = getHeightField( key, true );
-                        if (hf)
-                        {
-                            heightFieldLayer->setHeightField( hf );
-                        }
+                        if (!hf) hf = getEmptyHeightField( key.get() );
+                        heightFieldLayer->setHeightField( hf );
+                        hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig->getSkirtRatio() );
                     }
                 }
                 itr->get()->setDirty(true);
@@ -896,10 +896,9 @@ Map::removeLayer( Layer* layer )
                     if (heightFieldLayer)
                     {
                         osg::HeightField* hf = getHeightField( key, true );
-                        if (hf)
-                        {
-                            heightFieldLayer->setHeightField( hf );
-                        }
+                        if (!hf) hf = getEmptyHeightField( key.get() );
+                        heightFieldLayer->setHeightField( hf );
+                        hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig->getSkirtRatio() );
                     }
                 }
                 itr->get()->setDirty(true);
@@ -1008,10 +1007,9 @@ Map::moveLayer( Layer* layer, int position )
                     if (heightFieldLayer)
                     {
                         osg::HeightField* hf = getHeightField( key, true );
-                        if (hf)
-                        {
-                            heightFieldLayer->setHeightField( hf );
-                        }
+                        if (!hf) hf = getEmptyHeightField( key.get() );
+                        heightFieldLayer->setHeightField( hf );
+                        hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig->getSkirtRatio() );
                     }
                 }
                 itr->get()->setDirty(true);
@@ -1073,6 +1071,25 @@ Map::getHeightField( const TileKey* key, bool fallback )
         em->getElevationSources().push_back( itr->get()->getTileSource() );
     }
     return em->getHeightField( key, 0, 0, fallback );
+}
+
+osg::HeightField*
+Map::getEmptyHeightField( const TileKey* key )
+{
+    //Get the bounds of the key
+    double minx, miny, maxx, maxy;
+    key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+
+    osg::HeightField *hf = new osg::HeightField();
+    hf->allocate( 16, 16 );
+    for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+        hf->getHeightList()[i] = 0.0;
+
+    hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+    hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
+    hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
+    hf->setBorderWidth( 0 );
+    return hf;
 }
 
 TileSource*

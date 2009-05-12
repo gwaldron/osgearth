@@ -89,7 +89,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
     bool hasElevation = false;
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
-    if ( _elevationManager.valid() && elevationLayers.size() > 0 )
+    if ( elevationLayers.size() > 0 )
     {
         hf = getHeightField(key, false);
         hasElevation = hf.valid();
@@ -136,11 +136,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
         //We have no heightfield sources, 
         if (elevationLayers.size() == 0)
         {
-            //Make any empty heightfield if no heightfield source is specified
-            hf = new osg::HeightField();
-            hf->allocate( 16, 16 );
-            for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
-                hf->getHeightList()[i] = 0.0; //(double)((::rand() % 10000) - 5000);
+            hf = getEmptyHeightField( key );
         }
         else
         {
@@ -166,12 +162,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
 
     osgTerrain::Locator* geo_locator = getProfile()->getSRS()->createLocator(
         xmin, ymin, xmax, ymax );
-	//geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
-    
-    hf->setOrigin( osg::Vec3d( xmin, ymin, 0.0 ) );
-    hf->setXInterval( (xmax - xmin)/(double)(hf->getNumColumns()-1) );
-    hf->setYInterval( (ymax - ymin)/(double)(hf->getNumRows()-1) );
-    hf->setBorderWidth( 0 );
+	//geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );   
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( geo_locator );

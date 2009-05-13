@@ -268,17 +268,6 @@ GeocentricMap::createQuadrant( const TileKey* key )
 
             img_layer->setLocator( img_locator.get());
 
-
-            //Turn on linear texture minification if the image is not a power of two due
-            //to the fact that some drivers have issues with npot mip mapping
-            if (!ImageUtils::isPowerOfTwo( geo_image->getImage() ) ) //image_tiles[i].first.get()))
-            {
-#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
-                img_layer->setFilter( osgTerrain::Layer::LINEAR );
-#else
-                img_layer->setMinFilter(osg::Texture::LINEAR);
-#endif
-            }
             tile->setColorLayer( layer, img_layer );
             layer++;
         }

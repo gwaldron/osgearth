@@ -110,7 +110,25 @@ public:
         {
             case(osgGA::GUIEventAdapter::KEYDOWN):
             {   
-                if (ea.getKey()=='m')
+                if (ea.getKey()==osgGA::GUIEventAdapter::KEY_Left)
+                {
+                    osgEarth::Layer* layer = _map->getLayer( 0 );
+                    layer->setOpacity( layer->getOpacity() - 0.1);
+                    return true;
+                }
+                else if (ea.getKey()==osgGA::GUIEventAdapter::KEY_Right)
+                {
+                    osgEarth::Layer* layer = _map->getLayer( 0 );
+                    layer->setOpacity( layer->getOpacity() + 0.1);
+                    return true;
+                }
+                else if (ea.getKey() == 'v')
+                {
+                    osgEarth::Layer* layer = _map->getLayer( 2 );
+                    layer->setEnabled( !layer->getEnabled());
+                    return true;
+                }
+                else if (ea.getKey()=='m')
                 {
                     _view->getDatabasePager()->clear();
                     osg::notify(osg::NOTICE) <<"Moving layer "<< std::endl;
@@ -132,9 +150,24 @@ public:
                     _view->getDatabasePager()->clear();
                     TileSourceFactory factory;
                     SourceProperties props;
-                    props["url"] = "../data/boston-inset.tif";
+                    //props["url"] = "../data/boston-inset.tif";
+                    props["url"] = "c:/dev/osgearth/data/boston-inset.tif";
 
                     osg::ref_ptr<TileSource> tileSource = _map->createTileSource( new SourceConfig("overlay", "gdal", props ) );
+                    if (tileSource.valid())
+                    {
+                      _map->addLayer( new osgEarth::ImageLayer( tileSource.get() ) );
+                    }
+                    return true;
+                }
+                else if (ea.getKey()=='b')
+                {
+                    _view->getDatabasePager()->clear();
+                    TileSourceFactory factory;
+                    SourceProperties props;
+                    props["url"] = "I:/data/land_shallow_topo.tif";
+
+                    osg::ref_ptr<TileSource> tileSource = _map->createTileSource( new SourceConfig("bluemarble", "gdal", props ) );
                     if (tileSource.valid())
                     {
                       _map->addLayer( new osgEarth::ImageLayer( tileSource.get() ) );
@@ -156,7 +189,7 @@ public:
                     _view->getDatabasePager()->clear();
                     TileSourceFactory factory;
                     SourceProperties props;
-                    props["url"] = "../data/terrain/mt_rainier_90m.tif";
+                    props["url"] = "c:/dev/osgearth/data/terrain/mt_rainier_90m.tif";
                     props["tile_size"] = "32";
 
                     osg::ref_ptr<TileSource> tileSource = _map->createTileSource( new SourceConfig("mt_rainier", "gdal", props ) );

@@ -231,6 +231,10 @@ namespace osgEarth
 
         osg::HeightField* getEmptyHeightField( const TileKey* key );
 
+        friend class Layer;
+
+        void updateUniforms();
+
     private:
 
         osg::ref_ptr<const Profile> _profile;

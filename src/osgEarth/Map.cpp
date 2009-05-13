@@ -57,6 +57,202 @@ static unsigned int s_mapID = 0;
 //Caches the Maps that have been created
 typedef std::map<unsigned int, osg::observer_ptr<Map> > MapCache;
 
+
+
+
+char vert_source[] = "vec4 Ambient;\n"
+                    "vec4 Diffuse;\n"
+                    "vec4 Specular;\n"
+                    "\n"
+                    "varying vec2 texCoord0;\n"
+                    "varying vec2 texCoord1;\n"
+                    "varying vec2 texCoord2;\n"
+                    "\n"
+                    "\n"
+                    "void pointLight(in int i, in vec3 normal, in vec3 eye, in vec3 ecPosition3)\n"
+                    "{\n"
+                    "   float nDotVP;       // normal . light direction\n"
+                    "   float nDotHV;       // normal . light half vector\n"
+                    "   float pf;           // power factor\n"
+                    "   float attenuation;  // computed attenuation factor\n"
+                    "   float d;            // distance from surface to light source\n"
+                    "   vec3  VP;           // direction from surface to light position\n"
+                    "   vec3  halfVector;   // direction of maximum highlights\n"
+                    "\n"
+                    "   // Compute vector from surface to light position\n"
+                    "   VP = vec3 (gl_LightSource[i].position) - ecPosition3;\n"
+                    "\n"
+                    "   // Compute distance between surface and light position\n"
+                    "   d = length(VP);\n"
+                    "\n"
+                    "   // Normalize the vector from surface to light position\n"
+                    "   VP = normalize(VP);\n"
+                    "\n"
+                    "   // Compute attenuation\n"
+                    "   attenuation = 1.0 / (gl_LightSource[i].constantAttenuation +\n"
+                    "       gl_LightSource[i].linearAttenuation * d +\n"
+                    "       gl_LightSource[i].quadraticAttenuation * d * d);\n"
+                    "\n"
+                    "   halfVector = normalize(VP + eye);\n"
+                    "\n"
+                    "   nDotVP = max(0.0, dot(normal, VP));\n"
+                    "   nDotHV = max(0.0, dot(normal, halfVector));\n"
+                    "\n"
+                    "   if (nDotVP == 0.0)\n"
+                    "   {\n"
+                    "       pf = 0.0;\n"
+                    "   }\n"
+                    "   else\n"
+                    "   {\n"
+                    "       pf = pow(nDotHV, gl_FrontMaterial.shininess);\n"
+                    "\n"
+                    "   }\n"
+                    "   Ambient  += gl_LightSource[i].ambient * attenuation;\n"
+                    "   Diffuse  += gl_LightSource[i].diffuse * nDotVP * attenuation;\n"
+                    "   Specular += gl_LightSource[i].specular * pf * attenuation;\n"
+                    "}\n"
+                    "\n"
+                    "void directionalLight(in int i, in vec3 normal)\n"
+                    "{\n"
+                    "   float nDotVP;         // normal . light direction\n"
+                    "   float nDotHV;         // normal . light half vector\n"
+                    "   float pf;             // power factor\n"
+                    "\n"
+                    "   nDotVP = max(0.0, dot(normal, normalize(vec3 (gl_LightSource[i].position))));\n"
+                    "   nDotHV = max(0.0, dot(normal, vec3 (gl_LightSource[i].halfVector)));\n"
+                    "\n"
+                    "   if (nDotVP == 0.0)\n"
+                    "   {\n"
+                    "       pf = 0.0;\n"
+                    "   }\n"
+                    "   else\n"
+                    "   {\n"
+                    "       pf = pow(nDotHV, gl_FrontMaterial.shininess);\n"
+                    "\n"
+                    "   }\n"
+                    "   Ambient  += gl_LightSource[i].ambient;\n"
+                    "   Diffuse  += gl_LightSource[i].diffuse * nDotVP;\n"
+                    "   Specular += gl_LightSource[i].specular * pf;\n"
+                    "}\n"
+                    "\n"
+                    "vec3 fnormal(void)\n"
+                    "{\n"
+                    "    //Compute the normal \n"
+                    "    vec3 normal = gl_NormalMatrix * gl_Normal;\n"
+                    "    normal = normalize(normal);\n"
+                    "    return normal;\n"
+                    "}\n"
+                    "\n"
+                    "void flight(in vec3 normal, in vec4 ecPosition, float alphaFade)\n"
+                    "{\n"
+                    "    vec4 color;\n"
+                    "    vec3 ecPosition3;\n"
+                    "    vec3 eye;\n"
+                    "\n"
+                    "    ecPosition3 = (vec3 (ecPosition)) / ecPosition.w;\n"
+                    "    eye = vec3 (0.0, 0.0, 1.0);\n"
+                    "\n"
+                    "    // Clear the light intensity accumulators\n"
+                    "    Ambient  = vec4 (0.0);\n"
+                    "    Diffuse  = vec4 (0.0);\n"
+                    "    Specular = vec4 (0.0);\n"
+                    "\n"
+                    "    pointLight(0, normal, eye, ecPosition3);\n"
+                    "\n"
+                    "    pointLight(1, normal, eye, ecPosition3);\n"
+                    "\n"
+                    "    directionalLight(2, normal);\n"
+                    "\n"
+                    "    color = gl_FrontLightModelProduct.sceneColor +\n"
+                    "      Ambient  * gl_FrontMaterial.ambient +\n"
+                    "      Diffuse  * gl_FrontMaterial.diffuse;\n"
+                    "    color += Specular * gl_FrontMaterial.specular;\n"
+                    "    color = clamp( color, 0.0, 1.0 );\n"
+                    "    gl_FrontColor = color;\n"
+                    "\n"
+                    "    gl_FrontColor.a *= alphaFade;\n"
+                    "}\n"
+                    "\n"
+                    "\n"
+                    "void main (void)\n"
+                    "{\n"
+                    "    vec3  transformedNormal;\n"
+                    "    float alphaFade = 1.0;\n"
+                    "\n"
+                    "    // Eye-coordinate position of vertex, needed in various calculations\n"
+                    "    vec4 ecPosition = gl_ModelViewMatrix * gl_Vertex;\n"
+                    "\n"
+                    "    // Do fixed functionality vertex transform\n"
+                    "    gl_Position = ftransform();\n"
+                    "    transformedNormal = fnormal();\n"
+                    "    flight(transformedNormal, ecPosition, alphaFade);\n"
+                    "	 texCoord0 = gl_MultiTexCoord0.st;\n"
+                    "    texCoord1 = gl_MultiTexCoord1.st;\n"
+                    "    texCoord2 = gl_MultiTexCoord2.st;\n"
+                    "}\n";
+
+
+char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
+                    "uniform float osgEarth_Layer0_opacity;\n"
+                    "varying vec2 texCoord0;\n"
+                    "uniform bool osgEarth_Layer0_enabled;\n"
+                    "\n"
+                    "uniform sampler2D osgEarth_Layer1_unit;\n"
+                    "uniform float osgEarth_Layer1_opacity;\n"
+                    "varying vec2 texCoord1;\n"
+                    "uniform bool osgEarth_Layer1_enabled;\n"
+                    "\n"
+                    "uniform sampler2D osgEarth_Layer2_unit;\n"
+                    "uniform float osgEarth_Layer2_opacity;\n"
+                    "varying vec2 texCoord2;\n"
+                    "uniform bool osgEarth_Layer2_enabled;\n"
+                    "\n"
+                    "void main (void )\n"
+                    "{\n"
+                    "  //Get the fragment for texture 0\n"
+                    "  vec4 tex0 = vec4(0.0,0.0,0.0,0.0);\n"
+                    "  if (osgEarth_Layer0_enabled)\n"
+                    "  {\n"
+                    "    tex0 = texture2D(osgEarth_Layer0_unit, texCoord0);\n"
+                    "  }\n"
+                    "  tex0.a *= osgEarth_Layer0_opacity;\n"
+                    "\n"
+                    "  //Get the fragment for texture 1\n"
+                    "  vec4 tex1 = vec4(0.0,0.0,0.0,0.0);\n"
+                    "  if (osgEarth_Layer1_enabled)\n"
+                    "  {\n"
+                    "    tex1 = texture2D(osgEarth_Layer1_unit, texCoord1);\n"
+                    "  }\n"
+                    "  tex1.a *= osgEarth_Layer1_opacity;\n"
+                    "\n"
+                    "  //Get the fragment for texture 2\n"
+                    "  vec4 tex2 = vec4(0.0,0.0,0.0,0.0);\n"
+                    "  if (osgEarth_Layer2_enabled)\n"
+                    "  {\n"
+                    "    tex2 = texture2D(osgEarth_Layer2_unit, texCoord2);\n"
+                    "  }\n"
+                    "  tex2.a *= osgEarth_Layer2_opacity;\n"
+                    "\n"
+                    "  //Interpolate the color between the first layer and second\n"
+                    "  vec3 c = mix(tex0.rgb, tex1.rgb, tex1.a);\n"
+                    "\n"
+                    "  c = mix(c, tex2.rgb, tex2.a);\n"
+                    " \n"
+                    "  //Take the maximum alpha for the final destination alpha\n"
+                    "  float a = tex0.a;\n"
+                    "  if (a < tex1.a) a = tex1.a;\n"
+                    "  if (a < tex2.a) a = tex2.a;\n"
+                    "\n"
+                    "  gl_FragColor = gl_Color * vec4(c, a);\n"
+                    "}\n"
+                    "\n";
+
+
+
+
+
+
+
 static
 MapCache& getCache()
 {
@@ -358,59 +554,7 @@ void
 Map::initialize()
 {    
     // Note: CSN must always be at the top
-    osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();
-
-    //If there is more than one image source, use TexEnvCombine to blend them together
-    //if ( _mapConfig->getImageSources().size() > 1 )
-    {
-#if 1
-        osg::StateSet* stateset = csn->getOrCreateStateSet();
-        //for (unsigned int i = 0; i < _mapConfig->getImageSources().size(); ++i)
-        //TODO:  Dynamically update this when layers are added/removed?
-        for (unsigned int i = 0; i < 3; ++i)
-        {    
-            //Blend the textures together from the bottom up
-            stateset->setTextureMode(i, GL_TEXTURE_2D, osg::StateAttribute::ON);
-
-            //Interpolate the current texture with the previous combiner result using the textures SRC_ALPHA
-            osg::TexEnvCombine * tec = new osg::TexEnvCombine;
-            tec->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-
-            tec->setSource0_RGB(osg::TexEnvCombine::TEXTURE);
-            tec->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-
-            tec->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
-            tec->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-
-            tec->setSource2_RGB(osg::TexEnvCombine::TEXTURE);
-            tec->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-
-            stateset->setTextureAttribute(i, tec, osg::StateAttribute::ON);
-        }
-
-
-        //Modulate the result with the primary color to get proper lighting
-        osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-        texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
-        texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
-        texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-        texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
-        texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-        stateset->setTextureAttribute(3, texenv, osg::StateAttribute::ON);
-        stateset->setTextureMode(_mapConfig->getImageSources().size(), GL_TEXTURE_2D, osg::StateAttribute::ON);
-#else
-        //Decorate the scene with a multi-texture control to control blending between textures
-        osgFX::MultiTextureControl *mt = new osgFX::MultiTextureControl;
-        parent->addChild( mt );
-
-        float r = 1.0f/ map->getImageSources().size();
-        for (unsigned int i = 0; i < map->getImageSources().size(); ++i)
-        {
-            mt->setTextureWeight(i, r);
-        }
-        parent = mt;
-#endif
-    }
+    osg::ref_ptr<osg::CoordinateSystemNode> csn = createCoordinateSystemNode();    
 
     int faces_ok = 0;
     for( int face = 0; face < getProfile()->getNumFaces(); face++ )
@@ -447,6 +591,21 @@ Map::initialize()
     {
         addChild(csn.release());
     }
+
+
+
+    osg::StateSet *stateSet = getOrCreateStateSet();
+
+    osg::Program *program = new osg::Program;
+    program->addShader(new osg::Shader( osg::Shader::VERTEX, vert_source ) );
+    program->addShader(new osg::Shader( osg::Shader::FRAGMENT, frag_source ) );
+
+    stateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
+
+    //Enable blending
+    stateSet->setMode(GL_BLEND, osg::StateAttribute::ON);
+
+    updateUniforms();
 }
 
 bool
@@ -741,6 +900,7 @@ Map::addLayer( Layer* layer )
 
         //Add the layer to the list
         _layers.push_back( layer );
+        layer->setMap( this );
 
         bool addedImage = (dynamic_cast<ImageLayer*>( layer ) != NULL);
         bool addedElevation = (dynamic_cast<ElevationLayer*>( layer ) != NULL);
@@ -796,17 +956,7 @@ Map::addLayer( Layer* layer )
                         osgTerrain::ImageLayer* img_layer = new osgEarthImageLayer( layer->getId(), geoImage->getImage() );
                         img_layer->setLocator( img_locator.get());
 
-                        //Turn on linear texture minification if the image is not a power of two due
-                        //to the fact that some drivers have issues with npot mip mapping
-                        if (!ImageUtils::isPowerOfTwo( geoImage->getImage() ) ) //image_tiles[i].first.get()))
-                        {
-#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
-                            img_layer->setFilter( osgTerrain::Layer::LINEAR );
-#else
-                            img_layer->setMinFilter(osg::Texture::LINEAR);
-#endif
-                        }                
-                        unsigned int newLayer = _layers.size()-1;//->get()->getNumColorLayers();
+                        unsigned int newLayer = _layers.size()-1;
                         osg::notify(osg::INFO) << "Inserting layer at position " << newLayer << std::endl;
                         itr->get()->setColorLayer(newLayer, img_layer );
                     }
@@ -826,6 +976,7 @@ Map::addLayer( Layer* layer )
             }
         }
 
+        updateUniforms();
     }
 }
 
@@ -905,6 +1056,7 @@ Map::removeLayer( Layer* layer )
             }
         }
         osg::notify(osg::INFO) << "[osgEarth::Map::removeLayer] end " << std::endl;
+        updateUniforms();
     }
 }
 
@@ -1015,6 +1167,8 @@ Map::moveLayer( Layer* layer, int position )
                 itr->get()->setDirty(true);
             }
         }
+        
+        updateUniforms();
     }
     osg::notify(osg::INFO) << "[osgEarth::Map::moveLayer] end " << std::endl;
 }
@@ -1109,4 +1263,32 @@ Map::createTileSource(osgEarth::SourceConfig *sourceConfig)
         }
     }
     return tileSource.release();
+}
+
+void
+Map::updateUniforms()
+{
+    ImageLayerList imageLayers;
+    getImageLayers( imageLayers );
+
+    unsigned int maxLayers = 3;
+    for (unsigned int i = 0; i < maxLayers; ++i)
+    {        
+        ImageLayer* layer = i < imageLayers.size() ? imageLayers[i].get() : 0;
+
+        std::stringstream ss;
+        ss << "osgEarth_Layer" << i << "_unit";
+        osg::Uniform* unitUniform = getOrCreateStateSet()->getOrCreateUniform(ss.str(), osg::Uniform::INT);
+        unitUniform->set( (int)i );
+        
+        ss.str("");
+        ss << "osgEarth_Layer" << i << "_enabled";
+        osg::Uniform* enabledUniform = getOrCreateStateSet()->getOrCreateUniform(ss.str(), osg::Uniform::BOOL);
+        enabledUniform->set(layer ? layer->getEnabled() : false);
+
+        ss.str("");
+        ss << "osgEarth_Layer" << i << "_opacity";
+        osg::Uniform* opacityUniform = getOrCreateStateSet()->getOrCreateUniform(ss.str(), osg::Uniform::FLOAT);
+        opacityUniform->set(layer ? layer->getOpacity() : 0.0f);
+    }
 }

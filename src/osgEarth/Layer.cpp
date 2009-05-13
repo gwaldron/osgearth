@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/Layer>
+#include <osgEarth/Map>
 
 using namespace osgEarth;
 
@@ -62,7 +63,11 @@ Layer::getEnabled() const
 void
 Layer::setEnabled(bool enabled)
 {
-    _enabled = enabled;
+    if (_enabled != enabled)
+    {
+        _enabled = enabled;
+        if (_map.valid()) _map->updateUniforms();
+    }
 }
 
 float
@@ -74,7 +79,17 @@ Layer::getOpacity() const
 void
 Layer::setOpacity(float opacity)
 {
-    _opacity = opacity;
+    if (_opacity != opacity)
+    {
+        _opacity = osg::clampBetween(opacity, 0.0f, 1.0f);
+        if (_map.valid()) _map->updateUniforms();
+    }
+}
+
+void
+Layer::setMap( Map *map)
+{
+    _map = map;
 }
 
 

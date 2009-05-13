@@ -33,6 +33,8 @@
 
 namespace osgEarth
 {
+    class Map;
+
     class OSGEARTH_EXPORT Layer : public osg::Referenced
     {
     public:
@@ -52,10 +54,16 @@ namespace osgEarth
 
     protected:
         virtual ~Layer();
+
+        friend class Map;
+
+        void setMap( Map* map );
+
         int _id;
         std::string _name;
         bool _enabled;
         float _opacity;
+        osg::observer_ptr< Map > _map;
     };
 
     /**A list of Layers*/

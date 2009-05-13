@@ -96,12 +96,13 @@ T* findTopMostNodeOfType(osg::Node* node)
     return fnotv._foundNode;
 }
 
-class MapHandler : public osgGA::GUIEventHandler {
+class LayerHandler : public osgGA::GUIEventHandler {
 public: 
 
-    MapHandler(Map* map, osgViewer::View* view):
+    LayerHandler(Map* map, osgViewer::View* view):
         _map(map),
-        _view(view)
+        _view(view),
+        _selectedLayer(0)
         {}
     
     bool handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& aa)
@@ -112,46 +113,96 @@ public:
             {   
                 if (ea.getKey()==osgGA::GUIEventAdapter::KEY_Left)
                 {
-                    osgEarth::Layer* layer = _map->getLayer( 0 );
-                    layer->setOpacity( layer->getOpacity() - 0.1);
+                    osgEarth::Layer* layer = _map->getLayer( _selectedLayer );
+                    if (layer)
+                    {
+                        layer->setOpacity( layer->getOpacity() - 0.05);
+                    }
                     return true;
                 }
                 else if (ea.getKey()==osgGA::GUIEventAdapter::KEY_Right)
                 {
-                    osgEarth::Layer* layer = _map->getLayer( 0 );
-                    layer->setOpacity( layer->getOpacity() + 0.1);
+                    osgEarth::Layer* layer = _map->getLayer( _selectedLayer );
+                    if (layer)
+                    {
+                        layer->setOpacity( layer->getOpacity() + 0.05);
+                    }
                     return true;
                 }
+                //Select the next layer in the list
+                else if (ea.getKey() == 'u')
+                {
+                    _selectedLayer++;
+                    _selectedLayer = osg::clampBetween(_selectedLayer, 0u, _map->getNumLayers()-1u);
+                    osg::notify(osg::NOTICE) << "Selected layer " << _selectedLayer << std::endl;
+                }
+                //Select the previous layer in the list
+                else if (ea.getKey() == 'j')
+                {
+                    _selectedLayer--;
+                    _selectedLayer = osg::clampBetween(_selectedLayer, 0u, _map->getNumLayers()-1u);
+                    osg::notify(osg::NOTICE) << "Selected layer " << _selectedLayer << std::endl;
+                }
+                //Toggle the visibility/enabling of the selected layer
                 else if (ea.getKey() == 'v')
                 {
-                    osgEarth::Layer* layer = _map->getLayer( 2 );
-                    layer->setEnabled( !layer->getEnabled());
+                    osgEarth::Layer* layer = _map->getLayer( _selectedLayer );
+                    if (layer)
+                    {
+                        layer->setEnabled( !layer->getEnabled());
+                    }
                     return true;
                 }
-                else if (ea.getKey()=='m')
+                //Move the selected layer forward in the layer ordering
+                else if (ea.getKey()=='f')
                 {
                     _view->getDatabasePager()->clear();
-                    osg::notify(osg::NOTICE) <<"Moving layer "<< std::endl;
-                    osgEarth::Layer* layer = _map->getLayer( 2 );
-                    _map->moveLayer( layer, 1 );
-                    osg::notify(osg::NOTICE) <<"Moved layer "<< std::endl;
+                    osgEarth::Layer* layer = _map->getLayer( _selectedLayer );
+                    if (layer)
+                    {
+                        unsigned int newPosition = osg::clampBetween(_selectedLayer +1, 0u, _map->getNumLayers()-1u);
+                        _map->moveLayer( layer, newPosition );
+                        osg::notify(osg::NOTICE) << "Moved layer from " << _selectedLayer << " to " << newPosition << std::endl;
+                        _selectedLayer = newPosition;
+                        osg::notify(osg::NOTICE) << "Selected layer " << _selectedLayer << std::endl;
+                    }
+                    return true;
+                }
+                //Move the selected layer back in the layer ordering
+                else if (ea.getKey()=='b')
+                {
+                    _view->getDatabasePager()->clear();
+                    osgEarth::Layer* layer = _map->getLayer( _selectedLayer );
+                    if (layer)
+                    {
+                        unsigned int newPosition = osg::clampBetween(_selectedLayer -1, 0u, _map->getNumLayers()-1u);
+                        _map->moveLayer( layer, newPosition );
+                        osg::notify(osg::NOTICE) << "Moved layer from " << _selectedLayer << " to " << newPosition << std::endl;
+                        _selectedLayer = newPosition;
+                        osg::notify(osg::NOTICE) << "Selected layer " << _selectedLayer << std::endl;
+                    }
                     return true;
                 }
                 else if (ea.getKey()=='r')
                 {
+                    osgEarth::Layer* layer = _map->getLayer( _selectedLayer );
                     _view->getDatabasePager()->clear();
-                    osgEarth::Layer* layer = _map->getLayer( _map->getNumLayers()-1 );
-                    _map->removeLayer( layer );
-                    osg::notify(osg::NOTICE) <<"Removed layer "<< std::endl;
+                    if (layer)
+                    {
+                        _map->removeLayer( layer );
+                        osg::notify(osg::NOTICE) <<"Removed layer, selected layer is now 0"<< std::endl;
+                        _selectedLayer = 0;
+                    }
                     return true;
                 }
+                //Adds an overlay
                 else if (ea.getKey()=='a')
                 {
                     _view->getDatabasePager()->clear();
-                    TileSourceFactory factory;
                     SourceProperties props;
-                    //props["url"] = "../data/boston-inset.tif";
-                    props["url"] = "c:/dev/osgearth/data/boston-inset.tif";
+                    //NOTE:  This must be run from the osgearth/tests directory for the relative path to work
+                    props["url"] = "../data/boston-inset.tif";
+                    //props["url"] = "c:/dev/osgearth/data/boston-inset.tif";
 
                     osg::ref_ptr<TileSource> tileSource = _map->createTileSource( new SourceConfig("overlay", "gdal", props ) );
                     if (tileSource.valid())
@@ -160,7 +211,7 @@ public:
                     }
                     return true;
                 }
-                else if (ea.getKey()=='b')
+                /*else if (ea.getKey()=='b')
                 {
                     _view->getDatabasePager()->clear();
                     TileSourceFactory factory;
@@ -199,7 +250,7 @@ public:
                     }
 
                     return true;
-                }
+                }*/
                 return false;
             }    
             default:
@@ -209,11 +260,12 @@ public:
     
 protected:
 
-    ~MapHandler() {}
+    ~LayerHandler() {}
 
 
     osgViewer::View* _view;
     Map*  _map;
+    unsigned int _selectedLayer;
 };
 
 int main(int argc, char** argv)
@@ -260,7 +312,7 @@ int main(int argc, char** argv)
   Map* map = findTopMostNodeOfType<Map>(group);
   if (map)
   {
-      viewer.addEventHandler( new MapHandler( map, &viewer ) );
+      viewer.addEventHandler( new LayerHandler( map, &viewer ) );
   }
 
   // add the state manipulator

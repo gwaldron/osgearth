@@ -75,7 +75,7 @@ public:
         if ( _dataset == "satellite" )
         {            
             if ( _version.empty() )
-                _version = "37";
+                _version = "39";
 
             char server = getRandomServer();
             unsigned int tile_x, tile_y;

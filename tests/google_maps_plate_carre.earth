@@ -1,0 +1,22 @@
+<!--
+osgEarth Sample - Google Maps, Plate Carre version
+
+Demonstrates the use of the Google driver to build a terrain model using road
+map tiles from the Google Maps service. This one displays the map in its native
+Spherical Mercator projection.
+
+This is for educational purposes only - it is your responsibility to abide by
+the provider's terms of service when using their data.
+-->
+
+<map name="Google" type="flat">
+
+    <profile>global-geodetic</profile>
+    
+    <min_tile_range_factor>8</min_tile_range_factor>
+    
+    <image name="Google maps" driver="google">
+        <dataset>roads</dataset>
+    </image>
+   
+</map>

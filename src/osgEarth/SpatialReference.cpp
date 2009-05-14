@@ -140,7 +140,8 @@ SpatialReference::create( const std::string& init )
             init,
             "WGS84" );
     }
-    // our custom square polar projection for cube rendering:
+
+    // custom square polar projection for cube rendering:
     else if ( ( low.size() == 11 ) && (low.substr(0,10) == "world-cube") )
     {
         //Try to extract a face from the string.
@@ -390,14 +391,15 @@ getTransformFromExtents(double minX, double minY, double maxX, double maxY)
 }
 
 osgTerrain::Locator*
-SpatialReference::createLocator(  double xmin, double ymin, double xmax, double ymax ) const
+SpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax,
+                                bool plate_carre ) const
 {
     osgTerrain::Locator* locator = new osgTerrain::Locator();
     locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
     locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
     // note: not setting the format/cs on purpose.
 
-    if ( isGeographic() )
+    if ( isGeographic() && !plate_carre )
     {
         locator->setTransform( getTransformFromExtents(
             osg::DegreesToRadians( xmin ),
@@ -511,13 +513,12 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         }
 
     double *temp_z = new double[numPoints];
-    bool result;
+    bool success;
 
-    result = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
+    success = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
 
-    if ( result || ignore_errors )
+    if ( success || ignore_errors )
     {
-//        result = true;
         for (unsigned int i = 0; i < numPoints; ++i)
         {
             out_srs->postTransform(x[i], y[i]);
@@ -530,7 +531,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
             << std::endl;
     }
     delete[] temp_z;
-    return result;
+    return success;
 }
 
 bool

@@ -77,6 +77,7 @@ Registry::getGlobalGeodeticProfile() const
 {
     if ( !_global_geodetic_profile.valid() )
     {
+        GDAL_SCOPED_LOCK;
         const_cast<Registry*>(this)->_global_geodetic_profile = Profile::create(
             "epsg:4326",
             -180.0, -90.0, 180.0, 90.0,
@@ -91,6 +92,7 @@ Registry::getGlobalMercatorProfile() const
 {
     if ( !_global_mercator_profile.valid() )
     {
+        GDAL_SCOPED_LOCK;
         // automatically figure out proper mercator extents:
         const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
         double e, dummy;
@@ -107,6 +109,7 @@ Registry::getCubeProfile() const
 {
     if ( !_cube_profile.valid() )
     {
+        GDAL_SCOPED_LOCK;
         const SpatialReference* srs = SpatialReference::create( "epsg:4326" );
         const_cast<Registry*>(this)->_cube_profile = Profile::createCube( srs );
     }

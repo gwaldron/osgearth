@@ -262,7 +262,7 @@ Map::create( MapConfig* mapConfig, const osgDB::ReaderWriter::Options* options )
         {
             result = new GeocentricMap( mapConfig, local_options.get() );
         }
-        else
+        else // if (mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_PROJECTED)
         {
             result = new ProjectedMap( mapConfig, local_options.get() );
         }

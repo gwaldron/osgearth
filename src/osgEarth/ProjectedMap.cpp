@@ -41,10 +41,9 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-ProjectedMap::ProjectedMap( 
-    MapConfig* mapConfig,
-    const osgDB::ReaderWriter::Options* global_options ) :
-Map( mapConfig,global_options )
+ProjectedMap::ProjectedMap(MapConfig* mapConfig,
+                           const osgDB::ReaderWriter::Options* global_options ) :
+Map( mapConfig, global_options )
 {
     //NOP
 }
@@ -161,8 +160,8 @@ ProjectedMap::createQuadrant( const TileKey* key )
     }
 
     osgTerrain::Locator* geo_locator = getProfile()->getSRS()->createLocator(
-        xmin, ymin, xmax, ymax );
-	//geo_locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );   
+        xmin, ymin, xmax, ymax,
+        getProfile()->getSRS()->isGeographic() ); 
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( geo_locator );
@@ -200,6 +199,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
             osg::ref_ptr<osgTerrain::Locator> img_locator;
 
             GeoImage* geo_image = image_tiles[i].get();
+
             //Special case for when the map is geographic and the image is Mercator
             if ( getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
             {
@@ -212,9 +212,11 @@ ProjectedMap::createQuadrant( const TileKey* key )
             else
             {
                 image_tiles[i]->getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
-                img_locator = getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
+
+                img_locator = getProfile()->getSRS()->createLocator(
+                    img_xmin, img_ymin, img_xmax, img_ymax,
+                    getProfile()->getSRS()->isGeographic() );
             }
-            //img_locator->setTransform( getTransformFromExtents(img_xmin, img_ymin,img_xmax, img_ymax));
 
             //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
             osgTerrain::ImageLayer* img_layer = new osgEarth::osgEarthImageLayer(imageLayers[i]->getId(), geo_image->getImage() );

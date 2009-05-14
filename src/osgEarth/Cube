@@ -59,7 +59,9 @@ namespace osgEarth
     public:
         CubeFaceSpatialReference(void* handle, unsigned int face);
 
-        virtual osgTerrain::Locator* createLocator( double xmin, double ymin, double xmax, double ymax ) const;
+        virtual osgTerrain::Locator* createLocator(
+            double xmin, double ymin, double xmax, double ymax,
+            bool plate_carre =false ) const;
 
         unsigned int getFace() const { return _face; }
 

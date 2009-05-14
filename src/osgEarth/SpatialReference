@@ -43,12 +43,20 @@ namespace osgEarth
             const SpatialReference* to_srs,
             double& out_x, double& out_y ) const;
 
+        /**
+         * Transforms an array of 2D points from this SRS to another SRS.
+         */
         virtual bool transformPoints(
             const SpatialReference* to_srs, 
             double* x, double *y,
             unsigned int numPoints,
             bool ignore_errors =false) const;
 
+        /**
+         * Transforms a spatial extent to another SRS. Different than just
+         * transforming each corner, this method will account for geographic
+         * extents that span the date line.
+         */
         virtual bool transformExtent(
             const SpatialReference* to_srs,
             double& in_out_xmin, double& in_out_ymin,
@@ -87,8 +95,19 @@ namespace osgEarth
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
-        /** Creates a new Locator object based on this spatial reference. */
-        virtual osgTerrain::Locator* createLocator( double xmin, double ymin, double xmax, double ymax ) const;
+        /**
+         * Creates a new Locator object based on this spatial reference.
+         *
+         * @param xmin, ymin, xmax, ymax
+         *      Extents of the tile for which to create a locator. These should
+         *      be in degrees for a geographic/geocentric scene.
+         * @param plate_carre
+         *      Set this to true for the special case in which you are using a
+         *      geographic SRS with a PROJECTED map (like flat-earth lat/long).
+         */
+        virtual osgTerrain::Locator* createLocator(
+            double xmin, double ymin, double xmax, double ymax,
+            bool plate_carre =false ) const;
 
     protected:
         virtual ~SpatialReference();

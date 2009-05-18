@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <osgEarth/Map>
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/ProjectedMap>
 #include <osgEarth/MapConfig>
@@ -105,7 +106,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if ( mapConfig.valid() )
                 {
                     //Create the Map.
-                    osg::ref_ptr<Map> map = Map::create( mapConfig.get());
+                    osg::ref_ptr<Map> map = new Map( mapConfig.get() );
 
                     //Check to see that the Map is valid.
                     if (!map.valid() || !map->isOK() )
@@ -148,13 +149,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 //Get the Map from the cache.  It is important that we use a ref_ptr here
                 //to prevent the Map from being deleted while it is is still in use.
-                osg::ref_ptr<Map> map = Map::getMapById(id);
+                osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
 
-                if (map.valid())
+                if ( engine.valid() )
                 {
-                  const Profile* face_profile = map->getProfile()->getFaceProfile( face );
+                  const Profile* face_profile = engine->getProfile()->getFaceProfile( face );
                   osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
-                  node = map->createNode(key.get());
+                  node = engine->createNode( key.get( ));
                 }
                 else
                 {

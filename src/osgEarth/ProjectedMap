@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_PROJECTED_MAP_H
-#define OSGEARTH_PROJECTED_MAP_H 1
+#ifndef OSGEARTH_PROJECTED_MAP_ENGINE_H
+#define OSGEARTH_PROJECTED_MAP_ENGINE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Map>
+#include <osgEarth/MapEngine>
 
 namespace osgEarth
 {
@@ -31,7 +31,7 @@ namespace osgEarth
      * coordinate systems like UTM as well as the "Geographic" projection, which
      * is really a simple flat projection in which x=long, y=lat.
      */
-    class ProjectedMap : public Map
+    class ProjectedMap : public MapEngine
     {
     public:
         ProjectedMap( 
@@ -54,4 +54,4 @@ namespace osgEarth
     };
 }
 
-#endif // OSGEARTH_PROJECTED_MAP_H
+#endif // OSGEARTH_PROJECTED_MAP_ENGINE_H

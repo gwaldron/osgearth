@@ -39,6 +39,7 @@ SET(LIB_PUBLIC_HEADERS
     Layer
     Map
     MapConfig
+    MapEngine
     Mercator
     Profile
     ProjectedMap
@@ -73,6 +74,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Layer.cpp
     Map.cpp
     MapConfig.cpp
+    MapEngine.cpp
     Mercator.cpp
     Profile.cpp
     ProjectedMap.cpp

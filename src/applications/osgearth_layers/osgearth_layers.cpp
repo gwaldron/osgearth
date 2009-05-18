@@ -41,7 +41,6 @@
 #include <iostream>
 
 #include <osgEarth/Map>
-#include <osgEarth/Layer>
 #include <osgEarth/TileSourceFactory>
 
 #include <osgGA/TrackballManipulator>

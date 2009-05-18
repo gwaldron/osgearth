@@ -23,7 +23,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
-#include <osgEarth/MapConfig>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -145,7 +144,7 @@ namespace osgEarth
 
         void setOverrideProfile( const Profile* profile );
 
-        friend class Map;
+        friend class MapEngine;
         friend class CachedTileSource;
         friend class DirectReadTileSource;
         friend class TileSourceFactory;

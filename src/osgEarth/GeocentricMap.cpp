@@ -49,7 +49,7 @@ using namespace OpenThreads;
 GeocentricMap::GeocentricMap( 
     MapConfig* mapConfig, 
     const osgDB::ReaderWriter::Options* global_options ) :
-Map( mapConfig, global_options )
+MapEngine( mapConfig, global_options )
 {
     //NOP   
 }
@@ -59,7 +59,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
 {
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Begin " << key->str() << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Waiting for lock..." << std::endl;
-    ScopedReadLock lock(_layersMutex);
+    ScopedReadLock lock( getLayersMutex() );
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Obtained Lock" << std::endl;
 
     double min_lon, min_lat, max_lon, max_lat;

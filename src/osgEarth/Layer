@@ -21,8 +21,6 @@
 #define OSGEARTH_LAYER_H 1
 
 #include <osgEarth/Export>
-#include <osgEarth/TileSource>
-
 #include <osg/Referenced>
 #include <osg/ref_ptr>
 
@@ -33,7 +31,7 @@
 
 namespace osgEarth
 {
-    class Map;
+    class TileSource;
 
     class OSGEARTH_EXPORT Layer : public osg::Referenced
     {
@@ -55,15 +53,10 @@ namespace osgEarth
     protected:
         virtual ~Layer();
 
-        friend class Map;
-
-        void setMap( Map* map );
-
         int _id;
         std::string _name;
         bool _enabled;
         float _opacity;
-        osg::observer_ptr< Map > _map;
     };
 
     /**A list of Layers*/
@@ -80,6 +73,7 @@ namespace osgEarth
         osg::ref_ptr<osgEarth::TileSource> _tileSource;
     };
 
+
     /**A list of ImageLayers*/
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerList;
 
@@ -93,6 +87,7 @@ namespace osgEarth
     protected:
         osg::ref_ptr<osgEarth::TileSource> _tileSource;
     };
+
 
     /**A list of ElevationLayers*/
     typedef std::vector< osg::ref_ptr<ElevationLayer> > ElevationLayerList;
@@ -109,6 +104,7 @@ namespace osgEarth
 
         bool getVisible() const;
         void setVisible(bool visible);
+
     protected:
         int _layerId;
         float _opacity;

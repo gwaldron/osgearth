@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_GEOCENTRIC_MAP_H
-#define OSGEARTH_GEOCENTRIC_MAP_H 1
+#ifndef OSGEARTH_GEOCENTRIC_MAP_ENGINE_H
+#define OSGEARTH_GEOCENTRIC_MAP_ENGINE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Map>
+#include <osgEarth/MapEngine>
 #include <osg/Node>
 #include <osg/ClusterCullingCallback>
 
@@ -32,7 +32,7 @@ namespace osgEarth
      *
      * This is a internal class - do not export
      */
-    class GeocentricMap : public Map
+    class GeocentricMap : public MapEngine
     {
     public:
         /**
@@ -52,4 +52,4 @@ namespace osgEarth
     };
 }
 
-#endif // OSGEARTH_GEOCENTRIC_MAP_H
+#endif // OSGEARTH_GEOCENTRIC_MAP_ENGINE_H

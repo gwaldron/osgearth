@@ -25,19 +25,20 @@
 
 using namespace osgEarth;
 
-void CacheSeed::seed(MapConfig *map)
+void CacheSeed::seed( MapConfig* conf )
 {
     //Create a Map for the map
-    _map = Map::create( map);
+    //TODO: really, we just need the MapEngine and not the Map..
+    osg::ref_ptr<Map> _map = new Map( conf );
 
     std::vector< osg::ref_ptr<TileKey> > keys;
-    _map->getProfile()->getRootKeys(keys);
+    _map->getEngine()->getProfile()->getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
         _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-        const GeoExtent& mapEx = _map->getProfile()->getExtent();
+        const GeoExtent& mapEx =  _map->getEngine()->getProfile()->getExtent();
 
         _bounds._min.x() = mapEx.xMin();
         _bounds._min.y() = mapEx.yMin();
@@ -106,12 +107,12 @@ void CacheSeed::seed(MapConfig *map)
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( _map.get(), keys[i].get() );
+        processKey( _map->getEngine(), keys[i].get() );
     }
 }
 
 
-void CacheSeed::processKey(Map* map, TileKey *key)
+void CacheSeed::processKey( MapEngine* map, TileKey* key )
 {
     unsigned int x, y, lod;
     key->getTileXY(x, y);

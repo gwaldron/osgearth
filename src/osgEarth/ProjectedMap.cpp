@@ -43,7 +43,7 @@ using namespace OpenThreads;
 
 ProjectedMap::ProjectedMap(MapConfig* mapConfig,
                            const osgDB::ReaderWriter::Options* global_options ) :
-Map( mapConfig, global_options )
+MapEngine( mapConfig, global_options )
 {
     //NOP
 }
@@ -52,7 +52,7 @@ Map( mapConfig, global_options )
 osg::Node*
 ProjectedMap::createQuadrant( const TileKey* key )
 {
-    ScopedReadLock lock(_layersMutex);
+    ScopedReadLock lock( getLayersMutex() );
     double xmin, ymin, xmax, ymax;
     key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 

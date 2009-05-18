@@ -29,6 +29,7 @@
 namespace osgEarth
 {
     class TileKey;
+
     /**
      * A "profile" defines the layout of a data source. The profile conveys the
      * spatial reference system (SRS), the geospatial extents within that SRS, and

@@ -21,109 +21,35 @@
 #define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileSource>
-#include <osgEarth/MapConfig>
-#include <osgEarth/Compositing>
+#include <osgEarth/MapEngine>
 #include <osgEarth/Layer>
-
-#include <OpenThreads/ReadWriteMutex>
+#include <osgEarth/MapConfig>
 #include <osgDB/ReaderWriter>
-#include <osgTerrain/Terrain>
-#include <vector>
+#include <OpenThreads/ReentrantMutex>
 
 namespace osgEarth
 {
-    /**
-     * Helper class that works around a bug in OSG pre-2.8.
-     */
-    class OSGEARTH_EXPORT EarthTerrain : public osgTerrain::Terrain
-    {
-    public:
-        virtual const char* className() const { return "EarthTerrain"; }
-
-        /** Get the TerrainTile for a given TileID. */
-        osgTerrain::TerrainTile* getTileOverride(const osgTerrain::TileID& tileID)
-        {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
-
-            TerrainTileMap::iterator itr = _terrainTileMap.find(tileID);
-            if (itr == _terrainTileMap.end()) return 0;
-
-            return itr->second;
-        }
-
-        typedef std::vector< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
-
-        void getTerrainTiles( TerrainTileList &tiles )
-        {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
-
-            for(TerrainTileSet::iterator itr = _terrainTileSet.begin();
-                itr != _terrainTileSet.end();
-                ++itr)
-            {
-                tiles.push_back( (*itr) );
-            }
-        }
-    };
-
-
-    /**
-     * Map is the main workhorse in osgEarth. It generates osg Nodes for TileKeys.
-     */
     class OSGEARTH_EXPORT Map : public osg::Group
     {
     public:
         /**
-         * Creates a Node from the given MapConfig.  This allows you to programatically create a
-         * MapConfig and create a paging scene graph out of it.
+         * Creates a new Map node from the given MapConfig.  This allows you to
+         * programatically create a MapConfig and create a paging scene graph out of it.
          */
-        static osg::Node* readNode( MapConfig* mapConfig );     
+        Map( MapConfig* conf, const osgDB::ReaderWriter::Options* options =NULL );
 
     public:
-        /**
-         * Factory method that constructs a Map instance given a
-         * map configuration.
-         */
-        static Map* create(
-            MapConfig* mapConfig,
-            const osgDB::ReaderWriter::Options* global_options =NULL );
 
         /**
-        *Gets the ID for this Map
-        */
-        unsigned int getId() const;
-
-        /**
-         * Creates a node graph for a given TileKey.
-         */
-        osg::Node* createNode( const TileKey* key );
-
-        /**
-         * Gets the map configuration with which this map was created.
-         */
-        MapConfig* getMapConfig() const;
-
-        /**
-         * Gets whether this map is legally configured.
+         * Returns true if the configuration used to create this Map node was valid
+         * and loaded as expected.
          */
         bool isOK() const;
 
         /**
-         * Gets the "profile" of the map. The profile defines
-         * the geospatial projection, extents, and the tiling scheme.
+         * Tells the map to update the display because a layer has new settings.
          */
-        const Profile* getProfile() const;
-
-        GeoImage* createGeoImage(const TileKey* key, TileSource* source);
-
-        //Registers the given Map with osgEarth.  This should not be called by user code
-        static void registerMap(Map* Map);
-        //Unregisters the given Map.  This should not be called by user code
-        static void unregisterMap(unsigned int id);
-
-        //Gets the registered Map by the Map ID
-        static Map* getMapById(unsigned int id);
+        void dirtyLayers();
 
         /**
          * Adds the given layer to the end of the Layer list
@@ -136,117 +62,56 @@ namespace osgEarth
         void removeLayer( Layer* layer );
 
         /**
-         *Moves the given layer to the given position in this Map's Layer list.
+         * Moves the given layer to the given position in this Map's Layer list.
          */
         void moveLayer( Layer* layer, int position );
 
         /**
-         *Gets the number of layers contained in this Map
+         * Gets the number of layers contained in this Map
          */
         unsigned int getNumLayers() const;
 
         /**
-         *Gets the Layer at the given position in this Map.
+         * Gets the Layer at the given position in this Map.
          */
         Layer* getLayer( unsigned int i ) const;
 
         /**
-         *Get a list of all ImageLayers in this Map.  The ImageLayers will be returned in the order in which they appear in the Layer list
+         * Get a list of all ImageLayers in this Map.  The ImageLayers will be returned in
+         * the order in which they appear in the Layer list
          */
-        void getImageLayers( ImageLayerList &layers );
+        void getImageLayers( ImageLayerList& layers ) const;
 
         /**
-         *Get a list of all ElevationLayers in this Map.  The ElevationLayers will be returned in the order in which they appear in the Layer list
+         * Get a list of all ElevationLayers in this Map.  The ElevationLayers will be
+         * returned in the order in which they appear in the Layer list
          */
-        void getElevationLayers( ElevationLayerList &layers );
+        virtual void getElevationLayers( ElevationLayerList& layers ) const;
 
         /**
-         *Creates a TileSource with the given SourceConfig
+         * Creates a TileSource with the given SourceConfig
          */
         TileSource* createTileSource( SourceConfig* sourceConfig );
 
+        /**
+         * Gets the profile of the underlying map
+         */
+        const Profile* getProfile() const;
 
-    protected:
-        Map( 
-            MapConfig* map, 
-            const osgDB::ReaderWriter::Options* global_options );
+        /**
+         * Gets the underlying map engine that generates data for this map node.
+         */
+        MapEngine* getEngine() const;
 
+
+    protected:        
         virtual ~Map();
 
-        /**
-         * Gets a pagedLOD child URI given a tile key.
-         */
-        std::string createURI( const TileKey* key );
-
-        /**
-        * Adds any appropriate child nodes to the given parent group for the given TileKey.
-        * The implementation class must define this method.
-        *
-        * @param parent
-        *        The parent osg::Group to add the children to
-        * @param key
-        *        The tilekey to generate children for
-        * @returns
-        *        True if all children were successfully added to the group, false otherwise
-        */
-        virtual bool addChildren( osg::Group* parent, const TileKey* key );
-
-        /**
-         * The implementation class must define this function, which creates one of
-         * a child quadrant of a tile node.
-         */
-        virtual osg::Node* createQuadrant( const TileKey* key ) =0;
-
-        /**
-         * The implementing class must define this method to create a valid
-         * CoordinateSystemNode that will top the scene graph.
-         */
-        virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const;
-
-        //Initializes the scene graph for this Map after it has been contstructed
-        virtual void initialize();
-
-    protected:
-        GeoImage* createValidGeoImage(TileSource* tileSource, const TileKey* key);
-        
-	    osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
-
-        // checks whether more data exists below the specified key's level of detail
-        bool hasMoreLevels( const TileKey* key );
-
-        unsigned int id;
-
-        osg::ref_ptr<MapConfig> _mapConfig;
-
-        //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
-        std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > _terrains;
-
-        //The list of layers contained by the map;        
-        LayerList _layers;
-        OpenThreads::ReadWriteMutex _layersMutex;
-
-        osg::ref_ptr< const osgDB::ReaderWriter::Options > _options;
-
-        osg::HeightField* getHeightField( const TileKey* key, bool fallback );
-
-        osg::HeightField* getEmptyHeightField( const TileKey* key );
-
-        friend class Layer;
-
-        void updateUniforms();
-
     private:
+        Map( MapEngine* engine );
 
-        osg::ref_ptr<const Profile> _profile;
-
-        void initializeLayers();
-
-        void addSources(
-            const MapConfig* mapConfig,
-            const SourceConfigList& from, 
-            std::vector< osg::ref_ptr<TileSource> >& to,
-            const osgDB::ReaderWriter::Options* global_options);
+        osg::ref_ptr<MapEngine> _engine;
     };
-};
+}
 
 #endif // OSGEARTH_MAP_H

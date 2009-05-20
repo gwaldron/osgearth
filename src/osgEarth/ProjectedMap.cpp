@@ -41,9 +41,8 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-ProjectedMap::ProjectedMap(MapConfig* mapConfig,
-                           const osgDB::ReaderWriter::Options* global_options ) :
-MapEngine( mapConfig, global_options )
+ProjectedMap::ProjectedMap(const MapConfig& mapConfig) :
+MapEngine( mapConfig )
 {
     //NOP
 }
@@ -90,7 +89,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
     osg::ref_ptr<osg::HeightField> hf = NULL;
     if ( elevationLayers.size() > 0 )
     {
-        hf = getHeightField(key, false);
+        hf = createHeightField(key, false);
         hasElevation = hf.valid();
     }
 
@@ -135,12 +134,12 @@ ProjectedMap::createQuadrant( const TileKey* key )
         //We have no heightfield sources, 
         if (elevationLayers.size() == 0)
         {
-            hf = getEmptyHeightField( key );
+            hf = createEmptyHeightField( key );
         }
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = getHeightField( key, true );
+            hf = createHeightField( key, true );
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -176,7 +175,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
     tile->setDataVariance(osg::Object::DYNAMIC);
     tile->setTileID(key->getTileId());
 
-    if (hasElevation && _mapConfig->getNormalizeEdges())
+    if (hasElevation && _mapConfig.getNormalizeEdges())
     {
         //Attach an updatecallback to normalize the edges of TerrainTiles.
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
@@ -231,10 +230,10 @@ ProjectedMap::createQuadrant( const TileKey* key )
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(xmin,ymin,0)).length();
-    double min_range = radius * _mapConfig->getMinTileRangeFactor();
+    double min_range = radius * _mapConfig.getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * _mapConfig->getSkirtRatio());
+    hf->setSkirtHeight(radius * _mapConfig.getSkirtRatio());
 
     // see if we need to keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();

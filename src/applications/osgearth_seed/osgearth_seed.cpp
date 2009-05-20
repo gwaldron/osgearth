@@ -84,15 +84,15 @@ int main(int argc, char** argv)
 
 
     //Load the map file
-    osg::ref_ptr<MapConfig> map = MapConfigReaderWriter::readXml( filename );
-    if ( map.valid() )
+    MapConfig mapConfig;
+    if ( MapConfigReaderWriter::readXml( filename, mapConfig ) )
     {                
         //Create the CacheSeed
-        osg::ref_ptr<CacheSeed> seed = new CacheSeed();
-        seed->setMinLevel(minLevel);
-        seed->setMaxLevel(maxLevel);
-        seed->setBounds(bounds);
-        seed->seed( map.get() );
+        CacheSeed seed;
+        seed.setMinLevel(minLevel);
+        seed.setMaxLevel(maxLevel);
+        seed.setBounds(bounds);
+        seed.seed( mapConfig );
         return 0;
     }
     else

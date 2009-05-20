@@ -21,6 +21,7 @@
 #define OSGEARTH_GEOCENTRIC_MAP_ENGINE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/MapConfig>
 #include <osgEarth/MapEngine>
 #include <osg/Node>
 #include <osg/ClusterCullingCallback>
@@ -38,9 +39,7 @@ namespace osgEarth
         /**
          * Constructs a new geocentric map
          */
-        GeocentricMap( 
-            MapConfig* mapConfig, 
-            const osgDB::ReaderWriter::Options* options =NULL);
+        GeocentricMap( const MapConfig& mapConfig );
         
     protected: // Map interface
 

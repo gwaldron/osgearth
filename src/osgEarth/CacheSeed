@@ -51,7 +51,7 @@ namespace osgEarth
     /**
     * Utility class for seeding a cache
     */
-    class OSGEARTH_EXPORT CacheSeed : public osg::Referenced
+    class OSGEARTH_EXPORT CacheSeed
     {
     public:
         CacheSeed():
@@ -99,7 +99,7 @@ namespace osgEarth
         /**
         * Performs the seed operation
         */
-        void seed( MapConfig* conf );
+        void seed( const MapConfig& conf );
 
         /**
         * Gets the Map used the CacheSeed

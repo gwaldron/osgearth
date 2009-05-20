@@ -46,10 +46,8 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 
-GeocentricMap::GeocentricMap( 
-    MapConfig* mapConfig, 
-    const osgDB::ReaderWriter::Options* global_options ) :
-MapEngine( mapConfig, global_options )
+GeocentricMap::GeocentricMap( const MapConfig& mapConfig ) :
+MapEngine( mapConfig )
 {
     //NOP   
 }
@@ -100,7 +98,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
     //TODO: select/composite.
     if ( elevationLayers.size() > 0 )
     {
-        hf = getHeightField( key, false );
+        hf = createHeightField( key, false );
         //hf = _elevationManager->getHeightField(key, 0, 0, false);
         hasElevation = hf.valid();
     }
@@ -147,12 +145,12 @@ GeocentricMap::createQuadrant( const TileKey* key )
         //We have no heightfield sources, 
         if (elevationLayers.size() == 0)
         {
-            hf = getEmptyHeightField( key );
+            hf = createEmptyHeightField( key );
         }
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = getHeightField( key, true );
+            hf = createHeightField( key, true );
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -205,7 +203,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
     tile->setTileID(key->getTileId());
 
     //Attach an updatecallback to normalize the edges of TerrainTiles.
-    if (hasElevation && _mapConfig->getNormalizeEdges())
+    if (hasElevation && _mapConfig.getNormalizeEdges())
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
@@ -279,10 +277,10 @@ GeocentricMap::createQuadrant( const TileKey* key )
     osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
     double radius = bs.radius();
-    double min_range = radius * _mapConfig->getMinTileRangeFactor();
+    double min_range = radius * _mapConfig.getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * _mapConfig->getSkirtRatio());
+    hf->setSkirtHeight(radius * _mapConfig.getSkirtRatio());
 
     if (!isCube)
     {

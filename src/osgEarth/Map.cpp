@@ -23,54 +23,48 @@
 
 using namespace osgEarth;
 
-Map::Map(MapConfig* mapConfig,
-         const osgDB::ReaderWriter::Options* options)
+Map::Map(const MapConfig& mapConfig)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( MapEngine::s_mapEngineCacheMutex );
-//    Map* result = NULL;
 
-    if ( mapConfig )
+    const osgDB::ReaderWriter::Options* global_options = mapConfig.getGlobalOptions();
+    osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ? 
+        new osgDB::ReaderWriter::Options( *global_options ) :
+        NULL;
+
+    // transcribe proxy settings:
+    if ( !mapConfig.getProxyHost().empty() )
     {
-        osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = options ? 
-            new osgDB::ReaderWriter::Options( *local_options ) :
-            NULL;
+        if ( !local_options.valid() )
+            local_options = new osgDB::ReaderWriter::Options();
 
-        // transcribe proxy settings:
-        if ( !mapConfig->getProxyHost().empty() )
-        {
-            if ( !local_options.valid() )
-                local_options = new osgDB::ReaderWriter::Options();
-
-            std::stringstream buf;
-            buf << local_options->getOptionString() << " "
-                << "OSG_CURL_PROXY=" << mapConfig->getProxyHost() << " "
-                << "OSG_CURL_PROXYPORT=" << mapConfig->getProxyPort();
-            local_options->setOptionString( buf.str() );
-        }
-
-        osg::notify(osg::INFO) 
-            << "[osgEarth] Map: options string = " 
-            << (local_options.valid()? local_options->getOptionString() : "<empty>")
-            << std::endl;
-
-        if (mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || 
-            mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
-        {
-            _engine = new GeocentricMap( mapConfig, local_options.get() );
-        }
-        else // if (mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_PROJECTED)
-        {
-            _engine = new ProjectedMap( mapConfig, local_options.get() );
-        }
-
-        //// fire it up
-        //result = new Map( engine );
-
-        //if (result->getNumChildren() > 0) return result;
-
-        addChild( _engine->initialize() );
+        std::stringstream buf;
+        buf << local_options->getOptionString() << " "
+            << "OSG_CURL_PROXY=" << mapConfig.getProxyHost() << " "
+            << "OSG_CURL_PROXYPORT=" << mapConfig.getProxyPort();
+        local_options->setOptionString( buf.str() );
     }
-    //return result;
+
+    osg::notify(osg::INFO) 
+        << "[osgEarth] Map: options string = " 
+        << (local_options.valid()? local_options->getOptionString() : "<empty>")
+        << std::endl;
+
+    
+    MapConfig newMapConfig( mapConfig );
+    newMapConfig.setGlobalOptions( local_options.get() );  
+
+    if (mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || 
+        mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
+    {     
+        _engine = new GeocentricMap( newMapConfig );
+    }
+    else // if (mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_PROJECTED)
+    {
+        _engine = new ProjectedMap( newMapConfig );
+    }
+
+    addChild( _engine->initialize() );
 }
 
 Map::~Map()
@@ -146,7 +140,7 @@ Map::getElevationLayers( ElevationLayerList& layers ) const
 }
 
 TileSource* 
-Map::createTileSource( SourceConfig* sourceConfig )
+Map::createTileSource( const SourceConfig& sourceConfig )
 {
     return _engine->createTileSource( sourceConfig );
 }

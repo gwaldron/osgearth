@@ -19,10 +19,11 @@
 
 #include <osgEarth/DirectReadTileSource>
 #include <osgEarth/Compositing>
+#include <osgEarth/ElevationManager>
 
 using namespace osgEarth;
 
-DirectReadTileSource::DirectReadTileSource(osgEarth::TileSource *tileSource,
+DirectReadTileSource::DirectReadTileSource(osgEarth::TileSource* tileSource,
                                            unsigned int tileSize,
                                            const osgDB::ReaderWriter::Options* options):
 TileSource(options),
@@ -32,7 +33,7 @@ _tileSource(tileSource)
 }
 
 osg::Image*
-DirectReadTileSource::createImage(const osgEarth::TileKey *key)
+DirectReadTileSource::createImage(const osgEarth::TileKey* key)
 {
     //If the destination profile and the underlying TileSource profile are the same,
     // simply request the image and return.
@@ -63,13 +64,15 @@ DirectReadTileSource::createImage(const osgEarth::TileKey *key)
 }
 
 osg::HeightField*
-DirectReadTileSource::createHeightField(const osgEarth::TileKey *key)
+DirectReadTileSource::createHeightField(const osgEarth::TileKey* key)
 {
-    return NULL;
+    osg::ref_ptr<ElevationManager> em = new ElevationManager();
+    em->getElevationSources().push_back( _tileSource.get() );
+    return em->createHeightField( key );
 }
 
 const Profile*
-DirectReadTileSource::createProfile(const osgEarth::Profile *mapProfile, const std::string &configPath)
+DirectReadTileSource::createProfile(const osgEarth::Profile* mapProfile, const std::string& configPath)
 {
     //Just set our profile to the MapProfile
     _profile = mapProfile;

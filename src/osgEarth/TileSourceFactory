@@ -40,9 +40,8 @@ namespace osgEarth
         * TODO: make this package-internal scope 
         */
         TileSource* createMapTileSource(
-            const MapConfig* mapConfig,
-            const SourceConfig* source,
-            const osgDB::ReaderWriter::Options* global_options =NULL );
+            const SourceConfig& source_conf,
+            const MapConfig& map_conf =MapConfig() );
 
         /**
         * Creates a new TileSource that can be used outside the osgEarth Map framework, providing 
@@ -50,7 +49,7 @@ namespace osgEarth
         * cropping, etc automatically.
         */
         TileSource* createDirectReadTileSource(
-            const SourceConfig* source,
+            const SourceConfig& source_conf,
             const Profile* profile,
             unsigned int tileSize =256,
             const osgDB::ReaderWriter::Options* global_options =NULL );

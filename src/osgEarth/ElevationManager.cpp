@@ -49,7 +49,8 @@ ElevationManager::getSamplePolicy()
     return _samplePolicy;
 }
 
-GeoHeightField* createGeoHeightField(const TileKey* key, TileSource* source, bool fallback)
+static GeoHeightField*
+createGeoHeightField(const TileKey* key, TileSource* source, bool fallback)
 {
     osg::ref_ptr<const TileKey> hf_key = key;
     while (hf_key.valid())
@@ -79,7 +80,7 @@ GeoHeightField* createGeoHeightField(const TileKey* key, TileSource* source, boo
 }
 
 osg::HeightField*
-ElevationManager::getHeightField(const osgEarth::TileKey *key, unsigned int cols /*=0*/, unsigned int rows/*=0*/, bool fallback /*=false*/)
+ElevationManager::createHeightField(const osgEarth::TileKey *key, unsigned int cols /*=0*/, unsigned int rows/*=0*/, bool fallback /*=false*/)
 {
     //Collect the heightfields
     typedef std::vector< osg::ref_ptr<GeoHeightField> > HeightFields;

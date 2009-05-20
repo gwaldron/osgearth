@@ -34,8 +34,7 @@ namespace osgEarth
     public:
         DirectReadTileSource(TileSource* tileSource,
                              unsigned int tileSize,
-                             const osgDB::ReaderWriter::Options* options =NULL
-                             );
+                             const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
          * The Map calls this method ONCE so that the TileSource can

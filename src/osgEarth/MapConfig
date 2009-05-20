@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
+#include <osgDB/ReaderWriter>
 #include <map>
 #include <list>
 
@@ -110,10 +111,18 @@ namespace osgEarth
      * Defines a source for image or heightfield data. This is the configuration
      * information for a TileSource.
      */
-    class OSGEARTH_EXPORT SourceConfig : public osg::Referenced
+    class OSGEARTH_EXPORT SourceConfig // : public osg::Referenced
     {
     public:
+        /**
+         * Constructs a new, empty tile source configuration.
+         */
         SourceConfig();
+
+        /**
+         * Copy constructor. 
+         */
+        SourceConfig( const SourceConfig& rhs );
 
         /**
          * Creates a new source configuration with the given name, driver name, and
@@ -123,6 +132,12 @@ namespace osgEarth
             const std::string& name,
             const std::string& driver,
             const SourceProperties& props );
+
+
+        /**
+         * Returns true if this source config is sufficiently populated
+         */
+        bool isValid() const;
 
         /**
          * Sets the readable name of the source. This must be unique across
@@ -156,6 +171,12 @@ namespace osgEarth
         const SourceProperties& getProperties() const;
 
         /**
+         * Sets a source property - a name/value pair that the TileSource itself
+         * will interpret
+         */
+        void setProperty( const std::string& name, const std::string& value );
+
+        /**
          * Gets the caching configuration for this source, if one is set.
          */
         CacheConfig* getCacheConfig() const;
@@ -165,7 +186,7 @@ namespace osgEarth
          * source will use the map's caching configuration, but you can override
          * it for each source.
          */
-        void setCacheConfig(CacheConfig* cacheConfig);
+        void setCacheConfig( CacheConfig* cacheConfig );
 
         /**
          * Gets the explicity profile override configuration for this source.
@@ -180,21 +201,21 @@ namespace osgEarth
         void setProfileConfig( ProfileConfig* conf );
 
     private:
-        std::string name;
-        std::string driver;
-        SourceProperties properties;
-        osg::ref_ptr<CacheConfig> cache_config;
-        osg::ref_ptr<ProfileConfig> profile_config;
+        std::string _name;
+        std::string _driver;
+        SourceProperties _properties;
+        osg::ref_ptr<CacheConfig> _cache_config;
+        osg::ref_ptr<ProfileConfig> _profile_config;
     };
 
-    typedef std::list< osg::ref_ptr<SourceConfig> > SourceConfigList;
+    typedef std::list< SourceConfig > SourceConfigList;
 
 
     /**
      * Top-level map configuration. This is the data model behind a
      * ".earth" file.
      */
-    class OSGEARTH_EXPORT MapConfig : public osg::Referenced
+    class OSGEARTH_EXPORT MapConfig
     {
     public:
         // CS of the 3D scene
@@ -210,6 +231,11 @@ namespace osgEarth
          * Constructs a new, empty map configuration.
          */
         MapConfig();
+
+        /**
+         * Copy constructor 
+         */
+        MapConfig( const MapConfig& rhs );
 
         /**
          * Sets the readable name of the map.
@@ -278,19 +304,19 @@ namespace osgEarth
          * @param skirtRatio
          *      The skirt ratio; default = 0.02
          */
-        void setSkirtRatio(const float _skirt_ratio) { skirt_ratio = _skirt_ratio; }
+        void setSkirtRatio(float skirt_ratio);
         
         /**
          * Gets the skirt ratio to be used when creating height field tiles
          *
          * @return The skirt ratio
          */
-        float getSkirtRatio() const { return skirt_ratio; }
+        float getSkirtRatio() const;
 
         /**
          *Sets the sample ratio for height fields
          */
-        void setSampleRatio(float _sample_ratio);
+        void setSampleRatio(float sample_ratio);
 
         /**
          Gets the sample ratio for height fields
@@ -375,29 +401,33 @@ namespace osgEarth
         const ProfileConfig* getProfileConfig() const;
         void setProfileConfig(ProfileConfig* profileConfig);
 
-        const Profile* getProfile() const;
-        void setProfile(const Profile* profile);
+        /**
+         * Gets or sets the global ReaderWriter options assocated with this map 
+         * configuration
+         */
+        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
+        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
 
     private:
-        std::string filename;
-        std::string name;
-        CoordinateSystemType model_cstype;
-        float vertical_scale;
-        float skirt_ratio;   
-        float sample_ratio;
-        SourceConfigList image_sources;
-        SourceConfigList heightfield_sources;
-        std::string proxy_host;
-        unsigned short proxy_port;
-        float min_tile_range_factor;
+        std::string _filename;
+        std::string _name;
+        CoordinateSystemType _model_cstype;
+        float _vertical_scale;
+        float _skirt_ratio;   
+        float _sample_ratio;
+        SourceConfigList _image_sources;
+        SourceConfigList _heightfield_sources;
+        std::string _proxy_host;
+        unsigned short _proxy_port;
+        float _min_tile_range_factor;
 
-        osg::ref_ptr<const Profile> profile;
+        bool _cache_only;
+        bool _normalize_edges;
 
-        bool cache_only;
-        bool normalize_edges;
+        osg::ref_ptr<CacheConfig> _cache_config;
+        osg::ref_ptr<ProfileConfig> _profile_config;
 
-        osg::ref_ptr<CacheConfig> cache_config;
-        osg::ref_ptr<ProfileConfig> profile_config;
+        osg::ref_ptr<const osgDB::ReaderWriter::Options> _global_options;
     };
 
 
@@ -407,11 +437,11 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapConfigReaderWriter
     {
     public:
-        static MapConfig* readXml( const std::string& location );
-        static MapConfig* readXml( std::istream& input );
+        static bool readXml( const std::string& location, MapConfig& out_map );
+        static bool readXml( std::istream& input, MapConfig& out_map );
 
-        static void writeXml(const MapConfig* map, const std::string& location);
-        static void writeXml(const MapConfig* map, std::ostream& output);
+        static bool writeXml( const std::string& location, const MapConfig& map );
+        static bool writeXml( std::ostream& output, const MapConfig& map );
     };
 };
 

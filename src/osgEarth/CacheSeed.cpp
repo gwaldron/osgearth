@@ -25,7 +25,7 @@
 
 using namespace osgEarth;
 
-void CacheSeed::seed( MapConfig* conf )
+void CacheSeed::seed( const MapConfig& conf )
 {
     //Create a Map for the map
     //TODO: really, we just need the MapEngine and not the Map..

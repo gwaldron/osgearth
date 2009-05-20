@@ -21,6 +21,7 @@
 #define OSGEARTH_PROJECTED_MAP_ENGINE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/MapConfig>
 #include <osgEarth/MapEngine>
 
 namespace osgEarth
@@ -34,9 +35,7 @@ namespace osgEarth
     class ProjectedMap : public MapEngine
     {
     public:
-        ProjectedMap( 
-            MapConfig* mapConfig, 
-            const osgDB::ReaderWriter::Options* options =NULL);
+        ProjectedMap( const MapConfig& mapConfig );
         
     protected: // Map interface
 

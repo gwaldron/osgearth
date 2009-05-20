@@ -25,9 +25,8 @@
 using namespace osgEarth;
 
 TileSource* 
-TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
-                                        const SourceConfig* source,
-                                        const osgDB::ReaderWriter::Options* global_options)
+TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
+                                       const MapConfig& mapConfig )
 {
     /*
     *The map tile source chain will look like
@@ -40,12 +39,14 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
     *MemCachedTileSource -> DiskCachedTileSource
     */
 
+    const osgDB::ReaderWriter::Options* global_options = mapConfig.getGlobalOptions();
+
     osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
         new osgDB::ReaderWriter::Options( *global_options ) : 
         new osgDB::ReaderWriter::Options();
 
     //Setup the plugin options for the source
-    for( SourceProperties::const_iterator p = source->getProperties().begin(); p != source->getProperties().end(); p++ )
+    for( SourceProperties::const_iterator p = sourceConfig.getProperties().begin(); p != sourceConfig.getProperties().end(); p++ )
     {
         local_options->setPluginData( p->first, (void*)p->second.c_str() );
     }
@@ -54,14 +55,17 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
     osg::ref_ptr<TileSource> tile_source;
 
     //Only load the source if we are not running offline
-    if ( !mapConfig || !mapConfig->getCacheOnly() )
+//    if ( !mapConfig || !mapConfig.getCacheOnly() )
+    if ( !mapConfig.getCacheOnly() )
     {
         //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
         //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
-        tile_source = dynamic_cast<TileSource*>(osgDB::readObjectFile(".osgearth_" + source->getDriver(), local_options.get()));
+        tile_source = dynamic_cast<TileSource*>(
+            osgDB::readObjectFile(".osgearth_" + sourceConfig.getDriver(), local_options.get()));
+
         if (!tile_source.valid())
         {
-          osg::notify(osg::NOTICE) << "Warning:  Could not load TileSource from "  << source->getDriver() << std::endl;
+          osg::notify(osg::NOTICE) << "Warning:  Could not load TileSource from "  << sourceConfig.getDriver() << std::endl;
         }
     }
 
@@ -69,12 +73,12 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
     {           
         //Initialize the source and set its name
         //tile_source->init(local_options.get());
-        tile_source->setName( source->getName() );
-        osg::notify(osg::INFO) << "Loaded " << source->getDriver() << " TileSource" << std::endl;
+        tile_source->setName( sourceConfig.getName() );
+        osg::notify(osg::INFO) << "Loaded " << sourceConfig.getDriver() << " TileSource" << std::endl;
     }
 
     //Configure the cache if necessary
-    osg::ref_ptr<const CacheConfig> cacheConfig = source->getCacheConfig();
+    osg::ref_ptr<const CacheConfig> cacheConfig = sourceConfig.getCacheConfig();
 
     osg::ref_ptr<TileSource> topSource = tile_source.get();
 
@@ -89,9 +93,9 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
 
         if (cache.valid())
         {
-            cache->setName(source->getName());
-            if ( mapConfig )
-                cache->setMapConfigFilename( mapConfig->getFilename() );
+            cache->setName(sourceConfig.getName());
+            //if ( mapConfig )
+                cache->setMapConfigFilename( mapConfig.getFilename() );
             topSource = cache.get();
         }
     }
@@ -101,16 +105,16 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
 
     // Finally, install an override profile if the caller requested one. This will override the profile
     // that the TileSource reports.
-    if ( source->getProfileConfig() )
+    if ( sourceConfig.getProfileConfig() )
     {
         osg::ref_ptr<const Profile> override_profile =
-            osgEarth::Registry::instance()->getNamedProfile( source->getProfileConfig()->getSRS() );
+            osgEarth::Registry::instance()->getNamedProfile( sourceConfig.getProfileConfig()->getSRS() );
 
         if ( !override_profile.valid() )
         {
             double xmin, ymin, xmax, ymax;
-            source->getProfileConfig()->getExtents( xmin, ymin, xmax, ymax );
-            override_profile = Profile::create( source->getProfileConfig()->getSRS(), xmin, ymin, xmax, ymax );
+            sourceConfig.getProfileConfig()->getExtents( xmin, ymin, xmax, ymax );
+            override_profile = Profile::create( sourceConfig.getProfileConfig()->getSRS(), xmin, ymin, xmax, ymax );
         }
 
         if ( override_profile.valid() )
@@ -123,17 +127,19 @@ TileSourceFactory::createMapTileSource( const MapConfig* mapConfig,
 }
 
 TileSource*
-TileSourceFactory::createDirectReadTileSource(const SourceConfig* source,
+TileSourceFactory::createDirectReadTileSource(const SourceConfig& sourceConfig,
                                               const Profile* profile,
                                               unsigned int tileSize,
                                               const osgDB::ReaderWriter::Options* global_options)
 {
     //Create the map source
-    TileSource* mapSource = createMapTileSource( NULL, source, global_options );
+    MapConfig mapConfig;
+    mapConfig.setGlobalOptions( global_options );
+    TileSource* source = createMapTileSource( sourceConfig, mapConfig );
 
     //Wrap it in a DirectTileSource that will convert to the map's profile
-    TileSource* tileSource = new DirectReadTileSource( mapSource, tileSize, global_options );
+    TileSource* tileSource = new DirectReadTileSource( source, tileSize, global_options );
     tileSource->initProfile( profile, std::string() );
-    tileSource->setName( source->getName() );
+    tileSource->setName( sourceConfig.getName() );
     return tileSource;
 }

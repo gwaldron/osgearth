@@ -81,35 +81,34 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 //osg::notify(osg::NOTICE) << "Reading Earth File " << std::endl;
 
                 //Read the map file from the filename
-                osg::ref_ptr<MapConfig> mapConfig;
+                //osg::ref_ptr<MapConfig> mapConfig;
+                MapConfig mapConfig;
+                bool success = true;
                 
                 if ( file_name == "__globe.earth" )
                 {
-                    mapConfig = new MapConfig();
-                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
+                    mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
                 }
                 else if ( file_name == "__flat.earth" )
                 {
-                    mapConfig = new MapConfig();
-                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
+                    mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
                 }
                 else if ( file_name == "__cube.earth" )
                 {
-                    mapConfig = new MapConfig();
-                    mapConfig->setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC_CUBE );
+                    mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC_CUBE );
                 }
                 else
                 {
-                    mapConfig = MapConfigReaderWriter::readXml( file_name );
+                    success = MapConfigReaderWriter::readXml( file_name, mapConfig );
                 }
 
-                if ( mapConfig.valid() )
+                if ( success ) //mapConfig.valid() )
                 {
                     //Create the Map.
-                    osg::ref_ptr<Map> map = new Map( mapConfig.get() );
+                    osg::ref_ptr<Map> map = new Map( mapConfig );
 
                     //Check to see that the Map is valid.
-                    if (!map.valid() || !map->isOK() )
+                    if ( !map.valid() || !map->isOK() )
                         return ReadResult::FILE_NOT_HANDLED;
 
                     osg::notify( osg::INFO ) << "Map profile = " << map->getProfile()->toString()

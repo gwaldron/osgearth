@@ -39,13 +39,31 @@ namespace osgEarth
             AVERAGE
         };
         
+        /**
+         * Constructs a new, default elevation manager
+         */
         ElevationManager();
 
-        osg::HeightField* getHeightField(const TileKey* key, unsigned int cols = 0, unsigned int rows = 0, bool fallback = false);
+        /**
+         * Creates and returns a new height field corresponding to the specified tile key.
+         */
+        osg::HeightField* createHeightField(
+            const TileKey* key,
+            unsigned int cols = 0, unsigned int rows = 0, bool fallback = false);
 
+        /**
+         * Gets the collection of tile sources from which this object pulls elevation data.
+         */
         osgEarth::TileSourceList& getElevationSources();
 
+        /**
+         * Sets the heightfield sampling policy for heightfield extraction.
+         */
         void setSamplePolicy(SamplePolicy samplePolicy);
+
+        /**
+         * Get the heightefield sampling policy for heightfield extraction
+         */
         SamplePolicy getSamplePolicy();
 
     protected:

@@ -36,7 +36,7 @@ namespace osgEarth
          * Creates a new Map node from the given MapConfig.  This allows you to
          * programatically create a MapConfig and create a paging scene graph out of it.
          */
-        Map( MapConfig* conf, const osgDB::ReaderWriter::Options* options =NULL );
+        Map( const MapConfig& conf );
 
     public:
 
@@ -91,7 +91,7 @@ namespace osgEarth
         /**
          * Creates a TileSource with the given SourceConfig
          */
-        TileSource* createTileSource( SourceConfig* sourceConfig );
+        TileSource* createTileSource( const SourceConfig& sourceConfig );
 
         /**
          * Gets the profile of the underlying map

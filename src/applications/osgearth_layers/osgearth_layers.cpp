@@ -203,7 +203,7 @@ public:
                     props["url"] = "../data/boston-inset.tif";
                     //props["url"] = "c:/dev/osgearth/data/boston-inset.tif";
 
-                    osg::ref_ptr<TileSource> tileSource = _map->createTileSource( new SourceConfig("overlay", "gdal", props ) );
+                    osg::ref_ptr<TileSource> tileSource = _map->createTileSource( SourceConfig("overlay", "gdal", props ) );
                     if (tileSource.valid())
                     {
                       _map->addLayer( new osgEarth::ImageLayer( tileSource.get() ) );

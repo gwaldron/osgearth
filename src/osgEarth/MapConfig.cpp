@@ -279,6 +279,14 @@ _cache_config( rhs._cache_config.get() )
 }
 
 SourceConfig::SourceConfig(const std::string& name,
+                           const std::string& driver ) :
+_name( name ),
+_driver( driver )
+{
+    //NOP
+}
+
+SourceConfig::SourceConfig(const std::string& name,
                            const std::string& driver,
                            const SourceProperties& props ) :
 _name( name ),

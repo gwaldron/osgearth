@@ -125,6 +125,13 @@ namespace osgEarth
         SourceConfig( const SourceConfig& rhs );
 
         /**
+         * Creates a new source configuration with the given name and driver name.
+         */
+        SourceConfig(
+            const std::string& name,
+            const std::string& driver );
+
+        /**
          * Creates a new source configuration with the given name, driver name, and
          * driver-specific property set.
          */

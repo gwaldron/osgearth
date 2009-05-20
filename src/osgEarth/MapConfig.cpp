@@ -345,6 +345,21 @@ SourceConfig::setProperty( const std::string& name, const std::string& value )
     _properties[name] = value;
 }
 
+static std::string EMPTY_STRING;
+
+const std::string&
+SourceConfig::operator [] ( const std::string& name ) const
+{
+    SourceProperties::const_iterator i = _properties.find( name );
+    return i != _properties.end()? i->second : EMPTY_STRING;
+}
+        
+std::string&
+SourceConfig::operator [] ( const std::string& name )
+{
+    return _properties[name];
+}
+
 CacheConfig*
 SourceConfig::getCacheConfig() const
 {

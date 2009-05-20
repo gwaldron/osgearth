@@ -184,6 +184,12 @@ namespace osgEarth
         void setProperty( const std::string& name, const std::string& value );
 
         /**
+         * Get or set properties using the indexer notation.
+         */
+        const std::string& operator [] ( const std::string& name ) const;
+        std::string& operator [] ( const std::string& name );
+
+        /**
          * Gets the caching configuration for this source, if one is set.
          */
         CacheConfig* getCacheConfig() const;

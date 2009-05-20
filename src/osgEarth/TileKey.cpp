@@ -56,30 +56,6 @@ TileKey::getProfile() const
     return _profile.get();
 }
 
-int
-TileKey::getMapSizePixels(const unsigned int &tile_size) const
-{
-    return getMapSizePixels( tile_size, getLevelOfDetail() );
-}
-
-/*static*/ int
-TileKey::getMapSizePixels(const unsigned int &tile_size, const unsigned int &lod )
-{
-    return tile_size << lod;
-}
-
-int
-TileKey::getMapSizeTiles() const
-{
-    return getMapSizeTiles(getLevelOfDetail());
-}
-
-int
-TileKey::getMapSizeTiles(const unsigned int level)
-{
-    return pow(2.0, (double)level);
-}
-
 void
 TileKey::getTileXY(unsigned int& out_tile_x,
                    unsigned int& out_tile_y) const

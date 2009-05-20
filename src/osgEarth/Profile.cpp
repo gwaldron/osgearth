@@ -66,35 +66,31 @@ Profile::create(const std::string& init_string,
     if ( named )
         return const_cast<Profile*>( named );
 
-    osg::ref_ptr<const SpatialReference> _srs = SpatialReference::create( init_string );
-    if ( _srs.valid() && _srs->isGeographic() )
+    osg::ref_ptr<const SpatialReference> srs = SpatialReference::create( init_string );
+
+    if ( srs.valid() && srs->isGeographic() )
     {
         return new Profile(
-            _srs.get(),
-            -180.0, -90.0, 180.0, 90.0 );
+            srs.get(),
+            -180.0, -90.0, 180.0, 90.0,
+            numTilesWideAtLod0, numTilesHighAtLod0 );
     }
-    return 0;
+    else if ( srs.valid() && srs->isMercator() )
+    {
+        // automatically figure out proper mercator extents:
+        GDAL_SCOPED_LOCK;
+        double e, dummy;
+        srs->getGeographicSRS()->transform( 180.0, 0.0, srs.get(), e, dummy );
+        return Profile::create( srs.get(), -e, -e, e, e, numTilesWideAtLod0, numTilesHighAtLod0 );
+    }
+
+    return NULL;
 }
 
 Profile*
 Profile::createCube(const SpatialReference* geog_srs)
 {
-    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0 ); //-180.0, -90.0, 180.0, 90.0 );
-    //result->_face_profiles.push_back( new Profile( geog_srs, -180.0, -45.0, -90.0, 45.0 ) );
-    //result->_face_profiles.push_back( new Profile( geog_srs,  -90.0, -45.0,   0.0, 45.0 ) );
-    //result->_face_profiles.push_back( new Profile( geog_srs,    0.0, -45.0,  90.0, 45.0 ) );
-    //result->_face_profiles.push_back( new Profile( geog_srs,   90.0, -45.0, 180.0, 45.0 ) );
-    //result->_face_profiles.push_back( new Profile( SpatialReference::create( "square-polar" ), -180.0, 45.0, 180.0, 90.0, 4, 1 ) );
-    //result->_face_profiles.push_back( new Profile( SpatialReference::create( "square-polar" ), -180.0, 45.0, -90, 90, 1, 1 ) );
-    //result->_face_profiles.push_back( new Profile( SpatialReference::create( "square-polar" ), 0.0, 0.0, 1.0, 1.0, 1, 1 ) );
-    //result->_face_profiles.push_back( new Profile( SpatialReference::create( "square-polar" ), -180.0, -90.0, 180.0, -45.0 ) );
-
-    /*result->_face_profiles.push_back( new Profile( new CubeFaceSpatialReference(0), 0.0, 0.0, 1.0, 1.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( new CubeFaceSpatialReference(1), 0.0, 0.0, 1.0, 1.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( new CubeFaceSpatialReference(2), 0.0, 0.0, 1.0, 1.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( new CubeFaceSpatialReference(3), 0.0, 0.0, 1.0, 1.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( new CubeFaceSpatialReference(4), 0.0, 0.0, 1.0, 1.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( new CubeFaceSpatialReference(5), 0.0, 0.0, 1.0, 1.0, 1, 1 ) );*/
+    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0 );
 
     result->_face_profiles.push_back( new Profile( geog_srs, -180.0, -45.0, -90.0, 45.0 ) );
     result->_face_profiles.push_back( new Profile( geog_srs,  -90.0, -45.0,   0.0, 45.0 ) );

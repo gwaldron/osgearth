@@ -344,7 +344,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
           //Determine the edge TileID
           osgTerrain::TileID id2(level, id.x, id.y);
-          int totalTiles = TileKey::getMapSizeTiles(level);
+          int totalTiles = 2 << (level-1); //TileKey::getMapSizeTiles(level);
 
           if (direction == WEST || direction == SOUTH_WEST || direction == NORTH_WEST)
           {

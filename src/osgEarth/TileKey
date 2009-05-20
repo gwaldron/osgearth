@@ -73,28 +73,6 @@ namespace osgEarth
          */
         const osgEarth::Profile* getProfile() const;
 
-        /**
-         * Gets the size of the entire map, in pixels, at the level of
-         * detail of this key.
-         */
-        int getMapSizePixels(const unsigned int& tile_size) const;
-
-        /**
-         * Gets the size of the entire map, in tiles, at the level of detail
-         * of this key.
-         */
-        int getMapSizeTiles() const;
-
-        /**
-         * Gets the size of a map, in tiles, for a specified level of detail.
-         */
-        static int getMapSizeTiles(const unsigned int level);
-
-        /**
-         * Gets the size of the map, in pixels, for a given level of detail.
-         */
-        static int getMapSizePixels( const unsigned int &tile_size, const unsigned int &lod );
-
     public:
         /**
          * Gets a reference to the child key of this key in the specified

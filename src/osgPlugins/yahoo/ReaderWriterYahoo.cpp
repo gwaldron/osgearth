@@ -47,9 +47,10 @@ public:
             _dataset = "roads"; // default to the map view
     }
 
+    // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
     const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
     {
-        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        return Profile::create( "spherical-mercator", 2, 2 );
     }
 
     osg::Image* createImage( const TileKey* key )
@@ -64,28 +65,30 @@ public:
             // http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl?v=4.1&md=2&x=0&y=0&z=2&r=1
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
-            int size = key->getMapSizeTiles();
-            int zoom = key->getLevelOfDetail();
+            unsigned int zoom = key->getLevelOfDetail();
+            unsigned int size_x, size_y;
+            key->getProfile()->getNumTiles( zoom, size_x, size_y );
 
             buf << "http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl"
                 << "?v=4.1&md=2&r=1"
                 << "&x=" << (int)tile_x
-                << "&y=" << (size-1-(int)tile_y) - size/2
-                << "&z=" << zoom + 1
+                << "&y=" << ((int)size_y-1-(int)tile_y) - (int)size_y/2
+                << "&z=" << zoom + 2
                 << "&.jpg";
         }
         else if ( _dataset == "aerial" || _dataset == "satellite" )
         {
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
-            int size = key->getMapSizeTiles();
-            int zoom = key->getLevelOfDetail();
+            unsigned int zoom = key->getLevelOfDetail();
+            unsigned int size_x, size_y;
+            key->getProfile()->getNumTiles( zoom, size_x, size_y );
 
             buf << "http://us.maps3.yimg.com/aerial.maps.yimg.com/ximg"
                 << "?v=1.8&s=256&t=a&r=1"
                 << "&x=" << (int)tile_x
-                << "&y=" << (size-1-(int)tile_y) - size/2
-                << "&z=" << zoom + 1
+                << "&y=" << ((int)size_y-1-(int)tile_y) - (int)size_y/2
+                << "&z=" << zoom + 2
                 << "&.jpg";
         }
 

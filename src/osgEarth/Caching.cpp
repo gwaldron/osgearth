@@ -369,11 +369,11 @@ static bool getProp(const std::map<std::string,std::string> &map, const std::str
 }
 
 CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
-                                                  const std::string &type,
+                                                  const CacheConfig::CacheType& type,
                                                   std::map<std::string,std::string> properties,
                                                   const osgDB::ReaderWriter::Options* options)
 {
-    if (type == "tms" || type == "tilecache" || type.empty())
+    if (type == CacheConfig::TYPE_TMS || type == CacheConfig::TYPE_TILECACHE ) //"tilecache" || type.empty())
     {
         std::string path;
         std::string format;
@@ -387,7 +387,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
         getProp(properties, "format", format);
         
         
-        if (type == "tms" || type.empty())
+        if (type == CacheConfig::TYPE_TMS ) //"tms" || type.empty())
         {
             TMSCacheTileSource *cache = new TMSCacheTileSource(tileSource, path, format, options);
             std::string tms_type; 
@@ -401,13 +401,13 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
             return cache;
         }
 
-        if (type == "tilecache")
+        if (type == CacheConfig::TYPE_TILECACHE ) //"tilecache")
         {
             osg::notify(osg::INFO) << "Returning disk cache " << std::endl;
             return new DiskCachedTileSource(tileSource, path, format, options);
         }
     }
-    else if (type == "none")
+    else if (type == CacheConfig::TYPE_NONE || type == CacheConfig::TYPE_UNDEFINED) //"none")
     {
         return 0;
     }

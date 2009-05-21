@@ -78,17 +78,17 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
     }
 
     //Configure the cache if necessary
-    osg::ref_ptr<const CacheConfig> cacheConfig = sourceConfig.getCacheConfig();
+    const CacheConfig cacheConfig = sourceConfig.getCacheConfig();
 
     osg::ref_ptr<TileSource> topSource = tile_source.get();
 
     //If the cache config is valid, wrap the TileSource with a caching TileSource.
-    if (cacheConfig.valid())
+    if ( cacheConfig.defined() )
     {
         osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(
             tile_source.get(),
-            cacheConfig->getType(),
-            cacheConfig->getProperties(),
+            cacheConfig.getType(),
+            cacheConfig.getProperties(),
             local_options.get() );
 
         if (cache.valid())
@@ -105,7 +105,7 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
 
     // Finally, install an override profile if the caller requested one. This will override the profile
     // that the TileSource reports.
-    if ( !sourceConfig.getProfileConfig().empty() )
+    if ( sourceConfig.getProfileConfig().defined() )
     {
         const ProfileConfig& pconf = sourceConfig.getProfileConfig();
 

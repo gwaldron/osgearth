@@ -56,7 +56,7 @@ _normalize_edges( rhs._normalize_edges ),
 _filename( rhs._filename ),
 _image_sources( rhs._image_sources ),
 _heightfield_sources( rhs._heightfield_sources ),
-_cache_config( rhs._cache_config.get() ),
+_cache_config( rhs._cache_config ),
 _profile_config( rhs._profile_config ),
 _global_options( rhs._global_options.get() )
 {
@@ -208,14 +208,14 @@ MapConfig::getCacheOnly() const
     return _cache_only;
 }
 
-CacheConfig*
+const CacheConfig&
 MapConfig::getCacheConfig() const
 {
-    return _cache_config.get();
+    return _cache_config;
 }
 
 void
-MapConfig::setCacheConfig(CacheConfig* cache_config)
+MapConfig::setCacheConfig( const CacheConfig& cache_config )
 {
     _cache_config = cache_config;
 }
@@ -273,7 +273,7 @@ _name( rhs._name ),
 _driver( rhs._driver ),
 _properties( rhs._properties ),
 _profile_config( rhs._profile_config ),
-_cache_config( rhs._cache_config.get() )
+_cache_config( rhs._cache_config )
 {
     //NOP
 }
@@ -360,14 +360,14 @@ SourceConfig::operator [] ( const std::string& name )
     return _properties[name];
 }
 
-CacheConfig*
+const CacheConfig&
 SourceConfig::getCacheConfig() const
 {
-    return _cache_config.get();
+    return _cache_config;
 }
 
 void
-SourceConfig::setCacheConfig(CacheConfig* cache_config)
+SourceConfig::setCacheConfig(const CacheConfig& cache_config)
 {
     _cache_config = cache_config;
 }
@@ -388,17 +388,33 @@ SourceConfig::setProfileConfig( const ProfileConfig& profile_config )
 /************************************************************************/
 
 
-CacheConfig::CacheConfig()
+CacheConfig::CacheConfig() :
+_type( CacheConfig::TYPE_UNDEFINED )
 {
+    //NOP
 }
-const std::string& 
+
+CacheConfig::CacheConfig( const CacheConfig& rhs ) :
+_type( rhs._type ),
+_properties( rhs._properties )
+{
+    //NOP
+}
+
+bool
+CacheConfig::defined() const
+{
+    return _type != CacheConfig::TYPE_UNDEFINED; //_type.empty() && _properties.size() == 0;
+}
+
+const CacheConfig::CacheType&
 CacheConfig::getType() const
 {
     return _type;
 }
 
 void
-CacheConfig::setType(const std::string &type)
+CacheConfig::setType(const CacheConfig::CacheType& type)
 {
     _type = type;
 }
@@ -417,18 +433,22 @@ const CacheProperties& CacheConfig::getProperties() const
     return _properties;
 }
 
-void CacheConfig::inheritFrom(const osgEarth::CacheConfig *rhs)
+void CacheConfig::inheritFrom(const CacheConfig& rhs)
 {
-  if (!rhs) return;
+    if ( _type != TYPE_NONE )
+    {
+        //Inherit the type if applicable:
+        if ( rhs.getType() != TYPE_UNDEFINED )
+        {
+            setType( rhs.getType() );
+        }
 
-  //Inherit the type
-  if (!rhs->getType().empty() ) setType( rhs->getType() );
-  
-  //Inherit the properites
-  for (CacheProperties::const_iterator itr = rhs->getProperties().begin(); itr != rhs->getProperties().end(); ++itr)
-  {
-    getProperties()[itr->first] = itr->second;
-  }
+        //Inherit the properites
+        for (CacheProperties::const_iterator itr = rhs.getProperties().begin(); itr != rhs.getProperties().end(); ++itr)
+        {
+            getProperties()[itr->first] = itr->second;
+        }
+    }
 }
 
 /***********************************************************************/
@@ -463,9 +483,9 @@ ProfileConfig::ProfileConfig( const std::string& namedProfile )
 }
 
 bool
-ProfileConfig::empty() const
+ProfileConfig::defined() const
 {
-    return _empty;
+    return !_empty;
 }
 
 const std::string&
@@ -561,11 +581,16 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
 #define ATTR_SRS               "srs"
 #define ATTR_USELAYER          "use"
 
-static CacheConfig*
+static CacheConfig
 readCache( XmlElement* e_cache )
 {
-    CacheConfig* cache = new CacheConfig();
-    cache->setType( e_cache->getAttr( ATTR_TYPE ) );
+    CacheConfig cache;
+    std::string type_token = e_cache->getAttr( ATTR_TYPE );
+    if ( type_token == "tms" || type_token.empty() ) cache.setType( CacheConfig::TYPE_TMS );
+    else if ( type_token == "tilecache" ) cache.setType( CacheConfig::TYPE_TILECACHE );
+    else if ( type_token == "none" ) cache.setType( CacheConfig::TYPE_NONE );
+
+    //cache.setType( e_cache->getAttr( ATTR_TYPE ) );
 
     const XmlNodeList& e_props = e_cache->getChildren();
     for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
@@ -577,19 +602,23 @@ readCache( XmlElement* e_cache )
             std::string value = e_prop->getText();
             if ( !name.empty() && !value.empty() )
             {
-                cache->getProperties()[name] = value;
+                cache.getProperties()[name] = value;
             }
         }
     }
     return cache;
 }
 
-static void writeCache( const CacheConfig* cache, XmlElement* e_cache )
+static void writeCache( const CacheConfig& cache, XmlElement* e_cache )
 {
-    e_cache->getAttrs()[ATTR_TYPE] = cache->getType();
+    e_cache->getAttrs()[ATTR_TYPE] = 
+        cache.getType() == CacheConfig::TYPE_NONE? "none" :
+        cache.getType() == CacheConfig::TYPE_TILECACHE? "tilecache" :
+        cache.getType() == CacheConfig::TYPE_TMS? "tms" :
+        "tms";
 
     //Add all the properties
-    for (CacheProperties::const_iterator i = cache->getProperties().begin(); i != cache->getProperties().end(); i++ )
+    for (CacheProperties::const_iterator i = cache.getProperties().begin(); i != cache.getProperties().end(); i++ )
     {
         e_cache->addSubElement(i->first, i->second);
     }
@@ -692,7 +721,7 @@ writeSource( const SourceConfig& source, XmlElement* e_source )
         e_source->addSubElement(i->first, i->second);
     }
 
-    if (source.getCacheConfig())
+    if ( source.getCacheConfig().defined() )
     {
        XmlElement* e_cache = new XmlElement(ELEM_CACHE);
        writeCache(source.getCacheConfig(), e_cache);
@@ -802,29 +831,39 @@ readMap( XmlElement* e_map, MapConfig& out_map )
 
 
     //Inherit the map CacheConfig with the override from the registry
-    if (Registry::instance()->getCacheConfigOverride())
+    if ( Registry::instance()->getCacheConfigOverride().defined() )
     {
         //If the map doesn't have a CacheConfig, create a new one
-        if (!out_map.getCacheConfig()) out_map.setCacheConfig( new CacheConfig() );
+        //if ( out_map.getCacheConfig().empty() )
+        //    {out_map.setCacheConfig( new CacheConfig() );
 
-        out_map.getCacheConfig()->inheritFrom( Registry::instance()->getCacheConfigOverride() );
+        CacheConfig conf = out_map.getCacheConfig();
+        conf.inheritFrom( Registry::instance()->getCacheConfigOverride() );
+        out_map.setCacheConfig( conf );
+
         osg::notify(osg::NOTICE) << "Overriding Map Cache" << std::endl;
     }
 
-    if (out_map.getCacheConfig())
+    if ( out_map.getCacheConfig().defined() )
     {
         //Inherit the Source CacheConfig's with the map's
         for (SourceConfigList::iterator itr = out_map.getImageSources().begin(); itr != out_map.getImageSources().end(); ++itr)
         {
-            if (!itr->getCacheConfig()) itr->setCacheConfig( new CacheConfig() );
-            itr->getCacheConfig()->inheritFrom( out_map.getCacheConfig() );
+            CacheConfig conf = itr->getCacheConfig();
+            conf.inheritFrom( out_map.getCacheConfig() );
+            itr->setCacheConfig( conf );
+            //if (!itr->getCacheConfig()) itr->setCacheConfig( new CacheConfig() );
+            //itr->getCacheConfig().inheritFrom( out_map.getCacheConfig() );
         }
 
         //Inherit the Source CacheConfig's with the map's
         for (SourceConfigList::iterator itr = out_map.getHeightFieldSources().begin(); itr != out_map.getHeightFieldSources().end(); ++itr)
         {
-            if (!itr->getCacheConfig()) itr->setCacheConfig( new CacheConfig() );
-            itr->getCacheConfig()->inheritFrom( out_map.getCacheConfig() );
+            CacheConfig conf = itr->getCacheConfig();
+            conf.inheritFrom( out_map.getCacheConfig() );
+            itr->setCacheConfig( conf );
+            //if (!itr->getCacheConfig()) itr->setCacheConfig( new CacheConfig() );
+            //itr->getCacheConfig().inheritFrom( out_map.getCacheConfig() );
         }
     }
 
@@ -882,14 +921,14 @@ mapToXmlDocument( const MapConfig& map )
         e_map->getChildren().push_back( e_source.get() );
     }
 
-    if (map.getCacheConfig())
+    if ( map.getCacheConfig().defined() )
     {
         XmlElement* e_cache = new XmlElement(ELEM_CACHE);
         writeCache(map.getCacheConfig(), e_cache);
         e_map->getChildren().push_back(e_cache);
     }
 
-    if ( !map.getProfileConfig().empty() )
+    if ( map.getProfileConfig().defined() )
     {
         XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
         writeProfileConfig(map.getProfileConfig(), e_profile);

@@ -35,23 +35,39 @@ namespace osgEarth
     /**
      * Defines the properties for a cache.
      */
-    class OSGEARTH_EXPORT CacheConfig : public osg::Referenced
+    class OSGEARTH_EXPORT CacheConfig
     {
+    public:
+        enum CacheType
+        {
+            TYPE_UNDEFINED,
+            TYPE_NONE,
+            TYPE_TMS,
+            TYPE_TILECACHE
+        };
+
     public:
         /**
          * Constructs a new cache configuration
          */
         CacheConfig();
 
+        CacheConfig( const CacheConfig& rhs );
+
+        /**
+         * Returned True if this cache is well defined (not empty)
+         */
+        bool defined() const;
+
         /**
          * Gets the cache type identifier.
          */
-        const std::string& getType() const;
+        const CacheType& getType() const;
 
         /**
-         * Sets the cache type identifier ("tms", "tilecache", etc.)
+         * Sets the cache type identifier
          */
-        void setType(const std::string &type);
+        void setType(const CacheType& type);
 
         /**
          * Gets the collection of name/value pairs for the cache. These will be particular
@@ -65,12 +81,12 @@ namespace osgEarth
         const CacheProperties& getProperties() const;
 
         /**
-         *Inherits properties from the given CacheConfig
+         * Inherits properties from the given CacheConfig
          */
-        void inheritFrom( const CacheConfig* rhs);
+        void inheritFrom( const CacheConfig& rhs );
 
     private:
-        std::string _type;
+        CacheType       _type;
         CacheProperties _properties;
     };
 
@@ -93,7 +109,7 @@ namespace osgEarth
          */
         ProfileConfig( const std::string& named_profile );
 
-        bool empty() const;
+        bool defined() const;
 
         const std::string& getNamedProfile() const;
         void setNamedProfile( const std::string &namedProfile);
@@ -209,14 +225,14 @@ namespace osgEarth
         /**
          * Gets the caching configuration for this source, if one is set.
          */
-        CacheConfig* getCacheConfig() const;
+        const CacheConfig& getCacheConfig() const;
         
         /**
          * Sets the caching configuration for this source. By default a tile
          * source will use the map's caching configuration, but you can override
          * it for each source.
          */
-        void setCacheConfig( CacheConfig* cacheConfig );
+        void setCacheConfig( const CacheConfig& cacheConfig );
 
         /**
          * Gets the explicity profile override configuration for this source.
@@ -234,7 +250,7 @@ namespace osgEarth
         std::string _name;
         std::string _driver;
         SourceProperties _properties;
-        osg::ref_ptr<CacheConfig> _cache_config;
+        CacheConfig _cache_config;
         ProfileConfig _profile_config;
     };
 
@@ -421,12 +437,12 @@ namespace osgEarth
         /*
         *Gets the cache config for the map
         */
-        CacheConfig* getCacheConfig() const;
+        const CacheConfig& getCacheConfig() const;
 
         /*
         *Sets the cache config for the map
         */
-        void setCacheConfig(CacheConfig* cacheConfig);
+        void setCacheConfig( const CacheConfig& cacheConfig);
 
         const ProfileConfig& getProfileConfig() const;
         void setProfileConfig( const ProfileConfig& profileConfig );
@@ -454,7 +470,7 @@ namespace osgEarth
         bool _cache_only;
         bool _normalize_edges;
 
-        osg::ref_ptr<CacheConfig> _cache_config;
+        CacheConfig _cache_config;
         ProfileConfig _profile_config;
 
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _global_options;

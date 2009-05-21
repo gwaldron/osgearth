@@ -59,16 +59,16 @@ Registry* Registry::instance(bool erase)
 void Registry::destruct()
 {
     //Clean up the overriden cache config
-    _cacheConfigOverride = 0;
+    //_cacheConfigOverride = 0;
 }
 
-const CacheConfig*
+const CacheConfig&
 Registry::getCacheConfigOverride() const { 
-    return _cacheConfigOverride.get();
+    return _cacheConfigOverride;
 }
 
 void
-Registry::setCacheConfigOverride(CacheConfig* cacheConfig) {
+Registry::setCacheConfigOverride(const CacheConfig& cacheConfig) {
     _cacheConfigOverride = cacheConfig;
 }
 

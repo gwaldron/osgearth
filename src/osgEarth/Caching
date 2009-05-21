@@ -21,9 +21,9 @@
 #define OSGEARTH_CACHING_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/MapConfig>
 #include <osgEarth/TileSource>
 #include <osgEarth/TMS>
-
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -249,7 +249,8 @@ namespace osgEarth
         */
         static CachedTileSource* create(
             TileSource* tileSource,
-            const std::string &type,
+            const CacheConfig::CacheType& type,
+            //const std::string &type,
             std::map<std::string,std::string> properties,
             const osgDB::ReaderWriter::Options* options =NULL);
     };

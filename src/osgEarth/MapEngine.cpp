@@ -568,7 +568,7 @@ MapEngine::initializeLayers()
     }
 
     // First check for an explicit profile declaration:
-    if ( !_profile.valid() && !_mapConfig.getProfileConfig().empty() )
+    if ( !_profile.valid() && _mapConfig.getProfileConfig().defined() )
     {
         // Check for a "well known named" profile:
         std::string namedProfile = _mapConfig.getProfileConfig().getNamedProfile();

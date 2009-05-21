@@ -74,10 +74,26 @@ namespace osgEarth
         CacheProperties _properties;
     };
 
-    class OSGEARTH_EXPORT ProfileConfig : public osg::Referenced
+
+    class OSGEARTH_EXPORT ProfileConfig
     {
     public:
+        /**
+         * Constructs an empty profile configuration
+         */
         ProfileConfig();
+
+        /**
+         * Copy constructor.
+         */
+        ProfileConfig( const ProfileConfig& rhs );
+
+        /**
+         * Constructs a profile configuration and sets the named profile.
+         */
+        ProfileConfig( const std::string& named_profile );
+
+        bool empty() const;
 
         const std::string& getNamedProfile() const;
         void setNamedProfile( const std::string &namedProfile);
@@ -94,6 +110,7 @@ namespace osgEarth
         void setExtents(double minX, double minY, double maxX, double maxY);
 
     private:
+        bool _empty;
         std::string _namedProfile;
         std::string _refLayer;
         std::string _srs;
@@ -111,7 +128,7 @@ namespace osgEarth
      * Defines a source for image or heightfield data. This is the configuration
      * information for a TileSource.
      */
-    class OSGEARTH_EXPORT SourceConfig // : public osg::Referenced
+    class OSGEARTH_EXPORT SourceConfig
     {
     public:
         /**
@@ -204,21 +221,21 @@ namespace osgEarth
         /**
          * Gets the explicity profile override configuration for this source.
          */
-        ProfileConfig* getProfileConfig() const;
+        const ProfileConfig& getProfileConfig() const;
 
         /** 
          * Sets an explicity profile for this source. Usually the source will report
          * its own profile; but in rare cases you may need to explicity override it
          * using this method.
          */
-        void setProfileConfig( ProfileConfig* conf );
+        void setProfileConfig( const ProfileConfig& conf );
 
     private:
         std::string _name;
         std::string _driver;
         SourceProperties _properties;
         osg::ref_ptr<CacheConfig> _cache_config;
-        osg::ref_ptr<ProfileConfig> _profile_config;
+        ProfileConfig _profile_config;
     };
 
     typedef std::list< SourceConfig > SourceConfigList;
@@ -411,8 +428,8 @@ namespace osgEarth
         */
         void setCacheConfig(CacheConfig* cacheConfig);
 
-        const ProfileConfig* getProfileConfig() const;
-        void setProfileConfig(ProfileConfig* profileConfig);
+        const ProfileConfig& getProfileConfig() const;
+        void setProfileConfig( const ProfileConfig& profileConfig );
 
         /**
          * Gets or sets the global ReaderWriter options assocated with this map 
@@ -438,7 +455,7 @@ namespace osgEarth
         bool _normalize_edges;
 
         osg::ref_ptr<CacheConfig> _cache_config;
-        osg::ref_ptr<ProfileConfig> _profile_config;
+        ProfileConfig _profile_config;
 
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _global_options;
     };

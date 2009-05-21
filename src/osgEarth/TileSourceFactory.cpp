@@ -105,16 +105,25 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
 
     // Finally, install an override profile if the caller requested one. This will override the profile
     // that the TileSource reports.
-    if ( sourceConfig.getProfileConfig() )
+    if ( !sourceConfig.getProfileConfig().empty() )
     {
-        osg::ref_ptr<const Profile> override_profile =
-            osgEarth::Registry::instance()->getNamedProfile( sourceConfig.getProfileConfig()->getSRS() );
+        const ProfileConfig& pconf = sourceConfig.getProfileConfig();
 
-        if ( !override_profile.valid() )
+        osg::ref_ptr<const Profile> override_profile;
+
+        if ( !pconf.getNamedProfile().empty() )
+        {
+            override_profile = osgEarth::Registry::instance()->getNamedProfile( pconf.getNamedProfile() );
+        }
+
+        //osg::ref_ptr<const Profile> override_profile =
+        //    osgEarth::Registry::instance()->getNamedProfile( sourceConfig.getProfileConfig.getSRS() );
+
+        if ( !override_profile.valid() && !pconf.getSRS().empty() )
         {
             double xmin, ymin, xmax, ymax;
-            sourceConfig.getProfileConfig()->getExtents( xmin, ymin, xmax, ymax );
-            override_profile = Profile::create( sourceConfig.getProfileConfig()->getSRS(), xmin, ymin, xmax, ymax );
+            pconf.getExtents( xmin, ymin, xmax, ymax );
+            override_profile = Profile::create( pconf.getSRS(), xmin, ymin, xmax, ymax );
         }
 
         if ( override_profile.valid() )

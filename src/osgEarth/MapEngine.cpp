@@ -568,10 +568,10 @@ MapEngine::initializeLayers()
     }
 
     // First check for an explicit profile declaration:
-    if ( !_profile.valid() && _mapConfig.getProfileConfig() )
+    if ( !_profile.valid() && !_mapConfig.getProfileConfig().empty() )
     {
         // Check for a "well known named" profile:
-        std::string namedProfile = _mapConfig.getProfileConfig()->getNamedProfile();
+        std::string namedProfile = _mapConfig.getProfileConfig().getNamedProfile();
         if ( !namedProfile.empty() )
         {
             _profile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
@@ -589,7 +589,7 @@ MapEngine::initializeLayers()
         // Check for a TileSource reference (i.e. get the map profile from a particular TileSource)
         if ( !_profile.valid() )
         {
-            std::string refLayer = _mapConfig.getProfileConfig()->getRefLayer();
+            std::string refLayer = _mapConfig.getProfileConfig().getRefLayer();
             if ( !refLayer.empty() )
             {
                 //Search through the image sources to find the reference TileSource
@@ -634,15 +634,15 @@ MapEngine::initializeLayers()
         // Try to create a profile from an explicit definition (the SRS and extents)
         if ( !_profile.valid() )
         {
-            if ( _mapConfig.getProfileConfig()->areExtentsValid() )
+            if ( _mapConfig.getProfileConfig().areExtentsValid() )
             {
                 double minx, miny, maxx, maxy;
-                _mapConfig.getProfileConfig()->getExtents( minx, miny, maxx, maxy );
+                _mapConfig.getProfileConfig().getExtents( minx, miny, maxx, maxy );
 
                 // TODO: should we restrict this? This is fine for LOCAL/PROJECTED, but since we are not
                 // constraining non-local map profiles to the "well known" types, should we let the user
                 // override that? probably...
-                _profile = Profile::create( _mapConfig.getProfileConfig()->getSRS(), minx, miny, maxx, maxy );
+                _profile = Profile::create( _mapConfig.getProfileConfig().getSRS(), minx, miny, maxx, maxy );
 
                 if ( _profile.valid() )
                 {

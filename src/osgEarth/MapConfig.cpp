@@ -57,7 +57,7 @@ _filename( rhs._filename ),
 _image_sources( rhs._image_sources ),
 _heightfield_sources( rhs._heightfield_sources ),
 _cache_config( rhs._cache_config.get() ),
-_profile_config( rhs._profile_config.get() ),
+_profile_config( rhs._profile_config ),
 _global_options( rhs._global_options.get() )
 {
     //NOP
@@ -233,14 +233,14 @@ MapConfig::setNormalizeEdges(bool normalize_edges)
     _normalize_edges = normalize_edges;
 }
 
-const ProfileConfig*
+const ProfileConfig&
 MapConfig::getProfileConfig() const
 {
-    return _profile_config.get();
+    return _profile_config;
 }
 
 void
-MapConfig::setProfileConfig(ProfileConfig* profile_config)
+MapConfig::setProfileConfig(const ProfileConfig& profile_config)
 {
     _profile_config = profile_config;
 }
@@ -272,7 +272,7 @@ SourceConfig::SourceConfig( const SourceConfig& rhs ) :
 _name( rhs._name ),
 _driver( rhs._driver ),
 _properties( rhs._properties ),
-_profile_config( rhs._profile_config.get() ),
+_profile_config( rhs._profile_config ),
 _cache_config( rhs._cache_config.get() )
 {
     //NOP
@@ -372,14 +372,14 @@ SourceConfig::setCacheConfig(CacheConfig* cache_config)
     _cache_config = cache_config;
 }
 
-ProfileConfig*
+const ProfileConfig&
 SourceConfig::getProfileConfig() const
 {
-    return _profile_config.get();
+    return _profile_config;
 }
 
 void
-SourceConfig::setProfileConfig( ProfileConfig* profile_config )
+SourceConfig::setProfileConfig( const ProfileConfig& profile_config )
 {
     _profile_config = profile_config;
 }
@@ -437,19 +437,48 @@ ProfileConfig::ProfileConfig():
 _minX(DBL_MAX),
 _minY(DBL_MAX),
 _maxX(-DBL_MAX),
-_maxY(-DBL_MAX)
+_maxY(-DBL_MAX),
+_empty(true)
 {
+    //NOP
 }
 
-const std::string& ProfileConfig::getNamedProfile() const
+ProfileConfig::ProfileConfig( const ProfileConfig& rhs ) :
+_minX( rhs._minX ),
+_minY( rhs._minY ),
+_maxX( rhs._maxX ),
+_maxY( rhs._maxY ),
+_empty( rhs._empty ),
+_srs( rhs._srs ),
+_namedProfile( rhs._namedProfile ),
+_refLayer( rhs._refLayer )
+{
+    //NOP
+}
+
+ProfileConfig::ProfileConfig( const std::string& namedProfile )
+{
+    _namedProfile = namedProfile;
+    _empty = false;
+}
+
+bool
+ProfileConfig::empty() const
+{
+    return _empty;
+}
+
+const std::string&
+ProfileConfig::getNamedProfile() const
 {
     return _namedProfile;
 }
 
 void
-ProfileConfig::setNamedProfile( const std::string &namedProfile)
+ProfileConfig::setNamedProfile( const std::string& namedProfile)
 {
     _namedProfile = namedProfile;
+    _empty = false;
 }
 
 const std::string&
@@ -459,9 +488,10 @@ ProfileConfig::getRefLayer() const
 }
 
 void
-ProfileConfig::setRefLayer(const std::string &refLayer)
+ProfileConfig::setRefLayer(const std::string& refLayer)
 {
     _refLayer = refLayer;
+    _empty = false;
 }
 
 const std::string&
@@ -474,6 +504,7 @@ void
 ProfileConfig::setSRS(const std::string& srs)
 {
     _srs = srs;
+    _empty = false;
 }
 
 bool ProfileConfig::areExtentsValid() const
@@ -496,6 +527,7 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
     _minY = minY;
     _maxX = maxX;
     _maxY = maxY;
+    _empty = false;
 }
 
 /***********************************************************************/
@@ -563,18 +595,20 @@ static void writeCache( const CacheConfig* cache, XmlElement* e_cache )
     }
 }
 
-static ProfileConfig* readProfileConfig( XmlElement* e_profile )
+static ProfileConfig
+readProfileConfig( XmlElement* e_profile )
 {
-    ProfileConfig* profile = new ProfileConfig;
-    profile->setNamedProfile( e_profile->getText() );
-    profile->setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
+    ProfileConfig profile;
+
+    profile.setNamedProfile( e_profile->getText() );
+    profile.setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
 
     std::string srs_text = e_profile->getText();
     std::string srs_attr = e_profile->getAttr( ATTR_SRS );
-    profile->setSRS( !srs_attr.empty()? srs_attr : srs_text );
+    profile.setSRS( !srs_attr.empty()? srs_attr : srs_text );
 
     double minx, miny, maxx, maxy;
-    profile->getExtents(minx, miny, maxx, maxy);
+    profile.getExtents(minx, miny, maxx, maxy);
 
     //Get the bounding box
     minx = as<double>(e_profile->getAttr( ATTR_MINX ), minx);
@@ -582,22 +616,22 @@ static ProfileConfig* readProfileConfig( XmlElement* e_profile )
     maxx = as<double>(e_profile->getAttr( ATTR_MAXX ), maxx);
     maxy = as<double>(e_profile->getAttr( ATTR_MAXY ), maxy);
 
-    profile->setExtents(minx, miny, maxx, maxy);
+    profile.setExtents(minx, miny, maxx, maxy);
 
     return profile;
 }
 
 static void
-writeProfileConfig(const ProfileConfig* profile, XmlElement* e_profile )
+writeProfileConfig(const ProfileConfig& profile, XmlElement* e_profile )
 {
-    e_profile->getChildren().push_back(new XmlText(profile->getNamedProfile()));
-    e_profile->getAttrs()[ATTR_USELAYER] = profile->getRefLayer();
-    e_profile->getAttrs()[ATTR_SRS] = profile->getSRS();
+    e_profile->getChildren().push_back(new XmlText(profile.getNamedProfile()));
+    e_profile->getAttrs()[ATTR_USELAYER] = profile.getRefLayer();
+    e_profile->getAttrs()[ATTR_SRS] = profile.getSRS();
 
-    if (profile->areExtentsValid())
+    if (profile.areExtentsValid())
     {
         double minx, miny, maxx, maxy;
-        profile->getExtents(minx, miny, maxx, maxy);
+        profile.getExtents(minx, miny, maxx, maxy);
         e_profile->getAttrs()[ATTR_MINX] = toString(minx);
         e_profile->getAttrs()[ATTR_MINY] = toString(miny);
         e_profile->getAttrs()[ATTR_MAXX] = toString(maxx);
@@ -855,7 +889,7 @@ mapToXmlDocument( const MapConfig& map )
         e_map->getChildren().push_back(e_cache);
     }
 
-    if (map.getProfileConfig())
+    if ( !map.getProfileConfig().empty() )
     {
         XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
         writeProfileConfig(map.getProfileConfig(), e_profile);

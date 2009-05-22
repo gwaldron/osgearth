@@ -116,6 +116,7 @@ public:
                     if (layer)
                     {
                         layer->setOpacity( layer->getOpacity() - 0.05);
+                        _map->dirtyLayers();
                     }
                     return true;
                 }
@@ -125,6 +126,7 @@ public:
                     if (layer)
                     {
                         layer->setOpacity( layer->getOpacity() + 0.05);
+                        _map->dirtyLayers();
                     }
                     return true;
                 }
@@ -149,6 +151,7 @@ public:
                     if (layer)
                     {
                         layer->setEnabled( !layer->getEnabled());
+                        _map->dirtyLayers();
                     }
                     return true;
                 }

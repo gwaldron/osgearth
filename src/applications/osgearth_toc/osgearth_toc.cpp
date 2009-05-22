@@ -68,6 +68,8 @@ using namespace osgWidget;
 
 Vec4 normalColor(1,1,1,1);
 Vec4 hotColor(0.4,0.56,1,1);
+float textSize = 25.0f;
+bool hudDirty = false;
 
 const unsigned int MASK_2D = 0xF0000000;
 
@@ -197,22 +199,87 @@ unsigned int _layerIndex;
 float _opacityDelta;
 };
 
-struct AddLayerCallback : public osgWidget::Callback
+//Callback that removes a Layer
+struct RemoveLayerCallback: public osgWidget::Callback
 {
-    AddLayerCallback(Map* map, SourceConfig sourceConfig):
+    RemoveLayerCallback(Map* map, osgViewer::View* view, unsigned int layerIndex):
 osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
 _map(map),
-_sourceConfig(sourceConfig)
+_view(view),
+_layerIndex(layerIndex)
+{
+}
+virtual bool operator()(osgWidget::Event& ev) {
+    if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
+    {
+        _view->getDatabasePager()->clear();
+        osgEarth::Layer* layer = _map->getLayer(_layerIndex);
+        if (layer)
+        {
+            _map->removeLayer(layer);
+            hudDirty = true;
+        }
+    }
+    return true;
+}
+
+osg::ref_ptr<Map> _map;
+unsigned int _layerIndex;
+osgViewer::View* _view;
+};
+
+//Callback that removes a Layer
+struct MoveLayerCallback: public osgWidget::Callback
+{
+    MoveLayerCallback(Map* map, osgViewer::View* view, unsigned int layerIndex, bool up):
+osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
+_map(map),
+_view(view),
+_layerIndex(layerIndex),
+_up(up)
+{
+}
+virtual bool operator()(osgWidget::Event& ev) {
+    if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
+    {
+        _view->getDatabasePager()->clear();
+        osgEarth::Layer* layer = _map->getLayer( _layerIndex );
+        if (layer)
+        {
+            int dir = _up ? 1 : -1;
+            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _map->getNumLayers()-1u);
+            _map->moveLayer( layer, newPosition );
+            hudDirty = true;
+        }
+    }
+    return true;
+}
+
+osg::ref_ptr<Map> _map;
+osgViewer::View* _view;
+unsigned int _layerIndex;
+bool _up;
+};
+
+struct AddLayerCallback : public osgWidget::Callback
+{
+    AddLayerCallback(Map* map, osgViewer::View* view, SourceConfig sourceConfig):
+osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
+_map(map),
+_sourceConfig(sourceConfig),
+_view(view)
 {
 }
 
 virtual bool operator()(osgWidget::Event& ev) {
     if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
     {
+        _view->getDatabasePager()->clear();
         osg::ref_ptr<TileSource> tileSource = _map->createTileSource(_sourceConfig);
         if (tileSource.valid())
         {
             _map->addLayer( new osgEarth::ImageLayer( tileSource.get() ) );
+            hudDirty = true;
         }
     }
     return true;
@@ -220,6 +287,205 @@ virtual bool operator()(osgWidget::Event& ev) {
 
 osg::ref_ptr<Map> _map;
 SourceConfig _sourceConfig;
+osgViewer::View* _view;
+};
+
+void createAddLayersMenu(osgWidget::WindowManager* wm, Map* map, osgViewer::View* view)
+{
+     osgWidget::Box* addLayersBox = new osgWidget::Box("AddLayersBox", osgWidget::Box::VERTICAL);
+
+    //Add Google Labels
+    {
+        SourceProperties props;
+        props["dataset"] = "labels";
+
+        osgWidget::Label* lblAddGoogleLabels = createLabel("Add Google Labels", textSize);
+        lblAddGoogleLabels->setEventMask(osgWidget::EVENT_ALL);  
+        lblAddGoogleLabels->setColor(0,0,0,0);
+        lblAddGoogleLabels->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lblAddGoogleLabels->addCallback(new AddLayerCallback(map, view, SourceConfig("google_labels", "google", props)));
+        addLayersBox->addWidget(lblAddGoogleLabels);
+    }
+
+    //Add Google Roads
+    {
+        SourceProperties props;
+        props["dataset"] = "roads";
+
+        osgWidget::Label* lbl = createLabel("Add Google Roads", textSize);
+        lbl->setEventMask(osgWidget::EVENT_ALL);
+        lbl->setColor(0,0,0,0);
+        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lbl->addCallback(new AddLayerCallback(map, view, SourceConfig("google_roads", "google", props)));
+        addLayersBox->addWidget(lbl);
+    }
+
+    //Add Google Traffic
+    {
+        SourceProperties props;
+        props["dataset"] = "traffic";
+
+        osgWidget::Label* lbl = createLabel("Add Google Traffic", textSize);
+        lbl->setEventMask(osgWidget::EVENT_ALL);
+        lbl->setColor(0,0,0,0);
+        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lbl->addCallback(new AddLayerCallback(map, view, SourceConfig("google_traffic", "google", props)));
+        addLayersBox->addWidget(lbl);
+    }
+
+    //Add Google Imagery
+    {
+        SourceProperties props;
+        props["dataset"] = "imagery";
+
+        osgWidget::Label* lbl = createLabel("Add Google Imagery", textSize);
+        lbl->setEventMask(osgWidget::EVENT_ALL);
+        lbl->setColor(0,0,0,0);
+        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lbl->addCallback(new AddLayerCallback(map, view, SourceConfig("google_imagery", "google", props)));
+        addLayersBox->addWidget(lbl);
+    }
+
+    //Add Yahoo Maps
+    {
+        SourceProperties props;
+        props["dataset"] = "roads";
+
+        osgWidget::Label* lbl = createLabel("Add Yahoo Maps", textSize);
+        lbl->setEventMask(osgWidget::EVENT_ALL);
+        lbl->setColor(0,0,0,0);
+        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lbl->addCallback(new AddLayerCallback(map, view, SourceConfig("yahoo_maps", "yahoo", props)));
+        addLayersBox->addWidget(lbl);
+    }
+
+    //Add Yahoo Imagery
+    {
+        SourceProperties props;
+        props["dataset"] = "satellite";
+
+        osgWidget::Label* lbl = createLabel("Add Yahoo Imagery", textSize);
+        lbl->setEventMask(osgWidget::EVENT_ALL);
+        lbl->setColor(0,0,0,0);
+        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lbl->addCallback(new AddLayerCallback(map, view, SourceConfig("yahoo_imagery", "yahoo", props)));
+        addLayersBox->addWidget(lbl);
+    }
+
+    //addLayersBox->attachMoveCallback();
+    addLayersBox->getBackground()->setColor(1,0,0,0.3);
+    addLayersBox->setAnchorHorizontal(osgWidget::Window::HA_RIGHT);
+    wm->addChild(addLayersBox);
+    addLayersBox->resize();
+}
+
+void rebuildHUD(osgWidget::WindowManager* wm, Map* map, osgViewer::View* view)
+{
+    wm->removeChildren(0, wm->getNumChildren());
+    ImageLayerList imageLayers;
+    map->getImageLayers(imageLayers);
+    for (unsigned int i = 0; i < imageLayers.size(); ++i)
+    {
+        osgEarth::Layer* layer = imageLayers[i].get();
+        std::stringstream ss;
+        unsigned int index = (imageLayers.size() - i);
+        ss << index << ") ";
+
+        osgWidget::Box* line = new osgWidget::Box("HBOX", osgWidget::Box::HORIZONTAL);
+
+        //Add a label with the layer #
+        osgWidget::Label* lblNum = createLabel(ss.str(), textSize);
+        lblNum->setEventMask(osgWidget::EVENT_ALL);  
+        lblNum->setPadding(3.0f);
+        lblNum->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        line->addWidget(lblNum);
+
+        //Create a button to remove the layer
+        osgWidget::Label* lblRemove = createLabel("X", textSize);
+        lblRemove->setEventMask(osgWidget::EVENT_ALL);
+        lblRemove->setFontColor(1,0,0,1);
+        lblRemove->setPadding(3.0f);
+        lblRemove->addCallback(new HotTrackingCallback(osg::Vec4(1,0,0,1), hotColor));
+        lblRemove->addCallback(new RemoveLayerCallback(map, view, i));
+        line->addWidget(lblRemove);
+
+        //Add a label to turn down the opacity
+        osgWidget::Label* lblOpacityDown = createLabel("<", textSize);
+        lblOpacityDown->setEventMask(osgWidget::EVENT_ALL);  
+        lblOpacityDown->setPadding(3.0f);
+        lblOpacityDown->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lblOpacityDown->addCallback(new OpacityCallback(map, i, -0.1));
+        line->addWidget(lblOpacityDown);
+
+        //Add a label to turn the opacity up
+        osgWidget::Label* lblOpacityUp = createLabel(">", textSize);
+        lblOpacityUp->setEventMask(osgWidget::EVENT_ALL);  
+        lblOpacityUp->setPadding(3);
+        lblOpacityUp->addCallback( new HotTrackingCallback(normalColor, hotColor));
+        lblOpacityUp->addCallback(new OpacityCallback(map, i, 0.1));
+        line->addWidget(lblOpacityUp);
+
+        //Create a button to move the layer up
+        osgWidget::Label* lblMoveUp = createLabel("Up", textSize);
+        lblMoveUp->setEventMask(osgWidget::EVENT_ALL);
+        lblMoveUp->setPadding(3.0f);
+        lblMoveUp->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lblMoveUp->addCallback(new MoveLayerCallback(map, view, i, true));
+        line->addWidget(lblMoveUp);
+
+        //Create a button to move the layer down
+        osgWidget::Label* lblMoveDown = createLabel("Down", textSize);
+        lblMoveDown->setEventMask(osgWidget::EVENT_ALL);
+        lblMoveDown->setPadding(3.0f);
+        lblMoveDown->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lblMoveDown->addCallback(new MoveLayerCallback(map, view, i, false));
+        line->addWidget(lblMoveDown);
+
+        //Add a label with the name of the layer, clicking on the layer 
+        osgWidget::Label* lblName = createLabel(layer->getName(), textSize);
+        lblName->setEventMask(osgWidget::EVENT_ALL);  
+        lblName->setPadding(3.0f);
+        lblName->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        lblName->addCallback(new ToggleVisiblityCallback(map, i));
+        line->addWidget(lblName);
+
+
+
+        line->getBackground()->setColor(0,0,0,0);
+
+        //Push the row up
+        line->setOrigin(0, (textSize + 10)*i);
+
+        wm->addChild(line);
+    }
+    createAddLayersMenu(wm, map, view);
+    hudDirty = false;
+}
+
+
+
+class UpdateCallback : public osg::NodeCallback
+{
+public:
+    UpdateCallback(osgWidget::WindowManager* wm, Map* map, osgViewer::View* view)
+    {
+        _wm = wm;
+        _map = map;
+        _view = view;
+    }
+
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    { 
+        if (hudDirty)
+        {
+            rebuildHUD(_wm, _map, _view);
+        }
+        traverse(node,nv);
+    }
+
+    osgWidget::WindowManager *_wm;
+    Map *_map;
+    osgViewer::View* _view;
 };
 
 int main(int argc, char** argv)
@@ -278,147 +544,11 @@ int main(int argc, char** argv)
         0
         );
 
-    ImageLayerList imageLayers;
-    map->getImageLayers(imageLayers);
-
-    float textSize = 25.0f;
-
-    for (unsigned int i = 0; i < imageLayers.size(); ++i)
-    {
-        osgEarth::Layer* layer = imageLayers[i].get();
-        std::stringstream ss;
-        unsigned int index = (imageLayers.size() - i);
-        ss << index << ") ";
-
-        osgWidget::Box* line = new osgWidget::Box("HBOX", osgWidget::Box::HORIZONTAL);
-
-        //Add a label with the layer #
-        osgWidget::Label* lblNum = createLabel(ss.str(), textSize);
-        lblNum->setEventMask(osgWidget::EVENT_ALL);  
-        lblNum->setPadding(3.0f);
-        lblNum->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        line->addWidget(lblNum);
-
-        //Add a label to turn down the opacity
-        osgWidget::Label* lblOpacityDown = createLabel("<", textSize);
-        lblOpacityDown->setEventMask(osgWidget::EVENT_ALL);  
-        lblOpacityDown->setPadding(3.0f);
-        lblOpacityDown->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lblOpacityDown->addCallback(new OpacityCallback(map, i, -0.1));
-        line->addWidget(lblOpacityDown);
-
-        //Add a label to turn the opacity up
-        osgWidget::Label* lblOpacityUp = createLabel(">", textSize);
-        lblOpacityUp->setEventMask(osgWidget::EVENT_ALL);  
-        lblOpacityUp->setPadding(3);
-        lblOpacityUp->addCallback( new HotTrackingCallback(normalColor, hotColor));
-        lblOpacityUp->addCallback(new OpacityCallback(map, i, 0.1));
-        line->addWidget(lblOpacityUp);
-
-        //Add a label with the name of the layer, clicking on the layer 
-        osgWidget::Label* lblName = createLabel(layer->getName(), textSize);
-        lblName->setEventMask(osgWidget::EVENT_ALL);  
-        lblName->setPadding(3.0f);
-        lblName->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lblName->addCallback(new ToggleVisiblityCallback(map, i));
-        line->addWidget(lblName);
-
-        line->getBackground()->setColor(0,0,0,0);
-
-        //Push the row up
-        line->setOrigin(0, (textSize + 10)*i);
-
-        wm->addChild(line);
-    }
 
 
-    //Add a few options to add layers
-
-    osgWidget::Box* addLayersBox = new osgWidget::Box("AddLayersBox", osgWidget::Box::VERTICAL);
-
-    //Add Google Labels
-    {
-        SourceProperties props;
-        props["dataset"] = "labels";
-
-        osgWidget::Label* lblAddGoogleLabels = createLabel("Add Google Labels", textSize);
-        lblAddGoogleLabels->setEventMask(osgWidget::EVENT_ALL);  
-        lblAddGoogleLabels->setColor(0,0,0,0);
-        lblAddGoogleLabels->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lblAddGoogleLabels->addCallback(new AddLayerCallback(map, SourceConfig("google_labels", "google", props)));
-        addLayersBox->addWidget(lblAddGoogleLabels);
-    }
-
-    //Add Google Roads
-    {
-        SourceProperties props;
-        props["dataset"] = "roads";
-
-        osgWidget::Label* lbl = createLabel("Add Google Roads", textSize);
-        lbl->setEventMask(osgWidget::EVENT_ALL);
-        lbl->setColor(0,0,0,0);
-        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lbl->addCallback(new AddLayerCallback(map, SourceConfig("google_roads", "google", props)));
-        addLayersBox->addWidget(lbl);
-    }
-
-    //Add Google Traffic
-    {
-        SourceProperties props;
-        props["dataset"] = "traffic";
-
-        osgWidget::Label* lbl = createLabel("Add Google Traffic", textSize);
-        lbl->setEventMask(osgWidget::EVENT_ALL);
-        lbl->setColor(0,0,0,0);
-        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lbl->addCallback(new AddLayerCallback(map, SourceConfig("google_traffic", "google", props)));
-        addLayersBox->addWidget(lbl);
-    }
-
-    //Add Google Imagery
-    {
-        SourceProperties props;
-        props["dataset"] = "imagery";
-
-        osgWidget::Label* lbl = createLabel("Add Google Imagery", textSize);
-        lbl->setEventMask(osgWidget::EVENT_ALL);
-        lbl->setColor(0,0,0,0);
-        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lbl->addCallback(new AddLayerCallback(map, SourceConfig("google_imagery", "google", props)));
-        addLayersBox->addWidget(lbl);
-    }
-
-    //Add Yahoo Maps
-    {
-        SourceProperties props;
-        props["dataset"] = "roads";
-
-        osgWidget::Label* lbl = createLabel("Add Yahoo Maps", textSize);
-        lbl->setEventMask(osgWidget::EVENT_ALL);
-        lbl->setColor(0,0,0,0);
-        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lbl->addCallback(new AddLayerCallback(map, SourceConfig("yahoo_maps", "yahoo", props)));
-        addLayersBox->addWidget(lbl);
-    }
-
-    //Add Yahoo Imagery
-    {
-        SourceProperties props;
-        props["dataset"] = "satellite";
-
-        osgWidget::Label* lbl = createLabel("Add Yahoo Imagery", textSize);
-        lbl->setEventMask(osgWidget::EVENT_ALL);
-        lbl->setColor(0,0,0,0);
-        lbl->addCallback(new HotTrackingCallback(normalColor, hotColor));
-        lbl->addCallback(new AddLayerCallback(map, SourceConfig("yahoo_imagery", "yahoo", props)));
-        addLayersBox->addWidget(lbl);
-    }
-
-    //addLayersBox->attachMoveCallback();
-    addLayersBox->getBackground()->setColor(1,0,0,0.3);
-    addLayersBox->setAnchorHorizontal(osgWidget::Window::HA_RIGHT);
-    wm->addChild(addLayersBox);
-    addLayersBox->resize();
+    rebuildHUD(wm, map, &viewer);
+    group->setUpdateCallback(new UpdateCallback(wm, map, &viewer));
+    group->setDataVariance(osg::Object::DYNAMIC);
 
 
     viewer.setUpViewInWindow(10, 10, 800,800);

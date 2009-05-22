@@ -100,6 +100,10 @@ ImageLayer::ImageLayer(TileSource *tileSource):
 Layer(),
 _tileSource(tileSource)
 {
+    if (_tileSource.valid())
+    {
+        setName(_tileSource->getName());
+    }
 }
 
 TileSource*
@@ -112,6 +116,10 @@ ImageLayer::getTileSource() const
 ElevationLayer::ElevationLayer(osgEarth::TileSource *tileSource):
 _tileSource(tileSource)
 {
+    if (_tileSource.valid())
+    {
+        setName(_tileSource->getName());
+    }
 }
 
 TileSource*

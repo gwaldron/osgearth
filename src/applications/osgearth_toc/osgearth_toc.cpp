@@ -491,6 +491,7 @@ public:
             _toc->update();
             hudDirty = false;
         }
+        traverse(node, nv);
     }
 
     TOC* _toc;

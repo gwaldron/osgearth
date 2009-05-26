@@ -40,10 +40,10 @@ namespace osgEarth
     public:
         enum CacheType
         {
-            TYPE_UNDEFINED,
-            TYPE_NONE,
-            TYPE_TMS,
-            TYPE_TILECACHE
+            TYPE_UNDEFINED, // the config is undefined and should be ignored
+            TYPE_NONE,      // explicitly specify that no caching should occur
+            TYPE_TMS,       // cache to a OSGeo Tile Map Service structure
+            TYPE_TILECACHE  // cache to a MetaCarta Labs TileCache structure
         };
 
     public:
@@ -52,6 +52,7 @@ namespace osgEarth
          */
         CacheConfig();
 
+        // Copy constructor
         CacheConfig( const CacheConfig& rhs );
 
         /**
@@ -91,38 +92,50 @@ namespace osgEarth
     };
 
 
+    /**
+     * Configures a geospatial profile, defining the spatial reference and tile layout
+     * structure of map content.
+     */
     class OSGEARTH_EXPORT ProfileConfig
     {
     public:
-        /**
-         * Constructs an empty profile configuration
-         */
+        /** Constructs an empty (undefined) profile configuration */
         ProfileConfig();
 
-        /**
-         * Copy constructor.
-         */
+        /** Copy constructor. */
         ProfileConfig( const ProfileConfig& rhs );
 
-        /**
-         * Constructs a profile configuration and sets the named profile.
-         */
+        /** Constructs a profile configuration and sets the named profile. */
         ProfileConfig( const std::string& named_profile );
 
+        /** Returns true if this configuration is well-defined and usable */
         bool defined() const;
 
+        /** Gets the optional Well-Known Profile string. */
         const std::string& getNamedProfile() const;
-        void setNamedProfile( const std::string &namedProfile);
 
+        /** Sets an optional Well-Known Profile string. */
+        void setNamedProfile( const std::string& namedProfile);
+
+        /** Sets the name of a reference layer whose profile to use. */
         const std::string& getRefLayer() const;
-        void setRefLayer(const std::string &refLayer);
 
+        /** Gets the name of a reference layer whose profile to use. */         
+        void setRefLayer(const std::string& refLayer);
+
+        /** Sets the spatial reference system initialization string to use for the profile. */
         const std::string& getSRS() const;
+
+        /** Gets the spatial reference system initialization string to use for the profile. */
         void setSRS(const std::string& srs);
 
+        /** Returns true is the extents are set and form a valid spatial envelope. */         
         bool areExtentsValid() const;
-
+        
+        /** Gets the spatial extents of the profile */
         void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
+
+        /** Sets the spatial extents of the profile */
         void setExtents(double minX, double minY, double maxX, double maxY);
 
     private:

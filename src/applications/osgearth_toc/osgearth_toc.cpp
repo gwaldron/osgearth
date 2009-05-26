@@ -469,7 +469,7 @@ public:
           }
       }
 
-      std::vector<osg::ref_ptr<Line>> _lines;
+      std::vector<osg::ref_ptr<Line> > _lines;
 
       osgWidget::WindowManager* _wm;
       Map* _map;

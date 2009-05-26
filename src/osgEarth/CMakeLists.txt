@@ -29,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationManager
     Export
     FileUtils
+	FileLocationCallback
     GeocentricMap
     GeoData
     HeightFieldUtils

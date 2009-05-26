@@ -20,8 +20,12 @@
 #ifndef OSGEARTH_MAP_CONFIG_H
 #define OSGEARTH_MAP_CONFIG_H 1
 
+#include <osg/Version>
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
 #include <osgDB/ReaderWriter>
 #include <map>
 #include <list>

@@ -20,6 +20,8 @@
 #ifndef OSGEARTH_TILE_SOURCE_H
 #define OSGEARTH_TILE_SOURCE_H 1
 
+#include <osg/Version>
+
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
@@ -28,6 +30,9 @@
 #include <osg/Object>
 #include <osg/Image>
 #include <osg/Shape>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
 #include <osgDB/ReadFile>
 
 #include <OpenThreads/Mutex>
@@ -66,6 +71,11 @@ namespace osgEarth
          * Gets the number of pixels per tile for this TileSource.  Defaults to 256
          */
         virtual int getPixelsPerTile() const { return 256; }
+
+        /**
+         * Gets whether the given TileKey is cached or not
+         */
+        virtual bool isCached( const TileKey* key) { return false; }
 
     public:
 

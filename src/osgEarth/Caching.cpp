@@ -163,6 +163,12 @@ CachedTileSource(tileSource, options)
     _format = format;
 }
 
+bool DiskCachedTileSource::isCached( const TileKey* key)
+{
+    std::string filename = getFileName(key);
+    return osgDB::fileExists(filename);
+}
+
 osg::Image* DiskCachedTileSource::getCachedImage( const TileKey* key)
 {
      std::string filename = getFileName(key);
@@ -428,6 +434,21 @@ _maxNumTilesInCache(16)
 
 MemCachedTileSource::~MemCachedTileSource()
 {
+}
+
+bool MemCachedTileSource::isCached(const osgEarth::TileKey* key)
+{
+    //Check our own cache first
+    osg::ref_ptr<osg::Image> cachedImage = getCachedImage(key);
+    if (cachedImage.valid()) return true;
+
+    //Check the underlying TileSource to see if it is cached
+    bool cached = false;
+    if (_tileSource.valid())
+    {
+        cached = _tileSource->isCached(key);
+    }
+    return cached;
 }
 
 const Profile* MemCachedTileSource::createProfile( const Profile* mapProfile, const std::string& configPath )

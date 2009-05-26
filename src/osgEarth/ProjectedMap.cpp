@@ -24,6 +24,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Layer>
 #include <osgEarth/EarthTerrainTechnique>
+#include <osgEarth/FileLocationCallback>
 
 #include <osg/Image>
 #include <osg/Notify>
@@ -241,6 +242,13 @@ ProjectedMap::createQuadrant( const TileKey* key )
     plod->addChild( tile, min_range, max_range );
     plod->setFileName( 1, createURI( key ) );
     plod->setRange( 1, 0.0, min_range );
+
+#if USE_FILELOCATIONCALLBACK
+    osgDB::Options* options = new osgDB::Options;
+    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+    plod->setDatabaseOptions( options );
+#endif
+
     return plod;
 }
 

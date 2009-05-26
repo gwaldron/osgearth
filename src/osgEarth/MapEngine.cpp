@@ -528,6 +528,73 @@ MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
     return result;
 }
 
+bool
+MapEngine::isCached(const osgEarth::TileKey *key)
+{
+    const Profile* mapProfile = key->getProfile();
+
+    //Check the imagery layers
+    ImageLayerList imageLayers;
+    getImageLayers(imageLayers);
+
+    for (unsigned int i = 0; i < imageLayers.size(); ++i)
+    {
+        std::vector< osg::ref_ptr< const TileKey > > keys;
+
+        if ( _profile->isEquivalentTo( imageLayers[i]->getTileSource()->getProfile() ) )
+        {
+            keys.push_back(key);
+        }
+        else
+        {
+            imageLayers[i]->getTileSource()->getProfile()->getIntersectingTiles(key, keys);
+        }
+
+        for (unsigned int j = 0; j < keys.size(); ++j)
+        {
+            if (imageLayers[i]->getTileSource()->isKeyValid( keys[j].get() ) )
+            {
+                if (!imageLayers[i]->getTileSource()->isCached(keys[j].get()))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    //Check the elevation layers
+    ElevationLayerList elevationLayers;
+    getElevationLayers(elevationLayers);
+
+    for (unsigned int i = 0; i < elevationLayers.size(); ++i)
+    {
+        std::vector< osg::ref_ptr< const TileKey > > keys;
+
+        if ( _profile->isEquivalentTo( elevationLayers[i]->getTileSource()->getProfile() ) )
+        {
+            keys.push_back(key);
+        }
+        else
+        {
+            elevationLayers[i]->getTileSource()->getProfile()->getIntersectingTiles(key, keys);
+        }
+
+
+        for (unsigned int j = 0; j < keys.size(); ++j)
+        {
+            if (elevationLayers[i]->getTileSource()->isKeyValid( keys[j].get() ) )
+            {
+                if (!elevationLayers[i]->getTileSource()->isCached(keys[j].get()))
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
 
 
 // figures out what the map profile should be. there are multiple ways of setting it.

@@ -78,6 +78,7 @@ namespace osgEarth
         */
         virtual void setMapConfigFilename( const std::string &mapConfigFilename ) { _mapConfigFilename = mapConfigFilename;}
 
+
     public: // TileSource interface
 
         virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
@@ -136,6 +137,11 @@ namespace osgEarth
 
         /** Initialize the TileMap */
         //virtual void initTileMap();
+
+        /**
+         * Gets whether the given TileKey is cached or not
+         */
+        virtual bool isCached( const TileKey* key);
 
     protected:
         virtual osg::Image* getCachedImage( const TileKey* key);
@@ -208,6 +214,11 @@ namespace osgEarth
 
         unsigned int getMaxNumTilesInCache() const;
         void setMaxNumTilesInCache(unsigned int max);
+
+        /**
+         * Gets whether the given TileKey is cached or not
+         */
+        virtual bool isCached( const TileKey* key);
 
     protected:
         virtual ~MemCachedTileSource();

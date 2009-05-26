@@ -64,6 +64,8 @@ namespace osgEarth
             {
                 tiles.push_back( (*itr) );
             }
+
+            osg::notify(osg::NOTICE) << "TileSet has " << _terrainTileSet.size() << std::endl;
         }
     };
 
@@ -100,6 +102,9 @@ namespace osgEarth
          * Creates a georeferenced image corresponding to a tile key.
          */
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
+
+
+        bool isCached(const TileKey* key);
 
 
         //Initializes the scene graph for this Map after it has been contstructed

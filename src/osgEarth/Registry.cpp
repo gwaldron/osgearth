@@ -128,3 +128,14 @@ Registry::getNamedProfile( const std::string& name ) const
     else
         return NULL;
 }
+
+//Simple class used to add a file extension alias for the earth_tile to the earth plugin
+class RegisterEarthTileExtension
+{
+public:
+    RegisterEarthTileExtension()
+    {
+        osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
+    }
+};
+static RegisterEarthTileExtension s_registerEarthTileExtension;

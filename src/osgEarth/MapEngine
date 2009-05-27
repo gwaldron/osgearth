@@ -64,8 +64,6 @@ namespace osgEarth
             {
                 tiles.push_back( (*itr) );
             }
-
-            osg::notify(osg::NOTICE) << "TileSet has " << _terrainTileSet.size() << std::endl;
         }
     };
 

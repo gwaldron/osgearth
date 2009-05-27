@@ -235,7 +235,16 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
               << maxy + 0.5 * y_units_per_pixel;
     worldFile.close();
 
-    osgDB::writeImageFile(*image, filename);
+    //HACK:  Check to make sure we aren't writing a non-RGB
+    bool writingJpeg = (ext == "jpg" || ext == "jpeg");
+    if ((image->getPixelFormat() != GL_RGB) && writingJpeg)
+    {
+        osg::notify(osg::NOTICE) << "Warning:  Cannot write non RGB image to JPEG" << std::endl;
+    }
+    else
+    {
+        osgDB::writeImageFile(*image, filename);
+    }
 }
 
 std::string DiskCachedTileSource::getExtension() const

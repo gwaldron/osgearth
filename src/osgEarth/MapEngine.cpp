@@ -206,7 +206,9 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "  if (a < tex2.a) a = tex2.a;\n"
                     "  if (a < tex3.a) a = tex3.a;\n"
                     "\n"
-                    "  gl_FragColor = gl_Color * vec4(c, a);\n"
+                    //Disable lighting for the time being
+                    //"  gl_FragColor = gl_Color * vec4(c, a);\n"
+                    "  gl_FragColor = vec4(c, a);\n"
                     "}\n"
                     "\n";
 

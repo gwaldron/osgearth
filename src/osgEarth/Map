@@ -103,6 +103,8 @@ namespace osgEarth
          */
         MapEngine* getEngine() const;
 
+        void traverse(osg::NodeVisitor& nv);
+
 
     protected:        
         virtual ~Map();

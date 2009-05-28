@@ -145,3 +145,47 @@ Map::createTileSource( const SourceConfig& sourceConfig )
     return _engine->createTileSource( sourceConfig );
 }
 
+void Map::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+    {
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        if (cv)
+        {
+            typedef std::list<const osg::StateSet*> StateSetStack;
+            StateSetStack statesetStack;
+
+            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
+            while(sg)
+            {
+                const osg::StateSet* stateset = sg->getStateSet();
+                if (stateset)
+                {
+                    statesetStack.push_front(stateset);
+                }                
+                sg = sg->_parent;
+            }
+
+            osg::StateAttribute::GLModeValue base_mode = osg::StateAttribute::ON;
+            for(StateSetStack::iterator itr = statesetStack.begin();
+                itr != statesetStack.end();
+                ++itr)
+            {
+                osg::StateAttribute::GLModeValue mode = (*itr)->getMode(GL_LIGHTING);
+                if ((mode & ~osg::StateAttribute::INHERIT)!=0)
+                {
+                    if ((mode & osg::StateAttribute::PROTECTED)!=0 ||
+                        (base_mode & osg::StateAttribute::OVERRIDE)==0)
+                    {
+                        base_mode = mode;
+                    }
+                }
+            }
+
+            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("lightingEnabled", osg::Uniform::BOOL);
+            lightingEnabledUniform->set((base_mode & osg::StateAttribute::ON)!=0);
+        }
+    }
+    osg::Group::traverse(nv);
+}
+

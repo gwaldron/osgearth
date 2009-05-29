@@ -801,7 +801,7 @@ public:
 
                 if (bandAlpha)
                 {
-                    bandBlue->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
+                    bandAlpha->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
                 }
 
                 image = new osg::Image;

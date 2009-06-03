@@ -145,6 +145,27 @@ Map::createTileSource( const SourceConfig& sourceConfig )
     return _engine->createTileSource( sourceConfig );
 }
 
+typedef std::list<const osg::StateSet*> StateSetStack;
+osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
+{
+    osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
+    for(StateSetStack::const_iterator itr = statesetStack.begin();
+        itr != statesetStack.end();
+        ++itr)
+    {
+        osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
+        if ((val & ~osg::StateAttribute::INHERIT)!=0)
+        {
+            if ((val & osg::StateAttribute::PROTECTED)!=0 ||
+                (base_val & osg::StateAttribute::OVERRIDE)==0)
+            {
+                base_val = val;
+            }
+        }
+    }
+    return base_val;
+}
+
 void Map::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
@@ -152,7 +173,6 @@ void Map::traverse(osg::NodeVisitor& nv)
         osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
         if (cv)
         {
-            typedef std::list<const osg::StateSet*> StateSetStack;
             StateSetStack statesetStack;
 
             osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
@@ -166,24 +186,65 @@ void Map::traverse(osg::NodeVisitor& nv)
                 sg = sg->_parent;
             }
 
-            osg::StateAttribute::GLModeValue base_mode = osg::StateAttribute::ON;
-            for(StateSetStack::iterator itr = statesetStack.begin();
-                itr != statesetStack.end();
-                ++itr)
+            osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
+            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("lightingEnabled", osg::Uniform::BOOL);
+            lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
+
+            //GL_LIGHT0
             {
-                osg::StateAttribute::GLModeValue mode = (*itr)->getMode(GL_LIGHTING);
-                if ((mode & ~osg::StateAttribute::INHERIT)!=0)
-                {
-                    if ((mode & osg::StateAttribute::PROTECTED)!=0 ||
-                        (base_mode & osg::StateAttribute::OVERRIDE)==0)
-                    {
-                        base_mode = mode;
-                    }
-                }
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light0Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
             }
 
-            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("lightingEnabled", osg::Uniform::BOOL);
-            lightingEnabledUniform->set((base_mode & osg::StateAttribute::ON)!=0);
+            //GL_LIGHT1
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT1);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light1Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+            }
+
+            //GL_LIGHT2
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT2);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light2Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+            }
+
+            //GL_LIGHT3
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT3);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light3Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+            }
+
+            //GL_LIGHT4
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT4);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light4Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+            }
+
+            //GL_LIGHT5
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT5);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light5Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+            }
+
+            //GL_LIGHT6
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT6);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light6Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+            }
+
+            //GL_LIGHT7
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT7);     
+                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light7Enabled", osg::Uniform::BOOL);
+                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+            }
         }
     }
     osg::Group::traverse(nv);

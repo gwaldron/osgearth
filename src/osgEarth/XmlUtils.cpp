@@ -212,6 +212,7 @@ getAttributes( const char** attrs )
     {
         std::string name = *ptr++;
         std::string value = *ptr++;
+        std::transform( name.begin(), name.end(), name.begin(), tolower );
         map[name] = value;
     }
     return map;

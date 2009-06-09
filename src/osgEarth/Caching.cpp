@@ -157,7 +157,8 @@ DiskCachedTileSource::DiskCachedTileSource(TileSource* tileSource,
                                            const std::string &path,
                                            const std::string format,
                                            const osgDB::ReaderWriter::Options* options) :
-CachedTileSource(tileSource, options)
+CachedTileSource(tileSource, options),
+_writeWorldFiles(false)
 {
     _path = path;
     _format = format;
@@ -195,45 +196,49 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
         osg::notify(osg::WARN) << "Couldn't create path " << path << std::endl;
     }
 
-    //Write out the world file along side the image
-    double minx, miny, maxx, maxy;
-    key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
-
-    std::string baseFilename = osgDB::getNameLessExtension(filename);
     std::string ext = osgDB::getFileExtension(filename);
 
-    /*
-    Determine the correct extension for the file type.  Typically, world file extensions
-    consist of the first letter of the extension, followed by the third, then the letter "w".
-    For instance a jpg file's world file would be a jgw file.
-    */
-    std::string worldFileExt = "wld";
-    if (ext.size() >= 3)
+    if (_writeWorldFiles)
     {
-        worldFileExt[0] = ext[0];
-        worldFileExt[1] = ext[2];
-        worldFileExt[2] = 'w';
-    }
-    std::string worldFileName = baseFilename + "." + worldFileExt;
-    std::ofstream worldFile;
-    worldFile.open(worldFileName.c_str());
+        //Write out the world file along side the image
+        double minx, miny, maxx, maxy;
+        key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
 
-    double x_units_per_pixel = (maxx - minx) / (double)image->s();
-    double y_units_per_pixel = -(maxy - miny) / (double)image->t();
-    worldFile << std::fixed << std::setprecision(10)
-              //X direction units per pixel
-              << x_units_per_pixel << std::endl
-              //Rotation about the y axis, in our case 0
-              << "0" << std::endl
-              //Rotation about the x axis, in our case 0
-              << "0" << std::endl
-              //Y direction units per pixel, typically negative
-              << y_units_per_pixel << std::endl
-              //X coordinate of the center of the upper left pixel
-              << minx + 0.5 * x_units_per_pixel << std::endl
-              //Y coordinate of the upper left pixel
-              << maxy + 0.5 * y_units_per_pixel;
-    worldFile.close();
+        std::string baseFilename = osgDB::getNameLessExtension(filename);
+
+        /*
+        Determine the correct extension for the file type.  Typically, world file extensions
+        consist of the first letter of the extension, followed by the third, then the letter "w".
+        For instance a jpg file's world file would be a jgw file.
+        */
+        std::string worldFileExt = "wld";
+        if (ext.size() >= 3)
+        {
+            worldFileExt[0] = ext[0];
+            worldFileExt[1] = ext[2];
+            worldFileExt[2] = 'w';
+        }
+        std::string worldFileName = baseFilename + "." + worldFileExt;
+        std::ofstream worldFile;
+        worldFile.open(worldFileName.c_str());
+
+        double x_units_per_pixel = (maxx - minx) / (double)image->s();
+        double y_units_per_pixel = -(maxy - miny) / (double)image->t();
+        worldFile << std::fixed << std::setprecision(10)
+            //X direction units per pixel
+            << x_units_per_pixel << std::endl
+            //Rotation about the y axis, in our case 0
+            << "0" << std::endl
+            //Rotation about the x axis, in our case 0
+            << "0" << std::endl
+            //Y direction units per pixel, typically negative
+            << y_units_per_pixel << std::endl
+            //X coordinate of the center of the upper left pixel
+            << minx + 0.5 * x_units_per_pixel << std::endl
+            //Y coordinate of the upper left pixel
+            << maxy + 0.5 * y_units_per_pixel;
+        worldFile.close();
+    }
 
     //HACK:  Check to make sure we aren't writing a non-RGB
     bool writingJpeg = (ext == "jpg" || ext == "jpeg");
@@ -402,24 +407,40 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
         getProp(properties, "format", format);
         
         
+        DiskCachedTileSource* cache = NULL;
         if (type == CacheConfig::TYPE_TMS ) //"tms" || type.empty())
         {
-            TMSCacheTileSource *cache = new TMSCacheTileSource(tileSource, path, format, options);
+            TMSCacheTileSource *tms_cache = new TMSCacheTileSource(tileSource, path, format, options);
             std::string tms_type; 
             getProp(properties, "tms_type", tms_type);
             if (tms_type == "google")
             {
                 osg::notify(osg::INFO) << "Inverting Y in TMS cache " << std::endl;
-                cache->setInvertY(true);
+                tms_cache->setInvertY(true);
             }
             osg::notify(osg::INFO) << "Returning TMS cache " << std::endl;
-            return cache;
+            cache = tms_cache;
         }
 
         if (type == CacheConfig::TYPE_TILECACHE ) //"tilecache")
         {
             osg::notify(osg::INFO) << "Returning disk cache " << std::endl;
-            return new DiskCachedTileSource(tileSource, path, format, options);
+            cache = new DiskCachedTileSource(tileSource, path, format, options);
+        }
+
+        if (cache)
+        {
+            std::string write_world_files;
+            getProp(properties, "write_world_files", write_world_files);
+            if (write_world_files == "true")
+            {
+                cache->setWriteWorldFiles( true );
+            }
+            else
+            {
+                cache->setWriteWorldFiles( false );
+            }
+            return cache;
         }
     }
     else if (type == CacheConfig::TYPE_NONE || type == CacheConfig::TYPE_UNDEFINED) //"none")

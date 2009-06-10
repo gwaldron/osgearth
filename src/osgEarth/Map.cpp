@@ -65,6 +65,8 @@ Map::Map(const MapConfig& mapConfig)
     }
 
     addChild( _engine->initialize() );
+
+    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
 }
 
 Map::~Map()

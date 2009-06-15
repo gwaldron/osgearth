@@ -47,11 +47,6 @@ namespace osgEarth
         bool isOK() const;
 
         /**
-         * Tells the map to update the display because a layer has new settings.
-         */
-        void dirtyLayers();
-
-        /**
          * Adds the given layer to the end of the Layer list
          */
         void addLayer( Layer* layer );
@@ -103,8 +98,6 @@ namespace osgEarth
          */
         MapEngine* getEngine() const;
 
-        void traverse(osg::NodeVisitor& nv);
-
 
     protected:        
         virtual ~Map();
@@ -113,6 +106,8 @@ namespace osgEarth
         Map( MapEngine* engine );
 
         osg::ref_ptr<MapEngine> _engine;
+
+        void updateStateSet();
     };
 }
 

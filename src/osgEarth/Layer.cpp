@@ -25,9 +25,7 @@ using namespace osgEarth;
 
 static int s_nextLayerId = 0;
 
-Layer::Layer():
-_enabled(true),
-_opacity(1.0f)
+Layer::Layer()
 {
     _id = s_nextLayerId++;
 }
@@ -42,68 +40,11 @@ Layer::getId() const
     return _id;
 }
 
-const std::string&
-Layer::getName() const
-{
-    return _name;
-}
-
-void
-Layer::setName(const std::string& name)
-{
-    _name = name;
-}
-
-bool
-Layer::getEnabled() const
-{
-    return _enabled;
-}
-
-void
-Layer::setEnabled(bool enabled)
-{
-    _enabled = enabled;
-    //if (_enabled != enabled)
-    //{
-    //    _enabled = enabled;
-    //    if (_map.valid()) _map->updateUniforms();
-    //}
-}
-
-float
-Layer::getOpacity() const
-{
-    return _opacity;
-}
-
-void
-Layer::setOpacity(float opacity)
-{
-    if (_opacity != opacity)
-    {
-        _opacity = osg::clampBetween(opacity, 0.0f, 1.0f);
-        //if (_map.valid()) _map->updateUniforms();
-    }
-}
-
-//void
-//Layer::setMap( MapEngine* map )
-//{
-//    _map = map;
-//}
-
-
-
 /*****************************************************************************************/
 ImageLayer::ImageLayer(TileSource *tileSource):
 Layer(),
 _tileSource(tileSource)
 {
-    if (_tileSource.valid())
-    {
-        setName(_tileSource->getName());
-    }
 }
 
 TileSource*
@@ -116,10 +57,6 @@ ImageLayer::getTileSource() const
 ElevationLayer::ElevationLayer(osgEarth::TileSource *tileSource):
 _tileSource(tileSource)
 {
-    if (_tileSource.valid())
-    {
-        setName(_tileSource->getName());
-    }
 }
 
 TileSource*

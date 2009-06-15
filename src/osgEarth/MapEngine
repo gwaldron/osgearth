@@ -116,11 +116,6 @@ namespace osgEarth
         bool isOK() const;
 
         /**
-         * Tells the map to update the display because a layer has new settings.
-         */
-        void dirtyLayers();
-
-        /**
          * Adds the given layer to the end of the Layer list
          */
         void addLayer( Layer* layer );
@@ -253,8 +248,6 @@ namespace osgEarth
         //The list of layers contained by the map;        
         LayerList _layers;
         OpenThreads::ReadWriteMutex _layersMutex;
-
-        void updateUniforms();
 
         osg::ref_ptr<osg::StateSet> uniformStateSet;
         //osg::ref_ptr<osg::CoordinateSystemNode> csn;

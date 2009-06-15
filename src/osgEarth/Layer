@@ -40,23 +40,11 @@ namespace osgEarth
 
         int getId() const;
 
-        const std::string& getName() const;
-        void setName( const std::string &name );
-
-        bool getEnabled() const;
-        void setEnabled( bool enabled );
-
-        float getOpacity() const;
-        void setOpacity(float opacity);
-
-
     protected:
         virtual ~Layer();
 
         int _id;
         std::string _name;
-        bool _enabled;
-        float _opacity;
     };
 
     /**A list of Layers*/

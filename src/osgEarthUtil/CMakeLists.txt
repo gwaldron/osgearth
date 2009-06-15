@@ -11,11 +11,13 @@ SET(LIB_PUBLIC_HEADERS
     Common
     EarthManipulator
     Export
+	FadeLayerNode
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     EarthManipulator.cpp
+	FadeLayerNode.cpp
 )
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})

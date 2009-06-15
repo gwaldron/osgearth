@@ -20,6 +20,7 @@ SET(TARGET_COMMON_LIBRARIES
     #osgDB 
     #osgUtil
     osgEarth
+	osgEarthUtil
 )
 
 SET(TARGET_DEFAULT_PREFIX "application_")
@@ -27,6 +28,5 @@ SET(TARGET_DEFAULT_LABEL_PREFIX "Applications")
 
 ADD_SUBDIRECTORY(osgearth_seed)
 ADD_SUBDIRECTORY(osgearth_clouds)
-ADD_SUBDIRECTORY(osgearth_layers)
 ADD_SUBDIRECTORY(osgearth_toc)
 ADD_SUBDIRECTORY(osgearth_fadelayers)

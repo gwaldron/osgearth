@@ -118,12 +118,12 @@ ProjectedMap::createQuadrant( const TileKey* key )
                 GeoImage* image = createValidGeoImage(imageLayers[i]->getTileSource(), key);
                 if (image)
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Using fallback image for image source " << imageLayers[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Using fallback image for image source " << imageLayers[i]->getTileSource()->getName() << " for TileKey " << key->str() << std::endl;
                     image_tiles[i] = image;
                 }
                 else
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Could not get valid image from image source " << imageLayers[i]->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Could not get valid image from image source " << imageLayers[i]->getTileSource()->getName() << " for TileKey " << key->str() << std::endl;
                 }
             }
         }

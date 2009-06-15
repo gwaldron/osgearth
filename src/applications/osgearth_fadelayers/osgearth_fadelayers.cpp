@@ -39,12 +39,14 @@
 #include <osgText/Text>
 
 #include <osgEarth/Map>
+#include <osgEarthUtil/FadeLayerNode>
 
 #include <iostream>
 
 using namespace osg;
 using namespace osgDB;
 using namespace osgEarth;
+using namespace osgEarthUtil;
 
 
 
@@ -92,8 +94,9 @@ class FadeLayerCallback : public osg::NodeCallback
 public:
     typedef std::vector<double> Elevations;
 
-    FadeLayerCallback(Map* map, const Elevations& elevations, float animationTime=2.0f):
+    FadeLayerCallback(Map* map, FadeLayerNode* fadeLayerNode, const Elevations& elevations, float animationTime=2.0f):
       _map(map),
+      _fadeLayerNode(fadeLayerNode),
       _firstFrame(true),
       _previousTime(0.0),
       _elevations(elevations),
@@ -133,16 +136,14 @@ public:
                       //If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
                       //Otherwise, we want the layers to go to 1.0
                       float goalOpacity = (i > activeLayer) ? 0.0f : 1.0f;
-                      float currentOpacity = _map->getLayer(i)->getOpacity();
+                      float currentOpacity = _fadeLayerNode->getOpacity(i);
 
                       if (goalOpacity != currentOpacity)
                       {
                           if (currentOpacity > goalOpacity) delta = -delta;
-                          _map->getLayer(i)->setOpacity(currentOpacity + delta);
-                          dirtyLayers = true;
+                          _fadeLayerNode->setOpacity(i, currentOpacity + delta);
                       }
                   }
-                  if (dirtyLayers) _map->dirtyLayers();
               }
               _firstFrame = false;
           }
@@ -168,6 +169,7 @@ public:
       }
 
 private:
+    osg::observer_ptr<FadeLayerNode> _fadeLayerNode;
     osg::observer_ptr<Map> _map;
     osg::observer_ptr<CoordinateSystemNode> _csn;
     double _currentElevation;
@@ -187,10 +189,13 @@ int main(int argc, char** argv)
 
   osg::Group* group = new osg::Group;
 
+  FadeLayerNode *fadeLayerNode = new FadeLayerNode;
+  group->addChild(fadeLayerNode);
+
   osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
   if (loadedModel.valid())
   {
-    group->addChild(loadedModel.get());
+    fadeLayerNode->addChild(loadedModel.get());
   }
   else
   {
@@ -212,8 +217,7 @@ int main(int argc, char** argv)
           props["dataset"] = "roads";
           map->addLayer(new ImageLayer(map->createTileSource( SourceConfig("yahoo_roads", "yahoo", props) ) ) );
       }
-      map->dirtyLayers();
-      group->addChild(map.get());
+      fadeLayerNode->addChild(map.get());
   }
 
   //Find the map
@@ -232,15 +236,14 @@ int main(int argc, char** argv)
       //Set all of the layer's opacity to 0.0 except for the first one
       for (unsigned int i = 1; i < map->getNumLayers(); ++i)
       {
-          map->getLayer(i)->setOpacity(0.0);
+          fadeLayerNode->setOpacity(i, 0.0f);
       }
-      map->getLayer(0)->setOpacity(1);
-      map->dirtyLayers();
+      fadeLayerNode->setOpacity(0, 1.0f);
 
       //Attach the callback as both a cull and update callback
-      FadeLayerCallback* callback = new FadeLayerCallback(map, elevations);
-      map->setUpdateCallback(callback);
-      map->setCullCallback(callback);
+      FadeLayerCallback* callback = new FadeLayerCallback(map, fadeLayerNode, elevations);
+      fadeLayerNode->setUpdateCallback(callback);
+      fadeLayerNode->setCullCallback(callback);
   }
   else
   {

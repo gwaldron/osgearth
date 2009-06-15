@@ -20,6 +20,8 @@
 #include <osgEarth/Map>
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/ProjectedMap>
+#include <osg/TexEnv>
+#include <osg/TexEnvCombine>
 
 using namespace osgEarth;
 
@@ -64,9 +66,9 @@ Map::Map(const MapConfig& mapConfig)
         _engine = new ProjectedMap( newMapConfig );
     }
 
-    addChild( _engine->initialize() );
+    updateStateSet();
 
-    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+    addChild( _engine->initialize() );
 }
 
 Map::~Map()
@@ -94,27 +96,24 @@ Map::isOK() const
 }
 
 void
-Map::dirtyLayers()
-{
-    _engine->dirtyLayers();
-}
-
-void
 Map::addLayer( Layer* layer )
 {
     _engine->addLayer( layer );
+    updateStateSet();
 }
 
 void
 Map::removeLayer( Layer* layer )
 {
     _engine->removeLayer( layer );
+    updateStateSet();
 }
 
 void
 Map::moveLayer( Layer* layer, int position )
 {
     _engine->moveLayer( layer, position );
+    updateStateSet();
 }
 
 unsigned int
@@ -147,108 +146,66 @@ Map::createTileSource( const SourceConfig& sourceConfig )
     return _engine->createTileSource( sourceConfig );
 }
 
-typedef std::list<const osg::StateSet*> StateSetStack;
-osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
+void Map::updateStateSet()
 {
-    osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
-    for(StateSetStack::const_iterator itr = statesetStack.begin();
-        itr != statesetStack.end();
-        ++itr)
+    ImageLayerList imageLayers;
+    getImageLayers(imageLayers);
+
+    int numLayers = imageLayers.size();
+
+    osg::StateSet* stateset = getOrCreateStateSet();
+
+    if (numLayers == 1)
     {
-        osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
-        if ((val & ~osg::StateAttribute::INHERIT)!=0)
+        osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
+        stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+    }
+    else if (numLayers >= 2)
+    {
+        //Blend together textures 0 and 1 on unit 0
         {
-            if ((val & osg::StateAttribute::PROTECTED)!=0 ||
-                (base_val & osg::StateAttribute::OVERRIDE)==0)
-            {
-                base_val = val;
-            }
+            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+            texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+            
+            texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
+            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+            texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
+            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+            texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
+            texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+            
+            stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+        }
+       
+
+        //For textures 2 and beyond, blend them together with the previous
+        for (int unit = 1; unit < numLayers-1; ++unit)
+        {
+            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+            texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+            texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+            texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+            texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+            texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+            
+            stateset->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
+        }
+
+        //Modulate the colors to get proper lighting on the last unit
+        {
+            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+            texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+            texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+            texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+            stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
         }
     }
-    return base_val;
 }
-
-void Map::traverse(osg::NodeVisitor& nv)
-{
-    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-    {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
-        {
-            StateSetStack statesetStack;
-
-            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
-            while(sg)
-            {
-                const osg::StateSet* stateset = sg->getStateSet();
-                if (stateset)
-                {
-                    statesetStack.push_front(stateset);
-                }                
-                sg = sg->_parent;
-            }
-
-            osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
-            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("lightingEnabled", osg::Uniform::BOOL);
-            lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
-
-            //GL_LIGHT0
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light0Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT1
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT1);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light1Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT2
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT2);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light2Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT3
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT3);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light3Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT4
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT4);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light4Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT5
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT5);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light5Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT6
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT6);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light6Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT7
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT7);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light7Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-        }
-    }
-    osg::Group::traverse(nv);
-}
-

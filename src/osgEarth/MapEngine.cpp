@@ -34,7 +34,6 @@
 #include <osg/PagedLOD>
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
-#include <osg/TexEnvCombine>
 #include <osgFX/MultiTextureControl>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
@@ -55,178 +54,6 @@ static unsigned int s_mapEngineID = 0;
 typedef std::map<unsigned int, osg::observer_ptr<MapEngine> > MapEngineCache;
 
 
-char vert_source[] ="varying vec2 texCoord0;\n"
-                    "varying vec2 texCoord1;\n"
-                    "varying vec2 texCoord2;\n"
-                    "varying vec2 texCoord3;\n"
-                    "uniform bool lightingEnabled; \n"
-                    "uniform bool light0Enabled; \n"
-                    "uniform bool light1Enabled; \n"
-                    "uniform bool light2Enabled; \n"
-                    "uniform bool light3Enabled; \n"
-                    "uniform bool light4Enabled; \n"
-                    "uniform bool light5Enabled; \n"
-                    "uniform bool light6Enabled; \n"
-                    "uniform bool light7Enabled; \n"
-                    "\n"
-                    "\n"
-                    "void directionalLight(in int i, \n"
-                    "                      in vec3 normal, \n"
-                    "                      inout vec4 ambient, \n"
-                    "                      inout vec4 diffuse, \n"
-                    "                      inout vec4 specular) \n"
-                    "{ \n"
-                    "   float nDotVP;         // normal . light direction \n"
-                    "   float nDotHV;         // normal . light half vector \n"
-                    "   float pf;             // power factor \n"
-                    " \n"
-                    "   nDotVP = max(0.0, dot(normal, normalize(vec3 (gl_LightSource[i].position)))); \n"
-                    "   nDotHV = max(0.0, dot(normal, vec3 (gl_LightSource[i].halfVector))); \n"
-                    " \n"
-                    "   if (nDotVP == 0.0) \n"
-                    "   { \n"
-                    "       pf = 0.0; \n"
-                    "   } \n"
-                    "   else \n"
-                    "   { \n"
-                    "       pf = pow(nDotHV, gl_FrontMaterial.shininess); \n"
-                    " \n"
-                    "   } \n"
-                    "   ambient  += gl_LightSource[i].ambient; \n"
-                    "   diffuse  += gl_LightSource[i].diffuse * nDotVP; \n"
-                    "   specular += gl_LightSource[i].specular * pf; \n"
-                    "} \n"
-                    "\n"
-                    "vec3 fnormal(void)\n"
-                    "{\n"
-                    "    //Compute the normal \n"
-                    "    vec3 normal = gl_NormalMatrix * gl_Normal;\n"
-                    "    normal = normalize(normal);\n"
-                    "    return normal;\n"
-                    "}\n"
-                    "\n"
-                    "void main (void)\n"
-                    "{\n"
-                    "    if (lightingEnabled)\n"
-                    "    {\n"
-                    "    vec4 ambient = vec4(0.0); \n"
-                    "    vec4 diffuse = vec4(0.0); \n"
-                    "    vec4 specular = vec4(0.0); \n"
-                    " \n"
-                    "    vec3 normal = fnormal(); \n"
-                    " \n"
-                    "    if (light0Enabled) directionalLight(0, normal, ambient, diffuse, specular); \n"
-                    "    if (light1Enabled) directionalLight(1, normal, ambient, diffuse, specular); \n"
-                    "    if (light2Enabled) directionalLight(2, normal, ambient, diffuse, specular); \n"
-                    "    if (light3Enabled) directionalLight(3, normal, ambient, diffuse, specular); \n"
-                    "    if (light4Enabled) directionalLight(4, normal, ambient, diffuse, specular); \n"
-                    "    if (light5Enabled) directionalLight(5, normal, ambient, diffuse, specular); \n"
-                    "    if (light6Enabled) directionalLight(6, normal, ambient, diffuse, specular); \n"
-                    "    if (light7Enabled) directionalLight(7, normal, ambient, diffuse, specular); \n"
-
-                    "    vec4 color = gl_FrontLightModelProduct.sceneColor + \n"
-                    "                 ambient  * gl_FrontMaterial.ambient + \n"
-                    "                 diffuse  * gl_FrontMaterial.diffuse + \n"
-                    "                 specular * gl_FrontMaterial.specular; \n"
-                    " \n"
-                    "    gl_FrontColor = color; \n"
-                    "   }\n"
-                    " else\n"
-                    " {\n"
-                    " gl_FrontColor = gl_Color;\n"
-                    " }\n"
-                    "    gl_Position = ftransform();\n"
-                    "\n"
-                    "	 texCoord0 = gl_MultiTexCoord0.st;\n"
-                    "    texCoord1 = gl_MultiTexCoord1.st;\n"
-                    "    texCoord2 = gl_MultiTexCoord2.st;\n"
-                    "    texCoord3 = gl_MultiTexCoord3.st;\n"
-                    "}\n";
-
-
-char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
-                    "uniform float osgEarth_Layer0_opacity;\n"
-                    "varying vec2 texCoord0;\n"
-                    "uniform bool osgEarth_Layer0_enabled;\n"
-                    "\n"
-                    "uniform sampler2D osgEarth_Layer1_unit;\n"
-                    "uniform float osgEarth_Layer1_opacity;\n"
-                    "varying vec2 texCoord1;\n"
-                    "uniform bool osgEarth_Layer1_enabled;\n"
-                    "\n"
-                    "uniform sampler2D osgEarth_Layer2_unit;\n"
-                    "uniform float osgEarth_Layer2_opacity;\n"
-                    "varying vec2 texCoord2;\n"
-                    "uniform bool osgEarth_Layer2_enabled;\n"
-                    "\n"
-                    "uniform sampler2D osgEarth_Layer3_unit;\n"
-                    "uniform float osgEarth_Layer3_opacity;\n"
-                    "varying vec2 texCoord3;\n"
-                    "uniform bool osgEarth_Layer3_enabled;\n"
-                    "\n"
-                    "void main (void )\n"
-                    "{\n"
-                    "  //Get the fragment for texture 0\n"
-                    "  int numLayersOn = 0;\n"
-                    "  vec4 tex0 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer0_enabled)\n"
-                    "  {\n"
-                    "    tex0 = texture2D(osgEarth_Layer0_unit, texCoord0);\n"
-                    "    numLayersOn++;\n"
-                    "  }\n"
-                    "  tex0.a *= osgEarth_Layer0_opacity;\n"
-                    "\n"
-                    "  //Get the fragment for texture 1\n"
-                    "  vec4 tex1 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer1_enabled)\n"
-                    "  {\n"
-                    "    tex1 = texture2D(osgEarth_Layer1_unit, texCoord1);\n"
-                    "    numLayersOn++;\n"
-                    "  }\n"
-                    "  tex1.a *= osgEarth_Layer1_opacity;\n"
-                    "\n"
-                    "  //Get the fragment for texture 2\n"
-                    "  vec4 tex2 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer2_enabled)\n"
-                    "  {\n"
-                    "    tex2 = texture2D(osgEarth_Layer2_unit, texCoord2);\n"
-                    "    numLayersOn++;\n"
-                    "  }\n"
-                    "  tex2.a *= osgEarth_Layer2_opacity;\n"
-                    "\n"
-                    "  //Get the fragment for texture 2\n"
-                    "  vec4 tex3 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer3_enabled)\n"
-                    "  {\n"
-                    "    tex3 = texture2D(osgEarth_Layer3_unit, texCoord3);\n"
-                    "    numLayersOn++;\n"
-                    "  }\n"
-                    "  tex3.a *= osgEarth_Layer3_opacity;\n"
-                    "\n"
-                    "  if (numLayersOn > 0)\n"
-                    "  {\n"
-                    "    //Interpolate the color between the first layer and second\n"
-                    "    vec3 c = mix(tex0.rgb, tex1.rgb, tex1.a);\n"
-                    "\n"
-                    "    c = mix(c, tex2.rgb, tex2.a);\n"
-                    " \n"
-                    "    c = mix(c, tex3.rgb, tex3.a);\n"
-                    " \n"
-                    "    //Take the maximum alpha for the final destination alpha\n"
-                    "    float a = tex0.a;\n"
-                    "    if (a < tex1.a) a = tex1.a;\n"
-                    "    if (a < tex2.a) a = tex2.a;\n"
-                    "    if (a < tex3.a) a = tex3.a;\n"
-                    "\n"
-                    "    gl_FragColor = gl_Color * vec4(c, a);\n"
-                    "  }\n"
-                    "  else\n"
-                    "  {\n"
-                    "    //No layers are on, so just use the underlying color\n"
-                    "    gl_FragColor = gl_Color;\n"
-                    "  }\n"
-                    "}\n"
-                    "\n";
 
 static
 MapEngineCache& getMapEngineCache()
@@ -313,9 +140,6 @@ _mapConfig( mapConfig )
 {
     //if ( !mapConfig )
     //    return;  
-
-    // the state set that will hold the layer effect uniforms:
-    uniformStateSet = new osg::StateSet();
 
     // load all the startup layers.
     initializeLayers();
@@ -800,7 +624,6 @@ MapEngine::initializeLayers()
     for (TileSourceList::iterator itr = heightfield_sources.begin(); itr != heightfield_sources.end(); ++itr)
     {
         ElevationLayer *elevationLayer = new ElevationLayer( itr->get() );
-        elevationLayer->setName( itr->get()->getName() );
         addLayer( elevationLayer );
     }
 
@@ -808,7 +631,6 @@ MapEngine::initializeLayers()
     for (TileSourceList::iterator itr = image_sources.begin(); itr != image_sources.end(); ++itr)
     {
         ImageLayer *imageLayer = new ImageLayer( itr->get() );
-        imageLayer->setName( itr->get()->getName() );
         addLayer( imageLayer );
     }
 }
@@ -872,41 +694,6 @@ MapEngine::getLayersMutex() {
     return _layersMutex;
 }
 
-void
-MapEngine::dirtyLayers()
-{
-    updateUniforms();
-}
-
-
-void
-MapEngine::updateUniforms()
-{
-    ImageLayerList imageLayers;
-    getImageLayers( imageLayers );
-
-    unsigned int maxLayers = 4;
-    for (unsigned int i = 0; i < maxLayers; ++i)
-    {        
-        ImageLayer* layer = i < imageLayers.size() ? imageLayers[i].get() : 0;
-
-        std::stringstream ss;
-        ss << "osgEarth_Layer" << i << "_unit";
-        osg::Uniform* unitUniform = uniformStateSet->getOrCreateUniform(ss.str(), osg::Uniform::INT);
-        unitUniform->set( (int)i );
-        
-        ss.str("");
-        ss << "osgEarth_Layer" << i << "_enabled";
-        osg::Uniform* enabledUniform = uniformStateSet->getOrCreateUniform(ss.str(), osg::Uniform::BOOL);
-        enabledUniform->set(layer ? layer->getEnabled() : false);
-
-        ss.str("");
-        ss << "osgEarth_Layer" << i << "_opacity";
-        osg::Uniform* opacityUniform = uniformStateSet->getOrCreateUniform(ss.str(), osg::Uniform::FLOAT);
-        opacityUniform->set(layer ? layer->getOpacity() : 0.0f);
-    }
-}
-
 
 
 osg::Node*
@@ -914,9 +701,6 @@ MapEngine::initialize()
 {    
     // Note: CSN must always be at the top
     osg::CoordinateSystemNode* csn = createCoordinateSystemNode();
-
-    // apply the uniform state set to this node
-    csn->setStateSet( uniformStateSet.get() );
 
     // go through and build the root nodesets.
     int faces_ok = 0;
@@ -954,20 +738,6 @@ MapEngine::initialize()
     //{
         //csn->addChild( csn.release() );
     //}
-
-
-    // set up the layer effect uniforms.
-
-    osg::Program* program = new osg::Program;
-    program->addShader(new osg::Shader( osg::Shader::VERTEX, vert_source ) );
-    program->addShader(new osg::Shader( osg::Shader::FRAGMENT, frag_source ) );
-
-    uniformStateSet->setAttributeAndModes(program, osg::StateAttribute::ON);
-
-    //Enable blending
-    uniformStateSet->setMode(GL_BLEND, osg::StateAttribute::ON);
-
-    updateUniforms();
 
     return csn;
 }
@@ -1060,8 +830,6 @@ MapEngine::addLayer( Layer* layer )
                 itr->get()->setDirty(true);
             }
         }
-
-        updateUniforms();
     }
 }
 
@@ -1167,7 +935,6 @@ MapEngine::removeLayer( Layer* layer )
             osg::notify(osg::NOTICE) << "[osgEarth::MapEngine::removeLayer] Could not find image layer with ID " << layerId << std::endl;
             return;
         }
-        updateUniforms();
         osg::notify(osg::INFO) << "[osgEarth::MapEngine::removeLayer] end " << std::endl;
     }
 }
@@ -1279,8 +1046,7 @@ MapEngine::moveLayer( Layer* layer, int position )
                 itr->get()->setDirty(true);
             }
         }
-        
-        updateUniforms();
+       
     }
     osg::notify(osg::INFO) << "[osgEarth::MapEngine::moveLayer] end " << std::endl;
 }

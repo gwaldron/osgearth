@@ -91,25 +91,6 @@ namespace osgEarth
 
     /**A list of ElevationLayers*/
     typedef std::vector< osg::ref_ptr<ElevationLayer> > ElevationLayerList;
-
-    class OSGEARTH_EXPORT osgEarthImageLayer : public osgTerrain::ImageLayer
-    {
-    public:
-        osgEarthImageLayer(int layerId, osg::Image* image = 0);
-
-        int getLayerId() const;
-
-        float getOpacity() const;
-        void setOpacity(float opacity);
-
-        bool getVisible() const;
-        void setVisible(bool visible);
-
-    protected:
-        int _layerId;
-        float _opacity;
-        bool _visible;
-    };
 }
 
 #endif //OSGEARTH_LAYER_H

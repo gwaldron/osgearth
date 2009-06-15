@@ -1038,7 +1038,7 @@ MapEngine::addLayer( Layer* layer )
                             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
                         }
 
-                        osgTerrain::ImageLayer* img_layer = new osgEarthImageLayer( layer->getId(), geoImage->getImage() );
+                        osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
                         img_layer->setLocator( img_locator.get());
 
                         unsigned int newLayer = _layers.size()-1;
@@ -1082,15 +1082,26 @@ MapEngine::removeLayer( Layer* layer )
         bool imageLayerRemoved = (dynamic_cast<osgEarth::ImageLayer*>(layer) != NULL);
         bool elevationLayerRemoved = (dynamic_cast<osgEarth::ElevationLayer*>(layer) != NULL);
 
-        //Erase the layer from the list       
-        LayerList::iterator itr = std::find(_layers.begin(), _layers.end(), layer);
-        if (itr != _layers.end())
+        int layerIndex = -1;
+        if (imageLayerRemoved)
         {
-            _layers.erase(itr);
-        }
-        else
-        {
-            osg::notify(osg::NOTICE) << "[osgEarth::MapEngine::removeLayer] Could not find image layer with ID " << layerId << std::endl;
+            ImageLayerList imageLayers;
+            getImageLayers(imageLayers);
+
+            //Find the index
+            for (unsigned int i = 0; i < imageLayers.size(); ++i)
+            {
+                if (imageLayers[i].get() == layer)
+                {
+                    layerIndex = i;
+                    break;
+                }
+            }
+            if (layerIndex < 0)
+            {
+                osg::notify(osg::NOTICE) << "[osgEarth::MapEngine::removeLayer] Could not find image layer with ID " << layerId << std::endl;
+                return;
+            }
         }
 
         for (unsigned int i = 0; i < _terrains.size(); ++i)
@@ -1106,13 +1117,17 @@ MapEngine::removeLayer( Layer* layer )
                 if (imageLayerRemoved)
                 {
                     //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
-                    std::vector< osg::ref_ptr< osgEarth::osgEarthImageLayer > > layers;
+                    std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
                     for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
-                    {              
-                        osgEarthImageLayer* imageLayer = dynamic_cast<osgEarthImageLayer*>(itr->get()->getColorLayer( i ));
-                        if (imageLayer && imageLayer->getLayerId() != layerId)
+                    {   
+                        //Skip the layer that is being removed
+                        if (i != layerIndex)
                         {
-                            layers.push_back(imageLayer);
+                            osgTerrain::Layer* imageLayer = itr->get()->getColorLayer(i);
+                            if (imageLayer)
+                            {
+                                layers.push_back(imageLayer);
+                            }
                         }
                         //Set the current value to NULL
                         itr->get()->setColorLayer( i, NULL);
@@ -1140,8 +1155,20 @@ MapEngine::removeLayer( Layer* layer )
                 itr->get()->setDirty(true);
             }
         }
-        osg::notify(osg::INFO) << "[osgEarth::MapEngine::removeLayer] end " << std::endl;
+
+        //Erase the layer from the list
+        LayerList::iterator itr = std::find(_layers.begin(), _layers.end(), layer);
+        if (itr != _layers.end())
+        {
+            _layers.erase(itr);
+        }
+        else
+        {
+            osg::notify(osg::NOTICE) << "[osgEarth::MapEngine::removeLayer] Could not find image layer with ID " << layerId << std::endl;
+            return;
+        }
         updateUniforms();
+        osg::notify(osg::INFO) << "[osgEarth::MapEngine::removeLayer] end " << std::endl;
     }
 }
 
@@ -1220,14 +1247,14 @@ MapEngine::moveLayer( Layer* layer, int position )
                 OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
                 if (movedImage)
                 {
-                    std::vector< osg::ref_ptr< osgEarth::osgEarthImageLayer > > layers;
+                    std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
                     for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
                     {              
-                        layers.push_back((osgEarthImageLayer*)itr->get()->getColorLayer(i));
+                        layers.push_back(itr->get()->getColorLayer(i));
                     }
 
                     //Swap the original position
-                    osg::ref_ptr< osgEarth::osgEarthImageLayer > layer = layers[relativeIndexOrig];
+                    osg::ref_ptr< osgTerrain::Layer > layer = layers[relativeIndexOrig];
                     layers.erase(layers.begin() + relativeIndexOrig);
                     layers.insert(layers.begin() + relativeIndexNew, layer.get());
 

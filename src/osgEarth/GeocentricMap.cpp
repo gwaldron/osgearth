@@ -260,9 +260,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
             //    osg::DegreesToRadians( img_max_lat )));
 
 
-            //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
-            osgTerrain::ImageLayer* img_layer = new osgEarthImageLayer( imageLayers[i]->getId(), geo_image->getImage() );
-
+            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
 
             img_layer->setLocator( img_locator.get());
 

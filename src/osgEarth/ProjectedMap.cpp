@@ -218,8 +218,8 @@ ProjectedMap::createQuadrant( const TileKey* key )
                     getProfile()->getSRS()->isGeographic() );
             }
 
-            //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
-            osgTerrain::ImageLayer* img_layer = new osgEarth::osgEarthImageLayer(imageLayers[i]->getId(), geo_image->getImage() );
+            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
+            //osgTerrain::ImageLayer* img_layer = new osgEarth::osgEarthImageLayer(imageLayers[i]->getId(), geo_image->getImage() );
             img_layer->setLocator( img_locator.get() );
 
             tile->setColorLayer( layer, img_layer );

@@ -211,6 +211,10 @@ public:
         //TODO: won't need this for OSG 2.9+, b/c of mime-type support
         _prototype = _prototype + "&." + _format;
 
+        // populate the data metadata:
+        // TODO
+
+
         return result.release();
     }
 

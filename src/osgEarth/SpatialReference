@@ -149,6 +149,8 @@ namespace osgEarth
             const std::string& proj4, const std::string& alias, const std::string& name ="" );
 
         static SpatialReference* createCube(unsigned int face);
+
+        SpatialReference* validate();
     };
 
 }

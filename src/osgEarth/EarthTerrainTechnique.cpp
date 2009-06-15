@@ -118,7 +118,7 @@ void EarthTerrainTechnique::init()
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
 
-    osg::notify(osg::INFO)<<"Doing GeometryTechnique::init()"<<std::endl;
+    //osg::notify(osg::INFO)<<"Doing GeometryTechnique::init()"<<std::endl;
     
     if (!_terrainTile) return;
 
@@ -151,7 +151,7 @@ Locator* EarthTerrainTechnique::computeMasterLocator()
     Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
     if (!masterLocator)
     {
-        osg::notify(osg::NOTICE)<<"Problem, no locator found in any of the terrain layers"<<std::endl;
+        osg::notify(osg::NOTICE)<<"[osgEarth::EarthTerrainTechnique] Problem, no locator found in any of the terrain layers"<<std::endl;
         return 0;
     }
     
@@ -206,8 +206,8 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
         }
     }
 
-    osg::notify(osg::INFO)<<"bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
-    osg::notify(osg::INFO)<<"topRightNDC = "<<topRightNDC<<std::endl;
+    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
+    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
 
     buffer._transform = new osg::MatrixTransform;
 
@@ -267,7 +267,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     
 
     bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-    osg::notify(osg::INFO)<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
@@ -747,7 +747,7 @@ void EarthTerrainTechnique::applyColorLayers()
 
                 if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
                 {
-                    osg::notify(osg::INFO)<<"Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+                    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
                     texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
                 }
 
@@ -872,7 +872,7 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
 
     if (_terrainTile->getDirty()) 
     {
-        osg::notify(osg::INFO)<<"******* Doing init ***********"<<std::endl;
+        //osg::notify(osg::INFO)<<"******* Doing init ***********"<<std::endl;
         _terrainTile->init();
     }
 

@@ -114,7 +114,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
-        osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         return NULL;
     }
    
@@ -153,7 +153,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
             hf = createHeightField( key, true );
             if (!hf.valid())
             {
-                osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
+                osg::notify(osg::WARN) << "[osgEarth::GeocentricMap] Could not get valid heightfield for TileKey " << key->str() << std::endl;
                 return NULL;
             }
             else

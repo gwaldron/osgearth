@@ -574,10 +574,10 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
 #define VALUE_FALSE            "false"
 
 #define ELEM_PROFILE           "profile"
-#define ATTR_MINX              "minx"
-#define ATTR_MINY              "miny"
-#define ATTR_MAXX              "maxx"
-#define ATTR_MAXY              "maxy"
+#define ATTR_MINX              "xmin"
+#define ATTR_MINY              "ymin"
+#define ATTR_MAXX              "xmax"
+#define ATTR_MAXY              "ymax"
 #define ATTR_SRS               "srs"
 #define ATTR_USELAYER          "use"
 
@@ -632,18 +632,22 @@ readProfileConfig( XmlElement* e_profile )
     profile.setNamedProfile( e_profile->getText() );
     profile.setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
 
-    std::string srs_text = e_profile->getText();
+    std::string srs_text = e_profile->getSubElementText( ATTR_SRS );
     std::string srs_attr = e_profile->getAttr( ATTR_SRS );
     profile.setSRS( !srs_attr.empty()? srs_attr : srs_text );
 
     double minx, miny, maxx, maxy;
     profile.getExtents(minx, miny, maxx, maxy);
 
-    //Get the bounding box
-    minx = as<double>(e_profile->getAttr( ATTR_MINX ), minx);
-    miny = as<double>(e_profile->getAttr( ATTR_MINY ), miny);
-    maxx = as<double>(e_profile->getAttr( ATTR_MAXX ), maxx);
-    maxy = as<double>(e_profile->getAttr( ATTR_MAXY ), maxy);
+    //Get the bounding box (sub element or attr is OK)
+    minx = as<double>(e_profile->getSubElementText( ATTR_MINX ), as<double>(e_profile->getAttr( ATTR_MINX ), minx) );
+    miny = as<double>(e_profile->getSubElementText( ATTR_MINY ), as<double>(e_profile->getAttr( ATTR_MINY ), miny) );
+    maxx = as<double>(e_profile->getSubElementText( ATTR_MAXX ), as<double>(e_profile->getAttr( ATTR_MAXX ), maxx) );
+    maxy = as<double>(e_profile->getSubElementText( ATTR_MAXY ), as<double>(e_profile->getAttr( ATTR_MAXY ), maxy) );
+
+    //miny = as<double>(e_profile->getAttr( ATTR_MINY ), miny);
+    //maxx = as<double>(e_profile->getAttr( ATTR_MAXX ), maxx);
+    //maxy = as<double>(e_profile->getAttr( ATTR_MAXY ), maxy);
 
     profile.setExtents(minx, miny, maxx, maxy);
 
@@ -825,7 +829,7 @@ readMap( XmlElement* e_map, MapConfig& out_map )
     //If the OSGEARTH_CACHE_ONLY environment variable is set, override whateve is in the map config
     if (getenv("OSGEARTH_CACHE_ONLY") != 0)
     {
-        osg::notify(osg::NOTICE) << "Setting osgEarth to cache only mode due to OSGEARTH_CACHE_ONLY environment variable " << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Setting osgEarth to cache only mode due to OSGEARTH_CACHE_ONLY environment variable " << std::endl;
         out_map.setCacheOnly(true);
     }
 
@@ -841,7 +845,7 @@ readMap( XmlElement* e_map, MapConfig& out_map )
         conf.inheritFrom( Registry::instance()->getCacheConfigOverride() );
         out_map.setCacheConfig( conf );
 
-        osg::notify(osg::NOTICE) << "Overriding Map Cache" << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Overriding Map Cache" << std::endl;
     }
 
     if ( out_map.getCacheConfig().defined() )
@@ -889,7 +893,7 @@ mapToXmlDocument( const MapConfig& map )
     else if (map.getCoordinateSystemType() == MapConfig::CSTYPE_PROJECTED) cs = "projected";
     else
     {
-        osg::notify(osg::NOTICE) << "Unhandled CoordinateSystemType " << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Unhandled CoordinateSystemType " << std::endl;
         return NULL;
     }
     e_map->getAttrs()[ATTR_CSTYPE] = cs;

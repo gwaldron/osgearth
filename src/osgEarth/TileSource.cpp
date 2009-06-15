@@ -32,12 +32,12 @@
 using namespace osgEarth;
 
 
-#define PROPERTY_MIN_LEVEL "min_level"
-#define PROPERTY_MAX_LEVEL "max_level"
+#define PROPERTY_MIN_LEVEL    "min_level"
+#define PROPERTY_MAX_LEVEL    "max_level"
 #define PROPERTY_NODATA_VALUE "nodata_value"
-#define PROPERTY_NODATA_MIN "nodata_min"
-#define PROPERTY_NODATA_MAX "nodata_max"
-#define PROPERTY_PROFILE    "profile"
+#define PROPERTY_NODATA_MIN   "nodata_min"
+#define PROPERTY_NODATA_MAX   "nodata_max"
+#define PROPERTY_PROFILE      "profile"
 
 
 #define DEFAULT_MIN_LEVEL 0
@@ -50,7 +50,8 @@ _minLevel( DEFAULT_MIN_LEVEL ),
 _maxLevel( DEFAULT_MAX_LEVEL ),
 _noDataValue(SHRT_MIN),
 _noDataMinValue(-FLT_MAX),
-_noDataMaxValue(FLT_MAX)
+_noDataMaxValue(FLT_MAX),
+_max_data_level(INT_MAX)
 {
     if ( options )
     {
@@ -171,4 +172,28 @@ void
 TileSource::setNoDataMaxValue(float noDataMaxValue)
 {
     _noDataMaxValue = noDataMaxValue;
+}
+
+const GeoExtent&
+TileSource::getDataExtent() const
+{
+    return _data_extent.defined() ? _data_extent : _profile->getExtent();
+}
+
+void 
+TileSource::setDataExtent( const GeoExtent& extent )
+{
+    _data_extent = extent;
+}
+
+unsigned int
+TileSource::getMaxDataLevel() const
+{
+    return _max_data_level;
+}
+
+void
+TileSource::setMaxDataLevel( unsigned int value )
+{
+    _max_data_level = value;
 }

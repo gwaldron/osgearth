@@ -241,7 +241,7 @@ MapEngine::registerMapEngine(MapEngine* map)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapEngineCacheMutex);
     getMapEngineCache()[map->id] = map;
-    osg::notify(osg::INFO) << "Registered " << map->id << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::MapEngine] Registered " << map->id << std::endl;
 }
 
 void
@@ -252,7 +252,7 @@ MapEngine::unregisterMapEngine(unsigned int id)
     if (k != getMapEngineCache().end())
     {
         getMapEngineCache().erase(k);
-        osg::notify(osg::INFO) << "Unregistered " << id << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::MapEngine] Unregistered " << id << std::endl;
     }
 }
 
@@ -331,7 +331,7 @@ _mapConfig( mapConfig )
 
 MapEngine::~MapEngine()
 {
-    //osg::notify(osg::NOTICE) << "Deleting Map " << getId() << std::endl;
+    //osg::notify(osg::NOTICE) << "[osgEarth::MapEngine] Deleting Map " << getId() << std::endl;
     unregisterMapEngine( getId() );
 }
 
@@ -390,7 +390,7 @@ MapEngine::isOK() const
     if ( _profile->getProfileType() == Profile::TYPE_LOCAL && 
         _mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
     {
-        osg::notify(osg::NOTICE) << "Error: Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::MapEngine] Error: Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
         return false;
     }
 
@@ -488,7 +488,7 @@ MapEngine::addChildren( osg::Group* tile_parent, const TileKey* key )
     }
     else
     {
-        osg::notify(osg::INFO) << "Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
     }
     return all_quadrants_created;
 }
@@ -637,13 +637,13 @@ MapEngine::initializeLayers()
     {
         //If the map type if Geocentric, set the profile to global-geodetic
         _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-        osg::notify(osg::INFO) << "[osgEarth] Setting Profile to global-geodetic for geocentric scene" << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::MapEngine] Setting Profile to global-geodetic for geocentric scene" << std::endl;
     }
     else if ( _mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
     {
         //If the map type is a Geocentric Cube, set the profile to the cube profile.
         _profile = osgEarth::Registry::instance()->getCubeProfile();
-        osg::notify(osg::INFO) << "[osgEarth] Using cube profile for geocentric scene" << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::MapEngine] Using cube profile for geocentric scene" << std::endl;
     }
 
     // First check for an explicit profile declaration:
@@ -656,11 +656,11 @@ MapEngine::initializeLayers()
             _profile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
             if ( _profile.valid() )
             {
-                osg::notify(osg::INFO) << "[osgEarth] Set map profile to " << namedProfile << std::endl;
+                osg::notify(osg::INFO) << "[osgEarth::MapEngine] Set map profile to " << namedProfile << std::endl;
             }
             else
             {
-                osg::notify(osg::WARN) << "[osgEarth] " << namedProfile << " is not a known profile name" << std::endl;
+                osg::notify(osg::WARN) << "[osgEarth::MapEngine] " << namedProfile << " is not a known profile name" << std::endl;
                 //TODO: continue on? or fail here?
             }
         }
@@ -700,12 +700,12 @@ MapEngine::initializeLayers()
                     if ( ref_profile )
                     {
                         _profile = getSuitableMapProfileFor( ref_profile );
-                        osg::notify(osg::INFO) << "[osgEarth] Setting profile from \"" << refLayer << "\"" << std::endl;
+                        osg::notify(osg::INFO) << "[osgEarth::MapEngine] Setting profile from \"" << refLayer << "\"" << std::endl;
                     }
                 }
                 else
                 {
-                    osg::notify(osg::WARN) << "[osgEarth] Source \"" << refLayer << "\" does not have a valid profile" << std::endl;
+                    osg::notify(osg::WARN) << "[osgEarth::MapEngine] Source \"" << refLayer << "\" does not have a valid profile" << std::endl;
                 }
             }
         }
@@ -725,7 +725,7 @@ MapEngine::initializeLayers()
 
                 if ( _profile.valid() )
                 {
-                    osg::notify( osg::INFO ) << "[osgEarth::Map] Set map profile from SRS: " 
+                    osg::notify( osg::INFO ) << "[[osgEarth::MapEngine] Set map profile from SRS: " 
                         << _profile->getSRS()->getName() << std::endl;
                 }
             }
@@ -750,7 +750,7 @@ MapEngine::initializeLayers()
             }
             else if ( !sourceProfile.valid() )
             {
-                osg::notify(osg::WARN) << "[osgEarth] Removing invalid TileSource " << i->get()->getName() << std::endl;
+                osg::notify(osg::WARN) << "[osgEarth::MapEngine] Removing invalid TileSource " << i->get()->getName() << std::endl;
                 i =image_sources.erase(i);
                 continue;
             }
@@ -759,8 +759,9 @@ MapEngine::initializeLayers()
         if ( osg::getNotifyLevel() >= osg::INFO )
         {
             std::string prof_str = i->get()->getProfile()? i->get()->getProfile()->toString() : "none";
-            osg::notify(osg::INFO)
-                << "Tile source \"" << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
+            osg::notify(osg::INFO) 
+                << "[osgEarth::MapEngine] Tile source \"" 
+                << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
         }
 
         i++;
@@ -778,7 +779,7 @@ MapEngine::initializeLayers()
             }
             else if ( !sourceProfile.valid() )
             {
-                osg::notify(osg::WARN) << "[osgEarth] Removing invalid TileSource " << i->get()->getName() << std::endl;
+                osg::notify(osg::WARN) << "[osgEarth::MapEngine] Removing invalid TileSource " << i->get()->getName() << std::endl;
                 i = heightfield_sources.erase(i);
                 continue;
             }
@@ -788,7 +789,8 @@ MapEngine::initializeLayers()
         {
             std::string prof_str = i->get()->getProfile()? i->get()->getProfile()->toString() : "none";
             osg::notify(osg::INFO)
-                << "Tile source \"" << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
+                << "[osgEarth::MapEngine] Tile source \""
+                << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
         }
 
         i++;
@@ -858,7 +860,7 @@ MapEngine::createTileSource(const osgEarth::SourceConfig& sourceConfig)
         const Profile* profile = tileSource->initProfile( getProfile(), getMapConfig().getFilename() );
         if (!profile)
         {
-            osg::notify(osg::NOTICE) << "Could not initialize profile " << std::endl;
+            osg::notify(osg::NOTICE) << "[osgEarth::MapEngine] Could not initialize profile " << std::endl;
             tileSource = NULL;
         }
     }
@@ -940,7 +942,7 @@ MapEngine::initialize()
             }
             else
             {
-                osg::notify(osg::NOTICE) << "Couldn't get tile for " << keys[i]->str() << std::endl;
+                osg::notify(osg::NOTICE) << "[osgEarth::MapEngine] Couldn't get tile for " << keys[i]->str() << std::endl;
             }
         }
         if ( numAdded == keys.size() )

@@ -611,7 +611,6 @@ public:
             profile = mapProfile;
         }
 
-
         if ( !profile && src_srs->isGeographic() )
         {
             profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
@@ -679,10 +678,19 @@ public:
             }
         }
 
-        osg::notify(osg::INFO) << "Max Data Level=" << _maxDataLevel << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::GDAL] Max Data Level: " << _maxDataLevel << std::endl;
 
+        // record the data extent in profile space:
+        GeoExtent local_extent(
+            SpatialReference::create( _warpedDS->GetProjectionRef() ),
+            _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
+        GeoExtent profile_extent = local_extent.transform( profile->getSRS() );
+        setDataExtent( profile_extent );
+        
+        osg::notify(osg::INFO) << "[osgEarth::GDAL] Data Extents: " << profile_extent.toString() << std::endl;
 
-
+        // record the maximum resolution in profile space:
+        setMaxDataLevel( _maxDataLevel );
 
         return profile;
     }

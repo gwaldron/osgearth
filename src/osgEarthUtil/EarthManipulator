@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_EARTHMANIPULATOR
+#define OSGEARTHUTIL_EARTHMANIPULATOR
+
+#include <osgEarthUtil/Common>
+#include <osgGA/MatrixManipulator>
+
+namespace osgEarthUtil
+{
+    class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::MatrixManipulator
+    {
+    public:
+        EarthManipulator();
+
+    public: // osgGA::MatrixManipulator
+
+        virtual const char* className() const { return "EarthManipulator"; }
+        
+        /** set the position of the matrix manipulator using a 4x4 Matrix.*/
+        virtual void setByMatrix(const osg::Matrixd& matrix);
+
+        /** set the position of the matrix manipulator using a 4x4 Matrix.*/
+        virtual void setByInverseMatrix(const osg::Matrixd& matrix) { setByMatrix(osg::Matrixd::inverse(matrix)); }
+
+        /** get the position of the manipulator as 4x4 Matrix.*/
+        virtual osg::Matrixd getMatrix() const;
+
+        /** get the position of the manipulator as a inverse matrix of the manipulator, typically used as a model view matrix.*/
+        virtual osg::Matrixd getInverseMatrix() const;
+
+        /** Get the FusionDistanceMode. Used by SceneView for setting up stereo convergence.*/
+        virtual osgUtil::SceneView::FusionDistanceMode getFusionDistanceMode() const { return osgUtil::SceneView::USE_FUSION_DISTANCE_VALUE; }
+
+        /** Get the FusionDistanceValue. Used by SceneView for setting up stereo convergence.*/
+        virtual float getFusionDistanceValue() const { return _distance; }
+
+        /** Attach a node to the manipulator. 
+            Automatically detaches previously attached node.
+            setNode(NULL) detaches previously nodes.
+            Is ignored by manipulators which do not require a reference model.*/
+        virtual void setNode(osg::Node*);
+
+        /** Return node if attached.*/
+        virtual const osg::Node* getNode() const;
+
+        /** Return node if attached.*/
+        virtual osg::Node* getNode();
+
+        /** Move the camera to the default position. 
+            May be ignored by manipulators if home functionality is not appropriate.*/
+        virtual void home(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
+        
+        /** Start/restart the manipulator.*/
+        virtual void init(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
+
+        /** handle events, return true if handled, false otherwise.*/
+        virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
+
+        /** Get the keyboard and mouse usage of this manipulator.*/
+        virtual void getUsage(osg::ApplicationUsage& usage) const;
+
+    protected:
+
+        virtual ~EarthManipulator();
+        
+        bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
+
+        /** Reset the internal osgGA::GUIEvent stack.*/
+        void flushMouseEventStack();
+
+        /** Add the current mouse osgGA::GUIEvent to internal stack.*/
+        void addMouseEvent(const osgGA::GUIEventAdapter& ea);
+
+        void computePosition(const osg::Vec3d& eye,const osg::Vec3d& lv,const osg::Vec3d& up);
+
+        /** For the give mouse movement calculate the movement of the camera.
+            Return true is camera has moved and a redraw is required.*/
+        bool calcMovement();
+
+        /** Check the speed at which the mouse is moving.
+            If speed is below a threshold then return false, otherwise return true.*/
+        bool isMouseMoving();
+
+        void clampOrientation();
+
+    private:
+        // Internal event stack comprising last two mouse events.
+        osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
+        osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
+        osg::ref_ptr<osg::Node> _node;
+        bool                    _thrown;        
+        osg::Vec3d              _center;
+        osg::Quat               _rotation;
+        double                  _distance;
+        osg::Vec3d              _previousUp;
+    };
+}
+
+#endif // OSGEARTHUTIL_EARTHMANIPULATOR

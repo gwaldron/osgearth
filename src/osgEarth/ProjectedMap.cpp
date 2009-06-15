@@ -104,7 +104,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
     // If we couldn't create any imagery of heightfields, bail out
     if (!hf.valid() && (numValidImages == 0))
     {
-        osg::notify(osg::INFO) << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         return NULL;
     }
    
@@ -143,7 +143,7 @@ ProjectedMap::createQuadrant( const TileKey* key )
             hf = createHeightField( key, true );
             if (!hf.valid())
             {
-                osg::notify(osg::WARN) << "Could not get valid heightfield for TileKey " << key->str() << std::endl;
+                osg::notify(osg::WARN) << "[osgEarth::ProjectedMap] Could not get valid heightfield for TileKey " << key->str() << std::endl;
                 return NULL;
             }
             else
@@ -279,6 +279,6 @@ ProjectedMap::scaleHeightFieldToDegrees(osg::HeightField *hf)
     }
     else
     {
-        osg::notify(osg::WARN) << "scaleHeightFieldToDegrees heightfield is NULL" << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth::ProjectedMap] scaleHeightFieldToDegrees heightfield is NULL" << std::endl;
     }
 }

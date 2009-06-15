@@ -47,7 +47,7 @@ namespace osgEarth
                 {
                     if (!_foutOpened)
                     {
-                        osg::notify(osg::INFO)<<"Writing to cache: "<<_cacheFileName<<std::endl;
+                        osg::notify(osg::INFO)<<"[osgEarth::HTTPClient] Writing to cache: "<<_cacheFileName<<std::endl;
                         _fout.open(_cacheFileName.c_str(), std::ios::out | std::ios::binary);
                         _foutOpened = true;
                     }
@@ -191,13 +191,13 @@ HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
             if( opt.substr( 0, index ) == "OSG_CURL_PROXY" )
             {
                 setProxyHost( opt.substr( index+1 ) );
-                osg::notify(osg::INFO) << "[osgEarth] HTTPClient: set proxy host = " << proxy_host << std::endl;
+                osg::notify(osg::INFO) << "[osgEarth::HTTPClient] set proxy host = " << proxy_host << std::endl;
             }
             else if ( opt.substr( 0, index ) == "OSG_CURL_PROXYPORT" )
             {
                 setProxyPort( opt.substr( index+1 ) );
                 //setProxyPort( (unsigned short)::atoi( opt.substr( index+1 ).c_str() ) );
-                osg::notify(osg::INFO) << "[osgEarth] HTTPClient: set proxy port = " << proxy_port << std::endl;
+                osg::notify(osg::INFO) << "[osgEarth::HTTPClient] set proxy port = " << proxy_port << std::endl;
             }
         }
     }
@@ -264,7 +264,7 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
     if ( line != bstr )
     {
         osg::notify(osg::WARN)
-            << "HTTPClient.decodeMultipartStream: protocol violation; "
+            << "[osgEarth::HTTPClient] HTTPClient.decodeMultipartStream: protocol violation; "
             << "expecting boundary; instead got: \"" 
             << line
             << "\"" << std::endl;
@@ -354,11 +354,11 @@ HTTPClient::get( HTTPRequest* request ) const
         buf << proxy_host << ":" << proxy_port;
         proxy_addr = buf.str();
     
-        osg::notify(osg::INFO) << "osgEarth.HTTPClient: setting proxy: " << proxy_addr << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
         curl_easy_setopt( curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 
-    osg::notify(osg::INFO) << "[osgEarth.HTTPClient] GET " << request->getURL() << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::HTTPClient] GET " << request->getURL() << std::endl;
 
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->stream, std::string() );
@@ -385,7 +385,7 @@ HTTPClient::get( HTTPRequest* request ) const
         curl_easy_getinfo( curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
         if ( content_type_cp == NULL )
         {
-            osg::notify(osg::NOTICE) << "[HTTPClient] NULL Content-Type (protocol violation)" << std::endl;
+            osg::notify(osg::NOTICE) << "[osgEarth::HTTPClient] NULL Content-Type (protocol violation)" << std::endl;
             return NULL;
         }
 
@@ -453,7 +453,7 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
     }
     else
     {
-      osg::notify(osg::WARN) << "[osgEarth.HTTPClient] Error downloading file " << filename << std::endl;
-      return false;
+        osg::notify(osg::WARN) << "[osgEarth::HTTPClient] Error downloading file " << filename << std::endl;
+        return false;
     } 
 }

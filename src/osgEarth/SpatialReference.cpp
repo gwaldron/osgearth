@@ -29,7 +29,22 @@
 using namespace osgEarth;
 
 
-#define WKT_
+static std::string
+getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
+{
+    GDAL_SCOPED_LOCK;
+	const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
+    if ( val )
+    {
+        std::string t = val;
+        if ( lowercase )
+        {
+            std::transform( t.begin(), t.end(), t.begin(), ::tolower );
+        }
+        return t;
+    }
+    return "";
+}
 
 
 SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
@@ -37,6 +52,7 @@ SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCa
     static SpatialReferenceCache s_cache;
     return s_cache;
 }
+
 
 SpatialReference*
 SpatialReference::createFromPROJ4( const std::string& init, const std::string& init_alias, const std::string& name )
@@ -50,7 +66,7 @@ SpatialReference::createFromPROJ4( const std::string& init, const std::string& i
 	}
 	else 
 	{
-		osg::notify(osg::WARN) << "Unable to create spatial reference from PROJ4: " << init << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth::SRS] Unable to create spatial reference from PROJ4: " << init << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result;
@@ -70,7 +86,7 @@ SpatialReference::createCube(unsigned int face)
 	}
 	else 
 	{
-		osg::notify(osg::WARN) << "Unable to create spatial reference from PROJ4: " << init << std::endl;
+		osg::notify(osg::WARN) << "[osgEarth::SRS] Unable to create spatial reference from PROJ4: " << init << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result;
@@ -79,7 +95,7 @@ SpatialReference::createCube(unsigned int face)
 SpatialReference*
 SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
 {
-    SpatialReference* result = NULL;
+    osg::ref_ptr<SpatialReference> result;
     GDAL_SCOPED_LOCK;
 	void* handle = OSRNewSpatialReference( NULL );
     char buf[4096];
@@ -88,13 +104,14 @@ SpatialReference::createFromWKT( const std::string& init, const std::string& ini
 	if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
 	{
         result = new SpatialReference( handle, "WKT", init_alias, name );
+        result = result->validate();
 	}
 	else 
 	{
-		osg::notify(osg::WARN) << "Unable to create spatial reference from WKT: " << init << std::endl;
+		osg::notify(osg::WARN) << "[osgEarth::SRS] Unable to create spatial reference from WKT: " << init << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
-    return result;
+    return result.release();
 }
 
 SpatialReference*
@@ -170,6 +187,67 @@ SpatialReference::create( const std::string& init )
     return srs.get();
 }
 
+
+static std::string&
+replaceIn( std::string& s, const std::string& sub, const std::string& other)
+{
+    if ( sub.empty() ) return s;
+    size_t b=0;
+    for( ; ; )
+    {
+        b = s.find( sub, b );
+        if ( b == s.npos ) break;
+        s.replace( b, sub.size(), other );
+        b += other.size();
+    }
+    return s;
+}
+
+
+SpatialReference*
+SpatialReference::validate()
+{
+    std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0 );
+
+    // fix invalid ESRI LCC projections:
+    if ( proj == "Lambert_Conformal_Conic" )
+    {
+        bool has_2_sps =
+            !getOGRAttrValue( _handle, "Standard_Parallel_2", 0 ).empty() ||
+            !getOGRAttrValue( _handle, "standard_parallel_2", 0 ).empty();
+
+        std::string new_wkt = getWKT();
+        if ( has_2_sps )
+            replaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_2SP" );
+        else
+            replaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_1SP" );
+
+        osg::notify(osg::NOTICE) << "[osgEarth] Morphing Lambert_Conformal_Conic to 1SP/2SP" << std::endl;
+        
+        return createFromWKT( new_wkt, _init_str, _name );
+    }
+
+    // fixes for ESRI Plate_Carree and Equidistant_Cylindrical projections:
+    else if ( proj == "Plate_Carree" )
+    {
+        std::string new_wkt = getWKT();
+        replaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
+        osg::notify(osg::NOTICE) << "[osgEarth::SRS] Morphing Plate_Carree to Equirectangular" << std::endl;
+        return createFromWKT( new_wkt, _init_str, _name ); //, input->getReferenceFrame() );
+    }
+    else if ( proj == "Equidistant_Cylindrical" )
+    {
+        std::string new_wkt = getWKT();
+        osg::notify(osg::NOTICE) << "[osgEarth::SRS] Morphing Equidistant_Cylindrical to Equirectangular" << std::endl;
+        replaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
+        return createFromWKT( new_wkt, _init_str, _name );
+    }
+
+    // no changes.
+    return this;
+}
+
+
 /****************************************************************************/
 
 
@@ -185,6 +263,7 @@ _name( name ),
 _initialized( false )
 {
     //TODO
+    setThreadSafeReferenceCounting(true);
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
 }
@@ -445,7 +524,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     if ( !xform_handle )
     {
         osg::notify( osg::WARN )
-            << "[osgEarth::SpatialReference] SRS xform not possible" << std::endl
+            << "[osgEarth::SRS] SRS xform not possible" << std::endl
             << "    From => " << getName() << std::endl
             << "    To   => " << out_srs->getName() << std::endl;
         return false;
@@ -466,7 +545,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     }
     else
     {
-        osg::notify( osg::WARN ) << "[osgEarth::SpatialReference] Failed to xform a point from "
+        osg::notify( osg::WARN ) << "[osgEarth::SRS] Failed to xform a point from "
             << getName() << " to " << out_srs->getName()
             << std::endl;
         result = false;
@@ -494,7 +573,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        osg::notify(osg::DEBUG_INFO) << "[osgEarth::SpatialReference] using cached transform handle" << std::endl;
+        osg::notify(osg::DEBUG_INFO) << "[osgEarth::SRS] using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
@@ -506,7 +585,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     if ( !xform_handle )
     {
         osg::notify( osg::WARN )
-            << "[osgEarth::SpatialReference] SRS xform not possible" << std::endl
+            << "[osgEarth::SRS] SRS xform not possible" << std::endl
             << "    From => " << getName() << std::endl
             << "    To   => " << out_srs->getName() << std::endl;
         return false;
@@ -526,7 +605,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     }
     else
     {
-        osg::notify( osg::WARN ) << "[osgEarth::SpatialReference] Failed to xform a point from "
+        osg::notify( osg::WARN ) << "[osgEarth::SRS] Failed to xform a point from "
             << getName() << " to " << out_srs->getName()
             << std::endl;
     }
@@ -552,23 +631,6 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
         in_out_ymax = y[1];
     }
     return ok;
-}
-
-static std::string
-getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
-{
-    GDAL_SCOPED_LOCK;
-	const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
-    if ( val )
-    {
-        std::string t = val;
-        if ( lowercase )
-        {
-            std::transform( t.begin(), t.end(), t.begin(), ::tolower );
-        }
-        return t;
-    }
-    return "";
 }
 
 void

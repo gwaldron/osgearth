@@ -52,12 +52,6 @@ namespace osgEarth
         TileSource( const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
-         * The Map calls this method ONCE so that the TileSource can
-         * initialize its profile.
-         */
-        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath ) =0;
-
-        /**
          * Creates an image for the given TileKey
          */
         virtual osg::Image* createImage( const TileKey* key ) = 0;
@@ -121,6 +115,26 @@ namespace osgEarth
         void  setNoDataMaxValue(float noDataMaxValue);     
 
         /**
+         * Whether or not the key is valid for the TileSource
+         */
+        virtual bool isKeyValid(const TileKey* key);
+
+        /**
+         * Gets the extent of available data accessible through this tile source.
+         * While the Profile will return extents corresponding to the SRS, this
+         * method will reflect the area containing real source data.
+         */
+        const GeoExtent& getDataExtent() const;
+
+        /**
+         * Gets the maximum level of detail available from the tile source. Unlike 
+         * getMaxLevel(), which reports the maximum level at which to use this tile 
+         * source in a Map, this method reports the maximum level for which the 
+         * tile source is able to return data.
+         */
+        unsigned int getMaxDataLevel() const;
+
+        /**
          * Gets the preferred extension for this TileSource
          */
         virtual std::string getExtension() const {return "";}
@@ -131,15 +145,23 @@ namespace osgEarth
         virtual const char* className() const { return "TileSource"; }
         virtual const char* libraryName() const { return "osgEarth"; }
 
-        /**
-         * Whether or not the key is valid for the TileSource
-         */
-        virtual bool isKeyValid(const TileKey* key);
     
     protected:
         virtual ~TileSource();
+
+        /**
+         * The Map calls this method ONCE so that the TileSource can
+         * initialize its profile.
+         */
+        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath ) =0;
         
         const osgDB::ReaderWriter::Options* getOptions() const;
+
+        // Called by a tile source implementation to set the data extent.
+        void setDataExtent( const GeoExtent& extent );
+
+        // Called by a tile source implementation to set the maximum data level
+        void setMaxDataLevel( unsigned int max_level );
 
     private:
         unsigned int _minLevel;
@@ -156,12 +178,16 @@ namespace osgEarth
 
         friend class MapEngine;
         friend class CachedTileSource;
+        friend class MemCachedTileSource;
         friend class DirectReadTileSource;
         friend class TileSourceFactory;
 
         float _noDataValue;
         float _noDataMinValue;
         float _noDataMaxValue;
+
+        GeoExtent    _data_extent;
+        unsigned int _max_data_level;
     };
 
     

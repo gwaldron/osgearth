@@ -176,7 +176,7 @@ ElevationManager::createHeightField(const osgEarth::TileKey *key, unsigned int c
     }
    
 
-    osg::notify(osg::INFO) << "getHeightField found " << heightFields.size() << " tiles" << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::ElevationManager] getHeightField found " << heightFields.size() << " tiles" << std::endl;
 
     osg::HeightField *hf = NULL;
 

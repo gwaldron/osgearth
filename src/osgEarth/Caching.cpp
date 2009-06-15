@@ -73,7 +73,7 @@ CachedTileSource::createImage( const TileKey* key )
     osg::Image *image = getCachedImage( key);
     if (image)
     {
-        osg::notify(osg::INFO) << "Read cached image " << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::Cache] Read cached image " << std::endl;
         return image;
     }
 
@@ -98,7 +98,7 @@ CachedTileSource::createHeightField( const TileKey* key )
     osg::ref_ptr<osg::Image> image = getCachedImage( key );
     if (image.valid())
     {
-        osg::notify(osg::INFO) << "Read cached heightfield " << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::Cache] Read cached heightfield " << std::endl;
         ImageToHeightFieldConverter conv;
         hf = conv.convert(image.get());
     }
@@ -193,7 +193,7 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))
     {
-        osg::notify(osg::WARN) << "Couldn't create path " << path << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth::Cache] Couldn't create path " << path << std::endl;
     }
 
     std::string ext = osgDB::getFileExtension(filename);
@@ -244,7 +244,7 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
     bool writingJpeg = (ext == "jpg" || ext == "jpeg");
     if ((image->getPixelFormat() != GL_RGB) && writingJpeg)
     {
-        osg::notify(osg::NOTICE) << "Warning:  Cannot write non RGB image to JPEG" << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::Cache] Warning: Cannot write non RGB image to JPEG" << std::endl;
     }
     else
     {
@@ -400,7 +400,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
 
         if ((!getProp(properties, "path", path)) || (path.empty()))
         {
-            osg::notify(osg::NOTICE) << "No path specified for " << type << " cache " << std::endl;
+            osg::notify(osg::NOTICE) << "[osgEarth::Cache] No path specified for " << type << " cache " << std::endl;
             return 0;
         }
 
@@ -415,16 +415,16 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
             getProp(properties, "tms_type", tms_type);
             if (tms_type == "google")
             {
-                osg::notify(osg::INFO) << "Inverting Y in TMS cache " << std::endl;
+                osg::notify(osg::INFO) << "[osgEarth::Cache] Inverting Y in TMS cache " << std::endl;
                 tms_cache->setInvertY(true);
             }
-            osg::notify(osg::INFO) << "Returning TMS cache " << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth::Cache] Returning TMS cache " << std::endl;
             cache = tms_cache;
         }
 
         if (type == CacheConfig::TYPE_TILECACHE ) //"tilecache")
         {
-            osg::notify(osg::INFO) << "Returning disk cache " << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth::Cache] Returning disk cache " << std::endl;
             cache = new DiskCachedTileSource(tileSource, path, format, options);
         }
 
@@ -449,7 +449,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
     }
     else
     {
-        osg::notify(osg::NOTICE) << "Unknown cache type " << type << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth::Cache] Unknown cache type " << type << std::endl;
     }
     return 0;
 }

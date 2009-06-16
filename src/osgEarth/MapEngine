@@ -254,9 +254,6 @@ namespace osgEarth
         LayerList _layers;
         OpenThreads::ReadWriteMutex _layersMutex;
 
-        osg::ref_ptr<osg::StateSet> uniformStateSet;
-        //osg::ref_ptr<osg::CoordinateSystemNode> csn;
-
         static OpenThreads::ReentrantMutex s_mapEngineCacheMutex;
         friend class Map;
     };

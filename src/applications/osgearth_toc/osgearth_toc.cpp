@@ -112,7 +112,7 @@ _layerIndex(layerIndex)
 virtual bool operator()(osgWidget::Event& ev) {
     if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
     {
-        _fadeLayerNode->setEnabled(_layerIndex, _fadeLayerNode->getEnabled(_layerIndex));
+        _fadeLayerNode->setEnabled(_layerIndex, !_fadeLayerNode->getEnabled(_layerIndex));
     }
     return true;
 }
@@ -357,8 +357,8 @@ void updateText()
         std::stringstream ss;
         unsigned int index = (_map->getNumLayers() - _layerIndex);
         ss << index << ") ";
-        //_lblNum->setLabel(ss.str());
-        //_lblName->setLabel( layer->getTileSource()->getName() );
+        _lblNum->setLabel(ss.str());
+        _lblName->setLabel( layer->getName());
     }
 }
 

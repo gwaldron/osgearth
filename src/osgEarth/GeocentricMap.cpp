@@ -82,7 +82,6 @@ GeocentricMap::createQuadrant( const TileKey* key )
         for (unsigned int i = 0; i < imageLayers.size(); ++i)
         {
             GeoImage* image = NULL;
-            //osg::Image *image = 0;
             if (imageLayers[i]->getTileSource()->isKeyValid( key ) )
             {
                 image = createGeoImage( key, imageLayers[i]->getTileSource() );                

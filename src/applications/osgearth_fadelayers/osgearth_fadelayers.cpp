@@ -38,6 +38,7 @@
 
 #include <osgText/Text>
 
+#include <osgEarth/FindNode>
 #include <osgEarth/Map>
 #include <osgEarthUtil/FadeLayerNode>
 
@@ -47,44 +48,6 @@ using namespace osg;
 using namespace osgDB;
 using namespace osgEarth;
 using namespace osgEarthUtil;
-
-
-
-template<class T>
-class FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
-{
-public:
-    FindTopMostNodeOfTypeVisitor():
-        osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-        _foundNode(0)
-    {}
-    
-    void apply(osg::Node& node)
-    {
-        T* result = dynamic_cast<T*>(&node);
-        if (result)
-        {
-            _foundNode = result;
-        }
-        else
-        {
-            traverse(node);
-        }
-    }
-    
-    T* _foundNode;
-};
-
-template<class T>
-T* findTopMostNodeOfType(osg::Node* node)
-{
-    if (!node) return 0;
-
-    FindTopMostNodeOfTypeVisitor<T> fnotv;
-    node->accept(fnotv);
-    
-    return fnotv._foundNode;
-}
 
 
 
@@ -189,13 +152,10 @@ int main(int argc, char** argv)
 
   osg::Group* group = new osg::Group;
 
-  FadeLayerNode *fadeLayerNode = new FadeLayerNode;
-  group->addChild(fadeLayerNode);
-
   osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
   if (loadedModel.valid())
   {
-    fadeLayerNode->addChild(loadedModel.get());
+    group->addChild(loadedModel.get());
   }
   else
   {
@@ -217,13 +177,17 @@ int main(int argc, char** argv)
           props["dataset"] = "roads";
           map->addLayer(new ImageLayer(map->createTileSource( SourceConfig("yahoo_roads", "yahoo", props) ) ) );
       }
-      fadeLayerNode->addChild(map.get());
+      group->addChild(map.get());
   }
 
   //Find the map
   Map* map = findTopMostNodeOfType<Map>(group);
+
+  Node* root = group;
   if (map)
   {
+      FadeLayerNode* fadeLayerNode = new FadeLayerNode(map);
+
       //Set the up elevation fade points
       FadeLayerCallback::Elevations elevations;
       double maxElevation = 4e6;
@@ -244,14 +208,19 @@ int main(int argc, char** argv)
       FadeLayerCallback* callback = new FadeLayerCallback(map, fadeLayerNode, elevations);
       fadeLayerNode->setUpdateCallback(callback);
       fadeLayerNode->setCullCallback(callback);
+
+      root = fadeLayerNode;
+
+      fadeLayerNode->addChild(group);
   }
   else
   {
       osg::notify(osg::NOTICE) << "Please load an osgEarth file" << std::endl;
+      return 1;
   }
 
   // set the scene to render
-  viewer.setSceneData(group);
+  viewer.setSceneData(root);
 
   // run the viewers frame loop
   return viewer.run();

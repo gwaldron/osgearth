@@ -46,6 +46,28 @@ namespace osgEarth
          */
         bool isOK() const;
 
+
+        /**
+         *Callback used to notify listeners of layer changes
+        */
+        struct LayerCallback : public osg::Referenced
+        {
+        public:
+            virtual void layerAdded(Layer* layer) {}
+            virtual void layerRemoved(Layer* layer) {}
+            virtual void layerMoved(Layer* layer, unsigned int prevIndex, unsigned int newIndex) {}
+        };
+
+        /**
+         *Gets the LayerCallback of this Map
+        */
+        LayerCallback* getLayerCallback() const {return _layerCallback.get();}
+
+        /**
+         *Sets the LayerCallback of this Map
+        */
+        void setLayerCallback(LayerCallback* layerCallback) { _layerCallback = layerCallback;}
+
         /**
          * Adds the given layer to the end of the Layer list
          */
@@ -70,6 +92,11 @@ namespace osgEarth
          * Gets the Layer at the given position in this Map.
          */
         Layer* getLayer( unsigned int i ) const;
+
+        /**
+         * Gets the index of the given layer.  -1 is returned if the layer is not in the list          
+         */
+        int getLayerIndex( Layer* layer) const;
 
         /**
          * Get a list of all ImageLayers in this Map.  The ImageLayers will be returned in
@@ -108,6 +135,8 @@ namespace osgEarth
         osg::ref_ptr<MapEngine> _engine;
 
         void updateStateSet();
+
+        osg::ref_ptr<LayerCallback> _layerCallback;
     };
 }
 

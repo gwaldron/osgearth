@@ -1057,6 +1057,21 @@ MapEngine::getLayer( unsigned int i ) const
     return i < _layers.size() ? _layers[i].get() : 0;
 }
 
+int
+MapEngine::getLayerIndex( osgEarth::Layer * layer) const
+{
+    int index = -1;
+    for (unsigned int i = 0; i < _layers.size(); ++i)
+    {
+        if (_layers[i] == layer)
+        {
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
 unsigned int
 MapEngine::getNumLayers() const
 {

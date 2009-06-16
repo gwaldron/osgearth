@@ -18,6 +18,7 @@
  */
 
 #include <osgEarthUtil/FadeLayerNode>
+#include <osgEarth/FindNode>
 
 #include <osg/Program>
 
@@ -27,6 +28,7 @@
 #include <list>
 
 
+using namespace osgEarth;
 using namespace osgEarthUtil;
 
 
@@ -203,13 +205,29 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "}\n"
                     "\n";
 
-FadeLayerNode::FadeLayerNode()
+FadeLayerNode::FadeLayerNode(Map* map):
+_map(map)
 {
     osg::Program* program = new osg::Program;
     program->addShader(new osg::Shader( osg::Shader::VERTEX, vert_source ) );
     program->addShader(new osg::Shader( osg::Shader::FRAGMENT, frag_source ) );
     getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+
+    if (_map.valid())
+    {
+        _callback = new Callback(this);
+        _map->setLayerCallback(_callback);
+
+        ImageLayerList imageLayers;
+        _map->getImageLayers(imageLayers);
+        for (unsigned int i = 0; i < imageLayers.size(); ++i)
+        {
+            setOpacity(i, 1.0f);
+            setEnabled(i, true);
+            _imageLayers.push_back(imageLayers[i]);
+        }
+    }
 }
 
 
@@ -386,4 +404,88 @@ void FadeLayerNode::traverse(osg::NodeVisitor& nv)
         }
     }
     osg::Group::traverse(nv);
+}
+
+void FadeLayerNode::layerAdded(Layer* layer)
+{
+    osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerAdded]" << std::endl;
+    //We only care about image layers
+    osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(layer);
+    if (imageLayer)
+    {
+        _imageLayers.push_back(imageLayer);
+        setOpacity(_imageLayers.size()-1, 1.0f);
+        setEnabled(_imageLayers.size()-1, true);
+    }
+}
+
+void FadeLayerNode::layerRemoved(Layer* layer)
+{
+    osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
+
+    //We only care about image layers
+    osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(layer);
+    if (imageLayer)
+    {
+        //Get the relative index of the Layer that was removed
+        int index = std::find(_imageLayers.begin(), _imageLayers.end(), layer) - _imageLayers.begin();
+
+        //Erase the Layer that was just removed
+        _imageLayers.erase(_imageLayers.begin()+index);
+        
+        //Copy the settings, skipping, the one that was just removed
+        int layerIndex = 0;
+        for (unsigned int i = 0; i < _imageLayers.size(); ++i)
+        {
+            if (i == index) continue;
+            bool enabled = getEnabled(i);
+            float opacity = getOpacity(i);
+            setOpacity(layerIndex, opacity);
+            setEnabled(layerIndex, enabled);
+            layerIndex++;
+        }
+
+        //Resize the lists to account for the removal of the Layer
+        resizeLists(_imageLayers.size()-1);
+    }
+}
+
+void FadeLayerNode::layerMoved(Layer* layer, unsigned int prevIndex, unsigned int newIndex)
+{
+    osg::notify(osg::NOTICE) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
+
+    if (!_map.valid()) return;
+
+    //We only care about image layers
+    osgEarth::ImageLayer* imageLayer = dynamic_cast<osgEarth::ImageLayer*>(layer);
+    if (imageLayer)
+    {
+        //A layer was moved, so we need to swap the settings of the new index and the previous index
+        //Get the map layers
+        ImageLayerList mapLayers;
+        _map->getImageLayers( mapLayers );
+        
+        int newRelIndex = std::find(mapLayers.begin(), mapLayers.end(), layer) - mapLayers.begin();
+
+        //Find the previous relative index
+        int prevRelIndex = std::find(_imageLayers.begin(), _imageLayers.end(), layer) - _imageLayers.begin();
+
+        //Swap the settings
+        bool enabled = getEnabled(prevRelIndex);
+        float opacity = getOpacity(prevRelIndex);
+
+        _enabled.erase(_enabled.begin() + prevRelIndex);
+        _enabled.insert(_enabled.begin() + newRelIndex, enabled);
+
+        _opacity.erase(_opacity.begin() + prevRelIndex);
+        _opacity.insert(_opacity.begin() + newRelIndex, opacity);
+
+        osg::ref_ptr<ImageLayer> layerRef = imageLayer;
+        _imageLayers.erase(_imageLayers.begin() + prevRelIndex);
+        _imageLayers.insert(_imageLayers.begin() + newRelIndex, layerRef.get());
+
+        osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerMoved] ImageLayer moved from " << prevRelIndex << " to " << newRelIndex << std::endl;
+
+        updateStateSet();
+    }
 }

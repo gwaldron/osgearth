@@ -136,6 +136,11 @@ namespace osgEarth
         unsigned int getNumLayers() const;
 
         /**
+         * Gets the index of the given layer.  -1 is returned if the layer is not in the list          
+         */
+        int getLayerIndex( Layer* layer) const;
+
+        /**
          * Gets the Layer at the given position in this Map.
          */
         Layer* getLayer( unsigned int i ) const;

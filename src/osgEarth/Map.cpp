@@ -99,20 +99,26 @@ void
 Map::addLayer( Layer* layer )
 {
     _engine->addLayer( layer );
+    if (_layerCallback.valid()) _layerCallback->layerAdded(layer);
     updateStateSet();
 }
 
 void
 Map::removeLayer( Layer* layer )
 {
+    //Take a reference to the layer before removing it so we can use it in the callback
+    osg::ref_ptr<Layer> layerRef = layer;
     _engine->removeLayer( layer );
+    if (_layerCallback.valid()) _layerCallback->layerRemoved(layerRef.get());
     updateStateSet();
 }
 
 void
 Map::moveLayer( Layer* layer, int position )
 {
+    int prevIndex = getLayerIndex( layer );
     _engine->moveLayer( layer, position );
+    if (_layerCallback.valid()) _layerCallback->layerMoved( layer, prevIndex, position );
     updateStateSet();
 }
 
@@ -120,6 +126,12 @@ unsigned int
 Map::getNumLayers() const
 {
     return _engine->getNumLayers();
+}
+
+int
+Map::getLayerIndex( Layer* layer ) const
+{
+    return _engine->getLayerIndex( layer );
 }
 
 Layer*

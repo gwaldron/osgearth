@@ -21,14 +21,17 @@
 
 #include <osg/Group>
 
+#include <osgEarth/Map>
+
 #include <osgEarthUtil/Common>
+
 
 namespace osgEarthUtil
 {
     class OSGEARTHUTIL_EXPORT FadeLayerNode : public osg::Group
     {
     public:
-        FadeLayerNode();
+        FadeLayerNode(osgEarth::Map* map);
         float getOpacity(unsigned int layer) const;
         void setOpacity(unsigned int layer, float opacity);
 
@@ -38,7 +41,28 @@ namespace osgEarthUtil
         void removeLayer(unsigned int layer);
 
         virtual void traverse(osg::NodeVisitor& nv);
+
+        virtual void layerAdded(osgEarth::Layer* layer);
+        virtual void layerRemoved(osgEarth::Layer* layer);
+        virtual void layerMoved(osgEarth::Layer* layer, unsigned int prevIndex, unsigned int newIndex);
     protected:
+
+        friend struct Callback;
+
+        struct Callback : public osgEarth::Map::LayerCallback 
+        {
+        public:
+            Callback(FadeLayerNode* fadeLayerNode):
+              _fadeLayerNode(fadeLayerNode)
+            {
+            }
+
+            virtual void layerAdded(osgEarth::Layer* layer) { _fadeLayerNode->layerAdded(layer);}
+            virtual void layerRemoved(osgEarth::Layer* layer) { _fadeLayerNode->layerRemoved(layer);}
+            virtual void layerMoved(osgEarth::Layer* layer, unsigned int prevIndex, unsigned int newIndex) { _fadeLayerNode->layerMoved(layer, prevIndex, newIndex);}
+
+            osg::observer_ptr<FadeLayerNode> _fadeLayerNode;
+        };
 
         void resizeLists(unsigned int max);
 
@@ -49,6 +73,11 @@ namespace osgEarthUtil
         EnabledList _enabled;
 
         void updateStateSet();
+
+        osgEarth::ImageLayerList _imageLayers;
+        osg::ref_ptr<osgEarth::Map> _map;
+
+        osg::ref_ptr<Callback> _callback;
     };
 }
 

@@ -826,51 +826,6 @@ readMap( XmlElement* e_map, MapConfig& out_map )
         out_map.setCacheConfig( readCache( e_cache) );
     }
 
-    //If the OSGEARTH_CACHE_ONLY environment variable is set, override whateve is in the map config
-    if (getenv("OSGEARTH_CACHE_ONLY") != 0)
-    {
-        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Setting osgEarth to cache only mode due to OSGEARTH_CACHE_ONLY environment variable " << std::endl;
-        out_map.setCacheOnly(true);
-    }
-
-
-    //Inherit the map CacheConfig with the override from the registry
-    if ( Registry::instance()->getCacheConfigOverride().defined() )
-    {
-        //If the map doesn't have a CacheConfig, create a new one
-        //if ( out_map.getCacheConfig().empty() )
-        //    {out_map.setCacheConfig( new CacheConfig() );
-
-        CacheConfig conf = out_map.getCacheConfig();
-        conf.inheritFrom( Registry::instance()->getCacheConfigOverride() );
-        out_map.setCacheConfig( conf );
-
-        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Overriding Map Cache" << std::endl;
-    }
-
-    if ( out_map.getCacheConfig().defined() )
-    {
-        //Inherit the Source CacheConfig's with the map's
-        for (SourceConfigList::iterator itr = out_map.getImageSources().begin(); itr != out_map.getImageSources().end(); ++itr)
-        {
-            CacheConfig conf = itr->getCacheConfig();
-            conf.inheritFrom( out_map.getCacheConfig() );
-            itr->setCacheConfig( conf );
-            //if (!itr->getCacheConfig()) itr->setCacheConfig( new CacheConfig() );
-            //itr->getCacheConfig().inheritFrom( out_map.getCacheConfig() );
-        }
-
-        //Inherit the Source CacheConfig's with the map's
-        for (SourceConfigList::iterator itr = out_map.getHeightFieldSources().begin(); itr != out_map.getHeightFieldSources().end(); ++itr)
-        {
-            CacheConfig conf = itr->getCacheConfig();
-            conf.inheritFrom( out_map.getCacheConfig() );
-            itr->setCacheConfig( conf );
-            //if (!itr->getCacheConfig()) itr->setCacheConfig( new CacheConfig() );
-            //itr->getCacheConfig().inheritFrom( out_map.getCacheConfig() );
-        }
-    }
-
     return success;
 }
 

@@ -54,9 +54,16 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
     bool foundValidSource = false;
     osg::ref_ptr<TileSource> tile_source;
 
-    //Only load the source if we are not running offline
-//    if ( !mapConfig || !mapConfig.getCacheOnly() )
-    if ( !mapConfig.getCacheOnly() )
+    bool cacheOnlyEnv = false;
+    //If the OSGEARTH_CACHE_ONLY environment variable is set, override whateve is in the map config
+    if (getenv("OSGEARTH_CACHE_ONLY") != 0)
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Setting osgEarth to cache only mode due to OSGEARTH_CACHE_ONLY environment variable " << std::endl;
+        cacheOnlyEnv = true;
+    }
+
+     //Only load the source if we are not running offline
+    if ( !mapConfig.getCacheOnly() && !cacheOnlyEnv )
     {
         //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
         //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
@@ -72,13 +79,25 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
     if (tile_source.valid())
     {           
         //Initialize the source and set its name
-        //tile_source->init(local_options.get());
         tile_source->setName( sourceConfig.getName() );
         osg::notify(osg::INFO) << "Loaded " << sourceConfig.getDriver() << " TileSource" << std::endl;
     }
 
     //Configure the cache if necessary
-    const CacheConfig cacheConfig = sourceConfig.getCacheConfig();
+    CacheConfig cacheConfig = sourceConfig.getCacheConfig();
+
+    //Inherit from the MapConfig if it is defined
+    if (mapConfig.getCacheConfig().defined())
+    {
+        cacheConfig.inheritFrom(mapConfig.getCacheConfig());
+    }
+
+    //Inherit the map CacheConfig with the override from the registry
+    if ( Registry::instance()->getCacheConfigOverride().defined() )
+    {
+        cacheConfig.inheritFrom( Registry::instance()->getCacheConfigOverride() );
+        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Overriding Map Cache" << std::endl;
+    }
 
     osg::ref_ptr<TileSource> topSource = tile_source.get();
 
@@ -94,8 +113,7 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
         if (cache.valid())
         {
             cache->setName(sourceConfig.getName());
-            //if ( mapConfig )
-                cache->setMapConfigFilename( mapConfig.getFilename() );
+            cache->setMapConfigFilename( mapConfig.getFilename() );
             topSource = cache.get();
         }
     }
@@ -115,9 +133,6 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
         {
             override_profile = osgEarth::Registry::instance()->getNamedProfile( pconf.getNamedProfile() );
         }
-
-        //osg::ref_ptr<const Profile> override_profile =
-        //    osgEarth::Registry::instance()->getNamedProfile( sourceConfig.getProfileConfig.getSRS() );
 
         if ( !override_profile.valid() && !pconf.getSRS().empty() )
         {

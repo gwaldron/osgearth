@@ -42,6 +42,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/TileSourceFactory>
+#include <osgEarth/FindNode>
 
 #include <osgEarthUtil/FadeLayerNode>
 
@@ -75,42 +76,6 @@ float textSize = 25.0f;
 bool hudDirty = false;
 
 const unsigned int MASK_2D = 0xF0000000;
-
-template<class T>
-class FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
-{
-public:
-    FindTopMostNodeOfTypeVisitor():
-      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-          _foundNode(0)
-      {}
-
-      void apply(osg::Node& node)
-      {
-          T* result = dynamic_cast<T*>(&node);
-          if (result)
-          {
-              _foundNode = result;
-          }
-          else
-          {
-              traverse(node);
-          }
-      }
-
-      T* _foundNode;
-};
-
-template<class T>
-T* findTopMostNodeOfType(osg::Node* node)
-{
-    if (!node) return 0;
-
-    FindTopMostNodeOfTypeVisitor<T> fnotv;
-    node->accept(fnotv);
-
-    return fnotv._foundNode;
-}
 
 //Simple hot tracking callback that changes the color of labels when the mouse enters and leaves
 struct HotTrackingCallback: public osgWidget::Callback {

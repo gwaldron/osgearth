@@ -29,7 +29,6 @@ using namespace osgEarth;
 ObjectPlacer::ObjectPlacer( osg::Node* terrain, bool clamp ) :
 _clamp( clamp )
 {
-    // attempt to find a Map node in the terrain:
     _map = findTopMostNodeOfType<osgEarth::Map>( terrain );
     _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>( terrain );
 }
@@ -40,15 +39,18 @@ getHAT( osg::CoordinateSystemNode* csn, double x, double y, double z )
     osgSim::HeightAboveTerrain hat;
     hat.setLowestHeight( -10000 );
     int index = hat.addPoint( osg::Vec3d( x, y, z ) );
-    hat.computeIntersections( csn );
+    hat.computeIntersections( csn ); // input node must be a CSN
     return hat.getHeightAboveTerrain( index );
 }
 
 bool
 ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height, osg::Matrixd& out_result ) const
 {
-    if ( !_map.valid() )
+    if ( !_map.valid() || !_csn.valid() )
+    {
+        osg::notify( osg::WARN ) << "osgEarthUtil::ObjectPlacer: terrain is missing either a Map or CSN node" << std::endl;             
         return false;
+    }
 
     // see whether this is a geocentric model:
     bool is_geocentric = _csn.valid() && _csn->getEllipsoidModel() != NULL;
@@ -79,7 +81,6 @@ ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height,
             double gx, gy, gz; // geocentric/ecef
             srs->getEllipsoid()->convertLatLongHeightToXYZ( lat_rad, lon_rad, 0, gx, gy, gz );
             double z = getHAT( _csn.get(), gx, gy, gz );
-            srs->getEllipsoid()->convertLatLongHeightToXYZ( lat_rad, lon_rad, z + height, gx, gy, gz );
             srs->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight( lat_rad, lon_rad, z+height, out_result );
         }
         else

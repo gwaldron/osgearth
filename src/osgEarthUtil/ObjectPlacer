@@ -26,17 +26,61 @@
 
 namespace osgEarthUtil
 {
+    /**
+     * Convenience utilities for placing an object on an osgEarth terrain map
+     * using latitude/longitude coordinates.
+     */
     class OSGEARTHUTIL_EXPORT ObjectPlacer
     {
     public:
+        /**
+         * Constructs a new placer.
+         *
+         * @param terrain
+         *      The scene graph containing the osgEarth::Map node.
+         * @param clamp
+         *      Whether the class should attempt to calculate the placement 
+         *      position so that it sits exactly on the terrain skin.
+         *      Warning: this does not yet work properly for maps that don't
+         *      report a maximum resolution (like most of the commercial providers).
+         */
         ObjectPlacer( osg::Node* terrain, bool clamp =false );
 
+        /**
+         * Creates a double-precision matrix that will transform geometry to the
+         * specified map location. In a geocentric map, the matrix will also rotate
+         * into the tangent plane.
+         *
+         * @param lat_degrees, lon_degrees
+         *      Location on the map for which to generate a matrix
+         * @param height
+         *      Height above the terrain (in local units)
+         * @param out_result
+         *      Receives the resulting matrix; only valid if the method returns TRUE.
+         * @return
+         *      True if the method succesfully created the output matrix; false if not
+         *      (e.g., the input location was outside the extents of the terrain map).
+         */
         bool createPlacerMatrix(
             double lat_degrees,
             double lon_degrees,
             double height,
             osg::Matrixd& out_result ) const;
 
+        /**
+         * Creates a new node graph that positions the input node at a specified map
+         * location. The resulting node will contain the input node as a child.
+         *
+         * @param node
+         *      Node to position at the specified location
+         * @param lat_degrees, lon_degrees
+         *      Position on the map at which to place the node
+         * @param height
+         *      Height above the terrain (in local units)
+         * @return
+         *      A node graph representing the newly placed node. The input node will be
+         *      a child in the new graph. NULL if the placement failed for some reason.
+         */
         osg::Node* placeNode(
             osg::Node* node,
             double lat_degrees,
@@ -44,7 +88,6 @@ namespace osgEarthUtil
             double height ) const;
 
     private:
-        //osg::ref_ptr<osg::Node> _terrain;
         osg::ref_ptr<osgEarth::Map> _map;
         osg::ref_ptr<osg::CoordinateSystemNode> _csn;
         bool _clamp;

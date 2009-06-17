@@ -16,33 +16,39 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#ifndef OSGEARTHUTIL_OBJECT_PLACER
+#define OSGEARTHUTIL_OBJECT_PLACER
 
-#ifndef OSGEARTHUTIL_COMMON_H
-#define OSGEARTHUTIL_COMMON_H 1
+#include <osgEarthUtil/Common>
+#include <osgEarth/Map>
+#include <osg/Node>
+#include <osg/Matrix>
 
-#include <osgEarthUtil/Export>
-#include <osg/NodeVisitor>
-
-// common utilities
 namespace osgEarthUtil
 {
-    template<class T> struct FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
+    class OSGEARTHUTIL_EXPORT ObjectPlacer
     {
-        FindTopMostNodeOfTypeVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _foundNode(0) {}
-        void apply(osg::Node& node) {
-              _foundNode = dynamic_cast<T*>( &node );
-              if ( !_foundNode )
-                  traverse( node );
-          }
-          T* _foundNode;
-    };
+    public:
+        ObjectPlacer( osg::Node* terrain, bool clamp =false );
 
-    template<class T> T* findTopMostNodeOfType( osg::Node* node ) {
-        if (!node) return 0;
-        FindTopMostNodeOfTypeVisitor<T> fnotv;
-        node->accept( fnotv );
-        return fnotv._foundNode;
-    }
+        bool createPlacerMatrix(
+            double lat_degrees,
+            double lon_degrees,
+            double height,
+            osg::Matrixd& out_result ) const;
+
+        osg::Node* placeNode(
+            osg::Node* node,
+            double lat_degrees,
+            double lon_degrees,
+            double height ) const;
+
+    private:
+        //osg::ref_ptr<osg::Node> _terrain;
+        osg::ref_ptr<osgEarth::Map> _map;
+        osg::ref_ptr<osg::CoordinateSystemNode> _csn;
+        bool _clamp;
+    };
 }
 
-#endif // OSGEARTHUTIL_COMMON_H
+#endif // OSGEARTHUTIL_OBJECT_PLACER

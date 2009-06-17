@@ -12,12 +12,14 @@ SET(LIB_PUBLIC_HEADERS
     EarthManipulator
     Export
 	FadeLayerNode
+	ObjectPlacer
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     EarthManipulator.cpp
 	FadeLayerNode.cpp
+	ObjectPlacer.cpp
 )
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})

@@ -23,16 +23,116 @@
 
 using namespace osgEarthUtil;
 
-EarthManipulator::EarthManipulator()
+
+EarthManipulator::Settings::Settings() :
+_throwing( false ),
+_single_axis_rotation( false ),
+_force_north_up( false ),
+_mouse_sens( 1.0 ),
+_keyboard_sens( 1.0 ),
+_scroll_sens( 1.0 ),
+_min_pitch( -90.0 ),
+_max_pitch( -10.0 )
 {
-    _distance = 1.0;
-    _thrown = false;
+}
+
+EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
+_bindings( rhs._bindings ),
+_throwing( rhs._throwing ),
+_single_axis_rotation( rhs._single_axis_rotation ),
+_force_north_up( rhs._force_north_up ),
+_mouse_sens( rhs._mouse_sens ),
+_keyboard_sens( rhs._keyboard_sens ),
+_scroll_sens( rhs._scroll_sens ),
+_min_pitch( rhs._min_pitch ),
+_max_pitch( rhs._max_pitch )
+{
+    //NOP
+}
+
+void
+EarthManipulator::Settings::bind(unsigned int event_type,
+                                 unsigned int input_mask,
+                                 unsigned int modkey_mask,
+                                 Action action)
+{
+    InputSpec spec( event_type, input_mask, modkey_mask );
+    _bindings.push_back( ActionBinding( spec, action ) );
+}
+
+EarthManipulator::Action
+EarthManipulator::Settings::getAction(unsigned int event_type,
+                                      unsigned int input_mask,
+                                      unsigned int modkey_mask) const
+{
+    InputSpec spec( event_type, input_mask, modkey_mask );
+    for( ActionBindings::const_iterator i = _bindings.begin(); i != _bindings.end(); i++ )
+        if ( i->first == spec )
+            return i->second;
+    return ACTION_NULL;
+}
+
+EarthManipulator::Direction
+EarthManipulator::Settings::getDirection( Action action ) const
+{
+    return
+        action == ACTION_PAN_LEFT || action == ACTION_ROTATE_LEFT? DIR_LEFT :
+        action == ACTION_PAN_RIGHT || action == ACTION_ROTATE_RIGHT? DIR_RIGHT :
+        action == ACTION_PAN_UP || action == ACTION_ROTATE_UP || action == ACTION_ZOOM_IN ? DIR_UP :
+        action == ACTION_PAN_DOWN || action == ACTION_ROTATE_DOWN || action == ACTION_ZOOM_OUT ? DIR_DOWN :
+        DIR_NA;
+}
+
+/************************************************************************/
+
+#define DISCRETE_DELTA 1.0
+
+
+EarthManipulator::EarthManipulator() :
+_distance( 1.0 ),
+_thrown( false ),
+_settings( new Settings() ),
+_task( new Task() ),
+_last_action( ACTION_NULL )
+{
+    // install default action bindings:
+
+    _settings->bind( osgGA::GUIEventAdapter::KEYDOWN, osgGA::GUIEventAdapter::KEY_Space, 0L, ACTION_HOME );
+
+    _settings->bind( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, 0L, ACTION_PAN );
+    _settings->bind( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, 0L, ACTION_ZOOM );
+    _settings->bind( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON, 0L, ACTION_ROTATE );
+    _settings->bind( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON | osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, 0L, ACTION_ROTATE );
+
+    _settings->bind( osgGA::GUIEventAdapter::SCROLL, osgGA::GUIEventAdapter::SCROLL_UP, 0L, ACTION_ZOOM_IN );
+    _settings->bind( osgGA::GUIEventAdapter::SCROLL, osgGA::GUIEventAdapter::SCROLL_DOWN, 0L, ACTION_ZOOM_OUT );
+    _settings->setScrollSensitivity( 1.5 );
+
+    _settings->bind( osgGA::GUIEventAdapter::KEYDOWN, osgGA::GUIEventAdapter::KEY_Left, 0L, ACTION_PAN_LEFT );
+    _settings->bind( osgGA::GUIEventAdapter::KEYDOWN, osgGA::GUIEventAdapter::KEY_Right, 0L, ACTION_PAN_RIGHT );
+    _settings->bind( osgGA::GUIEventAdapter::KEYDOWN, osgGA::GUIEventAdapter::KEY_Up, 0L, ACTION_PAN_UP );
+    _settings->bind( osgGA::GUIEventAdapter::KEYDOWN, osgGA::GUIEventAdapter::KEY_Down, 0L, ACTION_PAN_DOWN );
+
+    _settings->setThrowingEnabled( false );
 }
 
 
 EarthManipulator::~EarthManipulator()
 {
     //NOP
+}
+
+void
+EarthManipulator::applySettings( Settings* settings )
+{
+    if ( settings )
+    {
+        _settings = settings;
+
+        //TODO: make any immediate changes.
+        _task->_type = TASK_NONE;
+        flushMouseEventStack();
+    }
 }
 
 void EarthManipulator::setNode(osg::Node* node)
@@ -48,12 +148,6 @@ void EarthManipulator::setNode(osg::Node* node)
             0.00001f,1.0f);
     }
     if (getAutoComputeHomePosition()) computeHomePosition();
-}
-
-const osg::Node*
-EarthManipulator::getNode() const
-{
-    return _node.get();
 }
 
 osg::Node*
@@ -85,7 +179,9 @@ EarthManipulator::home(const osgGA::GUIEventAdapter& ,osgGA::GUIActionAdapter& u
 {
     if (getAutoComputeHomePosition()) computeHomePosition();
 
-    computePosition(_homeEye, _homeCenter, _homeUp);
+    setByLookAt(_homeEye, _homeCenter, _homeUp);
+    _local_pitch = osg::DegreesToRadians( -90.0 );
+    //_local_azim = 0.0;
     us.requestRedraw();
 }
 
@@ -101,98 +197,153 @@ EarthManipulator::getUsage(osg::ApplicationUsage& usage) const
 {
 }
 
+void
+EarthManipulator::resetMouse( osgGA::GUIActionAdapter& us )
+{
+    flushMouseEventStack();
+    us.requestContinuousUpdate( false );
+    _thrown = false;
+}
+
 bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& us)
 {
-    switch(ea.getEventType())
+    bool handled = false;
+
+    if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        case(osgGA::GUIEventAdapter::FRAME):
-            if (_thrown)
-            {
-                if (calcMovement()) us.requestRedraw();
-            }
-            return false;
-        default:
-            break;
+        if (_thrown)
+        {
+            if ( handleMouseAction( _last_action ) )
+                us.requestRedraw();
+            osg::notify(osg::NOTICE) << "throwing, action = " << _last_action << std::endl;
+        }
+        
+        if ( _task.valid() )
+        {
+            if ( serviceTask() )
+                us.requestRedraw();
+        }
+
+        return false;
     }
 
     if (ea.getHandled()) return false;
+   
+    // form the current Action based on the event type:
+    Action action = ACTION_NULL;
 
-    switch(ea.getEventType())
+    switch( ea.getEventType() )
     {
-        case(osgGA::GUIEventAdapter::PUSH):
-        {
-            flushMouseEventStack();
-            addMouseEvent(ea);
-            if (calcMovement()) us.requestRedraw();
-            us.requestContinuousUpdate(false);
-            _thrown = false;
-            return true;
-        }
+        case osgGA::GUIEventAdapter::PUSH:
+            resetMouse( us );
+            addMouseEvent( ea );
+            handled = true;
+            break;
 
-        case(osgGA::GUIEventAdapter::RELEASE):
-        {
-            if (ea.getButtonMask()==0)
+        case osgGA::GUIEventAdapter::RELEASE:
+            // check for a mouse-throw continuation:
+            if ( _settings->getThrowingEnabled() && isMouseMoving() )
             {
-
-                if (isMouseMoving())
+                action = _last_action;
+                if( handleMouseAction( action ) )
                 {
-                    if (calcMovement())
-                    {
-                        us.requestRedraw();
-                        us.requestContinuousUpdate(true);
-                        _thrown = true;
-                    }
+                    us.requestRedraw();
+                    us.requestContinuousUpdate( true );
+                    _thrown = true;
                 }
-                else
-                {
-                    flushMouseEventStack();
-                    addMouseEvent(ea);
-                    if (calcMovement()) us.requestRedraw();
-                    us.requestContinuousUpdate(false);
-                    _thrown = false;
-                }
-
             }
             else
             {
-                flushMouseEventStack();
-                addMouseEvent(ea);
-                if (calcMovement()) us.requestRedraw();
-                us.requestContinuousUpdate(false);
-                _thrown = false;
+                resetMouse( us );
+                addMouseEvent( ea );
             }
-            return true;
-        }
 
-        case(osgGA::GUIEventAdapter::DRAG):
-        {
-            addMouseEvent(ea);
-            if (calcMovement()) us.requestRedraw();
+            handled = true;
+            break;
+
+        case osgGA::GUIEventAdapter::MOVE: // MOVE not currently bindable
+            handled = false;
+            break;
+
+        case osgGA::GUIEventAdapter::DRAG:
+            action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+            addMouseEvent( ea );
+            if ( handleMouseAction( action ) )
+                us.requestRedraw();
             us.requestContinuousUpdate(false);
             _thrown = false;
-            return true;
-        }
+            handled = true;
+            break;
 
-        case(osgGA::GUIEventAdapter::MOVE):
-        {
-            return false;
-        }
-
-        case(osgGA::GUIEventAdapter::KEYDOWN):
-            if (ea.getKey()== osgGA::GUIEventAdapter::KEY_Space)
-            {
-                flushMouseEventStack();
-                _thrown = false;
-                home(ea,us);
+        case osgGA::GUIEventAdapter::KEYDOWN:
+            resetMouse( us );
+            action = _settings->getAction( ea.getEventType(), ea.getKey(), ea.getModKeyMask() );
+            if ( handleKeyboardAction( action ) )
                 us.requestRedraw();
-                us.requestContinuousUpdate(false);
-                return true;
-            }
-            return false;
-        default:
-            return false;
+            handled = true;
+            break;
+            
+        case osgGA::GUIEventAdapter::KEYUP:
+            resetMouse( us );
+            _task->_type = TASK_NONE;
+            handled = true;
+            break;
+
+        case osgGA::GUIEventAdapter::SCROLL:
+            resetMouse( us );
+            addMouseEvent( ea );
+            action = _settings->getAction( ea.getEventType(), ea.getScrollingMotion(), ea.getModKeyMask() );
+            if ( handleScrollAction( action, 0.2 ) )
+                us.requestRedraw();
+            handled = true;
+            break;
     }
+
+    if ( handled && action != ACTION_NULL )
+        _last_action = action;
+
+    return handled;
+}
+
+bool
+EarthManipulator::serviceTask()
+{
+    bool result;
+
+    osg::Timer_t now = osg::Timer::instance()->tick();
+
+    if ( _task.valid() && _task->_type != TASK_NONE )
+    {
+        // normalize for 60fps..
+        double dt = osg::Timer::instance()->delta_s( _time_last_frame, now ); // / (1.0/60.0);
+
+        switch( _task->_type )
+        {
+            case TASK_PAN:
+                pan( dt * _task->_dx, dt * _task->_dy );
+                break;
+            case TASK_ROTATE:
+                rotate( dt * _task->_dx, dt * _task->_dy );
+                break;
+            case TASK_ZOOM:
+                zoom( dt * _task->_dx, dt * _task->_dy );
+                break;
+        }
+
+        _task->_duration_s -= dt;
+        if ( _task->_duration_s <= 0.0 )
+            _task->_type = TASK_NONE;
+
+        result = true;
+    }
+    else
+    {
+        result = false;
+    }
+
+    _time_last_frame = now;
+    return result;
 }
 
 
@@ -241,7 +392,6 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
         return;
     }
 
-
     // need to reintersect with the terrain
     const osg::BoundingSphere& bs = _node->getBound();
     float distance = (eye-bs.center()).length() + _node->getBound().radius();
@@ -272,17 +422,13 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
                       ip))
         {
             _center = ip;
-
             _distance = (eye-ip).length();
-
             _rotation.set(0,0,0,1);
-
             hitFound = true;
         }
     }
 
-
-    osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
+    osg::CoordinateFrame coordinateFrame = getCoordinateFrame( _center );
     _previousUp = getUpVector(coordinateFrame);
 
     clampOrientation();
@@ -301,7 +447,7 @@ EarthManipulator::getInverseMatrix() const
 }
 
 void
-EarthManipulator::computePosition(const osg::Vec3d& eye,const osg::Vec3d& center,const osg::Vec3d& up)
+EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,const osg::Vec3d& up)
 {
     if (!_node) return;
 
@@ -329,7 +475,6 @@ EarthManipulator::computePosition(const osg::Vec3d& eye,const osg::Vec3d& center
             {
                 _center = ip;
                 _distance = (ip-eye).length();
-
                 hitFound = true;
             }
         }
@@ -349,8 +494,149 @@ EarthManipulator::computePosition(const osg::Vec3d& eye,const osg::Vec3d& center
 }
 
 
+void
+EarthManipulator::pan( double dx, double dy )
+{
+    double scale = -0.3f*_distance;
+
+    osg::Matrixd rotation_matrix;
+    rotation_matrix.makeRotate(_rotation);
+
+
+    // compute look vector.
+    osg::Vec3d lookVector = -getUpVector(rotation_matrix);
+    osg::Vec3d sideVector = getSideVector(rotation_matrix);
+    osg::Vec3d upVector = getFrontVector(rotation_matrix);
+
+    osg::Vec3d localUp = _previousUp;
+
+    osg::Vec3d forwardVector =localUp^sideVector;
+    sideVector = forwardVector^localUp;
+
+    forwardVector.normalize();
+    sideVector.normalize();
+
+    osg::Vec3d dv = forwardVector * (dy*scale) + sideVector * (dx*scale);
+
+    _center += dv;
+
+    // need to recompute the intersection point along the look vector.
+
+    bool hitFound = false;
+
+    if (_node.valid())
+    {
+        // now reorientate the coordinate frame to the frame coords.
+        osg::CoordinateFrame coordinateFrame =  getCoordinateFrame(_center);
+
+        // need to reintersect with the terrain
+        double distance = _node->getBound().radius()*0.25f;
+
+        osg::Vec3d ip1;
+        osg::Vec3d ip2;
+        bool hit_ip1 = intersect(_center, _center + getUpVector(coordinateFrame) * distance, ip1);
+        bool hit_ip2 = intersect(_center, _center - getUpVector(coordinateFrame) * distance, ip2);
+        if (hit_ip1)
+        {
+            if (hit_ip2)
+            {
+                _center = (_center-ip1).length2() < (_center-ip2).length2() ? ip1 : ip2;
+                hitFound = true;
+            }
+            else
+            {
+                _center = ip1;
+                hitFound = true;
+            }
+        }
+        else if (hit_ip2)
+        {
+            _center = ip2;
+            hitFound = true;
+        }
+
+        if (!hitFound)
+        {
+            // ??
+            osg::notify(osg::INFO)<<"EarthManipulator unable to intersect with terrain."<<std::endl;
+        }
+
+        coordinateFrame = getCoordinateFrame(_center);
+        osg::Vec3d new_localUp = getUpVector(coordinateFrame);
+
+        osg::Quat pan_rotation;
+        pan_rotation.makeRotate(localUp,new_localUp);
+
+        if (!pan_rotation.zeroRotation())
+        {
+            _rotation = _rotation * pan_rotation;
+            _previousUp = new_localUp;
+        }
+        else
+        {
+            osg::notify(osg::INFO)<<"New up orientation nearly inline - no need to rotate"<<std::endl;
+        }
+    }
+}
+
+void
+EarthManipulator::rotate( double dx, double dy )
+{
+    // clamp the local pitch delta:
+    double minp = osg::DegreesToRadians( _settings->getMinPitch() );
+    double maxp = osg::DegreesToRadians( _settings->getMaxPitch() );
+
+    // clamp pitch range:
+    if ( dy + _local_pitch > maxp || dy + _local_pitch < minp )
+        dy = 0;
+
+    osg::Matrix rotation_matrix;
+    rotation_matrix.makeRotate(_rotation);
+
+    osg::Vec3d lookVector = -getUpVector(rotation_matrix);
+    osg::Vec3d sideVector = getSideVector(rotation_matrix);
+    osg::Vec3d upVector = getFrontVector(rotation_matrix);
+
+    osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
+    osg::Vec3d localUp = getUpVector(coordinateFrame);
+
+    osg::Vec3d forwardVector = localUp^sideVector; // cross product
+    sideVector = forwardVector^localUp; // cross product
+
+    forwardVector.normalize();
+    sideVector.normalize();
+
+    osg::Quat rotate_elevation;
+    rotate_elevation.makeRotate( dy, sideVector );
+
+    osg::Quat rotate_azim;
+    rotate_azim.makeRotate( -dx, localUp );
+
+    _rotation = _rotation * rotate_elevation * rotate_azim;
+
+    _local_pitch += dy;
+//    _local_azim -= dx;
+}
+
+void
+EarthManipulator::zoom( double dx, double dy )
+{
+    double fd = _distance;
+    double scale = 1.0f + dy;
+
+    if ( fd * scale > _minimumDistance )
+    {
+        _distance *= scale;
+    }
+    else
+    {
+        _distance = _minimumDistance;
+    }
+}
+
+
 bool
-EarthManipulator::calcMovement()
+EarthManipulator::handleMouseAction( Action action )
 {
     // return if less then two events have been added.
     if (_ga_t0.get()==NULL || _ga_t1.get()==NULL) return false;
@@ -358,161 +644,114 @@ EarthManipulator::calcMovement()
     double dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
     double dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
 
-
     // return if there is no movement.
     if (dx==0 && dy==0) return false;
 
-    unsigned int buttonMask = _ga_t1->getButtonMask();
+    dx *= _settings->getMouseSensitivity();
+    dy *= _settings->getMouseSensitivity();
     
-    if (buttonMask==osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON ||
-        buttonMask==(osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON|osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON))
+    switch( action )
     {
-        osg::Matrix rotation_matrix;
-        rotation_matrix.makeRotate(_rotation);
+    case ACTION_PAN:
+        pan( dx, dy );
+        break;
 
-        osg::Vec3d lookVector = -getUpVector(rotation_matrix);
-        osg::Vec3d sideVector = getSideVector(rotation_matrix);
-        osg::Vec3d upVector = getFrontVector(rotation_matrix);
+    case ACTION_ROTATE:
+        rotate( dx, dy );
+        break;
 
-        osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
-        osg::Vec3d localUp = getUpVector(coordinateFrame);
-        //osg::Vec3d localUp = _previousUp;
+    case ACTION_ZOOM:
+        zoom( dx, dy );
+        break;
 
-
-        osg::Vec3d forwardVector = localUp^sideVector;
-        sideVector = forwardVector^localUp;
-
-        forwardVector.normalize();
-        sideVector.normalize();
-
-        osg::Quat rotate_elevation;
-        rotate_elevation.makeRotate(dy,sideVector);
-
-        osg::Quat rotate_azim;
-        rotate_azim.makeRotate(-dx,localUp);
-
-        _rotation = _rotation * rotate_elevation * rotate_azim;
-
-        return true;
-    }
-    else if (buttonMask==osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)     
-    {
-
-        // pan model.
-        double scale = -0.3f*_distance;
-
-        osg::Matrixd rotation_matrix;
-        rotation_matrix.makeRotate(_rotation);
-
-
-        // compute look vector.
-        osg::Vec3d lookVector = -getUpVector(rotation_matrix);
-        osg::Vec3d sideVector = getSideVector(rotation_matrix);
-        osg::Vec3d upVector = getFrontVector(rotation_matrix);
-
-        // CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
-        // osg::Vec3d localUp = getUpVector(coordinateFrame);
-        osg::Vec3d localUp = _previousUp;
-
-        osg::Vec3d forwardVector =localUp^sideVector;
-        sideVector = forwardVector^localUp;
-
-        forwardVector.normalize();
-        sideVector.normalize();
-
-        osg::Vec3d dv = forwardVector * (dy*scale) + sideVector * (dx*scale);
-
-        _center += dv;
-
-        // need to recompute the intersection point along the look vector.
-
-        bool hitFound = false;
-
-        if (_node.valid())
-        {
-
-            // now reorientate the coordinate frame to the frame coords.
-            osg::CoordinateFrame coordinateFrame =  getCoordinateFrame(_center);
-
-            // need to reintersect with the terrain
-            double distance = _node->getBound().radius()*0.25f;
-            
-            osg::Vec3d ip1;
-            osg::Vec3d ip2;
-            bool hit_ip1 = intersect(_center, _center + getUpVector(coordinateFrame) * distance, ip1);
-            bool hit_ip2 = intersect(_center, _center - getUpVector(coordinateFrame) * distance, ip2);
-            if (hit_ip1)
-            {
-                if (hit_ip2)
-                {
-                    _center = (_center-ip1).length2() < (_center-ip2).length2() ?
-                                ip1 :
-                                ip2;
-                                
-                    hitFound = true;
-                }
-                else
-                {
-                    _center = ip1;
-                    hitFound = true;
-                }
-            }
-            else if (hit_ip2)
-            {
-                _center = ip2;
-                hitFound = true;
-            }
-            
-            if (!hitFound)
-            {
-                // ??
-                osg::notify(osg::INFO)<<"EarthManipulator unable to intersect with terrain."<<std::endl;
-            }
-
-            coordinateFrame = getCoordinateFrame(_center);
-            osg::Vec3d new_localUp = getUpVector(coordinateFrame);
-
-
-            osg::Quat pan_rotation;
-            pan_rotation.makeRotate(localUp,new_localUp);
-
-            if (!pan_rotation.zeroRotation())
-            {
-                _rotation = _rotation * pan_rotation;
-                _previousUp = new_localUp;
-                //osg::notify(osg::NOTICE)<<"Rotating from "<<localUp<<" to "<<new_localUp<<"  angle = "<<acos(localUp*new_localUp/(localUp.length()*new_localUp.length()))<<std::endl;
-
-                //clampOrientation();
-            }
-            else
-            {
-                osg::notify(osg::INFO)<<"New up orientation nearly inline - no need to rotate"<<std::endl;
-            }
-        }
-
-        return true;
-    }
-    else if (buttonMask==osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON)
-    {
-
-        // zoom model.
-
-        double fd = _distance;
-        double scale = 1.0f+dy;
-        if (fd*scale>_minimumDistance)
-        {
-            _distance *= scale;
-        }
-        else
-        {
-            _distance = _minimumDistance;
-        }
-
-        return true;
-
+    default:
+        return handleAction( action, dx, dy, DBL_MAX );
     }
 
-    return false;
+    return true;
+}
+
+bool
+EarthManipulator::handleKeyboardAction( Action action, double duration )
+{
+    double dx = 0, dy = 0;
+
+    switch( _settings->getDirection( action ) )
+    {
+    case DIR_LEFT:  dx =  DISCRETE_DELTA; break;
+    case DIR_RIGHT: dx = -DISCRETE_DELTA; break;
+    case DIR_UP:    dy = -DISCRETE_DELTA; break;
+    case DIR_DOWN:  dy =  DISCRETE_DELTA; break;
+    }
+
+    dx *= _settings->getKeyboardSensitivity();
+    dy *= _settings->getKeyboardSensitivity();
+
+    return handleAction( action, dx, dy, duration );
+}
+
+bool
+EarthManipulator::handleScrollAction( Action action, double duration )
+{
+    double dx = 0, dy = 0;
+
+    switch( _settings->getDirection( action ) )
+    {
+    case DIR_LEFT:  dx =  DISCRETE_DELTA; break;
+    case DIR_RIGHT: dx = -DISCRETE_DELTA; break;
+    case DIR_UP:    dy = -DISCRETE_DELTA; break;
+    case DIR_DOWN:  dy =  DISCRETE_DELTA; break;
+    }
+
+    dx *= _settings->getScrollSensitivity();
+    dy *= _settings->getScrollSensitivity();
+
+    return handleAction( action, dx, dy, duration );
+}
+
+bool
+EarthManipulator::handleAction( Action action, double dx, double dy, double duration )
+{
+    bool handled = true;
+
+    //osg::notify(osg::NOTICE) << "action=" << action << ", dx=" << dx << ", dy=" << dy << std::endl;
+
+    switch( action )
+    {
+    case ACTION_HOME:
+        if ( getAutoComputeHomePosition() )
+            computeHomePosition();
+        setByLookAt( _homeEye, _homeCenter, _homeUp );
+        break;
+
+
+    case ACTION_PAN:
+    case ACTION_PAN_LEFT:
+    case ACTION_PAN_RIGHT:
+    case ACTION_PAN_UP:
+    case ACTION_PAN_DOWN:
+        _task->set( TASK_PAN, dx, dy, duration );
+        break;
+
+    case ACTION_ROTATE:
+    case ACTION_ROTATE_LEFT:
+    case ACTION_ROTATE_RIGHT:
+    case ACTION_ROTATE_UP:
+    case ACTION_ROTATE_DOWN:
+        _task->set( TASK_ROTATE, dx, dy, duration );
+        break;
+
+    case ACTION_ZOOM:
+    case ACTION_ZOOM_IN:
+    case ACTION_ZOOM_OUT:
+        _task->set( TASK_ZOOM, dx, dy, duration );
+        break;
+
+    default:
+        handled = false;
+    }
+
+    return handled;
 }
 
 void
@@ -526,7 +765,6 @@ EarthManipulator::clampOrientation()
 
     osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
     osg::Vec3d localUp = getUpVector(coordinateFrame);
-    //osg::Vec3d localUp = _previousUp;
 
     osg::Vec3d sideVector = lookVector ^ localUp;
 

@@ -21,13 +21,229 @@
 
 #include <osgEarthUtil/Common>
 #include <osgGA/MatrixManipulator>
+#include <osg/Timer>
+#include <map>
 
 namespace osgEarthUtil
 {
+    /** 
+     * A programmable manipulator suitable for use with geospatial terrains.
+     *
+     * You can use the "Settings" class to define custom input device bindings
+     * and navigation parameters. Create one or more of these and call 
+     * applySettings() to "program" the manipulator at runtime.
+     */
     class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::MatrixManipulator
     {
+    private:
+        struct InputSpec 
+        {
+            InputSpec( unsigned int event_type, unsigned int input_mask, unsigned int modkey_mask )
+                : _event_type(event_type), _input_mask(input_mask), _modkey_mask( modkey_mask ) { }
+            InputSpec( const InputSpec& rhs )
+                : _event_type(rhs._event_type), _input_mask(rhs._input_mask), _modkey_mask(rhs._modkey_mask) { }
+
+            bool operator == ( const InputSpec& rhs ) const {
+                return _event_type == rhs._event_type && _input_mask == rhs._input_mask && _modkey_mask == rhs._modkey_mask;
+            }
+
+            unsigned int _event_type;
+            unsigned int _input_mask;
+            unsigned int _modkey_mask;
+        };
+
+        enum Direction {
+            DIR_NA,
+            DIR_LEFT,
+            DIR_RIGHT,
+            DIR_UP,
+            DIR_DOWN
+        };
+
+    public:
+        /** Bindable manipulator actions. */
+        enum Action {
+            ACTION_NULL,
+            ACTION_HOME,
+            ACTION_PAN,
+            ACTION_PAN_LEFT,
+            ACTION_PAN_RIGHT,
+            ACTION_PAN_UP,
+            ACTION_PAN_DOWN,
+            ACTION_ROTATE,
+            ACTION_ROTATE_LEFT,
+            ACTION_ROTATE_RIGHT,
+            ACTION_ROTATE_UP,
+            ACTION_ROTATE_DOWN,
+            ACTION_ZOOM,
+            ACTION_ZOOM_IN,
+            ACTION_ZOOM_OUT
+        };
+
+        class Settings : public osg::Referenced
+        {
+        public:
+            // construct with default settings
+            Settings();
+
+            // copy ctor
+            Settings( const Settings& rhs );
+
+            /**
+             * Binds an input specification to an action.
+             *
+             * @param event_type
+             *      The osgGA::GUIEventAdapter::EventType for the action
+             *
+             * @param input_mask
+             *      Depending on the event type, this will be either:
+             *       - Mouse events: a mask of osgGA::GUIEventAdapter::MouseButtonMask values
+             *       - Key events: an osgGA::GUIEventAdapter::KeySymbol
+             *       - Scroll evetns: an osgGA::GUIEventAdapter::ScrollingMotion
+             *
+             * @param modkey_mask
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      combination to associate with the action. Set to 0L to forgo modifiers.
+             *
+             * @param action
+             *      The EarthManipulator::Action value to which this input input specification
+             *      should be bound.
+             */             
+            void bind( unsigned int event_type, unsigned int input_mask, unsigned int modkey_mask, Action action );
+
+            /**
+             * Sets the mouse sensitivity factor.
+             *
+             * @param value
+             *      A scale factor to apply to mouse readings.
+             *      1.0 = default; < 1.0 = less sensitive; > 1.0 = more sensitive.
+             */
+            void setMouseSensitivity( double value ) { _mouse_sens = value; }
+
+            /**
+             * Gets the mouse sensitivity scale factor. Default = 1.0.
+             */
+            double getMouseSensitivity() const { return _mouse_sens; }
+
+            /**
+             * Sets the keyboard action sensitivity factor. This applies to navigation actions
+             * that are bound to keyboard events. For example, you may bind the LEFT arrow to
+             * the ACTION_PAN_LEFT action; this factor adjusts how much panning will occur during
+             * each frame that the key is depressed.
+             *
+             * @param value
+             *      A scale factor to apply to keyboard-controller navigation.
+             *      1.0 = default; < 1.0 = less sensitive; > 1.0 = more sensitive.
+             */
+            void setKeyboardSensitivity( double value ) { _keyboard_sens = value; }
+
+            /**
+             * Gets the keyboard action sensitivity scale factor. Default = 1.0.
+             */
+            double getKeyboardSensitivity() const { return _keyboard_sens; }
+
+            /**
+             * Sets the scroll-wheel sensitivity factor. This applies to navigation actions
+             * that are bound to scrolling events. For example, you may bind the scroll wheel to
+             * the ACTION_ZOOM_IN action; this factor adjusts how much zooming will occur each time 
+             * you click the scroll wheel.
+             *
+             * @param value
+             *      A scale factor to apply to scroll-wheel-controlled navigation.
+             *      1.0 = default; < 1.0 = less sensitive; > 1.0 = more sensitive.
+             */
+            void setScrollSensitivity( double value ) { _scroll_sens = value; }
+
+            /**
+             * Gets the scroll wheel sensetivity scale factor. Default = 1.0.
+             */
+            double getScrollSensitivity() const { return _scroll_sens; }
+
+            /** 
+             * When set to true, prevents simultaneous control of pitch and azimuth. 
+             *
+             * Usually you can alter pitch and azimuth at the same time. When this flag
+             * is set, you can only control one at a time - if you start slewing the azimuth of the camera,
+             * the pitch stays locked until you stop moving and then start slewing the pitch.
+             *
+             * Default = false.
+             */
+            void setSingleAxisRotation( bool value ) { _single_axis_rotation = value; }
+
+            /** 
+             * Gets whether simultaneous control over pitch and azimuth is disabled.
+             * Default = false.
+             */
+            bool getSingleAxisRotation() const { return _single_axis_rotation; }
+
+            /**
+             * Setting this to True lets motion continue when the user releases the mouse button
+             * while still dragging. Default = false.
+             */
+            void setThrowingEnabled( bool value ) { _throwing = value; }
+
+            /**
+             * Gets whether to allow motion to continue when the user releases the mouse button 
+             * while still dragging the mouse.
+             */
+            bool getThrowingEnabled() const { return _throwing; }
+
+            /**
+             * Sets the minimum and maximum allowable local camera pitch, in degrees.
+             *
+             * By "local" we mean relative to the tangent plane passing through the focal point on
+             * the surface of the terrain.
+             *
+             * Defaults are: Min = -90, Max = -10.
+             */
+            void setMinMaxPitch( double min_pitch, double max_pitch ) { _min_pitch = min_pitch; _max_pitch = max_pitch; }
+
+            /** Gets the minimum allowable local pitch, in degrees. */
+            double getMinPitch() const { return _min_pitch; }
+
+            /** Gets the maximum allowable local pitch, in degrees. */
+            double getMaxPitch() const { return _max_pitch; }
+
+            //void setEnableRubberBandZoom( bool value ) { _rubber_band_zoom = value; }
+            
+
+
+
+        private:
+
+            friend class EarthManipulator;
+
+            typedef std::pair<InputSpec,Action> ActionBinding;
+            typedef std::vector<ActionBinding> ActionBindings;
+
+            // Gets the action bound to the provided input specification, or ACTION_NULL if there is
+            // to matching binding.
+            Action getAction( unsigned int event_type, unsigned int input_mask, unsigned int modkey_mask ) const;
+
+            // Gets the "direction" associated with the specified action.
+            Direction getDirection( Action action ) const;
+
+        private:
+
+            ActionBindings _bindings;
+            bool _single_axis_rotation;
+            bool _force_nadir;
+            bool _force_north_up;
+            bool _throwing;
+            bool _rubber_band_zoom;
+            double _mouse_sens;
+            double _keyboard_sens;
+            double _scroll_sens;
+            double _min_pitch;
+            double _max_pitch;
+        };
+
     public:
         EarthManipulator();
+
+        // Applies new user settings to the motion model.
+        void applySettings( Settings* settings );
+
 
     public: // osgGA::MatrixManipulator
 
@@ -45,36 +261,30 @@ namespace osgEarthUtil
         /** get the position of the manipulator as a inverse matrix of the manipulator, typically used as a model view matrix.*/
         virtual osg::Matrixd getInverseMatrix() const;
 
-        /** Get the FusionDistanceMode. Used by SceneView for setting up stereo convergence.*/
+        // Gets the stereo convergance mode.
         virtual osgUtil::SceneView::FusionDistanceMode getFusionDistanceMode() const { return osgUtil::SceneView::USE_FUSION_DISTANCE_VALUE; }
 
-        /** Get the FusionDistanceValue. Used by SceneView for setting up stereo convergence.*/
+        // Gets the stereo convergance distance.
         virtual float getFusionDistanceValue() const { return _distance; }
 
-        /** Attach a node to the manipulator. 
-            Automatically detaches previously attached node.
-            setNode(NULL) detaches previously nodes.
-            Is ignored by manipulators which do not require a reference model.*/
+        // Attach a node to the manipulator.
         virtual void setNode(osg::Node*);
 
-        /** Return node if attached.*/
-        virtual const osg::Node* getNode() const;
-
-        /** Return node if attached.*/
+        // Gets the node to which this manipulator is attached.
         virtual osg::Node* getNode();
 
-        /** Move the camera to the default position. 
-            May be ignored by manipulators if home functionality is not appropriate.*/
+        // Move the camera to the default position.
         virtual void home(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
         
-        /** Start/restart the manipulator.*/
+        // Start/restart the manipulator.
         virtual void init(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
 
-        /** handle events, return true if handled, false otherwise.*/
+        // handle events, return true if handled, false otherwise.
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
 
-        /** Get the keyboard and mouse usage of this manipulator.*/
+        // Get the keyboard and mouse usage of this manipulator.
         virtual void getUsage(osg::ApplicationUsage& usage) const;
+
 
     protected:
 
@@ -82,34 +292,79 @@ namespace osgEarthUtil
         
         bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const;
 
-        /** Reset the internal osgGA::GUIEvent stack.*/
+        // resets the mouse event stack and pushes the provided event.
+        void resetMouse( osgGA::GUIActionAdapter& );
+
+        // Reset the internal event stack.
         void flushMouseEventStack();
 
-        /** Add the current mouse osgGA::GUIEvent to internal stack.*/
+        // Add the current mouse osgGA::GUIEvent to internal stack.
         void addMouseEvent(const osgGA::GUIEventAdapter& ea);
 
-        void computePosition(const osg::Vec3d& eye,const osg::Vec3d& lv,const osg::Vec3d& up);
+        // sets the camera position by doing a "look at" calculation. This is only used for
+        // the "home" function at the moment -- look into depcrecation -GW
+        void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& lv, const osg::Vec3d& up);
 
-        /** For the give mouse movement calculate the movement of the camera.
-            Return true is camera has moved and a redraw is required.*/
-        bool calcMovement();
+        // Applies an action using the raw input parameters.
+        bool handleAction( Action action, double dx, double dy, double duration );
 
-        /** Check the speed at which the mouse is moving.
-            If speed is below a threshold then return false, otherwise return true.*/
+        bool handleMouseAction( Action action );
+        bool handleKeyboardAction( Action action, double duration_s = DBL_MAX );
+        bool handleScrollAction( Action action, double duration_s = DBL_MAX );
+
+        // checks to see whether the mouse is "moving".
         bool isMouseMoving();
 
+        // Taken from TerrainManipulator. Don't know exactly what this does.
         void clampOrientation();
 
     private:
-        // Internal event stack comprising last two mouse events.
+        void pan( double dx, double dy );
+        void rotate( double dx, double dy );
+        void zoom( double dx, double dy );
+
+        enum TaskType
+        {
+            TASK_NONE,
+            TASK_PAN,
+            TASK_ROTATE,
+            TASK_ZOOM
+        };
+
+        struct Task : public osg::Referenced
+        {
+            Task() : _type(TASK_NONE) { }
+            void set( TaskType type, double dx, double dy, double duration =DBL_MAX ) {
+                _type = type; _dx = dx; _dy = dy; _duration_s = duration;
+            }
+            TaskType _type;
+            double   _dx, _dy;
+            double   _duration_s;
+        };
+
+        // "ticks" the resident Task, which allows for multi-frame animation of navigation
+        // movements.
+        bool serviceTask();
+
+    private:
+        // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
+
         osg::ref_ptr<osg::Node> _node;
         bool                    _thrown;        
         osg::Vec3d              _center;
         osg::Quat               _rotation;
         double                  _distance;
         osg::Vec3d              _previousUp;
+        osg::ref_ptr<Task>      _task;
+        osg::Timer_t            _time_last_frame;
+        double                  _local_pitch;
+        double                  _local_azim;
+
+        osg::ref_ptr<Settings> _settings;
+
+        Action _last_action;
     };
 }
 

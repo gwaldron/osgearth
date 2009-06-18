@@ -46,6 +46,11 @@ namespace osgEarth
          */
         bool isOK() const;
 
+        /**
+         * Finds the topmost Map node in the specified scene graph, or returns NULL if
+         * no Map node exists in the graph.
+         */
+        static Map* findMapNode( osg::Node* graph );
 
         /**
          *Callback used to notify listeners of layer changes

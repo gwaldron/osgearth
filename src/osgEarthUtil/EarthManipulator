@@ -38,7 +38,7 @@ namespace osgEarthUtil
     private:
         struct InputSpec 
         {
-            InputSpec( unsigned int event_type, unsigned int input_mask, unsigned int modkey_mask )
+            InputSpec( int event_type, int input_mask, int modkey_mask )
                 : _event_type(event_type), _input_mask(input_mask), _modkey_mask( modkey_mask ) { }
             InputSpec( const InputSpec& rhs )
                 : _event_type(rhs._event_type), _input_mask(rhs._input_mask), _modkey_mask(rhs._modkey_mask) { }
@@ -47,9 +47,9 @@ namespace osgEarthUtil
                 return _event_type == rhs._event_type && _input_mask == rhs._input_mask && _modkey_mask == rhs._modkey_mask;
             }
 
-            unsigned int _event_type;
-            unsigned int _input_mask;
-            unsigned int _modkey_mask;
+            int _event_type;
+            int _input_mask;
+            int _modkey_mask;
         };
 
         enum Direction {
@@ -61,8 +61,9 @@ namespace osgEarthUtil
         };
 
     public:
+
         /** Bindable manipulator actions. */
-        enum Action {
+        enum ActionType {
             ACTION_NULL,
             ACTION_HOME,
             ACTION_PAN,
@@ -80,7 +81,35 @@ namespace osgEarthUtil
             ACTION_ZOOM_OUT
         };
 
-        class Settings : public osg::Referenced
+        enum EventType {
+            EVENT_MOUSE_DRAG = osgGA::GUIEventAdapter::DRAG,
+            EVENT_KEY_DOWN   = osgGA::GUIEventAdapter::KEYDOWN,
+            EVENT_SCROLL     = osgGA::GUIEventAdapter::SCROLL
+        };
+
+        enum MouseEvent {
+            MOUSE_LEFT_BUTTON   = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
+            MOUSE_MIDDLE_BUTTON = osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON,
+            MOUSE_RIGHT_BUTTON  = osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON
+        };
+
+    private:
+
+        struct Action
+        {
+            Action( ActionType type, double scale_x =1.0, double scale_y =1.0 );
+            Action( const Action& rhs );
+            ActionType _type;
+            double _scale_x;
+            double _scale_y;
+            Direction _dir;
+        };
+        
+        static Action NullAction;
+
+    public:
+
+        class OSGEARTHUTIL_EXPORT Settings : public osg::Referenced
         {
         public:
             // construct with default settings
@@ -109,7 +138,16 @@ namespace osgEarthUtil
              *      The EarthManipulator::Action value to which this input input specification
              *      should be bound.
              */             
-            void bind( unsigned int event_type, unsigned int input_mask, unsigned int modkey_mask, Action action );
+            //void bind( int event_type, int input_mask, int modkey_mask, ActionType action );
+
+            void bindMouse( int event_type, int button_mask, ActionType type, double scale_x =1.0, double scale_y =1.0 );
+            void bindMouse( int event_type, int button_mask, int modkey_mask, ActionType action, double scale_x =1.0, double scale_y =1.0 );
+
+            void bindKey( int key, ActionType action );
+            void bindKey( int key, int modkey_mask, ActionType action ); 
+
+            void bindScroll( int scrolling_motion, ActionType action );
+            void bindScroll( int scrolling_motion, int modkey_mask, ActionType action );
 
             /**
              * Sets the mouse sensitivity factor.
@@ -202,10 +240,7 @@ namespace osgEarthUtil
             double getMinPitch() const { return _min_pitch; }
 
             /** Gets the maximum allowable local pitch, in degrees. */
-            double getMaxPitch() const { return _max_pitch; }
-
-            //void setEnableRubberBandZoom( bool value ) { _rubber_band_zoom = value; }
-            
+            double getMaxPitch() const { return _max_pitch; }            
 
 
 
@@ -218,10 +253,10 @@ namespace osgEarthUtil
 
             // Gets the action bound to the provided input specification, or ACTION_NULL if there is
             // to matching binding.
-            Action getAction( unsigned int event_type, unsigned int input_mask, unsigned int modkey_mask ) const;
+            const Action& getAction( int event_type, int input_mask, int modkey_mask ) const;
 
-            // Gets the "direction" associated with the specified action.
-            Direction getDirection( Action action ) const;
+            //// Gets the "direction" associated with the specified action.
+            //Direction getDirection( Action actionType ) const;
 
         private:
 
@@ -243,6 +278,11 @@ namespace osgEarthUtil
 
         // Applies new user settings to the motion model.
         void applySettings( Settings* settings );
+
+        //TODO: public controller functions to go here.
+        //
+        // lookAt( pivot_point, distance, local_pitch, azimuth )
+        // tether( node, distance, local_pitch, azimuth )
 
 
     public: // osgGA::MatrixManipulator
@@ -306,11 +346,11 @@ namespace osgEarthUtil
         void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& lv, const osg::Vec3d& up);
 
         // Applies an action using the raw input parameters.
-        bool handleAction( Action action, double dx, double dy, double duration );
+        bool handleAction( const Action& action, double dx, double dy, double duration );
 
-        bool handleMouseAction( Action action );
-        bool handleKeyboardAction( Action action, double duration_s = DBL_MAX );
-        bool handleScrollAction( Action action, double duration_s = DBL_MAX );
+        bool handleMouseAction( const Action& action );
+        bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
+        bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();

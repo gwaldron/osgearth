@@ -20,6 +20,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/ProjectedMap>
+#include <osgEarth/FindNode>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 
@@ -93,6 +94,12 @@ bool
 Map::isOK() const
 {
     return _engine->isOK();
+}
+
+Map*
+Map::findMapNode( osg::Node* graph )
+{
+    return findTopMostNodeOfType<Map>( graph );
 }
 
 void

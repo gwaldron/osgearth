@@ -18,7 +18,7 @@
  */
 
 #include <osgEarthUtil/FadeLayerNode>
-#include <osgEarth/FindNode>
+#include <osgEarthUtil/Common>
 
 #include <osg/Program>
 
@@ -213,6 +213,7 @@ _map(map)
     program->addShader(new osg::Shader( osg::Shader::FRAGMENT, frag_source ) );
     getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+    getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
     if (_map.valid())
     {
@@ -452,7 +453,7 @@ void FadeLayerNode::layerRemoved(Layer* layer)
 
 void FadeLayerNode::layerMoved(Layer* layer, unsigned int prevIndex, unsigned int newIndex)
 {
-    osg::notify(osg::NOTICE) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
+    osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
 
     if (!_map.valid()) return;
 

@@ -167,8 +167,6 @@ void Map::updateStateSet()
 
     osg::StateSet* stateset = getOrCreateStateSet();
 
-    stateset->setMode(GL_BLEND, osg::StateAttribute::ON);
-
     if (numLayers == 1)
     {
         osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);

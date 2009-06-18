@@ -42,8 +42,8 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/TileSourceFactory>
-#include <osgEarth/FindNode>
 
+#include <osgEarthUtil/Common>
 #include <osgEarthUtil/FadeLayerNode>
 
 #include <osgGA/TrackballManipulator>

@@ -38,9 +38,9 @@
 
 #include <osgText/Text>
 
-#include <osgEarth/FindNode>
 #include <osgEarth/Map>
 #include <osgEarthUtil/FadeLayerNode>
+#include <osgEarthUtil/Common>
 
 #include <iostream>
 

@@ -41,6 +41,7 @@
 #include <iostream>
 
 #include <osgEarth/Map>
+#include <osgEarth/FindNode>
 #include <osgEarth/TileSourceFactory>
 
 #include <osgEarthUtil/Common>

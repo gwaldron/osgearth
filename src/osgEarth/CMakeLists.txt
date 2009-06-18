@@ -30,6 +30,7 @@ SET(LIB_PUBLIC_HEADERS
     Export
     FileUtils
 	FileLocationCallback
+	FindNode
     GeocentricMap
     GeoData
     HeightFieldUtils

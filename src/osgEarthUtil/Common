@@ -26,23 +26,7 @@
 // common utilities
 namespace osgEarthUtil
 {
-    template<class T> struct FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
-    {
-        FindTopMostNodeOfTypeVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _foundNode(0) {}
-        void apply(osg::Node& node) {
-              _foundNode = dynamic_cast<T*>( &node );
-              if ( !_foundNode )
-                  traverse( node );
-          }
-          T* _foundNode;
-    };
-
-    template<class T> T* findTopMostNodeOfType( osg::Node* node ) {
-        if (!node) return 0;
-        FindTopMostNodeOfTypeVisitor<T> fnotv;
-        node->accept( fnotv );
-        return fnotv._foundNode;
-    }
+    
 }
 
 #endif // OSGEARTHUTIL_COMMON_H

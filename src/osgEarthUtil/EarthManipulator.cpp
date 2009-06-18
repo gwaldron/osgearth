@@ -27,10 +27,11 @@ using namespace osgEarthUtil;
 /****************************************************************************/
 
 
-EarthManipulator::Action::Action( ActionType type, double scale_x, double scale_y ) :
+EarthManipulator::Action::Action( ActionType type, bool continuous, double scale_x, double scale_y ) :
 _type( type ),
 _scale_x( scale_x ),
-_scale_y( scale_y )
+_scale_y( scale_y ),
+_continuous( continuous )
 {
     _dir =
         _type == ACTION_PAN_LEFT || _type == ACTION_ROTATE_LEFT? DIR_LEFT :
@@ -44,7 +45,8 @@ EarthManipulator::Action::Action( const Action& rhs ) :
 _type( rhs._type ),
 _scale_x( rhs._scale_x ),
 _scale_y( rhs._scale_y ),
-_dir( rhs._dir )
+_dir( rhs._dir ),
+_continuous( rhs._continuous )
 {
     //NOP
 }
@@ -82,52 +84,29 @@ _max_pitch( rhs._max_pitch )
 }
 
 void
-EarthManipulator::Settings::bindMouse(int event_type, int button_mask, int modkey_mask, ActionType action,
-                                      double scale_x, double scale_y)
+EarthManipulator::Settings::bindMouse(ActionType action,
+                                      int button_mask, int modkey_mask,
+                                      bool continuous, double scale_x, double scale_y )
 {
-    InputSpec spec( event_type, button_mask, modkey_mask );
-    _bindings.push_back( ActionBinding( spec, Action( action, scale_x, scale_y ) ) );
+    InputSpec spec( osgGA::GUIEventAdapter::DRAG, button_mask, modkey_mask );
+    _bindings.push_back( ActionBinding( spec, Action( action, continuous, scale_x, scale_y ) ) );
 }
 
 void
-EarthManipulator::Settings::bindMouse(int event_type, int button_mask, ActionType action,
-                                      double scale_x, double scale_y)
-{
-    bindMouse( event_type, button_mask, 0L, action, scale_x, scale_y );
-}
-
-void
-EarthManipulator::Settings::bindKey(int key, int modkey_mask, ActionType action )
+EarthManipulator::Settings::bindKey(ActionType action, int key,
+                                    int modkey_mask, bool continuous)
 {
     InputSpec spec( osgGA::GUIEventAdapter::KEYDOWN, key, modkey_mask );
-    _bindings.push_back( ActionBinding( spec, Action( action ) ) );
+    _bindings.push_back( ActionBinding( spec, Action( action, continuous ) ) );
 }
 
 void
-EarthManipulator::Settings::bindKey(int key, ActionType action )
-{
-    bindKey( key, 0L, action );
-}
-
-void
-EarthManipulator::Settings::bindScroll(int scrolling_motion, int modkey_mask, ActionType action )
+EarthManipulator::Settings::bindScroll(ActionType action, int scrolling_motion,
+                                       int modkey_mask )
 {
     InputSpec spec( osgGA::GUIEventAdapter::SCROLL, scrolling_motion, modkey_mask );
     _bindings.push_back( ActionBinding( spec, Action( action ) ) );
 }
-
-void
-EarthManipulator::Settings::bindScroll(int scrolling_motion, ActionType action )
-{
-    bindScroll( scrolling_motion, 0L, action );
-}
-
-//void
-//EarthManipulator::Settings::bind(int event_type, int input_mask, int modkey_mask, Action action)
-//{
-//    InputSpec spec( event_type, input_mask, modkey_mask );
-//    _bindings.push_back( ActionBinding( spec, action ) );
-//}
 
 const EarthManipulator::Action&
 EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey_mask) const
@@ -139,16 +118,6 @@ EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey
     return NullAction;
 }
 
-//EarthManipulator::Direction
-//EarthManipulator::Settings::getDirection( ActionType action ) const
-//{
-//    return
-//        action == ACTION_PAN_LEFT || action == ACTION_ROTATE_LEFT? DIR_LEFT :
-//        action == ACTION_PAN_RIGHT || action == ACTION_ROTATE_RIGHT? DIR_RIGHT :
-//        action == ACTION_PAN_UP || action == ACTION_ROTATE_UP || action == ACTION_ZOOM_IN ? DIR_UP :
-//        action == ACTION_PAN_DOWN || action == ACTION_ROTATE_DOWN || action == ACTION_ZOOM_OUT ? DIR_DOWN :
-//        DIR_NA;
-//}
 
 /************************************************************************/
 
@@ -158,27 +127,28 @@ EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey
 EarthManipulator::EarthManipulator() :
 _distance( 1.0 ),
 _thrown( false ),
+_continuous( false ),
 _settings( new Settings() ),
 _task( new Task() ),
 _last_action( ACTION_NULL )
 {
     // install default action bindings:
 
-    _settings->bindKey( osgGA::GUIEventAdapter::KEY_Space, 0L, ACTION_HOME );
+    _settings->bindKey( ACTION_HOME, osgGA::GUIEventAdapter::KEY_Space );
 
-    _settings->bindMouse( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON, ACTION_PAN );
-    _settings->bindMouse( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, ACTION_ZOOM );
-    _settings->bindMouse( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON, ACTION_ROTATE );
-    _settings->bindMouse( osgGA::GUIEventAdapter::DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON | osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, ACTION_ROTATE );
+    _settings->bindMouse( ACTION_PAN,    osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
+    _settings->bindMouse( ACTION_ZOOM,   osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON );
+    _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON );
+    _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON | osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON );
 
-    _settings->bindScroll( osgGA::GUIEventAdapter::SCROLL_UP, 0L, ACTION_ZOOM_IN );
-    _settings->bindScroll( osgGA::GUIEventAdapter::SCROLL_DOWN, 0L, ACTION_ZOOM_OUT );
+    _settings->bindScroll( ACTION_ZOOM_IN,  osgGA::GUIEventAdapter::SCROLL_UP );
+    _settings->bindScroll( ACTION_ZOOM_OUT, osgGA::GUIEventAdapter::SCROLL_DOWN );
     _settings->setScrollSensitivity( 1.5 );
 
-    _settings->bindKey( osgGA::GUIEventAdapter::KEY_Left,  ACTION_PAN_LEFT );
-    _settings->bindKey( osgGA::GUIEventAdapter::KEY_Right, ACTION_PAN_RIGHT );
-    _settings->bindKey( osgGA::GUIEventAdapter::KEY_Up,    ACTION_PAN_UP );
-    _settings->bindKey( osgGA::GUIEventAdapter::KEY_Down,  ACTION_PAN_DOWN );
+    _settings->bindKey( ACTION_PAN_LEFT,  osgGA::GUIEventAdapter::KEY_Left );
+    _settings->bindKey( ACTION_PAN_RIGHT, osgGA::GUIEventAdapter::KEY_Right );
+    _settings->bindKey( ACTION_PAN_UP,    osgGA::GUIEventAdapter::KEY_Up );
+    _settings->bindKey( ACTION_PAN_DOWN,  osgGA::GUIEventAdapter::KEY_Down );
 
     _settings->setThrowingEnabled( false );
 }
@@ -270,6 +240,9 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& us )
     flushMouseEventStack();
     us.requestContinuousUpdate( false );
     _thrown = false;
+    _continuous = false;
+    _single_axis_x = 1.0;
+    _single_axis_y = 1.0;
 }
 
 bool
@@ -279,11 +252,17 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        if (_thrown)
+        if ( _thrown || _continuous )
         {
             if ( handleMouseAction( _last_action ) )
                 us.requestRedraw();
             osg::notify(osg::NOTICE) << "throwing, action = " << _last_action._type << std::endl;
+        }
+
+        if ( !_continuous )
+        {
+            _continuous_dx = 0.0;
+            _continuous_dy = 0.0;
         }
         
         if ( _task.valid() )
@@ -309,6 +288,10 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
             break;
 
         case osgGA::GUIEventAdapter::RELEASE:
+
+            // bail out of continuous mode if necessary:
+            _continuous = false;
+
             // check for a mouse-throw continuation:
             if ( _settings->getThrowingEnabled() && isMouseMoving() )
             {
@@ -339,6 +322,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
             if ( handleMouseAction( action ) )
                 us.requestRedraw();
             us.requestContinuousUpdate(false);
+            _continuous = action._continuous;
             _thrown = false;
             handled = true;
             break;
@@ -701,7 +685,6 @@ EarthManipulator::zoom( double dx, double dy )
     }
 }
 
-
 bool
 EarthManipulator::handleMouseAction( const Action& action )
 {
@@ -716,6 +699,16 @@ EarthManipulator::handleMouseAction( const Action& action )
 
     dx *= action._scale_x * _settings->getMouseSensitivity();
     dy *= action._scale_y * _settings->getMouseSensitivity();
+
+    // in "continuous" mode, we accumulate the deltas each frame - thus
+    // the deltas act more like speeds.
+    if ( _continuous )
+    {
+        _continuous_dx += dx * 0.01;
+        _continuous_dy += dy * 0.01;
+        dx = _continuous_dx;
+        dy = _continuous_dy;
+    }
     
     switch( action._type )
     {
@@ -724,6 +717,14 @@ EarthManipulator::handleMouseAction( const Action& action )
         break;
 
     case ACTION_ROTATE:
+        // in "single axis" mode, zero out one of the deltas.
+        if ( _continuous && _settings->getSingleAxisRotation() )
+        {
+            if ( ::fabs(dx) > ::fabs(dy) )
+                dy = 0.0;
+            else
+                dx = 0.0;
+        }
         rotate( dx, dy );
         break;
 

@@ -97,12 +97,13 @@ namespace osgEarthUtil
 
         struct Action
         {
-            Action( ActionType type, double scale_x =1.0, double scale_y =1.0 );
+            Action( ActionType type, bool continuous =false, double scale_x =1.0, double scale_y =1.0 );
             Action( const Action& rhs );
             ActionType _type;
             double _scale_x;
             double _scale_y;
             Direction _dir;
+            bool _continuous;
         };
         
         static Action NullAction;
@@ -119,38 +120,71 @@ namespace osgEarthUtil
             Settings( const Settings& rhs );
 
             /**
-             * Binds an input specification to an action.
-             *
-             * @param event_type
-             *      The osgGA::GUIEventAdapter::EventType for the action
-             *
-             * @param input_mask
-             *      Depending on the event type, this will be either:
-             *       - Mouse events: a mask of osgGA::GUIEventAdapter::MouseButtonMask values
-             *       - Key events: an osgGA::GUIEventAdapter::KeySymbol
-             *       - Scroll evetns: an osgGA::GUIEventAdapter::ScrollingMotion
-             *
-             * @param modkey_mask
-             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
-             *      combination to associate with the action. Set to 0L to forgo modifiers.
+             * Assigns behavior to the action of dragging the mouse while depressing one or
+             * more mouse buttons and modifier keys.
              *
              * @param action
-             *      The EarthManipulator::Action value to which this input input specification
-             *      should be bound.
+             *      The EarthManipulator::ActionType value to which to bind this mouse
+             *      input specification.
+             *
+             * @param button_mask
+             *      Mask of osgGA::GUIEventAdapter::MouseButtonMask values
+             *
+             * @param modkey_mask (default = 0L)
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      combination to associate with the action.
+             *
+             * @param continuous (default = false)
+             *      Whether the effect of the action should accumulate as long as the mouse button(s)
+             *      is depressed. The effect accumulates based on the distance you move the mouse from
+             *      the point at which you first depressed the button(s).
+             *
+             * @param scale_x, scale_y (default = 1, 1)
+             *      Scale factors for the mouse movement values. This is usesful for adjusting 
+             *      sensitivity or for flipping an input axis.
              */             
-            //void bind( int event_type, int input_mask, int modkey_mask, ActionType action );
-
-            void bindMouse( int event_type, int button_mask, ActionType type, double scale_x =1.0, double scale_y =1.0 );
-            void bindMouse( int event_type, int button_mask, int modkey_mask, ActionType action, double scale_x =1.0, double scale_y =1.0 );
-
-            void bindKey( int key, ActionType action );
-            void bindKey( int key, int modkey_mask, ActionType action ); 
-
-            void bindScroll( int scrolling_motion, ActionType action );
-            void bindScroll( int scrolling_motion, int modkey_mask, ActionType action );
+            void bindMouse(
+                ActionType action, int button_mask,
+                int modkey_mask =0L, bool continuous =false, double scale_x =1.0, double scale_y =1.0 );
 
             /**
-             * Sets the mouse sensitivity factor.
+             * Assigns a bevahior to the action of depressing a key.
+             *
+             * @param action
+             *      The EarthManipulator::ActionType value to which to bind this key
+             *      input specification.
+             *
+             * @param key
+             *      A osgGA::GUIEventAdapter::KeySymbol value
+             *
+             * @param modkey_mask (default = 0L)
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      combination to associate with the action.
+             */
+            void bindKey(
+                ActionType action, int key,
+                int modkey_mask =0L, bool continuous =false );
+            
+            /**
+             * Assigns a bevahior to operation of the mouse's scroll wheel.
+             *
+             * @param action
+             *      The EarthManipulator::ActionType value to which to bind this scroll
+             *      input specification.
+             *
+             * @param scrolling_motion
+             *      A osgGA::GUIEventAdapter::ScrollingMotion value
+             *
+             * @param modkey_mask (default = 0L)
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      combination to associate with the action.
+             */
+            void bindScroll(
+                ActionType action, int scrolling_motion,
+                int modkey_mask =0L );
+
+            /**
+             * Sets an overall mouse sensitivity factor.
              *
              * @param value
              *      A scale factor to apply to mouse readings.
@@ -159,7 +193,7 @@ namespace osgEarthUtil
             void setMouseSensitivity( double value ) { _mouse_sens = value; }
 
             /**
-             * Gets the mouse sensitivity scale factor. Default = 1.0.
+             * Gets the overall mouse sensitivity scale factor. Default = 1.0.
              */
             double getMouseSensitivity() const { return _mouse_sens; }
 
@@ -251,12 +285,9 @@ namespace osgEarthUtil
             typedef std::pair<InputSpec,Action> ActionBinding;
             typedef std::vector<ActionBinding> ActionBindings;
 
-            // Gets the action bound to the provided input specification, or ACTION_NULL if there is
+            // Gets the action bound to the provided input specification, or NullAction if there is
             // to matching binding.
             const Action& getAction( int event_type, int input_mask, int modkey_mask ) const;
-
-            //// Gets the "direction" associated with the specified action.
-            //Direction getDirection( Action actionType ) const;
 
         private:
 
@@ -392,7 +423,7 @@ namespace osgEarthUtil
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
 
         osg::ref_ptr<osg::Node> _node;
-        bool                    _thrown;        
+        bool                    _thrown;      
         osg::Vec3d              _center;
         osg::Quat               _rotation;
         double                  _distance;
@@ -401,6 +432,13 @@ namespace osgEarthUtil
         osg::Timer_t            _time_last_frame;
         double                  _local_pitch;
         double                  _local_azim;
+
+        bool                    _continuous;
+        double                  _continuous_dx;
+        double                  _continuous_dy;
+
+        double                  _single_axis_x;
+        double                  _single_axis_y;
 
         osg::ref_ptr<Settings> _settings;
 

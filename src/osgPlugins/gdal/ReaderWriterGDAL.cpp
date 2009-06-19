@@ -21,6 +21,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/ImageUtils>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -888,10 +889,7 @@ public:
         //Create a transparent image if we don't have an image
         if (!image.valid())
         {
-            image = new osg::Image();
-            image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-            unsigned char *data = image->data(0,0);
-            memset(data, 0, 4);
+            return ImageUtils::getEmptyImage();
         }
         return image.release();
     }

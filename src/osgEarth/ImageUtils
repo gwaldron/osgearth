@@ -82,6 +82,11 @@ namespace osgEarth
          * Gets whether the input image's dimensions are powers of 2.
          */
         static bool isPowerOfTwo(const osg::Image* image);
+
+        /**
+         *
+         */
+        static osg::Image* getEmptyImage();
     };
 }
 

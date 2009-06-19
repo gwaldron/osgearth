@@ -80,6 +80,11 @@ ProjectedMap::createQuadrant( const TileKey* key )
             {
                 image = createGeoImage(key, imageLayers[i]->getTileSource());
             }
+            else
+            {
+                //If the image is not valid, create an empty texture as a placeholder
+                image = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
+            }
             image_tiles.push_back(image);
         }
     }

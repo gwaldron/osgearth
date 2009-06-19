@@ -183,16 +183,21 @@ void Map::updateStateSet()
         }
         else if (numLayers >= 2)
         {
-            //Blend together textures 0 and 1 on unit 0
+            //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
             {
                 osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
                 texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
 
                 texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
                 texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
 
                 texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
                 texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource1_Alpha(osg::TexEnvCombine::TEXTURE0+0);
+                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
 
                 texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
                 texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
@@ -202,15 +207,22 @@ void Map::updateStateSet()
 
 
             //For textures 2 and beyond, blend them together with the previous
+            //Add the alpha values of this unit and the previous unit
             for (int unit = 1; unit < numLayers-1; ++unit)
             {
                 osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
                 texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
+
                 texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
                 texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
 
                 texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
                 texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource1_Alpha(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
 
                 texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
                 texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
@@ -219,11 +231,17 @@ void Map::updateStateSet()
             }
 
             //Modulate the colors to get proper lighting on the last unit
+            //Keep the alpha results from the previous stage
             {
                 osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
                 texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::REPLACE);
+
                 texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
                 texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
                 texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
                 texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
                 stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);

@@ -21,6 +21,7 @@
 #include <osgEarth/Mercator>
 #include <osgEarth/TMS>
 #include <osgEarth/FileUtils>
+#include <osgEarth/ImageUtils>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -161,10 +162,7 @@ public:
                     //of the tilemap and create a transparent image.
                     if (key->getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
-                        image = new osg::Image();
-                        image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
-                        unsigned char *data = image->data(0,0);
-                        memset(data, 0, 4);
+                        return ImageUtils::getEmptyImage();
                     }
                 }
             }

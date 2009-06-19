@@ -172,6 +172,12 @@ EarthManipulator::applySettings( Settings* settings )
     }
 }
 
+EarthManipulator::Settings*
+EarthManipulator::getSettings() const
+{
+    return _settings.get();
+}
+
 void EarthManipulator::setNode(osg::Node* node)
 {
     _node = node;
@@ -256,7 +262,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         {
             if ( handleMouseAction( _last_action ) )
                 us.requestRedraw();
-            osg::notify(osg::NOTICE) << "throwing, action = " << _last_action._type << std::endl;
+            //osg::notify(osg::NOTICE) << "throwing, action = " << _last_action._type << std::endl;
         }
 
         if ( !_continuous )
@@ -673,7 +679,7 @@ void
 EarthManipulator::zoom( double dx, double dy )
 {
     double fd = _distance;
-    double scale = 1.0f - dy;
+    double scale = 1.0f + dy;
 
     if ( fd * scale > _minimumDistance )
     {

@@ -20,6 +20,8 @@
 #include <osgUtil/Optimizer>
 #include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgGA/StateSetManipulator>
 
 #include <osg/Material>
 #include <osg/Geode>
@@ -41,7 +43,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/FindNode>
 #include <osgEarthUtil/FadeLayerNode>
-#include <osgEarthUtil/Common>
+#include <osgEarthUtil/EarthManipulator>
 
 #include <iostream>
 
@@ -222,6 +224,14 @@ int main(int argc, char** argv)
       osg::notify(osg::NOTICE) << "Please load an osgEarth file" << std::endl;
       return 1;
   }
+  
+  viewer.addEventHandler(new osgViewer::StatsHandler());
+  viewer.addEventHandler(new osgViewer::WindowSizeHandler());
+  viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
+
+  EarthManipulator* manip = new EarthManipulator();
+  manip->getSettings()->setThrowingEnabled( true );
+  viewer.setCameraManipulator( manip );
 
   // set the scene to render
   viewer.setSceneData(root);

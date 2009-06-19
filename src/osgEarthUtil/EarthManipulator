@@ -310,6 +310,8 @@ namespace osgEarthUtil
         // Applies new user settings to the motion model.
         void applySettings( Settings* settings );
 
+        Settings* getSettings() const;
+
         //TODO: public controller functions to go here.
         //
         // lookAt( pivot_point, distance, local_pitch, azimuth )

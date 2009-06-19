@@ -16,30 +16,43 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_FINDNODE_H
-#define OSGEARTH_FINDNODE_H 1
 
-#include <osg/NodeVisitor>
-
-namespace osgEarth
+namespace osgEarth 
 {
-    template<class T> struct FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
+    template<class T>
+    class FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
     {
-        FindTopMostNodeOfTypeVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _foundNode(0) {}
-        void apply(osg::Node& node) {
-            _foundNode = dynamic_cast<T*>( &node );
-            if ( !_foundNode )
-                traverse( node );
-        }
-        T* _foundNode;
+    public:
+        FindTopMostNodeOfTypeVisitor():
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _foundNode(0)
+          {}
+
+          void apply(osg::Node& node)
+          {
+              T* result = dynamic_cast<T*>(&node);
+              if (result)
+              {
+                  _foundNode = result;
+              }
+              else
+              {
+                  traverse(node);
+              }
+          }
+
+          T* _foundNode;
     };
 
-    template<class T> T* findTopMostNodeOfType( osg::Node* node ) {
+    template<class T>
+    T* findTopMostNodeOfType(osg::Node* node)
+    {
         if (!node) return 0;
+
         FindTopMostNodeOfTypeVisitor<T> fnotv;
-        node->accept( fnotv );
+        node->accept(fnotv);
+
         return fnotv._foundNode;
     }
-}
 
-#endif //OSGEARTH_FINDNODE_H
+}

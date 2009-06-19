@@ -167,64 +167,72 @@ Map::createTileSource( const SourceConfig& sourceConfig )
 
 void Map::updateStateSet()
 {
-    ImageLayerList imageLayers;
-    getImageLayers(imageLayers);
-
-    int numLayers = imageLayers.size();
-
-    osg::StateSet* stateset = getOrCreateStateSet();
-
-    if (numLayers == 1)
+    if (_engine->getMapConfig().getCombineLayers())
     {
-        osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
-        stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
-    }
-    else if (numLayers >= 2)
-    {
-        //Blend together textures 0 and 1 on unit 0
+        osg::notify(osg::NOTICE) << "Applying texenvcombine" << std::endl;
+        ImageLayerList imageLayers;
+        getImageLayers(imageLayers);
+
+        int numLayers = imageLayers.size();
+
+        osg::StateSet* stateset = getOrCreateStateSet();
+
+        if (numLayers == 1)
         {
-            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-            texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-            
-            texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
-            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-
-            texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
-            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-
-            texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
-            texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-            
+            osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
             stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
         }
-       
-
-        //For textures 2 and beyond, blend them together with the previous
-        for (int unit = 1; unit < numLayers-1; ++unit)
+        else if (numLayers >= 2)
         {
-            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-            texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-            texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
-            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+            //Blend together textures 0 and 1 on unit 0
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
 
-            texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
-            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
 
-            texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
-            texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-            
-            stateset->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
+                texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+            }
+
+
+            //For textures 2 and beyond, blend them together with the previous
+            for (int unit = 1; unit < numLayers-1; ++unit)
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+                texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+
+                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                stateset->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
+            }
+
+            //Modulate the colors to get proper lighting on the last unit
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+                texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
+            }
         }
-
-        //Modulate the colors to get proper lighting on the last unit
-        {
-            osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-            texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
-            texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
-            texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-            texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
-            texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-            stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
-        }
+    }
+    else
+    {
+        osg::notify(osg::NOTICE) << "NOt applying texenvcombine" << std::endl;
     }
 }

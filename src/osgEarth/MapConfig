@@ -441,6 +441,18 @@ namespace osgEarth
          */
         void setNormalizeEdges(bool normalizeEdges);
 
+        /**
+         *Gets whether or not to apply the default layer combination logic using TexEnvCombine.
+         */
+        bool getCombineLayers() const;
+
+        /**
+         *Sets whether or not to apply the default layer combination logic using TexEnvCombine.
+         *By setting this to false, the developer is assuming all control of the way that
+         *the layers are combined using shaders, TexEnvCombine, etc.
+         */
+        void setCombineLayers(bool combineLayers);
+
         /*
         *Sets the absolute filename that the map was loaded from
         */
@@ -486,6 +498,7 @@ namespace osgEarth
 
         bool _cache_only;
         bool _normalize_edges;
+        bool _combine_layers;
 
         CacheConfig _cache_config;
         ProfileConfig _profile_config;

@@ -40,6 +40,7 @@ MapConfig::MapConfig()
     _min_tile_range_factor = 5;
     _cache_only = false;
     _normalize_edges = false;
+    _combine_layers = true;
     _filename = "";
 }
 
@@ -52,6 +53,7 @@ _proxy_host( rhs._proxy_host ),
 _proxy_port( rhs._proxy_port ),
 _min_tile_range_factor( rhs._min_tile_range_factor ),
 _cache_only( rhs._cache_only ),
+_combine_layers( rhs._combine_layers),
 _normalize_edges( rhs._normalize_edges ),
 _filename( rhs._filename ),
 _image_sources( rhs._image_sources ),
@@ -206,6 +208,18 @@ MapConfig::getCacheOnly() const
 
 {
     return _cache_only;
+}
+
+void
+MapConfig::setCombineLayers(bool combineLayers)
+{
+    _combine_layers = combineLayers;
+}
+
+bool
+MapConfig::getCombineLayers() const
+{
+    return _combine_layers;
 }
 
 const CacheConfig&
@@ -566,6 +580,7 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
 #define ELEM_PROXY_PORT        "proxy_port"
 #define ELEM_CACHE_ONLY        "cache_only"
 #define ELEM_NORMALIZE_EDGES   "normalize_edges"
+#define ELEM_COMBINE_LAYERS    "combine_layers"
 
 #define ELEM_CACHE             "cache"
 #define ATTR_TYPE              "type"
@@ -772,6 +787,12 @@ readMap( XmlElement* e_map, MapConfig& out_map )
     else if (cache_only == VALUE_FALSE)
         out_map.setCacheOnly(false);
 
+    std::string combine_layers = e_map->getSubElementText(ELEM_COMBINE_LAYERS);
+    if (combine_layers == VALUE_TRUE)
+        out_map.setCombineLayers(true);
+    else if (combine_layers == VALUE_FALSE)
+        out_map.setCombineLayers(false);
+
     std::string normalizeEdges = e_map->getSubElementText(ELEM_NORMALIZE_EDGES);
     if (normalizeEdges == VALUE_TRUE)
         out_map.setNormalizeEdges(true);
@@ -855,6 +876,7 @@ mapToXmlDocument( const MapConfig& map )
 
     e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map.getCacheOnly()));
     e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(map.getNormalizeEdges()));
+    e_map->addSubElement( ELEM_COMBINE_LAYERS, toString<bool>(map.getCombineLayers()));
 
     e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( map.getVerticalScale() ) );
     e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( map.getMinTileRangeFactor() ) );

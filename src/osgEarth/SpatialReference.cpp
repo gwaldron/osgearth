@@ -49,6 +49,8 @@ getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool low
 
 SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
 {
+    //Make sure the registry is created before the cache
+    osgEarth::Registry::instance();
     static SpatialReferenceCache s_cache;
     return s_cache;
 }

@@ -169,7 +169,6 @@ void Map::updateStateSet()
 {
     if (_engine->getMapConfig().getCombineLayers())
     {
-        osg::notify(osg::NOTICE) << "Applying texenvcombine" << std::endl;
         ImageLayerList imageLayers;
         getImageLayers(imageLayers);
 
@@ -230,9 +229,5 @@ void Map::updateStateSet()
                 stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
             }
         }
-    }
-    else
-    {
-        osg::notify(osg::NOTICE) << "NOt applying texenvcombine" << std::endl;
     }
 }

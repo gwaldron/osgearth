@@ -104,8 +104,11 @@ public:
 
                       if (goalOpacity != currentOpacity)
                       {
-                          if (currentOpacity > goalOpacity) delta = -delta;
-                          _fadeLayerNode->setOpacity(i, currentOpacity + delta);
+                          float opacityDelta = delta;
+                          if (currentOpacity > goalOpacity) opacityDelta = -opacityDelta;
+                          float newOpacity = currentOpacity + opacityDelta;
+                          //osg::notify(osg::NOTICE) << "Layer " << i << ": Acive=" << activeLayer << " Goal=" << goalOpacity << " Current=" << currentOpacity << " New = " << newOpacity << " Delta=" << delta << std::endl;
+                          _fadeLayerNode->setOpacity(i, newOpacity);
                       }
                   }
               }

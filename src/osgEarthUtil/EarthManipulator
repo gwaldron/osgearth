@@ -261,6 +261,18 @@ namespace osgEarthUtil
             bool getThrowingEnabled() const { return _throwing; }
 
             /**
+             * Sets whether to lock in a camera heading when performing panning operations (i.e.,
+             * changing the focal point).
+             */
+            void setLockAzimuthWhilePanning( bool value ) { _lock_azim_while_panning = value; }
+
+            /**
+             * Gets true if the manipulator should lock in a camera heading when performing panning
+             * operations (i.e. changing the focal point.)
+             */
+            bool getLockAzimuthWhilePanning() const { return _lock_azim_while_panning; }
+
+            /**
              * Sets the minimum and maximum allowable local camera pitch, in degrees.
              *
              * By "local" we mean relative to the tangent plane passing through the focal point on
@@ -297,6 +309,7 @@ namespace osgEarthUtil
             bool _force_north_up;
             bool _throwing;
             bool _rubber_band_zoom;
+            bool _lock_azim_while_panning;
             double _mouse_sens;
             double _keyboard_sens;
             double _scroll_sens;
@@ -311,6 +324,11 @@ namespace osgEarthUtil
         void applySettings( Settings* settings );
 
         Settings* getSettings() const;
+
+        double getLocalPitch() const { return osg::RadiansToDegrees( _local_pitch ); }
+
+        double getLocalAzimuth() const { return osg::RadiansToDegrees( _local_azim ); }
+
 
         //TODO: public controller functions to go here.
         //
@@ -357,6 +375,8 @@ namespace osgEarthUtil
 
         // Get the keyboard and mouse usage of this manipulator.
         virtual void getUsage(osg::ApplicationUsage& usage) const;
+
+        virtual void computeHomePosition();
 
 
     protected:
@@ -418,6 +438,8 @@ namespace osgEarthUtil
         // "ticks" the resident Task, which allows for multi-frame animation of navigation
         // movements.
         bool serviceTask();
+
+        void recalculateLocalPitchAndAzimuth();
 
     private:
         // makeshift "stack" of the last 2 incoming events.

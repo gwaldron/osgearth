@@ -65,7 +65,8 @@ _mouse_sens( 1.0 ),
 _keyboard_sens( 1.0 ),
 _scroll_sens( 1.0 ),
 _min_pitch( -89.9 ),
-_max_pitch( -10.0 )
+_max_pitch( -10.0 ),
+_lock_azim_while_panning( true )
 {
 }
 
@@ -78,7 +79,8 @@ _mouse_sens( rhs._mouse_sens ),
 _keyboard_sens( rhs._keyboard_sens ),
 _scroll_sens( rhs._scroll_sens ),
 _min_pitch( rhs._min_pitch ),
-_max_pitch( rhs._max_pitch )
+_max_pitch( rhs._max_pitch ),
+_lock_azim_while_panning( rhs._lock_azim_while_panning )
 {
     //NOP
 }

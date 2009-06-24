@@ -5,10 +5,10 @@ This example tests osgEarth's image reprojection capabilities.  The imagery comi
 and it is being reprojected on the fly to UTM epsg:26917.
 -->
 
-<map name="ESRI Imagery and Roads" type="flat">
+<map name="ESRI Imagery and Roads" type="projected">
 
     <!--Specify the profile to use since we want to reproject to UTM-->        
-    <profile srs="epsg:26917" minx = "560725.500" miny="4385762.500" maxx = "573866.500" maxy="4400705.500"/>
+    <profile srs="epsg:26917" xmin="560725.500" ymin="4385762.500" xmax="573866.500" ymax="4400705.500"/>
     
     <image name="arcgisonline esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>

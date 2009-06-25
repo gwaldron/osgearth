@@ -34,7 +34,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT SpatialReference : public osg::Referenced
     {
     public:
+        /**
+         * Creates an SRS from an initialization string. This can be a variety of
+         * things, including a WKT spec, a PROJ4 init string, or a "well-known"
+         * idenfitier (e.g., "WGS84" or "spherical-mercator").
+         */
         static SpatialReference* create( const std::string& init );
+
+        /**
+         * Attempts to create a spatial reference def from a pre-existing CSN, returning
+         * NULL if there is not enough information.
+         */
+        static SpatialReference* create( osg::CoordinateSystemNode* csn );
 
     public:
         /** Transform a point to another SRS. */

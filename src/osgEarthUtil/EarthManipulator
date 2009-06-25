@@ -20,6 +20,8 @@
 #define OSGEARTHUTIL_EARTHMANIPULATOR
 
 #include <osgEarthUtil/Common>
+#include <osgEarthUtil/Viewpoint>
+#include <osgEarth/Map>
 #include <osgGA/MatrixManipulator>
 #include <osg/Timer>
 #include <map>
@@ -280,7 +282,7 @@ namespace osgEarthUtil
              *
              * Defaults are: Min = -90, Max = -10.
              */
-            void setMinMaxPitch( double min_pitch, double max_pitch ) { _min_pitch = min_pitch; _max_pitch = max_pitch; }
+            void setMinMaxPitch( double min_pitch, double max_pitch );
 
             /** Gets the minimum allowable local pitch, in degrees. */
             double getMinPitch() const { return _min_pitch; }
@@ -305,10 +307,7 @@ namespace osgEarthUtil
 
             ActionBindings _bindings;
             bool _single_axis_rotation;
-            bool _force_nadir;
-            bool _force_north_up;
             bool _throwing;
-            bool _rubber_band_zoom;
             bool _lock_azim_while_panning;
             double _mouse_sens;
             double _keyboard_sens;
@@ -320,20 +319,42 @@ namespace osgEarthUtil
     public:
         EarthManipulator();
 
-        // Applies new user settings to the motion model.
+        /**
+         * Applies a new settings object to the manipulator, which takes effect immediately.
+         */
         void applySettings( Settings* settings );
 
+        /**
+         * Gets a handle on the current manipulator settings object.
+         */
         Settings* getSettings() const;
 
-        double getLocalPitch() const { return osg::RadiansToDegrees( _local_pitch ); }
+        /**
+         * Gets a current camera position.
+         */
+        Viewpoint getViewpoint() const;
 
-        double getLocalAzimuth() const { return osg::RadiansToDegrees( _local_azim ); }
+        /**
+         * Sets the camera position.
+         */
+        void setViewpoint( const Viewpoint& vp );
+
+
+        //double getLocalPitch() const { return osg::RadiansToDegrees( _local_pitch ); }
+
+        //double getLocalAzimuth() const { return osg::RadiansToDegrees( _local_azim ); }
 
 
         //TODO: public controller functions to go here.
         //
         // lookAt( pivot_point, distance, local_pitch, azimuth )
         // tether( node, distance, local_pitch, azimuth )
+
+        /**
+         * Gets the spatial reference system of the terrain map to which this
+         * manipulator is currently attached.
+         */
+        const osgEarth::SpatialReference* getSRS() const;
 
 
     public: // osgGA::MatrixManipulator
@@ -408,8 +429,8 @@ namespace osgEarthUtil
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
 
-        // Taken from TerrainManipulator. Don't know exactly what this does.
-        void clampOrientation();
+        // This sets the camera's roll based on your location on the globe.
+        void recalculateRoll();
 
     private:
         void pan( double dx, double dy );
@@ -441,12 +462,19 @@ namespace osgEarthUtil
 
         void recalculateLocalPitchAndAzimuth();
 
+        osg::Matrixd getRotation(const osg::Vec3d& center) const;
+
     private:
         // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
 
-        osg::ref_ptr<osg::Node> _node;
+        osg::ref_ptr<osg::Node>          _node;
+
+        osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;
+        bool _is_geocentric;
+        bool _srs_lookup_failed;
+
         bool                    _thrown;      
         osg::Vec3d              _center;
         osg::Quat               _rotation;

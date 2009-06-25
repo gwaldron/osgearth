@@ -102,6 +102,18 @@ Map::findMapNode( osg::Node* graph )
     return findTopMostNodeOfType<Map>( graph );
 }
 
+osg::CoordinateSystemNode*
+Map::findCoordinateSystemNode( osg::Node* graph )
+{
+    return findTopMostNodeOfType<osg::CoordinateSystemNode>( graph );
+}
+
+bool
+Map::isGeocentric() const
+{
+    return dynamic_cast<GeocentricMap*>( _engine.get() ) != NULL;
+}
+
 void
 Map::addLayer( Layer* layer )
 {

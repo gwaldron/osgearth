@@ -25,6 +25,7 @@
 #include <osgEarth/Layer>
 #include <osgEarth/MapConfig>
 #include <osgDB/ReaderWriter>
+#include <osg/CoordinateSystemNode>
 #include <OpenThreads/ReentrantMutex>
 
 namespace osgEarth
@@ -51,6 +52,12 @@ namespace osgEarth
          * no Map node exists in the graph.
          */
         static Map* findMapNode( osg::Node* graph );
+
+        /**
+         * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
+         * CSN exists in the graph.
+         */
+        static osg::CoordinateSystemNode* findCoordinateSystemNode( osg::Node* graph );
 
         /**
          *Callback used to notify listeners of layer changes
@@ -124,6 +131,12 @@ namespace osgEarth
          * Gets the profile of the underlying map
          */
         const Profile* getProfile() const;
+
+        /**
+         * Returns true if the realized terrain model is geocentric, false if
+         * it is flat/projected.
+         */
+        bool isGeocentric() const;
 
         /**
          * Gets the underlying map engine that generates data for this map node.

@@ -22,7 +22,7 @@
 #include <osgUtil/LineSegmentIntersector>
 
 using namespace osgEarthUtil;
-
+using namespace osgEarth;
 
 /****************************************************************************/
 
@@ -34,10 +34,10 @@ _scale_y( scale_y ),
 _continuous( continuous )
 {
     _dir =
-        _type == ACTION_PAN_LEFT || _type == ACTION_ROTATE_LEFT? DIR_LEFT :
+        _type == ACTION_PAN_LEFT  || _type == ACTION_ROTATE_LEFT? DIR_LEFT :
         _type == ACTION_PAN_RIGHT || _type == ACTION_ROTATE_RIGHT? DIR_RIGHT :
-        _type == ACTION_PAN_UP || _type == ACTION_ROTATE_UP || _type == ACTION_ZOOM_IN ? DIR_UP :
-        _type == ACTION_PAN_DOWN || _type == ACTION_ROTATE_DOWN || _type == ACTION_ZOOM_OUT ? DIR_DOWN :
+        _type == ACTION_PAN_UP    || _type == ACTION_ROTATE_UP   || _type == ACTION_ZOOM_IN ? DIR_UP :
+        _type == ACTION_PAN_DOWN  || _type == ACTION_ROTATE_DOWN || _type == ACTION_ZOOM_OUT ? DIR_DOWN :
         DIR_NA;
 }
 
@@ -60,7 +60,6 @@ EarthManipulator::Action EarthManipulator::NullAction( EarthManipulator::ACTION_
 EarthManipulator::Settings::Settings() :
 _throwing( false ),
 _single_axis_rotation( false ),
-_force_north_up( false ),
 _mouse_sens( 1.0 ),
 _keyboard_sens( 1.0 ),
 _scroll_sens( 1.0 ),
@@ -74,7 +73,6 @@ EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
 _bindings( rhs._bindings ),
 _throwing( rhs._throwing ),
 _single_axis_rotation( rhs._single_axis_rotation ),
-_force_north_up( rhs._force_north_up ),
 _mouse_sens( rhs._mouse_sens ),
 _keyboard_sens( rhs._keyboard_sens ),
 _scroll_sens( rhs._scroll_sens ),
@@ -120,10 +118,15 @@ EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey
     return NullAction;
 }
 
+void
+EarthManipulator::Settings::setMinMaxPitch( double min_pitch, double max_pitch )
+{
+    _min_pitch = osg::clampBetween( min_pitch, -89.9, 89.0 );
+    _max_pitch = osg::clampBetween( max_pitch, min_pitch, 89.0 );
+}
+
 
 /************************************************************************/
-
-#define DISCRETE_DELTA 1.0
 
 
 EarthManipulator::EarthManipulator() :
@@ -132,14 +135,15 @@ _thrown( false ),
 _continuous( false ),
 _settings( new Settings() ),
 _task( new Task() ),
-_last_action( ACTION_NULL )
+_last_action( ACTION_NULL ),
+_srs_lookup_failed( false )
 {
     // install default action bindings:
 
     _settings->bindKey( ACTION_HOME, osgGA::GUIEventAdapter::KEY_Space );
 
     _settings->bindMouse( ACTION_PAN,    osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
-    _settings->bindMouse( ACTION_ZOOM,   osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON );
+    _settings->bindMouse( ACTION_ZOOM,   osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, 0L, true );
     _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON );
     _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON | osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON );
 
@@ -153,6 +157,7 @@ _last_action( ACTION_NULL )
     _settings->bindKey( ACTION_PAN_DOWN,  osgGA::GUIEventAdapter::KEY_Down );
 
     _settings->setThrowingEnabled( false );
+    _settings->setLockAzimuthWhilePanning( true );
 }
 
 
@@ -168,9 +173,18 @@ EarthManipulator::applySettings( Settings* settings )
     {
         _settings = settings;
 
-        //TODO: make any immediate changes.
         _task->_type = TASK_NONE;
         flushMouseEventStack();
+
+        // apply new pitch restrictions
+        double old_pitch = osg::RadiansToDegrees( _local_pitch );
+        double new_pitch = osg::clampBetween( old_pitch, _settings->getMinPitch(), _settings->getMaxPitch() );
+
+        if ( new_pitch != old_pitch )
+        {
+            Viewpoint vp = getViewpoint();
+            setViewpoint( Viewpoint(vp.getFocalPoint(), vp.getHeading(), new_pitch, vp.getRange(), vp.getSRS()) );
+        }
     }
 }
 
@@ -194,6 +208,11 @@ void EarthManipulator::setNode(osg::Node* node)
     }
     if (getAutoComputeHomePosition()) computeHomePosition();
 
+    // reset the srs cache:
+    _cached_srs = NULL;
+    _srs_lookup_failed = false;
+
+    // track the local angles.
     recalculateLocalPitchAndAzimuth();
 }
 
@@ -202,6 +221,171 @@ EarthManipulator::getNode()
 {
     return _node.get();
 }
+
+
+const osgEarth::SpatialReference*
+EarthManipulator::getSRS() const
+{
+    if ( !_cached_srs.valid() && !_srs_lookup_failed && _node.valid() )
+    {
+        EarthManipulator* nonconst_this = const_cast<EarthManipulator*>(this);
+
+        nonconst_this->_is_geocentric = true;
+
+        // first try to find a map node:
+        osgEarth::Map* map = osgEarth::Map::findMapNode( _node.get() );
+        if ( map )
+        {
+            nonconst_this->_cached_srs = map->getProfile()->getSRS();
+            nonconst_this->_is_geocentric = map->isGeocentric();
+        }
+
+        // if that doesn't work, try gleaning info from a CSN:
+        if ( !_cached_srs.valid() )
+        {
+            osg::CoordinateSystemNode* csn = osgEarth::Map::findCoordinateSystemNode( _node.get() );
+            if ( csn )
+            {
+                nonconst_this->_cached_srs = osgEarth::SpatialReference::create( csn );
+                nonconst_this->_is_geocentric = csn->getEllipsoidModel() != NULL;
+            }
+        }
+
+        nonconst_this->_srs_lookup_failed = !_cached_srs.valid();
+    }
+
+    return _cached_srs.get();
+}
+
+
+static double
+normalizeAzimRad( double input ) {
+    while( input < -osg::PI ) input += osg::PI*2.0;
+    while( input > osg::PI ) input -= osg::PI*2.0;
+    return input;
+}
+
+osg::Matrixd
+EarthManipulator::getRotation(const osg::Vec3d& point) const
+{
+    //The look vector will be going directly from the eye point to the point on the earth,
+    //so the look vector is simply the up vector at the center point
+    osg::CoordinateFrame cf = getCoordinateFrame(point);
+    osg::Vec3d lookVector = -getUpVector(cf);
+
+    osg::Vec3d side;
+
+    //Force the side vector to be orthogonal to north
+    osg::Vec3d worldUp(0,0,1);
+
+    double dot = osg::absolute(worldUp * lookVector);
+    if (osg::equivalent(dot, 1.0))
+    {
+        //We are looking nearly straight down the up vector, so use the Y vector for world up instead
+        worldUp = osg::Vec3d(0, 1, 0);
+        //osg::notify(osg::NOTICE) << "using y vector victor" << std::endl;
+    }
+
+    side = lookVector ^ worldUp;
+    osg::Vec3d up = side ^ lookVector;
+    up.normalize();
+
+    //We want a very slight offset
+    double offset = 1e-6;
+
+    return osg::Matrixd::lookAt( point - (lookVector * offset), point, up);
+}
+
+
+void
+EarthManipulator::setViewpoint( const Viewpoint& vp )
+{
+    osg::Vec3d new_center = vp.getFocalPoint();
+
+    // start by transforming the requested focal point into world coordinates:
+    if ( getSRS() )
+    {
+        // resolve the VP's srs. If the VP's SRS is not specified, assume that it
+        // is either lat/long (if the map is geocentric) or X/Y (otherwise).
+        osg::ref_ptr<const SpatialReference> vp_srs = vp.getSRS()? vp.getSRS() :
+            _is_geocentric? getSRS()->getGeographicSRS() :
+            getSRS();
+
+        if ( !getSRS()->isEquivalentTo( vp_srs.get() ) )
+        {
+            osg::Vec3d local = new_center;
+            // reproject the focal point if necessary:
+            vp_srs->transform( new_center.x(), new_center.y(), getSRS(), local.x(), local.y() );
+            new_center = local;
+        }
+
+        // convert to geocentric coords if necessary:
+        if ( _is_geocentric )
+        {
+            osg::Vec3d geocentric;
+
+            getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+                osg::DegreesToRadians( new_center.y() ),
+                osg::DegreesToRadians( new_center.x() ),
+                new_center.z(),
+                geocentric.x(), geocentric.y(), geocentric.z() );
+
+            new_center = geocentric;            
+        }
+    }
+
+    // now calculate the new rotation matrix based on the angles:
+
+    double new_pitch = osg::DegreesToRadians(
+        osg::clampBetween( vp.getPitch(), _settings->getMinPitch(), _settings->getMaxPitch() ) );
+
+    double new_azim = normalizeAzimRad( osg::DegreesToRadians( vp.getHeading() ) );
+
+    _center = new_center;
+    _distance = osg::maximum( vp.getRange(), 1.0 );
+    
+    osg::CoordinateFrame local_frame = getCoordinateFrame( new_center );
+    _previousUp = getUpVector( local_frame );
+
+    osg::Matrixd center_rot = getRotation( new_center );
+    osg::Quat azim_q( new_azim, osg::Vec3d(0,0,1) );
+    osg::Quat pitch_q( -new_pitch -osg::PI_2, osg::Vec3d(1,0,0) );
+
+    osg::Matrix new_rot = center_rot * osg::Matrixd( azim_q * pitch_q );
+
+    _rotation = osg::Matrixd::inverse(new_rot).getRotate();
+
+    _local_pitch = 0.0;
+    _local_azim  = 0.0;
+
+    recalculateLocalPitchAndAzimuth();
+}
+
+
+Viewpoint
+EarthManipulator::getViewpoint() const
+{
+    osg::Vec3d focal_point = _center;
+
+    if ( getSRS() && _is_geocentric )
+    {
+        // convert geocentric to lat/long:
+        getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+            _center.x(), _center.y(), _center.z(),
+            focal_point.y(), focal_point.x(), focal_point.z() );
+
+        focal_point.x() = osg::RadiansToDegrees( focal_point.x() );
+        focal_point.y() = osg::RadiansToDegrees( focal_point.y() );
+    }
+
+    return Viewpoint(
+        focal_point,
+        osg::RadiansToDegrees( _local_azim ),
+        osg::RadiansToDegrees( _local_pitch ),
+        _distance,
+        getSRS() );
+}
+
 
 bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const
@@ -509,7 +693,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
     osg::CoordinateFrame coordinateFrame = getCoordinateFrame( _center );
     _previousUp = getUpVector(coordinateFrame);
 
-    clampOrientation();
+    recalculateRoll();
     recalculateLocalPitchAndAzimuth();
 }
 
@@ -569,7 +753,7 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
     osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
     _previousUp = getUpVector(coordinateFrame);
 
-    clampOrientation();
+    recalculateRoll();
     recalculateLocalPitchAndAzimuth();
 }
 
@@ -796,10 +980,10 @@ EarthManipulator::handleKeyboardAction( const Action& action, double duration )
 
     switch( action._dir )
     {
-    case DIR_LEFT:  dx =  DISCRETE_DELTA; break;
-    case DIR_RIGHT: dx = -DISCRETE_DELTA; break;
-    case DIR_UP:    dy = -DISCRETE_DELTA; break;
-    case DIR_DOWN:  dy =  DISCRETE_DELTA; break;
+    case DIR_LEFT:  dx =  1; break;
+    case DIR_RIGHT: dx = -1; break;
+    case DIR_UP:    dy = -1; break;
+    case DIR_DOWN:  dy =  1; break;
     }
 
     dx *= action._scale_x * _settings->getKeyboardSensitivity();
@@ -815,10 +999,10 @@ EarthManipulator::handleScrollAction( const Action& action, double duration )
 
     switch( action._dir )
     {
-    case DIR_LEFT:  dx =  DISCRETE_DELTA; break;
-    case DIR_RIGHT: dx = -DISCRETE_DELTA; break;
-    case DIR_UP:    dy =  DISCRETE_DELTA; break;
-    case DIR_DOWN:  dy = -DISCRETE_DELTA; break;
+    case DIR_LEFT:  dx =  1; break;
+    case DIR_RIGHT: dx = -1; break;
+    case DIR_UP:    dy =  1; break;
+    case DIR_DOWN:  dy = -1; break;
     }
 
     dx *= action._scale_x * _settings->getScrollSensitivity();
@@ -873,7 +1057,7 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
 }
 
 void
-EarthManipulator::clampOrientation()
+EarthManipulator::recalculateRoll()
 {
     osg::Matrixd rotation_matrix;
     rotation_matrix.makeRotate(_rotation);
@@ -913,10 +1097,23 @@ EarthManipulator::recalculateLocalPitchAndAzimuth()
 {
     // reproject the view matrix into the local CS of the focal point:
     osg::Matrix m = getMatrix() * osg::Matrixd::inverse( getCoordinateFrame( _center ) );
-    osg::Vec3d look( -m(2,0), -m(2,1), -m(2,2) );
+    osg::Vec3d look = -getUpVector( m ); // -m(2,0), -m(2,1), -m(2,2)
+    osg::Vec3d up   =  getFrontVector( m );
+    //osg::Vec3d look( -m(2,0), -m(2,1), -m(2,2) );
+    
     look.normalize();
-    _local_azim = osg::clampBetween( atan2( look.x(), look.y() ), -osg::PI, osg::PI );
-    _local_pitch = osg::PI_2 * look.z();
+    up.normalize();
+
+    double azim;    
+    if ( look.z() < -0.9 )
+        azim = atan2( up.x(), up.y() );
+    else if ( look.z() > 0.9 )
+        azim = atan2( -up.x(), -up.y() );
+    else
+        azim = atan2( look.x(), look.y() );
+
+    _local_azim  = normalizeAzimRad( azim );
+    _local_pitch = -asin( -look.z() );
 
     //osg::notify(osg::NOTICE)
     //    << "P=" << osg::RadiansToDegrees(_local_pitch)

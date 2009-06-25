@@ -190,6 +190,18 @@ SpatialReference::create( const std::string& init )
 }
 
 
+SpatialReference*
+SpatialReference::create( osg::CoordinateSystemNode* csn )
+{
+    SpatialReference* result = NULL;
+    if ( csn && !csn->getCoordinateSystem().empty() )
+    {
+        result = create( csn->getCoordinateSystem() );
+    }
+    return result;
+}
+
+
 static std::string&
 replaceIn( std::string& s, const std::string& sub, const std::string& other)
 {

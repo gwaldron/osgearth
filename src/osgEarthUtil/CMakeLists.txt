@@ -13,6 +13,7 @@ SET(LIB_PUBLIC_HEADERS
     Export
 	FadeLayerNode
 	ObjectPlacer
+	Viewpoint
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
@@ -20,6 +21,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     EarthManipulator.cpp
 	FadeLayerNode.cpp
 	ObjectPlacer.cpp
+	Viewpoint.cpp
 )
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})

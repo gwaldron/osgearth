@@ -63,8 +63,18 @@ Viewpoint::getFocalPoint() const {
     return _focal_point;
 }
 
+void
+Viewpoint::setFocalPoint( const osg::Vec3d& value ) {
+    _focal_point = value;
+}
+
 double
 Viewpoint::x() const {
+    return _focal_point.x();
+}
+
+double&
+Viewpoint::x() {
     return _focal_point.x();
 }
 
@@ -73,8 +83,18 @@ Viewpoint::y() const {
     return _focal_point.y();
 }
 
+double&
+Viewpoint::y() {
+    return _focal_point.y();
+}
+
 double
 Viewpoint::z() const {
+    return _focal_point.z();
+}
+
+double&
+Viewpoint::z() {
     return _focal_point.z();
 }
 
@@ -83,14 +103,29 @@ Viewpoint::getHeading() const {
     return _heading_deg;
 }
 
+void
+Viewpoint::setHeading( double value ) {
+    _heading_deg = value;
+}
+
 double
 Viewpoint::getPitch() const {
     return _pitch_deg;
 }
 
+void
+Viewpoint::setPitch( double value ) {
+    _pitch_deg = value;
+}
+
 double
 Viewpoint::getRange() const {
     return _range;
+}
+
+void
+Viewpoint::setRange( double value ) {
+    _range = value;
 }
 
 const SpatialReference*

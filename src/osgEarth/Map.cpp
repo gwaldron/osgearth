@@ -26,7 +26,19 @@
 
 using namespace osgEarth;
 
-Map::Map(const MapConfig& mapConfig)
+Map::Map()
+{
+    MapConfig mapConfig;
+    init( mapConfig );
+}
+
+Map::Map(const MapConfig& mapConfig )
+{
+    init( mapConfig );
+}
+
+void
+Map::init( const MapConfig& mapConfig )
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( MapEngine::s_mapEngineCacheMutex );
 
@@ -112,6 +124,28 @@ bool
 Map::isGeocentric() const
 {
     return dynamic_cast<GeocentricMap*>( _engine.get() ) != NULL;
+}
+
+bool
+Map::addImageLayer( const SourceConfig& conf )
+{
+    TileSource* source = createTileSource( conf );
+    if ( source )
+    {
+        addLayer( new ImageLayer( source ) );
+    }
+    return source != NULL;
+}
+
+bool
+Map::addHeightFieldLayer( const SourceConfig& conf )
+{
+    TileSource* source = createTileSource( conf );
+    if ( source )
+    {
+        addLayer( new ElevationLayer( source ) );
+    }
+    return source != NULL;
 }
 
 void

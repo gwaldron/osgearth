@@ -34,6 +34,11 @@ namespace osgEarth
     {
     public:
         /**
+         * Creates a new Map node with a default configuration and no data.
+         */
+        Map();
+
+        /**
          * Creates a new Map node from the given MapConfig.  This allows you to
          * programatically create a MapConfig and create a paging scene graph out of it.
          */
@@ -79,6 +84,18 @@ namespace osgEarth
          *Sets the LayerCallback of this Map
         */
         void setLayerCallback(LayerCallback* layerCallback) { _layerCallback = layerCallback;}
+
+        /**
+         * Creates a new layer from the provided configuration and adds it to the end of
+         * the layer list. Returns true upon success.
+         */
+        bool addImageLayer( const SourceConfig& conf );
+
+        /**
+         * Creates a new height-field layer from the provided configuration and adds it to the
+         * end of the layer list. Returns true upon success.
+         */
+        bool addHeightFieldLayer( const SourceConfig& conf );
 
         /**
          * Adds the given layer to the end of the Layer list
@@ -149,6 +166,8 @@ namespace osgEarth
 
     private:
         Map( MapEngine* engine );
+
+        void init( const MapConfig& conf );
 
         osg::ref_ptr<MapEngine> _engine;
 

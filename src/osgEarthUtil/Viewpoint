@@ -25,7 +25,7 @@
 namespace osgEarthUtil
 {
     /**
-     * Immutable viewpoint data object. Stores a view configuration as a focal point
+     * Viewpoint data object. Stores a view configuration as a focal point
      * and the camera's position relative to that focal point.
      */
     class OSGEARTHUTIL_EXPORT Viewpoint
@@ -78,27 +78,37 @@ namespace osgEarthUtil
         bool isValid() const;
 
         /**
-         * Gets the location at which the camera is pointing.
+         * Gets or sets the location at which the camera is pointing.
          */
         const osg::Vec3d& getFocalPoint() const;
+        void setFocalPoint( const osg::Vec3d& point );
+
         double x() const;
+        double& x();
+
         double y() const;
+        double& y();
+
         double z() const;
+        double& z();
 
         /**
          * Gets the heading (in degrees) of the camera relative to the focal point.
          */
         double getHeading() const;
+        void setHeading( double heading_deg );
 
         /**
          * Gets the pitch (in degrees) of the camera relative to the focal point.
          */
         double getPitch() const;
+        void setPitch( double pitch_deg );
 
         /**
          * Gets the distance from the camera to the focal point.
          */
         double getRange() const;
+        void setRange( double range );
 
         /**
          * Gets the spatial reference system of the focal point, if defined.

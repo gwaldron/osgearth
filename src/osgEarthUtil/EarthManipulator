@@ -339,16 +339,12 @@ namespace osgEarthUtil
          */
         void setViewpoint( const Viewpoint& vp );
 
-
-        //double getLocalPitch() const { return osg::RadiansToDegrees( _local_pitch ); }
-
-        //double getLocalAzimuth() const { return osg::RadiansToDegrees( _local_azim ); }
-
-
-        //TODO: public controller functions to go here.
-        //
-        // lookAt( pivot_point, distance, local_pitch, azimuth )
-        // tether( node, distance, local_pitch, azimuth )
+        /**
+         * Locks the camera's focal point on the center of a node's bounding sphere.
+         * Pass NULL to deactivate the tether.
+         */
+        void setTetherNode( osg::Node* node );
+        osg::Node* getTetherNode() const;
 
         /**
          * Gets the spatial reference system of the terrain map to which this
@@ -464,16 +460,20 @@ namespace osgEarthUtil
 
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
 
+        void updateTether();
+
     private:
         // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
 
-        osg::ref_ptr<osg::Node>          _node;
+        osg::ref_ptr<osg::Node> _node;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;
         bool _is_geocentric;
         bool _srs_lookup_failed;
+
+        osg::observer_ptr<osg::Node> _tether_node;
 
         bool                    _thrown;      
         osg::Vec3d              _center;

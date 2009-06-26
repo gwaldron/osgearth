@@ -387,6 +387,19 @@ EarthManipulator::getViewpoint() const
 }
 
 
+void
+EarthManipulator::setTetherNode( osg::Node* node )
+{
+    _tether_node = node;
+}
+
+osg::Node*
+EarthManipulator::getTetherNode() const
+{
+    return _tether_node.get();
+}
+
+
 bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const
 {
@@ -463,6 +476,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
+        // check for _center update due to tethering:
+        if ( _tether_node.valid() )
+        {
+            updateTether();
+        }
+
         if ( _thrown || _continuous )
         {
             if ( handleMouseAction( _last_action ) )
@@ -566,6 +585,32 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         _last_action = action;
 
     return handled;
+}
+
+void
+EarthManipulator::updateTether()
+{
+    // capture a temporary ref since _tether_node is just an observer:
+    osg::ref_ptr<osg::Node> temp = _tether_node.get();
+    if ( temp.valid() )
+    {
+        const osg::BoundingSphere& bs = temp->getBound();
+        if ( bs._center != _center )
+        {
+            osg::Vec3d new_center = bs._center;
+            if ( getSRS() && _is_geocentric )
+            {
+                double lat_r, lon_r, h;
+                getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+                    new_center.x(), new_center.y(), new_center.z(),
+                    lat_r, lon_r, h );
+                new_center.set( osg::RadiansToDegrees(lon_r), osg::RadiansToDegrees(lat_r), h );
+            }
+            Viewpoint vp = getViewpoint();
+            vp.setFocalPoint( new_center );
+            setViewpoint( vp );
+        }
+    }
 }
 
 bool

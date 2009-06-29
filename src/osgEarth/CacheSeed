@@ -102,10 +102,10 @@ namespace osgEarth
         unsigned int _minLevel;
         unsigned int _maxLevel;
 
-        Bounds _bounds;
-        void processKey( MapEngine* map, TileKey *key );
+        typedef std::vector< osg::ref_ptr<TileKey> > TileKeyList;
 
-        //osg::ref_ptr<MapEngine> _map;
+        Bounds _bounds;
+        void collectKeys( MapEngine* map, TileKey *key, TileKeyList &keys);
     };
 }
 

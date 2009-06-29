@@ -792,6 +792,9 @@ public:
 
             GDALRasterBand* bandGray = findBand(_warpedDS, GCI_GrayIndex);
 
+            //Determine the pixel format
+            GLenum pixelFormat = bandAlpha ? GL_RGBA : GL_RGB;
+
 
             if (bandRed && bandGreen && bandBlue)
             {
@@ -814,7 +817,7 @@ public:
                 }
 
                 image = new osg::Image;
-                image->allocateImage(_tile_size, _tile_size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+                image->allocateImage(_tile_size, _tile_size, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
                 for (int src_row = 0, dst_row = tile_offset_top;
@@ -828,7 +831,11 @@ public:
                         *(image->data(dst_col, dst_row) + 0) = red[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 1) = green[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 2) = blue[src_col + src_row * target_width];
-                        *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+
+                        if (bandAlpha)
+                        {
+                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                        }
                     }
                 }
 
@@ -855,7 +862,7 @@ public:
                 }
 
                 image = new osg::Image;
-                image->allocateImage(_tile_size, _tile_size, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+                image->allocateImage(_tile_size, _tile_size, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
                 for (int src_row = 0, dst_row = tile_offset_top;
@@ -869,7 +876,10 @@ public:
                         *(image->data(dst_col, dst_row) + 0) = gray[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 1) = gray[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 2) = gray[src_col + src_row * target_width];
-                        *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                        if (bandAlpha)
+                        {
+                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                        }
                     }
                 }
 

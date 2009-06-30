@@ -296,10 +296,15 @@ MapEngine::addChildren( osg::Group* tile_parent, const TileKey* key )
 
     osg::ref_ptr<osg::Node> q0, q1, q2, q3;
 
-    q0 = createQuadrant( key->getSubkey(0) );
-    q1 = createQuadrant( key->getSubkey(1) );
-    q2 = createQuadrant( key->getSubkey(2) );
-    q3 = createQuadrant( key->getSubkey(3) );
+    osg::ref_ptr<TileKey> k0 = key->getSubkey(0);
+    osg::ref_ptr<TileKey> k1 = key->getSubkey(1);
+    osg::ref_ptr<TileKey> k2 = key->getSubkey(2);
+    osg::ref_ptr<TileKey> k3 = key->getSubkey(3);
+
+    q0 = createQuadrant( k0.get() );
+    q1 = createQuadrant( k1.get() );
+    q2 = createQuadrant( k2.get() );
+    q3 = createQuadrant( k3.get() );
 
     all_quadrants_created = (q0.valid() && q1.valid() && q2.valid() && q3.valid());
 

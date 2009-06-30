@@ -110,7 +110,9 @@ CachedTileSource::createHeightField( const TileKey* key )
         if (hf)
         {
             ImageToHeightFieldConverter conv;
-            writeCachedImage( key, conv.convert(hf) );
+            //Take a reference to the returned image so it gets deleted properly
+            image = conv.convert(hf);
+            writeCachedImage( key, image.get() );
         }
     }
     return hf;

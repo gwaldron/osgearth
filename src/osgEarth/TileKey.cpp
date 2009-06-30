@@ -100,28 +100,24 @@ TileKey::getPixelExtents(unsigned int& xmin,
 TileKey*
 TileKey::getSubkey( unsigned int quadrant ) const
 {
-    if ( !_subkeys[quadrant].valid() )
-    {
-        unsigned int lod = _lod + 1;
-        unsigned int x = _x * 2;
-        unsigned int y = _y * 2;
+    unsigned int lod = _lod + 1;
+    unsigned int x = _x * 2;
+    unsigned int y = _y * 2;
 
-        if (quadrant == 1)
-        {
-            x+=1;
-        }
-        else if (quadrant == 2)
-        {
-            y+=1;
-        }
-        else if (quadrant == 3)
-        {
-            x+=1;
-            y+=1;
-        }
-        const_cast<TileKey*>(this)->_subkeys[quadrant] = new TileKey( _face, lod, x, y, _profile.get());
+    if (quadrant == 1)
+    {
+        x+=1;
     }
-    return _subkeys[quadrant].get();
+    else if (quadrant == 2)
+    {
+        y+=1;
+    }
+    else if (quadrant == 3)
+    {
+        x+=1;
+        y+=1;
+    }
+    return new TileKey( _face, lod, x, y, _profile.get());
 }
 
 

@@ -142,8 +142,6 @@ namespace osgEarth
         unsigned int _y;
         osg::ref_ptr<const Profile> _profile;
         GeoExtent _extent;
-
-        osg::ref_ptr<TileKey> _subkeys[4];
     };
 }
 

@@ -33,6 +33,7 @@ using namespace osgEarth;
 
 MapConfig::MapConfig()
 {
+    _id = 0;
     _model_cstype = MapConfig::CSTYPE_GEOCENTRIC;
     _vertical_scale = 1.0f;
     _skirt_ratio = 0.02f;
@@ -60,8 +61,11 @@ _normalize_edges( rhs._normalize_edges ),
 _filename( rhs._filename ),
 _imageSourceConfigs( rhs._imageSourceConfigs),
 _heightFieldSourceConfigs( rhs._heightFieldSourceConfigs ),
+_imageSources( rhs._imageSources ),
+_heightFieldSources( rhs._heightFieldSources),
 _cache_config( rhs._cache_config ),
 _profile_config( rhs._profile_config ),
+_profile( rhs._profile ),
 _global_options( rhs._global_options.get() )
 {
     //NOP

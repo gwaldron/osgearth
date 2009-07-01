@@ -113,9 +113,7 @@ _mapConfig(mapConfig)
         << (local_options.valid()? local_options->getOptionString() : "<empty>")
         << std::endl;
 
-    
-    MapConfig newMapConfig( mapConfig );
-    newMapConfig.setGlobalOptions( local_options.get() );  
+    _mapConfig.setGlobalOptions( local_options.get() );
 
     if (mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || 
         mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )

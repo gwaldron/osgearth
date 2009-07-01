@@ -353,29 +353,43 @@ namespace osgEarth
         float getVerticalScale() const;
 
         /**
-         * Gets the list of image tile sources in this map.
+         * Gets the list of image tile source configs in this map.
          */
         SourceConfigList& getImageSourceConfigs();
 
         /**
-         * Gets the list of image tile sources in this map.
+         * Gets the list of image tile source configs in this map.
          */
         const SourceConfigList& getImageSourceConfigs() const;
 
         /**
-         * Gets the list of elevation tile sources in this map.
+         * Gets the list of elevation tile source configs in this map.
          */
         SourceConfigList& getHeightFieldSourceConfigs();
 
         /**
-         * Gets the list of elevation tile sources in this map.
+         * Gets the list of elevation tile source configs in this map.
          */
         const SourceConfigList& getHeightFieldSourceConfigs() const;
 
+        /**
+        *Gets the list of image TileSources in this Map
+        */
         const osgEarth::TileSourceList& getImageSources() const {return _imageSources;}
+
+        /**
+        *Gets the list of image TileSources in this Map
+        */
         osgEarth::TileSourceList& getImageSources() {return _imageSources;}
 
+        /**
+        *Gets the list of heightfield TileSources in this Map
+        */
         const TileSourceList& getHeightFieldSources() const {return _heightFieldSources;}
+
+        /**
+        *Gets the list of image TileSources in this Map
+        */
         TileSourceList& getHeightFieldSources() {return _heightFieldSources;}
         
         /**

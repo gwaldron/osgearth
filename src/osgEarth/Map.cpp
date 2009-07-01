@@ -18,29 +18,77 @@
 */
 
 #include <osgEarth/Map>
+#include <osgEarth/Mercator>
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/ProjectedMap>
 #include <osgEarth/FindNode>
+#include <osgEarth/EarthTerrainTechnique>
+#include <osgEarth/TileSourceFactory>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 
 using namespace osgEarth;
 
-Map::Map()
+//static
+OpenThreads::ReentrantMutex Map::s_mapCacheMutex;
+static unsigned int s_mapID = 0;
+//Caches the maps that have been created
+typedef std::map<unsigned int, osg::observer_ptr<Map> > MapCache;
+
+
+
+static
+MapCache& getMapCache()
 {
-    MapConfig mapConfig;
-    init( mapConfig );
+    static MapCache s_cache;
+    return s_cache;
 }
 
-Map::Map(const MapConfig& mapConfig )
+
+void
+Map::registerMap(Map* map)
 {
-    init( mapConfig );
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    getMapCache()[map->_id] = map;
+    osg::notify(osg::INFO) << "[osgEarth::Map] Registered " << map->_id << std::endl;
 }
 
 void
-Map::init( const MapConfig& mapConfig )
+Map::unregisterMap(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( MapEngine::s_mapEngineCacheMutex );
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    MapCache::iterator k = getMapCache().find( id);
+    if (k != getMapCache().end())
+    {
+        getMapCache().erase(k);
+        osg::notify(osg::INFO) << "[osgEarth::Map] Unregistered " << id << std::endl;
+    }
+}
+
+Map*
+Map::getMapNodeById(unsigned int id)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
+    MapCache::const_iterator k = getMapCache().find( id);
+    if (k != getMapCache().end()) return k->second.get();
+    return 0;
+}
+
+unsigned int
+Map::getId() const
+{
+    return _id;
+}
+
+Map::Map(MapConfig& mapConfig ):
+_mapConfig(mapConfig)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapCacheMutex );
+    _id = s_mapID++;
+
+    _mapConfig.setId( _id );
+    _mapConfig.initialize();
+
 
     const osgDB::ReaderWriter::Options* global_options = mapConfig.getGlobalOptions();
     osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ? 
@@ -72,21 +120,58 @@ Map::init( const MapConfig& mapConfig )
     if (mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || 
         mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
     {     
-        _engine = new GeocentricMap( newMapConfig );
+        _engine = new GeocentricMap();
     }
-    else // if (mapConfig->getCoordinateSystemType() == MapConfig::CSTYPE_PROJECTED)
+    else
     {
-        _engine = new ProjectedMap( newMapConfig );
+        _engine = new ProjectedMap();
     }
 
     updateStateSet();
 
-    addChild( _engine->initialize() );
+
+    // Note: CSN must always be at the top
+    osg::CoordinateSystemNode* csn = createCoordinateSystemNode();
+
+    // go through and build the root nodesets.
+    int faces_ok = 0;
+    for( int face = 0; face < getProfile()->getNumFaces(); face++ )
+    {
+        EarthTerrain* terrain = new EarthTerrain;
+        terrain->setVerticalScale( _mapConfig.getVerticalScale() );
+        terrain->setSampleRatio( _mapConfig.getSampleRatio() );
+        csn->addChild( terrain );
+        _terrains.push_back( terrain );
+
+        std::vector< osg::ref_ptr<TileKey> > keys;
+        getProfile()->getFaceProfile( face )->getRootKeys( keys, face );
+
+        int numAdded = 0;
+        for (unsigned int i = 0; i < keys.size(); ++i)
+        {
+            osg::Node* node = _engine->createNode( _mapConfig, terrain, keys[i].get() );
+            if (node)
+            {
+                terrain->addChild(node);
+                numAdded++;
+            }
+            else
+            {
+                osg::notify(osg::NOTICE) << "[osgEarth::MapEngine] Couldn't get tile for " << keys[i]->str() << std::endl;
+            }
+        }
+        if ( numAdded == keys.size() )
+            faces_ok++;
+    }
+
+    addChild( csn );
+
+    registerMap(this);
 }
 
 Map::~Map()
 {
-    //NOP
+    unregisterMap(_id);
 }
 
 
@@ -99,14 +184,29 @@ Map::getEngine() const
 const Profile*
 Map::getProfile() const 
 {
-    return _engine->getProfile();
+    return _mapConfig.getProfile();
 }
 
 bool
 Map::isOK() const
 {
-    return _engine->isOK();
+    return _mapConfig.isOK();
 }
+
+osg::CoordinateSystemNode*
+Map::createCoordinateSystemNode() const
+{
+    osg::CoordinateSystemNode* csn = getProfile()->getSRS()->createCoordinateSystemNode();
+
+    if (_mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_PROJECTED)
+    {
+        // Setting the ellipsoid to NULL indicates that the CS should be interpreted 
+        // as PROJECTED instead of GEOGRAPHIC.
+        csn->setEllipsoidModel( NULL );
+    }
+    return csn;
+}
+
 
 Map*
 Map::findMapNode( osg::Node* graph )
@@ -126,99 +226,419 @@ Map::isGeocentric() const
     return dynamic_cast<GeocentricMap*>( _engine.get() ) != NULL;
 }
 
-bool
-Map::addImageLayer( const SourceConfig& conf )
+unsigned int
+Map::getImageSourceIndex( TileSource* source ) const
 {
-    TileSource* source = createTileSource( conf );
-    if ( source )
+    for (unsigned int i = 0; i < _mapConfig.getImageSources().size(); ++i)
     {
-        addLayer( new ImageLayer( source ) );
+        if (_mapConfig.getImageSources()[i].get() == source) return i;
     }
-    return source != NULL;
-}
-
-bool
-Map::addHeightFieldLayer( const SourceConfig& conf )
-{
-    TileSource* source = createTileSource( conf );
-    if ( source )
-    {
-        addLayer( new ElevationLayer( source ) );
-    }
-    return source != NULL;
-}
-
-void
-Map::addLayer( Layer* layer )
-{
-    _engine->addLayer( layer );
-    if (_layerCallback.valid()) _layerCallback->layerAdded(layer);
-    updateStateSet();
-}
-
-void
-Map::removeLayer( Layer* layer )
-{
-    //Take a reference to the layer before removing it so we can use it in the callback
-    osg::ref_ptr<Layer> layerRef = layer;
-    _engine->removeLayer( layer );
-    if (_layerCallback.valid()) _layerCallback->layerRemoved(layerRef.get());
-    updateStateSet();
-}
-
-void
-Map::moveLayer( Layer* layer, int position )
-{
-    int prevIndex = getLayerIndex( layer );
-    _engine->moveLayer( layer, position );
-    if (_layerCallback.valid()) _layerCallback->layerMoved( layer, prevIndex, position );
-    updateStateSet();
+    return _mapConfig.getImageSources().size();
 }
 
 unsigned int
-Map::getNumLayers() const
+Map::getHeightFieldSourceIndex( TileSource* source ) const
 {
-    return _engine->getNumLayers();
+    for (unsigned int i = 0; i < _mapConfig.getHeightFieldSources().size(); ++i)
+    {
+        if (_mapConfig.getHeightFieldSources()[i].get() == source) return i;
+    }
+    return _mapConfig.getHeightFieldSources().size();
 }
 
-int
-Map::getLayerIndex( Layer* layer ) const
+TileSource*
+Map::getImageSource( unsigned int index ) const
 {
-    return _engine->getLayerIndex( layer );
+    return index < _mapConfig.getImageSources().size() ? _mapConfig.getImageSources()[index].get() : 0;
 }
 
-Layer*
-Map::getLayer( unsigned int i ) const
-{
-    return _engine->getLayer( i );
+TileSource*
+Map::getHeightFieldSource( unsigned int index) const
+{    
+    return index < _mapConfig.getHeightFieldSources().size() ? _mapConfig.getHeightFieldSources()[index].get() : 0;
 }
 
-void 
-Map::getImageLayers( ImageLayerList& layers ) const
+unsigned int
+Map::getNumImageSources() const
 {
-    _engine->getImageLayers( layers );
+    return _mapConfig.getImageSources().size();
 }
 
-void 
-Map::getElevationLayers( ElevationLayerList& layers ) const
+unsigned int
+Map::getNumHeightFieldSources() const
 {
-    _engine->getElevationLayers( layers );
+    return _mapConfig.getHeightFieldSources().size();
 }
 
-TileSource* 
-Map::createTileSource( const SourceConfig& sourceConfig )
+TileSource*
+Map::createTileSource(const osgEarth::SourceConfig& sourceConfig)
 {
-    return _engine->createTileSource( sourceConfig );
+    //Create the TileSource
+    TileSourceFactory factory;
+    osg::ref_ptr<TileSource> tileSource = factory.createMapTileSource(sourceConfig, _mapConfig );
+    if (tileSource.valid())
+    {
+        const Profile* profile = tileSource->initProfile( getProfile(), _mapConfig.getFilename() );
+        if (!profile)
+        {
+            osg::notify(osg::NOTICE) << "[osgEarth::MapEngine] Could not initialize profile " << std::endl;
+            tileSource = NULL;
+        }
+    }
+    return tileSource.release();
+}
+
+unsigned int
+Map::getNumTerrains() const
+{
+    return _terrains.size();
+}
+
+osgEarth::EarthTerrain*
+Map::getTerrain( unsigned int i ) const
+{
+    return _terrains[i].get();
+}
+
+void
+Map::addImageSource( const SourceConfig& sourceConfig)
+{
+    TileSource* source = createTileSource( sourceConfig );
+    osg::notify(osg::INFO) << "[osgEarth::Map::addImageSource] Begin " << std::endl;
+    if (source)
+    {        
+        osg::notify(osg::INFO) << "[osgEarth::Map::addImageSource] Waiting for lock..." << std::endl;
+        OpenThreads::ScopedWriteLock lock( _mapConfig.getSourceMutex());
+        osg::notify(osg::INFO) << "[osgEarth::Map::addImageSource] Obtained lock " << std::endl;
+
+        //Add the source to the list
+        _mapConfig.getImageSources().push_back( source );
+
+        for (unsigned int i = 0; i < _terrains.size(); ++i)
+        {            
+            EarthTerrain* terrain = _terrains[i].get();
+            EarthTerrain::TerrainTileList tiles;
+            terrain->getTerrainTiles( tiles );
+            osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+
+            for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+            {
+                OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+
+                //Create a TileKey from the TileID
+                osgTerrain::TileID tileId = itr->get()->getTileID();
+                osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+
+                osg::ref_ptr< GeoImage > geoImage = _engine->createValidGeoImage( source, key.get() );
+
+                if (geoImage.valid())
+                {
+                    double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
+
+                    //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
+                    osg::ref_ptr<osgTerrain::Locator> img_locator; // = key->getProfile()->getSRS()->createLocator();
+
+                    // Use a special locator for mercator images (instead of reprojecting)
+                    if ( geoImage->getSRS()->isMercator() )
+                    {
+                        GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
+                        geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+                        img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat );
+                        img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
+                        //Transform the mercator extents to geographic
+                    }
+                    else
+                    {
+                        geoImage->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+                        img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat );
+                    }
+
+                    //Set the CS to geocentric is we are dealing with a geocentric map
+                    if (_mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || _mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE)
+                    {
+                        img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+                    }
+
+                    osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
+                    img_layer->setLocator( img_locator.get());
+
+                    unsigned int newLayer = _mapConfig.getImageSources().size()-1;
+                    osg::notify(osg::INFO) << "Inserting layer at position " << newLayer << std::endl;
+                    itr->get()->setColorLayer(newLayer, img_layer );
+                }
+                else
+                {
+                    osg::notify(osg::NOTICE) << "Could not create geoimage for " << source->getName() << " " << key->str() << std::endl;
+                }
+                itr->get()->setDirty(true);
+            }
+        }
+
+        updateStateSet();       
+       if (_sourceCallback.valid()) _sourceCallback->imageSourceAdded( source, _mapConfig.getImageSources().size()-1 );
+    }
+}
+
+void
+Map::addHeightFieldSource( const SourceConfig& sourceConfig )
+{
+    osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldSource] Begin " << std::endl;
+
+    TileSource* source = createTileSource( sourceConfig );
+    if (source)
+    {        
+        osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldSource] Waiting for lock..." << std::endl;
+        OpenThreads::ScopedWriteLock lock( _mapConfig.getSourceMutex());
+        osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldSource] Obtained lock " << std::endl;
+
+        //Add the layer to the list        
+        _mapConfig.getHeightFieldSources().push_back( source );
+
+        for (unsigned int i = 0; i < _terrains.size(); ++i)
+        {            
+            EarthTerrain* terrain = _terrains[i].get();
+            EarthTerrain::TerrainTileList tiles;
+            terrain->getTerrainTiles( tiles );
+            osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+
+            for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+            {
+                OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+
+                //Create a TileKey from the TileID
+                osgTerrain::TileID tileId = itr->get()->getTileID();
+                osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+
+                osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
+                if (heightFieldLayer)
+                {
+                    osg::HeightField* hf = _engine->createHeightField( _mapConfig, key, true );
+                    if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
+                    heightFieldLayer->setHeightField( hf );
+                    hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig.getSkirtRatio() );
+                }
+                itr->get()->setDirty(true);
+            }
+        }
+
+        if (_sourceCallback.valid()) _sourceCallback->heightfieldSourceAdded( source, _mapConfig.getHeightFieldSources().size()-1 );
+    }
+}
+
+void
+Map::removeImageSource( unsigned int index )
+{
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] Begin " << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] Waiting for lock" << std::endl;
+    OpenThreads::ScopedWriteLock lock( _mapConfig.getSourceMutex());
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] Obtained for lock" << std::endl;
+
+    if (index >= _mapConfig.getImageSources().size())
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth::Map::removeImageSource] Could not find layer " << std::endl;
+        return;
+    }
+
+    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    {            
+        EarthTerrain* terrain = _terrains[i].get();
+        EarthTerrain::TerrainTileList tiles;
+        terrain->getTerrainTiles( tiles );
+
+        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
+            std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
+            for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
+            {   
+                //Skip the layer that is being removed
+                if (i != index)
+                {
+                    osgTerrain::Layer* imageLayer = itr->get()->getColorLayer(i);
+                    if (imageLayer)
+                    {
+                        layers.push_back(imageLayer);
+                    }
+                }
+                //Set the current value to NULL
+                itr->get()->setColorLayer( i, NULL);
+            }
+
+            //Reset the color layers to the correct order
+            for (unsigned int i = 0; i < layers.size(); ++i)
+            {
+                itr->get()->setColorLayer( i, layers[i].get() );
+            }
+            itr->get()->setDirty(true);
+        }
+    }
+
+    osg::ref_ptr<TileSource> source = _mapConfig.getImageSources()[index];
+
+    //Erase the layer from the list
+    _mapConfig.getImageSources().erase( _mapConfig.getImageSources().begin() + index );
+
+    if (_sourceCallback.valid()) _sourceCallback->imageSourceRemoved( source.get(), index);
+    updateStateSet();
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] end " << std::endl;   
+}
+
+void
+Map::removeHeightFieldSource( unsigned int index )
+{
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeHeightFieldSource] Begin " << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeHeightFieldSource] Waiting for lock" << std::endl;
+    OpenThreads::ScopedWriteLock lock( _mapConfig.getSourceMutex());
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeHeightFieldSource] Obtained for lock" << std::endl;
+
+    if (index >= _mapConfig.getHeightFieldSources().size())
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth::Map::removeHeightFieldSource] Could not find layer " << std::endl;
+        return;
+    }
+
+
+    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    {            
+        EarthTerrain* terrain = _terrains[i].get();
+        EarthTerrain::TerrainTileList tiles;
+        terrain->getTerrainTiles( tiles );
+        //osg::notify(osg::NOTICE) << "Found " << tiles.size() << std::endl;
+
+        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            osgTerrain::TileID tileId = itr->get()->getTileID();
+            osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+            osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
+            if (heightFieldLayer)
+            {
+                osg::HeightField* hf = _engine->createHeightField( _mapConfig, key, true );
+                if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
+                heightFieldLayer->setHeightField( hf );
+                hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig.getSkirtRatio() );
+            }
+            itr->get()->setDirty(true);
+        }
+    }
+
+    osg::ref_ptr<TileSource> source = _mapConfig.getHeightFieldSources()[index];
+    _mapConfig.getHeightFieldSources().erase( _mapConfig.getHeightFieldSources().begin() + index );
+    if (_sourceCallback.valid()) _sourceCallback->heightfieldSourceRemoved( source.get(), index);
+
+    osg::notify(osg::INFO) << "[osgEarth::Map::removeHeightFieldSource] end " << std::endl;
+}
+
+void
+Map::moveImageSource( unsigned int index, unsigned int position )
+{
+    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveImageSource] Begin" << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveImageSource] Waiting for lock..." << std::endl;
+    OpenThreads::ScopedWriteLock lock(_mapConfig.getSourceMutex());
+    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveImageSource] Obtained lock" << std::endl;
+
+    if (index >= _mapConfig.getImageSources().size())
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth::GeocentricMapEngine::moveImageSource] Could not find layer" << std::endl;
+        return;
+    }
+
+    //Take a reference to the incoming source
+    osg::ref_ptr<TileSource> s = _mapConfig.getImageSources()[index];
+    //Insert the source into it's new position
+    _mapConfig.getImageSources().erase(_mapConfig.getImageSources().begin() + index);
+    _mapConfig.getImageSources().insert(_mapConfig.getImageSources().begin() + position, s.get());
+
+    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    {            
+        EarthTerrain* terrain = _terrains[i].get();
+        EarthTerrain::TerrainTileList tiles;
+        terrain->getTerrainTiles( tiles );
+        osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+
+        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //Collect the current color layers
+            std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
+
+            for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
+            {              
+                layers.push_back(itr->get()->getColorLayer(i));
+            }
+
+            //Swap the original position
+            osg::ref_ptr< osgTerrain::Layer > layer = layers[index];
+            layers.erase(layers.begin() + index);
+            layers.insert(layers.begin() + position, layer.get());
+
+            for (unsigned int i = 0; i < layers.size(); ++i)
+            {
+                itr->get()->setColorLayer( i, layers[i].get() );
+            }
+            itr->get()->setDirty(true);
+        }
+    } 
+    if (_sourceCallback.valid()) _sourceCallback->imageSourceMoved( s.get(), index, position);
+    updateStateSet();
+    osg::notify(osg::INFO) << "[osgEarth::MapEngine::moveImageSource] end " << std::endl;
+}
+
+void
+Map::moveHeightFieldSource( unsigned int index, unsigned int position )
+{
+    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveHeightFieldSource] Begin" << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveHeightFieldSource] Waiting for lock..." << std::endl;
+    OpenThreads::ScopedWriteLock lock( _mapConfig.getSourceMutex());
+    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveHeightFieldSource] Obtained lock" << std::endl;
+
+    if (index >= _mapConfig.getHeightFieldSources().size())
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth::GeocentricMapEngine::moveHeightFieldSource] Could not find layer" << std::endl;
+        return;
+    }
+
+    //Take a reference to the TileSource
+    osg::ref_ptr<TileSource> s = _mapConfig.getHeightFieldSources()[index];
+    //Insert the source into it's new position
+    _mapConfig.getHeightFieldSources().erase(_mapConfig.getHeightFieldSources().begin() + index);
+    _mapConfig.getHeightFieldSources().insert(_mapConfig.getHeightFieldSources().begin() + position, s.get());
+
+    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    {            
+        EarthTerrain* terrain = _terrains[i].get();
+        EarthTerrain::TerrainTileList tiles;
+        terrain->getTerrainTiles( tiles );
+        osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+
+        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+
+            osgTerrain::TileID tileId = itr->get()->getTileID();
+            osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+            osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
+            if (heightFieldLayer)
+            {
+                osg::HeightField* hf = _engine->createHeightField( _mapConfig, key, true );
+                if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
+                heightFieldLayer->setHeightField( hf );
+                hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig.getSkirtRatio() );
+            }                
+            itr->get()->setDirty(true);
+        }
+    }
+    if (_sourceCallback.valid()) _sourceCallback->heightfieldSourceMoved( s.get(), index, position);
+
+    osg::notify(osg::INFO) << "[osgEarth::MapEngine::moveHeightFieldSource] end " << std::endl;
 }
 
 void Map::updateStateSet()
 {
-    if (_engine->getMapConfig().getCombineLayers())
+    if (_mapConfig.getCombineLayers())
     {
-        ImageLayerList imageLayers;
-        getImageLayers(imageLayers);
-
-        int numLayers = imageLayers.size();
+        int numLayers = getNumImageSources();
 
         osg::StateSet* stateset = getOrCreateStateSet();
 

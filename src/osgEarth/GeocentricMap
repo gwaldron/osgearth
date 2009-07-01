@@ -39,13 +39,11 @@ namespace osgEarth
         /**
          * Constructs a new geocentric map
          */
-        GeocentricMap( const MapConfig& mapConfig );
+        GeocentricMap(  );
         
     protected: // Map interface
 
-        virtual osg::Node* createQuadrant( const TileKey* key );
-
-        virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+        virtual osg::Node* createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key );
 
         static osg::ClusterCullingCallback* createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et);       
     };

@@ -26,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     Cube
     DirectReadTileSource 
     EarthTerrainTechnique
+	EarthTerrain
     ElevationManager
     Export
     FileUtils
@@ -38,7 +39,6 @@ SET(LIB_PUBLIC_HEADERS
     ImageToHeightFieldConverter
     ImageUtils
     JsonUtils
-    Layer
     Map
     MapConfig
     MapEngine
@@ -73,7 +73,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     JsonUtils.cpp
-    Layer.cpp
     Map.cpp
     MapConfig.cpp
     MapEngine.cpp

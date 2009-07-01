@@ -46,18 +46,17 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-GeocentricMap::GeocentricMap( const MapConfig& mapConfig ) :
-MapEngine( mapConfig )
+GeocentricMap::GeocentricMap( )
 {
     //NOP   
 }
 
 osg::Node*
-GeocentricMap::createQuadrant( const TileKey* key )
+GeocentricMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
 {
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Begin " << key->str() << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Waiting for lock..." << std::endl;
-    ScopedReadLock lock( getLayersMutex() );
+    ScopedReadLock lock( mapConfig.getSourceMutex() );
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Obtained Lock" << std::endl;
 
     double min_lon, min_lat, max_lon, max_lat;
@@ -66,25 +65,20 @@ GeocentricMap::createQuadrant( const TileKey* key )
     GeoImageList image_tiles;
 
     //Collect the image layers
-    ImageLayerList imageLayers;
-    getImageLayers( imageLayers );
-
-    ElevationLayerList elevationLayers;
-    getElevationLayers( elevationLayers );
-
-    bool empty_map = imageLayers.size() == 0 && elevationLayers.size() == 0;
+    bool empty_map = mapConfig.getImageSources().size() == 0 && mapConfig.getHeightFieldSources().size() == 0;
 
     //TODO: select/composite:
     //Create the images for the tile
-    if ( imageLayers.size() > 0 )
+    if ( mapConfig.getImageSources().size() > 0 )
     {
         //Add an image from each image source
-        for (unsigned int i = 0; i < imageLayers.size(); ++i)
+        for (unsigned int i = 0; i < mapConfig.getImageSources().size(); ++i)
         {
             GeoImage* image = NULL;
-            if (imageLayers[i]->getTileSource()->isKeyValid( key ) )
+            TileSource* source = mapConfig.getImageSources()[i];
+            if (source->isKeyValid( key ) )
             {
-                image = createGeoImage( key, imageLayers[i]->getTileSource() );                
+                image = createGeoImage( key, source );                
             }
             else
             {
@@ -100,10 +94,9 @@ GeocentricMap::createQuadrant( const TileKey* key )
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf;
     //TODO: select/composite.
-    if ( elevationLayers.size() > 0 )
+    if ( mapConfig.getHeightFieldSourceConfigs().size() > 0 )
     {
-        hf = createHeightField( key, false );
-        //hf = _elevationManager->getHeightField(key, 0, 0, false);
+        hf = createHeightField( mapConfig, key, false );
         hasElevation = hf.valid();
     }
 
@@ -123,21 +116,22 @@ GeocentricMap::createQuadrant( const TileKey* key )
     }
    
     //Try to interpolate any missing image layers from parent tiles
-    for (unsigned int i = 0; i < imageLayers.size(); ++i)
+    for (unsigned int i = 0; i < mapConfig.getImageSources().size(); ++i)
     {
         if (!image_tiles[i].valid())
         {
-            if (imageLayers[i]->getTileSource()->isKeyValid(key))
+            TileSource* source = mapConfig.getImageSources()[i];
+            if (source->isKeyValid(key))
             {
-                GeoImage* image = createValidGeoImage(imageLayers[i]->getTileSource(), key);
+                GeoImage* image = createValidGeoImage(source, key);
                 if (image)
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Using fallback image for image source " << imageLayers[i]->getTileSource()->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Using fallback image for image source " << source->getName() << " for TileKey " << key->str() << std::endl;
                     image_tiles[i] = image;
                 }
                 else
                 {
-                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Could not get valid image from image source " << imageLayers[i]->getTileSource()->getName() << " for TileKey " << key->str() << std::endl;
+                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Could not get valid image from image source " << source->getName() << " for TileKey " << key->str() << std::endl;
                 }
             }
         }
@@ -147,14 +141,14 @@ GeocentricMap::createQuadrant( const TileKey* key )
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if (elevationLayers.size() == 0)
+        if (mapConfig.getHeightFieldSources().size() == 0)
         {
             hf = createEmptyHeightField( key );
         }
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = createHeightField( key, true );
+            hf = createHeightField( mapConfig, key, true );
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "[osgEarth::GeocentricMap] Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -207,7 +201,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
     tile->setTileID(key->getTileId());
 
     //Attach an updatecallback to normalize the edges of TerrainTiles.
-    if (hasElevation && _mapConfig.getNormalizeEdges())
+    if (hasElevation && mapConfig.getNormalizeEdges())
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
@@ -220,12 +214,12 @@ GeocentricMap::createQuadrant( const TileKey* key )
     tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
 
-    //Assign the terrain system to the TerrainTile
-    osgTerrain::Terrain* terrain = _terrains[key->getFace()].get();
-    if ( terrain )
-    {
-        tile->setTerrain( terrain );
-    }
+    //Assign the terrain system to the TerrainTile.
+    //It is very important the terrain system is set while the MapConfig's sourceMutex is locked.
+    //This registers the terrain tile so that adding/removing layers are always in sync.  If you don't do this
+    //you can end up with a situation where the database pager is waiting to merge a tile, then a layer is added, then
+    //the tile is finally merged and is out of sync.
+    tile->setTerrain( terrain );
 
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
@@ -279,10 +273,10 @@ GeocentricMap::createQuadrant( const TileKey* key )
     osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
     double radius = bs.radius();
-    double min_range = radius * _mapConfig.getMinTileRangeFactor();
+    double min_range = radius * mapConfig.getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * _mapConfig.getSkirtRatio());
+    hf->setSkirtHeight(radius * mapConfig.getSkirtRatio());
 
     if (!isCube)
     {
@@ -295,7 +289,7 @@ GeocentricMap::createQuadrant( const TileKey* key )
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
     plod->addChild( tile, min_range, max_range );
-    plod->setFileName( 1, createURI( key ) );
+    plod->setFileName( 1, createURI( mapConfig.getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
     
 #if USE_FILELOCATIONCALLBACK
@@ -307,12 +301,6 @@ GeocentricMap::createQuadrant( const TileKey* key )
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] End" << std::endl;
 
     return plod;
-}
-
-osg::CoordinateSystemNode*
-GeocentricMap::createCoordinateSystemNode() const
-{
-    return getProfile()->getSRS()->createCoordinateSystemNode();
 }
 
 osg::ClusterCullingCallback*

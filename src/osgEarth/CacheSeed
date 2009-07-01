@@ -96,14 +96,14 @@ namespace osgEarth
         /**
         * Performs the seed operation
         */
-        void seed( const MapConfig& conf );
+        void seed( MapConfig& conf );
 
     protected:
         unsigned int _minLevel;
         unsigned int _maxLevel;
 
         Bounds _bounds;
-        void processKey( MapEngine* map, TileKey *key );
+        void processKey( MapConfig& mapConfig, MapEngine* engine, TileKey *key );
 
         //osg::ref_ptr<MapEngine> _map;
     };

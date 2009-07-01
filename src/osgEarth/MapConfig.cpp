@@ -21,6 +21,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
+#include <osgEarth/TileSourceFactory>
 
 #include <osg/Notify>
 
@@ -45,6 +46,7 @@ MapConfig::MapConfig()
 }
 
 MapConfig::MapConfig( const MapConfig& rhs ) :
+_id( rhs._id ),
 _model_cstype( rhs._model_cstype ),
 _vertical_scale( rhs._vertical_scale ),
 _skirt_ratio( rhs._skirt_ratio ),
@@ -56,13 +58,25 @@ _cache_only( rhs._cache_only ),
 _combine_layers( rhs._combine_layers),
 _normalize_edges( rhs._normalize_edges ),
 _filename( rhs._filename ),
-_image_sources( rhs._image_sources ),
-_heightfield_sources( rhs._heightfield_sources ),
+_imageSourceConfigs( rhs._imageSourceConfigs),
+_heightFieldSourceConfigs( rhs._heightFieldSourceConfigs ),
 _cache_config( rhs._cache_config ),
 _profile_config( rhs._profile_config ),
 _global_options( rhs._global_options.get() )
 {
     //NOP
+}
+
+unsigned int
+MapConfig::getId() const
+{
+    return _id;
+}
+
+void
+MapConfig::setId( unsigned int id )
+{
+    _id = id;
 }
 
 void
@@ -138,28 +152,34 @@ MapConfig::getSkirtRatio() const
 }
 
 SourceConfigList&
-MapConfig::getImageSources()
+MapConfig::getImageSourceConfigs()
 {
-    return _image_sources;
+    return _imageSourceConfigs;
 }
 
 const SourceConfigList&
-MapConfig::getImageSources() const 
+MapConfig::getImageSourceConfigs() const 
 {
-    return _image_sources;
+    return _imageSourceConfigs;
 }
 
 SourceConfigList&
-MapConfig::getHeightFieldSources()
+MapConfig::getHeightFieldSourceConfigs()
 {
-    return _heightfield_sources;
+    return _heightFieldSourceConfigs;
 }
 
 const SourceConfigList&
-MapConfig::getHeightFieldSources() const
+MapConfig::getHeightFieldSourceConfigs() const
 {
-    return _heightfield_sources;
+    return _heightFieldSourceConfigs;
 }
+
+OpenThreads::ReadWriteMutex&
+MapConfig::getSourceMutex() {
+    return _sourceMutex;
+}
+
 
 void
 MapConfig::setProxyHost( const std::string& value )
@@ -269,6 +289,249 @@ const osgDB::ReaderWriter::Options*
 MapConfig::getGlobalOptions() const
 {
     return _global_options.get();
+}
+
+const Profile*
+MapConfig::getProfile() const
+{
+    return _profile.get();
+}
+
+bool
+MapConfig::isOK() const
+{
+    if ( !_profile.valid() )
+    {
+        osg::notify(osg::NOTICE) << "Error: Unable to determine a map profile." << std::endl;
+        return false;
+    }
+
+    //Check to see if we are trying to do a Geocentric database with a Projected profile.
+    if ( _profile->getProfileType() == Profile::TYPE_LOCAL && 
+        getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC)
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth::MapConfig] Error: Cannot create a geocentric scene using projected datasources.  Please specify type=\"flat\" on the map element in the .earth file." << std::endl;
+        return false;
+    }
+
+    //TODO: Other cases?
+    return true;
+}
+
+
+static const Profile*
+getSuitableMapProfileFor( const Profile* candidate )
+{
+    if ( candidate->getProfileType() == Profile::TYPE_GEODETIC )
+        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    else if ( candidate->getProfileType() == Profile::TYPE_MERCATOR )
+        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+    else
+        return candidate;
+}
+
+
+// figures out what the Map profile should be. there are multiple ways of setting it.
+// In order of priority:
+//
+//   1. Use an explicit "named" profile (e.g., "global-geodetic")
+//   2. Use the profile of one of the TileSources
+//   3. Use an explicitly defined profile
+//   4. Scan the TileSources and use the first profile found
+//
+// Once we locate the profile to use, set the MAP profile accordingly. If the map profile
+// is not LOCAL/PROJECTED, it must be one of the NAMED profiles (global-geodetic/mercator).
+// This is done so that caches are stored consistently.
+//
+void
+MapConfig::initialize()
+{
+    //All the SourceConfig's have been loaded, so initialize the TileSource's
+    TileSourceFactory factory;
+
+    //Initialize the image sources
+    for (SourceConfigList::const_iterator i = _imageSourceConfigs.begin(); i != _imageSourceConfigs.end(); ++i)
+    {
+        TileSource* tileSource = factory.createMapTileSource( *i, *this);
+        if (tileSource)
+        {
+            _imageSources.push_back(tileSource);
+        }
+    }
+
+    //Initialize the heightfield sources
+    for (SourceConfigList::const_iterator i = _heightFieldSourceConfigs.begin(); i != _heightFieldSourceConfigs.end(); ++i)
+    {
+        TileSource* tileSource = factory.createMapTileSource( *i, *this);
+        if (tileSource)
+        {
+            _heightFieldSources.push_back(tileSource);
+        }
+    }
+
+    TileSource* ref_source = NULL;
+
+    if (getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC )
+    {
+        //If the map type if Geocentric, set the profile to global-geodetic
+        _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        osg::notify(osg::INFO) << "[osgEarth::MapConfig] Setting Profile to global-geodetic for geocentric scene" << std::endl;
+    }
+    else if ( getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
+    {
+        //If the map type is a Geocentric Cube, set the profile to the cube profile.
+        _profile = osgEarth::Registry::instance()->getCubeProfile();
+        osg::notify(osg::INFO) << "[osgEarth::MapConfig] Using cube profile for geocentric scene" << std::endl;
+    }
+
+    // First check for an explicit profile declaration:
+    if ( !_profile.valid() && getProfileConfig().defined() )
+    {
+        // Check for a "well known named" profile:
+        std::string namedProfile = getProfileConfig().getNamedProfile();
+        if ( !namedProfile.empty() )
+        {
+            _profile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
+            if ( _profile.valid() )
+            {
+                osg::notify(osg::INFO) << "[osgEarth::MapConfig] Set map profile to " << namedProfile << std::endl;
+            }
+            else
+            {
+                osg::notify(osg::WARN) << "[osgEarth::MapConfig] " << namedProfile << " is not a known profile name" << std::endl;
+                //TODO: continue on? or fail here?
+            }
+        }
+
+        // Check for a TileSource reference (i.e. get the map profile from a particular TileSource)
+        if ( !_profile.valid() )
+        {
+            std::string refLayer = getProfileConfig().getRefLayer();
+            if ( !refLayer.empty() )
+            {
+                //Search through the image sources to find the reference TileSource
+                for (TileSourceList::iterator itr = _imageSources.begin(); itr != _imageSources.end(); ++itr)
+                {
+                    if (itr->get()->getName() == refLayer)
+                    {
+                        ref_source = itr->get();
+                        break; 
+                    }
+                }
+
+                if (ref_source == NULL)
+                {
+                    //Search through the heightfield sources to find the reference TileSource
+                    for (TileSourceList::iterator itr = _heightFieldSources.begin(); itr != _heightFieldSources.end(); ++itr)
+                    {
+                        if (itr->get()->getName() == refLayer)
+                        {
+                            ref_source = itr->get();
+                            break; 
+                        }
+                    }
+                }
+
+                if ( ref_source )
+                {
+                    const Profile* ref_profile = ref_source->initProfile( NULL, _filename );
+                    if ( ref_profile )
+                    {
+                        _profile = getSuitableMapProfileFor( ref_profile );
+                        osg::notify(osg::INFO) << "[osgEarth::MapConfig] Setting profile from \"" << refLayer << "\"" << std::endl;
+                    }
+                }
+                else
+                {
+                    osg::notify(osg::WARN) << "[osgEarth::MapConfig] Source \"" << refLayer << "\" does not have a valid profile" << std::endl;
+                }
+            }
+        }
+
+        // Try to create a profile from an explicit definition (the SRS and extents)
+        if ( !_profile.valid() )
+        {
+            if ( getProfileConfig().areExtentsValid() )
+            {
+                double minx, miny, maxx, maxy;
+                getProfileConfig().getExtents( minx, miny, maxx, maxy );
+
+                // TODO: should we restrict this? This is fine for LOCAL/PROJECTED, but since we are not
+                // constraining non-local map profiles to the "well known" types, should we let the user
+                // override that? probably...
+                _profile = Profile::create( getProfileConfig().getSRS(), minx, miny, maxx, maxy );
+
+                if ( _profile.valid() )
+                {
+                    osg::notify( osg::INFO ) << "[[osgEarth::MapEngine] Set map profile from SRS: " 
+                        << _profile->getSRS()->getName() << std::endl;
+                }
+            }
+        }
+    }
+
+    // At this point we MIGHT have a profile.
+
+    // Finally, try scanning the loaded sources and taking the first one we get. At the
+    // same time, remove any incompatible sources.
+
+    for( TileSourceList::iterator i = _imageSources.begin(); i != _imageSources.end(); )
+    {
+        // skip the reference source since we already initialized it
+        if ( i->get() != ref_source )
+        {
+            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _profile.get(), _filename );
+
+            if ( !_profile.valid() && sourceProfile.valid() )
+            {
+                _profile = getSuitableMapProfileFor( sourceProfile.get() );
+            }
+            else if ( !sourceProfile.valid() )
+            {
+                osg::notify(osg::WARN) << "[osgEarth::MapEngine] Removing invalid TileSource " << i->get()->getName() << std::endl;
+                i = _imageSources.erase(i);
+                continue;
+            }
+        }
+
+        if ( osg::getNotifyLevel() >= osg::INFO )
+        {
+            std::string prof_str = i->get()->getProfile()? i->get()->getProfile()->toString() : "none";
+            osg::notify(osg::INFO) 
+                << "[osgEarth::MapEngine] Tile source \"" 
+                << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
+        }
+
+        i++;
+    }
+
+    for (TileSourceList::iterator i = _heightFieldSources.begin(); i != _heightFieldSources.end(); )
+    {        
+        if ( i->get() != ref_source )
+        {
+            osg::ref_ptr<const Profile> sourceProfile = (*i)->initProfile( _profile.get(), _filename );
+
+            if ( !_profile.valid() && sourceProfile.valid() )
+            {
+                _profile = getSuitableMapProfileFor( sourceProfile.get() );
+            }
+            else if ( !sourceProfile.valid() )
+            {
+                osg::notify(osg::WARN) << "[osgEarth::MapEngine] Removing invalid TileSource " << i->get()->getName() << std::endl;
+                i = _heightFieldSources.erase(i);
+                continue;
+            }
+        }
+
+        if ( osg::getNotifyLevel() >= osg::INFO )
+        {
+            std::string prof_str = i->get()->getProfile()? i->get()->getProfile()->toString() : "none";
+            osg::notify(osg::INFO)
+                << "[osgEarth::MapEngine] Tile source \""
+                << i->get()->getName() << "\" : profile = " << prof_str << std::endl;
+        }
+        i++;
+    }
 }
 
 
@@ -824,7 +1087,7 @@ readMap( XmlElement* e_map, MapConfig& out_map )
         if ( image_source.isValid() )
         {
             image_source.setProperty( "default_tile_size", "256" ); //->getProperties()["default_tile_size"] = "256";
-            out_map.getImageSources().push_back( image_source );
+            out_map.getImageSourceConfigs().push_back( image_source );
         }
     }
 
@@ -835,8 +1098,7 @@ readMap( XmlElement* e_map, MapConfig& out_map )
         if ( heightfield_source.isValid() )
         {
             heightfield_source.setProperty( "default_tile_size", "32" );
-            //heightfield_source->getProperties()["default_tile_size"] = "32";
-            out_map.getHeightFieldSources().push_back( heightfield_source );
+            out_map.getHeightFieldSourceConfigs().push_back( heightfield_source );
         }
     }
 
@@ -887,7 +1149,7 @@ mapToXmlDocument( const MapConfig& map )
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>( map.getProxyPort() ) );
 
     //Write all the image sources
-    for (SourceConfigList::const_iterator i = map.getImageSources().begin(); i != map.getImageSources().end(); i++)
+    for (SourceConfigList::const_iterator i = map.getImageSourceConfigs().begin(); i != map.getImageSourceConfigs().end(); i++)
     {
         osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_IMAGE );
         writeSource( *i, e_source.get());
@@ -895,7 +1157,7 @@ mapToXmlDocument( const MapConfig& map )
     }
 
     //Write all the heightfield sources
-    for (SourceConfigList::const_iterator i = map.getHeightFieldSources().begin(); i != map.getHeightFieldSources().end(); i++)
+    for (SourceConfigList::const_iterator i = map.getHeightFieldSourceConfigs().begin(); i != map.getHeightFieldSourceConfigs().end(); i++)
     {
         osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_HEIGHTFIELD );
         writeSource( *i, e_source.get());

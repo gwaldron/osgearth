@@ -35,13 +35,11 @@ namespace osgEarth
     class ProjectedMap : public MapEngine
     {
     public:
-        ProjectedMap( const MapConfig& mapConfig );
+        ProjectedMap( );
         
     protected: // Map interface
 
-        osg::Node* createQuadrant( const TileKey* key );
-
-        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+        osg::Node* createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key );
 
     protected:
         /**

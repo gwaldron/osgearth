@@ -81,7 +81,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 //osg::notify(osg::NOTICE) << "Reading Earth File " << std::endl;
 
                 //Read the map file from the filename
-                //osg::ref_ptr<MapConfig> mapConfig;
                 MapConfig mapConfig;
                 bool success = true;
                 
@@ -102,7 +101,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     success = MapConfigReaderWriter::readXml( file_name, mapConfig );
                 }
 
-                if ( success ) //mapConfig.valid() )
+                if ( success )
                 {
                     //Create the Map.
                     osg::ref_ptr<Map> map = new Map( mapConfig );
@@ -113,20 +112,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                     osg::notify( osg::INFO ) << "Map profile = " << map->getProfile()->toString()
                         << std::endl;
-
-                    //if (map->getProfile()->getProfileType() == Profile::TYPE_GEODETIC)
-                    //{
-                    //    osg::notify(osg::INFO) << "Map profile: Geodetic" << std::endl;
-                    //}
-                    //else if (map->getProfile()->getProfileType() == Profile::TYPE_MERCATOR)
-                    //{
-                    //    osg::notify(osg::INFO) << "Map profile: Mercator" << std::endl;
-                    //}
-                    //else if (map->getProfile()->getProfileType() == Profile::TYPE_LOCAL)
-                    //{
-                    //    osg::notify(osg::INFO) << "Map profile: Local/Projected" << std::endl;
-                    //}
-
+ 
                     //Create the root node for the scene
                     node = map.release();
                 }
@@ -141,20 +127,21 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 std::string tileDef = osgDB::getNameLessExtension(file_name);
                 //osg::notify(osg::NOTICE) << "Reading Tile " << tileDef << std::endl;
 
-                //The tile definition is formatted LOD_X_Y.TILEBUILDER_ID
+                //The tile definition is formatted FACE_LOD_X_Y.MAPENGINE_ID
 
                 unsigned int face, lod, x, y, id;
                 sscanf(tileDef.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
 
                 //Get the Map from the cache.  It is important that we use a ref_ptr here
                 //to prevent the Map from being deleted while it is is still in use.
-                osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
+                //osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
+                osg::ref_ptr<Map> map = Map::getMapNodeById( id );
 
-                if ( engine.valid() )
+                if ( map.valid() )
                 {
-                  const Profile* face_profile = engine->getProfile()->getFaceProfile( face );
+                  const Profile* face_profile = map->getProfile()->getFaceProfile( face );
                   osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
-                  node = engine->createNode( key.get( ));
+                  node = map->getEngine()->createNode( map->getMapConfig(), map->getTerrain( face ), key.get( ));
                 }
                 else
                 {

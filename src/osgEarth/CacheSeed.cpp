@@ -20,25 +20,24 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/Caching>
 #include <osgEarth/Mercator>
-#include <osgEarth/Layer>
 #include <limits.h>
 
 using namespace osgEarth;
 
-void CacheSeed::seed( const MapConfig& conf )
+void CacheSeed::seed( MapConfig& conf )
 {
     //Create a Map for the map
     //TODO: really, we just need the MapEngine and not the Map..
-    osg::ref_ptr<Map> _map = new Map( conf );
+    osg::ref_ptr<Map> map = new Map( conf );
 
     std::vector< osg::ref_ptr<TileKey> > keys;
-    _map->getEngine()->getProfile()->getRootKeys(keys);
+    map->getProfile()->getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
     if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
         _bounds._max.x() == 0 && _bounds._max.y() == 0)
     {
-        const GeoExtent& mapEx =  _map->getEngine()->getProfile()->getExtent();
+        const GeoExtent& mapEx =  map->getProfile()->getExtent();
 
         _bounds._min.x() = mapEx.xMin();
         _bounds._min.y() = mapEx.yMin();
@@ -51,13 +50,10 @@ void CacheSeed::seed( const MapConfig& conf )
     int src_min_level = INT_MAX;
     int src_max_level = 0;
 
-    ImageLayerList imageLayers;
-    _map->getImageLayers( imageLayers );
-
     //Assumes the the TileSource will perform the caching for us when we call createImage
-    for (ImageLayerList::iterator itr = imageLayers.begin(); itr != imageLayers.end(); ++itr)
+    for (unsigned int i = 0; i < map->getNumImageSources(); ++i)
     {
-        TileSource* src = itr->get()->getTileSource();
+        TileSource* src = map->getImageSource(i);
         if (!dynamic_cast<CachedTileSource*>(src))
         {
             osg::notify(osg::NOTICE) << "Warning:  Image " << src->getName() << " has no cache." << std::endl;
@@ -72,12 +68,9 @@ void CacheSeed::seed( const MapConfig& conf )
         }
     }
 
-    ElevationLayerList elevationLayers;
-    _map->getElevationLayers( elevationLayers );
-
-    for (ElevationLayerList::iterator itr = elevationLayers.begin(); itr != elevationLayers.end(); ++itr)
+    for (unsigned int i = 0; i < map->getNumHeightFieldSources(); ++i)
     {
-        TileSource* src = itr->get()->getTileSource();
+        TileSource* src = map->getHeightFieldSource(i);
         if (!dynamic_cast<CachedTileSource*>(src))
         {
             osg::notify(osg::NOTICE) << "Warning:  Heightfield " << src->getName() << " has no cache." << std::endl;
@@ -107,49 +100,21 @@ void CacheSeed::seed( const MapConfig& conf )
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( _map->getEngine(), keys[i].get() );
+        processKey( map->getMapConfig(), map->getEngine(), keys[i].get() );
     }
 }
 
 
-void CacheSeed::processKey( MapEngine* map, TileKey* key )
+void CacheSeed::processKey( MapConfig& mapConfig, MapEngine* engine, TileKey* key )
 {
     unsigned int x, y, lod;
     key->getTileXY(x, y);
     lod = key->getLevelOfDetail();
 
-    //    osg::notify(osg::NOTICE) << "Checking key = " << key->str() << std::endl;
-
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-        ImageLayerList imageLayers;
-        map->getImageLayers( imageLayers );
-
-        //Assumes the the TileSource will perform the caching for us when we call createImage
-        for (ImageLayerList::iterator itr = imageLayers.begin(); itr != imageLayers.end(); ++itr)
-        {
-            TileSource* source = itr->get()->getTileSource();
-            if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
-            {
-                osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
-                osg::ref_ptr<GeoImage> image = map->createGeoImage(key, source);
-            }
-        }
-
-        ElevationLayerList elevationLayers;
-        map->getElevationLayers( elevationLayers );
-
-        for (ElevationLayerList::iterator itr = elevationLayers.begin(); itr != elevationLayers.end(); ++itr)
-        {
-            //TODO:  Handle compatible but non exact heightfield keys (JB)
-            TileSource* source = itr->get()->getTileSource();
-            if ( lod >= source->getMinLevel() && lod <= source->getMaxLevel() )
-            {
-
-                osg::notify(osg::NOTICE) << "Caching " << source->getName() << ", tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
-                osg::ref_ptr<osg::HeightField> heightField = source->createHeightField(key);               
-            }
-        }
+        osg::notify(osg::NOTICE) << "Caching tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
+        engine->createQuadrant(mapConfig, 0, key );        
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)
@@ -166,10 +131,10 @@ void CacheSeed::processKey( MapEngine* map, TileKey* key )
             (k2.valid() && _bounds.intersects(k2.get())) ||
             (k3.valid() && _bounds.intersects(k3.get())))
         {
-            if (k0.valid()) processKey(map, k0.get()); 
-            if (k1.valid()) processKey(map, k1.get()); 
-            if (k2.valid()) processKey(map, k2.get()); 
-            if (k3.valid()) processKey(map, k3.get()); 
+            if (k0.valid()) processKey(mapConfig, engine, k0.get()); 
+            if (k1.valid()) processKey(mapConfig, engine, k1.get()); 
+            if (k2.valid()) processKey(mapConfig, engine, k2.get()); 
+            if (k3.valid()) processKey(mapConfig, engine, k3.get()); 
         }
     }
 }

@@ -31,7 +31,7 @@ namespace osgEarth
      * Creates TileSource instances and chains them together to create
      * tile source "pipelines" for data access and processing.
      */
-    class OSGEARTH_EXPORT TileSourceFactory
+    class  TileSourceFactory
     {
     public:
         /**

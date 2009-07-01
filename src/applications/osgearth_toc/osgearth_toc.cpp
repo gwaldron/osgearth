@@ -155,12 +155,8 @@ virtual bool operator()(osgWidget::Event& ev) {
     if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
     {
         _view->getDatabasePager()->clear();
-        osgEarth::Layer* layer = _map->getLayer(_layerIndex);
-        if (layer)
-        {
-            _map->removeLayer(layer);
-            hudDirty = true;
-        }
+        _map->removeImageSource( _layerIndex );
+        hudDirty = true;
     }
     return true;
 }
@@ -185,14 +181,10 @@ virtual bool operator()(osgWidget::Event& ev) {
     if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
     {
         _view->getDatabasePager()->clear();
-        osgEarth::Layer* layer = _map->getLayer( _layerIndex );
-        if (layer)
-        {
-            int dir = _up ? 1 : -1;
-            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _map->getNumLayers()-1u);
-            _map->moveLayer( layer, newPosition );
-            hudDirty = true;
-        }
+        int dir = _up ? 1 : -1;
+        unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _map->getNumImageSources()-1u);
+        _map->moveImageSource( _layerIndex, newPosition );
+        hudDirty = true;
     }
     return true;
 }
@@ -224,12 +216,8 @@ public:
 
      virtual bool mousePush(double, double, osgWidget::WindowManager*) {
          _view->getDatabasePager()->clear();
-         osg::ref_ptr<TileSource> tileSource = _map->createTileSource(_sourceConfig);
-         if (tileSource.valid())
-         {
-             _map->addLayer( new osgEarth::ImageLayer( tileSource.get() ) );
-             hudDirty = true;
-         }      
+         _map->addImageSource( _sourceConfig );
+         hudDirty = true;
         return true;
     }
 
@@ -267,7 +255,7 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     //Add Google Imagery
     {
         SourceProperties props;
-        props["dataset"] = "imagery";
+        props["dataset"] = "satellite";
         addLayersBox->addWidget(new AddLayerButton(map, view, SourceConfig("Google Imagery", "google", props)));
     }
 
@@ -348,14 +336,14 @@ osgWidget::Box("", osgWidget::Box::HORIZONTAL)
 
 void updateText()
 {
-    osgEarth::Layer* layer = _map->getLayer(_layerIndex);
-    if (layer)
+    TileSource* source = _map->getImageSource( _layerIndex );
+    if (source)
     {
         std::stringstream ss;
-        unsigned int index = (_map->getNumLayers() - _layerIndex);
+        unsigned int index = (_map->getNumImageSources() - _layerIndex);
         ss << index << ") ";
         _lblNum->setLabel(ss.str());
-        _lblName->setLabel( layer->getName());
+        _lblName->setLabel( source->getName());
     }
 }
 
@@ -413,9 +401,7 @@ public:
               _wm->removeChild(_lines[i].get());
           }
 
-          ImageLayerList imageLayers;
-          _map->getImageLayers(imageLayers);
-          for (unsigned int i = 0; i < imageLayers.size(); ++i)
+          for (unsigned int i = 0; i < _map->getNumImageSources(); ++i)
           {
               Line* line = i < _lines.size() ? _lines[i] : NULL;
               if (line)
@@ -487,7 +473,7 @@ int main(int argc, char** argv)
     group->addChild(fadeLayerNode);
 
 
-    for (unsigned int i = 0; i < map->getNumLayers(); ++i)
+    for (unsigned int i = 0; i < map->getNumImageSources(); ++i)
     {
         fadeLayerNode->setOpacity(i, 1.0f);
         fadeLayerNode->setEnabled(i, true);

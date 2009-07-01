@@ -38,18 +38,16 @@ namespace osgEarthUtil
         bool getEnabled(unsigned int layer) const;
         void setEnabled(unsigned int layer, bool enabled);
 
-        void removeLayer(unsigned int layer);
-
         virtual void traverse(osg::NodeVisitor& nv);
 
-        virtual void layerAdded(osgEarth::Layer* layer);
-        virtual void layerRemoved(osgEarth::Layer* layer);
-        virtual void layerMoved(osgEarth::Layer* layer, unsigned int prevIndex, unsigned int newIndex);
+        virtual void layerAdded(unsigned int index);
+        virtual void layerRemoved(unsigned int index);
+        virtual void layerMoved(unsigned int prevIndex, unsigned int newIndex);
     protected:
 
         friend struct Callback;
 
-        struct Callback : public osgEarth::Map::LayerCallback 
+        struct Callback : public osgEarth::Map::SourceCallback
         {
         public:
             Callback(FadeLayerNode* fadeLayerNode):
@@ -57,9 +55,9 @@ namespace osgEarthUtil
             {
             }
 
-            virtual void layerAdded(osgEarth::Layer* layer) { _fadeLayerNode->layerAdded(layer);}
-            virtual void layerRemoved(osgEarth::Layer* layer) { _fadeLayerNode->layerRemoved(layer);}
-            virtual void layerMoved(osgEarth::Layer* layer, unsigned int prevIndex, unsigned int newIndex) { _fadeLayerNode->layerMoved(layer, prevIndex, newIndex);}
+            virtual void imageSourceAdded(osgEarth::TileSource* source, unsigned int index) { _fadeLayerNode->layerAdded(index);}
+            virtual void imageSourceRemoved(osgEarth::TileSource* source, unsigned int index) { _fadeLayerNode->layerRemoved(index);}
+            virtual void imageSourceMoved(osgEarth::TileSource* source, unsigned int prevIndex, unsigned int newIndex) { _fadeLayerNode->layerMoved(prevIndex, newIndex);}
 
             osg::observer_ptr<FadeLayerNode> _fadeLayerNode;
         };
@@ -74,7 +72,6 @@ namespace osgEarthUtil
 
         void updateStateSet();
 
-        osgEarth::ImageLayerList _imageLayers;
         osg::ref_ptr<osgEarth::Map> _map;
 
         osg::ref_ptr<Callback> _callback;

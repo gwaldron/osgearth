@@ -23,10 +23,12 @@
 #include <osg/Version>
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
+#include <osgEarth/TileSource>
 #if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #include <osgDB/Options>
 #endif
 #include <osgDB/ReaderWriter>
+#include <OpenThreads/ReadWriteMutex>
 #include <map>
 #include <list>
 
@@ -301,6 +303,16 @@ namespace osgEarth
         MapConfig( const MapConfig& rhs );
 
         /**
+        *Gets the id of this MapConfig
+        */
+        unsigned int getId() const;
+
+        /**
+        *Sets the id of this MapConfig
+        */
+        void setId( unsigned int id );
+
+        /**
          * Sets the readable name of the map.
          */
         void setName( const std::string& name );
@@ -343,22 +355,28 @@ namespace osgEarth
         /**
          * Gets the list of image tile sources in this map.
          */
-        SourceConfigList& getImageSources();
+        SourceConfigList& getImageSourceConfigs();
 
         /**
          * Gets the list of image tile sources in this map.
          */
-        const SourceConfigList& getImageSources() const;
+        const SourceConfigList& getImageSourceConfigs() const;
 
         /**
          * Gets the list of elevation tile sources in this map.
          */
-        SourceConfigList& getHeightFieldSources();
+        SourceConfigList& getHeightFieldSourceConfigs();
 
         /**
          * Gets the list of elevation tile sources in this map.
          */
-        const SourceConfigList& getHeightFieldSources() const;
+        const SourceConfigList& getHeightFieldSourceConfigs() const;
+
+        const osgEarth::TileSourceList& getImageSources() const {return _imageSources;}
+        osgEarth::TileSourceList& getImageSources() {return _imageSources;}
+
+        const TileSourceList& getHeightFieldSources() const {return _heightFieldSources;}
+        TileSourceList& getHeightFieldSources() {return _heightFieldSources;}
         
         /**
          * Sets the skirt ratio to be used when creating height field tiles. This
@@ -483,15 +501,44 @@ namespace osgEarth
         const osgDB::ReaderWriter::Options* getGlobalOptions() const;
         void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
 
+        /**
+         *Gets the mutex that protects access to the TileSources
+         */
+        OpenThreads::ReadWriteMutex& getSourceMutex();
+
+        /**
+         *Gets the Profile of this Map
+         */
+        const Profile* getProfile() const;  
+
+        /**
+        * Returns true if the configuration used to create this Map was valid
+        * and loaded as expected.
+        */
+        bool isOK() const;
+
+        /**
+        *Initializes the MapConfig.  Should be called after initial configuration is complete
+        */
+        void initialize();
     private:
+        TileSource* createTileSource( const SourceConfig& sourceConfig );
+
         std::string _filename;
         std::string _name;
         CoordinateSystemType _model_cstype;
         float _vertical_scale;
         float _skirt_ratio;   
         float _sample_ratio;
-        SourceConfigList _image_sources;
-        SourceConfigList _heightfield_sources;
+        unsigned int _id;
+        
+        SourceConfigList _imageSourceConfigs;
+        SourceConfigList _heightFieldSourceConfigs;
+
+        TileSourceList _imageSources;
+        TileSourceList _heightFieldSources;
+
+
         std::string _proxy_host;
         unsigned short _proxy_port;
         float _min_tile_range_factor;
@@ -502,6 +549,11 @@ namespace osgEarth
 
         CacheConfig _cache_config;
         ProfileConfig _profile_config;
+
+        osg::ref_ptr<const Profile> _profile;
+
+        //Protect access to the sources
+        OpenThreads::ReadWriteMutex _sourceMutex;
 
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _global_options;
     };

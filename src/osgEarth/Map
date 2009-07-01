@@ -1,29 +1,29 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2009 Pelican Ventures, Inc.
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 
 #ifndef OSGEARTH_MAP_H
 #define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/MapEngine>
-#include <osgEarth/Layer>
 #include <osgEarth/MapConfig>
+#include <osgEarth/EarthTerrain>
 #include <osgDB/ReaderWriter>
 #include <osg/CoordinateSystemNode>
 #include <OpenThreads/ReentrantMutex>
@@ -34,146 +34,236 @@ namespace osgEarth
     {
     public:
         /**
-         * Creates a new Map node with a default configuration and no data.
-         */
-        Map();
-
-        /**
-         * Creates a new Map node from the given MapConfig.  This allows you to
-         * programatically create a MapConfig and create a paging scene graph out of it.
-         */
-        Map( const MapConfig& conf );
+        * Creates a new Map node from the given MapConfig.  This allows you to
+        * programatically create a MapConfig and create a paging scene graph out of it.
+        */
+        Map( MapConfig& conf );
 
     public:
 
         /**
-         * Returns true if the configuration used to create this Map node was valid
-         * and loaded as expected.
-         */
+        * Gets the ID for this MapNode
+        */
+        unsigned int getId() const;
+
+        /**
+        * Gets the mapconfig
+        */
+        MapConfig& getMapConfig() { return _mapConfig;}
+
+        /**
+        *Gets the registered MapNode by Id
+        */
+        static Map* getMapNodeById(unsigned int id);
+
+        /**
+        * Returns true if the configuration used to create this Map node was valid
+        * and loaded as expected.
+        */
         bool isOK() const;
 
         /**
-         * Finds the topmost Map node in the specified scene graph, or returns NULL if
-         * no Map node exists in the graph.
-         */
+        * Finds the topmost Map node in the specified scene graph, or returns NULL if
+        * no Map node exists in the graph.
+        */
         static Map* findMapNode( osg::Node* graph );
 
         /**
-         * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
-         * CSN exists in the graph.
-         */
-        static osg::CoordinateSystemNode* findCoordinateSystemNode( osg::Node* graph );
-
-        /**
-         *Callback used to notify listeners of layer changes
+        * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
+        * CSN exists in the graph.
         */
-        struct LayerCallback : public osg::Referenced
-        {
-        public:
-            virtual void layerAdded(Layer* layer) {}
-            virtual void layerRemoved(Layer* layer) {}
-            virtual void layerMoved(Layer* layer, unsigned int prevIndex, unsigned int newIndex) {}
-        };
+        static osg::CoordinateSystemNode* findCoordinateSystemNode( osg::Node* graph );        
 
         /**
-         *Gets the LayerCallback of this Map
+        * Gets the profile of the underlying map
         */
-        LayerCallback* getLayerCallback() const {return _layerCallback.get();}
-
-        /**
-         *Sets the LayerCallback of this Map
-        */
-        void setLayerCallback(LayerCallback* layerCallback) { _layerCallback = layerCallback;}
-
-        /**
-         * Creates a new layer from the provided configuration and adds it to the end of
-         * the layer list. Returns true upon success.
-         */
-        bool addImageLayer( const SourceConfig& conf );
-
-        /**
-         * Creates a new height-field layer from the provided configuration and adds it to the
-         * end of the layer list. Returns true upon success.
-         */
-        bool addHeightFieldLayer( const SourceConfig& conf );
-
-        /**
-         * Adds the given layer to the end of the Layer list
-         */
-        void addLayer( Layer* layer );
-
-        /**
-         * Removes the given layer from this Map's Layer List.
-         */
-        void removeLayer( Layer* layer );
-
-        /**
-         * Moves the given layer to the given position in this Map's Layer list.
-         */
-        void moveLayer( Layer* layer, int position );
-
-        /**
-         * Gets the number of layers contained in this Map
-         */
-        unsigned int getNumLayers() const;
-
-        /**
-         * Gets the Layer at the given position in this Map.
-         */
-        Layer* getLayer( unsigned int i ) const;
-
-        /**
-         * Gets the index of the given layer.  -1 is returned if the layer is not in the list          
-         */
-        int getLayerIndex( Layer* layer) const;
-
-        /**
-         * Get a list of all ImageLayers in this Map.  The ImageLayers will be returned in
-         * the order in which they appear in the Layer list
-         */
-        void getImageLayers( ImageLayerList& layers ) const;
-
-        /**
-         * Get a list of all ElevationLayers in this Map.  The ElevationLayers will be
-         * returned in the order in which they appear in the Layer list
-         */
-        virtual void getElevationLayers( ElevationLayerList& layers ) const;
-
-        /**
-         * Creates a TileSource with the given SourceConfig
-         */
-        TileSource* createTileSource( const SourceConfig& sourceConfig );
-
-        /**
-         * Gets the profile of the underlying map
-         */
         const Profile* getProfile() const;
 
         /**
-         * Returns true if the realized terrain model is geocentric, false if
-         * it is flat/projected.
-         */
+        * Returns true if the realized terrain model is geocentric, false if
+        * it is flat/projected.
+        */
         bool isGeocentric() const;
 
         /**
-         * Gets the underlying map engine that generates data for this map node.
-         */
+        * Gets the underlying map engine that generates data for this map node.
+        */
         MapEngine* getEngine() const;
 
+        /**
+        * Gets the number of terrains that this Map is managing
+        */
+        unsigned int getNumTerrains() const;
+
+        /**
+        * Gets the terrain
+        */
+        EarthTerrain* getTerrain( unsigned int i ) const;
+
+        /**
+        *Callback used to notify listeners of source changes
+        */
+        struct SourceCallback : public osg::Referenced
+        {
+        public:
+            /**
+            *An image source was added
+            *@param source
+            *     The TileSource that was added
+            *@param index
+            *     The new index of the added TileSource
+            */
+            virtual void imageSourceAdded(TileSource* source, unsigned int index) {}
+
+            /**
+            *An image source was removed
+            *@param source
+            *     The TileSource that was removed
+            *@param index
+            *     The previous index of the added TileSource
+            */
+            virtual void imageSourceRemoved(TileSource* source, unsigned int index) {}
+
+            /**
+            *An image source was moved
+            *@param source
+            *     The TileSource that was moved
+            *@param prevIndex
+            *     The previous index of the added TileSource
+            *@param newIndex
+            *     The new index of the added TileSource
+            */
+            virtual void imageSourceMoved(TileSource* source, unsigned int prevIndex, unsigned int newIndex) {}
+
+            /**
+            *A heightfield source was added
+            *@param source
+            *     The TileSource that was added
+            *@param index
+            *     The new index of the added TileSource
+            */
+            virtual void heightfieldSourceAdded(TileSource* source, unsigned int index) {}
+            
+            /**
+            *A heightfield source was removed
+            *@param source
+            *     The TileSource that was removed
+            *@param index
+            *     The previous index of the added TileSource
+            */
+            virtual void heightfieldSourceRemoved(TileSource* source, unsigned int index) {}
+
+            /**
+            *A heightfield source was moved
+            *@param source
+            *     The TileSource that was moved
+            *@param prevIndex
+            *     The previous index of the added TileSource
+            *@param newIndex
+            *     The new index of the added TileSource
+            */
+            virtual void heightfieldSourceMoved(TileSource* source, unsigned int prevIndex, unsigned int newIndex) {}
+        };
+
+        /**
+         *Gets the SourceCallback of this Map
+        */
+        SourceCallback* getSourceCallback() const {return _sourceCallback.get();}
+
+        /**
+         *Sets the SourceCallback of this Map
+        */
+        void setSourceCallback(SourceCallback* sourceCallback) { _sourceCallback = sourceCallback;}
+
+        /**
+        *Adds an image source with the given SourceConfig
+        */
+        void addImageSource( const SourceConfig& sourceConfig );
+
+        /**
+        *Removes the image source at the given index
+        */
+        void removeImageSource( unsigned int index );
+
+        /**
+        *Moves the image source at the given index to the new position
+        */
+        void moveImageSource( unsigned int index, unsigned int position );
+
+        /**
+        *Gets the number of image sources
+        */
+        unsigned int getNumImageSources() const;
+
+        /**
+        *Gets the index of the given image TileSource
+        */
+        unsigned int getImageSourceIndex(TileSource* source) const;
+
+        /**
+        *Gets the image TileSource at the given index
+        */
+        TileSource* getImageSource( unsigned int index ) const;
+
+        /**
+        *Adds a HeightField source with the given SourceConfig
+        */
+        void addHeightFieldSource( const SourceConfig& sourceConfig );
+
+        /**
+        *Removes the heightfield source at the given index
+        */
+        void removeHeightFieldSource( unsigned int index );
+
+        /**
+        *Moves the heightfield source at the given index to the new position
+        */
+        void moveHeightFieldSource( unsigned int index, unsigned int position );
+
+        /**
+        *Gets the number of heightfield sources
+        */
+        unsigned int getNumHeightFieldSources() const;
+
+        /**
+        *Gets the index of the given heightfield TileSource
+        */
+        unsigned int getHeightFieldSourceIndex(TileSource* source) const;
+
+        /**
+        *Gets the heightfield source at the given index
+        */
+        TileSource* getHeightFieldSource( unsigned int index ) const;
 
     protected:        
         virtual ~Map();
 
-    private:
-        Map( MapEngine* engine );
+        virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
-        void init( const MapConfig& conf );
+        //Registers the given Map with osgEarth.  This should not be called by user code
+        static void registerMap( Map* map );
+
+        //Unregisters the given Map.  This should not be called by user code
+        static void unregisterMap( unsigned int id );
+
+    private:
+
+        unsigned int _id;
+
+        TileSource* createTileSource( const SourceConfig& sourceConfig );
 
         osg::ref_ptr<MapEngine> _engine;
 
         void updateStateSet();
 
-        osg::ref_ptr<LayerCallback> _layerCallback;
+        MapConfig _mapConfig;
+
+        //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
+        std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > _terrains;
+
+        static OpenThreads::ReentrantMutex s_mapCacheMutex;
+
+        osg::ref_ptr< SourceCallback > _sourceCallback;
     };
 }
 

@@ -176,6 +176,8 @@ namespace osgEarth
 
         void setOverrideProfile( const Profile* profile );
 
+        friend class MapConfig;
+        friend class Map;
         friend class MapEngine;
         friend class CachedTileSource;
         friend class MemCachedTileSource;

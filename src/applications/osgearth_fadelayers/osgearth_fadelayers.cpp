@@ -86,7 +86,7 @@ public:
                   double delta = osg::minimum(deltaTime / _animationTime, 1.0);
 
                   //Determine which layer should be active
-                  unsigned int activeLayer = _map->getNumLayers()-1;
+                  unsigned int activeLayer = _map->getNumImageSources()-1;
                   for (unsigned int i = 0; i < _elevations.size(); ++i)
                   {
                       if (_currentElevation > _elevations[i])
@@ -97,7 +97,7 @@ public:
                   }
 
                   bool dirtyLayers = false;
-                  for (unsigned int i = 0; i < _map->getNumLayers(); ++i)
+                  for (unsigned int i = 0; i < _map->getNumImageSources(); ++i)
                   {
                       //If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
                       //Otherwise, we want the layers to go to 1.0
@@ -174,14 +174,14 @@ int main(int argc, char** argv)
       {
           SourceProperties props;
           props["dataset"] = "satellite";
-          map->addLayer(new ImageLayer(map->createTileSource( SourceConfig("yahoo_sat", "yahoo", props) ) ) );
+          map->addImageSource( SourceConfig("yahoo_sat", "yahoo", props)  );
       }
 
       //Add the yahoo maps layer
       {
           SourceProperties props;
           props["dataset"] = "roads";
-          map->addLayer(new ImageLayer(map->createTileSource( SourceConfig("yahoo_roads", "yahoo", props) ) ) );
+          map->addImageSource( SourceConfig("yahoo_roads", "yahoo", props ) );
       }
       group->addChild(map.get());
   }
@@ -197,14 +197,14 @@ int main(int argc, char** argv)
       //Set the up elevation fade points
       FadeLayerCallback::Elevations elevations;
       double maxElevation = 4e6;
-      for (unsigned int i = 0; i < map->getNumLayers(); ++i)
+      for (unsigned int i = 0; i < map->getNumImageSources(); ++i)
       {
           elevations.push_back(maxElevation);
           maxElevation /= 2.0;
       }
 
       //Set all of the layer's opacity to 0.0 except for the first one
-      for (unsigned int i = 1; i < map->getNumLayers(); ++i)
+      for (unsigned int i = 1; i < map->getNumImageSources(); ++i)
       {
           fadeLayerNode->setOpacity(i, 0.0f);
       }

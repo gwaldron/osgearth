@@ -40,7 +40,7 @@
 
 #include <osgText/Text>
 
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 #include <osgEarth/FindNode>
 #include <osgEarthUtil/FadeLayerNode>
 #include <osgEarthUtil/EarthManipulator>
@@ -60,8 +60,8 @@ class FadeLayerCallback : public osg::NodeCallback
 public:
     typedef std::vector<double> Elevations;
 
-    FadeLayerCallback(Map* map, FadeLayerNode* fadeLayerNode, const Elevations& elevations, float animationTime=2.0f):
-      _map(map),
+    FadeLayerCallback(MapNode* mapNode, FadeLayerNode* fadeLayerNode, const Elevations& elevations, float animationTime=2.0f):
+      _mapNode(mapNode),
       _fadeLayerNode(fadeLayerNode),
       _firstFrame(true),
       _previousTime(0.0),
@@ -70,7 +70,7 @@ public:
       _currentElevation(0)
       {
           //Find the coordinate system node
-          _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>(_map.get());
+          _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>(_mapNode.get());
       }
 
       virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
@@ -86,7 +86,7 @@ public:
                   double delta = osg::minimum(deltaTime / _animationTime, 1.0);
 
                   //Determine which layer should be active
-                  unsigned int activeLayer = _map->getNumImageSources()-1;
+                  unsigned int activeLayer = _mapNode->getNumImageSources()-1;
                   for (unsigned int i = 0; i < _elevations.size(); ++i)
                   {
                       if (_currentElevation > _elevations[i])
@@ -97,7 +97,7 @@ public:
                   }
 
                   bool dirtyLayers = false;
-                  for (unsigned int i = 0; i < _map->getNumImageSources(); ++i)
+                  for (unsigned int i = 0; i < _mapNode->getNumImageSources(); ++i)
                   {
                       //If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
                       //Otherwise, we want the layers to go to 1.0
@@ -139,7 +139,7 @@ public:
 
 private:
     osg::observer_ptr<FadeLayerNode> _fadeLayerNode;
-    osg::observer_ptr<Map> _map;
+    osg::observer_ptr<MapNode> _mapNode;
     osg::observer_ptr<CoordinateSystemNode> _csn;
     double _currentElevation;
     Elevations _elevations;
@@ -168,50 +168,50 @@ int main(int argc, char** argv)
       //Create the map dynamically
       MapConfig mapConfig;
       mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
-      osg::ref_ptr<Map> map = new Map(mapConfig);
+      osg::ref_ptr<MapNode> mapNode = new MapNode(mapConfig);
 
       //Add the yahoo satellite layer
       {
           SourceProperties props;
           props["dataset"] = "satellite";
-          map->addImageSource( SourceConfig("yahoo_sat", "yahoo", props)  );
+          mapNode->addImageSource( SourceConfig("yahoo_sat", "yahoo", props)  );
       }
 
       //Add the yahoo maps layer
       {
           SourceProperties props;
           props["dataset"] = "roads";
-          map->addImageSource( SourceConfig("yahoo_roads", "yahoo", props ) );
+          mapNode->addImageSource( SourceConfig("yahoo_roads", "yahoo", props ) );
       }
-      group->addChild(map.get());
+      group->addChild(mapNode.get());
   }
 
   //Find the map
-  Map* map = findTopMostNodeOfType<Map>(group);
+  MapNode* mapNode = findTopMostNodeOfType<MapNode>(group);
 
   Node* root = group;
-  if (map)
+  if (mapNode)
   {
-      FadeLayerNode* fadeLayerNode = new FadeLayerNode(map);
+      FadeLayerNode* fadeLayerNode = new FadeLayerNode(mapNode);
 
       //Set the up elevation fade points
       FadeLayerCallback::Elevations elevations;
       double maxElevation = 4e6;
-      for (unsigned int i = 0; i < map->getNumImageSources(); ++i)
+      for (unsigned int i = 0; i < mapNode->getNumImageSources(); ++i)
       {
           elevations.push_back(maxElevation);
           maxElevation /= 2.0;
       }
 
       //Set all of the layer's opacity to 0.0 except for the first one
-      for (unsigned int i = 1; i < map->getNumImageSources(); ++i)
+      for (unsigned int i = 1; i < mapNode->getNumImageSources(); ++i)
       {
           fadeLayerNode->setOpacity(i, 0.0f);
       }
       fadeLayerNode->setOpacity(0, 1.0f);
 
       //Attach the callback as both a cull and update callback
-      FadeLayerCallback* callback = new FadeLayerCallback(map, fadeLayerNode, elevations);
+      FadeLayerCallback* callback = new FadeLayerCallback(mapNode, fadeLayerNode, elevations);
       fadeLayerNode->setUpdateCallback(callback);
       fadeLayerNode->setCullCallback(callback);
 

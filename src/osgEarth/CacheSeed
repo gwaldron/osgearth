@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/MapConfig>
 #include <osgEarth/TileKey>
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 
 namespace osgEarth
 {

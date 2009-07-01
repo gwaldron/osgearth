@@ -21,7 +21,7 @@
 
 #include <osg/Group>
 
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 
 #include <osgEarthUtil/Common>
 
@@ -31,7 +31,7 @@ namespace osgEarthUtil
     class OSGEARTHUTIL_EXPORT FadeLayerNode : public osg::Group
     {
     public:
-        FadeLayerNode(osgEarth::Map* map);
+        FadeLayerNode(osgEarth::MapNode* map);
         float getOpacity(unsigned int layer) const;
         void setOpacity(unsigned int layer, float opacity);
 
@@ -47,7 +47,7 @@ namespace osgEarthUtil
 
         friend struct Callback;
 
-        struct Callback : public osgEarth::Map::SourceCallback
+        struct Callback : public osgEarth::MapNode::SourceCallback
         {
         public:
             Callback(FadeLayerNode* fadeLayerNode):
@@ -72,7 +72,7 @@ namespace osgEarthUtil
 
         void updateStateSet();
 
-        osg::ref_ptr<osgEarth::Map> _map;
+        osg::ref_ptr<osgEarth::MapNode> _mapNode;
 
         osg::ref_ptr<Callback> _callback;
     };

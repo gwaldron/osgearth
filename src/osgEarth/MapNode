@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef OSGEARTH_MAP_H
-#define OSGEARTH_MAP_H 1
+#ifndef OSGEARTH_MAPNODE_H
+#define OSGEARTH_MAPNODE_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/MapEngine>
@@ -30,14 +30,14 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT Map : public osg::Group
+    class OSGEARTH_EXPORT MapNode : public osg::Group
     {
     public:
         /**
-        * Creates a new Map node from the given MapConfig.  This allows you to
+        * Creates a new MapNode from the given MapConfig.  This allows you to
         * programatically create a MapConfig and create a paging scene graph out of it.
         */
-        Map( MapConfig& conf );
+        MapNode( MapConfig& conf );
 
     public:
 
@@ -54,7 +54,7 @@ namespace osgEarth
         /**
         *Gets the registered MapNode by Id
         */
-        static Map* getMapNodeById(unsigned int id);
+        static MapNode* getMapNodeById(unsigned int id);
 
         /**
         * Returns true if the configuration used to create this Map node was valid
@@ -66,7 +66,7 @@ namespace osgEarth
         * Finds the topmost Map node in the specified scene graph, or returns NULL if
         * no Map node exists in the graph.
         */
-        static Map* findMapNode( osg::Node* graph );
+        static MapNode* findMapNode( osg::Node* graph );
 
         /**
         * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
@@ -91,7 +91,7 @@ namespace osgEarth
         MapEngine* getEngine() const;
 
         /**
-        * Gets the number of terrains that this Map is managing
+        * Gets the number of terrains that this MapNode is managing
         */
         unsigned int getNumTerrains() const;
 
@@ -166,12 +166,12 @@ namespace osgEarth
         };
 
         /**
-         *Gets the SourceCallback of this Map
+         *Gets the SourceCallback of this MapNode
         */
         SourceCallback* getSourceCallback() const {return _sourceCallback.get();}
 
         /**
-         *Sets the SourceCallback of this Map
+         *Sets the SourceCallback of this MapNode
         */
         void setSourceCallback(SourceCallback* sourceCallback) { _sourceCallback = sourceCallback;}
 
@@ -236,15 +236,15 @@ namespace osgEarth
         TileSource* getHeightFieldSource( unsigned int index ) const;
 
     protected:        
-        virtual ~Map();
+        virtual ~MapNode();
 
         virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
-        //Registers the given Map with osgEarth.  This should not be called by user code
-        static void registerMap( Map* map );
+        //Registers the given MapNode with osgEarth.  This should not be called by user code
+        static void registerMapNode( MapNode* mapNode );
 
-        //Unregisters the given Map.  This should not be called by user code
-        static void unregisterMap( unsigned int id );
+        //Unregisters the given MapNode.  This should not be called by user code
+        static void unregisterMapNode( unsigned int id );
 
     private:
 
@@ -261,10 +261,10 @@ namespace osgEarth
         //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
         std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > _terrains;
 
-        static OpenThreads::ReentrantMutex s_mapCacheMutex;
+        static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
 
         osg::ref_ptr< SourceCallback > _sourceCallback;
     };
 }
 
-#endif // OSGEARTH_MAP_H
+#endif // OSGEARTH_MAPNODE_H

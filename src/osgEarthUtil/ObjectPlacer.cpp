@@ -18,7 +18,7 @@
  */
 #include <osgEarthUtil/ObjectPlacer>
 #include <osgEarth/FindNode>
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
 #include <osgSim/HeightAboveTerrain>
 #include <osg/MatrixTransform>
@@ -30,7 +30,7 @@ using namespace osgEarth;
 ObjectPlacer::ObjectPlacer( osg::Node* terrain, bool clamp ) :
 _clamp( clamp )
 {
-    _map = findTopMostNodeOfType<osgEarth::Map>( terrain );
+    _mapNode = findTopMostNodeOfType<osgEarth::MapNode>( terrain );
     _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>( terrain );
 }
 
@@ -47,7 +47,7 @@ getHAT( osg::CoordinateSystemNode* csn, double x, double y, double z )
 bool
 ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height, osg::Matrixd& out_result ) const
 {
-    if ( !_map.valid() || !_csn.valid() )
+    if ( !_mapNode.valid() || !_csn.valid() )
     {
         osg::notify( osg::WARN ) << "osgEarthUtil::ObjectPlacer: terrain is missing either a Map or CSN node" << std::endl;             
         return false;
@@ -56,7 +56,7 @@ ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height,
     // see whether this is a geocentric model:
     bool is_geocentric = _csn.valid() && _csn->getEllipsoidModel() != NULL;
 
-    const SpatialReference* srs = _map->getProfile()->getSRS();
+    const SpatialReference* srs = _mapNode->getProfile()->getSRS();
 
     // now build a matrix:
     if ( !is_geocentric ) // projected or "flat geographic"

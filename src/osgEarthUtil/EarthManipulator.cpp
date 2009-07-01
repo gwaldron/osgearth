@@ -233,17 +233,17 @@ EarthManipulator::getSRS() const
         nonconst_this->_is_geocentric = true;
 
         // first try to find a map node:
-        osgEarth::Map* map = osgEarth::Map::findMapNode( _node.get() );
-        if ( map )
+        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( _node.get() );
+        if ( mapNode )
         {
-            nonconst_this->_cached_srs = map->getProfile()->getSRS();
-            nonconst_this->_is_geocentric = map->isGeocentric();
+            nonconst_this->_cached_srs = mapNode->getProfile()->getSRS();
+            nonconst_this->_is_geocentric = mapNode->isGeocentric();
         }
 
         // if that doesn't work, try gleaning info from a CSN:
         if ( !_cached_srs.valid() )
         {
-            osg::CoordinateSystemNode* csn = osgEarth::Map::findCoordinateSystemNode( _node.get() );
+            osg::CoordinateSystemNode* csn = osgEarth::MapNode::findCoordinateSystemNode( _node.get() );
             if ( csn )
             {
                 nonconst_this->_cached_srs = osgEarth::SpatialReference::create( csn );

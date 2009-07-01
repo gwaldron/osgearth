@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 #include <osgEarth/Mercator>
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/ProjectedMap>
@@ -30,61 +30,61 @@
 using namespace osgEarth;
 
 //static
-OpenThreads::ReentrantMutex Map::s_mapCacheMutex;
-static unsigned int s_mapID = 0;
-//Caches the maps that have been created
-typedef std::map<unsigned int, osg::observer_ptr<Map> > MapCache;
+OpenThreads::ReentrantMutex MapNode::s_mapNodeCacheMutex;
+static unsigned int s_mapNodeID = 0;
+//Caches the MapNodes that have been created
+typedef std::map<unsigned int, osg::observer_ptr<MapNode> > MapNodeCache;
 
 
 
 static
-MapCache& getMapCache()
+MapNodeCache& getMapNodeCache()
 {
-    static MapCache s_cache;
+    static MapNodeCache s_cache;
     return s_cache;
 }
 
 
 void
-Map::registerMap(Map* map)
+MapNode::registerMapNode(MapNode* mapNode)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
-    getMapCache()[map->_id] = map;
-    osg::notify(osg::INFO) << "[osgEarth::Map] Registered " << map->_id << std::endl;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
+    getMapNodeCache()[mapNode->_id] = mapNode;
+    osg::notify(osg::INFO) << "[osgEarth::MapNode] Registered " << mapNode->_id << std::endl;
 }
 
 void
-Map::unregisterMap(unsigned int id)
+MapNode::unregisterMapNode(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
-    MapCache::iterator k = getMapCache().find( id);
-    if (k != getMapCache().end())
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
+    MapNodeCache::iterator k = getMapNodeCache().find( id);
+    if (k != getMapNodeCache().end())
     {
-        getMapCache().erase(k);
-        osg::notify(osg::INFO) << "[osgEarth::Map] Unregistered " << id << std::endl;
+        getMapNodeCache().erase(k);
+        osg::notify(osg::INFO) << "[osgEarth::MapNode] Unregistered " << id << std::endl;
     }
 }
 
-Map*
-Map::getMapNodeById(unsigned int id)
+MapNode*
+MapNode::getMapNodeById(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapCacheMutex);
-    MapCache::const_iterator k = getMapCache().find( id);
-    if (k != getMapCache().end()) return k->second.get();
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
+    MapNodeCache::const_iterator k = getMapNodeCache().find( id);
+    if (k != getMapNodeCache().end()) return k->second.get();
     return 0;
 }
 
 unsigned int
-Map::getId() const
+MapNode::getId() const
 {
     return _id;
 }
 
-Map::Map(MapConfig& mapConfig ):
+MapNode::MapNode(MapConfig& mapConfig ):
 _mapConfig(mapConfig)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapCacheMutex );
-    _id = s_mapID++;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
+    _id = s_mapNodeID++;
 
     _mapConfig.setId( _id );
     _mapConfig.initialize();
@@ -164,35 +164,35 @@ _mapConfig(mapConfig)
 
     addChild( csn );
 
-    registerMap(this);
+    registerMapNode(this);
 }
 
-Map::~Map()
+MapNode::~MapNode()
 {
-    unregisterMap(_id);
+    unregisterMapNode(_id);
 }
 
 
 MapEngine*
-Map::getEngine() const
+MapNode::getEngine() const
 {
     return _engine.get();
 }
 
 const Profile*
-Map::getProfile() const 
+MapNode::getProfile() const 
 {
     return _mapConfig.getProfile();
 }
 
 bool
-Map::isOK() const
+MapNode::isOK() const
 {
     return _mapConfig.isOK();
 }
 
 osg::CoordinateSystemNode*
-Map::createCoordinateSystemNode() const
+MapNode::createCoordinateSystemNode() const
 {
     osg::CoordinateSystemNode* csn = getProfile()->getSRS()->createCoordinateSystemNode();
 
@@ -206,26 +206,26 @@ Map::createCoordinateSystemNode() const
 }
 
 
-Map*
-Map::findMapNode( osg::Node* graph )
+MapNode*
+MapNode::findMapNode( osg::Node* graph )
 {
-    return findTopMostNodeOfType<Map>( graph );
+    return findTopMostNodeOfType<MapNode>( graph );
 }
 
 osg::CoordinateSystemNode*
-Map::findCoordinateSystemNode( osg::Node* graph )
+MapNode::findCoordinateSystemNode( osg::Node* graph )
 {
     return findTopMostNodeOfType<osg::CoordinateSystemNode>( graph );
 }
 
 bool
-Map::isGeocentric() const
+MapNode::isGeocentric() const
 {
     return dynamic_cast<GeocentricMap*>( _engine.get() ) != NULL;
 }
 
 unsigned int
-Map::getImageSourceIndex( TileSource* source ) const
+MapNode::getImageSourceIndex( TileSource* source ) const
 {
     for (unsigned int i = 0; i < _mapConfig.getImageSources().size(); ++i)
     {
@@ -235,7 +235,7 @@ Map::getImageSourceIndex( TileSource* source ) const
 }
 
 unsigned int
-Map::getHeightFieldSourceIndex( TileSource* source ) const
+MapNode::getHeightFieldSourceIndex( TileSource* source ) const
 {
     for (unsigned int i = 0; i < _mapConfig.getHeightFieldSources().size(); ++i)
     {
@@ -245,31 +245,31 @@ Map::getHeightFieldSourceIndex( TileSource* source ) const
 }
 
 TileSource*
-Map::getImageSource( unsigned int index ) const
+MapNode::getImageSource( unsigned int index ) const
 {
     return index < _mapConfig.getImageSources().size() ? _mapConfig.getImageSources()[index].get() : 0;
 }
 
 TileSource*
-Map::getHeightFieldSource( unsigned int index) const
+MapNode::getHeightFieldSource( unsigned int index) const
 {    
     return index < _mapConfig.getHeightFieldSources().size() ? _mapConfig.getHeightFieldSources()[index].get() : 0;
 }
 
 unsigned int
-Map::getNumImageSources() const
+MapNode::getNumImageSources() const
 {
     return _mapConfig.getImageSources().size();
 }
 
 unsigned int
-Map::getNumHeightFieldSources() const
+MapNode::getNumHeightFieldSources() const
 {
     return _mapConfig.getHeightFieldSources().size();
 }
 
 TileSource*
-Map::createTileSource(const osgEarth::SourceConfig& sourceConfig)
+MapNode::createTileSource(const osgEarth::SourceConfig& sourceConfig)
 {
     //Create the TileSource
     TileSourceFactory factory;
@@ -287,19 +287,19 @@ Map::createTileSource(const osgEarth::SourceConfig& sourceConfig)
 }
 
 unsigned int
-Map::getNumTerrains() const
+MapNode::getNumTerrains() const
 {
     return _terrains.size();
 }
 
 osgEarth::EarthTerrain*
-Map::getTerrain( unsigned int i ) const
+MapNode::getTerrain( unsigned int i ) const
 {
     return _terrains[i].get();
 }
 
 void
-Map::addImageSource( const SourceConfig& sourceConfig)
+MapNode::addImageSource( const SourceConfig& sourceConfig)
 {
     TileSource* source = createTileSource( sourceConfig );
     osg::notify(osg::INFO) << "[osgEarth::Map::addImageSource] Begin " << std::endl;
@@ -378,7 +378,7 @@ Map::addImageSource( const SourceConfig& sourceConfig)
 }
 
 void
-Map::addHeightFieldSource( const SourceConfig& sourceConfig )
+MapNode::addHeightFieldSource( const SourceConfig& sourceConfig )
 {
     osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldSource] Begin " << std::endl;
 
@@ -424,7 +424,7 @@ Map::addHeightFieldSource( const SourceConfig& sourceConfig )
 }
 
 void
-Map::removeImageSource( unsigned int index )
+MapNode::removeImageSource( unsigned int index )
 {
     osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] Begin " << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] Waiting for lock" << std::endl;
@@ -483,7 +483,7 @@ Map::removeImageSource( unsigned int index )
 }
 
 void
-Map::removeHeightFieldSource( unsigned int index )
+MapNode::removeHeightFieldSource( unsigned int index )
 {
     osg::notify(osg::INFO) << "[osgEarth::Map::removeHeightFieldSource] Begin " << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::Map::removeHeightFieldSource] Waiting for lock" << std::endl;
@@ -529,7 +529,7 @@ Map::removeHeightFieldSource( unsigned int index )
 }
 
 void
-Map::moveImageSource( unsigned int index, unsigned int position )
+MapNode::moveImageSource( unsigned int index, unsigned int position )
 {
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveImageSource] Begin" << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveImageSource] Waiting for lock..." << std::endl;
@@ -584,7 +584,7 @@ Map::moveImageSource( unsigned int index, unsigned int position )
 }
 
 void
-Map::moveHeightFieldSource( unsigned int index, unsigned int position )
+MapNode::moveHeightFieldSource( unsigned int index, unsigned int position )
 {
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveHeightFieldSource] Begin" << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine::moveHeightFieldSource] Waiting for lock..." << std::endl;
@@ -632,7 +632,7 @@ Map::moveHeightFieldSource( unsigned int index, unsigned int position )
     osg::notify(osg::INFO) << "[osgEarth::MapEngine::moveHeightFieldSource] end " << std::endl;
 }
 
-void Map::updateStateSet()
+void MapNode::updateStateSet()
 {
     if (_mapConfig.getCombineLayers())
     {

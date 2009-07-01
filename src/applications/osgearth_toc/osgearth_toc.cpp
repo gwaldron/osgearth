@@ -40,7 +40,7 @@
 
 #include <iostream>
 
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/TileSourceFactory>
 
@@ -144,9 +144,9 @@ float _opacityDelta;
 //Callback that removes a Layer
 struct RemoveLayerCallback: public osgWidget::Callback
 {
-    RemoveLayerCallback(Map* map, osgViewer::View* view, unsigned int layerIndex):
+    RemoveLayerCallback(MapNode* mapNode, osgViewer::View* view, unsigned int layerIndex):
 osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
-_map(map),
+_mapNode(mapNode),
 _view(view),
 _layerIndex(layerIndex)
 {
@@ -155,13 +155,13 @@ virtual bool operator()(osgWidget::Event& ev) {
     if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
     {
         _view->getDatabasePager()->clear();
-        _map->removeImageSource( _layerIndex );
+        _mapNode->removeImageSource( _layerIndex );
         hudDirty = true;
     }
     return true;
 }
 
-osg::ref_ptr<Map> _map;
+osg::ref_ptr<MapNode> _mapNode;
 unsigned int _layerIndex;
 osgViewer::View* _view;
 };
@@ -169,9 +169,9 @@ osgViewer::View* _view;
 //Callback that removes a Layer
 struct MoveLayerCallback: public osgWidget::Callback
 {
-    MoveLayerCallback(Map* map, osgViewer::View* view, unsigned int layerIndex, bool up):
+    MoveLayerCallback(MapNode* mapNode, osgViewer::View* view, unsigned int layerIndex, bool up):
 osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
-_map(map),
+_mapNode(mapNode),
 _view(view),
 _layerIndex(layerIndex),
 _up(up)
@@ -182,14 +182,14 @@ virtual bool operator()(osgWidget::Event& ev) {
     {
         _view->getDatabasePager()->clear();
         int dir = _up ? 1 : -1;
-        unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _map->getNumImageSources()-1u);
-        _map->moveImageSource( _layerIndex, newPosition );
+        unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _mapNode->getNumImageSources()-1u);
+        _mapNode->moveImageSource( _layerIndex, newPosition );
         hudDirty = true;
     }
     return true;
 }
 
-osg::ref_ptr<Map> _map;
+osg::ref_ptr<MapNode> _mapNode;
 osgViewer::View* _view;
 unsigned int _layerIndex;
 bool _up;
@@ -198,9 +198,9 @@ bool _up;
 class AddLayerButton : public osgWidget::Label
 {
 public:
-    AddLayerButton(Map* map, osgViewer::View* view, SourceConfig sourceConfig):
+    AddLayerButton(MapNode* mapNode, osgViewer::View* view, SourceConfig sourceConfig):
       osgWidget::Label("",""),
-          _map(map),
+          _mapNode(mapNode),
           _view(view),
           _sourceConfig(sourceConfig)
       {
@@ -216,18 +216,18 @@ public:
 
      virtual bool mousePush(double, double, osgWidget::WindowManager*) {
          _view->getDatabasePager()->clear();
-         _map->addImageSource( _sourceConfig );
+         _mapNode->addImageSource( _sourceConfig );
          hudDirty = true;
         return true;
     }
 
-     osg::ref_ptr<Map> _map;
+     osg::ref_ptr<MapNode> _mapNode;
      SourceConfig _sourceConfig;
      osgViewer::View* _view;
      osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
 };
 
-void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerNode, Map* map, osgViewer::View* view)
+void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerNode, MapNode* mapNode, osgViewer::View* view)
 {
      osgWidget::Box* addLayersBox = new osgWidget::Box("AddLayersBox", osgWidget::Box::VERTICAL);
 
@@ -235,42 +235,42 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
         SourceProperties props;
         props["dataset"] = "labels";
-        addLayersBox->addWidget(new AddLayerButton(map, view, SourceConfig("Google Labels", "google", props)));
+        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Labels", "google", props)));
     }
 
     //Add Google Roads
     {
         SourceProperties props;
         props["dataset"] = "roads";
-        addLayersBox->addWidget(new AddLayerButton(map, view, SourceConfig("Google Roads", "google", props)));
+        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Roads", "google", props)));
     }
 
     //Add Google Traffic
     {
         SourceProperties props;
         props["dataset"] = "traffic";
-        addLayersBox->addWidget(new AddLayerButton(map, view, SourceConfig("Google Traffic", "google", props)));
+        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Traffic", "google", props)));
     }
 
     //Add Google Imagery
     {
         SourceProperties props;
         props["dataset"] = "satellite";
-        addLayersBox->addWidget(new AddLayerButton(map, view, SourceConfig("Google Imagery", "google", props)));
+        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Imagery", "google", props)));
     }
 
     //Add Yahoo Maps
     {
         SourceProperties props;
         props["dataset"] = "roads";
-        addLayersBox->addWidget(new AddLayerButton(map, view, SourceConfig("Yahoo Maps", "yahoo", props)));
+        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Yahoo Maps", "yahoo", props)));
     }
 
     //Add Yahoo Imagery
     {
         SourceProperties props;
         props["dataset"] = "satellite";
-        addLayersBox->addWidget(new AddLayerButton(map, view, SourceConfig("Yahoo Imagery", "yahoo", props)));
+        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Yahoo Imagery", "yahoo", props)));
     }
 
     //addLayersBox->attachMoveCallback();
@@ -283,8 +283,8 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 class Line : public osgWidget::Box
 {
 public:
-    Line(Map* map, FadeLayerNode* fadeLayerNode, osgViewer::View* view, unsigned int layerIndex):
-_map(map),
+    Line(MapNode* mapNode, FadeLayerNode* fadeLayerNode, osgViewer::View* view, unsigned int layerIndex):
+_mapNode(mapNode),
 _fadeLayerNode(fadeLayerNode),
 _layerIndex(layerIndex),
 _view(view),
@@ -297,7 +297,7 @@ osgWidget::Box("", osgWidget::Box::HORIZONTAL)
     //Create a button to remove the layer
     _lblRemove = createLabel();
     _lblRemove->setLabel("X");
-    _lblRemove->addCallback(new RemoveLayerCallback(map, view, _layerIndex));
+    _lblRemove->addCallback(new RemoveLayerCallback(mapNode, view, _layerIndex));
     addWidget(_lblRemove.get());
 
     //Add a label to turn down the opacity
@@ -315,13 +315,13 @@ osgWidget::Box("", osgWidget::Box::HORIZONTAL)
     //Create a button to move the layer up
     _lblMoveUp = createLabel();
     _lblMoveUp->setLabel("Up");
-    _lblMoveUp->addCallback(new MoveLayerCallback(map, view, _layerIndex, true));
+    _lblMoveUp->addCallback(new MoveLayerCallback(mapNode, view, _layerIndex, true));
     addWidget(_lblMoveUp.get());
 
     //Create a button to move the layer down
     _lblMoveDown = createLabel();
     _lblMoveDown->setLabel("Down");
-    _lblMoveDown->addCallback(new MoveLayerCallback(map, view, _layerIndex, false));
+    _lblMoveDown->addCallback(new MoveLayerCallback(mapNode, view, _layerIndex, false));
     addWidget(_lblMoveDown.get());
 
     //Add a label with the name of the layer, clicking on the layer 
@@ -336,11 +336,11 @@ osgWidget::Box("", osgWidget::Box::HORIZONTAL)
 
 void updateText()
 {
-    TileSource* source = _map->getImageSource( _layerIndex );
+    TileSource* source = _mapNode->getImageSource( _layerIndex );
     if (source)
     {
         std::stringstream ss;
-        unsigned int index = (_map->getNumImageSources() - _layerIndex);
+        unsigned int index = (_mapNode->getNumImageSources() - _layerIndex);
         ss << index << ") ";
         _lblNum->setLabel(ss.str());
         _lblName->setLabel( source->getName());
@@ -369,7 +369,7 @@ osg::ref_ptr<osgWidget::Label> _lblOpacityUp;
 osg::ref_ptr<osgWidget::Label> _lblOpacityDown;
 osg::ref_ptr<osgWidget::Label> _lblRemove;
 unsigned int _layerIndex;
-osg::ref_ptr<Map> _map;
+osg::ref_ptr<MapNode> _mapNode;
 osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
 osgViewer::View* _view;
 };
@@ -377,9 +377,9 @@ osgViewer::View* _view;
 class TOC
 {
 public:
-    TOC(osgWidget::WindowManager* wm, Map* map, FadeLayerNode* fadeLayerNode, osgViewer::View* view):
+    TOC(osgWidget::WindowManager* wm, MapNode* mapNode, FadeLayerNode* fadeLayerNode, osgViewer::View* view):
       _wm(wm),
-          _map(map),
+          _mapNode(mapNode),
           _fadeLayerNode(fadeLayerNode),
           _view(view)
       {
@@ -387,7 +387,7 @@ public:
           unsigned int maxLayers = 4;
           for (unsigned int i = 0; i < maxLayers; ++i)
           {
-              Line* line = new Line(_map,fadeLayerNode, _view, i);
+              Line* line = new Line(_mapNode,fadeLayerNode, _view, i);
               _lines.push_back(line);
           }
           update();
@@ -401,7 +401,7 @@ public:
               _wm->removeChild(_lines[i].get());
           }
 
-          for (unsigned int i = 0; i < _map->getNumImageSources(); ++i)
+          for (unsigned int i = 0; i < _mapNode->getNumImageSources(); ++i)
           {
               Line* line = i < _lines.size() ? _lines[i] : NULL;
               if (line)
@@ -417,7 +417,7 @@ public:
       std::vector<osg::ref_ptr<Line> > _lines;
 
       osgWidget::WindowManager* _wm;
-      Map* _map;
+      MapNode* _mapNode;
       FadeLayerNode* _fadeLayerNode;
       osgViewer::View* _view;
 };
@@ -461,19 +461,19 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    Map* map = findTopMostNodeOfType<Map>(loadedModel.get());
-    if (!map)
+    MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());
+    if (!mapNode)
     {
         osg::notify(osg::NOTICE) << "Please load a .earth file" << std::endl;
         return 1;
     }
 
-    FadeLayerNode* fadeLayerNode = new FadeLayerNode(map);
+    FadeLayerNode* fadeLayerNode = new FadeLayerNode(mapNode);
     fadeLayerNode->addChild(loadedModel.get());
     group->addChild(fadeLayerNode);
 
 
-    for (unsigned int i = 0; i < map->getNumImageSources(); ++i)
+    for (unsigned int i = 0; i < mapNode->getNumImageSources(); ++i)
     {
         fadeLayerNode->setOpacity(i, 1.0f);
         fadeLayerNode->setEnabled(i, true);
@@ -489,8 +489,8 @@ int main(int argc, char** argv)
         0
         );
 
-    TOC toc(wm, map, fadeLayerNode, &viewer);
-    createAddLayersMenu(wm, fadeLayerNode, map, &viewer);
+    TOC toc(wm, mapNode, fadeLayerNode, &viewer);
+    createAddLayersMenu(wm, fadeLayerNode, mapNode, &viewer);
     group->setDataVariance(osg::Object::DYNAMIC);
     group->setUpdateCallback(new TOCUpdateCallback(&toc));
 

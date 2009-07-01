@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Viewpoint>
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 #include <osgGA/MatrixManipulator>
 #include <osg/Timer>
 #include <map>

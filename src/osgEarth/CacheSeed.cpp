@@ -26,9 +26,8 @@ using namespace osgEarth;
 
 void CacheSeed::seed( MapConfig& conf )
 {
-    //Create a Map for the map
-    //TODO: really, we just need the MapEngine and not the Map..
-    osg::ref_ptr<Map> map = new Map( conf );
+    //TODO: really, we just need the MapEngine and not the MapNode
+    osg::ref_ptr<MapNode> map = new MapNode( conf );
 
     std::vector< osg::ref_ptr<TileKey> > keys;
     map->getProfile()->getRootKeys(keys);

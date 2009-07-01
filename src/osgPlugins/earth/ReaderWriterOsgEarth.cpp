@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/Map>
+#include <osgEarth/MapNode>
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/ProjectedMap>
 #include <osgEarth/MapConfig>
@@ -103,18 +103,18 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if ( success )
                 {
-                    //Create the Map.
-                    osg::ref_ptr<Map> map = new Map( mapConfig );
+                    //Create the MapNode.
+                    osg::ref_ptr<MapNode> mapNode = new MapNode( mapConfig );
 
                     //Check to see that the Map is valid.
-                    if ( !map.valid() || !map->isOK() )
+                    if ( !mapNode.valid() || !mapNode->isOK() )
                         return ReadResult::FILE_NOT_HANDLED;
 
-                    osg::notify( osg::INFO ) << "Map profile = " << map->getProfile()->toString()
+                    osg::notify( osg::INFO ) << "Map profile = " << mapNode->getProfile()->toString()
                         << std::endl;
  
                     //Create the root node for the scene
-                    node = map.release();
+                    node = mapNode.release();
                 }
                 else
                 {
@@ -135,13 +135,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 //Get the Map from the cache.  It is important that we use a ref_ptr here
                 //to prevent the Map from being deleted while it is is still in use.
                 //osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
-                osg::ref_ptr<Map> map = Map::getMapNodeById( id );
+                osg::ref_ptr<MapNode> mapNode = MapNode::getMapNodeById( id );
 
-                if ( map.valid() )
+                if ( mapNode.valid() )
                 {
-                  const Profile* face_profile = map->getProfile()->getFaceProfile( face );
+                  const Profile* face_profile = mapNode->getProfile()->getFaceProfile( face );
                   osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
-                  node = map->getEngine()->createNode( map->getMapConfig(), map->getTerrain( face ), key.get( ));
+                  node = mapNode->getEngine()->createNode( mapNode->getMapConfig(), mapNode->getTerrain( face ), key.get( ));
                 }
                 else
                 {

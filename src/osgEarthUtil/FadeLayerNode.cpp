@@ -205,8 +205,8 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "}\n"
                     "\n";
 
-FadeLayerNode::FadeLayerNode(Map* map):
-_map(map)
+FadeLayerNode::FadeLayerNode(MapNode* mapNode):
+_mapNode(mapNode)
 {
     osg::Program* program = new osg::Program;
     program->addShader(new osg::Shader( osg::Shader::VERTEX, vert_source ) );
@@ -215,12 +215,12 @@ _map(map)
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
     getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
-    if (_map.valid())
+    if (_mapNode.valid())
     {
         _callback = new Callback(this);
-        _map->setSourceCallback( _callback.get() );
+        _mapNode->setSourceCallback( _callback.get() );
 
-        for (unsigned int i = 0; i < _map->getNumImageSources(); ++i)
+        for (unsigned int i = 0; i < _mapNode->getNumImageSources(); ++i)
         {
             setOpacity(i, 1.0f);
             setEnabled(i, true);
@@ -417,14 +417,14 @@ void FadeLayerNode::layerRemoved(unsigned int index)
             layerIndex++;
         }
         //Resize the lists to account for the removal of the Layer
-        resizeLists(_map->getNumImageSources());
+        resizeLists(_mapNode->getNumImageSources());
 }
 
 void FadeLayerNode::layerMoved(unsigned int prevIndex, unsigned int newIndex)
 {
     osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
 
-    if (!_map.valid()) return;
+    if (!_mapNode.valid()) return;
 
     //Swap the settings
     bool enabled = getEnabled(prevIndex);

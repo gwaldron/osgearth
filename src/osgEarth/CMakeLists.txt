@@ -39,7 +39,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageToHeightFieldConverter
     ImageUtils
     JsonUtils
-    Map
+    MapNode
     MapConfig
     MapEngine
     Mercator
@@ -73,7 +73,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     JsonUtils.cpp
-    Map.cpp
+    MapNode.cpp
     MapConfig.cpp
     MapEngine.cpp
     Mercator.cpp

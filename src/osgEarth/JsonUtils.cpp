@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sstream>
 
 #if _MSC_VER >= 1400 // VC++ 8.0
 #pragma warning( disable : 4996 )   // disable warning about strdup being deprecated.
@@ -925,7 +926,6 @@ Value::asCString() const
    return value_.string_;
 }
 
-
 std::string 
 Value::asString() const
 {
@@ -938,8 +938,23 @@ Value::asString() const
    case booleanValue:
       return value_.bool_ ? "true" : "false";
    case intValue:
+       {
+           std::stringstream buf;
+           buf << value_.int_;
+           return buf.str();
+       }
    case uintValue:
+       {
+           std::stringstream buf;
+           buf << value_.uint_;
+           return buf.str();
+       }
    case realValue:
+       {
+           std::stringstream buf;
+           buf << value_.real_;
+           return buf.str();
+       }
    case arrayValue:
    case objectValue:
       JSON_ASSERT_MESSAGE( false, "Type is not convertible to string" );

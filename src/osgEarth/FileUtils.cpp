@@ -56,7 +56,12 @@ std::string osgEarth::getFullPath(const std::string& relativeTo, const std::stri
     //Note:  Modified from VPB
 
     //Concatinate the paths together
-    std::string filename = osgDB::concatPaths( osgDB::getFilePath( osgDB::getRealPath( relativeTo )), relativePath);
+    std::string filename;
+    if ( !osgDB::containsServerAddress( relativeTo ) )
+        filename = osgDB::concatPaths( osgDB::getFilePath( osgDB::getRealPath( relativeTo )), relativePath);
+    else
+        filename = osgDB::concatPaths( osgDB::getFilePath( relativeTo ), relativePath);
+
 
     std::list<std::string> directories;
     int start = 0;

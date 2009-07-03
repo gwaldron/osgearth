@@ -332,6 +332,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
         double dh = (h1 - h0)/10000.0;
         _accel = fabs(dh) <= 1.0? 0.0 : dh > 0.0? log10( dh ) : -log10( -dh );
+        if ( fabs( _accel ) < 1.0 ) _accel = 0.0;
         
         _set_viewpoint_t0 = osg::Timer::instance()->tick();
         _set_viewpoint_duration_s = duration_s;
@@ -658,11 +659,14 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         case osgGA::GUIEventAdapter::DRAG:
             action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
             addMouseEvent( ea );
-            if ( handleMouseAction( action ) )
-                us.requestRedraw();
-            us.requestContinuousUpdate(false);
-            _continuous = action._continuous;
-            _thrown = false;
+            if ( !_continuous ) // if we're already in continuous move, let the FRAME handler process actions
+            {
+                if ( handleMouseAction( action ) )
+                    us.requestRedraw();
+                us.requestContinuousUpdate(false);
+                _continuous = action._continuous;
+                _thrown = false;
+            }
             handled = true;
             break;
 

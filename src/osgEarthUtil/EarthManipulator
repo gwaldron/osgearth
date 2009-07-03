@@ -68,6 +68,7 @@ namespace osgEarthUtil
         enum ActionType {
             ACTION_NULL,
             ACTION_HOME,
+            ACTION_GOTO,
             ACTION_PAN,
             ACTION_PAN_LEFT,
             ACTION_PAN_RIGHT,
@@ -84,9 +85,10 @@ namespace osgEarthUtil
         };
 
         enum EventType {
-            EVENT_MOUSE_DRAG = osgGA::GUIEventAdapter::DRAG,
-            EVENT_KEY_DOWN   = osgGA::GUIEventAdapter::KEYDOWN,
-            EVENT_SCROLL     = osgGA::GUIEventAdapter::SCROLL
+            EVENT_MOUSE_DRAG  = osgGA::GUIEventAdapter::DRAG,
+            EVENT_MOUSE_CLICK = osgGA::GUIEventAdapter::RELEASE,
+            EVENT_KEY_DOWN    = osgGA::GUIEventAdapter::KEYDOWN,
+            EVENT_SCROLL      = osgGA::GUIEventAdapter::SCROLL
         };
 
         enum MouseEvent {
@@ -148,6 +150,24 @@ namespace osgEarthUtil
             void bindMouse(
                 ActionType action, int button_mask,
                 int modkey_mask =0L, bool continuous =false, double scale_x =1.0, double scale_y =1.0 );
+
+            /**
+             * Assigns a bevahior to the action of clicking one or more mouse buttons.
+             *
+             * @param action
+             *      The EarthManipulator::ActionType value to which to bind this mouse click
+             *      input specification.
+             *
+             * @param button_mask
+             *      Mask of osgGA::GUIEventAdapter::MouseButtonMask values
+             *
+             * @param modkey_mask (default = 0L)
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      combination to associate with the action.
+             */
+            void bindMouseClick(
+                ActionType action, int button_mask,
+                int modkey_mask =0L );
 
             /**
              * Assigns a bevahior to the action of depressing a key.
@@ -335,9 +355,9 @@ namespace osgEarthUtil
         Viewpoint getViewpoint() const;
 
         /**
-         * Sets the camera position.
+         * Sets the camera position, optionally moving it there over time.
          */
-        void setViewpoint( const Viewpoint& vp );
+        void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
 
         /**
          * Locks the camera's focal point on the center of a node's bounding sphere.
@@ -419,6 +439,7 @@ namespace osgEarthUtil
         bool handleAction( const Action& action, double dx, double dy, double duration );
 
         bool handleMouseAction( const Action& action );
+        bool handleMouseClickAction( const Action& action );
         bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
         bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
 
@@ -462,10 +483,16 @@ namespace osgEarthUtil
 
         void updateTether();
 
+        void updateSetViewpoint();
+
+        bool isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const;
+
     private:
         // makeshift "stack" of the last 2 incoming events.
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t1;
         osg::ref_ptr<const osgGA::GUIEventAdapter> _ga_t0;
+
+        osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
 
         osg::ref_ptr<osg::Node> _node;
 
@@ -491,6 +518,14 @@ namespace osgEarthUtil
 
         double                  _single_axis_x;
         double                  _single_axis_y;
+
+        bool                    _setting_viewpoint;
+        Viewpoint               _start_viewpoint;
+        double                  _delta_heading, _delta_pitch, _delta_range;
+        osg::Vec3d              _delta_focal_point;
+        osg::Timer_t            _set_viewpoint_t0;
+        double                  _set_viewpoint_duration_s;
+        double                  _accel;
 
         osg::ref_ptr<Settings> _settings;
 

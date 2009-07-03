@@ -93,6 +93,14 @@ EarthManipulator::Settings::bindMouse(ActionType action,
 }
 
 void
+EarthManipulator::Settings::bindMouseClick(ActionType action,
+                                           int button_mask, int modkey_mask)
+{
+    InputSpec spec( osgGA::GUIEventAdapter::RELEASE, button_mask, modkey_mask );
+    _bindings.push_back( ActionBinding( spec, Action( action ) ) );
+}
+
+void
 EarthManipulator::Settings::bindKey(ActionType action, int key,
                                     int modkey_mask, bool continuous)
 {
@@ -136,7 +144,8 @@ _continuous( false ),
 _settings( new Settings() ),
 _task( new Task() ),
 _last_action( ACTION_NULL ),
-_srs_lookup_failed( false )
+_srs_lookup_failed( false ),
+_setting_viewpoint( false )
 {
     // install default action bindings:
 
@@ -296,69 +305,155 @@ EarthManipulator::getRotation(const osg::Vec3d& point) const
     return osg::Matrixd::lookAt( point - (lookVector * offset), point, up);
 }
 
-
 void
-EarthManipulator::setViewpoint( const Viewpoint& vp )
+EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 {
-    osg::Vec3d new_center = vp.getFocalPoint();
-
-    // start by transforming the requested focal point into world coordinates:
-    if ( getSRS() )
+    if ( duration_s > 0.0 )
     {
-        // resolve the VP's srs. If the VP's SRS is not specified, assume that it
-        // is either lat/long (if the map is geocentric) or X/Y (otherwise).
-        osg::ref_ptr<const SpatialReference> vp_srs = vp.getSRS()? vp.getSRS() :
-            _is_geocentric? getSRS()->getGeographicSRS() :
-            getSRS();
+        _start_viewpoint = getViewpoint();
+        
+        _delta_heading = vp.getHeading() - _start_viewpoint.getHeading(); //TODO: adjust for crossing -180
+        _delta_pitch   = vp.getPitch() - _start_viewpoint.getPitch();
+        _delta_range   = vp.getRange() - _start_viewpoint.getRange();
+        _delta_focal_point = vp.getFocalPoint() - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
 
-        if ( !getSRS()->isEquivalentTo( vp_srs.get() ) )
-        {
-            osg::Vec3d local = new_center;
-            // reproject the focal point if necessary:
-            vp_srs->transform( new_center.x(), new_center.y(), getSRS(), local.x(), local.y() );
-            new_center = local;
-        }
+        while( _delta_heading > 180.0 ) _delta_heading -= 360.0;
+        while( _delta_heading < -180.0 ) _delta_heading += 360.0;
 
-        // convert to geocentric coords if necessary:
+        // adjust for geocentric date-line crossing
         if ( _is_geocentric )
         {
-            osg::Vec3d geocentric;
-
-            getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians( new_center.y() ),
-                osg::DegreesToRadians( new_center.x() ),
-                new_center.z(),
-                geocentric.x(), geocentric.y(), geocentric.z() );
-
-            new_center = geocentric;            
+            while( _delta_focal_point.x() > 180.0 ) _delta_focal_point.x() -= 360.0;
+            while( _delta_focal_point.x() < -180.0 ) _delta_focal_point.x() += 360.0;
         }
+
+        // calculate an acceleration factor based on the Z differential
+        double h0 = _start_viewpoint.getRange() * sin( osg::DegreesToRadians(-_start_viewpoint.getPitch()) );
+        double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
+        double dh = (h1 - h0)/10000.0;
+        _accel = fabs(dh) <= 1.0? 0.0 : dh > 0.0? log10( dh ) : -log10( -dh );
+        
+        _set_viewpoint_t0 = osg::Timer::instance()->tick();
+        _set_viewpoint_duration_s = duration_s;
+
+        osg::notify(osg::NOTICE) << "dh = " << dh*10000 << ", accel = " << _accel << std::endl;
+
+        _setting_viewpoint = true;
+        
+        _thrown = false;
+        _task->_type = TASK_NONE;
+    }
+    else
+    {
+        osg::Vec3d new_center = vp.getFocalPoint();
+
+        // start by transforming the requested focal point into world coordinates:
+        if ( getSRS() )
+        {
+            // resolve the VP's srs. If the VP's SRS is not specified, assume that it
+            // is either lat/long (if the map is geocentric) or X/Y (otherwise).
+            osg::ref_ptr<const SpatialReference> vp_srs = vp.getSRS()? vp.getSRS() :
+                _is_geocentric? getSRS()->getGeographicSRS() :
+                getSRS();
+
+            if ( !getSRS()->isEquivalentTo( vp_srs.get() ) )
+            {
+                osg::Vec3d local = new_center;
+                // reproject the focal point if necessary:
+                vp_srs->transform( new_center.x(), new_center.y(), getSRS(), local.x(), local.y() );
+                new_center = local;
+            }
+
+            // convert to geocentric coords if necessary:
+            if ( _is_geocentric )
+            {
+                osg::Vec3d geocentric;
+
+                getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+                    osg::DegreesToRadians( new_center.y() ),
+                    osg::DegreesToRadians( new_center.x() ),
+                    new_center.z(),
+                    geocentric.x(), geocentric.y(), geocentric.z() );
+
+                new_center = geocentric;            
+            }
+        }
+
+        // now calculate the new rotation matrix based on the angles:
+
+        double new_pitch = osg::DegreesToRadians(
+            osg::clampBetween( vp.getPitch(), _settings->getMinPitch(), _settings->getMaxPitch() ) );
+
+        double new_azim = normalizeAzimRad( osg::DegreesToRadians( vp.getHeading() ) );
+
+        _center = new_center;
+        _distance = osg::maximum( vp.getRange(), 1.0 );
+        
+        osg::CoordinateFrame local_frame = getCoordinateFrame( new_center );
+        _previousUp = getUpVector( local_frame );
+
+        osg::Matrixd center_rot = getRotation( new_center );
+        osg::Quat azim_q( new_azim, osg::Vec3d(0,0,1) );
+        osg::Quat pitch_q( -new_pitch -osg::PI_2, osg::Vec3d(1,0,0) );
+
+        osg::Matrix new_rot = center_rot * osg::Matrixd( azim_q * pitch_q );
+
+        _rotation = osg::Matrixd::inverse(new_rot).getRotate();
+
+        _local_pitch = 0.0;
+        _local_azim  = 0.0;
+
+        recalculateLocalPitchAndAzimuth();
+    }
+}
+
+static double
+smoothStepInterp( double t ) {
+    return (t*t)*(3.0-2.0*t);
+}
+
+static double
+accelerationInterp( double t, double a ) {
+    return a == 0.0? t : a > 0.0? ::pow( t, a ) : 1.0 - ::pow(1.0-t, -a);
+}
+
+
+void
+EarthManipulator::updateSetViewpoint()
+{
+    osg::Timer* timer = osg::Timer::instance();
+    osg::Timer_t now = timer->tick();
+
+    double t = timer->delta_s( _set_viewpoint_t0, now ) / _set_viewpoint_duration_s;
+    if ( t >= 1.0 )
+    {
+        t = 1.0;
+        _setting_viewpoint = false;
+    }
+    else
+    {
+        t = accelerationInterp( t, _accel );
+        t = smoothStepInterp( t );
     }
 
-    // now calculate the new rotation matrix based on the angles:
+    Viewpoint new_vp(
+        _start_viewpoint.getFocalPoint() + _delta_focal_point * t,
+        _start_viewpoint.getHeading() + _delta_heading * t,
+        _start_viewpoint.getPitch() + _delta_pitch * t,
+        _start_viewpoint.getRange() + _delta_range * t,
+        _start_viewpoint.getSRS() );
 
-    double new_pitch = osg::DegreesToRadians(
-        osg::clampBetween( vp.getPitch(), _settings->getMinPitch(), _settings->getMaxPitch() ) );
+    //osg::notify(osg::NOTICE)
+    //    << "t=" << t 
+    //    << ", x=" << new_vp.x()
+    //    << ", y=" << new_vp.y()
+    //    << ", z=" << new_vp.z()
+    //    << ", p=" << new_vp.getPitch()
+    //    << ", h=" << new_vp.getHeading()
+    //    << ", r=" << new_vp.getRange()
+    //    << std::endl;
 
-    double new_azim = normalizeAzimRad( osg::DegreesToRadians( vp.getHeading() ) );
-
-    _center = new_center;
-    _distance = osg::maximum( vp.getRange(), 1.0 );
-    
-    osg::CoordinateFrame local_frame = getCoordinateFrame( new_center );
-    _previousUp = getUpVector( local_frame );
-
-    osg::Matrixd center_rot = getRotation( new_center );
-    osg::Quat azim_q( new_azim, osg::Vec3d(0,0,1) );
-    osg::Quat pitch_q( -new_pitch -osg::PI_2, osg::Vec3d(1,0,0) );
-
-    osg::Matrix new_rot = center_rot * osg::Matrixd( azim_q * pitch_q );
-
-    _rotation = osg::Matrixd::inverse(new_rot).getRotate();
-
-    _local_pitch = 0.0;
-    _local_azim  = 0.0;
-
-    recalculateLocalPitchAndAzimuth();
+    setViewpoint( new_vp );
 }
 
 
@@ -476,6 +571,11 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
+        if ( _setting_viewpoint )
+        {
+            updateSetViewpoint();
+        }
+
         // check for _center update due to tethering:
         if ( _tether_node.valid() )
         {
@@ -514,6 +614,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         case osgGA::GUIEventAdapter::PUSH:
             resetMouse( us );
             addMouseEvent( ea );
+            _mouse_down_event = &ea;
             handled = true;
             break;
 
@@ -532,6 +633,14 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
                     us.requestContinuousUpdate( true );
                     _thrown = true;
                 }
+            }
+            else if ( isMouseClick( &ea ) )
+            {
+                resetMouse( us );
+                action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+                addMouseEvent( ea );
+                if ( handleMouseAction( action ) )
+                    us.requestRedraw();
             }
             else
             {
@@ -653,7 +762,6 @@ EarthManipulator::serviceTask()
     return result;
 }
 
-
 bool
 EarthManipulator::isMouseMoving()
 {
@@ -669,6 +777,20 @@ EarthManipulator::isMouseMoving()
     return (len>dt*velocity);
 }
 
+bool
+EarthManipulator::isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const
+{
+    if ( mouse_up_event == NULL || _mouse_down_event == NULL ) return false;
+
+    static const float velocity = 0.1f;
+
+    float dx = mouse_up_event->getXnormalized() - _mouse_down_event->getXnormalized();
+    float dy = mouse_up_event->getYnormalized() - _mouse_down_event->getYnormalized();
+    float len = sqrtf( dx*dx + dy*dy );
+    float dt = mouse_up_event->getTime( )- _mouse_down_event->getTime();
+
+    return len < dt*velocity;
+}
 
 void
 EarthManipulator::flushMouseEventStack()
@@ -1016,6 +1138,13 @@ EarthManipulator::handleMouseAction( const Action& action )
     }
 
     return true;
+}
+
+bool
+EarthManipulator::handleMouseClickAction( const Action& action )
+{
+    //TODO.
+    return false;
 }
 
 bool

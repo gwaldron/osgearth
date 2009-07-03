@@ -102,7 +102,7 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
     osg::ref_ptr<TileSource> topSource = tile_source.get();
 
     //If the cache config is valid, wrap the TileSource with a caching TileSource.
-    if ( cacheConfig.defined() )
+    if ( cacheConfig.defined() && tile_source->supportsPersistentCaching() )
     {
         osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(
             tile_source.get(),

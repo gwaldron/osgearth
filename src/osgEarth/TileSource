@@ -77,18 +77,18 @@ namespace osgEarth
          * Returns True if this tile source initialized properly and has a valid
          * profile.
          */
-        bool isOK() const;
+        virtual bool isOK() const;
         bool isValid() const { return isOK(); }
 
         /**
          * Gets the Profile that was originally created by initProfile()
          */
-        const Profile* getProfile() const;
+        virtual const Profile* getProfile() const;
 
         /**
          * Gets the minimum level that this TileSource should be displayed at
          */
-        unsigned int getMinLevel() const {return _minLevel;}
+        virtual unsigned int getMinLevel() const {return _minLevel;}
 
         /**
          * Sets the minimum level that this TileSource should be display at
@@ -98,20 +98,20 @@ namespace osgEarth
         /**
          * Gets the maximum level that this TileSource should be displayed at
          */
-        unsigned int getMaxLevel() const {return _maxLevel;}
+        virtual unsigned int getMaxLevel() const {return _maxLevel;}
 
         /**
          * Sets the maximum level that this TileSource should be displayed at
          */
         void setMaxLevel(unsigned int maxLevel) {_maxLevel = maxLevel;}
 
-        float getNoDataValue();
+        virtual float getNoDataValue();
         void  setNoDataValue(float noDataValue);
 
-        float getNoDataMinValue();
+        virtual float getNoDataMinValue();
         void setNoDataMinValue(float noDataMinValue);
 
-        float getNoDataMaxValue();
+        virtual float getNoDataMaxValue();
         void  setNoDataMaxValue(float noDataMaxValue);     
 
         /**
@@ -124,7 +124,7 @@ namespace osgEarth
          * While the Profile will return extents corresponding to the SRS, this
          * method will reflect the area containing real source data.
          */
-        const GeoExtent& getDataExtent() const;
+        virtual const GeoExtent& getDataExtent() const;
 
         /**
          * Gets the maximum level of detail available from the tile source. Unlike 
@@ -132,7 +132,17 @@ namespace osgEarth
          * source in a Map, this method reports the maximum level for which the 
          * tile source is able to return data.
          */
-        unsigned int getMaxDataLevel() const;
+        virtual unsigned int getMaxDataLevel() const;
+
+        /**
+         * Returns true is this source has a cache that stores data to disk.
+         */
+        virtual bool hasPersistentCache() const;
+
+        /**
+         * Returns true if data from this source can be cached to disk
+         */
+        virtual bool supportsPersistentCaching() const;
 
         /**
          * Gets the preferred extension for this TileSource
@@ -183,6 +193,7 @@ namespace osgEarth
         friend class MemCachedTileSource;
         friend class DirectReadTileSource;
         friend class TileSourceFactory;
+        friend class ChainedTileSource;
 
         float _noDataValue;
         float _noDataMinValue;
@@ -194,6 +205,42 @@ namespace osgEarth
 
     
     typedef std::vector< osg::ref_ptr<TileSource> > TileSourceList;
+
+
+    /**
+     * Template class for chaining TileSource instances together to form a
+     * data pipeline.
+     */
+    class ChainedTileSource : public TileSource
+    {
+    protected:
+        ChainedTileSource( TileSource* next, const osgDB::ReaderWriter::Options* options )
+            : TileSource( options ), _next( next ) { }
+
+        TileSource* nextTileSource() { 
+            return _next.get();
+        }
+        const TileSource* nextTileSource() const { 
+            return _next.get();
+        }
+
+    public:
+        // pass all the gets through by default:
+        virtual unsigned int getMinLevel() const { return _next->getMinLevel(); }
+        virtual unsigned int getMaxLevel() const { return _next->getMaxLevel(); }
+        virtual float getNoDataValue() { return _next->getNoDataValue(); }
+        virtual float getNoDataMinValue() { return _next->getNoDataMinValue(); }
+        virtual float getNoDataMaxValue() { return _next->getNoDataMaxValue(); }
+        virtual bool isKeyValid(const TileKey* key) { return _next->isKeyValid(key); }
+        virtual const GeoExtent& getDataExtent() const { return _next->getDataExtent(); }
+        virtual unsigned int getMaxDataLevel() const { return _next->getMaxDataLevel(); }
+        virtual bool hasPersistentCache() const { return _next->hasPersistentCache(); }
+        virtual bool supportsPersistentCaching() const { return _next->supportsPersistentCaching(); }
+        virtual std::string getExtension() const { return _next->getExtension(); }
+
+    private:
+        osg::ref_ptr<TileSource> _next;
+    };
 }
 
 #endif // OSGEARTH_TILE_SOURCE_H

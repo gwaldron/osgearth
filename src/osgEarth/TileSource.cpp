@@ -197,3 +197,15 @@ TileSource::setMaxDataLevel( unsigned int value )
 {
     _max_data_level = value;
 }
+
+bool
+TileSource::hasPersistentCache() const
+{
+    return false;
+}
+
+bool
+TileSource::supportsPersistentCaching() const
+{
+    return true;
+}

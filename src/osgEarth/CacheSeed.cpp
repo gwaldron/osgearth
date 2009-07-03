@@ -53,9 +53,14 @@ void CacheSeed::seed( MapConfig& conf )
     for (unsigned int i = 0; i < map->getNumImageSources(); ++i)
     {
         TileSource* src = map->getImageSource(i);
-        if (!dynamic_cast<CachedTileSource*>(src))
+
+        if ( !src->supportsPersistentCaching() )
         {
-            osg::notify(osg::NOTICE) << "Warning:  Image " << src->getName() << " has no cache." << std::endl;
+            osg::notify(osg::WARN) << "Warning: source \"" << src->getName() << "\" does not support seeding." << std::endl;
+        }
+        else if ( !src->hasPersistentCache() )
+        {
+            osg::notify(osg::NOTICE) << "Notice: source \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
         }
         else
         {
@@ -70,9 +75,14 @@ void CacheSeed::seed( MapConfig& conf )
     for (unsigned int i = 0; i < map->getNumHeightFieldSources(); ++i)
     {
         TileSource* src = map->getHeightFieldSource(i);
-        if (!dynamic_cast<CachedTileSource*>(src))
+
+        if ( !src->supportsPersistentCaching() )
         {
-            osg::notify(osg::NOTICE) << "Warning:  Heightfield " << src->getName() << " has no cache." << std::endl;
+            osg::notify(osg::WARN) << "Warning: source \"" << src->getName() << "\" does not support seeding." << std::endl;
+        }
+        else if ( !src->hasPersistentCache() )
+        {
+            osg::notify(osg::NOTICE) << "Notice: source \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
         }
         else
         {
@@ -86,7 +96,7 @@ void CacheSeed::seed( MapConfig& conf )
 
     if (!hasCaches)
     {
-        osg::notify(osg::NOTICE) << "There are no caches specified for the given map.  Please configure a cache in the mapconfig" << std::endl;
+        osg::notify(osg::NOTICE) << "There are either no caches defined in the map, or no sources to cache. Exiting." << std::endl;
         return;
     }
 
@@ -112,8 +122,8 @@ void CacheSeed::processKey( MapConfig& mapConfig, MapEngine* engine, TileKey* ke
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-        osg::notify(osg::NOTICE) << "Caching tile = " << lod << " (" << x << ", " << y << ") " << std::endl;
-        engine->createQuadrant(mapConfig, 0, key );        
+        osg::notify(osg::NOTICE) << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
+        engine->createQuadrant( mapConfig, 0, key );        
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)

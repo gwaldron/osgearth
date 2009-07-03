@@ -180,6 +180,11 @@ public:
         else return "";
     }
 
+    virtual bool supportsPersistentCaching() const 
+    {
+        return false;
+    }
+
 private:
     char getRandomServer()
     {

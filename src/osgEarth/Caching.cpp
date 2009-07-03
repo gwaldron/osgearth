@@ -36,8 +36,9 @@ using namespace osgEarth;
 
 
 CachedTileSource::CachedTileSource(TileSource* tileSource, const osgDB::ReaderWriter::Options* options) :
-TileSource(options),
-_tileSource(tileSource)
+ChainedTileSource( tileSource, options )
+//TileSource(options),
+//_tileSource(tileSource)
 {
     //NOP
 }
@@ -46,7 +47,7 @@ _tileSource(tileSource)
 const Profile* 
 CachedTileSource::createProfile( const Profile* mapProfile, const std::string& configPath )
 {
-    const Profile* ts_profile = _tileSource.valid()? _tileSource->initProfile( mapProfile, configPath ) : 0;
+    const Profile* ts_profile = nextTileSource()? nextTileSource()->initProfile( mapProfile, configPath ) : 0;
     const Profile* loaded_profile = loadTileMap();
 
     if ( ts_profile && loaded_profile && !ts_profile->isEquivalentTo( loaded_profile ) )
@@ -69,8 +70,10 @@ CachedTileSource::createProfile( const Profile* mapProfile, const std::string& c
 osg::Image*
 CachedTileSource::createImage( const TileKey* key )
 {
+    osg::Image* image = 0L;
+
     //Try to get the image from the cache.
-    osg::Image *image = getCachedImage( key);
+    image = getCachedImage( key);
     if (image)
     {
         osg::notify(osg::INFO) << "[osgEarth::Cache] Read cached image " << std::endl;
@@ -78,14 +81,15 @@ CachedTileSource::createImage( const TileKey* key )
     }
 
     //Get the image from the TileSource if it exists
-    if (_tileSource.valid())
+    if ( nextTileSource() )
     {
-        image = _tileSource->createImage( key );
+        image = nextTileSource()->createImage( key );
         if (image)
         {
             writeCachedImage(key, image);
         }
     }
+
     return image;
 }
 
@@ -104,9 +108,9 @@ CachedTileSource::createHeightField( const TileKey* key )
     }
 
     //Create the heightfield and write it to the cache
-    if (!hf && _tileSource.valid())
+    if ( !hf && nextTileSource() )
     {
-        hf = _tileSource->createHeightField( key );
+        hf = nextTileSource()->createHeightField( key );
         if (hf)
         {
             ImageToHeightFieldConverter conv;
@@ -145,7 +149,7 @@ void CachedTileSource::storeTileMap( const Profile* profile )
 int CachedTileSource::getPixelsPerTile() const
 {
     //Try the tile source first
-    if (_tileSource.valid()) return _tileSource->getPixelsPerTile();
+    if ( nextTileSource() ) return nextTileSource()->getPixelsPerTile();
     
     //Assumes the width and height are the same
     if (_tileMap.valid()) return _tileMap->getFormat().getWidth();
@@ -164,6 +168,12 @@ _writeWorldFiles(false)
 {
     _path = path;
     _format = format;
+}
+
+bool
+DiskCachedTileSource::hasPersistentCache() const
+{
+    return true;
 }
 
 bool DiskCachedTileSource::isCached( const TileKey* key)
@@ -254,11 +264,12 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
     }
 }
 
-std::string DiskCachedTileSource::getExtension() const
+std::string
+DiskCachedTileSource::getExtension() const
 {
     //If the format is empty, use the format of the TileSource.  If the TileSource doesn't report a format, default to png 
     std::string format = _format;
-    if (format.empty() && _tileSource.valid()) format = _tileSource->getExtension();
+    if (format.empty() && nextTileSource() ) format = nextTileSource()->getExtension();
     if (format.empty() && _tileMap.valid()) format = _tileMap->getFormat().getExtension();
     if (format.empty()) format = "png";
     return format;
@@ -299,7 +310,8 @@ std::string DiskCachedTileSource::getFileName(const TileKey* key )
     return buf;
 }
 
-std::string DiskCachedTileSource::getTMSPath()
+std::string
+DiskCachedTileSource::getTMSPath()
 {
     return getPath() + "/" + getName() + "/tms.xml";
 }
@@ -334,7 +346,7 @@ void
 DiskCachedTileSource::storeTileMap( const Profile* profile )
 {
     //Write the TMS file to disk if it doesn't exist
-    if ( !osgDB::fileExists( getTMSPath() ) && _tileSource.valid() )
+    if ( !osgDB::fileExists( getTMSPath() ) && nextTileSource() )
     {
         osg::notify(osg::INFO) << "[osgEarth::DiskCache] Writing TMS file to  " << getTMSPath() << std::endl;
             //_tileMap = TileMap::create(_tileSource.get());
@@ -468,7 +480,8 @@ MemCachedTileSource::~MemCachedTileSource()
 {
 }
 
-bool MemCachedTileSource::isCached(const osgEarth::TileKey* key)
+bool
+MemCachedTileSource::isCached(const osgEarth::TileKey* key)
 {
     //Check our own cache first
     osg::ref_ptr<osg::Image> cachedImage = getCachedImage(key);
@@ -476,20 +489,22 @@ bool MemCachedTileSource::isCached(const osgEarth::TileKey* key)
 
     //Check the underlying TileSource to see if it is cached
     bool cached = false;
-    if (_tileSource.valid())
+    if ( nextTileSource() )
     {
-        cached = _tileSource->isCached(key);
+        cached = nextTileSource()->isCached(key);
     }
     return cached;
 }
 
-const Profile* MemCachedTileSource::createProfile( const Profile* mapProfile, const std::string& configPath )
+const Profile*
+MemCachedTileSource::createProfile( const Profile* mapProfile, const std::string& configPath )
 {
-    if (_tileSource.valid()) return _tileSource->createProfile(mapProfile, configPath);
+    if ( nextTileSource() ) return nextTileSource()->createProfile( mapProfile, configPath );
     return 0;
 }
 
-osg::Image* MemCachedTileSource::getCachedImage( const TileKey* key)
+osg::Image*
+MemCachedTileSource::getCachedImage( const TileKey* key )
 {
     osg::Timer_t now = osg::Timer::instance()->tick();
 
@@ -513,7 +528,8 @@ osg::Image* MemCachedTileSource::getCachedImage( const TileKey* key)
     return 0;
 }
 
-void MemCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image* image)
+void
+MemCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image* image)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);      
 
@@ -535,12 +551,14 @@ void MemCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image*
 }
 
 
-unsigned int MemCachedTileSource::getMaxNumTilesInCache() const
+unsigned int
+MemCachedTileSource::getMaxNumTilesInCache() const
 {
     return _maxNumTilesInCache;
 }
 
-void MemCachedTileSource::setMaxNumTilesInCache(unsigned int max)
+void
+MemCachedTileSource::setMaxNumTilesInCache(unsigned int max)
 {
     _maxNumTilesInCache = max;
 }

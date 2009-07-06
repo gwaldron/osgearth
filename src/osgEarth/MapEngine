@@ -33,8 +33,7 @@
 namespace osgEarth
 {
     /**
-     * MapEngine is the main workhorse in osgEarth. It implements the public Map
-     * interface and generates osg Nodes for TileKeys.
+     * MapEngine is the main workhorse in osgEarth. It generates osg Nodes for TileKeys.
      */
     class OSGEARTH_EXPORT MapEngine : public osg::Referenced
     {
@@ -93,9 +92,6 @@ namespace osgEarth
         osg::HeightField* createHeightField( MapConfig& mapConfig, const TileKey* key, bool fallback );
 
         static osg::HeightField* createEmptyHeightField( const TileKey* key );
-
-    private:
-        friend class Map;
     };
 }
 

@@ -38,6 +38,8 @@ namespace osgEarthUtil
         bool getEnabled(unsigned int layer) const;
         void setEnabled(unsigned int layer, bool enabled);
 
+        osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
+
         virtual void traverse(osg::NodeVisitor& nv);
 
         virtual void layerAdded(unsigned int index);

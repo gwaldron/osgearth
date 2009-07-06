@@ -130,8 +130,9 @@ public:
         if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
         {
           osg::notify(osg::INFO) << "[osgEarth::TMS] TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
-          setMinLevel(_tileMap->getMinLevel());
-          setMaxLevel(_tileMap->getMaxLevel());
+          //TODO:  Replace this with a concept of the "data" having a min/max level, not the min-max visible level
+          //setMinLevel(_tileMap->getMinLevel());
+          //setMaxLevel(_tileMap->getMaxLevel());
         }
 
         return result;
@@ -162,6 +163,7 @@ public:
                     //of the tilemap and create a transparent image.
                     if (key->getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
+                        osg::notify(osg::NOTICE) << "Returning empty image " << std::endl;
                         return ImageUtils::getEmptyImage();
                     }
                 }

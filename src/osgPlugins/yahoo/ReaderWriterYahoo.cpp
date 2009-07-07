@@ -109,6 +109,11 @@ public:
         return "jpg";
     }
 
+    virtual bool supportsPersistentCaching() const
+    {
+        return false;
+    }
+
 private:
     std::string _dataset;
 };

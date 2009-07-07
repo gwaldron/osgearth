@@ -891,7 +891,8 @@ readCache( XmlElement* e_cache )
     return cache;
 }
 
-static void writeCache( const CacheConfig& cache, XmlElement* e_cache )
+static void
+writeCache( const CacheConfig& cache, XmlElement* e_cache )
 {
     e_cache->getAttrs()[ATTR_TYPE] = 
         cache.getType() == CacheConfig::TYPE_NONE? "none" :
@@ -1016,7 +1017,8 @@ writeSource( const SourceConfig& source, XmlElement* e_source )
 }
 
 
-osg::Vec4ub getColor(const std::string& str, osg::Vec4ub default_value)
+static osg::Vec4ub
+getColor(const std::string& str, osg::Vec4ub default_value)
 {
     osg::Vec4ub color = default_value;
     std::istringstream strin(str);

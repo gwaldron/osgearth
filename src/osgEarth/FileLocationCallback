@@ -22,7 +22,7 @@
 
 #include <osg/Version>
 #include <osgEarth/Export>
-#include <osgEarth/MapEngine>
+#include <osgEarth/MapNode>
 
 
 #define  USE_FILELOCATIONCALLBACK OSG_MIN_VERSION_REQUIRED(2,9,5)
@@ -49,11 +49,11 @@ namespace osgEarth
             unsigned int face, lod, x, y, id;
             sscanf(filename.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
 
-            osg::ref_ptr<osgEarth::MapEngine> engine = osgEarth::MapEngine::getMapEngineById( id );
+            osg::ref_ptr<MapNode> mapNode = MapNode::getMapNodeById( id );
 
-            if ( engine.valid() )
+            if ( mapNode.valid() )
             {
-                const osgEarth::Profile* face_profile = engine->getProfile()->getFaceProfile( face );
+                const osgEarth::Profile* face_profile = mapNode->getProfile()->getFaceProfile( face );
                 osg::ref_ptr<osgEarth::TileKey> mapKey = new osgEarth::TileKey( face, lod, x, y, face_profile );
 
                 //Split the key into it's 4 children and check to see if all 4 are cached.
@@ -62,7 +62,7 @@ namespace osgEarth
 
                 for (unsigned int i = 0; i < keys.size(); ++i)
                 {
-                    if (!engine->isCached(keys[i]))
+                    if (!mapNode->getEngine()->isCached(mapNode->getMapConfig(), keys[i]))
                     {
                         osg::notify(osg::INFO) << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
                         return REMOTE_FILE;

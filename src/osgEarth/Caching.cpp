@@ -210,7 +210,7 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
 
     std::string ext = osgDB::getFileExtension(filename);
 
-    if (_writeWorldFiles)
+    if (_writeWorldFiles || (getenv("OSGEARTH_WRITE_WORLD_FILES") != 0))
     {
         //Write out the world file along side the image
         double minx, miny, maxx, maxy;

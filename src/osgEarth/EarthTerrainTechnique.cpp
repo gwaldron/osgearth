@@ -316,21 +316,8 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
             {
 
                 Locator* locator = colorLayer->getLocator();
-                if (!locator)
-                {            
-                    osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(colorLayer);
-                    if (switchLayer)
-                    {
-                        if (switchLayer->getActiveLayer()>=0 &&
-                            static_cast<unsigned int>(switchLayer->getActiveLayer())<switchLayer->getNumLayers() &&
-                            switchLayer->getLayer(switchLayer->getActiveLayer()))
-                        {
-                            locator = switchLayer->getLayer(switchLayer->getActiveLayer())->getLocator();
-                        }
-                    }
-                }            
-            
-                TexCoordLocatorPair& tclp = layerToTexCoordMap[colorLayer];
+                
+				TexCoordLocatorPair& tclp = layerToTexCoordMap[colorLayer];
                 tclp.first = new osg::Vec2Array;
                 tclp.first->reserve(numVertices);
                 tclp.second = locator ? locator : masterLocator;
@@ -705,19 +692,6 @@ void EarthTerrainTechnique::applyColorLayers()
         osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
         if (!colorLayer) continue;
 
-        osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(colorLayer);
-        if (switchLayer)
-        {
-            if (switchLayer->getActiveLayer()<0 || 
-                static_cast<unsigned int>(switchLayer->getActiveLayer())>=switchLayer->getNumLayers())
-            {
-                continue;
-            }
-            
-            colorLayer = switchLayer->getLayer(switchLayer->getActiveLayer());
-            if (!colorLayer) continue;
-        }
-
         osg::Image* image = colorLayer->getImage();
         if (!image) continue;
 
@@ -735,8 +709,13 @@ void EarthTerrainTechnique::applyColorLayers()
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
+#if OSG_MIN_VERSION_REQUIRED(2,8,0)
                 texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
                 texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
+#else
+				texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+				texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getFilter()==Layer::LINEAR ? osg::Texture::LINEAR :  osg::Texture::NEAREST);
+#endif
                 
                 texture2D->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
                 texture2D->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
@@ -774,9 +753,13 @@ void EarthTerrainTechnique::applyColorLayers()
                 texture1D = new osg::Texture1D;
                 texture1D->setImage(image);
                 texture1D->setResizeNonPowerOfTwoHint(false);
+#if OSG_MIN_VERSION_REQUIRED(2,8,0)
                 texture1D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::NEAREST);
                 texture1D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
-
+#else
+				texture1D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::NEAREST);
+                texture1D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getFilter()==Layer::LINEAR ? osg::Texture::LINEAR :  osg::Texture::NEAREST);
+#endif
                 layerToTextureMap[colorLayer] = texture1D;
             }
             

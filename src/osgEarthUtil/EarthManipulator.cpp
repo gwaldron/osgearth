@@ -331,13 +331,23 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         double h0 = _start_viewpoint.getRange() * sin( osg::DegreesToRadians(-_start_viewpoint.getPitch()) );
         double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
         double dh = (h1 - h0)/10000.0;
-        _accel = fabs(dh) <= 1.0? 0.0 : dh > 0.0? log10( dh ) : -log10( -dh );
-        if ( fabs( _accel ) < 1.0 ) _accel = 0.0;
+        _set_viewpoint_accel = fabs(dh) <= 1.0? 0.0 : dh > 0.0? log10( dh ) : -log10( -dh );
+        if ( fabs( _set_viewpoint_accel ) < 1.0 ) _set_viewpoint_accel = 0.0;
+
+        // set up a range arc
+        //double dist = _is_geocentric? _delta_focal_point.length() * 55000.0 : _delta_focal_point.length();
+        //double h_delta = fabs(h1-h0);
+        //if ( dist > h_delta )
+        //    _range_plus = 0.5*(dist-h_delta);
+        //else
+        //    _range_plus = 0.0;
         
         _set_viewpoint_t0 = osg::Timer::instance()->tick();
         _set_viewpoint_duration_s = duration_s;
 
-        osg::notify(osg::NOTICE) << "dh = " << dh*10000 << ", accel = " << _accel << std::endl;
+        //osg::notify(osg::NOTICE) << "dfpx=" << _delta_focal_point.x() << ", dfpy=" << _delta_focal_point.y() << ", dfpl="
+        //    << _delta_focal_point.length() << ", h0=" << h0 << ", h1=" << h0 << ", h_delta=" << h_delta << ", accel = " << _set_viewpoint_accel
+        //    << ", rangeplus = " << _range_plus << ", dist = " << dist << std::endl;
 
         _setting_viewpoint = true;
         
@@ -433,7 +443,7 @@ EarthManipulator::updateSetViewpoint()
     }
     else
     {
-        t = accelerationInterp( t, _accel );
+        t = accelerationInterp( t, _set_viewpoint_accel );
         t = smoothStepInterp( t );
     }
 
@@ -441,7 +451,7 @@ EarthManipulator::updateSetViewpoint()
         _start_viewpoint.getFocalPoint() + _delta_focal_point * t,
         _start_viewpoint.getHeading() + _delta_heading * t,
         _start_viewpoint.getPitch() + _delta_pitch * t,
-        _start_viewpoint.getRange() + _delta_range * t,
+        _start_viewpoint.getRange() + _delta_range * t + (sin(osg::PI*t)*_range_plus),
         _start_viewpoint.getSRS() );
 
     //osg::notify(osg::NOTICE)
@@ -569,6 +579,7 @@ bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& us)
 {
     bool handled = false;
+    osg::Timer_t now = osg::Timer::instance()->tick();
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
@@ -583,7 +594,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
             updateTether();
         }
 
-        if ( _thrown || _continuous )
+        else if ( _thrown || _continuous )
         {
             if ( handleMouseAction( _last_action ) )
                 us.requestRedraw();
@@ -598,9 +609,11 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         
         if ( _task.valid() )
         {
-            if ( serviceTask() )
+            if ( serviceTask( now ) )
                 us.requestRedraw();
         }
+
+        _time_last_frame = now;
 
         return false;
     }
@@ -727,11 +740,9 @@ EarthManipulator::updateTether()
 }
 
 bool
-EarthManipulator::serviceTask()
+EarthManipulator::serviceTask( const osg::Timer_t& now )
 {
     bool result;
-
-    osg::Timer_t now = osg::Timer::instance()->tick();
 
     if ( _task.valid() && _task->_type != TASK_NONE )
     {
@@ -762,7 +773,7 @@ EarthManipulator::serviceTask()
         result = false;
     }
 
-    _time_last_frame = now;
+    //_time_last_frame = now;
     return result;
 }
 

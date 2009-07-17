@@ -372,6 +372,21 @@ namespace osgEarthUtil
          */
         const osgEarth::SpatialReference* getSRS() const;
 
+        /**
+         * Move the focal point of the camera using deltas (normalized screen coords).
+         */
+        void pan( double dx, double dy );
+
+        /**
+         * Rotate the camera (dx = azimuth, dy = pitch) using deltas (radians).
+         */
+        void rotate( double dx, double dy );
+
+        /**
+         * Zoom the camera using deltas (dy only)
+         */
+        void zoom( double dx, double dy );
+
 
     public: // osgGA::MatrixManipulator
 
@@ -450,9 +465,6 @@ namespace osgEarthUtil
         void recalculateRoll();
 
     private:
-        void pan( double dx, double dy );
-        void rotate( double dx, double dy );
-        void zoom( double dx, double dy );
 
         enum TaskType
         {
@@ -475,7 +487,7 @@ namespace osgEarthUtil
 
         // "ticks" the resident Task, which allows for multi-frame animation of navigation
         // movements.
-        bool serviceTask();
+        bool serviceTask( const osg::Timer_t& now );
 
         void recalculateLocalPitchAndAzimuth();
 
@@ -484,6 +496,8 @@ namespace osgEarthUtil
         void updateTether();
 
         void updateSetViewpoint();
+
+        void updateHandCam( const osg::Timer_t& now );
 
         bool isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const;
 
@@ -521,11 +535,11 @@ namespace osgEarthUtil
 
         bool                    _setting_viewpoint;
         Viewpoint               _start_viewpoint;
-        double                  _delta_heading, _delta_pitch, _delta_range;
+        double                  _delta_heading, _delta_pitch, _delta_range, _range_plus;
         osg::Vec3d              _delta_focal_point;
         osg::Timer_t            _set_viewpoint_t0;
         double                  _set_viewpoint_duration_s;
-        double                  _accel;
+        double                  _set_viewpoint_accel;
 
         osg::ref_ptr<Settings> _settings;
 

@@ -48,7 +48,7 @@ ProjectedMap::ProjectedMap()
 
 
 osg::Node*
-ProjectedMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
+ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
 {
     ScopedReadLock lock( mapConfig.getSourceMutex() );
     double xmin, ymin, xmax, ymax;

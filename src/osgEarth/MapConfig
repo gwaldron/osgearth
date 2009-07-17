@@ -518,7 +518,7 @@ namespace osgEarth
         /**
          *Gets the mutex that protects access to the TileSources
          */
-        OpenThreads::ReadWriteMutex& getSourceMutex();
+        OpenThreads::ReadWriteMutex& getSourceMutex() const;
 
         /**
          *Gets the Profile of this Map

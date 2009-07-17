@@ -52,7 +52,7 @@ GeocentricMap::GeocentricMap( )
 }
 
 osg::Node*
-GeocentricMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
+GeocentricMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
 {
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Begin " << key->str() << std::endl;
     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Waiting for lock..." << std::endl;

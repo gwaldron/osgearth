@@ -81,7 +81,7 @@ MapEngine::getTransformFromExtents(double minX, double minY, double maxX, double
 }
 
 osg::Node*
-MapEngine::createNode( MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
+MapEngine::createNode( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
 {
     osg::ref_ptr<osg::Group> parent = new osg::Group;
     if (!addChildren( mapConfig, terrain, parent.get(), key ))
@@ -112,7 +112,7 @@ MapEngine::createValidGeoImage(TileSource* tileSource, const TileKey* key)
 }
 
 bool
-MapEngine::hasMoreLevels( MapConfig& mapConfig, const TileKey* key )
+MapEngine::hasMoreLevels( const MapConfig& mapConfig, const TileKey* key )
 {
     OpenThreads::ScopedReadLock lock(mapConfig.getSourceMutex());  
 
@@ -143,7 +143,7 @@ MapEngine::hasMoreLevels( MapConfig& mapConfig, const TileKey* key )
 }
 
 bool
-MapEngine::addChildren( MapConfig& mapConfig, osgTerrain::Terrain* terrain, osg::Group* tile_parent, const TileKey* key )
+MapEngine::addChildren( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, osg::Group* tile_parent, const TileKey* key )
 {
     bool all_quadrants_created = false;
 
@@ -223,7 +223,7 @@ MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
 }
 
 bool
-MapEngine::isCached(MapConfig& mapConfig, const osgEarth::TileKey *key)
+MapEngine::isCached(const MapConfig& mapConfig, const osgEarth::TileKey *key)
 {
     OpenThreads::ScopedReadLock lock(mapConfig.getSourceMutex());
 
@@ -288,10 +288,10 @@ MapEngine::isCached(MapConfig& mapConfig, const osgEarth::TileKey *key)
 
 
 osg::HeightField*
-MapEngine::createHeightField( MapConfig& mapConfig, const TileKey* key, bool fallback )
+MapEngine::createHeightField( const MapConfig& mapConfig, const TileKey* key, bool fallback )
 {   
     osg::ref_ptr< ElevationManager > em = new ElevationManager;
-    for (TileSourceList::iterator itr = mapConfig.getHeightFieldSources().begin(); itr != mapConfig.getHeightFieldSources().end(); ++itr)
+    for (TileSourceList::const_iterator itr = mapConfig.getHeightFieldSources().begin(); itr != mapConfig.getHeightFieldSources().end(); ++itr)
     {
         em->getElevationSources().push_back( itr->get() );
     }

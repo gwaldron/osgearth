@@ -103,7 +103,7 @@ namespace osgEarth
         unsigned int _maxLevel;
 
         Bounds _bounds;
-        void processKey( MapConfig& mapConfig, MapEngine* engine, TileKey *key );
+        void processKey( const MapConfig& mapConfig, MapEngine* engine, TileKey *key );
 
         //osg::ref_ptr<MapEngine> _map;
     };

@@ -180,8 +180,8 @@ MapConfig::getHeightFieldSourceConfigs() const
 }
 
 OpenThreads::ReadWriteMutex&
-MapConfig::getSourceMutex() {
-    return _sourceMutex;
+MapConfig::getSourceMutex() const {
+    return const_cast<MapConfig*>(this)->_sourceMutex;
 }
 
 

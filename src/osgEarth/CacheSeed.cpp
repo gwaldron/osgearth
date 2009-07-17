@@ -114,7 +114,7 @@ void CacheSeed::seed( MapConfig& conf )
 }
 
 
-void CacheSeed::processKey( MapConfig& mapConfig, MapEngine* engine, TileKey* key )
+void CacheSeed::processKey( const MapConfig& mapConfig, MapEngine* engine, TileKey* key )
 {
     unsigned int x, y, lod;
     key->getTileXY(x, y);

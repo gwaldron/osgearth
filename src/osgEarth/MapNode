@@ -49,7 +49,7 @@ namespace osgEarth
         /**
         * Gets the mapconfig
         */
-        MapConfig& getMapConfig() { return _mapConfig;}
+        const MapConfig& getMapConfig() const { return _mapConfig; }
 
         /**
         *Gets the registered MapNode by Id

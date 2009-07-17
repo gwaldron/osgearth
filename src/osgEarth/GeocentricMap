@@ -43,7 +43,7 @@ namespace osgEarth
         
     protected: // Map interface
 
-        virtual osg::Node* createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key );
+        virtual osg::Node* createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key );
 
         static osg::ClusterCullingCallback* createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et);       
     };

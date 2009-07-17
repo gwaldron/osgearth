@@ -17,6 +17,13 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+
+#include <osgEarth/Export>
+#include <osg/Version>
+#include <osg/Notify>
+
+#if OSG_MIN_VERSION_REQUIRED(2,8,0)
+
 #include <osgUtil/Optimizer>
 #include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
@@ -520,3 +527,12 @@ int main(int argc, char** argv)
     // run the viewers frame loop
     return viewer.run();
 }
+
+#else
+
+int main(int argc, char** argv)
+{
+	osg::notify(osg::NOTICE) << "osgearth_toc requires at least OpenSceneGraph 2.8.0 due to changes in osgWidget." << std::endl;
+	return 0;
+}
+#endif

@@ -70,12 +70,16 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
             {
                 image = createGeoImage(key, source);
             }
-            else
+
+            if ( !image )
+            //else
             {
                 //If the image is not valid, create an empty texture as a placeholder
                 image = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
             }
-            image_tiles.push_back(image);
+
+            //if ( image )
+            image_tiles.push_back( image );
         }
     }
 

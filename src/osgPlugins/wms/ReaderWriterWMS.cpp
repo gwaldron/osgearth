@@ -41,6 +41,7 @@ using namespace osgEarth;
 #define PROPERTY_LAYERS           "layers"
 #define PROPERTY_STYLE            "style"
 #define PROPERTY_FORMAT           "format"
+#define PROPERTY_WMS_FORMAT       "wms_format"
 #define PROPERTY_TILE_SIZE        "tile_size"
 #define PROPERTY_ELEVATION_UNIT   "elevation_unit"
 #define PROPERTY_SRS              "srs"
@@ -64,6 +65,9 @@ public:
 
         if ( options->getPluginData( PROPERTY_FORMAT ) )
             _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+
+        if ( options->getPluginData( PROPERTY_WMS_FORMAT ) )
+            _wms_format = std::string( (const char*)options->getPluginData( PROPERTY_WMS_FORMAT ) );
 
         if ( options->getPluginData( PROPERTY_CAPABILITIES_URL ) )
             _capabilitiesURL = std::string( (const char*)options->getPluginData( PROPERTY_CAPABILITIES_URL ) );
@@ -129,7 +133,7 @@ public:
             << std::fixed << _prefix << sep
             << "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
             << "&LAYERS=" << _layers
-            << "&FORMAT=image/" << _format
+            << "&FORMAT=" << (_wms_format.empty()? "image/" + _format : _wms_format)
             << "&STYLES=" << _style
             << "&SRS=" << _srs
             << "&WIDTH="<< _tile_size
@@ -270,6 +274,7 @@ private:
     std::string _layers;
     std::string _style;
     std::string _format;
+    std::string _wms_format;
     std::string _srs;
     std::string _tileServiceURL;
     std::string _capabilitiesURL;

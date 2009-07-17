@@ -214,7 +214,10 @@ MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
             {
                 // crop to fit the map key extents
                 GeoExtent clampedMapExt = source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
-                result = mosaic->crop(clampedMapExt);
+                if ( clampedMapExt.width() * clampedMapExt.height() > 0 )
+                    result = mosaic->crop(clampedMapExt);
+                else
+                    result = NULL;
             }
         }
     }

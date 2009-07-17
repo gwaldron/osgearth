@@ -17,6 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#ifndef OSGEARTH_FINDNODE
+#define OSGEARTH_FINDNODE 1
+
 namespace osgEarth 
 {
     template<class T>
@@ -54,5 +57,6 @@ namespace osgEarth
 
         return fnotv._foundNode;
     }
-
 }
+
+#endif //OSGEARTH_FINDNODE

@@ -28,24 +28,52 @@
 
 namespace osgEarthUtil
 {
+	/**
+	*FadeLayerNode is a decorator node that controls how image layers are blended together
+	*/
     class OSGEARTHUTIL_EXPORT FadeLayerNode : public osg::Group
     {
     public:
+		/**
+		*Creates a new FadeLayerNode
+		*@param map
+		*       The MapNode this FadeLayerNode will operate on.
+		*/
         FadeLayerNode(osgEarth::MapNode* map);
+
+		/**
+		*Gets the opacity of the given layer
+		*/
         float getOpacity(unsigned int layer) const;
+
+		/**
+		*Sets the opacity of the given layer
+		*/
         void setOpacity(unsigned int layer, float opacity);
 
+		/**
+		*Gets whether the given layer is enabled
+		*/
         bool getEnabled(unsigned int layer) const;
+
+		/**
+		*Sets whether the given layer is enabled
+		*/
         void setEnabled(unsigned int layer, bool enabled);
 
+		/**
+		*Gets the MapNode that this FadeLayerNode is operating on
+		*/
         osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
 
         virtual void traverse(osg::NodeVisitor& nv);
 
-        virtual void layerAdded(unsigned int index);
-        virtual void layerRemoved(unsigned int index);
-        virtual void layerMoved(unsigned int prevIndex, unsigned int newIndex);
     protected:
+
+		virtual void layerAdded(unsigned int index);
+		virtual void layerRemoved(unsigned int index);
+		virtual void layerMoved(unsigned int prevIndex, unsigned int newIndex);
+
 
         friend struct Callback;
 

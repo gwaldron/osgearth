@@ -23,27 +23,11 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 
-#include <osg/Material>
-#include <osg/Geode>
-#include <osg/BlendFunc>
-#include <osg/Depth>
-#include <osg/Projection>
-#include <osg/AutoTransform>
-#include <osg/Geometry>
-#include <osg/Image>
-#include <osg/CullFace>
-
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/GeometryTechnique>
-
-#include <osgDB/WriteFile>
-
-#include <osgText/Text>
-
 #include <osgEarth/MapNode>
 #include <osgEarth/FindNode>
 #include <osgEarthUtil/FadeLayerNode>
 #include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/ElevationFadeCallback>
 
 #include <iostream>
 
@@ -53,100 +37,6 @@ using namespace osgEarth;
 using namespace osgEarthUtil;
 
 
-
-
-class FadeLayerCallback : public osg::NodeCallback
-{
-public:
-    typedef std::vector<double> Elevations;
-
-    FadeLayerCallback(MapNode* mapNode, FadeLayerNode* fadeLayerNode, const Elevations& elevations, float animationTime=2.0f):
-      _mapNode(mapNode),
-      _fadeLayerNode(fadeLayerNode),
-      _firstFrame(true),
-      _previousTime(0.0),
-      _elevations(elevations),
-      _animationTime(animationTime),
-      _currentElevation(0)
-      {
-          //Find the coordinate system node
-          _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>(_mapNode.get());
-      }
-
-      virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
-      {
-          if (nv->getVisitorType() == NodeVisitor::UPDATE_VISITOR)
-          {
-              if (!_firstFrame)
-              {
-                  double deltaTime = nv->getFrameStamp()->getReferenceTime() - _previousTime;
-
-                  _previousTime = nv->getFrameStamp()->getReferenceTime();
-
-                  double delta = osg::minimum(deltaTime / _animationTime, 1.0);
-
-                  //Determine which layer should be active
-                  unsigned int activeLayer = _mapNode->getNumImageSources()-1;
-                  for (unsigned int i = 0; i < _elevations.size(); ++i)
-                  {
-                      if (_currentElevation > _elevations[i])
-                      {
-                          activeLayer = i;
-                          break;
-                      }
-                  }
-
-                  bool dirtyLayers = false;
-                  for (unsigned int i = 0; i < _mapNode->getNumImageSources(); ++i)
-                  {
-                      //If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
-                      //Otherwise, we want the layers to go to 1.0
-                      float goalOpacity = (i > activeLayer) ? 0.0f : 1.0f;
-                      float currentOpacity = _fadeLayerNode->getOpacity(i);
-
-                      if (goalOpacity != currentOpacity)
-                      {
-                          float opacityDelta = delta;
-                          if (currentOpacity > goalOpacity) opacityDelta = -opacityDelta;
-                          float newOpacity = currentOpacity + opacityDelta;
-                          //osg::notify(osg::NOTICE) << "Layer " << i << ": Acive=" << activeLayer << " Goal=" << goalOpacity << " Current=" << currentOpacity << " New = " << newOpacity << " Delta=" << delta << std::endl;
-                          _fadeLayerNode->setOpacity(i, newOpacity);
-                      }
-                  }
-              }
-              _firstFrame = false;
-          }
-          else if (nv->getVisitorType() == NodeVisitor::CULL_VISITOR)
-          {
-              //Get the current elevation
-              _currentElevation = nv->getViewPoint().z();
-              if (_csn.valid())
-              {
-                  osg::EllipsoidModel* em = _csn->getEllipsoidModel();
-                  if (em)
-                  {
-                      double x = nv->getViewPoint().x();
-                      double y = nv->getViewPoint().y();
-                      double z = nv->getViewPoint().z();
-                      double latitude, longitude;
-                      em->convertXYZToLatLongHeight(x, y, z, latitude, longitude, _currentElevation);
-                  }
-              }
-          }
-          //Continue traversal
-          traverse(node, nv);
-      }
-
-private:
-    osg::observer_ptr<FadeLayerNode> _fadeLayerNode;
-    osg::observer_ptr<MapNode> _mapNode;
-    osg::observer_ptr<CoordinateSystemNode> _csn;
-    double _currentElevation;
-    Elevations _elevations;
-    bool _firstFrame;
-    double _previousTime;
-    double _animationTime;
-};
 
 
 int main(int argc, char** argv)
@@ -194,15 +84,6 @@ int main(int argc, char** argv)
   {
       FadeLayerNode* fadeLayerNode = new FadeLayerNode(mapNode);
 
-      //Set the up elevation fade points
-      FadeLayerCallback::Elevations elevations;
-      double maxElevation = 4e6;
-      for (unsigned int i = 0; i < mapNode->getNumImageSources(); ++i)
-      {
-          elevations.push_back(maxElevation);
-          maxElevation /= 2.0;
-      }
-
       //Set all of the layer's opacity to 0.0 except for the first one
       for (unsigned int i = 1; i < mapNode->getNumImageSources(); ++i)
       {
@@ -210,8 +91,18 @@ int main(int argc, char** argv)
       }
       fadeLayerNode->setOpacity(0, 1.0f);
 
-      //Attach the callback as both a cull and update callback
-      FadeLayerCallback* callback = new FadeLayerCallback(mapNode, fadeLayerNode, elevations);
+	  //Setup the ElevationFadeCallback
+	  ElevationFadeCallback* callback = new ElevationFadeCallback();
+
+	  //Set the up elevation fade points
+	  double maxElevation = 4e6;
+	  for (unsigned int i = 0; i < mapNode->getNumImageSources(); ++i)
+	  {
+		  callback->setElevation( i, maxElevation );
+		  maxElevation /= 2.0;
+	  }
+
+	  //Attach the callback as both an update and a cull callback
       fadeLayerNode->setUpdateCallback(callback);
       fadeLayerNode->setCullCallback(callback);
 

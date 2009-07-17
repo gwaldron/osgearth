@@ -44,7 +44,7 @@ DirectReadTileSource::createImage(const osgEarth::TileKey* key)
 
     //Mosaic the imagery together
     Compositor comp;
-    osg::ref_ptr<GeoImage> mosaic = comp.mosaicImages( key , _tileSource );
+    osg::ref_ptr<GeoImage> mosaic = comp.mosaicImages( key , _tileSource.get() );
 
     if ( mosaic.valid() )
     {        

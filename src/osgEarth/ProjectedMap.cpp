@@ -64,7 +64,7 @@ ProjectedMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain
         //Add an image from each image source
         for (unsigned int i = 0; i < mapConfig.getImageSources().size(); ++i)
         {
-            TileSource* source = mapConfig.getImageSources()[i];
+            TileSource* source = mapConfig.getImageSources()[i].get();
             GeoImage* image = NULL;
             if (source->isKeyValid(key))
             {
@@ -108,7 +108,7 @@ ProjectedMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrain
     {
         if (!image_tiles[i].valid())
         {
-            TileSource* source = mapConfig.getImageSources()[i];
+            TileSource* source = mapConfig.getImageSources()[i].get();
             if (source->isKeyValid(key))
             {
                 GeoImage* image = createValidGeoImage(source, key);

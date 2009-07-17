@@ -325,7 +325,7 @@ MapNode::addImageSource( const SourceConfig& sourceConfig)
 
                 //Create a TileKey from the TileID
                 osgTerrain::TileID tileId = itr->get()->getTileID();
-                osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+				osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
 
                 osg::ref_ptr< GeoImage > geoImage = _engine->createValidGeoImage( source, key.get() );
 
@@ -405,12 +405,12 @@ MapNode::addHeightFieldSource( const SourceConfig& sourceConfig )
 
                 //Create a TileKey from the TileID
                 osgTerrain::TileID tileId = itr->get()->getTileID();
-                osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+				osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
 
                 osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
                 if (heightFieldLayer)
                 {
-                    osg::HeightField* hf = _engine->createHeightField( _mapConfig, key, true );
+                    osg::HeightField* hf = _engine->createHeightField( _mapConfig, key.get(), true );
                     if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
                     heightFieldLayer->setHeightField( hf );
                     hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig.getSkirtRatio() );
@@ -508,11 +508,11 @@ MapNode::removeHeightFieldSource( unsigned int index )
         {
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             osgTerrain::TileID tileId = itr->get()->getTileID();
-            osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _engine->createHeightField( _mapConfig, key, true );
+                osg::HeightField* hf = _engine->createHeightField( _mapConfig, key.get(), true );
                 if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig.getSkirtRatio() );
@@ -615,11 +615,11 @@ MapNode::moveHeightFieldSource( unsigned int index, unsigned int position )
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
 
             osgTerrain::TileID tileId = itr->get()->getTileID();
-            osg::ref_ptr< TileKey > key = new TileKey( i, tileId.level, tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
+			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, getProfile()->getFaceProfile( i ) );
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _engine->createHeightField( _mapConfig, key, true );
+                osg::HeightField* hf = _engine->createHeightField( _mapConfig, key.get(), true );
                 if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _mapConfig.getSkirtRatio() );

@@ -172,7 +172,7 @@ const Profile*
 Profile::getFaceProfile( int face ) const
 {
     return _face_profiles.size() > 0 && face < _face_profiles.size() ?
-        _face_profiles[face] :
+        _face_profiles[face].get() :
         this;
 }
 

@@ -75,7 +75,7 @@ GeocentricMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrai
         for (unsigned int i = 0; i < mapConfig.getImageSources().size(); ++i)
         {
             GeoImage* image = NULL;
-            TileSource* source = mapConfig.getImageSources()[i];
+            TileSource* source = mapConfig.getImageSources()[i].get();
             if (source->isKeyValid( key ) )
             {
                 image = createGeoImage( key, source );                
@@ -120,7 +120,7 @@ GeocentricMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrai
     {
         if (!image_tiles[i].valid())
         {
-            TileSource* source = mapConfig.getImageSources()[i];
+            TileSource* source = mapConfig.getImageSources()[i].get();
             if (source->isKeyValid(key))
             {
                 GeoImage* image = createValidGeoImage(source, key);
@@ -194,7 +194,7 @@ GeocentricMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrai
     //hf->setBorderWidth( 0 );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
-    hf_layer->setLocator( locator );
+    hf_layer->setLocator( locator.get() );
     hf_layer->setHeightField( hf.get() );
 
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
@@ -207,7 +207,7 @@ GeocentricMap::createQuadrant( MapConfig& mapConfig, osgTerrain::Terrain* terrai
         tile->setDataVariance(osg::Object::DYNAMIC);
     }
 
-    tile->setLocator( locator );
+    tile->setLocator( locator.get() );
     //tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
     tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique );
     tile->setElevationLayer( hf_layer );

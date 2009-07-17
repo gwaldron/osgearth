@@ -44,17 +44,6 @@ using namespace osgEarth;
 #define PROPERTY_NUM_TILES_HIGH_AT_LOD0 "num_tiles_high_at_lod0"
 #define PROPERTY_BASE_NAME              "base_name"
 
-static
-int getLOD(const osgTerrain::TileID& id)
-{
-    //The name of the lod changed after OSG 2.6 from layer to level
-#if (OPENSCENEGRAPH_MAJOR_VERSION == 2 && OPENSCENEGRAPH_MINOR_VERSION < 7)
-    return id.layer;
-#else
-    return id.level;
-#endif
-}
-
 
 class CollectTiles : public osg::NodeVisitor
 {
@@ -76,7 +65,7 @@ public:
         if (terrainTile)
         {
             osg::notify(osg::INFO)<<"Found terrain tile TileID("<<
-                getLOD(terrainTile->getTileID())<<", "<<
+				TileKey::getLOD(terrainTile->getTileID())<<", "<<
                 terrainTile->getTileID().x<<", "<<
                 terrainTile->getTileID().y<<")"<<std::endl;
             
@@ -460,7 +449,7 @@ public:
             tileFIFO.pop_front();
             tileMap.erase(tileToRemove);
 
-            osg::notify(osg::INFO)<<"Pruned tileID ("<<getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+			osg::notify(osg::INFO)<<"Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
         }
 
         osg::notify(osg::INFO)<<"insertedTile tileFIFO.size()=="<<tileFIFO.size()<<std::endl;

@@ -173,6 +173,8 @@ namespace osgEarth
         // Called by a tile source implementation to set the maximum data level
         void setMaxDataLevel( unsigned int max_level );
 
+		virtual void setOverrideProfile( const Profile* profile );
+
     private:
         unsigned int _minLevel;
         unsigned int _maxLevel;
@@ -183,8 +185,6 @@ namespace osgEarth
         const Profile* initProfile(
             const Profile*     mapProfile,
             const std::string& configPath );
-
-        void setOverrideProfile( const Profile* profile );
 
         friend class MapConfig;
         friend class MapNode;
@@ -237,6 +237,7 @@ namespace osgEarth
         virtual bool hasPersistentCache() const { return _next->hasPersistentCache(); }
         virtual bool supportsPersistentCaching() const { return _next->supportsPersistentCaching(); }
         virtual std::string getExtension() const { return _next->getExtension(); }
+		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile); _next->setOverrideProfile( profile ); }
 
     private:
         osg::ref_ptr<TileSource> _next;

@@ -34,6 +34,7 @@
 #include <osg/Program>
 #include <osg/Math>
 #include <osg/Timer>
+#include <osg/Version>
 
 using namespace osgTerrain;
 using namespace osgEarth;

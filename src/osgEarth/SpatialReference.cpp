@@ -132,7 +132,7 @@ SpatialReference::create( const std::string& init )
     osg::ref_ptr<SpatialReference> srs;
 
     // shortcut for spherical-mercator:
-    if (low == "spherical-mercator" || low == "epsg:900913" || low == "epsg:3785" || low == "epsg:41001")
+    if (low == "spherical-mercator" || low == "epsg:900913" || low == "epsg:3785" || low == "epsg:41001" || low == "epsg:102113" )
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         // adjusted +a by ONE to work around osg manipulator error until we can figure out why.. GW

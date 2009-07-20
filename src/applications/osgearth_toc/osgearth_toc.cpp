@@ -236,51 +236,39 @@ public:
 
 void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerNode, MapNode* mapNode, osgViewer::View* view)
 {
-     osgWidget::Box* addLayersBox = new osgWidget::Box("AddLayersBox", osgWidget::Box::VERTICAL);
-
-    //Add Google Labels
+    osgWidget::Box* addLayersBox = new osgWidget::Box("AddLayersBox", osgWidget::Box::VERTICAL);
+    
+    // ESRI reference labels
     {
-        SourceProperties props;
-        props["dataset"] = "labels";
-        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Labels", "google", props)));
+        SourceConfig conf( "ESRI Boundaries", "arcgis" );
+        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer";
+        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
     }
 
-    //Add Google Roads
+    // ArcGIS transportation layer:
     {
-        SourceProperties props;
-        props["dataset"] = "roads";
-        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Roads", "google", props)));
+        SourceConfig conf( "ESRI Transportation", "arcgis" );
+        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
+        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
     }
 
-    //Add Google Traffic
+    // OpenStreetMap:
     {
-        SourceProperties props;
-        props["dataset"] = "traffic";
-        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Traffic", "google", props)));
+        SourceConfig conf( "OpenStreetMap", "tms" );
+        conf["url"] = "http://tile.openstreetmap.org/";
+        conf["format"] = "png";
+        conf["tms_type"] = "google";
+        conf.setProfileConfig( ProfileConfig( "global-mercator" ) );
+        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
     }
 
-    //Add Google Imagery
+    // ArcGIS imagery:
     {
-        SourceProperties props;
-        props["dataset"] = "satellite";
-        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Google Imagery", "google", props)));
+        SourceConfig conf( "ESRI Imagery", "arcgis" );
+        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
+        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
     }
 
-    //Add Yahoo Maps
-    {
-        SourceProperties props;
-        props["dataset"] = "roads";
-        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Yahoo Maps", "yahoo", props)));
-    }
-
-    //Add Yahoo Imagery
-    {
-        SourceProperties props;
-        props["dataset"] = "satellite";
-        addLayersBox->addWidget(new AddLayerButton(mapNode, view, SourceConfig("Yahoo Imagery", "yahoo", props)));
-    }
-
-    //addLayersBox->attachMoveCallback();
     addLayersBox->getBackground()->setColor(1,0,0,0.3);
     addLayersBox->setAnchorHorizontal(osgWidget::Window::HA_RIGHT);
     wm->addChild(addLayersBox);
@@ -461,12 +449,15 @@ int main(int argc, char** argv)
 
     osg::Group* group = new osg::Group;
 
-    osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
-    if (!loadedModel.valid())
-    {
-        osg::notify(osg::NOTICE) << "Failed to load map" << std::endl;
-        return 1;
-    }
+    //osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
+    //if (!loadedModel.valid())
+    //{
+    //    osg::notify(osg::NOTICE) << "Failed to load map" << std::endl;
+    //    return 1;
+    //}
+
+    MapNode* map = new MapNode();
+    osg::ref_ptr<osg::Node> loadedModel = map;
 
     MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());
     if (!mapNode)

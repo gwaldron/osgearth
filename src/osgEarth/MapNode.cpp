@@ -80,8 +80,20 @@ MapNode::getId() const
     return _id;
 }
 
-MapNode::MapNode(MapConfig& mapConfig ):
+MapNode::MapNode() :
+_mapConfig( MapConfig() )
+{
+    init();
+}
+
+MapNode::MapNode( MapConfig& mapConfig ):
 _mapConfig(mapConfig)
+{
+    init();
+}
+
+void
+MapNode::init()
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
     _id = s_mapNodeID++;
@@ -90,21 +102,21 @@ _mapConfig(mapConfig)
     _mapConfig.initialize();
 
 
-    const osgDB::ReaderWriter::Options* global_options = mapConfig.getGlobalOptions();
+    const osgDB::ReaderWriter::Options* global_options = _mapConfig.getGlobalOptions();
     osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ? 
         new osgDB::ReaderWriter::Options( *global_options ) :
         NULL;
 
     // transcribe proxy settings:
-    if ( !mapConfig.getProxyHost().empty() )
+    if ( !_mapConfig.getProxyHost().empty() )
     {
         if ( !local_options.valid() )
             local_options = new osgDB::ReaderWriter::Options();
 
         std::stringstream buf;
         buf << local_options->getOptionString() << " "
-            << "OSG_CURL_PROXY=" << mapConfig.getProxyHost() << " "
-            << "OSG_CURL_PROXYPORT=" << mapConfig.getProxyPort();
+            << "OSG_CURL_PROXY=" << _mapConfig.getProxyHost() << " "
+            << "OSG_CURL_PROXYPORT=" << _mapConfig.getProxyPort();
         local_options->setOptionString( buf.str() );
     }
 
@@ -115,8 +127,8 @@ _mapConfig(mapConfig)
 
     _mapConfig.setGlobalOptions( local_options.get() );
 
-    if (mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || 
-        mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
+    if (_mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC || 
+        _mapConfig.getCoordinateSystemType() == MapConfig::CSTYPE_GEOCENTRIC_CUBE )
     {     
         _engine = new GeocentricMap();
     }

@@ -132,6 +132,7 @@ GeocentricMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* 
                 else
                 {
                     osg::notify(osg::INFO) << "[osgEarth::GeocentricMap] Could not get valid image from image source " << source->getName() << " for TileKey " << key->str() << std::endl;
+					image_tiles[i] = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
                 }
             }
         }

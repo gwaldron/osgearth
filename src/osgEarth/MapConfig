@@ -209,6 +209,16 @@ namespace osgEarth
          */
         const std::string& getName() const;
 
+		/**
+		 * Gets whether or not to reproject the data before caching occurs
+		 */
+		bool getReprojectBeforeCaching() const;
+
+		/**
+		 * Sets whether to reproject the data before caching occurs
+		 */
+		void setReprojectBeforeCaching(bool reprojectBeforeCaching);
+
         /**
          * Sets the driver name for this source. The driver name is the
          * name of the extension that will load the appropriate osg plugin.
@@ -268,6 +278,7 @@ namespace osgEarth
     private:
         std::string _name;
         std::string _driver;
+		bool        _reprojectBeforeCaching;
         SourceProperties _properties;
         CacheConfig _cache_config;
         ProfileConfig _profile_config;

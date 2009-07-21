@@ -81,6 +81,17 @@ TileSourceFactory::createMapTileSource(const SourceConfig& sourceConfig,
         //Initialize the source and set its name
         tile_source->setName( sourceConfig.getName() );
         osg::notify(osg::INFO) << "Loaded " << sourceConfig.getDriver() << " TileSource" << std::endl;
+
+		//If the TileSource is set to reproject before caching occurs, wrap the TileSource in a DirectReadTileSource.
+		//This allows us to pull down imagery from pretiled datasources such as TMS or WMS-C that may not be in
+		//the correct SRS, reproject them to the cache, and have a nice fast map once caching occurs.
+		if (sourceConfig.getReprojectBeforeCaching())
+		{			
+			//Try to read in a preferred tile_size.
+			int tile_size = as<int>(sourceConfig["tile_size"], 256);
+			osg::notify(osg::INFO) << "Wrapping " << sourceConfig.getName() << " in DirectReadTileSource with a tile size of " << tile_size << std::endl;
+			tile_source = new DirectReadTileSource( tile_source, tile_size );
+		}
     }
 
     //Configure the cache if necessary

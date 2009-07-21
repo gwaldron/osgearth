@@ -23,6 +23,7 @@
 #include <osgEarth/Cube>
 
 #include <osg/Notify>
+#include <osg/Timer>
 
 #include <gdal_priv.h>
 #include <gdalwarper.h>
@@ -375,9 +376,12 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
                int width = 0, int height = 0)
 {
     GDAL_SCOPED_LOCK;
+	osg::Timer_t start = osg::Timer::instance()->tick();
 
     //Create a dataset from the source image
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
+
+	osg::notify(osg::INFO) << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
 
 
     if (width == 0 || height == 0)
@@ -394,6 +398,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
             0);
         GDALDestroyGenImgProjTransformer(transformer);
     }
+	osg::notify(osg::INFO) << "Creating warped output of " << width <<"x" << height << std::endl;
    
     GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
 
@@ -407,6 +412,10 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
     
     delete srcDS;
     delete destDS;  
+
+	osg::Timer_t end = osg::Timer::instance()->tick();
+
+	osg::notify(osg::INFO) << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
 
     return result;
 }    

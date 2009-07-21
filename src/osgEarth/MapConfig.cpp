@@ -544,7 +544,8 @@ MapConfig::initialize()
 /************************************************************************/
 
 
-SourceConfig::SourceConfig()
+SourceConfig::SourceConfig():
+_reprojectBeforeCaching(false)
 {
     //NOP
 }
@@ -552,6 +553,7 @@ SourceConfig::SourceConfig()
 SourceConfig::SourceConfig( const SourceConfig& rhs ) :
 _name( rhs._name ),
 _driver( rhs._driver ),
+_reprojectBeforeCaching( rhs._reprojectBeforeCaching ),
 _properties( rhs._properties ),
 _profile_config( rhs._profile_config ),
 _cache_config( rhs._cache_config )
@@ -562,7 +564,8 @@ _cache_config( rhs._cache_config )
 SourceConfig::SourceConfig(const std::string& name,
                            const std::string& driver ) :
 _name( name ),
-_driver( driver )
+_driver( driver ),
+_reprojectBeforeCaching(false)
 {
     //NOP
 }
@@ -572,7 +575,8 @@ SourceConfig::SourceConfig(const std::string& name,
                            const SourceProperties& props ) :
 _name( name ),
 _driver( driver ),
-_properties( props )
+_properties( props ),
+_reprojectBeforeCaching(false)
 {
     //NOP
 }
@@ -606,6 +610,18 @@ const std::string&
 SourceConfig::getDriver() const
 {
     return _driver;
+}
+
+bool
+SourceConfig::getReprojectBeforeCaching() const
+{
+	return _reprojectBeforeCaching;
+}
+
+void
+SourceConfig::setReprojectBeforeCaching( bool reprojectBeforeCaching )
+{
+	_reprojectBeforeCaching = reprojectBeforeCaching;
 }
 
 SourceProperties&
@@ -833,35 +849,36 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
 
 /***********************************************************************/
 
-#define ELEM_MAP               "map"
-#define ATTR_NAME              "name"
-#define ATTR_CSTYPE            "type"
-#define ELEM_IMAGE             "image"
-#define ELEM_HEIGHTFIELD       "heightfield"
-#define ELEM_VERTICAL_SCALE    "vertical_scale"
-#define ELEM_MIN_TILE_RANGE    "min_tile_range_factor"
-#define ATTR_DRIVER            "driver"
-#define ELEM_SKIRT_RATIO       "skirt_ratio"
-#define ELEM_SAMPLE_RATIO      "sample_ratio"
-#define ELEM_PROXY_HOST        "proxy_host"
-#define ELEM_PROXY_PORT        "proxy_port"
-#define ELEM_CACHE_ONLY        "cache_only"
-#define ELEM_NORMALIZE_EDGES   "normalize_edges"
-#define ELEM_COMBINE_LAYERS    "combine_layers"
+#define ELEM_MAP                      "map"
+#define ATTR_NAME                     "name"
+#define ATTR_CSTYPE                   "type"
+#define ELEM_IMAGE                    "image"
+#define ELEM_HEIGHTFIELD              "heightfield"
+#define ELEM_VERTICAL_SCALE           "vertical_scale"
+#define ELEM_MIN_TILE_RANGE           "min_tile_range_factor"
+#define ATTR_DRIVER                   "driver"
+#define ATTR_REPROJECT_BEFORE_CACHING "reproject_before_caching"
+#define ELEM_SKIRT_RATIO              "skirt_ratio"
+#define ELEM_SAMPLE_RATIO             "sample_ratio"
+#define ELEM_PROXY_HOST               "proxy_host"
+#define ELEM_PROXY_PORT               "proxy_port"
+#define ELEM_CACHE_ONLY               "cache_only"
+#define ELEM_NORMALIZE_EDGES          "normalize_edges"
+#define ELEM_COMBINE_LAYERS           "combine_layers"
 
-#define ELEM_CACHE             "cache"
-#define ATTR_TYPE              "type"
+#define ELEM_CACHE                    "cache"
+#define ATTR_TYPE                     "type"
 
-#define VALUE_TRUE             "true"
-#define VALUE_FALSE            "false"
+#define VALUE_TRUE                    "true"
+#define VALUE_FALSE                   "false"
 
-#define ELEM_PROFILE           "profile"
-#define ATTR_MINX              "xmin"
-#define ATTR_MINY              "ymin"
-#define ATTR_MAXX              "xmax"
-#define ATTR_MAXY              "ymax"
-#define ATTR_SRS               "srs"
-#define ATTR_USELAYER          "use"
+#define ELEM_PROFILE                  "profile"
+#define ATTR_MINX                     "xmin"
+#define ATTR_MINY                     "ymin"
+#define ATTR_MAXX                     "xmax"
+#define ATTR_MAXY                     "ymax"
+#define ATTR_SRS                      "srs"
+#define ATTR_USELAYER                 "use"
 
 static CacheConfig
 readCache( XmlElement* e_cache )
@@ -963,6 +980,13 @@ readSource( XmlElement* e_source )
 
     source.setName( e_source->getAttr( ATTR_NAME ) );
     source.setDriver( e_source->getAttr( ATTR_DRIVER ) );
+	std::string reprojectBeforeCaching = e_source->getAttr( ATTR_REPROJECT_BEFORE_CACHING );
+
+	if (reprojectBeforeCaching == VALUE_TRUE )
+        source.setReprojectBeforeCaching( true );
+    else if (reprojectBeforeCaching == VALUE_FALSE)
+        source.setReprojectBeforeCaching( false );
+
 
     //Try to read the cache for the source if one exists
     XmlElement* e_cache = static_cast<XmlElement*>(e_source->getSubElement( ELEM_CACHE ));
@@ -1001,6 +1025,7 @@ writeSource( const SourceConfig& source, XmlElement* e_source )
 {
     e_source->getAttrs()[ATTR_NAME] = source.getName();
     e_source->getAttrs()[ATTR_DRIVER] = source.getDriver();
+	e_source->getAttrs()[ATTR_REPROJECT_BEFORE_CACHING] = toString<bool>(source.getReprojectBeforeCaching());
 
     //Add all the properties
     for (SourceProperties::const_iterator i = source.getProperties().begin(); i != source.getProperties().end(); i++ )

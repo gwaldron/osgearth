@@ -93,3 +93,11 @@ DirectReadTileSource::getPixelsPerTile() const
     return _tileSize;
 }
 
+void DirectReadTileSource::setOverrideProfile( const Profile* profile )
+{
+	if (_tileSource.valid())
+	{
+		_tileSource->setOverrideProfile( profile );
+	}
+}
+

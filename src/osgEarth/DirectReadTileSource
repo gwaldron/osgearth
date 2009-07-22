@@ -57,6 +57,8 @@ namespace osgEarth
          */
         virtual int getPixelsPerTile() const;
 
+		virtual void setOverrideProfile( const Profile* profile );
+
     private:
         osg::ref_ptr<TileSource> _tileSource;
         osg::ref_ptr<const Profile> _profile;

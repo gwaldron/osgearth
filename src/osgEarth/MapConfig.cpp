@@ -71,6 +71,32 @@ _global_options( rhs._global_options.get() )
     //NOP
 }
 
+MapConfig& MapConfig::operator = (const MapConfig &rhs)
+{
+    _id = rhs._id;
+    _model_cstype = rhs._model_cstype;
+    _vertical_scale = rhs._vertical_scale;
+    _skirt_ratio = rhs._skirt_ratio;
+    _sample_ratio = rhs._sample_ratio;
+    _proxy_host = rhs._proxy_host;
+    _proxy_port = rhs._proxy_port;
+    _min_tile_range_factor = rhs._min_tile_range_factor;
+    _cache_only = rhs._cache_only;
+    _combine_layers = rhs._combine_layers;
+    _normalize_edges = rhs._normalize_edges;
+    _filename = rhs._filename;
+    _imageSourceConfigs = rhs._imageSourceConfigs;
+    _heightFieldSourceConfigs = rhs._heightFieldSourceConfigs;
+    _imageSources = rhs._imageSources;
+    _heightFieldSources = rhs._heightFieldSources;
+    _cache_config = rhs._cache_config;
+    _profile_config = rhs._profile_config;
+    _profile = rhs._profile;
+    _global_options = rhs._global_options.get();
+
+    return *this;
+}
+
 unsigned int
 MapConfig::getId() const
 {

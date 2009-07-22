@@ -42,7 +42,7 @@ namespace osgEarth
         * Creates a new MapNode from the given MapConfig.  This allows you to
         * programatically create a MapConfig and create a paging scene graph out of it.
         */
-        MapNode( MapConfig& conf );
+        MapNode( const MapConfig& conf );
 
     public:
 

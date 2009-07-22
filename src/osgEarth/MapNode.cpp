@@ -86,7 +86,7 @@ _mapConfig( MapConfig() )
     init();
 }
 
-MapNode::MapNode( MapConfig& mapConfig ):
+MapNode::MapNode( const MapConfig& mapConfig ):
 _mapConfig(mapConfig)
 {
     init();

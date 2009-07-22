@@ -314,6 +314,11 @@ namespace osgEarth
         MapConfig( const MapConfig& rhs );
 
         /**
+         * Assignment operator
+         */
+        MapConfig& operator= (const MapConfig &rhs);
+
+        /**
         *Gets the id of this MapConfig
         */
         unsigned int getId() const;

@@ -321,6 +321,9 @@ MapNode::addImageSource( const SourceConfig& sourceConfig)
         OpenThreads::ScopedWriteLock lock( _mapConfig.getSourceMutex());
         osg::notify(osg::INFO) << "[osgEarth::Map::addImageSource] Obtained lock " << std::endl;
 
+		//Add the source to the config list
+		_mapConfig.getImageSourceConfigs().push_back( sourceConfig );
+
         //Add the source to the list
         _mapConfig.getImageSources().push_back( source );
 
@@ -400,6 +403,9 @@ MapNode::addHeightFieldSource( const SourceConfig& sourceConfig )
         osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldSource] Waiting for lock..." << std::endl;
         OpenThreads::ScopedWriteLock lock( _mapConfig.getSourceMutex());
         osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldSource] Obtained lock " << std::endl;
+
+		//Add the sourceConfig to the list
+		_mapConfig.getHeightFieldSourceConfigs().push_back( sourceConfig );
 
         //Add the layer to the list        
         _mapConfig.getHeightFieldSources().push_back( source );
@@ -487,9 +493,12 @@ MapNode::removeImageSource( unsigned int index )
     osg::ref_ptr<TileSource> source = _mapConfig.getImageSources()[index];
 
     //Erase the layer from the list
-    _mapConfig.getImageSources().erase( _mapConfig.getImageSources().begin() + index );
+    _mapConfig.getImageSources().erase( _mapConfig.getImageSources().begin() + index );	
 
-    if (_sourceCallback.valid()) _sourceCallback->imageSourceRemoved( source.get(), index);
+	//Erase the sourceConfig from the list
+	_mapConfig.getImageSourceConfigs().erase( _mapConfig.getImageSourceConfigs().begin() + index );
+	
+	if (_sourceCallback.valid()) _sourceCallback->imageSourceRemoved( source.get(), index);
     updateStateSet();
     osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] end " << std::endl;   
 }
@@ -535,6 +544,11 @@ MapNode::removeHeightFieldSource( unsigned int index )
 
     osg::ref_ptr<TileSource> source = _mapConfig.getHeightFieldSources()[index];
     _mapConfig.getHeightFieldSources().erase( _mapConfig.getHeightFieldSources().begin() + index );
+	
+	//Erase the SourceConfig
+	_mapConfig.getHeightFieldSourceConfigs().erase( _mapConfig.getHeightFieldSourceConfigs().begin() + index );
+
+
     if (_sourceCallback.valid()) _sourceCallback->heightfieldSourceRemoved( source.get(), index);
 
     osg::notify(osg::INFO) << "[osgEarth::Map::removeHeightFieldSource] end " << std::endl;
@@ -556,9 +570,16 @@ MapNode::moveImageSource( unsigned int index, unsigned int position )
 
     //Take a reference to the incoming source
     osg::ref_ptr<TileSource> s = _mapConfig.getImageSources()[index];
-    //Insert the source into it's new position
+    
+	//Insert the source into it's new position
     _mapConfig.getImageSources().erase(_mapConfig.getImageSources().begin() + index);
     _mapConfig.getImageSources().insert(_mapConfig.getImageSources().begin() + position, s.get());
+
+	//Insert the sourceConfig at it's new position
+	SourceConfig src_config = _mapConfig.getImageSourceConfigs()[index];
+	_mapConfig.getImageSourceConfigs().erase( _mapConfig.getImageSourceConfigs().begin() + index);
+	_mapConfig.getImageSourceConfigs().insert( _mapConfig.getImageSourceConfigs().begin() + index, src_config );
+
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
@@ -614,6 +635,11 @@ MapNode::moveHeightFieldSource( unsigned int index, unsigned int position )
     //Insert the source into it's new position
     _mapConfig.getHeightFieldSources().erase(_mapConfig.getHeightFieldSources().begin() + index);
     _mapConfig.getHeightFieldSources().insert(_mapConfig.getHeightFieldSources().begin() + position, s.get());
+
+	SourceConfig src_config = _mapConfig.getHeightFieldSourceConfigs()[index];
+	_mapConfig.getHeightFieldSourceConfigs().erase( _mapConfig.getHeightFieldSourceConfigs().begin() + index);
+	_mapConfig.getHeightFieldSourceConfigs().insert( _mapConfig.getHeightFieldSourceConfigs().begin() + index, src_config );
+
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            

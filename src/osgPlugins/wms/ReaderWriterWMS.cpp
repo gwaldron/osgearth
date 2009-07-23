@@ -47,6 +47,21 @@ using namespace osgEarth;
 #define PROPERTY_SRS              "srs"
 #define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
 
+static std::string&
+replaceIn( std::string& s, const std::string& sub, const std::string& other)
+{
+    if ( sub.empty() ) return s;
+    size_t b=0;
+    for( ; ; )
+    {
+        b = s.find( sub, b );
+        if ( b == s.npos ) break;
+        s.replace( b, sub.size(), other );
+        b += other.size();
+    }
+    return s;
+}
+
 class WMSSource : public TileSource
 {
 public:
@@ -149,6 +164,12 @@ public:
             result = mapProfile;
         }
 
+        // check for spherical mercator:
+        if ( wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalMercatorProfile()->getSRS() ) )
+        {
+            result = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        }
+
         // Next, try to glean the extents from the layer list
         if ( !result.valid() )
         {
@@ -218,7 +239,6 @@ public:
         // populate the data metadata:
         // TODO
 
-
         return result.release();
     }
 
@@ -253,10 +273,17 @@ public:
     {
         double minx, miny, maxx, maxy;
         key->getGeoExtent().getBounds( minx, miny, maxx, maxy);
-        // http://labs.metacarta.com/wms-c/Basic.py?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=basic&BBOX=-180,-90,0,90
+        
         char buf[2048];
         sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);
-        return buf;
+        
+        std::string uri(buf);
+
+        // url-ize the uri before returning it
+        if ( osgDB::containsServerAddress( uri ) )
+            uri = replaceIn(uri, " ", "%20");
+
+        return uri;
     }
 
     virtual int getPixelsPerTile() const

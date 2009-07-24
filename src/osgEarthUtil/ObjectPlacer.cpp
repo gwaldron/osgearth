@@ -20,28 +20,95 @@
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
-#include <osgSim/HeightAboveTerrain>
+#include <osgSim/LineOfSight>
+#include <osgUtil/IntersectionVisitor>
+#include <osgUtil/LineSegmentIntersector>
 #include <osg/MatrixTransform>
 #include <osg/CoordinateSystemNode>
 
 using namespace osgEarthUtil;
 using namespace osgEarth;
 
-ObjectPlacer::ObjectPlacer( osg::Node* terrain, bool clamp ) :
-_clamp( clamp )
+struct CachingReadCallback : public osgSim::DatabaseCacheReadCallback
+{
+    CachingReadCallback(int maxReads) : _maxReads(maxReads), _reads(0) { }
+    void reset() { _reads = 0; }
+    virtual osg::Node* readNodeFile(const std::string& filename) {
+        if ( _reads < _maxReads ) {
+            _reads++;
+            return osgSim::DatabaseCacheReadCallback::readNodeFile(filename);
+        }
+        else {
+            return NULL;
+        }
+    }
+    int _reads, _maxReads;
+    osg::ref_ptr<osg::Node> _lastNodeRead;
+};
+
+ObjectPlacer::ObjectPlacer( osg::Node* terrain, int traversalMask, bool clamp, int maxLevel ) :
+_clamp( clamp ),
+_traversalMask( traversalMask )
 {
     _mapNode = findTopMostNodeOfType<osgEarth::MapNode>( terrain );
     _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>( terrain );
+    _readCallback = new CachingReadCallback( maxLevel );
 }
 
-static double
-getHAT( osg::CoordinateSystemNode* csn, double x, double y, double z )
+bool
+ObjectPlacer::clampGeocentric( osg::CoordinateSystemNode* csn, double lat_rad, double lon_rad, osg::Vec3d& out ) const
 {
-    osgSim::HeightAboveTerrain hat;
-    hat.setLowestHeight( -10000 );
-    int index = hat.addPoint( osg::Vec3d( x, y, z ) );
-    hat.computeIntersections( csn ); // input node must be a CSN
-    return hat.getHeightAboveTerrain( index );
+    osg::Vec3d start, end;
+    
+    csn->getEllipsoidModel()->convertLatLongHeightToXYZ( lat_rad, lon_rad, 50000, start.x(), start.y(), start.z() );
+    csn->getEllipsoidModel()->convertLatLongHeightToXYZ( lat_rad, lon_rad, -50000, end.x(), end.y(), end.z() );
+    osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
+    
+    osgUtil::IntersectionVisitor iv;
+    iv.setIntersector( i );
+    static_cast<CachingReadCallback*>(_readCallback.get())->reset();
+    iv.setReadCallback( _readCallback );
+    iv.setTraversalMask( _traversalMask );
+
+    _mapNode->accept( iv );
+
+    osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
+    if ( !results.empty() )
+    {
+        const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
+        out = result.matrix.valid() ?
+            result.localIntersectionPoint * (*result.matrix) :
+            result.localIntersectionPoint;
+        return true;            
+    }
+    return false;
+}
+
+bool
+ObjectPlacer::clampProjected( osg::CoordinateSystemNode* csn, double x, double y, osg::Vec3d& out ) const
+{
+    osg::Vec3d start( x, y, 50000 );
+    osg::Vec3d end(x, y, -50000);
+    osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
+    
+    osgUtil::IntersectionVisitor iv;
+    iv.setIntersector( i );
+    static_cast<CachingReadCallback*>(_readCallback.get())->reset();
+    iv.setReadCallback( _readCallback );
+    iv.setTraversalMask( _traversalMask );
+
+    _mapNode->accept( iv );
+
+    osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
+    if ( !results.empty() )
+    {
+        const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
+        out = result.matrix.valid() ?
+            result.localIntersectionPoint * (*result.matrix) :
+            result.localIntersectionPoint;
+        return true;            
+    }
+    return false;
 }
 
 bool
@@ -59,35 +126,37 @@ ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height,
     const SpatialReference* srs = _mapNode->getProfile()->getSRS();
 
     // now build a matrix:
-    if ( !is_geocentric ) // projected or "flat geographic"
+    if ( is_geocentric )
     {
-        double local_x, local_y, local_z = height;
-        
-        // first convert the input coords to the map srs:
-        srs->getGeographicSRS()->transform( lon_deg, lat_deg, srs, local_x, local_y );
-
-        if ( _clamp )
-        {
-            local_z = getHAT( _csn.get(), local_x, local_y, 0 ) + height;
-        }
-        out_result = osg::Matrixd::translate( local_x, local_y, local_z );
-    }
-    else // geocentric
-    {    
         double lat_rad = osg::DegreesToRadians( lat_deg );
         double lon_rad = osg::DegreesToRadians( lon_deg );
 
         if ( _clamp )
         {
-            double gx, gy, gz; // geocentric/ecef
-            srs->getEllipsoid()->convertLatLongHeightToXYZ( lat_rad, lon_rad, 0, gx, gy, gz );
-            double z = getHAT( _csn.get(), gx, gy, gz );
-            srs->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight( lat_rad, lon_rad, z+height, out_result );
+            osg::Vec3d c;
+            if ( clampGeocentric( _csn.get(), lat_rad, lon_rad, c ) )
+            {
+                srs->getEllipsoid()->computeLocalToWorldTransformFromXYZ( c.x(), c.y(), c.z(), out_result );
+            }
         }
         else
         {
             srs->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight( lat_rad, lon_rad, height, out_result );
         }
+    }
+    else // projected or "flat geographic"
+    {
+        osg::Vec3d local(0, 0, height);
+        
+        // first convert the input coords to the map srs:
+        srs->getGeographicSRS()->transform( lon_deg, lat_deg, srs, local.x(), local.y());
+
+        if ( _clamp )
+        {
+            clampProjected( _csn.get(), local.x(), local.y(), local );
+            local.z() += height;
+        }
+        out_result = osg::Matrixd::translate( local );
     }
 
     return true;

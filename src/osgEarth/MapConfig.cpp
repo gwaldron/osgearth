@@ -1059,6 +1059,15 @@ writeSource( const SourceConfig& source, XmlElement* e_source )
         e_source->addSubElement(i->first, i->second);
     }
 
+	//Write the profile config
+	if (source.getProfileConfig().defined())
+	{
+		XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
+		writeProfileConfig( source.getProfileConfig(), e_profile );
+		e_source->getChildren().push_back(e_profile);
+	}
+
+	//Write the source config
     if ( source.getCacheConfig().defined() )
     {
        XmlElement* e_cache = new XmlElement(ELEM_CACHE);

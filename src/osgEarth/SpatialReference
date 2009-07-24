@@ -82,6 +82,10 @@ namespace osgEarth
         /** Tests whether this SRS represents a Mercator projection. */
         bool isMercator() const;
 
+        /** Tests whether this SRS represents a polar sterographic projection. */
+        bool isNorthPolar() const;
+        bool isSouthPolar() const;
+
         /** Gets the readable name of this SRS. */
         const std::string& getName() const;
 
@@ -105,7 +109,6 @@ namespace osgEarth
 
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
-
         /**
          * Creates a new Locator object based on this spatial reference.
          *
@@ -133,6 +136,7 @@ namespace osgEarth
         bool _owns_handle;
         bool _is_geographic;
         bool _is_mercator;
+        bool _is_north_polar, _is_south_polar;
         std::string _name;
         std::string _wkt;
         std::string _proj4;

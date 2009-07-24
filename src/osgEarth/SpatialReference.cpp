@@ -217,6 +217,11 @@ replaceIn( std::string& s, const std::string& sub, const std::string& other)
     return s;
 }
 
+//std::string
+//SpatialReference::getAttributeValue( const std::string& name ) const
+//{
+//    return getOGRAttrValue( _handle, name, 0 );
+//}
 
 SpatialReference*
 SpatialReference::validate()
@@ -437,6 +442,22 @@ SpatialReference::isMercator() const
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
     return _is_mercator;
+}
+
+bool 
+SpatialReference::isNorthPolar() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _is_north_polar;
+}
+
+bool 
+SpatialReference::isSouthPolar() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _is_south_polar;
 }
 
 osg::CoordinateSystemNode*
@@ -673,6 +694,13 @@ SpatialReference::init()
 
     std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0, true );
     _is_mercator = !proj.empty() && proj.find("mercator")==0;
+
+    if ( !proj.empty() && proj.find("polar_stereographic") != std::string::npos )
+    {
+        double lat = as<double>( getOGRAttrValue( _handle, "latitude_of_origin", 0, true ), -90.0 );
+        _is_north_polar = lat > 0.0;
+        _is_south_polar = lat < 0.0;
+    }
 
     if ( _name == "unnamed" )
     {

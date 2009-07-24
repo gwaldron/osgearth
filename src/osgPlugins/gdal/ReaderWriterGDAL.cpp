@@ -643,8 +643,37 @@ public:
         _warpedDS->GetGeoTransform(_geotransform);
 
         //Compute the extents
-        pixelToGeo(0.0, _warpedDS->GetRasterYSize(), _extentsMin.x(), _extentsMin.y());
-        pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, _extentsMax.x(), _extentsMax.y());
+        // polar needs a special case when combined with geographic
+        if ( profile && profile->getSRS()->isGeographic() && (src_srs->isNorthPolar() || src_srs->isSouthPolar()) )
+        {
+            double ll_lon, ll_lat, ul_lon, ul_lat, ur_lon, ur_lat, lr_lon, lr_lat;
+
+            pixelToGeo(0.0, 0.0, ul_lon, ul_lat );
+            pixelToGeo(0.0, _warpedDS->GetRasterYSize(), ll_lon, ll_lat);
+            pixelToGeo(_warpedDS->GetRasterXSize(), _warpedDS->GetRasterYSize(), lr_lon, lr_lat);
+            pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, ur_lon, ur_lat);
+
+            _extentsMin.x() = osg::minimum( ll_lon, osg::minimum( ul_lon, osg::minimum( ur_lon, lr_lon ) ) );
+            _extentsMax.x() = osg::maximum( ll_lon, osg::maximum( ul_lon, osg::maximum( ur_lon, lr_lon ) ) );
+            
+            if ( src_srs->isNorthPolar() )
+            {
+                _extentsMin.y() = osg::minimum( ll_lat, osg::minimum( ul_lat, osg::minimum( ur_lat, lr_lat ) ) );
+                _extentsMax.y() = 90.0;
+            }
+            else
+            {
+                _extentsMin.y() = -90.0;
+                _extentsMax.y() = osg::maximum( ll_lat, osg::maximum( ul_lat, osg::maximum( ur_lat, lr_lat ) ) );
+            }
+        }
+        else
+        {
+            pixelToGeo(0.0, _warpedDS->GetRasterYSize(), _extentsMin.x(), _extentsMin.y());
+            pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, _extentsMax.x(), _extentsMax.y());
+        }
+
+        osg::notify(osg::INFO) << "[osgEarth::GDAL] Geo extents: " << _extentsMin.x() << ", " << _extentsMin.y() << " => " << _extentsMax.x() << ", " << _extentsMax.y() << std::endl;
 
         if ( !profile )
         {

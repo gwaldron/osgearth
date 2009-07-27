@@ -260,7 +260,10 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
     {
 		//Take a reference so the converted image will be deleted
 		osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB( image );
-		osgDB::writeImageFile(*rgb.get(), filename);
+		if (rgb.valid())
+		{
+			osgDB::writeImageFile(*rgb.get(), filename);
+		}
     }
     else
     {

@@ -701,6 +701,11 @@ SpatialReference::init()
         _is_north_polar = lat > 0.0;
         _is_south_polar = lat < 0.0;
     }
+	else
+	{
+		_is_north_polar = false;
+		_is_south_polar = false;
+	}
 
     if ( _name == "unnamed" )
     {

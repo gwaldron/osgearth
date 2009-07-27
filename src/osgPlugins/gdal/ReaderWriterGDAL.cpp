@@ -820,7 +820,7 @@ public:
         double resolutionX = (_extentsMax.x() - _extentsMin.x()) / (double)_warpedDS->GetRasterXSize();
         double resolutionY = (_extentsMax.y() - _extentsMin.y()) / (double)_warpedDS->GetRasterYSize();
 
-        double maxResolution = osg::maximum(resolutionX, resolutionY);
+		double maxResolution = osg::minimum(resolutionX, resolutionY);
 
         osg::notify(osg::INFO) << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 

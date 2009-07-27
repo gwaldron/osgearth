@@ -165,34 +165,7 @@ GeocentricMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* 
     osg::ref_ptr<osgTerrain::Locator> locator = key->getProfile()->getSRS()->createLocator(
         min_lon, min_lat, max_lon, max_lat );
 
-    // TESTING.
-    //if ( key->getProfile()->getSRS()->getName() == "Square Polar" )
-    //    locator = new SquarePolarLocator( *locator.get() );
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-
-    bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
-
-    //if (isCube)
-    //{
-    //    locator->setTransform( getTransformFromExtents(
-    //        min_lon,
-    //        min_lat,
-    //        max_lon,
-    //        max_lat));
-    //}
-    //else
-    //{
-    //    locator->setTransform( getTransformFromExtents(
-    //        osg::DegreesToRadians( min_lon ),
-    //        osg::DegreesToRadians( min_lat ),
-    //        osg::DegreesToRadians( max_lon ),
-    //        osg::DegreesToRadians( max_lat ) ) );
-    //}
-
-    //hf->setOrigin( osg::Vec3d( min_lon, min_lat, 0.0 ) );
-    //hf->setXInterval( (max_lon - min_lon)/(double)(hf->getNumColumns()-1) );
-    //hf->setYInterval( (max_lat - min_lat)/(double)(hf->getNumRows()-1) );
-    //hf->setBorderWidth( 0 );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( locator.get() );
@@ -251,14 +224,6 @@ GeocentricMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* 
 
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            //TODO:  Check for cube grid here?
-            //img_locator->setTransform( getTransformFromExtents(
-            //    osg::DegreesToRadians( img_min_lon ),
-            //    osg::DegreesToRadians( img_min_lat ),
-            //    osg::DegreesToRadians( img_max_lon ),
-            //    osg::DegreesToRadians( img_max_lat )));
-
-
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
 
             img_layer->setLocator( img_locator.get());
@@ -279,6 +244,8 @@ GeocentricMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* 
     //Set the skirt height of the heightfield
     hf->setSkirtHeight(radius * mapConfig.getSkirtRatio());
 
+    // TEMPORARY
+    bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
     if (!isCube)
     {
         //TODO:  Work on cluster culling computation for cube faces

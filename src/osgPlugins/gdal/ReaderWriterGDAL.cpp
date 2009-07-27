@@ -37,20 +37,27 @@
 #include <gdalwarper.h>
 #include <ogr_spatialref.h>
 
+#if (GDAL_VERSION_MAJOR > 1 || (GDAL_VERSION_MAJOR >= 1 && GDAL_VERSION_MINOR >= 5))
+#  define GDAL_VERSION_1_5_OR_NEWER 1
+#endif
+
+#if (GDAL_VERSION_MAJOR > 1 || (GDAL_VERSION_MAJOR >= 1 && GDAL_VERSION_MINOR >= 6))
+#  define GDAL_VERSION_1_6_OR_NEWER 1
+#endif
+
+#ifndef GDAL_VERSION_1_5_OR_NEWER
+#  error "**** GDAL 1.5 or newer required ****"
+#endif
+
 //GDAL proxy is only available after GDAL 1.6
-#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
-#include <gdal_proxy.h>
+#if GDAL_VERSION_1_6_OR_NEWER
+#  include <gdal_proxy.h>
 #endif
 
 #include <cpl_string.h>
 
 //GDAL VRT api is only available after 1.5.0
-#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 5))
 #include <gdal_vrt.h>
-#endif
-
-//#include <OpenThreads/ScopedLock>
-//#include <OpenThreads/ReentrantMutex>
 
 using namespace std;
 using namespace osgEarth;
@@ -163,8 +170,6 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, std::vec
     }
 }
 
-//The VRT API is only available after GDAL 1.5.0
-#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 5))
 //Adapted from the gdalbuildvrt application
 static GDALDatasetH
 build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy)
@@ -392,7 +397,8 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
 
         bool isProxy = true;
 
-#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 6))
+#if GDAL_VERSION_1_6_OR_NEWER
+
         //Use a proxy dataset if possible.  This helps with huge amount of files to keep the # of handles down
         GDALProxyPoolDatasetH hDS =
                GDALProxyPoolDatasetCreate(dsFileName,
@@ -410,12 +416,16 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
         }
         isProxy = true;
         osg::notify(osg::INFO) << "Using GDALProxyPoolDatasetH" << std::endl;
-#else
+
+#else // !GDAL_VERSION_1_6_OR_NEWER
+
         osg::notify(osg::INFO) << "Using GDALDataset, no proxy support enabled" << std::endl;
         //Just open the dataset
         GDALDatasetH hDS = (GDALDatasetH)GDALOpen(dsFileName, GA_ReadOnly);
         isProxy = false;
+
 #endif
+
         int xoffset = (int)
                 (0.5 + (psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_TOPLEFT_X] - minX) / we_res);
         int yoffset = (int)
@@ -454,7 +464,126 @@ end:
     CPLFree(projectionRef);
     return hVRTDS;
 }
-#endif
+
+
+// This is simply the method GDALAutoCreateWarpedVRT() with the GDALSuggestedWarpOutput
+// logic replaced with something that will work properly for polar projections.
+// see: http://www.mail-archive.com/gdal-dev@lists.osgeo.org/msg01491.html
+static
+GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
+    GDALDatasetH hSrcDS,
+    const char *pszSrcWKT,
+    const char *pszDstWKT,
+    GDALResampleAlg eResampleAlg,
+    double dfMaxError,
+    const GDALWarpOptions *psOptionsIn )
+{
+    GDALWarpOptions *psWO;
+    int i;
+
+    VALIDATE_POINTER1( hSrcDS, "GDALAutoCreateWarpedVRTForPolarStereographic", NULL );
+
+    /* -------------------------------------------------------------------- */
+    /*      Populate the warp options.                                      */
+    /* -------------------------------------------------------------------- */
+    if( psOptionsIn != NULL )
+        psWO = GDALCloneWarpOptions( psOptionsIn );
+    else
+        psWO = GDALCreateWarpOptions();
+
+    psWO->eResampleAlg = eResampleAlg;
+
+    psWO->hSrcDS = hSrcDS;
+
+    psWO->nBandCount = GDALGetRasterCount( hSrcDS );
+    psWO->panSrcBands = (int *) CPLMalloc(sizeof(int) * psWO->nBandCount);
+    psWO->panDstBands = (int *) CPLMalloc(sizeof(int) * psWO->nBandCount);
+
+    for( i = 0; i < psWO->nBandCount; i++ )
+    {
+        psWO->panSrcBands[i] = i+1;
+        psWO->panDstBands[i] = i+1;
+    }
+
+    /* TODO: should fill in no data where available */
+
+    /* -------------------------------------------------------------------- */
+    /*      Create the transformer.                                         */
+    /* -------------------------------------------------------------------- */
+    psWO->pfnTransformer = GDALGenImgProjTransform;
+    psWO->pTransformerArg =
+        GDALCreateGenImgProjTransformer( psWO->hSrcDS, pszSrcWKT,
+        NULL, pszDstWKT,
+        TRUE, 1.0, 0 );
+
+    if( psWO->pTransformerArg == NULL )
+    {
+        GDALDestroyWarpOptions( psWO );
+        return NULL;
+    }
+
+    /* -------------------------------------------------------------------- */
+    /*      Figure out the desired output bounds and resolution.            */
+    /* -------------------------------------------------------------------- */
+    double adfDstGeoTransform[6];
+    int    nDstPixels, nDstLines;
+    CPLErr eErr;
+
+    eErr =
+        GDALSuggestedWarpOutput( hSrcDS, psWO->pfnTransformer,
+            psWO->pTransformerArg,
+            adfDstGeoTransform, &nDstPixels, &nDstLines );
+
+    // override the suggestions:
+    nDstPixels = GDALGetRasterXSize( hSrcDS ) * 4;
+    nDstLines  = GDALGetRasterYSize( hSrcDS ) / 2;
+    adfDstGeoTransform[0] = -180.0;
+    adfDstGeoTransform[1] = 360.0/(double)nDstPixels;
+    //adfDstGeoTransform[2] = 0.0;
+    //adfDstGeoTransform[4] = 0.0;
+    //adfDstGeoTransform[5] = (-90 -adfDstGeoTransform[3])/(double)nDstLines;
+
+    /* -------------------------------------------------------------------- */
+    /*      Update the transformer to include an output geotransform        */
+    /*      back to pixel/line coordinates.                                 */
+    /*                                                                      */
+    /* -------------------------------------------------------------------- */
+    GDALSetGenImgProjTransformerDstGeoTransform(
+        psWO->pTransformerArg, adfDstGeoTransform );
+
+    /* -------------------------------------------------------------------- */
+    /*      Do we want to apply an approximating transformation?            */
+    /* -------------------------------------------------------------------- */
+    if( dfMaxError > 0.0 )
+    {
+        psWO->pTransformerArg =
+            GDALCreateApproxTransformer( psWO->pfnTransformer,
+            psWO->pTransformerArg,
+            dfMaxError );
+        psWO->pfnTransformer = GDALApproxTransform;
+    }
+
+    /* -------------------------------------------------------------------- */
+    /*      Create the VRT file.                                            */
+    /* -------------------------------------------------------------------- */
+    GDALDatasetH hDstDS;
+
+    hDstDS = GDALCreateWarpedVRT( hSrcDS, nDstPixels, nDstLines,
+        adfDstGeoTransform, psWO );
+
+    GDALDestroyWarpOptions( psWO );
+
+    if( pszDstWKT != NULL )
+        GDALSetProjection( hDstDS, pszDstWKT );
+    else if( pszSrcWKT != NULL )
+        GDALSetProjection( hDstDS, pszDstWKT );
+    else if( GDALGetGCPCount( hSrcDS ) > 0 )
+        GDALSetProjection( hDstDS, GDALGetGCPProjection( hSrcDS ) );
+    else
+        GDALSetProjection( hDstDS, GDALGetProjectionRef( hSrcDS ) );
+
+    return hDstDS;
+}
 
 
 class GDALTileSource : public TileSource
@@ -467,13 +596,6 @@ public:
       _warpedDS(NULL),
       _maxDataLevel(30)
     {
-        //static bool s_gdal_registered = false;
-        //if (!s_gdal_registered)
-        //{
-        //    GDALAllRegister();
-        //    s_gdal_registered = true;
-        //}
-
         std::string interpOption;
 
         if ( options )
@@ -569,16 +691,12 @@ public:
         //If we found more than one file, try to combine them into a single logical dataset
         if (files.size() > 1)
         {
-#if ((GDAL_VERSION_MAJOR >= 1) && (GDAL_VERSION_MINOR >= 5))
             _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
             if (!_srcDS)
             {
                 osg::notify(osg::WARN) << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
                 return NULL;
             }
-#else
-            osg::notify(osg::NOTICE) << "GDAL Driver support for directories requires GDAL 1.5.0 or better" << std::endl;
-#endif
         }
 
         //If we couldn't build a VRT, just try opening the file directly
@@ -624,13 +742,26 @@ public:
 
         if ( profile && !profile->getSRS()->isEquivalentTo( src_srs.get() ) )
         {
-            _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(
-                _srcDS,
-                src_srs->getWKT().c_str(),
-                profile->getSRS()->getWKT().c_str(),
-                GRA_NearestNeighbour,
-                5.0,
-                NULL);
+            if ( profile->getSRS()->isGeographic() && (src_srs->isNorthPolar() || src_srs->isSouthPolar()) )
+            {
+                _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRTforPolarStereographic(
+                    _srcDS,
+                    src_srs->getWKT().c_str(),
+                    profile->getSRS()->getWKT().c_str(),
+                    GRA_NearestNeighbour,
+                    5.0,
+                    NULL);
+            }
+            else
+            {
+                _warpedDS = (GDALDataset*)GDALAutoCreateWarpedVRT(
+                    _srcDS,
+                    src_srs->getWKT().c_str(),
+                    profile->getSRS()->getWKT().c_str(),
+                    GRA_NearestNeighbour,
+                    5.0,
+                    NULL);
+            }
 
             //GDALAutoCreateWarpedVRT(srcDS, src_wkt.c_str(), t_srs.c_str(), GRA_NearestNeighbour, 5.0, NULL);
         }
@@ -751,7 +882,7 @@ public:
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
             //osg::notify(osg::NOTICE) << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
-            return NULL;
+            //return NULL;
         }
 
         GDAL_SCOPED_LOCK;
@@ -810,7 +941,10 @@ public:
             osg::notify(osg::INFO) << "ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
 
             //Return if parameters are out of range.
-            if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0) return 0;
+            if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0)
+            {
+                return 0;
+            }
 
 
 
@@ -1004,11 +1138,6 @@ public:
             {
                 return NO_DATA_VALUE;
             }
-
-
-
-
-
 
             if (_interpolation == AVERAGE)
             {

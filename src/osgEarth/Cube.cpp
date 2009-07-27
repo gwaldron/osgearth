@@ -210,58 +210,6 @@ bool CubeGridUtils::FaceCoordToLatLon(const Vec2d& Coord, const int Face, Vec2d&
     return true;
 }
 
-
-//bool CubeGridUtils::FaceCoordToLatLon(const Vec2d& c, const int face, Vec2d& LatLon)
-//{
-//    double u, v;
-//
-//    if ( c.x() > 1 || c.x() < 0 || c.y() > 1 || c.y() < 0 )
-//        return false;
-//
-//    if ( face < 4 )
-//    {
-//        u = ( c.x() + face ) * 0.25;
-//        v = ( c.y() + 0.5 ) * 0.5;
-//    }
-//
-//    else if ( face == 4 )
-//    {
-//        if ( c.x() >= c.y() )
-//        {
-//            if ( c.x() + c.y() <= 1 ) // Q0
-//            {
-//                u = c.x()/4;
-//                v = .75 + c.y()/2;
-//            }
-//            else // Q1
-//            {
-//                u = .25 + c.y()/4;
-//                v = .75 + (1.0-c.x())/2;
-//            }
-//        }
-//        else
-//        {
-//            if ( 1.0-c.x() >= 1.0-c.y() ) // Q2
-//            {
-//                u = .5 + (1.0-c.x())/4;
-//                v = .75 + (1.0-c.y())/2;
-//            }
-//            else // Q3
-//            {
-//                u = .75 + (1.0-c.y())/4;
-//                v = .75 + c.x()/2;
-//            }
-//        }
-//    }
-//    else
-//    {
-//        return false;
-//    }
-//    LatLon[LON] = u * 360 - 180; // convert to degrees
-//    LatLon[LAT] = v * 180 - 90;
-//    return true;
-//}
-
 /********************************************************************************************/
 
 CubeFaceLocator::CubeFaceLocator(unsigned int face):
@@ -295,10 +243,7 @@ CubeFaceLocator::convertLocalToModel( const osg::Vec3d& local, osg::Vec3d& world
             osg::DegreesToRadians( latLon.y() ),
             local.z(),
             world.x(), world.y(), world.z() );
-        /*world.x() = faceCoord.x();
-        world.y() = faceCoord.y();
-        world.z() = 0.0;*/
-        //osg::notify(osg::NOTICE) << "XYZ " << world << std::endl;
+
         return true;
     }    
     return true;

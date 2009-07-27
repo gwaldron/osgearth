@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/ImageUtils>
+#include <osg/Notify>
 #include <string.h>
 
 using namespace osgEarth;
@@ -172,5 +173,40 @@ ImageUtils::getEmptyImage()
     unsigned char *data = image->data(0,0);
     memset(data, 0, 4);
     return image;
+}
+
+osg::Image*
+ImageUtils::convertToRGB(const osg::Image *image)
+{
+	if (image)
+	{
+		//If the image is already RGB, clone it and return
+		if (image->getPixelFormat() == GL_RGB) return new osg::Image(*image);
+
+		if (image->getPixelFormat() == GL_RGBA)
+		{
+			osg::Image* result = new osg::Image();
+			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
+
+			for (unsigned int s = 0; s < image->s(); ++s)
+			{
+				for (unsigned int t = 0; t < image->t(); ++t)
+				{
+					result->data(s,t)[0] = image->data(s, t)[0];
+					result->data(s,t)[1] = image->data(s, t)[1];
+					result->data(s,t)[2] = image->data(s, t)[2];
+				}
+			}
+
+			return result;
+		}
+		else
+		{
+			//TODO:  Handle other cases
+			osg::notify(osg::NOTICE) << "[osgEarth::ImageUtils::convertToRGB] pixelFormat " << image->getPixelFormat() << " not yet supported " << std::endl;
+		}
+	}
+
+	return NULL;
 }
 

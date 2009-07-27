@@ -23,6 +23,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Mercator>
+#include <osgEarth/ImageUtils>
 
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
@@ -252,11 +253,14 @@ void DiskCachedTileSource::writeCachedImage(const TileKey* key, const osg::Image
         worldFile.close();
     }
 
-    //HACK:  Check to make sure we aren't writing a non-RGB
     bool writingJpeg = (ext == "jpg" || ext == "jpeg");
+
+	//If we are trying to write a non RGB image to JPEG, convert it to RGB before we write it
     if ((image->getPixelFormat() != GL_RGB) && writingJpeg)
     {
-        osg::notify(osg::NOTICE) << "[osgEarth::Cache] Warning: Cannot write non RGB image to JPEG" << std::endl;
+		//Take a reference so the converted image will be deleted
+		osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB( image );
+		osgDB::writeImageFile(*rgb.get(), filename);
     }
     else
     {

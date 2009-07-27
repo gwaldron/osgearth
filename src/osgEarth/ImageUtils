@@ -84,9 +84,15 @@ namespace osgEarth
         static bool isPowerOfTwo(const osg::Image* image);
 
         /**
-         *
+         * Gets a transparent, single pixel image used for a placeholder
          */
         static osg::Image* getEmptyImage();
+
+		/**
+		 *Converts the given image to RGB
+		 */
+		static osg::Image* convertToRGB(const osg::Image *image);
+			
     };
 }
 

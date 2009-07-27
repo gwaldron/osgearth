@@ -955,8 +955,8 @@ public:
 
             GDALRasterBand* bandGray = findBand(_warpedDS, GCI_GrayIndex);
 
-            //Determine the pixel format
-            GLenum pixelFormat = bandAlpha ? GL_RGBA : GL_RGB;
+            //The pixel format is always RGBA to support transparency
+            GLenum pixelFormat = GL_RGBA;
 
 
             if (bandRed && bandGreen && bandBlue)
@@ -994,12 +994,8 @@ public:
                         *(image->data(dst_col, dst_row) + 0) = red[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 1) = green[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 2) = blue[src_col + src_row * target_width];
-
-                        if (bandAlpha)
-                        {
-                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
-                        }
-                    }
+						*(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+					}
                 }
 
                 image->flipVertical();

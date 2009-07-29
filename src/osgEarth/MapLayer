@@ -1,0 +1,140 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAP_LAYER_H
+#define OSGEARTH_MAP_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+#include <osgEarth/Profile>
+#include <osgEarth/Caching>
+
+namespace osgEarth
+{
+    /**
+     * One layer in the map.
+     */
+    class OSGEARTH_EXPORT MapLayer : public osg::Referenced
+    {
+    public:
+        /**
+         * Map layer data types.
+         */
+        enum Type {
+            TYPE_IMAGE,
+            TYPE_HEIGHTFIELD
+        };
+
+    public:
+        /**
+         * Constructs a new map layer that will use a TileSource loaded from a
+         * plugin driver.
+         */
+        MapLayer(
+            const std::string& name,
+            Type type,
+            const std::string& driver,
+            const Properties& driverProps = Properties(),
+            const CacheConfig& caching = CacheConfig(),
+            const ProfileConfig& profile = ProfileConfig() );
+
+        /**
+         * Constructs a new map layer with a user-provided TileSource engine.
+         */
+        MapLayer(
+            const std::string& name,
+            Type type,
+            TileSource* source,
+            const CacheConfig& caching = CacheConfig(),
+            const ProfileConfig& profile = ProfileConfig() );
+
+        /**
+         * Gets the readable name of the map layer.
+         */
+        const std::string& getName() const;
+
+        /**
+         * Gets the layer type of the map layer.
+         */
+        const Type& getType() const;
+
+        /**
+         * Gets the name of the driver to use to create this map layer's TileSource engine.
+         */
+        const std::string& getDriver() const;
+
+        /**
+         * Gets the name/value properties for configuration of the driver.
+         */
+        const Properties& getDriverProperties() const;
+
+        /**
+         * Gets the caching setup for this map layer. By default, the layer will inherit
+         * caching behavior from the map to which it is added. This property overrides or
+         * customizes the map's cache settings.
+         */
+        const CacheConfig& getCacheConfig() const;
+
+        /**
+         * Gets the explicit profile setup for this map layer. By default, the layer will 
+         * try to automatically determine the Profile from the tile source. This property
+         * sets it explicitly instead.
+         */
+        const ProfileConfig& getProfileConfig() const;
+
+
+        void setMinLevel( unsigned int minLevel );
+
+        unsigned int getMinLevel() const;
+
+        void setMaxLevel( unsigned int maxLevel );
+
+        unsigned int getMaxLevel() const;
+
+        /**
+         * Gets the underlying TileSource engine that serves this map layer. Use with caution.
+         */
+        TileSource* getTileSource() const;
+
+    public:
+
+        /**
+         * Initializes this layer's underlying TileSource for use.
+         */
+        void setTileSource( TileSource* tileSource );
+
+    protected:
+        ~MapLayer() { }
+
+    private:
+        std::string _name;
+        Type        _type;
+        std::string _driver;
+        Properties  _driverProps;
+        osg::ref_ptr<TileSource> _tileSource;
+        CacheConfig _cacheConf;
+        ProfileConfig _profileConf;
+        unsigned int _minLevel, _maxLevel;
+    };
+
+
+    typedef std::vector< osg::ref_ptr<MapLayer> > MapLayerList;
+}
+
+#endif // OSGEARTH_MAP_LAYER_H

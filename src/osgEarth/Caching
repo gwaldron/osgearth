@@ -21,7 +21,6 @@
 #define OSGEARTH_CACHING_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/MapConfig>
 #include <osgEarth/TileSource>
 #include <osgEarth/TMS>
 
@@ -39,10 +38,90 @@
 namespace osgEarth
 {   
     /**
-    * A CachedTileSource acts as a proxy between a cache and an actual TileSource.
-    * As images and heightfields are requested from a CachedTileSource, it first
-    * consults the cache via the getCachedImage method and returns it
-    */
+     * Defines the properties for a cache.
+     */
+    class OSGEARTH_EXPORT CacheConfig
+    {
+    public:
+        enum CacheType
+        {
+            TYPE_UNDEFINED, // the config is undefined and should be ignored
+            TYPE_NONE,      // explicitly specify that no caching should occur
+            TYPE_TMS,       // cache to a OSGeo Tile Map Service structure
+            TYPE_TILECACHE  // cache to a MetaCarta Labs TileCache structure
+        };
+
+    public:
+        /**
+         * Constructs a new cache configuration
+         */
+        CacheConfig();
+
+        // Copy constructor
+        CacheConfig( const CacheConfig& rhs );
+
+        /**
+         * Returned True if this cache is well defined (not empty)
+         */
+        bool defined() const;
+
+        /**
+         * Gets the cache type identifier.
+         */
+        const CacheType& getType() const;
+
+        /**
+         * Sets the cache type identifier
+         */
+        void setType(const CacheType& type);
+
+        /**
+         * Gets the collection of name/value pairs for the cache. These will be particular
+         * to each cache type implementation.
+         */
+        Properties& getProperties();
+
+        /**
+         * Sets the collection of name/value pairs assoicated with the cache config.
+         */
+        const Properties& getProperties() const;
+
+        /**
+         * Sets whether the map engine should only pull tiles from the cache and not from
+         * an end tile source. Forces a sort of "offline" mode.
+         */
+        void setRunOffCacheOnly( bool value );
+
+        bool getRunOffCacheOnly() const;
+
+        /**
+         * Sets whether data that needs to be warped/reprojected into the map's profile
+         * should be warped prior to writing it to the cache.
+         */
+        void setReprojectBeforeCaching( bool value );
+
+        bool getReprojectBeforeCaching() const;
+
+        /**
+         * Inherits properties from the given CacheConfig
+         */
+        void inheritFrom( const CacheConfig& rhs );
+
+        std::string toString() const;
+
+    private:
+        CacheType       _type;
+        Properties      _properties;
+        bool            _runOffCacheOnly;
+        bool            _reprojectBeforeCaching;
+    };
+
+
+    /**
+     * A CachedTileSource acts as a proxy between a cache and an actual TileSource.
+     * As images and heightfields are requested from a CachedTileSource, it first
+     * consults the cache via the getCachedImage method and returns it
+     */
     class OSGEARTH_EXPORT CachedTileSource : public ChainedTileSource
     {
     public:

@@ -19,17 +19,16 @@
 
 #include <osgEarthUtil/FadeLayerNode>
 #include <osgEarthUtil/Common>
-
 #include <osg/Program>
-
 #include <osgUtil/CullVisitor>
-
+#include <OpenThreads/ScopedLock>
 #include <sstream>
 #include <list>
 
 
 using namespace osgEarth;
 using namespace osgEarthUtil;
+using namespace OpenThreads;
 
 
 char vert_source[] ="varying vec2 texCoord0;\n"
@@ -205,8 +204,8 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "}\n"
                     "\n";
 
-FadeLayerNode::FadeLayerNode(MapNode* mapNode):
-_mapNode(mapNode)
+FadeLayerNode::FadeLayerNode( Map* map ) :
+_map( map )
 {
     osg::Program* program = new osg::Program;
     program->addShader(new osg::Shader( osg::Shader::VERTEX, vert_source ) );
@@ -215,12 +214,13 @@ _mapNode(mapNode)
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
     getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 
-    if (_mapNode.valid())
+    if ( _map.valid() )
     {
         _callback = new Callback(this);
-        _mapNode->setSourceCallback( _callback.get() );
+        _map->addMapCallback( _callback.get() );
 
-        for (unsigned int i = 0; i < _mapNode->getNumImageSources(); ++i)
+        ScopedReadLock lock( _map->getMapDataMutex() );
+        for (unsigned int i = 0; i < _map->getImageMapLayers().size(); ++i)
         {
             setOpacity(i, 1.0f);
             setEnabled(i, true);
@@ -394,37 +394,39 @@ void FadeLayerNode::traverse(osg::NodeVisitor& nv)
     osg::Group::traverse(nv);
 }
 
-void FadeLayerNode::layerAdded(unsigned int index)
+void FadeLayerNode::onMapLayerAdded(osgEarth::MapLayer* layer, unsigned int index)
 {
     osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerAdded]" << std::endl;
     setOpacity(index, 1.0f);
     setEnabled(index, true);
 }
 
-void FadeLayerNode::layerRemoved(unsigned int index)
+void FadeLayerNode::onMapLayerRemoved(osgEarth::MapLayer* layer, unsigned int index)
 {
     osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
-    
-        //Copy the settings, skipping, the one that was just removed
-        int layerIndex = 0;
-        for (unsigned int i = 0; i < _enabled.size(); ++i)
-        {
-            if (i == index) continue;
-            bool enabled = getEnabled(i);
-            float opacity = getOpacity(i);
-            setOpacity(layerIndex, opacity);
-            setEnabled(layerIndex, enabled);
-            layerIndex++;
-        }
-        //Resize the lists to account for the removal of the Layer
-        resizeLists(_mapNode->getNumImageSources());
+
+    //Copy the settings, skipping, the one that was just removed
+    int layerIndex = 0;
+    for (unsigned int i = 0; i < _enabled.size(); ++i)
+    {
+        if (i == index) continue;
+        bool enabled = getEnabled(i);
+        float opacity = getOpacity(i);
+        setOpacity(layerIndex, opacity);
+        setEnabled(layerIndex, enabled);
+        layerIndex++;
+    }
+    //Resize the lists to account for the removal of the Layer
+    ScopedReadLock lock( _map->getMapDataMutex() );
+    resizeLists( _map->getImageMapLayers().size() );
 }
 
-void FadeLayerNode::layerMoved(unsigned int prevIndex, unsigned int newIndex)
+void FadeLayerNode::onMapLayerMoved(osgEarth::MapLayer* layer, unsigned int prevIndex, unsigned int newIndex)
 {
     osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
 
-    if (!_mapNode.valid()) return;
+    if ( !_map.valid() )
+        return;
 
     //Swap the settings
     bool enabled = getEnabled(prevIndex);

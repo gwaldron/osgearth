@@ -36,6 +36,119 @@ using namespace osgEarth;
 
 
 
+/************************************************************************/
+
+
+CacheConfig::CacheConfig() :
+_type( CacheConfig::TYPE_UNDEFINED ),
+_runOffCacheOnly( false ),
+_reprojectBeforeCaching( false )
+{
+    //NOP
+}
+
+CacheConfig::CacheConfig( const CacheConfig& rhs ) :
+_type( rhs._type ),
+_runOffCacheOnly( rhs._runOffCacheOnly ),
+_reprojectBeforeCaching( rhs._reprojectBeforeCaching ),
+_properties( rhs._properties )
+{
+    //NOP
+}
+
+bool
+CacheConfig::defined() const
+{
+    return _type != CacheConfig::TYPE_UNDEFINED; //_type.empty() && _properties.size() == 0;
+}
+
+const CacheConfig::CacheType&
+CacheConfig::getType() const
+{
+    return _type;
+}
+
+void
+CacheConfig::setType(const CacheConfig::CacheType& type)
+{
+    _type = type;
+}
+
+void
+CacheConfig::setRunOffCacheOnly( bool value ) {
+    _runOffCacheOnly = value;
+}
+
+bool
+CacheConfig::getRunOffCacheOnly() const {
+    return _runOffCacheOnly;
+}
+
+void 
+CacheConfig::setReprojectBeforeCaching( bool value ) {
+    _reprojectBeforeCaching = value;
+}
+
+bool 
+CacheConfig::getReprojectBeforeCaching() const {
+    return _reprojectBeforeCaching;
+}
+
+/**
+* Gets the collection of name/value pairs for the cache.
+*/
+Properties&
+CacheConfig::getProperties()
+{
+    return _properties;
+}
+
+const Properties& CacheConfig::getProperties() const
+{
+    return _properties;
+}
+
+void CacheConfig::inheritFrom(const CacheConfig& rhs)
+{
+    if ( _type != TYPE_NONE )
+    {
+        //Inherit the type if applicable:
+        if ( rhs.getType() != TYPE_UNDEFINED )
+        {
+            setType( rhs.getType() );
+        }
+
+        //Inherit the properites
+        for (Properties::const_iterator itr = rhs.getProperties().begin(); itr != rhs.getProperties().end(); ++itr)
+        {
+            getProperties()[itr->first] = itr->second;
+        }
+
+        setRunOffCacheOnly( rhs.getRunOffCacheOnly() );
+    }
+}
+
+std::string
+CacheConfig::toString() const
+{
+    if ( !defined() ) return "undefined";
+    if ( getType() == TYPE_NONE ) return "disabled";
+
+    std::stringstream buf;
+    buf << "type=" << getType() << ", "
+        << "reproject=" << getReprojectBeforeCaching() << ", "
+        << "cacheOnly=" << getRunOffCacheOnly();
+
+    for (Properties::const_iterator i = _properties.begin(); i != _properties.end(); i++ )
+        buf << ", " << i->first << "=" << i->second;   
+
+    return buf.str();
+}
+
+
+/*****************************************************************************/
+
+
 CachedTileSource::CachedTileSource(TileSource* tileSource, const osgDB::ReaderWriter::Options* options) :
 ChainedTileSource( tileSource, options )
 //TileSource(options),

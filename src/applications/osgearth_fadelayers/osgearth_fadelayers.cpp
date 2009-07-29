@@ -56,23 +56,32 @@ int main(int argc, char** argv)
   else
   {
       //Create the map dynamically
-      MapConfig mapConfig;
-      mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
-      osg::ref_ptr<MapNode> mapNode = new MapNode(mapConfig);
+      osg::ref_ptr<MapNode> mapNode = new MapNode();
 
       //Add the yahoo satellite layer
       {
-          SourceProperties props;
-          props["dataset"] = "satellite";
-          mapNode->addImageSource( SourceConfig("yahoo_sat", "yahoo", props)  );
+          osgEarth::Properties driverProps;
+          driverProps["dataset"] = "satellite";
+
+          mapNode->getMap()->addMapLayer( new MapLayer(
+              "yahoo_satellite",
+              MapLayer::TYPE_IMAGE,
+              "yahoo",
+              driverProps ) );
       }
 
       //Add the yahoo maps layer
       {
-          SourceProperties props;
-          props["dataset"] = "roads";
-          mapNode->addImageSource( SourceConfig("yahoo_roads", "yahoo", props ) );
+          osgEarth::Properties driverProps;
+          driverProps["dataset"] = "roads";
+
+          mapNode->getMap()->addMapLayer( new MapLayer(
+              "yahoo_roads",
+              MapLayer::TYPE_IMAGE,
+              "yahoo",
+              driverProps ) );
       }
+
       group->addChild(mapNode.get());
   }
 
@@ -82,10 +91,12 @@ int main(int argc, char** argv)
   Node* root = group;
   if (mapNode)
   {
-      FadeLayerNode* fadeLayerNode = new FadeLayerNode(mapNode);
+      FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap() );
+
+      unsigned int numImageLayers = mapNode->getMap()->getImageMapLayers().size();
 
       //Set all of the layer's opacity to 0.0 except for the first one
-      for (unsigned int i = 1; i < mapNode->getNumImageSources(); ++i)
+      for (unsigned int i = 1; i < numImageLayers; ++i)
       {
           fadeLayerNode->setOpacity(i, 0.0f);
       }
@@ -96,7 +107,7 @@ int main(int argc, char** argv)
 
 	  //Set the up elevation fade points
 	  double maxElevation = 4e6;
-	  for (unsigned int i = 0; i < mapNode->getNumImageSources(); ++i)
+	  for (unsigned int i = 0; i < numImageLayers; ++i)
 	  {
 		  callback->setElevation( i, maxElevation );
 		  maxElevation /= 2.0;

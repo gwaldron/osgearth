@@ -29,6 +29,109 @@
 using namespace osgEarth;
 
 
+/***********************************************************************/
+
+ProfileConfig::ProfileConfig():
+_minX(DBL_MAX),
+_minY(DBL_MAX),
+_maxX(-DBL_MAX),
+_maxY(-DBL_MAX),
+_empty(true)
+{
+    //NOP
+}
+
+ProfileConfig::ProfileConfig( const ProfileConfig& rhs ) :
+_minX( rhs._minX ),
+_minY( rhs._minY ),
+_maxX( rhs._maxX ),
+_maxY( rhs._maxY ),
+_empty( rhs._empty ),
+_srs( rhs._srs ),
+_namedProfile( rhs._namedProfile ),
+_refLayer( rhs._refLayer )
+{
+    //NOP
+}
+
+ProfileConfig::ProfileConfig( const std::string& namedProfile )
+{
+    _namedProfile = namedProfile;
+    _empty = false;
+}
+
+bool
+ProfileConfig::defined() const
+{
+    return !_empty;
+}
+
+const std::string&
+ProfileConfig::getNamedProfile() const
+{
+    return _namedProfile;
+}
+
+void
+ProfileConfig::setNamedProfile( const std::string& namedProfile)
+{
+    _namedProfile = namedProfile;
+    _empty = false;
+}
+
+const std::string&
+ProfileConfig::getRefLayer() const
+{
+    return _refLayer;
+}
+
+void
+ProfileConfig::setRefLayer(const std::string& refLayer)
+{
+    _refLayer = refLayer;
+    _empty = false;
+}
+
+const std::string&
+ProfileConfig::getSRS() const
+{
+    return _srs;
+}
+
+void
+ProfileConfig::setSRS(const std::string& srs)
+{
+    _srs = srs;
+    _empty = false;
+}
+
+bool ProfileConfig::areExtentsValid() const
+{
+    return _maxX >= _minX && _maxY >= _minY;
+}
+
+void
+ProfileConfig::getExtents(double &minX, double &minY, double &maxX, double &maxY) const
+{
+    minX = _minX;
+    minY = _minY;
+    maxX = _maxX;
+    maxY = _maxY;
+}
+
+void ProfileConfig::setExtents(double minX, double minY, double maxX, double maxY)
+{
+    _minX = minX;
+    _minY = minY;
+    _maxX = maxX;
+    _maxY = maxY;
+    _empty = false;
+}
+
+/***********************************************************************/
+
+
+
 // FACTORY METHODS:
 
 Profile*

@@ -21,7 +21,8 @@
 #define OSGEARTH_REGISTRY 1
 
 #include <osgEarth/Common>
-#include <osgEarth/MapConfig>
+#include <osgEarth/Caching>
+#include <osgEarth/Profile>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 

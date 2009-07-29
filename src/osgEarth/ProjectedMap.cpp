@@ -41,30 +41,34 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-ProjectedMap::ProjectedMap()
+ProjectedMapEngine::ProjectedMapEngine( const MapEngineProperties& props ) :
+MapEngine( props )
 {
     //NOP
 }
 
 
 osg::Node*
-ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
+ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
 {
-    ScopedReadLock lock( mapConfig.getSourceMutex() );
+    ScopedReadLock lock( map->getMapDataMutex() );
     double xmin, ymin, xmax, ymax;
     key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
-    bool empty_map = mapConfig.getImageSources().size() == 0 && mapConfig.getHeightFieldSources().size() == 0;
+    const MapLayerList& imageMapLayers = map->getImageMapLayers();
+    const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
+
+    bool empty_map = imageMapLayers.size() == 0 && hfMapLayers.size() == 0;
 
     GeoImageList image_tiles;
 
     //TODO: select/composite:
-    if ( mapConfig.getImageSources().size() > 0 )
+    if ( imageMapLayers.size() > 0 )
     {
         //Add an image from each image source
-        for (unsigned int i = 0; i < mapConfig.getImageSources().size(); ++i)
+        for (unsigned int i = 0; i < imageMapLayers.size(); ++i)
         {
-            TileSource* source = mapConfig.getImageSources()[i].get();
+            TileSource* source = imageMapLayers[i]->getTileSource(); //.get();
             GeoImage* image = NULL;
             if (source->isKeyValid(key))
             {
@@ -87,9 +91,9 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
     bool hasElevation = false;
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf = NULL;
-    if ( mapConfig.getHeightFieldSources().size() > 0 )
+    if ( hfMapLayers.size() > 0 )
     {
-        hf = createHeightField(mapConfig, key, false);
+        hf = createHeightField(map, key, false);
         hasElevation = hf.valid();
     }
 
@@ -108,11 +112,11 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
     }
    
     //Try to interpolate any missing image layers from parent tiles
-    for (unsigned int i = 0; i < mapConfig.getImageSources().size(); ++i)
+    for (unsigned int i = 0; i < imageMapLayers.size(); ++i)
     {
         if (!image_tiles[i].valid())
         {
-            TileSource* source = mapConfig.getImageSources()[i].get();
+            TileSource* source = imageMapLayers[i]->getTileSource(); //mapConfig.getImageSources()[i].get();
             if (source->isKeyValid(key))
             {
                 GeoImage* image = createValidGeoImage(source, key);
@@ -134,14 +138,14 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if (mapConfig.getHeightFieldSources().size() == 0)
+        if (hfMapLayers.size() == 0)
         {
             hf = createEmptyHeightField( key );
         }
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = createHeightField( mapConfig, key, true );
+            hf = createHeightField( map, key, true );
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "[osgEarth::ProjectedMap] Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -155,14 +159,14 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
     }
 
     //Scale the heightfield elevations from meters to degrees
-    if ( mapConfig.getProfile()->getSRS()->isGeographic() )
+    if ( map->getProfile()->getSRS()->isGeographic() )
     {
         scaleHeightFieldToDegrees( hf.get() );
     }
 
-    osgTerrain::Locator* geo_locator = mapConfig.getProfile()->getSRS()->createLocator(
+    osgTerrain::Locator* geo_locator = map->getProfile()->getSRS()->createLocator(
         xmin, ymin, xmax, ymax,
-        mapConfig.getProfile()->getSRS()->isGeographic() ); 
+        map->getProfile()->getSRS()->isGeographic() ); 
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( geo_locator );
@@ -177,7 +181,7 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
     tile->setDataVariance(osg::Object::DYNAMIC);
     tile->setTileID(key->getTileId());
 
-    if (hasElevation && mapConfig.getNormalizeEdges())
+    if (hasElevation && _engineProps.getNormalizeEdges())
     {
         //Attach an updatecallback to normalize the edges of TerrainTiles.
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
@@ -204,25 +208,24 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
             GeoImage* geo_image = image_tiles[i].get();
 
             //Special case for when the map is geographic and the image is Mercator
-            if ( mapConfig.getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
+            if ( map->getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
             {
                 //Transform the mercator extents to geographic
                 GeoExtent geog_ext = image_tiles[i]->getExtent().transform( image_tiles[i]->getExtent().getSRS()->getGeographicSRS() );
                 geog_ext.getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
-                img_locator = mapConfig.getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
+                img_locator = map->getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
             }
             else
             {
                 image_tiles[i]->getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
 
-                img_locator = mapConfig.getProfile()->getSRS()->createLocator(
+                img_locator = map->getProfile()->getSRS()->createLocator(
                     img_xmin, img_ymin, img_xmax, img_ymax,
-                    mapConfig.getProfile()->getSRS()->isGeographic() );
+                    map->getProfile()->getSRS()->isGeographic() );
             }
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
-            //osgTerrain::ImageLayer* img_layer = new osgEarth::osgEarthImageLayer(imageLayers[i]->getId(), geo_image->getImage() );
             img_layer->setLocator( img_locator.get() );
 
             tile->setColorLayer( layer, img_layer );
@@ -234,16 +237,16 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(xmin,ymin,0)).length();
-    double min_range = radius * mapConfig.getMinTileRangeFactor();
+    double min_range = radius * _engineProps.getMinTileRangeFactor();
 
     //Set the skirt height of the heightfield
-    hf->setSkirtHeight(radius * mapConfig.getSkirtRatio());
+    hf->setSkirtHeight(radius * _engineProps.getSkirtRatio());
 
     // see if we need to keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( centroid );
     plod->addChild( tile, min_range, max_range );
-    plod->setFileName( 1, createURI( mapConfig.getId(), key ) );
+    plod->setFileName( 1, createURI( map->getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
 
 #if USE_FILELOCATIONCALLBACK
@@ -256,7 +259,7 @@ ProjectedMap::createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* t
 }
 
 void
-ProjectedMap::scaleHeightFieldToDegrees(osg::HeightField *hf)
+ProjectedMapEngine::scaleHeightFieldToDegrees(osg::HeightField *hf)
 {
     //The number of degrees in a meter at the equator
     //TODO: adjust this calculation based on the actual EllipsoidModel.

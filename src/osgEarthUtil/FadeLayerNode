@@ -39,7 +39,7 @@ namespace osgEarthUtil
 		*@param map
 		*       The MapNode this FadeLayerNode will operate on.
 		*/
-        FadeLayerNode(osgEarth::MapNode* map);
+        FadeLayerNode(osgEarth::Map* map);
 
 		/**
 		*Gets the opacity of the given layer
@@ -62,32 +62,29 @@ namespace osgEarthUtil
         void setEnabled(unsigned int layer, bool enabled);
 
 		/**
-		*Gets the MapNode that this FadeLayerNode is operating on
+		*Gets the Map that this FadeLayerNode is operating on
 		*/
-        osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
+        osgEarth::Map* getMap() { return _map.get(); }
 
         virtual void traverse(osg::NodeVisitor& nv);
 
     protected:
 
-		virtual void layerAdded(unsigned int index);
-		virtual void layerRemoved(unsigned int index);
-		virtual void layerMoved(unsigned int prevIndex, unsigned int newIndex);
+        virtual void onMapLayerAdded(osgEarth::MapLayer* layer, unsigned int index);
+		virtual void onMapLayerRemoved(osgEarth::MapLayer* layer, unsigned int index);
+		virtual void onMapLayerMoved(osgEarth::MapLayer* layer, unsigned int prevIndex, unsigned int newIndex);
 
 
         friend struct Callback;
 
-        struct Callback : public osgEarth::MapNode::SourceCallback
+        struct Callback : public osgEarth::MapCallback
         {
         public:
-            Callback(FadeLayerNode* fadeLayerNode):
-              _fadeLayerNode(fadeLayerNode)
-            {
-            }
+            Callback(FadeLayerNode* fadeLayerNode): _fadeLayerNode(fadeLayerNode) { }
 
-            virtual void imageSourceAdded(osgEarth::TileSource* source, unsigned int index) { _fadeLayerNode->layerAdded(index);}
-            virtual void imageSourceRemoved(osgEarth::TileSource* source, unsigned int index) { _fadeLayerNode->layerRemoved(index);}
-            virtual void imageSourceMoved(osgEarth::TileSource* source, unsigned int prevIndex, unsigned int newIndex) { _fadeLayerNode->layerMoved(prevIndex, newIndex);}
+            void onMapLayerAdded(osgEarth::MapLayer* layer, unsigned int index) { _fadeLayerNode->onMapLayerAdded(layer, index);}
+            void onMapLayerRemoved(osgEarth::MapLayer* layer, unsigned int index) { _fadeLayerNode->onMapLayerRemoved(layer, index);}
+            void onMapLayerMoved(osgEarth::MapLayer* layer, unsigned int prevIndex, unsigned int newIndex) { _fadeLayerNode->onMapLayerMoved(layer, prevIndex, newIndex);}
 
             osg::observer_ptr<FadeLayerNode> _fadeLayerNode;
         };
@@ -102,7 +99,7 @@ namespace osgEarthUtil
 
         void updateStateSet();
 
-        osg::ref_ptr<osgEarth::MapNode> _mapNode;
+        osg::ref_ptr<osgEarth::Map> _map;
 
         osg::ref_ptr<Callback> _callback;
     };

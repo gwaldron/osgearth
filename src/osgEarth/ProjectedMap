@@ -21,7 +21,7 @@
 #define OSGEARTH_PROJECTED_MAP_ENGINE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/MapConfig>
+#include <osgEarth/Map>
 #include <osgEarth/MapEngine>
 
 namespace osgEarth
@@ -32,14 +32,14 @@ namespace osgEarth
      * coordinate systems like UTM as well as the "Geographic" projection, which
      * is really a simple flat projection in which x=long, y=lat.
      */
-    class ProjectedMap : public MapEngine
+    class ProjectedMapEngine : public MapEngine
     {
     public:
-        ProjectedMap( );
+        ProjectedMapEngine( const MapEngineProperties& props );
         
     protected: // Map interface
 
-        osg::Node* createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key );
+        osg::Node* createQuadrant( Map* map, osgTerrain::Terrain* terrain, const TileKey* key );
 
     protected:
         /**

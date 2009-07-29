@@ -123,7 +123,7 @@ ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height,
     // see whether this is a geocentric model:
     bool is_geocentric = _csn.valid() && _csn->getEllipsoidModel() != NULL;
 
-    const SpatialReference* srs = _mapNode->getProfile()->getSRS();
+    const SpatialReference* srs = _mapNode->getMap()->getProfile()->getSRS();
 
     // now build a matrix:
     if ( is_geocentric )

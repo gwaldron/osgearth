@@ -159,9 +159,16 @@ namespace osgEarth
     protected:
         virtual ~TileSource();
 
+
         /**
          * The Map calls this method ONCE so that the TileSource can
          * initialize its profile.
+         */
+        const Profile* initProfile( const Profile* mapProfile, const std::string& referenceURI );
+
+        /**
+         * Implement this method to create and return the profile that the map engine should use
+         * to query tiles from this source.
          */
         virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath ) =0;
         
@@ -182,12 +189,8 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _options;
 
-        const Profile* initProfile(
-            const Profile*     mapProfile,
-            const std::string& configPath );
-
-        friend class MapConfig;
-        friend class MapNode;
+        //friend class MapConfig;
+        friend class Map;
         friend class MapEngine;
         friend class CachedTileSource;
         friend class MemCachedTileSource;

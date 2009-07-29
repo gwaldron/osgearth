@@ -84,189 +84,192 @@ const unsigned int MASK_2D = 0xF0000000;
 //Simple hot tracking callback that changes the color of labels when the mouse enters and leaves
 struct HotTrackingCallback: public osgWidget::Callback {
     HotTrackingCallback(const osg::Vec4 &normalColor, const osg::Vec4 &hotColor):
-osgWidget::Callback(osgWidget::EventType(osgWidget::EVENT_MOUSE_ENTER | osgWidget::EVENT_MOUSE_LEAVE)),
-_normalColor(normalColor),
-_hotColor(hotColor)
-{
-}
-virtual bool operator()(osgWidget::Event& ev) {
-    if (ev.type == osgWidget::EVENT_MOUSE_ENTER)
-    {
-        ((osgWidget::Label*)ev.getWidget())->setFontColor(_hotColor.r(), _hotColor.g(), _hotColor.b(), _hotColor.a());
-    }
-    else if (ev.type == osgWidget::EVENT_MOUSE_LEAVE)
-    {
-        ((osgWidget::Label*)ev.getWidget())->setFontColor(_normalColor.r(), _normalColor.g(), _normalColor.b(), _normalColor.a());
-    }
-    return true;
-}
+        osgWidget::Callback(osgWidget::EventType(osgWidget::EVENT_MOUSE_ENTER | osgWidget::EVENT_MOUSE_LEAVE)),
+        _normalColor(normalColor),
+        _hotColor(hotColor) { }
 
-osg::Vec4 _normalColor;
-osg::Vec4 _hotColor;
+    virtual bool operator()(osgWidget::Event& ev) {
+        if (ev.type == osgWidget::EVENT_MOUSE_ENTER)
+        {
+            ((osgWidget::Label*)ev.getWidget())->setFontColor(_hotColor.r(), _hotColor.g(), _hotColor.b(), _hotColor.a());
+        }
+        else if (ev.type == osgWidget::EVENT_MOUSE_LEAVE)
+        {
+            ((osgWidget::Label*)ev.getWidget())->setFontColor(_normalColor.r(), _normalColor.g(), _normalColor.b(), _normalColor.a());
+        }
+        return true;
+    }
+
+    osg::Vec4 _normalColor;
+    osg::Vec4 _hotColor;
 };
 
 //Callback that toggles the visibility of a layer
 struct ToggleVisiblityCallback: public osgWidget::Callback {
     ToggleVisiblityCallback(FadeLayerNode* fadeLayerNode, unsigned int layerIndex):
-osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
-_fadeLayerNode(fadeLayerNode),
-_layerIndex(layerIndex)
-{
-}
-virtual bool operator()(osgWidget::Event& ev) {
-    if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
-    {
-        _fadeLayerNode->setEnabled(_layerIndex, !_fadeLayerNode->getEnabled(_layerIndex));
-    }
-    return true;
-}
+        osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
+        _fadeLayerNode(fadeLayerNode),
+        _layerIndex(layerIndex) { }
 
-osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
-unsigned int _layerIndex;
+    virtual bool operator()(osgWidget::Event& ev) {
+        if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
+        {
+            _fadeLayerNode->setEnabled(_layerIndex, !_fadeLayerNode->getEnabled(_layerIndex));
+        }
+        return true;
+    }
+
+    osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
+    unsigned int _layerIndex;
 };
 
 //Callback that increases/decreases the opacity of a layer
 struct OpacityCallback: public osgWidget::Callback
 {
     OpacityCallback(FadeLayerNode* fadeLayerNode, unsigned int layerIndex, float opacityDelta):
-osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
-_fadeLayerNode(fadeLayerNode),
-_layerIndex(layerIndex),
-_opacityDelta(opacityDelta)
-{
-}
-virtual bool operator()(osgWidget::Event& ev) {
-    if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
-    {
-        _fadeLayerNode->setOpacity(_layerIndex, _fadeLayerNode->getOpacity(_layerIndex) + _opacityDelta);
-    }
-    return true;
-}
+        osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
+        _fadeLayerNode(fadeLayerNode),
+        _layerIndex(layerIndex),
+        _opacityDelta(opacityDelta) { }
 
-osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
-unsigned int _layerIndex;
-float _opacityDelta;
+    virtual bool operator()(osgWidget::Event& ev) {
+        if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
+        {
+            _fadeLayerNode->setOpacity(_layerIndex, _fadeLayerNode->getOpacity(_layerIndex) + _opacityDelta);
+        }
+        return true;
+    }
+
+    osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
+    unsigned int _layerIndex;
+    float _opacityDelta;
 };
 
 //Callback that removes a Layer
 struct RemoveLayerCallback: public osgWidget::Callback
 {
-    RemoveLayerCallback(MapNode* mapNode, osgViewer::View* view, unsigned int layerIndex):
-osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
-_mapNode(mapNode),
-_view(view),
-_layerIndex(layerIndex)
-{
-}
-virtual bool operator()(osgWidget::Event& ev) {
-    if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
-    {
-        _view->getDatabasePager()->clear();
-        _mapNode->removeImageSource( _layerIndex );
-        hudDirty = true;
-    }
-    return true;
-}
+    RemoveLayerCallback(Map* map, osgViewer::View* view, unsigned int layerIndex):
+        osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
+        _map( map ),
+        _view(view),
+        _layerIndex(layerIndex) { }
 
-osg::ref_ptr<MapNode> _mapNode;
-unsigned int _layerIndex;
-osgViewer::View* _view;
+    virtual bool operator()(osgWidget::Event& ev) {
+        if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
+        {
+            _view->getDatabasePager()->clear();
+            _map->removeMapLayer( _map->getImageMapLayers()[_layerIndex] );
+            //_mapNode->removeImageSource( _layerIndex );
+            hudDirty = true;
+        }
+        return true;
+    }
+
+    osg::ref_ptr<Map> _map;
+    unsigned int _layerIndex;
+    osgViewer::View* _view;
 };
 
 //Callback that removes a Layer
 struct MoveLayerCallback: public osgWidget::Callback
 {
-    MoveLayerCallback(MapNode* mapNode, osgViewer::View* view, unsigned int layerIndex, bool up):
-osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
-_mapNode(mapNode),
-_view(view),
-_layerIndex(layerIndex),
-_up(up)
-{
-}
-virtual bool operator()(osgWidget::Event& ev) {
-    if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
-    {
-        _view->getDatabasePager()->clear();
-        int dir = _up ? 1 : -1;
-        unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _mapNode->getNumImageSources()-1u);
-        _mapNode->moveImageSource( _layerIndex, newPosition );
-        hudDirty = true;
-    }
-    return true;
-}
+    MoveLayerCallback(Map* map, osgViewer::View* view, unsigned int layerIndex, bool up):
+        osgWidget::Callback(osgWidget::EVENT_MOUSE_PUSH),
+        _map(map),
+        _view(view),
+        _layerIndex(layerIndex),
+        _up(up) { }
 
-osg::ref_ptr<MapNode> _mapNode;
-osgViewer::View* _view;
-unsigned int _layerIndex;
-bool _up;
+    virtual bool operator()(osgWidget::Event& ev) {
+        if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
+        {
+            _view->getDatabasePager()->clear();
+            int dir = _up ? 1 : -1;
+            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _map->getImageMapLayers().size()-1u);
+            //_map->moveImageSource( _layerIndex, newPosition );
+            MapLayer* layer = _map->getImageMapLayers()[_layerIndex];
+            _map->moveMapLayer( layer, newPosition );
+            hudDirty = true;
+        }
+        return true;
+    }
+
+    osg::ref_ptr<Map> _map;
+    osgViewer::View* _view;
+    unsigned int _layerIndex;
+    bool _up;
 };
 
 class AddLayerButton : public osgWidget::Label
 {
 public:
-    AddLayerButton(MapNode* mapNode, osgViewer::View* view, SourceConfig sourceConfig):
+    AddLayerButton(Map* map, osgViewer::View* view, MapLayer* layer) :
       osgWidget::Label("",""),
-          _mapNode(mapNode),
+          _map(map),
           _view(view),
-          _sourceConfig(sourceConfig)
+          _layer(layer)
       {
           setEventMask(osgWidget::EVENT_ALL);
           setFont("fonts/vera.ttf");
           setColor(1.0f, 1.0f, 1.0f, 0.0f);
           setFontSize(textSize);
           setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-          setLabel("Add " + sourceConfig.getName());
+          setLabel("Add " + layer->getName());
           addCallback(new HotTrackingCallback(normalColor, hotColor));
           getText()->setBackdropType(osgText::Text::OUTLINE);
       }
 
      virtual bool mousePush(double, double, osgWidget::WindowManager*) {
          _view->getDatabasePager()->clear();
-         _mapNode->addImageSource( _sourceConfig );
-         hudDirty = true;
-        return true;
-    }
+         _map->addMapLayer( _layer );
+         //_mapNode->addImageSource( _sourceConfig );
+          hudDirty = true;
+         return true;
+     }
 
-     osg::ref_ptr<MapNode> _mapNode;
-     SourceConfig _sourceConfig;
+     osg::ref_ptr<Map> _map;
+     osg::ref_ptr<MapLayer> _layer;
      osgViewer::View* _view;
      osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
 };
 
-void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerNode, MapNode* mapNode, osgViewer::View* view)
+void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerNode, Map* map, osgViewer::View* view)
 {
     osgWidget::Box* addLayersBox = new osgWidget::Box("AddLayersBox", osgWidget::Box::VERTICAL);
     
     // ESRI reference labels
     {
-        SourceConfig conf( "ESRI Boundaries", "arcgis" );
-        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
+        osgEarth::Properties conf;
+        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer"; 
+        addLayersBox->addWidget( new AddLayerButton( map, view,
+            new MapLayer( "ESRI Boundaries", MapLayer::TYPE_IMAGE, "arcgis", conf ) ) );
     }
 
     // ArcGIS transportation layer:
     {
-        SourceConfig conf( "ESRI Transportation", "arcgis" );
+        osgEarth::Properties conf;
         conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
+        addLayersBox->addWidget( new AddLayerButton(map, view,
+            new MapLayer( "ESRI Transportation", MapLayer::TYPE_IMAGE, "arcgis", conf ) ) );
     }
 
     // OpenStreetMap:
     {
-        SourceConfig conf( "OpenStreetMap", "tms" );
+        osgEarth::Properties conf;
         conf["url"] = "http://tile.openstreetmap.org/";
         conf["format"] = "png";
         conf["tms_type"] = "google";
-        conf.setProfileConfig( ProfileConfig( "global-mercator" ) );
-        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
+        ProfileConfig profileConf( "global-mercator" );
+        addLayersBox->addWidget( new AddLayerButton( map, view, 
+            new MapLayer( "OpenStreetMap", MapLayer::TYPE_IMAGE, "tms", conf, CacheConfig(), profileConf ) ) );
     }
 
     // ArcGIS imagery:
     {
-        SourceConfig conf( "ESRI Imagery", "arcgis" );
+        osgEarth::Properties conf;
         conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton(mapNode, view, conf) );
+        addLayersBox->addWidget( new AddLayerButton(map, view,
+            new MapLayer( "ESRI Imagery", MapLayer::TYPE_IMAGE, "arcgis", conf ) ) );
     }
 
     addLayersBox->getBackground()->setColor(1,0,0,0.3);
@@ -278,115 +281,118 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 class Line : public osgWidget::Box
 {
 public:
-    Line(MapNode* mapNode, FadeLayerNode* fadeLayerNode, osgViewer::View* view, unsigned int layerIndex):
-_mapNode(mapNode),
-_fadeLayerNode(fadeLayerNode),
-_layerIndex(layerIndex),
-_view(view),
-osgWidget::Box("", osgWidget::Box::HORIZONTAL)
-{
-    //Create the number string
-    _lblNum = createLabel();
-    addWidget(_lblNum.get());
-
-    //Create a button to remove the layer
-    _lblRemove = createLabel();
-    _lblRemove->setLabel("X");
-    _lblRemove->addCallback(new RemoveLayerCallback(mapNode, view, _layerIndex));
-    addWidget(_lblRemove.get());
-
-    //Add a label to turn down the opacity
-    _lblOpacityDown = createLabel();
-    _lblOpacityDown->setLabel("<");        
-    _lblOpacityDown->addCallback(new OpacityCallback(_fadeLayerNode, _layerIndex, -0.1));
-    addWidget(_lblOpacityDown.get());
-
-    //Add a label to turn the opacity up
-    _lblOpacityUp = createLabel();
-    _lblOpacityUp->setLabel(">");
-    _lblOpacityUp->addCallback(new OpacityCallback(_fadeLayerNode, _layerIndex, 0.1));
-    addWidget(_lblOpacityUp.get());
-
-    //Create a button to move the layer up
-    _lblMoveUp = createLabel();
-    _lblMoveUp->setLabel("Up");
-    _lblMoveUp->addCallback(new MoveLayerCallback(mapNode, view, _layerIndex, true));
-    addWidget(_lblMoveUp.get());
-
-    //Create a button to move the layer down
-    _lblMoveDown = createLabel();
-    _lblMoveDown->setLabel("Down");
-    _lblMoveDown->addCallback(new MoveLayerCallback(mapNode, view, _layerIndex, false));
-    addWidget(_lblMoveDown.get());
-
-    //Add a label with the name of the layer, clicking on the layer 
-    _lblName = createLabel();
-    _lblName->addCallback(new ToggleVisiblityCallback(fadeLayerNode, _layerIndex));
-    addWidget(_lblName.get());
-
-    getBackground()->setColor(0,0,0,0);
-
-    updateText();
-}
-
-void updateText()
-{
-    TileSource* source = _mapNode->getImageSource( _layerIndex );
-    if (source)
+    Line(Map* map, FadeLayerNode* fadeLayerNode, osgViewer::View* view, unsigned int layerIndex):
+        _map(map),
+        _fadeLayerNode(fadeLayerNode),
+        _layerIndex(layerIndex),
+        _view(view),
+        osgWidget::Box("", osgWidget::Box::HORIZONTAL)
     {
-        std::stringstream ss;
-        unsigned int index = (_mapNode->getNumImageSources() - _layerIndex);
-        ss << index << ") ";
-        _lblNum->setLabel(ss.str());
-        _lblName->setLabel( source->getName());
+        //Create the number string
+        _lblNum = createLabel();
+        addWidget(_lblNum.get());
+
+        //Create a button to remove the layer
+        _lblRemove = createLabel();
+        _lblRemove->setLabel("X");
+        _lblRemove->addCallback(new RemoveLayerCallback(_map, view, _layerIndex));
+        addWidget(_lblRemove.get());
+
+        //Add a label to turn down the opacity
+        _lblOpacityDown = createLabel();
+        _lblOpacityDown->setLabel("<");        
+        _lblOpacityDown->addCallback(new OpacityCallback(_fadeLayerNode, _layerIndex, -0.1));
+        addWidget(_lblOpacityDown.get());
+
+        //Add a label to turn the opacity up
+        _lblOpacityUp = createLabel();
+        _lblOpacityUp->setLabel(">");
+        _lblOpacityUp->addCallback(new OpacityCallback(_fadeLayerNode, _layerIndex, 0.1));
+        addWidget(_lblOpacityUp.get());
+
+        //Create a button to move the layer up
+        _lblMoveUp = createLabel();
+        _lblMoveUp->setLabel("Up");
+        _lblMoveUp->addCallback(new MoveLayerCallback(_map, view, _layerIndex, true));
+        addWidget(_lblMoveUp.get());
+
+        //Create a button to move the layer down
+        _lblMoveDown = createLabel();
+        _lblMoveDown->setLabel("Down");
+        _lblMoveDown->addCallback(new MoveLayerCallback(_map, view, _layerIndex, false));
+        addWidget(_lblMoveDown.get());
+
+        //Add a label with the name of the layer, clicking on the layer 
+        _lblName = createLabel();
+        _lblName->addCallback(new ToggleVisiblityCallback(fadeLayerNode, _layerIndex));
+        addWidget(_lblName.get());
+
+        getBackground()->setColor(0,0,0,0);
+
+        updateText();
     }
-}
 
-osgWidget::Label* createLabel()
-{
-    osgWidget::Label* label = new osgWidget::Label("", "");
-    label->setFont("fonts/vera.ttf");
-    label->setColor(1.0f, 1.0f, 1.0f, 0.0f);
-    label->setFontSize(textSize);
-    label->setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-    label->getText()->setBackdropType(osgText::Text::OUTLINE);
-    label->setEventMask(osgWidget::EVENT_ALL);  
-    label->setPadding(3.0f);
-    label->addCallback(new HotTrackingCallback(normalColor, hotColor));
-    return label;
-}
+    void updateText()
+    {
+        if ( _layerIndex < _map->getImageMapLayers().size() )
+        {
+            TileSource* source = _map->getImageMapLayers()[_layerIndex]->getTileSource(); //Node->getImageSource( _layerIndex );
+            if (source)
+            {
+                std::stringstream ss;
+                unsigned int index = (_map->getImageMapLayers().size() - _layerIndex);
+                ss << index << ") ";
+                _lblNum->setLabel(ss.str());
+                _lblName->setLabel( source->getName());
+            }
+        }
+    }
 
-osg::ref_ptr<osgWidget::Label> _lblName;
-osg::ref_ptr<osgWidget::Label> _lblNum;
-osg::ref_ptr<osgWidget::Label> _lblMoveUp;
-osg::ref_ptr<osgWidget::Label> _lblMoveDown;
-osg::ref_ptr<osgWidget::Label> _lblOpacityUp;
-osg::ref_ptr<osgWidget::Label> _lblOpacityDown;
-osg::ref_ptr<osgWidget::Label> _lblRemove;
-unsigned int _layerIndex;
-osg::ref_ptr<MapNode> _mapNode;
-osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
-osgViewer::View* _view;
+    osgWidget::Label* createLabel()
+    {
+        osgWidget::Label* label = new osgWidget::Label("", "");
+        label->setFont("fonts/vera.ttf");
+        label->setColor(1.0f, 1.0f, 1.0f, 0.0f);
+        label->setFontSize(textSize);
+        label->setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
+        label->getText()->setBackdropType(osgText::Text::OUTLINE);
+        label->setEventMask(osgWidget::EVENT_ALL);  
+        label->setPadding(3.0f);
+        label->addCallback(new HotTrackingCallback(normalColor, hotColor));
+        return label;
+    }
+
+    osg::ref_ptr<osgWidget::Label> _lblName;
+    osg::ref_ptr<osgWidget::Label> _lblNum;
+    osg::ref_ptr<osgWidget::Label> _lblMoveUp;
+    osg::ref_ptr<osgWidget::Label> _lblMoveDown;
+    osg::ref_ptr<osgWidget::Label> _lblOpacityUp;
+    osg::ref_ptr<osgWidget::Label> _lblOpacityDown;
+    osg::ref_ptr<osgWidget::Label> _lblRemove;
+    unsigned int _layerIndex;
+    osg::ref_ptr<Map> _map;
+    osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
+    osgViewer::View* _view;
 };
 
 class TOC
 {
 public:
-    TOC(osgWidget::WindowManager* wm, MapNode* mapNode, FadeLayerNode* fadeLayerNode, osgViewer::View* view):
+    TOC(osgWidget::WindowManager* wm, Map* map, FadeLayerNode* fadeLayerNode, osgViewer::View* view):
       _wm(wm),
-          _mapNode(mapNode),
-          _fadeLayerNode(fadeLayerNode),
-          _view(view)
-      {
+      _map(map),
+      _fadeLayerNode(fadeLayerNode),
+      _view(view)
+    {
           //Create the lines
           unsigned int maxLayers = 4;
           for (unsigned int i = 0; i < maxLayers; ++i)
           {
-              Line* line = new Line(_mapNode,fadeLayerNode, _view, i);
+              Line* line = new Line(_map, fadeLayerNode, _view, i);
               _lines.push_back(line);
           }
           update();
-      }
+    }
 
       void update()
       {
@@ -396,7 +402,7 @@ public:
               _wm->removeChild(_lines[i].get());
           }
 
-          for (unsigned int i = 0; i < _mapNode->getNumImageSources(); ++i)
+          for (unsigned int i = 0; i < _map->getImageMapLayers().size(); ++i)
           {
               Line* line = i < _lines.size() ? _lines[i] : NULL;
               if (line)
@@ -412,7 +418,7 @@ public:
       std::vector<osg::ref_ptr<Line> > _lines;
 
       osgWidget::WindowManager* _wm;
-      MapNode* _mapNode;
+      Map* _map;
       FadeLayerNode* _fadeLayerNode;
       osgViewer::View* _view;
 };
@@ -456,27 +462,26 @@ int main(int argc, char** argv)
     //    return 1;
     //}
 
-    MapNode* map = new MapNode();
-    osg::ref_ptr<osg::Node> loadedModel = map;
+    MapNode* mapNode = new MapNode();
+    osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
-    MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());
-    if (!mapNode)
-    {
-        osg::notify(osg::NOTICE) << "Please load a .earth file" << std::endl;
-        return 1;
-    }
+    //MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());
+    //if (!mapNode)
+    //{
+    //    osg::notify(osg::NOTICE) << "Please load a .earth file" << std::endl;
+    //    return 1;
+    //}
 
-    FadeLayerNode* fadeLayerNode = new FadeLayerNode(mapNode);
+    FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap() );
     fadeLayerNode->addChild(loadedModel.get());
     group->addChild(fadeLayerNode);
 
 
-    for (unsigned int i = 0; i < mapNode->getNumImageSources(); ++i)
+    for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
     {
         fadeLayerNode->setOpacity(i, 1.0f);
         fadeLayerNode->setEnabled(i, true);
     }
-
 
     //Setup the osgWidget interface
     osgWidget::WindowManager* wm = new osgWidget::WindowManager(
@@ -484,11 +489,10 @@ int main(int argc, char** argv)
         800.0f,
         800.0f,
         MASK_2D,
-        0
-        );
+        0 );
 
-    TOC toc(wm, mapNode, fadeLayerNode, &viewer);
-    createAddLayersMenu(wm, fadeLayerNode, mapNode, &viewer);
+    TOC toc(wm, mapNode->getMap(), fadeLayerNode, &viewer);
+    createAddLayersMenu(wm, fadeLayerNode, mapNode->getMap(), &viewer);
     group->setDataVariance(osg::Object::DYNAMIC);
     group->setUpdateCallback(new TOCUpdateCallback(&toc));
 

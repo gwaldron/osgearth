@@ -18,10 +18,12 @@
 */
 
 #include <osgEarthUtil/ElevationFadeCallback>
+#include <OpenThreads/ScopedLock>
 
 using namespace osg;
 using namespace osgEarth;
 using namespace osgEarthUtil;
+using namespace OpenThreads;
 
 ElevationFadeCallback::ElevationFadeCallback():
 _firstFrame(true),
@@ -46,9 +48,15 @@ void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 				double delta = osg::minimum(deltaTime / _animationTime, 1.0);
 
+                unsigned int numImageSources = 0;
+                {
+                    ScopedReadLock lock( fadeLayerNode->getMap()->getMapDataMutex() );
+                    numImageSources = fadeLayerNode->getMap()->getImageMapLayers().size();
+                }
+
 				//Determine which layer should be active
-				unsigned int activeLayer = fadeLayerNode->getMapNode()->getNumImageSources()-1;
-				for (unsigned int i = 0; i < fadeLayerNode->getMapNode()->getNumImageSources(); ++i)
+				unsigned int activeLayer = numImageSources-1;
+				for (unsigned int i = 0; i < numImageSources; ++i)
 				{
 					if (_currentElevation > getElevation(i))
 					{
@@ -58,7 +66,7 @@ void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 				}
 
 				bool dirtyLayers = false;
-				for (unsigned int i = 0; i < fadeLayerNode->getMapNode()->getNumImageSources(); ++i)
+				for (unsigned int i = 0; i < numImageSources; ++i)
 				{
 					//If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
 					//Otherwise, we want the layers to go to 1.0

@@ -17,41 +17,42 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_GEOCENTRIC_MAP_ENGINE_H
-#define OSGEARTH_GEOCENTRIC_MAP_ENGINE_H 1
+#ifndef OSGEARTH_EARTH_FILE_H
+#define OSGEARTH_EARTH_FILE_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/MapEngine>
 #include <osgEarth/Map>
-#include <osg/Node>
-#include <osg/ClusterCullingCallback>
+#include <osgEarth/MapEngineProperties>
+#include <iostream>
 
 namespace osgEarth
 {
     /**
-     * A Map that generates geocentric (round-earth/global) scene graph components.
-     *
-     * This is a internal class - do not export
+     * Utility for reading and writing an XML .earth file.
      */
-    class GeocentricMapEngine : public MapEngine
+    class OSGEARTH_EXPORT EarthFile
     {
     public:
-        /**
-         * Constructs a new geocentric map
-         */
-        GeocentricMapEngine( const MapEngineProperties& props );
-        
-    protected: // Map interface
+        EarthFile();
+        EarthFile( Map* map, const MapEngineProperties& props );
 
-        virtual osg::Node* createQuadrant(
-            Map* map, 
-            osgTerrain::Terrain* terrain,
-            const TileKey* key );
+        void setMap( Map* map );
+        void setMapEngineProperties( const MapEngineProperties& props );
 
-        static osg::ClusterCullingCallback* createClusterCullingCallback(
-            osgTerrain::TerrainTile* tile, 
-            osg::EllipsoidModel* et);       
+        Map* getMap();
+        MapEngineProperties& getMapEngineProperties();
+
+        bool readXML( const std::string& location );
+        bool readXML( std::istream& input, const std::string& referencePath );
+
+        bool writeXML( const std::string& location );
+        bool writeXML( std::ostream& output );
+            
+    private:
+        osg::ref_ptr<Map> _map;
+        MapEngineProperties _engineProps;
     };
 }
 
-#endif // OSGEARTH_GEOCENTRIC_MAP_ENGINE_H
+#endif // OSGEARTH_EARTH_FILE_H
+

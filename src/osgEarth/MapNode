@@ -21,8 +21,10 @@
 #define OSGEARTH_MAPNODE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Map>
+#include <osgEarth/MapLayer>
 #include <osgEarth/MapEngine>
-#include <osgEarth/MapConfig>
+#include <osgEarth/MapEngineProperties>
 #include <osgEarth/EarthTerrain>
 #include <osgDB/ReaderWriter>
 #include <osg/CoordinateSystemNode>
@@ -30,215 +32,85 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT MapNode : public osg::Group
+    class OSGEARTH_EXPORT MapNode : public osg::Group //, public MapCallback
     {
     public:
         /**
-         * Creates an empty map node.
+         * Creates an empty map node. The object will create an empty Map internally
+         * that you can access by calling getMap().
          */
         MapNode();
 
+        MapNode( const MapEngineProperties& props );
+
         /**
-        * Creates a new MapNode from the given MapConfig.  This allows you to
-        * programatically create a MapConfig and create a paging scene graph out of it.
-        */
-        MapNode( const MapConfig& conf );
+         * Creates a new MapNode that will render layers from the specified Map.
+         */
+        MapNode( Map* map );
+
+        MapNode( Map* map, const MapEngineProperties& props );
 
     public:
 
         /**
-        * Gets the ID for this MapNode
-        */
+         * Gets the ID for this MapNode
+         */
         unsigned int getId() const;
 
         /**
-        * Gets the mapconfig
-        */
-        const MapConfig& getMapConfig() const { return _mapConfig; }
+         * Gets the Map that this MapNode is rendering.
+         */
+        Map* getMap();
 
         /**
-        *Gets the registered MapNode by Id
-        */
+         * Gets the registered MapNode by Id
+         */
         static MapNode* getMapNodeById(unsigned int id);
 
         /**
-        * Returns true if the configuration used to create this Map node was valid
-        * and loaded as expected.
-        */
-        bool isOK() const;
-
-        /**
-        * Finds the topmost Map node in the specified scene graph, or returns NULL if
-        * no Map node exists in the graph.
-        */
+         * Finds the topmost Map node in the specified scene graph, or returns NULL if
+         * no Map node exists in the graph.
+         */
         static MapNode* findMapNode( osg::Node* graph );
 
         /**
-        * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
-        * CSN exists in the graph.
-        */
+         * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
+         * CSN exists in the graph.
+         */
         static osg::CoordinateSystemNode* findCoordinateSystemNode( osg::Node* graph );        
 
         /**
-        * Gets the profile of the underlying map
-        */
-        const Profile* getProfile() const;
-
-        /**
-        * Returns true if the realized terrain model is geocentric, false if
-        * it is flat/projected.
-        */
+         * Returns true if the realized terrain model is geocentric, false if
+         * it is flat/projected.
+         */
         bool isGeocentric() const;
 
         /**
-        * Gets the underlying map engine that generates data for this map node.
-        */
+         * Gets the underlying map engine that generates data for this map node.
+         */
         MapEngine* getEngine() const;
 
         /**
-        * Gets the number of terrains that this MapNode is managing
-        */
+         * Gets the number of terrains that this MapNode is managing
+         */
         unsigned int getNumTerrains() const;
 
         /**
-        * Gets the terrain
-        */
+         * Gets one of the terrains in this map node.
+         */
         EarthTerrain* getTerrain( unsigned int i ) const;
 
-        /**
-        *Callback used to notify listeners of source changes
-        */
-        struct SourceCallback : public osg::Referenced
-        {
-        public:
-            /**
-            *An image source was added
-            *@param source
-            *     The TileSource that was added
-            *@param index
-            *     The new index of the added TileSource
-            */
-            virtual void imageSourceAdded(TileSource* source, unsigned int index) {}
 
-            /**
-            *An image source was removed
-            *@param source
-            *     The TileSource that was removed
-            *@param index
-            *     The previous index of the added TileSource
-            */
-            virtual void imageSourceRemoved(TileSource* source, unsigned int index) {}
+    public: // MapCallback
 
-            /**
-            *An image source was moved
-            *@param source
-            *     The TileSource that was moved
-            *@param prevIndex
-            *     The previous index of the added TileSource
-            *@param newIndex
-            *     The new index of the added TileSource
-            */
-            virtual void imageSourceMoved(TileSource* source, unsigned int prevIndex, unsigned int newIndex) {}
+        void onMapProfileEstablished( const Profile* profile );
 
-            /**
-            *A heightfield source was added
-            *@param source
-            *     The TileSource that was added
-            *@param index
-            *     The new index of the added TileSource
-            */
-            virtual void heightfieldSourceAdded(TileSource* source, unsigned int index) {}
-            
-            /**
-            *A heightfield source was removed
-            *@param source
-            *     The TileSource that was removed
-            *@param index
-            *     The previous index of the added TileSource
-            */
-            virtual void heightfieldSourceRemoved(TileSource* source, unsigned int index) {}
+        void onMapLayerAdded( MapLayer*, unsigned int index );
 
-            /**
-            *A heightfield source was moved
-            *@param source
-            *     The TileSource that was moved
-            *@param prevIndex
-            *     The previous index of the added TileSource
-            *@param newIndex
-            *     The new index of the added TileSource
-            */
-            virtual void heightfieldSourceMoved(TileSource* source, unsigned int prevIndex, unsigned int newIndex) {}
-        };
+        void onMapLayerRemoved( MapLayer* layer, unsigned int index );
 
-        /**
-         *Gets the SourceCallback of this MapNode
-        */
-        SourceCallback* getSourceCallback() const {return _sourceCallback.get();}
+        void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex );
 
-        /**
-         *Sets the SourceCallback of this MapNode
-        */
-        void setSourceCallback(SourceCallback* sourceCallback) { _sourceCallback = sourceCallback;}
-
-        /**
-        *Adds an image source with the given SourceConfig
-        */
-        void addImageSource( const SourceConfig& sourceConfig );
-
-        /**
-        *Removes the image source at the given index
-        */
-        void removeImageSource( unsigned int index );
-
-        /**
-        *Moves the image source at the given index to the new position
-        */
-        void moveImageSource( unsigned int index, unsigned int position );
-
-        /**
-        *Gets the number of image sources
-        */
-        unsigned int getNumImageSources() const;
-
-        /**
-        *Gets the index of the given image TileSource
-        */
-        unsigned int getImageSourceIndex(TileSource* source) const;
-
-        /**
-        *Gets the image TileSource at the given index
-        */
-        TileSource* getImageSource( unsigned int index ) const;
-
-        /**
-        *Adds a HeightField source with the given SourceConfig
-        */
-        void addHeightFieldSource( const SourceConfig& sourceConfig );
-
-        /**
-        *Removes the heightfield source at the given index
-        */
-        void removeHeightFieldSource( unsigned int index );
-
-        /**
-        *Moves the heightfield source at the given index to the new position
-        */
-        void moveHeightFieldSource( unsigned int index, unsigned int position );
-
-        /**
-        *Gets the number of heightfield sources
-        */
-        unsigned int getNumHeightFieldSources() const;
-
-        /**
-        *Gets the index of the given heightfield TileSource
-        */
-        unsigned int getHeightFieldSourceIndex(TileSource* source) const;
-
-        /**
-        *Gets the heightfield source at the given index
-        */
-        TileSource* getHeightFieldSource( unsigned int index ) const;
 
     protected:        
         virtual ~MapNode();
@@ -255,22 +127,33 @@ namespace osgEarth
 
         unsigned int _id;
 
-        TileSource* createTileSource( const SourceConfig& sourceConfig );
+        TileSource* installTileSource( MapLayer* layer ); //( const SourceConfig& sourceConfig );
 
         osg::ref_ptr<MapEngine> _engine;
 
         void updateStateSet();
 
-        MapConfig _mapConfig;
+        osg::ref_ptr<Map> _map;
+
+        MapEngineProperties _engineProps;
+        //MapConfig _mapConfig;
 
         //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
-        std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > _terrains;
+        typedef std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > TerrainVec;
+        TerrainVec _terrains;
 
         static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
 
-        osg::ref_ptr< SourceCallback > _sourceCallback;
+        //osg::ref_ptr< SourceCallback > _sourceCallback;
 
         void init();
+        
+        void addImageTileSource( TileSource* source );
+        void addHeightFieldTileSource( TileSource* source );
+        void removeImageTileSource( unsigned int index );
+        void removeHeightFieldTileSource( unsigned int index );
+        void moveImageTileSource( unsigned int oldIndex, unsigned int newIndex );
+        void moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex );
     };
 }
 

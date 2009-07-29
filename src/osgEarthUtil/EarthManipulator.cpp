@@ -245,7 +245,7 @@ EarthManipulator::getSRS() const
         osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( _node.get() );
         if ( mapNode )
         {
-            nonconst_this->_cached_srs = mapNode->getProfile()->getSRS();
+            nonconst_this->_cached_srs = mapNode->getMap()->getProfile()->getSRS();
             nonconst_this->_is_geocentric = mapNode->isGeocentric();
         }
 

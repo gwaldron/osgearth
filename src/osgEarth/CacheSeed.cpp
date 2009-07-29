@@ -20,14 +20,17 @@
 #include <osgEarth/CacheSeed>
 #include <osgEarth/Caching>
 #include <osgEarth/Mercator>
+#include <OpenThreads/ScopedLock>
 #include <limits.h>
 
 using namespace osgEarth;
+using namespace OpenThreads;
 
-void CacheSeed::seed( MapConfig& conf )
+void CacheSeed::seed( Map* map )
 {
-    //TODO: really, we just need the MapEngine and not the MapNode
-    osg::ref_ptr<MapNode> map = new MapNode( conf );
+    ScopedReadLock lock( map->getMapDataMutex() );
+
+    osg::ref_ptr<MapEngine> engine = map->createMapEngine();
 
     std::vector< osg::ref_ptr<TileKey> > keys;
     map->getProfile()->getRootKeys(keys);
@@ -41,8 +44,7 @@ void CacheSeed::seed( MapConfig& conf )
         _bounds._min.x() = mapEx.xMin();
         _bounds._min.y() = mapEx.yMin();
         _bounds._max.x() = mapEx.xMax();
-        _bounds._max.y() = mapEx.yMax();
-    }
+        _bounds._max.y() = mapEx.yMax();    }
 
 
     bool hasCaches = false;
@@ -50,9 +52,9 @@ void CacheSeed::seed( MapConfig& conf )
     int src_max_level = 0;
 
     //Assumes the the TileSource will perform the caching for us when we call createImage
-    for (unsigned int i = 0; i < map->getNumImageSources(); ++i)
+    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-        TileSource* src = map->getImageSource(i);
+        TileSource* src = i->get()->getTileSource();
 
         if ( !src->supportsPersistentCaching() )
         {
@@ -65,6 +67,7 @@ void CacheSeed::seed( MapConfig& conf )
         else
         {
             hasCaches = true;
+
             if ( src->getMinLevel() < src_min_level )
                 src_min_level = src->getMinLevel();
             if ( src->getMaxLevel() > src_max_level )
@@ -72,9 +75,9 @@ void CacheSeed::seed( MapConfig& conf )
         }
     }
 
-    for (unsigned int i = 0; i < map->getNumHeightFieldSources(); ++i)
+    for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
-        TileSource* src = map->getHeightFieldSource(i);
+        TileSource* src = i->get()->getTileSource();
 
         if ( !src->supportsPersistentCaching() )
         {
@@ -87,6 +90,7 @@ void CacheSeed::seed( MapConfig& conf )
         else
         {
             hasCaches = true;
+
             if ( src->getMinLevel() < src_min_level )
                 src_min_level = src->getMinLevel();
             if ( src->getMaxLevel() > src_max_level )
@@ -109,12 +113,12 @@ void CacheSeed::seed( MapConfig& conf )
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( map->getMapConfig(), map->getEngine(), keys[i].get() );
+        processKey( map, engine, keys[i].get() );
     }
 }
 
 
-void CacheSeed::processKey( const MapConfig& mapConfig, MapEngine* engine, TileKey* key )
+void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
 {
     unsigned int x, y, lod;
     key->getTileXY(x, y);
@@ -123,7 +127,7 @@ void CacheSeed::processKey( const MapConfig& mapConfig, MapEngine* engine, TileK
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
         osg::notify(osg::NOTICE) << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
-        engine->createQuadrant( mapConfig, 0, key );        
+        engine->createQuadrant( map, 0, key );        
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)
@@ -140,10 +144,10 @@ void CacheSeed::processKey( const MapConfig& mapConfig, MapEngine* engine, TileK
             (k2.valid() && _bounds.intersects(k2.get())) ||
             (k3.valid() && _bounds.intersects(k3.get())))
         {
-            if (k0.valid()) processKey(mapConfig, engine, k0.get()); 
-            if (k1.valid()) processKey(mapConfig, engine, k1.get()); 
-            if (k2.valid()) processKey(mapConfig, engine, k2.get()); 
-            if (k3.valid()) processKey(mapConfig, engine, k3.get()); 
+            if (k0.valid()) processKey(map, engine, k0.get()); 
+            if (k1.valid()) processKey(map, engine, k1.get()); 
+            if (k2.valid()) processKey(map, engine, k2.get()); 
+            if (k3.valid()) processKey(map, engine, k3.get()); 
         }
     }
 }

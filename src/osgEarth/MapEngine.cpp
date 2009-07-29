@@ -49,12 +49,15 @@ using namespace OpenThreads;
 using namespace osgEarth;
 
 
-MapEngine::MapEngine()
+MapEngine::MapEngine( const MapEngineProperties& props ) :
+_engineProps( props )
 {
+    //nop
 }
 
 MapEngine::~MapEngine()
 {
+    //nop
 }
 
 std::string
@@ -81,10 +84,10 @@ MapEngine::getTransformFromExtents(double minX, double minY, double maxX, double
 }
 
 osg::Node*
-MapEngine::createNode( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key )
+MapEngine::createNode( Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
 {
     osg::ref_ptr<osg::Group> parent = new osg::Group;
-    if (!addChildren( mapConfig, terrain, parent.get(), key ))
+    if (!addChildren( map, terrain, parent.get(), key ))
     {
         parent = 0;
     }
@@ -112,14 +115,14 @@ MapEngine::createValidGeoImage(TileSource* tileSource, const TileKey* key)
 }
 
 bool
-MapEngine::hasMoreLevels( const MapConfig& mapConfig, const TileKey* key )
+MapEngine::hasMoreLevels( Map* map, const TileKey* key )
 {
-    OpenThreads::ScopedReadLock lock(mapConfig.getSourceMutex());  
+    OpenThreads::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool more_levels = false;
     int max_level = 0;
 
-    for (TileSourceList::const_iterator i = mapConfig.getImageSources().begin(); i != mapConfig.getImageSources().end(); i++)
+    for ( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
         if ( key->getLevelOfDetail() < i->get()->getMaxLevel() )
         {
@@ -129,7 +132,7 @@ MapEngine::hasMoreLevels( const MapConfig& mapConfig, const TileKey* key )
     }
     if ( !more_levels )
     {
-        for( TileSourceList::const_iterator j = mapConfig.getHeightFieldSources().begin(); j != mapConfig.getHeightFieldSources().end(); j++)
+        for( MapLayerList::const_iterator j = map->getHeightFieldMapLayers().begin(); j != map->getHeightFieldMapLayers().end(); j++ )
         {
             if ( key->getLevelOfDetail() < j->get()->getMaxLevel() )
             {
@@ -143,7 +146,10 @@ MapEngine::hasMoreLevels( const MapConfig& mapConfig, const TileKey* key )
 }
 
 bool
-MapEngine::addChildren( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, osg::Group* tile_parent, const TileKey* key )
+MapEngine::addChildren(Map* map,
+                       osgTerrain::Terrain* terrain,
+                       osg::Group* tile_parent,
+                       const TileKey* key )
 {
     bool all_quadrants_created = false;
 
@@ -154,10 +160,10 @@ MapEngine::addChildren( const MapConfig& mapConfig, osgTerrain::Terrain* terrain
     osg::ref_ptr<TileKey> k2 = key->getSubkey(2);
     osg::ref_ptr<TileKey> k3 = key->getSubkey(3);
 
-    q0 = createQuadrant( mapConfig, terrain, k0.get() );
-    q1 = createQuadrant( mapConfig, terrain, k1.get() );
-    q2 = createQuadrant( mapConfig, terrain, k2.get() );
-    q3 = createQuadrant( mapConfig, terrain, k3.get() );
+    q0 = createQuadrant( map, terrain, k0.get() );
+    q1 = createQuadrant( map, terrain, k1.get() );
+    q2 = createQuadrant( map, terrain, k2.get() );
+    q3 = createQuadrant( map, terrain, k3.get() );
 
     all_quadrants_created = (q0.valid() && q1.valid() && q2.valid() && q3.valid());
 
@@ -226,31 +232,32 @@ MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
 }
 
 bool
-MapEngine::isCached(const MapConfig& mapConfig, const osgEarth::TileKey *key)
+MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 {
-    OpenThreads::ScopedReadLock lock(mapConfig.getSourceMutex());
+    OpenThreads::ScopedReadLock lock( map->getMapDataMutex() );
 
     const Profile* mapProfile = key->getProfile();
 
     //Check the imagery layers
-    for (unsigned int i = 0; i < mapConfig.getImageSources().size(); ++i)
+    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
+        MapLayer* layer = i->get();
         std::vector< osg::ref_ptr< const TileKey > > keys;
 
-        if ( mapConfig.getProfile()->isEquivalentTo( mapConfig.getImageSources()[i]->getProfile() ) )
+        if ( map->getProfile()->isEquivalentTo( layer->getTileSource()->getProfile() ) )
         {
-            keys.push_back(key);
+            keys.push_back( key );
         }
         else
         {
-            mapConfig.getImageSources()[i]->getProfile()->getIntersectingTiles(key, keys);
+            layer->getTileSource()->getProfile()->getIntersectingTiles( key, keys );
         }
 
         for (unsigned int j = 0; j < keys.size(); ++j)
         {
-            if (mapConfig.getImageSources()[i]->isKeyValid( keys[j].get() ) )
+            if ( layer->getTileSource()->isKeyValid( keys[j].get() ) )
             {
-                if (!mapConfig.getImageSources()[i]->isCached(keys[j].get()))
+                if ( !layer->getTileSource()->isCached( keys[j].get() ) )
                 {
                     return false;
                 }
@@ -259,25 +266,25 @@ MapEngine::isCached(const MapConfig& mapConfig, const osgEarth::TileKey *key)
     }
 
     //Check the elevation layers
-    for (unsigned int i = 0; i < mapConfig.getHeightFieldSources().size(); ++i)
+    for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
+        MapLayer* layer = i->get();
         std::vector< osg::ref_ptr< const TileKey > > keys;
 
-        if ( mapConfig.getProfile()->isEquivalentTo( mapConfig.getHeightFieldSources()[i]->getProfile() ) )
+        if ( map->getProfile()->isEquivalentTo( layer->getTileSource()->getProfile() ) )
         {
-            keys.push_back(key);
+            keys.push_back( key );
         }
         else
         {
-            mapConfig.getHeightFieldSources()[i]->getProfile()->getIntersectingTiles(key, keys);
+            layer->getTileSource()->getProfile()->getIntersectingTiles( key, keys );
         }
-
 
         for (unsigned int j = 0; j < keys.size(); ++j)
         {
-            if (mapConfig.getHeightFieldSources()[i]->isKeyValid( keys[j].get() ) )
+            if ( layer->getTileSource()->isKeyValid( keys[j].get() ) )
             {
-                if (!mapConfig.getHeightFieldSources()[i]->isCached(keys[j].get()))
+                if ( !layer->getTileSource()->isCached( keys[j].get() ) )
                 {
                     return false;
                 }
@@ -291,12 +298,16 @@ MapEngine::isCached(const MapConfig& mapConfig, const osgEarth::TileKey *key)
 
 
 osg::HeightField*
-MapEngine::createHeightField( const MapConfig& mapConfig, const TileKey* key, bool fallback )
+MapEngine::createHeightField( Map* map, const TileKey* key, bool fallback )
 {   
+    // dont' need this here??
+    //OpenThreads::ScopedReadLock lock( map->getMapDataMutex() );
+
     osg::ref_ptr< ElevationManager > em = new ElevationManager;
-    for (TileSourceList::const_iterator itr = mapConfig.getHeightFieldSources().begin(); itr != mapConfig.getHeightFieldSources().end(); ++itr)
+
+    for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
-        em->getElevationSources().push_back( itr->get() );
+        em->getElevationSources().push_back( i->get()->getTileSource() );
     }
     return em->createHeightField( key, 0, 0, fallback );
 }

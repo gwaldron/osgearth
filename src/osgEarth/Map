@@ -1,0 +1,214 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAP_H
+#define OSGEARTH_MAP_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/MapLayer>
+#include <osgEarth/MapEngine>
+#include <osgEarth/MapEngineProperties>
+#include <osgEarth/Profile>
+#include <osgDB/ReaderWriter>
+#include <OpenThreads/ReadWriteMutex>
+
+namespace osgEarth
+{    
+    /**
+     * Callback that the Map object uses to notify listeners of map source changes.
+     */
+    struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
+    {
+        virtual void onMapProfileEstablished( const Profile* profile ) { }
+
+        virtual void onMapLayerAdded( MapLayer* layer, unsigned int index ) { }
+
+        virtual void onMapLayerRemoved( MapLayer* layer, unsigned int index ) { }
+
+        virtual void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+    };
+
+    typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
+
+
+    /**
+     * A Map is a container that holds a number of ordered MapLayer objects. This is the data model
+     * that a MapNode will render.
+     */
+    class OSGEARTH_EXPORT Map : public osg::Referenced
+    {
+    public:
+        enum CoordinateSystemType
+        {
+            CSTYPE_GEOCENTRIC,
+            CSTYPE_GEOCENTRIC_CUBE,
+            CSTYPE_PROJECTED
+        };
+
+    public:
+        /**
+         * Constructs a new, empty map.
+         */
+        Map( const CoordinateSystemType& ctype =CSTYPE_GEOCENTRIC );
+
+    public:
+        /**
+         * Gets the coordinate system type for this map. This affects the profile in
+         * which tiles are generated for this map.
+         */
+        const CoordinateSystemType& getCoordinateSystemType() const;
+
+        /**
+         * Gets the map's master profile. This value may not be available until 
+         * after autoCalculateProfile has been called.
+         */
+        const Profile* getProfile() const;
+
+        /**
+         * Gets the ordered list of image layers in this map. Be sure to use
+         * getMapDataMutex() when iterating the list.
+         */
+        const MapLayerList& getImageMapLayers() const;
+
+        /**
+         * Gets the ordered list of heightfield layers in this map. Be sure to use
+         * getMapDataMutex() when iterating the list.
+         */
+        const MapLayerList& getHeightFieldMapLayers() const;
+
+        /**
+         * Adds a map layer callback to this map. This will be notified whenever layers are
+         * added, removed, or re-ordered.
+         */
+        void addMapCallback( MapCallback* callback );
+
+        /**
+         * Adds a new map layer to the map.
+         */
+        void addMapLayer( MapLayer* layer );
+
+        /**
+         * Removes a map layer from the map.
+         */
+        void removeMapLayer( MapLayer* layer );
+
+        /**
+         * Moves a map layer to another index position in its list.
+         */
+        void moveMapLayer( MapLayer* layer, unsigned int newIndex );
+
+    public:
+        /**
+         * Creates and returns a new map engine that can generate tiles for this map.
+         */
+        MapEngine* createMapEngine(
+            const MapEngineProperties& engineProps =MapEngineProperties() );
+
+        /**
+         * Gets the user-provided options structure stored in this map.
+         */
+        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
+
+        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
+
+        /**
+         * Sets the readable name of this map.
+         */
+        void setName( const std::string& name );
+
+        /** 
+         * Gets the readable name of this map.
+         */
+        const std::string& getName() const;
+
+        /**
+         * Gets the mutex that protects access to the Map layer lists.
+         */
+        OpenThreads::ReadWriteMutex& getMapDataMutex();
+
+        /**
+         * Gets the caching setup for the entire map. 
+         */
+        const CacheConfig& getCacheConfig() const;
+
+        /**
+         * Sets the caching setup for the entire map. By default, Map Layers added to
+         * the map will inherit this setup unless they override or customize it with
+         * their own settings.
+         *
+         * Note: Set this before adding any layers to the map.
+         */
+        void setCacheConfig( const CacheConfig& cacheConf );
+
+        /**
+         * Gets an explicit profile setup for the Map.
+         */
+        const ProfileConfig& getProfileConfig() const;
+
+        /** 
+         * Sets an explicit master profile for the Map. Usually this is calculated automatically,
+         * but in some cases you need to set it manually. 
+         *
+         * Note: Set thie before adding any layers to the map.
+         */
+        void setProfileConfig( const ProfileConfig& profileConf );
+
+        /**
+         * Gets the reference URI. See setReferenceURI for more info.
+         */
+        const std::string& getReferenceURI() const;
+
+        /**
+         * Sets a reference URI. Usually this is the location of a file from which this map
+         * was created. This acts as a reference point for any relative paths/URIS that may
+         * occur elsewhere in the configuration.
+         *
+         * Note: Set this before adding any layers to the map.
+         */
+        void setReferenceURI( const std::string& uri );
+
+        // internal.
+        void setId( unsigned int id );
+        unsigned int getId() const;
+
+    protected:
+
+        ~Map() { }
+
+    private:
+
+        std::string _name;
+        MapLayerList _imageMapLayers;
+        MapLayerList _heightFieldMapLayers;
+        MapCallbackList _mapCallbacks;
+        osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
+        OpenThreads::ReadWriteMutex _mapDataMutex;
+        CacheConfig _cacheConf;
+        ProfileConfig _profileConf;
+        std::string _referenceURI;
+        osg::ref_ptr<const Profile> _profile;
+        unsigned int _id;
+        CoordinateSystemType _cstype;
+
+    private:
+        void calculateProfile();
+    };
+}
+
+#endif // OSGEARTH_MAP_H

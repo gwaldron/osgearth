@@ -1,0 +1,167 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_MAP_ENGINE_PROPERTIES_H
+#define OSGEARTH_MAP_ENGINE_PROPERTIES_H 1
+
+#include <osgEarth/Common>
+
+namespace osgEarth
+{
+    class MapEngineProperties
+    {
+    public:
+        MapEngineProperties();
+        MapEngineProperties( const MapEngineProperties& rhs );
+        MapEngineProperties& operator = ( const MapEngineProperties& rhs );
+       
+        /**
+         * Sets the scale factor for height-field values.
+         *
+         * @param scale
+         *      Multiplier for heights; default = 1.0
+         */
+        void setVerticalScale( float scale );
+
+        /**
+         * Gets the scale factor for height-field values.
+         */
+        float getVerticalScale() const;
+        
+        /**
+         * Sets the skirt ratio to be used when creating height field tiles. This
+         * is the ratio of the height of the tile "skirt" to the width of the tile.
+         *
+         * @param skirtRatio
+         *      The skirt ratio; default = 0.02
+         */
+        void setSkirtRatio(float skirt_ratio);
+        
+        /**
+         * Gets the skirt ratio to be used when creating height field tiles
+         *
+         * @return The skirt ratio
+         */
+        float getSkirtRatio() const;
+
+        /**
+         *Sets the sample ratio for height fields
+         */
+        void setSampleRatio(float sample_ratio);
+
+        /**
+         Gets the sample ratio for height fields
+         */
+        float getSampleRatio() const;
+
+        /** 
+         * Sets the hostname of a proxy server to use for all HTTP communications.
+         */
+        void setProxyHost( const std::string& host );
+
+        /**
+         * Gets the hostname of a proxy server to use for all HTTP communications.
+         */
+        const std::string& getProxyHost() const;
+
+        /**
+         * Sets the TCP port for proxy requests to the proxy host. Default is 8080.
+         */
+        void setProxyPort( unsigned short port );
+
+        /** 
+         * Gets the TCP port for proxy requests to the proxy host.
+         */
+        unsigned short getProxyPort() const;
+
+        /**
+         * Sets the minimum tile LOD range as a factor of the tile's radius.
+         * The default value = 6.0.
+         */
+        void setMinTileRangeFactor( float factor );
+
+        /**
+         * Gets the minimum tile LOD range as a factor of the tile's radius.
+         */
+        float getMinTileRangeFactor() const;
+
+        /**
+         * Sets whether or not the map should be run exclusively off of the cache.
+         * @param cacheOnly
+         *       Whether or not the map should be only off of the cache.
+         */
+        void setCacheOnly(bool cacheOnly);
+
+        /**
+         * Gets whether or not the map should be run exclusively off of the cache.        
+         * @returns
+         *       Whether or not the map should be run in "offline" mode
+         */
+        bool getCacheOnly() const;
+
+        /**
+         * Gets whether or not to normalize terrain tile edges
+         */
+        bool getNormalizeEdges() const;
+
+        /**
+         *Sets whether or not to normalize terrain tile edges
+         */
+        void setNormalizeEdges(bool normalizeEdges);
+
+        /**
+         *Gets whether or not to apply the default layer combination logic using TexEnvCombine.
+         */
+        bool getCombineLayers() const;
+
+        /**
+         *Sets whether or not to apply the default layer combination logic using TexEnvCombine.
+         *By setting this to false, the developer is assuming all control of the way that
+         *the layers are combined using shaders, TexEnvCombine, etc.
+         */
+        void setCombineLayers(bool combineLayers);
+
+        /**
+         * Sets the absolute filename that the map was loaded from
+         */
+        void setFilename(const std::string &filename);
+
+        /**
+         * Gets the absolute filename that the map was loaded from
+         */
+        const std::string& getFilename() const;   
+
+
+    private:
+            
+        std::string _filename;
+        std::string _name;
+        float _vertical_scale;
+        float _skirt_ratio;   
+        float _sample_ratio;
+        std::string _proxy_host;
+        unsigned short _proxy_port;
+        float _min_tile_range_factor;
+        bool _cache_only;
+        bool _normalize_edges;
+        bool _combine_layers;
+    };
+}
+
+#endif // OSGEARTH_MAP_ENGINE_PROPERTIES_H

@@ -22,7 +22,8 @@
 
 #include <osgEarth/Export>
 #include <osgEarth/Common>
-#include <osgEarth/MapConfig>
+#include <osgEarth/MapLayer>
+#include <osgEarth/Map>
 #include <osgEarth/TileSource>
 
 namespace osgEarth
@@ -31,7 +32,7 @@ namespace osgEarth
      * Creates TileSource instances and chains them together to create
      * tile source "pipelines" for data access and processing.
      */
-    class  TileSourceFactory
+    class TileSourceFactory
     {
     public:
         /**
@@ -39,9 +40,7 @@ namespace osgEarth
         * don't call from outside the osgEarth library.
         * TODO: make this package-internal scope 
         */
-        TileSource* createMapTileSource(
-            const SourceConfig& source_conf,
-            const MapConfig& map_conf =MapConfig() );
+        TileSource* createMapTileSource( MapLayer* layer, Map* map );
 
         /**
         * Creates a new TileSource that can be used outside the osgEarth Map framework, providing 
@@ -49,7 +48,8 @@ namespace osgEarth
         * cropping, etc automatically.
         */
         TileSource* createDirectReadTileSource(
-            const SourceConfig& source_conf,
+            MapLayer* layer,
+            //const SourceConfig& source_conf,
             const Profile* profile,
             unsigned int tileSize =256,
             const osgDB::ReaderWriter::Options* global_options =NULL );

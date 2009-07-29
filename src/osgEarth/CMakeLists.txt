@@ -25,6 +25,7 @@ SET(LIB_PUBLIC_HEADERS
     Compositing
     Cube
     DirectReadTileSource 
+    EarthFile
     EarthTerrainTechnique
 	EarthTerrain
     ElevationManager
@@ -39,9 +40,11 @@ SET(LIB_PUBLIC_HEADERS
     ImageToHeightFieldConverter
     ImageUtils
     JsonUtils
+    Map
+    MapLayer
     MapNode
-    MapConfig
     MapEngine
+    MapEngineProperties
     Mercator
     Profile
     ProjectedMap
@@ -63,6 +66,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Compositing.cpp
     Cube.cpp
     DirectReadTileSource.cpp
+    EarthFile.cpp
     EarthTerrainTechnique.cpp
     ElevationManager.cpp
     FileUtils.cpp
@@ -73,9 +77,11 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     JsonUtils.cpp
+    Map.cpp
+    MapLayer.cpp
     MapNode.cpp
-    MapConfig.cpp
     MapEngine.cpp
+    MapEngineProperties.cpp
     Mercator.cpp
     Profile.cpp
     ProjectedMap.cpp

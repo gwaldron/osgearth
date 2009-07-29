@@ -20,7 +20,8 @@
 #ifndef OSGEARTH_MAP_ENGINE_H
 #define OSGEARTH_MAP_ENGINE_H 1
 
-#include <osgEarth/MapConfig>
+#include <osgEarth/Map>
+#include <osgEarth/MapEngineProperties>
 #include <osgEarth/TileSource>
 #include <osgEarth/Compositing>
 
@@ -41,20 +42,20 @@ namespace osgEarth
         /**
          * Creates a node graph for a given TileKey.
          */
-        osg::Node* createNode( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key );
+        osg::Node* createNode( Map* map, osgTerrain::Terrain* terrain, const TileKey* key );
 
         /**
          * Creates a georeferenced image corresponding to a tile key.
          */
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
 
-        bool isCached(const MapConfig& mapConfig, const TileKey* key);
+        bool isCached( Map* map, const TileKey* key );
 
     public: // static methods        
 
 
     public:
-        MapEngine();
+        MapEngine( const MapEngineProperties& props );
 
         virtual ~MapEngine();
 
@@ -74,24 +75,35 @@ namespace osgEarth
         * @returns
         *        True if all children were successfully added to the group, false otherwise
         */
-        virtual bool addChildren( const MapConfig& mapConfig, osgTerrain::Terrain* terrain,osg::Group* parent, const TileKey* key );
+        virtual bool addChildren(
+            Map* map,
+            osgTerrain::Terrain* terrain,
+            osg::Group* parent,
+            const TileKey* key );
 
         /**
          * The implementation class must define this function, which creates one of
          * a child quadrant of a tile node.
          */
-        virtual osg::Node* createQuadrant( const MapConfig& mapConfig, osgTerrain::Terrain* terrain, const TileKey* key ) =0;
+        virtual osg::Node* createQuadrant(
+            Map* map,
+            osgTerrain::Terrain* terrain,
+            const TileKey* key ) =0;
+
 
         GeoImage* createValidGeoImage(TileSource* tileSource, const TileKey* key);
 
         osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
 
         // checks whether more data exists below the specified key's level of detail
-        bool hasMoreLevels( const MapConfig& mapConfig, const TileKey* key );
+        bool hasMoreLevels( Map* map, const TileKey* key );
 
-        osg::HeightField* createHeightField( const MapConfig& mapConfig, const TileKey* key, bool fallback );
+        osg::HeightField* createHeightField( Map* map, const TileKey* key, bool fallback );
 
         static osg::HeightField* createEmptyHeightField( const TileKey* key );
+
+    protected:
+        MapEngineProperties _engineProps;
     };
 }
 

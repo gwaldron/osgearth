@@ -23,8 +23,9 @@
 #include <osg/io_utils>
 
 #include <osgEarth/Common>
-#include <osgEarth/MapConfig>
+#include <osgEarth/Map>
 #include <osgEarth/CacheSeed>
+#include <osgEarth/EarthFile>
 
 #include <iostream>
 #include <sstream>
@@ -84,15 +85,15 @@ int main(int argc, char** argv)
 
 
     //Load the map file
-    MapConfig mapConfig;
-    if ( MapConfigReaderWriter::readXml( filename, mapConfig ) )
-    {                
+    EarthFile earthFile;
+    if ( earthFile.readXML( filename ) )
+    {
         //Create the CacheSeed
         CacheSeed seed;
         seed.setMinLevel(minLevel);
         seed.setMaxLevel(maxLevel);
         seed.setBounds(bounds);
-        seed.seed( mapConfig );
+        seed.seed( earthFile.getMap() );
         return 0;
     }
     else

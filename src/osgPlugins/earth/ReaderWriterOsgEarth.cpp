@@ -18,9 +18,8 @@
  */
 
 #include <osgEarth/MapNode>
-#include <osgEarth/GeocentricMap>
-#include <osgEarth/ProjectedMap>
-#include <osgEarth/MapConfig>
+#include <osgEarth/Map>
+#include <osgEarth/EarthFile>
 #include <osgEarth/Mercator>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -78,39 +77,36 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             //Reading a earth file defintion
             if (ext == "earth")
             {
-                //osg::notify(osg::NOTICE) << "Reading Earth File " << std::endl;
+                EarthFile earthFile;
 
-                //Read the map file from the filename
-                MapConfig mapConfig;
                 bool success = true;
                 
                 if ( file_name == "__globe.earth" )
                 {
-                    mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC );
+                    earthFile.setMap( new Map(Map::CSTYPE_GEOCENTRIC) );
                 }
                 else if ( file_name == "__flat.earth" )
                 {
-                    mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_PROJECTED );
+                    earthFile.setMap( new Map(Map::CSTYPE_PROJECTED) );
                 }
                 else if ( file_name == "__cube.earth" )
                 {
-                    mapConfig.setCoordinateSystemType( MapConfig::CSTYPE_GEOCENTRIC_CUBE );
+                    earthFile.setMap( new Map(Map::CSTYPE_GEOCENTRIC_CUBE) );
                 }
                 else
                 {
-                    success = MapConfigReaderWriter::readXml( file_name, mapConfig );
+                    success = earthFile.readXML( file_name );
                 }
 
                 if ( success )
                 {
-                    //Create the MapNode.
-                    osg::ref_ptr<MapNode> mapNode = new MapNode( mapConfig );
+                    osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), earthFile.getMapEngineProperties() );
 
-                    //Check to see that the Map is valid.
-                    if ( !mapNode.valid() || !mapNode->isOK() )
-                        return ReadResult::FILE_NOT_HANDLED;
+                    ////Check to see that the Map is valid.
+                    //if ( !mapNode.valid() || !mapNode->isOK() )
+                    //    return ReadResult::FILE_NOT_HANDLED;
 
-                    osg::notify( osg::INFO ) << "Map profile = " << mapNode->getProfile()->toString()
+                    osg::notify( osg::INFO ) << "[osgEarth] Map profile = " << earthFile.getMap()->getProfile()->toString()
                         << std::endl;
  
                     //Create the root node for the scene
@@ -121,6 +117,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     return ReadResult::FILE_NOT_FOUND;
                 }                
             }
+
             //Reading a specific tile from an existing TileBuilder
             else if (ext == "earth_tile")
             {
@@ -139,9 +136,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if ( mapNode.valid() )
                 {
-                  const Profile* face_profile = mapNode->getProfile()->getFaceProfile( face );
+                  const Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
                   osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
-                  node = mapNode->getEngine()->createNode( mapNode->getMapConfig(), mapNode->getTerrain( face ), key.get( ));
+                  node = mapNode->getEngine()->createNode( mapNode->getMap(), mapNode->getTerrain( face ), key.get( ));
                 }
                 else
                 {

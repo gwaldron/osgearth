@@ -24,7 +24,7 @@
 
 namespace osgEarth
 {
-    class MapEngineProperties
+    class OSGEARTH_EXPORT MapEngineProperties
     {
     public:
         MapEngineProperties();

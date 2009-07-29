@@ -405,20 +405,13 @@ void FadeLayerNode::onMapLayerRemoved(osgEarth::MapLayer* layer, unsigned int in
 {
     osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
 
-    //Copy the settings, skipping, the one that was just removed
-    int layerIndex = 0;
-    for (unsigned int i = 0; i < _enabled.size(); ++i)
-    {
-        if (i == index) continue;
-        bool enabled = getEnabled(i);
-        float opacity = getOpacity(i);
-        setOpacity(layerIndex, opacity);
-        setEnabled(layerIndex, enabled);
-        layerIndex++;
-    }
-    //Resize the lists to account for the removal of the Layer
-    ScopedReadLock lock( _map->getMapDataMutex() );
-    resizeLists( _map->getImageMapLayers().size() );
+	//Erase the settings for the index that was just removed
+    if (index < _enabled.size())
+	{
+		_enabled.erase(_enabled.begin() + index);
+		_opacity.erase(_opacity.begin() + index);
+	}
+	updateStateSet();
 }
 
 void FadeLayerNode::onMapLayerMoved(osgEarth::MapLayer* layer, unsigned int prevIndex, unsigned int newIndex)

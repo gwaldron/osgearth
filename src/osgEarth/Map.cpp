@@ -187,18 +187,20 @@ Map::removeMapLayer( MapLayer* layer )
 {
     unsigned int index = -1;
 
-    if ( layer )
+    osg::ref_ptr<MapLayer> layerToRemove = layer;
+
+    if ( layerToRemove.get() )
     {
         ScopedWriteLock lock( getMapDataMutex() );
 
         MapLayerList& list = 
-            layer->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers :
+            layerToRemove->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers :
             _heightFieldMapLayers;
 
         index = 0;
         for( MapLayerList::iterator i = list.begin(); i != list.end(); i++, index++ )
         {
-            if ( i->get() == layer )
+            if ( i->get() == layerToRemove.get() )
             {
                 list.erase( i );
                 break;
@@ -207,11 +209,11 @@ Map::removeMapLayer( MapLayer* layer )
     }
 
     // a separate block b/c we don't need the mutex
-    if ( layer )
+    if ( layerToRemove.get() )
     {
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapLayerRemoved( layer, index );
+            i->get()->onMapLayerRemoved( layerToRemove.get(), index );
         }
     }
 }
@@ -219,6 +221,7 @@ Map::removeMapLayer( MapLayer* layer )
 void
 Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
 {
+    unsigned int oldIndex = 0;
     unsigned int actualIndex = 0;
 
     if ( layer )
@@ -239,7 +242,10 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
         for( MapLayerList::iterator i = list.begin(); i != list.end(); i++, actualIndex++ )
         {
             if ( i->get() == layer )
+            {
                 i_oldIndex = i;
+                oldIndex = actualIndex;
+            }
             
             if ( i == list.begin() + newIndex )
                 layerBeforeWhichToInsert = i->get();
@@ -279,7 +285,7 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
     {
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapLayerRemoved( layer, actualIndex );
+            i->get()->onMapLayerMoved( layer, oldIndex, actualIndex );
         }
     }
 }

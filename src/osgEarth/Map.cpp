@@ -232,52 +232,28 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
             layer->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers :
             _heightFieldMapLayers;
 
-        // preserver the layer with a ref:
+        // preserve the layer with a ref:
         osg::ref_ptr<MapLayer> layerToMove = layer;
 
         // find it:
         MapLayerList::iterator i_oldIndex = list.end();
-        MapLayer* layerBeforeWhichToInsert = 0L;
-
         for( MapLayerList::iterator i = list.begin(); i != list.end(); i++, actualIndex++ )
         {
             if ( i->get() == layer )
             {
                 i_oldIndex = i;
                 oldIndex = actualIndex;
+                break;
             }
-            
-            if ( i == list.begin() + newIndex )
-                layerBeforeWhichToInsert = i->get();
         }
 
         if ( i_oldIndex == list.end() )
             return; // layer not found in list
 
-        if ( layerBeforeWhichToInsert == layerToMove )
-            return; // move to same index - nop
-
         // erase the old one:
         list.erase( i_oldIndex );
 
-        // find the new location to re-insert it:
-        if ( !layerBeforeWhichToInsert )
-        {
-            list.push_back( layerToMove.get() );
-            actualIndex = list.size()-1;
-        }
-        else
-        {
-            actualIndex = 0;
-            for( MapLayerList::iterator i = list.begin(); i != list.end(); i++, actualIndex++ )
-            {
-                if ( i->get() == layerBeforeWhichToInsert )
-                {
-                    list.insert( i, layerToMove.get() );
-                    break;
-                }
-            }
-        }
+        list.insert( list.begin() + newIndex, layerToMove.get() );
     }
 
     // a separate block b/c we don't need the mutex
@@ -285,7 +261,7 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
     {
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapLayerMoved( layer, oldIndex, actualIndex );
+            i->get()->onMapLayerMoved( layer, oldIndex, newIndex );
         }
     }
 }

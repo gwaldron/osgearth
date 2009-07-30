@@ -93,7 +93,7 @@ namespace osgEarth
         /**
          * Sets the minimum level that this TileSource should be display at
          */
-        void setMinLevel(unsigned int minLevel) {_minLevel = minLevel;}
+        virtual void setMinLevel(unsigned int minLevel) {_minLevel = minLevel;}
 
         /**
          * Gets the maximum level that this TileSource should be displayed at
@@ -103,16 +103,16 @@ namespace osgEarth
         /**
          * Sets the maximum level that this TileSource should be displayed at
          */
-        void setMaxLevel(unsigned int maxLevel) {_maxLevel = maxLevel;}
+        virtual void setMaxLevel(unsigned int maxLevel) {_maxLevel = maxLevel;}
 
         virtual float getNoDataValue();
-        void  setNoDataValue(float noDataValue);
+        virtual void  setNoDataValue(float noDataValue);
 
         virtual float getNoDataMinValue();
-        void setNoDataMinValue(float noDataMinValue);
+        virtual void setNoDataMinValue(float noDataMinValue);
 
         virtual float getNoDataMaxValue();
-        void  setNoDataMaxValue(float noDataMaxValue);     
+        virtual void  setNoDataMaxValue(float noDataMaxValue);     
 
         /**
          * Whether or not the key is valid for the TileSource
@@ -231,9 +231,14 @@ namespace osgEarth
         // pass all the gets through by default:
         virtual unsigned int getMinLevel() const { return _next->getMinLevel(); }
         virtual unsigned int getMaxLevel() const { return _next->getMaxLevel(); }
+        virtual void setMinLevel(unsigned int minLevel) { _next->setMinLevel(minLevel); }
+        virtual void setMaxLevel(unsigned int maxLevel) { _next->setMaxLevel(maxLevel); }
         virtual float getNoDataValue() { return _next->getNoDataValue(); }
+        virtual void setNoDataValie(float value) { _next->setNoDataValue(value); }
         virtual float getNoDataMinValue() { return _next->getNoDataMinValue(); }
+        virtual void setNoDataMinValue(float value) { _next->setNoDataMinValue(value); }
         virtual float getNoDataMaxValue() { return _next->getNoDataMaxValue(); }
+        virtual void setNoDataMaxValue(float value) { _next->setNoDataMaxValue(value); }
         virtual bool isKeyValid(const TileKey* key) { return _next->isKeyValid(key); }
         virtual const GeoExtent& getDataExtent() const { return _next->getDataExtent(); }
         virtual unsigned int getMaxDataLevel() const { return _next->getMaxDataLevel(); }

@@ -28,8 +28,8 @@ _driver( driver ),
 _driverProps( driverProps ),
 _cacheConf( caching ),
 _profileConf( profile ),
-_minLevel(0),
-_maxLevel(25)
+_minLevel(-1),
+_maxLevel(-1)
 {
     //NOP
 }
@@ -41,29 +41,33 @@ _type( type ),
 _tileSource( source ),
 _cacheConf( caching ),
 _profileConf( profile ),
-_minLevel(0),
-_maxLevel(25)
+_minLevel(-1),
+_maxLevel(-1)
 {
     //NOP
 }
 
-unsigned int
+int
 MapLayer::getMinLevel() const {
     return _minLevel;
 }
 
-unsigned int
+int
 MapLayer::getMaxLevel() const {
     return _maxLevel;
 }
 
 void
-MapLayer::setMinLevel( unsigned int value ) {
+MapLayer::setMinLevel( int value ) {
     _minLevel = value; 
+    if ( _tileSource.valid() )
+        _tileSource->setMinLevel( value );
 }
 
-void MapLayer::setMaxLevel( unsigned int value ) {
+void MapLayer::setMaxLevel( int value ) {
     _maxLevel = value;
+    if ( _tileSource.valid() )
+        _tileSource->setMaxLevel( value );
 }
 
 const std::string&
@@ -105,7 +109,18 @@ void
 MapLayer::setTileSource( TileSource* tileSource )
 {
     if ( !_tileSource.valid() )
+    {
         _tileSource = tileSource;
+        if ( _tileSource.valid() )
+        {
+            if ( _minLevel >= 0 )
+                _tileSource->setMinLevel( _minLevel );
+            if ( _maxLevel >= 0 )
+                _tileSource->setMaxLevel( _maxLevel );
+        }
+    }
     else
+    {
         osg::notify(osg::WARN) << "[osgEarth::MapLayer] TileSource already set; ignoring attempt to set it again" << std::endl;
+    }
 }

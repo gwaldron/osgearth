@@ -74,7 +74,8 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_CACHE_ONLY               "cache_only"
 #define ELEM_NORMALIZE_EDGES          "normalize_edges"
 #define ELEM_COMBINE_LAYERS           "combine_layers"
-
+#define ATTR_MIN_LEVEL                "min_level"
+#define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
 
@@ -191,6 +192,9 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
 {
     std::string name = e_source->getAttr( ATTR_NAME );
     std::string driver = e_source->getAttr( ATTR_DRIVER );
+    
+    int minLevel = as<double>(e_source->getSubElementText( ATTR_MIN_LEVEL ), as<double>(e_source->getAttr( ATTR_MIN_LEVEL ), -1) );
+    int maxLevel = as<double>(e_source->getSubElementText( ATTR_MAX_LEVEL ), as<double>(e_source->getAttr( ATTR_MAX_LEVEL ), -1) );
 
     //Try to read the cache for the source if one exists
     CacheConfig cacheConf;
@@ -224,17 +228,24 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
         }
     }
 
-    // add in the additiona properties:
+    // add in the additional properties:
     for(Properties::const_iterator i = additionalDriverProps.begin(); i != additionalDriverProps.end(); i++ )
         driverProps[i->first] = i->second;
 
-    return new MapLayer(
+    MapLayer* layer = new MapLayer(
         name,
         layerType,
         driver,
         driverProps,
         cacheConf,
         profileConf );
+
+    if ( minLevel >= 0 )
+        layer->setMinLevel( minLevel );
+    if ( maxLevel >= 0 )
+        layer->setMaxLevel( maxLevel );
+
+    return layer;
 }
 
 static void

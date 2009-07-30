@@ -1,0 +1,19 @@
+<!-- 
+Demonstrates how to take a spherical mercator data source and display it as 
+Plate Carre (y=lat, x=lon) by applying the <profile> tag.
+-->
+
+<map name="OpenStreetMap" type="projected">
+
+    <profile>global-geodetic</profile>
+    
+    <image name="OSM on Mapnik" driver="tms">
+        <url>http://tile.openstreetmap.org/</url>
+        <profile>global-mercator</profile>
+        <format>png</format>
+        <tile_width>256</tile_width>
+        <tile_height>256</tile_height>
+        <tms_type>google</tms_type>
+    </image>
+    
+</map>

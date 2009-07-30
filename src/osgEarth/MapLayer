@@ -98,14 +98,25 @@ namespace osgEarth
          */
         const ProfileConfig& getProfileConfig() const;
 
+        /**
+         * Sets the minimum level of detail for which this layer should generate data.
+         */
+        void setMinLevel( int minLevel );
 
-        void setMinLevel( unsigned int minLevel );
+        /**
+         * Gets the minimum level of detail for which this layer should generate data.
+         */
+        int getMinLevel() const;
 
-        unsigned int getMinLevel() const;
+        /** 
+         * Sets the maximum level of detail for which this layer should generate data.
+         */
+        void setMaxLevel( int maxLevel );
 
-        void setMaxLevel( unsigned int maxLevel );
-
-        unsigned int getMaxLevel() const;
+        /**
+         * Gets the maximum level of detail for which this layer should generate data.
+         */
+        int getMaxLevel() const;
 
         /**
          * Gets the underlying TileSource engine that serves this map layer. Use with caution.
@@ -130,7 +141,7 @@ namespace osgEarth
         osg::ref_ptr<TileSource> _tileSource;
         CacheConfig _cacheConf;
         ProfileConfig _profileConf;
-        unsigned int _minLevel, _maxLevel;
+        int _minLevel, _maxLevel;
     };
 
 

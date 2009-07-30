@@ -15,14 +15,14 @@ the reprojected imagery should be.
     <!--Specify the profile to use since we want to reproject to UTM-->        
     <profile srs="epsg:26917" xmin="560725.500" ymin="4385762.500" xmax="573866.500" ymax="4400705.500"/>
     
-    <image name="arcgisonline esri imagery" driver="arcgis" reproject_before_caching="true">
+    <image name="arcgisonline esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
 
         <!--Specify a tile_size to reproject the imagery to -->
         <tile_size>512</tile_size>
     </image>
       
-    <image name="arcgisonline transportation" driver="arcgis" reproject_before_caching="true">
+    <image name="arcgisonline transportation" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer</url>
 
         <!--Specify a tile_size to reproject the imagery to -->
@@ -30,7 +30,7 @@ the reprojected imagery should be.
     </image>
 
     <!--Configure a cache-->
-    <cache>
-     <path>cache</path>
+    <cache reproject_before_caching="true">
+       <path>cache</path>
     </cache>
 </map>

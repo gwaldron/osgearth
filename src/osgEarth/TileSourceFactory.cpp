@@ -56,7 +56,7 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
     osg::ref_ptr<TileSource> tile_source;
 
     //Configure the cache if necessary
-    optional<CacheConfig> layerCacheConf = layer->cacheConfig(); //getCacheConfig();
+    optional<CacheConfig> layerCacheConf = layer->cacheConfig();
 
     bool cacheOnlyEnv = false;
     //If the OSGEARTH_CACHE_ONLY environment variable is set, override whateve is in the map config
@@ -87,6 +87,28 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
         }
     }
 
+    // Inherit from the MapConfig if it is defined
+    if ( mapCacheConf.isSet() )
+    {
+        if ( layerCacheConf.isSet() )
+            layerCacheConf->inheritFrom( mapCacheConf.get() );
+        else
+            layerCacheConf = mapCacheConf.get();
+
+        osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': Inheriting cache configuration from map..." << std::endl;
+    }
+
+    // Inherit the map CacheConfig with the override from the registry
+    if ( Registry::instance()->cacheConfigOverride().isSet() )
+    {
+        if ( layerCacheConf.isSet() )
+            layerCacheConf->inheritFrom( Registry::instance()->cacheConfigOverride().get() );
+        else
+            layerCacheConf = Registry::instance()->cacheConfigOverride().get();
+
+        osg::notify(osg::NOTICE) << "[osgEarth] Layer '" << layer->getName() << "': Applying global cache override" << std::endl;
+    }
+
     if ( tile_source.valid() )
     {           
         //Initialize the source and set its name
@@ -103,20 +125,6 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
 			osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': wrapping in DirectReadTileSource with a tile size of " << tile_size << std::endl;
 			tile_source = new DirectReadTileSource( tile_source, tile_size );
 		}
-    }
-
-    //Inherit from the MapConfig if it is defined
-    if ( mapCacheConf.isSet() )
-    {
-        layerCacheConf->inheritFrom( mapCacheConf.get() );
-        osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': Inheriting cache configuration from map..." << std::endl;
-    }
-
-    //Inherit the map CacheConfig with the override from the registry
-    if ( Registry::instance()->cacheConfigOverride().isSet() )
-    {
-        layerCacheConf->inheritFrom( Registry::instance()->cacheConfigOverride().get() );
-        osg::notify(osg::NOTICE) << "[osgEarth] Layer '" << layer->getName() << "': Applying global cache override" << std::endl;
     }
 
     osg::ref_ptr<TileSource> topSource = tile_source.get();

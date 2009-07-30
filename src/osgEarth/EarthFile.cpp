@@ -98,13 +98,15 @@ readCache( XmlElement* e_cache )
     std::string type_token = e_cache->getAttr( ATTR_TYPE );
     if ( type_token == "tms" || type_token.empty() ) cache.setType( CacheConfig::TYPE_TMS );
     else if ( type_token == "tilecache" ) cache.setType( CacheConfig::TYPE_TILECACHE );
-    else if ( type_token == "none" ) cache.setType( CacheConfig::TYPE_NONE );
+    else if ( type_token == "none" || type_token == "disabled") cache.setType( CacheConfig::TYPE_DISABLED );
     
     std::string cache_only = e_cache->getAttr( ATTR_CACHE_ONLY );
-    cache.setRunOffCacheOnly( cache_only == VALUE_TRUE? true : false );
+    if ( !cache_only.empty() )
+        cache.runOffCacheOnly() = cache_only == VALUE_TRUE? true : false;
     
 	std::string a_reproj = e_cache->getAttr( ATTR_REPROJECT_BEFORE_CACHING );
-    cache.setReprojectBeforeCaching( a_reproj == VALUE_TRUE? true : false );
+    if ( !a_reproj.empty() )
+        cache.reprojectBeforeCaching() = a_reproj == VALUE_TRUE? true : false;
 
     const XmlNodeList& e_props = e_cache->getChildren();
     for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
@@ -127,13 +129,16 @@ static void
 writeCache( const CacheConfig& cache, XmlElement* e_cache )
 {
     e_cache->getAttrs()[ATTR_TYPE] = 
-        cache.getType() == CacheConfig::TYPE_NONE? "none" :
+        cache.getType() == CacheConfig::TYPE_DISABLED?  "disabled" :
         cache.getType() == CacheConfig::TYPE_TILECACHE? "tilecache" :
         cache.getType() == CacheConfig::TYPE_TMS? "tms" :
         "tms";
 
-    e_cache->getAttrs()[ATTR_CACHE_ONLY] = cache.getRunOffCacheOnly();
-    e_cache->getAttrs()[ATTR_REPROJECT_BEFORE_CACHING] = cache.getReprojectBeforeCaching();
+    if ( cache.runOffCacheOnly().isSet() )
+        e_cache->getAttrs()[ATTR_CACHE_ONLY] = cache.runOffCacheOnly().get();
+
+    if ( cache.reprojectBeforeCaching().isSet() )
+        e_cache->getAttrs()[ATTR_REPROJECT_BEFORE_CACHING] = cache.reprojectBeforeCaching().get();
 
     //Add all the properties
     for (Properties::const_iterator i = cache.getProperties().begin(); i != cache.getProperties().end(); i++ )
@@ -193,25 +198,6 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
     std::string name = e_source->getAttr( ATTR_NAME );
     std::string driver = e_source->getAttr( ATTR_DRIVER );
     
-    int minLevel = as<double>(e_source->getSubElementText( ATTR_MIN_LEVEL ), as<double>(e_source->getAttr( ATTR_MIN_LEVEL ), -1) );
-    int maxLevel = as<double>(e_source->getSubElementText( ATTR_MAX_LEVEL ), as<double>(e_source->getAttr( ATTR_MAX_LEVEL ), -1) );
-
-    //Try to read the cache for the source if one exists
-    CacheConfig cacheConf;
-    XmlElement* e_cache = static_cast<XmlElement*>(e_source->getSubElement( ELEM_CACHE ));
-    if (e_cache)
-    {
-        cacheConf = readCache( e_cache );
-    }
-
-    // Check for an explicit profile override:
-    ProfileConfig profileConf;
-    XmlElement* e_profile = static_cast<XmlElement*>( e_source->getSubElement( ELEM_PROFILE ) );
-    if ( e_profile )
-    {
-        profileConf = readProfileConfig( e_profile );
-    }
-
     Properties driverProps;
     const XmlNodeList& e_props = e_source->getChildren();
     for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
@@ -236,14 +222,30 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
         name,
         layerType,
         driver,
-        driverProps,
-        cacheConf,
-        profileConf );
+        driverProps );
 
+    // Read the min and max LOD settings:
+    int minLevel = as<double>(e_source->getSubElementText( ATTR_MIN_LEVEL ), as<double>(e_source->getAttr( ATTR_MIN_LEVEL ), -1) );
     if ( minLevel >= 0 )
-        layer->setMinLevel( minLevel );
+        layer->minLevel() = minLevel;
+
+    int maxLevel = as<double>(e_source->getSubElementText( ATTR_MAX_LEVEL ), as<double>(e_source->getAttr( ATTR_MAX_LEVEL ), -1) );
     if ( maxLevel >= 0 )
-        layer->setMaxLevel( maxLevel );
+        layer->maxLevel() = maxLevel;
+
+    // Try to read the cache for the source if one exists
+    XmlElement* e_cache = static_cast<XmlElement*>(e_source->getSubElement( ELEM_CACHE ));
+    if (e_cache)
+    {
+        layer->cacheConfig() = readCache( e_cache );
+    }
+
+    // Check for an explicit profile override:
+    XmlElement* e_profile = static_cast<XmlElement*>( e_source->getSubElement( ELEM_PROFILE ) );
+    if ( e_profile )
+    {
+        layer->profileConfig() = readProfileConfig( e_profile );
+    }
 
     return layer;
 }
@@ -263,18 +265,18 @@ writeLayer( MapLayer* layer, XmlElement* e_source )
     }
 
 	//Write the profile config
-	if (layer->getProfileConfig().defined())
+	if ( layer->profileConfig().isSet() )
 	{
 		XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
-		writeProfileConfig( layer->getProfileConfig(), e_profile );
+		writeProfileConfig( layer->profileConfig().get(), e_profile );
 		e_source->getChildren().push_back(e_profile);
 	}
 
 	//Write the source config
-    if ( layer->getCacheConfig().defined() )
+    if ( layer->cacheConfig().isSet() )
     {
        XmlElement* e_cache = new XmlElement(ELEM_CACHE);
-       writeCache(layer->getCacheConfig(), e_cache);
+       writeCache(layer->cacheConfig().get(), e_cache);
        e_source->getChildren().push_back(e_cache);
     }
 }
@@ -344,14 +346,14 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     XmlElement* e_profile = static_cast<XmlElement*>(e_map->getSubElement( ELEM_PROFILE ));
     if (e_profile)
     {
-        map->setProfileConfig( readProfileConfig( e_profile ) );
+        map->profileConfig() = readProfileConfig( e_profile );
     }
 
     //Try to read the global map cache if one is specifiec
     XmlElement* e_cache = static_cast<XmlElement*>(e_map->getSubElement( ELEM_CACHE ));
     if (e_cache)
     {
-        map->setCacheConfig( readCache(e_cache) );
+        map->cacheConfig() = readCache(e_cache);
     }
 
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
@@ -442,17 +444,17 @@ mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
         e_map->getChildren().push_back( e_source.get() );
     }
 
-    if ( map->getCacheConfig().defined() )
+    if ( map->cacheConfig().isSet() )
     {
         XmlElement* e_cache = new XmlElement(ELEM_CACHE);
-        writeCache(map->getCacheConfig(), e_cache);
+        writeCache(map->cacheConfig().get(), e_cache);
         e_map->getChildren().push_back(e_cache);
     }
 
-    if ( map->getProfileConfig().defined() )
+    if ( map->profileConfig().isSet() )
     {
         XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
-        writeProfileConfig(map->getProfileConfig(), e_profile);
+        writeProfileConfig(map->profileConfig().get(), e_profile);
         e_map->getChildren().push_back(e_profile);
     }
 

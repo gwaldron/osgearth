@@ -73,24 +73,22 @@ Map::setReferenceURI( const std::string& uri ) {
     _referenceURI = uri;
 }
 
-const CacheConfig&
-Map::getCacheConfig() const {
+optional<CacheConfig>&
+Map::cacheConfig() {
+    return _cacheConf;
+}
+const optional<CacheConfig>&
+Map::cacheConfig() const {
     return _cacheConf;
 }
 
-void
-Map::setCacheConfig( const CacheConfig& cacheConf ) {
-    _cacheConf = cacheConf;
-}
-
-const ProfileConfig&
-Map::getProfileConfig() const {
+optional<ProfileConfig>&
+Map::profileConfig() {
     return _profileConf;
 }
-
-void 
-Map::setProfileConfig( const ProfileConfig& profileConf ) {
-    _profileConf = profileConf;
+const optional<ProfileConfig>&
+Map::profileConfig() const {
+    return _profileConf;
 }
 
 const MapLayerList& 
@@ -298,10 +296,13 @@ Map::calculateProfile()
     }
     else // CSTYPE_PROJECTED
     {
-        if ( getProfileConfig().defined() )
+        if ( _profileConf.isSet() )
+        //if ( getProfileConfig().defined() )
         {
+            const ProfileConfig& conf = _profileConf.get();
+
             // Check for a "well known named" profile:
-            std::string namedProfile = getProfileConfig().getNamedProfile();
+            std::string namedProfile = conf.getNamedProfile();
             if ( !namedProfile.empty() )
             {
                 _profile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
@@ -317,11 +318,11 @@ Map::calculateProfile()
             }
 
             // Next check for a user-defined profile:
-            else if ( getProfileConfig().areExtentsValid() )
+            else if ( conf.areExtentsValid() )
             {
                 double minx, miny, maxx, maxy;
-                getProfileConfig().getExtents( minx, miny, maxx, maxy );
-                _profile = Profile::create( getProfileConfig().getSRS(), minx, miny, maxx, maxy );
+                conf.getExtents( minx, miny, maxx, maxy );
+                _profile = Profile::create( conf.getSRS(), minx, miny, maxx, maxy );
 
                 if ( _profile.valid() )
                 {

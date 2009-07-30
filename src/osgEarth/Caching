@@ -45,8 +45,8 @@ namespace osgEarth
     public:
         enum CacheType
         {
-            TYPE_UNDEFINED, // the config is undefined and should be ignored
-            TYPE_NONE,      // explicitly specify that no caching should occur
+            TYPE_DISABLED,  // explicitly specify that no caching should occur
+            TYPE_DEFAULT,   // use the default caching type, or inherit from another CacheConfig
             TYPE_TMS,       // cache to a OSGeo Tile Map Service structure
             TYPE_TILECACHE  // cache to a MetaCarta Labs TileCache structure
         };
@@ -59,11 +59,6 @@ namespace osgEarth
 
         // Copy constructor
         CacheConfig( const CacheConfig& rhs );
-
-        /**
-         * Returned True if this cache is well defined (not empty)
-         */
-        bool defined() const;
 
         /**
          * Gets the cache type identifier.
@@ -90,17 +85,15 @@ namespace osgEarth
          * Sets whether the map engine should only pull tiles from the cache and not from
          * an end tile source. Forces a sort of "offline" mode.
          */
-        void setRunOffCacheOnly( bool value );
-
-        bool getRunOffCacheOnly() const;
+        optional<bool>& runOffCacheOnly();
+        const optional<bool>& runOffCacheOnly() const;
 
         /**
          * Sets whether data that needs to be warped/reprojected into the map's profile
          * should be warped prior to writing it to the cache.
          */
-        void setReprojectBeforeCaching( bool value );
-
-        bool getReprojectBeforeCaching() const;
+        optional<bool>& reprojectBeforeCaching();
+        const optional<bool>& reprojectBeforeCaching() const;
 
         /**
          * Inherits properties from the given CacheConfig
@@ -112,8 +105,8 @@ namespace osgEarth
     private:
         CacheType       _type;
         Properties      _properties;
-        bool            _runOffCacheOnly;
-        bool            _reprojectBeforeCaching;
+        optional<bool>  _runOffCacheOnly;
+        optional<bool>  _reprojectBeforeCaching;
     };
 
 

@@ -40,26 +40,16 @@ using namespace osgEarth;
 
 
 CacheConfig::CacheConfig() :
-_type( CacheConfig::TYPE_UNDEFINED ),
-_runOffCacheOnly( false ),
-_reprojectBeforeCaching( false )
+_type( CacheConfig::TYPE_DEFAULT )
 {
     //NOP
 }
 
 CacheConfig::CacheConfig( const CacheConfig& rhs ) :
 _type( rhs._type ),
-_runOffCacheOnly( rhs._runOffCacheOnly ),
-_reprojectBeforeCaching( rhs._reprojectBeforeCaching ),
 _properties( rhs._properties )
 {
     //NOP
-}
-
-bool
-CacheConfig::defined() const
-{
-    return _type != CacheConfig::TYPE_UNDEFINED; //_type.empty() && _properties.size() == 0;
 }
 
 const CacheConfig::CacheType&
@@ -74,23 +64,21 @@ CacheConfig::setType(const CacheConfig::CacheType& type)
     _type = type;
 }
 
-void
-CacheConfig::setRunOffCacheOnly( bool value ) {
-    _runOffCacheOnly = value;
+optional<bool>&
+CacheConfig::runOffCacheOnly() {
+    return _runOffCacheOnly;
 }
-
-bool
-CacheConfig::getRunOffCacheOnly() const {
+const optional<bool>&
+CacheConfig::runOffCacheOnly() const {
     return _runOffCacheOnly;
 }
 
-void 
-CacheConfig::setReprojectBeforeCaching( bool value ) {
-    _reprojectBeforeCaching = value;
+optional<bool>& 
+CacheConfig::reprojectBeforeCaching() {
+    return _reprojectBeforeCaching;
 }
-
-bool 
-CacheConfig::getReprojectBeforeCaching() const {
+const optional<bool>&
+CacheConfig::reprojectBeforeCaching() const {
     return _reprojectBeforeCaching;
 }
 
@@ -108,36 +96,41 @@ const Properties& CacheConfig::getProperties() const
     return _properties;
 }
 
-void CacheConfig::inheritFrom(const CacheConfig& rhs)
+void
+CacheConfig::inheritFrom(const CacheConfig& parent)
 {
-    if ( _type != TYPE_NONE )
+    if ( _type != TYPE_DISABLED )
     {
-        //Inherit the type if applicable:
-        if ( rhs.getType() != TYPE_UNDEFINED )
+        if ( parent.getType() == TYPE_DISABLED ) // disabling overrides everything.
+            setType( TYPE_DISABLED );
+
+        else if ( _type == TYPE_DEFAULT ) // if "DEFAULT", inherit from the parent.
+            setType( parent.getType() );
+
+        // Inherit any properites that are not defined locally
+        for (Properties::const_iterator itr = parent.getProperties().begin(); itr != parent.getProperties().end(); ++itr)
         {
-            setType( rhs.getType() );
+            if ( _properties.find( itr->first ) == _properties.end() )
+                _properties[itr->first] = itr->second;
         }
 
-        //Inherit the properites
-        for (Properties::const_iterator itr = rhs.getProperties().begin(); itr != rhs.getProperties().end(); ++itr)
-        {
-            getProperties()[itr->first] = itr->second;
-        }
+        if ( !reprojectBeforeCaching().isSet() )
+            reprojectBeforeCaching() = parent.reprojectBeforeCaching();
 
-        setRunOffCacheOnly( rhs.getRunOffCacheOnly() );
+        if ( !runOffCacheOnly().isSet() )
+            runOffCacheOnly() = parent.runOffCacheOnly();
     }
 }
 
 std::string
 CacheConfig::toString() const
 {
-    if ( !defined() ) return "undefined";
-    if ( getType() == TYPE_NONE ) return "disabled";
+    if ( getType() == TYPE_DISABLED ) return "disabled";
 
     std::stringstream buf;
     buf << "type=" << getType() << ", "
-        << "reproject=" << getReprojectBeforeCaching() << ", "
-        << "cacheOnly=" << getRunOffCacheOnly();
+        << "reproject=" << (reprojectBeforeCaching().isSet()? reprojectBeforeCaching().get() : "unset") << ", "
+        << "cacheOnly=" << (runOffCacheOnly().isSet()? runOffCacheOnly().get() : "unset" );
 
     for (Properties::const_iterator i = _properties.begin(); i != _properties.end(); i++ )
         buf << ", " << i->first << "=" << i->second;   
@@ -151,8 +144,6 @@ CacheConfig::toString() const
 
 CachedTileSource::CachedTileSource(TileSource* tileSource, const osgDB::ReaderWriter::Options* options) :
 ChainedTileSource( tileSource, options )
-//TileSource(options),
-//_tileSource(tileSource)
 {
     //NOP
 }
@@ -577,7 +568,7 @@ CachedTileSource* CachedTileSourceFactory::create(TileSource* tileSource,
             return cache;
         }
     }
-    else if (type == CacheConfig::TYPE_NONE || type == CacheConfig::TYPE_UNDEFINED) //"none")
+    else if (type == CacheConfig::TYPE_DISABLED)
     {
         return 0;
     }

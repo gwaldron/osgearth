@@ -20,54 +20,39 @@
 
 using namespace osgEarth;
 
-MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Properties& driverProps,
-                   const CacheConfig& caching, const ProfileConfig& profile) :
+MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Properties& driverProps) :
 _name( name ),
 _type( type ),
 _driver( driver ),
-_driverProps( driverProps ),
-_cacheConf( caching ),
-_profileConf( profile ),
-_minLevel(-1),
-_maxLevel(-1)
+_driverProps( driverProps )
 {
     //NOP
 }
 
-MapLayer::MapLayer(const std::string& name, Type type, TileSource* source,
-                   const CacheConfig& caching, const ProfileConfig& profile ) :
+MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
 _name( name ),
 _type( type ),
-_tileSource( source ),
-_cacheConf( caching ),
-_profileConf( profile ),
-_minLevel(-1),
-_maxLevel(-1)
+_tileSource( source )
 {
     //NOP
 }
 
-int
-MapLayer::getMinLevel() const {
+optional<int>&
+MapLayer::minLevel() {
+    return _minLevel;
+}
+const optional<int>&
+MapLayer::minLevel() const {
     return _minLevel;
 }
 
-int
-MapLayer::getMaxLevel() const {
+optional<int>&
+MapLayer::maxLevel() {
     return _maxLevel;
 }
-
-void
-MapLayer::setMinLevel( int value ) {
-    _minLevel = value; 
-    if ( _tileSource.valid() )
-        _tileSource->setMinLevel( value );
-}
-
-void MapLayer::setMaxLevel( int value ) {
-    _maxLevel = value;
-    if ( _tileSource.valid() )
-        _tileSource->setMaxLevel( value );
+const optional<int>&
+MapLayer::maxLevel() const {
+    return _maxLevel;
 }
 
 const std::string&
@@ -95,13 +80,21 @@ MapLayer::getTileSource() const {
     return _tileSource.get();
 }
 
-const CacheConfig&
-MapLayer::getCacheConfig() const {
+optional<CacheConfig>&
+MapLayer::cacheConfig() {
+    return _cacheConf;
+}
+const optional<CacheConfig>&
+MapLayer::cacheConfig() const {
     return _cacheConf;
 }
 
-const ProfileConfig&
-MapLayer::getProfileConfig() const {
+optional<ProfileConfig>&
+MapLayer::profileConfig() {
+    return _profileConf;
+}
+const optional<ProfileConfig>&
+MapLayer::profileConfig() const {
     return _profileConf;
 }
 
@@ -113,10 +106,10 @@ MapLayer::setTileSource( TileSource* tileSource )
         _tileSource = tileSource;
         if ( _tileSource.valid() )
         {
-            if ( _minLevel >= 0 )
-                _tileSource->setMinLevel( _minLevel );
-            if ( _maxLevel >= 0 )
-                _tileSource->setMaxLevel( _maxLevel );
+            if ( minLevel().isSet() )
+                _tileSource->setMinLevel( _minLevel.get() );
+            if ( _maxLevel.isSet() )
+                _tileSource->setMaxLevel( _maxLevel.get() );
         }
     }
     else

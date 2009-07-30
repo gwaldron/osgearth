@@ -21,10 +21,11 @@
 #define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Caching>
+#include <osgEarth/Profile>
 #include <osgEarth/MapLayer>
 #include <osgEarth/MapEngine>
 #include <osgEarth/MapEngineProperties>
-#include <osgEarth/Profile>
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/ReadWriteMutex>
 
@@ -143,31 +144,23 @@ namespace osgEarth
         OpenThreads::ReadWriteMutex& getMapDataMutex();
 
         /**
-         * Gets the caching setup for the entire map. 
-         */
-        const CacheConfig& getCacheConfig() const;
-
-        /**
-         * Sets the caching setup for the entire map. By default, Map Layers added to
+         * Sets/Gets the caching setup for the entire map. By default, Map Layers added to
          * the map will inherit this setup unless they override or customize it with
          * their own settings.
          *
          * Note: Set this before adding any layers to the map.
          */
-        void setCacheConfig( const CacheConfig& cacheConf );
+        optional<CacheConfig>& cacheConfig();
+        const optional<CacheConfig>& cacheConfig() const;
 
         /**
-         * Gets an explicit profile setup for the Map.
-         */
-        const ProfileConfig& getProfileConfig() const;
-
-        /** 
-         * Sets an explicit master profile for the Map. Usually this is calculated automatically,
+         * Sets/Gets an explicit master profile for the Map. Usually this is calculated automatically,
          * but in some cases you need to set it manually. 
          *
          * Note: Set thie before adding any layers to the map.
          */
-        void setProfileConfig( const ProfileConfig& profileConf );
+        optional<ProfileConfig>& profileConfig();
+        const optional<ProfileConfig>& profileConfig() const;
 
         /**
          * Gets the reference URI. See setReferenceURI for more info.
@@ -199,8 +192,8 @@ namespace osgEarth
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         OpenThreads::ReadWriteMutex _mapDataMutex;
-        CacheConfig _cacheConf;
-        ProfileConfig _profileConf;
+        optional<CacheConfig> _cacheConf;
+        optional<ProfileConfig> _profileConf;
         std::string _referenceURI;
         osg::ref_ptr<const Profile> _profile;
         unsigned int _id;

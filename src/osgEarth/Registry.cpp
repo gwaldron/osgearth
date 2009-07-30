@@ -62,15 +62,15 @@ void Registry::destruct()
     //_cacheConfigOverride = 0;
 }
 
-const CacheConfig&
-Registry::getCacheConfigOverride() const { 
+optional<CacheConfig>&
+Registry::cacheConfigOverride() { 
     return _cacheConfigOverride;
 }
 
-void
-Registry::setCacheConfigOverride(const CacheConfig& cacheConfig) {
-    _cacheConfigOverride = cacheConfig;
-}
+//void
+//Registry::setCacheConfigOverride(const CacheConfig& cacheConfig) {
+//    _cacheConfigOverride = cacheConfig;
+//}
 
 const Profile*
 Registry::getGlobalGeodeticProfile() const

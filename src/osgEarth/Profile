@@ -30,7 +30,6 @@ namespace osgEarth
 {
     class TileKey;
 
-
     /**
      * Configures a geospatial profile, defining the spatial reference and tile layout
      * structure of map content.

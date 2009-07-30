@@ -249,8 +249,8 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
         osgEarth::Properties conf;
         conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton(map, view,
-            new MapLayer( "ESRI Transportation", MapLayer::TYPE_IMAGE, "arcgis", conf ) ) );
+        MapLayer* layer = new MapLayer("ESRI Transportation", MapLayer::TYPE_IMAGE, "arcgis", conf );
+        addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
     }
 
     // OpenStreetMap:
@@ -259,17 +259,17 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
         conf["url"] = "http://tile.openstreetmap.org/";
         conf["format"] = "png";
         conf["tms_type"] = "google";
-        ProfileConfig profileConf( "global-mercator" );
-        addLayersBox->addWidget( new AddLayerButton( map, view, 
-            new MapLayer( "OpenStreetMap", MapLayer::TYPE_IMAGE, "tms", conf, CacheConfig(), profileConf ) ) );
+        MapLayer* layer = new MapLayer( "OpenStreetMap", MapLayer::TYPE_IMAGE, "tms", conf );
+        layer->profileConfig() = ProfileConfig( "global-mercator" );
+        addLayersBox->addWidget( new AddLayerButton( map, view, layer ) );
     }
 
     // ArcGIS imagery:
     {
         osgEarth::Properties conf;
         conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton(map, view,
-            new MapLayer( "ESRI Imagery", MapLayer::TYPE_IMAGE, "arcgis", conf ) ) );
+        MapLayer* layer = new MapLayer( "ESRI Imagery", MapLayer::TYPE_IMAGE, "arcgis", conf );
+        addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
     }
 
     addLayersBox->getBackground()->setColor(1,0,0,0.3);

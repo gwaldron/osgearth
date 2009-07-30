@@ -124,7 +124,7 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
 
     for ( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-        if ( key->getLevelOfDetail() < i->get()->getMaxLevel() )
+        if ( i->get()->maxLevel().isSet() && key->getLevelOfDetail() < i->get()->maxLevel().get() )
         {
             more_levels = true;
             break;
@@ -134,7 +134,7 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
     {
         for( MapLayerList::const_iterator j = map->getHeightFieldMapLayers().begin(); j != map->getHeightFieldMapLayers().end(); j++ )
         {
-            if ( key->getLevelOfDetail() < j->get()->getMaxLevel() )
+            if ( j->get()->maxLevel().isSet() && key->getLevelOfDetail() < j->get()->maxLevel().get() )
             {
                 more_levels = true;
                 break;

@@ -38,9 +38,7 @@ namespace osgEarth
     public:
         static Registry* instance(bool erase = false);
 
-        const CacheConfig& getCacheConfigOverride() const;
-
-        void setCacheConfigOverride( const CacheConfig& cacheConfig );
+        optional<CacheConfig>& cacheConfigOverride();
 
         inline OpenThreads::ReentrantMutex& getGDALMutex() { return _gdal_mutex; }
 
@@ -58,7 +56,7 @@ namespace osgEarth
 
         void destruct();
 
-        CacheConfig _cacheConfigOverride;
+        optional<CacheConfig> _cacheConfigOverride;
         OpenThreads::ReentrantMutex _gdal_mutex;
         bool _gdal_registered;
 

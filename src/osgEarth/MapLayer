@@ -50,9 +50,7 @@ namespace osgEarth
             const std::string& name,
             Type type,
             const std::string& driver,
-            const Properties& driverProps = Properties(),
-            const CacheConfig& caching = CacheConfig(),
-            const ProfileConfig& profile = ProfileConfig() );
+            const Properties& driverProps = Properties() );
 
         /**
          * Constructs a new map layer with a user-provided TileSource engine.
@@ -60,9 +58,7 @@ namespace osgEarth
         MapLayer(
             const std::string& name,
             Type type,
-            TileSource* source,
-            const CacheConfig& caching = CacheConfig(),
-            const ProfileConfig& profile = ProfileConfig() );
+            TileSource* source );
 
         /**
          * Gets the readable name of the map layer.
@@ -89,34 +85,28 @@ namespace osgEarth
          * caching behavior from the map to which it is added. This property overrides or
          * customizes the map's cache settings.
          */
-        const CacheConfig& getCacheConfig() const;
+        optional<CacheConfig>& cacheConfig();
+        const optional<CacheConfig>& cacheConfig() const;
 
         /**
          * Gets the explicit profile setup for this map layer. By default, the layer will 
          * try to automatically determine the Profile from the tile source. This property
          * sets it explicitly instead.
          */
-        const ProfileConfig& getProfileConfig() const;
+        optional<ProfileConfig>& profileConfig();
+        const optional<ProfileConfig>& profileConfig() const;
 
         /**
-         * Sets the minimum level of detail for which this layer should generate data.
+         * Gets or sets the minimum level of detail for which this layer should generate data.
          */
-        void setMinLevel( int minLevel );
+        optional<int>& minLevel();
+        const optional<int>& minLevel() const;
 
         /**
-         * Gets the minimum level of detail for which this layer should generate data.
+         * Gets or sets the maximum level of detail for which this layer should generate data.
          */
-        int getMinLevel() const;
-
-        /** 
-         * Sets the maximum level of detail for which this layer should generate data.
-         */
-        void setMaxLevel( int maxLevel );
-
-        /**
-         * Gets the maximum level of detail for which this layer should generate data.
-         */
-        int getMaxLevel() const;
+        optional<int>& maxLevel();
+        const optional<int>& maxLevel() const;
 
         /**
          * Gets the underlying TileSource engine that serves this map layer. Use with caution.
@@ -138,10 +128,13 @@ namespace osgEarth
         Type        _type;
         std::string _driver;
         Properties  _driverProps;
+        
+        optional<CacheConfig> _cacheConf;
+        optional<ProfileConfig> _profileConf;
+        optional<int> _minLevel;
+        optional<int> _maxLevel;
+        
         osg::ref_ptr<TileSource> _tileSource;
-        CacheConfig _cacheConf;
-        ProfileConfig _profileConf;
-        int _minLevel, _maxLevel;
     };
 
 

@@ -47,7 +47,9 @@ _type( CacheConfig::TYPE_DEFAULT )
 
 CacheConfig::CacheConfig( const CacheConfig& rhs ) :
 _type( rhs._type ),
-_properties( rhs._properties )
+_properties( rhs._properties ),
+_runOffCacheOnly( rhs._runOffCacheOnly ),
+_reprojectBeforeCaching( rhs._reprojectBeforeCaching )
 {
     //NOP
 }

@@ -297,7 +297,6 @@ Map::calculateProfile()
     else // CSTYPE_PROJECTED
     {
         if ( _profileConf.isSet() )
-        //if ( getProfileConfig().defined() )
         {
             const ProfileConfig& conf = _profileConf.get();
 
@@ -335,6 +334,7 @@ Map::calculateProfile()
 
 
     // At this point, if we don't have a profile we need to search tile sources until we find one.
+    if ( !_profile.valid() )
     {
         ScopedWriteLock lock( getMapDataMutex() );
 

@@ -229,23 +229,23 @@ namespace osgEarth
 
     public:
         // pass all the gets through by default:
-        virtual unsigned int getMinLevel() const { return _next->getMinLevel(); }
-        virtual unsigned int getMaxLevel() const { return _next->getMaxLevel(); }
-        virtual void setMinLevel(unsigned int minLevel) { _next->setMinLevel(minLevel); }
-        virtual void setMaxLevel(unsigned int maxLevel) { _next->setMaxLevel(maxLevel); }
-        virtual float getNoDataValue() { return _next->getNoDataValue(); }
-        virtual void setNoDataValie(float value) { _next->setNoDataValue(value); }
-        virtual float getNoDataMinValue() { return _next->getNoDataMinValue(); }
-        virtual void setNoDataMinValue(float value) { _next->setNoDataMinValue(value); }
-        virtual float getNoDataMaxValue() { return _next->getNoDataMaxValue(); }
-        virtual void setNoDataMaxValue(float value) { _next->setNoDataMaxValue(value); }
-        virtual bool isKeyValid(const TileKey* key) { return _next->isKeyValid(key); }
+        virtual unsigned int getMinLevel() const { return _next? _next->getMinLevel() : _minLevel; }
+        virtual unsigned int getMaxLevel() const { return _next? _next->getMaxLevel() : _maxLevel; }
+        virtual void setMinLevel(unsigned int minLevel) { if (_next.valid()) _next->setMinLevel(minLevel); else _minLevel=minLevel; }
+        virtual void setMaxLevel(unsigned int maxLevel) { if (_next.valid()) _next->setMaxLevel(maxLevel); else _maxLevel=maxLevel; }
+        virtual float getNoDataValue() { return _next.valid()? _next->getNoDataValue(): _noDataValue; }
+        virtual void setNoDataValie(float value) { if (_next.valid()) _next->setNoDataValue(value); else _noDataValue=value; }
+        virtual float getNoDataMinValue() { return _next.valid()? _next->getNoDataMinValue(): _noDataMinValue; }
+        virtual void setNoDataMinValue(float value) { if (_next.valid()) _next->setNoDataMinValue(value); else _noDataMinValue=value; }
+        virtual float getNoDataMaxValue() { return _next.valid()? _next->getNoDataMaxValue() : _noDataMaxValue; }
+        virtual void setNoDataMaxValue(float value) { if (_next.valid() ) _next->setNoDataMaxValue(value); else _noDataMaxValue=value; }
+        virtual bool isKeyValid(const TileKey* key) { return _next.valid()? _next->isKeyValid(key) : true; }
         virtual const GeoExtent& getDataExtent() const { return _next->getDataExtent(); }
         virtual unsigned int getMaxDataLevel() const { return _next->getMaxDataLevel(); }
-        virtual bool hasPersistentCache() const { return _next->hasPersistentCache(); }
-        virtual bool supportsPersistentCaching() const { return _next->supportsPersistentCaching(); }
-        virtual std::string getExtension() const { return _next->getExtension(); }
-		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile); _next->setOverrideProfile( profile ); }
+        virtual bool hasPersistentCache() const { return _next.valid()? _next->hasPersistentCache() : false; }
+        virtual bool supportsPersistentCaching() const { return _next.valid()? _next->supportsPersistentCaching() : false; }
+        virtual std::string getExtension() const { return _next.valid()? _next->getExtension() : ""; }
+		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile); if (_next) _next->setOverrideProfile( profile ); }
 
     private:
         osg::ref_ptr<TileSource> _next;

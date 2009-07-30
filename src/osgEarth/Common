@@ -87,8 +87,6 @@ namespace osgEarth
 
         T* operator ->() { return &_value; }
         const T* operator ->() const { return &_value; }
-
-        //std::string toString() const { return !_set? "unset" : ("" + _value); }
     
     private:
         bool _set;

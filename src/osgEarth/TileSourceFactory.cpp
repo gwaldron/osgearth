@@ -53,42 +53,52 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
     }
 
     bool foundValidSource = false;
-    osg::ref_ptr<TileSource> tile_source;
-
-    //Configure the cache if necessary
-    optional<CacheConfig> layerCacheConf = layer->cacheConfig();
+    osg::ref_ptr<TileSource> tileSource;
 
     bool cacheOnlyEnv = false;
-    //If the OSGEARTH_CACHE_ONLY environment variable is set, override whateve is in the map config
+    // If the OSGEARTH_CACHE_ONLY environment variable is set, override whateve is in the map config
     if (getenv("OSGEARTH_CACHE_ONLY") != 0)
     {
         osg::notify(osg::NOTICE) << "[osgEarth::TileSourceFactory] Setting osgEarth to cache only mode due to OSGEARTH_CACHE_ONLY environment variable " << std::endl;
         cacheOnlyEnv = true;
     }
 
+    optional<CacheConfig> layerCacheConf = layer->cacheConfig();
     const optional<CacheConfig>& mapCacheConf = map->cacheConfig();
 
+    // Load the tile source ... unless we are running in "offline" mode (from the cache only)
     bool runOffCacheOnly =
         cacheOnlyEnv ||
-        ( mapCacheConf.isSet() && mapCacheConf->runOffCacheOnly().isSet() && mapCacheConf->runOffCacheOnly() == true ) ||
-        ( layerCacheConf.isSet() && layerCacheConf->runOffCacheOnly().isSet() && layerCacheConf->runOffCacheOnly() == true );
+        ( mapCacheConf.isSet() && mapCacheConf->runOffCacheOnly() == true ) ||
+        ( layerCacheConf.isSet() && layerCacheConf->runOffCacheOnly() == true );
 
-    //Only load the source if we are not running offline
     if ( !runOffCacheOnly )
     {
         //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
         //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
-        tile_source = dynamic_cast<TileSource*>(
+        tileSource = dynamic_cast<TileSource*>(
             osgDB::readObjectFile( ".osgearth_" + layer->getDriver(), local_options.get()));
 
-        if ( !tile_source.valid() )
+        if ( !tileSource.valid() )
         {
             osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load TileSource for driver "  << layer->getDriver() << std::endl;
         }
     }
 
-    // Inherit from the MapConfig if it is defined
-    if ( mapCacheConf.isSet() )
+    // First, check whether a cache configuration override is enabled in the registry. This
+    // will override any map-level configuration.
+    if ( Registry::instance()->cacheConfigOverride().isSet() )
+    {
+        if ( layerCacheConf.isSet() )
+            layerCacheConf->inheritFrom( Registry::instance()->cacheConfigOverride().get() );
+        else
+            layerCacheConf = Registry::instance()->cacheConfigOverride().get();
+
+        osg::notify(osg::NOTICE) << "[osgEarth] Layer '" << layer->getName() << "': Applying global cache override..." << std::endl;
+    }
+
+    // If there is no override, inherit the map's cache configuration if there is one:
+    else if ( mapCacheConf.isSet() )
     {
         if ( layerCacheConf.isSet() )
             layerCacheConf->inheritFrom( mapCacheConf.get() );
@@ -98,47 +108,36 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
         osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': Inheriting cache configuration from map..." << std::endl;
     }
 
-    // Inherit the map CacheConfig with the override from the registry
-    if ( Registry::instance()->cacheConfigOverride().isSet() )
-    {
-        if ( layerCacheConf.isSet() )
-            layerCacheConf->inheritFrom( Registry::instance()->cacheConfigOverride().get() );
-        else
-            layerCacheConf = Registry::instance()->cacheConfigOverride().get();
-
-        osg::notify(osg::NOTICE) << "[osgEarth] Layer '" << layer->getName() << "': Applying global cache override" << std::endl;
-    }
-
-    if ( tile_source.valid() )
+    if ( tileSource.valid() )
     {           
-        //Initialize the source and set its name
-        tile_source->setName( layer->getName() );
+        // Initialize the source and set its name
+        tileSource->setName( layer->getName() );
         osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': created TileSource for driver " << layer->getDriver() << std::endl;
 
-		//If the TileSource is set to reproject before caching occurs, wrap the TileSource in a DirectReadTileSource.
-		//This allows us to pull down imagery from pretiled datasources such as TMS or WMS-C that may not be in
-		//the correct SRS, reproject them to the cache, and have a nice fast map once caching occurs.
-		if ( layerCacheConf.isSet() && layerCacheConf->reprojectBeforeCaching() == true ) //layer->getReprojectBeforeCaching() )
+		// If the TileSource is set to reproject before caching occurs, wrap the TileSource in a DirectReadTileSource.
+		// This allows us to pull down imagery from pretiled datasources such as TMS or WMS-C that may not be in
+		// the correct SRS, reproject them to the cache, and have a nice fast map once caching occurs.
+		if ( layerCacheConf.isSet() && layerCacheConf->reprojectBeforeCaching() == true )
 		{			
 			//Try to read in a preferred tile_size.
             int tile_size = as<int>( layer->getDriverProperties().get("tile_size"), 256 );
 			osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': wrapping in DirectReadTileSource with a tile size of " << tile_size << std::endl;
-			tile_source = new DirectReadTileSource( tile_source, tile_size );
+			tileSource = new DirectReadTileSource( tileSource, tile_size );
 		}
     }
 
-    osg::ref_ptr<TileSource> topSource = tile_source.get();
+    osg::ref_ptr<TileSource> topSource = tileSource.get();
 
-    //If the cache config is valid, wrap the TileSource with a caching TileSource.
-    if ( layerCacheConf.isSet() && layerCacheConf->getType() != CacheConfig::TYPE_DISABLED ) // && tile_source->supportsPersistentCaching() )
+    // If the cache config is valid and caching is not explicity disabled, wrap the TileSource with a Cache.
+    if ( layerCacheConf.isSet() && layerCacheConf->getType() != CacheConfig::TYPE_DISABLED )
     {
         osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(
-            tile_source.get(),
+            tileSource.get(),
             layerCacheConf->getType(),
             layerCacheConf->getProperties(),
             local_options.get() );
 
-        if (cache.valid())
+        if ( cache.valid() )
         {
             cache->setName( layer->getName() );
             cache->setMapConfigFilename( map->getReferenceURI() );
@@ -155,6 +154,8 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
         osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': Caching disabled" << std::endl;
     }
 
+    // Insert a small memory-cache. This will speed up repeat requests, like the kind that tend
+    // to occur when doing image compositing and mosaicing.
     MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get(), local_options.get());
     memCachedSource->setName( topSource->getName() );
 
@@ -198,10 +199,6 @@ TileSourceFactory::createDirectReadTileSource(MapLayer* layer,
     osg::ref_ptr<Map> map = new Map();
     map->setGlobalOptions( global_options );
     TileSource* source = createMapTileSource( layer, map.get() );
-
-    //MapConfig mapConfig;
-    //mapConfig.setGlobalOptions( global_options );
-    //TileSource* source = createMapTileSource( sourceConfig, mapConfig );
 
     //Wrap it in a DirectTileSource that will convert to the map's profile
     TileSource* tileSource = new DirectReadTileSource( source, tileSize, global_options );

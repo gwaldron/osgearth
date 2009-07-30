@@ -1,0 +1,17 @@
+<map name="DC State Plane" type="projected">
+
+    <profile name="NAD83 Maryland State Plane (meters)">
+        <srs>+proj=lcc +lat_1=38.3 +lat_2=39.45 +lat_0=37.66666666666666 +lon_0=-77 +x_0=399999.9999999999 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=1.0 +no_defs</srs>
+        <xmin>390021</xmin><ymin>126298</ymin>
+        <xmax>407833</xmax><ymax>147521</ymax>
+    </profile>
+    
+    <cache type="tms" reproject_before_caching="true">
+        <path>cache</path>
+    </cache>
+    
+    <image name="ags-msp" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <max_level>16</max_level>
+    </image>
+</map>

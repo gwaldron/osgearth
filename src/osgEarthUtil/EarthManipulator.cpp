@@ -145,7 +145,10 @@ _settings( new Settings() ),
 _task( new Task() ),
 _last_action( ACTION_NULL ),
 _srs_lookup_failed( false ),
-_setting_viewpoint( false )
+_setting_viewpoint( false ),
+_delta_t(0.0),
+_t_factor(1.0),
+_time_s_last_frame( osg::Timer::instance()->time_s() )
 {
     // install default action bindings:
 
@@ -158,7 +161,6 @@ _setting_viewpoint( false )
 
     _settings->bindScroll( ACTION_ZOOM_IN,  osgGA::GUIEventAdapter::SCROLL_UP );
     _settings->bindScroll( ACTION_ZOOM_OUT, osgGA::GUIEventAdapter::SCROLL_DOWN );
-    _settings->setScrollSensitivity( 1.5 );
 
     _settings->bindKey( ACTION_PAN_LEFT,  osgGA::GUIEventAdapter::KEY_Left );
     _settings->bindKey( ACTION_PAN_RIGHT, osgGA::GUIEventAdapter::KEY_Right );
@@ -342,7 +344,8 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         //else
         //    _range_plus = 0.0;
         
-        _set_viewpoint_t0 = osg::Timer::instance()->tick();
+        _time_s_set_viewpoint = _time_s_now;
+        //_set_viewpoint_t0 = osg::Timer::instance()->tick();
         _set_viewpoint_duration_s = duration_s;
 
         //osg::notify(osg::NOTICE) << "dfpx=" << _delta_focal_point.x() << ", dfpy=" << _delta_focal_point.y() << ", dfpl="
@@ -415,9 +418,12 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         _local_azim  = 0.0;
 
         recalculateLocalPitchAndAzimuth();
+
+        _setting_viewpoint = false;
     }
 }
 
+// a reasonable approximation of cosine interpolation
 static double
 smoothStepInterp( double t ) {
     return (t*t)*(3.0-2.0*t);
@@ -432,10 +438,10 @@ accelerationInterp( double t, double a ) {
 void
 EarthManipulator::updateSetViewpoint()
 {
-    osg::Timer* timer = osg::Timer::instance();
-    osg::Timer_t now = timer->tick();
+    //osg::Timer* timer = osg::Timer::instance();
 
-    double t = timer->delta_s( _set_viewpoint_t0, now ) / _set_viewpoint_duration_s;
+    double t = ( _time_s_now - _time_s_set_viewpoint ) / _set_viewpoint_duration_s;
+    //double t = timer->delta_s( _set_viewpoint_t0, _now ) / _set_viewpoint_duration_s;
     if ( t >= 1.0 )
     {
         t = 1.0;
@@ -579,10 +585,22 @@ bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& us)
 {
     bool handled = false;
-    osg::Timer_t now = osg::Timer::instance()->tick();
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
+        _time_s_last_frame = _time_s_now;
+        _time_s_now = ea.getTime();
+        _delta_t = _time_s_now - _time_s_last_frame;
+        // this factor adjusts for the variation of frame rate relative to 60fps
+        _t_factor = _delta_t / 0.01666666666;
+
+        //_time_last_frame = _now;
+        //osg::Timer* timer = osg::Timer::instance();
+        //_now = timer->tick();
+        //_delta_t = timer->delta_s( _time_last_frame, _now );
+        //// this factor adjusts for the variation of frame rate relative to 60fps
+        //_t_factor = _delta_t / 0.016666;
+
         if ( _setting_viewpoint )
         {
             updateSetViewpoint();
@@ -594,10 +612,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
             updateTether();
         }
 
-        else if ( _thrown || _continuous )
+        if ( _thrown || _continuous )
         {
-            if ( handleMouseAction( _last_action ) )
-                us.requestRedraw();
+            handleContinuousAction( _last_action );
+            us.requestRedraw();
+            //if ( handleMouseAction( _last_action ) )
+            //    us.requestRedraw();
             //osg::notify(osg::NOTICE) << "throwing, action = " << _last_action._type << std::endl;
         }
 
@@ -609,11 +629,9 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         
         if ( _task.valid() )
         {
-            if ( serviceTask( now ) )
+            if ( serviceTask() )
                 us.requestRedraw();
         }
-
-        _time_last_frame = now;
 
         return false;
     }
@@ -672,14 +690,11 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         case osgGA::GUIEventAdapter::DRAG:
             action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
             addMouseEvent( ea );
-            if ( !_continuous ) // if we're already in continuous move, let the FRAME handler process actions
-            {
-                if ( handleMouseAction( action ) )
-                    us.requestRedraw();
-                us.requestContinuousUpdate(false);
-                _continuous = action._continuous;
-                _thrown = false;
-            }
+            if ( handleMouseAction( action ) )
+                us.requestRedraw();
+            us.requestContinuousUpdate(false);
+            _continuous = action._continuous;
+            _thrown = false;
             handled = true;
             break;
 
@@ -740,29 +755,29 @@ EarthManipulator::updateTether()
 }
 
 bool
-EarthManipulator::serviceTask( const osg::Timer_t& now )
+EarthManipulator::serviceTask()
 {
     bool result;
 
     if ( _task.valid() && _task->_type != TASK_NONE )
     {
-        // normalize for 60fps..
-        double dt = osg::Timer::instance()->delta_s( _time_last_frame, now ); // / (1.0/60.0);
+        //// normalize for 60fps..
+        //double dt = osg::Timer::instance()->delta_s( _time_last_frame, now ); // / (1.0/60.0);
 
         switch( _task->_type )
         {
             case TASK_PAN:
-                pan( dt * _task->_dx, dt * _task->_dy );
+                pan( _delta_t * _task->_dx, _delta_t * _task->_dy );
                 break;
             case TASK_ROTATE:
-                rotate( dt * _task->_dx, dt * _task->_dy );
+                rotate( _delta_t * _task->_dx, _delta_t * _task->_dy );
                 break;
             case TASK_ZOOM:
-                zoom( dt * _task->_dx, dt * _task->_dy );
+                zoom( _delta_t * _task->_dx, _delta_t * _task->_dy );
                 break;
         }
 
-        _task->_duration_s -= dt;
+        _task->_duration_s -= _delta_t;
         if ( _task->_duration_s <= 0.0 )
             _task->_type = TASK_NONE;
 
@@ -787,9 +802,9 @@ EarthManipulator::isMouseMoving()
     float dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
     float dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
     float len = sqrtf(dx*dx+dy*dy);
-    float dt = _ga_t0->getTime()-_ga_t1->getTime();
+    //float dt = _ga_t0->getTime()-_ga_t1->getTime();
 
-    return (len>dt*velocity);
+    return len > _delta_t * velocity;
 }
 
 bool
@@ -804,7 +819,7 @@ EarthManipulator::isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) c
     float len = sqrtf( dx*dx + dy*dy );
     float dt = mouse_up_event->getTime( )- _mouse_down_event->getTime();
 
-    return len < dt*velocity;
+    return len < dt * velocity;
 }
 
 void
@@ -1099,34 +1114,15 @@ EarthManipulator::zoom( double dx, double dy )
     {
         _distance = _minimumDistance;
     }
-}
+}        
 
-bool
-EarthManipulator::handleMouseAction( const Action& action )
+void
+EarthManipulator::dispatchAction( const ActionType& type, double dx, double dy )
 {
-    // return if less then two events have been added.
-    if (_ga_t0.get()==NULL || _ga_t1.get()==NULL) return false;
+    dx *= _t_factor;
+    dy *= _t_factor;
 
-    double dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
-    double dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
-
-    // return if there is no movement.
-    if (dx==0 && dy==0) return false;
-
-    dx *= action._scale_x * _settings->getMouseSensitivity();
-    dy *= action._scale_y * _settings->getMouseSensitivity();
-
-    // in "continuous" mode, we accumulate the deltas each frame - thus
-    // the deltas act more like speeds.
-    if ( _continuous )
-    {
-        _continuous_dx += dx * 0.01;
-        _continuous_dy += dy * 0.01;
-        dx = _continuous_dx;
-        dy = _continuous_dy;
-    }
-    
-    switch( action._type )
+    switch( type )
     {
     case ACTION_PAN:
         pan( dx, dy );
@@ -1147,9 +1143,42 @@ EarthManipulator::handleMouseAction( const Action& action )
     case ACTION_ZOOM:
         zoom( dx, dy );
         break;
+    }
+}
 
-    default:
-        return handleAction( action, dx, dy, DBL_MAX );
+
+void
+EarthManipulator::handleContinuousAction( const Action& action )
+{
+    dispatchAction( action._type, _continuous_dx, _continuous_dy );
+}
+
+bool
+EarthManipulator::handleMouseAction( const Action& action )
+{
+    // return if less then two events have been added.
+    if (_ga_t0.get()==NULL || _ga_t1.get()==NULL) return false;
+
+    double dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
+    double dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
+
+    // return if there is no movement.
+    if (dx==0 && dy==0) return false;
+
+    // here we adjust for action scale, global sensitivy
+    dx *= action._scale_x * _settings->getMouseSensitivity();
+    dy *= action._scale_y * _settings->getMouseSensitivity();
+
+    // in "continuous" mode, we accumulate the deltas each frame - thus
+    // the deltas act more like speeds.
+    if ( _continuous )
+    {
+        _continuous_dx += dx * 0.01;
+        _continuous_dy += dy * 0.01;
+    }
+    else
+    {
+        dispatchAction( action._type, dx * _t_factor, dy * _t_factor );
     }
 
     return true;
@@ -1184,6 +1213,8 @@ EarthManipulator::handleKeyboardAction( const Action& action, double duration )
 bool
 EarthManipulator::handleScrollAction( const Action& action, double duration )
 {
+    const double scrollFactor = 1.5;
+
     double dx = 0, dy = 0;
 
     switch( action._dir )
@@ -1194,8 +1225,8 @@ EarthManipulator::handleScrollAction( const Action& action, double duration )
     case DIR_DOWN:  dy = -1; break;
     }
 
-    dx *= action._scale_x * _settings->getScrollSensitivity();
-    dy *= action._scale_y * _settings->getScrollSensitivity();
+    dx *= scrollFactor * action._scale_x * _settings->getScrollSensitivity();
+    dy *= scrollFactor * action._scale_y * _settings->getScrollSensitivity();
 
     return handleAction( action, dx, dy, duration );
 }

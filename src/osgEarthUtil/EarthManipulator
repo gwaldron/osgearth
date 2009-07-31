@@ -456,7 +456,10 @@ namespace osgEarthUtil
         bool handleMouseAction( const Action& action );
         bool handleMouseClickAction( const Action& action );
         bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
-        bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );
+        bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );        
+        void handleContinuousAction( const Action& action );
+
+        void dispatchAction( const ActionType& type, double dx, double dy );
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
@@ -487,7 +490,7 @@ namespace osgEarthUtil
 
         // "ticks" the resident Task, which allows for multi-frame animation of navigation
         // movements.
-        bool serviceTask( const osg::Timer_t& now );
+        bool serviceTask();
 
         void recalculateLocalPitchAndAzimuth();
 
@@ -516,6 +519,11 @@ namespace osgEarthUtil
 
         osg::observer_ptr<osg::Node> _tether_node;
 
+        double                  _time_s_last_frame;
+        double                  _time_s_now;
+        osg::Timer_t            _now;
+        double                  _delta_t;
+        double                  _t_factor;
         bool                    _thrown;      
         osg::Vec3d              _center;
         osg::Quat               _rotation;
@@ -537,7 +545,7 @@ namespace osgEarthUtil
         Viewpoint               _start_viewpoint;
         double                  _delta_heading, _delta_pitch, _delta_range, _range_plus;
         osg::Vec3d              _delta_focal_point;
-        osg::Timer_t            _set_viewpoint_t0;
+        osg::Timer_t            _time_s_set_viewpoint;
         double                  _set_viewpoint_duration_s;
         double                  _set_viewpoint_accel;
 

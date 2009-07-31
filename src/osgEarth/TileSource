@@ -239,7 +239,7 @@ namespace osgEarth
         virtual void setNoDataMinValue(float value) { if (_next.valid()) _next->setNoDataMinValue(value); else _noDataMinValue=value; }
         virtual float getNoDataMaxValue() { return _next.valid()? _next->getNoDataMaxValue() : _noDataMaxValue; }
         virtual void setNoDataMaxValue(float value) { if (_next.valid() ) _next->setNoDataMaxValue(value); else _noDataMaxValue=value; }
-        virtual bool isKeyValid(const TileKey* key) { return _next.valid()? _next->isKeyValid(key) : true; }
+		virtual bool isKeyValid(const TileKey* key) { return _next.valid()? _next->isKeyValid(key) : TileSource::isKeyValid(key); }
         virtual const GeoExtent& getDataExtent() const { return _next->getDataExtent(); }
         virtual unsigned int getMaxDataLevel() const { return _next->getMaxDataLevel(); }
         virtual bool hasPersistentCache() const { return _next.valid()? _next->hasPersistentCache() : false; }

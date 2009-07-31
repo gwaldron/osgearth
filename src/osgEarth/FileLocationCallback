@@ -53,7 +53,7 @@ namespace osgEarth
 
             if ( mapNode.valid() )
             {
-                const osgEarth::Profile* face_profile = mapNode->getProfile()->getFaceProfile( face );
+                const osgEarth::Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
                 osg::ref_ptr<osgEarth::TileKey> mapKey = new osgEarth::TileKey( face, lod, x, y, face_profile );
 
                 //Split the key into it's 4 children and check to see if all 4 are cached.
@@ -62,7 +62,7 @@ namespace osgEarth
 
                 for (unsigned int i = 0; i < keys.size(); ++i)
                 {
-                    if (!mapNode->getEngine()->isCached(mapNode->getMapConfig(), keys[i]))
+                    if (!mapNode->getEngine()->isCached(mapNode->getMap(), keys[i]))
                     {
                         osg::notify(osg::INFO) << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
                         return REMOTE_FILE;

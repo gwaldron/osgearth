@@ -414,10 +414,10 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
         _rotation = osg::Matrixd::inverse(new_rot).getRotate();
 
-        _local_pitch = 0.0;
-        _local_azim  = 0.0;
+        _local_pitch = new_pitch; //0.0;
+        _local_azim  = new_azim; //0.0;
 
-        recalculateLocalPitchAndAzimuth();
+        //recalculateLocalPitchAndAzimuth();
 
         _setting_viewpoint = false;
     }
@@ -636,7 +636,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
         return false;
     }
 
-    if (ea.getHandled()) return false;
+    //if (ea.getHandled()) return false;
    
     // form the current Action based on the event type:
     Action action = ACTION_NULL;
@@ -1071,33 +1071,36 @@ EarthManipulator::rotate( double dx, double dy )
     if ( dy + _local_pitch > maxp || dy + _local_pitch < minp )
         dy = 0;
 
-    osg::Matrix rotation_matrix;
-    rotation_matrix.makeRotate(_rotation);
+    Viewpoint vp = getViewpoint();
+    vp.setPitch( osg::RadiansToDegrees( _local_pitch + dy ) );
+    vp.setHeading( osg::RadiansToDegrees( _local_azim + dx ) );
+    setViewpoint( vp );
 
-    osg::Vec3d lookVector = -getUpVector(rotation_matrix);
-    osg::Vec3d sideVector = getSideVector(rotation_matrix);
-    osg::Vec3d upVector = getFrontVector(rotation_matrix);
+    //osg::Matrix rotation_matrix;
+    //rotation_matrix.makeRotate(_rotation);
 
-    osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
-    osg::Vec3d localUp = getUpVector(coordinateFrame);
+    //osg::Vec3d lookVector = -getUpVector(rotation_matrix);
+    //osg::Vec3d sideVector = getSideVector(rotation_matrix);
+    //osg::Vec3d upVector = getFrontVector(rotation_matrix);
 
-    osg::Vec3d forwardVector = localUp^sideVector; // cross product
-    sideVector = forwardVector^localUp; // cross product
+    //osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
+    //osg::Vec3d localUp = getUpVector(coordinateFrame);
 
-    forwardVector.normalize();
-    sideVector.normalize();
+    //osg::Vec3d forwardVector = localUp^sideVector; // cross product
+    //sideVector = forwardVector^localUp; // cross product
 
-    osg::Quat rotate_elevation;
-    rotate_elevation.makeRotate( dy, sideVector );
+    //forwardVector.normalize();
+    //sideVector.normalize();
 
-    osg::Quat rotate_azim;
-    rotate_azim.makeRotate( -dx, localUp );
+    //osg::Quat rotate_elevation;
+    //rotate_elevation.makeRotate( dy, sideVector );
 
-    _rotation = _rotation * rotate_elevation * rotate_azim;
+    //osg::Quat rotate_azim;
+    //rotate_azim.makeRotate( -dx, localUp );
 
-    recalculateLocalPitchAndAzimuth();
-//    _local_pitch += dy;
-//    _local_azim -= dx;
+    //_rotation = _rotation * rotate_elevation * rotate_azim;
+
+    //recalculateLocalPitchAndAzimuth();
 }
 
 void
@@ -1119,9 +1122,6 @@ EarthManipulator::zoom( double dx, double dy )
 void
 EarthManipulator::dispatchAction( const ActionType& type, double dx, double dy )
 {
-    dx *= _t_factor;
-    dy *= _t_factor;
-
     switch( type )
     {
     case ACTION_PAN:
@@ -1150,7 +1150,7 @@ EarthManipulator::dispatchAction( const ActionType& type, double dx, double dy )
 void
 EarthManipulator::handleContinuousAction( const Action& action )
 {
-    dispatchAction( action._type, _continuous_dx, _continuous_dy );
+    dispatchAction( action._type, _continuous_dx * _t_factor, _continuous_dy * _t_factor );
 }
 
 bool
@@ -1178,7 +1178,7 @@ EarthManipulator::handleMouseAction( const Action& action )
     }
     else
     {
-        dispatchAction( action._type, dx * _t_factor, dy * _t_factor );
+        dispatchAction( action._type, dx, dy );
     }
 
     return true;

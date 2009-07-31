@@ -62,27 +62,17 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
 
     GeoImageList image_tiles;
 
-    //TODO: select/composite:
     if ( imageMapLayers.size() > 0 )
     {
-        //Add an image from each image source
+        //Add an image from each valid image source.  If no image can be created or the source is not valid for this LOD, a NULL image will be added to the list
         for (unsigned int i = 0; i < imageMapLayers.size(); ++i)
         {
-            TileSource* source = imageMapLayers[i]->getTileSource(); //.get();
+            TileSource* source = imageMapLayers[i]->getTileSource();
             GeoImage* image = NULL;
             if (source->isKeyValid(key))
             {
                 image = createGeoImage(key, source);
             }
-
-            if ( !image )
-            //else
-            {
-                //If the image is not valid, create an empty texture as a placeholder
-                image = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
-            }
-
-            //if ( image )
             image_tiles.push_back( image );
         }
     }
@@ -116,21 +106,23 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
     {
         if (!image_tiles[i].valid())
         {
-            TileSource* source = imageMapLayers[i]->getTileSource(); //mapConfig.getImageSources()[i].get();
+            TileSource* source = imageMapLayers[i]->getTileSource();
+			GeoImage* image = NULL;
             if (source->isKeyValid(key))
             {
-                GeoImage* image = createValidGeoImage(source, key);
-                if (image)
-                {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Using fallback image for image source " << source->getName() << " for TileKey " << key->str() << std::endl;
-                    image_tiles[i] = image;
-                }
-                else
-                {
-                    osg::notify(osg::INFO) << "[osgEarth::ProjectedMap] Could not get valid image from image source " << source->getName() << " for TileKey " << key->str() << std::endl;
-					image_tiles[i] = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
-                }
+				//If the key was valid and we have no image, then something possibly went wrong with the image creation such as a server being busy.
+                image = createValidGeoImage(source, key);
             }
+
+			//If we still couldn't create an image, either something is really wrong or the key wasn't valid, so just create a transparent placeholder image
+			if (!image)
+			{
+				//If the image is not valid, create an empty texture as a placeholder
+				image = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
+			}
+
+			//Assign the new image to the proper place in the list
+			image_tiles[i] = image;
         }
     }
 

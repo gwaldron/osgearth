@@ -71,20 +71,15 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     //Collect the image layers
     bool empty_map = imageMapLayers.size() == 0 && hfMapLayers.size() == 0;
 
-    //TODO: select/composite:
     //Create the images for the tile
     for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
     {
         GeoImage* image = NULL;
         TileSource* source = i->get()->getTileSource();
+		//Only create images if the key is valid
         if ( source->isKeyValid( key ) )
         {
             image = createGeoImage( key, source );                
-        }
-        else
-        {
-            //If the image is not valid, create an empty texture as a placeholder
-            image = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
         }
         image_tiles.push_back(image);
     }
@@ -120,21 +115,23 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     {
         if (!image_tiles[i].valid())
         {
-            TileSource* source = imageMapLayers[i]->getTileSource(); //mapConfig.getImageSources()[i].get();
+            TileSource* source = imageMapLayers[i]->getTileSource();
+			GeoImage* image = NULL;
             if (source->isKeyValid(key))
             {
-                GeoImage* image = createValidGeoImage(source, key);
-                if (image)
-                {
-                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine] Using fallback image for image source " << source->getName() << " for TileKey " << key->str() << std::endl;
-                    image_tiles[i] = image;
-                }
-                else
-                {
-                    osg::notify(osg::INFO) << "[osgEarth::GeocentricMapEngine] Could not get valid image from image source " << source->getName() << " for TileKey " << key->str() << std::endl;
-					image_tiles[i] = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
-                }
+				//If the key was valid and we have no image, then something possibly went wrong with the image creation such as a server being busy.
+                image = createValidGeoImage(source, key);
             }
+
+			//If we still couldn't create an image, either something is really wrong or the key wasn't valid, so just create a transparent placeholder image
+			if (!image)
+			{
+				//If the image is not valid, create an empty texture as a placeholder
+				image = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
+			}
+
+			//Assign the new image to the proper place in the list
+			image_tiles[i] = image;
         }
     }
 

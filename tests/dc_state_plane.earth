@@ -1,3 +1,26 @@
+<!--
+osgEarth Sample - Image reprojection and caching
+
+This example shows how to:
+
+a) define a custom profile for a projected map
+b) read imagery from a geodetic image source and reproject it to the custom profile; and
+c) configure the cache to store the reprojected imagery.
+
+To define a custom profile, you must provide an SRS initialization string. In that case we are
+using a PROJ4 string, but you can also use WKT or an EPSG string. (Note: If you use an EPSG code
+string (example: "epsg:4326") then you must have GDAL_DATA defined in your environment.)
+
+A handy place to find SRS definitions is: http://spatialreference.org
+
+Usually image tiles are cached as close "to the source" as possible, i.e. before any image
+processing take place. The "reproject_before_caching" attribute on the cache definition changes
+this behavior, forcing the engine to mosaic and reproject the data before it goes in the cache.
+This speeds up the viewing of cached data tremendously (when reprojection is involved); the 
+downside is that you cannot use that cache for other map profiles. It becomes tied to the 
+specific map profile under which it was created.
+-->
+
 <map name="DC State Plane" type="projected">
 
     <profile name="NAD83 Maryland State Plane (meters)">
@@ -6,12 +29,14 @@
         <xmax>407833</xmax><ymax>147521</ymax>
     </profile>
     
-    <cache type="tms" reproject_before_caching="true">
-        <path>cache</path>
-    </cache>
-    
+    <!-- This image layer returns global geodetic tiles -->
     <image name="ags-msp" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
         <max_level>16</max_level>
     </image>
+    
+    <cache type="tms" reproject_before_caching="true">
+        <path>cache</path>
+    </cache>
+    
 </map>

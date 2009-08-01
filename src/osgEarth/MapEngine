@@ -20,7 +20,6 @@
 #ifndef OSGEARTH_MAP_ENGINE_H
 #define OSGEARTH_MAP_ENGINE_H 1
 
-#include <osgEarth/Map>
 #include <osgEarth/MapEngineProperties>
 #include <osgEarth/TileSource>
 #include <osgEarth/Compositing>
@@ -33,6 +32,8 @@
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT Map;
+
     /**
      * MapEngine is the main workhorse in osgEarth. It generates osg Nodes for TileKeys.
      */

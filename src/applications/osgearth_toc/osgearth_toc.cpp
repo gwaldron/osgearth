@@ -185,7 +185,7 @@ struct MoveLayerCallback: public osgWidget::Callback
         {
             _view->getDatabasePager()->clear();
             int dir = _up ? 1 : -1;
-            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, _map->getImageMapLayers().size()-1u);
+            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)_map->getImageMapLayers().size()-1u);
             //_map->moveImageSource( _layerIndex, newPosition );
             MapLayer* layer = _map->getImageMapLayers()[_layerIndex];
             _map->moveMapLayer( layer, newPosition );
@@ -527,7 +527,8 @@ int main(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-	osg::notify(osg::NOTICE) << "osgearth_toc requires at least OpenSceneGraph 2.8.0 due to changes in osgWidget." << std::endl;
-	return 0;
+    osg::notify(osg::NOTICE) << "osgearth_toc requires at least OpenSceneGraph 2.8.0 due to changes in osgWidget." << std::endl;
+    return 0;
 }
+
 #endif

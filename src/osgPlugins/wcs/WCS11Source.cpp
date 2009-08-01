@@ -111,24 +111,23 @@ WCS11Source::getExtension() const
 osg::Image*
 WCS11Source::createImage( const TileKey* key )
 {
-    osg::ref_ptr<HTTPRequest> request = createRequest( key );
+    HTTPRequest request = createRequest( key );
 
-    osg::notify(osg::INFO) << "[osgEarth::WCS1.1] Key=" << key->str() << " URL = " << request->getURL() << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::WCS1.1] Key=" << key->str() << " URL = " << request.getURL() << std::endl;
 
     double lon0,lat0,lon1,lat1;
     key->getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
 
     // download the data
-    HTTPClient client;
-    osg::ref_ptr<HTTPResponse> response = client.get( request.get() );
-    if ( !response.valid() )
+    HTTPResponse response = HTTPClient::get( request );
+    if ( !response.isOK() )
     {
         osg::notify(osg::WARN) << "[osgEarth::WCS1.1] WARNING: HTTP request failed" << std::endl;
         return NULL;
     }
 
-    unsigned int part_num = response->getNumParts() > 1? 1 : 0;
-    std::istream& input_stream = response->getPartStream( part_num );
+    unsigned int part_num = response.getNumParts() > 1? 1 : 0;
+    std::istream& input_stream = response.getPartStream( part_num );
 
     //TODO: un-hard-code TIFFs
     osgDB::ReaderWriter* reader = osgDB::Registry::instance()->getReaderWriterForExtension( "tiff" );
@@ -186,7 +185,7 @@ http://server/ArcGIS/services/WorldElevation/MapServer/WCSServer
 */
 
 
-HTTPRequest*
+HTTPRequest
 WCS11Source::createRequest( const TileKey* key ) const
 {
     std::stringstream buf;
@@ -199,17 +198,17 @@ WCS11Source::createRequest( const TileKey* key ) const
     double lon_interval = (lon_max-lon_min)/(double)(lon_samples-1);
     double lat_interval = (lat_max-lat_min)/(double)(lat_samples-1);
 
-    HTTPRequest* req = new HTTPRequest( _url );
+    HTTPRequest req( _url );
 
-    req->addParameter( "SERVICE",    "WCS" );
-    req->addParameter( "VERSION",    "1.1.0" );
-    req->addParameter( "REQUEST",    "GetCoverage" );
-    req->addParameter( "IDENTIFIER", _identifier );
-    req->addParameter( "FORMAT",     _cov_format );
+    req.addParameter( "SERVICE",    "WCS" );
+    req.addParameter( "VERSION",    "1.1.0" );
+    req.addParameter( "REQUEST",    "GetCoverage" );
+    req.addParameter( "IDENTIFIER", _identifier );
+    req.addParameter( "FORMAT",     _cov_format );
 
-    req->addParameter( "GridBaseCRS", "urn:ogc:def:crs:EPSG::4326" );
-    req->addParameter( "GridCS",      "urn:ogc:def:crs:EPSG::4326" );
-    req->addParameter( "GridType",    "urn:ogc:def:method:WCS:1.1:2dGridIn2dCrs" );
+    req.addParameter( "GridBaseCRS", "urn:ogc:def:crs:EPSG::4326" );
+    req.addParameter( "GridCS",      "urn:ogc:def:crs:EPSG::4326" );
+    req.addParameter( "GridType",    "urn:ogc:def:method:WCS:1.1:2dGridIn2dCrs" );
 
     // IMPORTANT NOTE:
     //   For WCS1.1+, the BOUNDINGBOX for geographic CRS's (like WGS84) are expressed
@@ -237,23 +236,23 @@ WCS11Source::createRequest( const TileKey* key ) const
     //the edge of this TileKey's extents.  Doing this makes neighboring tiles have the same elevation values so there is no need
     //to run the tile edge normalization code.
     buf << lon_min - halfLon << "," << lat_min - halfLat << "," << lon_max + halfLon << "," << lat_max + halfLat << ",EPSG:4326";
-    req->addParameter( "BOUNDINGBOX", buf.str() );
+    req.addParameter( "BOUNDINGBOX", buf.str() );
 
     double originX = lon_min;
     double originY = lat_max;
 
     buf.str("");
     buf << originX << "," << originY; 
-    req->addParameter( "GridOrigin", buf.str() );
+    req.addParameter( "GridOrigin", buf.str() );
     
     buf.str("");
     buf << lon_interval << "," << lat_interval;   // note: top-down
     //buf << lon_interval << "," << lat_interval;
-    req->addParameter( "GridOffsets", buf.str() );
+    req.addParameter( "GridOffsets", buf.str() );
 
     if (!_range_subset.empty())
     {
-        req->addParameter( "RangeSubset", _range_subset );
+        req.addParameter( "RangeSubset", _range_subset );
     }
 
     return req;

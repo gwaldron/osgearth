@@ -480,11 +480,10 @@ EarthFile::readXML( const std::string& location )
 
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPClient client;
-        osg::ref_ptr<HTTPResponse> response = client.get( location );
-        if ( response->isOK() && response->getNumParts() > 0 )
+        HTTPResponse response = HTTPClient::get( location );
+        if ( response.isOK() && response.getNumParts() > 0 )
         {
-            success = readXML( response->getPartStream( 0 ), location );
+            success = readXML( response.getPartStream( 0 ), location );
         }
     }
     else

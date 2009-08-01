@@ -36,10 +36,12 @@ namespace osgEarth
     /**
      * An HTTP request for use with the HTTPClient class.
      */
-    class OSGEARTH_EXPORT HTTPRequest : public osg::Referenced
+    class OSGEARTH_EXPORT HTTPRequest
     {
     public:
         HTTPRequest( const std::string& url );
+
+        HTTPRequest( const HTTPRequest& rhs );
 
         void addParameter( const std::string& name, const std::string& value );
         void addParameter( const std::string& name, int value );
@@ -52,8 +54,8 @@ namespace osgEarth
         std::string getURL() const;
         
     private:
-        Parameters parameters;
-        std::string url;
+        Parameters _parameters;
+        std::string _url;
     };
 
 
@@ -61,10 +63,12 @@ namespace osgEarth
      * An HTTP response object for use with the HTTPClient class - supports
      * multi-part mime responses.
      */
-    class OSGEARTH_EXPORT HTTPResponse : public osg::Referenced
+    class OSGEARTH_EXPORT HTTPResponse
     {
     public:
         HTTPResponse( long code );
+
+        HTTPResponse( const HTTPResponse& rhs );
 
         long getCode() const;
 
@@ -83,15 +87,15 @@ namespace osgEarth
     private:
         struct Part : public osg::Referenced
         {
-            Part() : size(0) { }
+            Part() : _size(0) { }
             typedef std::map<std::string,std::string> Headers;
-            Headers headers;
-            unsigned int size;
-            std::stringstream stream;
+            Headers _headers;
+            unsigned int _size;
+            std::stringstream _stream;
         };
         typedef std::vector< osg::ref_ptr<Part> > Parts;
-        Parts parts;
-        long response_code;
+        Parts _parts;
+        long _response_code;
 
         friend class HTTPClient;
     };
@@ -107,9 +111,11 @@ namespace osgEarth
 
         void setProxyPort( const std::string& port );
 
-        HTTPResponse* get( HTTPRequest* request ) const;
+        HTTPResponse doGet( const HTTPRequest& request ) const;
 
-        HTTPResponse* get( const std::string& url ) const;
+        HTTPResponse doGet( const std::string& url ) const;
+
+        static HTTPResponse get( const HTTPRequest& request );
 
         /**
          * Convenience method for downloading a URL directly to a file
@@ -117,10 +123,10 @@ namespace osgEarth
         bool downloadFile(const std::string& url, const std::string& filename);
 
     private:
-        std::string proxy_host;
-        std::string proxy_port;
+        std::string _proxy_host;
+        std::string _proxy_port;
 
-        void *curl_handle;
+        void *_curl_handle;
 
 
     private:

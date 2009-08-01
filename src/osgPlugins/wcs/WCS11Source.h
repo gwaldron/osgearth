@@ -56,7 +56,7 @@ private:
     std::string _range_subset;
     int         _tile_size;
 
-    HTTPRequest* createRequest( const TileKey* key ) const;
+    HTTPRequest createRequest( const TileKey* key ) const;
 };
 
 #endif // OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_

@@ -124,14 +124,13 @@ MapService::init( const std::string& _url )
     url = _url;
     std::string json_url = url + "?f=json&pretty=true";  // request the data in JSON format
 
-    HTTPClient client;
-    osg::ref_ptr<HTTPResponse> response = client.get( json_url );
-    if ( !response.valid() )
+    HTTPResponse response = HTTPClient::get( json_url );
+    if ( !response.isOK() )
         return setError( "Unable to read metadata from ArcGIS service" );
 
     Json::Value doc;
     Json::Reader reader;
-    if ( !reader.parse( response->getPartStream(0), doc ) )
+    if ( !reader.parse( response.getPartStream(0), doc ) )
         return setError( "Unable to parse metadata; invalid JSON" );
 
     // Read the profile. We are using "fullExtent"; perhaps an option to use "initialExtent" instead?

@@ -134,11 +134,10 @@ CapabilitiesReader::read( const std::string &location )
     Capabilities *caps = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPClient client;
-        osg::ref_ptr<HTTPResponse> response = client.get( location );
-        if (response.valid() && response->isOK() && response->getNumParts() > 0 )
+        HTTPResponse response = HTTPClient::get( location );
+        if ( response.isOK() && response.getNumParts() > 0 )
         {
-            caps = read( response->getPartStream( 0 ) );
+            caps = read( response.getPartStream( 0 ) );
         }
     }
     else

@@ -213,11 +213,10 @@ TileServiceReader::read( const std::string &location )
     TileService *tileService = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPClient client;
-        osg::ref_ptr<HTTPResponse> response = client.get( location );
-        if (response.valid() && response->isOK() && response->getNumParts() > 0 )
+        HTTPResponse response = HTTPClient::get( location );
+        if (response.isOK() && response.getNumParts() > 0 )
         {
-            tileService = read( response->getPartStream( 0 ) );
+            tileService = read( response.getPartStream( 0 ) );
         }
     }
     else

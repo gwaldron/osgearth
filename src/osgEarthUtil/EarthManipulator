@@ -494,6 +494,8 @@ namespace osgEarthUtil
 
         void recalculateLocalPitchAndAzimuth();
 
+        void recalculateCenter( const osg::CoordinateFrame& frame );
+
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
 
         void updateTether();
@@ -545,7 +547,7 @@ namespace osgEarthUtil
         Viewpoint               _start_viewpoint;
         double                  _delta_heading, _delta_pitch, _delta_range, _range_plus;
         osg::Vec3d              _delta_focal_point;
-        osg::Timer_t            _time_s_set_viewpoint;
+        double                  _time_s_set_viewpoint;
         double                  _set_viewpoint_duration_s;
         double                  _set_viewpoint_accel;
 

@@ -344,18 +344,29 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         //else
         //    _range_plus = 0.0;
         
-        _time_s_set_viewpoint = _time_s_now;
-        //_set_viewpoint_t0 = osg::Timer::instance()->tick();
+        // don't use _time_s_now; that's the time of the last event
+        _time_s_set_viewpoint = osg::Timer::instance()->time_s();
         _set_viewpoint_duration_s = duration_s;
 
-        //osg::notify(osg::NOTICE) << "dfpx=" << _delta_focal_point.x() << ", dfpy=" << _delta_focal_point.y() << ", dfpl="
-        //    << _delta_focal_point.length() << ", h0=" << h0 << ", h1=" << h0 << ", h_delta=" << h_delta << ", accel = " << _set_viewpoint_accel
-        //    << ", rangeplus = " << _range_plus << ", dist = " << dist << std::endl;
+//        osg::notify(osg::NOTICE)
+//            << "dfpx=" << _delta_focal_point.x()
+//            << ", dfpy=" << _delta_focal_point.y()
+//            << ", dfpl=" << _delta_focal_point.length()
+//            << ", h0=" << h0
+//            << ", h1=" << h0
+//            //<< ", h_delta=" << h_delta
+//            << ", accel = " << _set_viewpoint_accel
+//            << ", rangeplus = " << _range_plus
+////            << ", dist = " << dist
+//            << std::endl;
 
         _setting_viewpoint = true;
         
         _thrown = false;
         _task->_type = TASK_NONE;
+
+        // update the center point in case there's been paging.
+        //recalculateCenter( getCoordinateFrame(_center) );
     }
     else
     {
@@ -414,12 +425,10 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
         _rotation = osg::Matrixd::inverse(new_rot).getRotate();
 
-        _local_pitch = new_pitch; //0.0;
-        _local_azim  = new_azim; //0.0;
+        _local_pitch = new_pitch;
+        _local_azim  = new_azim;
 
-        //recalculateLocalPitchAndAzimuth();
-
-        _setting_viewpoint = false;
+        //recalculateCenter( local_frame );
     }
 }
 
@@ -438,30 +447,36 @@ accelerationInterp( double t, double a ) {
 void
 EarthManipulator::updateSetViewpoint()
 {
-    //osg::Timer* timer = osg::Timer::instance();
+    // intiialize the start time:
+    //if ( _time_s_set_viewpoint == 0.0 )
+    //    _time_s_set_viewpoint = _time_s_now;
 
     double t = ( _time_s_now - _time_s_set_viewpoint ) / _set_viewpoint_duration_s;
-    //double t = timer->delta_s( _set_viewpoint_t0, _now ) / _set_viewpoint_duration_s;
+    double tp = t;
+
     if ( t >= 1.0 )
     {
-        t = 1.0;
+        t = tp = 1.0;
         _setting_viewpoint = false;
     }
-    else
+    else if ( t > 0.0 )
     {
-        t = accelerationInterp( t, _set_viewpoint_accel );
-        t = smoothStepInterp( t );
+        tp = accelerationInterp( tp, _set_viewpoint_accel );
+        tp = smoothStepInterp( tp );
     }
 
     Viewpoint new_vp(
-        _start_viewpoint.getFocalPoint() + _delta_focal_point * t,
-        _start_viewpoint.getHeading() + _delta_heading * t,
-        _start_viewpoint.getPitch() + _delta_pitch * t,
-        _start_viewpoint.getRange() + _delta_range * t + (sin(osg::PI*t)*_range_plus),
+        _start_viewpoint.getFocalPoint() + _delta_focal_point * tp,
+        _start_viewpoint.getHeading() + _delta_heading * tp,
+        _start_viewpoint.getPitch() + _delta_pitch * tp,
+        _start_viewpoint.getRange() + _delta_range * tp + (sin(osg::PI*tp)*_range_plus),
         _start_viewpoint.getSRS() );
 
     //osg::notify(osg::NOTICE)
     //    << "t=" << t 
+    //    << ", tp=" << tp
+    //    << ", tsv=" << _time_s_set_viewpoint
+    //    << ", now=" << _time_s_now
     //    << ", x=" << new_vp.x()
     //    << ", y=" << new_vp.y()
     //    << ", z=" << new_vp.z()
@@ -589,6 +604,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapte
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
         _time_s_last_frame = _time_s_now;
+        //_time_s_now = osg::Timer::instance()->time_s();
         _time_s_now = ea.getTime();
         _delta_t = _time_s_now - _time_s_last_frame;
         // this factor adjusts for the variation of frame rate relative to 60fps
@@ -956,43 +972,11 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 
 
 void
-EarthManipulator::pan( double dx, double dy )
+EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame )
 {
-    double scale = -0.3f*_distance;
-    double old_azim = _local_azim;
-
-    osg::Matrixd rotation_matrix;
-    rotation_matrix.makeRotate(_rotation);
-
-
-    // compute look vector.
-    osg::Vec3d lookVector = -getUpVector(rotation_matrix);
-    osg::Vec3d sideVector = getSideVector(rotation_matrix);
-    osg::Vec3d upVector = getFrontVector(rotation_matrix);
-
-    osg::Vec3d localUp = _previousUp;
-
-    osg::Vec3d forwardVector =localUp^sideVector;
-    sideVector = forwardVector^localUp;
-
-    forwardVector.normalize();
-    sideVector.normalize();
-
-    osg::Vec3d dv = forwardVector * (dy*scale) + sideVector * (dx*scale);
-
-    // save the previous CF so we can do azimuth locking:
-    osg::CoordinateFrame old_frame = getCoordinateFrame( _center );
-
-    _center += dv;
-
-    // need to recompute the intersection point along the look vector.
-
-    bool hitFound = false;
-
-    if (_node.valid())
+    if ( _node.valid() )
     {
-        // now reorientate the coordinate frame to the frame coords.
-        osg::CoordinateFrame coordinateFrame =  getCoordinateFrame(_center);
+        bool hitFound = false;
 
         // need to reintersect with the terrain
         double distance = _node->getBound().radius()*0.25f;
@@ -1025,6 +1009,48 @@ EarthManipulator::pan( double dx, double dy )
             // ??
             osg::notify(osg::INFO)<<"EarthManipulator unable to intersect with terrain."<<std::endl;
         }
+    }
+}
+
+
+void
+EarthManipulator::pan( double dx, double dy )
+{
+    double scale = -0.3f*_distance;
+    double old_azim = _local_azim;
+
+    osg::Matrixd rotation_matrix;
+    rotation_matrix.makeRotate(_rotation);
+
+
+    // compute look vector.
+    osg::Vec3d lookVector = -getUpVector(rotation_matrix);
+    osg::Vec3d sideVector = getSideVector(rotation_matrix);
+    osg::Vec3d upVector = getFrontVector(rotation_matrix);
+
+    osg::Vec3d localUp = _previousUp;
+
+    osg::Vec3d forwardVector =localUp^sideVector;
+    sideVector = forwardVector^localUp;
+
+    forwardVector.normalize();
+    sideVector.normalize();
+
+    osg::Vec3d dv = forwardVector * (dy*scale) + sideVector * (dx*scale);
+
+    // save the previous CF so we can do azimuth locking:
+    osg::CoordinateFrame old_frame = getCoordinateFrame( _center );
+
+    _center += dv;
+
+    // need to recompute the intersection point along the look vector.
+
+    if (_node.valid())
+    {
+        // now reorientate the coordinate frame to the frame coords.
+        osg::CoordinateFrame coordinateFrame =  getCoordinateFrame(_center);
+
+        recalculateCenter( coordinateFrame );
 
         coordinateFrame = getCoordinateFrame(_center);
         osg::Vec3d new_localUp = getUpVector(coordinateFrame);

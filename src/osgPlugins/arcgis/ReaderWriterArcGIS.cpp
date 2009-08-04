@@ -76,13 +76,45 @@ public:
         const Profile* profile = NULL;
 
         if ( !_profile_str.empty() )
+        {
             profile = Profile::create( _profile_str );
+        }
         else if ( _map_service.getProfile() )
+        {
             profile = _map_service.getProfile();
+
+            if ( !_map_service.isTiled() )
+            {
+                // expand the profile's extents so they form a square.
+                // AGS will return an image of a different extent than requested if the pixel aspect
+                // ratio is not the same at the geoextent aspect ratio. By forcing a square full extent,
+                // we can always request square tiles.
+
+                const GeoExtent& oldEx = profile->getExtent();
+                if ( oldEx.width() > oldEx.height() )
+                {
+                    double d = oldEx.width() - oldEx.height();
+                    unsigned int tilesX, tilesY;
+                    profile->getNumTiles( 0, tilesX, tilesY );
+                    profile = Profile::create( profile->getSRS(), oldEx.xMin(), oldEx.yMin()-d/2, oldEx.xMax(), oldEx.yMax()+d/2, tilesX, tilesY );                    
+                }
+                else if ( oldEx.width() < oldEx.height() )
+                {
+                    double d = oldEx.height() - oldEx.width();
+                    unsigned int tilesX, tilesY;
+                    profile->getNumTiles( 0, tilesX, tilesY );
+                    profile = Profile::create( profile->getSRS(), oldEx.xMin()-d/2, oldEx.yMin(), oldEx.xMax()+d/2, oldEx.yMax(), tilesX, tilesY );    
+                }
+            }
+        }
         else if ( mapProfile )
+        {
             profile = mapProfile;
+        }
         else
+        {
             profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        }
 
         return profile;
     }
@@ -108,10 +140,26 @@ public:
         if ( f.length() > 3 && f.substr( 0, 3 ) == "png" )
             f = "png";
 
-        buf << _url << "/tile"
-            << "/" << level
-            << "/" << tile_y
-            << "/" << tile_x << "." << f;
+        if ( _map_service.isTiled() )
+        {
+            buf << _url << "/tile"
+                << "/" << level
+                << "/" << tile_y
+                << "/" << tile_x << "." << f;
+        }
+        else
+        {
+            const GeoExtent& ex = key->getGeoExtent();
+
+            buf << std::setprecision(16)
+                << _url << "/export"
+                << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
+                << "&format=" << f 
+                << "&size=256,256"
+                << "&transparent=true"
+                << "&f=image"
+                << "&" << "." << f;
+        }
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
         return osgDB::readImageFile( buf.str(), getOptions() );

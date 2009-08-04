@@ -97,8 +97,9 @@ TileInfo::getNumTilesHigh() const {
 //===========================================================================
 
 
-MapService::MapService()
-: is_valid( false )
+MapService::MapService() :
+is_valid( false ),
+tiled( false )
 {
     //NOP
 }
@@ -106,6 +107,11 @@ MapService::MapService()
 bool 
 MapService::isValid() const {
     return is_valid;
+}
+
+bool
+MapService::isTiled() const {
+    return tiled;
 }
 
 const Profile*
@@ -122,7 +128,7 @@ bool
 MapService::init( const std::string& _url )
 {
     url = _url;
-    std::string json_url = url + "?f=json&pretty=true";  // request the data in JSON format
+    std::string json_url = url + "?f=pjson";  // request the data in JSON format
 
     HTTPResponse response = HTTPClient::get( json_url );
     if ( !response.isOK() )
@@ -148,15 +154,6 @@ MapService::init( const std::string& _url )
     {
         return setError( "Map service does not define a full extent" );
     }
-    
-
-    //if ( xmax > xmin && ymax > ymin && srs != 0 )
-    //{
-    //}
-    //else
-    //{
-    //    return setError( "Map service does not define a full extent" );
-    //}
 
     // Read the layers list
     Json::Value j_layers = doc["layers"];
@@ -175,55 +172,65 @@ MapService::init( const std::string& _url )
         }
     }
 
-    // Read the tiling schema
-    Json::Value j_tileinfo = doc["tileInfo"];
-    if ( j_tileinfo.empty() )
-        return setError( "Map service does not define a tiling schema" );
-
-    // TODO: what do we do if the width <> height?
-    int tile_rows = j_tileinfo.get( "rows", 0 ).asInt();
-    int tile_cols = j_tileinfo.get( "cols", 0 ).asInt();
-    if ( tile_rows <= 0 && tile_cols <= 0 )
-        return setError( "Map service tile size not specified" );
-
-    std::string format = j_tileinfo.get( "format", "" ).asString();
-    if ( format.empty() )
-        return setError( "Map service tile schema does not specify an image format" );
-
-    Json::Value j_levels = j_tileinfo["lods"];
-    if ( j_levels.empty() )
-        return setError( "Map service tile schema contains no LODs" );
-    
-    int min_level = INT_MAX;
+    tiled = false;
+    std::string format = "png";
+    int tile_rows = 256;
+    int tile_cols = 256;
+    int min_level = 25;
     int max_level = 0;
-    for( int i=0; i<j_levels.size(); i++ )
-    {
-        int level = j_levels[i].get( "level", -1 ).asInt();
-        if ( level >= 0 && level < min_level )
-            min_level = level;
-        if ( level >= 0 && level > max_level )
-            max_level = level;
-    }
-
     int num_tiles_wide = 1;
     int num_tiles_high = 1;
 
-    if (j_levels.size() > 0)
+    // Read the tiling schema
+    Json::Value j_tileinfo = doc["tileInfo"];
+    if ( !j_tileinfo.empty() )
     {
-        int l = j_levels[0u].get("level", -1).asInt();
-        double res = j_levels[0u].get("resolution", 0.0).asDouble();
-        num_tiles_wide = (int)osg::round((xmax - xmin) / (res * tile_cols));
-        num_tiles_high = (int)osg::round((ymax - ymin) / (res * tile_cols));
+        tiled = true;
 
-        //In case the first level specified isn't level 0, compute the number of tiles at level 0
-        for (int i = 0; i < l; i++)
+     //   return setError( "Map service does not define a tiling schema" );
+
+        // TODO: what do we do if the width <> height?
+        tile_rows = j_tileinfo.get( "rows", 0 ).asInt();
+        tile_cols = j_tileinfo.get( "cols", 0 ).asInt();
+        if ( tile_rows <= 0 && tile_cols <= 0 )
+            return setError( "Map service tile size not specified" );
+
+        format = j_tileinfo.get( "format", "" ).asString();
+        if ( format.empty() )
+            return setError( "Map service tile schema does not specify an image format" );
+
+        Json::Value j_levels = j_tileinfo["lods"];
+        if ( j_levels.empty() )
+            return setError( "Map service tile schema contains no LODs" );
+        
+        min_level = INT_MAX;
+        max_level = 0;
+        for( int i=0; i<j_levels.size(); i++ )
         {
-            num_tiles_wide /= 2;
-            num_tiles_high /= 2;
+            int level = j_levels[i].get( "level", -1 ).asInt();
+            if ( level >= 0 && level < min_level )
+                min_level = level;
+            if ( level >= 0 && level > max_level )
+                max_level = level;
         }
 
-        //profile.setNumTilesWideAtLod0(num_tiles_wide);
-        //profile.setNumTilesHighAtLod0(num_tiles_high);
+        if (j_levels.size() > 0)
+        {
+            int l = j_levels[0u].get("level", -1).asInt();
+            double res = j_levels[0u].get("resolution", 0.0).asDouble();
+            num_tiles_wide = (int)osg::round((xmax - xmin) / (res * tile_cols));
+            num_tiles_high = (int)osg::round((ymax - ymin) / (res * tile_cols));
+
+            //In case the first level specified isn't level 0, compute the number of tiles at level 0
+            for (int i = 0; i < l; i++)
+            {
+                num_tiles_wide /= 2;
+                num_tiles_high /= 2;
+            }
+
+            //profile.setNumTilesWideAtLod0(num_tiles_wide);
+            //profile.setNumTilesHighAtLod0(num_tiles_high);
+        }
     }
 
     profile = Profile::create(

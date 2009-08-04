@@ -106,6 +106,7 @@ namespace osgEarth
         };
 
     public:
+
         static Profile* create(
             const std::string& srs_string,
             double xmin, double ymin, double xmax, double ymax,

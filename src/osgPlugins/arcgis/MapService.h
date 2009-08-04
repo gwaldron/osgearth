@@ -99,6 +99,8 @@ public:
      */
     bool isValid() const;
 
+    bool isTiled() const;
+
     /** 
      * If isValid() returns false, this method will return the error message.
      */
@@ -120,6 +122,7 @@ private:
     osg::ref_ptr<const Profile> profile;
     std::string error_msg;
     MapServiceLayerList layers;
+    bool tiled;
     TileInfo tile_info;
 
     bool setError( const std::string& );

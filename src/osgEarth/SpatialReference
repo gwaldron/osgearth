@@ -64,9 +64,11 @@ namespace osgEarth
             bool ignore_errors =false) const;
 
         /**
-         * Transforms a spatial extent to another SRS. Different than just
-         * transforming each corner, this method will account for geographic
-         * extents that span the date line.
+         * Transforms a spatial extent to another SRS. 
+         *
+         * TODO: Update this method to work for:
+         * a) Geographic extents that cross the date line; and
+         * b) Polar extents.
          */
         virtual bool transformExtent(
             const SpatialReference* to_srs,

@@ -42,6 +42,7 @@ using namespace osgEarth;
 #define PROPERTY_STYLE            "style"
 #define PROPERTY_FORMAT           "format"
 #define PROPERTY_WMS_FORMAT       "wms_format"
+#define PROPERTY_WMS_VERSION      "wms_version"
 #define PROPERTY_TILE_SIZE        "tile_size"
 #define PROPERTY_ELEVATION_UNIT   "elevation_unit"
 #define PROPERTY_SRS              "srs"
@@ -67,7 +68,8 @@ class WMSSource : public TileSource
 public:
 	WMSSource( const osgDB::ReaderWriter::Options* options ):
     TileSource( options ),
-    _tile_size(256)
+    _tile_size(256),
+    _wms_version( "1.1.1" )
     {
         if ( options->getPluginData( PROPERTY_URL ) )
             _prefix = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
@@ -83,6 +85,9 @@ public:
 
         if ( options->getPluginData( PROPERTY_WMS_FORMAT ) )
             _wms_format = std::string( (const char*)options->getPluginData( PROPERTY_WMS_FORMAT ) );
+
+        if ( options->getPluginData( PROPERTY_WMS_VERSION ) )
+            _wms_version = std::string( (const char*)options->getPluginData( PROPERTY_WMS_VERSION ) );
 
         if ( options->getPluginData( PROPERTY_CAPABILITIES_URL ) )
             _capabilitiesURL = std::string( (const char*)options->getPluginData( PROPERTY_CAPABILITIES_URL ) );
@@ -146,7 +151,7 @@ public:
         std::stringstream buf;
         buf
             << std::fixed << _prefix << sep
-            << "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap"
+            << "SERVICE=WMS&VERSION=" << _wms_version << "&REQUEST=GetMap"
             << "&LAYERS=" << _layers
             << "&FORMAT=" << (_wms_format.empty()? "image/" + _format : _wms_format)
             << "&STYLES=" << _style
@@ -154,6 +159,7 @@ public:
             << "&WIDTH="<< _tile_size
             << "&HEIGHT="<< _tile_size
             << "&BBOX=%lf,%lf,%lf,%lf";
+
         _prototype = buf.str();
 
         // first check whether the map + WMS source are the same SRS:
@@ -302,6 +308,7 @@ private:
     std::string _style;
     std::string _format;
     std::string _wms_format;
+    std::string _wms_version;
     std::string _srs;
     std::string _tileServiceURL;
     std::string _capabilitiesURL;

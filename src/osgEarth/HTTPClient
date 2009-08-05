@@ -104,6 +104,13 @@ namespace osgEarth
     class OSGEARTH_EXPORT HTTPClient
     {
     public:
+
+        /**
+         * Performs an HTTP "GET".
+         */
+        static HTTPResponse get( const HTTPRequest& request );
+
+    public:
         HTTPClient( const osgDB::ReaderWriter::Options* options =NULL );
         ~HTTPClient();
 
@@ -114,8 +121,6 @@ namespace osgEarth
         HTTPResponse doGet( const HTTPRequest& request ) const;
 
         HTTPResponse doGet( const std::string& url ) const;
-
-        static HTTPResponse get( const HTTPRequest& request );
 
         /**
          * Convenience method for downloading a URL directly to a file

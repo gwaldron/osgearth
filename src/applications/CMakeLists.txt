@@ -14,11 +14,7 @@ ENDIF(NOT OSGCORE_BUNDLED)
 SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
 
 #OpenThreads, osg, osgDB and osgUtil are included elsewhere.
-SET(TARGET_COMMON_LIBRARIES 
-    #OpenThreads
-    #osg 
-    #osgDB 
-    #osgUtil
+SET(TARGET_COMMON_LIBRARIES
     osgEarth
 	osgEarthUtil
 )
@@ -26,6 +22,7 @@ SET(TARGET_COMMON_LIBRARIES
 SET(TARGET_DEFAULT_PREFIX "application_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Applications")
 
+ADD_SUBDIRECTORY(osgearth_simple)
 ADD_SUBDIRECTORY(osgearth_seed)
 ADD_SUBDIRECTORY(osgearth_clouds)
 ADD_SUBDIRECTORY(osgearth_toc)

@@ -276,6 +276,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     }
     else
     {
+        //TODO: just reproject the image before cropping
         osg::notify(osg::NOTICE) << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
         return NULL;
     }

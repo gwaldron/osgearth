@@ -36,26 +36,37 @@ namespace osgEarth
     {
     public:
         /**
-         * Creates an empty map node. The object will create an empty Map internally
-         * that you can access by calling getMap().
+         * Creates an empty map node.
          */
         MapNode();
 
+        /**
+         * Creates an empty map node.
+         * 
+         * @param props
+         *      Tile creation and rendering properties
+         */
         MapNode( const MapEngineProperties& props );
 
         /**
-         * Creates a new MapNode that will render layers from the specified Map.
+         * Creates a new map node.
+         *
+         * @param map
+         *      Map data that this map node will render.
          */
         MapNode( Map* map );
 
+        /**
+         * Creates a new map node.
+         *
+         * @param map
+         *      Map data that this map node will render.
+         * @param props
+         *      Tile creation and rendering properties
+         */
         MapNode( Map* map, const MapEngineProperties& props );
 
     public:
-
-        /**
-         * Gets the ID for this MapNode
-         */
-        unsigned int getId() const;
 
         /**
          * Gets the Map that this MapNode is rendering.
@@ -63,19 +74,20 @@ namespace osgEarth
         Map* getMap();
 
         /**
-         * Gets the registered MapNode by Id
-         */
-        static MapNode* getMapNodeById(unsigned int id);
-
-        /**
          * Finds the topmost Map node in the specified scene graph, or returns NULL if
          * no Map node exists in the graph.
+         *
+         * @param graph
+         *      Node graph in which to search for a MapNode
          */
         static MapNode* findMapNode( osg::Node* graph );
 
         /**
          * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
          * CSN exists in the graph.
+         *
+         * @param graph
+         *      Node graph in which to search for a CSN.
          */
         static osg::CoordinateSystemNode* findCoordinateSystemNode( osg::Node* graph );        
 
@@ -99,6 +111,16 @@ namespace osgEarth
          * Gets one of the terrains in this map node.
          */
         EarthTerrain* getTerrain( unsigned int i ) const;
+
+        /**
+         * Gets the ID for this MapNode
+         */
+        unsigned int getId() const;
+
+        /**
+         * Gets a registered MapNode by its unique ID.
+         */
+        static MapNode* getMapNodeById(unsigned int id);
 
 
     public: // MapCallback
@@ -127,7 +149,7 @@ namespace osgEarth
 
         unsigned int _id;
 
-        TileSource* installTileSource( MapLayer* layer ); //( const SourceConfig& sourceConfig );
+        TileSource* installTileSource( MapLayer* layer );
 
         osg::ref_ptr<MapEngine> _engine;
 
@@ -136,7 +158,6 @@ namespace osgEarth
         osg::ref_ptr<Map> _map;
 
         MapEngineProperties _engineProps;
-        //MapConfig _mapConfig;
 
         //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
         typedef std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > TerrainVec;

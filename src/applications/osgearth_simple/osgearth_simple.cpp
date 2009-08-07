@@ -20,11 +20,42 @@
 
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
+#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/Viewpoint>
+
+// some preset viewpoints.
+static osgEarthUtil::Viewpoint VPs[] = {
+    osgEarthUtil::Viewpoint( osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
+    osgEarthUtil::Viewpoint( osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
+    osgEarthUtil::Viewpoint( osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
+    osgEarthUtil::Viewpoint( osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
+    osgEarthUtil::Viewpoint( osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 )
+};
+
+// a simple handler that demonstrates the "viewpoint" functionality
+// press a number key to fly to a viewpoint.
+struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
+{
+    FlyToViewpointHandler( osgEarthUtil::EarthManipulator* manip ) : _manip(manip) { }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() >= '1' && ea.getKey() <= '5' )
+        {
+            _manip->setViewpoint( VPs[ea.getKey()-'1'], 4.0 );
+        }
+        return false;
+    }
+
+    osg::observer_ptr<osgEarthUtil::EarthManipulator> _manip;
+};
+
+
 
 int main(int argc, char** argv)
 {
@@ -33,7 +64,8 @@ int main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // install the programmable manipulator.
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
+    osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
+    viewer.setCameraManipulator( manip );
 
     // The "Map" is the data model object that we will be visualizing. It will be
     // geocentric by default, but you can specify a projected map in the constructor.
@@ -60,6 +92,9 @@ int main(int argc, char** argv)
     osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );
 
     viewer.setSceneData( mapNode );
+
+    // add our fly-to handler
+    viewer.addEventHandler(new FlyToViewpointHandler( manip ));
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

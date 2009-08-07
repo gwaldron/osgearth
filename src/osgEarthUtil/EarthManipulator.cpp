@@ -332,7 +332,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         // calculate an acceleration factor based on the Z differential
         double h0 = _start_viewpoint.getRange() * sin( osg::DegreesToRadians(-_start_viewpoint.getPitch()) );
         double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
-        double dh = (h1 - h0)/10000.0;
+        double dh = (h1 - h0)/100000.0;
         _set_viewpoint_accel = fabs(dh) <= 1.0? 0.0 : dh > 0.0? log10( dh ) : -log10( -dh );
         if ( fabs( _set_viewpoint_accel ) < 1.0 ) _set_viewpoint_accel = 0.0;
 
@@ -349,11 +349,12 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         _set_viewpoint_duration_s = duration_s;
 
 //        osg::notify(osg::NOTICE)
-//            << "dfpx=" << _delta_focal_point.x()
-//            << ", dfpy=" << _delta_focal_point.y()
-//            << ", dfpl=" << _delta_focal_point.length()
+////            << "dfpx=" << _delta_focal_point.x()
+////            << ", dfpy=" << _delta_focal_point.y()
+////            << ", dfpl=" << _delta_focal_point.length()
 //            << ", h0=" << h0
 //            << ", h1=" << h0
+//            << ", dh=" << dh
 //            //<< ", h_delta=" << h_delta
 //            << ", accel = " << _set_viewpoint_accel
 //            << ", rangeplus = " << _range_plus

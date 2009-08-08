@@ -229,8 +229,8 @@ namespace osgEarth
 
     public:
         // pass all the gets through by default:
-        virtual unsigned int getMinLevel() const { return _next? _next->getMinLevel() : _minLevel; }
-        virtual unsigned int getMaxLevel() const { return _next? _next->getMaxLevel() : _maxLevel; }
+        virtual unsigned int getMinLevel() const { return _next.valid()? _next->getMinLevel() : _minLevel; }
+        virtual unsigned int getMaxLevel() const { return _next.valid()? _next->getMaxLevel() : _maxLevel; }
         virtual void setMinLevel(unsigned int minLevel) { if (_next.valid()) _next->setMinLevel(minLevel); else _minLevel=minLevel; }
         virtual void setMaxLevel(unsigned int maxLevel) { if (_next.valid()) _next->setMaxLevel(maxLevel); else _maxLevel=maxLevel; }
         virtual float getNoDataValue() { return _next.valid()? _next->getNoDataValue(): _noDataValue; }
@@ -245,7 +245,7 @@ namespace osgEarth
         virtual bool hasPersistentCache() const { return _next.valid()? _next->hasPersistentCache() : false; }
         virtual bool supportsPersistentCaching() const { return _next.valid()? _next->supportsPersistentCaching() : false; }
         virtual std::string getExtension() const { return _next.valid()? _next->getExtension() : ""; }
-		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile); if (_next) _next->setOverrideProfile( profile ); }
+		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile); if (_next.valid()) _next->setOverrideProfile( profile ); }
 
     private:
         osg::ref_ptr<TileSource> _next;

@@ -113,7 +113,7 @@ void CacheSeed::seed( Map* map )
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( map, engine, keys[i].get() );
+        processKey( map, engine.get(), keys[i].get() );
     }
 }
 

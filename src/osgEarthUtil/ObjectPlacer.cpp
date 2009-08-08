@@ -67,7 +67,7 @@ ObjectPlacer::clampGeocentric( osg::CoordinateSystemNode* csn, double lat_rad, d
     osgUtil::IntersectionVisitor iv;
     iv.setIntersector( i );
     static_cast<CachingReadCallback*>(_readCallback.get())->reset();
-    iv.setReadCallback( _readCallback );
+    iv.setReadCallback( _readCallback.get() );
     iv.setTraversalMask( _traversalMask );
 
     _mapNode->accept( iv );
@@ -94,7 +94,7 @@ ObjectPlacer::clampProjected( osg::CoordinateSystemNode* csn, double x, double y
     osgUtil::IntersectionVisitor iv;
     iv.setIntersector( i );
     static_cast<CachingReadCallback*>(_readCallback.get())->reset();
-    iv.setReadCallback( _readCallback );
+    iv.setReadCallback( _readCallback.get() );
     iv.setTraversalMask( _traversalMask );
 
     _mapNode->accept( iv );

@@ -122,7 +122,7 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
 			//Try to read in a preferred tile_size.
             int tile_size = as<int>( layer->getDriverProperties().get("tile_size"), 256 );
 			osg::notify(osg::INFO) << "[osgEarth] Layer '" << layer->getName() << "': wrapping in DirectReadTileSource with a tile size of " << tile_size << std::endl;
-			tileSource = new DirectReadTileSource( tileSource, tile_size );
+			tileSource = new DirectReadTileSource( tileSource.get(), tile_size );
 		}
     }
 

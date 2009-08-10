@@ -130,9 +130,11 @@ CacheConfig::toString() const
     if ( getType() == TYPE_DISABLED ) return "disabled";
 
     std::stringstream buf;
-    buf << "type=" << getType() << ", "        
-        << "reproject=" << (reprojectBeforeCaching().isSet()? (char*)reprojectBeforeCaching().get() : "unset") << ", "
-        << "cacheOnly=" << (runOffCacheOnly().isSet()? (char*)runOffCacheOnly().get() : "unset" ); 
+    buf << "type=" << getType();    
+    buf << ", reproject=";
+    if (reprojectBeforeCaching().isSet()) buf << reprojectBeforeCaching().get(); else buf << "unset";
+    buf << ", caching=";
+    if (runOffCacheOnly().isSet()) buf << runOffCacheOnly().get(); else buf << "unset";
 
     for (Properties::const_iterator i = _properties.begin(); i != _properties.end(); i++ )
         buf << ", " << i->first << "=" << i->second;   

@@ -13,9 +13,6 @@ closer you must be.
 
 <map name="Yahoo maps" type="geocentric">
 
-    <profile>global-geodetic</profile>
-    <min_tile_range_factor>8</min_tile_range_factor>
-    
     <image name="roads map" driver="yahoo">
         <dataset>roads</dataset>
     </image>

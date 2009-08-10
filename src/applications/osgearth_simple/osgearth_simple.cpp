@@ -30,15 +30,15 @@
 
 // some preset viewpoints.
 static osgEarthUtil::Viewpoint VPs[] = {
-    osgEarthUtil::Viewpoint( osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
-    osgEarthUtil::Viewpoint( osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
-    osgEarthUtil::Viewpoint( osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
-    osgEarthUtil::Viewpoint( osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
-    osgEarthUtil::Viewpoint( osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 )
+    osgEarthUtil::Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
+    osgEarthUtil::Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
+    osgEarthUtil::Viewpoint( "Europe",        osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
+    osgEarthUtil::Viewpoint( "Washington DC", osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
+    osgEarthUtil::Viewpoint( "Australia",     osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 )
 };
 
-// a simple handler that demonstrates the "viewpoint" functionality
-// press a number key to fly to a viewpoint.
+// a simple handler that demonstrates the "viewpoint" functionality in 
+// osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
 struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
 {
     FlyToViewpointHandler( osgEarthUtil::EarthManipulator* manip ) : _manip(manip) { }

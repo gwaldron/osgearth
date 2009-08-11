@@ -25,6 +25,8 @@
 #include <osgGA/MatrixManipulator>
 #include <osg/Timer>
 #include <map>
+#include <list>
+#include <utility>
 
 namespace osgEarthUtil
 {
@@ -53,6 +55,7 @@ namespace osgEarthUtil
             int _input_mask;
             int _modkey_mask;
         };
+        typedef std::list<InputSpec> InputSpecs;
 
         enum Direction {
             DIR_NA,
@@ -85,10 +88,11 @@ namespace osgEarthUtil
         };
 
         enum EventType {
-            EVENT_MOUSE_DRAG  = osgGA::GUIEventAdapter::DRAG,
-            EVENT_MOUSE_CLICK = osgGA::GUIEventAdapter::RELEASE,
-            EVENT_KEY_DOWN    = osgGA::GUIEventAdapter::KEYDOWN,
-            EVENT_SCROLL      = osgGA::GUIEventAdapter::SCROLL
+            EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
+            EVENT_MOUSE_DOUBLE_CLICK = osgGA::GUIEventAdapter::DOUBLECLICK,
+            EVENT_MOUSE_DRAG         = osgGA::GUIEventAdapter::DRAG,
+            EVENT_KEY_DOWN           = osgGA::GUIEventAdapter::KEYDOWN,
+            EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL,
         };
 
         enum MouseEvent {
@@ -97,17 +101,55 @@ namespace osgEarthUtil
             MOUSE_RIGHT_BUTTON  = osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON
         };
 
+        enum ActionOptionType {
+            OPTION_SCALE_X,
+            OPTION_SCALE_Y,
+            OPTION_CONTINUOUS,
+            OPTION_GOTO_RANGE_FACTOR,
+            OPTION_GOTO_DURATION
+        };
+
+        struct OSGEARTHUTIL_EXPORT ActionOption {
+            ActionOption() { }
+            ActionOption( int option, bool value ) : _option(option), _bool_value(value) { }
+            ActionOption( int option, int value ) : _option(option), _int_value(value) { }
+            ActionOption( int option, double value ) : _option(option), _dbl_value(value) { }
+
+            int option() const { return _option; }
+            bool boolValue() const { return _bool_value; }
+            int intValue() const { return _int_value; }
+            double doubleValue() const { return _dbl_value; }
+
+        private:
+            int _option;
+            union {
+                bool _bool_value;
+                int _int_value;
+                double _dbl_value;
+            };
+        };
+
+        struct OSGEARTHUTIL_EXPORT ActionOptions : public std::vector<ActionOption> {
+            void add( int option, bool value ) { push_back( ActionOption(option,value) ); }
+            void add( int option, int value )  { push_back( ActionOption(option,value) ); }
+            void add( int option, double value) { push_back( ActionOption(option,value) ); }
+        };
+
     private:
 
         struct Action
         {
-            Action( ActionType type, bool continuous =false, double scale_x =1.0, double scale_y =1.0 );
+            Action( ActionType type );
+            Action( ActionType type, const ActionOptions& options );
             Action( const Action& rhs );
             ActionType _type;
-            double _scale_x;
-            double _scale_y;
             Direction _dir;
-            bool _continuous;
+            ActionOptions _options;
+            bool getBoolOption( int option, bool defaultValue ) const;
+            int getIntOption( int option, int defaultValue ) const;
+            double getDoubleOption( int option, double defaultValue ) const;
+        private:
+            void init();
         };
         
         static Action NullAction;
@@ -149,7 +191,9 @@ namespace osgEarthUtil
              */             
             void bindMouse(
                 ActionType action, int button_mask,
-                int modkey_mask =0L, bool continuous =false, double scale_x =1.0, double scale_y =1.0 );
+                int modkey_mask = 0L,
+                const ActionOptions& options =ActionOptions() );
+                //int modkey_mask =0L, bool continuous =false, double scale_x =1.0, double scale_y =1.0 );
 
             /**
              * Assigns a bevahior to the action of clicking one or more mouse buttons.
@@ -167,7 +211,27 @@ namespace osgEarthUtil
              */
             void bindMouseClick(
                 ActionType action, int button_mask,
-                int modkey_mask =0L );
+                int modkey_mask =0L,
+                const ActionOptions& options =ActionOptions() );
+
+            /**
+             * Assigns a bevahior to the action of double-clicking one or more mouse buttons.
+             *
+             * @param action
+             *      The EarthManipulator::ActionType value to which to bind this double-click
+             *      input specification.
+             *
+             * @param button_mask
+             *      Mask of osgGA::GUIEventAdapter::MouseButtonMask values
+             *
+             * @param modkey_mask (default = 0L)
+             *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
+             *      combination to associate with the action.
+             */
+            void bindMouseDoubleClick(
+                ActionType action, int button_mask,
+                int modkey_mask =0L,
+                const ActionOptions& options =ActionOptions() );
 
             /**
              * Assigns a bevahior to the action of depressing a key.
@@ -185,7 +249,8 @@ namespace osgEarthUtil
              */
             void bindKey(
                 ActionType action, int key,
-                int modkey_mask =0L, bool continuous =false );
+                int modkey_mask =0L,
+                const ActionOptions& options =ActionOptions() );
             
             /**
              * Assigns a bevahior to operation of the mouse's scroll wheel.
@@ -203,7 +268,8 @@ namespace osgEarthUtil
              */
             void bindScroll(
                 ActionType action, int scrolling_motion,
-                int modkey_mask =0L );
+                int modkey_mask =0L,
+                const ActionOptions& options =ActionOptions() );
 
             /**
              * Sets an overall mouse sensitivity factor.
@@ -323,6 +389,9 @@ namespace osgEarthUtil
             // to matching binding.
             const Action& getAction( int event_type, int input_mask, int modkey_mask ) const;
 
+            void expandSpec( const InputSpec& input, InputSpecs& output );
+            void bind( const InputSpec& spec, const Action& action );
+
         private:
 
             ActionBindings _bindings;
@@ -386,6 +455,26 @@ namespace osgEarthUtil
          * Zoom the camera using deltas (dy only)
          */
         void zoom( double dx, double dy );
+
+        /**
+         * Sets a traversal mask for any operation that involves traversing the scene
+         * graph, like intersection testing.
+         */
+        void setTraversalMask( const osg::Node::NodeMask& mask );
+        const osg::Node::NodeMask& getTraversalMask() const;
+
+        /**
+         * Converts screen coordinates (relative to the view's viewpoint) to world
+         * coordinates.
+         *
+         * @param x, y
+         *      Screen coordinates (relative to the provided view's camera)
+         * @param view
+         *      View for which to calculate world coordinates
+         * @param out_coords
+         *      Output world coordinates (only valid if the method returns true)
+         */
+        bool screenToWorld(float x, float y, osg::View* view, osg::Vec3d& out_coords );
 
 
     public: // osgGA::MatrixManipulator
@@ -453,13 +542,13 @@ namespace osgEarthUtil
         // Applies an action using the raw input parameters.
         bool handleAction( const Action& action, double dx, double dy, double duration );
 
-        bool handleMouseAction( const Action& action );
+        bool handleMouseAction( const Action& action, osg::View* view );
         bool handleMouseClickAction( const Action& action );
         bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
         bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );        
+        bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
         void handleContinuousAction( const Action& action );
-
-        void dispatchAction( const ActionType& type, double dx, double dy );
+        void handleMovementAction( const ActionType& type, double dx, double dy );
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
@@ -550,6 +639,8 @@ namespace osgEarthUtil
         double                  _time_s_set_viewpoint;
         double                  _set_viewpoint_duration_s;
         double                  _set_viewpoint_accel;
+
+        osg::Node::NodeMask     _traversalMask;
 
         osg::ref_ptr<Settings> _settings;
 

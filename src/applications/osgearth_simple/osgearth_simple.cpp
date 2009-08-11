@@ -93,6 +93,10 @@ int main(int argc, char** argv)
 
     viewer.setSceneData( mapNode );
 
+    manip->getSettings()->bindMouseDoubleClick(
+        osgEarthUtil::EarthManipulator::ACTION_GOTO,
+        osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
+
     // add our fly-to handler
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
 

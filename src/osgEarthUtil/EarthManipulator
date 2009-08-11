@@ -87,6 +87,7 @@ namespace osgEarthUtil
             ACTION_ZOOM_OUT
         };
 
+        /** Bindable event types. */
         enum EventType {
             EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
             EVENT_MOUSE_DOUBLE_CLICK = osgGA::GUIEventAdapter::DOUBLECLICK,
@@ -95,18 +96,22 @@ namespace osgEarthUtil
             EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL,
         };
 
+        /** Bindable mouse buttons. */
         enum MouseEvent {
             MOUSE_LEFT_BUTTON   = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
             MOUSE_MIDDLE_BUTTON = osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON,
             MOUSE_RIGHT_BUTTON  = osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON
         };
 
+        /** Action options. Certain options are only meaningful to certain Actions.
+            See the bind* documentation for information. */
         enum ActionOptionType {
-            OPTION_SCALE_X,
-            OPTION_SCALE_Y,
-            OPTION_CONTINUOUS,
-            OPTION_GOTO_RANGE_FACTOR,
-            OPTION_GOTO_DURATION
+            
+            OPTION_SCALE_X,             // Sensitivity multiplier for horizontal input movements
+            OPTION_SCALE_Y,             // Sensitivity multiplier for vertical input movements
+            OPTION_CONTINUOUS,          // Whether to act as long as the button or key is depressed
+            OPTION_GOTO_RANGE_FACTOR,   // for ACTION_GOTO, multiply the Range by this factor (to zoom in/out)
+            OPTION_DURATION             // Time it takes to complete the action (in seconds)
         };
 
         struct OSGEARTHUTIL_EXPORT ActionOption {
@@ -180,20 +185,14 @@ namespace osgEarthUtil
              *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
              *      combination to associate with the action.
              *
-             * @param continuous (default = false)
-             *      Whether the effect of the action should accumulate as long as the mouse button(s)
-             *      is depressed. The effect accumulates based on the distance you move the mouse from
-             *      the point at which you first depressed the button(s).
-             *
-             * @param scale_x, scale_y (default = 1, 1)
-             *      Scale factors for the mouse movement values. This is usesful for adjusting 
-             *      sensitivity or for flipping an input axis.
+             * @param options
+             *      Action options. Valid options are:
+             *      OPTION_CONTINUOUS, OPTION_SCALE_X, OPTION_SCALE_Y
              */             
             void bindMouse(
                 ActionType action, int button_mask,
                 int modkey_mask = 0L,
                 const ActionOptions& options =ActionOptions() );
-                //int modkey_mask =0L, bool continuous =false, double scale_x =1.0, double scale_y =1.0 );
 
             /**
              * Assigns a bevahior to the action of clicking one or more mouse buttons.
@@ -208,6 +207,10 @@ namespace osgEarthUtil
              * @param modkey_mask (default = 0L)
              *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
              *      combination to associate with the action.
+             *
+             * @param options
+             *      Action options. Valid options are:
+             *      OPTION_GOTO_RANGE_FACTOR, OPTION_DURATION
              */
             void bindMouseClick(
                 ActionType action, int button_mask,
@@ -227,6 +230,10 @@ namespace osgEarthUtil
              * @param modkey_mask (default = 0L)
              *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
              *      combination to associate with the action.
+             *
+             * @param options
+             *      Action options. Valid options are:
+             *      OPTION_GOTO_RANGE_FACTOR, OPTION_DURATION
              */
             void bindMouseDoubleClick(
                 ActionType action, int button_mask,
@@ -246,6 +253,10 @@ namespace osgEarthUtil
              * @param modkey_mask (default = 0L)
              *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
              *      combination to associate with the action.
+             *
+             * @param options
+             *      Action options. Valid options are:
+             *      OPTION_CONTINUOUS
              */
             void bindKey(
                 ActionType action, int key,
@@ -265,6 +276,10 @@ namespace osgEarthUtil
              * @param modkey_mask (default = 0L)
              *      A mask of osgGA::GUIEventAdapter::ModKeyMask values defining a modifier key 
              *      combination to associate with the action.
+             *
+             * @param options
+             *      Action options. Valid options are:
+             *      OPTION_SCALE_Y
              */
             void bindScroll(
                 ActionType action, int scrolling_motion,

@@ -200,12 +200,12 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator; // = key->getProfile()->getSRS()->createLocator();
+            osg::ref_ptr<osgTerrain::Locator> img_locator;
 			
             GeoImage* geo_image = image_tiles[i].get();
 
             // Use a special locator for mercator images (instead of reprojecting)
-            if ( geo_image->getSRS()->isMercator() )
+            if ( geo_image->getSRS()->isMercator() && _engineProps.getUseMercatorLocator() )
             {
                 GeoExtent geog_ext = image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);

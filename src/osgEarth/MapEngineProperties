@@ -147,6 +147,18 @@ namespace osgEarth
          */
         const std::string& getFilename() const;   
 
+        /**
+         * Sets whether to use a customer Locator for spherical mercator data.
+         * Disable this on systems that don't support NPOT textures or if you
+         * see texture "smearing" with mercator globes.
+         */
+        void setUseMercatorLocator( bool value );
+
+        /**
+         * Gets whether to use a customer Locator for spherical mercator data.
+         */
+        bool getUseMercatorLocator() const;
+
 
     private:
             
@@ -161,6 +173,7 @@ namespace osgEarth
         bool _cache_only;
         bool _normalize_edges;
         bool _combine_layers;
+        bool _use_mercator_locator;
     };
 }
 

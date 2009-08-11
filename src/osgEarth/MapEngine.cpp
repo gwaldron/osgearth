@@ -206,15 +206,17 @@ MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
 
         if ( mosaic.valid() )
         {
-            if ( ! (mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS()) ) &&
-                !(mosaic->getSRS()->isMercator() && mapKey->getProfile()->getSRS()->isGeographic() ) )
+            // whether to use the fast-path mercator locator. If so, DO NOT reproject the imagery here.
+            bool useMercatorFastPath =
+                mosaic->getSRS()->isMercator() &&
+                mapKey->getProfile()->getSRS()->isGeographic() &&
+                _engineProps.getUseMercatorLocator();
+
+            if ( !mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS()) && !useMercatorFastPath )
             {
                 //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
-                //osgDB::writeImageFile(*mosaic->getImage(), "c:/temp/mosaic_" + mapKey->str() + ".png");
                 result = mosaic->reproject( mapKey->getProfile()->getSRS(), &mapKey->getGeoExtent() );
-                //osgDB::writeImageFile(*result->getImage(), "c:/temp/reprojected_" + mapKey->str() + ".png");
-                //osg::notify(osg::NOTICE) << "Reprojected mosaic" << std::endl;
             }
             else
             {

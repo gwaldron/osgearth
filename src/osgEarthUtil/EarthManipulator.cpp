@@ -1340,7 +1340,7 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
                 }
                 here.setFocalPoint( point );
 
-                double duration_s = action.getDoubleOption(OPTION_GOTO_DURATION, 1.0);
+                double duration_s = action.getDoubleOption(OPTION_DURATION, 1.0);
                 double range_factor = action.getDoubleOption(OPTION_GOTO_RANGE_FACTOR, 1.0);
 
                 here.setRange( here.getRange() * range_factor );

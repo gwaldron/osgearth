@@ -200,7 +200,7 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
             GeoImage* geo_image = image_tiles[i].get();
 
             //Special case for when the map is geographic and the image is Mercator
-            if ( map->getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() )
+            if ( map->getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() && _engineProps.getUseMercatorLocator() )
             {
                 //Transform the mercator extents to geographic
                 GeoExtent geog_ext = image_tiles[i]->getExtent().transform( image_tiles[i]->getExtent().getSRS()->getGeographicSRS() );

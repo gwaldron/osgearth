@@ -345,15 +345,14 @@ MapNode::addImageTileSource( TileSource* source )
                 // b) The map is projected but is also "geographic" (i.e., plate carre)
                 bool isGeocentric = _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
                 bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
-                bool useMercatorLocator = geoImage->getSRS()->isMercator() && (isGeocentric || isGeographic);
+                bool canUseMercatorLocator = geoImage->getSRS()->isMercator() && (isGeocentric || isGeographic);
 
-                if ( useMercatorLocator )
+                if ( canUseMercatorLocator && _engineProps.getUseMercatorLocator() )
                 {
                     GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
                     geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
                     img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat );
                     img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
-                    //Transform the mercator extents to geographic
                 }
                 else
                 {

@@ -65,6 +65,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_HEIGHTFIELD              "heightfield"
 #define ELEM_VERTICAL_SCALE           "vertical_scale"
 #define ELEM_MIN_TILE_RANGE           "min_tile_range_factor"
+#define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
 #define ATTR_DRIVER                   "driver"
 #define ATTR_REPROJECT_BEFORE_CACHING "reproject_before_caching"
 #define ELEM_SKIRT_RATIO              "skirt_ratio"
@@ -322,6 +323,12 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
 
     map->setName( e_map->getAttr( ATTR_NAME ) );
 
+    std::string use_merc_locator = e_map->getSubElementText(ELEM_USE_MERCATOR_LOCATOR);
+    if (use_merc_locator == VALUE_TRUE )
+        engineProps.setUseMercatorLocator( true );
+    else if ( use_merc_locator == VALUE_FALSE )
+        engineProps.setUseMercatorLocator( false );
+
     std::string combine_layers = e_map->getSubElementText(ELEM_COMBINE_LAYERS);
     if (combine_layers == VALUE_TRUE)
         engineProps.setCombineLayers(true);
@@ -417,6 +424,7 @@ mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
     e_map->getAttrs()[ATTR_CSTYPE] = cs;
 
     //e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map.getCacheOnly()));
+    e_map->addSubElement( ELEM_USE_MERCATOR_LOCATOR, toString<bool>(engineProps.getUseMercatorLocator()));
     e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(engineProps.getNormalizeEdges()));
     e_map->addSubElement( ELEM_COMBINE_LAYERS, toString<bool>(engineProps.getCombineLayers()));
 

@@ -32,6 +32,7 @@ MapEngineProperties::MapEngineProperties()
     _normalize_edges = false;
     _combine_layers = true;
     _filename = "";
+    _use_mercator_locator = true;
 }
 
 MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )
@@ -52,6 +53,7 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _combine_layers = rhs._combine_layers;
     _normalize_edges = rhs._normalize_edges;
     _filename = rhs._filename;
+    _use_mercator_locator = rhs._use_mercator_locator;
     return *this;
 }
 
@@ -173,4 +175,16 @@ void
 MapEngineProperties::setNormalizeEdges(bool normalize_edges)
 {
     _normalize_edges = normalize_edges;
+}
+
+void
+MapEngineProperties::setUseMercatorLocator(bool value)
+{
+    _use_mercator_locator = value;
+}
+
+bool
+MapEngineProperties::getUseMercatorLocator() const
+{
+    return _use_mercator_locator;
 }

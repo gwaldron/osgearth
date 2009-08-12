@@ -781,7 +781,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         return false;
     }
 
-    //if (ea.getHandled()) return false;
+    // the camera manipulator runs last after any other event handlers. So bail out
+    // if the incoming event has already been handled by another handler.
+    if ( ea.getHandled() )
+    {
+        return false;
+    }
    
     // form the current Action based on the event type:
     Action action = ACTION_NULL;
@@ -796,7 +801,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;       
         
         case osgGA::GUIEventAdapter::RELEASE:
-
             // bail out of continuous mode if necessary:
             _continuous = false;
 
@@ -825,12 +829,10 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 resetMouse( aa );
                 addMouseEvent( ea );
             }
-
             handled = true;
             break;
             
         case osgGA::GUIEventAdapter::DOUBLECLICK:
-
             // bail out of continuous mode if necessary:
             _continuous = false;
 
@@ -839,12 +841,11 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
                 aa.requestRedraw();
             resetMouse( aa );
-
             handled = true;
             break;
 
         case osgGA::GUIEventAdapter::MOVE: // MOVE not currently bindable
-            handled = false;
+            //NOP
             break;
 
         case osgGA::GUIEventAdapter::DRAG:

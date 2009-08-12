@@ -39,32 +39,6 @@ namespace osgEarthUtil
      */
     class OSGEARTHUTIL_EXPORT EarthManipulator : public osgGA::MatrixManipulator
     {
-    private:
-        struct InputSpec 
-        {
-            InputSpec( int event_type, int input_mask, int modkey_mask )
-                : _event_type(event_type), _input_mask(input_mask), _modkey_mask( modkey_mask ) { }
-            InputSpec( const InputSpec& rhs )
-                : _event_type(rhs._event_type), _input_mask(rhs._input_mask), _modkey_mask(rhs._modkey_mask) { }
-
-            bool operator == ( const InputSpec& rhs ) const {
-                return _event_type == rhs._event_type && _input_mask == rhs._input_mask && _modkey_mask == rhs._modkey_mask;
-            }
-
-            int _event_type;
-            int _input_mask;
-            int _modkey_mask;
-        };
-        typedef std::list<InputSpec> InputSpecs;
-
-        enum Direction {
-            DIR_NA,
-            DIR_LEFT,
-            DIR_RIGHT,
-            DIR_UP,
-            DIR_DOWN
-        };
-
     public:
 
         /** Bindable manipulator actions. */
@@ -141,6 +115,30 @@ namespace osgEarthUtil
         };
 
     private:
+        struct InputSpec 
+        {
+            InputSpec( int event_type, int input_mask, int modkey_mask )
+                : _event_type(event_type), _input_mask(input_mask), _modkey_mask( modkey_mask ) { }
+            InputSpec( const InputSpec& rhs )
+                : _event_type(rhs._event_type), _input_mask(rhs._input_mask), _modkey_mask(rhs._modkey_mask) { }
+
+            bool operator == ( const InputSpec& rhs ) const {
+                return _event_type == rhs._event_type && _input_mask == rhs._input_mask && _modkey_mask == rhs._modkey_mask;
+            }
+
+            int _event_type;
+            int _input_mask;
+            int _modkey_mask;
+        };
+        typedef std::list<InputSpec> InputSpecs;
+
+        enum Direction {
+            DIR_NA,
+            DIR_LEFT,
+            DIR_RIGHT,
+            DIR_UP,
+            DIR_DOWN
+        };
 
         struct Action
         {
@@ -434,7 +432,7 @@ namespace osgEarthUtil
         Settings* getSettings() const;
 
         /**
-         * Gets a current camera position.
+         * Gets the current camera position.
          */
         Viewpoint getViewpoint() const;
 
@@ -445,9 +443,18 @@ namespace osgEarthUtil
 
         /**
          * Locks the camera's focal point on the center of a node's bounding sphere.
-         * Pass NULL to deactivate the tether.
+         * While tethered, you can still call navigate or call setViewpoint() to move the
+         * camera relative to the tether object. Pass NULL to deactivate the tether.
+         *
+         * @param node
+         *      Node to which to tether the viewpoint.
          */
         void setTetherNode( osg::Node* node );
+
+        /**
+         * Gets the node to which the camera is tethered, or NULL if tethering is
+         * disabled.
+         */
         osg::Node* getTetherNode() const;
 
         /**
@@ -480,10 +487,10 @@ namespace osgEarthUtil
 
         /**
          * Converts screen coordinates (relative to the view's viewpoint) to world
-         * coordinates.
+         * coordinates. Note, this method will use the mask set by setTraversalMask().
          *
          * @param x, y
-         *      Screen coordinates (relative to the provided view's camera)
+         *      Viewport coordinates
          * @param view
          *      View for which to calculate world coordinates
          * @param out_coords

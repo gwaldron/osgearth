@@ -255,7 +255,9 @@ _setting_viewpoint( false ),
 _delta_t(0.0),
 _traversalMask( ~0 ),
 _t_factor(1.0),
-_time_s_last_frame( osg::Timer::instance()->time_s() )
+_time_s_last_frame( osg::Timer::instance()->time_s() ),
+_local_azim( 0.0 ),
+_local_pitch( 0.0 )
 {
     // install default action bindings:
     ActionOptions options;

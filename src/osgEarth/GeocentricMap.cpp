@@ -87,9 +87,8 @@ struct TileDataLoaderCallback : public osg::NodeCallback
         {
             osgTerrain::TerrainTile* tile = static_cast<osgTerrain::TerrainTile*>(node);
             float priority = -(99.0f - (float)(tile->getTileID().level));
-            osg::ref_ptr<osg::Referenced> request;
             nv->getDatabaseRequestHandler()->requestNodeFile(
-                _filename, _destination.get(), priority, nv->getFrameStamp(), request );
+                _filename, _destination.get(), priority, nv->getFrameStamp(), _databaseRequest );
         }
         traverse( node, nv );
     }
@@ -97,6 +96,7 @@ struct TileDataLoaderCallback : public osg::NodeCallback
     std::string _filename;
     bool _loaded;
     osg::observer_ptr<TileLoadGroup> _destination;
+    osg::ref_ptr<osg::Referenced> _databaseRequest;
 };
 
 
@@ -198,16 +198,16 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     // Set the skirt height of the heightfield
     hf_layer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
 
+    TileLoadGroup* loadGroup = new TileLoadGroup( tile );
+
     // TEMPORARY TODO FIXME
     bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
     if (!isCube)
     {
         //TODO:  Work on cluster culling computation for cube faces
         osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
-        tile->addCullCallback( ccc );
+        loadGroup->addCullCallback( ccc );
     }
-
-    TileLoadGroup* loadGroup = new TileLoadGroup( tile );
 
     // This callback will load the actual tile data via the database pager:
     tile->addCullCallback( new TileDataLoaderCallback( map, key, loadGroup ) );
@@ -220,14 +220,6 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     plod->addChild( loadGroup, min_range, max_range );
     plod->setFileName( 1, createURI( map->getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
-
-#if USE_FILELOCATIONCALLBACK
-    osgDB::Options* options = new osgDB::Options;
-    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
-    plod->setDatabaseOptions( options );
-#endif
-
-    //osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] End" << std::endl;
 
     return plod;
 }

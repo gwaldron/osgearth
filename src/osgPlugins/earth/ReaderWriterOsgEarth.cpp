@@ -47,7 +47,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         virtual bool acceptsExtension(const std::string& extension) const
         {
             return (osgDB::equalCaseInsensitive( extension, "earth" ) ||
-                    osgDB::equalCaseInsensitive( extension, "earth_tile" ));
+                    osgDB::equalCaseInsensitive( extension, "earth_tile" ) ||
+                    osgDB::equalCaseInsensitive( extension, "earth_tile_data" ));
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -118,8 +119,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 }                
             }
 
-            //Reading a specific tile from an existing TileBuilder
-            else if (ext == "earth_tile")
+            // Reading a specific tile from an existing TileBuilder
+            else if (ext == "earth_tile" || ext == "earth_tile_data" )
             {
                 std::string tileDef = osgDB::getNameLessExtension(file_name);
                 //osg::notify(osg::NOTICE) << "Reading Tile " << tileDef << std::endl;
@@ -138,13 +139,47 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 {
                   const Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
                   osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
-                  node = mapNode->getEngine()->createNode( mapNode->getMap(), mapNode->getTerrain( face ), key.get( ));
+
+                  bool populateLayers = 
+                      ext == "earth_tile_data" ||
+                      mapNode->getEngine()->getEngineProperties().getDeferTileDataLoading() == false;
+                  
+                  node = mapNode->getEngine()->createNode(
+                      mapNode->getMap(),
+                      mapNode->getTerrain( face ),
+                      key.get(),
+                      populateLayers );
+
                 }
                 else
                 {
                     osg::notify(osg::NOTICE) << "Error:  Could not find Map with id=" << id << std::endl;
                 }
             }
+
+            //// Reading the actual layer data that will populate a tile
+            //else if (ext == "earth_tile_data")
+            //{
+            //    std::string tileDef = osgDB::getNameLessExtension(file_name);
+
+            //    unsigned int face, lod, x, y, id;
+            //    sscanf(tileDef.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
+
+            //    osg::ref_ptr<MapNode> mapNode = MapNode::getMapNodeById( id );
+            //    if ( mapNode.valid() )
+            //    {
+            //        //TODO
+            //        osg::notify(osg::NOTICE) << "Tile Load Data for tile " << tileDef << std::endl;
+
+            //        const Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
+            //        osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
+            //        mapNode->getEngine()->loadTileData( key.get() );
+            //    }
+            //    else
+            //    {
+            //        osg::notify(osg::NOTICE) << "Error:  Could not find Map with id=" << id << std::endl;
+            //    }
+            //}
 
             return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;                     
         }

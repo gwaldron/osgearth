@@ -49,7 +49,7 @@ MapEngine( props )
 
 
 osg::Node*
-ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
+ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, const TileKey* key, bool populateLayers )
 {
     ScopedReadLock lock( map->getMapDataMutex() );
     double xmin, ymin, xmax, ymax;

@@ -159,6 +159,16 @@ namespace osgEarth
          */
         bool getUseMercatorLocator() const;
 
+        /**
+         * Sets whether tile heightfield and imagery data should be loaded immediately
+         * when a new tile is created.
+         */
+        void setDeferTileDataLoading( bool value );
+
+        /**
+         *
+         */
+        bool getDeferTileDataLoading() const;
 
     private:
             
@@ -174,6 +184,7 @@ namespace osgEarth
         bool _normalize_edges;
         bool _combine_layers;
         bool _use_mercator_locator;
+        bool _defer_tile_data_loading;
     };
 }
 

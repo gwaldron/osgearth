@@ -33,6 +33,7 @@ MapEngineProperties::MapEngineProperties()
     _combine_layers = true;
     _filename = "";
     _use_mercator_locator = true;
+    _defer_tile_data_loading = false;
 }
 
 MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )
@@ -54,7 +55,18 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _normalize_edges = rhs._normalize_edges;
     _filename = rhs._filename;
     _use_mercator_locator = rhs._use_mercator_locator;
+    _defer_tile_data_loading = rhs._defer_tile_data_loading;
     return *this;
+}
+
+void 
+MapEngineProperties::setDeferTileDataLoading( bool value ) {
+    _defer_tile_data_loading = value;
+}
+
+bool 
+MapEngineProperties::getDeferTileDataLoading() const {
+    return _defer_tile_data_loading;
 }
 
 void

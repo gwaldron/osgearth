@@ -39,7 +39,11 @@ namespace osgEarth
         
     protected: // Map interface
 
-        osg::Node* createQuadrant( Map* map, osgTerrain::Terrain* terrain, const TileKey* key );
+        osg::Node* createQuadrant(
+            Map* map,
+            osgTerrain::Terrain* terrain,
+            const TileKey* key,
+            bool populateLayers );
 
     protected:
         /**

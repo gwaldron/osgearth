@@ -127,7 +127,7 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
         osg::notify(osg::NOTICE) << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
-        engine->createQuadrant( map, 0, key );        
+        engine->createQuadrant( map, 0, key, true );        
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)

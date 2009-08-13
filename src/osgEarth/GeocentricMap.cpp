@@ -52,8 +52,188 @@ MapEngine( props )
     //NOP   
 }
 
+class TileLoadGroup : public osg::Group
+{
+public:
+    TileLoadGroup( osg::Node* node ) {
+        addChild( node );
+        _loaded = false;
+    }
+
+    virtual bool addChild( osg::Node* node ) {
+        _loaded = true;
+        removeChildren( 0, getNumChildren() );
+        return osg::Group::addChild( node );
+    }
+
+    bool _loaded;
+};
+
+
+struct TileDataLoaderCallback : public osg::NodeCallback
+{
+    TileDataLoaderCallback( Map* map, const TileKey* key, TileLoadGroup* destination ) :
+    _loaded(false),
+    _destination(destination)
+    {
+        std::stringstream buf;
+        buf << key->str() << "." << map->getId() << ".earth_tile_data";
+        _filename = buf.str();
+    }
+
+    virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
+    {
+        if ( !_destination->_loaded && nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        {
+            osgTerrain::TerrainTile* tile = static_cast<osgTerrain::TerrainTile*>(node);
+            float priority = -(99.0f - (float)(tile->getTileID().level));
+            osg::ref_ptr<osg::Referenced> request;
+            nv->getDatabaseRequestHandler()->requestNodeFile(
+                _filename, _destination.get(), priority, nv->getFrameStamp(), request );
+        }
+        traverse( node, nv );
+    }
+
+    std::string _filename;
+    bool _loaded;
+    osg::observer_ptr<TileLoadGroup> _destination;
+};
+
+
 osg::Node*
-GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
+GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, const TileKey* key, bool populateLayers)
+{
+    if ( populateLayers )
+        return createPopulatedQuadrant( map, terrain, key );
+
+    ScopedReadLock lock( map->getMapDataMutex() );
+
+    const MapLayerList& imageMapLayers = map->getImageMapLayers();
+    const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
+
+    bool hasElevation = hfMapLayers.size() > 0;
+
+    // Build a "placeholder" tile.
+    double min_lon, min_lat, max_lon, max_lat;
+    key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
+
+    // A locator will place the tile on the globe:
+    osg::ref_ptr<osgTerrain::Locator> locator = key->getProfile()->getSRS()->createLocator(
+        min_lon, min_lat, max_lon, max_lat );
+    locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+    
+    // The empty tile:
+    osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+    tile->setTileID( key->getTileId() );
+    tile->setRequiresNormals( true );
+    tile->setDataVariance(osg::Object::DYNAMIC);
+    tile->setTerrain( terrain );
+    tile->setLocator( locator.get() );
+
+    // Attach an updatecallback to normalize the edges of TerrainTiles.
+    if ( hasElevation && _engineProps.getNormalizeEdges() )
+    {
+        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
+        tile->setDataVariance(osg::Object::DYNAMIC);
+    }
+
+    tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique );
+
+    // An empty heightfield as a placeholder.
+    // TODO: populate by sampling the parent tile.
+    osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
+    hf_layer->setHeightField( createEmptyHeightField( key ) );
+    hf_layer->setLocator( locator.get() );
+    tile->setElevationLayer( hf_layer );
+
+#if 0
+    // Placeholders for imagery:
+    osg::ref_ptr<TileKey> parentKey = key->createParentKey();
+    osgTerrain::TerrainTile* parentTile = parentKey.valid()? terrain->getTile( parentKey->getTileId() ) : NULL;
+    int layer = 0;
+    for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
+    {
+        osgTerrain::ImageLayer* img_layer = 0L;
+
+        if ( parentTile )
+        {
+            osg::Image* parentImage = parentTile->getColorLayer(layer)->getImage();
+
+            double s2 = (double)(parentImage->s()/2);
+            double t2 = (double)(parentImage->t()/2);
+            double smin = key->getGeoExtent().xMin() > parentKey->getGeoExtent().xMin()? s2 : 0.0;
+            double tmin = key->getGeoExtent().yMin() > parentKey->getGeoExtent().yMin()? t2 : 0.0;
+            double smax = smin+s2-1.0;
+            double tmax = tmin+t2-1.0;
+
+            osg::Image* childImage = ImageUtils::cropImage(
+                parentImage,
+                0, 0, parentImage->s()-1, parentImage->t()-1,
+                smin, tmin, smax, tmax );
+
+            img_layer = new osgTerrain::ImageLayer( childImage );
+        }
+        else
+        {
+            img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
+        }
+
+        // TODO: when the actual image loads, we'll have to replace the image locator based on
+        // the extents of the GeoImage. For now, just use the tile locator.
+        img_layer->setLocator( locator.get() );	
+        //img_layer->setFileName( createLayerFileName( tile, layer ) );
+
+        tile->setColorLayer( layer++, img_layer );        
+    }   
+#endif
+
+    // finish off the tile and put it under a new PLOD.
+    osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
+
+    osg::BoundingSphere bs = tile->getBound();
+    double max_range = 1e10;
+    double radius = bs.radius();
+    double min_range = radius * _engineProps.getMinTileRangeFactor();
+
+    // Set the skirt height of the heightfield
+    hf_layer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
+
+    // TEMPORARY TODO FIXME
+    bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
+    if (!isCube)
+    {
+        //TODO:  Work on cluster culling computation for cube faces
+        osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
+        tile->addCullCallback( ccc );
+    }
+
+    TileLoadGroup* loadGroup = new TileLoadGroup( tile );
+
+    // This callback will load the actual tile data via the database pager:
+    tile->addCullCallback( new TileDataLoaderCallback( map, key, loadGroup ) );
+
+    //return loadGroup;
+
+    // see if we need to keep subdividing:
+    osg::PagedLOD* plod = new osg::PagedLOD();
+    plod->setCenter( bs.center() );
+    plod->addChild( loadGroup, min_range, max_range );
+    plod->setFileName( 1, createURI( map->getId(), key ) );
+    plod->setRange( 1, 0.0, min_range );
+
+#if USE_FILELOCATIONCALLBACK
+    osgDB::Options* options = new osgDB::Options;
+    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+    plod->setDatabaseOptions( options );
+#endif
+
+    //osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] End" << std::endl;
+
+    return plod;
+}
+
+osg::Node*
+GeocentricMapEngine::createPopulatedQuadrant(Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
 {
     //osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Begin " << key->str() << std::endl;
     //osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Waiting for lock..." << std::endl;
@@ -267,6 +447,7 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
 
     return plod;
 }
+
 
 osg::ClusterCullingCallback*
 GeocentricMapEngine::createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et)

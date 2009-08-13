@@ -43,17 +43,16 @@ namespace osgEarth
         /**
          * Creates a node graph for a given TileKey.
          */
-        osg::Node* createNode( Map* map, osgTerrain::Terrain* terrain, const TileKey* key );
+        osg::Node* createNode( Map* map, osgTerrain::Terrain* terrain, const TileKey* key, bool populateLayers );
 
         /**
          * Creates a georeferenced image corresponding to a tile key.
          */
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
 
+        const MapEngineProperties& getEngineProperties() const;
+
         bool isCached( Map* map, const TileKey* key );
-
-    public: // static methods        
-
 
     public:
         MapEngine( const MapEngineProperties& props );
@@ -80,7 +79,8 @@ namespace osgEarth
             Map* map,
             osgTerrain::Terrain* terrain,
             osg::Group* parent,
-            const TileKey* key );
+            const TileKey* key,
+            bool populateLayers );
 
         /**
          * The implementation class must define this function, which creates one of
@@ -89,7 +89,8 @@ namespace osgEarth
         virtual osg::Node* createQuadrant(
             Map* map,
             osgTerrain::Terrain* terrain,
-            const TileKey* key ) =0;
+            const TileKey* key,
+            bool populateLayers ) =0;
 
 
         GeoImage* createValidGeoImage(TileSource* tileSource, const TileKey* key);
@@ -103,7 +104,9 @@ namespace osgEarth
 
         static osg::HeightField* createEmptyHeightField( const TileKey* key );
 
+
     protected:
+
         MapEngineProperties _engineProps;
     };
 }

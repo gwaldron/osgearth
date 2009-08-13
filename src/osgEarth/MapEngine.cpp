@@ -60,6 +60,12 @@ MapEngine::~MapEngine()
     //nop
 }
 
+const MapEngineProperties& 
+MapEngine::getEngineProperties() const
+{
+    return _engineProps;
+}
+
 std::string
 MapEngine::createURI( unsigned int id, const TileKey* key )
 {
@@ -84,10 +90,10 @@ MapEngine::getTransformFromExtents(double minX, double minY, double maxX, double
 }
 
 osg::Node*
-MapEngine::createNode( Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
+MapEngine::createNode( Map* map, osgTerrain::Terrain* terrain, const TileKey* key, bool populateLayers )
 {
     osg::ref_ptr<osg::Group> parent = new osg::Group;
-    if (!addChildren( map, terrain, parent.get(), key ))
+    if ( !addChildren( map, terrain, parent.get(), key, populateLayers ))
     {
         parent = 0;
     }
@@ -149,7 +155,8 @@ bool
 MapEngine::addChildren(Map* map,
                        osgTerrain::Terrain* terrain,
                        osg::Group* tile_parent,
-                       const TileKey* key )
+                       const TileKey* key,
+                       bool populateLayers )
 {
     bool all_quadrants_created = false;
 
@@ -160,10 +167,10 @@ MapEngine::addChildren(Map* map,
     osg::ref_ptr<TileKey> k2 = key->getSubkey(2);
     osg::ref_ptr<TileKey> k3 = key->getSubkey(3);
 
-    q0 = createQuadrant( map, terrain, k0.get() );
-    q1 = createQuadrant( map, terrain, k1.get() );
-    q2 = createQuadrant( map, terrain, k2.get() );
-    q3 = createQuadrant( map, terrain, k3.get() );
+    q0 = createQuadrant( map, terrain, k0.get(), populateLayers );
+    q1 = createQuadrant( map, terrain, k1.get(), populateLayers );
+    q2 = createQuadrant( map, terrain, k2.get(), populateLayers );
+    q3 = createQuadrant( map, terrain, k3.get(), populateLayers );
 
     all_quadrants_created = (q0.valid() && q1.valid() && q2.valid() && q3.valid());
 
@@ -332,3 +339,4 @@ MapEngine::createEmptyHeightField( const TileKey* key )
     hf->setBorderWidth( 0 );
     return hf;
 }
+

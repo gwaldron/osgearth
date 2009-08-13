@@ -46,11 +46,19 @@ namespace osgEarth
         virtual osg::Node* createQuadrant(
             Map* map, 
             osgTerrain::Terrain* terrain,
-            const TileKey* key );
+            const TileKey* key,
+            bool populateLayers );
 
         static osg::ClusterCullingCallback* createClusterCullingCallback(
             osgTerrain::TerrainTile* tile, 
-            osg::EllipsoidModel* et);       
+            osg::EllipsoidModel* et);   
+
+    private:
+        
+        virtual osg::Node* createPopulatedQuadrant(
+            Map* map, 
+            osgTerrain::Terrain* terrain,
+            const TileKey* key );
     };
 }
 

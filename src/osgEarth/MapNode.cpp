@@ -273,7 +273,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         int numAdded = 0;
         for (unsigned int i = 0; i < keys.size(); ++i)
         {
-            osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get() );
+            osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get(), true );
             if (node)
             {
                 terrain->addChild(node);

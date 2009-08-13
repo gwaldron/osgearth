@@ -75,6 +75,7 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_CACHE_ONLY               "cache_only"
 #define ELEM_NORMALIZE_EDGES          "normalize_edges"
 #define ELEM_COMBINE_LAYERS           "combine_layers"
+#define ELEM_DEFER_TILE_DATA_LOADING  "defer_tile_data_loading"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
@@ -340,6 +341,12 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
         engineProps.setNormalizeEdges(true);
     else if (normalizeEdges == VALUE_FALSE)
         engineProps.setNormalizeEdges(false);
+
+    std::string deferLoad = e_map->getSubElementText(ELEM_DEFER_TILE_DATA_LOADING);
+    if (deferLoad == VALUE_TRUE)
+        engineProps.setDeferTileDataLoading(true);
+    else if (deferLoad == VALUE_FALSE)
+        engineProps.setDeferTileDataLoading(false);
 
     engineProps.setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), engineProps.getVerticalScale() ) );
     engineProps.setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), engineProps.getMinTileRangeFactor() ) );

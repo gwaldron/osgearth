@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/TileKey>
-#include <osgEarth/Mercator>
+//#include <osgEarth/Mercator>
 
 using namespace osgEarth;
 

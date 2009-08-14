@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/ProjectedMap>
-#include <osgEarth/Mercator>
+#include <osgEarth/Locators>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osgEarth/Compositing>
 #include <osgEarth/ImageUtils>

@@ -235,24 +235,6 @@ namespace osgEarth
         osg::ref_ptr<osg::HeightField> _heightField;
         GeoExtent _extent;
     };
-
-
-    /**
-     * A terrain locator that crops to a particular sub-extent
-     */
-    class OSGEARTH_EXPORT CroppingLocator : public osgTerrain::Locator
-    {
-    public:
-        CroppingLocator( osgTerrain::Locator* locator, const GeoExtent& dataExtent, const GeoExtent& croppedExtent );
-        
-        bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
-        bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
-
-    private:
-        double _x0, _y0, _x1, _y1;
-        GeoExtent _dataExtent;
-        GeoExtent _croppedExtent;
-    };
 }
 
 #endif // OSGEARTH_GEODATA_H

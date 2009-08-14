@@ -40,6 +40,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageToHeightFieldConverter
     ImageUtils
     JsonUtils
+    Locators
     Map
     MapLayer
     MapNode
@@ -77,6 +78,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     JsonUtils.cpp
+    Locators.cpp
     Map.cpp
     MapLayer.cpp
     MapNode.cpp

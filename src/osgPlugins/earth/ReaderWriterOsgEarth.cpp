@@ -20,7 +20,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Map>
 #include <osgEarth/EarthFile>
-#include <osgEarth/Mercator>
+//#include <osgEarth/Mercator>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>

@@ -20,7 +20,7 @@
 #include <osgEarth/ElevationManager>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Compositing>
-#include <osgEarth/Mercator>
+//#include <osgEarth/Mercator>
 
 using namespace osg;
 using namespace osgEarth;

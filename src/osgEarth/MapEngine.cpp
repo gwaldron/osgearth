@@ -20,7 +20,7 @@
 #include <osgEarth/MapEngine>
 #include <osgEarth/DirectReadTileSource>
 #include <osgEarth/Caching>
-#include <osgEarth/Mercator>
+//#include <osgEarth/Mercator>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Compositing>
 #include <osgEarth/Registry>

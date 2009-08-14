@@ -19,7 +19,7 @@
 
 
 #include <osgEarth/Registry>
-#include <osgEarth/Mercator>
+//#include <osgEarth/Mercator>
 #include <osg/Notify>
 #include <gdal_priv.h>
 

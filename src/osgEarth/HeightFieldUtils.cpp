@@ -18,7 +18,7 @@
  */
 
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Mercator>
+//#include <osgEarth/Mercator>
 #include <osg/Notify>
 
 using namespace osgEarth;

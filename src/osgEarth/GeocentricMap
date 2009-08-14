@@ -55,7 +55,12 @@ namespace osgEarth
 
     private:
         
-        virtual osg::Node* createPopulatedQuadrant(
+        virtual osg::Node* createPlaceholderTile(
+            Map* map,
+            osgTerrain::Terrain* terrain,
+            const TileKey* key );
+
+        virtual osg::Node* createPopulatedTile(
             Map* map, 
             osgTerrain::Terrain* terrain,
             const TileKey* key );

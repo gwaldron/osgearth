@@ -18,7 +18,7 @@
 */
 
 #include <osgEarth/MapNode>
-#include <osgEarth/Mercator>
+#include <osgEarth/Locators>
 #include <osgEarth/GeocentricMap>
 #include <osgEarth/ProjectedMap>
 #include <osgEarth/FindNode>
@@ -336,7 +336,7 @@ MapNode::addImageTileSource( TileSource* source )
                 double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
                 //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-                osg::ref_ptr<osgTerrain::Locator> img_locator; // = key->getProfile()->getSRS()->createLocator();
+                osg::ref_ptr<GeoLocator> img_locator; // = key->getProfile()->getSRS()->createLocator();
 
                 
                 // Use a special locator for mercator images (instead of reprojecting).

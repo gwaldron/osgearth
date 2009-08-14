@@ -313,11 +313,11 @@ _face(face)
 
 }
 
-osgTerrain::Locator*
+GeoLocator*
 CubeFaceSpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax,
                                         bool plate_carre) const
 {
-    osgTerrain::Locator* result = new CubeFaceLocator( _face );
+    GeoLocator* result = new CubeFaceLocator( _face );
 
     osg::Matrixd transform;
     transform.set(

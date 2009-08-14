@@ -26,7 +26,8 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/TMS>
-#include <osgEarth/Mercator>
+#include <osgEarth/TileKey>
+#include <osgEarth/TileSource>
 
 #include <limits.h>
 #include <iomanip>

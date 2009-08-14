@@ -504,11 +504,11 @@ getTransformFromExtents(double minX, double minY, double maxX, double maxY)
     return transform;
 }
 
-osgTerrain::Locator*
+GeoLocator*
 SpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax,
                                 bool plate_carre ) const
 {
-    osgTerrain::Locator* locator = new osgTerrain::Locator();
+    GeoLocator* locator = new GeoLocator( GeoExtent(this, xmin, ymin, xmax, ymax) );
     locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
     locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
     // note: not setting the format/cs on purpose.

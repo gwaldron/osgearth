@@ -22,7 +22,7 @@
 #include <osgEarth/Caching>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
-#include <osgEarth/Mercator>
+//#include <osgEarth/Mercator>
 #include <osgEarth/ImageUtils>
 
 #include <osgDB/FileUtils>

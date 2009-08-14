@@ -18,13 +18,14 @@
  */
 
 #include <osgEarth/GeocentricMap>
-#include <osgEarth/Mercator>
+#include <osgEarth/Locators>
 #include <osgEarth/Cube>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 #include <osgEarth/Compositing>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/EarthTerrainTechnique>
 #include <osgEarth/FileLocationCallback>
+#include <osgEarth/FindNode>
 
 #include <osg/Image>
 #include <osg/Timer>
@@ -55,18 +56,33 @@ MapEngine( props )
 class TileLoadGroup : public osg::Group
 {
 public:
-    TileLoadGroup( osg::Node* node ) {
-        addChild( node );
+    TileLoadGroup( osg::Node* tile, osgTerrain::Terrain* terrain ) :
+    _terrain( terrain )
+    {
+        osg::Group::addChild( tile );
         _loaded = false;
     }
 
+    // only called by the database pager when the POPULATED tile get merged:
     virtual bool addChild( osg::Node* node ) {
         _loaded = true;
+
+        // this will remove the old tile AND unregister it with the terrain:
         removeChildren( 0, getNumChildren() );
+
+        // now, find the Tile that we're about to add and register it with the terrain.
+        osgTerrain::TerrainTile* newTile = dynamic_cast<osgTerrain::TerrainTile*>(node->asGroup()->getChild(0)); //;findTopMostNodeOfType<osgTerrain::TerrainTile>( node );
+        if ( newTile && _terrain.valid() )
+        {
+            newTile->setTerrain( 0L );
+            newTile->setTerrain( _terrain.get() );
+            //osg::notify(osg::NOTICE) << "MERGING TILE" << std::endl;
+        }
         return osg::Group::addChild( node );
     }
 
     bool _loaded;
+    osg::observer_ptr<osgTerrain::Terrain> _terrain;
 };
 
 
@@ -104,32 +120,35 @@ osg::Node*
 GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, const TileKey* key, bool populateLayers)
 {
     if ( populateLayers )
-        return createPopulatedQuadrant( map, terrain, key );
+        return createPopulatedTile( map, terrain, key );
+    else
+        return createPlaceholderTile( map, terrain, key );
+}
 
+osg::Node*
+GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
+{
     ScopedReadLock lock( map->getMapDataMutex() );
 
     const MapLayerList& imageMapLayers = map->getImageMapLayers();
     const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
 
     bool hasElevation = hfMapLayers.size() > 0;
-    
-    osg::ref_ptr<TileKey> parentKey = key->createParentKey();
 
     // Build a "placeholder" tile.
     double min_lon, min_lat, max_lon, max_lat;
     key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
 
     // A locator will place the tile on the globe:
-    osg::ref_ptr<osgTerrain::Locator> locator = key->getProfile()->getSRS()->createLocator(
+    osg::ref_ptr<GeoLocator> locator = key->getProfile()->getSRS()->createLocator(
         min_lon, min_lat, max_lon, max_lat );
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-    
+
     // The empty tile:
     osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
     tile->setTileID( key->getTileId() );
     tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
-    tile->setTerrain( terrain );
     tile->setLocator( locator.get() );
 
     // Attach an updatecallback to normalize the edges of TerrainTiles.
@@ -148,27 +167,50 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     hf_layer->setLocator( locator.get() );
     tile->setElevationLayer( hf_layer );
 
-    // Placeholders for imagery:
-    osgTerrain::TerrainTile* parentTile = parentKey.valid()? terrain->getTile( parentKey->getTileId() ) : NULL;
+    // Now generate imagery placeholders:
+
+    // Search up the tile stack until we find a valid ancestor tile. The plan is to borrow
+    // that ancestor's image layers until our new tile can load its own.
+    osg::ref_ptr<const TileKey> ancestorKey = key;
+    osgTerrain::TerrainTile* ancestorTile = 0L;
+    while( !ancestorTile && ancestorKey.valid() )
+    {
+        ancestorKey = ancestorKey->createParentKey();
+        if ( ancestorKey.valid() )
+            ancestorTile = terrain->getTile( ancestorKey->getTileId() );
+    }
+    
     int layer = 0;
     for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
     {
         osgTerrain::ImageLayer* img_layer = 0L;
 
-        if ( parentTile )
+        if ( ancestorTile )
         {
-            osg::Image* parentImage = parentTile->getColorLayer(layer)->getImage();
+            GeoLocator* newImageLocator = 0L;
 
-            osgTerrain::Locator* img_locator = new CroppingLocator(
-                locator.get(),
-                parentKey->getGeoExtent(),
-                key->getGeoExtent() );
+            osgTerrain::ImageLayer* ancestorLayer = static_cast<osgTerrain::ImageLayer*>(ancestorTile->getColorLayer(layer));
+            GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
+            if ( ancestorLocator )
+            {
+                newImageLocator = new CroppingLocator(
+                    *(locator.get()),
+                    ancestorLocator->getDataExtent(),
+                    key->getGeoExtent() );
+            }
+            else
+            {
+                newImageLocator = locator.get();
+            }
 
-            img_layer = new osgTerrain::ImageLayer( parentImage );
-            img_layer->setLocator( img_locator );
+            osg::Image* ancestorImage = ancestorLayer->getImage();
+
+            img_layer = new osgTerrain::ImageLayer( ancestorImage );
+            img_layer->setLocator( newImageLocator );
         }
         else
         {
+            osg::notify(osg::NOTICE) << "[osgEarth] Could not find ancestor tile for key " << key->str() << std::endl;
             img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
             img_layer->setLocator( locator.get() );	
         }   
@@ -187,7 +229,10 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     // Set the skirt height of the heightfield
     hf_layer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
 
-    TileLoadGroup* loadGroup = new TileLoadGroup( tile );
+    // register the temporary tile with the terrain:
+    tile->setTerrain( terrain );
+
+    TileLoadGroup* loadGroup = new TileLoadGroup( tile, terrain );
 
     // TEMPORARY TODO FIXME
     bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
@@ -201,8 +246,6 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     // This callback will load the actual tile data via the database pager:
     tile->addCullCallback( new TileDataLoaderCallback( map, key, loadGroup ) );
 
-    //return loadGroup;
-
     // see if we need to keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
@@ -214,7 +257,7 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
 }
 
 osg::Node*
-GeocentricMapEngine::createPopulatedQuadrant(Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
+GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain, const TileKey* key )
 {
     //osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Begin " << key->str() << std::endl;
     //osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] Waiting for lock..." << std::endl;
@@ -320,7 +363,7 @@ GeocentricMapEngine::createPopulatedQuadrant(Map* map, osgTerrain::Terrain* terr
         }
     }
 
-    osg::ref_ptr<osgTerrain::Locator> locator = key->getProfile()->getSRS()->createLocator(
+    osg::ref_ptr<GeoLocator> locator = key->getProfile()->getSRS()->createLocator(
         min_lon, min_lat, max_lon, max_lat );
 
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
@@ -351,6 +394,9 @@ GeocentricMapEngine::createPopulatedQuadrant(Map* map, osgTerrain::Terrain* terr
     //This registers the terrain tile so that adding/removing layers are always in sync.  If you don't do this
     //you can end up with a situation where the database pager is waiting to merge a tile, then a layer is added, then
     //the tile is finally merged and is out of sync.
+
+    // If there's a placeholder tile registered, this will be ignored. If there isn't,
+    // this will register the new tile.
     tile->setTerrain( terrain );
 
     int layer = 0;
@@ -361,7 +407,7 @@ GeocentricMapEngine::createPopulatedQuadrant(Map* map, osgTerrain::Terrain* terr
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<osgTerrain::Locator> img_locator;
+            osg::ref_ptr<GeoLocator> img_locator;
 			
             GeoImage* geo_image = image_tiles[i].get();
 
@@ -383,7 +429,6 @@ GeocentricMapEngine::createPopulatedQuadrant(Map* map, osgTerrain::Terrain* terr
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
-
             img_layer->setLocator( img_locator.get());
 
             tile->setColorLayer( layer, img_layer );

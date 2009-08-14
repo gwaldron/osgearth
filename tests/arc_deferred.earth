@@ -1,0 +1,12 @@
+<!--
+osgEarth Sample
+
+This example shows how to pull map tiles from an ESRI ArcGIS Server.
+-->
+
+<map name="ESRI Imagery and Roads" type="geocentric">      
+    <defer_tile_data_loading>true</defer_tile_data_loading>
+    <image name="arcgisonline esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+    </image>
+</map>

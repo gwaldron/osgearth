@@ -22,7 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
-#include <osgTerrain/Locator>
+#include <osgEarth/Locators>
 
 namespace osgEarth
 {
@@ -36,7 +36,7 @@ namespace osgEarth
     };
 
 
-    class CubeFaceLocator : public osgTerrain::Locator
+    class CubeFaceLocator : public GeoLocator
     {
     public:
         CubeFaceLocator(unsigned int face);
@@ -59,7 +59,7 @@ namespace osgEarth
     public:
         CubeFaceSpatialReference(void* handle, unsigned int face);
 
-        virtual osgTerrain::Locator* createLocator(
+        virtual GeoLocator* createLocator(
             double xmin, double ymin, double xmax, double ymax,
             bool plate_carre =false ) const;
 

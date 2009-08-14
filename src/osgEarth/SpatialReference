@@ -22,11 +22,12 @@
 #include <osgEarth/Common>
 #include <osg/Referenced>
 #include <osg/CoordinateSystemNode>
-#include <osgTerrain/Locator>
 #include <OpenThreads/ReentrantMutex>
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT GeoLocator;
+
     /** 
      * SpatialReference holds information describing the reference ellipsoid/datum
      * and the projection of geospatial data.
@@ -121,7 +122,7 @@ namespace osgEarth
          *      Set this to true for the special case in which you are using a
          *      geographic SRS with a PROJECTED map (like flat-earth lat/long).
          */
-        virtual osgTerrain::Locator* createLocator(
+        virtual GeoLocator* createLocator(
             double xmin, double ymin, double xmax, double ymax,
             bool plate_carre =false ) const;
 

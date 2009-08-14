@@ -40,6 +40,7 @@
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
 #include <osgTerrain/GeometryTechnique>
+#include <OpenThreads/Thread>
 #include <sstream>
 #include <string.h>
 #include <stdlib.h>
@@ -53,35 +54,60 @@ MapEngine( props )
     //NOP   
 }
 
+struct RegisterTilesVisitor : public osg::NodeVisitor {
+    RegisterTilesVisitor(osgTerrain::Terrain* terrain ) :
+      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+          _terrain(terrain), _count(0) { }
+
+      void apply(osg::Node& node) {
+          osgTerrain::TerrainTile* tile = dynamic_cast<osgTerrain::TerrainTile*>(&node);
+          if ( tile ) {
+              // re-register with the new tile address
+              tile->setTerrain(0L);
+              tile->setTerrain( _terrain.get() );
+              _count++;
+          }
+          traverse(node);
+      }
+
+      osg::ref_ptr<osgTerrain::Terrain> _terrain;
+      int _count;
+};
+
 class TileLoadGroup : public osg::Group
 {
 public:
-    TileLoadGroup( osg::Node* tile, osgTerrain::Terrain* terrain ) :
-    _terrain( terrain )
+    TileLoadGroup( osg::Node* tile, const TileKey* key, osgTerrain::Terrain* terrain ) :
+    _terrain( terrain ),
+    _keyStr( key->str() )
     {
-        osg::Group::addChild( tile );
         _loaded = false;
+        osg::Group::addChild(tile);
+    }
+
+    virtual ~TileLoadGroup() {
+        osg::notify(osg::NOTICE) << "PAGED OUT tile " << _keyStr
+            << ", loaded=" << _loaded << std::endl;
     }
 
     // only called by the database pager when the POPULATED tile get merged:
     virtual bool addChild( osg::Node* node ) {
-        _loaded = true;
+        if ( !_loaded ) {
+            _loaded = true;
+            
+            // this will remove the old tile AND unregister it with the terrain:
+            removeChildren( 0, getNumChildren() );
 
-        // this will remove the old tile AND unregister it with the terrain:
-        removeChildren( 0, getNumChildren() );
+            RegisterTilesVisitor reg( _terrain.get() );
+            node->accept( reg );
 
-        // now, find the Tile that we're about to add and register it with the terrain.
-        osgTerrain::TerrainTile* newTile = dynamic_cast<osgTerrain::TerrainTile*>(node->asGroup()->getChild(0)); //;findTopMostNodeOfType<osgTerrain::TerrainTile>( node );
-        if ( newTile && _terrain.valid() )
-        {
-            newTile->setTerrain( 0L );
-            newTile->setTerrain( _terrain.get() );
-            //osg::notify(osg::NOTICE) << "MERGING TILE" << std::endl;
+            osg::notify(osg::NOTICE) << "MERGED tile " << _keyStr << std::endl;
         }
         return osg::Group::addChild( node );
     }
 
     bool _loaded;
+    std::string _keyStr;
     osg::observer_ptr<osgTerrain::Terrain> _terrain;
 };
 
@@ -168,16 +194,24 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     tile->setElevationLayer( hf_layer );
 
     // Now generate imagery placeholders:
-
-    // Search up the tile stack until we find a valid ancestor tile. The plan is to borrow
-    // that ancestor's image layers until our new tile can load its own.
     osg::ref_ptr<const TileKey> ancestorKey = key;
     osgTerrain::TerrainTile* ancestorTile = 0L;
+    std::string indent = "";
     while( !ancestorTile && ancestorKey.valid() )
     {
         ancestorKey = ancestorKey->createParentKey();
         if ( ancestorKey.valid() )
-            ancestorTile = terrain->getTile( ancestorKey->getTileId() );
+        {
+            osgTerrain::TileID tid = ancestorKey->getTileId();
+            ancestorTile = static_cast<EarthTerrain*>(terrain)->getTileOverride( ancestorKey->getTileId() );
+
+            if ( !ancestorTile ) {
+                osg::notify(osg::NOTICE)
+                    << indent
+                    << "Failed to find ancestor tile (" << ancestorKey->str() << ")" << std::endl;
+                indent = indent + "  ";
+            }
+        }
     }
     
     int layer = 0;
@@ -232,7 +266,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
 
-    TileLoadGroup* loadGroup = new TileLoadGroup( tile, terrain );
+    TileLoadGroup* loadGroup = new TileLoadGroup( tile, key, terrain );
 
     // TEMPORARY TODO FIXME
     bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
@@ -246,7 +280,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     // This callback will load the actual tile data via the database pager:
     tile->addCullCallback( new TileDataLoaderCallback( map, key, loadGroup ) );
 
-    // see if we need to keep subdividing:
+    // create a PLOD so we can keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
     plod->addChild( loadGroup, min_range, max_range );
@@ -395,10 +429,6 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
     //you can end up with a situation where the database pager is waiting to merge a tile, then a layer is added, then
     //the tile is finally merged and is out of sync.
 
-    // If there's a placeholder tile registered, this will be ignored. If there isn't,
-    // this will register the new tile.
-    tile->setTerrain( terrain );
-
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
@@ -455,23 +485,37 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
         osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
         tile->setCullCallback( ccc );
     }
-
-    // see if we need to keep subdividing:
-    osg::PagedLOD* plod = new osg::PagedLOD();
-    plod->setCenter( bs.center() );
-    plod->addChild( tile, min_range, max_range );
-    plod->setFileName( 1, createURI( map->getId(), key ) );
-    plod->setRange( 1, 0.0, min_range );
     
+    // Wait until now, when the tile is fully baked, to assign the terrain to the tile.
+    // Placeholder tiles might try to locate this tile as an ancestor, and access its layers
+    // and locators...so they must be intact before making this tile available via setTerrain.
+    //
+    // If there's already a placeholder tile registered, this will be ignored. If there isn't,
+    // this will register the new tile.
+    tile->setTerrain( terrain );
+
+    if ( _engineProps.getDeferTileDataLoading() && key->getLevelOfDetail() > 1 )
+    {
+        // if this was a deferred load, all we need is the populated tile.
+        return tile;
+    }
+    else
+    {
+        // see if we need to keep subdividing:
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setCenter( bs.center() );
+        plod->addChild( tile, min_range, max_range );
+        plod->setFileName( 1, createURI( map->getId(), key ) );
+        plod->setRange( 1, 0.0, min_range );
+        
 #if USE_FILELOCATIONCALLBACK
-    osgDB::Options* options = new osgDB::Options;
-    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
-    plod->setDatabaseOptions( options );
+        osgDB::Options* options = new osgDB::Options;
+        options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+        plod->setDatabaseOptions( options );
 #endif
-
-    //osg::notify(osg::INFO) << "[osgEarth::GeocentricMap::createQuadrant] End" << std::endl;
-
-    return plod;
+    
+        return plod;
+    }
 }
 
 

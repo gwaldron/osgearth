@@ -112,6 +112,8 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
 
     bool hasElevation = hfMapLayers.size() > 0;
+    
+    osg::ref_ptr<TileKey> parentKey = key->createParentKey();
 
     // Build a "placeholder" tile.
     double min_lon, min_lat, max_lon, max_lat;
@@ -146,9 +148,7 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
     hf_layer->setLocator( locator.get() );
     tile->setElevationLayer( hf_layer );
 
-#if 0
     // Placeholders for imagery:
-    osg::ref_ptr<TileKey> parentKey = key->createParentKey();
     osgTerrain::TerrainTile* parentTile = parentKey.valid()? terrain->getTile( parentKey->getTileId() ) : NULL;
     int layer = 0;
     for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
@@ -159,33 +159,22 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
         {
             osg::Image* parentImage = parentTile->getColorLayer(layer)->getImage();
 
-            double s2 = (double)(parentImage->s()/2);
-            double t2 = (double)(parentImage->t()/2);
-            double smin = key->getGeoExtent().xMin() > parentKey->getGeoExtent().xMin()? s2 : 0.0;
-            double tmin = key->getGeoExtent().yMin() > parentKey->getGeoExtent().yMin()? t2 : 0.0;
-            double smax = smin+s2-1.0;
-            double tmax = tmin+t2-1.0;
+            osgTerrain::Locator* img_locator = new CroppingLocator(
+                locator.get(),
+                parentKey->getGeoExtent(),
+                key->getGeoExtent() );
 
-            osg::Image* childImage = ImageUtils::cropImage(
-                parentImage,
-                0, 0, parentImage->s()-1, parentImage->t()-1,
-                smin, tmin, smax, tmax );
-
-            img_layer = new osgTerrain::ImageLayer( childImage );
+            img_layer = new osgTerrain::ImageLayer( parentImage );
+            img_layer->setLocator( img_locator );
         }
         else
         {
             img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
-        }
-
-        // TODO: when the actual image loads, we'll have to replace the image locator based on
-        // the extents of the GeoImage. For now, just use the tile locator.
-        img_layer->setLocator( locator.get() );	
-        //img_layer->setFileName( createLayerFileName( tile, layer ) );
+            img_layer->setLocator( locator.get() );	
+        }   
 
         tile->setColorLayer( layer++, img_layer );        
     }   
-#endif
 
     // finish off the tile and put it under a new PLOD.
     osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();

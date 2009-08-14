@@ -86,8 +86,8 @@ public:
     }
 
     virtual ~TileLoadGroup() {
-        osg::notify(osg::NOTICE) << "PAGED OUT tile " << _keyStr
-            << ", loaded=" << _loaded << std::endl;
+        //osg::notify(osg::NOTICE) << "PAGED OUT tile " << _keyStr
+        //    << ", loaded=" << _loaded << std::endl;
     }
 
     // only called by the database pager when the POPULATED tile get merged:
@@ -98,10 +98,12 @@ public:
             // this will remove the old tile AND unregister it with the terrain:
             removeChildren( 0, getNumChildren() );
 
-            RegisterTilesVisitor reg( _terrain.get() );
-            node->accept( reg );
+            static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( 0L );
+            static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( _terrain.get() );
+            //RegisterTilesVisitor reg( _terrain.get() );
+            //node->accept( reg );
 
-            osg::notify(osg::NOTICE) << "MERGED tile " << _keyStr << std::endl;
+//            osg::notify(osg::NOTICE) << "MERGED tile " << _keyStr << std::endl;
         }
         return osg::Group::addChild( node );
     }
@@ -115,7 +117,6 @@ public:
 struct TileDataLoaderCallback : public osg::NodeCallback
 {
     TileDataLoaderCallback( Map* map, const TileKey* key, TileLoadGroup* destination ) :
-    _loaded(false),
     _destination(destination)
     {
         std::stringstream buf;
@@ -125,18 +126,25 @@ struct TileDataLoaderCallback : public osg::NodeCallback
 
     virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
-        if ( !_destination->_loaded && nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
-            osgTerrain::TerrainTile* tile = static_cast<osgTerrain::TerrainTile*>(node);
-            float priority = -(99.0f - (float)(tile->getTileID().level));
-            nv->getDatabaseRequestHandler()->requestNodeFile(
-                _filename, _destination.get(), priority, nv->getFrameStamp(), _databaseRequest );
+            if ( !_destination->_loaded )
+            {
+                osgTerrain::TerrainTile* tile = static_cast<osgTerrain::TerrainTile*>(node);
+                float priority = -(99.0f - (float)(tile->getTileID().level));
+                nv->getDatabaseRequestHandler()->requestNodeFile(
+                    _filename, _destination.get(), priority, nv->getFrameStamp(), _databaseRequest );
+            }
+            else
+            {
+                _databaseRequest = 0L;
+                _destination = 0L;
+            }
         }
         traverse( node, nv );
     }
 
     std::string _filename;
-    bool _loaded;
     osg::observer_ptr<TileLoadGroup> _destination;
     osg::ref_ptr<osg::Referenced> _databaseRequest;
 };
@@ -205,12 +213,12 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
             osgTerrain::TileID tid = ancestorKey->getTileId();
             ancestorTile = static_cast<EarthTerrain*>(terrain)->getTileOverride( ancestorKey->getTileId() );
 
-            if ( !ancestorTile ) {
-                osg::notify(osg::NOTICE)
-                    << indent
-                    << "Failed to find ancestor tile (" << ancestorKey->str() << ")" << std::endl;
-                indent = indent + "  ";
-            }
+            //if ( !ancestorTile ) {
+            //    osg::notify(osg::NOTICE)
+            //        << indent
+            //        << "Failed to find ancestor tile (" << ancestorKey->str() << ")" << std::endl;
+            //    indent = indent + "  ";
+            //}
         }
     }
     
@@ -286,6 +294,12 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     plod->addChild( loadGroup, min_range, max_range );
     plod->setFileName( 1, createURI( map->getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
+
+#if USE_FILELOCATIONCALLBACK
+        osgDB::Options* options = new osgDB::Options;
+        options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+        plod->setDatabaseOptions( options );
+#endif
 
     return plod;
 }

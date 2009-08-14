@@ -137,19 +137,28 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if ( mapNode.valid() )
                 {
-                  const Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
-                  osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
+                    const Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
+                    osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
 
-                  bool populateLayers = 
-                      ext == "earth_tile_data" ||
-                      mapNode->getEngine()->getEngineProperties().getDeferTileDataLoading() == false;
-                  
-                  node = mapNode->getEngine()->createNode(
-                      mapNode->getMap(),
-                      mapNode->getTerrain( face ),
-                      key.get(),
-                      populateLayers );
 
+                    if ( ext == "earth_tile" )
+                    {
+                        bool deferred = mapNode->getEngine()->getEngineProperties().getDeferTileDataLoading();
+
+                        node = mapNode->getEngine()->createNode(
+                            mapNode->getMap(),
+                            mapNode->getTerrain( face ),
+                            key.get(),
+                            !deferred );
+                    }
+                    else if ( ext == "earth_tile_data" )
+                    {
+                        node = mapNode->getEngine()->createQuadrant(
+                            mapNode->getMap(),
+                            mapNode->getTerrain( face ),
+                            key.get(),
+                            true );
+                    }
                 }
                 else
                 {

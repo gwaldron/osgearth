@@ -137,10 +137,10 @@ writeCache( const CacheConfig& cache, XmlElement* e_cache )
         "tms";
 
     if ( cache.runOffCacheOnly().isSet() )
-        e_cache->getAttrs()[ATTR_CACHE_ONLY] = cache.runOffCacheOnly().get();
+        e_cache->getAttrs()[ATTR_CACHE_ONLY] = toString(cache.runOffCacheOnly().get());
 
     if ( cache.reprojectBeforeCaching().isSet() )
-        e_cache->getAttrs()[ATTR_REPROJECT_BEFORE_CACHING] = cache.reprojectBeforeCaching().get();
+        e_cache->getAttrs()[ATTR_REPROJECT_BEFORE_CACHING] = toString(cache.reprojectBeforeCaching().get());
 
     //Add all the properties
     for (Properties::const_iterator i = cache.getProperties().begin(); i != cache.getProperties().end(); i++ )

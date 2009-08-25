@@ -37,6 +37,17 @@
 #include <gdalwarper.h>
 #include <ogr_spatialref.h>
 
+// From easyrgb.com
+float Hue_2_RGB( float v1, float v2, float vH )
+{
+   if ( vH < 0 ) vH += 1;
+   if ( vH > 1 ) vH -= 1;
+   if ( ( 6 * vH ) < 1 ) return ( v1 + ( v2 - v1 ) * 6 * vH );
+   if ( ( 2 * vH ) < 1 ) return ( v2 );
+   if ( ( 3 * vH ) < 2 ) return ( v1 + ( v2 - v1 ) * ( ( 2 / 3 ) - vH ) * 6 );
+   return ( v1 );
+}
+
 #if (GDAL_VERSION_MAJOR > 1 || (GDAL_VERSION_MAJOR >= 1 && GDAL_VERSION_MINOR >= 5))
 #  define GDAL_VERSION_1_5_OR_NEWER 1
 #endif
@@ -955,6 +966,8 @@ public:
 
             GDALRasterBand* bandGray = findBand(_warpedDS, GCI_GrayIndex);
 
+			GDALRasterBand* bandPalette = findBand(_warpedDS, GCI_PaletteIndex);
+
             //The pixel format is always RGBA to support transparency
             GLenum pixelFormat = GL_RGBA;
 
@@ -1048,6 +1061,111 @@ public:
                 delete []alpha;
 
             }
+			else if (bandPalette)
+			{
+				unsigned char *palette = new unsigned char[target_width * target_height];
+
+				bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
+
+				image = new osg::Image;
+				image->allocateImage(_tile_size, _tile_size, 1, pixelFormat, GL_UNSIGNED_BYTE);
+				memset(image->data(), 0, image->getImageSizeInBytes());
+
+				for (int src_row = 0, dst_row = tile_offset_top;
+					src_row < target_height;
+					src_row++, dst_row++)
+				{
+					for (int src_col = 0, dst_col = tile_offset_left;
+						src_col < target_width;
+						++src_col, ++dst_col)
+					{
+						unsigned char r,g,b,a;
+						const GDALColorEntry *colorEntry = bandPalette->GetColorTable()->GetColorEntry(palette[src_col + src_row * target_width]);
+						GDALPaletteInterp interp = bandPalette->GetColorTable()->GetPaletteInterpretation();
+						if (!colorEntry)
+						{
+							//FIXME: What to do here?
+
+							//osg::notify(osg::INFO) << "NO COLOR ENTRY FOR COLOR " << rawImageData[i] << std::endl;
+							r = 255;
+							g = 0;
+							b = 0;
+							a = 1;
+
+						}
+						else
+						{
+							if (interp == GPI_RGB)
+							{
+								r = colorEntry->c1;
+								g = colorEntry->c2;
+								b = colorEntry->c3;
+								a = colorEntry->c4;
+							}
+							else if (interp == GPI_CMYK)
+							{
+								// from wikipedia.org
+								short C = colorEntry->c1;
+								short M = colorEntry->c2;
+								short Y = colorEntry->c3;
+								short K = colorEntry->c4;
+								r = 255 - C*(255 - K) - K;
+								g = 255 - M*(255 - K) - K;
+								b = 255 - Y*(255 - K) - K;
+								a = 255;
+							}
+							else if (interp == GPI_HLS)
+							{
+								// from easyrgb.com
+								float H = colorEntry->c1;
+								float S = colorEntry->c3;
+								float L = colorEntry->c2;
+								float R, G, B;
+								if ( S == 0 )                       //HSL values = 0 - 1
+								{
+									R = L;                      //RGB results = 0 - 1 
+									G = L;
+									B = L;
+								}
+								else
+								{
+									float var_2, var_1;
+									if ( L < 0.5 )
+										var_2 = L * ( 1 + S );
+									else
+										var_2 = ( L + S ) - ( S * L );
+
+									var_1 = 2 * L - var_2;
+
+									R = Hue_2_RGB( var_1, var_2, H + ( 1 / 3 ) );
+									G = Hue_2_RGB( var_1, var_2, H );
+									B = Hue_2_RGB( var_1, var_2, H - ( 1 / 3 ) );                                
+								} 
+								r = static_cast<unsigned char>(R*255.0f);
+								g = static_cast<unsigned char>(G*255.0f);
+								b = static_cast<unsigned char>(B*255.0f);
+								a = static_cast<unsigned char>(255.0f);
+							}
+							else if (interp == GPI_Gray)
+							{
+								r = static_cast<unsigned char>(colorEntry->c1*255.0f);
+								g = static_cast<unsigned char>(colorEntry->c1*255.0f);
+								b = static_cast<unsigned char>(colorEntry->c1*255.0f);
+								a = static_cast<unsigned char>(255.0f);
+							}
+
+							*(image->data(dst_col, dst_row) + 0) = r;
+							*(image->data(dst_col, dst_row) + 1) = g;
+							*(image->data(dst_col, dst_row) + 2) = b;
+							*(image->data(dst_col, dst_row) + 3) = a;
+						}
+					}
+				}
+
+				image->flipVertical();
+
+				delete []palette;
+			}
             else
             {
                 osg::notify(osg::NOTICE) << "Could not find red, green and blue bands or gray bands in " << _url << ".  Cannot create image. " << std::endl;

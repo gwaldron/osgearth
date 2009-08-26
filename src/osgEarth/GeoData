@@ -181,6 +181,11 @@ namespace osgEarth
          */
         osg::Image* takeImage();
 
+		/**
+		 * Gets the units per pixel of this geoimage
+		 */
+		double getUnitsPerPixel() const;
+
     private:
         osg::ref_ptr<osg::Image> _image;
         GeoExtent _extent;

@@ -27,7 +27,7 @@ MapEngineProperties::MapEngineProperties()
     _skirt_ratio = 0.02f;
     _sample_ratio = 1.0f;
     _proxy_port = 8080;
-    _min_tile_range_factor = 5;
+    _min_tile_range_factor = 4;
     _cache_only = false;
     _normalize_edges = false;
     _combine_layers = true;

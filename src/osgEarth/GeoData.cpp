@@ -228,6 +228,13 @@ GeoImage::getExtent() const {
     return _extent;
 }
 
+double
+GeoImage::getUnitsPerPixel() const {
+	double uppw = _extent.width() / (double)_image->s();
+	double upph = _extent.height() / (double)_image->t();
+	return (uppw + upph) / 2.0;
+}
+
 GeoImage*
 GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height  ) const
 {

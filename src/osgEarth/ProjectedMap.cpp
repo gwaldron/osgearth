@@ -187,6 +187,8 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
     //the tile is finally merged and is out of sync.
     tile->setTerrain( terrain );
 
+	double min_units_per_pixel = DBL_MAX;
+
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
@@ -217,6 +219,10 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
                     map->getProfile()->getSRS()->isGeographic() );
             }
 
+			double upp = geo_image->getUnitsPerPixel();
+			//Scale the units per pixel to degrees if the image is mercator
+			if (geo_image->getSRS()->isMercator() && key->getGeoExtent().getSRS()->isGeographic()) upp *= 1.0f/111319.0f;
+
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
             img_layer->setLocator( img_locator.get() );
 
@@ -224,12 +230,18 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
             layer++;
         }
     }
+
+	
     
     osg::Vec3d centroid( (xmax+xmin)/2.0, (ymax+ymin)/2.0, 0 );
 
     double max_range = 1e10;
     double radius = (centroid-osg::Vec3d(xmin,ymin,0)).length();
-    double min_range = radius * _engineProps.getMinTileRangeFactor();
+    //double min_range = radius * _engineProps.getMinTileRangeFactor();
+	double width = key->getGeoExtent().width();	
+	if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
+	double min_range = (width / min_units_per_pixel) * _engineProps.getMinTileRangeFactor(); 
+
 
     //Set the skirt height of the heightfield
     hf->setSkirtHeight(radius * _engineProps.getSkirtRatio());
@@ -237,9 +249,11 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
     // see if we need to keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( centroid );
-    plod->addChild( tile, min_range, max_range );
+    plod->addChild(tile, 0, min_range);
     plod->setFileName( 1, createURI( map->getId(), key ) );
-    plod->setRange( 1, 0.0, min_range );
+    //plod->setRange( 1, 0.0, min_range );
+	plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
+	plod->setRange(1, min_range, FLT_MAX);
 
 #if USE_FILELOCATIONCALLBACK
     osgDB::Options* options = new osgDB::Options;

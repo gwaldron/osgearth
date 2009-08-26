@@ -443,6 +443,8 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
     //you can end up with a situation where the database pager is waiting to merge a tile, then a layer is added, then
     //the tile is finally merged and is out of sync.
 
+	double min_units_per_pixel = DBL_MAX;
+
     int layer = 0;
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
@@ -475,6 +477,11 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
             osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
             img_layer->setLocator( img_locator.get());
 
+			double upp = geo_image->getUnitsPerPixel();
+			//Scale the units per pixel to degrees if the image is mercator
+			if (geo_image->getSRS()->isMercator()) upp *= 1.0f/111319.0f;
+
+			min_units_per_pixel = osg::minimum(upp, min_units_per_pixel);
             tile->setColorLayer( layer, img_layer );
             layer++;
         }
@@ -482,11 +489,15 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
     
     osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
 
+	double width = key->getGeoExtent().width();	
+	if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
+	double min_range = (width / min_units_per_pixel) * _engineProps.getMinTileRangeFactor(); 
 
     osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
     double radius = bs.radius();
-    double min_range = radius * _engineProps.getMinTileRangeFactor();
+
+	//osg::notify(osg::NOTICE) << "Width= " << width << " upp=" << min_units_per_pixel << " min_range=" << min_range << std::endl;
 
     //Set the skirt height of the heightfield
     hf->setSkirtHeight(radius * _engineProps.getSkirtRatio());
@@ -518,9 +529,12 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
         // see if we need to keep subdividing:
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-        plod->addChild( tile, min_range, max_range );
+        //plod->addChild( tile, min_range, max_range );
+		plod->addChild(tile, 0, min_range);
         plod->setFileName( 1, createURI( map->getId(), key ) );
-        plod->setRange( 1, 0.0, min_range );
+        //plod->setRange( 1, 0.0, min_range );
+		plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
+		plod->setRange(1, min_range, FLT_MAX);
         
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = new osgDB::Options;

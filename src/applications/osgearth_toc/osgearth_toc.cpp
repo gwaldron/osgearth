@@ -485,7 +485,7 @@ int main(int argc, char** argv)
     osg::Group* group = new osg::Group;
 
     MapEngineProperties props;
-    props.setDeferTileDataLoading(true);
+    //props.setDeferTileDataLoading(true);
     MapNode* mapNode = new MapNode(props);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
 

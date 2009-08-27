@@ -304,6 +304,7 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
     //        _terrains[i]->advanceRevision();
     //    }
     //}
+    //updateStateSet();
     //return;
 
     if ( layer && layer->getTileSource() )

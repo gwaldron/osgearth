@@ -101,8 +101,8 @@ MapLayer::profileConfig() const {
 void
 MapLayer::setTileSource( TileSource* tileSource )
 {
-    if ( !_tileSource.valid() )
-    {
+    //if ( !_tileSource.valid() )
+    //{
         _tileSource = tileSource;
         if ( _tileSource.valid() )
         {
@@ -111,9 +111,9 @@ MapLayer::setTileSource( TileSource* tileSource )
             if ( _maxLevel.isSet() )
                 _tileSource->setMaxLevel( _maxLevel.get() );
         }
-    }
-    else
-    {
-        osg::notify(osg::WARN) << "[osgEarth::MapLayer] TileSource already set; ignoring attempt to set it again" << std::endl;
-    }
+    //}
+    //else
+    //{
+    //    osg::notify(osg::WARN) << "[osgEarth::MapLayer] TileSource already set; ignoring attempt to set it again" << std::endl;
+    //}
 }

@@ -68,7 +68,7 @@ namespace osgEarth
         /**
          * Gets a tile given its version ID.
          */
-        osgTerrain::TerrainTile* getVersionedTile( const osgTerrain::TileID& tileId );
+        VersionedTile* getVersionedTile( const osgTerrain::TileID& tileId );
 
         void getTerrainTiles( TerrainTileList& out_tiles );
 

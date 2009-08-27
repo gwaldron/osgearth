@@ -49,7 +49,9 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/FindNode>
+#include <osgEarth/TileSource>
 #include <osgEarth/TileSourceFactory>
+#include <osgEarth/Registry>
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/FadeLayerNode>
@@ -80,6 +82,27 @@ float textSize = 25.0f;
 bool hudDirty = false;
 
 const unsigned int MASK_2D = 0xF0000000;
+
+struct BlankTileSource : public osgEarth::TileSource 
+{
+    BlankTileSource(const osgDB::ReaderWriter::Options* options =0L) : osgEarth::TileSource( options ) { }
+
+    virtual const Profile* createProfile( const Profile* mapProfile, const std::string& confPath ) {
+        return mapProfile? mapProfile : osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    }
+
+    virtual osg::Image* createImage( const TileKey* key ) {
+        osg::Image* image = new osg::Image();
+        image->setAllocationMode( osg::Image::USE_NEW_DELETE );
+        image->allocateImage( 256, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE );
+        for( int y=0; y<image->t(); y++ ) {
+            for( int x=0; x<image->s(); x++ ) {
+                *((unsigned int*)(image->data(x,y))) = 0xff00ff00;
+            }
+        }
+        return image;
+    }
+};
 
 //Simple hot tracking callback that changes the color of labels when the mouse enters and leaves
 struct HotTrackingCallback: public osgWidget::Callback {
@@ -237,6 +260,12 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 {
     osgWidget::Box* addLayersBox = new osgWidget::Box("AddLayersBox", osgWidget::Box::VERTICAL);
     
+    // Custom green layer:
+    {
+        MapLayer* layer = new MapLayer( "Green", MapLayer::TYPE_IMAGE, new BlankTileSource() );
+        addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
+    }
+
     // ESRI reference labels
     {
         osgEarth::Properties conf;
@@ -455,24 +484,10 @@ int main(int argc, char** argv)
 
     osg::Group* group = new osg::Group;
 
-    //osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
-    //if (!loadedModel.valid())
-    //{
-    //    osg::notify(osg::NOTICE) << "Failed to load map" << std::endl;
-    //    return 1;
-    //}
-
     MapEngineProperties props;
-    //props.setDeferTileDataLoading(true);
+    props.setDeferTileDataLoading(true);
     MapNode* mapNode = new MapNode(props);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
-
-    //MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());
-    //if (!mapNode)
-    //{
-    //    osg::notify(osg::NOTICE) << "Please load a .earth file" << std::endl;
-    //    return 1;
-    //}
 
     FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap() );
     fadeLayerNode->addChild(loadedModel.get());

@@ -74,10 +74,12 @@ public:
     // flags it for reloading.
     void checkTileRevision()
     {
-        if (!_loaded && 
+        if (_loaded && 
             getNumChildren() > 0 &&
+            _terrain.valid() && 
             static_cast<VersionedTile*>( getChild(0) )->getTerrainRevision() != _terrain->getRevision() )
         {
+            osg::notify(osg::NOTICE) << "Tile " << _keyStr << " is obselete" << std::endl;
             _loaded = false;
         }
     }
@@ -203,7 +205,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
 
     // Now generate imagery placeholders:
     osg::ref_ptr<const TileKey> ancestorKey = key;
-    osgTerrain::TerrainTile* ancestorTile = 0L;
+    VersionedTile* ancestorTile = 0L;
     std::string indent = "";
     while( !ancestorTile && ancestorKey.valid() )
     {
@@ -212,6 +214,11 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
         {
             osgTerrain::TileID tid = ancestorKey->getTileId();
             ancestorTile = static_cast<VersionedTerrain*>(terrain)->getVersionedTile( ancestorKey->getTileId() );
+            if ( ancestorTile )
+            {
+                //if ( ancestorTile->getTerrainRevision() != static_cast<VersionedTerrain*>(terrain)->getRevision() )
+                //    ancestorTile = 0L; // keep looking
+            }
 
             //if ( !ancestorTile ) {
             //    osg::notify(osg::NOTICE)

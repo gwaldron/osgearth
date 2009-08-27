@@ -76,8 +76,15 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
     {
         //Add the source to the list.  The "." prefix causes OSG to select the correct plugin.
         //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
-        tileSource = dynamic_cast<TileSource*>(
-            osgDB::readObjectFile( ".osgearth_" + layer->getDriver(), local_options.get()));
+        if ( layer->getTileSource() )
+        {
+            tileSource = layer->getTileSource();
+        }
+        else
+        {
+            tileSource = dynamic_cast<TileSource*>(
+                osgDB::readObjectFile( ".osgearth_" + layer->getDriver(), local_options.get()));
+        }
 
         if ( !tileSource.valid() )
         {

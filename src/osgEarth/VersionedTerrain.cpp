@@ -69,7 +69,7 @@ VersionedTerrain::getRevision() const
     return _revision;
 }
 
-osgTerrain::TerrainTile*
+VersionedTile*
 VersionedTerrain::getVersionedTile(const osgTerrain::TileID& tileID)
 {
     ScopedLock<Mutex> lock(_mutex);
@@ -77,7 +77,7 @@ VersionedTerrain::getVersionedTile(const osgTerrain::TileID& tileID)
     TerrainTileMap::iterator itr = _terrainTileMap.find(tileID);
     if (itr == _terrainTileMap.end()) return 0;
 
-    return itr->second;
+    return static_cast<VersionedTile*>(itr->second);
 }
 
 void 

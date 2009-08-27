@@ -47,6 +47,7 @@ SET(LIB_PUBLIC_HEADERS
     MapEngine
     MapEngineProperties
     Mercator
+	MultiPassTerrainTechnique
     Profile
     ProjectedMap
     Registry
@@ -86,6 +87,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapEngine.cpp
     MapEngineProperties.cpp
     Mercator.cpp
+	MultiPassTerrainTechnique.cpp
     Profile.cpp
     ProjectedMap.cpp
     Registry.cpp

@@ -477,6 +477,13 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
+    MapEngineProperties engineProps;
+
+    if ( arguments.find( "--deferred" ) )
+    {
+        engineProps.setDeferTileDataLoading( true );
+    }
+
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
 
@@ -484,9 +491,7 @@ int main(int argc, char** argv)
 
     osg::Group* group = new osg::Group;
 
-    MapEngineProperties props;
-    //props.setDeferTileDataLoading(true);
-    MapNode* mapNode = new MapNode(props);
+    MapNode* mapNode = new MapNode(engineProps);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
     FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap() );

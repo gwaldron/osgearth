@@ -46,6 +46,12 @@ VersionedTile::setTerrainRevision( int revision )
     _terrainRevision = revision;
 }
 
+bool
+VersionedTile::isUpToDate() const
+{
+    return _terrainRevision == static_cast<const VersionedTerrain*>(getTerrain())->getRevision();
+}
+
 /****************************************************************************/
 
 

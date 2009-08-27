@@ -40,6 +40,8 @@ namespace osgEarth
 
         void setTerrainRevision( int revision );
 
+        bool isUpToDate() const;
+
     private:
         int _terrainRevision;
     };

@@ -165,9 +165,6 @@ namespace osgEarth
          */
         void setDeferTileDataLoading( bool value );
 
-        /**
-         *
-         */
         bool getDeferTileDataLoading() const;
 
     private:

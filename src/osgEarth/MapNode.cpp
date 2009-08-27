@@ -274,7 +274,9 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         int numAdded = 0;
         for (unsigned int i = 0; i < keys.size(); ++i)
         {
-            osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get(), true );
+            bool loadNow = !_engine->getEngineProperties().getDeferTileDataLoading();
+
+            osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get(), loadNow ); //true );
             if (node)
             {
                 terrain->addChild(node);
@@ -297,17 +299,19 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
-    //if ( layer && layer->getTileSource() )
-    //{
-    //    for( unsigned int i=0; i<_terrains.size(); i++ )
-    //    {
-    //        _terrains[i]->advanceRevision();
-    //    }
-    //}
-    //updateStateSet();
-    //return;
+    if ( _engine->getEngineProperties().getDeferTileDataLoading() )
+    {
+        if ( layer && layer->getTileSource() )
+        {
+            for( unsigned int i=0; i<_terrains.size(); i++ )
+            {
+                _terrains[i]->advanceRevision();
+            }
+        }
+        updateStateSet();
+    }
 
-    if ( layer && layer->getTileSource() )
+    else if ( layer && layer->getTileSource() )
     {        
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {
@@ -436,7 +440,19 @@ MapNode::addHeightFieldTileSource( TileSource* source )
 void
 MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
 {
-    if ( layer )
+    if ( _engine->getEngineProperties().getDeferTileDataLoading() )
+    {
+        if ( layer && layer->getTileSource() )
+        {
+            for( unsigned int i=0; i<_terrains.size(); i++ )
+            {
+                _terrains[i]->advanceRevision();
+            }
+        }
+        updateStateSet();
+    }
+
+    else if ( layer )
     {
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {

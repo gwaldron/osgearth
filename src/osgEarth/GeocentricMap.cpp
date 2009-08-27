@@ -214,8 +214,10 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
         {
             osgTerrain::TileID tid = ancestorKey->getTileId();
             ancestorTile = static_cast<VersionedTerrain*>(terrain)->getVersionedTile( ancestorKey->getTileId() );
-            if ( ancestorTile )
+
+            if ( ancestorTile && !ancestorTile->isUpToDate() )
             {
+                ancestorTile = 0L;
                 //if ( ancestorTile->getTerrainRevision() != static_cast<VersionedTerrain*>(terrain)->getRevision() )
                 //    ancestorTile = 0L; // keep looking
             }
@@ -259,7 +261,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
         }
         else
         {
-            osg::notify(osg::NOTICE) << "[osgEarth] Could not find ancestor tile for key " << key->str() << std::endl;
+            //osg::notify(osg::NOTICE) << "[osgEarth] Could not find ancestor tile for key " << key->str() << std::endl;
             img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
             img_layer->setLocator( locator.get() );	
         }   
@@ -280,6 +282,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
 
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
+    tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
 
     TileSwitcher* switcher = new TileSwitcher( tile, key, static_cast<VersionedTerrain*>(terrain) );
 
@@ -528,7 +531,7 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
     // this will register the new tile.
     tile->setTerrain( terrain );
 
-    if ( _engineProps.getDeferTileDataLoading() && key->getLevelOfDetail() > 1 )
+    if ( _engineProps.getDeferTileDataLoading() ) //&& key->getLevelOfDetail() > 1 )
     {
         // if this was a deferred load, all we need is the populated tile.
         return tile;

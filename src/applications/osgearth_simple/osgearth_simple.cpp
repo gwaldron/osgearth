@@ -88,8 +88,12 @@ int main(int argc, char** argv)
         map->addMapLayer( layer );
     }
 
+    // Configure the rendering properties:
+    osgEarth::MapEngineProperties props;
+    props.setDeferTileDataLoading(true);
+
     // The MapNode will render the Map object in the scene graph.
-    osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );
+    osgEarth::MapNode* mapNode = new osgEarth::MapNode( map, props );
 
     viewer.setSceneData( mapNode );
 

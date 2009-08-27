@@ -1048,10 +1048,7 @@ public:
                         *(image->data(dst_col, dst_row) + 0) = gray[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 1) = gray[src_col + src_row * target_width];
                         *(image->data(dst_col, dst_row) + 2) = gray[src_col + src_row * target_width];
-                        if (bandAlpha)
-                        {
-                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
-                        }
+                        *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
                     }
                 }
 

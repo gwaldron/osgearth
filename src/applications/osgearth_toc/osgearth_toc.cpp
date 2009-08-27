@@ -137,7 +137,8 @@ struct ToggleVisiblityCallback: public osgWidget::Callback {
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            _fadeLayerNode->setEnabled(_layerIndex, !_fadeLayerNode->getEnabled(_layerIndex));
+            //_fadeLayerNode->setEnabled(_layerIndex, !_fadeLayerNode->getEnabled(_layerIndex));
+			_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setEnabled( !_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->getEnabled());
         }
         return true;
     }
@@ -158,7 +159,7 @@ struct OpacityCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            _fadeLayerNode->setOpacity(_layerIndex, _fadeLayerNode->getOpacity(_layerIndex) + _opacityDelta);
+            _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setOpacity(_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->getOpacity() + _opacityDelta);
         }
         return true;
     }
@@ -484,6 +485,11 @@ int main(int argc, char** argv)
         engineProps.setDeferTileDataLoading( true );
     }
 
+	if (arguments.read( "--multipass") )
+	{
+		engineProps.setTechnique( MapEngineProperties::MULTIPASS );
+	}
+
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
 
@@ -494,15 +500,16 @@ int main(int argc, char** argv)
     MapNode* mapNode = new MapNode(engineProps);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
-    FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap() );
+    FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties());
     fadeLayerNode->addChild(loadedModel.get());
     group->addChild(fadeLayerNode);
+	//group->addChild( loadedModel.get() );
 
 
     for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
     {
-        fadeLayerNode->setOpacity(i, 1.0f);
-        fadeLayerNode->setEnabled(i, true);
+		mapNode->getMap()->getImageMapLayers()[i]->setOpacity(1.0f);
+		mapNode->getMap()->getImageMapLayers()[i]->setEnabled(true);
     }
 
     //Setup the osgWidget interface

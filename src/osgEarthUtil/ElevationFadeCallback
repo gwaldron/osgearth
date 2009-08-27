@@ -28,7 +28,6 @@
 #include <osgEarth/MapNode>
 
 #include <osgEarthUtil/Common>
-#include <osgEarthUtil/FadeLayerNode>
 
 namespace osgEarthUtil
 {

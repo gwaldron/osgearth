@@ -23,10 +23,12 @@
 #include <osgEarth/ProjectedMap>
 #include <osgEarth/FindNode>
 #include <osgEarth/EarthTerrainTechnique>
+#include <osgEarth/MultiPassTerrainTechnique>
 #include <osgEarth/TileSourceFactory>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/Notify>
+#include <osg/CullFace>
 
 using namespace osgEarth;
 
@@ -186,6 +188,8 @@ MapNode::init()
     // install a layer callback for processing further map actions:
     _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
 
+	getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(), osg::StateAttribute::ON);
+
     registerMapNode(this);
 }
 
@@ -262,6 +266,16 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     for( int face = 0; face < _map->getProfile()->getNumFaces(); face++ )
     {
         VersionedTerrain* terrain = new VersionedTerrain();
+
+		if (_engineProps.getTechnique() == MapEngineProperties::MULTIPASS)
+		{
+			terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
+		}
+		else if ( _engineProps.getTechnique() == MapEngineProperties::MULTITEXTURE)
+		{
+			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
+		}
+
         //EarthTerrain* terrain = new EarthTerrain;
         terrain->setVerticalScale( _engineProps.getVerticalScale() );
         terrain->setSampleRatio( _engineProps.getSampleRatio() );
@@ -340,7 +354,7 @@ MapNode::addImageTileSource( TileSource* source )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
 
             //Create a TileKey from the TileID
             osgTerrain::TileID tileId = itr->get()->getTileID();
@@ -383,7 +397,8 @@ MapNode::addImageTileSource( TileSource* source )
                     img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
                 }
 
-                osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
+                //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
+				osgTerrain::ImageLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
                 img_layer->setLocator( img_locator.get());
 
                 unsigned int newLayer = _map->getImageMapLayers().size() - 1;
@@ -418,7 +433,7 @@ MapNode::addHeightFieldTileSource( TileSource* source )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
 
             //Create a TileKey from the TileID
             osgTerrain::TileID tileId = itr->get()->getTileID();
@@ -478,7 +493,7 @@ MapNode::removeImageTileSource( unsigned int index )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
             std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
             for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
@@ -524,7 +539,7 @@ MapNode::removeHeightFieldTileSource( unsigned int index )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             osgTerrain::TileID tileId = itr->get()->getTileID();
 			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
@@ -570,7 +585,7 @@ MapNode::moveImageTileSource( unsigned int oldIndex, unsigned int newIndex )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             //Collect the current color layers
             std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
 
@@ -609,7 +624,7 @@ MapNode::moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
 
             osgTerrain::TileID tileId = itr->get()->getTileID();
 			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
@@ -628,6 +643,8 @@ MapNode::moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex
 
 void MapNode::updateStateSet()
 {
+	if (_engineProps.getTechnique() == osgEarth::MapEngineProperties::MULTIPASS) return;
+
     if ( _engineProps.getCombineLayers() )
     {
         int numLayers = _map->getImageMapLayers().size(); //getNumImageSources();

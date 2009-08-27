@@ -22,6 +22,7 @@
 #include <osgTerrain/Terrain>
 
 #include <osgEarth/MultiPassTerrainTechnique>
+#include <osgEarth/MapLayer>
 
 #include <osgUtil/SmoothingVisitor>
 
@@ -46,8 +47,7 @@ _terrainTileInitialized(false)
 {
     setFilterBias(0);
     setFilterWidth(0.1);
-    setFilterMatrixAs(GAUSSIAN);
-    
+    setFilterMatrixAs(GAUSSIAN);   
 }
 
 MultiPassTerrainTechnique::MultiPassTerrainTechnique(const MultiPassTerrainTechnique& mt,const osg::CopyOp& copyop):
@@ -686,11 +686,17 @@ void MultiPassTerrainTechnique::generateGeometry(Locator* masterLocator, const o
     for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
     {
 		Layer* layer = _terrainTile->getColorLayer( layerNum );
+		osg::Geode* geode = 0;
 		if (layer)
 		{
-          osg::Geode* geode = createPass(layerNum, masterLocator, centerModel);
-          _passes->addChild(geode);
+          geode = createPass(layerNum, masterLocator, centerModel);
 		}
+		else
+		{
+			geode = new osg::Geode();
+		}
+
+		_passes->addChild(geode);
     }
 
     osg::StateSet* stateset = _transform->getOrCreateStateSet();
@@ -745,6 +751,8 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
         {
             cull(cv);
         }
+		
+		updateTransparency();
     }
 
     //_terrainTile->setDirty(true);
@@ -763,4 +771,32 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
 
 void MultiPassTerrainTechnique::cleanSceneGraph()
 {
+}
+
+void MultiPassTerrainTechnique::updateTransparency()
+{	
+	for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
+	{
+		TransparentLayer* layer = dynamic_cast<TransparentLayer*>(_terrainTile->getColorLayer( layerNum ));
+		if (_passes.valid() && layer)
+		{
+			float opacity = layer->getOpacity();
+			osg::Geode* geode = static_cast<osg::Geode*>(_passes->getChild(layerNum));
+			if (geode)
+			{
+				osg::Geometry* geometry = geode->getDrawable(0)->asGeometry();
+				osg::Vec4Array* colors = static_cast<osg::Vec4Array*>(geometry->getColorArray());
+				(*colors)[0] = osg::Vec4(1.0f, 1.0f, 1.0f, opacity);
+
+				if (layer->getEnabled())
+				{
+					geode->setNodeMask(0xffffffff);
+				}
+				else
+				{
+					geode->setNodeMask(0x0);
+				}
+			}
+		}
+	}
 }

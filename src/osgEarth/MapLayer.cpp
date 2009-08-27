@@ -24,7 +24,9 @@ MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver
 _name( name ),
 _type( type ),
 _driver( driver ),
-_driverProps( driverProps )
+_driverProps( driverProps ),
+_opacity(1.0f),
+_enabled(true)
 {
     //NOP
 }
@@ -32,7 +34,9 @@ _driverProps( driverProps )
 MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
 _name( name ),
 _type( type ),
-_tileSource( source )
+_tileSource( source ),
+_opacity(1.0f),
+_enabled(true)
 {
     //NOP
 }
@@ -117,3 +121,28 @@ MapLayer::setTileSource( TileSource* tileSource )
     //    osg::notify(osg::WARN) << "[osgEarth::MapLayer] TileSource already set; ignoring attempt to set it again" << std::endl;
     //}
 }
+
+float
+MapLayer::getOpacity() const
+{
+	return _opacity;
+}
+
+void
+MapLayer::setOpacity(float opacity)
+{
+	_opacity = osg::clampBetween(opacity, 0.0f, 1.0f);
+}
+
+bool
+MapLayer::getEnabled() const
+{
+	return _enabled;
+}
+
+void
+MapLayer::setEnabled(bool enabled)
+{
+	_enabled = enabled;
+}
+

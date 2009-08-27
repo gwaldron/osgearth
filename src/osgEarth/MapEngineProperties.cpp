@@ -34,6 +34,7 @@ MapEngineProperties::MapEngineProperties()
     _filename = "";
     _use_mercator_locator = true;
     _defer_tile_data_loading = false;
+	_technique = Technique::MULTITEXTURE;
 }
 
 MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )
@@ -56,6 +57,7 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _filename = rhs._filename;
     _use_mercator_locator = rhs._use_mercator_locator;
     _defer_tile_data_loading = rhs._defer_tile_data_loading;
+	_technique = rhs._technique;
     return *this;
 }
 
@@ -200,3 +202,16 @@ MapEngineProperties::getUseMercatorLocator() const
 {
     return _use_mercator_locator;
 }
+
+const optional<MapEngineProperties::Technique>&
+MapEngineProperties::getTechnique() const
+{
+	return _technique;
+}
+
+void
+MapEngineProperties::setTechnique(osgEarth::MapEngineProperties::Technique technique)
+{
+	_technique = technique;
+}
+

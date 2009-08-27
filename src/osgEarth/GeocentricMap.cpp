@@ -24,6 +24,7 @@
 #include <osgEarth/Compositing>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/EarthTerrainTechnique>
+#include <osgEarth/MultiPassTerrainTechnique>
 #include <osgEarth/FileLocationCallback>
 #include <osgEarth/FindNode>
 #include <osgEarth/VersionedTerrain>
@@ -194,7 +195,8 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
         tile->setDataVariance(osg::Object::DYNAMIC);
     }
 
-    tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique );
+    //tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique );
+	//tile->setTerrainTechnique( new osgEarth::MultiPassTerrainTechnique());
 
     // An empty heightfield as a placeholder.
     // TODO: populate by sampling the parent tile.
@@ -256,13 +258,15 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
 
             osg::Image* ancestorImage = ancestorLayer->getImage();
 
-            img_layer = new osgTerrain::ImageLayer( ancestorImage );
+            //img_layer = new osgTerrain::ImageLayer( ancestorImage );
+			img_layer = new TransparentLayer(ancestorImage, i->get());
             img_layer->setLocator( newImageLocator );
         }
         else
         {
             //osg::notify(osg::NOTICE) << "[osgEarth] Could not find ancestor tile for key " << key->str() << std::endl;
-            img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
+            //img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
+			img_layer = new TransparentLayer( ImageUtils::getEmptyImage(), i->get());
             img_layer->setLocator( locator.get() );	
         }   
 
@@ -444,7 +448,8 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
 
     tile->setLocator( locator.get() );
     //tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
-    tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique );
+    //tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique );
+	//tile->setTerrainTechnique( new osgEarth::MultiPassTerrainTechnique());
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
@@ -486,7 +491,8 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
 
             img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
+            //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
+			osgTerrain::ImageLayer* img_layer = new TransparentLayer(geo_image->getImage(), imageMapLayers[i].get());
             img_layer->setLocator( img_locator.get());
 
 			double upp = geo_image->getUnitsPerPixel();

@@ -839,11 +839,14 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             _continuous = false;
 
             addMouseEvent( ea );
-            action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-            if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
-                aa.requestRedraw();
-            resetMouse( aa );
-            handled = true;
+			if (_mouse_down_event)
+			{
+				action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+				if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
+					aa.requestRedraw();
+				resetMouse( aa );
+				handled = true;
+			}
             break;
 
         case osgGA::GUIEventAdapter::MOVE: // MOVE not currently bindable

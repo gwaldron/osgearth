@@ -56,7 +56,9 @@ int main(int argc, char** argv)
   else
   {
       //Create the map dynamically
-      osg::ref_ptr<MapNode> mapNode = new MapNode();
+	  MapEngineProperties props;
+	  props.setTechnique( MapEngineProperties::MULTIPASS );
+      osg::ref_ptr<MapNode> mapNode = new MapNode(props);
 
       //Add the yahoo satellite layer
       {
@@ -91,16 +93,18 @@ int main(int argc, char** argv)
   Node* root = group;
   if (mapNode)
   {
-      FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap() );
+      FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties() );
 
       unsigned int numImageLayers = mapNode->getMap()->getImageMapLayers().size();
 
       //Set all of the layer's opacity to 0.0 except for the first one
       for (unsigned int i = 1; i < numImageLayers; ++i)
       {
-          fadeLayerNode->setOpacity(i, 0.0f);
+          //fadeLayerNode->setOpacity(i, 0.0f);
+		  mapNode->getMap()->getImageMapLayers()[i]->setOpacity(0.0f);
       }
-      fadeLayerNode->setOpacity(0, 1.0f);
+      //fadeLayerNode->setOpacity(0, 1.0f);
+	  mapNode->getMap()->getImageMapLayers()[0]->setOpacity(1.0f);
 
 	  //Setup the ElevationFadeCallback
 	  ElevationFadeCallback* callback = new ElevationFadeCallback();
@@ -114,8 +118,10 @@ int main(int argc, char** argv)
 	  }
 
 	  //Attach the callback as both an update and a cull callback
-      fadeLayerNode->setUpdateCallback(callback);
-      fadeLayerNode->setCullCallback(callback);
+      //fadeLayerNode->setUpdateCallback(callback);
+      //fadeLayerNode->setCullCallback(callback);
+	  mapNode->setUpdateCallback( callback );
+	  mapNode->setCullCallback( callback );
 
       root = fadeLayerNode;
 

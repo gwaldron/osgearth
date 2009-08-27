@@ -80,6 +80,7 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
+#define ELEM_TECHNIQUE             "technique"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -348,6 +349,16 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     else if (deferLoad == VALUE_FALSE)
         engineProps.setDeferTileDataLoading(false);
 
+	std::string technique = e_map->getSubElementText(ELEM_TECHNIQUE);
+	if (technique == "multipass")
+	{
+		engineProps.setTechnique( osgEarth::MapEngineProperties::MULTIPASS);
+	}
+	else if (technique == "multitexture")
+	{
+		engineProps.setTechnique( osgEarth::MapEngineProperties::MULTITEXTURE );
+	}
+
     engineProps.setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), engineProps.getVerticalScale() ) );
     engineProps.setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), engineProps.getMinTileRangeFactor() ) );
     engineProps.setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), engineProps.getSkirtRatio()));
@@ -442,6 +453,20 @@ mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
 
     e_map->addSubElement( ELEM_PROXY_HOST, engineProps.getProxyHost() );
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>( engineProps.getProxyPort() ) );
+
+	if (engineProps.getTechnique().isSet())
+	{
+		std::string tech;
+		if (engineProps.getTechnique() == MapEngineProperties::MULTIPASS)
+		{
+			tech = "multipass";
+		}
+		else if (engineProps.getTechnique() == MapEngineProperties::MULTITEXTURE)
+		{
+			tech = "multitexture";
+		}
+		e_map->addSubElement( ELEM_TECHNIQUE, tech );
+	}
 
     //Write all the image sources
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )

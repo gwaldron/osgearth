@@ -161,7 +161,7 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "  }\n"
                     "  tex1.a *= osgEarth_Layer1_opacity;\n"
                     "\n"
-                    "  //Get the fragment for texture 2\n"
+					"  //Get the fragment for texture 2\n"
                     "  vec4 tex2 = vec4(0.0,0.0,0.0,0.0);\n"
                     "  if (osgEarth_Layer2_enabled)\n"
                     "  {\n"
@@ -170,7 +170,7 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "  }\n"
                     "  tex2.a *= osgEarth_Layer2_opacity;\n"
                     "\n"
-                    "  //Get the fragment for texture 2\n"
+                    "  //Get the fragment for texture 3\n"
                     "  vec4 tex3 = vec4(0.0,0.0,0.0,0.0);\n"
                     "  if (osgEarth_Layer3_enabled)\n"
                     "  {\n"
@@ -179,6 +179,7 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "  }\n"
                     "  tex3.a *= osgEarth_Layer3_opacity;\n"
                     "\n"
+
                     "  if (numLayersOn > 0)\n"
                     "  {\n"
                     "    //Interpolate the color between the first layer and second\n"
@@ -204,89 +205,60 @@ char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "}\n"
                     "\n";
 
-FadeLayerNode::FadeLayerNode( Map* map ) :
-_map( map )
+
+FadeLayerNode::FadeLayerNode( Map* map, const MapEngineProperties& mapEngineProperties) :
+_map( map ),
+_mapEngineProperties(mapEngineProperties)
 {
-    osg::Program* program = new osg::Program;
-    program->addShader(new osg::Shader( osg::Shader::VERTEX, vert_source ) );
-    program->addShader(new osg::Shader( osg::Shader::FRAGMENT, frag_source ) );
-    getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
-    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
-    getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+	if (_mapEngineProperties.getTechnique() == MapEngineProperties::MULTITEXTURE)
+	{
+		osg::Program* program = new osg::Program;
+		_vertShader = new osg::Shader( osg::Shader::VERTEX, vert_source );
+		_fragShader = new osg::Shader( osg::Shader::FRAGMENT, frag_source );
 
-    if ( _map.valid() )
-    {
-        _callback = new Callback(this);
-        _map->addMapCallback( _callback.get() );
+		program->addShader( _vertShader.get() );
+		program->addShader( _fragShader.get() );
 
-        ScopedReadLock lock( _map->getMapDataMutex() );
-        for (unsigned int i = 0; i < _map->getImageMapLayers().size(); ++i)
-        {
-            setOpacity(i, 1.0f);
-            setEnabled(i, true);
-        }
-    }
+		getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
+		getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+		getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+	}
 }
 
-
-
-float FadeLayerNode::getOpacity(unsigned int layer) const
-{
-    return (layer < _opacity.size()) ? _opacity[layer] : 0.0f;
-}
-
-void FadeLayerNode::setOpacity(unsigned int layer, float opacity)
-{
-    resizeLists(layer);
-    _opacity[layer] = osg::clampBetween(opacity, 0.0f, 1.0f);
-    updateStateSet();
-}
-
-bool FadeLayerNode::getEnabled(unsigned int layer) const
-{
-    return (layer < _enabled.size()) ? _enabled[layer] : false;
-}
-
-void FadeLayerNode::setEnabled(unsigned int layer, bool enabled)
-{
-    resizeLists(layer);
-    _enabled[layer] = enabled;
-    updateStateSet();
-}
-
-void FadeLayerNode::resizeLists(unsigned int max)
-{
-    if (max >= _enabled.size())
-    {
-        _enabled.resize(max+1,true);
-        _opacity.resize(max+1,1.0f);
-    }
-}
 
 void FadeLayerNode::updateStateSet()
 {
-    osg::StateSet* stateset = getStateSet();
-    unsigned int maxLayers = 4;
-    for (unsigned int i = 0; i < maxLayers; ++i)
-    {        
-        float opacity = getOpacity(i);
-        bool enabled = getEnabled(i);
+	if (_mapEngineProperties.getTechnique() == MapEngineProperties::MULTITEXTURE)
+	{
+		osg::StateSet* stateset = getStateSet();
+		unsigned int maxLayers = 4;
+		for (unsigned int i = 0; i < maxLayers; ++i)
+		{
+			float opacity = 1.0f;
+			bool enabled = false;
 
-        std::stringstream ss;
-        ss << "osgEarth_Layer" << i << "_unit";
-        osg::Uniform* unitUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::INT);
-        unitUniform->set( (int)i );
-        
-        ss.str("");
-        ss << "osgEarth_Layer" << i << "_enabled";
-        osg::Uniform* enabledUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::BOOL);
-        enabledUniform->set(enabled);
+			if (i < _map->getImageMapLayers().size())
+			{
+			  opacity = _map->getImageMapLayers()[i]->getOpacity();
+			  enabled = _map->getImageMapLayers()[i]->getEnabled();
+			}
 
-        ss.str("");
-        ss << "osgEarth_Layer" << i << "_opacity";
-        osg::Uniform* opacityUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::FLOAT);
-        opacityUniform->set(opacity);
-    }
+			std::stringstream ss;
+			ss << "osgEarth_Layer" << i << "_unit";
+			osg::Uniform* unitUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::INT);
+			unitUniform->set( (int)i );
+
+			ss.str("");
+			ss << "osgEarth_Layer" << i << "_enabled";
+			osg::Uniform* enabledUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::BOOL);
+			enabledUniform->set(enabled);
+
+			ss.str("");
+			ss << "osgEarth_Layer" << i << "_opacity";
+			osg::Uniform* opacityUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::FLOAT);
+			opacityUniform->set(opacity);
+		}
+	}
 }
 
 typedef std::list<const osg::StateSet*> StateSetStack;
@@ -312,126 +284,88 @@ osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack
 
 void FadeLayerNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-    {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
-        {
-            StateSetStack statesetStack;
-
-            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
-            while(sg)
-            {
-                const osg::StateSet* stateset = sg->getStateSet();
-                if (stateset)
-                {
-                    statesetStack.push_front(stateset);
-                }                
-                sg = sg->_parent;
-            }
-
-            osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
-            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("lightingEnabled", osg::Uniform::BOOL);
-            lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
-
-            //GL_LIGHT0
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light0Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT1
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT1);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light1Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT2
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT2);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light2Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT3
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT3);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light3Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT4
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT4);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light4Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT5
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT5);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light5Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT6
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT6);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light6Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-
-            //GL_LIGHT7
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT7);     
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light7Enabled", osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-        }
-    }
-    osg::Group::traverse(nv);
-}
-
-void FadeLayerNode::onMapLayerAdded(osgEarth::MapLayer* layer, unsigned int index)
-{
-    osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerAdded]" << std::endl;
-    setOpacity(index, 1.0f);
-    setEnabled(index, true);
-}
-
-void FadeLayerNode::onMapLayerRemoved(osgEarth::MapLayer* layer, unsigned int index)
-{
-    osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
-
-	//Erase the settings for the index that was just removed
-    if (index < _enabled.size())
+	if (_mapEngineProperties.getTechnique() == MapEngineProperties::MULTITEXTURE)
 	{
-		_enabled.erase(_enabled.begin() + index);
-		_opacity.erase(_opacity.begin() + index);
+		if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+		{
+			osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+			if (cv)
+			{
+				StateSetStack statesetStack;
+
+				osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
+				while(sg)
+				{
+					const osg::StateSet* stateset = sg->getStateSet();
+					if (stateset)
+					{
+						statesetStack.push_front(stateset);
+					}                
+					sg = sg->_parent;
+				}
+
+				osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
+				osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("lightingEnabled", osg::Uniform::BOOL);
+				lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
+
+				//GL_LIGHT0
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light0Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+
+				//GL_LIGHT1
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT1);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light1Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+
+				//GL_LIGHT2
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT2);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light2Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+
+				//GL_LIGHT3
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT3);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light3Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+
+				//GL_LIGHT4
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT4);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light4Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+
+				//GL_LIGHT5
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT5);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light5Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+
+				//GL_LIGHT6
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT6);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light6Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+
+				//GL_LIGHT7
+				{
+					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT7);     
+					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light7Enabled", osg::Uniform::BOOL);
+					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
+				}
+			}
+		}
+		updateStateSet();
 	}
-	updateStateSet();
-}
-
-void FadeLayerNode::onMapLayerMoved(osgEarth::MapLayer* layer, unsigned int prevIndex, unsigned int newIndex)
-{
-    osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerRemoved]" << std::endl;
-
-    if ( !_map.valid() )
-        return;
-
-    //Swap the settings
-    bool enabled = getEnabled(prevIndex);
-    float opacity = getOpacity(prevIndex);
-
-    _enabled.erase(_enabled.begin() + prevIndex);
-    _enabled.insert(_enabled.begin() + newIndex, enabled);
-
-    _opacity.erase(_opacity.begin() + prevIndex);
-    _opacity.insert(_opacity.begin() + newIndex, opacity);
-
-    osg::notify(osg::INFO) << "[osgEarthUtil::FadeLayerNode::layerMoved] ImageLayer moved from " << prevIndex << " to " << newIndex << std::endl;
-
-    updateStateSet();
+    osg::Group::traverse(nv);
 }

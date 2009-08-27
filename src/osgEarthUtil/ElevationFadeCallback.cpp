@@ -35,8 +35,8 @@ _currentElevation(0)
 
 void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
-	FadeLayerNode* fadeLayerNode = static_cast<FadeLayerNode*>(node);
-	if (fadeLayerNode)
+	MapNode* mapNode = static_cast<MapNode*>(node);
+	if (mapNode)
 	{
 		if (nv->getVisitorType() == NodeVisitor::UPDATE_VISITOR)
 		{
@@ -50,8 +50,8 @@ void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
                 unsigned int numImageSources = 0;
                 {
-                    ScopedReadLock lock( fadeLayerNode->getMap()->getMapDataMutex() );
-                    numImageSources = fadeLayerNode->getMap()->getImageMapLayers().size();
+                    ScopedReadLock lock( mapNode->getMap()->getMapDataMutex() );
+                    numImageSources = mapNode->getMap()->getImageMapLayers().size();
                 }
 
 				//Determine which layer should be active
@@ -71,15 +71,14 @@ void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 					//If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
 					//Otherwise, we want the layers to go to 1.0
 					float goalOpacity = (i > activeLayer) ? 0.0f : 1.0f;
-					float currentOpacity = fadeLayerNode->getOpacity(i);
+					float currentOpacity = mapNode->getMap()->getImageMapLayers()[i]->getOpacity();
 
 					if (goalOpacity != currentOpacity)
 					{
 						float opacityDelta = delta;
 						if (currentOpacity > goalOpacity) opacityDelta = -opacityDelta;
 						float newOpacity = currentOpacity + opacityDelta;
-						//osg::notify(osg::NOTICE) << "Layer " << i << ": Acive=" << activeLayer << " Goal=" << goalOpacity << " Current=" << currentOpacity << " New = " << newOpacity << " Delta=" << delta << std::endl;
-						fadeLayerNode->setOpacity(i, newOpacity);
+						mapNode->getMap()->getImageMapLayers()[i]->setOpacity(newOpacity);
 					}
 				}
 			}

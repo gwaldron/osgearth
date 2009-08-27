@@ -103,7 +103,6 @@ namespace osgEarth {
         osg::Matrix3                        _filterMatrix;
         osg::ref_ptr<osg::Uniform>          _filterMatrixUniform;
 
-
         bool _terrainTileInitialized;
 };
 

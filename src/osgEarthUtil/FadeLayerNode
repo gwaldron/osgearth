@@ -39,27 +39,7 @@ namespace osgEarthUtil
 		*@param map
 		*       The MapNode this FadeLayerNode will operate on.
 		*/
-        FadeLayerNode(osgEarth::Map* map);
-
-		/**
-		*Gets the opacity of the given layer
-		*/
-        float getOpacity(unsigned int layer) const;
-
-		/**
-		*Sets the opacity of the given layer
-		*/
-        void setOpacity(unsigned int layer, float opacity);
-
-		/**
-		*Gets whether the given layer is enabled
-		*/
-        bool getEnabled(unsigned int layer) const;
-
-		/**
-		*Sets whether the given layer is enabled
-		*/
-        void setEnabled(unsigned int layer, bool enabled);
+		FadeLayerNode(osgEarth::Map* map, const osgEarth::MapEngineProperties& mapEngineProperties);
 
 		/**
 		*Gets the Map that this FadeLayerNode is operating on
@@ -70,38 +50,13 @@ namespace osgEarthUtil
 
     protected:
 
-        virtual void onMapLayerAdded(osgEarth::MapLayer* layer, unsigned int index);
-		virtual void onMapLayerRemoved(osgEarth::MapLayer* layer, unsigned int index);
-		virtual void onMapLayerMoved(osgEarth::MapLayer* layer, unsigned int prevIndex, unsigned int newIndex);
-
-
-        friend struct Callback;
-
-        struct Callback : public osgEarth::MapCallback
-        {
-        public:
-            Callback(FadeLayerNode* fadeLayerNode): _fadeLayerNode(fadeLayerNode) { }
-
-            void onMapLayerAdded(osgEarth::MapLayer* layer, unsigned int index) { _fadeLayerNode->onMapLayerAdded(layer, index);}
-            void onMapLayerRemoved(osgEarth::MapLayer* layer, unsigned int index) { _fadeLayerNode->onMapLayerRemoved(layer, index);}
-            void onMapLayerMoved(osgEarth::MapLayer* layer, unsigned int prevIndex, unsigned int newIndex) { _fadeLayerNode->onMapLayerMoved(layer, prevIndex, newIndex);}
-
-            osg::observer_ptr<FadeLayerNode> _fadeLayerNode;
-        };
-
-        void resizeLists(unsigned int max);
-
-        typedef std::vector<float> OpacityList;
-        OpacityList _opacity;
-
-        typedef std::vector<bool> EnabledList;
-        EnabledList _enabled;
-
         void updateStateSet();
 
         osg::ref_ptr<osgEarth::Map> _map;
+		osgEarth::MapEngineProperties _mapEngineProperties;
 
-        osg::ref_ptr<Callback> _callback;
+		osg::ref_ptr<osg::Shader> _fragShader;
+		osg::ref_ptr<osg::Shader> _vertShader;
     };
 }
 

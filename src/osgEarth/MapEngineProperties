@@ -167,6 +167,24 @@ namespace osgEarth
 
         bool getDeferTileDataLoading() const;
 
+		enum Technique
+		{
+			MULTIPASS,
+			MULTITEXTURE
+		};
+
+		/**
+		 * Gets the technique that should be used when rendering TerrainTiles
+		 */
+		const optional<Technique>& getTechnique() const;
+
+		/**
+		 * Sets the terrain technique that should be used when rendering TerrainTiles
+		 */
+		void setTechnique(Technique technique);
+
+
+
     private:
             
         std::string _filename;
@@ -182,6 +200,7 @@ namespace osgEarth
         bool _combine_layers;
         bool _use_mercator_locator;
         bool _defer_tile_data_loading;
+		optional<Technique> _technique;
     };
 }
 

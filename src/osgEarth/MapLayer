@@ -113,6 +113,19 @@ namespace osgEarth
          */
         TileSource* getTileSource() const;
 
+		/**
+		 * Gets the opacity of this MapLayer
+		 */
+		float getOpacity() const;
+
+		/*
+		 * Sets the opacity of this MapLayer
+		 */
+		void setOpacity(float opacity);
+
+		bool getEnabled() const;
+		void setEnabled(bool enabled);
+
     public:
 
         /**
@@ -133,12 +146,39 @@ namespace osgEarth
         optional<ProfileConfig> _profileConf;
         optional<int> _minLevel;
         optional<int> _maxLevel;
+
+		float _opacity;
+		bool _enabled;
         
         osg::ref_ptr<TileSource> _tileSource;
     };
 
 
     typedef std::vector< osg::ref_ptr<MapLayer> > MapLayerList;
+
+	class TransparentLayer : public osgTerrain::ImageLayer
+	{
+	public:
+		TransparentLayer(osg::Image* image, MapLayer* mapLayer):
+			osgTerrain::ImageLayer(image),
+		    _mapLayer(mapLayer)
+		{
+		}
+
+		float getOpacity() const
+		{
+			return _mapLayer->getOpacity();
+		}
+
+		bool getEnabled() const
+		{
+			return _mapLayer->getEnabled();
+		}
+
+
+
+		osg::ref_ptr<MapLayer> _mapLayer;
+	};
 }
 
 #endif // OSGEARTH_MAP_LAYER_H

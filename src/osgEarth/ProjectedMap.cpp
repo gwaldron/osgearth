@@ -168,7 +168,7 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
     //osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
     tile->setLocator( geo_locator );
     //tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
-    tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique() );
+    //tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique() );
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);

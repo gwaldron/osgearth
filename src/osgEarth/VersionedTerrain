@@ -1,0 +1,81 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_VERSIONED_TERRAIN
+#define OSGEARTH_VERSIONED_TERRAIN 1
+
+#include <osgTerrain/Terrain>
+#include <osgTerrain/TerrainTile>
+#include <OpenThreads/Mutex>
+
+namespace osgEarth
+{
+    class VersionedTerrain;
+
+    /**
+     * An OSG terrain tile that keeps track of a revision number
+     */
+    class VersionedTile : public osgTerrain::TerrainTile
+    {
+    public:
+        VersionedTile();
+
+        int getTerrainRevision() const;
+
+        void setTerrainRevision( int revision );
+
+    private:
+        int _terrainRevision;
+    };
+
+
+    typedef std::vector< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
+
+
+    /**
+     * An osgTerrain derivation that tracks a revision number so that
+     * VersionedTile tiles can automatically update themselves when the terrain
+     * revision # changes.
+     */
+    class VersionedTerrain : public osgTerrain::Terrain
+    {
+    public:
+        VersionedTerrain();
+
+        virtual const char* className() const { return "VersionedTerrain"; }
+
+    public:
+        void advanceRevision();
+
+        int getRevision() const;
+
+        /**
+         * Gets a tile given its version ID.
+         */
+        osgTerrain::TerrainTile* getVersionedTile( const osgTerrain::TileID& tileId );
+
+        void getTerrainTiles( TerrainTileList& out_tiles );
+
+    private:
+        int _revision;
+        OpenThreads::Mutex _revisionMutex;
+    };
+}
+
+#endif

@@ -462,7 +462,9 @@ int main(int argc, char** argv)
     //    return 1;
     //}
 
-    MapNode* mapNode = new MapNode();
+    MapEngineProperties props;
+    //props.setDeferTileDataLoading(true);
+    MapNode* mapNode = new MapNode(props);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
     //MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());

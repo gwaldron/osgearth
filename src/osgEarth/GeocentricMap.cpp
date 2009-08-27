@@ -26,6 +26,7 @@
 #include <osgEarth/EarthTerrainTechnique>
 #include <osgEarth/FileLocationCallback>
 #include <osgEarth/FindNode>
+#include <osgEarth/VersionedTerrain>
 
 #include <osg/Image>
 #include <osg/Timer>
@@ -54,70 +55,66 @@ MapEngine( props )
     //NOP   
 }
 
-struct RegisterTilesVisitor : public osg::NodeVisitor {
-    RegisterTilesVisitor(osgTerrain::Terrain* terrain ) :
-      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-          _terrain(terrain), _count(0) { }
-
-      void apply(osg::Node& node) {
-          osgTerrain::TerrainTile* tile = dynamic_cast<osgTerrain::TerrainTile*>(&node);
-          if ( tile ) {
-              // re-register with the new tile address
-              tile->setTerrain(0L);
-              tile->setTerrain( _terrain.get() );
-              _count++;
-          }
-          traverse(node);
-      }
-
-      osg::ref_ptr<osgTerrain::Terrain> _terrain;
-      int _count;
-};
-
-class TileLoadGroup : public osg::Group
+class TileSwitcher : public osg::Group
 {
 public:
-    TileLoadGroup( osg::Node* tile, const TileKey* key, osgTerrain::Terrain* terrain ) :
+    TileSwitcher( VersionedTile* tile, const TileKey* key, VersionedTerrain* terrain ) :
     _terrain( terrain ),
     _keyStr( key->str() )
     {
         _loaded = false;
+        tile->setTerrainRevision( terrain->getRevision() );
         osg::Group::addChild(tile);
     }
 
-    virtual ~TileLoadGroup() {
-        //osg::notify(osg::NOTICE) << "PAGED OUT tile " << _keyStr
-        //    << ", loaded=" << _loaded << std::endl;
+    virtual ~TileSwitcher() {
+    }
+
+    // simply checks whether this loadgroup's tile is out of revision, and if so,
+    // flags it for reloading.
+    void checkTileRevision()
+    {
+        if (!_loaded && 
+            getNumChildren() > 0 &&
+            static_cast<VersionedTile*>( getChild(0) )->getTerrainRevision() != _terrain->getRevision() )
+        {
+            _loaded = false;
+        }
     }
 
     // only called by the database pager when the POPULATED tile get merged:
-    virtual bool addChild( osg::Node* node ) {
-        if ( !_loaded ) {
+    virtual bool addChild( osg::Node* node )
+    {
+        if ( !_loaded )
+        {
             _loaded = true;
             
             // this will remove the old tile AND unregister it with the terrain:
             removeChildren( 0, getNumChildren() );
 
-            static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( 0L );
-            static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( _terrain.get() );
-            //RegisterTilesVisitor reg( _terrain.get() );
-            //node->accept( reg );
+            VersionedTile* tile = static_cast<VersionedTile*>( node );
 
-//            osg::notify(osg::NOTICE) << "MERGED tile " << _keyStr << std::endl;
+            tile->setTerrain( 0L );             // unregisters with the old one
+            tile->setTerrain( _terrain.get() ); // registers with the new one
+
+            // synchronize the tile to the terrain:
+            tile->setTerrainRevision( _terrain->getRevision() );
+
+            //static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( 0L );
+            //static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( _terrain.get() );
         }
         return osg::Group::addChild( node );
     }
 
     bool _loaded;
     std::string _keyStr;
-    osg::observer_ptr<osgTerrain::Terrain> _terrain;
+    osg::observer_ptr<VersionedTerrain> _terrain;
 };
 
 
 struct TileDataLoaderCallback : public osg::NodeCallback
 {
-    TileDataLoaderCallback( Map* map, const TileKey* key, TileLoadGroup* destination ) :
-    _destination(destination)
+    TileDataLoaderCallback( Map* map, const TileKey* key)
     {
         std::stringstream buf;
         buf << key->str() << "." << map->getId() << ".earth_tile_data";
@@ -128,24 +125,25 @@ struct TileDataLoaderCallback : public osg::NodeCallback
     {
         if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
-            if ( !_destination->_loaded )
+            TileSwitcher* switcher = static_cast<TileSwitcher*>( node );
+
+            if ( !switcher->_loaded )
             {
-                osgTerrain::TerrainTile* tile = static_cast<osgTerrain::TerrainTile*>(node);
+                VersionedTile* tile = static_cast<VersionedTile*>( switcher->getChild(0) );
+                //osgTerrain::TerrainTile* tile = static_cast<osgTerrain::TerrainTile*>(node);
                 float priority = -(99.0f - (float)(tile->getTileID().level));
                 nv->getDatabaseRequestHandler()->requestNodeFile(
-                    _filename, _destination.get(), priority, nv->getFrameStamp(), _databaseRequest );
+                    _filename, switcher, priority, nv->getFrameStamp(), _databaseRequest );
             }
             else
             {
                 _databaseRequest = 0L;
-                _destination = 0L;
             }
         }
         traverse( node, nv );
     }
 
     std::string _filename;
-    osg::observer_ptr<TileLoadGroup> _destination;
     osg::ref_ptr<osg::Referenced> _databaseRequest;
 };
 
@@ -179,7 +177,8 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
     // The empty tile:
-    osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+    //osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+    VersionedTile* tile = new VersionedTile();
     tile->setTileID( key->getTileId() );
     tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
@@ -211,7 +210,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
         if ( ancestorKey.valid() )
         {
             osgTerrain::TileID tid = ancestorKey->getTileId();
-            ancestorTile = static_cast<EarthTerrain*>(terrain)->getTileOverride( ancestorKey->getTileId() );
+            ancestorTile = static_cast<VersionedTerrain*>(terrain)->getVersionedTile( ancestorKey->getTileId() );
 
             //if ( !ancestorTile ) {
             //    osg::notify(osg::NOTICE)
@@ -274,7 +273,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
 
-    TileLoadGroup* loadGroup = new TileLoadGroup( tile, key, terrain );
+    TileSwitcher* switcher = new TileSwitcher( tile, key, static_cast<VersionedTerrain*>(terrain) );
 
     // TEMPORARY TODO FIXME
     bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
@@ -282,16 +281,17 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     {
         //TODO:  Work on cluster culling computation for cube faces
         osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
-        loadGroup->addCullCallback( ccc );
+        switcher->addCullCallback( ccc );
     }
 
     // This callback will load the actual tile data via the database pager:
-    tile->addCullCallback( new TileDataLoaderCallback( map, key, loadGroup ) );
+    switcher->addCullCallback( new TileDataLoaderCallback( map, key ) ); //, loadGroup ) );
+    //tile->addCullCallback( new TileDataLoaderCallback( map, key, loadGroup ) );
 
     // create a PLOD so we can keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
-    plod->addChild( loadGroup, min_range, max_range );
+    plod->addChild( switcher, min_range, max_range );
     plod->setFileName( 1, createURI( map->getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
 
@@ -420,7 +420,8 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
     hf_layer->setLocator( locator.get() );
     hf_layer->setHeightField( hf.get() );
 
-    osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+    //osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+    VersionedTile* tile = new VersionedTile();
     tile->setTileID(key->getTileId());
 
     //Attach an updatecallback to normalize the edges of TerrainTiles.

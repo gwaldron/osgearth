@@ -25,7 +25,7 @@
 #include <osgEarth/MapLayer>
 #include <osgEarth/MapEngine>
 #include <osgEarth/MapEngineProperties>
-#include <osgEarth/EarthTerrain>
+#include <osgEarth/VersionedTerrain>
 #include <osgDB/ReaderWriter>
 #include <osg/CoordinateSystemNode>
 #include <OpenThreads/ReentrantMutex>
@@ -110,7 +110,7 @@ namespace osgEarth
         /**
          * Gets one of the terrains in this map node.
          */
-        EarthTerrain* getTerrain( unsigned int i ) const;
+        VersionedTerrain* getTerrain( unsigned int i ) const;
 
         /**
          * Gets the ID for this MapNode
@@ -160,7 +160,7 @@ namespace osgEarth
         MapEngineProperties _engineProps;
 
         //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
-        typedef std::vector< osg::observer_ptr<osgEarth::EarthTerrain> > TerrainVec;
+        typedef std::vector< osg::observer_ptr<VersionedTerrain> > TerrainVec;
         TerrainVec _terrains;
 
         static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;

@@ -245,7 +245,7 @@ MapNode::getNumTerrains() const
     return _terrains.size();
 }
 
-osgEarth::EarthTerrain*
+osgEarth::VersionedTerrain*
 MapNode::getTerrain( unsigned int i ) const
 {
     return _terrains[i].get();
@@ -261,7 +261,8 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     int faces_ok = 0;
     for( int face = 0; face < _map->getProfile()->getNumFaces(); face++ )
     {
-        EarthTerrain* terrain = new EarthTerrain;
+        VersionedTerrain* terrain = new VersionedTerrain();
+        //EarthTerrain* terrain = new EarthTerrain;
         terrain->setVerticalScale( _engineProps.getVerticalScale() );
         terrain->setSampleRatio( _engineProps.getSampleRatio() );
         csn->addChild( terrain );
@@ -316,12 +317,14 @@ MapNode::addImageTileSource( TileSource* source )
 
     for( unsigned int i=0; i<_terrains.size(); i++ )
     {            
-        EarthTerrain* terrain = _terrains[i].get();
-        EarthTerrain::TerrainTileList tiles;
+        VersionedTerrain* terrain = _terrains[i].get();
+        //EarthTerrain* terrain = _terrains[i].get();
+        TerrainTileList tiles;
+        //EarthTerrain::TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
 
-        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
 
@@ -394,12 +397,12 @@ MapNode::addHeightFieldTileSource( TileSource* source )
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
-        EarthTerrain* terrain = _terrains[i].get();
-        EarthTerrain::TerrainTileList tiles;
+        VersionedTerrain* terrain = _terrains[i].get();
+        TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
 
-        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
 
@@ -443,11 +446,11 @@ MapNode::removeImageTileSource( unsigned int index )
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
-        EarthTerrain* terrain = _terrains[i].get();
-        EarthTerrain::TerrainTileList tiles;
+        VersionedTerrain* terrain = _terrains[i].get();
+        TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
 
-        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
@@ -488,12 +491,12 @@ MapNode::removeHeightFieldTileSource( unsigned int index )
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
-        EarthTerrain* terrain = _terrains[i].get();
-        EarthTerrain::TerrainTileList tiles;
+        VersionedTerrain* terrain = _terrains[i].get();
+        TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         //osg::notify(osg::NOTICE) << "Found " << tiles.size() << std::endl;
 
-        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             osgTerrain::TileID tileId = itr->get()->getTileID();
@@ -534,12 +537,12 @@ MapNode::moveImageTileSource( unsigned int oldIndex, unsigned int newIndex )
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
-        EarthTerrain* terrain = _terrains[i].get();
-        EarthTerrain::TerrainTileList tiles;
+        VersionedTerrain* terrain = _terrains[i].get();
+        TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
 
-        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             //Collect the current color layers
@@ -573,12 +576,12 @@ MapNode::moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
-        EarthTerrain* terrain = _terrains[i].get();
-        EarthTerrain::TerrainTileList tiles;
+        VersionedTerrain* terrain = _terrains[i].get();
+        TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
 
-        for (EarthTerrain::TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
 

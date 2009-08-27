@@ -56,6 +56,7 @@ SET(LIB_PUBLIC_HEADERS
     TileSource
     TileSourceFactory
     TMS
+    VersionedTerrain
     XmlUtils
 )
 
@@ -95,6 +96,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileSourceFactory.cpp
     TMS.cpp
     Version.cpp
+    VersionedTerrain.cpp
     XmlUtils.cpp
 )
 

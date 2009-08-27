@@ -164,7 +164,8 @@ ProjectedMapEngine::createQuadrant( Map* map, osgTerrain::Terrain* terrain, cons
     hf_layer->setLocator( geo_locator );
     hf_layer->setHeightField( hf.get() );
 
-    osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
+    VersionedTile* tile = new VersionedTile();
+    //osgTerrain::TerrainTile* tile = new osgTerrain::TerrainTile();
     tile->setLocator( geo_locator );
     //tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
     tile->setTerrainTechnique( new osgEarth::EarthTerrainTechnique() );

@@ -479,7 +479,7 @@ int main(int argc, char** argv)
 
     MapEngineProperties engineProps;
 
-    if ( arguments.find( "--deferred" ) )
+    if ( arguments.read( "--deferred" ) )
     {
         engineProps.setDeferTileDataLoading( true );
     }

@@ -126,6 +126,7 @@ struct TileDataLoaderCallback : public osg::NodeCallback
         if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
             TileSwitcher* switcher = static_cast<TileSwitcher*>( node );
+            switcher->checkTileRevision();
 
             if ( !switcher->_loaded )
             {

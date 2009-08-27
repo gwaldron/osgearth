@@ -298,6 +298,15 @@ void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
     if ( layer && layer->getTileSource() )
+    {
+        for( unsigned int i=0; i<_terrains.size(); i++ )
+        {
+            _terrains[i]->advanceRevision();
+        }
+    }
+    return;
+
+    if ( layer && layer->getTileSource() )
     {        
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {

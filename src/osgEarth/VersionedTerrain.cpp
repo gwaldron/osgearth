@@ -24,19 +24,6 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-struct CheckRevisionCallback : public osg::NodeCallback
-{
-    virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
-    {
-        VersionedTile* tile = static_cast<VersionedTile*>( node );
-        VersionedTerrain* terrain = static_cast<VersionedTerrain*>( tile->getTerrain() );
-        if ( terrain->getRevision() != tile->getTerrainRevision() )
-        {
-            tile->setDirty(true);
-        }
-    }
-};
-
 
 /*****************************************************************************/
 

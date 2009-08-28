@@ -215,19 +215,6 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     osg::ref_ptr<const TileKey> ancestorKey = key;
     VersionedTile* ancestorTile = 0L;
     std::string indent = "";
-
-    //// first, see if this tile has immediate children and downsample the data from them.
-    //
-    //for( int q=0; q<4; q++ )
-    //{
-    //    osg::ref_ptr<const TileKey> childKey = key->getSubkey( q );
-    //    if ( childKey.valid() )
-    //    {
-    //        VersionedTile* childTile = static_cast<VersionedTerrain*>(terrain)->getVersionedTile( childKey->getTileId() );
-    //        if ( !childTile ) break;
-    //    }
-    //    else break;
-    //}
     
     
     while( !ancestorTile && ancestorKey.valid() )
@@ -239,10 +226,10 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
             ancestorTile = static_cast<VersionedTerrain*>(terrain)->getVersionedTile( ancestorKey->getTileId() );
 
             // only use this ancestor for placeholder data IF the revision is up to date. Otherwise, move on.
-            if ( ancestorTile && !ancestorTile->isUpToDate() )
-            {
-                ancestorTile = 0L;
-            }
+            //if ( ancestorTile && !ancestorTile->isUpToDate() )
+            //{
+            //    ancestorTile = 0L;
+            //}
         }
     }
     
@@ -287,14 +274,15 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
             //osg::notify(osg::NOTICE) << "[osgEarth] Could not find ancestor tile for key " << key->str() << std::endl;
             //img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
 
-			img_layer = new TransparentLayer( ImageUtils::getEmptyImage(), i->get());
-            img_layer->setLocator( locator.get() );	
+			//img_layer = new TransparentLayer( ImageUtils::getEmptyImage(), i->get());
+            //img_layer->setLocator( locator.get() );	
 
-            // GW: testing
+            // GW
             img_layer = 0L;
         }   
 
-        tile->setColorLayer( layer++, img_layer );        
+        if ( img_layer )
+            tile->setColorLayer( layer++, img_layer );        
     }   
 
     // finish off the tile and put it under a new PLOD.

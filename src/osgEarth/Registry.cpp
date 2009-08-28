@@ -136,6 +136,7 @@ public:
     RegisterEarthTileExtension()
     {
         osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
+		osgDB::Registry::instance()->addFileExtensionAlias("earth_tile_data", "earth");
     }
 };
 static RegisterEarthTileExtension s_registerEarthTileExtension;

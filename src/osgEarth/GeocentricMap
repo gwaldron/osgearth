@@ -77,7 +77,8 @@ namespace osgEarth
             VersionedTile* tile,
             VersionedTile* ancestorTile,
             GeoLocator* defaultLocator,
-            const TileKey* key);
+            const TileKey* key,
+            const TileKey* ancestorKey );
     };
 }
 

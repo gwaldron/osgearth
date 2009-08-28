@@ -209,25 +209,44 @@ void
 GeocentricMapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
                                                     VersionedTile* ancestorTile,
                                                     GeoLocator* defaultLocator,
-                                                    const TileKey* key)
+                                                    const TileKey* key,
+                                                    const TileKey* ancestorKey)
 {
-    if ( ancestorTile )
+    if ( ancestorTile && ancestorKey )
     {
         osgTerrain::HeightFieldLayer* ancestorLayer = static_cast<osgTerrain::HeightFieldLayer*>(ancestorTile->getElevationLayer());
-        if ( ancestorLayer )
+        if ( ancestorLayer && ancestorLayer->getHeightField() )
         {   
-            GeoLocator* hfLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
-            if ( hfLocator )
+            osg::HeightField* ancestorHF = ancestorLayer->getHeightField();
+            osg::HeightField* hf = new osg::HeightField();
+            hf->allocate( ancestorHF->getNumColumns(), ancestorHF->getNumRows() );
+            hf->setXInterval( 0.5f * ancestorHF->getXInterval() );
+            hf->setYInterval( 0.5f * ancestorHF->getYInterval() );
+
+            float hx = 0.5f * (float)ancestorHF->getNumColumns();
+            float hy = 0.5f * (float)ancestorHF->getNumRows();
+
+            float x0 = key->getGeoExtent().xMin() > ancestorKey->getGeoExtent().xMin()? hx : 0.0;
+            float y0 = key->getGeoExtent().yMin() > ancestorKey->getGeoExtent().yMin()? hy : 0.0;
+            
+            for( float r=y0; r<y0+hy; r+=0.5f )
             {
-                hfLocator = new CroppingLocator( *defaultLocator, hfLocator->getDataExtent(), key->getGeoExtent() );
-            }
-            else
-            {
-                hfLocator = defaultLocator;
+                for( float c=x0; c<x0+hx; c+=0.5f )
+                {
+                    float h = HeightFieldUtils::getHeightAtPixel( ancestorHF, c, r );
+                    hf->setHeight( (unsigned int)((c-x0)*2.0f), (unsigned int)((r-y0)*2.0f), h );
+                }
             }
 
-            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( ancestorLayer->getHeightField() );
-            hfLayer->setLocator( hfLocator );
+            const osg::Vec3d& anOrig = ancestorHF->getOrigin();
+            osg::Vec3d orig;
+            orig.x() = x0 == 0.0f? anOrig.x() : anOrig.x() + hx * ancestorHF->getXInterval();
+            orig.y() = y0 == 0.0f? anOrig.y() : anOrig.y() + hy * ancestorHF->getYInterval();
+            orig.z() = anOrig.z();
+            hf->setOrigin( orig );
+
+            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
+            hfLayer->setLocator( defaultLocator );
             tile->setElevationLayer( hfLayer );
         }
     }
@@ -307,7 +326,7 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
 
     // install placeholder image and heightfield layers.
     addPlaceholderImageLayers( tile, ancestorTile, imageMapLayers, locator.get(), key );
-    addPlaceholderHeightfieldLayer( tile, ancestorTile, locator.get(), key );
+    addPlaceholderHeightfieldLayer( tile, ancestorTile, locator.get(), key, ancestorKey.get() );
 
     // calculate the switching distances:
     osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
@@ -340,12 +359,16 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
 
-    // create a PLOD so we can keep subdividing:
-    osg::PagedLOD* plod = new osg::PagedLOD();
-    plod->setCenter( bs.center() );
-    plod->addChild( switcher, min_range, max_range );
-    plod->setFileName( 1, createURI( map->getId(), key ) );
-    plod->setRange( 1, 0.0, min_range );
+    osg::Node* result = 0L;
+
+    if ( hasMoreLevels( map, key ) )
+    {
+        // create a PLOD so we can keep subdividing:
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setCenter( bs.center() );
+        plod->addChild( switcher, min_range, max_range );
+        plod->setFileName( 1, createURI( map->getId(), key ) );
+        plod->setRange( 1, 0.0, min_range );
 
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = new osgDB::Options;
@@ -353,7 +376,14 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
         plod->setDatabaseOptions( options );
 #endif
 
-    return plod;
+        result = plod;
+    }
+    else
+    {
+        result = tile;
+    }
+
+    return result;
 }
 
 osg::Node*

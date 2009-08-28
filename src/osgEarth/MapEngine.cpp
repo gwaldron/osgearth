@@ -20,7 +20,6 @@
 #include <osgEarth/MapEngine>
 #include <osgEarth/DirectReadTileSource>
 #include <osgEarth/Caching>
-//#include <osgEarth/Mercator>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Compositing>
 #include <osgEarth/Registry>
@@ -130,7 +129,8 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
 
     for ( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-        if ( i->get()->maxLevel().isSet() && key->getLevelOfDetail() < i->get()->maxLevel().get() )
+//        if ( i->get()->maxLevel().isSet() && key->getLevelOfDetail() < i->get()->maxLevel().get() )
+        if ( !i->get()->maxLevel().isSet() || key->getLevelOfDetail() < i->get()->maxLevel().get() )
         {
             more_levels = true;
             break;
@@ -140,7 +140,8 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
     {
         for( MapLayerList::const_iterator j = map->getHeightFieldMapLayers().begin(); j != map->getHeightFieldMapLayers().end(); j++ )
         {
-            if ( j->get()->maxLevel().isSet() && key->getLevelOfDetail() < j->get()->maxLevel().get() )
+//            if ( j->get()->maxLevel().isSet() && key->getLevelOfDetail() < j->get()->maxLevel().get() )
+            if ( !j->get()->maxLevel().isSet() || key->getLevelOfDetail() < j->get()->maxLevel().get() )
             {
                 more_levels = true;
                 break;

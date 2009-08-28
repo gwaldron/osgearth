@@ -50,9 +50,11 @@ namespace osgEarth {
         
         virtual osg::Vec3d computeCenterModel(Locator* masterLocator);
         
-        virtual void generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel);      
+        virtual void generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel);     
 
-        osg::Geode* createPass(unsigned int layerNum, Locator* masterLocator, const osg::Vec3d& centerModel); 
+		virtual osg::Geometry* createGeometryPrototype(Locator* masterLocator, const osg::Vec3d& centerModel);
+
+		osg::Geode* createPass(unsigned int layerNum, Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
 
         virtual void update(osgUtil::UpdateVisitor* nv);
 

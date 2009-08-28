@@ -200,23 +200,13 @@ osg::Vec3d MultiPassTerrainTechnique::computeCenterModel(Locator* masterLocator)
     return centerModel;
 }
 
-osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator* masterLocator, const osg::Vec3d& centerModel)
-{
-	osg::notify(osg::INFO) << "osgEarth::MultiPassTerrainTechnique createPass " << layerNum << std::endl;
-    unsigned int binNumber = 1000;
-    binNumber += layerNum;
-   
+osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(Locator* masterLocator, const osg::Vec3d& centerModel)
+{  
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
-    //Create a new geode to store the geometry
-    osg::Geode* geode = new osg::Geode;
-    
-    //Set up the pass 
-    geode->getOrCreateStateSet()->setRenderBinDetails(binNumber, "RenderBin");
     osg::Geometry* geometry = new osg::Geometry;
-    geode->addDrawable(geometry);
 
-    unsigned int numRows = 20;
+	unsigned int numRows = 20;
     unsigned int numColumns = 20;
     
     if (elevationLayer)
@@ -277,34 +267,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
     //float minHeight = 0.0;
     float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
 
-
-    Locator* colorLocator = NULL;
-    osg::ref_ptr<osg::Vec2Array> texCoords;
-
-    osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
-    if (colorLayer)
-    {
-            Locator* locator = colorLayer->getLocator();
-            if (!locator)
-            {            
-                osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(colorLayer);
-                if (switchLayer)
-                {
-                    if (switchLayer->getActiveLayer()>=0 &&
-                        static_cast<unsigned int>(switchLayer->getActiveLayer())<switchLayer->getNumLayers() &&
-                        switchLayer->getLayer(switchLayer->getActiveLayer()))
-                    {
-                        locator = switchLayer->getLayer(switchLayer->getActiveLayer())->getLocator();
-                    }
-                }
-            }            
-            texCoords = new osg::Vec2Array;
-            texCoords->reserve(numVertices);
-
-            colorLocator = locator ? locator : masterLocator;
-            geometry->setTexCoordArray(0, texCoords.get());
-    }
-
     //Reserve space for the elevations
     osg::ref_ptr<osg::FloatArray> elevations = new osg::FloatArray;
     if (elevations.valid()) elevations->reserve(numVertices);
@@ -314,7 +276,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
     (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);    
     geometry->setColorArray(colors.get());
     geometry->setColorBinding(osg::Geometry::BIND_OVERALL);
-
 
     typedef std::vector<int> Indices;
     Indices indices(numVertices, -1);
@@ -350,17 +311,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
                 masterLocator->convertLocalToModel(ndc, model);
 
                 (*vertices).push_back(model - centerModel);
-
-                    if (colorLocator != masterLocator)
-                    {
-                        osg::Vec3d color_ndc;
-                        Locator::convertLocalCoordBetween(*masterLocator, ndc, *colorLocator, color_ndc);
-                        texCoords->push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
-                    }
-                    else
-                    {
-                        texCoords->push_back(osg::Vec2(ndc.x(), ndc.y()));
-                    }
 
                 if (elevations.valid())
                 {
@@ -490,8 +440,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
                 osg::Vec3 new_v = (*vertices)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight;
                 (*vertices).push_back(new_v);
                 if (normals.valid()) (*normals).push_back((*normals)[orig_i]);
-                
-                texCoords->push_back((*texCoords)[orig_i]);               
+
                 skirtDrawElements->push_back(orig_i);
                 skirtDrawElements->push_back(new_i);
             }
@@ -523,7 +472,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
                 osg::Vec3 new_v = (*vertices)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight;
                 (*vertices).push_back(new_v);
                 if (normals.valid()) (*normals).push_back((*normals)[orig_i]);
-                texCoords->push_back((*texCoords)[orig_i]);
                 skirtDrawElements->push_back(orig_i);
                 skirtDrawElements->push_back(new_i);
             }
@@ -555,7 +503,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
                 osg::Vec3 new_v = (*vertices)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight;
                 (*vertices).push_back(new_v);
                 if (normals.valid()) (*normals).push_back((*normals)[orig_i]);
-                texCoords->push_back((*texCoords)[orig_i]);               
                 skirtDrawElements->push_back(orig_i);
                 skirtDrawElements->push_back(new_i);
             }
@@ -587,7 +534,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
                 osg::Vec3 new_v = (*vertices)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight;
                 (*vertices).push_back(new_v);
                 if (normals.valid()) (*normals).push_back((*normals)[orig_i]);
-                texCoords->push_back((*texCoords)[orig_i]);               
                 skirtDrawElements->push_back(orig_i);
                 skirtDrawElements->push_back(new_i);
             }
@@ -612,8 +558,219 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
 
     geometry->setUseDisplayList(false);
     geometry->setUseVertexBufferObjects(true);
+
+	return geometry;
+}
+
+osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry)
+{
+	osg::notify(osg::INFO) << "osgEarth::MultiPassTerrainTechnique createPass " << layerNum << std::endl;
+    unsigned int binNumber = 1000;
+    binNumber += layerNum;
+   
+    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+
+    //Create a new geode to store the geometry
+    osg::Geode* geode = new osg::Geode;
+
+	// allocate and assign vertices
+	osg::Vec3Array* vertices = (osg::Vec3Array*)geometry->getVertexArray();
     
+    //Set up the pass 
+    geode->getOrCreateStateSet()->setRenderBinDetails(binNumber, "RenderBin");
+    geode->addDrawable(geometry);
+
+    unsigned int numRows = 20;
+    unsigned int numColumns = 20;
     
+    if (elevationLayer)
+    {
+        numColumns = elevationLayer->getNumColumns();
+        numRows = elevationLayer->getNumRows();
+    }
+    
+    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    
+    double i_sampleFactor = 1.0;
+    double j_sampleFactor = 1.0;
+
+    // osg::notify(osg::NOTICE)<<"Sample ratio="<<sampleRatio<<std::endl;
+
+    if (sampleRatio!=1.0f)
+    {
+    
+        unsigned int originalNumColumns = numColumns;
+        unsigned int originalNumRows = numRows;
+    
+        numColumns = osg::maximum((unsigned int) (float(originalNumColumns)*sqrtf(sampleRatio)), 4u);
+        numRows = osg::maximum((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)),4u);
+
+        i_sampleFactor = double(originalNumColumns-1)/double(numColumns-1);
+        j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
+    }
+
+    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
+    osg::notify(osg::INFO)<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+    
+    float skirtHeight = 0.0f;
+    HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
+    if (hfl && hfl->getHeightField()) 
+    {
+        skirtHeight = hfl->getHeightField()->getSkirtHeight();
+    }
+    
+    bool createSkirt = skirtHeight != 0.0f;
+  
+    unsigned int numVerticesInBody = numColumns*numRows;
+    unsigned int numVerticesInSkirt = createSkirt ? numColumns*2 + numRows*2 - 4 : 0;
+    unsigned int numVertices = numVerticesInBody+numVerticesInSkirt;
+
+    //float minHeight = 0.0;
+    float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
+
+    Locator* colorLocator = NULL;
+    osg::ref_ptr<osg::Vec2Array> texCoords;
+
+    osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
+    if (colorLayer)
+    {
+            Locator* locator = colorLayer->getLocator();
+            if (!locator)
+            {            
+                osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(colorLayer);
+                if (switchLayer)
+                {
+                    if (switchLayer->getActiveLayer()>=0 &&
+                        static_cast<unsigned int>(switchLayer->getActiveLayer())<switchLayer->getNumLayers() &&
+                        switchLayer->getLayer(switchLayer->getActiveLayer()))
+                    {
+                        locator = switchLayer->getLayer(switchLayer->getActiveLayer())->getLocator();
+                    }
+                }
+            }            
+            texCoords = new osg::Vec2Array;
+            texCoords->reserve(numVertices);
+
+            colorLocator = locator ? locator : masterLocator;
+            geometry->setTexCoordArray(0, texCoords.get());
+    }
+
+    // allocate and assign color
+    osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array(1);
+    (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);    
+    geometry->setColorArray(colors.get());
+    geometry->setColorBinding(osg::Geometry::BIND_OVERALL);
+
+    typedef std::vector<int> Indices;
+    Indices indices(numVertices, -1);
+    
+    // populate vertex and tex coord arrays
+    unsigned int i, j;
+	int vindex = 0;
+    for(j=0; j<numRows; ++j)
+    {
+        for(i=0; i<numColumns; ++i)
+        {
+            unsigned int iv = j*numColumns + i;
+            osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
+     
+            bool validValue = true;
+
+            unsigned int i_equiv = i_sampleFactor==1.0 ? i : (unsigned int) (double(i)*i_sampleFactor);
+            unsigned int j_equiv = i_sampleFactor==1.0 ? j : (unsigned int) (double(j)*j_sampleFactor);
+            
+            if (elevationLayer)
+            {
+                float value = 0.0f;
+                validValue = elevationLayer->getValidValue(i_equiv,j_equiv, value);
+                // osg::notify(osg::INFO)<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
+                ndc.z() = value*scaleHeight;
+            }
+            
+            if (validValue)
+            {
+                indices[iv] = vindex++;
+
+				if (texCoords.valid())
+				{
+					osg::Vec3d model;
+					masterLocator->convertLocalToModel(ndc, model);
+
+					if (colorLocator != masterLocator)
+					{
+						osg::Vec3d color_ndc;
+						Locator::convertLocalCoordBetween(*masterLocator, ndc, *colorLocator, color_ndc);
+						texCoords->push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
+					}
+					else
+					{
+						texCoords->push_back(osg::Vec2(ndc.x(), ndc.y()));
+					}
+				}
+			}
+            else
+            {
+                indices[iv] = -1;
+            }
+        }
+    }
+    
+    // populate primitive sets
+//    bool optimizeOrientations = elevations!=0;
+    bool swapOrientation = !(masterLocator->orientationOpenGL());    
+
+    if (createSkirt)
+    {
+         // create bottom skirt vertices
+        int r,c;
+        r=0;
+        for(c=0;c<static_cast<int>(numColumns);++c)
+        {
+            int orig_i = indices[(r)*numColumns+c]; // index of original vertex of grid
+            if (orig_i>=0)
+            {
+                if (texCoords.valid()) texCoords->push_back((*texCoords)[orig_i]);               
+            }
+        }
+
+        // create right skirt vertices
+        c=numColumns-1;
+        for(r=0;r<static_cast<int>(numRows);++r)
+        {
+            int orig_i = indices[(r)*numColumns+c]; // index of original vertex of grid
+            if (orig_i>=0)
+            {
+                 if (texCoords.valid()) texCoords->push_back((*texCoords)[orig_i]);
+            }
+        }
+
+        // create top skirt vertices
+        r=numRows-1;
+        for(c=numColumns-1;c>=0;--c)
+        {
+            int orig_i = indices[(r)*numColumns+c]; // index of original vertex of grid
+            if (orig_i>=0)
+            {
+                if (texCoords.valid()) texCoords->push_back((*texCoords)[orig_i]);               
+            }
+        }
+
+        // create left skirt vertices
+        c=0;
+        for(r=numRows-1;r>=0;--r)
+        {
+            int orig_i = indices[(r)*numColumns+c]; // index of original vertex of grid
+            if (orig_i>=0)
+            {
+                if (texCoords.valid()) texCoords->push_back((*texCoords)[orig_i]);               
+            }
+        }
+    }
+
+    geometry->setUseDisplayList(false);
+    geometry->setUseVertexBufferObjects(true);
+
+	//TODO:  Should we do this for each geode?  
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
     {    
@@ -670,7 +827,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
     //geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     geode->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL), osg::StateAttribute::ON);
 
-       
     return geode;
 }
 
@@ -682,14 +838,22 @@ void MultiPassTerrainTechnique::generateGeometry(Locator* masterLocator, const o
         _transform->addChild(_passes);
     }
 
+	osg::Geometry* prototype = createGeometryPrototype( masterLocator, centerModel );
 
-    for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
+	if (_terrainTile->getNumColorLayers() == 0)
+	{
+		osg::Geode* geode = createPass(0, masterLocator, centerModel, prototype);
+		_passes->addChild( geode );
+	}
+
+	for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
     {
 		Layer* layer = _terrainTile->getColorLayer( layerNum );
 		osg::Geode* geode = 0;
 		if (layer)
 		{
-          geode = createPass(layerNum, masterLocator, centerModel);
+			osg::Geometry* passGeom = new osg::Geometry(*prototype);
+			geode = createPass(layerNum, masterLocator, centerModel, passGeom);
 		}
 		else
 		{

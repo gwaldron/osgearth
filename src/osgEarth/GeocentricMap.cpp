@@ -80,7 +80,7 @@ public:
             _terrain.valid() && 
             static_cast<VersionedTile*>( getChild(0) )->getTerrainRevision() != _terrain->getRevision() )
         {
-            osg::notify(osg::NOTICE) << "Tile " << _keyStr << " is obselete" << std::endl;
+            //osg::notify(osg::NOTICE) << "Tile " << _keyStr << " is obselete" << std::endl;
             _loaded = false;
         }
     }
@@ -99,13 +99,6 @@ public:
 
             tile->setTerrain( 0L );             // unregisters with the old one
             tile->setTerrain( _terrain.get() ); // registers with the new one
-
-            // synchronize the tile to the terrain:
-            // DEP: this gets done at tile creation time
-            //tile->setTerrainRevision( _terrain->getRevision() );
-
-            //static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( 0L );
-            //static_cast<osgTerrain::TerrainTile*>(node)->setTerrain( _terrain.get() );
         }
         return osg::Group::addChild( node );
     }
@@ -161,11 +154,91 @@ GeocentricMapEngine::createQuadrant(Map* map, osgTerrain::Terrain* terrain, cons
         return createPlaceholderTile( map, terrain, key );
 }
 
-static TileSwitcher*
-createTileSwitcher( VersionedTile* tile, const TileKey* key, VersionedTerrain* terrain )
+void
+GeocentricMapEngine::addPlaceholderImageLayers(VersionedTile* tile,
+                                               VersionedTile* ancestorTile,
+                                               const MapLayerList& imageMapLayers,
+                                               GeoLocator* defaultLocator,
+                                               const TileKey* key)
 {
-    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain );
-    return switcher;
+    if ( !ancestorTile )
+        return;
+
+    // Now if we have a valid ancestor tile, go through and make a temporary tile consisting only of
+    // layers that exist in the new map layer image list as well.
+    int layer = 0;
+    for( unsigned int j=0; j<ancestorTile->getNumColorLayers(); j++ )
+    {
+        osgTerrain::ImageLayer* ancestorLayer = static_cast<osgTerrain::ImageLayer*>(ancestorTile->getColorLayer(j));
+
+        const std::string& layerName = ancestorLayer->getName();
+        for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
+        {
+            if ( i->get()->getName() == layerName )
+            {                    
+                GeoLocator* newImageLocator = 0L;
+
+                GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
+                if ( ancestorLocator )
+                {
+                    newImageLocator = new CroppingLocator(
+                        *defaultLocator,
+                        ancestorLocator->getDataExtent(),
+                        key->getGeoExtent() );
+                }
+                else
+                {
+                    newImageLocator = defaultLocator;
+                }
+
+                osg::Image* ancestorImage = ancestorLayer->getImage();
+
+                osgTerrain::ImageLayer* img_layer = new TransparentLayer(ancestorImage, i->get());
+                img_layer->setLocator( newImageLocator );
+                img_layer->setName( layerName );
+
+                tile->setColorLayer( layer++, img_layer );
+                break;
+            }
+        }
+    }
+}
+
+
+void
+GeocentricMapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
+                                                    VersionedTile* ancestorTile,
+                                                    GeoLocator* defaultLocator,
+                                                    const TileKey* key)
+{
+    if ( ancestorTile )
+    {
+        osgTerrain::HeightFieldLayer* ancestorLayer = static_cast<osgTerrain::HeightFieldLayer*>(ancestorTile->getElevationLayer());
+        if ( ancestorLayer )
+        {   
+            GeoLocator* hfLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
+            if ( hfLocator )
+            {
+                hfLocator = new CroppingLocator( *defaultLocator, hfLocator->getDataExtent(), key->getGeoExtent() );
+            }
+            else
+            {
+                hfLocator = defaultLocator;
+            }
+
+            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( ancestorLayer->getHeightField() );
+            hfLayer->setLocator( hfLocator );
+            tile->setElevationLayer( hfLayer );
+        }
+    }
+
+    if ( !tile->getElevationLayer() )
+    {
+        osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer();
+        hfLayer->setHeightField( createEmptyHeightField( key ) );
+        hfLayer->setLocator( defaultLocator );
+        tile->setElevationLayer( hfLayer );
+    }
 }
 
 osg::Node*
@@ -206,16 +279,15 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
 
     // An empty heightfield as a placeholder.
     // TODO: populate by sampling the parent tile.
-    osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
-    hf_layer->setHeightField( createEmptyHeightField( key ) );
-    hf_layer->setLocator( locator.get() );
-    tile->setElevationLayer( hf_layer );
+    //osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
+    //hf_layer->setHeightField( createEmptyHeightField( key ) );
+    //hf_layer->setLocator( locator.get() );
+    //tile->setElevationLayer( hf_layer );
 
     // Now generate imagery and elevation placeholders:
     osg::ref_ptr<const TileKey> ancestorKey = key;
     VersionedTile* ancestorTile = 0L;
     std::string indent = "";
-    
     
     while( !ancestorTile && ancestorKey.valid() )
     {
@@ -232,111 +304,46 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
             //}
         }
     }
-    
-    int layer = 0;
-    for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
-    {
-        osgTerrain::ImageLayer* img_layer = 0L;
 
-        if ( ancestorTile )
-        {
-            GeoLocator* newImageLocator = 0L;
+    // install placeholder image and heightfield layers.
+    addPlaceholderImageLayers( tile, ancestorTile, imageMapLayers, locator.get(), key );
+    addPlaceholderHeightfieldLayer( tile, ancestorTile, locator.get(), key );
 
-            osgTerrain::ImageLayer* ancestorLayer = static_cast<osgTerrain::ImageLayer*>(ancestorTile->getColorLayer(layer));
-            if ( ancestorLayer )
-            {
-                GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
-                if ( ancestorLocator )
-                {
-                    newImageLocator = new CroppingLocator(
-                        *(locator.get()),
-                        ancestorLocator->getDataExtent(),
-                        key->getGeoExtent() );
-                }
-                else
-                {
-                    newImageLocator = locator.get();
-                }
-
-                osg::Image* ancestorImage = ancestorLayer->getImage();
-
-                //img_layer = new osgTerrain::ImageLayer( ancestorImage );
-			    img_layer = new TransparentLayer(ancestorImage, i->get());
-                img_layer->setLocator( newImageLocator );
-            }
-            else
-            {
-                img_layer = 0L;
-            }
-        }
-        else
-        {
-            //osg::notify(osg::NOTICE) << "[osgEarth] Could not find ancestor tile for key " << key->str() << std::endl;
-            //img_layer = new osgTerrain::ImageLayer( ImageUtils::getEmptyImage() );
-
-			//img_layer = new TransparentLayer( ImageUtils::getEmptyImage(), i->get());
-            //img_layer->setLocator( locator.get() );	
-
-            // GW
-            img_layer = 0L;
-        }   
-
-        if ( img_layer )
-            tile->setColorLayer( layer++, img_layer );        
-    }   
-
-    // finish off the tile and put it under a new PLOD.
+    // calculate the switching distances:
     osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
-
     osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
     double radius = bs.radius();
     double min_range = radius * _engineProps.getMinTileRangeFactor();
 
     // Set the skirt height of the heightfield
-    hf_layer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
+    osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
+    hfLayer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
 
-    osg::Node* resultNode = tile;
+    // install a tile switcher:
+    tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
+    TileSwitcher* switcher = new TileSwitcher( tile, key, static_cast<VersionedTerrain*>(terrain) );
 
-    // for deferred mode, install a tile switcher:
-    if ( _engineProps.getDeferTileDataLoading() )
+    // Install a cluster culler (FIXME for cube mode)
+    bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
+    if (!isCube)
     {
-        tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
-        resultNode = createTileSwitcher( tile, key, static_cast<VersionedTerrain*>(terrain) );
+        //TODO:  Work on cluster culling computation for cube faces
+        osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
+        switcher->addCullCallback( ccc );
     }
-
-    // install the cluster culler:
-    osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
-    resultNode->addCullCallback( ccc );
      
-    // for deferred mode, install the loader callback that will update tiles when the terrain
-    // revision changes:
-    if ( _engineProps.getDeferTileDataLoading() )
-    {
-        resultNode->addCullCallback( new TileDataLoaderCallback( map, key ) );
-    }
+    // Install a callback that will load the actual tile data via the pager (this must be added
+    // after the cluster culler)
+    switcher->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
 
-    //TileSwitcher* switcher = new TileSwitcher( tile, key, static_cast<VersionedTerrain*>(terrain) );
-
-    //// TEMPORARY TODO FIXME
-    //bool isCube = dynamic_cast<CubeFaceLocator*>(locator.get()) != NULL;
-    //if (!isCube)
-    //{
-    //    //TODO:  Work on cluster culling computation for cube faces
-    //    osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, ellipsoid);
-    //    switcher->addCullCallback( ccc );
-    //}
-
-    //// This callback will load the actual tile data via the database pager:
-    ////switcher->addCullCallback( new TileDataLoaderCallback( map, key ) );
-
     // create a PLOD so we can keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
-    plod->addChild( resultNode, min_range, max_range );
+    plod->addChild( switcher, min_range, max_range );
     plod->setFileName( 1, createURI( map->getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
 
@@ -520,6 +527,7 @@ GeocentricMapEngine::createPopulatedTile(Map* map, osgTerrain::Terrain* terrain,
 
             //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geo_image->getImage() );
 			osgTerrain::ImageLayer* img_layer = new TransparentLayer(geo_image->getImage(), imageMapLayers[i].get());
+            img_layer->setName( imageMapLayers[i]->getName() );
             img_layer->setLocator( img_locator.get());
 
 			double upp = geo_image->getUnitsPerPixel();

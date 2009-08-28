@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/MapEngine>
 #include <osgEarth/Map>
+#include <osgEarth/VersionedTerrain>
 #include <osg/Node>
 #include <osg/ClusterCullingCallback>
 
@@ -63,7 +64,20 @@ namespace osgEarth
         virtual osg::Node* createPopulatedTile(
             Map* map, 
             osgTerrain::Terrain* terrain,
-            const TileKey* key );
+            const TileKey* key );        
+        
+        void addPlaceholderImageLayers(
+            VersionedTile* tile,
+            VersionedTile* ancestorTile,
+            const MapLayerList& imageMapLayers,
+            GeoLocator* defaultLocator,
+            const TileKey* key);
+
+        void addPlaceholderHeightfieldLayer(
+            VersionedTile* tile,
+            VersionedTile* ancestorTile,
+            GeoLocator* defaultLocator,
+            const TileKey* key);
     };
 }
 

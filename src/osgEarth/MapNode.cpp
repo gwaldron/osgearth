@@ -558,7 +558,19 @@ MapNode::removeHeightFieldTileSource( unsigned int index )
 void
 MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
-    if ( layer )
+    if ( _engine->getEngineProperties().getDeferTileDataLoading() )
+    {
+        if ( layer && layer->getTileSource() )
+        {
+            for( unsigned int i=0; i<_terrains.size(); i++ )
+            {
+                _terrains[i]->advanceRevision();
+            }
+        }
+        updateStateSet();
+    }
+
+    else if ( layer )
     {
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {

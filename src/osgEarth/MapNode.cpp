@@ -382,13 +382,13 @@ MapNode::addImageTileSource( TileSource* source )
                 {
                     GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
                     geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                    img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat );
+                    img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
                     img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
                 }
                 else
                 {
                     geoImage->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                    img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat );
+                    img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
                 }
 
                 //Set the CS to geocentric is we are dealing with a geocentric map

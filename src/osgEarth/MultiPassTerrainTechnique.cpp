@@ -838,7 +838,7 @@ void MultiPassTerrainTechnique::generateGeometry(Locator* masterLocator, const o
         _transform->addChild(_passes);
     }
 
-	osg::Geometry* prototype = createGeometryPrototype( masterLocator, centerModel );
+	osg::ref_ptr<osg::Geometry> prototype = createGeometryPrototype( masterLocator, centerModel );
 
 	if (_terrainTile->getNumColorLayers() == 0)
 	{
@@ -852,8 +852,8 @@ void MultiPassTerrainTechnique::generateGeometry(Locator* masterLocator, const o
 		osg::Geode* geode = 0;
 		if (layer)
 		{
-			osg::Geometry* passGeom = new osg::Geometry(*prototype);
-			geode = createPass(layerNum, masterLocator, centerModel, passGeom);
+			osg::ref_ptr<osg::Geometry> passGeom = new osg::Geometry(*prototype.get());
+			geode = createPass(layerNum, masterLocator, centerModel, passGeom.get());
 		}
 		else
 		{

@@ -361,27 +361,20 @@ GeocentricMapEngine::createPlaceholderTile(Map* map, osgTerrain::Terrain* terrai
 
     osg::Node* result = 0L;
 
-    if ( hasMoreLevels( map, key ) )
-    {
-        // create a PLOD so we can keep subdividing:
-        osg::PagedLOD* plod = new osg::PagedLOD();
-        plod->setCenter( bs.center() );
-        plod->addChild( switcher, min_range, max_range );
-        plod->setFileName( 1, createURI( map->getId(), key ) );
-        plod->setRange( 1, 0.0, min_range );
+    // create a PLOD so we can keep subdividing:
+    osg::PagedLOD* plod = new osg::PagedLOD();
+    plod->setCenter( bs.center() );
+    plod->addChild( switcher, min_range, max_range );
+    plod->setFileName( 1, createURI( map->getId(), key ) );
+    plod->setRange( 1, 0.0, min_range );
 
 #if USE_FILELOCATIONCALLBACK
-        osgDB::Options* options = new osgDB::Options;
-        options->setFileLocationCallback( new osgEarth::FileLocationCallback);
-        plod->setDatabaseOptions( options );
+    osgDB::Options* options = new osgDB::Options;
+    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+    plod->setDatabaseOptions( options );
 #endif
 
-        result = plod;
-    }
-    else
-    {
-        result = tile;
-    }
+    result = plod;
 
     return result;
 }

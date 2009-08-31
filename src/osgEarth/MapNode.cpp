@@ -19,8 +19,6 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/Locators>
-#include <osgEarth/GeocentricMap>
-#include <osgEarth/ProjectedMap>
 #include <osgEarth/FindNode>
 #include <osgEarth/EarthTerrainTechnique>
 #include <osgEarth/MultiPassTerrainTechnique>

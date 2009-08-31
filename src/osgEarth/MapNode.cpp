@@ -163,7 +163,7 @@ MapNode::init()
     _map->setGlobalOptions( local_options.get() );
 
     // create the map engine that wil geneate tiles for this node:
-    _engine = _map->createMapEngine( _engineProps );
+    _engine = new MapEngine( _engineProps ); //_map->createMapEngine( _engineProps );
 
     // handle an already-established map profile:
     if ( _map->getProfile() )
@@ -240,7 +240,8 @@ MapNode::findCoordinateSystemNode( osg::Node* graph )
 bool
 MapNode::isGeocentric() const
 {
-    return dynamic_cast<GeocentricMapEngine*>( _engine.get() ) != NULL;
+    return _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
+    //return dynamic_cast<GeocentricMapEngine*>( _engine.get() ) != NULL;
 }
 
 unsigned int
@@ -276,7 +277,6 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
 		}
 
-        //EarthTerrain* terrain = new EarthTerrain;
         terrain->setVerticalScale( _engineProps.getVerticalScale() );
         terrain->setSampleRatio( _engineProps.getSampleRatio() );
         csn->addChild( terrain );
@@ -290,7 +290,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         {
             bool loadNow = !_engine->getEngineProperties().getDeferTileDataLoading();
 
-            osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get(), loadNow ); //true );
+            osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get(), loadNow );
             if (node)
             {
                 terrain->addChild(node);

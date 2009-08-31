@@ -33,7 +33,6 @@ SET(LIB_PUBLIC_HEADERS
     FileUtils
 	FileLocationCallback
 	FindNode
-    GeocentricMap
     GeoData
     HeightFieldUtils
     HTTPClient
@@ -49,7 +48,6 @@ SET(LIB_PUBLIC_HEADERS
     Mercator
 	MultiPassTerrainTechnique
     Profile
-    ProjectedMap
     Registry
     SpatialReference
     TerrainTileEdgeNormalizerUpdateCallback
@@ -73,7 +71,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     EarthTerrainTechnique.cpp
     ElevationManager.cpp
     FileUtils.cpp
-    GeocentricMap.cpp
     GeoData.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
@@ -89,7 +86,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Mercator.cpp
 	MultiPassTerrainTechnique.cpp
     Profile.cpp
-    ProjectedMap.cpp
     Registry.cpp
     SpatialReference.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp

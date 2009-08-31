@@ -13,4 +13,5 @@ This example builds a globe using Landsat7 imagery from a WMS server.
         <tile_size>256</tile_size>
     </image>
     
+    <defer_tile_data_loading>true</defer_tile_data_loading>
 </map>

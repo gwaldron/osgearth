@@ -1,7 +1,8 @@
 <!--
 osgEarth Sample
 
-This example shows how to pull map tiles from an ESRI ArcGIS Server.
+This example shows how to use the <defer> tag to skip intermediate levels
+when loading tiles.
 -->
 
 <map name="ESRI Imagery and Roads" type="geocentric">      

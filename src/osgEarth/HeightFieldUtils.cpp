@@ -118,6 +118,27 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, float x, float
 }
 
 
+void
+HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
+{
+    if (hf)
+    {
+        //The number of degrees in a meter at the equator
+        //TODO: adjust this calculation based on the actual EllipsoidModel.
+        float scale = 1.0f/111319.0f;
+
+        for (unsigned int i = 0; i < hf->getHeightList().size(); ++i)
+        {
+            hf->getHeightList()[i] *= scale;
+        }
+    }
+    else
+    {
+        osg::notify(osg::WARN) << "[osgEarth::HeightFieldUtils] scaleHeightFieldToDegrees heightfield is NULL" << std::endl;
+    }
+}
+
+
 /******************************************************************************************/
 
 ReplaceInvalidDataOperator::ReplaceInvalidDataOperator():

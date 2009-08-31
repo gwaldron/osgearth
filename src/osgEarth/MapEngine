@@ -23,11 +23,15 @@
 #include <osgEarth/MapEngineProperties>
 #include <osgEarth/TileSource>
 #include <osgEarth/Compositing>
+#include <osgEarth/VersionedTerrain>
+#include <osgEarth/MapLayer>
+#include <osgEarth/Locators>
 
 #include <OpenThreads/ReadWriteMutex>
 #include <osgDB/ReaderWriter>
 #include <osgTerrain/Terrain>
 #include <osg/CoordinateSystemNode>
+#include <osg/ClusterCullingCallback>
 #include <vector>
 
 namespace osgEarth
@@ -40,57 +44,46 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapEngine : public osg::Referenced
     {
     public:
+        MapEngine();
+
+        MapEngine( const MapEngineProperties& props );
+
+    public:
         /**
          * Creates a node graph for a given TileKey.
          */
-        osg::Node* createNode( Map* map, osgTerrain::Terrain* terrain, const TileKey* key, bool populateLayers );
+        osg::Node* createNode( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers );
+
+        /**
+         * Creates a single terrain tile.
+         */
+        virtual osg::Node* createTile(
+            Map* map,
+            VersionedTerrain* terrain,
+            const TileKey* key,
+            bool populateLayers =true );
 
         /**
          * Creates a georeferenced image corresponding to a tile key.
          */
         GeoImage* createGeoImage(const TileKey* key, TileSource* source);
 
+        /**
+         * Gets the properties that customize how this engine renders tile data.
+         */
         const MapEngineProperties& getEngineProperties() const;
 
+        /**
+         * Returns true if all the data needed to contruct a tile from the specified tile key is
+         * in a cache.
+         */
         bool isCached( Map* map, const TileKey* key );
-
-    public:
-        MapEngine( const MapEngineProperties& props );
-
-        virtual ~MapEngine();
 
         /**
          * Gets a pagedLOD child URI given a tile key.
          */
         std::string createURI( unsigned int id, const TileKey* key );
 
-        /**
-        * Adds any appropriate child nodes to the given parent group for the given TileKey.
-        * The implementation class must define this method.
-        *
-        * @param parent
-        *        The parent osg::Group to add the children to
-        * @param key
-        *        The tilekey to generate children for
-        * @returns
-        *        True if all children were successfully added to the group, false otherwise
-        */
-        virtual bool addChildren(
-            Map* map,
-            osgTerrain::Terrain* terrain,
-            osg::Group* parent,
-            const TileKey* key,
-            bool populateLayers );
-
-        /**
-         * The implementation class must define this function, which creates one of
-         * a child quadrant of a tile node.
-         */
-        virtual osg::Node* createQuadrant(
-            Map* map,
-            osgTerrain::Terrain* terrain,
-            const TileKey* key,
-            bool populateLayers ) =0;
 
 
         GeoImage* createValidGeoImage(TileSource* tileSource, const TileKey* key);
@@ -104,6 +97,56 @@ namespace osgEarth
 
         static osg::HeightField* createEmptyHeightField( const TileKey* key );
 
+
+    protected:
+
+        virtual ~MapEngine();
+
+        /**
+        * Adds any appropriate child nodes to the given parent group for the given TileKey.
+        * The implementation class must define this method.
+        *
+        * @param parent
+        *        The parent osg::Group to add the children to
+        * @param key
+        *        The tilekey to generate children for
+        * @returns
+        *        True if all children were successfully added to the group, false otherwise
+        */
+        bool addChildren(
+            Map* map,
+            VersionedTerrain* terrain,
+            osg::Group* parent,
+            const TileKey* key,
+            bool populateLayers );
+
+        osg::Node* createPlaceholderTile(
+            Map* map,
+            VersionedTerrain* terrain,
+            const TileKey* key );
+
+        osg::Node* createPopulatedTile(
+            Map* map, 
+            VersionedTerrain* terrain,
+            const TileKey* key );
+        
+        void addPlaceholderImageLayers(
+            VersionedTile* tile,
+            VersionedTile* ancestorTile,
+            const MapLayerList& imageMapLayers,
+            GeoLocator* defaultLocator,
+            const TileKey* key);
+
+        void addPlaceholderHeightfieldLayer(
+            VersionedTile* tile,
+            VersionedTile* ancestorTile,
+            GeoLocator* defaultLocator,
+            const TileKey* key,
+            const TileKey* ancestorKey );
+
+        osg::ClusterCullingCallback* createClusterCullingCallback(
+            osgTerrain::TerrainTile* tile,
+            osg::EllipsoidModel* et );
 
     protected:
 

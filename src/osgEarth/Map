@@ -118,8 +118,8 @@ namespace osgEarth
         /**
          * Creates and returns a new map engine that can generate tiles for this map.
          */
-        MapEngine* createMapEngine(
-            const MapEngineProperties& engineProps =MapEngineProperties() );
+        //MapEngine* createMapEngine(
+        //    const MapEngineProperties& engineProps =MapEngineProperties() );
 
         /**
          * Gets the user-provided options structure stored in this map.

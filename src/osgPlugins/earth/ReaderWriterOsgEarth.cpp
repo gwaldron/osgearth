@@ -140,7 +140,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     const Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
                     osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
 
-
                     if ( ext == "earth_tile" )
                     {
                         bool deferred = mapNode->getEngine()->getEngineProperties().getDeferTileDataLoading();
@@ -153,7 +152,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     }
                     else if ( ext == "earth_tile_data" )
                     {
-                        node = mapNode->getEngine()->createQuadrant(
+                        node = mapNode->getEngine()->createTile(
                             mapNode->getMap(),
                             mapNode->getTerrain( face ),
                             key.get(),

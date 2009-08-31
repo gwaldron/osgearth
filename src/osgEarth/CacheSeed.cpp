@@ -30,7 +30,7 @@ void CacheSeed::seed( Map* map )
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 
-    osg::ref_ptr<MapEngine> engine = map->createMapEngine();
+    osg::ref_ptr<MapEngine> engine = new MapEngine(); //map->createMapEngine();
 
     std::vector< osg::ref_ptr<TileKey> > keys;
     map->getProfile()->getRootKeys(keys);
@@ -127,7 +127,7 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
         osg::notify(osg::NOTICE) << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
-		osg::ref_ptr<osg::Node> node = engine->createQuadrant( map, 0, key, true );        
+		osg::ref_ptr<osg::Node> node = engine->createTile( map, 0, key, true );        
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)

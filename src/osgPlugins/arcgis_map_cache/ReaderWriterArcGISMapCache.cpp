@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/TileSource>
-#include <osgEarth/Mercator>
 #include <osgEarth/Registry>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>

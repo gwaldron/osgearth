@@ -45,7 +45,6 @@ SET(LIB_PUBLIC_HEADERS
     MapNode
     MapEngine
     MapEngineProperties
-    Mercator
 	MultiPassTerrainTechnique
     Profile
     Registry
@@ -83,7 +82,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapNode.cpp
     MapEngine.cpp
     MapEngineProperties.cpp
-    Mercator.cpp
 	MultiPassTerrainTechnique.cpp
     Profile.cpp
     Registry.cpp

@@ -18,7 +18,6 @@
 */
 
 #include <osgEarth/TileSource>
-//#include <osgEarth/Mercator>
 #include <osgEarth/TMS>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>

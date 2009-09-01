@@ -34,7 +34,7 @@ MapEngineProperties::MapEngineProperties()
     _filename = "";
     _use_mercator_locator = true;
     _defer_tile_data_loading = false;
-	_technique = Technique::MULTITEXTURE;
+    _technique = MULTITEXTURE;
 }
 
 MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )

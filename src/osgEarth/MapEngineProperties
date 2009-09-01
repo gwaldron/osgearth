@@ -167,7 +167,7 @@ namespace osgEarth
 
         bool getDeferTileDataLoading() const;
 
-		enum Technique
+		OSGEARTH_EXPORT enum Technique
 		{
 			MULTIPASS,
 			MULTITEXTURE

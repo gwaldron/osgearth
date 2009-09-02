@@ -210,3 +210,28 @@ ImageUtils::convertToRGB(const osg::Image *image)
 	return NULL;
 }
 
+bool 
+ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)
+{
+	if (lhs == rhs) return true;
+
+	if ((lhs->s() == rhs->s()) &&
+		(lhs->t() == rhs->t()) &&
+		(lhs->getInternalTextureFormat() == rhs->getInternalTextureFormat()) &&
+		(lhs->getPixelFormat() == rhs->getPixelFormat()) &&
+		(lhs->getDataType() == rhs->getDataType()) &&
+		(lhs->getPacking() == rhs->getPacking()) &&
+		(lhs->getImageSizeInBytes() == rhs->getImageSizeInBytes()))
+	{
+		unsigned int size = lhs->getImageSizeInBytes();
+		for (unsigned int i = 0; i < size; ++i)
+		{
+			if (lhs->data()[i] != rhs->data()[i])
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+

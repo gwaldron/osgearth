@@ -92,6 +92,11 @@ namespace osgEarth
 		 *Converts the given image to RGB
 		 */
 		static osg::Image* convertToRGB(const osg::Image *image);
+
+		/**
+		 *Compares the image data of two images and determines if they are equivalent
+		 */
+		static bool areEquivalent(const osg::Image *lhs, const osg::Image *rhs);
 			
     };
 }

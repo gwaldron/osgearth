@@ -102,6 +102,17 @@ MapLayer::profileConfig() const {
     return _profileConf;
 }
 
+optional<std::string>& 
+MapLayer::noDataImage()
+{
+	return _nodata_image;
+}
+const optional<std::string>&
+MapLayer::noDataImage() const
+{
+	return _nodata_image;
+}
+
 void
 MapLayer::setTileSource( TileSource* tileSource )
 {
@@ -114,6 +125,23 @@ MapLayer::setTileSource( TileSource* tileSource )
                 _tileSource->setMinLevel( _minLevel.get() );
             if ( _maxLevel.isSet() )
                 _tileSource->setMaxLevel( _maxLevel.get() );
+
+			if (_transparentColor.isSet() )
+				_tileSource->transparentColor() = _transparentColor.get();
+
+			if ( _nodata_image.isSet() && _nodata_image.get().length() > 0 )
+			{
+				osg::notify(osg::NOTICE) << "Setting nodata image to " << _nodata_image.get() << std::endl;
+				osg::Image* image = osgDB::readImageFile( _nodata_image.get());
+				if (image)
+				{
+					_tileSource->setNoDataImage( image );
+				}
+				else
+				{
+					osg::notify(osg::NOTICE) << "Warning:  Could not read nodata image from " << _nodata_image.get() << std::endl;
+				}
+			}
         }
     //}
     //else
@@ -144,5 +172,17 @@ void
 MapLayer::setEnabled(bool enabled)
 {
 	_enabled = enabled;
+}
+
+const optional<osg::Vec4ub>& 
+MapLayer::transparentColor() const
+{
+	return _transparentColor;
+}
+
+optional<osg::Vec4ub>&
+MapLayer::transparentColor()
+{
+	return _transparentColor;
 }
 

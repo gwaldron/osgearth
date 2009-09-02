@@ -109,7 +109,7 @@ WCS11Source::getExtension() const
 
 
 osg::Image*
-WCS11Source::createImage( const TileKey* key )
+WCS11Source::createImageImplementation( const TileKey* key )
 {
     HTTPRequest request = createRequest( key );
 

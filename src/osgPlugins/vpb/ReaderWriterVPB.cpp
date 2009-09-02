@@ -515,7 +515,7 @@ public:
         return vpbDatabase->profile.get();
     }
     
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImageImplementation( const TileKey* key )
     {
         osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key);                
         if (tile.valid())

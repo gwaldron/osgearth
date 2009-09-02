@@ -887,7 +887,7 @@ public:
         geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
     }
 
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImageImplementation( const TileKey* key )
     {
         if (key->getLevelOfDetail() > _maxDataLevel)
         {

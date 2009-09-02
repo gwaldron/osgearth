@@ -176,7 +176,7 @@ CachedTileSource::createProfile( const Profile* mapProfile, const std::string& c
 
 
 osg::Image*
-CachedTileSource::createImage( const TileKey* key )
+CachedTileSource::createImageImplementation( const TileKey* key )
 {
     osg::Image* image = 0L;
 

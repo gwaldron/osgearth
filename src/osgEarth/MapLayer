@@ -126,6 +126,17 @@ namespace osgEarth
 		bool getEnabled() const;
 		void setEnabled(bool enabled);
 
+		/**
+		 * Gets or sets the nodata image for this MapLayer
+		 */
+		optional<std::string>& noDataImage();
+		const optional<std::string>& noDataImage() const;
+
+	    /**
+		 * Gets the transparent color of this TileSource
+		 */
+		const optional<osg::Vec4ub>& transparentColor() const;
+		optional<osg::Vec4ub>& transparentColor();
     public:
 
         /**
@@ -146,6 +157,8 @@ namespace osgEarth
         optional<ProfileConfig> _profileConf;
         optional<int> _minLevel;
         optional<int> _maxLevel;
+	    optional<std::string> _nodata_image;
+		optional<osg::Vec4ub> _transparentColor;
 
 		float _opacity;
 		bool _enabled;

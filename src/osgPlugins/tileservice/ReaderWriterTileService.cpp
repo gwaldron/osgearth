@@ -64,7 +64,7 @@ public:
     }
 
 public:
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImageImplementation( const TileKey* key )
     {
         return osgDB::readImageFile(  createURI( key ), getOptions() );
     }

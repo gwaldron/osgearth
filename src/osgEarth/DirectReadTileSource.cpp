@@ -33,7 +33,7 @@ _tileSource(tileSource)
 }
 
 osg::Image*
-DirectReadTileSource::createImage(const osgEarth::TileKey* key)
+DirectReadTileSource::createImageImplementation(const osgEarth::TileKey* key)
 {
     //If the destination profile and the underlying TileSource profile are the same,
     // simply request the image and return.

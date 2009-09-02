@@ -126,7 +126,7 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImageImplementation( const TileKey* key )
     {
         std::stringstream buf;
 

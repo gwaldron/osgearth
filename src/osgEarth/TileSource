@@ -52,9 +52,11 @@ namespace osgEarth
         TileSource( const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
-         * Creates an image for the given TileKey
+         * Creates an image for the given TileKey.
          */
-        virtual osg::Image* createImage( const TileKey* key ) = 0;
+        virtual osg::Image* createImage( const TileKey* key );
+
+		virtual osg::Image* createImageImplementation( const TileKey* key) = 0;
 
         /**
          * Creates a heightfield for the given TileKey
@@ -105,13 +107,34 @@ namespace osgEarth
          */
         virtual void setMaxLevel(unsigned int maxLevel) {_maxLevel = maxLevel;}
 
+		/**
+		 * Gets the nodata elevation value
+		 */
         virtual float getNoDataValue();
+
+		/**
+		 * Sets the nodata elevation value
+		 */
         virtual void  setNoDataValue(float noDataValue);
 
+		/**
+		 * Gets the nodata min value
+		 */
         virtual float getNoDataMinValue();
+
+		/**
+		 * Sets the nodata min value
+		 */
         virtual void setNoDataMinValue(float noDataMinValue);
 
+		/**
+		 * Gets the nodata max value
+		 */
         virtual float getNoDataMaxValue();
+
+		/**
+		 * Sets the nodata max value
+		 */
         virtual void  setNoDataMaxValue(float noDataMaxValue);     
 
         /**
@@ -148,6 +171,22 @@ namespace osgEarth
          * Gets the preferred extension for this TileSource
          */
         virtual std::string getExtension() const {return "";}
+
+		/**
+		 * Gets the nodata image for this TileSource
+		 */
+    	virtual const osg::Image* getNoDataImage() const;
+
+		/**
+		 * Gets the nodata image for this TileSource
+		 */
+		virtual void setNoDataImage(osg::Image* image);
+
+	    /**
+		 * Gets the transparent color of this TileSource
+		 */
+		const optional<osg::Vec4ub>& transparentColor() const;
+		optional<osg::Vec4ub>& transparentColor();
 
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
@@ -204,6 +243,10 @@ namespace osgEarth
 
         GeoExtent    _data_extent;
         unsigned int _max_data_level;
+
+		osg::ref_ptr<osg::Image> _nodata_image;
+
+		optional<osg::Vec4ub> _transparentColor;
     };
 
     
@@ -246,6 +289,7 @@ namespace osgEarth
         virtual bool supportsPersistentCaching() const { return _next.valid()? _next->supportsPersistentCaching() : false; }
         virtual std::string getExtension() const { return _next.valid()? _next->getExtension() : ""; }
 		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile); if (_next.valid()) _next->setOverrideProfile( profile ); }
+		virtual void setNoDataImage(osg::Image* image) { if (_next.valid()) _next->setNoDataImage(image);};
 
     private:
         osg::ref_ptr<TileSource> _next;

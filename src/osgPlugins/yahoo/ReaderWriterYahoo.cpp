@@ -53,7 +53,7 @@ public:
         return Profile::create( "spherical-mercator", 2, 2 );
     }
 
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImageImplementation( const TileKey* key )
     {
         //Return NULL if we are given a non-mercator key
         if ( !key->isMercator() ) return 0;
@@ -92,7 +92,7 @@ public:
                 << "&.jpg";
         }
 
-        //osg::notify(osg::NOTICE) << buf.str() << std::endl;
+        osg::notify(osg::NOTICE) << key->str() << "=" << buf.str() << std::endl;
         return osgDB::readImageFile( buf.str(), getOptions() );
     }
 

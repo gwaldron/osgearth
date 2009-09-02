@@ -80,7 +80,9 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
-#define ELEM_TECHNIQUE             "technique"
+#define ELEM_TECHNIQUE                "technique"
+#define ELEM_NODATA_IMAGE             "nodata_image"
+#define ELEM_TRANSPARENT_COLOR        "transparent_color"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -194,6 +196,22 @@ writeProfileConfig(const ProfileConfig& profile, XmlElement* e_profile )
     }
 }
 
+static osg::Vec4ub
+getColor(const std::string& str, osg::Vec4ub default_value)
+{
+    osg::Vec4ub color = default_value;
+    std::istringstream strin(str);
+    int r, g, b, a;
+    if (strin >> r && strin >> g && strin >> b && strin >> a)
+    {
+        color.r() = (unsigned char)r;
+        color.g() = (unsigned char)g;
+        color.b() = (unsigned char)b;
+        color.a() = (unsigned char)a;
+    }
+    return color;
+}
+
 
 static MapLayer*
 readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& additionalDriverProps )
@@ -236,6 +254,12 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
     if ( maxLevel >= 0 )
         layer->maxLevel() = maxLevel;
 
+	std::string noDataImage = e_source->getSubElementText( ELEM_NODATA_IMAGE );
+	if (noDataImage.length() > 0)
+	{
+		layer->noDataImage() = noDataImage;
+	}
+
     // Try to read the cache for the source if one exists
     XmlElement* e_cache = static_cast<XmlElement*>(e_source->getSubElement( ELEM_CACHE ));
     if (e_cache)
@@ -249,6 +273,14 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
     {
         layer->profileConfig() = readProfileConfig( e_profile );
     }
+
+	std::string transparentColor = e_source->getSubElementText( ELEM_TRANSPARENT_COLOR );
+	if (transparentColor.length() > 0)
+	{
+		osg::Vec4ub color;
+		color = getColor(transparentColor, osg::Vec4ub());
+		layer->transparentColor() = color;
+	}
 
     return layer;
 }
@@ -282,23 +314,18 @@ writeLayer( MapLayer* layer, XmlElement* e_source )
        writeCache(layer->cacheConfig().get(), e_cache);
        e_source->getChildren().push_back(e_cache);
     }
-}
 
+	if (layer->noDataImage().isSet() )
+	{
+		e_source->addSubElement(ELEM_NODATA_IMAGE, layer->noDataImage().get());
+	}
 
-static osg::Vec4ub
-getColor(const std::string& str, osg::Vec4ub default_value)
-{
-    osg::Vec4ub color = default_value;
-    std::istringstream strin(str);
-    int r, g, b, a;
-    if (strin >> r && strin >> g && strin >> b && strin >> a)
-    {
-        color.r() = (unsigned char)r;
-        color.g() = (unsigned char)g;
-        color.b() = (unsigned char)b;
-        color.a() = (unsigned char)a;
-    }
-    return color;
+	if (layer->transparentColor().isSet() )
+	{
+		std::stringstream ss;
+		ss << layer->transparentColor()->r() << " " << layer->transparentColor()->g() << " " << layer->transparentColor()->b();
+		e_source->addSubElement(ELEM_TRANSPARENT_COLOR, ss.str());
+	}
 }
 
 

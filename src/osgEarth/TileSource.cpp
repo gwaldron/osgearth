@@ -20,6 +20,7 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgDB/FileUtils>
@@ -209,3 +210,68 @@ TileSource::supportsPersistentCaching() const
 {
     return true;
 }
+
+const osg::Image*
+TileSource::getNoDataImage() const
+{
+	return _nodata_image.get();
+}
+
+void
+TileSource::setNoDataImage(osg::Image* image)
+{
+	_nodata_image = image;
+}
+
+const optional<osg::Vec4ub>& TileSource::transparentColor() const
+{
+	return _transparentColor;
+}
+
+optional<osg::Vec4ub>& TileSource::transparentColor()
+{
+	return _transparentColor;
+}
+
+osg::Image*
+TileSource::createImage(const osgEarth::TileKey *key)
+{
+	//Read the image tile
+	osg::ref_ptr<osg::Image> image = createImageImplementation( key );
+
+	//Check to see if the image is the nodata image
+	if (image.valid() && _nodata_image.valid())
+	{
+		if (ImageUtils::areEquivalent(image.get(), _nodata_image.get()))
+		{
+			osg::notify(osg::INFO) << "[osgEarth::TileSource::createImage] Found nodata for " << key->str() << std::endl;
+			image = 0;
+		}
+	}
+
+	//Apply a transparent color mask if one is specified
+	if (image.valid() && _transparentColor.isSet())
+	{
+		for (unsigned int row = 0; row < image->t(); ++row)
+		{
+			for (unsigned int col = 0; col < image->s(); ++col)
+			{
+				unsigned char r = image->data(col, row)[0];
+				unsigned char g = image->data(col, row)[1];
+				unsigned char b = image->data(col, row)[2];
+
+				if (r == _transparentColor->r() &&
+					g == _transparentColor->g() &&
+					b == _transparentColor->b())
+				{
+					//osg::notify(osg::NOTICE) << "Transparent..." << std::endl;
+					image->data(col,row)[3] = 0;
+				}
+			}
+		}
+	}
+	return image.release();
+}
+
+
+

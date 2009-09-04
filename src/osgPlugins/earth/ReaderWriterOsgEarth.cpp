@@ -141,13 +141,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                     if ( ext == "earth_tile" )
                     {
-                        bool deferred = mapNode->getEngine()->getEngineProperties().getDeferTileDataLoading();
+                        bool loadNow = !mapNode->getEngine()->getEngineProperties().getPreemptiveLOD();
 
                         node = mapNode->getEngine()->createNode(
                             mapNode->getMap(),
                             mapNode->getTerrain( face ),
                             key.get(),
-                            !deferred );
+                            loadNow );
                     }
                     else if ( ext == "earth_tile_data" )
                     {

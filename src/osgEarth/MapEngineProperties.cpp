@@ -33,8 +33,8 @@ MapEngineProperties::MapEngineProperties()
     _combine_layers = true;
     _filename = "";
     _use_mercator_locator = true;
-    _defer_tile_data_loading = false;
-    _technique = MULTITEXTURE;
+    _preemptive_lod = true;
+	_layering_technique = MULTITEXTURE;
 }
 
 MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )
@@ -56,19 +56,19 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _normalize_edges = rhs._normalize_edges;
     _filename = rhs._filename;
     _use_mercator_locator = rhs._use_mercator_locator;
-    _defer_tile_data_loading = rhs._defer_tile_data_loading;
-	_technique = rhs._technique;
+    _preemptive_lod = rhs._preemptive_lod;
+	_layering_technique = rhs._layering_technique;
     return *this;
 }
 
-void 
-MapEngineProperties::setDeferTileDataLoading( bool value ) {
-    _defer_tile_data_loading = value;
+void
+MapEngineProperties::setPreemptiveLOD( bool value ) {
+    _preemptive_lod = value;
 }
 
-bool 
-MapEngineProperties::getDeferTileDataLoading() const {
-    return _defer_tile_data_loading;
+bool
+MapEngineProperties::getPreemptiveLOD() const {
+    return _preemptive_lod;
 }
 
 void
@@ -203,15 +203,15 @@ MapEngineProperties::getUseMercatorLocator() const
     return _use_mercator_locator;
 }
 
-const optional<MapEngineProperties::Technique>&
-MapEngineProperties::getTechnique() const
+const optional<MapEngineProperties::LayeringTechnique>&
+MapEngineProperties::getLayeringTechnique() const
 {
-	return _technique;
+	return _layering_technique;
 }
 
 void
-MapEngineProperties::setTechnique(osgEarth::MapEngineProperties::Technique technique)
+MapEngineProperties::setLayeringTechnique(osgEarth::MapEngineProperties::LayeringTechnique technique)
 {
-	_technique = technique;
+	_layering_technique = technique;
 }
 

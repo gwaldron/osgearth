@@ -28,50 +28,55 @@ namespace osgEarth
 {
     /**
      * Locator that stores the extent of its source data (which might be different
-     * than the extent of the locator's transform)
+     * than the extent of the locator's transform). This locator can also automatically
+     * crop out a section of the source image.
      */
     class OSGEARTH_EXPORT GeoLocator : public osgTerrain::Locator
     {
     public:
         GeoLocator();
+
         GeoLocator( const GeoExtent& dataExtent );
+
         GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );
+
+        /** Construct a locator that crops to a display extent. */
+        GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent );
 
         void setDataExtent( const GeoExtent& extent );
         const GeoExtent& getDataExtent() const;
 
-    private:
-        GeoExtent _dataExtent;
-    };
-
-
-    /**
-     * A terrain locator that crops to a particular sub-extent
-     */
-    class OSGEARTH_EXPORT CroppingLocator : public GeoLocator
-    {
-    public:
-        CroppingLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& croppedExtent );
+        /** Clones the current locator, applying a new display (i.e. crop) extent. */
+        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
         
-        virtual bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
+    public: // Locator
         virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
 
+    protected:
+        void cropLocal( osg::Vec3d& local ) const;
+
     private:
+        GeoExtent _dataExtent;
         double _x0, _y0, _x1, _y1;
-        //GeoExtent _croppedExtent;
-    }; 
+    };
 
     
     /**
      * A terrain locator that generates texture coordinates that warp a Mercator image.
+     *
+     * Note: the MercatorLocator doesn't have a "cropping" variation b/c it automatically
+     * self-crops as necessary.
      */
     class MercatorLocator : public GeoLocator
     {
     public:
         MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );
 
-        virtual bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
+        //virtual bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
         virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
+        
+        /** Clones the current locator, applying a new display (i.e. crop) extent. */
+        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
 
     private:
         GeoExtent _geoDataExtent;

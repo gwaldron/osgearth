@@ -266,11 +266,11 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     {
         VersionedTerrain* terrain = new VersionedTerrain();
 
-		if (_engineProps.getTechnique() == MapEngineProperties::MULTIPASS)
+		if (_engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
 		{
 			terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
 		}
-		else if ( _engineProps.getTechnique() == MapEngineProperties::MULTITEXTURE)
+		else if ( _engineProps.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
 		{
 			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
 		}
@@ -286,7 +286,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         int numAdded = 0;
         for (unsigned int i = 0; i < keys.size(); ++i)
         {
-            bool loadNow = !_engine->getEngineProperties().getDeferTileDataLoading();
+            bool loadNow = !_engineProps.getPreemptiveLOD();
 
             osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get(), loadNow );
             if (node)
@@ -311,7 +311,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
-    if ( _engine->getEngineProperties().getDeferTileDataLoading() )
+    if ( _engine->getEngineProperties().getPreemptiveLOD() )
     {
         if ( layer && layer->getTileSource() )
         {
@@ -453,7 +453,7 @@ MapNode::addHeightFieldTileSource( TileSource* source )
 void
 MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
 {
-    if ( _engine->getEngineProperties().getDeferTileDataLoading() )
+    if ( _engine->getEngineProperties().getPreemptiveLOD() )
     {
         if ( layer && layer->getTileSource() )
         {
@@ -556,7 +556,7 @@ MapNode::removeHeightFieldTileSource( unsigned int index )
 void
 MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
-    if ( _engine->getEngineProperties().getDeferTileDataLoading() )
+    if ( _engine->getEngineProperties().getPreemptiveLOD() )
     {
         if ( layer && layer->getTileSource() )
         {
@@ -653,7 +653,8 @@ MapNode::moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex
 
 void MapNode::updateStateSet()
 {
-	if (_engineProps.getTechnique() == osgEarth::MapEngineProperties::MULTIPASS) return;
+	if (_engineProps.getLayeringTechnique() == osgEarth::MapEngineProperties::MULTIPASS)
+        return;
 
     if ( _engineProps.getCombineLayers() )
     {

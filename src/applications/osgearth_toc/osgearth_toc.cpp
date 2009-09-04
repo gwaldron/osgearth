@@ -480,14 +480,14 @@ int main(int argc, char** argv)
 
     MapEngineProperties engineProps;
 
-    if ( arguments.read( "--deferred" ) )
+    if ( arguments.read( "--sequential" ) || arguments.read( "--preemptive=OFF" ) )
     {
-        engineProps.setDeferTileDataLoading( true );
+        engineProps.setPreemptiveLOD( false );
     }
 
 	if (arguments.read( "--multipass") )
 	{
-		engineProps.setTechnique( MapEngineProperties::MULTIPASS );
+		engineProps.setLayeringTechnique( MapEngineProperties::MULTIPASS );
 	}
 
     // construct the viewer.

@@ -13,6 +13,8 @@ closer you must be.
 
 <map name="Yahoo maps" type="geocentric">
 
+    <preemptive_lod>false</preemptive_lod>
+    
     <image name="roads map" driver="yahoo">
         <dataset>roads</dataset>
     </image>

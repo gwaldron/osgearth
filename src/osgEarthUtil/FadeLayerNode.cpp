@@ -210,7 +210,7 @@ FadeLayerNode::FadeLayerNode( Map* map, const MapEngineProperties& mapEngineProp
 _map( map ),
 _mapEngineProperties(mapEngineProperties)
 {
-	if (_mapEngineProperties.getTechnique() == MapEngineProperties::MULTITEXTURE)
+	if (_mapEngineProperties.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
 	{
 		osg::Program* program = new osg::Program;
 		_vertShader = new osg::Shader( osg::Shader::VERTEX, vert_source );
@@ -228,7 +228,7 @@ _mapEngineProperties(mapEngineProperties)
 
 void FadeLayerNode::updateStateSet()
 {
-	if (_mapEngineProperties.getTechnique() == MapEngineProperties::MULTITEXTURE)
+	if (_mapEngineProperties.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
 	{
 		osg::StateSet* stateset = getStateSet();
 		unsigned int maxLayers = 4;
@@ -284,7 +284,7 @@ osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack
 
 void FadeLayerNode::traverse(osg::NodeVisitor& nv)
 {
-	if (_mapEngineProperties.getTechnique() == MapEngineProperties::MULTITEXTURE)
+	if (_mapEngineProperties.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
 	{
 		if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
 		{

@@ -1,0 +1,14 @@
+<!--
+osgEarth Sample
+
+This example shows how to use the <preemptive_lod> tag to force all LODs to load
+in order. Normally osgEarth prioritizes the LOD most relevant to the camera's
+location.
+-->
+
+<map name="ESRI Imagery" type="geocentric">      
+    <preemptive_lod>false</preemptive_lod>
+    <image name="arcgisonline esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+    </image>
+</map>

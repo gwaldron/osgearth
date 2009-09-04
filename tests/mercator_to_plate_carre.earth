@@ -11,8 +11,7 @@ Plate Carre (y=lat, x=lon) by applying the <profile> tag.
         <url>http://tile.openstreetmap.org/</url>
         <profile>global-mercator</profile>
         <format>png</format>
-        <tile_width>256</tile_width>
-        <tile_height>256</tile_height>
+        <tile_size>256</tile_size>
         <tms_type>google</tms_type>
     </image>
     

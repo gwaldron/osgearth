@@ -14,7 +14,7 @@ invert the Y tile index.
 <map name="OpenStreetMap" type="projected">
 
     <profile>global-mercator</profile>
-    <min_tile_range_factor>8</min_tile_range_factor>
+    <min_tile_range_factor>6</min_tile_range_factor>
     
     <image name="OSM on Mapnik" driver="tms">
         <url>http://tile.openstreetmap.org/</url>

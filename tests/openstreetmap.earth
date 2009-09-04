@@ -13,14 +13,13 @@ invert the Y tile index.
 
 <map name="OpenStreetMap" type="geocentric">
 
-    <min_tile_range_factor>8</min_tile_range_factor>
+    <min_tile_range_factor>6</min_tile_range_factor>
     
     <image name="OSM on Mapnik" driver="tms">
         <url>http://tile.openstreetmap.org/</url>
         <profile>global-mercator</profile>
         <format>png</format>
-        <tile_width>256</tile_width>
-        <tile_height>256</tile_height>
+        <tile_size>256</tile_size>
         <tms_type>google</tms_type>
     </image>
     

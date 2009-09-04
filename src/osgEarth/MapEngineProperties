@@ -160,14 +160,22 @@ namespace osgEarth
         bool getUseMercatorLocator() const;
 
         /**
-         * Sets whether tile heightfield and imagery data should be loaded immediately
-         * when a new tile is created.
+         * Sets whether map LODs should be loaded preemptively. If true (the default),
+         * the LOD corresponding to the current camera position will always load first.
+         * If false, a map LOD will not load until all lower LODs have loaded.
          */
-        void setDeferTileDataLoading( bool value );
+        void setPreemptiveLOD( bool value );
 
-        bool getDeferTileDataLoading() const;
+        /**
+         * Gets whether map LODs should be loaded preemptively (i.e., the most relevent LOD
+         * should load with the highest priority, instead of the lowest LOD.)
+         */
+        bool getPreemptiveLOD() const;
 
-		OSGEARTH_EXPORT enum Technique
+        /**
+         * Available techniques for compositing multiple image layers at runtime.
+         */
+		enum LayeringTechnique
 		{
 			MULTIPASS,
 			MULTITEXTURE
@@ -176,14 +184,12 @@ namespace osgEarth
 		/**
 		 * Gets the technique that should be used when rendering TerrainTiles
 		 */
-		const optional<Technique>& getTechnique() const;
+		const optional<LayeringTechnique>& getLayeringTechnique() const;
 
 		/**
 		 * Sets the terrain technique that should be used when rendering TerrainTiles
 		 */
-		void setTechnique(Technique technique);
-
-
+		void setLayeringTechnique(LayeringTechnique technique);
 
     private:
             
@@ -199,8 +205,8 @@ namespace osgEarth
         bool _normalize_edges;
         bool _combine_layers;
         bool _use_mercator_locator;
-        bool _defer_tile_data_loading;
-		optional<Technique> _technique;
+        bool _preemptive_lod;
+		optional<LayeringTechnique> _layering_technique;
     };
 }
 

@@ -471,10 +471,11 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
                 GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
                 if ( ancestorLocator )
                 {
-                    newImageLocator = new CroppingLocator(
-                        *defaultLocator,
-                        ancestorLocator->getDataExtent(),
-                        key->getGeoExtent() );
+                    newImageLocator = ancestorLocator->cloneAndCrop( *defaultLocator, key->getGeoExtent() );
+                    //newImageLocator = new CroppingLocator(
+                    //    *defaultLocator,
+                    //    ancestorLocator->getDataExtent(),
+                    //    key->getGeoExtent() );
                 }
                 else
                 {
@@ -903,7 +904,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
 
-    if ( _engineProps.getDeferTileDataLoading() )
+    if ( _engineProps.getPreemptiveLOD() )
     {
         // if this was a deferred load, all we need is the populated tile.
         return tile;

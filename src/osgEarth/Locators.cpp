@@ -21,22 +21,39 @@
 
 using namespace osgEarth;
 
-GeoLocator::GeoLocator()
+GeoLocator::GeoLocator() :
+_x0(0.0), _x1(1.0),
+_y0(0.0), _y1(1.0)
 {
     //nop
 }
 
 GeoLocator::GeoLocator( const GeoExtent& dataExtent ) :
-_dataExtent( dataExtent )
+_dataExtent( dataExtent ),
+_x0(0.0), _x1(1.0),
+_y0(0.0), _y1(1.0)
 {
     //nop
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :
 osgTerrain::Locator( prototype ),
-_dataExtent( dataExtent )
+_dataExtent( dataExtent ),
+_x0(0.0), _x1(1.0),
+_y0(0.0), _y1(1.0)
 {
     //nop
+}
+
+GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent ) :
+osgTerrain::Locator( prototype ),
+_dataExtent( dataExtent )
+{
+    // assume they are the same SRS
+    _x0 = osg::clampBetween( (displayExtent.xMin()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );
+    _x1 = osg::clampBetween( (displayExtent.xMax()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );
+    _y0 = osg::clampBetween( (displayExtent.yMin()-dataExtent.yMin())/dataExtent.height(), 0.0, 1.0 );
+    _y1 = osg::clampBetween( (displayExtent.yMax()-dataExtent.yMin())/dataExtent.height(), 0.0, 1.0 );
 }
 
 void
@@ -49,50 +66,38 @@ GeoLocator::getDataExtent() const {
     return _dataExtent;
 }
 
-/*************************************************************************/
-
-
-
-CroppingLocator::CroppingLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& croppedExtent ) :
-GeoLocator( prototype, dataExtent )
-//_croppedExtent( croppedExtent )
+GeoLocator*
+GeoLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent )
 {
-    // assume they are the same SRS
-    _x0 = osg::clampBetween( (croppedExtent.xMin()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );
-    _x1 = osg::clampBetween( (croppedExtent.xMax()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );
-    _y0 = osg::clampBetween( (croppedExtent.yMin()-dataExtent.yMin())/dataExtent.height(), 0.0, 1.0 );
-    _y1 = osg::clampBetween( (croppedExtent.yMax()-dataExtent.yMin())/dataExtent.height(), 0.0, 1.0 );
-    
-    //osg::notify(osg::NOTICE) 
-    //    << "_x0 = " << _x0 << ", _x1 = " << _x1
-    //    << ", _y0 = " << _y0 << ", _y1 = " << _y1
-    //    << std::endl;
+    return new GeoLocator( prototype, _dataExtent, displayExtent );
 }
 
+
 bool
-CroppingLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
+GeoLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
 {
+#if !( OSG_MIN_VERSION_REQUIRED(2,8,0) )
     // OSG 2.7 bug workaround: bug fix in Locator submitted by GW on 10/3/2008:
-    const_cast<CroppingLocator*>(this)->_inverse.invert( _transform );
+    const_cast<GeoLocator*>(this)->_inverse.invert( _transform );
+#endif
 
-    bool ok = GeoLocator::convertModelToLocal( world, local );
+    bool ok = Locator::convertModelToLocal( world, local );
 
-    local.x() = osg::clampBetween( _x0 + local.x()*(_x1 - _x0), 0.0, 1.0 );
-    local.y() = osg::clampBetween( _y0 + local.y()*(_y1 - _y0), 0.0, 1.0 );
+    cropLocal( local );
 
     return ok;
 }
 
-bool 
-CroppingLocator::convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const
+void
+GeoLocator::cropLocal( osg::Vec3d& local ) const
 {
-    // not used
-    return osgTerrain::Locator::convertLocalToModel( local, model );
+    // crop if necessary:
+    local.x() = osg::clampBetween( _x0 + local.x()*(_x1 - _x0), 0.0, 1.0 );
+    local.y() = osg::clampBetween( _y0 + local.y()*(_y1 - _y0), 0.0, 1.0 );
 }
 
 
 /****************************************************************************/
-
 
 
 #define MERC_MAX_LAT  85.084059050110383
@@ -123,7 +128,6 @@ getUV(const GeoExtent& ext,
     out_v = (vlat-vmin)/(vmax-vmin);
 }
 
-
 MercatorLocator::MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :
 GeoLocator( prototype, dataExtent )
 {
@@ -131,34 +135,21 @@ GeoLocator( prototype, dataExtent )
     _geoDataExtent = dataExtent.transform( dataExtent.getSRS()->getGeographicSRS() );
 }
 
-
-bool
-MercatorLocator::convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& world) const
+GeoLocator*
+MercatorLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent )
 {
-    switch(_coordinateSystemType)
-    {
-        case(GEOCENTRIC):
-        {
-            return Locator::convertLocalToModel( local, world );
-        }
-        case(GEOGRAPHIC):
-        {        
-            return Locator::convertLocalToModel( local, world );
-        }
-        case(PROJECTED):
-        {        
-            return Locator::convertLocalToModel( local, world );
-        }
-    }    
-
-    return false;
+    return new MercatorLocator( prototype, getDataExtent() );
 }
 
 bool
 MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
 {
+    bool result = false;
+
+#if !( OSG_MIN_VERSION_REQUIRED(2,8,0) )
     // OSG 2.7 bug workaround: bug fix in Locator submitted by GW on 10/3/2008:
     const_cast<MercatorLocator*>(this)->_inverse.invert( _transform );
+#endif
 
     switch(_coordinateSystemType)
     {
@@ -175,19 +166,13 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
             double lat_deg = osg::RadiansToDegrees(latitude);
             double xr, yr;
 
-            //GeoExtent tile_extent(
-            //    NULL,
-            //    osg::RadiansToDegrees(_transform(3,0)),
-            //    osg::RadiansToDegrees(_transform(3,1)),
-            //    osg::RadiansToDegrees(_transform(3,0)+_transform(0,0)),
-            //    osg::RadiansToDegrees(_transform(3,1)+_transform(1,1) ) );
-
             getUV( _geoDataExtent, lon_deg, lat_deg, xr, yr );
 
             local.x() = xr;
             local.y() = 1.0-yr;
-            return true;
+            result = true;
         }
+        break;
 
 
     case(GEOGRAPHIC):
@@ -203,16 +188,18 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 
             local.x() = xr;
             local.y() = 1.0-yr;
-            return true;
+            result = true;
         }
+        break;
 
     case(PROJECTED):
         {        
             local = world * _inverse;
-            return true;      
+            result = true;      
         }
-    }    
+        break;
+    }
 
-    return false;
+    return result;
 }
 

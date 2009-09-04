@@ -75,12 +75,14 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_CACHE_ONLY               "cache_only"
 #define ELEM_NORMALIZE_EDGES          "normalize_edges"
 #define ELEM_COMBINE_LAYERS           "combine_layers"
+#define ELEM_PREEMPTIVE_LOD           "preemptive_lod"
 #define ELEM_DEFER_TILE_DATA_LOADING  "defer_tile_data_loading"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
 #define ELEM_TECHNIQUE                "technique"
+#define ELEM_LAYERING_TECHNIQUE       "layering_technique"
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 
@@ -370,21 +372,19 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     else if (normalizeEdges == VALUE_FALSE)
         engineProps.setNormalizeEdges(false);
 
-    std::string deferLoad = e_map->getSubElementText(ELEM_DEFER_TILE_DATA_LOADING);
-    if (deferLoad == VALUE_TRUE)
-        engineProps.setDeferTileDataLoading(true);
-    else if (deferLoad == VALUE_FALSE)
-        engineProps.setDeferTileDataLoading(false);
+    std::string preemptive_lod = e_map->getSubElementText(ELEM_PREEMPTIVE_LOD);
+    if ( preemptive_lod.empty() ) preemptive_lod = e_map->getSubElementText(ELEM_DEFER_TILE_DATA_LOADING); // backcompat
+    if (preemptive_lod == VALUE_TRUE)
+        engineProps.setPreemptiveLOD(true);
+    else if (preemptive_lod == VALUE_FALSE)
+        engineProps.setPreemptiveLOD(false);
 
 	std::string technique = e_map->getSubElementText(ELEM_TECHNIQUE);
+    if (technique.empty()) technique = e_map->getSubElementText(ELEM_LAYERING_TECHNIQUE); // backcompat
 	if (technique == "multipass")
-	{
-		engineProps.setTechnique( osgEarth::MapEngineProperties::MULTIPASS);
-	}
+		engineProps.setLayeringTechnique( osgEarth::MapEngineProperties::MULTIPASS);
 	else if (technique == "multitexture")
-	{
-		engineProps.setTechnique( osgEarth::MapEngineProperties::MULTITEXTURE );
-	}
+		engineProps.setLayeringTechnique( osgEarth::MapEngineProperties::MULTITEXTURE );
 
     engineProps.setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), engineProps.getVerticalScale() ) );
     engineProps.setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), engineProps.getMinTileRangeFactor() ) );
@@ -481,18 +481,18 @@ mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
     e_map->addSubElement( ELEM_PROXY_HOST, engineProps.getProxyHost() );
     e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>( engineProps.getProxyPort() ) );
 
-	if (engineProps.getTechnique().isSet())
+	if (engineProps.getLayeringTechnique().isSet())
 	{
 		std::string tech;
-		if (engineProps.getTechnique() == MapEngineProperties::MULTIPASS)
+		if (engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
 		{
 			tech = "multipass";
 		}
-		else if (engineProps.getTechnique() == MapEngineProperties::MULTITEXTURE)
+		else if (engineProps.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
 		{
 			tech = "multitexture";
 		}
-		e_map->addSubElement( ELEM_TECHNIQUE, tech );
+		e_map->addSubElement( ELEM_LAYERING_TECHNIQUE, tech );
 	}
 
     //Write all the image sources

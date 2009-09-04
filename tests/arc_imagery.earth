@@ -7,6 +7,6 @@ This example shows how to pull map tiles from an ESRI ArcGIS Server.
 <map name="ESRI Imagery and Roads" type="geocentric">        
     <image name="arcgisonline esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
-        <nodata_image>../data/arconline_nodata.png</nodata_image>
+        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
     </image>
 </map>

@@ -20,6 +20,7 @@ the reprojected imagery should be.
 
         <!--Specify a tile_size to reproject the imagery to -->
         <tile_size>512</tile_size>
+		<nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
     </image>
       
     <image name="arcgisonline transportation" driver="arcgis">

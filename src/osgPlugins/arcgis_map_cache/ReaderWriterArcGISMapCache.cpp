@@ -77,7 +77,7 @@ public:
     }
 
     // override
-    osg::Image* createImageImplementation( const TileKey* key )
+    osg::Image* createImage( const TileKey* key )
     {
         //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
         //if ( dynamic_cast<const PlateCarreTileKey*>( key ) )

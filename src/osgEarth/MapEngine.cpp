@@ -302,7 +302,7 @@ MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
     //If the key profile and the source profile exactly match, simply request the image from the source
     if ( mapProfile->isEquivalentTo( source->getProfile() ) )
     {
-        osg::Image* image = source->createImage( mapKey );
+        osg::Image* image = source->createImageWrapper( mapKey );
         if ( image )
         {
             result = new GeoImage( image, mapKey->getGeoExtent() );

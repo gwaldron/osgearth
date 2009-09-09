@@ -65,7 +65,7 @@ public:
             osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }
 
-    osg::Image* createImageImplementation( const TileKey* key )
+    osg::Image* createImage( const TileKey* key )
     {
         unsigned int level, tile_x, tile_y;
         level = key->getLevelOfDetail() +1;

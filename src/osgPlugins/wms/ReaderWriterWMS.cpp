@@ -248,7 +248,7 @@ public:
     }
 
     /** override */
-    osg::Image* createImageImplementation( const TileKey* key )
+    osg::Image* createImage( const TileKey* key )
     {
         return osgDB::readImageFile( createURI( key ), getOptions() );
     }

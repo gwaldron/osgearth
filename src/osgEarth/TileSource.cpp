@@ -81,7 +81,7 @@ TileSource::~TileSource()
 osg::HeightField*
 TileSource::createHeightField( const TileKey* key )
 {
-    osg::ref_ptr<osg::Image> image = createImage(key);
+    osg::ref_ptr<osg::Image> image = createImageWrapper(key);
     osg::HeightField* hf = 0;
     if (image.valid())
     {
@@ -234,10 +234,10 @@ optional<osg::Vec4ub>& TileSource::transparentColor()
 }
 
 osg::Image*
-TileSource::createImage(const osgEarth::TileKey *key)
+TileSource::createImageWrapper(const osgEarth::TileKey *key)
 {
 	//Read the image tile
-	osg::ref_ptr<osg::Image> image = createImageImplementation( key );
+	osg::ref_ptr<osg::Image> image = createImage( key );
 
 	//Check to see if the image is the nodata image
 	if (image.valid() && _nodata_image.valid())

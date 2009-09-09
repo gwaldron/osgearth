@@ -33,13 +33,13 @@ _tileSource(tileSource)
 }
 
 osg::Image*
-DirectReadTileSource::createImageImplementation(const osgEarth::TileKey* key)
+DirectReadTileSource::createImage(const osgEarth::TileKey* key)
 {
     //If the destination profile and the underlying TileSource profile are the same,
     // simply request the image and return.
     if ( key->getProfile()->isEquivalentTo( _tileSource->getProfile() ) )
     {
-        return _tileSource->createImage( key );
+        return _tileSource->createImageWrapper( key );
     }
 
     //Mosaic the imagery together

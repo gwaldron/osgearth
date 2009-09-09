@@ -206,7 +206,7 @@ Compositor::mosaicImages( const TileKey* key, TileSource* source ) const
 
             //osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
-            osg::ref_ptr<osg::Image> img = source->createImage(intersectingTiles[j].get());
+            osg::ref_ptr<osg::Image> img = source->createImageWrapper(intersectingTiles[j].get());
             if (img.valid())
             {
                 mi->getImages().push_back(TileImage(img.get(), intersectingTiles[j].get()));

@@ -176,7 +176,7 @@ CachedTileSource::createProfile( const Profile* mapProfile, const std::string& c
 
 
 osg::Image*
-CachedTileSource::createImageImplementation( const TileKey* key )
+CachedTileSource::createImage( const TileKey* key )
 {
     osg::Image* image = 0L;
 
@@ -191,7 +191,7 @@ CachedTileSource::createImageImplementation( const TileKey* key )
     //Get the image from the TileSource if it exists
     if ( nextTileSource() )
     {
-        image = nextTileSource()->createImage( key );
+        image = nextTileSource()->createImageWrapper( key );
         if (image)
         {
             writeCachedImage(key, image);

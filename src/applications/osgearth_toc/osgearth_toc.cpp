@@ -91,7 +91,7 @@ struct BlankTileSource : public osgEarth::TileSource
         return mapProfile? mapProfile : osgEarth::Registry::instance()->getGlobalGeodeticProfile();
     }
 
-    virtual osg::Image* createImageImplementation( const TileKey* key ) {
+    virtual osg::Image* createImage( const TileKey* key ) {
         osg::Image* image = new osg::Image();
         image->setAllocationMode( osg::Image::USE_NEW_DELETE );
         image->allocateImage( 256, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE );

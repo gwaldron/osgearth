@@ -138,7 +138,7 @@ public:
     }
 
 
-    osg::Image* createImageImplementation(const osgEarth::TileKey *key)
+    osg::Image* createImage(const osgEarth::TileKey *key)
     {
         if (_tileMap.valid())
         {

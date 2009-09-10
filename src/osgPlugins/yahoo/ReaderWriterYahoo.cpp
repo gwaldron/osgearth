@@ -73,8 +73,7 @@ public:
                 << "?v=4.1&md=2&r=1"
                 << "&x=" << (int)tile_x
                 << "&y=" << ((int)size_y-1-(int)tile_y) - (int)size_y/2
-                << "&z=" << zoom + 2
-                << "&.jpg";
+                << "&z=" << zoom + 2;
         }
         else if ( _dataset == "aerial" || _dataset == "satellite" )
         {
@@ -88,12 +87,22 @@ public:
                 << "?v=1.8&s=256&t=a&r=1"
                 << "&x=" << (int)tile_x
                 << "&y=" << ((int)size_y-1-(int)tile_y) - (int)size_y/2
-                << "&z=" << zoom + 2
-                << "&.jpg";
+                << "&z=" << zoom + 2;
         }
 
-        osg::notify(osg::NOTICE) << key->str() << "=" << buf.str() << std::endl;
-        return osgDB::readImageFile( buf.str(), getOptions() );
+		std::string base = buf.str();
+
+        osg::notify(osg::INFO) << key->str() << "=" << buf.str() << std::endl;
+
+		//Try to read as a JPG first
+		osg::Image* image = osgDB::readImageFile(base + "&.jpg", getOptions());
+		if (!image)
+		{
+			//Try to read as a PNG
+			image = osgDB::readImageFile(base + "&.png", getOptions());
+			osg::notify(osg::INFO) << "Read as a PNG" << std::endl;
+		}
+		return image;
     }
 
     osg::HeightField* createHeightField( const TileKey* key )

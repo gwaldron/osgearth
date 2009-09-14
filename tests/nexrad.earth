@@ -2,7 +2,6 @@
 osgEarth Sample
 
 US NEXRAD 45 minute radar returns overlaid on imagery.
-See: 
 -->
 
 <map name="ESRI Imagery and Roads" type="geocentric">   

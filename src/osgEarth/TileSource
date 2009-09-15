@@ -291,7 +291,7 @@ namespace osgEarth
         virtual bool hasPersistentCache() const { return _next.valid()? _next->hasPersistentCache() : false; }
         virtual bool supportsPersistentCaching() const { return _next.valid()? _next->supportsPersistentCaching() : false; }
         virtual std::string getExtension() const { return _next.valid()? _next->getExtension() : ""; }
-		virtual void setOverrideProfile(const osgEarth::Profile* profile) { if (_next.valid()) _next->setOverrideProfile( profile ); }
+		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile);  if (_next.valid()) _next->setOverrideProfile( profile ); }
 		virtual void setNoDataImage(osg::Image* image) { if (_next.valid()) _next->setNoDataImage(image);};
 
     private:

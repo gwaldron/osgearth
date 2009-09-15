@@ -101,13 +101,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if ( success )
                 {
                     osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), earthFile.getMapEngineProperties() );
-
-                    ////Check to see that the Map is valid.
-                    //if ( !mapNode.valid() || !mapNode->isOK() )
-                    //    return ReadResult::FILE_NOT_HANDLED;
-
-                    osg::notify( osg::INFO ) << "[osgEarth] Map profile = " << earthFile.getMap()->getProfile()->toString()
-                        << std::endl;
  
                     //Create the root node for the scene
                     node = mapNode.release();

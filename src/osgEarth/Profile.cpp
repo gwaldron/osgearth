@@ -119,7 +119,8 @@ ProfileConfig::getExtents(double &minX, double &minY, double &maxX, double &maxY
     maxY = _maxY;
 }
 
-void ProfileConfig::setExtents(double minX, double minY, double maxX, double maxY)
+void
+ProfileConfig::setExtents(double minX, double minY, double maxX, double maxY)
 {
     _minX = minX;
     _minY = minY;
@@ -128,13 +129,25 @@ void ProfileConfig::setExtents(double minX, double minY, double maxX, double max
     _empty = false;
 }
 
+double
+ProfileConfig::xMin() const { return _minX; }
+
+double
+ProfileConfig::xMax() const { return _maxX; }
+
+double 
+ProfileConfig::yMin() const { return _minY; }
+
+double 
+ProfileConfig::yMax() const { return _maxY; }
+
 /***********************************************************************/
 
 
 
 // FACTORY METHODS:
 
-Profile*
+const Profile*
 Profile::create(const std::string& init_string,
                 double xmin, double ymin, double xmax, double ymax,
                 unsigned int numTilesWideAtLod0,
@@ -147,7 +160,7 @@ Profile::create(const std::string& init_string,
         numTilesHighAtLod0 );
 }
 
-Profile*
+const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
                 unsigned int numTilesWideAtLod0,
@@ -160,7 +173,7 @@ Profile::create(const SpatialReference* srs,
         numTilesHighAtLod0 );
 }
 
-Profile*
+const Profile*
 Profile::create(const std::string& init_string,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
@@ -190,7 +203,7 @@ Profile::create(const std::string& init_string,
     return NULL;
 }
 
-Profile*
+const Profile*
 Profile::createCube(const SpatialReference* geog_srs)
 {
     Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0 );
@@ -206,6 +219,34 @@ Profile::createCube(const SpatialReference* geog_srs)
     return result;
 }
 
+
+
+const Profile*
+Profile::create( const ProfileConfig& conf )
+{
+    const Profile* result = 0L;
+
+    // Check for a "well known named" profile:
+    if ( !conf.getNamedProfile().empty() )
+    {
+        result = osgEarth::Registry::instance()->getNamedProfile( conf.getNamedProfile() );
+    }
+
+    // Next check for a user-defined extents:
+    else if ( conf.areExtentsValid() )
+    {
+        result = Profile::create( conf.getSRS(), conf.xMin(), conf.yMin(), conf.xMax(), conf.yMax() );
+    }
+
+    // Next try SRS with default extents
+    else
+    {
+        result = Profile::create( conf.getSRS() );
+    }
+
+    return result;
+}
+
 /****************************************************************************/
 
 
@@ -215,8 +256,9 @@ Profile::Profile(const SpatialReference* srs,
                  unsigned int numTilesHighAtLod0)
 {
     _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
-    _numTilesWideAtLod0 = numTilesWideAtLod0;
-    _numTilesHighAtLod0 = numTilesHighAtLod0;
+
+    _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
+    _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
 
     // automatically calculate the lat/long extents:
     _latlong_extent = srs->isGeographic()?
@@ -403,7 +445,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         currLOD++;
         double w, h;
         getTileDimensions(currLOD, w,h);
-        osg::notify(osg::INFO) << std::fixed << "  " << currLOD << "(" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+        //osg::notify(osg::INFO) << std::fixed << "  " << currLOD << "(" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
         double a = w * h;
         if (a < keyArea) break;
         destLOD = currLOD;
@@ -428,7 +470,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
     tileMinY = osg::clampBetween(tileMinY, 0, (int)numHigh-1);
     tileMaxY = osg::clampBetween(tileMaxY, 0, (int)numHigh-1);
 
-    osg::notify(osg::INFO) << std::fixed << "  Dest Tiles: " << tileMinX << "," << tileMinY << " => " << tileMaxX << "," << tileMaxY << std::endl;
+    //osg::notify(osg::INFO) << std::fixed << "  Dest Tiles: " << tileMinX << "," << tileMinY << " => " << tileMaxX << "," << tileMaxY << std::endl;
 
     for (int i = tileMinX; i <= tileMaxX; ++i)
     {

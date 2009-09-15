@@ -61,10 +61,10 @@ namespace osgEarth
         /** Gets the name of a reference layer whose profile to use. */         
         void setRefLayer(const std::string& refLayer);
 
-        /** Sets the spatial reference system initialization string to use for the profile. */
+        /** Gets the spatial reference system initialization string to use for the profile. */
         const std::string& getSRS() const;
 
-        /** Gets the spatial reference system initialization string to use for the profile. */
+        /** Sets the spatial reference system initialization string to use for the profile. */
         void setSRS(const std::string& srs);
 
         /** Returns true is the extents are set and form a valid spatial envelope. */         
@@ -72,6 +72,10 @@ namespace osgEarth
         
         /** Gets the spatial extents of the profile */
         void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
+        double xMin() const;
+        double yMin() const;
+        double xMax() const;
+        double yMax() const;
 
         /** Sets the spatial extents of the profile */
         void setExtents(double minX, double minY, double maxX, double maxY);
@@ -107,25 +111,28 @@ namespace osgEarth
 
     public:
 
-        static Profile* create(
+        static const Profile* create(
             const std::string& srs_string,
             double xmin, double ymin, double xmax, double ymax,
-            unsigned int numTilesWideAtLod0 =1,
-            unsigned int numTilesHighAtLod0 =1 );
+            unsigned int numTilesWideAtLod0 =0,
+            unsigned int numTilesHighAtLod0 =0 );
 
-        static Profile* create(
+        static const Profile* create(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
-            unsigned int numTilesWideAtLod0 =1,
-            unsigned int numTilesHighAtLod0 =1 );
+            unsigned int numTilesWideAtLod0 =0,
+            unsigned int numTilesHighAtLod0 =0 );
 
-        static Profile* create(
+        static const Profile* create(
             const std::string& srs_string,
-            unsigned int numTilesWideAtLod0 =1,
-            unsigned int numTilesHighAtLod0 =1 );
+            unsigned int numTilesWideAtLod0 =0,
+            unsigned int numTilesHighAtLod0 =0 );
 
-        static Profile* createCube(
+        static const Profile* createCube(
             const SpatialReference* geog_srs);
+
+        static const Profile* create(
+            const ProfileConfig& conf );
 
         /**
          * Returns true if the profile is properly initialized.

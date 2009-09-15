@@ -323,7 +323,16 @@ MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
                 mapKey->getProfile()->getSRS()->isGeographic() &&
                 _engineProps.getUseMercatorLocator();
 
-            if ( !mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS()) && !useMercatorFastPath )
+            // the imagery must be reprojected iff:
+            //  * we're not using the mercator fast path (see above);
+            //  * the SRS of the image is different from the SRS of the key;
+            //  * UNLESS they are both geographic SRS's (in which case we can skip reprojection)
+            bool needsReprojection =
+                !useMercatorFastPath &&
+                !mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS()) &&
+                !(mosaic->getSRS()->isGeographic() && mapKey->getProfile()->getSRS()->isGeographic());
+
+            if ( needsReprojection )
             {
                 //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
@@ -472,10 +481,6 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
                 if ( ancestorLocator )
                 {
                     newImageLocator = ancestorLocator->cloneAndCrop( *defaultLocator, key->getGeoExtent() );
-                    //newImageLocator = new CroppingLocator(
-                    //    *defaultLocator,
-                    //    ancestorLocator->getDataExtent(),
-                    //    key->getGeoExtent() );
                 }
                 else
                 {
@@ -612,7 +617,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         if ( ancestorKey.valid() )
         {
             osgTerrain::TileID tid = ancestorKey->getTileId();
-            ancestorTile = static_cast<VersionedTerrain*>(terrain)->getVersionedTile( ancestorKey->getTileId() );
+            ancestorTile = terrain->getVersionedTile( ancestorKey->getTileId() );
         }
     }
 
@@ -637,8 +642,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         HeightFieldUtils::scaleHeightFieldToDegrees( hfLayer->getHeightField() );
 
     // install a tile switcher:
-    tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
-    TileSwitcher* switcher = new TileSwitcher( tile, key, static_cast<VersionedTerrain*>(terrain) );
+    tile->setTerrainRevision( terrain->getRevision() );
+    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain );
 
     // Install a cluster culler (FIXME for cube mode)
     bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;

@@ -282,56 +282,48 @@ Map::calculateProfile()
     if ( _profile.valid() )
         return;
 
+    osg::ref_ptr<const Profile> userProfile;
+    if ( _profileConf.isSet() )
+    {
+        userProfile = Profile::create( _profileConf.get() );
+    }
+
     if ( getCoordinateSystemType() == CSTYPE_GEOCENTRIC )
     {
-        //If the map type if Geocentric, set the profile to global-geodetic
-        _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-        osg::notify(osg::INFO) << "[osgEarth::MapNode] Setting Profile to global-geodetic for geocentric scene" << std::endl;
+        if ( userProfile.valid() )
+        {
+            if ( userProfile->isOK() && userProfile->getSRS()->isGeographic() )
+            {
+                _profile = userProfile.get();
+            }
+            else
+            {
+                osg::notify(osg::WARN) << "[osgEarth::Map] Map is geocentric, but the configured profile does not "
+                    << "have a geographic SRS. Falling back on default.."
+                    << std::endl;
+            }
+        }
+
+        if ( !_profile.valid() )
+        {
+            // by default, set a geocentric map to use global-geodetic WGS84.
+            _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        }
     }
+
     else if ( getCoordinateSystemType() == CSTYPE_GEOCENTRIC_CUBE )
     {
         //If the map type is a Geocentric Cube, set the profile to the cube profile.
         _profile = osgEarth::Registry::instance()->getCubeProfile();
-        osg::notify(osg::INFO) << "[osgEarth::MapNode] Using cube profile for geocentric scene" << std::endl;
     }
+
     else // CSTYPE_PROJECTED
     {
-        if ( _profileConf.isSet() )
+        if ( userProfile.valid() )
         {
-            const ProfileConfig& conf = _profileConf.get();
-
-            // Check for a "well known named" profile:
-            std::string namedProfile = conf.getNamedProfile();
-            if ( !namedProfile.empty() )
-            {
-                _profile = osgEarth::Registry::instance()->getNamedProfile( namedProfile );
-                if ( _profile.valid() )
-                {
-                    osg::notify(osg::INFO) << "[osgEarth::MapConfig] Set map profile to " << namedProfile << std::endl;
-                }
-                else
-                {
-                    osg::notify(osg::WARN) << "[osgEarth::MapConfig] " << namedProfile << " is not a known profile name" << std::endl;
-                    //TODO: continue on? or fail here?
-                }
-            }
-
-            // Next check for a user-defined profile:
-            else if ( conf.areExtentsValid() )
-            {
-                double minx, miny, maxx, maxy;
-                conf.getExtents( minx, miny, maxx, maxy );
-                _profile = Profile::create( conf.getSRS(), minx, miny, maxx, maxy );
-
-                if ( _profile.valid() )
-                {
-                    osg::notify( osg::INFO ) << "[[osgEarth::MapEngine] Set map profile from SRS: " 
-                        << _profile->getSRS()->getName() << std::endl;
-                }
-            }
+            _profile = userProfile.get();
         }
     }
-
 
     // At this point, if we don't have a profile we need to search tile sources until we find one.
     if ( !_profile.valid() )
@@ -359,9 +351,16 @@ Map::calculateProfile()
     // finally, fire an event if the profile has been set.
     if ( _profile.valid() )
     {
+        osg::notify(osg::INFO) << "[osgEarth::Map] Map profile is: " << _profile->toString() << std::endl;
+
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapProfileEstablished( _profile.get() );
         }
+    }
+
+    else
+    {
+        osg::notify(osg::WARN) << "[osgEarth::Map] Bad news, unable to establish a map profile!" << std::endl;
     }
 }

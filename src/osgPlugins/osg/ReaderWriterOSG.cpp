@@ -38,6 +38,31 @@
 using namespace osgEarth;
 
 #define PROPERTY_URL "url"
+#define PROPERTY_LUMINANCE_TO_RGBA "luminance_to_rgba"
+
+static
+osg::Image* makeRGBA(osg::Image* image)
+{
+    osg::Image* result = new osg::Image;
+    result->allocateImage(image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE);
+
+    if (image->getPixelFormat() == GL_LUMINANCE)
+    {
+        for (int r = 0; r < image->t(); ++r)
+        {
+            for (int c = 0; c < image->s(); ++c)
+            {
+                unsigned char val = *image->data(c, r);
+                result->data(c,r)[0] = val;
+                result->data(c,r)[1] = val;
+                result->data(c,r)[2] = val;
+                result->data(c,r)[3] = val;
+            }
+        }
+    }
+
+    return result;
+}
 
 
 class OSGSource : public TileSource
@@ -47,6 +72,9 @@ public:
     {
         if ( options->getPluginData( PROPERTY_URL ) )
             _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+
+        if ( options->getPluginData( PROPERTY_LUMINANCE_TO_RGBA ) )
+            _convertLuminanceToRGBA = true;            
 
         if ( !_url.empty() )
             _image = osgDB::readImageFile( _url, options );
@@ -59,6 +87,11 @@ public:
         {
             int minSpan = osg::minimum( _image->s(), _image->t() );
             _maxDataLevel = LOG2(minSpan/_tileSize);
+
+            if ( _convertLuminanceToRGBA && _image->getPixelFormat() == GL_LUMINANCE )
+            {
+                _image = makeRGBA( _image.get() );
+            }
         }
     }
 
@@ -118,6 +151,7 @@ private:
     std::string _url;
     int _tileSize;
     int _maxDataLevel;
+    bool _convertLuminanceToRGBA;
     osg::ref_ptr<osg::Image> _image;
 };
 

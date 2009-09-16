@@ -222,6 +222,10 @@ namespace osgEarth
         // Called by a tile source implementation to set the maximum data level
         void setMaxDataLevel( unsigned int max_level );
 
+        /** 
+         * Call this function to explicity set a profile for this tile source (instead of using the one
+         * returned from createProfile)
+         */
 		virtual void setOverrideProfile( const Profile* profile );
 
     private:

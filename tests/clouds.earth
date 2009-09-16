@@ -8,7 +8,7 @@ This example demonstrates a floating cloud layer. Use this together with another
     
     <!-- create an ellipsoid that's slightly larger than the earth -->
     <profile>
-        <srs>+proj=latlong +a=6600000 +b=6600000</srs>
+        <srs>+proj=latlong +a=6610000 +b=6600000</srs>
     </profile>   
     
     <!-- the OSG driver allows us to use non-geoferenced data -->
@@ -20,5 +20,6 @@ This example demonstrates a floating cloud layer. Use this together with another
   
     <!-- don't want a terrain skirt on the clouds -->
     <skirt_ratio>0</skirt_ratio>
+    <sample_ratio>0.5</sample_ratio>
        
 </map>

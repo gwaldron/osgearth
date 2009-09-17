@@ -63,8 +63,15 @@ namespace osgEarth
         virtual const char* className() const { return "VersionedTerrain"; }
 
     public:
+        /**
+         * Bumps the revision number up by one. Versioned Tiles attached to this
+         * terrain will detect the mismatch and regenerate themselves.
+         */
         void advanceRevision();
 
+        /**
+         * Gets the current terrain configuration revision.
+         */
         int getRevision() const;
 
         /**
@@ -77,6 +84,8 @@ namespace osgEarth
     private:
         int _revision;
         OpenThreads::Mutex _revisionMutex;
+
+        
     };
 }
 

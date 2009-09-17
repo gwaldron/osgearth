@@ -55,13 +55,15 @@ using namespace osgEarth;
 class TileSwitcher : public osg::Group
 {
 public:
-    TileSwitcher( VersionedTile* tile, const TileKey* key, VersionedTerrain* terrain ) :
+    TileSwitcher( VersionedTile* tile, const TileKey* key, VersionedTerrain* terrain, float minRange ) :
     _terrain( terrain ),
-    _keyStr( key->str() )
+    _keyStr( key->str() ),
+    _minRange( minRange ),
+    _tile( tile )
     {
         _loaded = false;
         tile->setTerrainRevision( terrain->getRevision() );
-        osg::Group::addChild(tile);
+        osg::Group::addChild( tile );
     }
 
     virtual ~TileSwitcher() {
@@ -74,7 +76,8 @@ public:
         if (_loaded && 
             getNumChildren() > 0 &&
             _terrain.valid() && 
-            static_cast<VersionedTile*>( getChild(0) )->getTerrainRevision() != _terrain->getRevision() )
+            _tile->getTerrainRevision() != _terrain->getRevision() )
+            //static_cast<VersionedTile*>( getChild(0) )->getTerrainRevision() != _terrain->getRevision() )
         {
             //osg::notify(osg::NOTICE) << "Tile " << _keyStr << " is obselete" << std::endl;
             _loaded = false;
@@ -91,17 +94,26 @@ public:
             // this will remove the old tile AND unregister it with the terrain:
             removeChildren( 0, getNumChildren() );
 
-            VersionedTile* tile = static_cast<VersionedTile*>( node );
+            _tile = static_cast<VersionedTile*>( node );
 
-            tile->setTerrain( 0L );             // unregisters with the old one
-            tile->setTerrain( _terrain.get() ); // registers with the new one
+            _tile->setTerrain( 0L );             // unregisters with the old one
+            _tile->setTerrain( _terrain.get() ); // registers with the new one
+
+      //      osg::LOD* lod = new osg::LOD();
+      //      lod->addChild( _tile.get(), _minRange, FLT_MAX );
+            osg::Group::addChild( _tile.get() );
         }
-        return osg::Group::addChild( node );
+        return true;
+
+        //return osg::Group::addChild( node );
     }
 
     bool _loaded;
     std::string _keyStr;
     osg::observer_ptr<VersionedTerrain> _terrain;
+    float _minRange;
+    //osg::observer_ptr<osg::LOD> _lod;
+    osg::observer_ptr<VersionedTile> _tile;
 };
 
 
@@ -121,7 +133,8 @@ struct TileDataLoaderCallback : public osg::NodeCallback
     {
         if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
-            TileSwitcher* switcher = static_cast<TileSwitcher*>( node );
+            //TileSwitcher* switcher = static_cast<TileSwitcher*>( node );
+            TileSwitcher* switcher = static_cast<TileSwitcher*>( node->asGroup()->getChild(0) );
             switcher->checkTileRevision();
 
             if ( !switcher->_loaded )
@@ -643,7 +656,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
-    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain );
+    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range );
 
     // Install a cluster culler (FIXME for cube mode)
     bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
@@ -655,7 +668,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
      
     // Install a callback that will load the actual tile data via the pager (this must be added
     // after the cluster culler)
-    switcher->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    //switcher->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
@@ -668,6 +681,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     plod->addChild( switcher, min_range, max_range );
     plod->setFileName( 1, createURI( map->getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
+    
+    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
 #if USE_FILELOCATIONCALLBACK
     osgDB::Options* options = new osgDB::Options;

@@ -64,7 +64,9 @@ osg::Image* makeRGBA(osg::Image* image)
     return result;
 }
 
-
+/**
+ * A TileSource that uses one of the stock OSG plugins to load an image file.
+ */
 class OSGSource : public TileSource
 {
 public:

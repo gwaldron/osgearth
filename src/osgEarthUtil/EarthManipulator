@@ -79,11 +79,11 @@ namespace osgEarthUtil
 
         /** Action options. Certain options are only meaningful to certain Actions.
             See the bind* documentation for information. */
-        enum ActionOptionType {
-            
+        enum ActionOptionType {            
             OPTION_SCALE_X,             // Sensitivity multiplier for horizontal input movements
             OPTION_SCALE_Y,             // Sensitivity multiplier for vertical input movements
             OPTION_CONTINUOUS,          // Whether to act as long as the button or key is depressed
+            OPTION_SINGLE_AXIS,         // If true, only operate on one axis at a time (the one with the larger value)
             OPTION_GOTO_RANGE_FACTOR,   // for ACTION_GOTO, multiply the Range by this factor (to zoom in/out)
             OPTION_DURATION             // Time it takes to complete the action (in seconds)
         };
@@ -616,6 +616,9 @@ namespace osgEarthUtil
         void updateHandCam( const osg::Timer_t& now );
 
         bool isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const;
+        
+        void applyOptionsToDeltas( const Action& action, double& dx, double& dy );
+
 
     private:
         // makeshift "stack" of the last 2 incoming events.

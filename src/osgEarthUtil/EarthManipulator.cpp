@@ -276,8 +276,8 @@ _local_pitch( 0.0 )
     _settings->bindMouse( ACTION_ROTATE, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON | osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON );
 
     // zoom with the scroll wheel:
-    _settings->bindScroll( ACTION_ZOOM_IN,  osgGA::GUIEventAdapter::SCROLL_UP );
-    _settings->bindScroll( ACTION_ZOOM_OUT, osgGA::GUIEventAdapter::SCROLL_DOWN );
+    _settings->bindScroll( ACTION_ZOOM_IN,  osgGA::GUIEventAdapter::SCROLL_DOWN );
+    _settings->bindScroll( ACTION_ZOOM_OUT, osgGA::GUIEventAdapter::SCROLL_UP );
 
     // pan around with arrow keys:
     _settings->bindKey( ACTION_PAN_LEFT,  osgGA::GUIEventAdapter::KEY_Left );
@@ -336,24 +336,27 @@ EarthManipulator::getSettings() const
 
 void EarthManipulator::setNode(osg::Node* node)
 {
-    _node = node;
-
-    if (_node.get())
+    if ( node )
     {
-        const osg::BoundingSphere& boundingSphere=_node->getBound();
-        const float minimumDistanceScale = 0.001f;
-        _minimumDistance = osg::clampBetween(
-            float(boundingSphere._radius) * minimumDistanceScale,
-            0.00001f,1.0f);
+        _node = osgEarth::MapNode::findCoordinateSystemNode( node );
+
+        if (_node.get())
+        {
+            const osg::BoundingSphere& boundingSphere=_node->getBound();
+            const float minimumDistanceScale = 0.001f;
+            _minimumDistance = osg::clampBetween(
+                float(boundingSphere._radius) * minimumDistanceScale,
+                0.00001f,1.0f);
+        }
+        if (getAutoComputeHomePosition()) computeHomePosition();
+
+        // reset the srs cache:
+        _cached_srs = NULL;
+        _srs_lookup_failed = false;
+
+        // track the local angles.
+        recalculateLocalPitchAndAzimuth();
     }
-    if (getAutoComputeHomePosition()) computeHomePosition();
-
-    // reset the srs cache:
-    _cached_srs = NULL;
-    _srs_lookup_failed = false;
-
-    // track the local angles.
-    recalculateLocalPitchAndAzimuth();
 }
 
 osg::Node*
@@ -1364,6 +1367,21 @@ EarthManipulator::handleContinuousAction( const Action& action )
     handleMovementAction( action._type, _continuous_dx * _t_factor, _continuous_dy * _t_factor );
 }
 
+void
+EarthManipulator::applyOptionsToDeltas( const Action& action, double& dx, double& dy )
+{
+    dx *= action.getDoubleOption( OPTION_SCALE_X, 1.0 );
+    dy *= action.getDoubleOption( OPTION_SCALE_Y, 1.0 );
+
+    if ( action.getBoolOption( OPTION_SINGLE_AXIS, false ) == true )
+    {
+        if ( osg::absolute(dx) > osg::absolute(dy) )
+            dy = 0.0;
+        else
+            dx = 0.0;
+    }
+}
+
 bool
 EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
 {
@@ -1377,8 +1395,10 @@ EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
     if (dx==0 && dy==0) return false;
 
     // here we adjust for action scale, global sensitivy
-    dx *= action.getDoubleOption(OPTION_SCALE_X, 1.0) * _settings->getMouseSensitivity();
-    dy *= action.getDoubleOption(OPTION_SCALE_Y, 1.0) * _settings->getMouseSensitivity();
+    dx *= _settings->getMouseSensitivity();
+    dy *= _settings->getMouseSensitivity();
+
+    applyOptionsToDeltas( action, dx, dy );
 
     // in "continuous" mode, we accumulate the deltas each frame - thus
     // the deltas act more like speeds.
@@ -1415,8 +1435,10 @@ EarthManipulator::handleKeyboardAction( const Action& action, double duration )
     case DIR_DOWN:  dy =  1; break;
     }
 
-    dx *= action.getDoubleOption(OPTION_SCALE_X, 1.0) * _settings->getKeyboardSensitivity();
-    dy *= action.getDoubleOption(OPTION_SCALE_Y, 1.0) * _settings->getKeyboardSensitivity();
+    dx *= _settings->getKeyboardSensitivity();
+    dy *= _settings->getKeyboardSensitivity();
+
+    applyOptionsToDeltas( action, dx, dy );
 
     return handleAction( action, dx, dy, duration );
 }
@@ -1432,12 +1454,14 @@ EarthManipulator::handleScrollAction( const Action& action, double duration )
     {
     case DIR_LEFT:  dx =  1; break;
     case DIR_RIGHT: dx = -1; break;
-    case DIR_UP:    dy =  1; break;
-    case DIR_DOWN:  dy = -1; break;
+    case DIR_UP:    dy = -1; break;
+    case DIR_DOWN:  dy =  1; break;
     }
 
-    dx *= scrollFactor * action.getDoubleOption(OPTION_SCALE_X, 1.0) * _settings->getScrollSensitivity();
-    dy *= scrollFactor * action.getDoubleOption(OPTION_SCALE_Y, 1.0) * _settings->getScrollSensitivity();
+    dx *= scrollFactor * _settings->getScrollSensitivity();
+    dy *= scrollFactor * _settings->getScrollSensitivity();
+
+    applyOptionsToDeltas( action, dx, dy );
 
     return handleAction( action, dx, dy, duration );
 }

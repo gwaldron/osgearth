@@ -387,7 +387,27 @@ namespace osgEarthUtil
             double getMinPitch() const { return _min_pitch; }
 
             /** Gets the maximum allowable local pitch, in degrees. */
-            double getMaxPitch() const { return _max_pitch; }            
+            double getMaxPitch() const { return _max_pitch; }        
+
+			/** Gets the max x offset in world coordates */
+			double getMaxXOffset() const { return _max_x_offset; }
+
+			/** Gets the max y offset in world coordates */
+			double getMaxYOffset() const { return _max_y_offset; }
+
+			/** Gets the minimum distance from the focal point in world coordinates */
+			double getMinDistance() const {return _min_distance; }
+			
+			/** Gets the maximum distance from the focal point in world coordinates */
+			double getMaxDistance() const {return _max_distance; }
+
+			/** Sets the min and max distance from the focal point in world coordiantes */
+			void setMinMaxDistance( double min_distance, double max_distance);
+
+			/**
+			* Sets the maximum allowable offsets for the x and y camera offsets in world coordinates
+			*/
+			void setMaxOffset(double max_x_offset, double max_y_offset);
 
 
 
@@ -416,6 +436,12 @@ namespace osgEarthUtil
             double _scroll_sens;
             double _min_pitch;
             double _max_pitch;
+
+			double _max_x_offset;
+			double _max_y_offset;
+
+			double _min_distance;
+			double _max_distance;
         };
 
     public:
@@ -497,6 +523,18 @@ namespace osgEarthUtil
          *      Output world coordinates (only valid if the method returns true)
          */
         bool screenToWorld(float x, float y, osg::View* view, osg::Vec3d& out_coords );
+
+		/**
+		 * Gets the distance from the focal point in world coordiantes
+		 */
+		double getDistance() const { return _distance; }
+
+		/**
+		 * Sets the distance from the focal point in world coordinates.
+		 *
+		 * The incoming distance value will be clamped within the valid range specified by the settings.
+		 */
+		void   setDistance( double distance);
 
 
     public: // osgGA::MatrixManipulator
@@ -644,6 +682,8 @@ namespace osgEarthUtil
         osg::Vec3d              _center;
         osg::Quat               _rotation;
         double                  _distance;
+		double                  _offset_x;
+		double                  _offset_y;
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;

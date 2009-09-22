@@ -88,6 +88,14 @@ namespace osgEarthUtil
             OPTION_DURATION             // Time it takes to complete the action (in seconds)
         };
 
+		/** Tethering options **/
+		enum TetherMode
+		{
+			TETHER_CENTER,              // The camera will follow the center of the node.
+			TETHER_CENTER_AND_ROTATION, // The camera will follow the node and all rotations made by the node
+			TETHER_CENTER_AND_HEADING   // The camera will follow the node and only follow heading rotation
+		};
+
         struct OSGEARTHUTIL_EXPORT ActionOption {
             ActionOption() { }
             ActionOption( int option, bool value ) : _option(option), _bool_value(value) { }
@@ -409,7 +417,15 @@ namespace osgEarthUtil
 			*/
 			void setMaxOffset(double max_x_offset, double max_y_offset);
 
+			/**
+			* Gets the TetherMode
+			*/
+			TetherMode getTetherMode() const { return _tether_mode; }
 
+			/**
+			* Sets the TetherMode
+			*/
+			void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
 
         private:
 
@@ -442,6 +458,8 @@ namespace osgEarthUtil
 
 			double _min_distance;
 			double _max_distance;
+
+			TetherMode _tether_mode;
         };
 
     public:
@@ -535,6 +553,16 @@ namespace osgEarthUtil
 		 * The incoming distance value will be clamped within the valid range specified by the settings.
 		 */
 		void   setDistance( double distance);
+
+		/**
+		 * Gets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
+		 */
+		const osg::Quat& getRotation() { return _rotation; }
+
+		/**
+		 * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
+		 */
+		void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
 
 
     public: // osgGA::MatrixManipulator
@@ -642,6 +670,7 @@ namespace osgEarthUtil
         bool serviceTask();
 
         void recalculateLocalPitchAndAzimuth();
+		double getAzimuth() const;
 
         void recalculateCenter( const osg::CoordinateFrame& frame );
 
@@ -681,6 +710,7 @@ namespace osgEarthUtil
         bool                    _thrown;      
         osg::Vec3d              _center;
         osg::Quat               _rotation;
+		osg::Quat               _centerRotation;
         double                  _distance;
 		double                  _offset_x;
 		double                  _offset_y;
@@ -707,7 +737,7 @@ namespace osgEarthUtil
 
         osg::Node::NodeMask     _traversalMask;
 
-        osg::ref_ptr<Settings> _settings;
+        osg::ref_ptr<Settings> _settings;		
 
         Action _last_action;
     };

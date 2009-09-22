@@ -27,6 +27,26 @@ using namespace osgEarth;
 
 /****************************************************************************/
 
+void getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
+{
+    //http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToEuler/index.htm
+    p   = atan2( 2 * (q.y()*q.z() + q.w()*q.x()), (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z() * q.z()));
+	h   = asin(2*q.x()*q.y() + 2*q.z()*q.w());
+    r   = atan2(2*q.x()*q.w()-2*q.y()*q.z() , 1 - 2*q.x()*q.x() - 2*q.z()*q.z());
+
+	
+	if(q.x()*q.y() + q.z() *q.w() == 0.5) 
+	{ 
+		p = (float)(2 * atan2( q.x(),q.w())); 
+		r = 0;     
+	}  	 
+	else if(q.x()*q.y() + q.z()*q.w() == -0.5) 
+	{ 
+		p = (float)(-2 * atan2(q.x(), q.w())); 
+		r = 0; 
+	} 
+}
+
 
 EarthManipulator::Action::Action( ActionType type, const ActionOptions& options ) :
 _type( type ),
@@ -109,7 +129,8 @@ _max_x_offset( 0.0 ),
 _max_y_offset( 0.0 ),
 _min_distance( 0.001 ),
 _max_distance( DBL_MAX ),
-_lock_azim_while_panning( true )
+_lock_azim_while_panning( true ),
+_tether_mode( TETHER_CENTER )
 {
 }
 
@@ -126,7 +147,8 @@ _max_x_offset( rhs._max_x_offset ),
 _max_y_offset( rhs._max_y_offset ),
 _min_distance( rhs._min_distance ),
 _max_distance( rhs._max_distance ),
-_lock_azim_while_panning( rhs._lock_azim_while_panning )
+_lock_azim_while_panning( rhs._lock_azim_while_panning ),
+_tether_mode( rhs._tether_mode )
 {
     //NOP
 }
@@ -343,6 +365,7 @@ EarthManipulator::applySettings( Settings* settings )
         // apply new pitch restrictions
         double old_pitch = osg::RadiansToDegrees( _local_pitch );
         double new_pitch = osg::clampBetween( old_pitch, _settings->getMinPitch(), _settings->getMaxPitch() );
+		setDistance(_distance);
 
         if ( new_pitch != old_pitch )
         {
@@ -563,6 +586,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
         // now calculate the new rotation matrix based on the angles:
 
+
         double new_pitch = osg::DegreesToRadians(
             osg::clampBetween( vp.getPitch(), _settings->getMinPitch(), _settings->getMaxPitch() ) );
 
@@ -574,13 +598,17 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         osg::CoordinateFrame local_frame = getCoordinateFrame( new_center );
         _previousUp = getUpVector( local_frame );
 
-        osg::Matrixd center_rot = getRotation( new_center );
-        osg::Quat azim_q( new_azim, osg::Vec3d(0,0,1) );
+        _centerRotation = getRotation( new_center ).getRotate().inverse();
+
+		osg::Quat azim_q( new_azim, osg::Vec3d(0,0,1) );
         osg::Quat pitch_q( -new_pitch -osg::PI_2, osg::Vec3d(1,0,0) );
 
-        osg::Matrix new_rot = center_rot * osg::Matrixd( azim_q * pitch_q );
+		osg::Matrix new_rot = osg::Matrixd( azim_q * pitch_q );
 
-        _rotation = osg::Matrixd::inverse(new_rot).getRotate();
+		_rotation = osg::Matrixd::inverse(new_rot).getRotate();
+
+		//osg::notify(osg::NOTICE) << "Pitch old=" << _local_pitch << " new=" << new_pitch << std::endl;
+		//osg::notify(osg::NOTICE) << "Azim old=" << _local_azim << " new=" << new_azim << std::endl;
 
         _local_pitch = new_pitch;
         _local_azim  = new_azim;
@@ -924,22 +952,45 @@ EarthManipulator::updateTether()
     osg::ref_ptr<osg::Node> temp = _tether_node.get();
     if ( temp.valid() )
     {
+		//Get the bounding sphere of the Node
         const osg::BoundingSphere& bs = temp->getBound();
-        if ( bs._center != _center )
-        {
-            osg::Vec3d new_center = bs._center;
-            if ( getSRS() && _is_geocentric )
-            {
-                double lat_r, lon_r, h;
-                getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
-                    new_center.x(), new_center.y(), new_center.z(),
-                    lat_r, lon_r, h );
-                new_center.set( osg::RadiansToDegrees(lon_r), osg::RadiansToDegrees(lat_r), h );
-            }
-            Viewpoint vp = getViewpoint();
-            vp.setFocalPoint( new_center );
-            setViewpoint( vp );
-        }
+		_center = bs._center;
+		osg::CoordinateFrame local_frame = getCoordinateFrame( _center );
+	    _previousUp = getUpVector( local_frame );
+
+		osg::NodePathList nodePaths = temp->getParentalNodePaths();
+		if (!nodePaths.empty())
+		{
+			osg::NodePath path = nodePaths[0];
+			osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
+			double sx = 1.0/sqrt(localToWorld(0,0)*localToWorld(0,0) + localToWorld(1,0)*localToWorld(1,0) + localToWorld(2,0)*localToWorld(2,0));
+			double sy = 1.0/sqrt(localToWorld(0,1)*localToWorld(0,1) + localToWorld(1,1)*localToWorld(1,1) + localToWorld(2,1)*localToWorld(2,1));
+			double sz = 1.0/sqrt(localToWorld(0,2)*localToWorld(0,2) + localToWorld(1,2)*localToWorld(1,2) + localToWorld(2,2)*localToWorld(2,2));
+			localToWorld = localToWorld*osg::Matrixd::scale(sx,sy,sz);
+
+		    osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
+
+			//Just track the center
+			if (_settings->getTetherMode() == TETHER_CENTER)
+			{
+				_centerRotation = coordinateFrame.getRotate();
+			}
+			//Track all rotations
+			else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
+			{
+			  _centerRotation = localToWorld.getRotate();
+			}
+			else if (_settings->getTetherMode() == TETHER_CENTER_AND_HEADING)
+			{
+				//Track just the heading
+				osg::Matrixd localToFrame(localToWorld*osg::Matrixd::inverse(coordinateFrame));
+				double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
+				osg::Quat nodeRotationRelToFrame, rotationOfFrame;
+				nodeRotationRelToFrame.makeRotate(-azim,0.0,0.0,1.0);
+				rotationOfFrame = coordinateFrame.getRotate();
+				_centerRotation = nodeRotationRelToFrame*rotationOfFrame;
+			}
+		}
     }
 }
 
@@ -1029,11 +1080,13 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
     osg::Vec3d lookVector(- matrix(2,0),-matrix(2,1),-matrix(2,2));
     osg::Vec3d eye(matrix(3,0),matrix(3,1),matrix(3,2));
 
+	_centerRotation = getRotation( _center ).getRotate().inverse();
+
     if (!_node)
     {
         _center = eye+ lookVector;
 		setDistance( lookVector.length() );
-        _rotation = matrix.getRotate();
+		_rotation = matrix.getRotate().inverse() * _centerRotation.inverse();	
         return;
     }
 
@@ -1054,7 +1107,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
                                        matrix*
                                        osg::Matrixd::translate(-_center);
 
-        _rotation = rotation_matrix.getRotate();
+        _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();	
         hitFound = true;
     }
 
@@ -1068,7 +1121,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
         {
             _center = ip;
             setDistance((eye-ip).length());
-            _rotation.set(0,0,0,1);
+			_rotation.set(0,0,0,1);
             hitFound = true;
         }
     }
@@ -1083,13 +1136,19 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
 osg::Matrixd
 EarthManipulator::getMatrix() const
 {
-    return osg::Matrixd::translate(-_offset_x,-_offset_y,_distance)*osg::Matrixd::rotate(_rotation)*osg::Matrixd::translate(_center);
+    return osg::Matrixd::translate(-_offset_x,-_offset_y,_distance)*
+		   osg::Matrixd::rotate(_rotation)*
+		   osg::Matrixd::rotate(_centerRotation)*
+		   osg::Matrixd::translate(_center);
 }
 
 osg::Matrixd
 EarthManipulator::getInverseMatrix() const
 {
-    return osg::Matrixd::translate(-_center)*osg::Matrixd::rotate(_rotation.inverse())*osg::Matrixd::translate(_offset_x,_offset_y,-_distance);
+    return osg::Matrixd::translate(-_center)*
+		   osg::Matrixd::rotate(_centerRotation.inverse() ) *
+		   osg::Matrixd::rotate(_rotation.inverse())*
+		   osg::Matrixd::translate(_offset_x,_offset_y,-_distance);
 }
 
 void
@@ -1131,7 +1190,9 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 
     osg::Matrixd rotation_matrix = osg::Matrixd::lookAt(eye,center,up);
 
-    _rotation = rotation_matrix.getRotate().inverse();
+    _centerRotation = getRotation( _center ).getRotate().inverse();
+	_rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();	
+	
 
     osg::CoordinateFrame coordinateFrame = getCoordinateFrame(_center);
     _previousUp = getUpVector(coordinateFrame);
@@ -1186,14 +1247,15 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
 void
 EarthManipulator::pan( double dx, double dy )
 {
+	//osg::notify(osg::NOTICE) << "pan " << dx << "," << dy <<  std::endl;
 	if (!_tether_node.valid())
 	{
 		double scale = -0.3f*_distance;
-		double old_azim = _local_azim;
+		//double old_azim = _local_azim;
+		double old_azim = getAzimuth();
 
-		osg::Matrixd rotation_matrix;
-		rotation_matrix.makeRotate(_rotation);
-
+		osg::Matrixd rotation_matrix;// = getMatrix();
+		rotation_matrix.makeRotate( _rotation * _centerRotation  );
 
 		// compute look vector.
 		osg::Vec3d lookVector = -getUpVector(rotation_matrix);
@@ -1232,7 +1294,7 @@ EarthManipulator::pan( double dx, double dy )
 
 			if ( !pan_rotation.zeroRotation() )
 			{
-				_rotation = _rotation * pan_rotation;
+				_centerRotation = _centerRotation * pan_rotation;
 				_previousUp = new_localUp;
 			}
 			else
@@ -1242,15 +1304,15 @@ EarthManipulator::pan( double dx, double dy )
 
 			if ( _settings->getLockAzimuthWhilePanning() )
 			{
-				recalculateLocalPitchAndAzimuth();
-
-				double delta_azim = _local_azim - old_azim;
+				double new_azim = getAzimuth();
+				double delta_azim = new_azim - old_azim;
+				//osg::notify(osg::NOTICE) << "DeltaAzim" << delta_azim << std::endl;
 
 				osg::Quat q;
 				q.makeRotate( delta_azim, new_localUp );
 				if ( !q.zeroRotation() )
 				{
-					_rotation = _rotation * q;
+					_centerRotation = _centerRotation * q;
 				}
 			}
 		}
@@ -1274,6 +1336,7 @@ EarthManipulator::pan( double dx, double dy )
 void
 EarthManipulator::rotate( double dx, double dy )
 {
+	//osg::notify(osg::NOTICE) << "rotate " << dx <<", " << dy << std::endl;
     // clamp the local pitch delta; never allow the pitch to hit -90.
     double minp = osg::DegreesToRadians( osg::clampAbove( _settings->getMinPitch(), -89.9 ) );
     double maxp = osg::DegreesToRadians( _settings->getMaxPitch() );
@@ -1282,10 +1345,29 @@ EarthManipulator::rotate( double dx, double dy )
     if ( dy + _local_pitch > maxp || dy + _local_pitch < minp )
         dy = 0;
 
-    Viewpoint vp = getViewpoint();
-    vp.setPitch( osg::RadiansToDegrees( _local_pitch + dy ) );
-    vp.setHeading( osg::RadiansToDegrees( _local_azim + dx ) );
-    setViewpoint( vp );
+	osg::Matrix rotation_matrix;
+	rotation_matrix.makeRotate(_rotation);
+
+	osg::Vec3d lookVector = -getUpVector(rotation_matrix);
+	osg::Vec3d sideVector = getSideVector(rotation_matrix);
+	osg::Vec3d upVector = getFrontVector(rotation_matrix);
+
+	osg::Vec3d localUp(0.0f,0.0f,1.0f);
+
+	osg::Vec3d forwardVector = localUp^sideVector;
+	sideVector = forwardVector^localUp;
+
+	forwardVector.normalize();
+	sideVector.normalize();
+
+	osg::Quat rotate_elevation;
+	rotate_elevation.makeRotate(dy,sideVector);
+
+	osg::Quat rotate_azim;
+	rotate_azim.makeRotate(-dx,localUp);
+
+	_rotation = _rotation * rotate_elevation * rotate_azim;
+	recalculateLocalPitchAndAzimuth();
 }
 
 void
@@ -1556,7 +1638,7 @@ void
 EarthManipulator::recalculateRoll()
 {
     osg::Matrixd rotation_matrix;
-    rotation_matrix.makeRotate(_rotation);
+    rotation_matrix.makeRotate(_centerRotation);
 
     osg::Vec3d lookVector = -getUpVector(rotation_matrix);
     osg::Vec3d upVector = getFrontVector(rotation_matrix);
@@ -1583,16 +1665,14 @@ EarthManipulator::recalculateRoll()
 
     if (!rotate_roll.zeroRotation())
     {
-        _rotation = _rotation * rotate_roll;
+        _centerRotation = _centerRotation * rotate_roll;
     }
 }
 
-
-void
-EarthManipulator::recalculateLocalPitchAndAzimuth()
+double
+EarthManipulator::getAzimuth() const
 {
-    // reproject the view matrix into the local CS of the focal point:
-    osg::Matrix m = getMatrix() * osg::Matrixd::inverse( getCoordinateFrame( _center ) );
+	osg::Matrix m = getMatrix() * osg::Matrixd::inverse( getCoordinateFrame( _center ) );
     osg::Vec3d look = -getUpVector( m ); // -m(2,0), -m(2,1), -m(2,2)
     osg::Vec3d up   =  getFrontVector( m );
     //osg::Vec3d look( -m(2,0), -m(2,1), -m(2,2) );
@@ -1608,13 +1688,15 @@ EarthManipulator::recalculateLocalPitchAndAzimuth()
     else
         azim = atan2( look.x(), look.y() );
 
-    _local_azim  = normalizeAzimRad( azim );
-    _local_pitch = -asin( -look.z() );
+    return normalizeAzimRad( azim );
+}
 
-    //osg::notify(osg::NOTICE)
-    //    << "P=" << osg::RadiansToDegrees(_local_pitch)
-    //    << ", A=" << osg::RadiansToDegrees(_local_azim)
-    //    //<< ", X=" << lookVectorXY.x()
-    //    //<< ", Y=" << lookVectorXY.y()
-    //    << std::endl;
+
+void
+EarthManipulator::recalculateLocalPitchAndAzimuth()
+{
+	double r;
+	getHPRFromQuat( _rotation, _local_azim, _local_pitch, r);
+	_local_pitch -= osg::PI_2;
+	//osg::notify(osg::NOTICE) << "Azim=" << osg::RadiansToDegrees(_local_azim) << " Pitch=" << osg::RadiansToDegrees(_local_pitch) << std::endl;
 }

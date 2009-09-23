@@ -464,6 +464,15 @@ osg::CoordinateSystemNode*
 SpatialReference::createCoordinateSystemNode() const
 {
     osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
+    populateCoordinateSystemNode( csn );
+    return csn;
+}
+
+bool
+SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const
+{
+    if ( !csn )
+        return false;
 
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
@@ -486,7 +495,7 @@ SpatialReference::createCoordinateSystemNode() const
     
     csn->setEllipsoidModel( _ellipsoid.get() );
     
-    return csn;
+    return true;
 }
 
 // Make a MatrixTransform suitable for use with a Locator object based on the given extents.

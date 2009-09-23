@@ -208,19 +208,19 @@ MapNode::getEngine() const
     return _engine.get();
 }
 
-osg::CoordinateSystemNode*
-MapNode::createCoordinateSystemNode() const
-{
-    osg::CoordinateSystemNode* csn = _map->getProfile()->getSRS()->createCoordinateSystemNode();
-
-    if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
-    {
-        // Setting the ellipsoid to NULL indicates that the CS should be interpreted 
-        // as PROJECTED instead of GEOGRAPHIC.
-        csn->setEllipsoidModel( NULL );
-    }
-    return csn;
-}
+//osg::CoordinateSystemNode*
+//MapNode::createCoordinateSystemNode() const
+//{
+//    osg::CoordinateSystemNode* csn = _map->getProfile()->getSRS()->createCoordinateSystemNode();
+//
+//    if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
+//    {
+//        // Setting the ellipsoid to NULL indicates that the CS should be interpreted 
+//        // as PROJECTED instead of GEOGRAPHIC.
+//        csn->setEllipsoidModel( NULL );
+//    }
+//    return csn;
+//}
 
 
 MapNode*
@@ -229,11 +229,11 @@ MapNode::findMapNode( osg::Node* graph )
     return findTopMostNodeOfType<MapNode>( graph );
 }
 
-osg::CoordinateSystemNode*
-MapNode::findCoordinateSystemNode( osg::Node* graph )
-{
-    return findTopMostNodeOfType<osg::CoordinateSystemNode>( graph );
-}
+//osg::CoordinateSystemNode*
+//MapNode::findCoordinateSystemNode( osg::Node* graph )
+//{
+//    return findTopMostNodeOfType<osg::CoordinateSystemNode>( graph );
+//}
 
 bool
 MapNode::isGeocentric() const
@@ -258,7 +258,15 @@ void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     // Note: CSN must always be at the top
-    osg::CoordinateSystemNode* csn = createCoordinateSystemNode();
+    //osg::CoordinateSystemNode* csn = createCoordinateSystemNode();
+
+    // set up the CSN values
+    _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
+    
+    // OSG's CSN likes a NULL ellipsoid to represent projected mode.
+    if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
+        this->setEllipsoidModel( NULL );
+
 
     // go through and build the root nodesets.
     int faces_ok = 0;
@@ -277,7 +285,8 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 
         terrain->setVerticalScale( _engineProps.getVerticalScale() );
         terrain->setSampleRatio( _engineProps.getSampleRatio() );
-        csn->addChild( terrain );
+        //csn->addChild( terrain );
+        this->addChild( terrain );
         _terrains.push_back( terrain );
 
         std::vector< osg::ref_ptr<TileKey> > keys;
@@ -305,7 +314,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         }
     }
 
-    addChild( csn );
+    //addChild( csn );
 }
 
 void

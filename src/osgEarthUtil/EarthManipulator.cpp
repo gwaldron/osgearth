@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/EarthManipulator>
+#include <osgEarth/FindNode>
 #include <osg/Quat>
 #include <osg/Notify>
 #include <osgUtil/LineSegmentIntersector>
@@ -385,7 +386,7 @@ void EarthManipulator::setNode(osg::Node* node)
 {
     if ( node )
     {
-        _node = osgEarth::MapNode::findCoordinateSystemNode( node );
+        _node = osgEarth::MapNode::findMapNode( node );
         if (getAutoComputeHomePosition()) computeHomePosition();
 
         // reset the srs cache:
@@ -433,7 +434,7 @@ EarthManipulator::getSRS() const
         // if that doesn't work, try gleaning info from a CSN:
         if ( !_cached_srs.valid() )
         {
-            osg::CoordinateSystemNode* csn = osgEarth::MapNode::findCoordinateSystemNode( _node.get() );
+            osg::CoordinateSystemNode* csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( _node.get() );
             if ( csn )
             {
                 nonconst_this->_cached_srs = osgEarth::SpatialReference::create( csn );

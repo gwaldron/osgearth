@@ -205,14 +205,40 @@ MapEngine::getTransformFromExtents(double minX, double minY, double maxX, double
 }
 
 osg::Node*
-MapEngine::createNode( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers )
+MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers )
 {
-    osg::ref_ptr<osg::Group> parent = new osg::Group;
-    if ( !addChildren( map, terrain, parent.get(), key, populateLayers ))
+    osg::ref_ptr<TileKey> k0 = key->createSubkey(0);
+    osg::ref_ptr<TileKey> k1 = key->createSubkey(1);
+    osg::ref_ptr<TileKey> k2 = key->createSubkey(2);
+    osg::ref_ptr<TileKey> k3 = key->createSubkey(3);
+
+    osg::ref_ptr<osg::Node> q0, q1, q2, q3;
+
+    q0 = createTile( map, terrain, k0.get(), populateLayers );
+    if ( q0.valid() )
     {
-        parent = 0;
+        q1 = createTile( map, terrain, k1.get(), populateLayers );
+        if ( q1.valid() )
+        {
+            q2 = createTile( map, terrain, k2.get(), populateLayers );
+            if ( q2.valid() )
+            {
+                q3 = createTile( map, terrain, k3.get(), populateLayers );
+                if ( q3.valid() )
+                {
+                    osg::Group* tile_parent = new osg::Group();
+                    tile_parent->addChild( q0.get() );
+                    tile_parent->addChild( q1.get() );
+                    tile_parent->addChild( q2.get() );
+                    tile_parent->addChild( q3.get() );
+                    return tile_parent;
+                }
+            }
+        }
     }
-    return parent.release();
+
+    osg::notify(osg::INFO) << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+    return NULL;
 }
 
 GeoImage*
@@ -245,7 +271,6 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
 
     for ( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-//        if ( i->get()->maxLevel().isSet() && key->getLevelOfDetail() < i->get()->maxLevel().get() )
         if ( !i->get()->maxLevel().isSet() || key->getLevelOfDetail() < i->get()->maxLevel().get() )
         {
             more_levels = true;
@@ -256,7 +281,6 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
     {
         for( MapLayerList::const_iterator j = map->getHeightFieldMapLayers().begin(); j != map->getHeightFieldMapLayers().end(); j++ )
         {
-//            if ( j->get()->maxLevel().isSet() && key->getLevelOfDetail() < j->get()->maxLevel().get() )
             if ( !j->get()->maxLevel().isSet() || key->getLevelOfDetail() < j->get()->maxLevel().get() )
             {
                 more_levels = true;
@@ -267,44 +291,6 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
 
     return more_levels;
 }
-
-bool
-MapEngine::addChildren(Map* map,
-                       VersionedTerrain* terrain,
-                       osg::Group* tile_parent,
-                       const TileKey* key,
-                       bool populateLayers )
-{
-    bool all_quadrants_created = false;
-
-    osg::ref_ptr<osg::Node> q0, q1, q2, q3;
-
-    osg::ref_ptr<TileKey> k0 = key->getSubkey(0);
-    osg::ref_ptr<TileKey> k1 = key->getSubkey(1);
-    osg::ref_ptr<TileKey> k2 = key->getSubkey(2);
-    osg::ref_ptr<TileKey> k3 = key->getSubkey(3);
-
-    q0 = createTile( map, terrain, k0.get(), populateLayers );
-    q1 = createTile( map, terrain, k1.get(), populateLayers );
-    q2 = createTile( map, terrain, k2.get(), populateLayers );
-    q3 = createTile( map, terrain, k3.get(), populateLayers );
-
-    all_quadrants_created = (q0.valid() && q1.valid() && q2.valid() && q3.valid());
-
-    if (all_quadrants_created)
-    {
-        if (q0.valid()) tile_parent->addChild(q0.get());
-        if (q1.valid()) tile_parent->addChild(q1.get());
-        if (q2.valid()) tile_parent->addChild(q2.get());
-        if (q3.valid()) tile_parent->addChild(q3.get());
-    }
-    else
-    {
-        osg::notify(osg::INFO) << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
-    }
-    return all_quadrants_created;
-}
-
 
 GeoImage*
 MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
@@ -438,8 +424,7 @@ MapEngine::createHeightField( Map* map, const TileKey* key, bool fallback )
     // dont' need this here??
     //OpenThreads::ScopedReadLock lock( map->getMapDataMutex() );
 
-    osg::ref_ptr< ElevationManager > em = new ElevationManager;
-
+    osg::ref_ptr<ElevationManager> em = new ElevationManager( map->getHeightFieldMapLayers().size() );
     for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
         em->getElevationSources().push_back( i->get()->getTileSource() );
@@ -535,23 +520,21 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
             float hx = 0.5f * (float)ancestorHF->getNumColumns();
             float hy = 0.5f * (float)ancestorHF->getNumRows();
 
-            float x0 = key->getGeoExtent().xMin() > ancestorKey->getGeoExtent().xMin()? hx : 0.0;
-            float y0 = key->getGeoExtent().yMin() > ancestorKey->getGeoExtent().yMin()? hy : 0.0;
-            
-            for( float r=y0; r<y0+hy; r+=0.5f )
+            const GeoExtent& keyex = key->getGeoExtent();
+
+            double x, y;
+            int col, row;
+
+            for( x = keyex.xMin(), col=0; col < hf->getNumColumns(); x += hf->getXInterval(), col++ )
             {
-                for( float c=x0; c<x0+hx; c+=0.5f )
+                for( y = keyex.yMin(), row=0; row < hf->getNumRows(); y += hf->getYInterval(), row++ )
                 {
-                    float h = HeightFieldUtils::getHeightAtPixel( ancestorHF, c, r );
-                    hf->setHeight( (unsigned int)((c-x0)*2.0f), (unsigned int)((r-y0)*2.0f), h );
+                    float h = HeightFieldUtils::getHeightAtLocation( ancestorHF, x, y );
+                    hf->setHeight( col, row, h );
                 }
             }
 
-            const osg::Vec3d& anOrig = ancestorHF->getOrigin();
-            osg::Vec3d orig;
-            orig.x() = x0 == 0.0f? anOrig.x() : anOrig.x() + hx * ancestorHF->getXInterval();
-            orig.y() = y0 == 0.0f? anOrig.y() : anOrig.y() + hy * ancestorHF->getYInterval();
-            orig.z() = anOrig.z();
+            osg::Vec3d orig( keyex.xMin(), keyex.yMin(), ancestorHF->getOrigin().z() );
             hf->setOrigin( orig );
 
             osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
@@ -574,9 +557,14 @@ osg::Node*
 MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers )
 {
     if ( populateLayers )
-        return createPopulatedTile( map, terrain, key );
+    {
+        bool wrapInPagedLOD = !_engineProps.getPreemptiveLOD();
+        return createPopulatedTile( map, terrain, key, wrapInPagedLOD );
+    }
     else
+    {
         return createPlaceholderTile( map, terrain, key );
+    }
 }
 
 
@@ -697,7 +685,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
 
 osg::Node*
-MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key )
+MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool wrapInPagedLOD )
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -924,12 +912,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
 
-    if ( _engineProps.getPreemptiveLOD() )
-    {
-        // if this was a deferred load, all we need is the populated tile.
-        return tile;
-    }
-    else
+    if ( wrapInPagedLOD )
     {
         // if we are doing immediate load, we need to house the new tile in a PLOD that will
         // queue up its subtiles.
@@ -948,6 +931,35 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     
         return plod;
     }
+    else
+    {
+        return tile;
+    }
+
+//    if ( _engineProps.getPreemptiveLOD() )
+//    {
+//        // if this was a deferred load, all we need is the populated tile.
+//        return tile;
+//    }
+//    else
+//    {
+//        // if we are doing immediate load, we need to house the new tile in a PLOD that will
+//        // queue up its subtiles.
+//        osg::PagedLOD* plod = new osg::PagedLOD();
+//        plod->setCenter( bs.center() );
+//		plod->addChild(tile, 0, min_range);
+//        plod->setFileName( 1, createURI( map->getId(), key ) );
+//		plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
+//		plod->setRange(1, min_range, FLT_MAX);
+//        
+//#if USE_FILELOCATIONCALLBACK
+//        osgDB::Options* options = new osgDB::Options;
+//        options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+//        plod->setDatabaseOptions( options );
+//#endif
+//    
+//        return plod;
+//    }
 }
 
 osg::ClusterCullingCallback*

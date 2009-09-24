@@ -133,22 +133,20 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
 
     if (key->getLevelOfDetail() <= _maxLevel)
     {
-        osg::ref_ptr<TileKey> k0 = key->getSubkey(0);
-        osg::ref_ptr<TileKey> k1 = key->getSubkey(1);
-        osg::ref_ptr<TileKey> k2 = key->getSubkey(2);
-        osg::ref_ptr<TileKey> k3 = key->getSubkey(3);        
+        osg::ref_ptr<TileKey> k0 = key->createSubkey(0);
+        osg::ref_ptr<TileKey> k1 = key->createSubkey(1);
+        osg::ref_ptr<TileKey> k2 = key->createSubkey(2);
+        osg::ref_ptr<TileKey> k3 = key->createSubkey(3);        
 
         //Check to see if the bounds intersects ANY of the tile's children.  If it does, then process all of the children
         //for this level
-        if ((k0.valid() && _bounds.intersects(k0.get())) ||
-            (k1.valid() && _bounds.intersects(k1.get())) ||
-            (k2.valid() && _bounds.intersects(k2.get())) ||
-            (k3.valid() && _bounds.intersects(k3.get())))
+        if (_bounds.intersects(k0.get()) || _bounds.intersects(k1.get()) ||
+            _bounds.intersects(k2.get()) || _bounds.intersects(k3.get()) )
         {
-            if (k0.valid()) processKey(map, engine, k0.get()); 
-            if (k1.valid()) processKey(map, engine, k1.get()); 
-            if (k2.valid()) processKey(map, engine, k2.get()); 
-            if (k3.valid()) processKey(map, engine, k3.get()); 
+            processKey(map, engine, k0.get()); 
+            processKey(map, engine, k1.get()); 
+            processKey(map, engine, k2.get()); 
+            processKey(map, engine, k3.get()); 
         }
     }
 }

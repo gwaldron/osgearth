@@ -80,19 +80,6 @@ ProfileConfig::setNamedProfile( const std::string& namedProfile)
 }
 
 const std::string&
-ProfileConfig::getRefLayer() const
-{
-    return _refLayer;
-}
-
-void
-ProfileConfig::setRefLayer(const std::string& refLayer)
-{
-    _refLayer = refLayer;
-    _empty = false;
-}
-
-const std::string&
 ProfileConfig::getSRS() const
 {
     return _srs;
@@ -140,6 +127,7 @@ ProfileConfig::yMin() const { return _minY; }
 
 double 
 ProfileConfig::yMax() const { return _maxY; }
+
 
 /***********************************************************************/
 
@@ -206,7 +194,7 @@ Profile::create(const std::string& init_string,
 const Profile*
 Profile::createCube(const SpatialReference* geog_srs)
 {
-    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0 );
+    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0, 1, 1 );
 
     result->_face_profiles.push_back( new Profile( geog_srs, -180.0, -45.0, -90.0, 45.0 ) );
     result->_face_profiles.push_back( new Profile( geog_srs,  -90.0, -45.0,   0.0, 45.0 ) );
@@ -383,6 +371,21 @@ Profile::getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned in
         out_tiles_wide *= 2;
         out_tiles_high *= 2;
     }
+}
+
+unsigned int
+Profile::getLevelOfDetailForHorizResolution( double resolution, int tileSize ) const
+{
+    if ( tileSize <= 0 || resolution <= 0.0 ) return 0;
+
+    double tileRes = (_extent.width() / (double)_numTilesWideAtLod0) / (double)tileSize;
+    unsigned int level = 0;
+    while( tileRes < resolution ) 
+    {
+        level++;
+        tileRes *= 2.0;
+    }
+    return level;
 }
 
 GeoExtent

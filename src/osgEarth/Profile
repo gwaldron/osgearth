@@ -55,12 +55,6 @@ namespace osgEarth
         /** Sets an optional Well-Known Profile string. */
         void setNamedProfile( const std::string& namedProfile);
 
-        /** Sets the name of a reference layer whose profile to use. */
-        const std::string& getRefLayer() const;
-
-        /** Gets the name of a reference layer whose profile to use. */         
-        void setRefLayer(const std::string& refLayer);
-
         /** Gets the spatial reference system initialization string to use for the profile. */
         const std::string& getSRS() const;
 
@@ -160,6 +154,12 @@ namespace osgEarth
         ProfileType getProfileType() const;  
 
         /**
+         * Given an x-resolution, specified in the profile's SRS units, calculates and
+         * returns the closest LOD level.
+         */
+        unsigned int getLevelOfDetailForHorizResolution( double resolution, int tileSize ) const;
+
+        /**
          * Gets the number of faces in this profile.
          */
         int getNumFaces() const;
@@ -214,8 +214,8 @@ namespace osgEarth
         Profile(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
-            unsigned int x_tiles_at_lod0 =1,
-            unsigned int y_tiles_at_lod0 =1 );
+            unsigned int x_tiles_at_lod0 =0,
+            unsigned int y_tiles_at_lod0 =0 );
         
 
         void addIntersectingTiles(

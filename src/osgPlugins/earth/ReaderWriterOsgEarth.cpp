@@ -136,7 +136,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     {
                         bool loadNow = !mapNode->getEngine()->getEngineProperties().getPreemptiveLOD();
 
-                        node = mapNode->getEngine()->createNode(
+                        node = mapNode->getEngine()->createSubTiles(
                             mapNode->getMap(),
                             mapNode->getTerrain( face ),
                             key.get(),

@@ -26,6 +26,7 @@
 #include <osgEarth/VersionedTerrain>
 #include <osgEarth/MapLayer>
 #include <osgEarth/Locators>
+#include <osgEarth/ElevationManager>
 
 #include <OpenThreads/ReadWriteMutex>
 #include <osgDB/ReaderWriter>
@@ -50,12 +51,17 @@ namespace osgEarth
 
     public:
         /**
-         * Creates a node graph for a given TileKey.
+         * Creates a node graph containing four tiles that correspond to the four
+         * subkeys of the provided TileKey.
          */
-        osg::Node* createNode( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers );
+        osg::Node* createSubTiles(
+            Map* map,
+            VersionedTerrain* terrain,
+            const TileKey* key,
+            bool populateLayers );
 
         /**
-         * Creates a single terrain tile.
+         * Creates a single terrain tile corresponding to the provided TileKey.
          */
         virtual osg::Node* createTile(
             Map* map,
@@ -102,23 +108,6 @@ namespace osgEarth
 
         virtual ~MapEngine();
 
-        /**
-        * Adds any appropriate child nodes to the given parent group for the given TileKey.
-        * The implementation class must define this method.
-        *
-        * @param parent
-        *        The parent osg::Group to add the children to
-        * @param key
-        *        The tilekey to generate children for
-        * @returns
-        *        True if all children were successfully added to the group, false otherwise
-        */
-        bool addChildren(
-            Map* map,
-            VersionedTerrain* terrain,
-            osg::Group* parent,
-            const TileKey* key,
-            bool populateLayers );
 
         osg::Node* createPlaceholderTile(
             Map* map,
@@ -128,7 +117,8 @@ namespace osgEarth
         osg::Node* createPopulatedTile(
             Map* map, 
             VersionedTerrain* terrain,
-            const TileKey* key );
+            const TileKey* key,
+            bool wrapInPagedLOD );
         
         void addPlaceholderImageLayers(
             VersionedTile* tile,
@@ -151,6 +141,7 @@ namespace osgEarth
     protected:
 
         MapEngineProperties _engineProps;
+        osg::ref_ptr<ElevationManager> _elevationMan;
     };
 }
 

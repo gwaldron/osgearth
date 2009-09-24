@@ -116,12 +116,6 @@ namespace osgEarth
 
     public:
         /**
-         * Creates and returns a new map engine that can generate tiles for this map.
-         */
-        //MapEngine* createMapEngine(
-        //    const MapEngineProperties& engineProps =MapEngineProperties() );
-
-        /**
          * Gets the user-provided options structure stored in this map.
          */
         const osgDB::ReaderWriter::Options* getGlobalOptions() const;

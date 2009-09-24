@@ -160,7 +160,7 @@ readProfileConfig( XmlElement* e_profile )
     ProfileConfig profile;
 
     profile.setNamedProfile( e_profile->getText() );
-    profile.setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
+//    profile.setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
 
     std::string srs_text = e_profile->getSubElementText( ATTR_SRS );
     std::string srs_attr = e_profile->getAttr( ATTR_SRS );
@@ -184,7 +184,7 @@ static void
 writeProfileConfig(const ProfileConfig& profile, XmlElement* e_profile )
 {
     e_profile->getChildren().push_back(new XmlText(profile.getNamedProfile()));
-    e_profile->getAttrs()[ATTR_USELAYER] = profile.getRefLayer();
+    //e_profile->getAttrs()[ATTR_USELAYER] = profile.getRefLayer();
     e_profile->getAttrs()[ATTR_SRS] = profile.getSRS();
 
     if (profile.areExtentsValid())

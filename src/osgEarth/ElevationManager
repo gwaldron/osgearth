@@ -42,7 +42,7 @@ namespace osgEarth
         /**
          * Constructs a new, default elevation manager
          */
-        ElevationManager();
+        ElevationManager( int initialCapacity =0 );
 
         /**
          * Creates and returns a new height field corresponding to the specified tile key.

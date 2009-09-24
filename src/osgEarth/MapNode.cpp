@@ -297,7 +297,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         {
             bool loadNow = !_engineProps.getPreemptiveLOD();
 
-            osg::Node* node = _engine->createNode( _map.get(), terrain, keys[i].get(), loadNow );
+            osg::Node* node = _engine->createSubTiles( _map.get(), terrain, keys[i].get(), loadNow );
             if (node)
             {
                 terrain->addChild(node);

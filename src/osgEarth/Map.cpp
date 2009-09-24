@@ -19,8 +19,6 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/TileSourceFactory>
-//#include <osgEarth/GeocentricMap>
-//#include <osgEarth/ProjectedMap>
 #include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
@@ -118,16 +116,6 @@ Map::getProfile() const
         const_cast<Map*>(this)->calculateProfile();
     return _profile.get();
 }
-
-//MapEngine*
-//Map::createMapEngine( const MapEngineProperties& engineProps )
-//{
-//    if ( _cstype == CSTYPE_GEOCENTRIC || _cstype == CSTYPE_GEOCENTRIC_CUBE )
-//        return new GeocentricMapEngine( engineProps );
-//    else
-//        return new ProjectedMapEngine( engineProps );
-//}
-
 
 void 
 Map::addMapCallback( MapCallback* cb )

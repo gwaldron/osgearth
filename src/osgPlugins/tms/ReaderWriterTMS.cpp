@@ -132,6 +132,8 @@ public:
           //TODO:  Replace this with a concept of the "data" having a min/max level, not the min-max visible level
           //setMinLevel(_tileMap->getMinLevel());
           //setMaxLevel(_tileMap->getMaxLevel());
+
+          this->setMaxDataLevel( _tileMap->getMaxLevel() );
         }
 
         return result;
@@ -140,7 +142,7 @@ public:
 
     osg::Image* createImage(const osgEarth::TileKey *key)
     {
-        if (_tileMap.valid())
+        if (_tileMap.valid() && key->getLevelOfDetail() <= getMaxDataLevel() )
         {
             std::string image_url = _tileMap->getURL( key, _invertY);
                 

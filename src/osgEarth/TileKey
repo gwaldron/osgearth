@@ -79,7 +79,7 @@ namespace osgEarth
          * Gets a reference to the child key of this key in the specified
          * quadrant (0, 1, 2, or 3).
          */
-        virtual TileKey* getSubkey( unsigned int quadrant ) const;
+        virtual TileKey* createSubkey( unsigned int quadrant ) const;
 
         /**
          * Creates and returns a key that represents the parent tile of this key. The

@@ -97,7 +97,7 @@ TileKey::getPixelExtents(unsigned int& xmin,
 }
 
 TileKey*
-TileKey::getSubkey( unsigned int quadrant ) const
+TileKey::createSubkey( unsigned int quadrant ) const
 {
     unsigned int lod = _lod + 1;
     unsigned int x = _x * 2;

@@ -25,9 +25,11 @@ using namespace osg;
 using namespace osgEarth;
 
 
-ElevationManager::ElevationManager():
+ElevationManager::ElevationManager( int initialCapacity ) :
 _samplePolicy(FIRST_VALID)
 {
+    if ( initialCapacity > 0 )
+        _elevationSources.reserve( initialCapacity );
 }
 
 TileSourceList&

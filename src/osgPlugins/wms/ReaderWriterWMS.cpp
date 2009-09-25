@@ -168,6 +168,10 @@ public:
         {
             result = osgEarth::Registry::instance()->getGlobalMercatorProfile();
         }
+		else if (wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getSRS()))
+		{
+			result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+		}
 
         // Next, try to glean the extents from the layer list
         if ( !result.valid() )

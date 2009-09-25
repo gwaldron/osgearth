@@ -33,6 +33,9 @@
 
 #include <sstream>
 
+#include <stdio.h>
+#include <string.h>
+
 #define LOG2(X) (::log((double)(X))/::log(2.0))
 
 using namespace osgEarth;

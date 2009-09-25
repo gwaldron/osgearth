@@ -248,6 +248,8 @@ namespace osgEarth
 		osg::Image* createImageWrapper( const TileKey* key, bool cacheInLayerProfile );
 		GeoHeightField* createGeoHeightField( const TileKey* key );
 
+		void readEnvironmentalVariables();
+
         ~MapLayer() { }
 
     private:
@@ -269,6 +271,7 @@ namespace osgEarth
 		bool _enabled;
 
 		bool _cacheOnly;
+		bool _cacheOnlyEnv;
         
         osg::ref_ptr<TileSource> _tileSource;
 		osg::ref_ptr<Cache> _cache;

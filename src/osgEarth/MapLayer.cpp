@@ -33,9 +33,10 @@ _enabled(true),
 _exactCropping(false),
 _useMercatorFastPath(true),
 _reprojected_tile_size(256),
-_cacheOnly( false )
+_cacheOnly( false ),
+_cacheOnlyEnv( false )
 {
-	//NOP
+	readEnvironmentalVariables();
 }
 
 MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
@@ -47,9 +48,10 @@ _enabled(true),
 _exactCropping(false),
 _useMercatorFastPath(true),
 _reprojected_tile_size(256),
-_cacheOnly( false )
+_cacheOnly( false ),
+_cacheOnlyEnv( false )
 {
-    //NOP
+	readEnvironmentalVariables();
 }
 
 optional<int>&
@@ -92,11 +94,7 @@ MapLayer::getDriverProperties() const {
 
 bool MapLayer::getCacheOnly() const
 {
-	if (getenv("OSGEARTH_CACHE_ONLY") != 0)
-	{
-		return true;
-	}
-	return _cacheOnly;
+	return _cacheOnly || _cacheOnlyEnv;
 }
 
 void MapLayer::setCacheOnly( bool cacheOnly )
@@ -170,6 +168,16 @@ void
 MapLayer::setCacheFormat(const std::string& cacheFormat)
 {
 	_cacheFormat = cacheFormat;
+}
+
+void 
+MapLayer::readEnvironmentalVariables()
+{
+	//See if cache only is turned on in an env var
+	if (getenv("OSGEARTH_CACHE_ONLY") != 0)
+	{
+		_cacheOnlyEnv = true;
+	}
 }
 
 void
@@ -437,7 +445,10 @@ MapLayer::createImage( const TileKey* key )
                 // crop to fit the map key extents
                 GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key->getGeoExtent() );
                 if ( clampedMapExt.width() * clampedMapExt.height() > 0 )
-                    result = mosaic->crop(clampedMapExt, _exactCropping, _reprojected_tile_size, _reprojected_tile_size);
+				{
+					int size = _exactCropping ? _reprojected_tile_size : 0;
+                    result = mosaic->crop(clampedMapExt, _exactCropping, size, size);
+				}
                 else
                     result = NULL;
             }

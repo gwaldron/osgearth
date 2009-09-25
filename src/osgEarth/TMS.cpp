@@ -299,6 +299,7 @@ TileMap::create(const std::string& url,
 	profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
 
 	tileMap->generateTileSets();
+	tileMap->computeMinMaxLevel();
         
     return tileMap;
 }

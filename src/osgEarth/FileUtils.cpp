@@ -47,7 +47,7 @@ bool osgEarth::isRelativePath(const std::string& fileName)
 
 std::string osgEarth::getFullPath(const std::string& relativeTo, const std::string &relativePath)
 {
-    if (!isRelativePath(relativePath))
+	if (!isRelativePath(relativePath) || relativeTo.empty())
     {
         //osg::notify(osg::NOTICE) << relativePath << " is not a relative path " << std::endl;
         return relativePath;

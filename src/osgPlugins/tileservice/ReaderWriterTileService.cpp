@@ -58,9 +58,18 @@ public:
     }
 
 public:
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+		//Take on the override profile if one is given.
+		if (overrideProfile)
+		{
+			setProfile( overrideProfile );
+		}
+		else
+		{
+			//Assume it is global geodetic
+			setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+		}
     }
 
 public:

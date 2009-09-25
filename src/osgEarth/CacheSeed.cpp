@@ -53,6 +53,7 @@ void CacheSeed::seed( Map* map )
     //Assumes the the TileSource will perform the caching for us when we call createImage
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
+		MapLayer* layer = i->get();
         TileSource* src = i->get()->getTileSource();
 
         if ( !src->supportsPersistentCaching() )
@@ -67,15 +68,16 @@ void CacheSeed::seed( Map* map )
         {
             hasCaches = true;
 
-            if ( src->getMinLevel() < src_min_level )
-                src_min_level = src->getMinLevel();
-            if ( src->getMaxLevel() > src_max_level )
-                src_max_level = src->getMaxLevel();
+			if (layer->minLevel().isSet() && layer->minLevel().get() < src_min_level)
+                src_min_level = layer->minLevel().get();
+			if (layer->maxLevel().isSet() && layer->maxLevel().get() > src_max_level)
+                src_max_level = layer->maxLevel().get();
         }
     }
 
     for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
+		MapLayer* layer = i->get();
         TileSource* src = i->get()->getTileSource();
 
         if ( !src->supportsPersistentCaching() )
@@ -90,11 +92,11 @@ void CacheSeed::seed( Map* map )
         {
             hasCaches = true;
 
-            if ( src->getMinLevel() < src_min_level )
-                src_min_level = src->getMinLevel();
-            if ( src->getMaxLevel() > src_max_level )
-                src_max_level = src->getMaxLevel();
-        }
+			if (layer->minLevel().isSet() && layer->minLevel().get() < src_min_level)
+                src_min_level = layer->minLevel().get();
+			if (layer->maxLevel().isSet() && layer->maxLevel().get() > src_max_level)
+                src_max_level = layer->maxLevel().get();
+		}
     }
 
     if (!hasCaches)

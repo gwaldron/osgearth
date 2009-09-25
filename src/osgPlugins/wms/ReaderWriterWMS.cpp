@@ -116,7 +116,7 @@ public:
     }
 
     /** override */
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
         osg::ref_ptr<const Profile> result;
 
@@ -130,7 +130,7 @@ public:
         if ( !capabilities.valid() )
         {
             osg::notify(osg::WARN) << "[osgEarth::WMS] Unable to read WMS GetCapabilities; failing." << std::endl;
-            return NULL;
+            return;
         }
 
         osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << _capabilitiesURL << std::endl;
@@ -161,13 +161,7 @@ public:
 
         _prototype = buf.str();
 
-        // first check whether the map + WMS source are the same SRS:
-        // TODO: deprecate this once we start using native profiles.
         osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create( _srs );
-        if ( wms_srs.valid() && mapProfile && mapProfile->getSRS()->isEquivalentTo( wms_srs.get() ) )
-        {
-            result = mapProfile;
-        }
 
         // check for spherical mercator:
         if ( wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalMercatorProfile()->getSRS() ) )
@@ -186,19 +180,22 @@ public:
                 double minx, miny, maxx, maxy;
                 layer->getExtents(minx, miny, maxx, maxy);
 
+
                 //Check to see if the profile is equivalent to global-geodetic
                 if (wms_srs->isGeographic())
                 {
-                  osg::ref_ptr<const Profile> globalGeodetic = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-                  if (minx == globalGeodetic->getExtent().xMin() &&
-                      miny == globalGeodetic->getExtent().yMin() &&
-                      maxx == globalGeodetic->getExtent().xMax() &&
-                      maxy == globalGeodetic->getExtent().yMax())
-                  {
-                      //They are equivalent so just use the global geodetic extent
-                      result = globalGeodetic.get();
-                  }
-                }
+					//Try to get the lat lon extents if they are provided
+					if (minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
+					{
+						layer->getLatLonExtents(minx, miny, maxx, maxy);
+					}
+
+					//If we still don't have any extents, just default to global geodetic.
+					if (minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
+					{
+						result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+					}
+                }	
 
                 if (!result.valid())
                 {
@@ -208,9 +205,9 @@ public:
         }
 
         // Last resort: create a global extent profile (only valid for global maps)
-        if ( !result.valid() && wms_srs->isGeographic() && mapProfile && mapProfile->getProfileType() != Profile::TYPE_LOCAL )
+        if ( !result.valid() && wms_srs->isGeographic())
         {
-            result = mapProfile;
+            result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         }
         
 
@@ -244,7 +241,7 @@ public:
         // populate the data metadata:
         // TODO
 
-        return result.release();
+		setProfile( result.get() );
     }
 
     /** override */

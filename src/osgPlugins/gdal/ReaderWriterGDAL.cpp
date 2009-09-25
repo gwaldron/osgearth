@@ -657,29 +657,29 @@ public:
     }
 
 
-    const Profile* createProfile( const Profile* mapProfile, const std::string& confPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {   
         GDAL_SCOPED_LOCK;
 
         if (_url.empty())
         {
             osg::notify(osg::WARN) << "[osgEarth::GDAL] No URL or directory specified " << std::endl;
-            return NULL;
+            return;
         }
 
         std::string path = _url;
 
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
-        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(confPath))
+        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(referenceURI))
         {
-            path = osgDB::getFilePath(confPath) + "/" + path;
+            path = osgDB::getFilePath(referenceURI) + "/" + path;
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
         if (!osgDB::containsServerAddress(path))
         {
-            path = osgEarth::getFullPath(confPath, path);
+            path = osgEarth::getFullPath(referenceURI, path);
         }
 
 
@@ -705,7 +705,7 @@ public:
             if (!_srcDS)
             {
                 osg::notify(osg::WARN) << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
-                return NULL;
+                return;
             }
         }
 
@@ -718,7 +718,7 @@ public:
         if ( !_srcDS )
         {
             osg::notify(osg::WARN) << "[osgEarth::GDAL] Failed to open dataset " << path << std::endl;
-            return NULL;
+            return;
         }
 
 
@@ -729,16 +729,16 @@ public:
         if ( !src_srs.valid() )
         {
             osg::notify(osg::WARN) << "[osgEarth::GDAL] Dataset has no spatial reference information: " << path << std::endl;
-            return NULL;
+            return;
         }
 
         const Profile* profile = NULL;
 
         // If the map already defines a profile, simply take it on.
-        if ( mapProfile )
+        /*if ( mapProfile )
         {
             profile = mapProfile;
-        }
+        }*/
 
         if ( !profile && src_srs->isGeographic() )
         {
@@ -863,7 +863,8 @@ public:
         // record the maximum resolution in profile space:
         setMaxDataLevel( _maxDataLevel );
 
-        return profile;
+		//Set the profile
+		setProfile( profile );
     }
 
 

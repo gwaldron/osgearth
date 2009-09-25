@@ -510,9 +510,16 @@ public:
         }
     }
 
-        const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        return vpbDatabase->profile.get();
+		if ( overrideProfile)
+		{
+			setProfile( overrideProfile );
+		}
+		else
+		{
+			setProfile(vpbDatabase->profile.get());
+		}
     }
     
     osg::Image* createImage( const TileKey* key )

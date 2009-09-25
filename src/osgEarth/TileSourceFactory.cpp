@@ -19,11 +19,11 @@
 
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/Caching>
-#include <osgEarth/DirectReadTileSource>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
 
+#if 0
 TileSource*
 TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
 {
@@ -133,12 +133,22 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
 		}
     }
 
-    osg::ref_ptr<TileSource> topSource = tileSource.get();
+    //osg::ref_ptr<TileSource> topSource = tileSource.get();
 
     // If the cache config is valid and caching is not explicity disabled, wrap the TileSource with a Cache.
     if ( layerCacheConf.isSet() && layerCacheConf->getType() != CacheConfig::TYPE_DISABLED )
     {
-        osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(
+		//TODO:  Make caching work again.
+		CacheFactory factory;
+		osg::ref_ptr<Cache> cache = factory.create(layerCacheConf);
+		if (cache.valid())
+		{
+			//TODO:  Set this on the MapLayer and initialize it properly
+			osg::notify(osg::NOTICE) << "Created Cache successfully" << std::endl;
+		}
+
+
+        /*osg::ref_ptr<CachedTileSource> cache = CachedTileSourceFactory::create(
             tileSource.get(),
             layerCacheConf->getType(),
             layerCacheConf->getProperties(),
@@ -154,7 +164,7 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
                 << "[osgEarth] Layer '" << layer->getName() << "': Cache setup: " 
                 << (layerCacheConf.isSet() ? layerCacheConf->toString() : "unset")
                 << std::endl;
-        }
+        }*/
     }
     else
     {
@@ -163,8 +173,9 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
 
     // Insert a small memory-cache. This will speed up repeat requests, like the kind that tend
     // to occur when doing image compositing and mosaicing.
-    MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get(), local_options.get());
-    memCachedSource->setName( topSource->getName() );
+	//TODO:  Make caching work again.
+    //MemCachedTileSource* memCachedSource = new MemCachedTileSource(topSource.get(), local_options.get());
+    //memCachedSource->setName( topSource->getName() );
 
     // Finally, install an override profile if the caller requested one. This will override the profile
     // that the TileSource reports.
@@ -188,12 +199,14 @@ TileSourceFactory::createMapTileSource( MapLayer* layer, Map* map )
 
         if ( override_profile.valid() )
         {
-            memCachedSource->setOverrideProfile( override_profile.get() );
-            osg::notify(osg::INFO) << "  Applying profile override" << std::endl;
+			//TODO:  Make this work again.
+            //memCachedSource->setOverrideProfile( override_profile.get() );
+            //osg::notify(osg::INFO) << "  Applying profile override" << std::endl;
         }
     }
 
-    return memCachedSource;
+	//TODO:  This whole function needs reworked...
+    return tileSource.release();
 }
 
 TileSource*
@@ -213,4 +226,35 @@ TileSourceFactory::createDirectReadTileSource(MapLayer* layer,
     tileSource->setName( layer->getName() );
 
     return tileSource;
+}
+
+#endif
+
+TileSource*
+TileSourceFactory::create( const std::string& driver,
+						   const Properties& properties,
+						   const osgDB::ReaderWriter::Options* global_options
+						   )
+{
+    osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
+        new osgDB::ReaderWriter::Options( *global_options ) : 
+        new osgDB::ReaderWriter::Options();
+
+    //Setup the plugin options for the source
+    for( Properties::const_iterator p = properties.begin(); p != properties.end(); p++ )
+    {
+        local_options->setPluginData( p->first, (void*)p->second.c_str() );
+    }
+
+	//Load the source from the a plugin.  The "." prefix causes OSG to select the correct plugin.
+    //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
+    osg::ref_ptr<TileSource> tileSource = dynamic_cast<TileSource*>(
+                osgDB::readObjectFile( ".osgearth_" + driver, local_options.get()));
+
+	if (!tileSource.valid())
+	{
+		osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load TileSource for driver "  << driver << std::endl;
+	}
+
+	return tileSource.release();
 }

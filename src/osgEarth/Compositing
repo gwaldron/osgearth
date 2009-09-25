@@ -60,11 +60,6 @@ namespace osgEarth
     public:
         MultiImage();
 
-        /**
-        *Extracts an image with the given extents
-        */
-        //osg::Image* createImage(double minx, double miny, double maxx, double maxy);
-
         osg::Image* createImage();
 
         /** A list of GeoImages */
@@ -79,15 +74,6 @@ namespace osgEarth
 
         ~MultiImage();
         TileImageList _images;
-    };
-
-
-    class OSGEARTH_EXPORT Compositor
-    {
-    public:
-        Compositor();
-
-        GeoImage* mosaicImages( const TileKey* mapKey, TileSource* source ) const;
     };
 }
 

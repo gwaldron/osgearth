@@ -60,9 +60,9 @@ public:
             _dataset = "satellite"; // defaul to the satellite view
     }
 
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        setProfile( osgEarth::Registry::instance()->getGlobalMercatorProfile() );
     }
 
     osg::Image* createImage( const TileKey* key )

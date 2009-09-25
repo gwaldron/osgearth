@@ -56,13 +56,20 @@ public:
         }
     }
 
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        _configPath = configPath;
+        _configPath = referenceURI;
 
-        return mapProfile?
-            mapProfile :
-            osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+		if (overrideProfile)
+		{
+		    //If we were given a profile, take it on.
+			setProfile(overrideProfile);
+		}
+		else
+		{
+			//Assume it is global-geodetic
+			setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+		}            
     }
 
     osg::Image* createImage( const TileKey* key )

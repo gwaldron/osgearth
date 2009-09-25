@@ -240,6 +240,8 @@ namespace osgEarth
         osg::ref_ptr<osg::HeightField> _heightField;
         GeoExtent _extent;
     };
+
+	typedef std::vector< osg::ref_ptr< GeoHeightField > > GeoHeightFieldList;
 }
 
 #endif // OSGEARTH_GEODATA_H

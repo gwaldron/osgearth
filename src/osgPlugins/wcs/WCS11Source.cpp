@@ -93,11 +93,17 @@ _tile_size(16)
 }
 
 
-const Profile*
-WCS11Source::createProfile( const Profile* mapProfile, const std::string& configPath )
+void WCS11Source::initialize( const std::string& referenceURI, const Profile* overrideProfile)
 {
-    //TODO: once we read GetCapabilities.. this will change..
-    return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+	if (overrideProfile)
+	{
+		setProfile( overrideProfile );
+	}
+	else
+	{
+		//TODO: once we read GetCapabilities.. this will change..
+		setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+	}
 }
 
 

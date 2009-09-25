@@ -26,7 +26,6 @@
 #include <osgEarth/VersionedTerrain>
 #include <osgEarth/MapLayer>
 #include <osgEarth/Locators>
-#include <osgEarth/ElevationManager>
 
 #include <OpenThreads/ReadWriteMutex>
 #include <osgDB/ReaderWriter>
@@ -70,11 +69,6 @@ namespace osgEarth
             bool populateLayers =true );
 
         /**
-         * Creates a georeferenced image corresponding to a tile key.
-         */
-        GeoImage* createGeoImage(const TileKey* key, TileSource* source);
-
-        /**
          * Gets the properties that customize how this engine renders tile data.
          */
         const MapEngineProperties& getEngineProperties() const;
@@ -92,14 +86,12 @@ namespace osgEarth
 
 
 
-        GeoImage* createValidGeoImage(TileSource* tileSource, const TileKey* key);
+        GeoImage* createValidGeoImage(MapLayer* layer, const TileKey* key);
 
         osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
 
         // checks whether more data exists below the specified key's level of detail
         bool hasMoreLevels( Map* map, const TileKey* key );
-
-        osg::HeightField* createHeightField( Map* map, const TileKey* key, bool fallback );
 
         static osg::HeightField* createEmptyHeightField( const TileKey* key );
 
@@ -141,7 +133,6 @@ namespace osgEarth
     protected:
 
         MapEngineProperties _engineProps;
-        osg::ref_ptr<ElevationManager> _elevationMan;
     };
 }
 

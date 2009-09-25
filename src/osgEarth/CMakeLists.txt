@@ -24,11 +24,9 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Compositing
     Cube
-    DirectReadTileSource 
     EarthFile
     EarthTerrainTechnique
 	EarthTerrain
-    ElevationManager
     Export
     FileUtils
 	FileLocationCallback
@@ -65,10 +63,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CacheSeed.cpp
     Compositing.cpp
     Cube.cpp
-    DirectReadTileSource.cpp
     EarthFile.cpp
     EarthTerrainTechnique.cpp
-    ElevationManager.cpp
     FileUtils.cpp
     GeoData.cpp
     HeightFieldUtils.cpp

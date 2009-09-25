@@ -32,7 +32,6 @@ MapEngineProperties::MapEngineProperties()
     _normalize_edges = false;
     _combine_layers = true;
     _filename = "";
-    _use_mercator_locator = true;
     _preemptive_lod = true;
 	_layering_technique = MULTITEXTURE;
 }
@@ -54,8 +53,7 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _cache_only = rhs._cache_only;
     _combine_layers = rhs._combine_layers;
     _normalize_edges = rhs._normalize_edges;
-    _filename = rhs._filename;
-    _use_mercator_locator = rhs._use_mercator_locator;
+    _filename = rhs._filename;   
     _preemptive_lod = rhs._preemptive_lod;
 	_layering_technique = rhs._layering_technique;
     return *this;
@@ -189,18 +187,6 @@ void
 MapEngineProperties::setNormalizeEdges(bool normalize_edges)
 {
     _normalize_edges = normalize_edges;
-}
-
-void
-MapEngineProperties::setUseMercatorLocator(bool value)
-{
-    _use_mercator_locator = value;
-}
-
-bool
-MapEngineProperties::getUseMercatorLocator() const
-{
-    return _use_mercator_locator;
 }
 
 const optional<MapEngineProperties::LayeringTechnique>&

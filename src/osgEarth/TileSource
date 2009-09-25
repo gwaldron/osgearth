@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
+#include <osgEarth/Caching>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -52,29 +53,19 @@ namespace osgEarth
         TileSource( const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
-         * Creates an image for the given TileKey passing the image through a nodata image check as well as transparency key operation
-         */
-        osg::Image* createImageWrapper( const TileKey* key );
-
-		/**
-		 * Creates an image for the given TileKey
-		 */
-		virtual osg::Image* createImage( const TileKey* key) = 0;
-
-        /**
-         * Creates a heightfield for the given TileKey
-         */
-        virtual osg::HeightField* createHeightField( const TileKey* key );
-
-        /**
          * Gets the number of pixels per tile for this TileSource.  Defaults to 256
          */
         virtual int getPixelsPerTile() const { return 256; }
 
+	    /**
+    	 * Creates an image for the given TileKey
+		 */
+		virtual osg::Image* getImage( const TileKey* key);
+
         /**
-         * Gets whether the given TileKey is cached or not
+         * Creates a heightfield for the given TileKey
          */
-        virtual bool isCached( const TileKey* key) { return false; }
+        virtual osg::HeightField* getHeightField( const TileKey* key );
 
     public:
 
@@ -86,29 +77,9 @@ namespace osgEarth
         bool isValid() const { return isOK(); }
 
         /**
-         * Gets the Profile that was originally created by initProfile()
+         * Gets the Profile of the TileSource
          */
         virtual const Profile* getProfile() const;
-
-        /**
-         * Gets the minimum level that this TileSource should be displayed at
-         */
-        virtual unsigned int getMinLevel() const {return _minLevel;}
-
-        /**
-         * Sets the minimum level that this TileSource should be display at
-         */
-        virtual void setMinLevel(unsigned int minLevel) {_minLevel = minLevel;}
-
-        /**
-         * Gets the maximum level that this TileSource should be displayed at
-         */
-        virtual unsigned int getMaxLevel() const {return _maxLevel;}
-
-        /**
-         * Sets the maximum level that this TileSource should be displayed at
-         */
-        virtual void setMaxLevel(unsigned int maxLevel) {_maxLevel = maxLevel;}
 
 		/**
 		 * Gets the nodata elevation value
@@ -141,11 +112,6 @@ namespace osgEarth
         virtual void  setNoDataMaxValue(float noDataMaxValue);     
 
         /**
-         * Whether or not the key is valid for the TileSource
-         */
-        virtual bool isKeyValid(const TileKey* key);
-
-        /**
          * Gets the extent of available data accessible through this tile source.
          * While the Profile will return extents corresponding to the SRS, this
          * method will reflect the area containing real source data.
@@ -173,23 +139,7 @@ namespace osgEarth
         /**
          * Gets the preferred extension for this TileSource
          */
-        virtual std::string getExtension() const {return "";}
-
-		/**
-		 * Gets the nodata image for this TileSource
-		 */
-    	virtual const osg::Image* getNoDataImage() const;
-
-		/**
-		 * Gets the nodata image for this TileSource
-		 */
-		virtual void setNoDataImage(osg::Image* image);
-
-	    /**
-		 * Gets the transparent color of this TileSource
-		 */
-		const optional<osg::Vec4ub>& transparentColor() const;
-		optional<osg::Vec4ub>& transparentColor();
+        virtual std::string getExtension() const {return "png";}
 
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
@@ -197,23 +147,27 @@ namespace osgEarth
         virtual const char* className() const { return "TileSource"; }
         virtual const char* libraryName() const { return "osgEarth"; }
 
-    
+		/**
+		 * Initialize the TileSource.  The profile should be computed and set here using setProfile()
+		 */
+		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL) = 0;
+
+   
     protected:
+
+		/**
+		 * Creates an image for the given TileKey
+		 */
+		virtual osg::Image* createImage( const TileKey* key) = 0;
+
+        /**
+         * Creates a heightfield for the given TileKey
+         */
+        virtual osg::HeightField* createHeightField( const TileKey* key );
+
+
         virtual ~TileSource();
 
-
-        /**
-         * The Map calls this method ONCE so that the TileSource can
-         * initialize its profile.
-         */
-        const Profile* initProfile( const Profile* mapProfile, const std::string& referenceURI );
-
-        /**
-         * Implement this method to create and return the profile that the map engine should use
-         * to query tiles from this source.
-         */
-        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath ) =0;
-        
         const osgDB::ReaderWriter::Options* getOptions() const;
 
         // Called by a tile source implementation to set the data extent.
@@ -222,27 +176,18 @@ namespace osgEarth
         // Called by a tile source implementation to set the maximum data level
         void setMaxDataLevel( unsigned int max_level );
 
-        /** 
-         * Call this function to explicity set a profile for this tile source (instead of using the one
-         * returned from createProfile)
-         */
-		virtual void setOverrideProfile( const Profile* profile );
+		/**
+		 * Called by subclasses to initialize their profile
+		 */
+		void setProfile( const Profile* profile );
 
     private:
-        unsigned int _minLevel;
-        unsigned int _maxLevel;
-
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _options;
 
-        //friend class MapConfig;
         friend class Map;
         friend class MapEngine;
-        friend class CachedTileSource;
-        friend class MemCachedTileSource;
-        friend class DirectReadTileSource;
         friend class TileSourceFactory;
-        friend class ChainedTileSource;
 
         float _noDataValue;
         float _noDataMinValue;
@@ -251,56 +196,11 @@ namespace osgEarth
         GeoExtent    _data_extent;
         unsigned int _max_data_level;
 
-		osg::ref_ptr<osg::Image> _nodata_image;
-
-		optional<osg::Vec4ub> _transparentColor;
+		osg::ref_ptr<MemCache> _memCache;
     };
 
     
     typedef std::vector< osg::ref_ptr<TileSource> > TileSourceList;
-
-
-    /**
-     * Template class for chaining TileSource instances together to form a
-     * data pipeline.
-     */
-    class ChainedTileSource : public TileSource
-    {
-    protected:
-        ChainedTileSource( TileSource* next, const osgDB::ReaderWriter::Options* options )
-            : TileSource( options ), _next( next ) { }
-
-        TileSource* nextTileSource() { 
-            return _next.get();
-        }
-        const TileSource* nextTileSource() const { 
-            return _next.get();
-        }
-
-    public:
-        // pass all the gets through by default:
-        virtual unsigned int getMinLevel() const { return _next.valid()? _next->getMinLevel() : _minLevel; }
-        virtual unsigned int getMaxLevel() const { return _next.valid()? _next->getMaxLevel() : _maxLevel; }
-        virtual void setMinLevel(unsigned int minLevel) { if (_next.valid()) _next->setMinLevel(minLevel); else _minLevel=minLevel; }
-        virtual void setMaxLevel(unsigned int maxLevel) { if (_next.valid()) _next->setMaxLevel(maxLevel); else _maxLevel=maxLevel; }
-        virtual float getNoDataValue() { return _next.valid()? _next->getNoDataValue(): _noDataValue; }
-        virtual void setNoDataValie(float value) { if (_next.valid()) _next->setNoDataValue(value); else _noDataValue=value; }
-        virtual float getNoDataMinValue() { return _next.valid()? _next->getNoDataMinValue(): _noDataMinValue; }
-        virtual void setNoDataMinValue(float value) { if (_next.valid()) _next->setNoDataMinValue(value); else _noDataMinValue=value; }
-        virtual float getNoDataMaxValue() { return _next.valid()? _next->getNoDataMaxValue() : _noDataMaxValue; }
-        virtual void setNoDataMaxValue(float value) { if (_next.valid() ) _next->setNoDataMaxValue(value); else _noDataMaxValue=value; }
-		virtual bool isKeyValid(const TileKey* key) { return _next.valid()? _next->isKeyValid(key) : TileSource::isKeyValid(key); }
-        virtual const GeoExtent& getDataExtent() const { return _next->getDataExtent(); }
-        virtual unsigned int getMaxDataLevel() const { return _next->getMaxDataLevel(); }
-        virtual bool hasPersistentCache() const { return _next.valid()? _next->hasPersistentCache() : false; }
-        virtual bool supportsPersistentCaching() const { return _next.valid()? _next->supportsPersistentCaching() : false; }
-        virtual std::string getExtension() const { return _next.valid()? _next->getExtension() : ""; }
-		virtual void setOverrideProfile(const osgEarth::Profile* profile) { TileSource::setOverrideProfile(profile);  if (_next.valid()) _next->setOverrideProfile( profile ); }
-		virtual void setNoDataImage(osg::Image* image) { if (_next.valid()) _next->setNoDataImage(image);};
-
-    private:
-        osg::ref_ptr<TileSource> _next;
-    };
 }
 
 #endif // OSGEARTH_TILE_SOURCE_H

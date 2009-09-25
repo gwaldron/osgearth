@@ -18,7 +18,6 @@
 */
 
 #include <osgEarth/MapEngine>
-#include <osgEarth/DirectReadTileSource>
 #include <osgEarth/Caching>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Compositing>
@@ -26,7 +25,6 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/EarthTerrainTechnique>
-#include <osgEarth/ElevationManager>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
 
 #include <osg/Image>
@@ -242,8 +240,9 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
 }
 
 GeoImage*
-MapEngine::createValidGeoImage(TileSource* tileSource, const TileKey* key)
+MapEngine::createValidGeoImage(MapLayer* layer, const TileKey* key)
 {
+	//TODO:  Redo this to just grab images from the parent TerrainTiles
     //Try to create the image with the given key
     osg::ref_ptr<const TileKey> image_key = key;
 
@@ -251,14 +250,14 @@ MapEngine::createValidGeoImage(TileSource* tileSource, const TileKey* key)
 
     while (image_key.valid())
     {
-        if ( tileSource->isKeyValid(image_key.get()) )
+        if ( layer->isKeyValid(image_key.get()) )
         {
-            geo_image = createGeoImage( image_key.get(), tileSource );
+            geo_image = layer->createImage( image_key.get() );
             if (geo_image.valid()) return geo_image.release();
         }
         image_key = image_key->createParentKey();
     }
-    return 0;
+	return geo_image.release();
 }
 
 bool
@@ -292,66 +291,6 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
     return more_levels;
 }
 
-GeoImage*
-MapEngine::createGeoImage(const TileKey* mapKey, TileSource* source)
-{
-    GeoImage* result = NULL;
-    const Profile* mapProfile = mapKey->getProfile();
-
-    //If the key profile and the source profile exactly match, simply request the image from the source
-    if ( mapProfile->isEquivalentTo( source->getProfile() ) )
-    {
-        osg::Image* image = source->createImageWrapper( mapKey );
-        if ( image )
-        {
-            result = new GeoImage( image, mapKey->getGeoExtent() );
-        }
-    }
-
-    // Otherwise, we need to process the tiles.
-    else
-    {
-        Compositor comp;
-        osg::ref_ptr<GeoImage> mosaic = comp.mosaicImages( mapKey, source );
-
-        if ( mosaic.valid() )
-        {
-            // whether to use the fast-path mercator locator. If so, DO NOT reproject the imagery here.
-            bool useMercatorFastPath =
-                mosaic->getSRS()->isMercator() &&
-                mapKey->getProfile()->getSRS()->isGeographic() &&
-                _engineProps.getUseMercatorLocator();
-
-            // the imagery must be reprojected iff:
-            //  * we're not using the mercator fast path (see above);
-            //  * the SRS of the image is different from the SRS of the key;
-            //  * UNLESS they are both geographic SRS's (in which case we can skip reprojection)
-            bool needsReprojection =
-                !useMercatorFastPath &&
-                !mosaic->getSRS()->isEquivalentTo( mapKey->getProfile()->getSRS()) &&
-                !(mosaic->getSRS()->isGeographic() && mapKey->getProfile()->getSRS()->isGeographic());
-
-            if ( needsReprojection )
-            {
-                //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
-                //crop the image to the correct extents, so there is no need to crop after reprojection.
-                result = mosaic->reproject( mapKey->getProfile()->getSRS(), &mapKey->getGeoExtent() );
-            }
-            else
-            {
-                // crop to fit the map key extents
-                GeoExtent clampedMapExt = source->getProfile()->clampAndTransformExtent( mapKey->getGeoExtent() );
-                if ( clampedMapExt.width() * clampedMapExt.height() > 0 )
-                    result = mosaic->crop(clampedMapExt);
-                else
-                    result = NULL;
-            }
-        }
-    }
-
-    return result;
-}
-
 bool
 MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 {
@@ -363,6 +302,9 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
         MapLayer* layer = i->get();
+	    osg::ref_ptr< Cache > cache = layer->getCache();
+    	if (!cache.valid()) return false;
+
         std::vector< osg::ref_ptr< const TileKey > > keys;
 
         if ( map->getProfile()->isEquivalentTo( layer->getTileSource()->getProfile() ) )
@@ -376,9 +318,9 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 
         for (unsigned int j = 0; j < keys.size(); ++j)
         {
-            if ( layer->getTileSource()->isKeyValid( keys[j].get() ) )
+            if ( layer->isKeyValid( keys[j].get() ) )
             {
-                if ( !layer->getTileSource()->isCached( keys[j].get() ) )
+                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->getCacheFormat() ) )
                 {
                     return false;
                 }
@@ -390,6 +332,9 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
     for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
         MapLayer* layer = i->get();
+		osg::ref_ptr< Cache > cache = layer->getCache();
+		if (!cache.valid()) return false;
+
         std::vector< osg::ref_ptr< const TileKey > > keys;
 
         if ( map->getProfile()->isEquivalentTo( layer->getTileSource()->getProfile() ) )
@@ -403,33 +348,16 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 
         for (unsigned int j = 0; j < keys.size(); ++j)
         {
-            if ( layer->getTileSource()->isKeyValid( keys[j].get() ) )
+            if ( layer->isKeyValid( keys[j].get() ) )
             {
-                if ( !layer->getTileSource()->isCached( keys[j].get() ) )
+                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->getCacheFormat() ) )
                 {
                     return false;
                 }
             }
         }
     }
-
     return true;
-}
-
-
-
-osg::HeightField*
-MapEngine::createHeightField( Map* map, const TileKey* key, bool fallback )
-{   
-    // dont' need this here??
-    //OpenThreads::ScopedReadLock lock( map->getMapDataMutex() );
-
-    osg::ref_ptr<ElevationManager> em = new ElevationManager( map->getHeightFieldMapLayers().size() );
-    for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
-    {
-        em->getElevationSources().push_back( i->get()->getTileSource() );
-    }
-    return em->createHeightField( key, 0, 0, fallback );
 }
 
 osg::HeightField*
@@ -693,8 +621,6 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
     bool isGeocentric = !isProjected;
 
-    //double min_lon, min_lat, max_lon, max_lat;
-    //key->getGeoExtent().getBounds(min_lon, min_lat, max_lon, max_lat);
     double xmin, ymin, xmax, ymax;
     key->getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
 
@@ -712,9 +638,9 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         GeoImage* image = NULL;
         TileSource* source = i->get()->getTileSource();
 		//Only create images if the key is valid
-        if ( source->isKeyValid( key ) )
+        if ( i->get()->isKeyValid( key ) )
         {
-            image = createGeoImage( key, source );                
+            image = i->get()->createImage( key );
         }
         image_tiles.push_back(image);
     }
@@ -725,7 +651,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     osg::ref_ptr<osg::HeightField> hf;
     if ( hfMapLayers.size() > 0 )
     {
-        hf = createHeightField( map, key, false );
+        hf = map->createHeightField( key, false );
         hasElevation = hf.valid();
     }
 
@@ -751,10 +677,10 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         {
             TileSource* source = imageMapLayers[i]->getTileSource();
 			GeoImage* image = NULL;
-            if (source->isKeyValid(key))
+            if (imageMapLayers[i]->isKeyValid(key))
             {
 				//If the key was valid and we have no image, then something possibly went wrong with the image creation such as a server being busy.
-                image = createValidGeoImage(source, key);
+                image = createValidGeoImage(imageMapLayers[i].get(), key);
             }
 
 			//If we still couldn't create an image, either something is really wrong or the key wasn't valid, so just create a transparent placeholder image
@@ -780,7 +706,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = createHeightField( map, key, true );
+            hf = map->createHeightField( key, true );
             if (!hf.valid())
             {
                 osg::notify(osg::WARN) << "[osgEarth::MapEngine] Could not get valid heightfield for TileKey " << key->str() << std::endl;
@@ -846,7 +772,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
             GeoImage* geo_image = image_tiles[i].get();
 
             // Use a special locator for mercator images (instead of reprojecting)
-            if ( map->getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() && _engineProps.getUseMercatorLocator() )
+            if ( map->getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() && map->getUseMercatorLocator() )
             {
                 GeoExtent geog_ext = image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds( img_xmin, img_ymin, img_xmax, img_ymax );

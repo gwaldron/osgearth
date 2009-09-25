@@ -33,22 +33,13 @@
 using namespace osgEarth;
 
 
-//#define PROPERTY_MIN_LEVEL    "min_level"
-//#define PROPERTY_MAX_LEVEL    "max_level"
 #define PROPERTY_NODATA_VALUE "nodata_value"
 #define PROPERTY_NODATA_MIN   "nodata_min"
 #define PROPERTY_NODATA_MAX   "nodata_max"
 #define PROPERTY_PROFILE      "profile"
 
-
-#define DEFAULT_MIN_LEVEL 0
-#define DEFAULT_MAX_LEVEL 25
-
-
 TileSource::TileSource(const osgDB::ReaderWriter::Options* options) :
 _options( options ),
-_minLevel( DEFAULT_MIN_LEVEL ),
-_maxLevel( DEFAULT_MAX_LEVEL ),
 _noDataValue(SHRT_MIN),
 _noDataMinValue(-FLT_MAX),
 _noDataMaxValue(FLT_MAX),
@@ -71,6 +62,9 @@ _max_data_level(INT_MAX)
         if ( options->getPluginData( PROPERTY_NODATA_MAX ) )
             _noDataMaxValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_MAX ), _noDataMaxValue);
     }
+
+	//Create a memory cache
+	_memCache = new MemCache();
 }
 
 TileSource::~TileSource()
@@ -78,10 +72,52 @@ TileSource::~TileSource()
     //NOP
 }
 
+
+osg::Image*
+TileSource::getImage( const TileKey* key)
+{
+	//Try to get it from the memcache fist
+	osg::Image* image = NULL;
+	if (_memCache.valid())
+	{
+		image = _memCache->getImage( key,"","");
+	}
+
+	if (!image)
+	{
+		image = createImage( key );
+		if (image && _memCache.valid())
+		{
+			_memCache->setImage( key, "", "",image );
+		}
+	}
+	return image;
+}
+
+osg::HeightField*
+TileSource::getHeightField( const TileKey* key)
+{
+	osg::HeightField* hf = NULL;
+	if (_memCache.valid())
+	{
+		hf = _memCache->getHeightField( key, "", "" );
+	}
+
+	if (!hf)
+	{
+		hf = createHeightField( key );
+		if (hf && _memCache.valid())
+		{
+			_memCache->setHeightField( key, "", "", hf );
+		}
+	}
+	return hf;
+}
+
 osg::HeightField*
 TileSource::createHeightField( const TileKey* key )
 {
-    osg::ref_ptr<osg::Image> image = createImageWrapper(key);
+    osg::ref_ptr<osg::Image> image = createImage(key);
     osg::HeightField* hf = 0;
     if (image.valid())
     {
@@ -97,34 +133,10 @@ TileSource::isOK() const
     return getProfile() != NULL;
 }
 
-bool
-TileSource::isKeyValid(const osgEarth::TileKey *key)
-{
-  if (!key) return false;
-
-  //Check to see that the given tile is within the LOD range for this TileSource
-  return ((key->getLevelOfDetail() >= _minLevel) && (key->getLevelOfDetail() <= _maxLevel));
-}
-
 void
-TileSource::setOverrideProfile( const Profile* overrideProfile )
+TileSource::setProfile( const Profile* profile )
 {
-    _profile = overrideProfile;
-}
-
-const Profile*
-TileSource::initProfile( const Profile* mapProfile, const std::string& configPath )
-{
-    // we always call createProfile, but only USE its return value if the user did
-    // not supply an override profile. Why? because the user might do other driver-
-    // initialization things in the createProfile code.
-    osg::ref_ptr<const Profile> new_profile = createProfile( mapProfile, configPath );
-    if ( !_profile.valid() )
-    {
-        _profile = new_profile.get();
-    }
-
-    return _profile.get();
+    _profile = profile;
 }
 
 const Profile*
@@ -210,68 +222,3 @@ TileSource::supportsPersistentCaching() const
 {
     return true;
 }
-
-const osg::Image*
-TileSource::getNoDataImage() const
-{
-	return _nodata_image.get();
-}
-
-void
-TileSource::setNoDataImage(osg::Image* image)
-{
-	_nodata_image = image;
-}
-
-const optional<osg::Vec4ub>& TileSource::transparentColor() const
-{
-	return _transparentColor;
-}
-
-optional<osg::Vec4ub>& TileSource::transparentColor()
-{
-	return _transparentColor;
-}
-
-osg::Image*
-TileSource::createImageWrapper(const osgEarth::TileKey *key)
-{
-	//Read the image tile
-	osg::ref_ptr<osg::Image> image = createImage( key );
-
-	//Check to see if the image is the nodata image
-	if (image.valid() && _nodata_image.valid())
-	{
-		if (ImageUtils::areEquivalent(image.get(), _nodata_image.get()))
-		{
-			osg::notify(osg::INFO) << "[osgEarth::TileSource::createImage] Found nodata for " << key->str() << std::endl;
-			image = 0;
-		}
-	}
-
-	//Apply a transparent color mask if one is specified
-	if (image.valid() && _transparentColor.isSet())
-	{
-		for (unsigned int row = 0; row < image->t(); ++row)
-		{
-			for (unsigned int col = 0; col < image->s(); ++col)
-			{
-				unsigned char r = image->data(col, row)[0];
-				unsigned char g = image->data(col, row)[1];
-				unsigned char b = image->data(col, row)[2];
-
-				if (r == _transparentColor->r() &&
-					g == _transparentColor->g() &&
-					b == _transparentColor->b())
-				{
-					//osg::notify(osg::NOTICE) << "Transparent..." << std::endl;
-					image->data(col,row)[3] = 0;
-				}
-			}
-		}
-	}
-	return image.release();
-}
-
-
-

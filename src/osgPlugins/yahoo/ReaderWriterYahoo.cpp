@@ -48,9 +48,9 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        return Profile::create( "spherical-mercator", 2, 2 );
+        setProfile( Profile::create( "spherical-mercator", 2, 2 ) );
     }
 
     osg::Image* createImage( const TileKey* key )

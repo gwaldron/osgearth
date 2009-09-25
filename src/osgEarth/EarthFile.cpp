@@ -67,7 +67,6 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_MIN_TILE_RANGE           "min_tile_range_factor"
 #define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
 #define ATTR_DRIVER                   "driver"
-#define ATTR_REPROJECT_BEFORE_CACHING "reproject_before_caching"
 #define ELEM_SKIRT_RATIO              "skirt_ratio"
 #define ELEM_SAMPLE_RATIO             "sample_ratio"
 #define ELEM_PROXY_HOST               "proxy_host"
@@ -85,6 +84,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_LAYERING_TECHNIQUE       "layering_technique"
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
+#define ELEM_CACHE_FORMAT             "cache_format"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -105,16 +105,11 @@ readCache( XmlElement* e_cache )
     std::string type_token = e_cache->getAttr( ATTR_TYPE );
     if ( type_token == "tms" || type_token.empty() ) cache.setType( CacheConfig::TYPE_TMS );
     else if ( type_token == "tilecache" ) cache.setType( CacheConfig::TYPE_TILECACHE );
-    else if ( type_token == "none" || type_token == "disabled") cache.setType( CacheConfig::TYPE_DISABLED );
     
     std::string cache_only = e_cache->getAttr( ATTR_CACHE_ONLY );
     if ( !cache_only.empty() )
         cache.runOffCacheOnly() = cache_only == VALUE_TRUE? true : false;
     
-	std::string a_reproj = e_cache->getAttr( ATTR_REPROJECT_BEFORE_CACHING );
-    if ( !a_reproj.empty() )
-        cache.reprojectBeforeCaching() = a_reproj == VALUE_TRUE? true : false;
-
     const XmlNodeList& e_props = e_cache->getChildren();
     for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
     {
@@ -136,16 +131,12 @@ static void
 writeCache( const CacheConfig& cache, XmlElement* e_cache )
 {
     e_cache->getAttrs()[ATTR_TYPE] = 
-        cache.getType() == CacheConfig::TYPE_DISABLED?  "disabled" :
         cache.getType() == CacheConfig::TYPE_TILECACHE? "tilecache" :
         cache.getType() == CacheConfig::TYPE_TMS? "tms" :
         "tms";
 
     if ( cache.runOffCacheOnly().isSet() )
         e_cache->getAttrs()[ATTR_CACHE_ONLY] = toString(cache.runOffCacheOnly().get());
-
-    if ( cache.reprojectBeforeCaching().isSet() )
-        e_cache->getAttrs()[ATTR_REPROJECT_BEFORE_CACHING] = toString(cache.reprojectBeforeCaching().get());
 
     //Add all the properties
     for (Properties::const_iterator i = cache.getProperties().begin(); i != cache.getProperties().end(); i++ )
@@ -259,17 +250,13 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
 	std::string noDataImage = e_source->getSubElementText( ELEM_NODATA_IMAGE );
 	if (noDataImage.length() > 0)
 	{
-		layer->noDataImage() = noDataImage;
+		layer->noDataImageFilename() = noDataImage;
 	}
 
-    // Try to read the cache for the source if one exists
-    XmlElement* e_cache = static_cast<XmlElement*>(e_source->getSubElement( ELEM_CACHE ));
-    if (e_cache)
-    {
-        layer->cacheConfig() = readCache( e_cache );
-    }
+	std::string cacheFormat = e_source->getSubElementText( ELEM_CACHE_FORMAT );
+	layer->setCacheFormat( cacheFormat );
 
-    // Check for an explicit profile override:
+	// Check for an explicit profile override:
     XmlElement* e_profile = static_cast<XmlElement*>( e_source->getSubElement( ELEM_PROFILE ) );
     if ( e_profile )
     {
@@ -309,17 +296,9 @@ writeLayer( MapLayer* layer, XmlElement* e_source )
 		e_source->getChildren().push_back(e_profile);
 	}
 
-	//Write the source config
-    if ( layer->cacheConfig().isSet() )
-    {
-       XmlElement* e_cache = new XmlElement(ELEM_CACHE);
-       writeCache(layer->cacheConfig().get(), e_cache);
-       e_source->getChildren().push_back(e_cache);
-    }
-
-	if (layer->noDataImage().isSet() )
+	if (layer->noDataImageFilename().isSet() )
 	{
-		e_source->addSubElement(ELEM_NODATA_IMAGE, layer->noDataImage().get());
+		e_source->addSubElement(ELEM_NODATA_IMAGE, layer->noDataImageFilename().get());
 	}
 
 	if (layer->transparentColor().isSet() )
@@ -328,6 +307,8 @@ writeLayer( MapLayer* layer, XmlElement* e_source )
 		ss << layer->transparentColor()->r() << " " << layer->transparentColor()->g() << " " << layer->transparentColor()->b();
 		e_source->addSubElement(ELEM_TRANSPARENT_COLOR, ss.str());
 	}
+
+	e_source->addSubElement( ELEM_CACHE_FORMAT, layer->getCacheFormat() );
 }
 
 
@@ -356,9 +337,9 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
 
     std::string use_merc_locator = e_map->getSubElementText(ELEM_USE_MERCATOR_LOCATOR);
     if (use_merc_locator == VALUE_TRUE )
-        engineProps.setUseMercatorLocator( true );
+        map->setUseMercatorLocator( true );
     else if ( use_merc_locator == VALUE_FALSE )
-        engineProps.setUseMercatorLocator( false );
+        map->setUseMercatorLocator( false );
 
     std::string combine_layers = e_map->getSubElementText(ELEM_COMBINE_LAYERS);
     if (combine_layers == VALUE_TRUE)
@@ -406,6 +387,10 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     if (e_cache)
     {
         map->cacheConfig() = readCache(e_cache);
+
+		//Create and set the Cache for the Map
+		CacheFactory factory;
+		map->setCache( factory.create( map->cacheConfig().get()) );
     }
 
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
@@ -469,7 +454,7 @@ mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
     e_map->getAttrs()[ATTR_CSTYPE] = cs;
 
     //e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map.getCacheOnly()));
-    e_map->addSubElement( ELEM_USE_MERCATOR_LOCATOR, toString<bool>(engineProps.getUseMercatorLocator()));
+    e_map->addSubElement( ELEM_USE_MERCATOR_LOCATOR, toString<bool>(map->getUseMercatorLocator()));
     e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(engineProps.getNormalizeEdges()));
     e_map->addSubElement( ELEM_COMBINE_LAYERS, toString<bool>(engineProps.getCombineLayers()));
 
@@ -511,6 +496,7 @@ mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
         e_map->getChildren().push_back( e_source.get() );
     }
 
+	//TODO:  Get this from the getCache call itself, not a CacheConfig.
     if ( map->cacheConfig().isSet() )
     {
         XmlElement* e_cache = new XmlElement(ELEM_CACHE);

@@ -78,7 +78,7 @@ public:
         }
     }
 
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
         const Profile* result = NULL;
 
@@ -86,44 +86,40 @@ public:
 
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the url together
-        if (osgEarth::isRelativePath(tmsPath) && osgDB::containsServerAddress(configPath))
+        if (osgEarth::isRelativePath(tmsPath) && osgDB::containsServerAddress(referenceURI))
         {
-            tmsPath = osgDB::getFilePath(configPath) + "/" + tmsPath;
+            tmsPath = osgDB::getFilePath(referenceURI) + "/" + tmsPath;
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
         if (!osgDB::containsServerAddress(tmsPath))
         {
-            tmsPath = osgEarth::getFullPath(configPath, tmsPath);
+            tmsPath = osgEarth::getFullPath(referenceURI, tmsPath);
         }
 
-        // Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-        _tileMap = TileMapReaderWriter::read( tmsPath );
+		// Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
+    	_tileMap = TileMapReaderWriter::read( tmsPath );
 
-        if (!_tileMap.valid())
-        {
-            osg::notify(osg::NOTICE) << "[osgEarth::TMS] No TileMap found; checking for client-side settings.." << std::endl;
 
-            // If that fails, try to use an explicit profile if one exists. In this case, the map
-            // config must also specify a width, height, and format.
-            if ( mapProfile )
-            {
-                result = mapProfile;
-                _tileMap = TileMap::create( _url, mapProfile, _format, _tile_size, _tile_size );
-                if ( !_tileMap.valid() )
-                {
-                    osg::notify(osg::WARN) << "[osgEarth::TMS] No TileMap found, and no overrides set" << std::endl;
-                }
-            }
-            else
-            {
-                osg::notify(osg::NOTICE) << "[osgEarth::TMS] Error reading Tile Map Resource " << _url << std::endl;
-            }
-        }
-        else
-        {
-            result = _tileMap->createProfile();
-        }
+		//Take the override profile if one is given
+		if (overrideProfile)
+		{
+		    osg::notify(osg::NOTICE) << "[osgEarth::TMS] Using override profile " << overrideProfile->toString() << std::endl;				
+			result = overrideProfile;
+			_tileMap = TileMap::create( _url, overrideProfile, _format, _tile_size, _tile_size );
+		}
+		else
+		{
+     		if (_tileMap.valid())
+			{
+				result = _tileMap->createProfile();
+			}
+			else
+			{
+		      osg::notify(osg::WARN) << "[osgEarth::TMS] Error reading TileMap and no overrides set" << std::endl;		
+			  return;
+			}
+		}
 
         //Automatically set the min and max level of the TileMap
         if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
@@ -136,7 +132,7 @@ public:
           this->setMaxDataLevel( _tileMap->getMaxLevel() );
         }
 
-        return result;
+		setProfile( result );
     }
 
 

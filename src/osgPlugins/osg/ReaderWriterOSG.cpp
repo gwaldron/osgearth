@@ -101,9 +101,9 @@ public:
     }
 
     // Return NULL - this driver REQUIRES that you set an override profile.
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        return NULL;
+        setProfile( overrideProfile );
     }
     
     // override: return the max LOD for which data exists

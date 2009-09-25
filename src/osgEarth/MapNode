@@ -169,12 +169,14 @@ namespace osgEarth
 
         void init();
         
-        void addImageTileSource( TileSource* source );
-        void addHeightFieldTileSource( TileSource* source );
-        void removeImageTileSource( unsigned int index );
-        void removeHeightFieldTileSource( unsigned int index );
-        void moveImageTileSource( unsigned int oldIndex, unsigned int newIndex );
-        void moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex );
+        void addImageLayer( MapLayer* layer );
+        void addHeightFieldLayer( MapLayer* layer );
+
+        void removeImageLayer( unsigned int index );
+        void removeHeightFieldLayer( unsigned int index );
+
+        void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
+        void moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex );
     };
 }
 

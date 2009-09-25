@@ -21,8 +21,8 @@
 #define OSGEARTH_CACHING_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TileSource>
 #include <osgEarth/TMS>
+#include <osgEarth/TileKey>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -45,8 +45,7 @@ namespace osgEarth
     public:
         enum CacheType
         {
-            TYPE_DISABLED,  // explicitly specify that no caching should occur
-            TYPE_DEFAULT,   // use the default caching type, or inherit from another CacheConfig
+            TYPE_DEFAULT,   // use the default caching type
             TYPE_TMS,       // cache to a OSGeo Tile Map Service structure
             TYPE_TILECACHE  // cache to a MetaCarta Labs TileCache structure
         };
@@ -88,59 +87,52 @@ namespace osgEarth
         optional<bool>& runOffCacheOnly();
         const optional<bool>& runOffCacheOnly() const;
 
-        /**
-         * Sets whether data that needs to be warped/reprojected into the map's profile
-         * should be warped prior to writing it to the cache.
-         */
-        optional<bool>& reprojectBeforeCaching();
-        const optional<bool>& reprojectBeforeCaching() const;
-
-        /**
-         * Inherits properties from the given CacheConfig
-         */
-        void inheritFrom( const CacheConfig& rhs );
-
         std::string toString() const;
 
     private:
         CacheType       _type;
         Properties      _properties;
         optional<bool>  _runOffCacheOnly;
-        optional<bool>  _reprojectBeforeCaching;
     };
 
+	/**
+	 * Cache for storing image tiles
+	 */
+	class OSGEARTH_EXPORT Cache : public osg::Referenced
+	{
+	public:
 
-    /**
-     * A CachedTileSource acts as a proxy between a cache and an actual TileSource.
-     * As images and heightfields are requested from a CachedTileSource, it first
-     * consults the cache via the getCachedImage method and returns it
-     */
-    class OSGEARTH_EXPORT CachedTileSource : public ChainedTileSource
-    {
-    public:
-        /**
-         * Creates a new CachedTileSource
-         */
-        CachedTileSource(
-            TileSource* tileSource,
-            const osgDB::ReaderWriter::Options* options =NULL);
+		/**
+		 * Gets the cached image for the given TileKey
+		 */
+		virtual osg::Image* getImage( const TileKey* key,
+			                          const std::string& layerName,
+									  const std::string& format ) = 0;
 
-        /**
-         * Creates an image for the given TileKey
-         */
-        virtual osg::Image* createImage( const TileKey* key );
+		/**
+		 * Sets the cached image for the given TileKey
+		 */
+		virtual void setImage( const TileKey* key,
+			                   const std::string& layerName,
+							   const std::string& format,
+			                   osg::Image* image ) = 0;
 
-        /**
-         * Creates a heightfield for the given TileKey
-         */
-        virtual osg::HeightField* createHeightField( const TileKey* key );
+		/**
+		 * Gets the cached heightfield for the given TileKey
+		 */
+		virtual osg::HeightField* getHeightField( const TileKey* key,
+			                                      const std::string& layerName,
+									              const std::string& format);
 
-        /**
-         * Gets the number of pixels per tile for this TileSource.
-         */
-        virtual int getPixelsPerTile() const;
+		/**
+		 * Sets the cached heightfield for the given TileKey
+		 */
+		virtual void setHeightField( const TileKey* key,
+			                         const std::string& layerName,
+									 const std::string& format,
+			                         osg::HeightField* hf);
 
-        /**
+		/**
          * Gets the current MapConfig filename.  This is used for getting relative paths to the MapConfig.
          */
         virtual const std::string& getMapConfigFilename() {return _mapConfigFilename;}
@@ -150,160 +142,72 @@ namespace osgEarth
          */
         virtual void setMapConfigFilename( const std::string &mapConfigFilename ) { _mapConfigFilename = mapConfigFilename;}
 
-
-    public: // TileSource interface
-
-        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
-        
-
-    protected:
-        virtual const Profile* loadTileMap();
-        virtual void storeTileMap( const Profile* );
-
-        /**
-         * Gets an image from the cache for the given key.  Should be implemented by subclasses
-         */
-        virtual osg::Image* getCachedImage( const TileKey* key);
-
-        /**
-         * Add an image to the cache for the given key.  Should be implemented by subclasses.
-         */
-        virtual void writeCachedImage(const TileKey* key, const osg::Image* image);
-
-        osg::ref_ptr<TileMap> _tileMap;
-        //osg::ref_ptr<TileSource> _tileSource; //moved to ChainedTileSource
-        std::string _mapConfigFilename;
-    };
-
-
-    /**
-     * DiskCachedTileSource is an implementation of the CachedTileSource class that caches in a format compatible with
-     * Metacarta's TileCache "Disk" style caching.  This means that the resulting osgEarth cache can be used by any client
-     * that can consume Metacarta's TileCache Disk style caching.  Subclasses of DiskCachedTileSource can simply implement the 
-     * getFileName function to provide different naming schemes.
-     * http://tilecache.org/
-     */
-    class OSGEARTH_EXPORT DiskCachedTileSource : public CachedTileSource
-    {
-    public:
-        /**
-        *Creates a new DiskCachedTileSource.
-        *@param path
-        *       The path to the directory to cache to
-        *@param format
-        *       The format to cache tiles to (png, jpg, dds, etc).
-        */
-        DiskCachedTileSource(
-            TileSource* tileSource, 
-            const std::string &path,
-            const std::string format,
-            const osgDB::ReaderWriter::Options* options =NULL);
-
-        /**
+    	/**
          * Gets whether the given TileKey is cached or not
          */
-        virtual bool isCached( const TileKey* key);
+		virtual bool isCached( const TileKey* key,
+			                   const std::string& layerName,
+						       const std::string& format) const { return false; }
 
-        /**
-         * Gets weather or not to write a world file along with the cached image
-         */
-        bool getWriteWorldFiles() const { return _writeWorldFiles; }
+		/**
+		 * Store the TileMap for the given profile.
+		 */
+		virtual void storeLayerProperties( const std::string& layerName,
+		         	                       const Profile* profile,
+			                               const std::string& format,
+						         		   unsigned int tile_size);
 
-        /**
-         * Sets weather or not to write a world file along with the cached image
-         */
-        void setWriteWorldFiles(bool writeWorldFiles) { _writeWorldFiles = writeWorldFiles; }
+		/**
+		 * Loads the TileMap for the given layer.
+		 */
+		virtual const Profile* loadLayerProperties( const std::string& layerName,
+			                                        std::string& format,
+			                                        unsigned int &tile_size );
 
-        /**
-         * Overrided from TileSource
-         */
-        virtual bool hasPersistentCache() const;
+	protected:
 
-    protected:
-        virtual osg::Image* getCachedImage( const TileKey* key);
-        virtual void writeCachedImage(const TileKey* key, const osg::Image* image);
+		std::string _mapConfigFilename;
+	};
 
-        /**
-         * Gets the filename to cache to for the given TileKey and TileSource
-         */
-        virtual std::string getFileName(const TileKey* key );
+	class OSGEARTH_EXPORT MemCache : public Cache
+	{
+	public:
+        MemCache();
 
-        virtual std::string getExtension() const;
+		/**
+		 * Gets the maximum number of tiles to keep in the cache
+		 */
+		unsigned int getMaxNumTilesInCache() const;
 
-        virtual std::string getPath();
-
-        
-        virtual const Profile* loadTileMap();
-        virtual void storeTileMap( const Profile* );
-
-    protected:
-        std::string getTMSPath();
-
-        std::string _path;
-        std::string _format;
-        bool        _writeWorldFiles;
-        OpenThreads::Mutex _fs_mutex;
-    };
-
-    /**
-    * TMSCacheTileSource is an implementation of the DiskCachedTileSource class that caches tiles to disk in a style compatible with the TMS specification.
-    * http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
-    */
-    class OSGEARTH_EXPORT TMSCacheTileSource : public DiskCachedTileSource
-    {
-    public:
-        /**
-        *Creates a new TMSCacheTileSource.
-        *@param path
-        *       The path to the directory to cache to
-        *@param format
-        *       The format to cache tiles to (png, jpg, dds, etc).
-        */
-        TMSCacheTileSource( 
-            TileSource* tileSource, 
-            const std::string &path, 
-            const std::string format,
-            const osgDB::ReaderWriter::Options* options =NULL);
-
-        /**
-        * Gets whether or not to invert the y tile index
-        */
-        const bool& getInvertY() {return _invertY; }
-
-        /**
-        * Sets whether or not to invert the y tile index
-        */
-        void setInvertY(const bool &invertY) {_invertY = invertY;}
-
-    protected:
-        virtual std::string getFileName(const TileKey* key );
-        bool _invertY;
-    };
-
-    class OSGEARTH_EXPORT MemCachedTileSource : public CachedTileSource
-    {
-    public:
-        MemCachedTileSource(
-            TileSource* tileSource,
-            const osgDB::ReaderWriter::Options* options =NULL);
-
-        virtual const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
-
-        unsigned int getMaxNumTilesInCache() const;
+		/**
+		 * Sets the maximum number of tiles to keep in the cache
+		 */
         void setMaxNumTilesInCache(unsigned int max);
 
         /**
          * Gets whether the given TileKey is cached or not
          */
-        virtual bool isCached( const TileKey* key);
+        virtual bool isCached( const TileKey* key,
+			                   const std::string& layerName,
+						       const std::string& format);
+
+		/**
+		 * Gets the cached image for the given TileKey
+		 */
+		virtual osg::Image* getImage( const TileKey* key,
+			                          const std::string& layerName,
+						              const std::string& format);
+
+		/**
+		 * Sets the cached image for the given TileKey
+		 */
+		virtual void setImage( const TileKey* key,
+			                   const std::string& layerName,
+						       const std::string& format,
+							   osg::Image* image );
 
     protected:
-        virtual ~MemCachedTileSource();
        
-        virtual osg::Image* getCachedImage( const TileKey* key);
-
-        virtual void writeCachedImage(const TileKey* key, const osg::Image* image);
-
         struct CachedImage
         {
             std::string _key;
@@ -318,29 +222,137 @@ namespace osgEarth
 
         unsigned int _maxNumTilesInCache;
         OpenThreads::Mutex _mutex;
-    };
 
+	};
+
+	class OSGEARTH_EXPORT DiskCache : public Cache
+	{
+	public:
+		DiskCache();
+
+		DiskCache(const std::string& path);
+
+		/**
+		 * Gets the path of this DiskCache
+		 */
+		std::string getPath() const;
+
+		/**
+		 *Sets the path of this DiskCache
+		 */
+		const void setPath(const std::string& path) { _path = path; }
+
+		/**
+         * Gets weather or not to write a world file along with the cached image
+         */
+        bool getWriteWorldFiles() const { return _writeWorldFiles; }
+
+        /**
+         * Sets weather or not to write a world file along with the cached image
+         */
+        void setWriteWorldFiles(bool writeWorldFiles) { _writeWorldFiles = writeWorldFiles; }
+
+		/**
+         * Gets whether the given TileKey is cached or not
+         */
+	    virtual bool isCached( const TileKey* key,
+						       const std::string& layerName,
+						       const std::string& format) const;
+
+        /**
+         * Gets the filename to cache to for the given TileKey
+         */
+		virtual std::string getFilename( const TileKey* key,
+						                 const std::string& layerName,
+						                 const std::string& format) const;
+
+		/**
+		 * Gets the cached image for the given TileKey
+		 */
+		virtual osg::Image* getImage( const TileKey* key,
+						              const std::string& layerName,
+						              const std::string& format);
+
+		/**
+		 * Sets the cached image for the given TileKey
+		 */
+		virtual void setImage( const TileKey* key,
+						       const std::string& layerName,
+						       const std::string& format,
+							   osg::Image* image );
+
+		/**
+		 * Store the TileMap for the given profile.
+		 */
+		virtual void storeLayerProperties( const std::string& layerName,
+		         	                       const Profile* profile,
+			                               const std::string& format,
+						         		   unsigned int tile_size);
+
+		/**
+		 * Loads the TileMap for the given layer.
+		 */
+		virtual const Profile* loadLayerProperties( const std::string& layerName,
+			                                        std::string& format,
+			                                        unsigned int &tile_size );
+
+
+	protected:
+		std::string getTMSPath(const std::string &layerName);
+
+		struct LayerProperties
+		{
+			std::string _format;
+			unsigned int _tile_size;
+			osg::ref_ptr< const Profile > _profile;
+		};
+
+		typedef std::map< std::string, LayerProperties > LayerPropertiesCache;
+		LayerPropertiesCache _layerPropertiesCache;
+		std::string _path;
+        bool        _writeWorldFiles;
+        OpenThreads::Mutex _fs_mutex;
+	};
+
+	class OSGEARTH_EXPORT TMSCache : public DiskCache
+	{
+	public:
+		TMSCache(const std::string &path );
+
+		/**
+        * Gets whether or not to invert the y tile index
+        */
+        const bool& getInvertY() {return _invertY; }
+
+        /**
+        * Sets whether or not to invert the y tile index
+        */
+        void setInvertY(const bool &invertY) {_invertY = invertY;}
+
+		/**
+         * Gets the filename to cache to for the given TileKey
+         */
+		virtual std::string getFilename( const TileKey* key,
+			                             const std::string& layerName,
+			                             const std::string& format) const;
+
+	private:
+		bool _invertY;
+	};
+
+	
     /**
-     * CachedTileSourceFactory is used to created CachedTileSource's from configuration properties.
+     * CacheFactory is used to created CachedTileSource's from configuration properties.
      */
-    class OSGEARTH_EXPORT CachedTileSourceFactory
+    class OSGEARTH_EXPORT CacheFactory
     {
     public:
-        /**
-        *Creates a CachedTileSource of the given type with the given properties.
-        *@param tileSource
-        *       The TileSource to act as a proxy for
-        *@param type
-        *       The type of cache to create
-        *@param properties
-        *       The configuration properties for the cache.
-        */
-        static CachedTileSource* create(
-            TileSource* tileSource,
-            const CacheConfig::CacheType& type,
-            std::map<std::string,std::string> properties,
-            const osgDB::ReaderWriter::Options* options =NULL);
+		/**
+		* Creates a Cache from the given CacheConfig
+		*/
+		Cache* create(const CacheConfig& cacheConfig);
     };
+
 }
 
 #endif // OSGEARTH_CACHING_H

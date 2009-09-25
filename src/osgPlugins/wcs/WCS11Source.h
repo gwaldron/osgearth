@@ -44,7 +44,7 @@ public:
 public: // TileSource interface
 
     // override
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath );
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile);
 
 private:
     std::string _url;

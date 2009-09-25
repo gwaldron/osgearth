@@ -71,7 +71,7 @@ public:
     }
 
     // override
-    const Profile* createProfile( const Profile* mapProfile, const std::string& path )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
         const Profile* profile = NULL;
 
@@ -106,17 +106,14 @@ public:
                     profile = Profile::create( profile->getSRS(), oldEx.xMin()-d/2, oldEx.yMin(), oldEx.xMax()+d/2, oldEx.yMax(), tilesX, tilesY );    
                 }
             }
-        }
-        else if ( mapProfile )
-        {
-            profile = mapProfile;
-        }
+        }        
         else
         {
             profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         }
 
-        return profile;
+		//Set the profile
+		setProfile( profile );
     }
 
     // override

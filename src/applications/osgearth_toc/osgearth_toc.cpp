@@ -50,7 +50,6 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/TileSource>
-#include <osgEarth/TileSourceFactory>
 #include <osgEarth/Registry>
 
 #include <osgEarthUtil/Common>
@@ -87,9 +86,18 @@ struct BlankTileSource : public osgEarth::TileSource
 {
     BlankTileSource(const osgDB::ReaderWriter::Options* options =0L) : osgEarth::TileSource( options ) { }
 
-    virtual const Profile* createProfile( const Profile* mapProfile, const std::string& confPath ) {
-        return mapProfile? mapProfile : osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-    }
+	virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile =0)
+	{
+		if (overrideProfile)
+		{
+			setProfile( overrideProfile );
+		}
+		else
+		{
+			setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
+		}
+	}
+
 
     virtual osg::Image* createImage( const TileKey* key ) {
         osg::Image* image = new osg::Image();
@@ -263,7 +271,9 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     
     // Custom green layer:
     {
-        MapLayer* layer = new MapLayer( "Green", MapLayer::TYPE_IMAGE, new BlankTileSource() );
+		BlankTileSource *tileSource = new BlankTileSource();
+		tileSource->initialize( "" );
+        MapLayer* layer = new MapLayer( "Green", MapLayer::TYPE_IMAGE,tileSource );
         addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
     }
 

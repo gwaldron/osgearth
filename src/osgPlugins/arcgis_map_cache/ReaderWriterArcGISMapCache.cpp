@@ -70,10 +70,10 @@ public:
             _format = "png";
     }
 
-    const Profile* createProfile( const Profile* mapProfile, const std::string& configPath )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
         //Set the profile to global geodetic.
-        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+        setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
     }
 
     // override

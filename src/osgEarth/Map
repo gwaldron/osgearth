@@ -62,6 +62,15 @@ namespace osgEarth
             CSTYPE_PROJECTED
         };
 
+		
+        enum SamplePolicy
+        {
+            FIRST_VALID,
+            HIGHEST,
+            LOWEST,
+            AVERAGE
+        };
+
     public:
         /**
          * Constructs a new, empty map.
@@ -174,6 +183,32 @@ namespace osgEarth
         void setId( unsigned int id );
         unsigned int getId() const;
 
+		/**
+		 * Creates a heightfield for the given TileKey using the elevation layers from this map
+		 */
+		osg::HeightField* createHeightField( const TileKey* key, bool fallback, SamplePolicy samplePolicy = FIRST_VALID );
+
+		/**
+		 * Gets the Cache for this Map
+		 */
+		Cache* getCache() const;
+
+		/**
+		 * Sets the Cache for this Map
+		 */
+		void setCache( Cache* cache );
+
+		/**
+		* Sets whether to use a customer Locator for spherical mercator data.
+		* Disable this on systems that don't support NPOT textures or if you
+		* see texture "smearing" with mercator globes.
+		*/
+		void setUseMercatorLocator( bool value );
+
+		/**
+		* Gets whether to use a customer Locator for spherical mercator data.
+		*/
+		bool getUseMercatorLocator() const;
     protected:
 
         ~Map() { }
@@ -192,6 +227,8 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
         unsigned int _id;
         CoordinateSystemType _cstype;
+		osg::ref_ptr<Cache> _cache;
+		bool _use_mercator_locator;
 
     private:
         void calculateProfile();

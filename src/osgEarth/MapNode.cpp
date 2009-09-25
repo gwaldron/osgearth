@@ -336,17 +336,17 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
     {        
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {
-            addImageTileSource( layer->getTileSource() );
+            addImageLayer( layer );
         }
         else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
         {
-            addHeightFieldTileSource( layer->getTileSource() );
+            addHeightFieldLayer( layer );
         }
     }
 }
 
 void
-MapNode::addImageTileSource( TileSource* source )
+MapNode::addImageLayer( MapLayer* layer )
 {
     OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
 
@@ -367,7 +367,7 @@ MapNode::addImageTileSource( TileSource* source )
             osgTerrain::TileID tileId = itr->get()->getTileID();
 		    osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
 
-            osg::ref_ptr< GeoImage > geoImage = _engine->createValidGeoImage( source, key.get() );
+            osg::ref_ptr< GeoImage > geoImage = _engine->createValidGeoImage( layer, key.get() );
 
             if (geoImage.valid())
             {
@@ -385,7 +385,7 @@ MapNode::addImageTileSource( TileSource* source )
                 bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
                 bool canUseMercatorLocator = geoImage->getSRS()->isMercator() && (isGeocentric || isGeographic);
 
-                if ( canUseMercatorLocator && _engineProps.getUseMercatorLocator() )
+                if ( canUseMercatorLocator && _map->getUseMercatorLocator() )
                 {
                     GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
                     geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
@@ -414,7 +414,7 @@ MapNode::addImageTileSource( TileSource* source )
             }
             else
             {
-                osg::notify(osg::NOTICE) << "Could not create geoimage for " << source->getName() << " " << key->str() << std::endl;
+                osg::notify(osg::NOTICE) << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
             }
             itr->get()->setDirty(true);
         }
@@ -425,9 +425,9 @@ MapNode::addImageTileSource( TileSource* source )
 
 
 void
-MapNode::addHeightFieldTileSource( TileSource* source )
+MapNode::addHeightFieldLayer( MapLayer* layer )
 {
-    osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldSource] Begin " << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldLayer] Begin " << std::endl;
 
     OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() ); // _mapConfig.getSourceMutex());
 
@@ -449,7 +449,7 @@ MapNode::addHeightFieldTileSource( TileSource* source )
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _engine->createHeightField( _map.get(), key.get(), true );
+                osg::HeightField* hf = _map->createHeightField( key.get(), true );
                 if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
@@ -478,17 +478,17 @@ MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
     {
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {
-            removeImageTileSource( index );
+            removeImageLayer( index );
         }
         else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
         {
-            removeHeightFieldTileSource( index );
+            removeHeightFieldLayer( index );
         }
     }
 }
 
 void
-MapNode::removeImageTileSource( unsigned int index )
+MapNode::removeImageLayer( unsigned int index )
 {
     OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
 
@@ -533,7 +533,7 @@ MapNode::removeImageTileSource( unsigned int index )
 }
 
 void
-MapNode::removeHeightFieldTileSource( unsigned int index )
+MapNode::removeHeightFieldLayer( unsigned int index )
 {
     OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
 
@@ -552,7 +552,7 @@ MapNode::removeHeightFieldTileSource( unsigned int index )
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _engine->createHeightField( _map.get(), key.get(), true );
+                osg::HeightField* hf = _map->createHeightField( key.get(), true );
                 if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
@@ -581,17 +581,17 @@ MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int n
     {
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {
-            moveImageTileSource( oldIndex, newIndex );
+            moveImageLayer( oldIndex, newIndex );
         }
         else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
         {
-            moveHeightFieldTileSource( oldIndex, newIndex );
+            moveHeightFieldLayer( oldIndex, newIndex );
         }
     }
 }
 
 void
-MapNode::moveImageTileSource( unsigned int oldIndex, unsigned int newIndex )
+MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
     OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
 
@@ -630,7 +630,7 @@ MapNode::moveImageTileSource( unsigned int oldIndex, unsigned int newIndex )
 }
 
 void
-MapNode::moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex )
+MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 {
     OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
 
@@ -650,7 +650,7 @@ MapNode::moveHeightFieldTileSource( unsigned int oldIndex, unsigned int newIndex
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _engine->createHeightField( _map.get(), key.get(), true );
+                osg::HeightField* hf = _map->createHeightField( key.get(), true );
                 if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );

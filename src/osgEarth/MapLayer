@@ -42,7 +42,8 @@ namespace osgEarth
         };
 
     public:
-        /**
+
+		 /**
          * Constructs a new map layer that will use a TileSource loaded from a
          * plugin driver.
          */
@@ -80,13 +81,10 @@ namespace osgEarth
          */
         const Properties& getDriverProperties() const;
 
-        /**
-         * Gets the caching setup for this map layer. By default, the layer will inherit
-         * caching behavior from the map to which it is added. This property overrides or
-         * customizes the map's cache settings.
-         */
-        optional<CacheConfig>& cacheConfig();
-        const optional<CacheConfig>& cacheConfig() const;
+		/**
+		 * Gets the profile of this MapLayer
+		 */
+		const Profile* getProfile() const;
 
         /**
          * Gets the explicit profile setup for this map layer. By default, the layer will 
@@ -123,28 +121,133 @@ namespace osgEarth
 		 */
 		void setOpacity(float opacity);
 
+		/**
+		 * Gets whether this MapLayer is enabled or not
+		 */
 		bool getEnabled() const;
+
+		/**
+		 * Sets whether this MapLayer is enabled or not.
+		 */
 		void setEnabled(bool enabled);
 
 		/**
 		 * Gets or sets the nodata image for this MapLayer
 		 */
-		optional<std::string>& noDataImage();
-		const optional<std::string>& noDataImage() const;
+		optional<std::string>& noDataImageFilename();
+		const optional<std::string>& noDataImageFilename() const;
 
-	    /**
+		/**
 		 * Gets the transparent color of this TileSource
 		 */
 		const optional<osg::Vec4ub>& transparentColor() const;
 		optional<osg::Vec4ub>& transparentColor();
-    public:
+
+		/**
+		 *Gets whether the given key is valid for this MapLayer
+		 */
+		bool isKeyValid(const TileKey* key) const;
+
+		/**
+		 * Gets whether or not to allow the creation of Mercator images for Geographic scenes
+		 */
+		bool getUseMercatorFastPath() const { return _useMercatorFastPath; }
+
+		/**
+		 * Sets whether or not to allow the creation of Mercator images for Geographic scenes
+		 */
+		void setUseMercatorFastPath( bool useMercatorFastPath) { _useMercatorFastPath = useMercatorFastPath; }
+
+		/**
+		 * Gets whether to use exact cropping if image cropping is necessary
+		 */
+		bool getExactCropping() const { return _exactCropping; } 
+
+		/**
+		 * Sets whether to use exact cropping if image cropping is necessary
+		 */
+		void setExactCropping( bool exactCropping ) { _exactCropping = exactCropping; }
+
+		/**
+		 * Creates a GeoImage from this MapLayer
+		 */
+		 GeoImage* createImage( const TileKey* key );
+
+		 /**
+		  * Creates a GeoHeightField for this MapLayer.
+		  * The returned HeightField will always match the geospatial extents of the incoming TileKey.
+		  */
+		 osg::HeightField* createHeightField( const TileKey* key );
+
+		 /**
+         * Gets the user-provided options structure stored in this map.
+         */
+        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
+
+        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
+
+		/**
+         * Gets the reference URI. See setReferenceURI for more info.
+         */
+        const std::string& getReferenceURI() const;
 
         /**
-         * Initializes this layer's underlying TileSource for use.
+         * Sets a reference URI. Usually this is the location of a file from which this map
+         * was created. This acts as a reference point for any relative paths/URIS that may
+         * occur elsewhere in the configuration.
+         *
+         * Note: Set this before adding any layers to the map.
          */
-        void setTileSource( TileSource* tileSource );
+        void setReferenceURI( const std::string& uri );
+
+		/**
+		 * Gets the desired tile size to reproject imagery to if necessary.
+		 */
+		unsigned int getReprojectedTileSize() const { return _reprojected_tile_size; }
+
+		/**
+		 * Sets the desired tile size to reproject imagery to if it is necessary.
+		 * If set to 0, osgEarth will attempt to maintain a consistent resolution for the tiles.
+		 */
+		void setReprojectedTileSize( unsigned int tile_size) { _reprojected_tile_size = tile_size;}
+
+		/**
+		 * Gets the format that this MapLayer should use when caching.
+		 */
+		const std::string& getCacheFormat() const;
+
+		/**
+		 * Sets the format that this MapLayer should use when caching.
+		 */
+		void setCacheFormat(const std::string& cacheFormat);
+
+		/**
+		 * Gets the Cache to be used on this MapLayer.
+		 */
+		Cache* getCache() const { return _cache.get(); }
+
+		/**
+		 * Sets the cache to be used on this MapLayer
+		 */
+		void setCache( Cache* cache ) { _cache = cache; }
+
+		/**
+		 * Gets whether to try to run this MapLayer strictly from the cache only.
+		 */
+		bool getCacheOnly() const;
+
+		/**
+		 * Sets whether to try to run this MapLayer strictly from the cache only.
+		 */
+		void setCacheOnly( bool cacheOnly );
 
     protected:
+
+		void initTileSource();
+
+		osg::Image* createImageWrapper( const TileKey* key, bool cacheInLayerProfile );
+		GeoHeightField* createGeoHeightField( const TileKey* key );
+
         ~MapLayer() { }
 
     private:
@@ -152,18 +255,34 @@ namespace osgEarth
         Type        _type;
         std::string _driver;
         Properties  _driverProps;
-        
-        optional<CacheConfig> _cacheConf;
+
+		std::string _cacheFormat;
+       
         optional<ProfileConfig> _profileConf;
         optional<int> _minLevel;
         optional<int> _maxLevel;
-	    optional<std::string> _nodata_image;
+	    optional<std::string> _nodata_image_filename;
 		optional<osg::Vec4ub> _transparentColor;
+	    osg::ref_ptr<osg::Image> _nodata_image;
 
 		float _opacity;
 		bool _enabled;
+
+		bool _cacheOnly;
         
         osg::ref_ptr<TileSource> _tileSource;
+		osg::ref_ptr<Cache> _cache;
+
+		bool _exactCropping;
+		bool _useMercatorFastPath;
+
+		std::string _referenceURI;
+
+		unsigned int _reprojected_tile_size;
+
+		osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
+
+		osg::ref_ptr< const Profile > _profile;
     };
 
 

@@ -292,11 +292,14 @@ TileMap::create(const std::string& url,
     tileMap->setExtents(ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax());
     tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
+	tileMap->_srs = profile->getSRS()->getInitString(); //srs();
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
     tileMap->_format.setExtension( format );
-        
+	profile->getNumTiles( 0, tileMap->_numTilesWide, tileMap->_numTilesHigh );
 
+	tileMap->generateTileSets();
+        
     return tileMap;
 }
 

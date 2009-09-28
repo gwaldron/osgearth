@@ -481,7 +481,7 @@ Map::createHeightField( const TileKey* key, bool fallback, SamplePolicy samplePo
 			osg::HeightField* hf = NULL;
 			while (hf_key.valid())
 			{
-				hf = i->get()->createHeightField( key );
+				hf = i->get()->createHeightField( hf_key.get() );
 				if (hf || !fallback) break;
 				hf_key = hf_key->createParentKey();
 			}

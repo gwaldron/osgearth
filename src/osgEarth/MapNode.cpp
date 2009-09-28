@@ -326,7 +326,7 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
         {
             for( unsigned int i=0; i<_terrains.size(); i++ )
             {
-                _terrains[i]->advanceRevision();
+                _terrains[i]->incrementRevision();
             }
         }
         updateStateSet();
@@ -468,7 +468,7 @@ MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
         {
             for( unsigned int i=0; i<_terrains.size(); i++ )
             {
-                _terrains[i]->advanceRevision();
+                _terrains[i]->incrementRevision();
             }
         }
         updateStateSet();
@@ -571,7 +571,7 @@ MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int n
         {
             for( unsigned int i=0; i<_terrains.size(); i++ )
             {
-                _terrains[i]->advanceRevision();
+                _terrains[i]->incrementRevision();
             }
         }
         updateStateSet();

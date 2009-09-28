@@ -207,6 +207,16 @@ namespace osgEarth
          */
         GeoExtent clampAndTransformExtent( const GeoExtent& input ) const;
 
+        /**
+         * Creates a tile key for a tile that contains the input location at the specified LOD.
+         * Express the coordinates in the profile's SRS.
+         * Returns NULL if the point lies outside the profile's extents.
+         */
+        TileKey* createTileKey( double x, double y, unsigned int level, unsigned int face =0 ) const;
+
+        /**
+         * Returns a readable description of the profile.
+         */
         std::string toString() const;
 
     private:       

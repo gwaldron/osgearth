@@ -75,9 +75,7 @@ public:
             getNumChildren() > 0 &&
             _terrain.valid() && 
             _tile->getTerrainRevision() != _terrain->getRevision() )
-            //static_cast<VersionedTile*>( getChild(0) )->getTerrainRevision() != _terrain->getRevision() )
         {
-            //osg::notify(osg::NOTICE) << "Tile " << _keyStr << " is obselete" << std::endl;
             _loaded = false;
         }
     }
@@ -97,8 +95,6 @@ public:
             _tile->setTerrain( 0L );             // unregisters with the old one
             _tile->setTerrain( _terrain.get() ); // registers with the new one
 
-      //      osg::LOD* lod = new osg::LOD();
-      //      lod->addChild( _tile.get(), _minRange, FLT_MAX );
             osg::Group::addChild( _tile.get() );
         }
         return true;
@@ -110,7 +106,6 @@ public:
     std::string _keyStr;
     osg::observer_ptr<VersionedTerrain> _terrain;
     float _minRange;
-    //osg::observer_ptr<osg::LOD> _lod;
     osg::observer_ptr<VersionedTile> _tile;
 };
 
@@ -580,14 +575,13 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     {
         osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
         switcher->addCullCallback( ccc );
-    }
-     
-    // Install a callback that will load the actual tile data via the pager (this must be added
-    // after the cluster culler)
-    //switcher->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    }     
 
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
+
+    // build its geometry immediately:
+    //tile->init();
 
     osg::Node* result = 0L;
 
@@ -598,6 +592,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     plod->setFileName( 1, createURI( map->getId(), key ) );
     plod->setRange( 1, 0.0, min_range );
     
+    // Install a callback that will load the actual tile data via the pager.
     plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
 #if USE_FILELOCATIONCALLBACK
@@ -807,13 +802,20 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         }
     }
 
-	double width = key->getGeoExtent().width();	
-	if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
-	double min_range = (width / min_units_per_pixel) * _engineProps.getMinTileRangeFactor(); 
-
     osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
     double radius = bs.radius();
+
+#if 1
+    double min_range = radius * _engineProps.getMinTileRangeFactor();
+    osg::LOD::RangeMode mode = osg::LOD::DISTANCE_FROM_EYE_POINT;
+#else
+	double width = key->getGeoExtent().width();	
+	if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
+	double min_range = (width / min_units_per_pixel) * _engineProps.getMinTileRangeFactor(); 
+    osg::LOD::RangeMode mode = osg::LOD::PIXEL_SIZE_ON_SCREEN;
+#endif
+
 
     // a skirt hides cracks when transitioning between LODs:
     hf->setSkirtHeight(radius * _engineProps.getSkirtRatio());
@@ -838,16 +840,21 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
 
+    // build the geometry immediately
+    //tile->init();
+
     if ( wrapInPagedLOD )
     {
         // if we are doing immediate load, we need to house the new tile in a PLOD that will
         // queue up its subtiles.
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-		plod->addChild(tile, 0, min_range);
+		//plod->addChild(tile, 0, min_range);
+        plod->addChild(tile, min_range, max_range);
         plod->setFileName( 1, createURI( map->getId(), key ) );
-		plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
-		plod->setRange(1, min_range, FLT_MAX);
+        plod->setRangeMode( mode ); //osg::LOD::PIXEL_SIZE_ON_SCREEN );
+		//plod->setRange(1, min_range, FLT_MAX);
+        plod->setRange(1, 0, min_range);
         
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = new osgDB::Options;
@@ -861,31 +868,6 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     {
         return tile;
     }
-
-//    if ( _engineProps.getPreemptiveLOD() )
-//    {
-//        // if this was a deferred load, all we need is the populated tile.
-//        return tile;
-//    }
-//    else
-//    {
-//        // if we are doing immediate load, we need to house the new tile in a PLOD that will
-//        // queue up its subtiles.
-//        osg::PagedLOD* plod = new osg::PagedLOD();
-//        plod->setCenter( bs.center() );
-//		plod->addChild(tile, 0, min_range);
-//        plod->setFileName( 1, createURI( map->getId(), key ) );
-//		plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
-//		plod->setRange(1, min_range, FLT_MAX);
-//        
-//#if USE_FILELOCATIONCALLBACK
-//        osgDB::Options* options = new osgDB::Options;
-//        options->setFileLocationCallback( new osgEarth::FileLocationCallback);
-//        plod->setDatabaseOptions( options );
-//#endif
-//    
-//        return plod;
-//    }
 }
 
 osg::ClusterCullingCallback*

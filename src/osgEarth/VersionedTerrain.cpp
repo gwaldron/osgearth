@@ -29,7 +29,8 @@ using namespace OpenThreads;
 
 
 VersionedTile::VersionedTile() :
-_terrainRevision(-1)
+_terrainRevision(-1),
+_tileRevision(0)
 {
     //nop
 }
@@ -47,9 +48,21 @@ VersionedTile::setTerrainRevision( int revision )
 }
 
 bool
-VersionedTile::isUpToDate() const
+VersionedTile::isInSyncWithTerrain() const
 {
     return _terrainRevision == static_cast<const VersionedTerrain*>(getTerrain())->getRevision();
+}
+
+int
+VersionedTile::getTileRevision() const
+{
+    return _tileRevision;
+}
+
+void
+VersionedTile::incrementTileRevision()
+{
+    _tileRevision++;
 }
 
 /****************************************************************************/
@@ -62,7 +75,7 @@ _revision(0)
 }
 
 void
-VersionedTerrain::advanceRevision()
+VersionedTerrain::incrementRevision()
 {
     // no need to lock; if we miss it, we'll get it the next time around
     _revision++;
@@ -90,6 +103,8 @@ void
 VersionedTerrain::getTerrainTiles( TerrainTileList& out_tiles )
 {
     ScopedLock<Mutex> lock(_mutex);
+
+    out_tiles.reserve( _terrainTileMap.size() );
 
     for(TerrainTileSet::iterator itr = _terrainTileSet.begin();
         itr != _terrainTileSet.end();

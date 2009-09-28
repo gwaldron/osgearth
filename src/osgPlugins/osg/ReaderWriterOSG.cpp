@@ -32,6 +32,7 @@
 #include <osgDB/WriteFile>
 
 #include <sstream>
+#include <stdlib.h>
 
 #include <stdio.h>
 #include <string.h>

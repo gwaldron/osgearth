@@ -380,12 +380,33 @@ Profile::getLevelOfDetailForHorizResolution( double resolution, int tileSize ) c
 
     double tileRes = (_extent.width() / (double)_numTilesWideAtLod0) / (double)tileSize;
     unsigned int level = 0;
-    while( tileRes < resolution ) 
+    while( tileRes > resolution ) 
     {
         level++;
-        tileRes *= 2.0;
+        tileRes *= 0.5;
     }
     return level;
+}
+
+TileKey*
+Profile::createTileKey( double x, double y, unsigned int level, unsigned int face ) const
+{
+    if ( _extent.contains( x, y ) )
+    {
+        int tilesX = (int)_numTilesWideAtLod0 * (1 << (int)level);
+        int tilesY = (int)_numTilesHighAtLod0 * (1 << (int)level);
+
+        double rx = (x - _extent.xMin()) / _extent.width();
+        int tileX = osg::clampBelow( (int)(rx * (double)tilesX), tilesX-1 );
+        double ry = (y - _extent.yMin()) / _extent.height();
+        int tileY = osg::clampBelow( (int)((1.0-ry) * (double)tilesY), tilesY-1 );
+
+        return new TileKey( face, level, tileX, tileY, this );
+    }
+    else
+    {
+        return 0L;
+    }
 }
 
 GeoExtent

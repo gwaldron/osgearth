@@ -27,7 +27,8 @@ using namespace OpenThreads;
 Map::Map(const CoordinateSystemType& cstype) :
 _cstype( cstype ),
 _id(-1),
-_use_mercator_locator(true)
+_use_mercator_locator(true),
+_dataModelRevision(0)
 {
 }
 
@@ -109,6 +110,12 @@ Map::getName() const {
     return _name;
 }
 
+int
+Map::getDataModelRevision() const {
+    ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    return _dataModelRevision;
+}
+
 void
 Map::setUseMercatorLocator(bool value)
 {
@@ -183,6 +190,8 @@ Map::addMapLayer( MapLayer* layer )
 			layer->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers : _heightFieldMapLayers;
 		list.push_back( layer );
 		index = list.size()-1;
+
+        _dataModelRevision++;
 
 		for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
 		{
@@ -299,6 +308,7 @@ Map::removeMapLayer( MapLayer* layer )
             if ( i->get() == layerToRemove.get() )
             {
                 list.erase( i );
+                _dataModelRevision++;
                 break;
             }
         }
@@ -350,6 +360,8 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
         list.erase( i_oldIndex );
 
         list.insert( list.begin() + newIndex, layerToMove.get() );
+
+        _dataModelRevision++;
     }
 
     // a separate block b/c we don't need the mutex
@@ -363,16 +375,16 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
 }
 
 
-static const Profile*
-getSuitableMapProfileFor( const Profile* candidate )
-{
-    if ( candidate->getProfileType() == Profile::TYPE_GEODETIC )
-        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-    else if ( candidate->getProfileType() == Profile::TYPE_MERCATOR )
-        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
-    else
-        return candidate;
-}
+//static const Profile*
+//getSuitableMapProfileFor( const Profile* candidate )
+//{
+//    if ( candidate->getProfileType() == Profile::TYPE_GEODETIC )
+//        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+//    else if ( candidate->getProfileType() == Profile::TYPE_MERCATOR )
+//        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+//    else
+//        return candidate;
+//}
 
 void
 Map::calculateProfile()
@@ -459,30 +471,41 @@ Map::calculateProfile()
 
     else
     {
-        osg::notify(osg::WARN) << "[osgEarth::Map] Bad news, unable to establish a map profile!" << std::endl;
+        osg::notify(osg::WARN) << "[osgEarth::Map] Warning, not yet able to establish a map profile!" << std::endl;
     }
 }
 
 osg::HeightField*
-Map::createHeightField( const TileKey* key, bool fallback, SamplePolicy samplePolicy)
+Map::createHeightField( const TileKey* key, bool fallback, osg::ref_ptr<const TileKey>* out_actualKey, SamplePolicy samplePolicy)
 {
-	osg::notify(osg::INFO) << "[osgEarth::Map::createHeightField]" << std::endl;
     OpenThreads::ScopedReadLock lock( _mapDataMutex );
 
 	osg::HeightField *result = NULL;
 
 	//Get a HeightField for each of the enabled layers
 	GeoHeightFieldList heightFields;
+
 	for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
 	{
 		if (i->get()->getEnabled())
 		{
+            //TODO: FIXME: this code will invalidate the input key if the caller does not already
+            // hold a reference to it. perhaps a clone here? -gw
 			osg::ref_ptr< const TileKey > hf_key = key;
 			osg::HeightField* hf = NULL;
 			while (hf_key.valid())
 			{
 				hf = i->get()->createHeightField( hf_key.get() );
-				if (hf || !fallback) break;
+                if ( hf && out_actualKey )
+                {
+                    if (!(*out_actualKey).valid() ||
+                        hf_key->getLevelOfDetail() > (*out_actualKey)->getLevelOfDetail() )
+                    {
+                        (*out_actualKey) = hf_key.get();
+                    }
+                }
+				if ( hf || !fallback )
+                    break;
 				hf_key = hf_key->createParentKey();
 			}
 

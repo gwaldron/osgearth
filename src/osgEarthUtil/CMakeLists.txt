@@ -11,6 +11,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     EarthManipulator
     ElevationFadeCallback
+    ElevationManager
     Export
 	FadeLayerNode
 	ObjectPlacer
@@ -21,6 +22,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     EarthManipulator.cpp
     ElevationFadeCallback.cpp
+    ElevationManager.cpp
 	FadeLayerNode.cpp
 	ObjectPlacer.cpp
 	Viewpoint.cpp

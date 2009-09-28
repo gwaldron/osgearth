@@ -33,34 +33,14 @@ namespace osgEarth
 {
     struct StreamObject
     {
-        StreamObject(std::ostream* stream1, const std::string& cacheFileName) :
-            _stream1(stream1),
-            _cacheFileName(cacheFileName) { }
+        StreamObject(std::ostream* stream) : _stream(stream) { }
 
-            void write(const char* ptr, size_t realsize) {
-                if (_stream1) _stream1->write(ptr, realsize);
+        void write(const char* ptr, size_t realsize)
+        {
+            if (_stream) _stream->write(ptr, realsize);
+        }
 
-                if (!_cacheFileName.empty())
-                {
-                    if (!_foutOpened)
-                    {
-                        osg::notify(osg::INFO)<<"[osgEarth::HTTPClient] Writing to cache: "<<_cacheFileName<<std::endl;
-                        _fout.open(_cacheFileName.c_str(), std::ios::out | std::ios::binary);
-                        _foutOpened = true;
-                    }
-
-                    if (_fout)
-                    {
-                        _fout.write(ptr, realsize);
-                    }
-                }
-            }
-
-        std::ostream*   _stream1;
-
-        bool            _foutOpened;
-        std::string     _cacheFileName;
-        std::ofstream   _fout;
+        std::ostream* _stream;
     };
 
     static size_t
@@ -119,14 +99,21 @@ HTTPRequest::getParameters() const
 std::string
 HTTPRequest::getURL() const
 {
-    std::stringstream buf;
-    buf << _url;
-    for( Parameters::const_iterator i = _parameters.begin(); i != _parameters.end(); i++ )
+    if ( _parameters.size() == 0 )
     {
-        buf << ( i == _parameters.begin() && _url.find( "?" ) == std::string::npos? "?" : "&" );
-        buf << i->first << "=" << i->second;
+        return _url;
     }
-    return buf.str();
+    else
+    {
+        std::stringstream buf;
+        buf << _url;
+        for( Parameters::const_iterator i = _parameters.begin(); i != _parameters.end(); i++ )
+        {
+            buf << ( i == _parameters.begin() && _url.find( "?" ) == std::string::npos? "?" : "&" );
+            buf << i->first << "=" << i->second;
+        }
+        return buf.str();
+    }
 }
 
 /****************************************************************************/
@@ -134,7 +121,7 @@ HTTPRequest::getURL() const
 HTTPResponse::HTTPResponse( long _code )
 : _response_code( _code )
 {
-    //NOP
+    _parts.reserve(1);
 }
 
 HTTPResponse::HTTPResponse( const HTTPResponse& rhs ) :
@@ -300,8 +287,6 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
             {
                 std::getline( input->_stream, line );
 
-                //osg::notify(osg::NOTICE) << "in >>> \"" << line << "\"" << std::endl;
-
                 // check for EOS:
                 if ( line == "--" )
                 {
@@ -366,14 +351,14 @@ HTTPClient::doGet( const HTTPRequest& request ) const
         buf << _proxy_host << ":" << _proxy_port;
         proxy_addr = buf.str();
     
-        osg::notify(osg::INFO) << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
+        //osg::notify(osg::INFO) << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 
     osg::notify(osg::INFO) << "[osgEarth::HTTPClient] GET " << request.getURL() << std::endl;
 
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
-    StreamObject sp( &part->_stream, std::string() );
+    StreamObject sp( &part->_stream );
 
     curl_easy_setopt( _curl_handle, CURLOPT_URL, request.getURL().c_str() );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)&sp);

@@ -29,21 +29,52 @@ namespace osgEarth
     class VersionedTerrain;
 
     /**
-     * An OSG terrain tile that keeps track of a revision number
+     * An OSG terrain tile that supports change detection.
+     *
+     * A VersionedTile tracks a "terrain revision" number. If the terrian revision differs
+     * from the parent Terrain's revision, that measn the tile is obselete and needs to
+     * be regenerated or updates. 
+     *
+     * The VersionedTile also maintains a Tile Revision number. Every change to the data in the
+     * tile itself warrants a new revision number. This way, external processes that rely
+     * on the contents of a Tile can detect changes.
+     *
+     * Note: the terrain revision and the tile revision are unrelated!
      */
     class VersionedTile : public osgTerrain::TerrainTile
     {
     public:
         VersionedTile();
 
+        /**
+         * Gets the terrain revision that this tile is in sync with.
+         */
         int getTerrainRevision() const;
 
+        /**
+         * Sets the terrain revision that this tile is in sync with.
+         */
         void setTerrainRevision( int revision );
 
-        bool isUpToDate() const;
+        /**
+         * Returns true if this tile is in sync with its parent Terrain (i.e., their
+         * version numbers are equal).
+         */
+        bool isInSyncWithTerrain() const;
+
+        /**
+         * Bumps this tile's revision number.
+         */
+        void incrementTileRevision();
+
+        /**
+         * Gets this tile's revision number.
+         */
+        int getTileRevision() const;
 
     private:
         int _terrainRevision;
+        int _tileRevision;
     };
 
 
@@ -51,9 +82,13 @@ namespace osgEarth
 
 
     /**
-     * An osgTerrain derivation that tracks a revision number so that
-     * VersionedTile tiles can automatically update themselves when the terrain
-     * revision # changes.
+     * An osgTerrain derivation that tracks a revision number. When the revision number
+     * changes, this incidates to member tiles that something substantial (like the 
+     * map model) has changed and that they need to regenreate, update, or otherwise
+     * accomodate the change.
+     *
+     * Individual tiles have their own Revision numbers, which are unrelated. These
+     * change with every change to the physical tile.
      */
     class VersionedTerrain : public osgTerrain::Terrain
     {
@@ -64,10 +99,10 @@ namespace osgEarth
 
     public:
         /**
-         * Bumps the revision number up by one. Versioned Tiles attached to this
+         * Bumps the version number up by one. Versioned Tiles attached to this
          * terrain will detect the mismatch and regenerate themselves.
          */
-        void advanceRevision();
+        void incrementRevision();
 
         /**
          * Gets the current terrain configuration revision.
@@ -79,13 +114,14 @@ namespace osgEarth
          */
         VersionedTile* getVersionedTile( const osgTerrain::TileID& tileId );
 
+        /**
+         * Populated the output tile list with all the tiles owned by this terrain.
+         */
         void getTerrainTiles( TerrainTileList& out_tiles );
 
     private:
         int _revision;
-        OpenThreads::Mutex _revisionMutex;
-
-        
+        OpenThreads::Mutex _revisionMutex;        
     };
 }
 

@@ -187,12 +187,19 @@ GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) con
 
 //TODO:: support crossesDateLine!
 bool
-GeoExtent::contains(const SpatialReference* srs, double x, double y)
+GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 {
-    double local_x, local_y;
-    if (!srs->transform(x, y, _srs.get(), local_x, local_y)) return false;
-    return
-        (local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax);
+    double local_x = x, local_y = y;
+    if (srs &&
+        !srs->isEquivalentTo( _srs.get() ) &&
+        !srs->transform(x, y, _srs.get(), local_x, local_y) )
+    {
+        return false;
+    }
+    else
+    {
+        return local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax;
+    }
 }
 
 std::string
@@ -663,9 +670,10 @@ GeoHeightField::GeoHeightField(osg::HeightField* heightField, const GeoExtent& e
 bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double x, double y, ElevationInterpolation interp, float &elevation)
 {
     double local_x, local_y;
-    if (!srs->transform(x, y, _extent.getSRS(), local_x, local_y)) return false;
+    if ( !srs->transform(x, y, _extent.getSRS(), local_x, local_y) )
+        return false;
 
-    if (_extent.contains(_extent.getSRS(), local_x, local_y))
+    if ( _extent.contains(local_x, local_y) )
     {
         elevation = HeightFieldUtils::getHeightAtLocation(_heightField.get(), local_x, local_y, interp);
         return true;

@@ -92,8 +92,14 @@ namespace osgEarth
 
         /**
          * Returns true if the specified point falls within the bounds of the extent.
+         *
+         * @param x, y
+         *      Coordinates to test
+         * @param xy_srs
+         *      SRS of input x and y coordinates; if null, the method assumes x and y
+         *      are in the same SRS as this object.
          */
-        bool contains(const SpatialReference* srs, double x, double y);
+        bool contains(double x, double y, const SpatialReference* xy_srs =0L) const;
 
         /**
          * Returns a human-readable string containing the extent data (without the SRS)

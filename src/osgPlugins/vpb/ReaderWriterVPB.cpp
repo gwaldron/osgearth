@@ -221,20 +221,21 @@ public:
 
                     srs = locator->getCoordinateSystem();
                 
-                    osgEarth::Profile::ProfileType ptype = osgEarth::Profile::TYPE_UNKNOWN;
+                    //osgEarth::Profile::ProfileType ptype = osgEarth::Profile::TYPE_UNKNOWN;
 
-                    switch(locator->getCoordinateSystemType())
-                    {
-                        case(osgTerrain::Locator::GEOCENTRIC):
-                            ptype = Profile::TYPE_GEODETIC; //profile.setProfileType(osgEarth::Profile::GLOBAL_GEODETIC);
-                            break;
-                        case(osgTerrain::Locator::GEOGRAPHIC):
-                            ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
-                            break;
-                        case(osgTerrain::Locator::PROJECTED):
-                            ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
-                            break;
-                    }
+                    //switch(locator->getCoordinateSystemType())
+                    //{
+                    //    case(osgTerrain::Locator::GEOCENTRIC):
+                    //        ptype = Profile::TYPE_GEODETIC; //profile.setProfileType(osgEarth::Profile::GLOBAL_GEODETIC);
+                    //        break;
+                    //    case(osgTerrain::Locator::GEOGRAPHIC):
+                    //        ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
+                    //        break;
+                    //    case(osgTerrain::Locator::PROJECTED):
+                    //        ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
+                    //        break;
+                    //}
+
                     double aspectRatio = (max_x-min_x)/(max_y-min_y);
                     
                     osg::notify(osg::INFO)<<"aspectRatio = "<<aspectRatio<<std::endl;
@@ -439,20 +440,32 @@ public:
     void insertTile(const osgTerrain::TileID& tileID, osgTerrain::TerrainTile* tile)
     {
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock(tileMapMutex);
-        tileMap[tileID] = tile;
 
-        tileFIFO.push_back(tileID);
-
-        if (tileFIFO.size()>maxNumTilesInCache)
+        if ( tileMap.find(tileID) == tileMap.end() )
         {
-            osgTerrain::TileID tileToRemove = tileFIFO.front();
-            tileFIFO.pop_front();
-            tileMap.erase(tileToRemove);
+            tileMap[tileID] = tile;
 
-			osg::notify(osg::INFO)<<"Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+            tileFIFO.push_back(tileID);
+
+            if (tileFIFO.size()>maxNumTilesInCache)
+            {
+                osgTerrain::TileID tileToRemove = tileFIFO.front();
+                tileFIFO.pop_front();
+                tileMap.erase(tileToRemove);
+
+			    osg::notify(osg::INFO)<<"Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+            }
+
+            osg::notify(osg::INFO)<<"insertTile ("
+                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+                << " tileFIFO.size()=="<<tileFIFO.size()<<std::endl;
         }
-
-        osg::notify(osg::INFO)<<"insertedTile tileFIFO.size()=="<<tileFIFO.size()<<std::endl;
+        else
+        {
+            osg::notify(osg::INFO)<<"insertTile ("
+                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+                << " ...already in cache!"<<std::endl;
+        }
     }
 
     osgTerrain::TerrainTile* findTile(const osgTerrain::TileID& tileID, bool insertBlankTileIfNotFound = false)

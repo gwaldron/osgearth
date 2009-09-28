@@ -47,12 +47,6 @@ _max_data_level(INT_MAX)
 {
     if ( options )
     {
-        //if ( options->getPluginData( PROPERTY_MIN_LEVEL ) )
-        //    _minLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MIN_LEVEL ), _minLevel );
-   
-        //if ( options->getPluginData( PROPERTY_MAX_LEVEL ) )
-        //    _maxLevel = as<int>( (const char*)options->getPluginData( PROPERTY_MAX_LEVEL ), _maxLevel );
-
         if ( options->getPluginData( PROPERTY_NODATA_VALUE ) )
             _noDataValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_VALUE ), _noDataValue);
 

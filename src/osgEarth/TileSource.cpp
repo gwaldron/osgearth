@@ -206,12 +206,6 @@ TileSource::setMaxDataLevel( unsigned int value )
 }
 
 bool
-TileSource::hasPersistentCache() const
-{
-    return false;
-}
-
-bool
 TileSource::supportsPersistentCaching() const
 {
     return true;

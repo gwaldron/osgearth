@@ -127,11 +127,6 @@ namespace osgEarth
         virtual unsigned int getMaxDataLevel() const;
 
         /**
-         * Returns true is this source has a cache that stores data to disk.
-         */
-        virtual bool hasPersistentCache() const;
-
-        /**
          * Returns true if data from this source can be cached to disk
          */
         virtual bool supportsPersistentCaching() const;

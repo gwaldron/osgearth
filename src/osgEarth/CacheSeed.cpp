@@ -58,11 +58,11 @@ void CacheSeed::seed( Map* map )
 
         if ( !src->supportsPersistentCaching() )
         {
-            osg::notify(osg::WARN) << "Warning: source \"" << src->getName() << "\" does not support seeding." << std::endl;
+            osg::notify(osg::WARN) << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
         }
-        else if ( !src->hasPersistentCache() )
+        else if ( !layer->getCache() )
         {
-            osg::notify(osg::NOTICE) << "Notice: source \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
+            osg::notify(osg::NOTICE) << "Notice: Layer \"" << layer->getName() << "\" has no persistent cache defined; skipping." << std::endl;
         }
         else
         {
@@ -82,11 +82,11 @@ void CacheSeed::seed( Map* map )
 
         if ( !src->supportsPersistentCaching() )
         {
-            osg::notify(osg::WARN) << "Warning: source \"" << src->getName() << "\" does not support seeding." << std::endl;
+            osg::notify(osg::WARN) << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
         }
-        else if ( !src->hasPersistentCache() )
+        else if ( !layer->getCache() )
         {
-            osg::notify(osg::NOTICE) << "Notice: source \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
+            osg::notify(osg::NOTICE) << "Notice: Layer \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
         }
         else
         {

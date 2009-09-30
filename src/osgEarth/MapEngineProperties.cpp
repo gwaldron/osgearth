@@ -33,6 +33,7 @@ MapEngineProperties::MapEngineProperties()
     _combine_layers = true;
     _filename = "";
     _preemptive_lod = true;
+    _use_task_service = false;
 	_layering_technique = MULTITEXTURE;
 }
 
@@ -55,6 +56,7 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _normalize_edges = rhs._normalize_edges;
     _filename = rhs._filename;   
     _preemptive_lod = rhs._preemptive_lod;
+    _use_task_service = rhs._use_task_service;
 	_layering_technique = rhs._layering_technique;
     return *this;
 }
@@ -69,6 +71,15 @@ MapEngineProperties::getPreemptiveLOD() const {
     return _preemptive_lod;
 }
 
+void
+MapEngineProperties::setUseTaskService( bool value ) {
+    _use_task_service = value;
+}
+
+bool
+MapEngineProperties::getUseTaskService() const {
+    return _use_task_service;
+}
 void
 MapEngineProperties::setFilename(const std::string& filename)
 {

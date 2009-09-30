@@ -23,12 +23,15 @@
 #include <osgEarth/EarthTerrainTechnique>
 #include <osgEarth/MultiPassTerrainTechnique>
 #include <osgEarth/TileSourceFactory>
+#include <osgEarth/Registry>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/Notify>
 #include <osg/CullFace>
+#include <osg/NodeVisitor>
 
 using namespace osgEarth;
+using namespace OpenThreads;
 
 //static
 OpenThreads::ReentrantMutex MapNode::s_mapNodeCacheMutex;
@@ -255,6 +258,55 @@ MapNode::getTerrain( unsigned int i ) const
 }
 
 void
+MapNode::traverse( osg::NodeVisitor& nv )
+{
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        TaskService* taskService = osgEarth::Registry::instance()->getTaskService();
+        if ( taskService )
+            taskService->setStamp( nv.getFrameStamp()->getFrameNumber() );
+    }
+    osg::CoordinateSystemNode::traverse( nv );
+}
+
+
+// custom tile data factory that encapsulates access to the map.
+struct MapTileDataFactory : public TileDataFactory
+{
+    MapTileDataFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
+
+    osg::HeightField* createHeightField( const TileKey* key ) {
+        return _map.valid()? _map->createHeightField( key ) : 0L;
+    }
+
+    GeoImage* createImage( const TileKey* key, int layerIndex ) {
+        if ( _map.valid() ) {
+            ScopedReadLock lock( _map->getMapDataMutex() );
+            if ( layerIndex < _map->getImageMapLayers().size() )
+                return _map->getImageMapLayers()[layerIndex]->createImage(key);
+        }
+        return 0L;
+    }
+
+    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image ) {
+        if ( _map.valid() && _engine.valid() ) {
+            return _engine->createImageLayer( _map.get(), key, image );
+        }
+        return 0L;
+    }
+
+    osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, osg::HeightField* hf ) {
+        if ( _map.valid() && _engine.valid() ) {
+            return _engine->createHeightFieldLayer( _map.get(), key, hf );
+        }
+        return 0L;
+    }
+            
+    osg::observer_ptr<Map> _map;
+    osg::observer_ptr<MapEngine> _engine;
+};
+
+void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     // Note: CSN must always be at the top
@@ -272,7 +324,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     int faces_ok = 0;
     for( int face = 0; face < _map->getProfile()->getNumFaces(); face++ )
     {
-        VersionedTerrain* terrain = new VersionedTerrain();
+        VersionedTerrain* terrain = new VersionedTerrain( new MapTileDataFactory( _map.get(), _engine.get() ) );
 
 		if (_engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
 		{

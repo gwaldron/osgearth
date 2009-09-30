@@ -133,6 +133,9 @@ namespace osgEarth
 
         void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex );
 
+    public:
+
+        virtual void traverse( class osg::NodeVisitor& nv );
 
     protected:        
         virtual ~MapNode();

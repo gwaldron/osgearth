@@ -101,7 +101,6 @@ namespace osgEarth
          * getMapDataMutex() when iterating the list.
          */
         const MapLayerList& getHeightFieldMapLayers() const;
-
         /**
          * Adds a map layer callback to this map. This will be notified whenever layers are
          * added, removed, or re-ordered.
@@ -193,7 +192,9 @@ namespace osgEarth
          *      level of detail and/or region. Use createBestHeightField() if you are willing
          *      to accept downsampling where your requested LOD does not exist.
          */
-        osg::HeightField* createHeightField( const TileKey* key );
+        osg::HeightField* createHeightField( const TileKey* key ) {
+            return createHeightField( key, true );
+        }
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on

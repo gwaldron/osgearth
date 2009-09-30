@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Caching>
 #include <osgEarth/Profile>
+#include <osgEarth/TaskService>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 
@@ -50,6 +51,12 @@ namespace osgEarth
 
         const Profile* getCubeProfile() const;
 
+        TaskService* getOrCreateTaskService();
+
+        TaskService* getTaskService();
+
+        void setNumTaskServiceThreads( int num );
+
     protected:
         virtual ~Registry();
         Registry();
@@ -64,6 +71,9 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _global_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
+        osg::ref_ptr<TaskService> _taskService;
+        OpenThreads::Mutex _regMutex;
+        int _numTaskServiceThreads;
     };
 }
 

@@ -20,6 +20,7 @@
 #ifndef OSGEARTH_VERSIONED_TERRAIN
 #define OSGEARTH_VERSIONED_TERRAIN 1
 
+#include <osgEarth/TaskService>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <OpenThreads/Mutex>
@@ -27,6 +28,15 @@
 namespace osgEarth
 {
     class VersionedTerrain;
+
+    /*interface*/ class TileDataFactory : public osg::Referenced
+    {
+    public:
+        virtual GeoImage* createImage( const TileKey* key, int layerIndex ) =0;
+        virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
+        virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image ) =0;
+        virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, osg::HeightField* hf ) =0;
+    };
 
     /**
      * An OSG terrain tile that supports change detection.
@@ -44,7 +54,9 @@ namespace osgEarth
     class VersionedTile : public osgTerrain::TerrainTile
     {
     public:
-        VersionedTile();
+        VersionedTile( const TileKey* key );
+
+        void setUseLayerRequests( bool );
 
         /**
          * Gets the terrain revision that this tile is in sync with.
@@ -72,9 +84,27 @@ namespace osgEarth
          */
         int getTileRevision() const;
 
+        /** Override */
+        virtual void traverse( class osg::NodeVisitor& nv );
+
+        class VersionedTerrain* getVersionedTerrain();
+        const class VersionedTerrain* getVersionedTerrain() const;
+
     private:
         int _terrainRevision;
         int _tileRevision;
+        bool _useLayerRequests;
+        bool _requestsInstalled;
+
+        osg::ref_ptr<const TileKey> _key;
+        TaskRequestList _requests;
+        int _numActiveRequests;
+
+        /** Updates and services this tile's service pending requests. */
+        void servicePendingRequests( int frameStamp );
+
+        /** Deals with completed requests during the UPDATE traversal. */
+        void serviceCompletedRequests();
     };
 
 
@@ -93,7 +123,7 @@ namespace osgEarth
     class VersionedTerrain : public osgTerrain::Terrain
     {
     public:
-        VersionedTerrain();
+        VersionedTerrain( TileDataFactory* factory =NULL );
 
         virtual const char* className() const { return "VersionedTerrain"; }
 
@@ -115,13 +145,19 @@ namespace osgEarth
         VersionedTile* getVersionedTile( const osgTerrain::TileID& tileId );
 
         /**
-         * Populated the output tile list with all the tiles owned by this terrain.
+         * Populates the output tile list with all the tiles owned by this terrain.
          */
         void getTerrainTiles( TerrainTileList& out_tiles );
 
+        /** Gets the number of color layers and elevation layers combined */
+        int getNumActiveLayers() const;
+
+        TileDataFactory* getTileDataFactory() const;
+
     private:
         int _revision;
-        OpenThreads::Mutex _revisionMutex;        
+        OpenThreads::Mutex _revisionMutex;
+        osg::ref_ptr<TileDataFactory> _tileDataFactory;
     };
 }
 

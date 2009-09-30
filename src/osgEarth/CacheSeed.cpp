@@ -125,7 +125,7 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
     key->getTileXY(x, y);
     lod = key->getLevelOfDetail();
 
-	osg::ref_ptr<osgEarth::VersionedTerrain> terrain = new osgEarth::VersionedTerrain;
+	osg::ref_ptr<osgEarth::VersionedTerrain> terrain = new osgEarth::VersionedTerrain();
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {

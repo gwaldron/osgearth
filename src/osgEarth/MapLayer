@@ -171,13 +171,13 @@ namespace osgEarth
 		/**
 		 * Creates a GeoImage from this MapLayer
 		 */
-		 GeoImage* createImage( const TileKey* key );
+		GeoImage* createImage( const TileKey* key );
 
-		 /**
-		  * Creates a GeoHeightField for this MapLayer.
-		  * The returned HeightField will always match the geospatial extents of the incoming TileKey.
-		  */
-		 osg::HeightField* createHeightField( const TileKey* key );
+        /**
+         * Creates a GeoHeightField for this MapLayer.
+         * The returned HeightField will always match the geospatial extents of the incoming TileKey.
+         */
+        osg::HeightField* createHeightField( const TileKey* key );
 
 		 /**
          * Gets the user-provided options structure stored in this map.

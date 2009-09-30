@@ -62,11 +62,22 @@ namespace osgEarth
         /**
          * Creates a single terrain tile corresponding to the provided TileKey.
          */
-        virtual osg::Node* createTile(
+        osg::Node* createTile(
             Map* map,
             VersionedTerrain* terrain,
             const TileKey* key,
             bool populateLayers =true );
+
+
+        osgTerrain::ImageLayer* createImageLayer(
+            Map* map,
+            const TileKey* key,
+            GeoImage* geoImage );
+
+        osgTerrain::HeightFieldLayer* createHeightFieldLayer(
+            Map* map,
+            const TileKey* key,
+            osg::HeightField* hf );
 
         /**
          * Gets the properties that customize how this engine renders tile data.
@@ -102,6 +113,11 @@ namespace osgEarth
 
 
         osg::Node* createPlaceholderTile(
+            Map* map,
+            VersionedTerrain* terrain,
+            const TileKey* key );
+
+        osg::Node* createPlaceholderTile2(
             Map* map,
             VersionedTerrain* terrain,
             const TileKey* key );

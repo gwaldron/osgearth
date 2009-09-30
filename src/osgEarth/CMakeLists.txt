@@ -47,6 +47,7 @@ SET(LIB_PUBLIC_HEADERS
     Profile
     Registry
     SpatialReference
+    TaskService
     TerrainTileEdgeNormalizerUpdateCallback
     TileKey
     TileSource
@@ -82,6 +83,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Profile.cpp
     Registry.cpp
     SpatialReference.cpp
+    TaskService.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileKey.cpp
     TileSource.cpp

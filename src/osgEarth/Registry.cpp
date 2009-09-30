@@ -21,9 +21,10 @@
 #include <osgEarth/Registry>
 #include <osg/Notify>
 #include <gdal_priv.h>
+#include <stdlib.h>
 
 using namespace osgEarth;
-
+using namespace OpenThreads;
 
 #define STR_GLOBAL_GEODETIC "global-geodetic"
 #define STR_GLOBAL_MERCATOR "global-mercator"
@@ -33,9 +34,17 @@ using namespace osgEarth;
 
 Registry::Registry() :
 osg::Referenced(true),
-_gdal_registered( false )
+_gdal_registered( false ),
+_numTaskServiceThreads( 8 )
 {
     GDALAllRegister();
+
+    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
+    if ( env_numTaskServiceThreads )
+    {
+        _numTaskServiceThreads = ::atoi( env_numTaskServiceThreads );
+        osg::notify(osg::NOTICE) << "osgEarth: task service threads = " << _numTaskServiceThreads << std::endl;
+    }
 }
 
 Registry::~Registry()
@@ -126,6 +135,33 @@ Registry::getNamedProfile( const std::string& name ) const
         return getCubeProfile();
     else
         return NULL;
+}
+
+TaskService*
+Registry::getOrCreateTaskService()
+{
+    if ( !_taskService.valid() )
+    {
+        ScopedLock<Mutex> lock( _regMutex );
+        // double-check
+        if ( !_taskService.valid() )
+        {
+            _taskService = new TaskService( _numTaskServiceThreads );
+        }
+    }    
+    return _taskService.get();
+}
+
+TaskService*
+Registry::getTaskService()
+{
+    return _taskService.get();
+}
+
+void
+Registry::setNumTaskServiceThreads( int value )
+{
+    _numTaskServiceThreads = value;
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

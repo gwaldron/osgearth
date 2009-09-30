@@ -160,6 +160,10 @@ namespace osgEarth
          */
         bool getPreemptiveLOD() const;
 
+        void setUseTaskService( bool value );
+
+        bool getUseTaskService() const;
+
         /**
          * Available techniques for compositing multiple image layers at runtime.
          */
@@ -193,6 +197,7 @@ namespace osgEarth
         bool _normalize_edges;
         bool _combine_layers;
         bool _preemptive_lod;
+        bool _use_task_service;
 		optional<LayeringTechnique> _layering_technique;
     };
 }

@@ -161,14 +161,14 @@ TaskService::add( TaskRequest* request )
 
 TaskService::~TaskService()
 {
-    _queue->shutdown();
-
     for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
     {
         (*i)->shutdown();
         (*i)->join();
         delete (*i);
     }
+
+    _queue->shutdown();
 }
 
 void

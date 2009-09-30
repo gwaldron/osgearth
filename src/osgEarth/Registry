@@ -41,8 +41,6 @@ namespace osgEarth
 
         optional<CacheConfig>& cacheConfigOverride();
 
-        inline OpenThreads::ReentrantMutex& getGDALMutex() { return _gdal_mutex; }
-
         const Profile* getNamedProfile( const std::string& name ) const;
 
         const Profile* getGlobalGeodeticProfile() const;
@@ -56,6 +54,8 @@ namespace osgEarth
         TaskService* getTaskService();
 
         void setNumTaskServiceThreads( int num );
+
+        OpenThreads::ReentrantMutex& getGDALMutex();
 
     protected:
         virtual ~Registry();
@@ -74,6 +74,7 @@ namespace osgEarth
         osg::ref_ptr<TaskService> _taskService;
         OpenThreads::Mutex _regMutex;
         int _numTaskServiceThreads;
+        int _numGdalMutexGets;
     };
 }
 

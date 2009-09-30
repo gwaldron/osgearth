@@ -534,121 +534,6 @@ MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, 
 }
 
 
-//osg::Node*
-//MapEngine::createPlaceholderTile2( Map* map, VersionedTerrain* terrain, const TileKey* key )
-//{
-//    ScopedReadLock lock( map->getMapDataMutex() );
-//
-//    bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
-//    bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-//    bool isGeocentric = !isProjected;
-//
-//    const MapLayerList& imageMapLayers = map->getImageMapLayers();
-//    const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
-//
-//    bool hasElevation = hfMapLayers.size() > 0;
-//
-//    // Build a "placeholder" tile.
-//    double xmin, ymin, xmax, ymax;
-//    key->getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
-//
-//    // A locator will place the tile on the globe:
-//    osg::ref_ptr<GeoLocator> locator = key->getProfile()->getSRS()->createLocator(
-//        xmin, ymin, xmax, ymax, isPlateCarre );
-//
-//    if ( isGeocentric )
-//        locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-//
-//    // The empty tile:
-//    VersionedTile* tile = new VersionedTile();
-//    tile->setTileID( key->getTileId() );
-//    tile->setRequiresNormals( true );
-//    tile->setDataVariance(osg::Object::DYNAMIC);
-//    tile->setLocator( locator.get() );
-//
-//    // Attach an updatecallback to normalize the edges of TerrainTiles.
-//    if ( hasElevation && _engineProps.getNormalizeEdges() )
-//    {
-//        tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
-//        tile->setDataVariance(osg::Object::DYNAMIC);
-//    }
-//
-//    // Now generate imagery and elevation placeholders:
-//    osg::ref_ptr<const TileKey> ancestorKey = key;
-//    VersionedTile* ancestorTile = 0L;
-//    std::string indent = "";
-//    
-//    while( !ancestorTile && ancestorKey.valid() )
-//    {
-//        ancestorKey = ancestorKey->createParentKey();
-//        if ( ancestorKey.valid() )
-//        {
-//            osgTerrain::TileID tid = ancestorKey->getTileId();
-//            ancestorTile = terrain->getVersionedTile( ancestorKey->getTileId() );
-//        }
-//    }
-//
-//    // install placeholder image and heightfield layers.
-//    addPlaceholderImageLayers( tile, ancestorTile, imageMapLayers, locator.get(), key );
-//    addPlaceholderHeightfieldLayer( tile, ancestorTile, locator.get(), key, ancestorKey.get() );
-//    
-//
-//    // calculate the switching distances:
-//    //osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
-//    osg::BoundingSphere bs = tile->getBound();
-//    double max_range = 1e10;
-//    double radius = bs.radius();
-//    double min_range = radius * _engineProps.getMinTileRangeFactor();
-//
-//    // Set the skirt height of the heightfield
-//    osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
-//    hfLayer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
-//                
-//    // In a Plate Carre tesselation, scale the heightfield elevations from meters to degrees
-//    if ( isPlateCarre && hfLayer->getHeightField() )
-//        HeightFieldUtils::scaleHeightFieldToDegrees( hfLayer->getHeightField() );
-//
-//    // install a tile switcher:
-//    tile->setTerrainRevision( terrain->getRevision() );
-//    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range );
-//
-//    // Install a cluster culler (FIXME for cube mode)
-//    bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
-//    if ( isGeocentric && !isCube )
-//    {
-//        osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
-//        switcher->addCullCallback( ccc );
-//    }     
-//
-//    // register the temporary tile with the terrain:
-//    tile->setTerrain( terrain );
-//
-//    osg::Node* result = 0L;
-//
-//    // create a PLOD so we can keep subdividing:
-//    osg::PagedLOD* plod = new osg::PagedLOD();
-//    plod->setCenter( bs.center() );
-//    plod->addChild( switcher, min_range, max_range );
-//    plod->setFileName( 1, createURI( map->getId(), key ) );
-//    plod->setRange( 1, 0.0, min_range );
-//    
-//    // Install a callback that will load the actual tile data via the pager.
-//    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
-//
-//#if USE_FILELOCATIONCALLBACK
-//    osgDB::Options* options = new osgDB::Options;
-//    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
-//    plod->setDatabaseOptions( options );
-//#endif
-//
-//    result = plod;
-//
-//    return result;
-//}
-
-//#define USE_LAYER_TASKS 1
-//#undef USE_LAYER_TASKS
-
 osg::Node*
 MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const TileKey* key )
 {
@@ -708,7 +593,6 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     addPlaceholderHeightfieldLayer( tile, ancestorTile, locator.get(), key, ancestorKey.get() );
     
     // calculate the switching distances:
-    //osg::EllipsoidModel* ellipsoid = locator->getEllipsoidModel();
     osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
     double radius = bs.radius();

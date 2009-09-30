@@ -35,7 +35,8 @@ using namespace OpenThreads;
 Registry::Registry() :
 osg::Referenced(true),
 _gdal_registered( false ),
-_numTaskServiceThreads( 8 )
+_numTaskServiceThreads( 8 ),
+_numGdalMutexGets( 0 )
 {
     GDALAllRegister();
 
@@ -69,6 +70,16 @@ void Registry::destruct()
     //Clean up the overriden cache config
     //_cacheConfigOverride = 0;
 }
+
+
+OpenThreads::ReentrantMutex&
+Registry::getGDALMutex()
+{
+    //_numGdalMutexGets++;
+    //osg::notify(osg::NOTICE) << "GDAL = " << _numGdalMutexGets << std::endl;
+    return _gdal_mutex;
+}
+
 
 optional<CacheConfig>&
 Registry::cacheConfigOverride() { 

@@ -78,7 +78,7 @@ _tileRevision( 0 ),
 _requestsInstalled( false )
 {
     setTileID( key->getTileId() );
-    this->setNumChildrenRequiringUpdateTraversal(1);
+    setUseLayerRequests( false );
 }
 
 VersionedTerrain*
@@ -93,7 +93,10 @@ VersionedTile::getVersionedTerrain() const {
 void
 VersionedTile::setUseLayerRequests( bool value )
 {
-    _useLayerRequests = value;
+    _useLayerRequests = value;   
+
+    // if layer requests are on, we need an update traversal.
+    this->setNumChildrenRequiringUpdateTraversal( value? 1 : 0 );
 }
 
 int

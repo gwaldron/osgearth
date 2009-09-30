@@ -39,8 +39,6 @@ namespace osgEarth
     public:
         static Registry* instance(bool erase = false);
 
-        optional<CacheConfig>& cacheConfigOverride();
-
         const Profile* getNamedProfile( const std::string& name ) const;
 
         const Profile* getGlobalGeodeticProfile() const;
@@ -63,7 +61,6 @@ namespace osgEarth
 
         void destruct();
 
-        optional<CacheConfig> _cacheConfigOverride;
         OpenThreads::ReentrantMutex _gdal_mutex;
         bool _gdal_registered;
 

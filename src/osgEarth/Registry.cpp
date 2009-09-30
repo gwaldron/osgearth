@@ -67,8 +67,6 @@ Registry* Registry::instance(bool erase)
 
 void Registry::destruct()
 {
-    //Clean up the overriden cache config
-    //_cacheConfigOverride = 0;
 }
 
 
@@ -80,16 +78,6 @@ Registry::getGDALMutex()
     return _gdal_mutex;
 }
 
-
-optional<CacheConfig>&
-Registry::cacheConfigOverride() { 
-    return _cacheConfigOverride;
-}
-
-//void
-//Registry::setCacheConfigOverride(const CacheConfig& cacheConfig) {
-//    _cacheConfigOverride = cacheConfig;
-//}
 
 const Profile*
 Registry::getGlobalGeodeticProfile() const

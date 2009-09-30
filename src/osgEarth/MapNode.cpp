@@ -276,7 +276,7 @@ struct MapTileDataFactory : public TileDataFactory
     MapTileDataFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
 
     osg::HeightField* createHeightField( const TileKey* key ) {
-        return _map.valid()? _map->createHeightField( key ) : 0L;
+        return _map.valid()? _map->createHeightField( key, false ) : 0L;
     }
 
     GeoImage* createImage( const TileKey* key, int layerIndex ) {

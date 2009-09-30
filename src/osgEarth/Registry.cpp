@@ -163,6 +163,18 @@ Registry::setNumTaskServiceThreads( int value )
     _numTaskServiceThreads = value;
 }
 
+osgEarth::Cache*
+Registry::getCacheOverride() const
+{
+	return _cacheOverride.get();
+}
+
+void
+Registry::setCacheOverride( osgEarth::Cache* cacheOverride )
+{
+	_cacheOverride = cacheOverride;
+}
+
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension
 {

@@ -19,6 +19,7 @@
 #include <osgEarth/EarthFile>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <OpenThreads/ScopedLock>
@@ -399,6 +400,12 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
 		CacheFactory factory;
 		map->setCache( factory.create( map->cacheConfig().get()) );
     }
+
+	if (osgEarth::Registry::instance()->getCacheOverride())
+	{
+		osg::notify(osg::NOTICE) << "Overriding map cache with global cache override" << std::endl;
+		map->setCache( osgEarth::Registry::instance()->getCacheOverride() );
+	}
 
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
 

@@ -55,6 +55,9 @@ namespace osgEarth
 
         OpenThreads::ReentrantMutex& getGDALMutex();
 
+		Cache* getCacheOverride() const;
+		void setCacheOverride( Cache* cacheOverride );
+
     protected:
         virtual ~Registry();
         Registry();
@@ -72,6 +75,8 @@ namespace osgEarth
         OpenThreads::Mutex _regMutex;
         int _numTaskServiceThreads;
         int _numGdalMutexGets;
+
+		osg::ref_ptr<Cache> _cacheOverride;
     };
 }
 

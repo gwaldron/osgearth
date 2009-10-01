@@ -57,10 +57,11 @@ namespace osgEarth
     protected:
         void cropLocal( osg::Vec3d& local ) const;
 
+        bool _inverseCalculated;
+
     private:
         GeoExtent _dataExtent;
         double _x0, _y0, _x1, _y1;
-        bool _inverseCalculated;
     };
 
     

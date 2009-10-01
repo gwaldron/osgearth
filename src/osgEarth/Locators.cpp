@@ -104,7 +104,7 @@ GeoLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent&
 bool
 GeoLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
 {
-    // OSG 2.7 bug workaround: bug fix in Locator submitted by GW on 10/3/2008:
+    // required becasue of an OSG bug
     if ( !_inverseCalculated )
     {
         const_cast<GeoLocator*>(this)->_inverse.invert( _transform );
@@ -157,6 +157,29 @@ getUV(const GeoExtent& ext,
 
     out_v = (vlat-vmin)/(vmax-vmin);
 }
+//
+//static void
+//mercatorToLatLon( double x, double y, double& out_lat, double& out_lon )
+//{
+//    const GeoExtent& mercEx = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+//
+//    double u = (x - mercEx.xMin()) / mercEx.width();
+//
+//
+//
+//
+//
+//
+//
+//    double v = 
+//
+//            double mapSize = MapSize(levelOfDetail);
+//            double x = (Clip(pixelX, 0, mapSize - 1) / mapSize) - 0.5;
+//            double y = 0.5 - (Clip(pixelY, 0, mapSize - 1) / mapSize);
+//
+//            latitude = 90 - 360 * Math.Atan(Math.Exp(-y * 2 * Math.PI)) / Math.PI;
+//            longitude = 360 * x;
+
 
 MercatorLocator::MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :
 GeoLocator( prototype, dataExtent )
@@ -176,10 +199,12 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 {
     bool result = false;
 
-#if !( OSG_MIN_VERSION_REQUIRED(2,8,0) )
-    // OSG 2.7 bug workaround: bug fix in Locator submitted by GW on 10/3/2008:
-    const_cast<MercatorLocator*>(this)->_inverse.invert( _transform );
-#endif
+    // required becasue of an OSG bug
+    if ( !_inverseCalculated )
+    {
+        const_cast<MercatorLocator*>(this)->_inverse.invert( _transform );
+        const_cast<MercatorLocator*>(this)->_inverseCalculated = true;
+    }
 
     switch(_coordinateSystemType)
     {

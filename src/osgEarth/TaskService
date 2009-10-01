@@ -88,23 +88,27 @@ namespace osgEarth
 
         void add( TaskRequest* request );
         TaskRequest* get();
-        void shutdown();
+
+        void block() { _block->block(); }
+        void release() { _block->release(); }
+
         void setStamp( int value ) { _stamp = value; }
         int getStamp() const { return _stamp; }
 
     private:
         TaskRequestList _requests;
         OpenThreads::Mutex _mutex;
-        OpenThreads::Condition _cond;
-        bool _done;
+        osg::ref_ptr< osg::RefBlock > _block;
+
         int _stamp;
     };
     
     struct TaskThread : public OpenThreads::Thread
     {
         TaskThread( TaskRequestQueue* queue );
+        void setDone( bool done) { _done = done; }
         void run();
-        void shutdown();
+        int cancel();
 
     private:
         osg::ref_ptr<TaskRequestQueue> _queue;

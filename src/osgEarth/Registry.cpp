@@ -35,17 +35,9 @@ using namespace OpenThreads;
 Registry::Registry() :
 osg::Referenced(true),
 _gdal_registered( false ),
-_numTaskServiceThreads( 8 ),
 _numGdalMutexGets( 0 )
 {
     GDALAllRegister();
-
-    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
-    if ( env_numTaskServiceThreads )
-    {
-        _numTaskServiceThreads = ::atoi( env_numTaskServiceThreads );
-        osg::notify(osg::NOTICE) << "osgEarth: task service threads = " << _numTaskServiceThreads << std::endl;
-    }
 }
 
 Registry::~Registry()
@@ -67,6 +59,7 @@ Registry* Registry::instance(bool erase)
 
 void Registry::destruct()
 {
+    _cacheOverride = 0;
 }
 
 
@@ -134,33 +127,6 @@ Registry::getNamedProfile( const std::string& name ) const
         return getCubeProfile();
     else
         return NULL;
-}
-
-TaskService*
-Registry::getOrCreateTaskService()
-{
-    if ( !_taskService.valid() )
-    {
-        ScopedLock<Mutex> lock( _regMutex );
-        // double-check
-        if ( !_taskService.valid() )
-        {
-            _taskService = new TaskService( _numTaskServiceThreads );
-        }
-    }    
-    return _taskService.get();
-}
-
-TaskService*
-Registry::getTaskService()
-{
-    return _taskService.get();
-}
-
-void
-Registry::setNumTaskServiceThreads( int value )
-{
-    _numTaskServiceThreads = value;
 }
 
 osgEarth::Cache*

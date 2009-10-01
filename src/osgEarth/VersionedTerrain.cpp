@@ -165,7 +165,11 @@ VersionedTile::servicePendingRequests( int stamp )
             if ( r->isIdle() )
             {
                 r->setStamp( stamp );
-                osgEarth::Registry::instance()->getOrCreateTaskService()->add( r );
+                VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
+                if (versionedTerrain)
+                {
+                    versionedTerrain->getOrCreateTaskService()->add( r );
+                }
             }
             else if ( !r->isCompleted() )
             {
@@ -241,9 +245,15 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
 
 VersionedTerrain::VersionedTerrain( TileLayerFactory* factory ) :
 _layerFactory( factory ),
-_revision(0)
+_revision(0),
+_numTaskServiceThreads(8)
 {
-    //nop
+    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
+    if ( env_numTaskServiceThreads )
+    {
+        _numTaskServiceThreads = ::atoi( env_numTaskServiceThreads );
+        osg::notify(osg::NOTICE) << "osgEarth: task service threads = " << _numTaskServiceThreads << std::endl;
+    }
 }
 
 void
@@ -258,6 +268,18 @@ VersionedTerrain::getRevision() const
 {
     // no need to lock; if we miss it, we'll get it the next time around
     return _revision;
+}
+
+unsigned int 
+VersionedTerrain::getNumTaskServiceThreads() const
+{
+    return _numTaskServiceThreads;
+}
+
+void
+VersionedTerrain::setNumTaskServiceThreads( unsigned int numTaskServiceThreads )
+{
+    _numTaskServiceThreads = numTaskServiceThreads;
 }
 
 VersionedTile*
@@ -289,4 +311,19 @@ VersionedTerrain::getTerrainTiles( TerrainTileList& out_tiles )
 TileLayerFactory*
 VersionedTerrain::getTileLayerFactory() const {
     return _layerFactory.get();
+}
+
+TaskService*
+VersionedTerrain::getOrCreateTaskService()
+{
+    if ( !_taskService.valid() )
+    {
+        ScopedLock<Mutex> lock( _taskServiceMutex );
+        // double-check
+        if ( !_taskService.valid() )
+        {
+            _taskService = new TaskService( _numTaskServiceThreads );
+        }
+    }    
+    return _taskService.get();
 }

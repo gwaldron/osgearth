@@ -47,12 +47,6 @@ namespace osgEarth
 
         const Profile* getCubeProfile() const;
 
-        TaskService* getOrCreateTaskService();
-
-        TaskService* getTaskService();
-
-        void setNumTaskServiceThreads( int num );
-
         OpenThreads::ReentrantMutex& getGDALMutex();
 
 		Cache* getCacheOverride() const;
@@ -71,9 +65,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _global_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        osg::ref_ptr<TaskService> _taskService;
-        OpenThreads::Mutex _regMutex;
-        int _numTaskServiceThreads;
+        OpenThreads::Mutex _regMutex;        
         int _numGdalMutexGets;
 
 		osg::ref_ptr<Cache> _cacheOverride;

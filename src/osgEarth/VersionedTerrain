@@ -161,10 +161,19 @@ namespace osgEarth
 
         TileLayerFactory* getTileLayerFactory() const;
 
+        TaskService* getOrCreateTaskService();
+
+        unsigned int getNumTaskServiceThreads() const;
+        void setNumTaskServiceThreads( unsigned int numTaskServiceThreads );
+
     private:
         int _revision;
         OpenThreads::Mutex _revisionMutex;
+
         osg::ref_ptr<TileLayerFactory> _layerFactory;
+        osg::ref_ptr<TaskService> _taskService;
+        OpenThreads::Mutex _taskServiceMutex;
+        unsigned int _numTaskServiceThreads;
     };
 }
 

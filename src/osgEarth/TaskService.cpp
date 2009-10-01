@@ -35,10 +35,9 @@ TaskRequest::isCanceled() const {
 
 /**************************************************************************/
 
-TaskRequestQueue::TaskRequestQueue() :
-_done( false )
+TaskRequestQueue::TaskRequestQueue()
 {
-    //nop
+    _block = new osg::RefBlock();
 }
 
 void 
@@ -54,40 +53,38 @@ TaskRequestQueue::add( TaskRequest* request )
         if ( request->getPriority() > i->get()->getPriority() )
         {
             _requests.insert( i, request );
-            _cond.signal();
+            //osg::notify(osg::NOTICE) << "Queue has items, setting block to true " << std::endl;
+            _block->set( true );
             return;
         }
     }
 
     _requests.push_back( request );
-    _cond.signal();
+    //osg::notify(osg::NOTICE) << "Queue has items, setting block to true " << std::endl;
+    _block->set( true );
 }
 
 TaskRequest* 
 TaskRequestQueue::get()
 {
-    if ( _done )
-        return 0L;
+    if (_requests.empty())
+    {
+        _block->block();
+        //osg::notify(osg::NOTICE) << "Unblocked" << std::endl;
+    }
 
     ScopedLock<Mutex> lock(_mutex);
+
+    if (_requests.empty()) return 0;
     
-    while( !_done && _requests.empty() )
-        _cond.wait(&_mutex);
-
-    if ( _done )
-        return 0L;
-
     osg::ref_ptr<TaskRequest> next = _requests.front();
     _requests.pop_front();
+    if (_requests.empty())
+    {
+        //osg::notify(osg::NOTICE) << "Queue empty, setting block to false " << std::endl;
+        _block->set(false);
+    }
     return next.release();
-}
-
-void 
-TaskRequestQueue::shutdown()
-{
-    ScopedLock<Mutex> lock(_mutex);
-    _done = true;
-    _cond.broadcast();
 }
 
 /**************************************************************************/
@@ -102,43 +99,63 @@ _done( false )
 void
 TaskThread::run()
 {
-    while( !_done && (_request = _queue->get()).valid() )
+    while( !_done )
     {
-        if ( _done || !_request.valid() )
+        _request = _queue->get();
+        //osg::notify(osg::NOTICE) << "Run thraed " << std::endl;
+        if ( _done )
             break;
 
-        // discard an out-of-date request:
-        if ( _queue->getStamp() - _request->getStamp() > 2 )
+        if (_request.valid())
         {
-            //osg::notify(osg::NOTICE) << "discarding request due to expiration" << std::endl;
-            _request->setState( TaskRequest::STATE_IDLE ); // allows it to re-schedule
-            continue;
+            // discard an out-of-date request:
+            if ( _queue->getStamp() - _request->getStamp() > 2 )
+            {
+                //osg::notify(osg::NOTICE) << "discarding request due to expiration" << std::endl;
+                _request->setState( TaskRequest::STATE_IDLE ); // allows it to re-schedule
+                continue;
+            }
+
+            // discard a completed or canceled request:
+            if ( _request->getState() != TaskRequest::STATE_PENDING )
+            {
+                continue;
+            }
+
+            //osg::notify(osg::NOTICE) << "Thread " << this->getThreadId() << " running request" << std::endl;
+
+            _request->setState( TaskRequest::STATE_IN_PROGRESS );
+
+            _request->run();
+        }
+        else
+        {
+            OpenThreads::Thread::YieldCurrentThread();
         }
 
-        // discard a completed or canceled request:
-        if ( _request->getState() != TaskRequest::STATE_PENDING )
-        {
-            continue;
-        }
-
-        //osg::notify(osg::NOTICE) << "Thread " << this->getThreadId() << " running request" << std::endl;
-
-        _request->setState( TaskRequest::STATE_IN_PROGRESS );
-
-        _request->run();
-        
         //osg::notify(osg::NOTICE) << "Thread " << this->getThreadId() << " completed request" << std::endl;
     }
 }
 
-void
-TaskThread::shutdown()
+int
+TaskThread::cancel()
 {
-    _done = true;
-    if ( _request.valid() )
-        _request->cancel();
+    if (isRunning())
+    {
+      _done = true;      
 
-    //this->cancel();
+      _queue->release();
+
+      if (_request.valid())
+          _request->cancel();
+
+      while (isRunning())
+      {
+          _queue->release();          
+          OpenThreads::Thread::YieldCurrentThread();
+      }
+    }
+    return 0;
 }
 
 /**************************************************************************/
@@ -166,12 +183,14 @@ TaskService::~TaskService()
 {
     for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
     {
-        (*i)->shutdown();
-        (*i)->join();
-        delete (*i);
+        (*i)->setDone(true);
     }
 
-    _queue->shutdown();
+    for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
+    {
+        (*i)->cancel();
+        delete (*i);
+    }
 }
 
 void

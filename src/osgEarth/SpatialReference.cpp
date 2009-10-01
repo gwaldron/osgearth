@@ -279,7 +279,8 @@ _init_type( init_type ),
 _init_str( init_str ),
 _owns_handle( true ),
 _name( name ),
-_initialized( false )
+_initialized( false ),
+osg::Referenced(true)
 {
     //TODO
     setThreadSafeReferenceCounting(true);
@@ -290,7 +291,8 @@ _initialized( false )
 SpatialReference::SpatialReference(void* handle) :
 _handle( handle ),
 _owns_handle( true ),
-_initialized( false )
+_initialized( false ),
+osg::Referenced(true)
 {
     setThreadSafeReferenceCounting(true);
     init();
@@ -308,10 +310,7 @@ SpatialReference::~SpatialReference()
       {
           OCTDestroyCoordinateTransformation(itr->second);
       }
-
       OSRDestroySpatialReference( _handle );
-
-      
 	}
 	_handle = NULL;
 }

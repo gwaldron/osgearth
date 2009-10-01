@@ -384,7 +384,9 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
                                      const TileKey* key)
 {
     if ( !ancestorTile )
+    {
         return;
+    }        
 
     // Now if we have a valid ancestor tile, go through and make a temporary tile consisting only of
     // layers that exist in the new map layer image list as well.
@@ -405,14 +407,15 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
             newImageLocator = defaultLocator;
         }
 
-        osg::Image* ancestorImage = ancestorLayer->getImage();
-
-        osgTerrain::ImageLayer* imgLayer = new TransparentLayer(ancestorImage, imageMapLayers[j].get() );
-        imgLayer->setLocator( newImageLocator );
-        //img_layer->setName( layerName );
-
-        tile->setColorLayer( j, imgLayer );
-        //layer++;
+        if (ancestorLayer)
+        {
+            osg::Image* ancestorImage = ancestorLayer->getImage();
+            osgTerrain::ImageLayer* imgLayer = new TransparentLayer(ancestorImage, imageMapLayers[j].get() );
+            imgLayer->setLocator( newImageLocator );
+            //img_layer->setName( layerName );
+            tile->setColorLayer( j, imgLayer );
+            //layer++;
+        }
     }
 }
 
@@ -499,7 +502,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // Now generate imagery and elevation placeholders:
     osg::ref_ptr<const TileKey> ancestorKey = key;
-    VersionedTile* ancestorTile = 0L;
+    osg::ref_ptr<VersionedTile> ancestorTile = 0L;
     std::string indent = "";
     
     while( !ancestorTile && ancestorKey.valid() )
@@ -513,8 +516,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     }
 
     // install placeholder image and heightfield layers.
-    addPlaceholderImageLayers( tile, ancestorTile, imageMapLayers, locator.get(), key );
-    addPlaceholderHeightfieldLayer( tile, ancestorTile, locator.get(), key, ancestorKey.get() );
+    addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
+    addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
     
     // calculate the switching distances:
     osg::BoundingSphere bs = tile->getBound();

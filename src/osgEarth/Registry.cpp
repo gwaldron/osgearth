@@ -31,7 +31,6 @@ using namespace OpenThreads;
 #define STR_CUBE            "cube"
 #define STR_LOCAL           "local"
 
-
 Registry::Registry() :
 osg::Referenced(true),
 _gdal_registered( false ),

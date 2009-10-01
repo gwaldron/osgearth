@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Locators>
 #include <osgEarth/TileKey>
+#include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osg/Notify>
 
@@ -157,35 +158,32 @@ getUV(const GeoExtent& ext,
 
     out_v = (vlat-vmin)/(vmax-vmin);
 }
-//
+
 //static void
 //mercatorToLatLon( double x, double y, double& out_lat, double& out_lon )
 //{
-//    const GeoExtent& mercEx = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
-//
-//    double u = (x - mercEx.xMin()) / mercEx.width();
-//
-//
-//
-//
-//
-//
-//
-//    double v = 
-//
-//            double mapSize = MapSize(levelOfDetail);
-//            double x = (Clip(pixelX, 0, mapSize - 1) / mapSize) - 0.5;
-//            double y = 0.5 - (Clip(pixelY, 0, mapSize - 1) / mapSize);
-//
-//            latitude = 90 - 360 * Math.Atan(Math.Exp(-y * 2 * Math.PI)) / Math.PI;
-//            longitude = 360 * x;
-
+//    const GeoExtent& m = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+//    double xr = -osg::PI + ((x-m.xMin())/m.width())*2.0*osg::PI;
+//    double yr = -osg::PI + ((y-m.yMin())/m.height())*2.0*osg::PI;
+//    out_lat = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
+//    out_lon = osg::RadiansToDegrees( xr );
+//}
 
 MercatorLocator::MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :
 GeoLocator( prototype, dataExtent )
 {
     // assumption: incoming extent is Mercator SRS; transform it to LAT/LONG
+
     _geoDataExtent = dataExtent.transform( dataExtent.getSRS()->getGeographicSRS() );
+
+    //// manually reproject for speed:
+    //double latmin, lonmin, latmax, lonmax;
+    //mercatorToLatLon( dataExtent.xMin(), dataExtent.yMin(), latmin, lonmin );
+    //mercatorToLatLon( dataExtent.xMax(), dataExtent.yMax(), latmax, lonmax );
+
+    //_geoDataExtent = GeoExtent(
+    //    dataExtent.getSRS()->getGeographicSRS(),
+    //    lonmin, latmin, lonmax, latmax );
 }
 
 GeoLocator*

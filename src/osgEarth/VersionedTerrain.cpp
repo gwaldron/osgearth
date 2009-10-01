@@ -37,7 +37,7 @@ struct TileLayerRequest : public TaskRequest
     virtual bool isColorLayerRequest() const { return false; }
     virtual bool isElevLayerRequest() const { return false; }
     osg::ref_ptr<const TileKey> _key;
-    osg::observer_ptr<TileLayerFactory> _factory;
+    osg::ref_ptr<TileLayerFactory> _factory;
 };
 
 struct TileColorLayerRequest : public TileLayerRequest

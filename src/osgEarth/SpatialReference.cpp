@@ -389,6 +389,14 @@ SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
         return cube_lhs->getFace() == cube_rhs->getFace();
     }
 
+    if (isGeographic() != rhs->isGeographic() ||
+        isMercator()   != rhs->isMercator()   ||
+        isNorthPolar() != rhs->isNorthPolar() ||
+        isSouthPolar() != rhs->isSouthPolar() )
+    {
+        return false;
+    }
+
     if ( _init_str_lc == rhs->_init_str_lc )
         return true;
 
@@ -596,6 +604,37 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     return result;
 }
 
+// http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
+static bool
+mercatorToGeographic( double* x, double* y, int numPoints )
+{
+    static const GeoExtent m = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+    for( int i=0; i<numPoints; i++ )
+    {
+        double xr = -osg::PI + ((x[i]-m.xMin())/m.width())*2.0*osg::PI;
+        double yr = -osg::PI + ((y[i]-m.yMin())/m.height())*2.0*osg::PI;
+        x[i] = osg::RadiansToDegrees( xr );
+        y[i] = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
+    }
+    return true;
+}
+
+// http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
+static bool
+geographicToMercator( double* x, double* y, int numPoints )
+{
+    static const GeoExtent m = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+    for( int i=0; i<numPoints; i++ )
+    {
+        double xr = (osg::DegreesToRadians(x[i]) - (-osg::PI)) / (2.0*osg::PI);
+        double sinLat = sin(osg::DegreesToRadians(y[i]));
+        double yr = ((0.5 * log( (1+sinLat)/(1-sinLat) )) - (-osg::PI)) / (2.0*osg::PI);
+        x[i] = m.xMin() + (xr * m.width());
+        y[i] = m.yMin() + (yr * m.height());
+    }
+    return true;
+}
+
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
                                   double* x, double* y,
@@ -604,40 +643,56 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 {
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs)) return true;
-    
-    GDAL_SCOPED_LOCK;
 
     for (unsigned int i = 0; i < numPoints; ++i)
     {
         preTransform(x[i], y[i]);
     }
+    
+    bool success = false;
 
-    void* xform_handle = NULL;
-    TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
-    if (itr != _transformHandleCache.end())
+    if ( isGeographic() && out_srs->isMercator() )
     {
-        osg::notify(osg::DEBUG_INFO) << "[osgEarth::SRS] using cached transform handle" << std::endl;
-        xform_handle = itr->second;
+        success = geographicToMercator( x, y, numPoints );
     }
+
+    else if ( isMercator() && out_srs->isGeographic() )
+    {
+        success = mercatorToGeographic( x, y, numPoints );
+    }
+
     else
-    {
-        xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
-        const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
-    }
+    {    
+        GDAL_SCOPED_LOCK;
 
-    if ( !xform_handle )
-    {
-        osg::notify( osg::WARN )
-            << "[osgEarth::SRS] SRS xform not possible" << std::endl
-            << "    From => " << getName() << std::endl
-            << "    To   => " << out_srs->getName() << std::endl;
-        return false;
+        void* xform_handle = NULL;
+        TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
+        if (itr != _transformHandleCache.end())
+        {
+            osg::notify(osg::DEBUG_INFO) << "[osgEarth::SRS] using cached transform handle" << std::endl;
+            xform_handle = itr->second;
+        }
+        else
+        {
+            xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
+            const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
         }
 
-    double *temp_z = new double[numPoints];
-    bool success;
+        if ( !xform_handle )
+        {
+            osg::notify( osg::WARN )
+                << "[osgEarth::SRS] SRS xform not possible" << std::endl
+                << "    From => " << getName() << std::endl
+                << "    To   => " << out_srs->getName() << std::endl;
+            return false;
+        }
 
-    success = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
+        double* temp_z = new double[numPoints];
+        success = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
+        delete[] temp_z;
+
+        // END GDAL_SCOPE_LOCK
+    }
 
     if ( success || ignore_errors )
     {
@@ -652,7 +707,6 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
             << getName() << " to " << out_srs->getName()
             << std::endl;
     }
-    delete[] temp_z;
     return success;
 }
 

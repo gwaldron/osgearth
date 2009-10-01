@@ -376,54 +376,6 @@ MapEngine::createEmptyHeightField( const TileKey* key )
     return hf;
 }
 
-//void
-//MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
-//                                     VersionedTile* ancestorTile,
-//                                     const MapLayerList& imageMapLayers,
-//                                     GeoLocator* defaultLocator,
-//                                     const TileKey* key)
-//{
-//    if ( !ancestorTile )
-//        return;
-//
-//    // Now if we have a valid ancestor tile, go through and make a temporary tile consisting only of
-//    // layers that exist in the new map layer image list as well.
-//    int layer = 0;
-//    for( unsigned int j=0; j<ancestorTile->getNumColorLayers(); j++ )
-//    {
-//        osgTerrain::ImageLayer* ancestorLayer = static_cast<osgTerrain::ImageLayer*>(ancestorTile->getColorLayer(j));
-//
-//        const std::string& layerName = ancestorLayer->getName();
-//        for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
-//        {
-//            if ( i->get()->getName() == layerName )
-//            {                    
-//                GeoLocator* newImageLocator = 0L;
-//
-//                GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
-//                if ( ancestorLocator )
-//                {
-//                    newImageLocator = ancestorLocator->cloneAndCrop( *defaultLocator, key->getGeoExtent() );
-//                }
-//                else
-//                {
-//                    newImageLocator = defaultLocator;
-//                }
-//
-//                osg::Image* ancestorImage = ancestorLayer->getImage();
-//
-//                osgTerrain::ImageLayer* img_layer = new TransparentLayer(ancestorImage, i->get());
-//                img_layer->setLocator( newImageLocator );
-//                img_layer->setName( layerName );
-//
-//                tile->setColorLayer( layer, img_layer );
-//                layer++;
-//                break;
-//            }
-//        }
-//    }
-//}
-
 void
 MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
                                      VersionedTile* ancestorTile,
@@ -477,33 +429,9 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
         osgTerrain::HeightFieldLayer* ancestorLayer = static_cast<osgTerrain::HeightFieldLayer*>(ancestorTile->getElevationLayer());
         if ( ancestorLayer && ancestorLayer->getHeightField() )
         {   
-            osg::HeightField* ancestorHF = ancestorLayer->getHeightField();
-            osg::HeightField* hf = new osg::HeightField();
-            hf->allocate( ancestorHF->getNumColumns(), ancestorHF->getNumRows() );
-            hf->setXInterval( 0.5f * ancestorHF->getXInterval() );
-            hf->setYInterval( 0.5f * ancestorHF->getYInterval() );
-
-            float hx = 0.5f * (float)ancestorHF->getNumColumns();
-            float hy = 0.5f * (float)ancestorHF->getNumRows();
-
-            const GeoExtent& keyex = key->getGeoExtent();
-
-            double x, y;
-            int col, row;
-
-            for( x = keyex.xMin(), col=0; col < hf->getNumColumns(); x += hf->getXInterval(), col++ )
-            {
-                for( y = keyex.yMin(), row=0; row < hf->getNumRows(); y += hf->getYInterval(), row++ )
-                {
-                    float h = HeightFieldUtils::getHeightAtLocation( ancestorHF, x, y );
-                    hf->setHeight( col, row, h );
-                }
-            }
-
-            osg::Vec3d orig( keyex.xMin(), keyex.yMin(), ancestorHF->getOrigin().z() );
-            hf->setOrigin( orig );
-
-            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
+            osg::ref_ptr<GeoHeightField> ancestorHF = new GeoHeightField( ancestorLayer->getHeightField(), ancestorKey->getGeoExtent() );
+            osg::ref_ptr<GeoHeightField> hf = ancestorHF->createSubSample( key->getGeoExtent() );
+            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf->getHeightField() );
             hfLayer->setLocator( defaultLocator );
             tile->setElevationLayer( hfLayer );
         }
@@ -553,11 +481,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     key->getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
 
     // A locator will place the tile on the globe:
-    osg::ref_ptr<GeoLocator> locator = key->getProfile()->getSRS()->createLocator(
-        xmin, ymin, xmax, ymax, isPlateCarre );
-
-    if ( isGeocentric )
-        locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( key, map );
 
     // The empty tile:
     VersionedTile* tile = new VersionedTile( key );
@@ -767,11 +691,12 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
     }
 
-    osg::ref_ptr<GeoLocator> locator = key->getProfile()->getSRS()->createLocator(
-        xmin, ymin, xmax, ymax, isPlateCarre );
+    osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( key, map );
+    //key->getProfile()->getSRS()->createLocator(
+    //    xmin, ymin, xmax, ymax, isPlateCarre );
 
-    if ( isGeocentric )
-        locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+    //if ( isGeocentric )
+    //    locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( locator.get() );
@@ -938,7 +863,8 @@ MapEngine::createImageLayer( Map* map, const TileKey* key, GeoImage* geoImage )
     else
     {
         const GeoExtent& gx = geoImage->getExtent();
-        imgLocator = key->getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax(), isPlateCarre );
+        imgLocator = GeoLocator::createForKey( key, map );
+        //imgLocator = key->getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax(), isPlateCarre );
     }
 
     if ( isGeocentric )
@@ -952,15 +878,19 @@ MapEngine::createImageLayer( Map* map, const TileKey* key, GeoImage* geoImage )
 }
 
 osgTerrain::HeightFieldLayer* 
-MapEngine::createHeightFieldLayer(Map* map, const TileKey* key, osg::HeightField* hf )
+MapEngine::createHeightFieldLayer( Map* map, const TileKey* key )
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-    bool isGeocentric = !isProjected;
 
-    osg::ref_ptr<GeoLocator> imgLocator;
+    // try to create a heightfield at native res:
+    osg::HeightField* hf = map->createHeightField( key, true );
+    if ( !hf )
+    {
+        hf = createEmptyHeightField( key );
+    }
 
     // In a Plate Carre tesselation, scale the heightfield elevations from meters to degrees
     if ( isPlateCarre )
@@ -968,16 +898,8 @@ MapEngine::createHeightFieldLayer(Map* map, const TileKey* key, osg::HeightField
         HeightFieldUtils::scaleHeightFieldToDegrees( hf );
     }
 
-    const GeoExtent& gx = key->getGeoExtent();
-
-    osg::ref_ptr<GeoLocator> locator = key->getProfile()->getSRS()->createLocator(
-        gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax(), isPlateCarre );
-
-    if ( isGeocentric )
-        locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-
     osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
-    hfLayer->setLocator( locator.get() );
+    hfLayer->setLocator( GeoLocator::createForKey( key, map ) );
 
     return hfLayer;
 }

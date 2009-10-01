@@ -225,7 +225,17 @@ namespace osgEarth
          *      True if the elevation query was succesful; false if not (e.g. if the query
          *      fell outside the geospatial extent of the heightfield)
          */
-        bool getElevation(const SpatialReference* srs, double x, double y, ElevationInterpolation interp, float& out_elevation);
+        bool getElevation(
+            const SpatialReference* srs, 
+            double x, double y,
+            ElevationInterpolation interp, float& out_elevation);
+
+        
+        /**
+         * Subsamples the heightfield, returning a new heightfield corresponding ///and Takes the source heightfield and its extent, and takes a subsample that corresponds to 
+         * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
+         */
+        GeoHeightField* createSubSample( const GeoExtent& destEx ) const;
 
         /**
          * Gets the geospatial extent of the heightfield.
@@ -236,6 +246,7 @@ namespace osgEarth
          * Gets a pointer to the underlying OSG heightfield.
          */
         const osg::HeightField* getHeightField() const;
+        osg::HeightField* getHeightField();
 
         /**
          * Gets a pointer to the underlying OSG heightfield, and releases the internal reference.

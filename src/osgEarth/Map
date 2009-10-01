@@ -192,9 +192,9 @@ namespace osgEarth
          *      level of detail and/or region. Use createBestHeightField() if you are willing
          *      to accept downsampling where your requested LOD does not exist.
          */
-        osg::HeightField* createHeightField( const TileKey* key ) {
-            return createHeightField( key, true );
-        }
+        //osg::HeightField* createHeightField( const TileKey* key ) {
+        //    return createHeightField( key, true );
+        //}
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
@@ -202,17 +202,18 @@ namespace osgEarth
          *
          * @param key
          *      Tile key defining the region (and ideal LOD) for which to return a heightfield
-         * @param out_actualKey
-         *      Output: the key corresponding to the data actually used to generate the heightfield.
-         *      Pass in NULL to ignore this parameter.
          * @param samplePolicy
          *      See enum SamplePolicy in this class.
          */
         osg::HeightField* createHeightField(
             const TileKey* key,
             bool fallback,
-            osg::ref_ptr<const TileKey>* out_actualKey =NULL,
-            SamplePolicy sampelPolicy =FIRST_VALID );
+            SamplePolicy samplePolicy =FIRST_VALID );
+
+        //GeoHeightField* createGeoHeightField(
+        //    const TileKey* key,
+        //    bool fallback,
+        //    SamplePolicy samplePolicy =FIRST_VALID ); 
 
 		/**
 		 * Creates a heightfield for the given TileKey using the elevation layers from this map

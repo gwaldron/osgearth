@@ -388,43 +388,225 @@ Map::calculateProfile()
     }
 }
 
+//GeoHeightField*
+//Map::createGeoHeightField( const TileKey* key, bool fallback, SamplePolicy samplePolicy)
+//{
+//    OpenThreads::ScopedReadLock lock( _mapDataMutex );
+//
+//    osg::ref_ptr<GeoHeightField> geoHF;
+//	//osg::HeightField *result = NULL;
+//
+//	//Get a HeightField for each of the enabled layers    
+//    GeoHeightFieldList heightFields;
+//    int lowestLOD = key->getLevelOfDetail();
+//
+//	for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
+//	{
+//		if (i->get()->getEnabled())
+//		{
+//            //TODO: FIXME: this code will invalidate the input key if the caller does not already
+//            // hold a reference to it. perhaps a clone here? -gw
+//			osg::ref_ptr< const TileKey > hf_key = key;
+//			osg::HeightField* hf = NULL;
+//			while ( hf_key.valid() )
+//			{
+//				hf = i->get()->createHeightField( hf_key.get() );
+//				if ( hf || !fallback )
+//                {
+//                    break;
+//                }
+//				hf_key = hf_key->createParentKey();
+//			}
+//
+//			if (hf)
+//			{
+//                if ( hf_key->getLevelOfDetail() < lowestLOD )
+//                    lowestLOD = hf_key->getLevelOfDetail();
+//
+//				heightFields.push_back( new GeoHeightField( hf, hf_key->getGeoExtent() ) );
+//			}
+//		}
+//	}
+//
+//	if (heightFields.size() == 0)
+//	{
+//	    //If we got no heightfields, return NULL
+//		return NULL;
+//	}
+//	else if (heightFields.size() == 1)
+//	{
+//        if ( lowestLOD == key->getLevelOfDetail() )
+//        {
+//            geoHF = heightFields[0].get();
+//        }
+//        else
+//        {
+//            // sampling required:
+//            geoHF = heightFields[0]->createSubSample( key->getGeoExtent() );
+//        }
+//	}
+//	else
+//	{
+//		//If we have multiple heightfields, we need to composite them together.
+//		unsigned int width = 0;
+//		unsigned int height = 0;
+//
+//		for (GeoHeightFieldList::const_iterator i = heightFields.begin(); i < heightFields.end(); ++i)
+//		{
+//			if (i->get()->getHeightField()->getNumColumns() > width) width = i->get()->getHeightField()->getNumColumns();
+//			if (i->get()->getHeightField()->getNumRows() > height) height = i->get()->getHeightField()->getNumRows();
+//		}
+//        osg::HeightField* hf = new osg::HeightField();
+//		hf->allocate( width, height );
+//
+//		//Go ahead and set up the heightfield so we don't have to worry about it later
+//        double minx, miny, maxx, maxy;
+//        key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+//        double dx = (maxx - minx)/(double)(hf->getNumColumns()-1);
+//        double dy = (maxy - miny)/(double)(hf->getNumRows()-1);
+//        
+//		//Create the new heightfield by sampling all of them.
+//        for (unsigned int c = 0; c < width; ++c)
+//        {
+//            double geoX = minx + (dx * (double)c);
+//            for (unsigned r = 0; r < height; ++r)
+//            {
+//                double geoY = miny + (dy * (double)r);
+//
+//                bool hasValidData = false;
+//
+//                //Collect elevations from all of the layers
+//                std::vector<float> elevations;
+//                for (GeoHeightFieldList::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
+//                {
+//                    float elevation = 0.0f;
+//                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, BILINEAR, elevation))
+//                    {
+//                        if (elevation != NO_DATA_VALUE)
+//                        {
+//                            elevations.push_back(elevation);
+//                        }
+//                    }
+//                }
+//
+//                float elevation = NO_DATA_VALUE;
+//
+//                //The list of elevations only contains valid values
+//                if (elevations.size() > 0)
+//                {
+//                    if (samplePolicy == FIRST_VALID)
+//                    {
+//                        elevation = elevations[0];
+//                    }
+//                    else if (samplePolicy == HIGHEST)
+//                    {
+//                        elevation = -FLT_MAX;
+//                        for (unsigned int i = 0; i < elevations.size(); ++i)
+//                        {
+//                            if (elevation < elevations[i]) elevation = elevations[i];
+//                        }
+//                    }
+//                    else if (samplePolicy == LOWEST)
+//                    {
+//                        elevation = FLT_MAX;
+//                        for (unsigned i = 0; i < elevations.size(); ++i)
+//                        {
+//                            if (elevation > elevations[i]) elevation = elevations[i];
+//                        }
+//                    }
+//                    else if (samplePolicy = AVERAGE)
+//                    {
+//                        elevation = 0.0;
+//                        for (unsigned i = 0; i < elevations.size(); ++i)
+//                        {
+//                            elevation += elevations[i];
+//                        }
+//                        elevation /= (float)elevations.size();
+//                    }
+//                }
+//                hf->setHeight(c, r, elevation);
+//            }
+//        }
+//
+//        geoHF = new GeoHeightField( hf, key->getGeoExtent() );
+//	}
+//
+//	// Replace any NoData areas with 0
+//	if ( geoHF.valid() )
+//	{
+//		ReplaceInvalidDataOperator o;
+//		o.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
+//        o( geoHF->getHeightField() );
+//	}
+//
+//	//Initialize the HF values for osgTerrain
+//	if ( geoHF.valid() )
+//	{	
+//		//Go ahead and set up the heightfield so we don't have to worry about it later
+//        osg::HeightField* hf = geoHF->getHeightField();
+//		double minx, miny, maxx, maxy;
+//		key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+//        hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+//		double dx = (maxx - minx)/(double)(hf->getNumColumns()-1);
+//		double dy = (maxy - miny)/(double)(hf->getNumRows()-1);
+//		hf->setXInterval( dx );
+//		hf->setYInterval( dy );
+//		hf->setBorderWidth( 0 );
+//	}
+//
+//    return geoHF.release();
+//
+//	/*
+//    osg::ref_ptr< ElevationManager > em = new ElevationManager;
+//    for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
+//    {
+//        em->getElevationLayers().push_back( i->get() );
+//    }
+//    return em->createHeightField( key, 0, 0, fallback );*/
+//}
+
+
+
+//osg::HeightField*
+//Map::createHeightField(const TileKey* key, bool fallback, SamplePolicy samplePolicy )
+//{
+//    osg::ref_ptr<GeoHeightField> geoHF = createGeoHeightField( key, fallback, samplePolicy );
+//    osg::HeightField* hf = geoHF.valid() ? geoHF->takeHeightField() : NULL;
+//    return hf;
+//}
+
+
 osg::HeightField*
-Map::createHeightField( const TileKey* key, bool fallback, osg::ref_ptr<const TileKey>* out_actualKey, SamplePolicy samplePolicy)
+Map::createHeightField( const TileKey* key, bool fallback, SamplePolicy samplePolicy)
 {
+	//osg::notify(osg::INFO) << "[osgEarth::Map::createHeightField]" << std::endl;
     OpenThreads::ScopedReadLock lock( _mapDataMutex );
 
 	osg::HeightField *result = NULL;
+    int lowestLOD = key->getLevelOfDetail();
+    bool hfInitialized = false;
 
 	//Get a HeightField for each of the enabled layers
 	GeoHeightFieldList heightFields;
-
 	for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
 	{
 		if (i->get()->getEnabled())
 		{
-            //TODO: FIXME: this code will invalidate the input key if the caller does not already
-            // hold a reference to it. perhaps a clone here? -gw
 			osg::ref_ptr< const TileKey > hf_key = key;
 			osg::HeightField* hf = NULL;
 			while (hf_key.valid())
 			{
 				hf = i->get()->createHeightField( hf_key.get() );
-                if ( hf && out_actualKey )
-                {
-                    if (!(*out_actualKey).valid() ||
-                        hf_key->getLevelOfDetail() > (*out_actualKey)->getLevelOfDetail() )
-                    {
-                        (*out_actualKey) = hf_key.get();
-                    }
-                }
-				if ( hf || !fallback )
-                    break;
+				if (hf || !fallback) break;
 				hf_key = hf_key->createParentKey();
 			}
 
 			if (hf)
 			{
-				heightFields.push_back( new GeoHeightField( hf, key->getGeoExtent() ) );
+                if ( hf_key->getLevelOfDetail() < lowestLOD )
+                    lowestLOD = hf_key->getLevelOfDetail();
+
+				heightFields.push_back( new GeoHeightField( hf, hf_key->getGeoExtent() ) );
 			}
 		}
 	}
@@ -436,8 +618,17 @@ Map::createHeightField( const TileKey* key, bool fallback, osg::ref_ptr<const Ti
 	}
 	else if (heightFields.size() == 1)
 	{
-		//If we only have on heightfield, just return it.
-		result = heightFields[0]->takeHeightField();
+        if ( lowestLOD == key->getLevelOfDetail() )
+        {
+		    //If we only have on heightfield, just return it.
+		    result = heightFields[0]->takeHeightField();
+        }
+        else
+        {
+            osg::ref_ptr<GeoHeightField> geoHF = heightFields[0]->createSubSample( key->getGeoExtent() );
+            result = geoHF->takeHeightField();
+            hfInitialized = true;
+        }
 	}
 	else
 	{
@@ -531,12 +722,8 @@ Map::createHeightField( const TileKey* key, bool fallback, osg::ref_ptr<const Ti
 		o(result);
 	}
 
-	if (!result)
-	{
-	}
-
 	//Initialize the HF values for osgTerrain
-	if (result)
+	if (result && !hfInitialized )
 	{	
 		//Go ahead and set up the heightfield so we don't have to worry about it later
 		double minx, miny, maxx, maxy;

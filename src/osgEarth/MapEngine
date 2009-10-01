@@ -76,8 +76,7 @@ namespace osgEarth
 
         osgTerrain::HeightFieldLayer* createHeightFieldLayer(
             Map* map,
-            const TileKey* key,
-            osg::HeightField* hf );
+            const TileKey* key );
 
         /**
          * Gets the properties that customize how this engine renders tile data.
@@ -145,6 +144,11 @@ namespace osgEarth
         osg::ClusterCullingCallback* createClusterCullingCallback(
             osgTerrain::TerrainTile* tile,
             osg::EllipsoidModel* et );
+
+        //osg::HeightField* subSampleHeightField(
+        //    osg::HeightField* source,
+        //    const TileKey* sourceKey,
+        //    const TileKey* destKey );
 
     protected:
 

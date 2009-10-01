@@ -29,13 +29,16 @@ namespace osgEarth
 {
     class VersionedTerrain;
 
-    /*interface*/ class TileDataFactory : public osg::Referenced
+    /*interface*/ class TileLayerFactory : public osg::Referenced
     {
     public:
-        virtual GeoImage* createImage( const TileKey* key, int layerIndex ) =0;
-        virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
-        virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image ) =0;
-        virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, osg::HeightField* hf ) =0;
+        //virtual GeoImage* createImage( const TileKey* key, int layerIndex ) =0;
+        //virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
+        //virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image ) =0;
+        //virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, osg::HeightField* hf ) =0;
+
+        virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex ) =0;
+        virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key ) =0;
     };
 
     /**
@@ -56,6 +59,10 @@ namespace osgEarth
     public:
         VersionedTile( const TileKey* key );
 
+        /** Gets the tilekey associated with this tile. */
+        const TileKey* getKey() const;
+
+        /** Sets whether to use the TaskService to schedule per-layer background data loading. */
         void setUseLayerRequests( bool );
 
         /**
@@ -123,7 +130,7 @@ namespace osgEarth
     class VersionedTerrain : public osgTerrain::Terrain
     {
     public:
-        VersionedTerrain( TileDataFactory* factory =NULL );
+        VersionedTerrain( TileLayerFactory* factory =NULL );
 
         virtual const char* className() const { return "VersionedTerrain"; }
 
@@ -152,12 +159,12 @@ namespace osgEarth
         /** Gets the number of color layers and elevation layers combined */
         int getNumActiveLayers() const;
 
-        TileDataFactory* getTileDataFactory() const;
+        TileLayerFactory* getTileLayerFactory() const;
 
     private:
         int _revision;
         OpenThreads::Mutex _revisionMutex;
-        osg::ref_ptr<TileDataFactory> _tileDataFactory;
+        osg::ref_ptr<TileLayerFactory> _layerFactory;
     };
 }
 

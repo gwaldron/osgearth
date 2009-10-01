@@ -32,38 +32,34 @@ using namespace OpenThreads;
 
 struct TileLayerRequest : public TaskRequest
 {
-    TileLayerRequest( const TileKey* key, TileDataFactory* factory )
-        : _key(key), _factory(factory) { }
+    TileLayerRequest( const TileKey* key, TileLayerFactory* factory )
+        : _key( key ), _factory(factory) { }
     virtual bool isColorLayerRequest() const { return false; }
     virtual bool isElevLayerRequest() const { return false; }
     osg::ref_ptr<const TileKey> _key;
-    osg::ref_ptr<TileDataFactory> _factory;
+    osg::observer_ptr<TileLayerFactory> _factory;
 };
 
 struct TileColorLayerRequest : public TileLayerRequest
 {
-    TileColorLayerRequest( int layerIndex, const TileKey* key, TileDataFactory* factory )
+    TileColorLayerRequest( const TileKey* key, TileLayerFactory* factory, int layerIndex )
         : TileLayerRequest( key, factory ), _layerIndex( layerIndex ) { }
     bool isColorLayerRequest() const { return true; }
     void operator()( TaskProgress* p )
     {
-        osg::ref_ptr<GeoImage> image = _factory->createImage( _key.get(), _layerIndex );
-        if ( image.valid() )
-            _result = _factory->createImageLayer( _key.get(), image.get() );
+        _result = _factory->createImageLayer( _key.get(), _layerIndex );
     }
     int _layerIndex;
 };
 
 struct TileElevationLayerRequest : public TileLayerRequest
 {
-    TileElevationLayerRequest( const TileKey* key, TileDataFactory* factory )
+    TileElevationLayerRequest( const TileKey* key, TileLayerFactory* factory )
         : TileLayerRequest( key, factory ) { }
     bool isElevLayerRequest() const { return true; }
     void operator()( TaskProgress* p )
     {
-        osg::ref_ptr<osg::HeightField> hf = _factory->createHeightField( _key.get() );
-        if ( hf.valid() )
-            _result = _factory->createHeightFieldLayer( _key.get(), hf.get() );
+        _result = _factory->createHeightFieldLayer( _key.get() );
     }
 };
 
@@ -79,6 +75,11 @@ _requestsInstalled( false )
 {
     setTileID( key->getTileId() );
     setUseLayerRequests( false );
+}
+
+const TileKey*
+VersionedTile::getKey() const {
+    return _key.get();
 }
 
 VersionedTerrain*
@@ -134,7 +135,7 @@ VersionedTile::servicePendingRequests( int stamp )
 {
     if ( !_requestsInstalled )
     {
-        TileDataFactory* factory = getVersionedTerrain()->getTileDataFactory();
+        TileLayerFactory* factory = getVersionedTerrain()->getTileLayerFactory();
         if ( factory )
         {
             if ( this->getElevationLayer() )
@@ -144,10 +145,10 @@ VersionedTile::servicePendingRequests( int stamp )
                 r->setStamp( stamp );
                 _requests.push_back( r );
             }
-            for( int k=0; k<getNumColorLayers(); k++ )
+            for( int layerIndex=0; layerIndex<getNumColorLayers(); layerIndex++ )
             {
-                TaskRequest* r = new TileColorLayerRequest( k, _key.get(), factory );
-                r->setPriority( (float)_key->getLevelOfDetail() );
+                TaskRequest* r = new TileColorLayerRequest( _key.get(), factory, layerIndex );
+                r->setPriority( (float)_key->getLevelOfDetail() + (0.1 * (float)layerIndex) );
                 r->setStamp( stamp );
                 _requests.push_back( r );
             }
@@ -187,19 +188,11 @@ void VersionedTile::serviceCompletedRequests()
             {
                 TileElevationLayerRequest* er = static_cast<TileElevationLayerRequest*>( r );
                 osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>( er->getResult() );
-                if ( hfLayer )
+                if ( hfLayer && _key->getLevelOfDetail() < 8 )
                 {
                     this->setElevationLayer( hfLayer );
                     this->setDirty( true );
                 }
-
-                //osg::HeightField* hf = static_cast<osg::HeightField*>( er->getResult() );
-                //if ( hf )
-                //{
-                //    //osg::notify(osg::NOTICE) << "Tile " << _key->str() << ": Merging heightfield data..." << std::endl;
-                //    ((osgTerrain::HeightFieldLayer*)this->getElevationLayer())->setHeightField( hf );
-                //    this->setDirty( true );
-                //}
             }
             else // if ( r->isColorLayerRequest() )
             {
@@ -210,21 +203,6 @@ void VersionedTile::serviceCompletedRequests()
                     this->setColorLayer( cr->_layerIndex, imgLayer );
                     this->setDirty( true );
                 }
-
-                //GeoImage* img = static_cast<GeoImage*>( cr->getResult() );
-                //if ( img )
-                //{
-                //    //osg::notify(osg::NOTICE) << "Tile " << _key->str() << ": Merging image data..." << std::endl;
-                //    osgTerrain::ImageLayer* imgLayer = (osgTerrain::ImageLayer*)this->getColorLayer( cr->_layerIndex );
-                //    imgLayer->setImage( img->getImage() );
-                //    const GeoExtent& e = img->getExtent();
-                //    bool isPlateCarre = false;
-                //    GeoLocator* locator = _key->getProfile()->getSRS()->createLocator(
-                //        e.xMin(), e.yMin(), e.xMax(), e.yMax(), isPlateCarre );
-                //    locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-                //    imgLayer->setLocator( locator );
-                //    this->setDirty( true );
-                //}
             }
 
             // remove from the list
@@ -261,8 +239,8 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
 /****************************************************************************/
 
 
-VersionedTerrain::VersionedTerrain( TileDataFactory* factory ) :
-_tileDataFactory( factory ),
+VersionedTerrain::VersionedTerrain( TileLayerFactory* factory ) :
+_layerFactory( factory ),
 _revision(0)
 {
     //nop
@@ -308,7 +286,7 @@ VersionedTerrain::getTerrainTiles( TerrainTileList& out_tiles )
     }
 }
 
-TileDataFactory*
-VersionedTerrain::getTileDataFactory() const {
-    return _tileDataFactory.get();
+TileLayerFactory*
+VersionedTerrain::getTileLayerFactory() const {
+    return _layerFactory.get();
 }

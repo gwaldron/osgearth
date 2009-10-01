@@ -43,6 +43,8 @@ namespace osgEarth
         /** Construct a locator that crops to a display extent. */
         GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent );
 
+        static GeoLocator* createForKey( const class TileKey* key, class Map* map );
+
         void setDataExtent( const GeoExtent& extent );
         const GeoExtent& getDataExtent() const;
 
@@ -58,6 +60,7 @@ namespace osgEarth
     private:
         GeoExtent _dataExtent;
         double _x0, _y0, _x1, _y1;
+        bool _inverseCalculated;
     };
 
     

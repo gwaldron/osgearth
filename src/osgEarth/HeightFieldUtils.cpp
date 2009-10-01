@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/GeoData>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -136,6 +137,7 @@ HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
         osg::notify(osg::WARN) << "[osgEarth::HeightFieldUtils] scaleHeightFieldToDegrees heightfield is NULL" << std::endl;
     }
 }
+
 
 
 /******************************************************************************************/

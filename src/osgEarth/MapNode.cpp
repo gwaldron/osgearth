@@ -271,33 +271,27 @@ MapNode::traverse( osg::NodeVisitor& nv )
 
 
 // custom tile data factory that encapsulates access to the map.
-struct MapTileDataFactory : public TileDataFactory
+struct MapNodeTileLayerFactory : public TileLayerFactory
 {
-    MapTileDataFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
+    MapNodeTileLayerFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
 
-    osg::HeightField* createHeightField( const TileKey* key ) {
-        return _map.valid()? _map->createHeightField( key, false ) : 0L;
-    }
-
-    GeoImage* createImage( const TileKey* key, int layerIndex ) {
-        if ( _map.valid() ) {
+    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex ) {
+        if ( _map.valid() && _engine.valid() ) {
             ScopedReadLock lock( _map->getMapDataMutex() );
             if ( layerIndex < _map->getImageMapLayers().size() )
-                return _map->getImageMapLayers()[layerIndex]->createImage(key);
+            {
+                MapLayer* mapLayer = _map->getImageMapLayers()[layerIndex].get();
+                osg::ref_ptr<GeoImage> img = mapLayer->createImage( key );
+                if ( img )
+                    return _engine->createImageLayer( _map.get(), key, img.get() );
+            }
         }
         return 0L;
     }
 
-    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image ) {
+    osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key ) {
         if ( _map.valid() && _engine.valid() ) {
-            return _engine->createImageLayer( _map.get(), key, image );
-        }
-        return 0L;
-    }
-
-    osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, osg::HeightField* hf ) {
-        if ( _map.valid() && _engine.valid() ) {
-            return _engine->createHeightFieldLayer( _map.get(), key, hf );
+            return _engine->createHeightFieldLayer( _map.get(), key );
         }
         return 0L;
     }
@@ -324,7 +318,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     int faces_ok = 0;
     for( int face = 0; face < _map->getProfile()->getNumFaces(); face++ )
     {
-        VersionedTerrain* terrain = new VersionedTerrain( new MapTileDataFactory( _map.get(), _engine.get() ) );
+        VersionedTerrain* terrain = new VersionedTerrain( new MapNodeTileLayerFactory( _map.get(), _engine.get() ) );
 
 		if (_engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
 		{

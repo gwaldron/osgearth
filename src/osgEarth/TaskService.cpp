@@ -66,6 +66,9 @@ TaskRequestQueue::add( TaskRequest* request )
 TaskRequest* 
 TaskRequestQueue::get()
 {
+    if ( _done )
+        return 0L;
+
     ScopedLock<Mutex> lock(_mutex);
     
     while( !_done && _requests.empty() )
@@ -101,7 +104,7 @@ TaskThread::run()
 {
     while( !_done && (_request = _queue->get()).valid() )
     {
-        if ( !_request.valid() )
+        if ( _done || !_request.valid() )
             break;
 
         // discard an out-of-date request:

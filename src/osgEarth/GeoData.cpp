@@ -685,6 +685,41 @@ bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double 
     }
 }
 
+GeoHeightField*
+GeoHeightField::createSubSample( const GeoExtent& destEx ) const
+{
+    float div = destEx.width()/_extent.width();
+    if ( div >= 1.0f )
+        return 0L;
+
+    int w = _heightField->getNumColumns();
+    int h = _heightField->getNumRows();
+    float dx = _heightField->getXInterval() * div;
+    float dy = _heightField->getYInterval() * div;
+
+    osg::HeightField* dest = new osg::HeightField();
+    dest->allocate( w, h );
+    dest->setXInterval( dx );
+    dest->setYInterval( dy );
+
+    double x, y;
+    int col, row;
+
+    for( x = destEx.xMin(), col=0; col < w; x += dx, col++ )
+    {
+        for( y = destEx.yMin(), row=0; row < h; y += dy, row++ )
+        {
+            float h = HeightFieldUtils::getHeightAtLocation( _heightField.get(), x, y );
+            dest->setHeight( col, row, h );
+        }
+    }
+
+    osg::Vec3d orig( destEx.xMin(), destEx.yMin(), _heightField->getOrigin().z() );
+    dest->setOrigin( orig );
+
+    return new GeoHeightField( dest, destEx );
+}
+
 const GeoExtent&
 GeoHeightField::getGeoExtent() const
 {
@@ -693,6 +728,12 @@ GeoHeightField::getGeoExtent() const
 
 const osg::HeightField*
 GeoHeightField::getHeightField() const
+{
+    return _heightField.get();
+}
+
+osg::HeightField*
+GeoHeightField::getHeightField() 
 {
     return _heightField.get();
 }

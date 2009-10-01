@@ -17,13 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Locators>
+#include <osgEarth/TileKey>
+#include <osgEarth/Map>
 #include <osg/Notify>
 
 using namespace osgEarth;
 
 GeoLocator::GeoLocator() :
 _x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0)
+_y0(0.0), _y1(1.0),
+_inverseCalculated(false)
 {
     //nop
 }
@@ -31,7 +34,8 @@ _y0(0.0), _y1(1.0)
 GeoLocator::GeoLocator( const GeoExtent& dataExtent ) :
 _dataExtent( dataExtent ),
 _x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0)
+_y0(0.0), _y1(1.0),
+_inverseCalculated(false)
 {
     //nop
 }
@@ -40,20 +44,44 @@ GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& d
 osgTerrain::Locator( prototype ),
 _dataExtent( dataExtent ),
 _x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0)
+_y0(0.0), _y1(1.0),
+_inverseCalculated(false)
 {
     //nop
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent ) :
 osgTerrain::Locator( prototype ),
-_dataExtent( dataExtent )
+_dataExtent( dataExtent ),
+_inverseCalculated(false)
 {
     // assume they are the same SRS
     _x0 = osg::clampBetween( (displayExtent.xMin()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );
     _x1 = osg::clampBetween( (displayExtent.xMax()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );
     _y0 = osg::clampBetween( (displayExtent.yMin()-dataExtent.yMin())/dataExtent.height(), 0.0, 1.0 );
     _y1 = osg::clampBetween( (displayExtent.yMax()-dataExtent.yMin())/dataExtent.height(), 0.0, 1.0 );
+}
+
+GeoLocator*
+GeoLocator::createForKey( const TileKey* key, Map* map )
+{
+    bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
+    bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
+    bool isGeocentric = !isProjected;
+
+    const GeoExtent& ex = key->getGeoExtent();
+    double xmin, ymin, xmax, ymax;
+    key->getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
+
+    // A locator will place the tile on the globe:
+    GeoLocator* locator = key->getProfile()->getSRS()->createLocator(
+        ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax(),
+        isPlateCarre );
+
+    if ( isGeocentric )
+        locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+
+    return locator;
 }
 
 void
@@ -76,10 +104,12 @@ GeoLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent&
 bool
 GeoLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const
 {
-#if !( OSG_MIN_VERSION_REQUIRED(2,8,0) )
     // OSG 2.7 bug workaround: bug fix in Locator submitted by GW on 10/3/2008:
-    const_cast<GeoLocator*>(this)->_inverse.invert( _transform );
-#endif
+    if ( !_inverseCalculated )
+    {
+        const_cast<GeoLocator*>(this)->_inverse.invert( _transform );
+        const_cast<GeoLocator*>(this)->_inverseCalculated = true;
+    }
 
     bool ok = Locator::convertModelToLocal( world, local );
 

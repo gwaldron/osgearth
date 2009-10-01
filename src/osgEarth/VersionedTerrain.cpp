@@ -192,7 +192,7 @@ void VersionedTile::serviceCompletedRequests()
             {
                 TileElevationLayerRequest* er = static_cast<TileElevationLayerRequest*>( r );
                 osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>( er->getResult() );
-                if ( hfLayer && _key->getLevelOfDetail() < 8 )
+                if ( hfLayer  )
                 {
                     this->setElevationLayer( hfLayer );
                     this->setDirty( true );

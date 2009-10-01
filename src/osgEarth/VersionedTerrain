@@ -62,6 +62,8 @@ namespace osgEarth
         /** Gets the tilekey associated with this tile. */
         const TileKey* getKey() const;
 
+        bool getUseLayerRequests() const { return _useLayerRequests; }
+
         /** Sets whether to use the TaskService to schedule per-layer background data loading. */
         void setUseLayerRequests( bool );
 
@@ -97,6 +99,9 @@ namespace osgEarth
         class VersionedTerrain* getVersionedTerrain();
         const class VersionedTerrain* getVersionedTerrain() const;
 
+        /** Updates and services this tile's service pending requests. */
+        void servicePendingRequests( int frameStamp );
+
     private:
         int _terrainRevision;
         int _tileRevision;
@@ -105,10 +110,7 @@ namespace osgEarth
 
         osg::ref_ptr<const TileKey> _key;
         TaskRequestList _requests;
-        int _numActiveRequests;
-
-        /** Updates and services this tile's service pending requests. */
-        void servicePendingRequests( int frameStamp );
+        int _numActiveRequests;        
 
         /** Deals with completed requests during the UPDATE traversal. */
         void serviceCompletedRequests();

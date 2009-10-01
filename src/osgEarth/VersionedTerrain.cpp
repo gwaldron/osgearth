@@ -228,11 +228,8 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
 {
     if ( _useLayerRequests )
     {
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-        {
-            servicePendingRequests( nv.getFrameStamp()->getFrameNumber() );
-        }
-        else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+        //Service any completed requests.
+        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
         {
             serviceCompletedRequests();
         }

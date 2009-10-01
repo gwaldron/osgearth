@@ -132,9 +132,19 @@ struct TileDataLoaderCallback : public osg::NodeCallback
             TileSwitcher* switcher = static_cast<TileSwitcher*>( node->asGroup()->getChild(0) );
             switcher->checkTileRevision();
 
+            VersionedTile* tile = static_cast<VersionedTile*>( switcher->getChild(0) );
+
+            //If we are using the task service, service pending requests for the tile
+            //By doing this here instead of in the actual tile itself, we can ensure that each tile
+            //gets a chance to fill itself in even if it isn't being rendered, which allows for a very
+            //nice backfilling effect.
+            if (tile->getUseLayerRequests())
+            {
+                tile->servicePendingRequests( nv->getFrameStamp()->getFrameNumber() );
+            }
+            
             if ( !switcher->_loaded )
             {
-                VersionedTile* tile = static_cast<VersionedTile*>( switcher->getChild(0) );
                 float priority = -(99.0f - (float)(tile->getTileID().level));
                 nv->getDatabaseRequestHandler()->requestNodeFile(
                     _filename, switcher, priority, nv->getFrameStamp(), _databaseRequest );
@@ -143,6 +153,7 @@ struct TileDataLoaderCallback : public osg::NodeCallback
             {
                 _databaseRequest = 0L;
             }
+            //osg::notify(osg::NOTICE) << "Culling " << tile->getKey()->str() << std::endl;
         }
         traverse( node, nv );
     }

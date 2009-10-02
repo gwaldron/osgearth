@@ -43,7 +43,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             if ( view->computeIntersections( ea.getX(), ea.getY(), results ) )
             {
                 // find the first hit under the mouse:
-                osgUtil::LineSegmentIntersector::Intersection& first = *(results.begin());
+                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
                 osg::Vec3d point = first.getWorldIntersectPoint();
                 
                 // transform it to map coordinates:

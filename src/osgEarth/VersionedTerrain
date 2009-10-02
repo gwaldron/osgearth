@@ -32,6 +32,10 @@ namespace osgEarth
     /*interface*/ class TileLayerFactory : public osg::Referenced
     {
     public:
+        virtual GeoImage* createGeoImage( const TileKey* key, int layerIndex ) =0;
+        virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image ) =0;
+
+        //virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
         virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex ) =0;
         virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key ) =0;
     };

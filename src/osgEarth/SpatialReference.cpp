@@ -28,6 +28,9 @@
 
 using namespace osgEarth;
 
+#define USE_CUSTOM_MERCATOR_TRANSFORM 1
+//#undef USE_CUSTOM_MERCATOR_TRANSFORM
+
 
 static std::string
 getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
@@ -651,6 +654,8 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     
     bool success = false;
 
+#ifdef USE_CUSTOM_MERCATOR_TRANSFORM
+
     if ( isGeographic() && out_srs->isMercator() )
     {
         success = geographicToMercator( x, y, numPoints );
@@ -662,6 +667,8 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     }
 
     else
+#endif
+
     {    
         GDAL_SCOPED_LOCK;
 

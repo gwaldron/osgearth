@@ -467,7 +467,6 @@ MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, 
 {
     if ( populateLayers )
     {
-        //bool wrapInPagedLOD = !_engineProps.getPreemptiveLOD();
         return createPopulatedTile( map, terrain, key, wrapInPagedLOD );
     }
     else

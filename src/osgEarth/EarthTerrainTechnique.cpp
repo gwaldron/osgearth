@@ -36,6 +36,10 @@
 #include <osg/Timer>
 #include <osg/Version>
 
+#include <osgText/Text>
+#include <sstream>
+#include <osg/Depth>
+
 using namespace osgTerrain;
 using namespace osgEarth;
 
@@ -115,6 +119,67 @@ void EarthTerrainTechnique::setFilterMatrixAs(FilterType filterType)
     };
 }
 
+void
+EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
+{
+    if ( !_terrainTile ) return;
+
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
+
+    // clone the last iteration so we can modify it:
+    BufferData& readBuf  = getReadOnlyBuffer();
+    BufferData& writeBuf = getWriteBuffer();
+
+    Locator* masterLocator = computeMasterLocator();
+
+    writeBuf._transform = static_cast<osg::MatrixTransform*>( readBuf._transform->clone( osg::CopyOp::DEEP_COPY_ALL ) );
+    writeBuf._geode = static_cast<osg::Geode*>( writeBuf._transform->getChild(0) );
+    writeBuf._geometry = static_cast<osg::Geometry*>( writeBuf._geode->getDrawable(0) );
+
+    if ( updateGeom )
+    {
+        updateGeometry( masterLocator, _lastCenterModel );
+    }
+    if ( updateTextures )
+    {
+        updateColorLayers( masterLocator );
+    }
+
+    writeBuf._geometry->dirtyDisplayList();
+
+    swapBuffers();
+}
+
+//void
+//EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
+//{
+//    if ( !_terrainTile ) return;
+//
+//    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex());
+//
+//    // clone the last iteration so we can modify it:
+//    BufferData& readBuf  = getReadOnlyBuffer();
+//    BufferData& writeBuf = getWriteBuffer();
+//
+//    Locator* masterLocator = computeMasterLocator();
+//    osg::Vec3d centerModel = computeCenterModel( masterLocator );
+//
+//    writeBuf._geode = static_cast<osg::Geode*>( readBuf._geode->clone( osg::CopyOp::DEEP_COPY_ALL ) );
+//    writeBuf._geometry = static_cast<osg::Geometry*>( writeBuf._geode->getDrawable(0) );
+//    writeBuf._transform->addChild( writeBuf._geode.get() );
+//
+//    if ( updateGeom )
+//    {
+//        updateGeometry( masterLocator, centerModel );
+//    }
+//    if ( updateTextures )
+//    {
+//        updateColorLayers( masterLocator );
+//    }
+//
+//    swapBuffers();
+//}
+
 void EarthTerrainTechnique::init()
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
@@ -136,7 +201,8 @@ void EarthTerrainTechnique::init()
     
     // smoothGeometry();
 
-    if (buffer._transform.valid()) buffer._transform->setThreadSafeRefUnref(true);
+    if (buffer._transform.valid())
+        buffer._transform->setThreadSafeRefUnref(true);
 
     swapBuffers();
 }
@@ -222,39 +288,6 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
     return centerModel;
 }
 
-void
-EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
-{
-    if ( !_terrainTile ) return;
-
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
-
-    // clone the last iteration so we can modify it:
-    BufferData& readBuf  = getReadOnlyBuffer();
-    BufferData& writeBuf = getWriteBuffer();
-
-    Locator* masterLocator = computeMasterLocator();
-
-    writeBuf._transform = static_cast<osg::MatrixTransform*>( readBuf._transform->clone( osg::CopyOp::DEEP_COPY_ALL ) );
-    writeBuf._geode = static_cast<osg::Geode*>( writeBuf._transform->getChild(0) );
-    writeBuf._geometry = static_cast<osg::Geometry*>( writeBuf._geode->getDrawable(0) );
-
-    if ( updateGeom )
-    {
-        //osg::notify(osg::NOTICE) << "geom..." << std::endl;
-        updateGeometry( masterLocator, _lastCenterModel );
-    }
-    if ( updateTextures )
-    {
-        //osg::notify(osg::NOTICE) << "tex..." << std::endl;
-        updateColorLayers( masterLocator );
-    }
-
-    writeBuf._geometry->dirtyDisplayList();
-
-    swapBuffers();
-}
-
 // simple updates an in-place geometry from a new elevationlayer.
 void
 EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
@@ -328,24 +361,55 @@ EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
 
     for(unsigned int layerNum=0; layerNum<_terrainTile->getNumColorLayers(); ++layerNum)
     {
-        osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(_terrainTile->getColorLayer(layerNum));
-        if ( imageLayer )
+        osgTerrain::ImageLayer* colorLayer = dynamic_cast<osgTerrain::ImageLayer*>(_terrainTile->getColorLayer(layerNum));
+        if ( colorLayer )
         {
             osg::StateSet* ss = writeBuf._geode->getStateSet();
             if ( ss )
             {
-                osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(
-                    ss->getTextureAttribute( layerNum, osg::StateAttribute::TEXTURE ) );
+                //osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(
+                //    ss->getTextureAttribute( layerNum, osg::StateAttribute::TEXTURE ) );
+                //if ( tex && tex->getImage() != imageLayer->getImage() )
+                //{
+                //    tex->setImage( imageLayer->getImage() );
+                //    tex->dirtyTextureObject();
+                //    tex->dirtyTextureParameters();
+                //}
 
-                if ( tex && tex->getImage() != imageLayer->getImage() )
+                //ss->removeTextureAttribute( layerNum, osg::StateAttribute::TEXTURE );
+
+                osg::Image* image = colorLayer->getImage();
+                osg::Texture2D* texture2D = new osg::Texture2D();
+                texture2D->setImage( image );
+                texture2D->setMaxAnisotropy(16.0f);
+                texture2D->setResizeNonPowerOfTwoHint(false);
+
+#if OSG_MIN_VERSION_REQUIRED(2,8,0)
+                texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
+                texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
+#else
+				texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+				texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getFilter()==Layer::LINEAR ? osg::Texture::LINEAR :  osg::Texture::NEAREST);
+#endif
+                
+                texture2D->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
+                texture2D->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
+
+                bool mipMapping = !(texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
+                bool s_NotPowerOfTwo = image->s()==0 || (image->s() & (image->s() - 1));
+                bool t_NotPowerOfTwo = image->t()==0 || (image->t() & (image->t() - 1));
+
+                if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
                 {
-                    tex->setImage( imageLayer->getImage() );
-                    tex->dirtyTextureObject();
+                    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+                    texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
                 }
+
+                ss->setTextureAttributeAndModes( layerNum, texture2D );
             }
             
             osg::Vec2Array* texcoords = static_cast<osg::Vec2Array*>( writeBuf._geometry->getTexCoordArray( layerNum ) );
-            Locator* colorLocator = imageLayer->getLocator();
+            Locator* colorLocator = colorLayer->getLocator();
             osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
             int numRows = elevationLayer->getNumRows();
             int numColumns = elevationLayer->getNumColumns();
@@ -832,6 +896,22 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         //osg::Timer_t after = osg::Timer::instance()->tick();
         //osg::notify(osg::NOTICE)<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
+
+    //DEBUGGING
+#if 0
+    osgText::Text* text = new osgText::Text();
+    std::stringstream buf;
+    buf << "" << _terrainTile->getTileID().level << "," <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y;
+    text->setText( buf.str() );
+    text->setFont( osgText::readFontFile( "arialbd.ttf" ) );
+    text->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
+    text->setCharacterSize( 64 );
+    text->setColor( osg::Vec4f(1,1,1,1) );
+    text->setBackdropType( osgText::Text::OUTLINE );
+    text->setAutoRotateToScreen(true);
+    text->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
+    buffer._geode->addDrawable( text );
+#endif
 }
 
 void EarthTerrainTechnique::applyColorLayers()

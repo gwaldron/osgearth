@@ -24,6 +24,7 @@
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
 #include <osg/Node>
+#include <osg/Notify>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -69,7 +70,6 @@ struct TileElevationLayerRequest : public TileLayerRequest
 
 VersionedTile::VersionedTile( const TileKey* key ) :
 _key( key ),
-_useLayerRequests( false ),
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
 _requestsInstalled( false ),
@@ -78,7 +78,6 @@ _colorLayersDirty( false ),
 _usePerLayerUpdates( true )
 {
     setTileID( key->getTileId() );
-    setUseLayerRequests( false );
 }
 
 VersionedTile::~VersionedTile()
@@ -112,10 +111,12 @@ VersionedTile::getVersionedTerrain() const {
 void
 VersionedTile::setUseLayerRequests( bool value )
 {
-    _useLayerRequests = value;   
-
-    // if layer requests are on, we need an update traversal.
-    this->setNumChildrenRequiringUpdateTraversal( value? 1 : 0 );
+    if ( _useLayerRequests != value )
+    {
+        _useLayerRequests = value;
+        int oldNum = getNumChildrenRequiringUpdateTraversal();
+        setNumChildrenRequiringUpdateTraversal( oldNum + (value? 1 : -1) );
+    }
 }
 
 int
@@ -231,6 +232,7 @@ void VersionedTile::serviceCompletedRequests()
                 osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( cr->getResult() );
                 if ( imgLayer )
                 {
+                    //osg::notify( osg::NOTICE ) << "READY: layer " << _key->str() << std::endl;
                     this->setColorLayer( cr->_layerIndex, imgLayer );
                     if ( _usePerLayerUpdates )
                         _colorLayersDirty = true;

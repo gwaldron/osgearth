@@ -278,6 +278,33 @@ struct MapNodeTileLayerFactory : public TileLayerFactory
 {
     MapNodeTileLayerFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
 
+    GeoImage* createGeoImage( const TileKey* key, int layerIndex ) {
+        if ( _map.valid() && _engine.valid() ) {
+            ScopedReadLock lock( _map->getMapDataMutex() );
+            if ( layerIndex < _map->getImageMapLayers().size() )
+            {
+                MapLayer* mapLayer = _map->getImageMapLayers()[layerIndex].get();
+                return mapLayer->createImage( key );
+            }
+        }
+        return 0L;
+    }
+
+    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* img ) {
+        if ( _map.valid() && _engine.valid() ) {
+            ScopedReadLock lock( _map->getMapDataMutex() );
+            return _engine->createImageLayer( _map.get(), key, img );
+        }
+        return 0L;
+    }
+
+
+    //osg::HeightField* createHeightFieldLayer( const TileKey* key ) {
+    //    if ( _map.valid() && _engine.valid() ) {
+    //        return _engine->createHeightFieldLayer( _map.get(), key );
+    //    }
+    //    return 0L;
+
     osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex ) {
         if ( _map.valid() && _engine.valid() ) {
             ScopedReadLock lock( _map->getMapDataMutex() );
@@ -299,8 +326,8 @@ struct MapNodeTileLayerFactory : public TileLayerFactory
         return 0L;
     }
             
-    osg::observer_ptr<Map> _map;
-    osg::observer_ptr<MapEngine> _engine;
+    osg::ref_ptr<Map> _map;
+    osg::ref_ptr<MapEngine> _engine;
 };
 
 void

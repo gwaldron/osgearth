@@ -256,9 +256,9 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
                     EarthTerrainTechnique* tech = static_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
                     tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
                 }
-                _elevationLayerDirty = false;
-                _colorLayersDirty = false;
             }
+            _elevationLayerDirty = false;
+            _colorLayersDirty = false;
         }
     }
     osgTerrain::TerrainTile::traverse( nv );

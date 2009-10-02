@@ -49,6 +49,8 @@ namespace osgEarth {
         
         virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
         
+        virtual void updateContent(bool updateGeom, bool updateTextures);
+        
         virtual void applyColorLayers();
         
         virtual void applyTransparency();
@@ -86,6 +88,12 @@ namespace osgEarth {
         inline OpenThreads::Mutex& getMutex() {return _mutex;}
 
 
+    protected:
+    
+        void updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+
+        void updateColorLayers(osgTerrain::Locator* masterLocator);
+
     private:
 
         virtual ~EarthTerrainTechnique();
@@ -116,6 +124,8 @@ namespace osgEarth {
         osg::ref_ptr<osg::Uniform>          _filterMatrixUniform;
 
         OpenThreads::Mutex                  _mutex;
+
+        osg::Vec3d _lastCenterModel;
 };
 
 }

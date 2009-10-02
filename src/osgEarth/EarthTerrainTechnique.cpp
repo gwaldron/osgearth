@@ -218,8 +218,161 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
     
     buffer._transform->setMatrix(osg::Matrix::translate(centerModel));
     
+    _lastCenterModel = centerModel;
     return centerModel;
 }
+
+void
+EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
+{
+    if ( !_terrainTile ) return;
+
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
+
+    // clone the last iteration so we can modify it:
+    BufferData& readBuf  = getReadOnlyBuffer();
+    BufferData& writeBuf = getWriteBuffer();
+
+    Locator* masterLocator = computeMasterLocator();
+
+    writeBuf._transform = static_cast<osg::MatrixTransform*>( readBuf._transform->clone( osg::CopyOp::DEEP_COPY_ALL ) );
+    writeBuf._geode = static_cast<osg::Geode*>( writeBuf._transform->getChild(0) );
+    writeBuf._geometry = static_cast<osg::Geometry*>( writeBuf._geode->getDrawable(0) );
+
+    if ( updateGeom )
+    {
+        //osg::notify(osg::NOTICE) << "geom..." << std::endl;
+        updateGeometry( masterLocator, _lastCenterModel );
+    }
+    if ( updateTextures )
+    {
+        //osg::notify(osg::NOTICE) << "tex..." << std::endl;
+        updateColorLayers( masterLocator );
+    }
+
+    writeBuf._geometry->dirtyDisplayList();
+
+    swapBuffers();
+}
+
+// simple updates an in-place geometry from a new elevationlayer.
+void
+EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
+{
+    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+    if ( !elevationLayer ) 
+        return;
+    
+    int numColumns = elevationLayer->getNumColumns();
+    int numRows = elevationLayer->getNumRows();
+
+    double i_sampleFactor = 1.0;
+    double j_sampleFactor = 1.0;
+    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    if (sampleRatio!=1.0f)
+    {
+        unsigned int originalNumColumns = numColumns;
+        unsigned int originalNumRows = numRows;
+    
+        numColumns = std::max((unsigned int) (float(originalNumColumns)*sqrtf(sampleRatio)), 4u);
+        numRows = std::max((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)),4u);
+
+        i_sampleFactor = double(originalNumColumns-1)/double(numColumns-1);
+        j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
+    }
+    
+    float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
+
+    BufferData& writeBuf = getWriteBuffer();
+
+    // re-populate the vertex array.
+    osg::Vec3Array* vertices = static_cast<osg::Vec3Array*>( writeBuf._geometry->getVertexArray() );
+
+    unsigned int i, j;
+    for(j=0; j<numRows; ++j)
+    {
+        for(i=0; i<numColumns; ++i)
+        {
+            unsigned int iv = j*numColumns + i;
+            osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
+     
+            bool validValue = true;
+            unsigned int i_equiv = i_sampleFactor==1.0 ? i : (unsigned int) (double(i)*i_sampleFactor);
+            unsigned int j_equiv = i_sampleFactor==1.0 ? j : (unsigned int) (double(j)*j_sampleFactor);
+            
+            if (elevationLayer)
+            {
+                float value = 0.0f;
+                validValue = elevationLayer->getValidValue(i_equiv, j_equiv, value);
+                ndc.z() = value*scaleHeight;
+            }
+            
+            if (validValue)
+            {
+                osg::Vec3d model;
+                masterLocator->convertLocalToModel(ndc, model);                
+                (*vertices)[iv] = model - centerModel;
+            }
+        }
+    }
+
+    // re-smooth since the elvation has changed.
+    smoothGeometry();
+}
+
+
+void
+EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
+{
+    BufferData& writeBuf = getWriteBuffer();
+
+    for(unsigned int layerNum=0; layerNum<_terrainTile->getNumColorLayers(); ++layerNum)
+    {
+        osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(_terrainTile->getColorLayer(layerNum));
+        if ( imageLayer )
+        {
+            osg::StateSet* ss = writeBuf._geode->getStateSet();
+            if ( ss )
+            {
+                osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(
+                    ss->getTextureAttribute( layerNum, osg::StateAttribute::TEXTURE ) );
+
+                if ( tex && tex->getImage() != imageLayer->getImage() )
+                {
+                    tex->setImage( imageLayer->getImage() );
+                    tex->dirtyTextureObject();
+                }
+            }
+            
+            osg::Vec2Array* texcoords = static_cast<osg::Vec2Array*>( writeBuf._geometry->getTexCoordArray( layerNum ) );
+            Locator* colorLocator = imageLayer->getLocator();
+            osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+            int numRows = elevationLayer->getNumRows();
+            int numColumns = elevationLayer->getNumColumns();
+            unsigned int i, j;
+            for(j=0; j<numRows; ++j)
+            {
+                for(i=0; i<numColumns; ++i)
+                {
+                    unsigned int iv = j*numColumns + i;
+                    osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
+
+                    if (colorLocator != masterLocator)
+                    {
+                        osg::Vec3d color_ndc;
+                        Locator::convertLocalCoordBetween(*masterLocator, ndc, *colorLocator, color_ndc);
+                        (*texcoords)[iv] = osg::Vec2(color_ndc.x(), color_ndc.y());
+                    }
+                    else
+                    {
+                        (*texcoords)[iv] = osg::Vec2(ndc.x(), ndc.y());
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
 {

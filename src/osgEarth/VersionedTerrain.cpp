@@ -19,6 +19,7 @@
 #include <osgEarth/VersionedTerrain>
 #include <osgEarth/Registry>
 #include <osgEarth/Locators>
+#include <osgEarth/EarthTerrainTechnique>
 #include <OpenThreads/ScopedLock>
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
@@ -71,7 +72,10 @@ _key( key ),
 _useLayerRequests( false ),
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
-_requestsInstalled( false )
+_requestsInstalled( false ),
+_elevationLayerDirty( false ),
+_colorLayersDirty( false ),
+_usePerLayerUpdates( false )
 {
     setTileID( key->getTileId() );
     setUseLayerRequests( false );
@@ -131,6 +135,12 @@ VersionedTile::incrementTileRevision()
 }
 
 void
+VersionedTile::setHasElevationHint( bool hint ) 
+{
+    _requestElevation = hint;
+}
+
+void
 VersionedTile::servicePendingRequests( int stamp )
 {
     if ( !_requestsInstalled )
@@ -138,7 +148,7 @@ VersionedTile::servicePendingRequests( int stamp )
         TileLayerFactory* factory = getVersionedTerrain()->getTileLayerFactory();
         if ( factory )
         {
-            if ( this->getElevationLayer() )
+            if ( this->getElevationLayer() && _requestElevation )
             {
                 TileLayerRequest* r = new TileElevationLayerRequest( _key.get(), factory );
                 r->setPriority( (float)_key->getLevelOfDetail() );
@@ -192,10 +202,13 @@ void VersionedTile::serviceCompletedRequests()
             {
                 TileElevationLayerRequest* er = static_cast<TileElevationLayerRequest*>( r );
                 osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>( er->getResult() );
-                if ( hfLayer  )
+                if ( hfLayer )
                 {
                     this->setElevationLayer( hfLayer );
-                    this->setDirty( true );
+                    if ( _usePerLayerUpdates )
+                        _elevationLayerDirty = true;
+                    else
+                        this->setDirty( true );
                 }
             }
             else // if ( r->isColorLayerRequest() )
@@ -205,7 +218,10 @@ void VersionedTile::serviceCompletedRequests()
                 if ( imgLayer )
                 {
                     this->setColorLayer( cr->_layerIndex, imgLayer );
-                    this->setDirty( true );
+                    if ( _usePerLayerUpdates )
+                        _colorLayersDirty = true;
+                    else
+                        this->setDirty( true );
                 }
             }
 
@@ -232,6 +248,17 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
         if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
         {
             serviceCompletedRequests();
+
+            if ( !getDirty() ) // if the whole tile is dirty, ignore and let it rebuild.
+            {
+                if ( _elevationLayerDirty || _colorLayersDirty )
+                {
+                    EarthTerrainTechnique* tech = static_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+                    tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
+                    _elevationLayerDirty = false;
+                    _colorLayersDirty = false;
+                }
+            }
         }
     }
     osgTerrain::TerrainTile::traverse( nv );

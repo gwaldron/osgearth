@@ -344,7 +344,8 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         int numAdded = 0;
         for (unsigned int i = 0; i < keys.size(); ++i)
         {
-            bool loadNow = !_engineProps.getPreemptiveLOD();
+            // always load the root tiles completely; no deferring. -gw
+            bool loadNow = true; //!_engineProps.getPreemptiveLOD();
 
             osg::Node* node = _engine->createSubTiles( _map.get(), terrain, keys[i].get(), loadNow );
             if (node)

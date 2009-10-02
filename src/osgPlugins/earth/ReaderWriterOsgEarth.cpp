@@ -134,13 +134,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                     if ( ext == "earth_tile" )
                     {
-                        bool loadNow = !mapNode->getEngine()->getEngineProperties().getPreemptiveLOD();
+                        bool populateLayers = !mapNode->getEngine()->getEngineProperties().getPreemptiveLOD();
 
                         node = mapNode->getEngine()->createSubTiles(
                             mapNode->getMap(),
                             mapNode->getTerrain( face ),
                             key.get(),
-                            loadNow );
+                            populateLayers );
                     }
                     else if ( ext == "earth_tile_data" )
                     {
@@ -148,7 +148,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                             mapNode->getMap(),
                             mapNode->getTerrain( face ),
                             key.get(),
-                            true );
+                            true,    // populate now
+                            false ); // no paged LOD (since this is replacing a placeholder)
                     }
                 }
                 else

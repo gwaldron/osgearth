@@ -32,11 +32,6 @@ namespace osgEarth
     /*interface*/ class TileLayerFactory : public osg::Referenced
     {
     public:
-        //virtual GeoImage* createImage( const TileKey* key, int layerIndex ) =0;
-        //virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
-        //virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image ) =0;
-        //virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, osg::HeightField* hf ) =0;
-
         virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex ) =0;
         virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key ) =0;
     };
@@ -66,6 +61,9 @@ namespace osgEarth
 
         /** Sets whether to use the TaskService to schedule per-layer background data loading. */
         void setUseLayerRequests( bool );
+
+        /** Sets whether to update the tile layer by layer vs. rebuidling the entire tile. */
+        void setUsePerLayerUpdates( bool );
 
         /**
          * Gets the terrain revision that this tile is in sync with.
@@ -102,11 +100,17 @@ namespace osgEarth
         /** Updates and services this tile's service pending requests. */
         void servicePendingRequests( int frameStamp );
 
+        void setHasElevationHint( bool hasElevation );
+
     private:
         int _terrainRevision;
         int _tileRevision;
         bool _useLayerRequests;
         bool _requestsInstalled;
+        bool _usePerLayerUpdates;
+        bool _requestElevation;
+        bool _elevationLayerDirty;
+        bool _colorLayersDirty;
 
         osg::ref_ptr<const TileKey> _key;
         TaskRequestList _requests;

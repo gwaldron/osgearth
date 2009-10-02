@@ -220,16 +220,16 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
 
     osg::ref_ptr<osg::Node> q0, q1, q2, q3;
 
-    q0 = createTile( map, terrain, k0.get(), populateLayers );
+    q0 = createTile( map, terrain, k0.get(), populateLayers, true );
     if ( q0.valid() )
     {
-        q1 = createTile( map, terrain, k1.get(), populateLayers );
+        q1 = createTile( map, terrain, k1.get(), populateLayers, true );
         if ( q1.valid() )
         {
-            q2 = createTile( map, terrain, k2.get(), populateLayers );
+            q2 = createTile( map, terrain, k2.get(), populateLayers, true );
             if ( q2.valid() )
             {
-                q3 = createTile( map, terrain, k3.get(), populateLayers );
+                q3 = createTile( map, terrain, k3.get(), populateLayers, true );
                 if ( q3.valid() )
                 {
                     osg::Group* tile_parent = new osg::Group();
@@ -396,6 +396,7 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
 {
     if ( !ancestorTile )
     {
+        //osg::notify(osg::NOTICE) << "No ancestorTile for key " << key->str() << std::endl;
         return;
     }        
 
@@ -462,11 +463,11 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
 
 
 osg::Node*
-MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers )
+MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD )
 {
     if ( populateLayers )
     {
-        bool wrapInPagedLOD = !_engineProps.getPreemptiveLOD();
+        //bool wrapInPagedLOD = !_engineProps.getPreemptiveLOD();
         return createPopulatedTile( map, terrain, key, wrapInPagedLOD );
     }
     else
@@ -499,9 +500,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // The empty tile:
     VersionedTile* tile = new VersionedTile( key );
-    //tile->setTileID( key->getTileId() );
     tile->setRequiresNormals( true );
-    tile->setDataVariance(osg::Object::DYNAMIC);
+    tile->setDataVariance( osg::Object::DYNAMIC );
     tile->setLocator( locator.get() );
 
     // Attach an updatecallback to normalize the edges of TerrainTiles.
@@ -550,6 +550,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     {
         markTileLoaded = true;
         tile->setUseLayerRequests( true );
+        tile->setHasElevationHint( hasElevation );
     }
 
     // install a tile switcher:
@@ -878,14 +879,12 @@ MapEngine::createImageLayer( Map* map, const TileKey* key, GeoImage* geoImage )
     {
         const GeoExtent& gx = geoImage->getExtent();
         imgLocator = GeoLocator::createForKey( key, map );
-        //imgLocator = key->getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax(), isPlateCarre );
     }
 
     if ( isGeocentric )
         imgLocator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
     osgTerrain::ImageLayer* imgLayer = new osgTerrain::ImageLayer( geoImage->getImage() );
-//    osgTerrain::ImageLayer* imgLayer = new TransparentLayer( geoImage->getImage(), imageMapLayers[i].get());
     imgLayer->setLocator( imgLocator.get() );
 
     return imgLayer;

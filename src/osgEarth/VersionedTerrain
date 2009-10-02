@@ -101,6 +101,9 @@ namespace osgEarth
         void servicePendingRequests( int frameStamp );
 
         void setHasElevationHint( bool hasElevation );
+    protected:
+        ~VersionedTile();
+
 
     private:
         int _terrainRevision;

@@ -40,6 +40,13 @@ TaskRequestQueue::TaskRequestQueue()
     _block = new osg::RefBlock();
 }
 
+void
+TaskRequestQueue::clear()
+{
+    ScopedLock<Mutex> lock(_mutex);
+    _requests.clear();
+}
+
 void 
 TaskRequestQueue::add( TaskRequest* request )
 {
@@ -53,7 +60,7 @@ TaskRequestQueue::add( TaskRequest* request )
         if ( request->getPriority() > i->get()->getPriority() )
         {
             _requests.insert( i, request );
-            //osg::notify(osg::NOTICE) << "Queue has items, setting block to true " << std::endl;
+            // osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
             _block->set( true );
             return;
         }
@@ -62,6 +69,7 @@ TaskRequestQueue::add( TaskRequest* request )
     _requests.push_back( request );
     //osg::notify(osg::NOTICE) << "Queue has items, setting block to true " << std::endl;
     _block->set( true );
+    //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
 }
 
 TaskRequest* 
@@ -84,6 +92,7 @@ TaskRequestQueue::get()
         //osg::notify(osg::NOTICE) << "Queue empty, setting block to false " << std::endl;
         _block->set(false);
     }
+    ///osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
     return next.release();
 }
 
@@ -117,8 +126,9 @@ TaskThread::run()
             }
 
             // discard a completed or canceled request:
-            if ( _request->getState() != TaskRequest::STATE_PENDING )
+            if ( _request->getState() != TaskRequest::STATE_PENDING || _request->isCanceled() )
             {
+               // osg::notify(osg::NOTICE) << "Discarding cancelled request " << std::endl;
                 continue;
             }
 
@@ -142,7 +152,10 @@ TaskThread::cancel()
 {
     if (isRunning())
     {
-      _done = true;      
+      _done = true;  
+
+      //Remove any pending requests
+      _queue->clear();
 
       _queue->release();
 

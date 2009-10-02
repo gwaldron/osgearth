@@ -84,6 +84,8 @@ namespace osgEarth
         
         const std::string& getPartHeader( unsigned int n, const std::string& name ) const;
 
+        const std::string& getMimeType() const;
+
     private:
         struct Part : public osg::Referenced
         {
@@ -96,6 +98,7 @@ namespace osgEarth
         typedef std::vector< osg::ref_ptr<Part> > Parts;
         Parts _parts;
         long _response_code;
+        std::string _mimeType;
 
         friend class HTTPClient;
     };
@@ -121,6 +124,8 @@ namespace osgEarth
         HTTPResponse doGet( const HTTPRequest& request ) const;
 
         HTTPResponse doGet( const std::string& url ) const;
+
+        osg::Image* readImageFile(const std::string& filename, const osgDB::ReaderWriter::Options* options);
 
         /**
          * Convenience method for downloading a URL directly to a file

@@ -79,6 +79,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapNode.cpp
     MapEngine.cpp
     MapEngineProperties.cpp
+	MimeTypes.cpp
 	MultiPassTerrainTechnique.cpp
     Profile.cpp
     Registry.cpp

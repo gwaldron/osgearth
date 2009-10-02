@@ -75,10 +75,24 @@ _tileRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( false )
+_usePerLayerUpdates( true )
 {
     setTileID( key->getTileId() );
     setUseLayerRequests( false );
+}
+
+VersionedTile::~VersionedTile()
+{
+    //osg::notify(osg::NOTICE) << "Destroying VersionedTile " << this->getKey()->str() << std::endl;
+
+    //Cancel any pending requests
+    if (_requestsInstalled)
+    {
+        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+        {
+            i->get()->cancel();
+        }
+    }
 }
 
 const TileKey*

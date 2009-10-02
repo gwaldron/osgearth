@@ -20,7 +20,9 @@
 #include <curl/curl.h>
 #include <curl/types.h>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Registry>
 #include <osgDB/Registry>
+#include <osgDB/FileNameUtils>
 #include <osg/Notify>
 #include <string.h>
 #include <sstream>
@@ -41,6 +43,7 @@ namespace osgEarth
         }
 
         std::ostream* _stream;
+        std::string     _resultMimeType;
     };
 
     static size_t
@@ -126,7 +129,8 @@ HTTPResponse::HTTPResponse( long _code )
 
 HTTPResponse::HTTPResponse( const HTTPResponse& rhs ) :
 _response_code( rhs._response_code ),
-_parts( rhs._parts )
+_parts( rhs._parts ),
+_mimeType( rhs._mimeType )
 {
     //nop
 }
@@ -164,6 +168,12 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 std::string
 HTTPResponse::getPartAsString( unsigned int n ) const {
     return _parts[n]->_stream.str();
+}
+
+const std::string&
+HTTPResponse::getMimeType() const {
+    osg::notify(osg::NOTICE) << "MimeType" << _mimeType << std::endl;
+    return _mimeType;
 }
 
 /****************************************************************************/
@@ -405,6 +415,15 @@ HTTPClient::doGet( const HTTPRequest& request ) const
             response._parts.push_back( part.get() );
         }
     }
+
+    // Store the mime-type, if any. (Note: CURL manages the buffer returned by
+    // this call.)
+    char* ctbuf = NULL;
+    if ( curl_easy_getinfo(_curl_handle, CURLINFO_CONTENT_TYPE, &ctbuf) == 0 && ctbuf )
+    {
+        response._mimeType = ctbuf;
+    }
+
     return response;
 }
 
@@ -412,14 +431,14 @@ HTTPClient::doGet( const HTTPRequest& request ) const
 HTTPResponse
 HTTPClient::doGet( const std::string& url ) const
 {
-    return get( HTTPRequest( url ) );
+    return doGet( HTTPRequest( url ) );
 }
 
 bool
 HTTPClient::downloadFile(const std::string &url, const std::string &filename)
 {
     // download the data
-    HTTPResponse response = this->get( HTTPRequest(url) );
+    HTTPResponse response = this->doGet( HTTPRequest(url) );
 
     if ( response.isOK() )
     {
@@ -445,4 +464,46 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
         osg::notify(osg::WARN) << "[osgEarth::HTTPClient] Error downloading file " << filename << std::endl;
         return false;
     } 
+}
+
+osg::Image*
+HTTPClient::readImageFile(const std::string &filename, const osgDB::ReaderWriter::Options *options)
+{
+    HTTPResponse response = this->doGet(filename);
+
+    if (response.isOK())
+    {
+        // Try to find a reader by file extension. If this fails, we will fetch the file
+        // anyway and try to get a reader via mime-type.
+        std::string ext = osgDB::getFileExtension( filename );
+        osgDB::ReaderWriter *reader =
+            osgDB::Registry::instance()->getReaderWriterForExtension( ext );
+        //osg::notify(osg::NOTICE) << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
+
+        //If we didn't get a reader by extension, try to get it via mime type
+        if (!reader)
+        {
+            std::string mimeType = response.getMimeType();
+            osg::notify(osg::INFO) << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+            if ( mimeType.length() > 0 )
+            {
+                reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            }
+        }
+
+        if (!reader)
+        {
+            osg::notify(osg::NOTICE)<<"Error: No ReaderWriter for file "<<filename<<std::endl;
+            return NULL;
+        }
+
+        if (reader)
+        {
+            osgDB::ReaderWriter::ReadResult rr = reader->readImage(response.getPartStream(0), options);
+            if (rr.validImage()) return rr.takeImage();
+            if (rr.error()) osg::notify(osg::WARN) << rr.message() << std::endl;
+            return NULL;
+        }
+    }
+    return 0;
 }

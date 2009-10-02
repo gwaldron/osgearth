@@ -31,12 +31,24 @@ using namespace OpenThreads;
 #define STR_CUBE            "cube"
 #define STR_LOCAL           "local"
 
+// from MimeTypes.cpp
+extern const char* builtinMimeTypeExtMappings[];
+
 Registry::Registry() :
 osg::Referenced(true),
 _gdal_registered( false ),
 _numGdalMutexGets( 0 )
 {
     GDALAllRegister();
+
+    // add built-in mime-type extension mappings
+    for( int i=0; ; i+=2 )
+    {
+        std::string mimeType = builtinMimeTypeExtMappings[i];
+        if ( mimeType.length() == 0 )
+            break;
+        addMimeTypeExtensionMapping( mimeType, builtinMimeTypeExtMappings[i+1] );
+    }
 }
 
 Registry::~Registry()
@@ -138,6 +150,20 @@ void
 Registry::setCacheOverride( osgEarth::Cache* cacheOverride )
 {
 	_cacheOverride = cacheOverride;
+}
+
+void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
+{
+    _mimeTypeExtMap[fromMimeType] = toExt;
+}
+
+osgDB::ReaderWriter* 
+Registry::getReaderWriterForMimeType(const std::string& mimeType)
+{
+    MimeTypeExtensionMap::const_iterator i = _mimeTypeExtMap.find( mimeType );
+    return i != _mimeTypeExtMap.end()?
+        osgDB::Registry::instance()->getReaderWriterForExtension( i->second ) :
+        NULL;
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

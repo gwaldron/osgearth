@@ -39,6 +39,7 @@ public:
     YahooSource( const osgDB::ReaderWriter::Options* options ) :
     TileSource( options )
     {
+        //OpenThreads::Thread::microSleep( 10 * 1000 * 1000 );
         if ( options->getPluginData( PROPERTY_DATASET ) )
             _dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
 
@@ -53,7 +54,8 @@ public:
         setProfile( Profile::create( "spherical-mercator", 2, 2 ) );
     }
 
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress )
     {
         //Return NULL if we are given a non-mercator key
         if ( !key->isMercator() ) return 0;
@@ -94,18 +96,12 @@ public:
 
         osg::notify(osg::INFO) << key->str() << "=" << buf.str() << std::endl;
 
-		//Try to read as a JPG first
-		osg::Image* image = osgDB::readImageFile(base + "&.jpg", getOptions());
-		if (!image)
-		{
-			//Try to read as a PNG
-			image = osgDB::readImageFile(base + "&.png", getOptions());
-			osg::notify(osg::INFO) << "Read as a PNG" << std::endl;
-		}
+        osg::Image* image = HTTPClient::readImageFile(base, getOptions(), progress);
 		return image;
     }
 
-    osg::HeightField* createHeightField( const TileKey* key )
+    osg::HeightField* createHeightField( const TileKey* key,
+                                         ProgressCallback* progress)
     {
         //NI
         osg::notify(osg::WARN) << "[osgEarth] [Yahoo] Driver does not support heightfields" << std::endl;

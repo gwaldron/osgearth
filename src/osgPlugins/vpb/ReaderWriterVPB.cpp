@@ -535,8 +535,10 @@ public:
 		}
     }
     
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress)
     {
+        //TODO:  Make VPB driver use progress callback
         osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key);                
         if (tile.valid())
         {        
@@ -554,8 +556,11 @@ public:
         return 0;
     }
 
-    osg::HeightField* createHeightField( const TileKey* key )
+    osg::HeightField* createHeightField( const TileKey* key,
+                                         ProgressCallback* progress
+                                         )
     {
+        //TODO:  Make VPB driver use progress callback
         osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key);                
         if (tile.valid())
         {        

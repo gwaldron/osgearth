@@ -390,7 +390,9 @@ Map::calculateProfile()
 
 
 osg::HeightField*
-Map::createHeightField( const TileKey* key, bool fallback, SamplePolicy samplePolicy)
+Map::createHeightField( const TileKey* key,
+                        bool fallback,
+                        SamplePolicy samplePolicy)
 {
 	//osg::notify(osg::INFO) << "[osgEarth::Map::createHeightField]" << std::endl;
     OpenThreads::ScopedReadLock lock( _mapDataMutex );

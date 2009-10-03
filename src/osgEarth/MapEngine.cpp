@@ -248,7 +248,9 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
 }
 
 GeoImage*
-MapEngine::createValidGeoImage(MapLayer* layer, const TileKey* key)
+MapEngine::createValidGeoImage(MapLayer* layer,
+                               const TileKey* key,
+                               ProgressCallback* progress)
 {
 	//TODO:  Redo this to just grab images from the parent TerrainTiles
     //Try to create the image with the given key
@@ -260,7 +262,7 @@ MapEngine::createValidGeoImage(MapLayer* layer, const TileKey* key)
     {
         if ( layer->isKeyValid(image_key.get()) )
         {
-            geo_image = layer->createImage( image_key.get() );
+            geo_image = layer->createImage( image_key.get(), progress );
             if (geo_image.valid()) return geo_image.release();
         }
         image_key = image_key->createParentKey();
@@ -857,7 +859,9 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
 
 
 osgTerrain::ImageLayer* 
-MapEngine::createImageLayer( Map* map, const TileKey* key, GeoImage* geoImage )
+MapEngine::createImageLayer( Map* map, 
+                            const TileKey* key,
+                            GeoImage* geoImage)
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -890,7 +894,8 @@ MapEngine::createImageLayer( Map* map, const TileKey* key, GeoImage* geoImage )
 }
 
 osgTerrain::HeightFieldLayer* 
-MapEngine::createHeightFieldLayer( Map* map, const TileKey* key )
+MapEngine::createHeightFieldLayer( Map* map,
+                                   const TileKey* key)
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 

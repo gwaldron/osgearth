@@ -99,7 +99,7 @@ struct BlankTileSource : public osgEarth::TileSource
 	}
 
 
-    virtual osg::Image* createImage( const TileKey* key ) {
+    virtual osg::Image* createImage( const TileKey* key, ProgressCallback* progress ) {
         osg::Image* image = new osg::Image();
         image->setAllocationMode( osg::Image::USE_NEW_DELETE );
         image->allocateImage( 256, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE );
@@ -490,6 +490,7 @@ int main(int argc, char** argv)
 
     MapEngineProperties engineProps;
 
+    engineProps.setUseTaskService( true );
     if ( arguments.read( "--sequential" ) || arguments.read( "--preemptive=OFF" ) )
     {
         engineProps.setPreemptiveLOD( false );

@@ -278,19 +278,19 @@ struct MapNodeTileLayerFactory : public TileLayerFactory
 {
     MapNodeTileLayerFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
 
-    GeoImage* createGeoImage( const TileKey* key, int layerIndex ) {
+    GeoImage* createGeoImage( const TileKey* key, int layerIndex, ProgressCallback *progress ) {
         if ( _map.valid() && _engine.valid() ) {
             ScopedReadLock lock( _map->getMapDataMutex() );
             if ( layerIndex < _map->getImageMapLayers().size() )
             {
                 MapLayer* mapLayer = _map->getImageMapLayers()[layerIndex].get();
-                return mapLayer->createImage( key );
+                return mapLayer->createImage( key, progress );
             }
         }
         return 0L;
     }
 
-    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* img ) {
+    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* img, ProgressCallback * progress ) {
         if ( _map.valid() && _engine.valid() ) {
             ScopedReadLock lock( _map->getMapDataMutex() );
             return _engine->createImageLayer( _map.get(), key, img );
@@ -305,13 +305,13 @@ struct MapNodeTileLayerFactory : public TileLayerFactory
     //    }
     //    return 0L;
 
-    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex ) {
+    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex, ProgressCallback* progress ) {
         if ( _map.valid() && _engine.valid() ) {
             ScopedReadLock lock( _map->getMapDataMutex() );
             if ( layerIndex < _map->getImageMapLayers().size() )
             {
                 MapLayer* mapLayer = _map->getImageMapLayers()[layerIndex].get();
-                osg::ref_ptr<GeoImage> img = mapLayer->createImage( key );
+                osg::ref_ptr<GeoImage> img = mapLayer->createImage( key, progress );
                 if ( img )
                     return _engine->createImageLayer( _map.get(), key, img.get() );
             }
@@ -319,7 +319,7 @@ struct MapNodeTileLayerFactory : public TileLayerFactory
         return 0L;
     }
 
-    osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key ) {
+    osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, ProgressCallback* progress ) {
         if ( _map.valid() && _engine.valid() ) {
             return _engine->createHeightFieldLayer( _map.get(), key );
         }

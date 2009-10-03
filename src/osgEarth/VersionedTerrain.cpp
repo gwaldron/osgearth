@@ -24,7 +24,6 @@
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
 #include <osg/Node>
-#include <osg/Notify>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -47,9 +46,9 @@ struct TileColorLayerRequest : public TileLayerRequest
     TileColorLayerRequest( const TileKey* key, TileLayerFactory* factory, int layerIndex )
         : TileLayerRequest( key, factory ), _layerIndex( layerIndex ) { }
     bool isColorLayerRequest() const { return true; }
-    void operator()( TaskProgress* p )
+    void operator()( ProgressCallback* p )
     {
-        _result = _factory->createImageLayer( _key.get(), _layerIndex );
+        _result = _factory->createImageLayer( _key.get(), _layerIndex, p);
     }
     int _layerIndex;
 };
@@ -59,9 +58,9 @@ struct TileElevationLayerRequest : public TileLayerRequest
     TileElevationLayerRequest( const TileKey* key, TileLayerFactory* factory )
         : TileLayerRequest( key, factory ) { }
     bool isElevLayerRequest() const { return true; }
-    void operator()( TaskProgress* p )
+    void operator()( ProgressCallback* p )
     {
-        _result = _factory->createHeightFieldLayer( _key.get() );
+        _result = _factory->createHeightFieldLayer( _key.get(), p );
     }
 };
 
@@ -70,14 +69,16 @@ struct TileElevationLayerRequest : public TileLayerRequest
 
 VersionedTile::VersionedTile( const TileKey* key ) :
 _key( key ),
+_useLayerRequests( false ),
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( true )
+_usePerLayerUpdates( false )
 {
     setTileID( key->getTileId() );
+    setUseLayerRequests( false );
 }
 
 VersionedTile::~VersionedTile()
@@ -89,6 +90,10 @@ VersionedTile::~VersionedTile()
     {
         for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
         {
+            if (i->get()->getState() == TaskRequest::STATE_IN_PROGRESS)
+            {
+                osg::notify(osg::NOTICE) << "Request in progress, cancelling " << std::endl;
+            }
             i->get()->cancel();
         }
     }
@@ -111,12 +116,10 @@ VersionedTile::getVersionedTerrain() const {
 void
 VersionedTile::setUseLayerRequests( bool value )
 {
-    if ( _useLayerRequests != value )
-    {
-        _useLayerRequests = value;
-        int oldNum = getNumChildrenRequiringUpdateTraversal();
-        setNumChildrenRequiringUpdateTraversal( oldNum + (value? 1 : -1) );
-    }
+    _useLayerRequests = value;   
+
+    // if layer requests are on, we need an update traversal.
+    this->setNumChildrenRequiringUpdateTraversal( value? 1 : 0 );
 }
 
 int
@@ -187,18 +190,21 @@ VersionedTile::servicePendingRequests( int stamp )
         {
             TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
 
-            if ( r->isIdle() )
+            VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
+            if (versionedTerrain)
             {
-                r->setStamp( stamp );
-                VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
-                if (versionedTerrain)
+                if ( r->isIdle() )
                 {
-                    versionedTerrain->getOrCreateTaskService()->add( r );
+                    r->setStamp( stamp );
+                    if (versionedTerrain)
+                    {
+                        versionedTerrain->getOrCreateTaskService()->add( r );
+                    }
                 }
-            }
-            else if ( !r->isCompleted() )
-            {
-                r->setStamp( stamp );
+                else if ( !r->isCompleted() )
+                {
+                        r->setStamp( stamp );
+                }
             }
         }
     }
@@ -232,7 +238,6 @@ void VersionedTile::serviceCompletedRequests()
                 osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( cr->getResult() );
                 if ( imgLayer )
                 {
-                    //osg::notify( osg::NOTICE ) << "READY: layer " << _key->str() << std::endl;
                     this->setColorLayer( cr->_layerIndex, imgLayer );
                     if ( _usePerLayerUpdates )
                         _colorLayersDirty = true;
@@ -246,6 +251,7 @@ void VersionedTile::serviceCompletedRequests()
         }
         else if ( r->isCanceled() )
         {
+            //osg::notify(osg::NOTICE) << "TaskService::serviceCompletedRequests(): Request was cancelled " << std::endl;
             i = _requests.erase( i );
         }
         else

@@ -30,16 +30,6 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT TaskProgress : public osg::Referenced
-    {
-    public:
-        TaskProgress() : _canceled(false) { }
-        void cancel() { _canceled = true; }
-        bool isCanceled() const { return _canceled; }
-    private:
-        bool _canceled;
-    };
-
     class OSGEARTH_EXPORT TaskRequest : public osg::Referenced
     {
     public:
@@ -54,7 +44,7 @@ namespace osgEarth
         TaskRequest( float priority =0.0f );
 
         // the actual task code
-        virtual void operator()( TaskProgress* progress ) =0;
+        virtual void operator()( ProgressCallback* progress ) =0;
 
         void run();
         void cancel();
@@ -75,7 +65,8 @@ namespace osgEarth
         State _state;
         int _stamp;
         osg::ref_ptr<osg::Referenced> _result;
-        osg::ref_ptr<TaskProgress> _progress;
+        //osg::ref_ptr<TaskProgress> _progress;
+        osg::ref_ptr< ProgressCallback > _progress;
     };
 
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;
@@ -113,7 +104,6 @@ namespace osgEarth
     private:
         osg::ref_ptr<TaskRequestQueue> _queue;
         osg::ref_ptr<TaskRequest> _request;
-        HTTPClient _httpClient;
         bool _done;
     };
 
@@ -124,6 +114,7 @@ namespace osgEarth
 
         void add( TaskRequest* request );
 
+        int getStamp() const;
         void setStamp( int stamp );
 
     private:

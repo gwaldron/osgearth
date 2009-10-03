@@ -114,7 +114,8 @@ public:
     }
 
     // override: create an image given a tile key
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress)
     {
         if ( !_image.valid() || !getProfile() || key->getLevelOfDetail() > getMaxDataLevel() )
             return NULL;
@@ -142,7 +143,8 @@ public:
         return newImage;
     }
 
-    osg::HeightField* createHeightField( const TileKey* key )
+    osg::HeightField* createHeightField( const TileKey* key,
+                                         ProgressCallback* progress)
     {
         return NULL;
     }

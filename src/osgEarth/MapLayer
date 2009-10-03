@@ -171,13 +171,15 @@ namespace osgEarth
 		/**
 		 * Creates a GeoImage from this MapLayer
 		 */
-		GeoImage* createImage( const TileKey* key );
+		GeoImage* createImage( const TileKey* key,
+                               ProgressCallback* progress = 0);
 
         /**
          * Creates a GeoHeightField for this MapLayer.
          * The returned HeightField will always match the geospatial extents of the incoming TileKey.
          */
-        osg::HeightField* createHeightField( const TileKey* key );
+        osg::HeightField* createHeightField( const TileKey* key,
+                                             ProgressCallback* progress = 0);
 
 		 /**
          * Gets the user-provided options structure stored in this map.
@@ -245,8 +247,11 @@ namespace osgEarth
 
 		void initTileSource();
 
-		osg::Image* createImageWrapper( const TileKey* key, bool cacheInLayerProfile );
-		GeoHeightField* createGeoHeightField( const TileKey* key );
+		osg::Image* createImageWrapper( const TileKey* key,
+                                        bool cacheInLayerProfile,
+                                        ProgressCallback* progress );
+		GeoHeightField* createGeoHeightField( const TileKey* key,
+                                              ProgressCallback* progress);
 
 		void readEnvironmentalVariables();
 

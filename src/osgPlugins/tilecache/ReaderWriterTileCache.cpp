@@ -72,7 +72,8 @@ public:
 		}            
     }
 
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress)
     {
         unsigned int level, tile_x, tile_y;
         level = key->getLevelOfDetail() +1;
@@ -111,6 +112,13 @@ public:
         {
             path = osgEarth::getFullPath(_configPath, path);
         }
+
+        if (osgDB::containsServerAddress(path))
+        {
+            //Use the HTTPClient if it's a server address.
+            return HTTPClient::readImageFile( path, getOptions(), progress );
+        }
+
         return osgDB::readImageFile( path, getOptions() );
     }
 

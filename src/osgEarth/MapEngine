@@ -73,11 +73,11 @@ namespace osgEarth
         osgTerrain::ImageLayer* createImageLayer(
             Map* map,
             const TileKey* key,
-            GeoImage* geoImage );
+            GeoImage* geoImage);
 
         osgTerrain::HeightFieldLayer* createHeightFieldLayer(
             Map* map,
-            const TileKey* key );
+            const TileKey* key);
 
         /**
          * Gets the properties that customize how this engine renders tile data.
@@ -97,7 +97,9 @@ namespace osgEarth
 
 
 
-        GeoImage* createValidGeoImage(MapLayer* layer, const TileKey* key);
+        GeoImage* createValidGeoImage(MapLayer* layer,
+                                      const TileKey* key,
+                                      ProgressCallback* progress  = 0);
 
         osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
 

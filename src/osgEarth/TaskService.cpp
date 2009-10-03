@@ -7,9 +7,11 @@ using namespace OpenThreads;
 
 TaskRequest::TaskRequest( float priority ) :
 _priority( priority ),
-_state( STATE_IDLE )
+_state( STATE_IDLE ),
+osg::Referenced( true )
 {
-    _progress = new TaskProgress();
+    _progress = new ProgressCallback();
+    //_progress = new ConsoleProgressCallback();
 }
 
 void
@@ -60,7 +62,7 @@ TaskRequestQueue::add( TaskRequest* request )
         if ( request->getPriority() > i->get()->getPriority() )
         {
             _requests.insert( i, request );
-            // osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
+            //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
             _block->set( true );
             return;
         }
@@ -92,7 +94,7 @@ TaskRequestQueue::get()
         //osg::notify(osg::NOTICE) << "Queue empty, setting block to false " << std::endl;
         _block->set(false);
     }
-    ///osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
+    //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
     return next.release();
 }
 
@@ -128,7 +130,7 @@ TaskThread::run()
             // discard a completed or canceled request:
             if ( _request->getState() != TaskRequest::STATE_PENDING || _request->isCanceled() )
             {
-               // osg::notify(osg::NOTICE) << "Discarding cancelled request " << std::endl;
+                osg::notify(osg::INFO) << "Discarding cancelled request " << std::endl;
                 continue;
             }
 
@@ -137,6 +139,14 @@ TaskThread::run()
             _request->setState( TaskRequest::STATE_IN_PROGRESS );
 
             _request->run();
+
+            if (_request->isCanceled())
+            {
+                osg::notify(osg::INFO) << "TaskThread::run(): Request was cancelled" << std::endl;
+            }
+
+            //Release the request
+            _request = 0;
         }
         else
         {
@@ -204,6 +214,12 @@ TaskService::~TaskService()
         (*i)->cancel();
         delete (*i);
     }
+}
+
+int
+TaskService::getStamp() const
+{
+    return _queue->getStamp();
 }
 
 void

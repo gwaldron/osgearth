@@ -35,9 +35,11 @@ class WCS11Source : public TileSource
 public:
     WCS11Source( const osgDB::ReaderWriter::Options* options );
     
-    osg::Image* createImage( const TileKey* key );
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress = 0 );
 
-    osg::HeightField* createHeightField( const TileKey* key );
+    osg::HeightField* createHeightField( const TileKey* key, 
+                                         ProgressCallback* progress = 0 );
     
     std::string getExtension() const;
 

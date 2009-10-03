@@ -45,6 +45,7 @@ SET(LIB_PUBLIC_HEADERS
     MapEngineProperties
 	MultiPassTerrainTechnique
     Profile
+	Progress
     Registry
     SpatialReference
     TaskService
@@ -82,6 +83,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	MimeTypes.cpp
 	MultiPassTerrainTechnique.cpp
     Profile.cpp
+	Progress.cpp
     Registry.cpp
     SpatialReference.cpp
     TaskService.cpp

@@ -21,6 +21,8 @@
 #define OSGEARTH_HTTP_CLIENT_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Progress>
+#include <OpenThreads/Thread>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -74,6 +76,8 @@ namespace osgEarth
 
         bool isOK() const;
 
+        bool isCancelled() const;
+
         unsigned int getNumParts() const;
 
         std::istream& getPartStream( unsigned int n ) const;
@@ -99,21 +103,30 @@ namespace osgEarth
         Parts _parts;
         long _response_code;
         std::string _mimeType;
+        bool _cancelled;
 
         friend class HTTPClient;
     };
 
 
-    class OSGEARTH_EXPORT HTTPClient
+    class OSGEARTH_EXPORT HTTPClient : public osg::Referenced
     {
     public:
 
         /**
          * Performs an HTTP "GET".
          */
-        static HTTPResponse get( const HTTPRequest& request );
+        static HTTPResponse get( const HTTPRequest& request,
+                                 ProgressCallback* callback = 0);
 
-    public:
+        static HTTPResponse get( const std::string& url,
+                                 ProgressCallback* callback = 0);
+
+        static osg::Image*  readImageFile( const std::string& filename, 
+                                           const osgDB::ReaderWriter::Options* options = 0,
+                                           ProgressCallback* callback = 0);
+
+    private:
         HTTPClient( const osgDB::ReaderWriter::Options* options =NULL );
         ~HTTPClient();
 
@@ -121,11 +134,13 @@ namespace osgEarth
 
         void setProxyPort( const std::string& port );
 
-        HTTPResponse doGet( const HTTPRequest& request ) const;
+        HTTPResponse doGet( const HTTPRequest& request, ProgressCallback* callback = 0) const;
 
-        HTTPResponse doGet( const std::string& url ) const;
+        HTTPResponse doGet( const std::string& url, ProgressCallback* callback = 0 ) const;
 
-        osg::Image* readImageFile(const std::string& filename, const osgDB::ReaderWriter::Options* options);
+        osg::Image* doReadImageFile(const std::string& filename,
+                                  const osgDB::ReaderWriter::Options* options = 0,
+                                  osgEarth::ProgressCallback *callback = 0);
 
         /**
          * Convenience method for downloading a URL directly to a file
@@ -138,6 +153,7 @@ namespace osgEarth
 
         void *_curl_handle;
 
+        static HTTPClient& getClient();
 
     private:
         void decodeMultipartStream(

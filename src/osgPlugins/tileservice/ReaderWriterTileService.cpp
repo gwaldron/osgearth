@@ -73,12 +73,15 @@ public:
     }
 
 public:
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key ,
+                             ProgressCallback* progress)
     {
-        return osgDB::readImageFile(  createURI( key ), getOptions() );
+        //return osgDB::readImageFile(  createURI( key ), getOptions() );
+        return HTTPClient::readImageFile( createURI( key ), getOptions(), progress );
     }
 
-    osg::HeightField* createHeightField( const TileKey* key )
+    osg::HeightField* createHeightField( const TileKey* key,
+                                         ProgressCallback* progress)
     {
         //NOP
         return NULL;

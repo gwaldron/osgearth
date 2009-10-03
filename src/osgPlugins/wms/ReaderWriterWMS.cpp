@@ -249,15 +249,23 @@ public:
     }
 
     /** override */
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress
+                             )
     {
+        std::string uri = createURI( key );
+        if (osgDB::containsServerAddress( uri ))
+        {
+            return HTTPClient::readImageFile( uri, getOptions(), progress );
+        }
         return osgDB::readImageFile( createURI( key ), getOptions() );
     }
 
     /** override */
-    osg::HeightField* createHeightField( const TileKey* key )
+    osg::HeightField* createHeightField( const TileKey* key,
+                                         ProgressCallback* progress)
     {
-        osg::Image* image = createImage(key);
+        osg::Image* image = createImage(key, progress);
         if (!image)
         {
             osg::notify(osg::INFO) << "[osgEarth::WMS] Failed to read heightfield from " << createURI(key) << std::endl;

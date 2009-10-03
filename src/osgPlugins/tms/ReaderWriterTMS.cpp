@@ -21,6 +21,7 @@
 #include <osgEarth/TMS>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/HTTPClient>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -136,7 +137,8 @@ public:
     }
 
 
-    osg::Image* createImage(const osgEarth::TileKey *key)
+    osg::Image* createImage(const osgEarth::TileKey *key,
+                            ProgressCallback* progress)
     {
         if (_tileMap.valid() && key->getLevelOfDetail() <= getMaxDataLevel() )
         {
@@ -149,6 +151,10 @@ public:
             
             if (!image_url.empty())
             {
+                if (osgDB::containsServerAddress( image_url ))
+                {
+                    return HTTPClient::readImageFile( image_url, getOptions(), progress );
+                }
                 image = osgDB::readImageFile( image_url, getOptions() );
             }
 

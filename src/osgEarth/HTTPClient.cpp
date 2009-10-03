@@ -56,6 +56,17 @@ namespace osgEarth
     }
 }
 
+static int CurlProgressCallback(void *clientp,double dltotal,double dlnow,double ultotal,double ulnow)
+{
+    ProgressCallback* callback = (ProgressCallback*)clientp;
+    bool cancelled = false;
+    if (callback)
+    {
+        cancelled = callback->isCanceled() || callback->reportProgress(dlnow, dltotal);
+    }
+    return cancelled;
+}
+
 /****************************************************************************/
 
 HTTPRequest::HTTPRequest( const std::string& url )
@@ -122,7 +133,8 @@ HTTPRequest::getURL() const
 /****************************************************************************/
 
 HTTPResponse::HTTPResponse( long _code )
-: _response_code( _code )
+: _response_code( _code ),
+  _cancelled(false)
 {
     _parts.reserve(1);
 }
@@ -130,7 +142,8 @@ HTTPResponse::HTTPResponse( long _code )
 HTTPResponse::HTTPResponse( const HTTPResponse& rhs ) :
 _response_code( rhs._response_code ),
 _parts( rhs._parts ),
-_mimeType( rhs._mimeType )
+_mimeType( rhs._mimeType ),
+_cancelled( rhs._cancelled )
 {
     //nop
 }
@@ -142,7 +155,12 @@ HTTPResponse::getCode() const {
 
 bool
 HTTPResponse::isOK() const {
-    return _response_code == 200L;
+    return _response_code == 200L && !isCancelled();
+}
+
+bool
+HTTPResponse::isCancelled() const {
+    return _cancelled;
 }
 
 unsigned int
@@ -172,11 +190,28 @@ HTTPResponse::getPartAsString( unsigned int n ) const {
 
 const std::string&
 HTTPResponse::getMimeType() const {
-    osg::notify(osg::NOTICE) << "MimeType" << _mimeType << std::endl;
     return _mimeType;
 }
 
 /****************************************************************************/
+
+typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClientMap;        
+static OpenThreads::Mutex          _threadClientMapMutex;
+static ThreadClientMap             _threadClientMap;
+
+HTTPClient& HTTPClient::getClient()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex>  lock(_threadClientMapMutex);
+    static unsigned int numClients = 0;
+    osg::ref_ptr<HTTPClient>& client = _threadClientMap[OpenThreads::Thread::CurrentThread()];
+    if (!client) 
+    {
+        client = new HTTPClient();
+        numClients++;
+    }
+
+    return *client;
+}
 
 HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
 {
@@ -185,6 +220,8 @@ HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
+    curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSFUNCTION,&CurlProgressCallback);
+    curl_easy_setopt(_curl_handle, CURLOPT_NOPROGRESS,FALSE);
 
     _proxy_port = "8080";
 
@@ -342,14 +379,29 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
 }
 
 HTTPResponse
-HTTPClient::get( const HTTPRequest& request )
+HTTPClient::get( const HTTPRequest& request,
+                 ProgressCallback* callback)
 {
-    HTTPClient client;
-    return client.doGet( request );
+    return getClient().doGet( request, callback );
+}
+
+HTTPResponse 
+HTTPClient::get( const std::string &url,
+                 ProgressCallback* callback)
+{
+    return getClient().doGet( url, callback);
+}
+
+osg::Image*
+HTTPClient::readImageFile(const std::string &filename,
+                          const osgDB::ReaderWriter::Options *options,
+                          osgEarth::ProgressCallback *callback)
+{
+    return getClient().doReadImageFile( filename, options, callback );
 }
 
 HTTPResponse
-HTTPClient::doGet( const HTTPRequest& request ) const
+HTTPClient::doGet( const HTTPRequest& request, ProgressCallback* callback) const
 {
     HTTPResponse response(0);
 
@@ -370,11 +422,18 @@ HTTPClient::doGet( const HTTPRequest& request ) const
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );
 
+    //Take a temporary ref to the callback
+    osg::ref_ptr<ProgressCallback> progressCallback = callback;
     curl_easy_setopt( _curl_handle, CURLOPT_URL, request.getURL().c_str() );
+    if (callback)
+    {
+        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA,progressCallback.get());
+    }
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)&sp);
     CURLcode res = curl_easy_perform( _curl_handle );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
-    
+    curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
+   
     if ( res == 0 )
     {
         long code;
@@ -383,7 +442,7 @@ HTTPClient::doGet( const HTTPRequest& request ) const
         else
             curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &code );     
 
-        //osg::notify(osg::NOTICE) << "[HTTPClient] got response, code = " << code << std::endl;
+        osg::notify(osg::INFO) << "[HTTPClient] got response, code = " << code << std::endl;
 
         response = HTTPResponse( code );
 
@@ -415,6 +474,11 @@ HTTPClient::doGet( const HTTPRequest& request ) const
             response._parts.push_back( part.get() );
         }
     }
+    else if (res == CURLE_ABORTED_BY_CALLBACK)
+    {
+        //If we were aborted by a callback, then it was cancelled by a user
+        response._cancelled = true;
+    }
 
     // Store the mime-type, if any. (Note: CURL manages the buffer returned by
     // this call.)
@@ -429,9 +493,9 @@ HTTPClient::doGet( const HTTPRequest& request ) const
 
 
 HTTPResponse
-HTTPClient::doGet( const std::string& url ) const
+HTTPClient::doGet( const std::string& url, ProgressCallback* callback) const
 {
-    return doGet( HTTPRequest( url ) );
+    return doGet( HTTPRequest( url ), callback );
 }
 
 bool
@@ -467,9 +531,11 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
 }
 
 osg::Image*
-HTTPClient::readImageFile(const std::string &filename, const osgDB::ReaderWriter::Options *options)
+HTTPClient::doReadImageFile(const std::string &filename,
+                            const osgDB::ReaderWriter::Options *options,
+                            osgEarth::ProgressCallback *callback)
 {
-    HTTPResponse response = this->doGet(filename);
+    HTTPResponse response = this->doGet(filename, callback);
 
     if (response.isOK())
     {
@@ -504,6 +570,11 @@ HTTPClient::readImageFile(const std::string &filename, const osgDB::ReaderWriter
             if (rr.error()) osg::notify(osg::WARN) << rr.message() << std::endl;
             return NULL;
         }
+    }
+    else
+    {
+        /*if (response.isCancelled())
+            osg::notify(osg::NOTICE) << "Request for " << filename << " was cancelled " << std::endl;*/
     }
     return 0;
 }

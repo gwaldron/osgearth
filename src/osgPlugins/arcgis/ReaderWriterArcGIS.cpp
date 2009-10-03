@@ -123,7 +123,8 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress)
     {
         std::stringstream buf;
 
@@ -159,11 +160,13 @@ public:
         }
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
-        return osgDB::readImageFile( buf.str(), getOptions() );
+        //return osgDB::readImageFile( buf.str(), getOptions() );
+        return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
     }
 
     // override
-    osg::HeightField* createHeightField( const TileKey* key )
+    osg::HeightField* createHeightField( const TileKey* key,
+                                         ProgressCallback* progress)
     {
         //TODO
         return NULL;

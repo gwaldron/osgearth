@@ -115,7 +115,8 @@ WCS11Source::getExtension() const
 
 
 osg::Image*
-WCS11Source::createImage( const TileKey* key )
+WCS11Source::createImage( const TileKey* key,
+                         ProgressCallback* progress)
 {
     HTTPRequest request = createRequest( key );
 
@@ -125,13 +126,14 @@ WCS11Source::createImage( const TileKey* key )
     key->getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
 
     // download the data
-    HTTPResponse response = HTTPClient::get( request );
+    HTTPResponse response = HTTPClient::get( request, progress );
     if ( !response.isOK() )
     {
         osg::notify(osg::WARN) << "[osgEarth::WCS1.1] WARNING: HTTP request failed" << std::endl;
         return NULL;
     }
 
+    //TODO:  Make WCS driver use progress callback
     unsigned int part_num = response.getNumParts() > 1? 1 : 0;
     std::istream& input_stream = response.getPartStream( part_num );
 
@@ -159,11 +161,12 @@ WCS11Source::createImage( const TileKey* key )
 
 
 osg::HeightField*
-WCS11Source::createHeightField( const TileKey* key )
+WCS11Source::createHeightField( const TileKey* key,
+                                ProgressCallback* progress)
 {
     osg::HeightField* field = NULL;
 
-    osg::ref_ptr<osg::Image> image = createImage( key );
+    osg::ref_ptr<osg::Image> image = createImage( key, progress );
     if ( image.valid() )
     {        
         ImageToHeightFieldConverter conv;

@@ -301,7 +301,8 @@ MapLayer::setReferenceURI( const std::string& uri ) {
 }
 
 GeoImage*
-MapLayer::createImage( const TileKey* key )
+MapLayer::createImage( const TileKey* key,
+                       ProgressCallback* progress)
 {
 	GeoImage* result = NULL;
     const Profile* mapProfile = key->getProfile();
@@ -364,7 +365,7 @@ MapLayer::createImage( const TileKey* key )
     if ( mapProfile->isEquivalentTo( layerProfile ) )
     {
 		osg::notify(osg::INFO) << "  Key and source profiles are equivalent, requesting single tile" << std::endl;
-        osg::Image* image = createImageWrapper( key, cacheInLayerProfile );
+        osg::Image* image = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( image )
         {
             result = new GeoImage( image, key->getGeoExtent() );
@@ -394,7 +395,7 @@ MapLayer::createImage( const TileKey* key )
 
 				//osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
-				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j].get(), cacheInLayerProfile);
+				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j].get(), cacheInLayerProfile, progress);
 				if (img.valid())
 				{
 					mi->getImages().push_back(TileImage(img.get(), intersectingTiles[j].get()));
@@ -466,7 +467,9 @@ MapLayer::createImage( const TileKey* key )
 }
 
 osg::Image*
-MapLayer::createImageWrapper( const TileKey* key, bool cacheInLayerProfile )
+MapLayer::createImageWrapper( const TileKey* key,
+                              bool cacheInLayerProfile,
+                              ProgressCallback* progress)
 {
 	TileSource* source = getTileSource();
 
@@ -482,7 +485,7 @@ MapLayer::createImageWrapper( const TileKey* key, bool cacheInLayerProfile )
 
 	if (source && !image.valid() && !getCacheOnly())
 	{
-		image = source->getImage( key );
+		image = source->getImage( key, progress );
 
 		//Check to see if the image is the nodata image
 		if (image.valid() && _nodata_image.valid())
@@ -525,9 +528,10 @@ MapLayer::createImageWrapper( const TileKey* key, bool cacheInLayerProfile )
 }
 
 GeoHeightField*
-MapLayer::createGeoHeightField(const TileKey* key)
+MapLayer::createGeoHeightField(const TileKey* key,
+                               ProgressCallback * progress)
 {
-	osg::HeightField* hf = getTileSource()->getHeightField( key );
+	osg::HeightField* hf = getTileSource()->getHeightField( key, progress );
 	if (hf)
 	{
 		//Modify the heightfield data so that is contains a standard value for NO_DATA
@@ -546,7 +550,8 @@ MapLayer::createGeoHeightField(const TileKey* key)
 }
 
 osg::HeightField*
-MapLayer::createHeightField(const osgEarth::TileKey *key)
+MapLayer::createHeightField(const osgEarth::TileKey *key,
+                            ProgressCallback* progress)
 {
 	osg::ref_ptr<osg::HeightField> result;
 
@@ -567,7 +572,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key)
 		{
 			if (isKeyValid( key ) )
 			{
-				osg::ref_ptr<GeoHeightField> hf = createGeoHeightField( key );
+				osg::ref_ptr<GeoHeightField> hf = createGeoHeightField( key, progress );
 				if (hf.valid())
 				{
 					result = hf->takeHeightField();
@@ -589,7 +594,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key)
 				{
 					if (isKeyValid( intersectingTiles[i].get() ) )
 					{
-						GeoHeightField *hf = createGeoHeightField( intersectingTiles[i].get() );
+						GeoHeightField *hf = createGeoHeightField( intersectingTiles[i].get(), progress );
 						if (hf)
 						{
 							heightFields.push_back(hf);

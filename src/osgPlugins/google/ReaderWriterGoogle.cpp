@@ -65,7 +65,8 @@ public:
         setProfile( osgEarth::Registry::instance()->getGlobalMercatorProfile() );
     }
 
-    osg::Image* createImage( const TileKey* key )
+    osg::Image* createImage( const TileKey* key,
+                             ProgressCallback* progress)
     {
         //Return NULL if we are given a non-mercator key
         if ( !key->isMercator() ) return 0;
@@ -161,10 +162,12 @@ public:
         //    << (options.valid()? options->getOptionString() : "<empty>")
         //    << std::endl;
 
-        return osgDB::readImageFile( buf.str(), getOptions() );
+        //return osgDB::readImageFile( buf.str(), getOptions() );
+        return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
     }
 
-    osg::HeightField* createHeightField( const TileKey* key )
+    osg::HeightField* createHeightField( const TileKey* key,
+                                         ProgressCallback* progress)
     {
         //TODO
         return NULL;

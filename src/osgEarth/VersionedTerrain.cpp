@@ -29,6 +29,28 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 
+struct TileRequestProgressCallback : ProgressCallback
+{
+public:
+    TileRequestProgressCallback(TaskRequest* request, TaskService* service):
+      _request(request),
+      _service(service)
+    {
+    }
+
+    bool reportProgress(double current, double total)
+    {
+        //Check to see if we were marked cancelled on a previous check
+        if (_canceled) return _canceled;
+        _canceled = (_service->getStamp() - _request->getStamp() > 2);
+        return _canceled;
+    }
+
+    TaskRequest* _request;
+    TaskService* _service;
+};
+
+
 /*****************************************************************************/
 
 struct TileLayerRequest : public TaskRequest
@@ -161,6 +183,9 @@ VersionedTile::setHasElevationHint( bool hint )
 void
 VersionedTile::servicePendingRequests( int stamp )
 {
+    VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
+
+    //Attach requests for the appropriate LOD data to the TerrainTile.
     if ( !_requestsInstalled )
     {
         TileLayerFactory* factory = getVersionedTerrain()->getTileLayerFactory();
@@ -171,6 +196,7 @@ VersionedTile::servicePendingRequests( int stamp )
                 TileLayerRequest* r = new TileElevationLayerRequest( _key.get(), factory );
                 r->setPriority( (float)_key->getLevelOfDetail() );
                 r->setStamp( stamp );
+                r->setProgressCallback( new TileRequestProgressCallback(r, versionedTerrain->getOrCreateTaskService()));
                 _requests.push_back( r );
             }
             for( int layerIndex=0; layerIndex<getNumColorLayers(); layerIndex++ )
@@ -178,6 +204,7 @@ VersionedTile::servicePendingRequests( int stamp )
                 TaskRequest* r = new TileColorLayerRequest( _key.get(), factory, layerIndex );
                 r->setPriority( (float)_key->getLevelOfDetail() + (0.1 * (float)layerIndex) );
                 r->setStamp( stamp );
+                r->setProgressCallback( new TileRequestProgressCallback(r, versionedTerrain->getOrCreateTaskService()));
                 _requests.push_back( r );
             }
         }
@@ -189,12 +216,13 @@ VersionedTile::servicePendingRequests( int stamp )
         for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
         {
             TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
-
-            VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
             if (versionedTerrain)
             {
+                //If a request has been marked as IDLE, the TaskService has tried to service it
+                //and it was either deemed out of date or was cancelled, so we need to add it again.
                 if ( r->isIdle() )
                 {
+                    //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
                     r->setStamp( stamp );
                     if (versionedTerrain)
                     {
@@ -212,6 +240,7 @@ VersionedTile::servicePendingRequests( int stamp )
 
 void VersionedTile::serviceCompletedRequests()
 {
+    VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
     {
         TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
@@ -245,14 +274,14 @@ void VersionedTile::serviceCompletedRequests()
                         this->setDirty( true );
                 }
             }
-
             // remove from the list
             i = _requests.erase( i );
         }
         else if ( r->isCanceled() )
         {
-            //osg::notify(osg::NOTICE) << "TaskService::serviceCompletedRequests(): Request was cancelled " << std::endl;
-            i = _requests.erase( i );
+            //Reset the cancelled task to IDLE and give it a new progress callback.
+            i->get()->setState( TaskRequest::STATE_IDLE );
+            i->get()->setProgressCallback( new TileRequestProgressCallback(i->get(), versionedTerrain->getOrCreateTaskService()));
         }
         else
         {

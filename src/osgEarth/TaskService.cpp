@@ -119,18 +119,10 @@ TaskThread::run()
 
         if (_request.valid())
         {
-            // discard an out-of-date request:
-            if ( _queue->getStamp() - _request->getStamp() > 2 )
-            {
-                //osg::notify(osg::NOTICE) << "discarding request due to expiration" << std::endl;
-                _request->setState( TaskRequest::STATE_IDLE ); // allows it to re-schedule
-                continue;
-            }
-
             // discard a completed or canceled request:
             if ( _request->getState() != TaskRequest::STATE_PENDING || _request->isCanceled() )
             {
-                osg::notify(osg::INFO) << "Discarding cancelled request " << std::endl;
+                _request = 0;
                 continue;
             }
 
@@ -139,11 +131,6 @@ TaskThread::run()
             _request->setState( TaskRequest::STATE_IN_PROGRESS );
 
             _request->run();
-
-            if (_request->isCanceled())
-            {
-                osg::notify(osg::INFO) << "TaskThread::run(): Request was cancelled" << std::endl;
-            }
 
             //Release the request
             _request = 0;

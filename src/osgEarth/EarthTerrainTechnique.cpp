@@ -47,76 +47,40 @@ using namespace osgEarth;
 
 EarthTerrainTechnique::EarthTerrainTechnique():
     _currentReadOnlyBuffer(1),
-    _currentWriteBuffer(0)
-    
+    _currentWriteBuffer(0),
+    _verticalScaleOverride(1.0f)    
 {
-    setFilterBias(0);
-    setFilterWidth(0.1);
-    setFilterMatrixAs(GAUSSIAN);
-    
+    //nop
 }
 
 EarthTerrainTechnique::EarthTerrainTechnique(const EarthTerrainTechnique& gt,const osg::CopyOp& copyop):
     TerrainTechnique(gt,copyop),
     _currentReadOnlyBuffer(1),
-    _currentWriteBuffer(0)
+    _currentWriteBuffer(0),
+    _verticalScaleOverride(1.0f)
 {
-    setFilterBias(gt._filterBias);
-    setFilterWidth(gt._filterWidth);
-    setFilterMatrix(gt._filterMatrix);
+    //nop
 }
 
 EarthTerrainTechnique::~EarthTerrainTechnique()
 {
 }
 
+void
+EarthTerrainTechnique::setVerticalScaleOverride( float value )
+{
+    _verticalScaleOverride = value;
+}
+
+float
+EarthTerrainTechnique::getVerticalScaleOverride() const 
+{
+    return _verticalScaleOverride;
+}
+
 void EarthTerrainTechnique::swapBuffers()
 {
     std::swap(_currentReadOnlyBuffer,_currentWriteBuffer);
-}
-
-void EarthTerrainTechnique::setFilterBias(float filterBias)
-{
-    _filterBias = filterBias;
-    if (!_filterBiasUniform) _filterBiasUniform = new osg::Uniform("filterBias",_filterBias);
-    else _filterBiasUniform->set(filterBias);
-}
-
-void EarthTerrainTechnique::setFilterWidth(float filterWidth)
-{
-    _filterWidth = filterWidth;
-    if (!_filterWidthUniform) _filterWidthUniform = new osg::Uniform("filterWidth",_filterWidth);
-    else _filterWidthUniform->set(filterWidth);
-}
-
-void EarthTerrainTechnique::setFilterMatrix(const osg::Matrix3& matrix)
-{
-    _filterMatrix = matrix; 
-    if (!_filterMatrixUniform) _filterMatrixUniform = new osg::Uniform("filterMatrix",_filterMatrix);
-    else _filterMatrixUniform->set(_filterMatrix);
-}
-
-void EarthTerrainTechnique::setFilterMatrixAs(FilterType filterType)
-{
-    switch(filterType)
-    {
-        case(SMOOTH):
-            setFilterMatrix(osg::Matrix3(0.0, 0.5/2.5, 0.0,
-                                         0.5/2.5, 0.5/2.5, 0.5/2.5,
-                                         0.0, 0.5/2.5, 0.0));
-            break;
-        case(GAUSSIAN):
-            setFilterMatrix(osg::Matrix3(0.0, 1.0/8.0, 0.0,
-                                         1.0/8.0, 4.0/8.0, 1.0/8.0,
-                                         0.0, 1.0/8.0, 0.0));
-            break;
-        case(SHARPEN):
-            setFilterMatrix(osg::Matrix3(0.0, -1.0, 0.0,
-                                         -1.0, 5.0, -1.0,
-                                         0.0, -1.0, 0.0));
-            break;
-
-    };
 }
 
 void
@@ -149,36 +113,6 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
 
     swapBuffers();
 }
-
-//void
-//EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
-//{
-//    if ( !_terrainTile ) return;
-//
-//    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex());
-//
-//    // clone the last iteration so we can modify it:
-//    BufferData& readBuf  = getReadOnlyBuffer();
-//    BufferData& writeBuf = getWriteBuffer();
-//
-//    Locator* masterLocator = computeMasterLocator();
-//    osg::Vec3d centerModel = computeCenterModel( masterLocator );
-//
-//    writeBuf._geode = static_cast<osg::Geode*>( readBuf._geode->clone( osg::CopyOp::DEEP_COPY_ALL ) );
-//    writeBuf._geometry = static_cast<osg::Geometry*>( writeBuf._geode->getDrawable(0) );
-//    writeBuf._transform->addChild( writeBuf._geode.get() );
-//
-//    if ( updateGeom )
-//    {
-//        updateGeometry( masterLocator, centerModel );
-//    }
-//    if ( updateTextures )
-//    {
-//        updateColorLayers( masterLocator );
-//    }
-//
-//    swapBuffers();
-//}
 
 void EarthTerrainTechnique::init()
 {
@@ -314,7 +248,10 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
         j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
     }
     
-    float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
+    float scaleHeight = 
+        _verticalScaleOverride != 1.0? _verticalScaleOverride :
+        _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
+        1.0f;
 
     BufferData& writeBuf = getWriteBuffer();
 
@@ -367,17 +304,6 @@ EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
             osg::StateSet* ss = writeBuf._geode->getStateSet();
             if ( ss )
             {
-                //osg::Texture2D* tex = dynamic_cast<osg::Texture2D*>(
-                //    ss->getTextureAttribute( layerNum, osg::StateAttribute::TEXTURE ) );
-                //if ( tex && tex->getImage() != imageLayer->getImage() )
-                //{
-                //    tex->setImage( imageLayer->getImage() );
-                //    tex->dirtyTextureObject();
-                //    tex->dirtyTextureParameters();
-                //}
-
-                //ss->removeTextureAttribute( layerNum, osg::StateAttribute::TEXTURE );
-
                 osg::Image* image = colorLayer->getImage();
                 osg::Texture2D* texture2D = new osg::Texture2D();
                 texture2D->setImage( image );
@@ -513,7 +439,10 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     
 
     //float minHeight = 0.0;
-    float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
+    float scaleHeight = 
+        _verticalScaleOverride != 1.0? _verticalScaleOverride :
+        _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
+        1.0f;
 
     // allocate and assign tex coords
     typedef std::pair< osg::ref_ptr<osg::Vec2Array>, Locator* > TexCoordLocatorPair;

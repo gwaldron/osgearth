@@ -211,20 +211,11 @@ MapNode::getEngine() const
     return _engine.get();
 }
 
-//osg::CoordinateSystemNode*
-//MapNode::createCoordinateSystemNode() const
-//{
-//    osg::CoordinateSystemNode* csn = _map->getProfile()->getSRS()->createCoordinateSystemNode();
-//
-//    if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
-//    {
-//        // Setting the ellipsoid to NULL indicates that the CS should be interpreted 
-//        // as PROJECTED instead of GEOGRAPHIC.
-//        csn->setEllipsoidModel( NULL );
-//    }
-//    return csn;
-//}
-
+const MapEngineProperties&
+MapNode::getMapEngineProperties() const
+{
+    return _engineProps;
+}
 
 MapNode*
 MapNode::findMapNode( osg::Node* graph )
@@ -232,17 +223,10 @@ MapNode::findMapNode( osg::Node* graph )
     return findTopMostNodeOfType<MapNode>( graph );
 }
 
-//osg::CoordinateSystemNode*
-//MapNode::findCoordinateSystemNode( osg::Node* graph )
-//{
-//    return findTopMostNodeOfType<osg::CoordinateSystemNode>( graph );
-//}
-
 bool
 MapNode::isGeocentric() const
 {
     return _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
-    //return dynamic_cast<GeocentricMapEngine*>( _engine.get() ) != NULL;
 }
 
 unsigned int
@@ -277,33 +261,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
 struct MapNodeTileLayerFactory : public TileLayerFactory
 {
     MapNodeTileLayerFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
-
-    GeoImage* createGeoImage( const TileKey* key, int layerIndex, ProgressCallback *progress ) {
-        if ( _map.valid() && _engine.valid() ) {
-            ScopedReadLock lock( _map->getMapDataMutex() );
-            if ( layerIndex < _map->getImageMapLayers().size() )
-            {
-                MapLayer* mapLayer = _map->getImageMapLayers()[layerIndex].get();
-                return mapLayer->createImage( key, progress );
-            }
-        }
-        return 0L;
-    }
-
-    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* img, ProgressCallback * progress ) {
-        if ( _map.valid() && _engine.valid() ) {
-            ScopedReadLock lock( _map->getMapDataMutex() );
-            return _engine->createImageLayer( _map.get(), key, img );
-        }
-        return 0L;
-    }
-
-
-    //osg::HeightField* createHeightFieldLayer( const TileKey* key ) {
-    //    if ( _map.valid() && _engine.valid() ) {
-    //        return _engine->createHeightFieldLayer( _map.get(), key );
-    //    }
-    //    return 0L;
 
     osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex, ProgressCallback* progress ) {
         if ( _map.valid() && _engine.valid() ) {

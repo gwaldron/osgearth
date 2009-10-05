@@ -1,4 +1,5 @@
 #include <osgEarthUtil/ElevationManager>
+#include <osgEarth/EarthTerrainTechnique>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/GeometryTechnique>
 #include <osgUtil/IntersectionVisitor>
@@ -6,6 +7,7 @@
 
 using namespace osgEarthUtil;
 using namespace osgEarth;
+using namespace OpenThreads;
 
 ElevationManager::ElevationManager( Map* map ) :
 _map( map )
@@ -13,13 +15,13 @@ _map( map )
     postCTOR();
 }
 
-ElevationManager::ElevationManager( MapNode* mapNode ) :
-_mapNode( mapNode ),
-_map( mapNode? mapNode->getMap() : NULL ),
-_mapEngine( mapNode? mapNode->getEngine() : NULL )
-{
-    postCTOR();
-}
+//ElevationManager::ElevationManager( MapNode* mapNode ) :
+//_mapNode( mapNode ),
+//_map( mapNode? mapNode->getMap() : NULL ),
+//_mapEngine( mapNode? mapNode->getEngine() : NULL )
+//{
+//    postCTOR();
+//}
 
 void
 ElevationManager::postCTOR()
@@ -44,6 +46,8 @@ ElevationManager::checkForMapUpdates()
     int mapRev = _map->getDataModelRevision();
     if ( _lastMapRevision != mapRev )
     {
+        ScopedReadLock lock( _map->getMapDataMutex() );
+
         _tileSize = 0;
         _maxDataLevel = 0;
 
@@ -81,6 +85,18 @@ void
 ElevationManager::setTechnique( ElevationManager::Technique technique )
 {
     _technique = technique;
+}
+
+void
+ElevationManager::setMaxTilesToCache( int value )
+{
+    _maxCacheSize = value;
+}
+
+int
+ElevationManager::getMaxTilesToCache() const
+{
+    return _maxCacheSize;
 }
 
 bool
@@ -133,15 +149,15 @@ ElevationManager::getElevation(double x, double y,
     // now, see if we already have this tile loaded somewhere:
     osgTerrain::TileID tileId = key->getTileId();
 
-    if ( _mapNode.valid() )
-    {
-        // first look in the map node's default terrain:
-        tile = _mapNode->getTerrain(0)->getTile( tileId );
+    //if ( _mapNode.valid() )
+    //{
+    //    // first look in the map node's default terrain:
+    //    tile = _mapNode->getTerrain(0)->getTile( tileId );
 
-        // if it's in the map, remove it from the local tile cache
-        if ( tile.valid() )
-            _tileCache.erase( tileId );
-    }
+    //    // if it's in the map, remove it from the local tile cache
+    //    if ( tile.valid() )
+    //        _tileCache.erase( tileId );
+    //}
 
     if ( !tile.valid() )
     {
@@ -169,12 +185,11 @@ ElevationManager::getElevation(double x, double y,
     // if we didn't find it (or it didn't have heightfield data), build it.
     if ( !tile.valid() )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] ElevationManager: cache miss" << std::endl;
+        //osg::notify(osg::NOTICE) << "[osgEarth] ElevationManager: cache miss" << std::endl;
 
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
         hf = _map->createHeightField( key.get(), true );
-
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )
@@ -183,18 +198,10 @@ ElevationManager::getElevation(double x, double y,
             return false;
         }
 
+        osgTerrain::Locator* locator = GeoLocator::createForKey( key.get(), _map.get() );
+
         tile = new osgTerrain::TerrainTile();
         tile->setTileID( tileId );
-
-        osgTerrain::Locator* locator = _map->getProfile()->getSRS()->createLocator(
-                key->getGeoExtent().xMin(),
-                key->getGeoExtent().yMin(),
-                key->getGeoExtent().xMax(),
-                key->getGeoExtent().yMax() );
-
-        if ( _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC )
-            locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-
         tile->setLocator( locator );
 
         osgTerrain::HeightFieldLayer* layer = new osgTerrain::HeightFieldLayer( hf.get() );
@@ -202,7 +209,7 @@ ElevationManager::getElevation(double x, double y,
 
         tile->setElevationLayer( layer );
         tile->setRequiresNormals( false );
-        tile->setTerrainTechnique( new osgTerrain::GeometryTechnique() );
+        tile->setTerrainTechnique( new EarthTerrainTechnique() );
 
         // store it in the local tile cache.
         // TODO: limit the size of the cache with a parallel FIFO list.
@@ -281,4 +288,47 @@ ElevationManager::getElevation(double x, double y,
         osg::notify(osg::WARN) << "[osgEarth] ElevationManager: no intersections" << std::endl;
         return false;
     }
+}
+
+
+bool 
+ElevationManager::getPlacementMatrix(double x, double y, double z,
+                                     double resolution,
+                                     const SpatialReference* srs,
+                                     osg::Matrixd& out_matrix,
+                                     double& out_elevation,
+                                     double& out_resolution)
+{
+    // transform the input coords to map coords:
+    double map_x = x, map_y = y;
+    if ( srs && !srs->isEquivalentTo( _map->getProfile()->getSRS() ) )
+    {
+        if ( !srs->transform( x, y, _map->getProfile()->getSRS(), map_x, map_y ) )
+        {
+            osg::notify(osg::WARN) << "[osgEarth] ElevationManager: coord transform failed" << std::endl;
+            return false;
+        }
+    }
+
+    // get the elevation under those coordinates:
+    if ( !getElevation( map_x, map_y, resolution, _map->getProfile()->getSRS(), out_elevation, out_resolution ) )
+    {
+        osg::notify(osg::WARN) << "[osgEarth] ElevationManager::getElevation() failed" << std::endl;
+        return false;
+    }
+
+    if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
+    {
+        out_matrix = osg::Matrixd::translate( x, y, out_elevation + z );
+    }
+    else
+    {
+        _map->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
+            osg::DegreesToRadians( map_y ),
+            osg::DegreesToRadians( map_x ),
+            out_elevation + z,
+            out_matrix );
+    }
+
+    return true;
 }

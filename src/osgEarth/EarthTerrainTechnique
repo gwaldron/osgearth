@@ -61,32 +61,24 @@ namespace osgEarth {
 
         virtual void cull(osgUtil::CullVisitor* nv);
 
-        /** Traverse the terain subgraph.*/
+        /** Traverse the terrain subgraph.*/
         virtual void traverse(osg::NodeVisitor& nv);
 
         virtual void cleanSceneGraph();
 
-        void setFilterBias(float filterBias);
-        float getFilterBias() const { return _filterBias; }
-        
-        void setFilterWidth(float filterWidth);
-        float getFilterWidth() const { return _filterWidth; }
-
-        void setFilterMatrix(const osg::Matrix3& matrix);
-        osg::Matrix3& getFilterMatrix() { return _filterMatrix; }
-        const osg::Matrix3& getFilterMatrix() const { return _filterMatrix; }
-        
-        enum FilterType
-        {
-            GAUSSIAN,
-            SMOOTH,
-            SHARPEN
-        };
-        
-        void setFilterMatrixAs(FilterType filterType);
-
         inline OpenThreads::Mutex& getMutex() {return _mutex;}
 
+        /**
+         * Sets a factor by which to scale elevation height values. By default, this object
+         * will get the vertical scale from the osgTerrain::Terrain with which the tile is
+         * associated. Setting this value overrides that (or sets it if there is no terrain).
+         */
+        void setVerticalScaleOverride( float value );
+
+        /**
+         * Gets the overriden vertical scale value.
+         */
+        float getVerticalScaleOverride() const;
 
     protected:
     
@@ -125,7 +117,9 @@ namespace osgEarth {
 
         OpenThreads::Mutex                  _mutex;
 
-        osg::Vec3d _lastCenterModel;
+        osg::Vec3d                          _lastCenterModel;
+
+        float _verticalScaleOverride;
 };
 
 }

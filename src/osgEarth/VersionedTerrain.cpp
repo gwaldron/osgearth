@@ -94,6 +94,7 @@ _key( key ),
 _useLayerRequests( false ),
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
+_geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
@@ -114,7 +115,7 @@ VersionedTile::~VersionedTile()
         {
             if (i->get()->getState() == TaskRequest::STATE_IN_PROGRESS)
             {
-                osg::notify(osg::NOTICE) << "Request in progress, cancelling " << std::endl;
+                osg::notify(osg::NOTICE) << "Request (" << (int)this << " in progress, cancelling " << std::endl;
             }
             i->get()->cancel();
         }
@@ -231,7 +232,7 @@ VersionedTile::servicePendingRequests( int stamp )
                 }
                 else if ( !r->isCompleted() )
                 {
-                        r->setStamp( stamp );
+                    r->setStamp( stamp );
                 }
             }
         }
@@ -293,26 +294,38 @@ void VersionedTile::serviceCompletedRequests()
 void
 VersionedTile::traverse( osg::NodeVisitor& nv )
 {
-    if ( _useLayerRequests )
-    {
-        //Service any completed requests.
-        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-        {
-            serviceCompletedRequests();
+    bool serviceRequests = _useLayerRequests && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
 
-            if ( !getDirty() ) // if the whole tile is dirty, ignore and let it rebuild.
-            {
-                if ( _elevationLayerDirty || _colorLayersDirty )
-                {
-                    EarthTerrainTechnique* tech = static_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
-                    tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
-                }
-            }
-            _elevationLayerDirty = false;
-            _colorLayersDirty = false;
+    if ( serviceRequests )
+    {
+        serviceCompletedRequests();
+
+        if ( getDirty() ) 
+        {
+            // if the whole tile is dirty, let it rebuild via the normal recourse:
+            _elevationLayerDirty = true;
+            _colorLayersDirty = true;
+        }
+        else if ( _elevationLayerDirty || _colorLayersDirty )
+        {
+            // if the tile is only partly dirty, update it piecemeal:
+            EarthTerrainTechnique* tech = static_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+            tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
         }
     }
+
+    // continue the normal traversal. If the tile is "dirty" it will regenerate here.
     osgTerrain::TerrainTile::traverse( nv );
+
+    if ( serviceRequests )
+    {
+        // bump the geometry revision if the tile's geometry was updated.
+        if ( _elevationLayerDirty )
+            _geometryRevision++;
+
+        _elevationLayerDirty = false;
+        _colorLayersDirty = false;        
+    }
 }
 
 /****************************************************************************/

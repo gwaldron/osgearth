@@ -28,6 +28,24 @@ using namespace osgEarth;
 
 namespace osgEarthUtil
 {
+    /**
+     * ElevationManager (EM) lets you query the elevation at any point on a terrain map.
+     * 
+     * Rather than intersecting with a loaded scene graph, EM uses the osgEarth
+     * engine to directly access the best terrain tile for elevation query. You
+     * give it the DEM resolution at which you want an elevation point, and it will
+     * access the necessary tile and sample it.
+     *
+     * EM supports two types of sampling. By default, it will intersect the tile geometry
+     * with a ray (using osgUtil::IntersectionVisitor). Rather than traverse an entire
+     * scene graph however, it just intersects the particular tile of interest. You 
+     * can also choose PARAMTERIC mode, in which EM will sample the actual heightfield
+     * directly instead of performing an intersection test.
+     *
+     * NOTE: EM does NOT take into account rendering properties like vertical scale or
+     * skirts. If you need a vertical scale, for example, simply scale the resulting
+     * elevation value.
+     */
     class OSGEARTHUTIL_EXPORT ElevationManager : public osg::Referenced
     {
     public:
@@ -56,16 +74,6 @@ namespace osgEarthUtil
         ElevationManager( Map* map );
 
         /**
-         * Constructs a new elevation manager. Use this CTOR if you have a MapNode.
-         *
-         * @param mapNode
-         *      Map node against which to perform elevation queries.
-         * @param technique
-         *      Technique to use for elevation data sampling.
-         */
-        ElevationManager( MapNode* mapNode );
-
-        /**
          * Gets the terrain elevation at a point, given a terrain resolution.
          *
          * @param x, y
@@ -91,6 +99,22 @@ namespace osgEarthUtil
             double& out_resolution );
 
         /**
+         * Gets a matrix that you can use to position a node at the specified coordinates.
+         * The elevation of the object will be the ground height + the specified Z value.
+         * The ground height will be determined by using getElevation() with the 
+         * specified resolution.
+         *
+         * Returns TRUE if the output matrix is valid.
+         */
+        bool getPlacementMatrix(
+            double x, double y, double z,
+            double resolution,
+            const SpatialReference* srs,
+            osg::Matrixd& out_matrix,
+            double& out_elevation,
+            double& out_resolution );
+
+        /**
          * Sets the technique to use for height determination. See the Technique
          * enum in this class. The default is TECHNIQUE_GEOMETRIC.
          */
@@ -101,6 +125,16 @@ namespace osgEarthUtil
          * enum in this class.
          */
         Technique getTechnique() const;
+
+        /**
+         * Sets the maximum cache size for elevation tiles.
+         */
+        void setMaxTilesToCache( int value );
+
+        /**
+         * Gets the maximum cache size for elevation tiles.
+         */
+        int getMaxTilesToCache() const;
 
         /**
          * Gets the map with which this elevation manager is associated.

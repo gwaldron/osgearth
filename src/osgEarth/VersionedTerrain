@@ -32,10 +32,6 @@ namespace osgEarth
     /*interface*/ class TileLayerFactory : public osg::Referenced
     {
     public:
-        virtual GeoImage* createGeoImage( const TileKey* key, int layerIndex, ProgressCallback* progress ) =0;
-        virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, GeoImage* image, ProgressCallback * progress ) =0;
-
-        //virtual osg::HeightField* createHeightField( const TileKey* key ) =0;
         virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex, ProgressCallback* progress ) =0;
         virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, ProgressCallback* progress ) =0;
     };
@@ -95,6 +91,12 @@ namespace osgEarth
          */
         int getTileRevision() const;
 
+        /**
+         * Gets the revision # of the generated geometry for this tile. If this
+         * changes from the previous frame, that means the tile's geometry changed.
+         */
+        int getGeometryRevision() const;
+
         /** Override */
         virtual void traverse( class osg::NodeVisitor& nv );
 
@@ -112,6 +114,7 @@ namespace osgEarth
     private:
         int _terrainRevision;
         int _tileRevision;
+        int _geometryRevision;
         bool _useLayerRequests;
         bool _requestsInstalled;
         bool _usePerLayerUpdates;

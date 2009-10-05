@@ -80,16 +80,7 @@ namespace osgEarth
          * @param graph
          *      Node graph in which to search for a MapNode
          */
-        static MapNode* findMapNode( osg::Node* graph );
-
-        /**
-         * Finds the topmost CSN in the specified scene graph, or returns NULL if no 
-         * CSN exists in the graph.
-         *
-         * @param graph
-         *      Node graph in which to search for a CSN.
-         */
-        //static osg::CoordinateSystemNode* findCoordinateSystemNode( osg::Node* graph );        
+        static MapNode* findMapNode( osg::Node* graph );   
 
         /**
          * Returns true if the realized terrain model is geocentric, false if
@@ -111,6 +102,12 @@ namespace osgEarth
          * Gets one of the terrains in this map node.
          */
         VersionedTerrain* getTerrain( unsigned int i ) const;
+
+        /**
+         * Gets the engine properties associated with this node. The engine
+         * properties dictate how the map engine will create scene graph elements.
+         */
+        const MapEngineProperties& getMapEngineProperties() const;
 
         /**
          * Gets the ID for this MapNode

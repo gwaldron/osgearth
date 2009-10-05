@@ -160,8 +160,18 @@ namespace osgEarth
          */
         bool getPreemptiveLOD() const;
 
+        /**
+         * Sets whether to use osgEarth's "task service" for downloading map tile layers when
+         * operating in preemptive LOD mode. If enabled, the map engine will relegate the
+         * loading of tile image and heightfield layers to a pool of background threads (instead
+         * of loading them all at once when the tile pages in). Default value = false.
+         */
         void setUseTaskService( bool value );
 
+        /**
+         * Gets whether the osgEarth task service is enabled for preemptive LOD mode. See
+         * setUseTaskService().
+         */
         bool getUseTaskService() const;
 
         /**
@@ -169,7 +179,10 @@ namespace osgEarth
          */
 		enum LayeringTechnique
 		{
+            /** Use multiple rendering passes to blend image layers together */
 			MULTIPASS,
+
+            /** Use a multitexture control to blend image layers together (DEFAULT) */
 			MULTITEXTURE
 		};
 

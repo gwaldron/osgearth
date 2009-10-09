@@ -101,7 +101,6 @@ _colorLayersDirty( false ),
 _usePerLayerUpdates( false )
 {
     setTileID( key->getTileId() );
-    setUseLayerRequests( false );
 }
 
 VersionedTile::~VersionedTile()
@@ -113,10 +112,10 @@ VersionedTile::~VersionedTile()
     {
         for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
         {
-            if (i->get()->getState() == TaskRequest::STATE_IN_PROGRESS)
-            {
-                osg::notify(osg::NOTICE) << "Request (" << (int)this << " in progress, cancelling " << std::endl;
-            }
+            //if (i->get()->getState() == TaskRequest::STATE_IN_PROGRESS)
+            //{
+            //    osg::notify(osg::NOTICE) << "Request (" << (int)this << ") in progress, cancelling " << std::endl;
+            //}
             i->get()->cancel();
         }
     }
@@ -139,10 +138,14 @@ VersionedTile::getVersionedTerrain() const {
 void
 VersionedTile::setUseLayerRequests( bool value )
 {
-    _useLayerRequests = value;   
+    if ( _useLayerRequests != value )
+    {
+        _useLayerRequests = value;   
 
-    // if layer requests are on, we need an update traversal.
-    this->setNumChildrenRequiringUpdateTraversal( value? 1 : 0 );
+        // if layer requests are on, we need an update traversal.
+        int oldNum = getNumChildrenRequiringUpdateTraversal();
+        setNumChildrenRequiringUpdateTraversal( _useLayerRequests? oldNum+1 : oldNum-1 );
+    }
 }
 
 int
@@ -182,6 +185,17 @@ VersionedTile::setHasElevationHint( bool hint )
 }
 
 void
+VersionedTile::preCompile()
+{
+    static_cast<EarthTerrainTechnique*>( getTerrainTechnique() )->init( false );
+    _hasBeenTraversal = true;
+    setDirty( false );
+}
+
+#define PRI_IMAGE_OFFSET 1.0f // priority offset of imagery relative to elevation
+#define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
+
+void
 VersionedTile::servicePendingRequests( int stamp )
 {
     VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
@@ -200,10 +214,13 @@ VersionedTile::servicePendingRequests( int stamp )
                 r->setProgressCallback( new TileRequestProgressCallback(r, versionedTerrain->getOrCreateTaskService()));
                 _requests.push_back( r );
             }
-            for( int layerIndex=0; layerIndex<getNumColorLayers(); layerIndex++ )
+
+            int numColorLayers = getNumColorLayers();
+            for( int layerIndex = 0; layerIndex < numColorLayers; layerIndex++ )
             {
+                // imagery is slighty higher priority than elevation data
                 TaskRequest* r = new TileColorLayerRequest( _key.get(), factory, layerIndex );
-                r->setPriority( (float)_key->getLevelOfDetail() + (0.1 * (float)layerIndex) );
+                r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
                 r->setStamp( stamp );
                 r->setProgressCallback( new TileRequestProgressCallback(r, versionedTerrain->getOrCreateTaskService()));
                 _requests.push_back( r );

@@ -107,6 +107,12 @@ namespace osgEarth
         void servicePendingRequests( int frameStamp );
 
         void setHasElevationHint( bool hasElevation );
+
+        /** Force the tile to compile its geometry now. The new geometry will join the
+            scene graph on the next update traversal. */
+        void preCompile();
+
+
     protected:
         ~VersionedTile();
 

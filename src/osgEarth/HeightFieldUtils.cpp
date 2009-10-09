@@ -139,6 +139,43 @@ HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
 }
 
 
+osg::HeightField*
+HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inputEx, 
+                                  const GeoExtent& outputEx )
+{
+    float div = outputEx.width()/inputEx.width();
+    if ( div >= 1.0f )
+        return 0L;
+
+    int numCols = input->getNumColumns();
+    int numRows = input->getNumRows();
+
+    float dx = input->getXInterval() * div;
+    float dy = input->getYInterval() * div;
+
+    osg::HeightField* dest = new osg::HeightField();
+    dest->allocate( numCols, numRows );
+    dest->setXInterval( dx );
+    dest->setYInterval( dy );
+
+    double x, y;
+    int col, row;
+
+    for( x = outputEx.xMin(), col=0; col < numCols; x += dx, col++ )
+    {
+        for( y = outputEx.yMin(), row=0; row < numRows; y += dy, row++ )
+        {
+            float h = HeightFieldUtils::getHeightAtLocation( input, x, y );
+            dest->setHeight( col, row, h );
+        }
+    }
+
+    osg::Vec3d orig( outputEx.xMin(), outputEx.yMin(), input->getOrigin().z() );
+    dest->setOrigin( orig );
+
+    return dest;
+}
+
 
 /******************************************************************************************/
 

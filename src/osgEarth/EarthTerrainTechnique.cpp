@@ -48,7 +48,8 @@ using namespace osgEarth;
 EarthTerrainTechnique::EarthTerrainTechnique():
     _currentReadOnlyBuffer(1),
     _currentWriteBuffer(0),
-    _verticalScaleOverride(1.0f)    
+    _verticalScaleOverride(1.0f),    
+    _swapBuffersPending(false)
 {
     //nop
 }
@@ -57,7 +58,8 @@ EarthTerrainTechnique::EarthTerrainTechnique(const EarthTerrainTechnique& gt,con
     TerrainTechnique(gt,copyop),
     _currentReadOnlyBuffer(1),
     _currentWriteBuffer(0),
-    _verticalScaleOverride(1.0f)
+    _verticalScaleOverride(1.0f),    
+    _swapBuffersPending(false)
 {
     //nop
 }
@@ -81,6 +83,7 @@ EarthTerrainTechnique::getVerticalScaleOverride() const
 void EarthTerrainTechnique::swapBuffers()
 {
     std::swap(_currentReadOnlyBuffer,_currentWriteBuffer);
+    _swapBuffersPending = false;
 }
 
 void
@@ -114,7 +117,8 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
     swapBuffers();
 }
 
-void EarthTerrainTechnique::init()
+void
+EarthTerrainTechnique::init( bool swapBuffersNow )
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
 
@@ -138,7 +142,15 @@ void EarthTerrainTechnique::init()
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);
 
-    swapBuffers();
+    if ( !swapBuffersNow )
+        _swapBuffersPending = true;
+    else
+        swapBuffers();
+}
+
+void EarthTerrainTechnique::init()
+{
+    init( true );
 }
 
 Locator* EarthTerrainTechnique::computeMasterLocator()
@@ -997,6 +1009,9 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
     {
         if (_terrainTile->getDirty()) _terrainTile->init();
 
+        if ( _swapBuffersPending )
+            swapBuffers();
+
         osgUtil::UpdateVisitor* uv = dynamic_cast<osgUtil::UpdateVisitor*>(&nv);
         if (uv)
         {
@@ -1015,12 +1030,15 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
         }
     }
 
-
+    // the code from here on accounts for user traversals (intersections, etc)
     if (_terrainTile->getDirty()) 
     {
         //osg::notify(osg::INFO)<<"******* Doing init ***********"<<std::endl;
         _terrainTile->init();
     }
+
+    if ( _swapBuffersPending )
+        swapBuffers();
 
     BufferData& buffer = getReadOnlyBuffer();
     if (buffer._transform.valid()) buffer._transform->accept(nv);

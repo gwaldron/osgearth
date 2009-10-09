@@ -55,7 +55,7 @@ TaskRequestQueue::add( TaskRequest* request )
     ScopedLock<Mutex> lock(_mutex);
 
     request->setState( TaskRequest::STATE_PENDING );
-    
+
     // insert by priority.
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); i++ )
     {

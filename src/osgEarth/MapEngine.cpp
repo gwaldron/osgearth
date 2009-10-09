@@ -371,14 +371,14 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 }
 
 osg::HeightField*
-MapEngine::createEmptyHeightField( const TileKey* key )
+MapEngine::createEmptyHeightField( const TileKey* key, int numCols, int numRows )
 {
     //Get the bounds of the key
     double minx, miny, maxx, maxy;
     key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
 
     osg::HeightField *hf = new osg::HeightField();
-    hf->allocate( 16, 16 );
+    hf->allocate( numCols, numRows );
     for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
         hf->getHeightList()[i] = 0.0;
 
@@ -446,9 +446,12 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
         osgTerrain::HeightFieldLayer* ancestorLayer = static_cast<osgTerrain::HeightFieldLayer*>(ancestorTile->getElevationLayer());
         if ( ancestorLayer && ancestorLayer->getHeightField() )
         {   
-            osg::ref_ptr<GeoHeightField> ancestorHF = new GeoHeightField( ancestorLayer->getHeightField(), ancestorKey->getGeoExtent() );
-            osg::ref_ptr<GeoHeightField> hf = ancestorHF->createSubSample( key->getGeoExtent() );
-            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf->getHeightField() );
+            osg::HeightField* newHF = HeightFieldUtils::createSubSample(
+                ancestorLayer->getHeightField(),
+                ancestorKey->getGeoExtent(),
+                key->getGeoExtent() );
+            
+            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( newHF );
             hfLayer->setLocator( defaultLocator );
             tile->setElevationLayer( hfLayer );
         }
@@ -457,7 +460,7 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
     if ( !tile->getElevationLayer() )
     {
         osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer();
-        hfLayer->setHeightField( createEmptyHeightField( key ) );
+        hfLayer->setHeightField( createEmptyHeightField( key, 8, 8 ) );
         hfLayer->setLocator( defaultLocator );
         tile->setElevationLayer( hfLayer );
     }
@@ -568,6 +571,12 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
+
+    // force the tile to build its geometry NOW (while we're in the pager thread),
+    // because is OGL precompilation is off, the tile won't build until the first
+    // update traversal
+    //tile->setTerrainTechnique( new EarthTerrainTechnique() );
+    //tile->preCompile();
 
     osg::Node* result = 0L;
 

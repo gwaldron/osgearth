@@ -38,6 +38,7 @@ public:
     {
     }
 
+    //todo: maybe we should pass TaskRequest in as an argument 
     bool reportProgress(double current, double total)
     {
         //Check to see if we were marked cancelled on a previous check
@@ -89,18 +90,23 @@ struct TileElevationLayerRequest : public TileLayerRequest
 /*****************************************************************************/
 
 
-VersionedTile::VersionedTile( const TileKey* key ) :
+VersionedTile::VersionedTile( const TileKey* key, GeoLocator* keyLocator ) :
 _key( key ),
-_useLayerRequests( false ),
+_useLayerRequests( false ), // always set this to false here; use setUseLayerRequests() to enable
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
 _geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( false )
+_usePerLayerUpdates( false ), // only matters when _useLayerRequests==true
+_elevationLayerUpToDate( true )
 {
     setTileID( key->getTileId() );
+    setTerrainTechnique( new EarthTerrainTechnique( keyLocator ) );
+
+    // because the lowest LOD (1) is always loaded fully:
+    _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;
 }
 
 VersionedTile::~VersionedTile()
@@ -117,6 +123,11 @@ VersionedTile::~VersionedTile()
             //    osg::notify(osg::NOTICE) << "Request (" << (int)this << ") in progress, cancelling " << std::endl;
             //}
             i->get()->cancel();
+        }
+
+        if ( _elevationRequest.valid() )
+        {
+            _elevationRequest->cancel();
         }
     }
 }
@@ -184,12 +195,18 @@ VersionedTile::setHasElevationHint( bool hint )
     _requestElevation = hint;
 }
 
+bool
+VersionedTile::isElevationLayerUpToDate() const 
+{
+    return _elevationLayerUpToDate;
+}
+
 void
 VersionedTile::preCompile()
 {
-    static_cast<EarthTerrainTechnique*>( getTerrainTechnique() )->init( false );
-    _hasBeenTraversal = true;
-    setDirty( false );
+    //static_cast<EarthTerrainTechnique*>( getTerrainTechnique() )->init( false );
+    //_hasBeenTraversal = true;
+    //setDirty( false );
 }
 
 #define PRI_IMAGE_OFFSET 1.0f // priority offset of imagery relative to elevation
@@ -198,7 +215,9 @@ VersionedTile::preCompile()
 void
 VersionedTile::servicePendingRequests( int stamp )
 {
-    VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
+    // this method is called from the CULL traversal, and only is _useLayerRequests == true.
+    if ( !getVersionedTerrain() )
+        return;
 
     //Attach requests for the appropriate LOD data to the TerrainTile.
     if ( !_requestsInstalled )
@@ -208,11 +227,14 @@ VersionedTile::servicePendingRequests( int stamp )
         {
             if ( this->getElevationLayer() && _requestElevation )
             {
-                TileLayerRequest* r = new TileElevationLayerRequest( _key.get(), factory );
-                r->setPriority( (float)_key->getLevelOfDetail() );
-                r->setStamp( stamp );
-                r->setProgressCallback( new TileRequestProgressCallback(r, versionedTerrain->getOrCreateTaskService()));
-                _requests.push_back( r );
+                _elevationRequest = new TileElevationLayerRequest( _key.get(), factory );
+                _elevationRequest->setPriority( (float)_key->getLevelOfDetail() );
+                _elevationRequest->setProgressCallback( new TileRequestProgressCallback(
+                    _elevationRequest.get(), getVersionedTerrain()->getOrCreateTaskService()));
+
+                // locate this tile's parent, so we can track when to start loading our own elevation.
+                osg::ref_ptr<TileKey> parentKey = _key->createParentKey();
+                _parentTile = getVersionedTerrain()->getVersionedTile( parentKey->getTileId() );
             }
 
             int numColorLayers = getNumColorLayers();
@@ -222,75 +244,64 @@ VersionedTile::servicePendingRequests( int stamp )
                 TaskRequest* r = new TileColorLayerRequest( _key.get(), factory, layerIndex );
                 r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
                 r->setStamp( stamp );
-                r->setProgressCallback( new TileRequestProgressCallback(r, versionedTerrain->getOrCreateTaskService()));
+                r->setProgressCallback( new TileRequestProgressCallback(
+                    r, getVersionedTerrain()->getOrCreateTaskService()));
                 _requests.push_back( r );
             }
         }
         _requestsInstalled = true;
     }
 
-    if ( _requestsInstalled )
+    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
     {
-        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+        TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
+
+        //If a request has been marked as IDLE, the TaskService has tried to service it
+        //and it was either deemed out of date or was cancelled, so we need to add it again.
+        if ( r->isIdle() )
         {
-            TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
-            if (versionedTerrain)
-            {
-                //If a request has been marked as IDLE, the TaskService has tried to service it
-                //and it was either deemed out of date or was cancelled, so we need to add it again.
-                if ( r->isIdle() )
-                {
-                    //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
-                    r->setStamp( stamp );
-                    if (versionedTerrain)
-                    {
-                        versionedTerrain->getOrCreateTaskService()->add( r );
-                    }
-                }
-                else if ( !r->isCompleted() )
-                {
-                    r->setStamp( stamp );
-                }
-            }
+            //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
+            r->setStamp( stamp );
+            getVersionedTerrain()->getOrCreateTaskService()->add( r );
+        }
+        else if ( !r->isCompleted() )
+        {
+            r->setStamp( stamp );
+        }
+    }
+
+    // if we have an elevation request standing by, check to see whether the parent tile's elevation is
+    // loaded. If so, it is time to schedule this tile's elevation to load.
+    if ( _elevationRequest.valid() && !_elevationLayerUpToDate && _parentTile.valid() && _parentTile->isElevationLayerUpToDate() )
+    {
+        if ( _elevationRequest->isIdle() )
+        {
+            _elevationRequest->setStamp( stamp );
+            getVersionedTerrain()->getOrCreateTaskService()->add( _elevationRequest.get() );
+            //osg::notify(osg::NOTICE) << "Schedule Elev Req for " << _key->str() << std::endl;
+        }
+        else if ( !_elevationRequest->isCompleted() )
+        {
+            _elevationRequest->setStamp( stamp );
         }
     }
 }
 
 void VersionedTile::serviceCompletedRequests()
 {
-    VersionedTerrain* versionedTerrain = static_cast<VersionedTerrain*>(getTerrain());
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
     {
-        TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
-
+        TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
         if ( r->isCompleted() )
         {
-            // TODO: merge new tile data into tile.
-            if ( r->isElevLayerRequest() )
+            osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
+            if ( imgLayer )
             {
-                TileElevationLayerRequest* er = static_cast<TileElevationLayerRequest*>( r );
-                osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>( er->getResult() );
-                if ( hfLayer )
-                {
-                    this->setElevationLayer( hfLayer );
-                    if ( _usePerLayerUpdates )
-                        _elevationLayerDirty = true;
-                    else
-                        this->setDirty( true );
-                }
-            }
-            else // if ( r->isColorLayerRequest() )
-            {
-                TileColorLayerRequest* cr = static_cast<TileColorLayerRequest*>( r );
-                osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( cr->getResult() );
-                if ( imgLayer )
-                {
-                    this->setColorLayer( cr->_layerIndex, imgLayer );
-                    if ( _usePerLayerUpdates )
-                        _colorLayersDirty = true;
-                    else
-                        this->setDirty( true );
-                }
+                this->setColorLayer( r->_layerIndex, imgLayer );
+                if ( _usePerLayerUpdates )
+                    _colorLayersDirty = true;
+                else
+                    this->setDirty( true );
             }
             // remove from the list
             i = _requests.erase( i );
@@ -299,11 +310,44 @@ void VersionedTile::serviceCompletedRequests()
         {
             //Reset the cancelled task to IDLE and give it a new progress callback.
             i->get()->setState( TaskRequest::STATE_IDLE );
-            i->get()->setProgressCallback( new TileRequestProgressCallback(i->get(), versionedTerrain->getOrCreateTaskService()));
+            i->get()->setProgressCallback( new TileRequestProgressCallback(
+                i->get(), getVersionedTerrain()->getOrCreateTaskService()));
+            ++i;
         }
         else
         {
-            i++;
+            ++i;
+        }
+    }
+
+    // check the progress of the elevation data...
+    if ( _elevationRequest.valid() && !_elevationLayerUpToDate )
+    {
+        if ( _elevationRequest->isCompleted() )
+        {
+            // if the elevation request succeeded, install the new elevation layer!
+            TileElevationLayerRequest* er = static_cast<TileElevationLayerRequest*>( _elevationRequest.get() );
+            osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>( er->getResult() );
+            if ( hfLayer )
+            {
+                this->setElevationLayer( hfLayer );
+                if ( _usePerLayerUpdates )
+                    _elevationLayerDirty = true;
+                else
+                    this->setDirty( true );
+            }
+            
+            //osg::notify(osg::NOTICE) << "Complete Elev Req for " << _key->str() << std::endl;
+            _elevationLayerUpToDate = true; // done!
+            _elevationRequest = 0L;
+        }
+        else if ( _elevationRequest->isCanceled() )
+        {
+            // If the request was canceled, reset it to IDLE and reset the callback. On the next
+            // servicePendingRequests, the request will be re-scheduled.
+            _elevationRequest->setState( TaskRequest::STATE_IDLE );
+            _elevationRequest->setProgressCallback( new TileRequestProgressCallback(
+                _elevationRequest.get(), getVersionedTerrain()->getOrCreateTaskService() ) );
         }
     }
 }

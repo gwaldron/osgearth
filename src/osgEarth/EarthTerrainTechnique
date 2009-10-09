@@ -34,7 +34,7 @@ namespace osgEarth
     {
     public:
 
-        EarthTerrainTechnique();
+        EarthTerrainTechnique( osgTerrain::Locator* locator =0L );
 
         /** Copy constructor using CopyOp to manage deep vs shallow copy.*/
         EarthTerrainTechnique(const EarthTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
@@ -74,7 +74,7 @@ namespace osgEarth
 
         /** Same as init(), but swapping buffers is optional. This is used to "precompile" the tile
         from the pager thread, and then swap the buffers in the update thread. */
-        void init( bool swapBuffers );
+        //void init( bool swapBuffers );
 
 
         /**
@@ -119,6 +119,8 @@ namespace osgEarth
         osg::Vec3d _lastCenterModel;
         float _verticalScaleOverride;
         bool _swapBuffersPending;
+
+        osg::ref_ptr<osgTerrain::Locator> _masterLocator;
     };
 
 }

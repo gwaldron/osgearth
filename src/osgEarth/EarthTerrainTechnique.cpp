@@ -45,7 +45,8 @@ using namespace osgEarth;
 
 #define NEW_COORD_CODE
 
-EarthTerrainTechnique::EarthTerrainTechnique():
+EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
+    _masterLocator( masterLocator ),
     _currentReadOnlyBuffer(1),
     _currentWriteBuffer(0),
     _verticalScaleOverride(1.0f),    
@@ -117,8 +118,43 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
     swapBuffers();
 }
 
-void
-EarthTerrainTechnique::init( bool swapBuffersNow )
+//void EarthTerrainTechnique::init()
+//{
+//    init( true );
+//}
+//
+//void
+//EarthTerrainTechnique::init( bool swapBuffersNow )
+//{
+//    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
+//
+//    //osg::notify(osg::INFO)<<"Doing GeometryTechnique::init()"<<std::endl;
+//    
+//    if (!_terrainTile) return;
+//
+//    BufferData& buffer = getWriteBuffer();
+//    
+//    Locator* masterLocator = computeMasterLocator();
+//    
+//    osg::Vec3d centerModel = computeCenterModel(masterLocator);
+//    
+//    generateGeometry(masterLocator, centerModel);
+//    
+//    applyColorLayers();
+//    applyTransparency();
+//    
+//    // smoothGeometry();
+//
+//    if (buffer._transform.valid())
+//        buffer._transform->setThreadSafeRefUnref(true);
+//
+//    if ( !swapBuffersNow )
+//        _swapBuffersPending = true;
+//    else
+//        swapBuffers();
+//}
+
+void EarthTerrainTechnique::init()
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
 
@@ -142,19 +178,14 @@ EarthTerrainTechnique::init( bool swapBuffersNow )
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);
 
-    if ( !swapBuffersNow )
-        _swapBuffersPending = true;
-    else
-        swapBuffers();
-}
-
-void EarthTerrainTechnique::init()
-{
-    init( true );
+    swapBuffers();
 }
 
 Locator* EarthTerrainTechnique::computeMasterLocator()
 {
+    if ( _masterLocator.valid() )
+        return _masterLocator.get();
+
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
     osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(0);
 

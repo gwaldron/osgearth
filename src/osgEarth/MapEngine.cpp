@@ -503,7 +503,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( key, map );
 
     // The empty tile:
-    VersionedTile* tile = new VersionedTile( key );
+    VersionedTile* tile = new VersionedTile( key, locator.get() );
     tile->setRequiresNormals( true );
     tile->setDataVariance( osg::Object::DYNAMIC );
     tile->setLocator( locator.get() );
@@ -727,7 +727,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     hf_layer->setLocator( locator.get() );
     hf_layer->setHeightField( hf.get() );
 
-    VersionedTile* tile = new VersionedTile( key );
+    VersionedTile* tile = new VersionedTile( key, locator.get() );
     //tile->setTileID(key->getTileId());
 
     tile->setLocator( locator.get() );

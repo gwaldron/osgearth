@@ -21,6 +21,7 @@
 #define OSGEARTH_VERSIONED_TERRAIN 1
 
 #include <osgEarth/TaskService>
+#include <osgEarth/Locators>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <OpenThreads/Mutex>
@@ -52,7 +53,7 @@ namespace osgEarth
     class VersionedTile : public osgTerrain::TerrainTile
     {
     public:
-        VersionedTile( const TileKey* key );
+        VersionedTile( const TileKey* key, GeoLocator* keyLocator );
 
         /** Gets the tilekey associated with this tile. */
         const TileKey* getKey() const;
@@ -112,6 +113,8 @@ namespace osgEarth
             scene graph on the next update traversal. */
         void preCompile();
 
+        /** Gets whether the tile's real (not placeholder) elevation data has been loaded. */
+        bool isElevationLayerUpToDate() const;
 
     protected:
         ~VersionedTile();
@@ -127,10 +130,15 @@ namespace osgEarth
         bool _requestElevation;
         bool _elevationLayerDirty;
         bool _colorLayersDirty;
+        bool _elevationLayerRequested;
+        bool _elevationLayerUpToDate;
 
         osg::ref_ptr<const TileKey> _key;
         TaskRequestList _requests;
-        int _numActiveRequests;        
+        osg::ref_ptr<TaskRequest> _elevationRequest;
+        int _numActiveRequests;       
+
+        osg::ref_ptr<VersionedTile> _parentTile;
 
         /** Deals with completed requests during the UPDATE traversal. */
         void serviceCompletedRequests();

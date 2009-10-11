@@ -400,6 +400,14 @@ HTTPClient::readImageFile(const std::string &filename,
     return getClient().doReadImageFile( filename, options, callback );
 }
 
+osg::Node*
+HTTPClient::readNodeFile(const std::string &filename,
+                          const osgDB::ReaderWriter::Options *options,
+                          osgEarth::ProgressCallback *callback)
+{
+    return getClient().doReadNodeFile( filename, options, callback );
+}
+
 HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, ProgressCallback* callback) const
 {
@@ -567,6 +575,55 @@ HTTPClient::doReadImageFile(const std::string &filename,
         {
             osgDB::ReaderWriter::ReadResult rr = reader->readImage(response.getPartStream(0), options);
             if (rr.validImage()) return rr.takeImage();
+            if (rr.error()) osg::notify(osg::WARN) << rr.message() << std::endl;
+            return NULL;
+        }
+    }
+    else
+    {
+        /*if (response.isCancelled())
+            osg::notify(osg::NOTICE) << "Request for " << filename << " was cancelled " << std::endl;*/
+    }
+    return 0;
+}
+
+osg::Node*
+HTTPClient::doReadNodeFile(const std::string &filename,
+                           const osgDB::ReaderWriter::Options *options,
+                           osgEarth::ProgressCallback *callback)
+{
+    HTTPResponse response = this->doGet(filename, callback);
+
+    if (response.isOK())
+    {
+        // Try to find a reader by file extension. If this fails, we will fetch the file
+        // anyway and try to get a reader via mime-type.
+        std::string ext = osgDB::getFileExtension( filename );
+        osgDB::ReaderWriter *reader =
+            osgDB::Registry::instance()->getReaderWriterForExtension( ext );
+        //osg::notify(osg::NOTICE) << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
+
+        //If we didn't get a reader by extension, try to get it via mime type
+        if (!reader)
+        {
+            std::string mimeType = response.getMimeType();
+            osg::notify(osg::INFO) << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+            if ( mimeType.length() > 0 )
+            {
+                reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            }
+        }
+
+        if (!reader)
+        {
+            osg::notify(osg::NOTICE)<<"Error: No ReaderWriter for file "<<filename<<std::endl;
+            return NULL;
+        }
+
+        if (reader)
+        {
+            osgDB::ReaderWriter::ReadResult rr = reader->readNode(response.getPartStream(0), options);
+            if (rr.validNode()) return rr.takeNode();
             if (rr.error()) osg::notify(osg::WARN) << rr.message() << std::endl;
             return NULL;
         }

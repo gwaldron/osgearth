@@ -392,7 +392,8 @@ Map::calculateProfile()
 osg::HeightField*
 Map::createHeightField( const TileKey* key,
                         bool fallback,
-                        SamplePolicy samplePolicy)
+                        SamplePolicy samplePolicy,
+                        ProgressCallback* progress)
 {
 	//osg::notify(osg::INFO) << "[osgEarth::Map::createHeightField]" << std::endl;
     OpenThreads::ScopedReadLock lock( _mapDataMutex );
@@ -411,7 +412,7 @@ Map::createHeightField( const TileKey* key,
 			osg::HeightField* hf = NULL;
 			while (hf_key.valid())
 			{
-				hf = i->get()->createHeightField( hf_key.get() );
+				hf = i->get()->createHeightField( hf_key.get(), progress );
 				if (hf || !fallback) break;
 				hf_key = hf_key->createParentKey();
 			}

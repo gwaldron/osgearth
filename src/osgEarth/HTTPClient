@@ -126,6 +126,10 @@ namespace osgEarth
                                            const osgDB::ReaderWriter::Options* options = 0,
                                            ProgressCallback* callback = 0);
 
+        static osg::Node*   readNodeFile( const std::string& filename, 
+                                          const osgDB::ReaderWriter::Options* options = 0,
+                                          ProgressCallback* callback = 0);
+
     private:
         HTTPClient( const osgDB::ReaderWriter::Options* options =NULL );
         ~HTTPClient();
@@ -139,6 +143,10 @@ namespace osgEarth
         HTTPResponse doGet( const std::string& url, ProgressCallback* callback = 0 ) const;
 
         osg::Image* doReadImageFile(const std::string& filename,
+                                  const osgDB::ReaderWriter::Options* options = 0,
+                                  osgEarth::ProgressCallback *callback = 0);
+
+        osg::Node* doReadNodeFile(const std::string& filename,
                                   const osgDB::ReaderWriter::Options* options = 0,
                                   osgEarth::ProgressCallback *callback = 0);
 

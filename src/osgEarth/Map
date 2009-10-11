@@ -208,7 +208,8 @@ namespace osgEarth
         osg::HeightField* createHeightField(
             const TileKey* key,
             bool fallback,
-            SamplePolicy samplePolicy =FIRST_VALID );
+            SamplePolicy samplePolicy =FIRST_VALID,
+            ProgressCallback* progress = 0);
 
         //GeoHeightField* createGeoHeightField(
         //    const TileKey* key,

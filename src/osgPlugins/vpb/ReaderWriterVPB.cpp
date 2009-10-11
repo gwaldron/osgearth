@@ -19,6 +19,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
+#include <osgEarth/HTTPClient>
 
 #include <osg/Notify>
 #include <osg/io_utils>
@@ -188,6 +189,7 @@ public:
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
             root_node = osgDB::readNodeFile(url, localOptions.get());
 
+
             if (root_node.valid())
             {
                 path = osgDB::getFilePath(url);
@@ -349,7 +351,7 @@ public:
         return buf.str();
     }
     
-    osgTerrain::TerrainTile* getTerrainTile( const TileKey* key )
+    osgTerrain::TerrainTile* getTerrainTile( const TileKey* key, ProgressCallback* progress )
     {
         int level = key->getLevelOfDetail();
         unsigned int tile_x, tile_y;
@@ -390,7 +392,16 @@ public:
         osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
         localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
-        osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename, localOptions.get());
+        //osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename, localOptions.get());
+        osg::ref_ptr<osg::Node> node;
+        if (osgDB::containsServerAddress( filename ) )
+        {
+            node = HTTPClient::readNodeFile( filename, localOptions.get(), progress );
+        }
+        else
+        {
+            node = osgDB::readNodeFile( filename, localOptions.get() );
+        }
 
         if (node.valid())
         {
@@ -429,9 +440,13 @@ public:
         }
         else
         {
-            osg::notify(osg::INFO)<<"Black listing : "<<filename<<std::endl;
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(blacklistMutex);
-            blacklistedFilenames.insert(filename);
+            //Only blacklist if the request wasn't cancelled by the callback.
+            if (!progress || (!progress->isCanceled()))
+            {
+                osg::notify(osg::INFO)<<"Black listing : "<<filename<<std::endl;
+                OpenThreads::ScopedLock<OpenThreads::Mutex> lock(blacklistMutex);
+                blacklistedFilenames.insert(filename);
+            }
         }
         
         return findTile(tileID, true);
@@ -539,7 +554,7 @@ public:
                              ProgressCallback* progress)
     {
         //TODO:  Make VPB driver use progress callback
-        osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key);                
+        osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key, progress);                
         if (tile.valid())
         {        
             if (layerNum < tile->getNumColorLayers())
@@ -560,8 +575,7 @@ public:
                                          ProgressCallback* progress
                                          )
     {
-        //TODO:  Make VPB driver use progress callback
-        osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key);                
+        osg::ref_ptr<osgTerrain::TerrainTile> tile = vpbDatabase->getTerrainTile(key, progress);                
         if (tile.valid())
         {        
             osgTerrain::Layer* elevationLayer = tile->getElevationLayer();

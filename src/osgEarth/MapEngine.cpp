@@ -467,6 +467,27 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
 }
 
 
+osgTerrain::HeightFieldLayer*
+MapEngine::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
+                                             const TileKey* ancestorKey,
+                                             const TileKey* key,
+                                             GeoLocator* keyLocator )
+{
+    osgTerrain::HeightFieldLayer* hfLayer = NULL;
+
+    osg::HeightField* newHF = HeightFieldUtils::createSubSample(
+        ancestorHF,
+        ancestorKey->getGeoExtent(),
+        key->getGeoExtent() );
+
+    newHF->setSkirtHeight( ancestorHF->getSkirtHeight() / 2.0 );
+    
+    hfLayer = new osgTerrain::HeightFieldLayer( newHF );
+    hfLayer->setLocator( keyLocator );
+
+    return hfLayer;
+}
+
 osg::Node*
 MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD )
 {
@@ -531,8 +552,15 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     }
 
     // install placeholder image and heightfield layers.
-    addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
-    addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
+    {
+        ScopedReadLock ancestorLock( tile->getTileLayersMutex() );
+        addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
+        addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
+    }
+
+    // set this tile's data level to that of the ancestor.
+    if ( ancestorTile.valid() ) // should always be TRUE
+        tile->setElevationLOD( ancestorTile->getElevationLOD() );
     
     // calculate the switching distances:
     osg::BoundingSphere bs = tile->getBound();
@@ -903,8 +931,7 @@ MapEngine::createImageLayer( Map* map,
 }
 
 osgTerrain::HeightFieldLayer* 
-MapEngine::createHeightFieldLayer( Map* map,
-                                   const TileKey* key)
+MapEngine::createHeightFieldLayer( Map* map, const TileKey* key, bool exactOnly )
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -912,10 +939,13 @@ MapEngine::createHeightFieldLayer( Map* map,
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
 
     // try to create a heightfield at native res:
-    osg::HeightField* hf = map->createHeightField( key, true );
+    osg::HeightField* hf = map->createHeightField( key, !exactOnly );
     if ( !hf )
     {
-        hf = createEmptyHeightField( key );
+        if ( exactOnly )
+            return NULL;
+        else
+            hf = createEmptyHeightField( key );
     }
 
     // In a Plate Carre tesselation, scale the heightfield elevations from meters to degrees
@@ -925,7 +955,9 @@ MapEngine::createHeightFieldLayer( Map* map,
     }
 
     osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
-    hfLayer->setLocator( GeoLocator::createForKey( key, map ) );
+
+    GeoLocator* locator = GeoLocator::createForKey( key, map );
+    hfLayer->setLocator( locator );
 
     return hfLayer;
 }

@@ -124,6 +124,13 @@ GeoExtent::height() const
     return _ymax - _ymin;
 }
 
+void
+GeoExtent::getCentroid( double& out_x, double& out_y ) const
+{
+    out_x = _xmin+width()/2.0;
+    out_y = _ymin+height()/2.0;
+}
+
 bool
 GeoExtent::crossesDateLine() const
 {

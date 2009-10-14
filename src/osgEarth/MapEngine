@@ -77,7 +77,8 @@ namespace osgEarth
 
         osgTerrain::HeightFieldLayer* createHeightFieldLayer(
             Map* map,
-            const TileKey* key);
+            const TileKey* key,
+            bool exactOnly );
 
         /**
          * Gets the properties that customize how this engine renders tile data.
@@ -111,6 +112,12 @@ namespace osgEarth
             int numCols =32,
             int numRows =32 );
 
+
+        osgTerrain::HeightFieldLayer* createPlaceholderHeightfieldLayer(
+            osg::HeightField* ancestorHF,
+            const TileKey* ancestorKey,
+            const TileKey* key,
+            GeoLocator*    locator );
 
     protected:
 

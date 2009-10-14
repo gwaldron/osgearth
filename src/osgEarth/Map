@@ -26,6 +26,7 @@
 #include <osgEarth/MapLayer>
 #include <osgEarth/MapEngine>
 #include <osgEarth/MapEngineProperties>
+//#include <osgEarth/ElevationModel>
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/ReadWriteMutex>
 
@@ -183,20 +184,6 @@ namespace osgEarth
         unsigned int getId() const;
 
         /**
-         * Creates a heightfield for the given TileKey.
-         *
-         * @param key
-         *      Tile key defining the region for which to return a heightfield
-         * @return
-         *      A heightfield corresponding to the key, or NULL if data does not exist for that
-         *      level of detail and/or region. Use createBestHeightField() if you are willing
-         *      to accept downsampling where your requested LOD does not exist.
-         */
-        //osg::HeightField* createHeightField( const TileKey* key ) {
-        //    return createHeightField( key, true );
-        //}
-
-        /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
          * lower resolutions if necessary. 
          *
@@ -210,16 +197,6 @@ namespace osgEarth
             bool fallback,
             SamplePolicy samplePolicy =FIRST_VALID,
             ProgressCallback* progress = 0);
-
-        //GeoHeightField* createGeoHeightField(
-        //    const TileKey* key,
-        //    bool fallback,
-        //    SamplePolicy samplePolicy =FIRST_VALID ); 
-
-		/**
-		 * Creates a heightfield for the given TileKey using the elevation layers from this map
-		 */
-		//osg::HeightField* createHeightField( const TileKey* key, bool fallback, SamplePolicy samplePolicy = FIRST_VALID );
 
 		/**
 		 * Gets the Cache for this Map
@@ -250,6 +227,20 @@ namespace osgEarth
          */
         int getDataModelRevision() const;
 
+        /**
+         * Gets a dynamic, holistic elevation data manager. This object will
+         * service spot-elevation requests, loading the supporting heightfield
+         * information as necessary.
+         *
+         * @param taskService
+         *      If you specify a task service, the EM will use it to asynchronously
+         *      load heightfield data for queries that don't meet the requested
+         *      resolution/LOD. If you do not specifiy a task service, the EM will
+         *      attempt to synchronously load the heightfield data, which may result
+         *      in a delay.
+         */
+        //ElevationModel* getOrCreateElevationModel( TaskService* service =0L ) const;
+
     protected:
 
         ~Map() { }
@@ -271,6 +262,7 @@ namespace osgEarth
 		osg::ref_ptr<Cache> _cache;
 		bool _use_mercator_locator;
         int _dataModelRevision;
+        //osg::ref_ptr<ElevationModel> _elevationModel;
 
     private:
         void calculateProfile();

@@ -131,6 +131,20 @@ TileKey::createParentKey() const
     return new TileKey( _face, lod, x, y, _profile.get());
 }
 
+TileKey*
+TileKey::createAncestorKey( int ancestorLod ) const
+{
+    if ( ancestorLod > _lod ) return NULL;
+
+    unsigned int x = _x, y = _y;
+    for( int i=_lod; i > ancestorLod; i-- )
+    {
+        x /= 2;
+        y /= 2;
+    }
+    return new TileKey( _face, ancestorLod, x, y, _profile.get() );
+}
+
 const GeoExtent&
 TileKey::getGeoExtent() const
 {

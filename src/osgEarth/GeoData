@@ -64,6 +64,8 @@ namespace osgEarth
         double width() const;
         double height() const;
 
+        void getCentroid( double& out_x, double& out_y ) const;
+
         bool isValid() const;
         bool defined() const { return isValid(); }
 

@@ -22,20 +22,26 @@
 
 #include <osgEarth/TaskService>
 #include <osgEarth/Locators>
+#include <osgEarth/Profile>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
-#include <OpenThreads/Mutex>
+#include <OpenThreads/ReadWriteMutex>
 
 namespace osgEarth
 {
+    class Map;
+    class MapEngine;
     class VersionedTerrain;
+    class VersionedTile;
 
-    /*interface*/ class TileLayerFactory : public osg::Referenced
-    {
-    public:
-        virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex, ProgressCallback* progress ) =0;
-        virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, ProgressCallback* progress ) =0;
-    };
+    ///*interface*/ class TileLayerFactory : public osg::Referenced
+    //{
+    //public:
+    //    virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex, ProgressCallback* progress ) =0;
+    //    virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, bool exactOnly, ProgressCallback* progress ) =0;
+    //};
+
+    typedef std::vector< osg::observer_ptr<VersionedTile> > VersionedTileObsVec;
 
     /**
      * An OSG terrain tile that supports change detection.
@@ -58,10 +64,9 @@ namespace osgEarth
         /** Gets the tilekey associated with this tile. */
         const TileKey* getKey() const;
 
-        bool getUseLayerRequests() const { return _useLayerRequests; }
-
         /** Sets whether to use the TaskService to schedule per-layer background data loading. */
         void setUseLayerRequests( bool );
+        bool getUseLayerRequests() const { return _useLayerRequests; }
 
         /** Sets whether to update the tile layer by layer vs. rebuidling the entire tile. */
         void setUsePerLayerUpdates( bool );
@@ -98,32 +103,43 @@ namespace osgEarth
          */
         int getGeometryRevision() const;
 
-        /** Override */
-        virtual void traverse( class osg::NodeVisitor& nv );
-
-        class VersionedTerrain* getVersionedTerrain();
-        const class VersionedTerrain* getVersionedTerrain() const;
-
         /** Updates and services this tile's service pending requests. */
         void servicePendingRequests( int frameStamp );
 
+        /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
         void setHasElevationHint( bool hasElevation );
 
         /** Force the tile to compile its geometry now. The new geometry will join the
             scene graph on the next update traversal. */
-        void preCompile();
+        //void preCompile();
 
         /** Gets whether the tile's real (not placeholder) elevation data has been loaded. */
         bool isElevationLayerUpToDate() const;
 
+        /** Gets or sets the LOD of this tile's current heightfield data. */
+        int getElevationLOD() const;
+        void setElevationLOD( int lod );
+
+        /** Gets the terrain object to which this tile belongs. */
+        class VersionedTerrain* getVersionedTerrain();
+        const class VersionedTerrain* getVersionedTerrain() const;
+
+        OpenThreads::ReadWriteMutex& getTileLayersMutex();
+
+    public: // OVERRIDES
+
+        virtual void traverse( class osg::NodeVisitor& nv );
+
+
     protected:
+
         ~VersionedTile();
 
 
     private:
-        int _terrainRevision;
-        int _tileRevision;
-        int _geometryRevision;
+        int  _terrainRevision;
+        int  _tileRevision;
+        int  _geometryRevision;
         bool _useLayerRequests;
         bool _requestsInstalled;
         bool _usePerLayerUpdates;
@@ -132,13 +148,19 @@ namespace osgEarth
         bool _colorLayersDirty;
         bool _elevationLayerRequested;
         bool _elevationLayerUpToDate;
+        int  _elevationLOD;
 
         osg::ref_ptr<const TileKey> _key;
+        osg::ref_ptr<GeoLocator> _keyLocator;
         TaskRequestList _requests;
-        osg::ref_ptr<TaskRequest> _elevationRequest;
+        osg::ref_ptr<TaskRequest> _elevRequest;
+        osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
         int _numActiveRequests;       
 
         osg::ref_ptr<VersionedTile> _parentTile;
+
+        VersionedTileObsVec _neighbors;
+        OpenThreads::ReadWriteMutex _tileLayersMutex;
 
         /** Deals with completed requests during the UPDATE traversal. */
         void serviceCompletedRequests();
@@ -160,7 +182,7 @@ namespace osgEarth
     class VersionedTerrain : public osgTerrain::Terrain
     {
     public:
-        VersionedTerrain( TileLayerFactory* factory =NULL );
+        VersionedTerrain( Map* map, MapEngine* engine ); //, TileLayerFactory* factory =NULL );
 
         virtual const char* className() const { return "VersionedTerrain"; }
 
@@ -186,24 +208,33 @@ namespace osgEarth
          */
         void getTerrainTiles( TerrainTileList& out_tiles );
 
+        void refreshNeighbors( const osgTerrain::TileID& tileId, VersionedTileObsVec& output );
+
         /** Gets the number of color layers and elevation layers combined */
         int getNumActiveLayers() const;
 
-        TileLayerFactory* getTileLayerFactory() const;
+        //TileLayerFactory* getTileLayerFactory() const;
 
         TaskService* getOrCreateTaskService();
 
         unsigned int getNumTaskServiceThreads() const;
         void setNumTaskServiceThreads( unsigned int numTaskServiceThreads );
 
+        Map* getMap();
+        MapEngine* getEngine();
+
     private:
         int _revision;
         OpenThreads::Mutex _revisionMutex;
 
-        osg::ref_ptr<TileLayerFactory> _layerFactory;
+        osg::ref_ptr<Map> _map;
+        osg::ref_ptr<MapEngine> _engine;
         osg::ref_ptr<TaskService> _taskService;
+        osg::ref_ptr<const Profile> _profile;
         OpenThreads::Mutex _taskServiceMutex;
         unsigned int _numTaskServiceThreads;
+        
+        VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
     };
 }
 

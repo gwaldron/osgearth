@@ -118,42 +118,6 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
     swapBuffers();
 }
 
-//void EarthTerrainTechnique::init()
-//{
-//    init( true );
-//}
-//
-//void
-//EarthTerrainTechnique::init( bool swapBuffersNow )
-//{
-//    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
-//
-//    //osg::notify(osg::INFO)<<"Doing GeometryTechnique::init()"<<std::endl;
-//    
-//    if (!_terrainTile) return;
-//
-//    BufferData& buffer = getWriteBuffer();
-//    
-//    Locator* masterLocator = computeMasterLocator();
-//    
-//    osg::Vec3d centerModel = computeCenterModel(masterLocator);
-//    
-//    generateGeometry(masterLocator, centerModel);
-//    
-//    applyColorLayers();
-//    applyTransparency();
-//    
-//    // smoothGeometry();
-//
-//    if (buffer._transform.valid())
-//        buffer._transform->setThreadSafeRefUnref(true);
-//
-//    if ( !swapBuffersNow )
-//        _swapBuffersPending = true;
-//    else
-//        swapBuffers();
-//}
-
 void EarthTerrainTechnique::init()
 {
     OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
@@ -173,7 +137,7 @@ void EarthTerrainTechnique::init()
     applyColorLayers();
     applyTransparency();
     
-    // smoothGeometry();
+    smoothGeometry();
 
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);

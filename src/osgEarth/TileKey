@@ -67,7 +67,7 @@ namespace osgEarth
         /**
          * Gets a TileID corresponding to this key.
          */
-        virtual osgTerrain::TileID getTileId() const;
+        osgTerrain::TileID getTileId() const;
 
         /**
          * Gets the profile within which this key is interpreted.
@@ -79,23 +79,29 @@ namespace osgEarth
          * Gets a reference to the child key of this key in the specified
          * quadrant (0, 1, 2, or 3).
          */
-        virtual TileKey* createSubkey( unsigned int quadrant ) const;
+        TileKey* createSubkey( unsigned int quadrant ) const;
 
         /**
          * Creates and returns a key that represents the parent tile of this key. The
          * caller is responsible for deleting the returned object.
          */
-        virtual TileKey* createParentKey() const;
+        TileKey* createParentKey() const;
+
+        /**
+         * Creates and returns a key that represents an ancestor tile corresponding to
+         * the specified LOD. The caller is responsible for deleting the returned object.
+         */
+        TileKey* createAncestorKey( int ancestorLod ) const;
 
         /**
          * Gets the face index of the tile represented by this key.
          */
-        virtual unsigned int getFace() const;
+        unsigned int getFace() const;
 
         /**
          * Gets the level of detail of the tile represented by this key.
          */
-        virtual unsigned int getLevelOfDetail() const;
+        unsigned int getLevelOfDetail() const;
 
         /**
          * Gets the geospatial extents of the tile represented by this key.
@@ -105,7 +111,7 @@ namespace osgEarth
         /**
          * Gets the extents of this key's tile, in pixels
          */
-        virtual void getPixelExtents(
+        void getPixelExtents(
             unsigned int& out_minx,
             unsigned int& out_miny,
             unsigned int& out_maxx,
@@ -115,7 +121,7 @@ namespace osgEarth
         /**
          * Gets the X and Y indexes of this tile at its level of detail.
          */
-        virtual void getTileXY(
+        void getTileXY(
             unsigned int& out_tile_x,
             unsigned int& out_tile_y) const;
 

@@ -277,23 +277,6 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
     int numColumns, numRows;
     double i_sampleFactor, j_sampleFactor;
     calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
-    //int numColumns = elevationLayer->getNumColumns();
-    //int numRows = elevationLayer->getNumRows();
-
-    //double i_sampleFactor = 1.0;
-    //double j_sampleFactor = 1.0;
-    //float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
-    //if (sampleRatio!=1.0f)
-    //{
-    //    unsigned int originalNumColumns = numColumns;
-    //    unsigned int originalNumRows = numRows;
-    //
-    //    numColumns = std::max((unsigned int) (float(originalNumColumns)*sqrtf(sampleRatio)), 4u);
-    //    numRows = std::max((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)),4u);
-
-    //    i_sampleFactor = double(originalNumColumns-1)/double(numColumns-1);
-    //    j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
-    //}
     
     float scaleHeight = 
         _verticalScaleOverride != 1.0? _verticalScaleOverride :
@@ -304,6 +287,24 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
 
     // re-populate the vertex array.
     osg::Vec3Array* vertices = static_cast<osg::Vec3Array*>( writeBuf._geometry->getVertexArray() );
+
+    int skirtBottom = numRows*numColumns; // bottom, right, top, left
+    int skirtRight = skirtBottom + numColumns;
+    int skirtTop = skirtRight + numRows;
+    int skirtLeft = skirtTop + numColumns;
+    bool hasSkirt = vertices->size() > (numRows*numColumns);
+    float skirtHeight = 0.0f;
+    if ( hasSkirt )
+    {
+        HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
+        if (hfl && hfl->getHeightField()) 
+        {
+            skirtHeight = hfl->getHeightField()->getSkirtHeight();
+        }
+    }
+    
+    bool createSkirt = skirtHeight != 0.0f;
+    osg::Vec3Array* normals = static_cast<osg::Vec3Array*>( writeBuf._geometry->getNormalArray() );
 
     unsigned int i, j;
     for(j=0; j<numRows; ++j)
@@ -326,9 +327,45 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
             
             if (validValue)
             {
-                osg::Vec3d model;
-                masterLocator->convertLocalToModel(ndc, model);                
-                (*vertices)[iv] = model - centerModel;
+                //osg::Vec3d oldLocal = (*vertices)[iv];
+
+                osg::Vec3d newModel;
+                masterLocator->convertLocalToModel(ndc, newModel);
+                osg::Vec3d newLocal = newModel - centerModel; 
+                (*vertices)[iv] = newLocal;
+
+                // skirt:
+                if ( hasSkirt && skirtHeight > 0.0f )
+                {
+                    if ( j == 0 ) // first row (bottom skirt)
+                    {                 
+                        osg::Vec3d normal = (*normals)[iv];
+                        (*vertices)[skirtBottom+i] = (newModel - normal * skirtHeight) - centerModel;
+                        //osg::Vec3d deltaLocal = oldLocal - (*vertices)[skirtBottom+i];
+                        //(*vertices)[skirtBottom+i] = newLocal + deltaLocal;
+                    }
+                    if ( j == numRows-1 ) // last row, (top skirt)
+                    {
+                        osg::Vec3d normal = (*normals)[iv];
+                        (*vertices)[skirtTop+(numColumns-1-i)] = (newModel - normal * skirtHeight) - centerModel;
+                        //osg::Vec3d deltaLocal = oldLocal - (*vertices)[skirtTop+(numColumns-1-i)];
+                        //(*vertices)[skirtTop+(numColumns-1-i)] = newLocal + deltaLocal;
+                    }
+                    if ( i == 0 ) // first column (left skirt)
+                    {
+                        osg::Vec3d normal = (*normals)[iv];
+                        (*vertices)[skirtLeft+(numRows-1-j)] = (newModel - normal * skirtHeight) - centerModel;
+                        //osg::Vec3d deltaLocal = oldLocal - (*vertices)[skirtLeft+(numRows-1-j)];
+                        //(*vertices)[skirtLeft+(numRows-1-j)] = newLocal + deltaLocal;
+                    }
+                    if ( i == numColumns-1 ) // last column (right skirt)
+                    {
+                        osg::Vec3d normal = (*normals)[iv];
+                        (*vertices)[skirtRight+j] = (newModel - normal * skirtHeight) - centerModel;
+                        //osg::Vec3d deltaLocal = oldLocal - (*vertices)[skirtRight+j];
+                        //(*vertices)[skirtRight+j] = newLocal + deltaLocal;
+                    }
+                }
             }
         }
     }

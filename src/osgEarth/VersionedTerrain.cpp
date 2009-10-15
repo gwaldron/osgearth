@@ -285,7 +285,7 @@ VersionedTile::isElevationLayerUpToDate() const
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
 
 
-// this method is called from the CULL TRAVERSAL, and only is _useLayerRequests == true.
+// This method is called from the CULL TRAVERSAL, and only is _useLayerRequests == true.
 void
 VersionedTile::servicePendingRequests( int stamp )
 {
@@ -305,7 +305,7 @@ VersionedTile::servicePendingRequests( int stamp )
             _parentTile = terrain->getVersionedTile( parentKey->getTileId() );
 
             _elevRequest = new TileElevationLayerRequest(_key.get(), map, engine );
-            _elevRequest->setPriority( -(float)_key->getLevelOfDetail() );
+            _elevRequest->setPriority( (float)_key->getLevelOfDetail() );
 
             _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
                 _key.get(), map, engine, _keyLocator.get(), _parentTile.get() );

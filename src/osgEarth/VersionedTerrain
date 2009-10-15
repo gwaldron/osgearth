@@ -157,13 +157,17 @@ namespace osgEarth
         osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
         int _numActiveRequests;       
 
-        osg::ref_ptr<VersionedTile> _parentTile;
+        // this is an obs ptr so we can "cache" the parent tile reference and refresh it 
+        // if the parent tile changes (which it could if it gets rebuilt)
+        osg::observer_ptr<VersionedTile> _parentTileObserver;
+        osg::ref_ptr<VersionedTile> _parentTile; // safe
 
         VersionedTileObsVec _neighbors;
         OpenThreads::ReadWriteMutex _tileLayersMutex;
 
         /** Deals with completed requests during the UPDATE traversal. */
         void serviceCompletedRequests();
+        void refreshParentTile();
     };
 
 

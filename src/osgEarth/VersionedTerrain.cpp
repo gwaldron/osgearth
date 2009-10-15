@@ -94,35 +94,42 @@ struct TileElevationLayerRequest : public TileLayerRequest
     TileElevationLayerRequest( const TileKey* key, Map* map, MapEngine* engine )
         : TileLayerRequest( key, map, engine ) { }
 
-    //bool isElevLayerRequest() const { return true; }
-
     void operator()( ProgressCallback* progress )
     {
-        _result = _engine->createHeightFieldLayer( _map.get(), _key.get(), true ); //exactOnly );
-        //_result = _engine->createHeightFieldLayer( map.get(), _key.get(), true, p ); // _key.get(), true, p );
+        _result = _engine->createHeightFieldLayer( _map.get(), _key.get(), true ); //exactOnly=true
     }
 };
 
 struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 {
-    TileElevationPlaceholderLayerRequest( const TileKey* key, Map* map, MapEngine* engine, GeoLocator* keyLocator, VersionedTile* parentTile )
-        : TileLayerRequest( key, map, engine ), 
-          _parentTile(parentTile),
+    TileElevationPlaceholderLayerRequest( const TileKey* key, Map* map, MapEngine* engine, GeoLocator* keyLocator )
+        : TileLayerRequest( key, map, engine ),
           _keyLocator(keyLocator) { }
+
+    void setParentTile( VersionedTile* parentTile )
+    {
+        _parentTile = parentTile;
+    }
 
     void operator()( ProgressCallback* progress )
     {
-        osg::ref_ptr<osg::HeightField> parentHF;
+        if ( _parentTile.valid() )
         {
-            ScopedReadLock lock( _parentTile->getTileLayersMutex() );
-            parentHF = static_cast<osgTerrain::HeightFieldLayer*>(_parentTile->getElevationLayer())->getHeightField();
-        }
+            osg::ref_ptr<osg::HeightField> parentHF;
+            {
+                ScopedReadLock lock( _parentTile->getTileLayersMutex() );
+                parentHF = static_cast<osgTerrain::HeightFieldLayer*>(_parentTile->getElevationLayer())->getHeightField();
+            }
 
-        _result = _engine->createPlaceholderHeightfieldLayer(
-            parentHF.get(),
-            _parentTile->getKey(),
-            _key.get(),
-            _keyLocator.get() );
+            if ( parentHF.valid() )
+            {
+                _result = _engine->createPlaceholderHeightfieldLayer(
+                    parentHF.get(),
+                    _parentTile->getKey(),
+                    _key.get(),
+                    _keyLocator.get() );
+            }
+        }
     }
 
     osg::ref_ptr<VersionedTile> _parentTile;
@@ -275,17 +282,24 @@ VersionedTile::isElevationLayerUpToDate() const
     return _elevationLayerUpToDate;
 }
 
-//void
-//VersionedTile::preCompile()
-//{
-//    //static_cast<EarthTerrainTechnique*>( getTerrainTechnique() )->init( false );
-//    //_hasBeenTraversal = true;
-//    //setDirty( false );
-//}
+
+// this safely refreshes the _parentTile member, and should be called at the top of the 
+// any traversal that plans to use the reference.
+void
+VersionedTile::refreshParentTile()
+{
+    _parentTile = _parentTileObserver.get();
+    if ( !_parentTile.valid() )
+    {
+        osg::ref_ptr<const TileKey> _parentKey = _key->createParentKey();
+        _parentTileObserver = getVersionedTerrain()->getVersionedTile( _parentKey->getTileId() );
+        _parentTile = _parentTileObserver.get();
+    }
+}
+
 
 #define PRI_IMAGE_OFFSET 1.0f // priority offset of imagery relative to elevation
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
-
 
 // This method is called from the CULL TRAVERSAL, and only is _useLayerRequests == true.
 void
@@ -293,6 +307,9 @@ VersionedTile::servicePendingRequests( int stamp )
 {
     VersionedTerrain* terrain = getVersionedTerrain();
     if ( !terrain ) return;
+
+    // make sure our refernece to the parent is up to date.
+    refreshParentTile();
 
     // The first time through, initialize all the data request tasks we will need to load
     // imagery, elevation, and elevation placeholders.
@@ -303,15 +320,12 @@ VersionedTile::servicePendingRequests( int stamp )
 
         if ( _hasElevation && this->getElevationLayer() ) // don't need a layers lock here
         {
-            // locate this tile's parent, so we can track when to start loading our own elevation.
-            osg::ref_ptr<TileKey> parentKey = _key->createParentKey();
-            _parentTile = terrain->getVersionedTile( parentKey->getTileId() );
-
             _elevRequest = new TileElevationLayerRequest(_key.get(), map, engine );
             _elevRequest->setPriority( (float)_key->getLevelOfDetail() );
 
             _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
-                _key.get(), map, engine, _keyLocator.get(), _parentTile.get() );
+                _key.get(), map, engine, _keyLocator.get() );
+
             _elevPlaceholderRequest->setPriority( (float)_key->getLevelOfDetail() );
         }
 
@@ -329,67 +343,71 @@ VersionedTile::servicePendingRequests( int stamp )
         _requestsInstalled = true;
     }
 
-    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+    if ( _requestsInstalled )
     {
-        TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
+        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+        {
+            TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
 
-        //If a request has been marked as IDLE, the TaskService has tried to service it
-        //and it was either deemed out of date or was cancelled, so we need to add it again.
-        if ( r->isIdle() )
-        {
-            //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
-            r->setStamp( stamp );
-            getVersionedTerrain()->getOrCreateTaskService()->add( r );
-        }
-        else if ( !r->isCompleted() )
-        {
-            r->setStamp( stamp );
-        }
-    }
-
-    // if we have an elevation request standing by, check to see whether the parent tile's elevation is
-    // loaded. If so, it is time to schedule this tile's elevation to load.
-    if ( _hasElevation && !_elevationLayerUpToDate )
-    {       
-        // if the main elevation request is idle, that means we have not yet started to load
-        // the final elevation layer. Therefore we need to check to see whether we need either
-        // a new placeholder or the final elevation:
-        if ( _elevRequest->isIdle() )
-        {
-            // see whether we need to start a new placeholder request:
-            if ( _parentTile->getElevationLOD() > _elevationLOD )
+            //If a request has been marked as IDLE, the TaskService has tried to service it
+            //and it was either deemed out of date or was cancelled, so we need to add it again.
+            if ( r->isIdle() )
             {
-                if ( _elevPlaceholderRequest->isIdle() )
+                //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
+                r->setStamp( stamp );
+                getVersionedTerrain()->getOrCreateTaskService()->add( r );
+            }
+            else if ( !r->isCompleted() )
+            {
+                r->setStamp( stamp );
+            }
+        }
+
+        // if we have an elevation request standing by, check to see whether the parent tile's elevation is
+        // loaded. If so, it is time to schedule this tile's elevation to load.
+        if ( _hasElevation && !_elevationLayerUpToDate && _parentTile.valid() )
+        {  
+            // if the main elevation request is idle, that means we have not yet started to load
+            // the final elevation layer. Therefore we need to check to see whether we need either
+            // a new placeholder or the final elevation:
+            if ( _elevRequest->isIdle() )
+            {
+                // see whether we need to start a new placeholder request:
+                if ( _parentTile->getElevationLOD() > _elevationLOD )
                 {
-                    _elevPlaceholderRequest->setProgressCallback( new TileRequestProgressCallback(
-                        _elevPlaceholderRequest.get(), terrain->getOrCreateTaskService()));
+                    if ( _elevPlaceholderRequest->isIdle() )
+                    {
+                        _elevPlaceholderRequest->setProgressCallback( new TileRequestProgressCallback(
+                            _elevPlaceholderRequest.get(), terrain->getOrCreateTaskService()));
 
-                    _elevPlaceholderRequest->setPriority( _key->getLevelOfDetail() ); // tweak?
+                        _elevPlaceholderRequest->setPriority( _key->getLevelOfDetail() ); // tweak?
+                        static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get())->setParentTile( _parentTile.get() );
 
-                    terrain->getOrCreateTaskService()->add( _elevPlaceholderRequest.get() );
+                        terrain->getOrCreateTaskService()->add( _elevPlaceholderRequest.get() );
+                    }
+                    else if ( !_elevPlaceholderRequest->isCompleted() )
+                    {
+                        _elevPlaceholderRequest->setStamp( stamp );
+                    }
                 }
-                else if ( !_elevPlaceholderRequest->isCompleted() )
+
+                // see whether it's time to request the real elevation data:
+                else if ( _parentTile->getElevationLOD() == _key->getLevelOfDetail()-1 )
                 {
-                    _elevPlaceholderRequest->setStamp( stamp );
+                    //osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") scheduling final LOD..." << std::endl;
+
+                    _elevRequest->setStamp( stamp );
+
+                    _elevRequest->setProgressCallback( new TileRequestProgressCallback(
+                        _elevRequest.get(), terrain->getOrCreateTaskService() ) );
+
+                    terrain->getOrCreateTaskService()->add( _elevRequest.get() );
                 }
             }
-
-            // see whether it's time to request the real elevation data:
-            else if ( _parentTile->getElevationLOD() == _key->getLevelOfDetail()-1 )
+            else if ( !_elevRequest->isCompleted() )
             {
-                //osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") scheduling final LOD..." << std::endl;
-
                 _elevRequest->setStamp( stamp );
-
-                _elevRequest->setProgressCallback( new TileRequestProgressCallback(
-                    _elevRequest.get(), terrain->getOrCreateTaskService() ) );
-
-                terrain->getOrCreateTaskService()->add( _elevRequest.get() );
             }
-        }
-        else if ( !_elevRequest->isCompleted() )
-        {
-            _elevRequest->setStamp( stamp );
         }
     }
 }
@@ -398,6 +416,9 @@ VersionedTile::servicePendingRequests( int stamp )
 void
 VersionedTile::serviceCompletedRequests()
 {
+    // make sure our reference to the parent tile is up to date.
+    refreshParentTile();
+
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
     {
         TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
@@ -470,19 +491,23 @@ VersionedTile::serviceCompletedRequests()
 
         else if ( _elevPlaceholderRequest->isCompleted() )
         {
-            // write-lock the layer data since we'll be changing it:
-            ScopedWriteLock lock( _tileLayersMutex );
-
             osgTerrain::HeightFieldLayer* newPhLayer = static_cast<osgTerrain::HeightFieldLayer*>(
                 _elevPlaceholderRequest->getResult() );
 
-            this->setElevationLayer( newPhLayer );
-            if ( _usePerLayerUpdates )
-                _elevationLayerDirty = true;
-            else
-                this->setDirty( true );
+            // write-lock the layer data since we'll be changing it:
+            ScopedWriteLock lock( _tileLayersMutex );
 
-            _elevationLOD = _parentTile->getElevationLOD();
+            if ( newPhLayer )
+            {
+                this->setElevationLayer( newPhLayer );
+
+                if ( _usePerLayerUpdates )
+                    _elevationLayerDirty = true;
+                else
+                    this->setDirty( true );
+
+                _elevationLOD = _parentTile->getElevationLOD();
+            }
 
             _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
         }

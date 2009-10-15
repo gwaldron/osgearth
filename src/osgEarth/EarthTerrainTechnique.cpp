@@ -20,6 +20,7 @@
 #include <osgTerrain/GeometryTechnique>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
+#include <osgEarth/VersionedTerrain>
 
 #include <osgEarth/EarthTerrainTechnique>
 
@@ -42,27 +43,30 @@
 
 using namespace osgTerrain;
 using namespace osgEarth;
+using namespace OpenThreads;
 
 #define NEW_COORD_CODE
 
+
 EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
-    _masterLocator( masterLocator ),
-    _currentReadOnlyBuffer(1),
-    _currentWriteBuffer(0),
-    _verticalScaleOverride(1.0f),    
-    _swapBuffersPending(false)
+_masterLocator( masterLocator ),
+_currentReadOnlyBuffer(1),
+_currentWriteBuffer(0),
+_verticalScaleOverride(1.0f)
 {
     //nop
 }
 
 EarthTerrainTechnique::EarthTerrainTechnique(const EarthTerrainTechnique& gt,const osg::CopyOp& copyop):
-    TerrainTechnique(gt,copyop),
-    _currentReadOnlyBuffer(1),
-    _currentWriteBuffer(0),
-    _verticalScaleOverride(1.0f),    
-    _swapBuffersPending(false)
+TerrainTechnique(gt,copyop),
+_masterLocator( gt._masterLocator ),
+_lastCenterModel( gt._lastCenterModel ),
+_currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),
+_currentWriteBuffer( gt._currentWriteBuffer ),
+_verticalScaleOverride( gt._verticalScaleOverride )
 {
-    //nop
+    _bufferData[0] = gt._bufferData[0];
+    _bufferData[1] = gt._bufferData[1];
 }
 
 EarthTerrainTechnique::~EarthTerrainTechnique()
@@ -84,7 +88,6 @@ EarthTerrainTechnique::getVerticalScaleOverride() const
 void EarthTerrainTechnique::swapBuffers()
 {
     std::swap(_currentReadOnlyBuffer,_currentWriteBuffer);
-    _swapBuffersPending = false;
 }
 
 void
@@ -92,7 +95,8 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
 {
     if ( !_terrainTile ) return;
 
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
+    // lock changes to the layers while we're rendering them
+    ScopedReadLock lock( getMutex() );
 
     // clone the last iteration so we can modify it:
     BufferData& readBuf  = getReadOnlyBuffer();
@@ -107,20 +111,22 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
     if ( updateGeom )
     {
         updateGeometry( masterLocator, _lastCenterModel );
+        // updating the goemetry requires we rebuild the textures too. I don't yet know the reason for
+        // this, but it you don't do it, you get gargabe textures.
+        updateColorLayers( masterLocator );
     }
-    if ( updateTextures )
+    else if ( updateTextures )
     {
         updateColorLayers( masterLocator );
     }
-
-    writeBuf._geometry->dirtyDisplayList();
 
     swapBuffers();
 }
 
 void EarthTerrainTechnique::init()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock (getMutex() );
+    // lock changes to the layers while we're rendering them
+    ScopedReadLock lock( getMutex() );
 
     //osg::notify(osg::INFO)<<"Doing GeometryTechnique::init()"<<std::endl;
     
@@ -137,7 +143,8 @@ void EarthTerrainTechnique::init()
     applyColorLayers();
     applyTransparency();
     
-    smoothGeometry();
+// don't call this here
+//    smoothGeometry();
 
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);
@@ -164,6 +171,12 @@ Locator* EarthTerrainTechnique::computeMasterLocator()
     }
     
     return masterLocator;
+}
+
+ReadWriteMutex&
+EarthTerrainTechnique::getMutex()
+{
+    return static_cast<VersionedTile*>(_terrainTile)->getTileLayersMutex();
 }
 
 osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
@@ -229,6 +242,30 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
     return centerModel;
 }
 
+void
+EarthTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j )
+{            
+    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+
+    out_rows = elevationLayer->getNumRows();
+    out_cols = elevationLayer->getNumColumns();
+    out_i = 1.0;
+    out_j = 1.0;
+
+    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    if ( sampleRatio != 1.0f )
+    {
+        unsigned int originalNumColumns = out_cols;
+        unsigned int originalNumRows = out_rows;
+
+        out_cols = osg::maximum((unsigned int) (float(originalNumColumns)*sqrtf(sampleRatio)), 4u);
+        out_rows = osg::maximum((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)),4u);
+
+        out_i = double(originalNumColumns-1)/double(out_cols-1);
+        out_j = double(originalNumRows-1)/double(out_rows-1);
+    }
+}
+
 // simple updates an in-place geometry from a new elevationlayer.
 void
 EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
@@ -237,23 +274,26 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
     if ( !elevationLayer ) 
         return;
     
-    int numColumns = elevationLayer->getNumColumns();
-    int numRows = elevationLayer->getNumRows();
+    int numColumns, numRows;
+    double i_sampleFactor, j_sampleFactor;
+    calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
+    //int numColumns = elevationLayer->getNumColumns();
+    //int numRows = elevationLayer->getNumRows();
 
-    double i_sampleFactor = 1.0;
-    double j_sampleFactor = 1.0;
-    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
-    if (sampleRatio!=1.0f)
-    {
-        unsigned int originalNumColumns = numColumns;
-        unsigned int originalNumRows = numRows;
-    
-        numColumns = std::max((unsigned int) (float(originalNumColumns)*sqrtf(sampleRatio)), 4u);
-        numRows = std::max((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)),4u);
+    //double i_sampleFactor = 1.0;
+    //double j_sampleFactor = 1.0;
+    //float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    //if (sampleRatio!=1.0f)
+    //{
+    //    unsigned int originalNumColumns = numColumns;
+    //    unsigned int originalNumRows = numRows;
+    //
+    //    numColumns = std::max((unsigned int) (float(originalNumColumns)*sqrtf(sampleRatio)), 4u);
+    //    numRows = std::max((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)),4u);
 
-        i_sampleFactor = double(originalNumColumns-1)/double(numColumns-1);
-        j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
-    }
+    //    i_sampleFactor = double(originalNumColumns-1)/double(numColumns-1);
+    //    j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
+    //}
     
     float scaleHeight = 
         _verticalScaleOverride != 1.0? _verticalScaleOverride :
@@ -293,8 +333,10 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
         }
     }
 
-    // re-smooth since the elvation has changed.
-    smoothGeometry();
+    vertices->dirty();
+
+    // re-smooth since the elevation has changed.
+    //smoothGeometry();
 }
 
 
@@ -316,6 +358,9 @@ EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
                 texture2D->setImage( image );
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
+
+                // GW TEST:
+                //texture2D->setUnRefImageDataAfterApply( false );
 
 #if OSG_MIN_VERSION_REQUIRED(2,8,0)
                 texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
@@ -344,8 +389,11 @@ EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
             osg::Vec2Array* texcoords = static_cast<osg::Vec2Array*>( writeBuf._geometry->getTexCoordArray( layerNum ) );
             Locator* colorLocator = colorLayer->getLocator();
             osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-            int numRows = elevationLayer->getNumRows();
-            int numColumns = elevationLayer->getNumColumns();
+
+            int numRows, numColumns;
+            double i_sampleFactor, j_sampleFactor;
+            calculateSampling( numRows, numColumns, i_sampleFactor, j_sampleFactor );
+
             unsigned int i, j;
             for(j=0; j<numRows; ++j)
             {
@@ -386,8 +434,8 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         
     osg::Geometry* geometry = buffer._geometry.get();
 
-    unsigned int numRows = 20;
-    unsigned int numColumns = 20;
+    int numRows = 20;
+    int numColumns = 20;
     
     if (elevationLayer)
     {
@@ -395,27 +443,8 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         numRows = elevationLayer->getNumRows();
     }
     
-    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
-    
-    double i_sampleFactor = 1.0;
-    double j_sampleFactor = 1.0;
-
-    // osg::notify(osg::NOTICE)<<"Sample ratio="<<sampleRatio<<std::endl;
-
-    if (sampleRatio!=1.0f)
-    {
-    
-        unsigned int originalNumColumns = numColumns;
-        unsigned int originalNumRows = numRows;
-    
-        numColumns = std::max((unsigned int) (float(originalNumColumns)*sqrtf(sampleRatio)), 4u);
-        numRows = std::max((unsigned int) (float(originalNumRows)*sqrtf(sampleRatio)),4u);
-
-        i_sampleFactor = double(originalNumColumns-1)/double(numColumns-1);
-        j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
-    }
-    
-    
+    double i_sampleFactor, j_sampleFactor;
+    calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
 
     bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
     osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
@@ -879,6 +908,9 @@ void EarthTerrainTechnique::applyColorLayers()
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
+                //GW TEST:
+                //texture2D->setUnRefImageDataAfterApply( false );
+
 #if OSG_MIN_VERSION_REQUIRED(2,8,0)
                 texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
                 texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
@@ -1004,9 +1036,6 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
     {
         if (_terrainTile->getDirty()) _terrainTile->init();
 
-        if ( _swapBuffersPending )
-            swapBuffers();
-
         osgUtil::UpdateVisitor* uv = dynamic_cast<osgUtil::UpdateVisitor*>(&nv);
         if (uv)
         {
@@ -1031,9 +1060,6 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
         //osg::notify(osg::INFO)<<"******* Doing init ***********"<<std::endl;
         _terrainTile->init();
     }
-
-    if ( _swapBuffersPending )
-        swapBuffers();
 
     BufferData& buffer = getReadOnlyBuffer();
     if (buffer._transform.valid()) buffer._transform->accept(nv);

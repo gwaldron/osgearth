@@ -23,6 +23,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <OpenThreads/ReadWriteMutex>
 
 #include <osgTerrain/TerrainTechnique>
 #include <osgTerrain/Locator>
@@ -69,13 +70,7 @@ namespace osgEarth
 
     public:
 
-        inline OpenThreads::Mutex& getMutex() {return _mutex;}
-
-
-        /** Same as init(), but swapping buffers is optional. This is used to "precompile" the tile
-        from the pager thread, and then swap the buffers in the update thread. */
-        //void init( bool swapBuffers );
-
+        inline OpenThreads::ReadWriteMutex& getMutex();
 
         /**
         * Sets a factor by which to scale elevation height values. By default, this object
@@ -94,6 +89,8 @@ namespace osgEarth
         void updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
 
         void updateColorLayers(osgTerrain::Locator* masterLocator);
+
+        void calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j );
 
     private:
 
@@ -115,10 +112,8 @@ namespace osgEarth
         inline BufferData& getReadOnlyBuffer() { return _bufferData[_currentReadOnlyBuffer]; }
         inline BufferData& getWriteBuffer() { return _bufferData[_currentWriteBuffer]; }
 
-        OpenThreads::Mutex _mutex;
         osg::Vec3d _lastCenterModel;
         float _verticalScaleOverride;
-        bool _swapBuffersPending;
 
         osg::ref_ptr<osgTerrain::Locator> _masterLocator;
     };

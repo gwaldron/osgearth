@@ -143,7 +143,7 @@ namespace osgEarth
         bool _useLayerRequests;
         bool _requestsInstalled;
         bool _usePerLayerUpdates;
-        bool _requestElevation;
+        bool _hasElevation;
         bool _elevationLayerDirty;
         bool _colorLayersDirty;
         bool _elevationLayerRequested;

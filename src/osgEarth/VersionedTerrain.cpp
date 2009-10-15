@@ -148,7 +148,7 @@ _geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
+_usePerLayerUpdates( true ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _neighbors( 4 ),                  // pre-allocate 4 slots. 0=W, 1=N, 2=E, 3=S.
 _elevationLOD( key->getLevelOfDetail() )
@@ -157,6 +157,8 @@ _elevationLOD( key->getLevelOfDetail() )
 
     // because the lowest LOD (1) is always loaded fully:
     _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;
+
+    setTerrainTechnique( new EarthTerrainTechnique( keyLocator ) );
 }
 
 VersionedTile::~VersionedTile()
@@ -264,7 +266,7 @@ VersionedTile::incrementTileRevision()
 void
 VersionedTile::setHasElevationHint( bool hint ) 
 {
-    _requestElevation = hint;
+    _hasElevation = hint;
 }
 
 bool
@@ -292,13 +294,14 @@ VersionedTile::servicePendingRequests( int stamp )
     VersionedTerrain* terrain = getVersionedTerrain();
     if ( !terrain ) return;
 
-    //Attach requests for the appropriate LOD data to the TerrainTile.
+    // The first time through, initialize all the data request tasks we will need to load
+    // imagery, elevation, and elevation placeholders.
     if ( !_requestsInstalled )
     {
         Map* map = terrain->getMap();
         MapEngine* engine = terrain->getEngine();
 
-        if ( this->getElevationLayer() && _requestElevation ) // don't need a layers lock here
+        if ( _hasElevation && this->getElevationLayer() ) // don't need a layers lock here
         {
             // locate this tile's parent, so we can track when to start loading our own elevation.
             osg::ref_ptr<TileKey> parentKey = _key->createParentKey();
@@ -309,6 +312,7 @@ VersionedTile::servicePendingRequests( int stamp )
 
             _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
                 _key.get(), map, engine, _keyLocator.get(), _parentTile.get() );
+            _elevPlaceholderRequest->setPriority( (float)_key->getLevelOfDetail() );
         }
 
         int numColorLayers = getNumColorLayers();
@@ -345,7 +349,7 @@ VersionedTile::servicePendingRequests( int stamp )
 
     // if we have an elevation request standing by, check to see whether the parent tile's elevation is
     // loaded. If so, it is time to schedule this tile's elevation to load.
-    if ( _elevRequest.valid() && !_elevationLayerUpToDate )
+    if ( _hasElevation && !_elevationLayerUpToDate )
     {       
         // if the main elevation request is idle, that means we have not yet started to load
         // the final elevation layer. Therefore we need to check to see whether we need either
@@ -426,7 +430,7 @@ VersionedTile::serviceCompletedRequests()
     }
 
     // check the progress of the elevation data...
-    if ( !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
+    if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
     {
         if ( _elevRequest->isCompleted() )
         {
@@ -509,7 +513,10 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
         {
             // if the tile is only partly dirty, update it piecemeal:
             EarthTerrainTechnique* tech = static_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
-            tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
+            {
+                ScopedReadLock lock( _tileLayersMutex );
+                tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
+            }
         }
     }
 

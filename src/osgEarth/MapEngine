@@ -109,8 +109,8 @@ namespace osgEarth
 
         static osg::HeightField* createEmptyHeightField(
             const TileKey* key,
-            int numCols =32,
-            int numRows =32 );
+            int numCols =8,
+            int numRows =8 );
 
 
         osgTerrain::HeightFieldLayer* createPlaceholderHeightfieldLayer(
@@ -125,11 +125,6 @@ namespace osgEarth
 
 
         osg::Node* createPlaceholderTile(
-            Map* map,
-            VersionedTerrain* terrain,
-            const TileKey* key );
-
-        osg::Node* createPlaceholderTile2(
             Map* map,
             VersionedTerrain* terrain,
             const TileKey* key );

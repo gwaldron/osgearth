@@ -220,8 +220,8 @@ HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
-    curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSFUNCTION,&CurlProgressCallback);
-    curl_easy_setopt(_curl_handle, CURLOPT_NOPROGRESS,FALSE);
+    curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
+    curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
 
     _proxy_port = "8080";
 

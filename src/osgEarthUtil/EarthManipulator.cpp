@@ -304,7 +304,8 @@ _traversalMask( ~0 ),
 _t_factor(1.0),
 _time_s_last_frame( osg::Timer::instance()->time_s() ),
 _local_azim( 0.0 ),
-_local_pitch( 0.0 )
+_local_pitch( 0.0 ),
+_has_pending_viewpoint( false )
 {
     // install default action bindings:
     ActionOptions options;
@@ -490,7 +491,14 @@ EarthManipulator::getRotation(const osg::Vec3d& point) const
 void
 EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 {
-    if ( duration_s > 0.0 )
+    if ( !_node.valid() )
+    {
+        _pending_viewpoint = vp;
+        _pending_viewpoint_duration_s = duration_s;
+        _has_pending_viewpoint = true;
+    }
+
+    else if ( duration_s > 0.0 )
     {
         _start_viewpoint = getViewpoint();
         
@@ -799,6 +807,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         _delta_t = _time_s_now - _time_s_last_frame;
         // this factor adjusts for the variation of frame rate relative to 60fps
         _t_factor = _delta_t / 0.01666666666;
+
+        if ( _has_pending_viewpoint && _node.valid() )
+        {
+            _has_pending_viewpoint = false;
+            setViewpoint( _pending_viewpoint, _pending_viewpoint_duration_s );
+        }
 
         if ( _setting_viewpoint )
         {

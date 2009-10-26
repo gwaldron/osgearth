@@ -166,13 +166,40 @@ namespace osgEarth
          * loading of tile image and heightfield layers to a pool of background threads (instead
          * of loading them all at once when the tile pages in). Default value = false.
          */
-        void setUseTaskService( bool value );
+        //void setUseTaskService( bool value );
 
         /**
          * Gets whether the osgEarth task service is enabled for preemptive LOD mode. See
          * setUseTaskService().
          */
-        bool getUseTaskService() const;
+        //bool getUseTaskService() const;
+
+        /**
+         * Sets whether to load tile layers asynchronously using a thread pool. This option is
+         * only available if preemptive LOD mode is enabled. When active, osgEarth will load 
+         * each terrain tile layer (imagery and heightfield) in a background thread, and merge
+         * the data into the tile when it is available. This is useful when you have a responsive
+         * data source that can handle many simultaneous requests (like many WMS-C type servers).
+         */
+        void setAsyncTileLayers( bool value );
+
+        /**
+         * Gets whether asynchronous layer loading is enabled. See setAsyncTileLayers for
+         * more details.
+         */
+        bool getAsyncTileLayers() const;
+
+        /**
+         * Sets the size of the thread pool to use for asynchronous tile layer loading. See
+         * setAsyncTileLayers() for details.
+         */
+        void setNumAsyncTileLayerThreads( int threads );
+
+        /**
+         * Gets the size of thread pool to use for asynchronous tile layer loading. See
+         * setAsyncTileLayers() for details.
+         */
+        const optional<int>& getNumAsyncTileLayerThreads() const;
 
         /**
          * Available techniques for compositing multiple image layers at runtime.
@@ -211,6 +238,7 @@ namespace osgEarth
         bool _combine_layers;
         bool _preemptive_lod;
         bool _use_task_service;
+        optional<int> _num_task_service_threads;
 		optional<LayeringTechnique> _layering_technique;
     };
 }

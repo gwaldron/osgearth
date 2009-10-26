@@ -492,7 +492,7 @@ osg::Node*
 MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD )
 {
     if ( populateLayers )
-    {
+    {        
         return createPopulatedTile( map, terrain, key, wrapInPagedLOD );
     }
     else
@@ -500,6 +500,9 @@ MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, 
         return createPlaceholderTile( map, terrain, key );
     }
 }
+
+
+#define MAX_LOD 99
 
 
 osg::Node*
@@ -578,7 +581,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     bool markTileLoaded = false;
 
-    if ( _engineProps.getUseTaskService() )
+    if ( _engineProps.getAsyncTileLayers() )
     {
         markTileLoaded = true;
         tile->setUseLayerRequests( true );
@@ -600,31 +603,35 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
 
-    // force the tile to build its geometry NOW (while we're in the pager thread),
-    // because is OGL precompilation is off, the tile won't build until the first
-    // update traversal
-    //tile->setTerrainTechnique( new EarthTerrainTechnique() );
-    //tile->preCompile();
-
     osg::Node* result = 0L;
 
-    // create a PLOD so we can keep subdividing:
-    osg::PagedLOD* plod = new osg::PagedLOD();
-    plod->setCenter( bs.center() );
-    plod->addChild( switcher, min_range, max_range );
-    plod->setFileName( 1, createURI( map->getId(), key ) );
-    plod->setRange( 1, 0.0, min_range );
-    
-    // Install a callback that will load the actual tile data via the pager.
-    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
-
+    if ( key->getLevelOfDetail() < MAX_LOD )
+    {
+        // create a PLOD so we can keep subdividing:
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setCenter( bs.center() );
+        plod->addChild( switcher, min_range, max_range );
+        plod->setFileName( 1, createURI( map->getId(), key ) );
+        plod->setRange( 1, 0.0, min_range );
+        
 #if USE_FILELOCATIONCALLBACK
-    osgDB::Options* options = new osgDB::Options;
-    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
-    plod->setDatabaseOptions( options );
+        osgDB::Options* options = new osgDB::Options;
+        options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+        plod->setDatabaseOptions( options );
 #endif
 
-    result = plod;
+        result = plod;
+    }
+    else
+    {
+        result = switcher;
+    }
+    
+    // Install a callback that will load the actual tile data via the pager.
+//    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+
+    //result = plod;
 
     return result;
 }
@@ -867,7 +874,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // build the geometry immediately
     //tile->init();
 
-    if ( wrapInPagedLOD )
+    if ( wrapInPagedLOD && key->getLevelOfDetail() < MAX_LOD )
     {
         // if we are doing immediate load, we need to house the new tile in a PLOD that will
         // queue up its subtiles.

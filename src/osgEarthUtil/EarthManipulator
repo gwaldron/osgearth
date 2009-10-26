@@ -727,6 +727,12 @@ namespace osgEarthUtil
         double                  _single_axis_x;
         double                  _single_axis_y;
 
+        // the "pending" viewpoint is only used to enable setting the
+        // viewpoint before the frame loop starts
+        bool                    _has_pending_viewpoint;
+        Viewpoint               _pending_viewpoint;
+        double                  _pending_viewpoint_duration_s;
+
         bool                    _setting_viewpoint;
         Viewpoint               _start_viewpoint;
         double                  _delta_heading, _delta_pitch, _delta_range, _range_plus;

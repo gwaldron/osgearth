@@ -34,13 +34,6 @@ namespace osgEarth
     class VersionedTerrain;
     class VersionedTile;
 
-    ///*interface*/ class TileLayerFactory : public osg::Referenced
-    //{
-    //public:
-    //    virtual osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex, ProgressCallback* progress ) =0;
-    //    virtual osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, bool exactOnly, ProgressCallback* progress ) =0;
-    //};
-
     typedef std::vector< osg::observer_ptr<VersionedTile> > VersionedTileObsVec;
 
     /**
@@ -186,7 +179,7 @@ namespace osgEarth
     class VersionedTerrain : public osgTerrain::Terrain
     {
     public:
-        VersionedTerrain( Map* map, MapEngine* engine ); //, TileLayerFactory* factory =NULL );
+        VersionedTerrain( Map* map, MapEngine* engine );
 
         virtual const char* className() const { return "VersionedTerrain"; }
 
@@ -217,12 +210,10 @@ namespace osgEarth
         /** Gets the number of color layers and elevation layers combined */
         int getNumActiveLayers() const;
 
-        //TileLayerFactory* getTileLayerFactory() const;
-
         TaskService* getOrCreateTaskService();
 
-        unsigned int getNumTaskServiceThreads() const;
-        void setNumTaskServiceThreads( unsigned int numTaskServiceThreads );
+        //unsigned int getNumTaskServiceThreads() const;
+        //void setNumTaskServiceThreads( unsigned int numTaskServiceThreads );
 
         Map* getMap();
         MapEngine* getEngine();
@@ -236,7 +227,7 @@ namespace osgEarth
         osg::ref_ptr<TaskService> _taskService;
         osg::ref_ptr<const Profile> _profile;
         OpenThreads::Mutex _taskServiceMutex;
-        unsigned int _numTaskServiceThreads;
+        int _numAsyncTileLayerThreads;
         
         VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
     };

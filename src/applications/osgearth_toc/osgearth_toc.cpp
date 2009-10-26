@@ -490,8 +490,12 @@ int main(int argc, char** argv)
 
     MapEngineProperties engineProps;
 
-    engineProps.setUseTaskService( true );
-    if ( arguments.read( "--sequential" ) || arguments.read( "--preemptive=OFF" ) )
+    if ( arguments.read( "--preemptive" ) || arguments.read( "--preemptive=ON" ) )
+    {
+        engineProps.setPreemptiveLOD( true );
+        //engineProps.setAsyncTileLayers( true );
+    }
+    else
     {
         engineProps.setPreemptiveLOD( false );
     }

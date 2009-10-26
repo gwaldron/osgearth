@@ -32,8 +32,9 @@ MapEngineProperties::MapEngineProperties()
     _normalize_edges = false;
     _combine_layers = true;
     _filename = "";
-    _preemptive_lod = true;
+    _preemptive_lod = false;
     _use_task_service = false;
+    _num_task_service_threads = 0;
 	_layering_technique = MULTITEXTURE;
 }
 
@@ -57,6 +58,7 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _filename = rhs._filename;   
     _preemptive_lod = rhs._preemptive_lod;
     _use_task_service = rhs._use_task_service;
+    _num_task_service_threads = rhs._num_task_service_threads;
 	_layering_technique = rhs._layering_technique;
     return *this;
 }
@@ -72,14 +74,25 @@ MapEngineProperties::getPreemptiveLOD() const {
 }
 
 void
-MapEngineProperties::setUseTaskService( bool value ) {
+MapEngineProperties::setAsyncTileLayers( bool value ) {
     _use_task_service = value;
 }
 
 bool
-MapEngineProperties::getUseTaskService() const {
+MapEngineProperties::getAsyncTileLayers() const {
     return _use_task_service;
 }
+
+void
+MapEngineProperties::setNumAsyncTileLayerThreads( int value ) {
+    _num_task_service_threads = value;
+}
+
+const optional<int>&
+MapEngineProperties::getNumAsyncTileLayerThreads() const {
+    return _num_task_service_threads.get();
+}
+
 void
 MapEngineProperties::setFilename(const std::string& filename)
 {

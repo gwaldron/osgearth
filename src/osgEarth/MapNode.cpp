@@ -256,37 +256,6 @@ MapNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
-
-// custom tile data factory that encapsulates access to the map.
-//struct MapNodeTileLayerFactory : public TileLayerFactory
-//{
-//    MapNodeTileLayerFactory( Map* map, MapEngine* engine ) : _map(map), _engine(engine) { }
-//
-//    osgTerrain::ImageLayer* createImageLayer( const TileKey* key, int layerIndex, ProgressCallback* progress ) {
-//        if ( _map.valid() && _engine.valid() ) {
-//            ScopedReadLock lock( _map->getMapDataMutex() );
-//            if ( layerIndex < _map->getImageMapLayers().size() )
-//            {
-//                MapLayer* mapLayer = _map->getImageMapLayers()[layerIndex].get();
-//                osg::ref_ptr<GeoImage> img = mapLayer->createImage( key, progress );
-//                if ( img )
-//                    return _engine->createImageLayer( _map.get(), key, img.get() );
-//            }
-//        }
-//        return 0L;
-//    }
-//
-//    osgTerrain::HeightFieldLayer* createHeightFieldLayer( const TileKey* key, bool exactOnly, ProgressCallback* progress ) {
-//        if ( _map.valid() && _engine.valid() ) {
-//            return _engine->createHeightFieldLayer( _map.get(), key, exactOnly );
-//        }
-//        return 0L;
-//    }
-//            
-//    osg::ref_ptr<Map> _map;
-//    osg::ref_ptr<MapEngine> _engine;
-//};
-
 void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
@@ -306,8 +275,6 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     for( int face = 0; face < _map->getProfile()->getNumFaces(); face++ )
     {
         VersionedTerrain* terrain = new VersionedTerrain( _map.get(), _engine.get() );
-            //_map->getProfile(),
-            //new MapNodeTileLayerFactory( _map.get(), _engine.get() ) );
 
 		if (_engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
 		{
@@ -316,7 +283,6 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 		else if ( _engineProps.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
 		{
 			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
-            //terrain->setTerrainTechniquePrototype( new osgEarth::ElevationModelTechnique( _elevationModel.get() ) );
 		}
 
         terrain->setVerticalScale( _engineProps.getVerticalScale() );

@@ -566,14 +566,30 @@ VersionedTerrain::VersionedTerrain( Map* map, MapEngine* engine ) :
 _map( map ),
 _engine( engine ),
 _revision(0),
-_numTaskServiceThreads(8)
+_numAsyncTileLayerThreads( 4 ) // default..overridden below possibly
 {
-    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
-    if ( env_numTaskServiceThreads )
+    // see if the async tile layer thread count is set in the engine props:
+    const optional<int>& threads = engine->getEngineProperties().getNumAsyncTileLayerThreads();
+    if ( threads.isSet() )
+        _numAsyncTileLayerThreads = threads.get();
+
+    // next, see if it's overridden in the environment:
+
+    // backwards compat:
+    const char* env_numAsyncTileLayerThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
+    if ( env_numAsyncTileLayerThreads )
     {
-        _numTaskServiceThreads = ::atoi( env_numTaskServiceThreads );
-        //osg::notify(osg::NOTICE) << "osgEarth: task service threads = " << _numTaskServiceThreads << std::endl;
+        _numAsyncTileLayerThreads = ::atoi( env_numAsyncTileLayerThreads );
+        osg::notify(osg::NOTICE) << "[osgEarth] Note: OSGEARTH_NUM_TASK_SERVICE_THREADS is deprecated; please use OSGEARTH_NUM_ASYNC_TILE_LAYER_THREADS instead." << std::endl;
     }
+
+    env_numAsyncTileLayerThreads = getenv("OSGEARTH_NUM_ASYNC_TILE_LAYER_THREADS");
+    if ( env_numAsyncTileLayerThreads )
+    {
+        _numAsyncTileLayerThreads = ::atoi( env_numAsyncTileLayerThreads );
+    }
+
+    _numAsyncTileLayerThreads = osg::clampBetween( _numAsyncTileLayerThreads, 1, 128 );
 }
 
 void
@@ -590,17 +606,17 @@ VersionedTerrain::getRevision() const
     return _revision;
 }
 
-unsigned int 
-VersionedTerrain::getNumTaskServiceThreads() const
-{
-    return _numTaskServiceThreads;
-}
-
-void
-VersionedTerrain::setNumTaskServiceThreads( unsigned int numTaskServiceThreads )
-{
-    _numTaskServiceThreads = numTaskServiceThreads;
-}
+//unsigned int 
+//VersionedTerrain::getNumAsyncTileLayerThreads() const
+//{
+//    return _numTaskServiceThreads;
+//}
+//
+//void
+//VersionedTerrain::setNumAsyncTileLayerThreads( unsigned int numTaskServiceThreads )
+//{
+//    _numTaskServiceThreads = numTaskServiceThreads;
+//}
 
 VersionedTile*
 VersionedTerrain::getVersionedTile(const osgTerrain::TileID& tileID)
@@ -706,7 +722,7 @@ VersionedTerrain::getOrCreateTaskService()
         // double-check
         if ( !_taskService.valid() )
         {
-            _taskService = new TaskService( _numTaskServiceThreads );
+            _taskService = new TaskService( _numAsyncTileLayerThreads );
         }
     }    
     return _taskService.get();

@@ -76,8 +76,10 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_NORMALIZE_EDGES          "normalize_edges"
 #define ELEM_COMBINE_LAYERS           "combine_layers"
 #define ELEM_PREEMPTIVE_LOD           "preemptive_lod"
-#define ELEM_USE_TASK_SERVICE         "use_task_service"
+//#define ELEM_USE_TASK_SERVICE         "use_task_service"
 #define ELEM_DEFER_TILE_DATA_LOADING  "defer_tile_data_loading"
+#define ELEM_ASYNC_TILE_LAYERS        "async_tile_layers"
+#define ELEM_NUM_ASYNC_TILE_LAYER_THREADS "num_async_tile_layer_threads"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
@@ -362,14 +364,18 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     else if (preemptive_lod == VALUE_FALSE)
         engineProps.setPreemptiveLOD(false);
 
-    std::string use_task_service = e_map->getSubElementText(ELEM_USE_TASK_SERVICE);
-    if (use_task_service == VALUE_TRUE)
-        engineProps.setUseTaskService(true);
-    else if (use_task_service == VALUE_FALSE)
-        engineProps.setUseTaskService(false);
+    std::string async_tile_layers = e_map->getSubElementText( ELEM_ASYNC_TILE_LAYERS );
+    if (async_tile_layers == VALUE_TRUE)
+        engineProps.setAsyncTileLayers(true);
+    else if (async_tile_layers == VALUE_FALSE)
+        engineProps.setAsyncTileLayers(false);
 
-	std::string technique = e_map->getSubElementText(ELEM_TECHNIQUE);
-    if (technique.empty()) technique = e_map->getSubElementText(ELEM_LAYERING_TECHNIQUE); // backcompat
+    std::string num_async_tile_layer_threads = e_map->getSubElementText( ELEM_NUM_ASYNC_TILE_LAYER_THREADS );
+    if ( !num_async_tile_layer_threads.empty() )
+        engineProps.setNumAsyncTileLayerThreads( as<int>( num_async_tile_layer_threads, 0 ) );
+
+	std::string technique = e_map->getSubElementText(ELEM_TECHNIQUE); // backcompat
+    if (technique.empty()) technique = e_map->getSubElementText(ELEM_LAYERING_TECHNIQUE);
 	if (technique == "multipass")
 		engineProps.setLayeringTechnique( osgEarth::MapEngineProperties::MULTIPASS);
 	else if (technique == "multitexture")

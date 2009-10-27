@@ -34,7 +34,7 @@ MapEngineProperties::MapEngineProperties()
     _filename = "";
     _preemptive_lod = false;
     _use_task_service = false;
-    _num_task_service_threads = 0;
+    //_num_task_service_threads = 0;
 	_layering_technique = MULTITEXTURE;
 }
 

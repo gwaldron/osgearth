@@ -46,6 +46,7 @@ public:
         //Check to see if we were marked cancelled on a previous check
         if (_canceled) return _canceled;
         _canceled = (_service->getStamp() - _request->getStamp() > 2);
+        //osg::notify(osg::NOTICE) << "Marking cancelled " << _request->getName() << std::endl;
         return _canceled;
     }
 
@@ -188,6 +189,11 @@ VersionedTile::~VersionedTile()
         {
             _elevRequest->cancel();
         }
+
+        if (_elevPlaceholderRequest.valid())
+        {
+            _elevPlaceholderRequest->cancel();
+        }
     }
 }
 
@@ -298,7 +304,7 @@ VersionedTile::refreshParentTile()
 }
 
 
-#define PRI_IMAGE_OFFSET 1.0f // priority offset of imagery relative to elevation
+#define PRI_IMAGE_OFFSET 0.1f // priority offset of imagery relative to elevation
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
 
 // This method is called from the CULL TRAVERSAL, and only is _useLayerRequests == true.
@@ -321,12 +327,20 @@ VersionedTile::servicePendingRequests( int stamp )
         if ( _hasElevation && this->getElevationLayer() ) // don't need a layers lock here
         {
             _elevRequest = new TileElevationLayerRequest(_key.get(), map, engine );
-            _elevRequest->setPriority( (float)_key->getLevelOfDetail() );
+            //_elevRequest->setPriority( (float)_key->getLevelOfDetail() );
+            float priority = (30 - (float)_key->getLevelOfDetail());
+            _elevRequest->setPriority( priority );
+            std::stringstream ss;
+            ss << "TileElevationLayerRequest " << _key->str() << std::endl;
+            _elevRequest->setName( ss.str() );
 
             _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
                 _key.get(), map, engine, _keyLocator.get() );
+            _elevPlaceholderRequest->setPriority( priority );
+            ss.str("");
+            ss << "TileElevationPlaceholderLayerRequest " << _key->str() << std::endl;
+            _elevPlaceholderRequest->setName( ss.str() );
 
-            _elevPlaceholderRequest->setPriority( (float)_key->getLevelOfDetail() );
         }
 
         int numColorLayers = getNumColorLayers();
@@ -334,6 +348,9 @@ VersionedTile::servicePendingRequests( int stamp )
         {
             // imagery is slighty higher priority than elevation data
             TaskRequest* r = new TileColorLayerRequest( _key.get(), map, engine, layerIndex );
+            std::stringstream ss;
+            ss << "TileColorLayerRequest " << _key->str() << std::endl;
+            r->setName( ss.str() );
             r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
             r->setStamp( stamp );
             r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getOrCreateTaskService() ));
@@ -379,10 +396,11 @@ VersionedTile::servicePendingRequests( int stamp )
                     {
                         _elevPlaceholderRequest->setProgressCallback( new TileRequestProgressCallback(
                             _elevPlaceholderRequest.get(), terrain->getOrCreateTaskService()));
+                        float priority = (30 - (float)_key->getLevelOfDetail());
 
-                        _elevPlaceholderRequest->setPriority( _key->getLevelOfDetail() ); // tweak?
+                        //_elevPlaceholderRequest->setPriority( _key->getLevelOfDetail() ); // tweak?
+                        _elevPlaceholderRequest->setPriority( priority );
                         static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get())->setParentTile( _parentTile.get() );
-
                         terrain->getOrCreateTaskService()->add( _elevPlaceholderRequest.get() );
                     }
                     else if ( !_elevPlaceholderRequest->isCompleted() )
@@ -394,8 +412,6 @@ VersionedTile::servicePendingRequests( int stamp )
                 // see whether it's time to request the real elevation data:
                 else if ( _parentTile->getElevationLOD() == _key->getLevelOfDetail()-1 )
                 {
-                    //osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") scheduling final LOD..." << std::endl;
-
                     _elevRequest->setStamp( stamp );
 
                     _elevRequest->setProgressCallback( new TileRequestProgressCallback(

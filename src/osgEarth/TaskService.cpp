@@ -130,6 +130,7 @@ TaskThread::run()
 
             _request->setState( TaskRequest::STATE_IN_PROGRESS );
 
+            //osg::notify(osg::NOTICE) << "Executing Task (" << _request->getPriority() << ") : " << _request->getName() << std::endl;
             _request->run();
 
             //Release the request

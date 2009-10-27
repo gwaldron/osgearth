@@ -90,7 +90,7 @@ MapEngineProperties::setNumAsyncTileLayerThreads( int value ) {
 
 const optional<int>&
 MapEngineProperties::getNumAsyncTileLayerThreads() const {
-    return _num_task_service_threads.get();
+    return _num_task_service_threads;
 }
 
 void

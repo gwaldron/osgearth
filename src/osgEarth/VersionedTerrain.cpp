@@ -334,7 +334,7 @@ VersionedTile::servicePendingRequests( int stamp )
         {
             _elevRequest = new TileElevationLayerRequest(_key.get(), map, engine );
             //_elevRequest->setPriority( (float)_key->getLevelOfDetail() );
-            float priority = (30 - (float)_key->getLevelOfDetail());
+            float priority = (float)_key->getLevelOfDetail();
             _elevRequest->setPriority( priority );
             std::stringstream ss;
             ss << "TileElevationLayerRequest " << _key->str() << std::endl;
@@ -402,8 +402,7 @@ VersionedTile::servicePendingRequests( int stamp )
                     {
                         _elevPlaceholderRequest->setProgressCallback( new TileRequestProgressCallback(
                             _elevPlaceholderRequest.get(), terrain->getOrCreateTaskService()));
-                        float priority = (30 - (float)_key->getLevelOfDetail());
-
+                        float priority = (float)_key->getLevelOfDetail();
                         //_elevPlaceholderRequest->setPriority( _key->getLevelOfDetail() ); // tweak?
                         _elevPlaceholderRequest->setPriority( priority );
                         static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get())->setParentTile( _parentTile.get() );

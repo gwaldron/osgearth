@@ -95,7 +95,6 @@ struct TileElevationLayerRequest : public TileLayerRequest
     TileElevationLayerRequest( const TileKey* key, Map* map, MapEngine* engine )
         : TileLayerRequest( key, map, engine )
     {
-        setIsElevation( true );
     }
 
     void operator()( ProgressCallback* progress )
@@ -110,7 +109,6 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
         : TileLayerRequest( key, map, engine ),
           _keyLocator(keyLocator)
     {
-        setIsElevation( true );
     }
 
     void setParentTile( VersionedTile* parentTile )
@@ -359,7 +357,7 @@ VersionedTile::servicePendingRequests( int stamp )
             r->setName( ss.str() );
             r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
             r->setStamp( stamp );
-            r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getOrCreateTaskService() ));
+            r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getImageryTaskService(layerIndex) ));
             _requests.push_back( r );
         }
 
@@ -370,7 +368,7 @@ VersionedTile::servicePendingRequests( int stamp )
     {
         for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
         {
-            TileLayerRequest* r = static_cast<TileLayerRequest*>( i->get() );
+            TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
 
             //If a request has been marked as IDLE, the TaskService has tried to service it
             //and it was either deemed out of date or was cancelled, so we need to add it again.
@@ -378,7 +376,7 @@ VersionedTile::servicePendingRequests( int stamp )
             {
                 //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
                 r->setStamp( stamp );
-                getVersionedTerrain()->getOrCreateTaskService()->add( r );
+                getVersionedTerrain()->getImageryTaskService(r->_layerIndex)->add( r );
             }
             else if ( !r->isCompleted() )
             {
@@ -401,12 +399,12 @@ VersionedTile::servicePendingRequests( int stamp )
                     if ( _elevPlaceholderRequest->isIdle() )
                     {
                         _elevPlaceholderRequest->setProgressCallback( new TileRequestProgressCallback(
-                            _elevPlaceholderRequest.get(), terrain->getOrCreateTaskService()));
+                            _elevPlaceholderRequest.get(), terrain->getElevationTaskService()));
                         float priority = (float)_key->getLevelOfDetail();
                         //_elevPlaceholderRequest->setPriority( _key->getLevelOfDetail() ); // tweak?
                         _elevPlaceholderRequest->setPriority( priority );
                         static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get())->setParentTile( _parentTile.get() );
-                        terrain->getOrCreateTaskService()->add( _elevPlaceholderRequest.get() );
+                        terrain->getElevationTaskService()->add( _elevPlaceholderRequest.get() );
                     }
                     else if ( !_elevPlaceholderRequest->isCompleted() )
                     {
@@ -420,9 +418,9 @@ VersionedTile::servicePendingRequests( int stamp )
                     _elevRequest->setStamp( stamp );
 
                     _elevRequest->setProgressCallback( new TileRequestProgressCallback(
-                        _elevRequest.get(), terrain->getOrCreateTaskService() ) );
+                        _elevRequest.get(), terrain->getElevationTaskService() ) );
 
-                    terrain->getOrCreateTaskService()->add( _elevRequest.get() );
+                    terrain->getElevationTaskService()->add( _elevRequest.get() );
                 }
             }
             else if ( !_elevRequest->isCompleted() )
@@ -462,7 +460,7 @@ VersionedTile::serviceCompletedRequests()
             //Reset the cancelled task to IDLE and give it a new progress callback.
             i->get()->setState( TaskRequest::STATE_IDLE );
             i->get()->setProgressCallback( new TileRequestProgressCallback(
-                i->get(), getVersionedTerrain()->getOrCreateTaskService()));
+                i->get(), getVersionedTerrain()->getImageryTaskService(r->_layerIndex)));
             ++i;
         }
         else
@@ -587,30 +585,59 @@ VersionedTerrain::VersionedTerrain( Map* map, MapEngine* engine ) :
 _map( map ),
 _engine( engine ),
 _revision(0),
-_numAsyncTileLayerThreads( 4 ) // default..overridden below possibly
+_numAsyncImageryThreads( 4 ), // default..overridden below possibly
+_numAsyncElevationThreads( 4 ),
+_threadPoolPerImageryLayer( true )
 {
     // see if the async tile layer thread count is set in the engine props:
-    const optional<int>& threads = engine->getEngineProperties().getNumAsyncTileLayerThreads();
-    if ( threads.isSet() )
-        _numAsyncTileLayerThreads = threads.get();
+    const optional<int>& imageryThreads = engine->getEngineProperties().getNumAsyncImageryLayerThreads();
+    if ( imageryThreads.isSet() )
+        _numAsyncImageryThreads = imageryThreads.get();
+
+    // see if the async tile layer thread count is set in the engine props:
+    const optional<int>& elevationThreads = engine->getEngineProperties().getNumAsyncElevationLayerThreads();
+    if ( elevationThreads.isSet() )
+        _numAsyncElevationThreads = elevationThreads.get();
 
     // next, see if it's overridden in the environment:
-
     // backwards compat:
-    const char* env_numAsyncTileLayerThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
-    if ( env_numAsyncTileLayerThreads )
+    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
+    if ( env_numTaskServiceThreads )
     {
-        _numAsyncTileLayerThreads = ::atoi( env_numAsyncTileLayerThreads );
+        _numAsyncElevationThreads = _numAsyncImageryThreads = ::atoi( env_numTaskServiceThreads );
         osg::notify(osg::NOTICE) << "[osgEarth] Note: OSGEARTH_NUM_TASK_SERVICE_THREADS is deprecated; please use OSGEARTH_NUM_ASYNC_TILE_LAYER_THREADS instead." << std::endl;
     }
 
-    env_numAsyncTileLayerThreads = getenv("OSGEARTH_NUM_ASYNC_TILE_LAYER_THREADS");
-    if ( env_numAsyncTileLayerThreads )
+    const char* env_numAsyncImageTileLayerThreads = getenv("OSGEARTH_NUM_ASYNC_IMAGE_TILE_LAYER_THREADS");
+    if ( env_numAsyncImageTileLayerThreads )
     {
-        _numAsyncTileLayerThreads = ::atoi( env_numAsyncTileLayerThreads );
+        _numAsyncImageryThreads = ::atoi( env_numAsyncImageTileLayerThreads );
     }
 
-    _numAsyncTileLayerThreads = osg::clampBetween( _numAsyncTileLayerThreads, 1, 128 );
+    const char* env_numAsyncElevationTileLayerThreads = getenv("OSGEARTH_NUM_ASYNC_ELEVATION_TILE_LAYER_THREADS");
+    if ( env_numAsyncElevationTileLayerThreads )
+    {
+        _numAsyncElevationThreads = ::atoi( env_numAsyncElevationTileLayerThreads );
+    }
+
+    const optional<bool>& threadPoolPerImageryLayer = engine->getEngineProperties().getThreadPoolPerImageryLayer();
+    if (threadPoolPerImageryLayer.isSet() )
+    {
+        _threadPoolPerImageryLayer = threadPoolPerImageryLayer.get();
+    }
+
+    const char* env_threadPoolPerImageryLayer = getenv("OSGEARTH_THREAD_POOL_PER_IMAGERY_LAYER");
+    if(env_threadPoolPerImageryLayer != 0)
+    {
+        _threadPoolPerImageryLayer = (strcmp(env_threadPoolPerImageryLayer, "TRUE") == 0);
+    }
+    
+    _numAsyncImageryThreads = osg::clampBetween( _numAsyncImageryThreads, 1, 128 );  
+    _numAsyncElevationThreads = osg::clampBetween( _numAsyncElevationThreads, 1, 128 );
+
+    osg::notify(osg::INFO)   << "TaskServiceInfo ImageryThreads =" << _numAsyncImageryThreads 
+                             << " ElevationThreads = " << _numAsyncElevationThreads
+                             << " ThreadPoolPerLayer = " << _threadPoolPerImageryLayer << std::endl;    
 }
 
 void
@@ -734,6 +761,7 @@ VersionedTerrain::getEngine() {
     return _engine.get();
 }
 
+/*
 TaskService*
 VersionedTerrain::getOrCreateTaskService()
 {
@@ -747,4 +775,73 @@ VersionedTerrain::getOrCreateTaskService()
         }
     }    
     return _taskService.get();
+}*/
+
+void
+VersionedTerrain::traverse( osg::NodeVisitor &nv )
+{
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        ScopedLock<Mutex> lock( _taskServiceMutex );
+        for (TaskServiceMap::iterator i = _taskServices.begin(); i != _taskServices.end(); ++i)
+        {
+            i->second->setStamp( nv.getFrameStamp()->getFrameNumber() );
+        }
+    }
+    osgTerrain::Terrain::traverse( nv );
 }
+
+TaskService*
+VersionedTerrain::createTaskService( int id, int numThreads )
+{
+    ScopedLock<Mutex> lock( _taskServiceMutex );
+    TaskService* service =  new TaskService( numThreads );
+    _taskServices[id] = service;
+    return service;
+}
+
+TaskService*
+VersionedTerrain::getTaskService(int id)
+{
+    ScopedLock<Mutex> lock( _taskServiceMutex );
+    TaskServiceMap::iterator itr = _taskServices.find(id);
+    if (itr != _taskServices.end())
+    {
+        return itr->second.get();
+    }
+    return NULL;
+}
+
+#define ELEVATION_TASK_SERVICE_ID 0
+#define IMAGERY_TASK_SERVICE_ID   1
+
+TaskService*
+VersionedTerrain::getElevationTaskService()
+{
+    TaskService* service = getTaskService( ELEVATION_TASK_SERVICE_ID );
+    if (!service)
+    {
+        service = createTaskService( ELEVATION_TASK_SERVICE_ID, _numAsyncElevationThreads );
+    }
+    return service;
+}
+
+
+TaskService*
+VersionedTerrain::getImageryTaskService(int layerNum)
+{
+    int id = IMAGERY_TASK_SERVICE_ID;
+    //If using a thread pool per imagery layer, create a new ID based on the layer number
+    if (_threadPoolPerImageryLayer)
+    {
+        id += layerNum;
+    }
+
+    TaskService* service = getTaskService( id );
+    if (!service)
+    {
+        service = createTaskService( id, _numAsyncImageryThreads );
+    }
+    return service;
+}
+

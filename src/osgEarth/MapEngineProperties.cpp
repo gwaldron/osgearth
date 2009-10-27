@@ -58,7 +58,9 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _filename = rhs._filename;   
     _preemptive_lod = rhs._preemptive_lod;
     _use_task_service = rhs._use_task_service;
-    _num_task_service_threads = rhs._num_task_service_threads;
+    _num_imagery_task_service_threads = rhs._num_imagery_task_service_threads;
+    _num_elevation_task_service_threads = rhs._num_elevation_task_service_threads;
+    _threadPoolPerImageryLayer = rhs._threadPoolPerImageryLayer;
 	_layering_technique = rhs._layering_technique;
     return *this;
 }
@@ -84,13 +86,33 @@ MapEngineProperties::getAsyncTileLayers() const {
 }
 
 void
-MapEngineProperties::setNumAsyncTileLayerThreads( int value ) {
-    _num_task_service_threads = value;
+MapEngineProperties::setNumAsyncImageryLayerThreads( int value ) {
+    _num_imagery_task_service_threads = value;
 }
 
 const optional<int>&
-MapEngineProperties::getNumAsyncTileLayerThreads() const {
-    return _num_task_service_threads;
+MapEngineProperties::getNumAsyncImageryLayerThreads() const {
+    return _num_imagery_task_service_threads;
+}
+
+void
+MapEngineProperties::setNumAsyncElevationLayerThreads( int value ) {
+    _num_elevation_task_service_threads = value;
+}
+
+const optional<int>&
+MapEngineProperties::getNumAsyncElevationLayerThreads() const {
+    return _num_elevation_task_service_threads;
+}
+
+const optional<bool>&
+MapEngineProperties::getThreadPoolPerImageryLayer() const {
+    return _threadPoolPerImageryLayer;
+}
+
+void
+MapEngineProperties::setThreadPoolPerImageryLayer( bool value ) {
+    _threadPoolPerImageryLayer = value;
 }
 
 void

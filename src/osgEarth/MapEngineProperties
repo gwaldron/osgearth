@@ -190,16 +190,39 @@ namespace osgEarth
         bool getAsyncTileLayers() const;
 
         /**
-         * Sets the size of the thread pool to use for asynchronous tile layer loading. See
+         * Gets the size of thread pool to use for asynchronous tile imagery layer loading. See
          * setAsyncTileLayers() for details.
          */
-        void setNumAsyncTileLayerThreads( int threads );
+        const optional<int>& getNumAsyncImageryLayerThreads() const;
 
         /**
-         * Gets the size of thread pool to use for asynchronous tile layer loading. See
+         * Sets the size of the thread pool to use for asynchronous imagery tile layer loading. See
          * setAsyncTileLayers() for details.
          */
-        const optional<int>& getNumAsyncTileLayerThreads() const;
+        void setNumAsyncImageryLayerThreads( int threads );
+
+        /**
+         * Gets the size of thread pool to use for asynchronous tile elevation layer loading. See
+         * setAsyncTileLayers() for details.
+         */
+        const optional<int>& getNumAsyncElevationLayerThreads() const;
+
+         /**
+         * Sets the size of the thread pool to use for asynchronous elevation tile layer loading. See
+         * setAsyncTileLayers() for details.
+         */
+        void setNumAsyncElevationLayerThreads( int threads );
+
+        /**
+        * Gets whether or not to create a separate thread pool for each layer.  If true, a thread pool 
+        * with getNumAsyncImageryLayerThreads will be created for each layer in the map.  If false, 
+        * all imagery layers will share getNumAsyncImageryLayerThreads threads.
+        * 
+        */
+        const optional<bool>& getThreadPoolPerImageryLayer() const;
+        void setThreadPoolPerImageryLayer( bool value );
+
+
 
         /**
          * Available techniques for compositing multiple image layers at runtime.
@@ -238,7 +261,9 @@ namespace osgEarth
         bool _combine_layers;
         bool _preemptive_lod;
         bool _use_task_service;
-        optional<int> _num_task_service_threads;
+        optional<int> _num_imagery_task_service_threads;
+        optional<int> _num_elevation_task_service_threads;
+        optional<bool> _threadPoolPerImageryLayer;
 		optional<LayeringTechnique> _layering_technique;
     };
 }

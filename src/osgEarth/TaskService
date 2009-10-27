@@ -64,9 +64,6 @@ namespace osgEarth
         void setProgressCallback(ProgressCallback* progress) { _progress = progress; }
         const std::string& getName() const { return _name; }
         void setName( const std::string& name ) { _name = name; }
-
-        bool isElevation() const { return _isElevation;}
-        void setIsElevation( bool isElevation) { _isElevation = isElevation; }
     protected:
         float _priority;
         State _state;
@@ -128,8 +125,7 @@ namespace osgEarth
     private:
         typedef std::list<TaskThread*> TaskThreads;
         TaskThreads _threads;
-        osg::ref_ptr<TaskRequestQueue> _imageryQueue;
-        osg::ref_ptr<TaskRequestQueue> _elevationQueue;
+        osg::ref_ptr<TaskRequestQueue> _queue;
 
         virtual ~TaskService();
     };

@@ -79,7 +79,9 @@ EarthFile::getMapEngineProperties() {
 //#define ELEM_USE_TASK_SERVICE         "use_task_service"
 #define ELEM_DEFER_TILE_DATA_LOADING  "defer_tile_data_loading"
 #define ELEM_ASYNC_TILE_LAYERS        "async_tile_layers"
-#define ELEM_NUM_ASYNC_TILE_LAYER_THREADS "num_async_tile_layer_threads"
+#define ELEM_NUM_ASYNC_IMAGE_TILE_LAYER_THREADS "num_async_image_tile_layer_threads"
+#define ELEM_NUM_ASYNC_ELEVATION_TILE_LAYER_THREADS "num_async_elevation_tile_layer_threads"
+#define ELEM_THREAD_POOL_PER_IMAGE_LAYER "thread_pool_per_image_layer"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
@@ -370,9 +372,20 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     else if (async_tile_layers == VALUE_FALSE)
         engineProps.setAsyncTileLayers(false);
 
-    std::string num_async_tile_layer_threads = e_map->getSubElementText( ELEM_NUM_ASYNC_TILE_LAYER_THREADS );
-    if ( !num_async_tile_layer_threads.empty() )
-        engineProps.setNumAsyncTileLayerThreads( as<int>( num_async_tile_layer_threads, 0 ) );
+    std::string num_async_image_tile_layer_threads = e_map->getSubElementText( ELEM_NUM_ASYNC_IMAGE_TILE_LAYER_THREADS );
+    if ( !num_async_image_tile_layer_threads.empty() )
+        engineProps.setNumAsyncImageryLayerThreads( as<int>( num_async_image_tile_layer_threads, 0 ) );
+
+    std::string num_async_elevation_tile_layer_threads = e_map->getSubElementText( ELEM_NUM_ASYNC_ELEVATION_TILE_LAYER_THREADS );
+    if ( !num_async_elevation_tile_layer_threads.empty() )
+        engineProps.setNumAsyncElevationLayerThreads( as<int>( num_async_elevation_tile_layer_threads, 0 ) );
+
+    std::string thread_pool_per_layer = e_map->getSubElementText( ELEM_THREAD_POOL_PER_IMAGE_LAYER );
+    if (thread_pool_per_layer == VALUE_TRUE )
+        engineProps.setThreadPoolPerImageryLayer( true );
+    else if (thread_pool_per_layer == VALUE_FALSE )
+        engineProps.setThreadPoolPerImageryLayer( false );
+
 
 	std::string technique = e_map->getSubElementText(ELEM_TECHNIQUE); // backcompat
     if (technique.empty()) technique = e_map->getSubElementText(ELEM_LAYERING_TECHNIQUE);

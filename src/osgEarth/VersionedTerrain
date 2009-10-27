@@ -210,24 +210,36 @@ namespace osgEarth
         /** Gets the number of color layers and elevation layers combined */
         int getNumActiveLayers() const;
 
-        TaskService* getOrCreateTaskService();
-
-        //unsigned int getNumTaskServiceThreads() const;
-        //void setNumTaskServiceThreads( unsigned int numTaskServiceThreads );
-
         Map* getMap();
         MapEngine* getEngine();
 
+        TaskService* getImageryTaskService(int layerNum);// { return getTaskService( _imageryTaskId + layerNum ); }
+        TaskService* getElevationTaskService();//{ return getTaskService( _elevationTaskId ); }
+
+        virtual void traverse( osg::NodeVisitor &nv );
+
+
+
     private:
-        int _revision;
+
+        TaskService* createTaskService( int id, int numThreads );
+        TaskService* getTaskService( int id );
+
+
+        int _revision; 
         OpenThreads::Mutex _revisionMutex;
 
         osg::ref_ptr<Map> _map;
         osg::ref_ptr<MapEngine> _engine;
-        osg::ref_ptr<TaskService> _taskService;
+        typedef std::map< int, osg::ref_ptr< TaskService > > TaskServiceMap;
+        TaskServiceMap _taskServices;
+
         osg::ref_ptr<const Profile> _profile;
         OpenThreads::Mutex _taskServiceMutex;
-        int _numAsyncTileLayerThreads;
+
+        int  _numAsyncImageryThreads;
+        int  _numAsyncElevationThreads;
+        bool _threadPoolPerImageryLayer;
         
         VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
     };

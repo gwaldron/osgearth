@@ -242,21 +242,6 @@ MapNode::getTerrain( unsigned int i ) const
 }
 
 void
-MapNode::traverse( osg::NodeVisitor& nv )
-{
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        for (unsigned int i = 0; i < _terrains.size(); ++i)
-        {
-            osg::ref_ptr<TaskService> taskService = _terrains[i]->getOrCreateTaskService();
-            if ( taskService.valid() )
-                taskService->setStamp( nv.getFrameStamp()->getFrameNumber() );
-        }        
-    }
-    osg::CoordinateSystemNode::traverse( nv );
-}
-
-void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     // Note: CSN must always be at the top

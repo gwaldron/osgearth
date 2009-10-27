@@ -556,7 +556,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // install placeholder image and heightfield layers.
     {
-        ScopedReadLock ancestorLock( tile->getTileLayersMutex() );
+        ScopedReadLock ancestorLock( ancestorTile->getTileLayersMutex() );
         addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
     }

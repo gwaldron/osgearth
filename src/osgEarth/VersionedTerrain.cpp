@@ -93,7 +93,10 @@ struct TileColorLayerRequest : public TileLayerRequest
 struct TileElevationLayerRequest : public TileLayerRequest
 {
     TileElevationLayerRequest( const TileKey* key, Map* map, MapEngine* engine )
-        : TileLayerRequest( key, map, engine ) { }
+        : TileLayerRequest( key, map, engine )
+    {
+        setIsElevation( true );
+    }
 
     void operator()( ProgressCallback* progress )
     {
@@ -105,7 +108,10 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 {
     TileElevationPlaceholderLayerRequest( const TileKey* key, Map* map, MapEngine* engine, GeoLocator* keyLocator )
         : TileLayerRequest( key, map, engine ),
-          _keyLocator(keyLocator) { }
+          _keyLocator(keyLocator)
+    {
+        setIsElevation( true );
+    }
 
     void setParentTile( VersionedTile* parentTile )
     {

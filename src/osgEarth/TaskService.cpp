@@ -8,6 +8,7 @@ using namespace OpenThreads;
 TaskRequest::TaskRequest( float priority ) :
 _priority( priority ),
 _state( STATE_IDLE ),
+_isElevation( false ),
 osg::Referenced( true )
 {
     _progress = new ProgressCallback();
@@ -173,12 +174,20 @@ TaskThread::cancel()
 
 TaskService::TaskService( int numThreads )
 {
-    _queue = new TaskRequestQueue();
+    _imageryQueue = new TaskRequestQueue();
+    _elevationQueue = new TaskRequestQueue();
 
     if ( numThreads <= 0 ) numThreads = 1;
     for( int i=0; i<numThreads; i++ )
     {
-        TaskThread* thread = new TaskThread( _queue.get() );
+        TaskThread* thread = new TaskThread( _imageryQueue.get() );
+        _threads.push_back( thread  );
+        thread->start();
+    }
+
+    for( int i=0; i<numThreads; i++ )
+    {
+        TaskThread* thread = new TaskThread( _elevationQueue.get() );
         _threads.push_back( thread  );
         thread->start();
     }
@@ -187,7 +196,16 @@ TaskService::TaskService( int numThreads )
 void
 TaskService::add( TaskRequest* request )
 {
-    _queue->add( request );
+    if (request->isElevation())
+    {
+        //osg::notify(osg::NOTICE) << "Adding request to elevation queue " << std::endl;
+        _elevationQueue->add( request );
+    }
+    else
+    {
+        //osg::notify(osg::NOTICE) << "Adding request to imagery queue " << std::endl;
+        _imageryQueue->add( request );
+    }
 }
 
 TaskService::~TaskService()
@@ -207,11 +225,14 @@ TaskService::~TaskService()
 int
 TaskService::getStamp() const
 {
-    return _queue->getStamp();
+    //return _queue->getStamp();
+    return _imageryQueue->getStamp();
 }
 
 void
 TaskService::setStamp( int stamp )
 {
-    _queue->setStamp( stamp );
+    //_queue->setStamp( stamp );
+    _imageryQueue->setStamp( stamp );
+    _elevationQueue->setStamp( stamp );
 }

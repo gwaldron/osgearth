@@ -902,6 +902,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     //DEBUGGING
 #if 0
     osgText::Text* text = new osgText::Text();
+    text->setThreadSafeRefUnref( true );
     std::stringstream buf;
     buf << "" << _terrainTile->getTileID().level << "," <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y;
     text->setText( buf.str() );

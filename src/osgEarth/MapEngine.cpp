@@ -503,7 +503,7 @@ MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, 
 }
 
 
-#define MAX_LOD 99
+#define MAX_LOD 30
 
 
 osg::Node*
@@ -555,16 +555,15 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         }
     }
 
-    // install placeholder image and heightfield layers.
+    if (ancestorTile.valid())
     {
+        // install placeholder image and heightfield layers.
         ScopedReadLock ancestorLock( ancestorTile->getTileLayersMutex() );
         addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
+        tile->setElevationLOD( ancestorTile->getElevationLOD() );
     }
 
-    // set this tile's data level to that of the ancestor.
-    if ( ancestorTile.valid() ) // should always be TRUE
-        tile->setElevationLOD( ancestorTile->getElevationLOD() );
     
     // calculate the switching distances:
     osg::BoundingSphere bs = tile->getBound();
@@ -606,30 +605,32 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     osg::Node* result = 0L;
 
+
+    // create a PLOD so we can keep subdividing:
+    osg::PagedLOD* plod = new osg::PagedLOD();
+    plod->setCenter( bs.center() );
+    plod->addChild( switcher, min_range, max_range );
+
     if ( key->getLevelOfDetail() < MAX_LOD )
     {
-        // create a PLOD so we can keep subdividing:
-        osg::PagedLOD* plod = new osg::PagedLOD();
-        plod->setCenter( bs.center() );
-        plod->addChild( switcher, min_range, max_range );
         plod->setFileName( 1, createURI( map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );
-        
-#if USE_FILELOCATIONCALLBACK
-        osgDB::Options* options = new osgDB::Options;
-        options->setFileLocationCallback( new osgEarth::FileLocationCallback);
-        plod->setDatabaseOptions( options );
-#endif
-
-        result = plod;
     }
     else
     {
-        result = switcher;
+        plod->setRange( 0, 0, FLT_MAX );
     }
-    
+
+#if USE_FILELOCATIONCALLBACK
+    osgDB::Options* options = new osgDB::Options;
+    options->setFileLocationCallback( new osgEarth::FileLocationCallback);
+    plod->setDatabaseOptions( options );
+#endif
+
+    result = plod;
+
     // Install a callback that will load the actual tile data via the pager.
-//    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    //    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
     result->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
     //result = plod;
@@ -875,31 +876,55 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // build the geometry immediately
     //tile->init();
 
-    if ( wrapInPagedLOD && key->getLevelOfDetail() < MAX_LOD )
+    if ( _engineProps.getAsyncTileLayers() )
     {
-        // if we are doing immediate load, we need to house the new tile in a PLOD that will
-        // queue up its subtiles.
+        tile->setUseLayerRequests( true );
+        tile->setHasElevationHint( hasElevation );
+    }
+
+    // install a tile switcher:
+    tile->setTerrainRevision( terrain->getRevision() );
+    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range, true );
+
+    osg::Node* result = 0L;
+
+    if (wrapInPagedLOD)
+    {
+        // create a PLOD so we can keep subdividing:
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-		//plod->addChild(tile, 0, min_range);
-        plod->addChild(tile, min_range, max_range);
-        plod->setFileName( 1, createURI( map->getId(), key ) );
-        plod->setRangeMode( mode ); //osg::LOD::PIXEL_SIZE_ON_SCREEN );
-		//plod->setRange(1, min_range, FLT_MAX);
-        plod->setRange(1, 0, min_range);
-        
+        plod->addChild( switcher, min_range, max_range );
+
+        if ( key->getLevelOfDetail() < MAX_LOD )
+        {
+            plod->setFileName( 1, createURI( map->getId(), key ) );
+            plod->setRange( 1, 0.0, min_range );
+        }
+        else
+        {
+            plod->setRange( 0, 0, FLT_MAX );
+        }
+
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = new osgDB::Options;
         options->setFileLocationCallback( new osgEarth::FileLocationCallback);
         plod->setDatabaseOptions( options );
 #endif
-    
-        return plod;
+        result = plod;
+        result->addCullCallback( new TileDataLoaderCallback( map, key ) );
     }
     else
     {
-        return tile;
+        result = tile;
     }
+
+    // Install a callback that will load the actual tile data via the pager.
+    //    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    
+
+    //result = plod;
+
+    return result;
 }
 
 

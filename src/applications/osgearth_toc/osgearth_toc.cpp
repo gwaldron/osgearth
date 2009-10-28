@@ -376,15 +376,12 @@ public:
     {
         if ( _layerIndex < _map->getImageMapLayers().size() )
         {
-            TileSource* source = _map->getImageMapLayers()[_layerIndex]->getTileSource(); //Node->getImageSource( _layerIndex );
-            if (source)
-            {
-                std::stringstream ss;
-                unsigned int index = (_map->getImageMapLayers().size() - _layerIndex);
-                ss << index << ") ";
-                _lblNum->setLabel(ss.str());
-                _lblName->setLabel( source->getName());
-            }
+            std::string name = _map->getImageMapLayers()[_layerIndex]->getName(); //Node->getImageSource( _layerIndex );
+            std::stringstream ss;
+            unsigned int index = (_map->getImageMapLayers().size() - _layerIndex);
+            ss << index << ") ";
+            _lblNum->setLabel(ss.str());
+            _lblName->setLabel(name);
         }
     }
 
@@ -493,7 +490,7 @@ int main(int argc, char** argv)
     if ( arguments.read( "--preemptive" ) || arguments.read( "--preemptive=ON" ) )
     {
         engineProps.setPreemptiveLOD( true );
-        //engineProps.setAsyncTileLayers( true );
+        engineProps.setAsyncTileLayers( true );
     }
     else
     {

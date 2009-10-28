@@ -207,14 +207,11 @@ namespace osgEarth
 
         void refreshNeighbors( const osgTerrain::TileID& tileId, VersionedTileObsVec& output );
 
-        /** Gets the number of color layers and elevation layers combined */
-        int getNumActiveLayers() const;
-
         Map* getMap();
         MapEngine* getEngine();
 
-        TaskService* getImageryTaskService(int layerId);// { return getTaskService( _imageryTaskId + layerNum ); }
-        TaskService* getElevationTaskService();//{ return getTaskService( _elevationTaskId ); }
+        TaskService* getImageryTaskService(int layerId);
+        TaskService* getElevationTaskService();
 
         virtual void traverse( osg::NodeVisitor &nv );
 

@@ -640,18 +640,6 @@ VersionedTerrain::getRevision() const
     return _revision;
 }
 
-//unsigned int 
-//VersionedTerrain::getNumAsyncTileLayerThreads() const
-//{
-//    return _numTaskServiceThreads;
-//}
-//
-//void
-//VersionedTerrain::setNumAsyncTileLayerThreads( unsigned int numTaskServiceThreads )
-//{
-//    _numTaskServiceThreads = numTaskServiceThreads;
-//}
-
 VersionedTile*
 VersionedTerrain::getVersionedTile(const osgTerrain::TileID& tileID)
 {
@@ -732,11 +720,6 @@ VersionedTerrain::getTerrainTiles( TerrainTileList& out_tiles )
     }
 }
 
-//TileLayerFactory*
-//VersionedTerrain::getTileLayerFactory() const {
-//    return _layerFactory.get();
-//}
-
 Map*
 VersionedTerrain::getMap() {
     return _map.get();
@@ -746,22 +729,6 @@ MapEngine*
 VersionedTerrain::getEngine() {
     return _engine.get();
 }
-
-/*
-TaskService*
-VersionedTerrain::getOrCreateTaskService()
-{
-    if ( !_taskService.valid() )
-    {
-        ScopedLock<Mutex> lock( _taskServiceMutex );
-        // double-check
-        if ( !_taskService.valid() )
-        {
-            _taskService = new TaskService( _numAsyncTileLayerThreads );
-        }
-    }    
-    return _taskService.get();
-}*/
 
 void
 VersionedTerrain::traverse( osg::NodeVisitor &nv )
@@ -799,7 +766,6 @@ VersionedTerrain::getTaskService(int id)
 }
 
 #define ELEVATION_TASK_SERVICE_ID 9999
-#define IMAGERY_TASK_SERVICE_ID   1
 
 TaskService*
 VersionedTerrain::getElevationTaskService()

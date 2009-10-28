@@ -23,6 +23,8 @@
 
 using namespace osgEarth;
 
+static unsigned int s_mapLayerID = 0;
+
 MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Properties& driverProps) :
 _name( name ),
 _type( type ),
@@ -34,9 +36,11 @@ _exactCropping(false),
 _useMercatorFastPath(true),
 _reprojected_tile_size(256),
 _cacheOnly( false ),
-_cacheOnlyEnv( false )
+_cacheOnlyEnv( false ),
+_loadWeight( 1.0f )
 {
 	readEnvironmentalVariables();
+    _id = s_mapLayerID++;
 }
 
 MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
@@ -49,9 +53,11 @@ _exactCropping(false),
 _useMercatorFastPath(true),
 _reprojected_tile_size(256),
 _cacheOnly( false ),
-_cacheOnlyEnv( false )
+_cacheOnlyEnv( false ),
+_loadWeight( 1.0f )
 {
 	readEnvironmentalVariables();
+    _id = s_mapLayerID++;
 }
 
 optional<int>&
@@ -80,6 +86,11 @@ MapLayer::getName() const {
 const MapLayer::Type&
 MapLayer::getType() const {
     return _type;
+}
+
+unsigned int
+MapLayer::getId() const {
+    return _id;
 }
 
 const std::string& 
@@ -168,6 +179,18 @@ void
 MapLayer::setCacheFormat(const std::string& cacheFormat)
 {
 	_cacheFormat = cacheFormat;
+}
+
+float
+MapLayer::getLoadWeight() const
+{
+    return _loadWeight;
+}
+
+void
+MapLayer::setLoadWeight(float loadWeight)
+{
+    _loadWeight = loadWeight;
 }
 
 void 

@@ -69,8 +69,8 @@ struct TileLayerRequest : public TaskRequest
 
 struct TileColorLayerRequest : public TileLayerRequest
 {
-    TileColorLayerRequest( const TileKey* key, Map* map, MapEngine* engine, int layerIndex )
-        : TileLayerRequest( key, map, engine ), _layerIndex( layerIndex ) { }
+    TileColorLayerRequest( const TileKey* key, Map* map, MapEngine* engine, int layerIndex, unsigned int layerId )
+        : TileLayerRequest( key, map, engine ), _layerIndex( layerIndex ), _layerId(layerId) { }
 
     void operator()( ProgressCallback* progress )
     {
@@ -88,6 +88,7 @@ struct TileColorLayerRequest : public TileLayerRequest
         }
     }
     int _layerIndex;
+    unsigned int _layerId;
 };
 
 struct TileElevationLayerRequest : public TileLayerRequest
@@ -326,6 +327,8 @@ VersionedTile::servicePendingRequests( int stamp )
     if ( !_requestsInstalled )
     {
         Map* map = terrain->getMap();
+        OpenThreads::ScopedReadLock lock(map->getMapDataMutex());
+
         MapEngine* engine = terrain->getEngine();
 
         if ( _hasElevation && this->getElevationLayer() ) // don't need a layers lock here
@@ -344,21 +347,24 @@ VersionedTile::servicePendingRequests( int stamp )
             ss.str("");
             ss << "TileElevationPlaceholderLayerRequest " << _key->str() << std::endl;
             _elevPlaceholderRequest->setName( ss.str() );
-
         }
 
         int numColorLayers = getNumColorLayers();
         for( int layerIndex = 0; layerIndex < numColorLayers; layerIndex++ ) 
         {
-            // imagery is slighty higher priority than elevation data
-            TaskRequest* r = new TileColorLayerRequest( _key.get(), map, engine, layerIndex );
-            std::stringstream ss;
-            ss << "TileColorLayerRequest " << _key->str() << std::endl;
-            r->setName( ss.str() );
-            r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
-            r->setStamp( stamp );
-            r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getImageryTaskService(layerIndex) ));
-            _requests.push_back( r );
+            if (layerIndex < map->getImageMapLayers().size())
+            {
+                unsigned int layerId = map->getImageMapLayers()[layerIndex].get()->getId();
+                // imagery is slighty higher priority than elevation data
+                TaskRequest* r = new TileColorLayerRequest( _key.get(), map, engine, layerIndex, layerId );
+                std::stringstream ss;
+                ss << "TileColorLayerRequest " << _key->str() << std::endl;
+                r->setName( ss.str() );
+                r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
+                r->setStamp( stamp );
+                r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
+                _requests.push_back( r );
+            }
         }
 
         _requestsInstalled = true;
@@ -376,7 +382,7 @@ VersionedTile::servicePendingRequests( int stamp )
             {
                 //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
                 r->setStamp( stamp );
-                getVersionedTerrain()->getImageryTaskService(r->_layerIndex)->add( r );
+                getVersionedTerrain()->getImageryTaskService(r->_layerId)->add( r );
             }
             else if ( !r->isCompleted() )
             {
@@ -460,7 +466,7 @@ VersionedTile::serviceCompletedRequests()
             //Reset the cancelled task to IDLE and give it a new progress callback.
             i->get()->setState( TaskRequest::STATE_IDLE );
             i->get()->setProgressCallback( new TileRequestProgressCallback(
-                i->get(), getVersionedTerrain()->getImageryTaskService(r->_layerIndex)));
+                i->get(), getVersionedTerrain()->getImageryTaskService(r->_layerId)));
             ++i;
         }
         else
@@ -585,59 +591,39 @@ VersionedTerrain::VersionedTerrain( Map* map, MapEngine* engine ) :
 _map( map ),
 _engine( engine ),
 _revision(0),
-_numAsyncImageryThreads( 4 ), // default..overridden below possibly
-_numAsyncElevationThreads( 4 ),
-_threadPoolPerImageryLayer( true )
+_numAsyncThreads( 0 )
 {
-    // see if the async tile layer thread count is set in the engine props:
-    const optional<int>& imageryThreads = engine->getEngineProperties().getNumAsyncImageryLayerThreads();
-    if ( imageryThreads.isSet() )
-        _numAsyncImageryThreads = imageryThreads.get();
+    //See if the number of threads is explicitly provided
+    const optional<int>& numThreads = engine->getEngineProperties().getNumLoadingThreads();
+    if (numThreads.isSet())
+    {
+        _numAsyncThreads = numThreads.get();
+    }
 
-    // see if the async tile layer thread count is set in the engine props:
-    const optional<int>& elevationThreads = engine->getEngineProperties().getNumAsyncElevationLayerThreads();
-    if ( elevationThreads.isSet() )
-        _numAsyncElevationThreads = elevationThreads.get();
-
-    // next, see if it's overridden in the environment:
-    // backwards compat:
-    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_TASK_SERVICE_THREADS");
+    //See if an environment variable was set
+    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_ASYNC_TILE_LAYER_THREADS");
     if ( env_numTaskServiceThreads )
     {
-        _numAsyncElevationThreads = _numAsyncImageryThreads = ::atoi( env_numTaskServiceThreads );
-        osg::notify(osg::NOTICE) << "[osgEarth] Note: OSGEARTH_NUM_TASK_SERVICE_THREADS is deprecated; please use OSGEARTH_NUM_ASYNC_TILE_LAYER_THREADS instead." << std::endl;
+        _numAsyncThreads = ::atoi( env_numTaskServiceThreads );
     }
 
-    const char* env_numAsyncImageTileLayerThreads = getenv("OSGEARTH_NUM_ASYNC_IMAGE_TILE_LAYER_THREADS");
-    if ( env_numAsyncImageTileLayerThreads )
+    //See if a processors per core option was provided
+    if (_numAsyncThreads == 0)
     {
-        _numAsyncImageryThreads = ::atoi( env_numAsyncImageTileLayerThreads );
+        const optional<int>& threadsPerProcessor = engine->getEngineProperties().getNumLoadingThreadsPerLogicalProcessor();
+        if (threadsPerProcessor.isSet())
+        {
+            _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * threadsPerProcessor.get();
+        }
     }
 
-    const char* env_numAsyncElevationTileLayerThreads = getenv("OSGEARTH_NUM_ASYNC_ELEVATION_TILE_LAYER_THREADS");
-    if ( env_numAsyncElevationTileLayerThreads )
+    //Default to using 2 threads per core
+    if (_numAsyncThreads == 0 )
     {
-        _numAsyncElevationThreads = ::atoi( env_numAsyncElevationTileLayerThreads );
+        _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * 2;
     }
 
-    const optional<bool>& threadPoolPerImageryLayer = engine->getEngineProperties().getThreadPoolPerImageryLayer();
-    if (threadPoolPerImageryLayer.isSet() )
-    {
-        _threadPoolPerImageryLayer = threadPoolPerImageryLayer.get();
-    }
-
-    const char* env_threadPoolPerImageryLayer = getenv("OSGEARTH_THREAD_POOL_PER_IMAGERY_LAYER");
-    if(env_threadPoolPerImageryLayer != 0)
-    {
-        _threadPoolPerImageryLayer = (strcmp(env_threadPoolPerImageryLayer, "TRUE") == 0);
-    }
-    
-    _numAsyncImageryThreads = osg::clampBetween( _numAsyncImageryThreads, 1, 128 );  
-    _numAsyncElevationThreads = osg::clampBetween( _numAsyncElevationThreads, 1, 128 );
-
-    osg::notify(osg::INFO)   << "TaskServiceInfo ImageryThreads =" << _numAsyncImageryThreads 
-                             << " ElevationThreads = " << _numAsyncElevationThreads
-                             << " ThreadPoolPerLayer = " << _threadPoolPerImageryLayer << std::endl;    
+    osg::notify(osg::NOTICE) << "Using " << _numAsyncThreads << " loading threads " << std::endl;
 }
 
 void
@@ -812,7 +798,7 @@ VersionedTerrain::getTaskService(int id)
     return NULL;
 }
 
-#define ELEVATION_TASK_SERVICE_ID 0
+#define ELEVATION_TASK_SERVICE_ID 9999
 #define IMAGERY_TASK_SERVICE_ID   1
 
 TaskService*
@@ -821,27 +807,57 @@ VersionedTerrain::getElevationTaskService()
     TaskService* service = getTaskService( ELEVATION_TASK_SERVICE_ID );
     if (!service)
     {
-        service = createTaskService( ELEVATION_TASK_SERVICE_ID, _numAsyncElevationThreads );
+        service = createTaskService( ELEVATION_TASK_SERVICE_ID, 1 );
     }
     return service;
 }
 
 
 TaskService*
-VersionedTerrain::getImageryTaskService(int layerNum)
+VersionedTerrain::getImageryTaskService(int layerId)
 {
-    int id = IMAGERY_TASK_SERVICE_ID;
-    //If using a thread pool per imagery layer, create a new ID based on the layer number
-    if (_threadPoolPerImageryLayer)
-    {
-        id += layerNum;
-    }
-
-    TaskService* service = getTaskService( id );
+    TaskService* service = getTaskService( layerId );
     if (!service)
     {
-        service = createTaskService( id, _numAsyncImageryThreads );
+        service = createTaskService( layerId, 1 );
     }
     return service;
+}
+
+void
+VersionedTerrain::updateTaskServiceThreads()
+{
+    OpenThreads::ScopedReadLock lock(_map->getMapDataMutex());    
+
+    //Get the maximum elevation weight
+    float elevationWeight = 0.0f;
+    for (MapLayerList::const_iterator itr = _map->getHeightFieldMapLayers().begin(); itr != _map->getHeightFieldMapLayers().end(); ++itr)
+    {
+        float w = itr->get()->getLoadWeight();
+        if (w > elevationWeight) elevationWeight = w;
+    }
+
+    float totalImageWeight = 0.0f;
+    for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
+    {
+        totalImageWeight += itr->get()->getLoadWeight();
+    }
+
+    float totalWeight = elevationWeight + totalImageWeight;
+
+    if (elevationWeight > 0.0f)
+    {
+        //Determine how many threads each layer gets
+        int numElevationThreads = (int)osg::round((float)_numAsyncThreads * (elevationWeight / totalWeight ));
+        getElevationTaskService()->setNumThreads( numElevationThreads );
+    }
+
+    for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
+    {
+        int imageThreads = (int)osg::round((float)_numAsyncThreads * (itr->get()->getLoadWeight() / totalWeight ));
+        //osg::notify(osg::NOTICE) << "ImageThreads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
+        getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
+    }
+
 }
 

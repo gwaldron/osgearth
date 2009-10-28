@@ -7,8 +7,9 @@ location.
 -->
 
 <map name="ESRI Imagery" type="geocentric">      
-    <preemptive_lod>false</preemptive_lod>
     <image name="arcgisonline esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
     </image>
+
+    <loading_policy mode="sequential"/>
 </map>

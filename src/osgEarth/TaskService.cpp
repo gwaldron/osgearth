@@ -172,17 +172,11 @@ TaskThread::cancel()
 
 /**************************************************************************/
 
-TaskService::TaskService( int numThreads )
+TaskService::TaskService( int numThreads ):
+_lastRemoveFinishedThreadsStamp(0)
 {
     _queue = new TaskRequestQueue();
-
-    if ( numThreads <= 0 ) numThreads = 1;
-    for( int i=0; i<numThreads; i++ )
-    {
-        TaskThread* thread = new TaskThread( _queue.get() );
-        _threads.push_back( thread  );
-        thread->start();
-    }
+    setNumThreads( numThreads );
 }
 
 void
@@ -215,4 +209,89 @@ void
 TaskService::setStamp( int stamp )
 {
     _queue->setStamp( stamp );
+    //Remove finished threads every 60 frames
+    if (stamp - _lastRemoveFinishedThreadsStamp > 60)
+    {
+      removeFinishedThreads();
+      _lastRemoveFinishedThreadsStamp = stamp;
+    }
 }
+
+int
+TaskService::getNumThreads() const
+{
+    return _numThreads;
+}
+
+void
+TaskService::setNumThreads(int numThreads )
+{
+    _numThreads = osg::maximum(1, numThreads);
+    adjustThreadCount();
+}
+
+void
+TaskService::adjustThreadCount()
+{
+    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(_threadMutex);
+    removeFinishedThreads();
+    int numActiveThreads = 0;
+    for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
+    {
+        if (!(*i)->getDone()) numActiveThreads++;
+    }
+
+    int diff = _numThreads - numActiveThreads;
+    if (diff > 0)
+    {
+        osg::notify(osg::INFO) << "Adding " << diff << " threads to TaskService " << std::endl;
+        //We need to add some threads
+        for (unsigned int i = 0; i < diff; ++i)
+        {
+            TaskThread* thread = new TaskThread( _queue.get() );
+            _threads.push_back( thread );
+            thread->start();
+        }       
+    }
+    else if (diff < 0)
+    {
+        diff = osg::absolute( diff );
+        osg::notify(osg::INFO) << "Removing " << diff << " threads from TaskService " << std::endl;
+        int numRemoved = 0;
+        //We need to remove some threads
+        for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
+        {
+            if (!(*i)->getDone())
+            {
+                (*i)->setDone( true );
+                numRemoved++;
+                if (numRemoved == diff) break;
+            }
+        }
+    }  
+}
+
+void
+TaskService::removeFinishedThreads()
+{
+    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> lock(_threadMutex);
+    unsigned int numRemoved = 0;
+    for (TaskThreads::iterator i = _threads.begin(); i != _threads.end();)
+    {
+        //Erase the threads are not running
+        if (!(*i)->isRunning())
+        {
+            i = _threads.erase( i );
+            numRemoved++;
+        }
+        else
+        {
+            i++;
+        }
+    }
+    if (numRemoved > 0)
+    {
+        osg::notify(osg::INFO) << "Removed " << numRemoved << " finished threads " << std::endl;
+    }
+}
+

@@ -423,11 +423,12 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
 
         if (ancestorLayer)
         {
-            osg::Image* ancestorImage = ancestorLayer->getImage();
-            osgTerrain::ImageLayer* imgLayer = new TransparentLayer(ancestorImage, imageMapLayers[j].get() );
-            imgLayer->setLocator( newImageLocator );
+            //osg::Image* ancestorImage = ancestorLayer->getImage();
+            //osgTerrain::ImageLayer* imgLayer = ance
+            //osgTerrain::ImageLayer* imgLayer = new TransparentLayer(ancestorImage, imageMapLayers[j].get() );
+            //imgLayer->setLocator( newImageLocator );
             //img_layer->setName( layerName );
-            tile->setColorLayer( j, imgLayer );
+            tile->setColorLayer( j, ancestorLayer );
             //layer++;
         }
     }

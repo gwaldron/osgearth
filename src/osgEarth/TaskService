@@ -102,6 +102,7 @@ namespace osgEarth
     struct TaskThread : public OpenThreads::Thread
     {
         TaskThread( TaskRequestQueue* queue );
+        bool getDone() { return _done;}
         void setDone( bool done) { _done = done; }
         void run();
         int cancel();
@@ -109,7 +110,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<TaskRequestQueue> _queue;
         osg::ref_ptr<TaskRequest> _request;
-        bool _done;
+        volatile bool _done;
     };
 
     class OSGEARTH_EXPORT TaskService : public osg::Referenced
@@ -122,11 +123,19 @@ namespace osgEarth
         int getStamp() const;
         void setStamp( int stamp );
 
+        int getNumThreads() const;
+        void setNumThreads( int numThreads );
+
     private:
+        void adjustThreadCount();
+        void removeFinishedThreads();
+
+        OpenThreads::ReentrantMutex _threadMutex;
         typedef std::list<TaskThread*> TaskThreads;
         TaskThreads _threads;
         osg::ref_ptr<TaskRequestQueue> _queue;
-
+        int _numThreads;
+        int _lastRemoveFinishedThreadsStamp;
         virtual ~TaskService();
     };
 }

@@ -62,6 +62,11 @@ namespace osgEarth
             TileSource* source );
 
         /**
+         * Gets the unique ID of this map layer
+         */
+        unsigned int getId() const;
+
+        /**
          * Gets the readable name of the map layer.
          */
         const std::string& getName() const;
@@ -243,6 +248,16 @@ namespace osgEarth
 		 */
 		void setCacheOnly( bool cacheOnly );
 
+        /**
+         * Gets the load weight of this MapLayer.
+         */
+        float getLoadWeight() const;
+
+        /**
+         * Sets the load weight of this MapLayer
+         */
+        void setLoadWeight(float loadWeight );
+
     protected:
 
 		void initTileSource();
@@ -258,6 +273,7 @@ namespace osgEarth
         ~MapLayer() { }
 
     private:
+        unsigned int _id;
         std::string _name;
         Type        _type;
         std::string _driver;
@@ -291,6 +307,8 @@ namespace osgEarth
 		osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
 
 		osg::ref_ptr< const Profile > _profile;
+
+        float _loadWeight;
     };
 
 

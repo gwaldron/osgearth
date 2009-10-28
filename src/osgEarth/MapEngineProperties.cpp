@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/MapEngineProperties>
+#include <osg/Notify>
 
 using namespace osgEarth;
 
@@ -34,7 +35,6 @@ MapEngineProperties::MapEngineProperties()
     _filename = "";
     _preemptive_lod = false;
     _use_task_service = false;
-    //_num_task_service_threads = 0;
 	_layering_technique = MULTITEXTURE;
 }
 
@@ -58,10 +58,9 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _filename = rhs._filename;   
     _preemptive_lod = rhs._preemptive_lod;
     _use_task_service = rhs._use_task_service;
-    _num_imagery_task_service_threads = rhs._num_imagery_task_service_threads;
-    _num_elevation_task_service_threads = rhs._num_elevation_task_service_threads;
-    _threadPoolPerImageryLayer = rhs._threadPoolPerImageryLayer;
-	_layering_technique = rhs._layering_technique;
+    _layering_technique = rhs._layering_technique;
+    _num_loading_threads_per_logical_processor = rhs._num_loading_threads_per_logical_processor;
+    _num_loading_threads = rhs._num_loading_threads;
     return *this;
 }
 
@@ -85,35 +84,27 @@ MapEngineProperties::getAsyncTileLayers() const {
     return _use_task_service;
 }
 
-void
-MapEngineProperties::setNumAsyncImageryLayerThreads( int value ) {
-    _num_imagery_task_service_threads = value;
+const optional<int>&
+MapEngineProperties::getNumLoadingThreadsPerLogicalProcessor() const {
+    return _num_loading_threads_per_logical_processor;
+}
+
+void 
+MapEngineProperties::setNumLoadingThreadsPerLogicalProcessor( int numLoadingThreadsPerLogicalProcessor )
+{
+    _num_loading_threads_per_logical_processor = numLoadingThreadsPerLogicalProcessor;
 }
 
 const optional<int>&
-MapEngineProperties::getNumAsyncImageryLayerThreads() const {
-    return _num_imagery_task_service_threads;
+MapEngineProperties::getNumLoadingThreads() const {
+    return _num_loading_threads;
 }
 
 void
-MapEngineProperties::setNumAsyncElevationLayerThreads( int value ) {
-    _num_elevation_task_service_threads = value;
+MapEngineProperties::setNumLoadingThreads( int numLoadingThreads ) {
+    _num_loading_threads = numLoadingThreads;
 }
 
-const optional<int>&
-MapEngineProperties::getNumAsyncElevationLayerThreads() const {
-    return _num_elevation_task_service_threads;
-}
-
-const optional<bool>&
-MapEngineProperties::getThreadPoolPerImageryLayer() const {
-    return _threadPoolPerImageryLayer;
-}
-
-void
-MapEngineProperties::setThreadPoolPerImageryLayer( bool value ) {
-    _threadPoolPerImageryLayer = value;
-}
 
 void
 MapEngineProperties::setFilename(const std::string& filename)

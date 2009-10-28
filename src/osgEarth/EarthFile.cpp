@@ -75,22 +75,19 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_CACHE_ONLY               "cache_only"
 #define ELEM_NORMALIZE_EDGES          "normalize_edges"
 #define ELEM_COMBINE_LAYERS           "combine_layers"
-#define ELEM_PREEMPTIVE_LOD           "preemptive_lod"
-//#define ELEM_USE_TASK_SERVICE         "use_task_service"
-#define ELEM_DEFER_TILE_DATA_LOADING  "defer_tile_data_loading"
-#define ELEM_ASYNC_TILE_LAYERS        "async_tile_layers"
+
 #define ELEM_NUM_ASYNC_IMAGE_TILE_LAYER_THREADS "num_async_image_tile_layer_threads"
 #define ELEM_NUM_ASYNC_ELEVATION_TILE_LAYER_THREADS "num_async_elevation_tile_layer_threads"
-#define ELEM_THREAD_POOL_PER_IMAGE_LAYER "thread_pool_per_image_layer"
+
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
-#define ELEM_TECHNIQUE                "technique"
 #define ELEM_LAYERING_TECHNIQUE       "layering_technique"
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
+#define ELEM_LOAD_WEIGHT              "load_weight"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -102,6 +99,12 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_MAXY                     "ymax"
 #define ATTR_SRS                      "srs"
 #define ATTR_USELAYER                 "use"
+
+#define ELEM_LOADING_POLICY           "loading_policy"
+#define ATTR_MODE                     "mode"
+#define ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR "loading_threads_per_logical_processor"
+#define ATTR_LOADING_THREADS          "loading_threads"
+
 
 static CacheConfig
 readCache( XmlElement* e_cache )
@@ -270,12 +273,18 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
     }
 
 	std::string transparentColor = e_source->getSubElementText( ELEM_TRANSPARENT_COLOR );
-	if (transparentColor.length() > 0)
+	if (!transparentColor.empty())
 	{
 		osg::Vec4ub color;
 		color = getColor(transparentColor, osg::Vec4ub());
 		layer->transparentColor() = color;
 	}
+
+    std::string loadWeight = e_source->getSubElementText( ELEM_LOAD_WEIGHT );
+    if (!loadWeight.empty())
+    {
+        layer->setLoadWeight( as<float>(loadWeight, 1.0f) );
+    }
 
     return layer;
 }
@@ -359,7 +368,38 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     else if (normalizeEdges == VALUE_FALSE)
         engineProps.setNormalizeEdges(false);
 
-    std::string preemptive_lod = e_map->getSubElementText(ELEM_PREEMPTIVE_LOD);
+    //Read the loading policy
+    XmlElement* e_loading_policy = static_cast<XmlElement*>(e_map->getSubElement( ELEM_LOADING_POLICY ));
+    if (e_loading_policy)
+    {
+        std::string mode = e_loading_policy->getAttr(ATTR_MODE);
+        if (mode == "sequential")
+        {
+            engineProps.setPreemptiveLOD( false );
+            engineProps.setAsyncTileLayers( false );
+            osg::notify(osg::NOTICE) << "Sequential" << std::endl;
+        }
+        else if (mode == "preemptive")
+        {
+            engineProps.setPreemptiveLOD( true );
+            engineProps.setAsyncTileLayers( true );
+            osg::notify(osg::NOTICE) << "preemptive" << std::endl;
+        }
+
+        std::string numLoadingThreadsPerProcessor = e_loading_policy->getAttr(ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR);
+        if (!numLoadingThreadsPerProcessor.empty())
+        {
+            engineProps.setNumLoadingThreadsPerLogicalProcessor( as<int>(numLoadingThreadsPerProcessor, 1) );
+        }
+
+        std::string numLoadingThreads = e_loading_policy->getAttr(ATTR_LOADING_THREADS);
+        if (!numLoadingThreads.empty())
+        {
+            engineProps.setNumLoadingThreads( as<int>(numLoadingThreads, 0 ) );
+        }
+    }
+
+    /*std::string preemptive_lod = e_map->getSubElementText(ELEM_PREEMPTIVE_LOD);
     if ( preemptive_lod.empty() ) preemptive_lod = e_map->getSubElementText(ELEM_DEFER_TILE_DATA_LOADING); // backcompat
     if (preemptive_lod == VALUE_TRUE)
         engineProps.setPreemptiveLOD(true);
@@ -384,11 +424,9 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     if (thread_pool_per_layer == VALUE_TRUE )
         engineProps.setThreadPoolPerImageryLayer( true );
     else if (thread_pool_per_layer == VALUE_FALSE )
-        engineProps.setThreadPoolPerImageryLayer( false );
+        engineProps.setThreadPoolPerImageryLayer( false );*/
 
-
-	std::string technique = e_map->getSubElementText(ELEM_TECHNIQUE); // backcompat
-    if (technique.empty()) technique = e_map->getSubElementText(ELEM_LAYERING_TECHNIQUE);
+    std::string technique = e_map->getSubElementText(ELEM_LAYERING_TECHNIQUE);
 	if (technique == "multipass")
 		engineProps.setLayeringTechnique( osgEarth::MapEngineProperties::MULTIPASS);
 	else if (technique == "multitexture")

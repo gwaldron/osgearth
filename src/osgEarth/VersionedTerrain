@@ -213,11 +213,12 @@ namespace osgEarth
         Map* getMap();
         MapEngine* getEngine();
 
-        TaskService* getImageryTaskService(int layerNum);// { return getTaskService( _imageryTaskId + layerNum ); }
+        TaskService* getImageryTaskService(int layerId);// { return getTaskService( _imageryTaskId + layerNum ); }
         TaskService* getElevationTaskService();//{ return getTaskService( _elevationTaskId ); }
 
         virtual void traverse( osg::NodeVisitor &nv );
 
+        void updateTaskServiceThreads();
 
 
     private:
@@ -237,9 +238,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
         OpenThreads::Mutex _taskServiceMutex;
 
-        int  _numAsyncImageryThreads;
-        int  _numAsyncElevationThreads;
-        bool _threadPoolPerImageryLayer;
+        int _numAsyncThreads;
         
         VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
     };

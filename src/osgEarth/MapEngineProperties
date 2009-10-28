@@ -187,42 +187,20 @@ namespace osgEarth
          * Gets whether asynchronous layer loading is enabled. See setAsyncTileLayers for
          * more details.
          */
-        bool getAsyncTileLayers() const;
+        bool getAsyncTileLayers() const;     
 
         /**
-         * Gets the size of thread pool to use for asynchronous tile imagery layer loading. See
-         * setAsyncTileLayers() for details.
+         *Gets the number of loading threads to use per logical processor.  Only used in preemptive mode
          */
-        const optional<int>& getNumAsyncImageryLayerThreads() const;
+        const optional<int>& getNumLoadingThreadsPerLogicalProcessor() const;
 
         /**
-         * Sets the size of the thread pool to use for asynchronous imagery tile layer loading. See
-         * setAsyncTileLayers() for details.
+         *Sets the number of loading threads to use per logical processor.  Only used in preemptive mode
          */
-        void setNumAsyncImageryLayerThreads( int threads );
+        void setNumLoadingThreadsPerLogicalProcessor( int numLoadingThreadsPerLogicalProcessor );
 
-        /**
-         * Gets the size of thread pool to use for asynchronous tile elevation layer loading. See
-         * setAsyncTileLayers() for details.
-         */
-        const optional<int>& getNumAsyncElevationLayerThreads() const;
-
-         /**
-         * Sets the size of the thread pool to use for asynchronous elevation tile layer loading. See
-         * setAsyncTileLayers() for details.
-         */
-        void setNumAsyncElevationLayerThreads( int threads );
-
-        /**
-        * Gets whether or not to create a separate thread pool for each layer.  If true, a thread pool 
-        * with getNumAsyncImageryLayerThreads will be created for each layer in the map.  If false, 
-        * all imagery layers will share getNumAsyncImageryLayerThreads threads.
-        * 
-        */
-        const optional<bool>& getThreadPoolPerImageryLayer() const;
-        void setThreadPoolPerImageryLayer( bool value );
-
-
+        const optional<int>& getNumLoadingThreads() const;
+        void setNumLoadingThreads( int numLoadingThreads );
 
         /**
          * Available techniques for compositing multiple image layers at runtime.
@@ -261,10 +239,9 @@ namespace osgEarth
         bool _combine_layers;
         bool _preemptive_lod;
         bool _use_task_service;
-        optional<int> _num_imagery_task_service_threads;
-        optional<int> _num_elevation_task_service_threads;
-        optional<bool> _threadPoolPerImageryLayer;
 		optional<LayeringTechnique> _layering_technique;
+        optional<int> _num_loading_threads_per_logical_processor;
+        optional<int> _num_loading_threads;
     };
 }
 

@@ -87,7 +87,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
-#define ELEM_LOAD_WEIGHT              "load_weight"
+#define ATTR_LOADING_WEIGHT           "loading_weight"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -280,7 +280,7 @@ readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& add
 		layer->transparentColor() = color;
 	}
 
-    std::string loadWeight = e_source->getSubElementText( ELEM_LOAD_WEIGHT );
+    std::string loadWeight = e_source->getAttr( ATTR_LOADING_WEIGHT );
     if (!loadWeight.empty())
     {
         layer->setLoadWeight( as<float>(loadWeight, 1.0f) );

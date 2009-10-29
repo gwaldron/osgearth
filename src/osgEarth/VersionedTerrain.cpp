@@ -584,6 +584,17 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
     }
 }
 
+void VersionedTile::releaseGLObjects(osg::State* state) const
+{
+    Group::releaseGLObjects(state);
+
+    if (_terrainTechnique.valid())
+    {
+        _terrainTechnique->releaseGLObjects( state );
+    }
+}
+
+
 /****************************************************************************/
 
 

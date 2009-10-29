@@ -964,3 +964,9 @@ void MultiPassTerrainTechnique::updateTransparency()
 		}
 	}
 }
+
+void MultiPassTerrainTechnique::releaseGLObjects(osg::State* state) const
+{
+    if (_transform.valid()) _transform->releaseGLObjects( state );
+}
+

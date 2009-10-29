@@ -43,6 +43,27 @@ _loadWeight( 1.0f )
     _id = s_mapLayerID++;
 }
 
+// this ctor is for backwards compat only
+MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Properties& driverProps ) :
+_name( name ),
+_type( type ),
+_driver( driver ),
+_opacity(1.0f),
+_enabled(true),
+_exactCropping(false),
+_useMercatorFastPath(true),
+_reprojected_tile_size(256),
+_cacheOnly( false ),
+_cacheOnlyEnv( false ),
+_loadWeight( 1.0f )
+{
+    for( Properties::const_iterator i = driverProps.begin(); i != driverProps.end(); i++ )
+        _driverConf.add( i->first, i->second );
+
+	readEnvironmentalVariables();
+    _id = s_mapLayerID++;
+}
+
 MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
 _name( name ),
 _type( type ),

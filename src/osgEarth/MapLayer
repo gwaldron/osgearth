@@ -54,6 +54,13 @@ namespace osgEarth
             const std::string& driver,
             const Config& driverConf = Config() );
 
+        // for backwards compatibility only. use the version above from now on.
+        MapLayer(
+            const std::string& name,
+            Type type,
+            const std::string& driver,
+            const Properties& props );
+
         /**
          * Constructs a new map layer with a user-provided TileSource engine.
          */

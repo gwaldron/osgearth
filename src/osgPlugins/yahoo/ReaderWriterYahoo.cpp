@@ -36,12 +36,9 @@ using namespace osgEarth;
 class YahooSource : public TileSource
 {
 public:
-    YahooSource( const osgDB::ReaderWriter::Options* options ) :
-    TileSource( options )
+    YahooSource( const PluginOptions* options ) : TileSource( options )
     {
-        //OpenThreads::Thread::microSleep( 10 * 1000 * 1000 );
-        if ( options->getPluginData( PROPERTY_DATASET ) )
-            _dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
+        _dataset = options->config().value( PROPERTY_DATASET );
 
         // validate dataset
         if ( _dataset.empty() )
@@ -142,7 +139,7 @@ class ReaderWriterYahoo : public osgDB::ReaderWriter
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            return new YahooSource(options);
+            return new YahooSource( static_cast<const PluginOptions*>(options) );
         }
 };
 

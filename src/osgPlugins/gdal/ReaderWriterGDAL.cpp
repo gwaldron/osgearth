@@ -599,7 +599,7 @@ GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
 class GDALTileSource : public TileSource
 {
 public:
-    GDALTileSource(const osgDB::ReaderWriter::Options* options) :
+    GDALTileSource(const PluginOptions* options) :
       TileSource( options ),
       _tile_size(256),
       _srcDS(NULL),
@@ -610,25 +610,17 @@ public:
 
         if ( options )
         {
-            if ( options->getPluginData( PROPERTY_URL ) )
-                _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+            const Config& conf = options->config();
 
-            if ( options->getPluginData( PROPERTY_EXTENTSIONS ) )
-                _extensions = std::string( (const char*)options->getPluginData( PROPERTY_EXTENTSIONS ) );
+            _url = conf.value( PROPERTY_URL );
+            _extensions = conf.value( PROPERTY_EXTENTSIONS );
 
-            //Try to read the tile size
-            if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
-            {
-                _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
-            }
-            //If the tile size wasn't specified, use the default tile size if it was specified
-            else if ( options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ) )
-            {
-                _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ), 256 );
-            }
+            if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
+                _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, 256 );
+            else
+                _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, 256 );
 
-            if ( options->getPluginData( PROPERTY_INTERPOLATION ) )
-                interpOption = std::string( (const char*)options->getPluginData( PROPERTY_INTERPOLATION ) );
+            interpOption = conf.value( PROPERTY_INTERPOLATION );
         }
 
         if (interpOption.empty())
@@ -1399,7 +1391,7 @@ public:
         {
             return ReadResult::FILE_NOT_HANDLED;
         }
-        return new GDALTileSource(opt);
+        return new GDALTileSource( static_cast<const PluginOptions*>(opt) );
     }
 };
 

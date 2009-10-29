@@ -38,9 +38,10 @@ namespace osgEarth
 		/**
 		 * Create a TileSource with the given driver and properties
 		 */
-		TileSource* create( const std::string& driver,
-			                const Properties& properties,
-							const osgDB::ReaderWriter::Options* global_options = NULL);
+		TileSource* create(
+            const std::string& driver,
+            const Config&     driverConf,
+            const osgDB::ReaderWriter::Options* global_options =NULL );
     };
 }
 

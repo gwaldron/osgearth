@@ -73,8 +73,8 @@ int main(int argc, char** argv)
 
     // Add an image layer to the map.
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
+        osgEarth::Config conf;
+        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
         osgEarth::MapLayer* layer = new osgEarth::MapLayer( "NASA", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf );
         map->addMapLayer( layer );
     }
@@ -82,8 +82,8 @@ int main(int argc, char** argv)
     // Add a heightfield layer to the map. You can add any number of heightfields and
     // osgEarth will composite them automatically.
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+        osgEarth::Config conf;
+        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
         osgEarth::MapLayer* layer = new osgEarth::MapLayer( "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf );
         map->addMapLayer( layer );
     }

@@ -39,19 +39,26 @@ using namespace osgEarth;
 class ArcGISSource : public TileSource
 {
 public:
-    ArcGISSource( const osgDB::ReaderWriter::Options* options ) :
+    ArcGISSource( const PluginOptions* options ) :
       TileSource( options )
     {
         if ( options )
         {
+            const Config& conf = options->config();
+
             // this is the ArcGIS REST services URL for the map service,
             // e.g. http://server/ArcGIS/rest/services/Layer/MapServer
-            if ( options->getPluginData( PROPERTY_URL ) )
-                _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+            _url = conf.value( PROPERTY_URL );
+            //if ( options->getPluginData( PROPERTY_URL ) )
+            //    _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
             // force a profile type
-            if ( options->getPluginData( PROPERTY_PROFILE ) )
-                _profile_str = std::string( (const char*)options->getPluginData( PROPERTY_PROFILE ) );
+            // TODO? do we need this anymore? doesn't this happen with overrideprofile now?
+            if ( conf.hasChild( PROPERTY_PROFILE ) )
+                _profileConf = ProfileConfig( conf.child( PROPERTY_PROFILE ) );
+
+            //if ( options->getPluginData( PROPERTY_PROFILE ) )
+            //    _profile_str = std::string( (const char*)options->getPluginData( PROPERTY_PROFILE ) );
         }
 
         //TODO: allow single layers vs. "fused view"
@@ -75,10 +82,14 @@ public:
     {
         const Profile* profile = NULL;
 
-        if ( !_profile_str.empty() )
+        if ( _profileConf.isSet() )
         {
-            profile = Profile::create( _profile_str );
+            profile = Profile::create( _profileConf.get() );
         }
+        //if ( !_profile_str.empty() )
+        //{
+        //    profile = Profile::create( _profile_str );
+        //}
         else if ( _map_service.getProfile() )
         {
             profile = _map_service.getProfile();
@@ -181,7 +192,8 @@ public:
 private:
     //osg::ref_ptr<const osgDB::ReaderWriter::Options> _options;
     std::string _url;
-    std::string _profile_str;
+    //std::string _profile_str;
+    optional<ProfileConfig> _profileConf;
     std::string _map;
     std::string _layer;
     std::string _format;
@@ -208,7 +220,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new ArcGISSource(options);
+        return new ArcGISSource( static_cast<const PluginOptions*>( options ));
     }
 };
 

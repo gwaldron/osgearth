@@ -38,7 +38,7 @@ using namespace osgEarth;
 #define PROPERTY_NODATA_MAX   "nodata_max"
 #define PROPERTY_PROFILE      "profile"
 
-TileSource::TileSource(const osgDB::ReaderWriter::Options* options) :
+TileSource::TileSource(const PluginOptions* options) :
 _options( options ),
 _noDataValue(SHRT_MIN),
 _noDataMinValue(-FLT_MAX),
@@ -47,17 +47,12 @@ _max_data_level(INT_MAX)
 {
     if ( options )
     {
-        if ( options->getPluginData( PROPERTY_NODATA_VALUE ) )
-            _noDataValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_VALUE ), _noDataValue);
-
-        if ( options->getPluginData( PROPERTY_NODATA_MIN ) )
-            _noDataMinValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_MIN ), _noDataMinValue);
-
-        if ( options->getPluginData( PROPERTY_NODATA_MAX ) )
-            _noDataMaxValue = as<float>( (const char*)options->getPluginData( PROPERTY_NODATA_MAX ), _noDataMaxValue);
+        const Config& conf = options->config();
+        _noDataValue    = conf.value<float>( PROPERTY_NODATA_VALUE, _noDataValue );
+        _noDataMinValue = conf.value<float>( PROPERTY_NODATA_MIN, _noDataMinValue );
+        _noDataMaxValue = conf.value<float>( PROPERTY_NODATA_MAX, _noDataMaxValue );
     }
 
-	//Create a memory cache
 	_memCache = new MemCache();
 }
 
@@ -144,7 +139,7 @@ TileSource::getProfile() const
     return _profile.get();
 }
 
-const osgDB::ReaderWriter::Options*
+const PluginOptions*
 TileSource::getOptions() const
 {
     return _options.get();

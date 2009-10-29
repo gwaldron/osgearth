@@ -40,20 +40,13 @@ using namespace osgEarth;
 class TileCacheSource : public TileSource
 {
 public:
-    TileCacheSource( const osgDB::ReaderWriter::Options* options ) :
-      TileSource( options )
+    TileCacheSource( const PluginOptions* options ) : TileSource( options )
     {
-        if ( options )
-        {
-            if ( options->getPluginData( PROPERTY_URL ) )
-                _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+        const Config& conf = options->config();
 
-            if ( options->getPluginData( PROPERTY_LAYER ) )
-                _layer = std::string( (const char*)options->getPluginData( PROPERTY_LAYER ) );
-
-            if ( options->getPluginData( PROPERTY_FORMAT ) )
-                _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
-        }
+        _url = conf.value( PROPERTY_URL );
+        _layer = conf.value( PROPERTY_LAYER );
+        _format = conf.value( PROPERTY_FORMAT );
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
@@ -158,7 +151,7 @@ class ReaderWriterTileCache : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            return new TileCacheSource(options);
+            return new TileCacheSource( static_cast<const PluginOptions*>(options) );
         }
 };
 

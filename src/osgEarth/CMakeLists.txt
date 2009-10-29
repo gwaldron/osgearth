@@ -23,6 +23,7 @@ SET(LIB_PUBLIC_HEADERS
 	CacheSeed
     Common
     Compositing
+    Config
     Cube
     EarthFile
     EarthTerrainTechnique
@@ -64,6 +65,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Caching.cpp
     CacheSeed.cpp
     Compositing.cpp
+    Config.cpp
     Cube.cpp
     EarthFile.cpp
     EarthTerrainTechnique.cpp

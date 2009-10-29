@@ -41,20 +41,16 @@ using namespace osgEarth;
 class TileServiceSource : public TileSource
 {
 public:
-	TileServiceSource( const osgDB::ReaderWriter::Options* options ):
-    TileSource( options )
+	TileServiceSource( const PluginOptions* options ) : TileSource( options )
     {
-        if ( options->getPluginData( PROPERTY_URL ) )
-            _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+        const Config& conf = options->config();
 
-        if (options->getPluginData( PROPERTY_FORMAT ))
-            _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+        _url = conf.value( PROPERTY_URL );
+        _format = conf.value( PROPERTY_FORMAT );
+        _dataset = conf.value( PROPERTY_DATASET );
 
-        if (options->getPluginData( PROPERTY_DATASET ))
-            _dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
-
-         if ( _format.empty() )
-            _format = "png";
+        if ( _format.empty() )
+           _format = "png";
     }
 
 public:
@@ -145,7 +141,7 @@ class ReaderWriterTileService : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            return new TileServiceSource(opt);
+            return new TileServiceSource( static_cast<const PluginOptions*>(opt) );
         }
 };
 

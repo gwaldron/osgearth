@@ -39,27 +39,23 @@ using namespace osgEarth;
 class AGSMapCacheSource : public TileSource
 {
 public:
-    AGSMapCacheSource( const osgDB::ReaderWriter::Options* options ) :
+    AGSMapCacheSource( const PluginOptions* options ) :
       TileSource( options )
     {
         if ( options )
         {
             // this is the AGS virtual directory pointing to the map cache
-            if ( options->getPluginData( PROPERTY_URL ) )
-                _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+            _url = options->config().value( PROPERTY_URL );
 
             // the name of the map service cache
-            if ( options->getPluginData( PROPERTY_MAP ) )
-                _map = std::string( (const char*)options->getPluginData( PROPERTY_MAP ) );
+            _map = options->config().value( PROPERTY_MAP );
 
             // the layer, or null to use the fused "_alllayers" cache
-            if ( options->getPluginData( PROPERTY_LAYER ) )
-                _layer = std::string( (const char*)options->getPluginData( PROPERTY_LAYER ) );
+            _layer = options->config().value( PROPERTY_LAYER );
 
             // the image format (defaults to "png")
             // TODO: read this from the XML tile schema file
-            if ( options->getPluginData( PROPERTY_FORMAT ) )
-                _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+            _format = options->config().value( PROPERTY_FORMAT );
         }
 
         // validate dataset
@@ -146,7 +142,7 @@ class ReaderWriterAGSMapCache : public osgDB::ReaderWriter
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            return new AGSMapCacheSource(options);
+            return new AGSMapCacheSource( static_cast<const PluginOptions*>(options) );
         }
 };
 

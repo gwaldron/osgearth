@@ -25,11 +25,11 @@ using namespace osgEarth;
 
 static unsigned int s_mapLayerID = 0;
 
-MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Properties& driverProps) :
+MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Config& driverConf ) :
 _name( name ),
 _type( type ),
 _driver( driver ),
-_driverProps( driverProps ),
+_driverConf( driverConf ),
 _opacity(1.0f),
 _enabled(true),
 _exactCropping(false),
@@ -98,10 +98,10 @@ MapLayer::getDriver() const {
     return _driver;
 }
 
-const Properties& 
-MapLayer::getDriverProperties() const {
-    return _driverProps;
-}
+const Config&
+MapLayer::getDriverConfig() const {
+    return _driverConf;
+};
 
 bool MapLayer::getCacheOnly() const
 {
@@ -210,7 +210,7 @@ MapLayer::initTileSource()
 	//Create the TileSource
 	TileSourceFactory tileSourceFactory;
 	osg::ref_ptr< TileSource > tileSource = tileSourceFactory.create( getDriver(),
-		                                                              getDriverProperties(),
+        getDriverConfig(),
 																	  getGlobalOptions());
 
 	//Get the override profile if it is set.

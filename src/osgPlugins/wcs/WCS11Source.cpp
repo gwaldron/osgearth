@@ -37,38 +37,25 @@ using namespace osgEarth;
 #define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
 #define PROPERTY_RANGE_SUBSET   "range_subset"
 
-WCS11Source::WCS11Source( const osgDB::ReaderWriter::Options* options ) :
+WCS11Source::WCS11Source( const PluginOptions* options ) :
 TileSource( options ),
 _tile_size(16)
 {
-    if ( options->getPluginData( PROPERTY_URL ) )
-        _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+    const Config& conf = options->config();
 
-    if ( options->getPluginData( PROPERTY_IDENTIFIER ) )
-        _identifier = std::string( (const char*)options->getPluginData( PROPERTY_IDENTIFIER ) );
+    _url = conf.value( PROPERTY_URL );
+    _identifier = conf.value( PROPERTY_IDENTIFIER );
+    _cov_format = conf.value( PROPERTY_FORMAT );
+    _elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
 
-    if ( options->getPluginData( PROPERTY_FORMAT ) )
-        _cov_format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
+    // Try to read the tile size
+    if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
+        _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
+    else
+        _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
 
-    if ( options->getPluginData( PROPERTY_ELEVATION_UNIT ) )
-        _elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
-
-    //Try to read the tile size
-    if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
-    {
-        _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 32 );
-    }
-    //If the tile size wasn't specified, use the default tile size if it was specified
-    else if ( options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ) )
-    {
-        _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ), 32 );
-    }
-
-    if ( options->getPluginData( PROPERTY_SRS ) )
-        _srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
-
-    if (options->getPluginData( PROPERTY_RANGE_SUBSET ) )
-        _range_subset = std::string( (const char*)options->getPluginData( PROPERTY_RANGE_SUBSET ) );
+    _srs = conf.value( PROPERTY_SRS );
+    _range_subset = conf.value( PROPERTY_RANGE_SUBSET );
 
     //TODO: Read GetCapabilities and determine everything from that..
 

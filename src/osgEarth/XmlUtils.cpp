@@ -62,6 +62,20 @@ XmlElement::XmlElement( const std::string& _name, const XmlAttributes& _attrs )
     attrs = _attrs;
 }
 
+XmlElement::XmlElement( const Config& conf )
+{
+    name = conf.name();
+    for( Properties::const_iterator i = conf.attrs().begin(); i != conf.attrs().end(); i++ )
+        attrs[i->first] = i->second;
+    for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
+    {
+        if ( j->value().empty() )
+            children.push_back( new XmlElement( *j ) );
+        else
+            children.push_back( new XmlText( j->value() ) );
+    }
+}
+
 const std::string&
 XmlElement::getName() const
 {
@@ -177,6 +191,22 @@ XmlElement::addSubElement(const std::string& tag, const std::string& text)
     children.push_back(ele);
 }
 
+Config
+XmlElement::toConfig() const
+{
+    Config conf( name );
+    for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
+        conf.attr( a->first ) = a->second;
+    for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
+    {
+        XmlNode* n = c->get();
+        if ( n->isElement() )
+            conf.children().push_back( static_cast<const XmlElement*>(n)->toConfig() );
+        else 
+            conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
+    }
+    return conf;
+}
 
 XmlText::XmlText( const std::string& _value )
 {
@@ -193,6 +223,12 @@ XmlText::getValue() const
 XmlDocument::XmlDocument( const std::string& _source_uri ) :
 XmlElement( "Document" ),
 source_uri( _source_uri )
+{
+    //NOP
+}
+
+XmlDocument::XmlDocument( const Config& conf ) :
+XmlElement( conf )
 {
     //NOP
 }

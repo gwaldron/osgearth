@@ -25,24 +25,24 @@ using namespace osgEarth;
 
 TileSource*
 TileSourceFactory::create( const std::string& driver,
-						   const Properties& properties,
+                           const Config&      driverConf,
 						   const osgDB::ReaderWriter::Options* global_options
-						   )
+                           )
 {
-    osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ?
-        new osgDB::ReaderWriter::Options( *global_options ) : 
-        new osgDB::ReaderWriter::Options();
+    osg::ref_ptr<PluginOptions> options = global_options?
+        new PluginOptions( *global_options ) :
+        new PluginOptions();
 
     //Setup the plugin options for the source
-    for( Properties::const_iterator p = properties.begin(); p != properties.end(); p++ )
-    {
-        local_options->setPluginData( p->first, (void*)p->second.c_str() );
-    }
+    options->config() = driverConf;
+
+    osg::notify(osg::INFO)
+        << "[osgEarth] Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
 
 	//Load the source from the a plugin.  The "." prefix causes OSG to select the correct plugin.
     //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
     osg::ref_ptr<TileSource> tileSource = dynamic_cast<TileSource*>(
-                osgDB::readObjectFile( ".osgearth_" + driver, local_options.get()));
+                osgDB::readObjectFile( ".osgearth_" + driver, options.get()));
 
 	if (!tileSource.valid())
 	{

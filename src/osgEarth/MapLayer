@@ -21,6 +21,7 @@
 #define OSGEARTH_MAP_LAYER_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
@@ -51,7 +52,7 @@ namespace osgEarth
             const std::string& name,
             Type type,
             const std::string& driver,
-            const Properties& driverProps = Properties() );
+            const Config& driverConf = Config() );
 
         /**
          * Constructs a new map layer with a user-provided TileSource engine.
@@ -84,7 +85,7 @@ namespace osgEarth
         /**
          * Gets the name/value properties for configuration of the driver.
          */
-        const Properties& getDriverProperties() const;
+        const Config& getDriverConfig() const;
 
 		/**
 		 * Gets the profile of this MapLayer
@@ -277,7 +278,7 @@ namespace osgEarth
         std::string _name;
         Type        _type;
         std::string _driver;
-        Properties  _driverProps;
+        Config      _driverConf;
 
 		std::string _cacheFormat;
        

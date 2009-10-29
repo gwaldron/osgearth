@@ -75,19 +75,17 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_CACHE_ONLY               "cache_only"
 #define ELEM_NORMALIZE_EDGES          "normalize_edges"
 #define ELEM_COMBINE_LAYERS           "combine_layers"
-
-#define ELEM_NUM_ASYNC_IMAGE_TILE_LAYER_THREADS "num_async_image_tile_layer_threads"
-#define ELEM_NUM_ASYNC_ELEVATION_TILE_LAYER_THREADS "num_async_elevation_tile_layer_threads"
-
+#define ELEM_PREEMPTIVE_LOD           "preemptive_lod"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
 #define ELEM_LAYERING_TECHNIQUE       "layering_technique"
+#define VALUE_MULTIPASS               "multipass"
+#define VALUE_MULTITEXTURE            "multitexture"
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
-#define ATTR_LOADING_WEIGHT           "loading_weight"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -98,105 +96,13 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_MAXX                     "xmax"
 #define ATTR_MAXY                     "ymax"
 #define ATTR_SRS                      "srs"
-#define ATTR_USELAYER                 "use"
 
+#define ATTR_LOADING_WEIGHT           "loading_weight"
 #define ELEM_LOADING_POLICY           "loading_policy"
 #define ATTR_MODE                     "mode"
 #define ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR "loading_threads_per_logical_processor"
 #define ATTR_LOADING_THREADS          "loading_threads"
 
-
-static CacheConfig
-readCache( XmlElement* e_cache )
-{
-    CacheConfig cache;
-
-    std::string type_token = e_cache->getAttr( ATTR_TYPE );
-    if ( type_token == "tms" || type_token.empty() ) cache.setType( CacheConfig::TYPE_TMS );
-    else if ( type_token == "tilecache" ) cache.setType( CacheConfig::TYPE_TILECACHE );
-    
-    std::string cache_only = e_cache->getAttr( ATTR_CACHE_ONLY );
-    if ( !cache_only.empty() )
-        cache.runOffCacheOnly() = cache_only == VALUE_TRUE? true : false;
-    
-    const XmlNodeList& e_props = e_cache->getChildren();
-    for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
-    {
-        XmlElement* e_prop = dynamic_cast<XmlElement*>( i->get() );
-        if ( e_prop )
-        {
-            std::string name = e_prop->getName();
-            std::string value = e_prop->getText();
-            if ( !name.empty() && !value.empty() )
-            {
-                cache.getProperties()[name] = value;
-            }
-        }
-    }
-    return cache;
-}
-
-static void
-writeCache( const CacheConfig& cache, XmlElement* e_cache )
-{
-    e_cache->getAttrs()[ATTR_TYPE] = 
-        cache.getType() == CacheConfig::TYPE_TILECACHE? "tilecache" :
-        cache.getType() == CacheConfig::TYPE_TMS? "tms" :
-        "tms";
-
-    if ( cache.runOffCacheOnly().isSet() )
-        e_cache->getAttrs()[ATTR_CACHE_ONLY] = toString(cache.runOffCacheOnly().get());
-
-    //Add all the properties
-    for (Properties::const_iterator i = cache.getProperties().begin(); i != cache.getProperties().end(); i++ )
-    {
-        e_cache->addSubElement(i->first, i->second);
-    }
-}
-
-static ProfileConfig
-readProfileConfig( XmlElement* e_profile )
-{
-    ProfileConfig profile;
-
-    profile.setNamedProfile( e_profile->getText() );
-//    profile.setRefLayer( e_profile->getAttr( ATTR_USELAYER ) );
-
-    std::string srs_text = e_profile->getSubElementText( ATTR_SRS );
-    std::string srs_attr = e_profile->getAttr( ATTR_SRS );
-    profile.setSRS( !srs_attr.empty()? srs_attr : srs_text );
-
-    double minx, miny, maxx, maxy;
-    profile.getExtents(minx, miny, maxx, maxy);
-
-    //Get the bounding box (sub element or attr is OK)
-    minx = as<double>(e_profile->getSubElementText( ATTR_MINX ), as<double>(e_profile->getAttr( ATTR_MINX ), minx) );
-    miny = as<double>(e_profile->getSubElementText( ATTR_MINY ), as<double>(e_profile->getAttr( ATTR_MINY ), miny) );
-    maxx = as<double>(e_profile->getSubElementText( ATTR_MAXX ), as<double>(e_profile->getAttr( ATTR_MAXX ), maxx) );
-    maxy = as<double>(e_profile->getSubElementText( ATTR_MAXY ), as<double>(e_profile->getAttr( ATTR_MAXY ), maxy) );
-
-    profile.setExtents(minx, miny, maxx, maxy);
-
-    return profile;
-}
-
-static void
-writeProfileConfig(const ProfileConfig& profile, XmlElement* e_profile )
-{
-    e_profile->getChildren().push_back(new XmlText(profile.getNamedProfile()));
-    //e_profile->getAttrs()[ATTR_USELAYER] = profile.getRefLayer();
-    e_profile->getAttrs()[ATTR_SRS] = profile.getSRS();
-
-    if (profile.areExtentsValid())
-    {
-        double minx, miny, maxx, maxy;
-        profile.getExtents(minx, miny, maxx, maxy);
-        e_profile->getAttrs()[ATTR_MINX] = toString(minx);
-        e_profile->getAttrs()[ATTR_MINY] = toString(miny);
-        e_profile->getAttrs()[ATTR_MAXX] = toString(maxx);
-        e_profile->getAttrs()[ATTR_MAXX] = toString(maxy);
-    }
-}
 
 static osg::Vec4ub
 getColor(const std::string& str, osg::Vec4ub default_value)
@@ -214,128 +120,104 @@ getColor(const std::string& str, osg::Vec4ub default_value)
     return color;
 }
 
+static std::string
+toColor( const osg::Vec4ub& c )
+{
+    std::stringstream ss;
+    ss << c.r() << " " << c.g() << " " << c.b() << " " << c.a();
+    return ss.str();
+}
+
 
 static MapLayer*
-readLayer( XmlElement* e_source, MapLayer::Type layerType, const Properties& additionalDriverProps )
+readLayer( const Config& conf, const Config& additional )
 {
-    std::string name = e_source->getAttr( ATTR_NAME );
-    std::string driver = e_source->getAttr( ATTR_DRIVER );
-    
-    Properties driverProps;
-    const XmlNodeList& e_props = e_source->getChildren();
-    for( XmlNodeList::const_iterator i = e_props.begin(); i != e_props.end(); i++ )
-    {
-        XmlElement* e_prop = dynamic_cast<XmlElement*>( i->get() );
-        if ( e_prop )
-        {
-            std::string name = e_prop->getName();
-            std::string value = e_prop->getText();
-            if ( !name.empty() && !value.empty() )
-            {
-                driverProps[name] = value;
-            }
-        }
-    }
+    // divine layer type
+    MapLayer::Type layerType =
+        conf.name() == ELEM_HEIGHTFIELD ? MapLayer::TYPE_HEIGHTFIELD :
+        MapLayer::TYPE_IMAGE;
 
-    // add in the additional properties:
-    for(Properties::const_iterator i = additionalDriverProps.begin(); i != additionalDriverProps.end(); i++ )
-        driverProps[i->first] = i->second;
+    // combine the layer conf children with the additional config to create the
+    // driver-specific configuration.
+    Config driverConf;
+    driverConf.add( conf.children() );
+    driverConf.add( additional.children() );
 
     MapLayer* layer = new MapLayer(
-        name,
+        conf.attr( "name" ),
         layerType,
-        driver,
-        driverProps );
+        conf.attr( "driver" ),
+        driverConf );
 
-    // Read the min and max LOD settings:
-    int minLevel = as<double>(e_source->getSubElementText( ATTR_MIN_LEVEL ), as<double>(e_source->getAttr( ATTR_MIN_LEVEL ), -1) );
+    int minLevel = conf.value<int>( ATTR_MIN_LEVEL, -1 );
     if ( minLevel >= 0 )
         layer->minLevel() = minLevel;
 
-    int maxLevel = as<double>(e_source->getSubElementText( ATTR_MAX_LEVEL ), as<double>(e_source->getAttr( ATTR_MAX_LEVEL ), -1) );
+    int maxLevel = conf.value<int>( ATTR_MAX_LEVEL, -1 );
     if ( maxLevel >= 0 )
         layer->maxLevel() = maxLevel;
 
-	std::string noDataImage = e_source->getSubElementText( ELEM_NODATA_IMAGE );
-	if (noDataImage.length() > 0)
-	{
+    std::string noDataImage = conf.value( ELEM_NODATA_IMAGE );
+	if ( !noDataImage.empty() )
 		layer->noDataImageFilename() = noDataImage;
-	}
 
-	std::string cacheFormat = e_source->getSubElementText( ELEM_CACHE_FORMAT );
-	layer->setCacheFormat( cacheFormat );
+    layer->setCacheFormat( conf.value( ELEM_CACHE_FORMAT ) );
+
+    if ( !conf.value( ELEM_TRANSPARENT_COLOR ).empty() )
+		layer->transparentColor() = getColor( conf.value( ELEM_TRANSPARENT_COLOR ), osg::Vec4ub() );
 
 	// Check for an explicit profile override:
-    XmlElement* e_profile = static_cast<XmlElement*>( e_source->getSubElement( ELEM_PROFILE ) );
-    if ( e_profile )
-    {
-        layer->profileConfig() = readProfileConfig( e_profile );
-    }
+    if ( conf.hasChild( ELEM_PROFILE ) )
+        layer->profileConfig() = ProfileConfig( conf.child( ELEM_PROFILE ) );
+        
+    if ( conf.hasValue( ATTR_LOADING_WEIGHT ) )
+        layer->setLoadWeight( conf.value<float>( ATTR_LOADING_WEIGHT, layer->getLoadWeight() ) );
 
-	std::string transparentColor = e_source->getSubElementText( ELEM_TRANSPARENT_COLOR );
-	if (!transparentColor.empty())
-	{
-		osg::Vec4ub color;
-		color = getColor(transparentColor, osg::Vec4ub());
-		layer->transparentColor() = color;
-	}
-
-    std::string loadWeight = e_source->getAttr( ATTR_LOADING_WEIGHT );
-    if (!loadWeight.empty())
-    {
-        layer->setLoadWeight( as<float>(loadWeight, 1.0f) );
-    }
 
     return layer;
 }
 
-static void
-writeLayer( MapLayer* layer, XmlElement* e_source )
+static Config
+writeLayer( MapLayer* layer )
 {
-    e_source->getAttrs()[ATTR_NAME] = layer->getName();
-    e_source->getAttrs()[ATTR_DRIVER] = layer->getDriver();
-	//e_source->getAttrs()[ATTR_REPROJECT_BEFORE_CACHING] = toString<bool>(source.getReprojectBeforeCaching());
+    Config conf;
+
+    conf.name() =
+        layer->getType() == MapLayer::TYPE_HEIGHTFIELD ? ELEM_HEIGHTFIELD :
+        ELEM_IMAGE;
+
+    conf.attr( ATTR_NAME ) = layer->getName();
+    conf.attr( ATTR_DRIVER ) = layer->getDriver();
 
     //Add all the properties
-    const Properties& driverProps = layer->getDriverProperties();
-    for (Properties::const_iterator i = driverProps.begin(); i != driverProps.end(); i++ )
-    {
-        e_source->addSubElement(i->first, i->second);
-    }
+    conf.add( layer->getDriverConfig() );
 
-	//Write the profile config
 	if ( layer->profileConfig().isSet() )
-	{
-		XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
-		writeProfileConfig( layer->profileConfig().get(), e_profile );
-		e_source->getChildren().push_back(e_profile);
-	}
+        conf.addChild( layer->profileConfig()->toConfig() );
 
-	if (layer->noDataImageFilename().isSet() )
-	{
-		e_source->addSubElement(ELEM_NODATA_IMAGE, layer->noDataImageFilename().get());
-	}
+	if ( layer->noDataImageFilename().isSet() )
+        conf.addChild( ELEM_NODATA_IMAGE, layer->noDataImageFilename().get() );
 
-	if (layer->transparentColor().isSet() )
-	{
-		std::stringstream ss;
-		ss << layer->transparentColor()->r() << " " << layer->transparentColor()->g() << " " << layer->transparentColor()->b();
-		e_source->addSubElement(ELEM_TRANSPARENT_COLOR, ss.str());
-	}
+	if ( layer->transparentColor().isSet() )
+        conf.addChild( ELEM_TRANSPARENT_COLOR, toColor( layer->transparentColor().get() ) );
 
-	e_source->addSubElement( ELEM_CACHE_FORMAT, layer->getCacheFormat() );
+    if ( !layer->getCacheFormat().empty() )
+        conf.addChild( ELEM_CACHE_FORMAT, layer->getCacheFormat() );
+
+    return conf;
 }
 
 
-
 static bool
-readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
+readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 {
+//    osg::notify(osg::NOTICE) << conf.toString() << std::endl;
+
     bool success = true;
 
     Map::CoordinateSystemType cstype = Map::CSTYPE_GEOCENTRIC;
 
-    std::string a_cstype = e_map->getAttr( ATTR_CSTYPE );
+    std::string a_cstype = conf.value( ATTR_CSTYPE );
     if ( a_cstype == "geocentric" || a_cstype == "round" || a_cstype == "globe" || a_cstype == "earth" )
         cstype = Map::CSTYPE_GEOCENTRIC;
     else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" || a_cstype == "projected")
@@ -348,150 +230,119 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
 
     MapEngineProperties engineProps;
 
-    map->setName( e_map->getAttr( ATTR_NAME ) );
+    map->setName( conf.value( ATTR_NAME ) );
 
-    std::string use_merc_locator = e_map->getSubElementText(ELEM_USE_MERCATOR_LOCATOR);
+    std::string use_merc_locator = conf.value( ELEM_USE_MERCATOR_LOCATOR );
     if (use_merc_locator == VALUE_TRUE )
         map->setUseMercatorLocator( true );
     else if ( use_merc_locator == VALUE_FALSE )
         map->setUseMercatorLocator( false );
 
-    std::string combine_layers = e_map->getSubElementText(ELEM_COMBINE_LAYERS);
+    std::string combine_layers = conf.value( ELEM_COMBINE_LAYERS );
     if (combine_layers == VALUE_TRUE)
         engineProps.setCombineLayers(true);
     else if (combine_layers == VALUE_FALSE)
         engineProps.setCombineLayers(false);
 
-    std::string normalizeEdges = e_map->getSubElementText(ELEM_NORMALIZE_EDGES);
+    std::string normalizeEdges = conf.value( ELEM_NORMALIZE_EDGES );
     if (normalizeEdges == VALUE_TRUE)
         engineProps.setNormalizeEdges(true);
     else if (normalizeEdges == VALUE_FALSE)
         engineProps.setNormalizeEdges(false);
-
-    //Read the loading policy
-    XmlElement* e_loading_policy = static_cast<XmlElement*>(e_map->getSubElement( ELEM_LOADING_POLICY ));
-    if (e_loading_policy)
+        
+    // Read the loading policy
+    if ( conf.hasChild( ELEM_LOADING_POLICY ) )
     {
-        std::string mode = e_loading_policy->getAttr(ATTR_MODE);
-        if (mode == "sequential")
+        Config lp = conf.child( ELEM_LOADING_POLICY );
+        if ( lp.attr( ATTR_MODE ) == "sequential" ) 
         {
             engineProps.setPreemptiveLOD( false );
             engineProps.setAsyncTileLayers( false );
-            osg::notify(osg::NOTICE) << "Sequential" << std::endl;
         }
-        else if (mode == "preemptive")
+        else if ( lp.attr( ATTR_MODE ) == "preemptive" )
         {
             engineProps.setPreemptiveLOD( true );
             engineProps.setAsyncTileLayers( true );
-            osg::notify(osg::NOTICE) << "preemptive" << std::endl;
         }
 
-        std::string numLoadingThreadsPerProcessor = e_loading_policy->getAttr(ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR);
-        if (!numLoadingThreadsPerProcessor.empty())
+        if ( lp.hasValue( ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR ) )
         {
-            engineProps.setNumLoadingThreadsPerLogicalProcessor( as<int>(numLoadingThreadsPerProcessor, 1) );
+            engineProps.setNumLoadingThreadsPerLogicalProcessor(
+                lp.value<int>( ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR, 1 ) );
         }
 
-        std::string numLoadingThreads = e_loading_policy->getAttr(ATTR_LOADING_THREADS);
-        if (!numLoadingThreads.empty())
+        if ( lp.hasValue( ATTR_LOADING_THREADS ) )
         {
-            engineProps.setNumLoadingThreads( as<int>(numLoadingThreads, 0 ) );
+            engineProps.setNumLoadingThreads( lp.value<int>( ATTR_LOADING_THREADS, 0 ) );
         }
     }
 
-    /*std::string preemptive_lod = e_map->getSubElementText(ELEM_PREEMPTIVE_LOD);
-    if ( preemptive_lod.empty() ) preemptive_lod = e_map->getSubElementText(ELEM_DEFER_TILE_DATA_LOADING); // backcompat
-    if (preemptive_lod == VALUE_TRUE)
-        engineProps.setPreemptiveLOD(true);
-    else if (preemptive_lod == VALUE_FALSE)
-        engineProps.setPreemptiveLOD(false);
-
-    std::string async_tile_layers = e_map->getSubElementText( ELEM_ASYNC_TILE_LAYERS );
-    if (async_tile_layers == VALUE_TRUE)
-        engineProps.setAsyncTileLayers(true);
-    else if (async_tile_layers == VALUE_FALSE)
-        engineProps.setAsyncTileLayers(false);
-
-    std::string num_async_image_tile_layer_threads = e_map->getSubElementText( ELEM_NUM_ASYNC_IMAGE_TILE_LAYER_THREADS );
-    if ( !num_async_image_tile_layer_threads.empty() )
-        engineProps.setNumAsyncImageryLayerThreads( as<int>( num_async_image_tile_layer_threads, 0 ) );
-
-    std::string num_async_elevation_tile_layer_threads = e_map->getSubElementText( ELEM_NUM_ASYNC_ELEVATION_TILE_LAYER_THREADS );
-    if ( !num_async_elevation_tile_layer_threads.empty() )
-        engineProps.setNumAsyncElevationLayerThreads( as<int>( num_async_elevation_tile_layer_threads, 0 ) );
-
-    std::string thread_pool_per_layer = e_map->getSubElementText( ELEM_THREAD_POOL_PER_IMAGE_LAYER );
-    if (thread_pool_per_layer == VALUE_TRUE )
-        engineProps.setThreadPoolPerImageryLayer( true );
-    else if (thread_pool_per_layer == VALUE_FALSE )
-        engineProps.setThreadPoolPerImageryLayer( false );*/
-
-    std::string technique = e_map->getSubElementText(ELEM_LAYERING_TECHNIQUE);
-	if (technique == "multipass")
+	std::string technique = conf.value( ELEM_LAYERING_TECHNIQUE );
+	if (technique == VALUE_MULTIPASS )
 		engineProps.setLayeringTechnique( osgEarth::MapEngineProperties::MULTIPASS);
-	else if (technique == "multitexture")
+	else if (technique == VALUE_MULTITEXTURE)
 		engineProps.setLayeringTechnique( osgEarth::MapEngineProperties::MULTITEXTURE );
 
-    engineProps.setVerticalScale( as<float>( e_map->getSubElementText( ELEM_VERTICAL_SCALE ), engineProps.getVerticalScale() ) );
-    engineProps.setMinTileRangeFactor( as<float>( e_map->getSubElementText( ELEM_MIN_TILE_RANGE ), engineProps.getMinTileRangeFactor() ) );
-    engineProps.setSkirtRatio(as<float>(e_map->getSubElementText( ELEM_SKIRT_RATIO ), engineProps.getSkirtRatio()));
-    engineProps.setSampleRatio(as<float>(e_map->getSubElementText( ELEM_SAMPLE_RATIO ), engineProps.getSampleRatio()));
+    engineProps.setVerticalScale(
+        conf.value<float>( ELEM_VERTICAL_SCALE, engineProps.getVerticalScale() ) );
 
-    engineProps.setProxyHost( as<std::string>( e_map->getSubElementText( ELEM_PROXY_HOST ), engineProps.getProxyHost() ) );
-    engineProps.setProxyPort( as<unsigned short>( e_map->getSubElementText( ELEM_PROXY_PORT ), engineProps.getProxyPort() ) );
+    engineProps.setMinTileRangeFactor(
+        conf.value<float>( ELEM_MIN_TILE_RANGE, engineProps.getMinTileRangeFactor() ) );
+
+    engineProps.setSkirtRatio(
+        conf.value<float>( ELEM_SKIRT_RATIO, engineProps.getSkirtRatio() ) );
+
+    engineProps.setSampleRatio(
+        conf.value<float>( ELEM_SAMPLE_RATIO, engineProps.getSampleRatio() ) );
+
+    engineProps.setProxyHost(
+        conf.value<std::string>( ELEM_PROXY_HOST, engineProps.getProxyHost() ) );
+
+    engineProps.setProxyPort(
+        conf.value<unsigned short>( ELEM_PROXY_PORT, engineProps.getProxyPort() ) );
 
     //Read the profile definition
-    XmlElement* e_profile = static_cast<XmlElement*>(e_map->getSubElement( ELEM_PROFILE ));
-    if (e_profile)
-    {
-        map->profileConfig() = readProfileConfig( e_profile );
-    }
+    if ( conf.hasChild( ELEM_PROFILE ) )
+        map->profileConfig() = ProfileConfig( conf.child( ELEM_PROFILE ) );
 
     //Try to read the global map cache if one is specifiec
-    XmlElement* e_cache = static_cast<XmlElement*>(e_map->getSubElement( ELEM_CACHE ));
-    if (e_cache)
+    if ( conf.hasChild( ELEM_CACHE ) )
     {
-        map->cacheConfig() = readCache(e_cache);
+        map->cacheConfig() = CacheConfig( conf.child( ELEM_CACHE ) );
 
 		//Create and set the Cache for the Map
 		CacheFactory factory;
 		map->setCache( factory.create( map->cacheConfig().get()) );
     }
 
-	if (osgEarth::Registry::instance()->getCacheOverride())
+	if ( osgEarth::Registry::instance()->getCacheOverride() )
 	{
 		osg::notify(osg::NOTICE) << "Overriding map cache with global cache override" << std::endl;
 		map->setCache( osgEarth::Registry::instance()->getCacheOverride() );
 	}
 
     // Read the layers in LAST (otherwise they will not benefit from the cache/profile configuration)
-
-    XmlNodeList e_images = e_map->getSubElements( ELEM_IMAGE );
-    for( XmlNodeList::const_iterator i = e_images.begin(); i != e_images.end(); i++ )
+    ConfigSet images = conf.children( ELEM_IMAGE );
+    for( ConfigSet::const_iterator i = images.begin(); i != images.end(); i++ )
     {
-        Properties customProps;
-        customProps["default_tile_size"] = "256";
+        Config additional;
+        additional.add( "default_tile_size", "256" );
 
-        MapLayer* layer = readLayer( static_cast<XmlElement*>( i->get() ), MapLayer::TYPE_IMAGE, customProps );
+        MapLayer* layer = readLayer( *i, additional );
         if ( layer )
-        {
             map->addMapLayer( layer );
-        }
     }
 
-    XmlNodeList e_heightfields = e_map->getSubElements( ELEM_HEIGHTFIELD );
-    for( XmlNodeList::const_iterator i = e_heightfields.begin(); i != e_heightfields.end(); i++ )
+    ConfigSet heightfields = conf.children( ELEM_HEIGHTFIELD );
+    for( ConfigSet::const_iterator i = heightfields.begin(); i != heightfields.end(); i++ )
     {
-        Properties customProps;
-        customProps["default_tile_size"] = "32";
+        Config additional;
+        additional.add( "default_tile_size", "16" );
 
-        MapLayer* layer = readLayer( static_cast<XmlElement*>( i->get() ), MapLayer::TYPE_HEIGHTFIELD, customProps );
+        MapLayer* layer = readLayer( *i, additional );
         if ( layer )
-        {
             map->addMapLayer( layer );
-        }
     }
-
 
     earth->setMap( map.get() );
     earth->setMapEngineProperties( engineProps );
@@ -499,18 +350,13 @@ readMap( XmlElement* e_map, const std::string& referenceURI, EarthFile* earth )
     return success;
 }
 
-XmlDocument*
-mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
-{
-    //Create the root XML document
-    osg::ref_ptr<XmlDocument> doc = new XmlDocument();
-    
-    //Create the root "map" node
-    osg::ref_ptr<XmlElement> e_map = new XmlElement( "map" );
-    doc->getChildren().push_back( e_map.get() );
 
-    //Write the map's name
-    e_map->getAttrs()[ATTR_NAME] = map->getName();
+static Config
+mapToConfig( Map* map, const MapEngineProperties& engineProps )
+{
+    Config conf( ELEM_MAP );
+
+    conf.attr( ATTR_NAME ) = map->getName();
 
     //Write the coordinate system
     std::string cs;
@@ -522,67 +368,58 @@ mapToXmlDocument( Map* map, const MapEngineProperties& engineProps )
         osg::notify(osg::NOTICE) << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
         return NULL;
     }
-    e_map->getAttrs()[ATTR_CSTYPE] = cs;
+    conf.attr( ATTR_CSTYPE ) = cs;
 
-    //e_map->addSubElement( ELEM_CACHE_ONLY, toString<bool>(map.getCacheOnly()));
-    e_map->addSubElement( ELEM_USE_MERCATOR_LOCATOR, toString<bool>(map->getUseMercatorLocator()));
-    e_map->addSubElement( ELEM_NORMALIZE_EDGES, toString<bool>(engineProps.getNormalizeEdges()));
-    e_map->addSubElement( ELEM_COMBINE_LAYERS, toString<bool>(engineProps.getCombineLayers()));
+    conf.add( ELEM_USE_MERCATOR_LOCATOR, toString<bool>(map->getUseMercatorLocator()) );
+    conf.add( ELEM_NORMALIZE_EDGES, toString<bool>(engineProps.getNormalizeEdges()) );
+    conf.add( ELEM_COMBINE_LAYERS, toString<bool>(engineProps.getCombineLayers()));
 
-    e_map->addSubElement( ELEM_VERTICAL_SCALE, toString<float>( engineProps.getVerticalScale() ) );
-    e_map->addSubElement( ELEM_MIN_TILE_RANGE, toString<float>( engineProps.getMinTileRangeFactor() ) );
-    e_map->addSubElement( ELEM_SKIRT_RATIO, toString<float>( engineProps.getSkirtRatio() ) );
-    e_map->addSubElement( ELEM_SAMPLE_RATIO, toString<float>( engineProps.getSampleRatio() ) );
+    conf.add( ELEM_VERTICAL_SCALE, toString<float>( engineProps.getVerticalScale() ) );
+    conf.add( ELEM_MIN_TILE_RANGE, toString<float>( engineProps.getMinTileRangeFactor() ) );
+    conf.add( ELEM_SKIRT_RATIO, toString<float>( engineProps.getSkirtRatio() ) );
+    conf.add( ELEM_SAMPLE_RATIO, toString<float>( engineProps.getSampleRatio() ) );
 
-    e_map->addSubElement( ELEM_PROXY_HOST, engineProps.getProxyHost() );
-    e_map->addSubElement( ELEM_PROXY_PORT, toString<unsigned short>( engineProps.getProxyPort() ) );
+    conf.add( ELEM_PROXY_HOST, engineProps.getProxyHost() );
+    conf.add( ELEM_PROXY_PORT, toString<unsigned short>( engineProps.getProxyPort() ) );
 
 	if (engineProps.getLayeringTechnique().isSet())
 	{
 		std::string tech;
 		if (engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
 		{
-			tech = "multipass";
+			tech = VALUE_MULTIPASS;
 		}
 		else if (engineProps.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
 		{
-			tech = "multitexture";
+			tech = VALUE_MULTITEXTURE;
 		}
-		e_map->addSubElement( ELEM_LAYERING_TECHNIQUE, tech );
+        conf.add( ELEM_LAYERING_TECHNIQUE, tech );
 	}
 
     //Write all the image sources
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-        osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_IMAGE );
-        writeLayer( i->get(), e_source.get());
-        e_map->getChildren().push_back( e_source.get() );
+        conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the heightfield sources
     for (MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
-        osg::ref_ptr<XmlElement> e_source = new XmlElement( ELEM_HEIGHTFIELD );
-        writeLayer( i->get(), e_source.get());
-        e_map->getChildren().push_back( e_source.get() );
+        conf.add( writeLayer( i->get() ) );
     }
 
 	//TODO:  Get this from the getCache call itself, not a CacheConfig.
     if ( map->cacheConfig().isSet() )
     {
-        XmlElement* e_cache = new XmlElement(ELEM_CACHE);
-        writeCache(map->cacheConfig().get(), e_cache);
-        e_map->getChildren().push_back(e_cache);
+        conf.add( map->cacheConfig()->toConfig( ELEM_CACHE ) );
     }
 
     if ( map->profileConfig().isSet() )
     {
-        XmlElement* e_profile = new XmlElement(ELEM_PROFILE);
-        writeProfileConfig(map->profileConfig().get(), e_profile);
-        e_map->getChildren().push_back(e_profile);
+        conf.add( map->profileConfig()->toConfig( ELEM_PROFILE ) );
     }
 
-    return doc.release();
+    return conf;
 }
 
 bool
@@ -592,7 +429,8 @@ EarthFile::readXML( std::istream& input, const std::string& location )
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( input );
     if ( doc.valid() )
     {
-        success = readMap( doc->getSubElement( ELEM_MAP ), location, this );
+        Config conf = doc->toConfig().child( ELEM_MAP );
+        success = readMap( conf, location, this );
     }
     return success;
 }
@@ -650,7 +488,9 @@ EarthFile::writeXML( std::ostream& output )
 
     ScopedReadLock lock( _map->getMapDataMutex() );
 
-    osg::ref_ptr<XmlDocument> doc = mapToXmlDocument( _map.get(), _engineProps );   
+    Config conf = mapToConfig( _map.get(), _engineProps );
+    osg::ref_ptr<XmlDocument> doc = new XmlDocument( conf );
     doc->store( output );
+
     return true;
 }

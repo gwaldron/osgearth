@@ -38,21 +38,16 @@ using namespace osgEarth;
 class GoogleSource : public TileSource
 {
 public:
-    GoogleSource( const osgDB::ReaderWriter::Options* options ) :
+    GoogleSource( const PluginOptions* options ) :
       TileSource( options )
     {
         if ( options )
         {
-            if ( options->getPluginData( PROPERTY_DATASET ) )
-                _dataset = std::string( (const char*)options->getPluginData( PROPERTY_DATASET ) );
+            const Config& conf = options->config();
 
-            if ( options->getPluginData( PROPERTY_VERSION ) )
-                _version = std::string( (const char*)options->getPluginData( PROPERTY_VERSION ) );
-
-            if ( options->getPluginData( PROPERTY_LANGUAGE ) )
-                _language = std::string( (const char*)options->getPluginData( PROPERTY_LANGUAGE ) );
-            else
-                _language = "en";
+            _dataset = conf.value( PROPERTY_DATASET );
+            _version = conf.value( PROPERTY_VERSION );
+            _language = conf.value<std::string>( PROPERTY_LANGUAGE, "en" );
         }
 
         // validate dataset
@@ -222,7 +217,7 @@ class ReaderWriterGoogle : public osgDB::ReaderWriter
         {
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
-            return new GoogleSource(options);
+            return new GoogleSource( static_cast<const PluginOptions*>(options) );
         }
 };
 

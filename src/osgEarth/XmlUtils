@@ -21,6 +21,7 @@
 #define OSGEARTH_XML_UTILS_H
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osg/Referenced>
 #include <osg/ref_ptr>
 #include <string>
@@ -56,6 +57,8 @@ namespace osgEarth
         XmlElement( const std::string& name );
         
         XmlElement( const std::string& name, const XmlAttributes& attrs );
+
+        XmlElement( const Config& conf );
         
         virtual ~XmlElement() { }
 
@@ -80,6 +83,8 @@ namespace osgEarth
         std::string getSubElementText( const std::string& tag ) const;
 
         void addSubElement(const std::string& tag, const std::string& text);
+
+        Config toConfig() const;
 
     public: // XmlNode
         virtual bool isElement() const { return true; }
@@ -120,6 +125,8 @@ namespace osgEarth
     {
     public:
         XmlDocument( const std::string& source_uri ="" );
+
+        XmlDocument( const Config& conf );
         
         virtual ~XmlDocument();
         

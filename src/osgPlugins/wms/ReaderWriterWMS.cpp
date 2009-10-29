@@ -65,51 +65,30 @@ replaceIn( std::string& s, const std::string& sub, const std::string& other)
 class WMSSource : public TileSource
 {
 public:
-	WMSSource( const osgDB::ReaderWriter::Options* options ):
+	WMSSource( const PluginOptions* options ):
     TileSource( options ),
     _tile_size(256),
     _wms_version( "1.1.1" )
     {
-        if ( options->getPluginData( PROPERTY_URL ) )
-            _prefix = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+        const Config& conf = options->config();
 
-        if ( options->getPluginData( PROPERTY_LAYERS ) )
-            _layers = std::string( (const char*)options->getPluginData( PROPERTY_LAYERS ) );
-
-        if ( options->getPluginData( PROPERTY_STYLE ) )
-            _style = std::string( (const char*)options->getPluginData( PROPERTY_STYLE ) );
-
-        if ( options->getPluginData( PROPERTY_FORMAT ) )
-            _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
-
-        if ( options->getPluginData( PROPERTY_WMS_FORMAT ) )
-            _wms_format = std::string( (const char*)options->getPluginData( PROPERTY_WMS_FORMAT ) );
-
-        if ( options->getPluginData( PROPERTY_WMS_VERSION ) )
-            _wms_version = std::string( (const char*)options->getPluginData( PROPERTY_WMS_VERSION ) );
-
-        if ( options->getPluginData( PROPERTY_CAPABILITIES_URL ) )
-            _capabilitiesURL = std::string( (const char*)options->getPluginData( PROPERTY_CAPABILITIES_URL ) );
-
-        if ( options->getPluginData( PROPERTY_TILESERVICE_URL ) )
-            _tileServiceURL = std::string( (const char*)options->getPluginData( PROPERTY_TILESERVICE_URL ) );
-
-        if ( options->getPluginData( PROPERTY_ELEVATION_UNIT))
-            _elevation_unit = std::string( (const char*)options->getPluginData( PROPERTY_ELEVATION_UNIT ) );
+        _prefix = conf.value( PROPERTY_URL );
+        _layers = conf.value( PROPERTY_LAYERS );
+        _style  = conf.value( PROPERTY_STYLE );
+        _format = conf.value( PROPERTY_FORMAT );
+        _wms_format = conf.value( PROPERTY_WMS_FORMAT );
+        _wms_version = conf.value( PROPERTY_WMS_VERSION );
+        _capabilitiesURL = conf.value( PROPERTY_CAPABILITIES_URL );
+        _tileServiceURL = conf.value( PROPERTY_TILESERVICE_URL );
+        _elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
+        _srs = conf.value( PROPERTY_SRS );
 
         //Try to read the tile size
-        if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
-        {
-            _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
-        }
-        //If the tile size wasn't specified, use the default tile size if it was specified
-        else if ( options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ) )
-        {
-            _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_DEFAULT_TILE_SIZE ), 256 );
-        }
+        if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
+            _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
+        else
+            _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
 
-        if ( options->getPluginData( PROPERTY_SRS ) )
-            _srs = std::string( (const char*)options->getPluginData( PROPERTY_SRS ) );
 
         if ( _elevation_unit.empty())
             _elevation_unit = "m";
@@ -351,7 +330,7 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            return new WMSSource(opt);
+            return new WMSSource( static_cast<const PluginOptions*>(opt) );
         }
 };
 

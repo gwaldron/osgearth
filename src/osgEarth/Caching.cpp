@@ -52,6 +52,40 @@ _runOffCacheOnly( rhs._runOffCacheOnly )
     //NOP
 }
 
+CacheConfig::CacheConfig( const Config& conf ) 
+{
+    _type =
+        conf.attr( "type" ) == "tilecache" ? TYPE_TILECACHE :
+        conf.attr( "type" ) == "tms" ? TYPE_TMS :
+        TYPE_DEFAULT;
+
+    if ( !conf.attr("cache_only").empty() )
+        _runOffCacheOnly = conf.attr("cache_only") == "true";
+
+    for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); i++ )
+        if ( !i->value().empty() )
+            _properties[ i->name() ] = i->value();
+}
+
+Config
+CacheConfig::toConfig( const std::string& name ) const
+{
+    Config conf( name.empty()? "cache" : name );
+    
+    conf.attr( "type" ) =
+        _type == TYPE_TILECACHE ? "tilecache" :
+        _type == TYPE_TMS ? "tms" :
+        "default";
+
+    if ( _runOffCacheOnly.isSet() )
+        conf.attr("cache_only") = _runOffCacheOnly.get() ? "true" : "false";
+
+    for( Properties::const_iterator p = _properties.begin(); p != _properties.end(); p++ )
+        conf.add( p->first, p->second );
+
+    return conf;
+}
+
 const CacheConfig::CacheType&
 CacheConfig::getType() const
 {

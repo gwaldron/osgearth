@@ -139,16 +139,16 @@ int main(int argc, char** argv)
 
     // Add some imagery
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
+        osgEarth::Config conf;
+        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
         map->addMapLayer( new osgEarth::MapLayer(
             "BLUEMARBLE", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf ) );
     }
 
     // Add some elevation
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+        osgEarth::Config conf;
+        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
         map->addMapLayer( new osgEarth::MapLayer(
             "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf ) );
     }

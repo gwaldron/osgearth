@@ -45,37 +45,28 @@ using namespace osgEarth;
 class TMSSource : public TileSource
 {
 public:
-    TMSSource(const osgDB::ReaderWriter::Options* options):
-      TileSource(options),
-      _invertY(false)
+    TMSSource(const PluginOptions* options) : TileSource(options),
+      _invertY(false),
+      _tile_size(256)
     {
-        if ( options->getPluginData( PROPERTY_URL ) )
-            _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+        const Config& conf = options->config();
+
+        _url = conf.value( PROPERTY_URL );
 
         // tile_size and format are only used if no TMS tile map file can be found:
-        if ( options->getPluginData( PROPERTY_TILE_SIZE ) )
-            _tile_size = as<int>( (const char*)options->getPluginData( PROPERTY_TILE_SIZE ), 256 );
+        _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
+        _format = conf.value<std::string>( PROPERTY_FORMAT, _format );
 
-        if ( options->getPluginData( PROPERTY_FORMAT ) )
-            _format = std::string( (const char*)options->getPluginData( PROPERTY_FORMAT ) );
-
-        if (options->getPluginData( PROPERTY_TMS_TYPE ) )
+        if ( conf.value( PROPERTY_TMS_TYPE ) == "google" )
         {
-            std::string tms_type = std::string( (const char*)options->getPluginData( PROPERTY_TMS_TYPE ) );
-            if (tms_type == "google")
-            {
-                _invertY = true;
-                osg::notify(osg::INFO) << "[osgEarth::TMS] TMS driver inverting y" << std::endl;
-            }
+            _invertY = true;
+            osg::notify(osg::INFO) << "[osgEarth::TMS] TMS driver inverting y" << std::endl;
         }
 
         // quit now if there's no URL
         if (_url.empty())
         {
             osg::notify(osg::WARN) << "TMSSource: No URL specified " << std::endl;
-        }
-        else
-        {
         }
     }
 
@@ -222,7 +213,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new TMSSource(options);
+        return new TMSSource( static_cast<const PluginOptions*>(options) );
     }
 };
 

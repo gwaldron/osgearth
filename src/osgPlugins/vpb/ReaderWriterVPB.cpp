@@ -144,7 +144,7 @@ public:
         NESTED_TASK_DIRECTORIES
     };
 
-    VPBDatabase(const osgDB::ReaderWriter::Options* in_options ) :
+    VPBDatabase(const PluginOptions* in_options ) :
       options( in_options),
       primary_split_level(-1),
       secondary_split_level(-1),
@@ -157,29 +157,18 @@ public:
 
         if ( options.valid() )
         {
-            if ( options->getPluginData( PROPERTY_URL ) )
-                url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+            const Config& conf = options->config();
 
-            if ( options->getPluginData( PROPERTY_PRIMARY_SPLIT_LEVEL ) )
-                primary_split_level = atoi( (const char*)options->getPluginData( PROPERTY_PRIMARY_SPLIT_LEVEL ) );
+            url = conf.value( PROPERTY_URL );
+            primary_split_level = conf.value<int>( PROPERTY_PRIMARY_SPLIT_LEVEL, -1 );
+            secondary_split_level = conf.value<int>( PROPERTY_SECONDARY_SPLIT_LEVEL, -1 );
 
-            if ( options->getPluginData( PROPERTY_SECONDARY_SPLIT_LEVEL ) )
-                secondary_split_level = atoi( (const char*)options->getPluginData( PROPERTY_SECONDARY_SPLIT_LEVEL ) );
-
-            if ( options->getPluginData( PROPERTY_DIRECTORY_STRUCTURE ) )
-            {
-                std::string dir_string((const char*)options->getPluginData( PROPERTY_DIRECTORY_STRUCTURE ));
-                if (dir_string=="nested" || dir_string=="nested_task_directories" ) directory_structure = NESTED_TASK_DIRECTORIES;
-                if (dir_string=="task" || dir_string=="flat_task_directories") directory_structure = FLAT_TASK_DIRECTORIES;
-                if (dir_string=="flat") directory_structure = FLAT;
-                
-                osg::notify(osg::NOTICE)<<"dir_string="<<dir_string<<" result "<<directory_structure<<std::endl;
-            }
-
-            if ( options->getPluginData( PROPERTY_BASE_NAME ) )
-            {
-                this->base_name = as<std::string>((const char*)options->getPluginData( PROPERTY_BASE_NAME ), "" );
-            }
+            std::string dir_string = conf.value( PROPERTY_DIRECTORY_STRUCTURE );
+            if (dir_string=="nested" || dir_string=="nested_task_directories" ) directory_structure = NESTED_TASK_DIRECTORIES;
+            if (dir_string=="task" || dir_string=="flat_task_directories") directory_structure = FLAT_TASK_DIRECTORIES;
+            if (dir_string=="flat") directory_structure = FLAT;
+            
+            base_name = conf.value( PROPERTY_BASE_NAME );
         }
 
         // validate dataset
@@ -496,7 +485,7 @@ public:
         return 0;
     }
 
-    osg::ref_ptr<const osgDB::ReaderWriter::Options> options;
+    osg::ref_ptr<const PluginOptions> options;
     std::string url;
     std::string path;
     std::string base_name;
@@ -526,15 +515,14 @@ public:
 class VPBSource : public TileSource
 {
 public:
-    VPBSource( VPBDatabase* vpbDatabase, const osgDB::ReaderWriter::Options* in_options) :
-        TileSource(in_options),
-        vpbDatabase(vpbDatabase),
-        layerNum(0)
+    VPBSource( VPBDatabase* vpbDatabase, const PluginOptions* in_options) :  
+      TileSource(in_options),
+      vpbDatabase(vpbDatabase),
+      layerNum(0)
     {
         if ( in_options )
         {
-            if ( in_options->getPluginData( PROPERTY_LAYER_NUM ) )
-                layerNum = atoi( (const char*)in_options->getPluginData( PROPERTY_LAYER_NUM ) );
+            layerNum = in_options->config().value<int>( PROPERTY_LAYER_NUM, layerNum );
         }
     }
 
@@ -619,18 +607,20 @@ class ReaderWriterVPB : public osgDB::ReaderWriter
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            if ( options->getPluginData( PROPERTY_URL ) )
-            {
-                std::string url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
-                
+            const PluginOptions* pluginOpts = static_cast<const PluginOptions*>( options );
+
+            //osg::notify(osg::NOTICE) << pluginOpts->config().toString() << std::endl;
+
+            std::string url = pluginOpts->config().value( PROPERTY_URL );
+            if ( !url.empty() )
+            {                
                 OpenThreads::ScopedLock<OpenThreads::Mutex> lock(vpbDatabaseMapMutex);
                 osg::observer_ptr<VPBDatabase>& db_ptr = vpbDatabaseMap[url];
                 
-                if (!db_ptr) db_ptr = new VPBDatabase(options);
+                if (!db_ptr) db_ptr = new VPBDatabase( pluginOpts );
                 
-                if (db_ptr.valid()) return new VPBSource(db_ptr.get(), options);
-                else return ReadResult::FILE_NOT_FOUND;
-               
+                if (db_ptr.valid()) return new VPBSource(db_ptr.get(), pluginOpts );
+                else return ReadResult::FILE_NOT_FOUND;               
             }
             else
             {

@@ -41,6 +41,10 @@
 
 #include <string>
 
+
+#define TILESOURCE_CONFIG "tileSourceConfig"
+
+
 namespace osgEarth
 {   
     /**
@@ -51,7 +55,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
     public:        
-        TileSource( const osgDB::ReaderWriter::Options* options =NULL );
+        TileSource( const PluginOptions* options =NULL ); //const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
          * Gets the number of pixels per tile for this TileSource.  Defaults to 256
@@ -62,14 +66,14 @@ namespace osgEarth
     	 * Creates an image for the given TileKey
 		 */
 		virtual osg::Image* getImage( const TileKey* key,
-                                      ProgressCallback* progress = 0
+                                      ProgressCallback* progress = 0L
                                     );
 
         /**
          * Creates a heightfield for the given TileKey
          */
         virtual osg::HeightField* getHeightField( const TileKey* key,
-                                                  ProgressCallback* progress = 0
+                                                  ProgressCallback* progress = 0L
                                                   );
 
     public:
@@ -170,7 +174,7 @@ namespace osgEarth
 
         virtual ~TileSource();
 
-        const osgDB::ReaderWriter::Options* getOptions() const;
+        const PluginOptions* getOptions() const;
 
         // Called by a tile source implementation to set the data extent.
         void setDataExtent( const GeoExtent& extent );
@@ -185,7 +189,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<const osgDB::ReaderWriter::Options> _options;
+        osg::ref_ptr<const PluginOptions> _options;
 
         friend class Map;
         friend class MapEngine;

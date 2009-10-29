@@ -62,8 +62,8 @@ int main(int argc, char** argv)
 
       //Add the yahoo satellite layer
       {
-          osgEarth::Properties driverProps;
-          driverProps["dataset"] = "satellite";
+          osgEarth::Config driverProps;
+          driverProps.add( "dataset", "satellite" );
 
           mapNode->getMap()->addMapLayer( new MapLayer(
               "yahoo_satellite",
@@ -74,8 +74,8 @@ int main(int argc, char** argv)
 
       //Add the yahoo maps layer
       {
-          osgEarth::Properties driverProps;
-          driverProps["dataset"] = "roads";
+          osgEarth::Config driverProps;
+          driverProps.add( "dataset", "roads" );
 
           mapNode->getMap()->addMapLayer( new MapLayer(
               "yahoo_roads",

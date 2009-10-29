@@ -33,7 +33,7 @@ using namespace osgEarth;
 class WCS11Source : public TileSource
 {
 public:
-    WCS11Source( const osgDB::ReaderWriter::Options* options );
+    WCS11Source( const PluginOptions* options );
     
     osg::Image* createImage( const TileKey* key,
                              ProgressCallback* progress = 0 );

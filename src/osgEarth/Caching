@@ -21,6 +21,7 @@
 #define OSGEARTH_CACHING_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osgEarth/TMS>
 #include <osgEarth/TileKey>
 
@@ -56,8 +57,11 @@ namespace osgEarth
          */
         CacheConfig();
 
-        // Copy constructor
+        /** Copy constructor */
         CacheConfig( const CacheConfig& rhs );
+
+        /** materialize from a configuration object */
+        CacheConfig( const Config& conf );
 
         /**
          * Gets the cache type identifier.
@@ -88,6 +92,9 @@ namespace osgEarth
         const optional<bool>& runOffCacheOnly() const;
 
         std::string toString() const;
+
+        /** Serializes this object's settings. */
+        Config toConfig( const std::string& name ="cache" ) const;
 
     private:
         CacheType       _type;

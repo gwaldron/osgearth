@@ -74,12 +74,12 @@ osg::Image* makeRGBA(osg::Image* image)
 class OSGSource : public TileSource
 {
 public:
-    OSGSource( const osgDB::ReaderWriter::Options* options ) : TileSource( options ), _tileSize( 256 )
+    OSGSource( const PluginOptions* options ) : TileSource( options ), _tileSize( 256 )
     {
-        if ( options->getPluginData( PROPERTY_URL ) )
-            _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
+        const Config& conf = options->config();
 
-        if ( options->getPluginData( PROPERTY_LUMINANCE_TO_RGBA ) )
+        _url = conf.value( PROPERTY_URL );
+        if ( conf.value( PROPERTY_LUMINANCE_TO_RGBA ) == "true" )
             _convertLuminanceToRGBA = true;            
 
         if ( !_url.empty() )
@@ -189,7 +189,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new OSGSource( options );
+        return new OSGSource( static_cast<const PluginOptions*>(options) );
     }
 };
 

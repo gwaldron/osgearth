@@ -21,6 +21,7 @@
 #define OSGEARTH_TILE_GRID_PROFILE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 #include <osgEarth/GeoData>
 #include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
@@ -42,6 +43,9 @@ namespace osgEarth
 
         /** Copy constructor. */
         ProfileConfig( const ProfileConfig& rhs );
+
+        /** Materialize from configuration object */
+        ProfileConfig( const Config& conf );
 
         /** Constructs a profile configuration and sets the named profile. */
         ProfileConfig( const std::string& named_profile );
@@ -73,6 +77,9 @@ namespace osgEarth
 
         /** Sets the spatial extents of the profile */
         void setExtents(double minX, double minY, double maxX, double maxY);
+
+        /** Serialize to configuration object */
+        Config toConfig( const std::string& name ="profile" ) const;
 
     private:
         bool _empty;

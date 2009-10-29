@@ -84,7 +84,7 @@ const unsigned int MASK_2D = 0xF0000000;
 
 struct BlankTileSource : public osgEarth::TileSource 
 {
-    BlankTileSource(const osgDB::ReaderWriter::Options* options =0L) : osgEarth::TileSource( options ) { }
+    BlankTileSource(const PluginOptions* options =0L) : osgEarth::TileSource( options ) { }
 
 	virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile =0)
 	{
@@ -279,26 +279,26 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 
     // ESRI reference labels
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer"; 
+        osgEarth::Config conf;
+        conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer" );
         addLayersBox->addWidget( new AddLayerButton( map, view,
             new MapLayer( "ESRI Boundaries", MapLayer::TYPE_IMAGE, "arcgis", conf ) ) );
     }
 
     // ArcGIS transportation layer:
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
+        osgEarth::Config conf;
+        conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer" );
         MapLayer* layer = new MapLayer("ESRI Transportation", MapLayer::TYPE_IMAGE, "arcgis", conf );
         addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
     }
 
     // OpenStreetMap:
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://tile.openstreetmap.org/";
-        conf["format"] = "png";
-        conf["tms_type"] = "google";
+        osgEarth::Config conf;
+        conf.add( "url", "http://tile.openstreetmap.org/" );
+        conf.add( "format", "png" );
+        conf.add( "tms_type", "google" );
         MapLayer* layer = new MapLayer( "OpenStreetMap", MapLayer::TYPE_IMAGE, "tms", conf );
         layer->profileConfig() = ProfileConfig( "global-mercator" );
         addLayersBox->addWidget( new AddLayerButton( map, view, layer ) );
@@ -306,8 +306,8 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 
     // ArcGIS imagery:
     {
-        osgEarth::Properties conf;
-        conf["url"] = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
+        osgEarth::Config conf;
+        conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer" );
         MapLayer* layer = new MapLayer( "ESRI Imagery", MapLayer::TYPE_IMAGE, "arcgis", conf );
         addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
     }

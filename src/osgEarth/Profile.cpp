@@ -60,6 +60,45 @@ ProfileConfig::ProfileConfig( const std::string& namedProfile )
     _empty = false;
 }
 
+ProfileConfig::ProfileConfig( const Config& conf )
+{
+    _namedProfile = conf.value();
+    _srs = conf.value( "srs" );
+    _minX = conf.value<double>( "xmin", _minX );
+    _minY = conf.value<double>( "ymin", _minY );
+    _maxX = conf.value<double>( "xmax", _maxX );
+    _maxY = conf.value<double>( "ymax", _maxY );
+
+    _empty = _namedProfile.empty() && _srs.empty() && !areExtentsValid();
+}
+
+Config
+ProfileConfig::toConfig( const std::string& name ) const
+{
+    Config conf( name.empty() ? "profile" : name );
+    if ( !_empty )
+    {
+        if ( !_namedProfile.empty() )
+        {
+            conf.value() = _namedProfile;
+        }
+        else
+        {
+            if ( !_srs.empty() )
+                conf.add( "srs", _srs );
+
+            if ( areExtentsValid() )
+            {
+                conf.attr( "xmin" ) = osgEarth::toString( _minX );
+                conf.attr( "ymin" ) = osgEarth::toString( _minY );
+                conf.attr( "xmin" ) = osgEarth::toString( _maxX );
+                conf.attr( "ymax" ) = osgEarth::toString( _maxY );
+            }
+        }
+    }
+    return conf;
+}
+
 bool
 ProfileConfig::defined() const
 {
@@ -304,7 +343,7 @@ Profile::getNumFaces() const
 const Profile*
 Profile::getFaceProfile( int face ) const
 {
-    return _face_profiles.size() > 0 && face < _face_profiles.size() ?
+    return (int)_face_profiles.size() > 0 && face < (int)_face_profiles.size() ?
         _face_profiles[face].get() :
         this;
 }

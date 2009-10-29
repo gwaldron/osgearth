@@ -49,7 +49,7 @@ class ReaderWriterWCS : public osgDB::ReaderWriter
             {
                 return ReadResult::FILE_NOT_HANDLED;
             }
-            return new WCS11Source( opt );
+            return new WCS11Source( static_cast<const PluginOptions*>(opt) );
         }
 };
 

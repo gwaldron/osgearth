@@ -612,7 +612,7 @@ _numAsyncThreads( 0 )
     }
 
     //See if an environment variable was set
-    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_ASYNC_TILE_LAYER_THREADS");
+    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
     if ( env_numTaskServiceThreads )
     {
         _numAsyncThreads = ::atoi( env_numTaskServiceThreads );
@@ -634,7 +634,7 @@ _numAsyncThreads( 0 )
         _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * 2;
     }
 
-    osg::notify(osg::NOTICE) << "Using " << _numAsyncThreads << " loading threads " << std::endl;
+    osg::notify(osg::INFO) << "Using " << _numAsyncThreads << " loading threads " << std::endl;
 }
 
 void
@@ -832,7 +832,7 @@ VersionedTerrain::updateTaskServiceThreads()
     for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
     {
         int imageThreads = (int)osg::round((float)_numAsyncThreads * (itr->get()->getLoadWeight() / totalWeight ));
-        //osg::notify(osg::NOTICE) << "ImageThreads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
+        osg::notify(osg::NOTICE) << "ImageThreads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
     }
 

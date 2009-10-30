@@ -1,0 +1,19 @@
+<map name="Feature Overlay Demo" type="geocentric">
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="boundaries" driver="feature_overlay">
+
+        <features name="states" driver="ogr">
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <url>../data/usa.shp</url>
+        </features>
+    
+        <texture_size>2048</texture_size>
+        <texture_unit>1</texture_unit>  
+        
+    </model>
+  
+</map>

@@ -230,9 +230,10 @@ MapLayer::initTileSource()
 	osg::notify(osg::INFO) << "[osgEarth::MapLayer::initTileSource()]" << std::endl;
 	//Create the TileSource
 	TileSourceFactory tileSourceFactory;
-	osg::ref_ptr< TileSource > tileSource = tileSourceFactory.create( getDriver(),
+	osg::ref_ptr< TileSource > tileSource = tileSourceFactory.create(
+        getDriver(),
         getDriverConfig(),
-																	  getGlobalOptions());
+        getGlobalOptions() );
 
 	//Get the override profile if it is set.
 	osg::ref_ptr<const Profile> override_profile;

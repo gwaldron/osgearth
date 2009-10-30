@@ -1,0 +1,178 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_SOURCE_H
+#define OSGEARTHFEATURES_FEATURE_SOURCE_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarth/Profile>
+#include <osgEarth/GeoData>
+#include <osgDB/ReaderWriter>
+
+using namespace osgEarth;
+
+namespace osgEarthFeatures
+{   
+    /**
+     * A filter that you can use to limit the set of features returned in a
+     * FeatureCursor from a FeatureStore.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureQuery
+    {
+    public:
+        FeatureQuery();
+        FeatureQuery( const FeatureQuery& rhs );
+        ~FeatureQuery() { }
+
+        /** Sets the geospatial extent bounding this query. */
+        void setExtent( const GeoExtent& extent );
+
+        /** TRUE if this query contains a geospatial extent. */
+        bool hasExtent() const
+            { return _extent.isValid(); } // .isSet(); }
+
+        /** Gets the geospatial extent (if hasExtent() == true) */
+        const GeoExtent& getExtent() const
+            { return _extent; } //.get(); }
+
+        /** Sets a driver-specific query expression. */
+        void setExpression( const std::string& expr )
+            { _expression = expr; }
+
+        /** Gets the driver-specific query expression. */
+        const std::string& getExpression() const
+            { return _expression; }       
+
+    protected:
+        GeoExtent _extent;
+        std::string _expression;
+    };
+
+    /**
+     * A cursor that lets you iterate over a collection of features returned 
+     * from a feature query performed on a FeatureStore.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureCursor : public osg::Referenced
+    {
+    public:
+        virtual bool hasMore() const =0;
+        virtual Feature* nextFeature() =0;
+    };
+
+    /**
+     * A FeatureSource is an object that can create FeatureCursors for use
+     * in a FeatureLayer.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureSource : public virtual osg::Object
+    {
+    public:      
+        /**
+         * Constructs a new feature source with the provided read/write options.
+         */
+        FeatureSource( const PluginOptions* options =NULL );
+
+        /**
+         * Gets a reference to the metadata that describes features that you can
+         * get from this FeatureSource. A valid feature profile indiciates that the
+         * feature source successfully initialized.
+         */
+        const FeatureProfile* getFeatureProfile() const;
+
+        /**
+         * Gets the extent of available data accessible through this feature source.
+         */
+        virtual const GeoExtent& getDataExtent() const;
+
+        /**
+         * Creates and returns new cursor that the caller can use to iterate
+         * over a collection of features corresponding to the specified query
+         * parameters.
+         * Caller is responsible for deleting the returned object.
+         */
+        virtual FeatureCursor* createCursor( const FeatureQuery& query ) const =0;
+
+        /** Gets the options that were passed into this object's CTOR. */
+        const PluginOptions* getOptions() const;
+
+    public:
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const FeatureSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "FeatureSource"; }
+        virtual const char* libraryName() const { return "osgEarthFeatures"; }
+
+
+		/**
+		 * Initialize the FeatureSource.  The profile should be computed and set here using setProfile()
+		 */
+		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL) =0;
+
+    protected:
+
+        /**
+         * Creates and returns a metadata structure describing the features in a named
+         * feature class. This method is called by the public function getFeatureProfile()
+         * in this same object to create the metadata structure.
+         */
+        virtual FeatureProfile* createFeatureProfile() =0;
+
+        /**
+         * Calculates and returns the extent of the data available through this feature store.
+         * This is called the first time getDataExtent() is called on this object.
+         */
+        virtual GeoExtent createDataExtent() =0;
+
+        /**
+         * DTOR is protected to prevent this object from being allocated on the stack.
+         */
+        virtual ~FeatureSource();
+
+    private:
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+        osg::ref_ptr<const PluginOptions>  _options;
+        GeoExtent _dataExtent;
+
+        friend class Map;
+        friend class FeatureSourceFactory;
+    };
+
+
+    /**
+     * Factory class that will instantiate a FeatureSource corresponding to a driver name.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureSourceFactory
+    {
+	public:
+		/**
+		 * Creates a FeatureSource with the given driver and properties.
+		 */
+		static FeatureSource* create(
+            const std::string& driver,
+            const Config&      driverConf,
+            const osgDB::ReaderWriter::Options* globalOptions =NULL );
+
+        static FeatureSource* create(
+            const Config& featureStoreConf,
+            const osgDB::ReaderWriter::Options* globalOptions =NULL );
+    };
+}
+
+#endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
+

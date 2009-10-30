@@ -205,6 +205,14 @@ SpatialReference::create( osg::CoordinateSystemNode* csn )
 }
 
 
+SpatialReference*
+SpatialReference::create( void* ogrHandle )
+{
+    SpatialReference* srs = new SpatialReference( ogrHandle );
+    return srs;
+}
+
+
 static std::string&
 replaceIn( std::string& s, const std::string& sub, const std::string& other)
 {
@@ -716,6 +724,44 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     }
     return success;
 }
+
+
+
+bool
+SpatialReference::transformPoints(const SpatialReference* out_srs,
+                                  osg::Vec3dArray* points,
+                                  bool ignore_errors ) const
+{
+    //Check for equivalence and return if the coordinate systems are the same.
+    if (isEquivalentTo(out_srs)) return true;
+
+    int numPoints = points->size();
+    double* x = new double[numPoints];
+    double* y = new double[numPoints];
+
+    for( int i=0; i<numPoints; i++ )
+    {
+        x[i] = (*points)[i].x();
+        y[i] = (*points)[i].y();
+    }
+
+    bool success = transformPoints( out_srs, x, y, numPoints, ignore_errors );
+
+    if ( success )
+    {
+        for( int i=0; i<numPoints; i++ )
+        {
+            (*points)[i].x() = x[i];
+            (*points)[i].y() = y[i];
+        }
+    }
+
+    delete[] x;
+    delete[] y;
+
+    return success;
+}
+
 
 bool
 SpatialReference::transformExtent(const SpatialReference* to_srs,

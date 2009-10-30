@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osg/Notify>
 #include <gdal_priv.h>
+#include <ogr_api.h>
 #include <stdlib.h>
 
 using namespace osgEarth;
@@ -39,6 +40,7 @@ osg::Referenced(true),
 _gdal_registered( false ),
 _numGdalMutexGets( 0 )
 {
+    OGRRegisterAll();
     GDALAllRegister();
 
     // add built-in mime-type extension mappings

@@ -28,6 +28,7 @@
 #include <osgEarth/VersionedTerrain>
 #include <osgDB/ReaderWriter>
 #include <osg/CoordinateSystemNode>
+#include <osgSim/OverlayNode>
 #include <OpenThreads/ReentrantMutex>
 
 namespace osgEarth
@@ -110,6 +111,11 @@ namespace osgEarth
         const MapEngineProperties& getMapEngineProperties() const;
 
         /**
+         * Installs a new overlay node in this map node. 
+         */
+        void installOverlayNode( osgSim::OverlayNode* overlay );
+
+        /**
          * Gets the ID for this MapNode
          */
         unsigned int getId() const;
@@ -129,13 +135,13 @@ namespace osgEarth
         void onMapLayerRemoved( MapLayer* layer, unsigned int index );
 
         void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex );
+        
+        void onModelLayerAdded( ModelLayer* layer );
 
     public:
 
     protected:        
         virtual ~MapNode();
-
-        //virtual osg::CoordinateSystemNode* createCoordinateSystemNode() const;
 
         //Registers the given MapNode with osgEarth.  This should not be called by user code
         static void registerMapNode( MapNode* mapNode );
@@ -163,7 +169,9 @@ namespace osgEarth
 
         static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
 
-        //osg::ref_ptr< SourceCallback > _sourceCallback;
+        osg::ref_ptr< osgSim::OverlayNode > _pendingOverlayNode;
+
+        osg::ref_ptr< osg::Group > _models;
 
         void init();
         

@@ -65,6 +65,9 @@ struct MapNodeMapCallbackProxy : public MapCallback
     void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
         _node->onMapLayerMoved(layer,oldIndex,newIndex);
     }
+    void onModelLayerAdded( ModelLayer* layer ) {
+        _node->onModelLayerAdded( layer );
+    }
 };
 
 
@@ -172,6 +175,10 @@ MapNode::init()
         onMapProfileEstablished( _map->getProfile() );
     }
 
+    // make a group for the model layers:
+    _models = new osg::Group();
+    addChild( _models.get() );
+
     // go through the map and process any already-installed layers:
     unsigned int index = 0;
     for( MapLayerList::const_iterator i = _map->getHeightFieldMapLayers().begin(); i != _map->getHeightFieldMapLayers().end(); i++ )
@@ -182,6 +189,10 @@ MapNode::init()
     for( MapLayerList::const_iterator j = _map->getImageMapLayers().begin(); j != _map->getImageMapLayers().end(); j++ )
     {
         onMapLayerAdded( j->get(), index++ );
+    }
+    for( ModelLayerList::const_iterator k = _map->getModelLayers().begin(); k != _map->getModelLayers().end(); k++ )
+    {
+        onModelLayerAdded( k->get() );
     }
 
     updateStateSet();
@@ -239,6 +250,21 @@ osgEarth::VersionedTerrain*
 MapNode::getTerrain( unsigned int i ) const
 {
     return _terrains[i].get();
+}
+
+void
+MapNode::installOverlayNode( osgSim::OverlayNode* overlay )
+{
+    if ( _terrains.empty() )
+    {
+        _pendingOverlayNode = overlay;
+    }
+    else
+    {
+        overlay->addChild( _terrains[0].get() );
+        this->replaceChild( _terrains[0].get(), overlay );
+        _pendingOverlayNode = 0L;
+    }
 }
 
 void
@@ -302,7 +328,27 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         }
     }
 
-    //addChild( csn );
+    if ( _pendingOverlayNode.valid() )
+    {
+        installOverlayNode( _pendingOverlayNode.get() );
+    }
+}
+
+void
+MapNode::onModelLayerAdded( ModelLayer* layer )
+{
+    osg::Node* node = layer->getNode();
+    if ( node )
+    {
+        if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+        {
+            installOverlayNode( static_cast<osgSim::OverlayNode*>( node ) );
+        }
+        else
+        {
+            _models->addChild( node );
+        }
+    }
 }
 
 void

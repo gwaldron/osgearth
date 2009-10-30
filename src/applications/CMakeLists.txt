@@ -29,3 +29,4 @@ ADD_SUBDIRECTORY(osgearth_tests)
 ADD_SUBDIRECTORY(osgearth_toc)
 ADD_SUBDIRECTORY(osgearth_fadelayers)
 ADD_SUBDIRECTORY(osgearth_elevation)
+

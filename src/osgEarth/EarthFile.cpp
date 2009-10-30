@@ -86,6 +86,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
+#define ELEM_MODEL                    "model"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -128,9 +129,19 @@ toColor( const osg::Vec4ub& c )
     return ss.str();
 }
 
+static ModelLayer*
+readModelLayer( const Config& conf )
+{
+    ModelLayer* layer = new ModelLayer(
+        conf.attr( "name" ),
+        conf.attr( "driver" ),
+        conf );
+
+    return layer;
+}
 
 static MapLayer*
-readLayer( const Config& conf, const Config& additional )
+readMapLayer( const Config& conf, const Config& additional )
 {
     // divine layer type
     MapLayer::Type layerType =
@@ -328,7 +339,7 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
         Config additional;
         additional.add( "default_tile_size", "256" );
 
-        MapLayer* layer = readLayer( *i, additional );
+        MapLayer* layer = readMapLayer( *i, additional );
         if ( layer )
             map->addMapLayer( layer );
     }
@@ -339,9 +350,17 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
         Config additional;
         additional.add( "default_tile_size", "16" );
 
-        MapLayer* layer = readLayer( *i, additional );
+        MapLayer* layer = readMapLayer( *i, additional );
         if ( layer )
             map->addMapLayer( layer );
+    }
+
+    ConfigSet models = conf.children( ELEM_MODEL );
+    for( ConfigSet::const_iterator i = models.begin(); i != models.end(); i++ )
+    {
+        ModelLayer* layer = readModelLayer( *i );
+        if ( layer )
+            map->addModelLayer( layer );
     }
 
     earth->setMap( map.get() );

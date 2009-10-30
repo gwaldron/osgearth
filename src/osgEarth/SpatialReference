@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osg/Referenced>
 #include <osg/CoordinateSystemNode>
+#include <osg/Vec3>
 #include <OpenThreads/ReentrantMutex>
 
 namespace osgEarth
@@ -48,6 +49,12 @@ namespace osgEarth
          */
         static SpatialReference* create( osg::CoordinateSystemNode* csn );
 
+        /**
+         * Creates an SRS around a pre-existing OGR spatial reference handle. The new
+         * SpatialReference object takes ownership of the handle.
+         */
+        static SpatialReference* create( void* ogrHandle );
+
     public:
         /** Transform a point to another SRS. */
         virtual bool transform(
@@ -62,6 +69,14 @@ namespace osgEarth
             const SpatialReference* to_srs, 
             double* x, double *y,
             unsigned int numPoints,
+            bool ignore_errors =false) const;
+
+        /**
+         * Transforms an array of points from this SRS to another SRS.
+         */
+        virtual bool transformPoints(
+            const SpatialReference* to_srs,
+            osg::Vec3dArray* points,
             bool ignore_errors =false) const;
 
         /**

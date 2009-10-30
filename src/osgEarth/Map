@@ -24,9 +24,9 @@
 #include <osgEarth/Caching>
 #include <osgEarth/Profile>
 #include <osgEarth/MapLayer>
+#include <osgEarth/ModelLayer>
 #include <osgEarth/MapEngine>
 #include <osgEarth/MapEngineProperties>
-//#include <osgEarth/ElevationModel>
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/ReadWriteMutex>
 
@@ -44,6 +44,8 @@ namespace osgEarth
         virtual void onMapLayerRemoved( MapLayer* layer, unsigned int index ) { }
 
         virtual void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+
+        virtual void onModelLayerAdded( ModelLayer* layer ) { }
     };
 
     typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
@@ -62,7 +64,6 @@ namespace osgEarth
             CSTYPE_GEOCENTRIC_CUBE,
             CSTYPE_PROJECTED
         };
-
 		
         enum SamplePolicy
         {
@@ -102,6 +103,13 @@ namespace osgEarth
          * getMapDataMutex() when iterating the list.
          */
         const MapLayerList& getHeightFieldMapLayers() const;
+
+        /** 
+         * Gets the unordered list of model layer in this map. Be sure to use
+         * getMapDataMutex() when iterating the list.
+         */
+        const ModelLayerList& getModelLayers() const;
+
         /**
          * Adds a map layer callback to this map. This will be notified whenever layers are
          * added, removed, or re-ordered.
@@ -122,6 +130,11 @@ namespace osgEarth
          * Moves a map layer to another index position in its list.
          */
         void moveMapLayer( MapLayer* layer, unsigned int newIndex );
+
+        /**
+         * Adds a new model layer to the map.
+         */
+        void addModelLayer( ModelLayer* layer );
 
     public:
         /**
@@ -227,20 +240,6 @@ namespace osgEarth
          */
         int getDataModelRevision() const;
 
-        /**
-         * Gets a dynamic, holistic elevation data manager. This object will
-         * service spot-elevation requests, loading the supporting heightfield
-         * information as necessary.
-         *
-         * @param taskService
-         *      If you specify a task service, the EM will use it to asynchronously
-         *      load heightfield data for queries that don't meet the requested
-         *      resolution/LOD. If you do not specifiy a task service, the EM will
-         *      attempt to synchronously load the heightfield data, which may result
-         *      in a delay.
-         */
-        //ElevationModel* getOrCreateElevationModel( TaskService* service =0L ) const;
-
     protected:
 
         ~Map() { }
@@ -250,6 +249,7 @@ namespace osgEarth
         std::string _name;
         MapLayerList _imageMapLayers;
         MapLayerList _heightFieldMapLayers;
+        ModelLayerList _modelLayers;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         OpenThreads::ReadWriteMutex _mapDataMutex;
@@ -262,7 +262,6 @@ namespace osgEarth
 		osg::ref_ptr<Cache> _cache;
 		bool _use_mercator_locator;
         int _dataModelRevision;
-        //osg::ref_ptr<ElevationModel> _elevationModel;
 
     private:
         void calculateProfile();

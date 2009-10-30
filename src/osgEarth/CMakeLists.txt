@@ -44,6 +44,8 @@ SET(LIB_PUBLIC_HEADERS
     MapNode
     MapEngine
     MapEngineProperties
+    ModelLayer
+    ModelSource
 	MultiPassTerrainTechnique
     Profile
 	Progress
@@ -83,6 +85,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapEngine.cpp
     MapEngineProperties.cpp
 	MimeTypes.cpp
+	ModelLayer.cpp
+	ModelSource.cpp
 	MultiPassTerrainTechnique.cpp
     Profile.cpp
 	Progress.cpp

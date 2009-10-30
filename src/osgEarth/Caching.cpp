@@ -62,6 +62,8 @@ CacheConfig::CacheConfig( const Config& conf )
     if ( !conf.attr("cache_only").empty() )
         _runOffCacheOnly = conf.attr("cache_only") == "true";
 
+
+
     for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); i++ )
         if ( !i->value().empty() )
             _properties[ i->name() ] = i->value();

@@ -74,6 +74,7 @@ namespace osgEarth
         optional() : _set(false) { }
         optional(T value) : _set(true), _value(value) { }
         optional(const optional<T>& rhs) { (*this)=rhs; }
+        virtual ~optional() { }
         optional<T>& operator =(const optional<T>& rhs) { _set=rhs._set; _value=rhs._value; return *this; }
         const T& operator =(const T& value) { _set=true; _value=value; return _value; }
         bool operator ==(const optional<T>& rhs) const { return _set && rhs._set && _value==rhs._value; }

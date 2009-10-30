@@ -100,6 +100,11 @@ Map::getHeightFieldMapLayers() const {
     return _heightFieldMapLayers;
 }
 
+const ModelLayerList&
+Map::getModelLayers() const {
+    return _modelLayers;
+}
+
 void
 Map::setName( const std::string& name ) {
     _name = name;
@@ -283,6 +288,25 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapLayerMoved( layer, oldIndex, newIndex );
+        }
+    }
+}
+
+
+void
+Map::addModelLayer( ModelLayer* layer )
+{
+    if ( layer )
+    {
+        ScopedWriteLock lock( getMapDataMutex() );
+
+        _modelLayers.push_back( layer );
+
+        layer->initialize( getReferenceURI(), this );
+
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onModelLayerAdded( layer );
         }
     }
 }

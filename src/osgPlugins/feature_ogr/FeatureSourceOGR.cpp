@@ -35,7 +35,7 @@ using namespace osgEarthFeatures;
 
 #define PROPERTY_URL "url"
 #define PROPERTY_OGR_DRIVER "ogr_driver"
-
+#define PROPERTY_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
 
 /**
  * A FeatureSource that reads features from an OGR driver.
@@ -47,12 +47,21 @@ public:
       _ready( false ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
-      _supportsRandomRead( false )
+      _supportsRandomRead( false ),
+      _geomTypeOverride( FeatureProfile::GEOM_UNKNOWN )
     {
         const Config& conf = getOptions()->config();
 
         _url = conf.value( PROPERTY_URL );
         _ogrDriver = conf.value( PROPERTY_OGR_DRIVER );
+
+        std::string gt = conf.value( PROPERTY_GEOMETRY_TYPE );
+        if ( gt == "line" || gt == "lines" )
+            _geomTypeOverride = FeatureProfile::GEOM_LINE;
+        else if ( gt == "point" || gt == "points" )
+            _geomTypeOverride = FeatureProfile::GEOM_POINT;
+        else if ( gt == "polygon" || gt == "polygons" )
+            _geomTypeOverride = FeatureProfile::GEOM_POLYGON;
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -131,6 +140,7 @@ public:
                 	    if ( geomHandleRef )
                         {
                             OGRwkbGeometryType wkb_type = OGR_G_GetGeometryType( geomHandleRef );
+
                             FeatureProfile::GeometryType geomType = FeatureProfile::GEOM_UNKNOWN;
 
                             if ( 
@@ -164,14 +174,18 @@ public:
                            
                             bool multiGeom = wkb_type == wkbMultiPolygon || wkb_type == wkbMultiPolygon25D;
 
+                            // still need to do the above to determine the multiGeom flag..
+                            if ( _geomTypeOverride != FeatureProfile::GEOM_UNKNOWN )
+                                geomType = _geomTypeOverride;
+
                             // extract the dimensionality of the geometry:
                             int dim = OGR_G_GetCoordinateDimension( geomHandleRef );
 
                             // if all went well, make the new profile.
                             if ( srs.valid() && dim >= 2 && dim <= 3 && geomType != FeatureProfile::GEOM_UNKNOWN )
                             {
-                                //result = new FeatureProfile( srs.get(), geomType, dim, multiGeom );
-                                result = new FeatureProfile( srs.get(), FeatureProfile::GEOM_LINE, dim, multiGeom );
+                                result = new FeatureProfile( srs.get(), geomType, dim, multiGeom );
+                                //osg::notify(osg::NOTICE) << "_geomTypeOverride = " << _geomTypeOverride << std::endl;
                             }
 
                         }
@@ -224,6 +238,7 @@ private:
     OGRLayerH _layerHandle;
     bool _supportsRandomRead;
     bool _ready;
+    FeatureProfile::GeometryType _geomTypeOverride;
 };
 
 

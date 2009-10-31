@@ -1,3 +1,13 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to read feature data from a shapefile and project
+it on to the map as an overlay model.
+
+The "feature_overlay" driver creates an osgSim::OverlayNode. So, in a geocentric
+map, it will only support data that covers at most one hemisphere.
+-->
+
 <map name="Feature Overlay Demo" type="geocentric">
 
     <image name="world" driver="gdal">
@@ -6,11 +16,14 @@
     
     <model name="boundaries" driver="feature_overlay">
 
+        <!-- The OGR feature driver will read the shapefile -->
         <features name="states" driver="ogr">
             <ogr_driver>ESRI Shapefile</ogr_driver>
             <url>../data/usa.shp</url>
+            <geometry_type>line</geometry_type>
         </features>
     
+        <-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
         <texture_size>2048</texture_size>
         <texture_unit>1</texture_unit>  
         

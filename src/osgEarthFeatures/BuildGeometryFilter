@@ -17,37 +17,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_TRANSFORM_FILTER_H
-#define OSGEARTHFEATURES_TRANSFORM_FILTER_H 1
+#ifndef OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H
+#define OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osg/Geode>
 
 using namespace osgEarth;
 
 namespace osgEarthFeatures
 {
     /**
-     * Feature filter that transforms features from one FeatureProfile to 
-     * another.
+     * Builds geometry from a stream of input features.
      */
-    class OSGEARTHFEATURES_EXPORT TransformFilter // : public Filter
+    class OSGEARTHFEATURES_EXPORT BuildGeometryFilter // : public Filter
     {
     public:
-        TransformFilter( const SpatialReference* outputSRS, bool isGeocentric );
+        BuildGeometryFilter();
 
-        bool push( Feature* feature, FilterContext& context );
+        bool push( Feature* input, FilterContext& context );
 
-        bool push( FeatureList& features, FilterContext& context );
-        
-//        osg::Referenced* process( osg::Referenced* feature, FilterContext& context );
+        bool push( FeatureList& input, FilterContext& context );
+
+        osg::Node* getOutput( FilterContext& context );
 
     protected:
-        osg::ref_ptr<const SpatialReference> _outputSRS;
-        //osg::ref_ptr<const FeatureProfile> _outputProfile;
-        bool _isGeocentric;
+        osg::ref_ptr<osg::Geode> _geode;
+
+        void reset();
     };
 }
 
-#endif // OSGEARTHFEATURES_TRANSFORM_FILTER_H
+#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

@@ -22,9 +22,9 @@
 #include <osgEarth/Map>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthFeatures/BuildGeometryFilter>
 #include <osg/Notify>
-#include <osg/Geode>
-#include <osg/Geometry>
+#include <osg/LineWidth>
 #include <osgDB/FileNameUtils>
 #include <osgUtil/Tessellator>
 #include <osgSim/OverlayNode>
@@ -44,7 +44,7 @@ class FeatureOverlaySource : public ModelSource
 public:
     FeatureOverlaySource( const PluginOptions* options, int sourceId ) : ModelSource( options ),
         _sourceId( sourceId ),
-        _textureUnit( 1 ),
+        _textureUnit( 0 ),
         _textureSize( 1024 )
     {
         //TODO
@@ -62,7 +62,12 @@ public:
             osg::notify( osg::WARN ) << "[osgEarth] Feature Overlay driver - no valid feature source provided" << std::endl;
         }
 
-        _textureUnit = conf.value<int>( PROP_TEXTURE_UNIT, _textureUnit );
+        // omitting the texture unit implies "AUTO" mode - MapNode will set one automatically
+        if ( conf.hasValue( PROP_TEXTURE_UNIT ) )
+            _textureUnit = conf.value<int>( PROP_TEXTURE_UNIT, _textureUnit ); 
+        else
+            _textureUnit = 0; // AUTO
+
         _textureSize = conf.value<int>( PROP_TEXTURE_SIZE, _textureSize );
     }
 
@@ -71,74 +76,47 @@ public:
     {
         if ( !_features.valid() ) return 0L;
 
-        bool isGeocentric =  _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC;
-        FeatureProfile::GeometryType geomType = _features->getFeatureProfile()->getGeometryType();
-        GLenum prim =
-            geomType == FeatureProfile::GEOM_LINE ? GL_LINE_STRIP :
-            geomType == FeatureProfile::GEOM_POINT ? GL_POINTS :
-            geomType == FeatureProfile::GEOM_POLYGON ? GL_LINE_LOOP : // for later tessellation
-            GL_POINTS;
+        bool isGeocentric = _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC;
 
-        osg::Geode* geode = new osg::Geode();
+        // read all features into a list:
+        FeatureList features;
+        osg::ref_ptr<FeatureCursor> c = _features->createCursor( FeatureQuery() );
+        while( c->hasMore() )
+            features.push_back( c->nextFeature() );
 
+        // A processing context to use with the filters:
         FilterContext context;
         context._profile = _features->getFeatureProfile();
 
-        FilterChain chain( context );
-        chain.push_back( new TransformFilter( _map->getProfile()->getSRS(), isGeocentric ) );
+        // Transform them into the map's SRS:
+        TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
+        xform.push( features, context );
 
-        osg::ref_ptr<FeatureCursor> c = _features->createCursor( FeatureQuery() );
-        while( c->hasMore() )
+        // Build geometry:
+        BuildGeometryFilter buildGeom;
+        buildGeom.push( features, context );
+
+        osg::Node* result = buildGeom.getOutput( context );
+        if ( result )
         {
-            Feature* feature = c->nextFeature();
-            chain.process( feature );
+            // set up the appearance: (Later the symbolizer engine will do this)
+            osg::StateSet* ss = result->getOrCreateStateSet();
+            ss->setMode( GL_LIGHTING, 0 );
+            ss->setAttributeAndModes( new osg::LineWidth( 2 ) );
 
-            osg::Geometry* geom = new osg::Geometry();
-            osg::Vec4Array* colors = new osg::Vec4Array(1);
-            (*colors)[0].set( 1, 1, 1, 1 );
-            geom->setColorArray( colors );
-            geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+            // finally, build the overlay node.
+            osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
+            overlayNode->setOverlayTechnique( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY );
+            overlayNode->setContinuousUpdate( false );
+            overlayNode->setOverlaySubgraph( result );
+            overlayNode->setOverlayBaseHeight( 0.0 );
+            overlayNode->setOverlayTextureSizeHint( _textureSize );
+            overlayNode->setOverlayTextureUnit( _textureUnit ); 
 
-            osg::Vec3Array* allverts = new osg::Vec3Array();
-            geom->setVertexArray( allverts );
-
-            for( int p=0, partPtr=0; p<feature->getNumParts(); p++ )
-            {                
-                osg::Vec3dArray* part = feature->getPart( p );
-                allverts->reserve( allverts->size() + part->size() );
-                for( int v=0; v<part->size(); v++ )
-                    allverts->push_back( (*part)[v] );
-                geom->addPrimitiveSet( new osg::DrawArrays( prim, partPtr, part->size() ) );
-                partPtr += part->size();
-            }
-            
-            // tessellate all polygon geometries. Tessellating each geometry separately
-            // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
-            // using TESS_TYPE_DRAWABLE.
-            if ( geomType == FeatureProfile::GEOM_POLYGON )
-            {
-                osgUtil::Tessellator tess;
-                tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-                tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-                tess.retessellatePolygons( *geom );
-            }
-
-            geode->addDrawable( geom );
+            result = overlayNode;
         }
 
-        osg::StateSet* ss = geode->getOrCreateStateSet();
-        ss->setMode( GL_LIGHTING, 0 );
-
-        // finally, build the overlay node.
-        osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
-        overlayNode->setOverlayTechnique( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY );
-        overlayNode->setContinuousUpdate( false );
-        overlayNode->setOverlaySubgraph( geode );
-        overlayNode->setOverlayBaseHeight( 0.0 );
-        overlayNode->setOverlayTextureSizeHint( _textureSize );
-        overlayNode->setOverlayTextureUnit( _textureUnit ); 
-
-        return overlayNode;
+        return result;
     }
 
 private:

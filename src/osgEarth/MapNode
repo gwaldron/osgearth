@@ -111,9 +111,17 @@ namespace osgEarth
         const MapEngineProperties& getMapEngineProperties() const;
 
         /**
-         * Installs a new overlay node in this map node. 
+         * Installs a new overlay node in this map node.
+         *
+         * @param overlay
+         *      Node to install within the MapNode
+         * @param autoSetTextureUnit
+         *      Automatically assign a texture unit to the overlay node based on
+         *      the currently active map layers
          */
-        void installOverlayNode( osgSim::OverlayNode* overlay );
+        void installOverlayNode(
+            osgSim::OverlayNode* overlay,
+            bool autoSetTextureUnit =true );
 
         /**
          * Gets the ID for this MapNode
@@ -170,6 +178,7 @@ namespace osgEarth
         static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
 
         osg::ref_ptr< osgSim::OverlayNode > _pendingOverlayNode;
+        bool _pendingOverlayAutoSetTextureUnit;
 
         osg::ref_ptr< osg::Group > _models;
 

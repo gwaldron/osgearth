@@ -21,6 +21,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/GeoData>
 #include <list>
 
@@ -46,33 +47,18 @@ namespace osgEarthFeatures
      * Base class for filters that perform some kind of processing on an
      * input feature.
      */
-    class OSGEARTHFEATURES_EXPORT Filter : public osg::Referenced
-    {
-    public:
-        virtual osg::Referenced* process( osg::Referenced* input, FilterContext& context ) =0;
-    };
+    //class OSGEARTHFEATURES_EXPORT Filter : public osg::Referenced
+    //{
+    //public:
+    //    virtual osg::Referenced* process( osg::Referenced* input, FilterContext& context ) =0;
+    //};
 
     /**
      * A chain of Filter objects through which to pass Feature instances.
+     * The "T" parameter denotes the OUTPUT type of the chain.
      */
-    class OSGEARTHFEATURES_EXPORT FilterChain : public std::list< osg::ref_ptr<Filter> >
-    {
-    public:
-        FilterChain( const FilterContext& context );
-
-        /** copy ctor */
-        FilterChain( const FilterChain& rhs );
-
-        osg::Referenced* process( Feature* input );
-
-    protected:
-        FilterContext _prototypeContext;
-    };
-
-    ///**
-    // * A chain of Filter objects through which to pass Feature instances.
-    // */
-    //class OSGEARTHFEATURES_EXPORT FilterChain : public osg::Refernece, public osg::MixinVector< // public std::list< osg::ref_ptr<Filter> >
+    //template<typename T>
+    //class OSGEARTHFEATURES_EXPORT FilterChain : public std::list< osg::ref_ptr<Filter> >
     //{
     //public:
     //    FilterChain( const FilterContext& context );
@@ -80,24 +66,21 @@ namespace osgEarthFeatures
     //    /** copy ctor */
     //    FilterChain( const FilterChain& rhs );
 
-    //    osg::Referenced* process( Feature* input );
+    //    /** Run one object through the chain. */
+    //    //T* run( osg::Referenced* input );
+
+    //    /** Read data from a cursor and run it through the chain. */
+    //    bool run(
+    //        FeatureCursor* inputCursor,
+    //        std::list< osg::ref_ptr<T> >& output );            
+
+    //    /** Read data from a list and run it through the chain. */
+    //    bool run(
+    //        std::list< osg::ref_ptr<osg::Referenced> >& input,
+    //        std::list< osg::ref_ptr<T> >& output );
 
     //protected:
     //    FilterContext _prototypeContext;
-    //};
-
-    ///** Cursor that pulls its features by executing a filter chain against another cursor. */
-    //class OSGEARTHFEATURES_EXPORT FilterChainCursor : public FeatureCursor
-    //{
-    //public:
-    //    FeatureCursor( const FilterChain& chain );
-
-    //public: // FeatureCursor
-    //    virtual bool hasMore() const;
-    //    virtual Feature* nextFeature();
-
-    //protected:
-    //    FilterChain _chain;
     //};
 }
 

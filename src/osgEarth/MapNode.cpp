@@ -29,6 +29,8 @@
 #include <osg/Notify>
 #include <osg/CullFace>
 #include <osg/NodeVisitor>
+#include <osg/FragmentProgram>
+#include <osg/PolygonOffset>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -179,6 +181,9 @@ MapNode::init()
     _models = new osg::Group();
     addChild( _models.get() );
 
+    // overlays:
+    _pendingOverlayAutoSetTextureUnit = true;
+
     // go through the map and process any already-installed layers:
     unsigned int index = 0;
     for( MapLayerList::const_iterator i = _map->getHeightFieldMapLayers().begin(); i != _map->getHeightFieldMapLayers().end(); i++ )
@@ -200,7 +205,9 @@ MapNode::init()
     // install a layer callback for processing further map actions:
     _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
 
-	getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(), osg::StateAttribute::ON);
+    osg::StateSet* ss = getOrCreateStateSet();
+	ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
+    //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
     registerMapNode(this);
 }
@@ -253,17 +260,27 @@ MapNode::getTerrain( unsigned int i ) const
 }
 
 void
-MapNode::installOverlayNode( osgSim::OverlayNode* overlay )
+MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUnit )
 {
     if ( _terrains.empty() )
     {
         _pendingOverlayNode = overlay;
+        _pendingOverlayAutoSetTextureUnit = autoSetTextureUnit;
     }
     else
     {
         overlay->addChild( _terrains[0].get() );
         this->replaceChild( _terrains[0].get(), overlay );
         _pendingOverlayNode = 0L;
+
+        if ( autoSetTextureUnit )
+        {
+            int nextTextureUnit =
+                _engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS ? 1 :
+                _map->getImageMapLayers().size();
+
+            overlay->setOverlayTextureUnit( nextTextureUnit );
+        }
     }
 }
 
@@ -330,7 +347,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 
     if ( _pendingOverlayNode.valid() )
     {
-        installOverlayNode( _pendingOverlayNode.get() );
+        installOverlayNode( _pendingOverlayNode.get(), _pendingOverlayAutoSetTextureUnit );
     }
 }
 
@@ -342,7 +359,9 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
     {
         if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
         {
-            installOverlayNode( static_cast<osgSim::OverlayNode*>( node ) );
+            osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
+            bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
+            installOverlayNode( overlay, autoTextureUnit );
         }
         else
         {

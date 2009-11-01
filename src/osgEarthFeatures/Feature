@@ -24,6 +24,7 @@
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
 #include <map>
+#include <list>
 
 namespace osgEarthFeatures
 {
@@ -107,6 +108,8 @@ namespace osgEarthFeatures
         FeatureGeomParts _parts;
         FeatureAttributes _attrs;
     };
+
+    typedef std::list< osg::ref_ptr<Feature> > FeatureList;
 }
 
 #endif // OSGEARTHFEATURES_FEATURE_H

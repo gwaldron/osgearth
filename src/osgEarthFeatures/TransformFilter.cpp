@@ -28,11 +28,9 @@ _isGeocentric( isGeocentric )
     //NOP
 }
 
-osg::Referenced*
-TransformFilter::process( osg::Referenced* inputFeature, FilterContext& context )
+bool
+TransformFilter::push( Feature* input, FilterContext& context )
 {
-    Feature* input = static_cast<Feature*>( inputFeature );
-
     for( int p=0; p<input->getNumParts(); p++ )
     {
         osg::Vec3dArray* part = input->getPart( p );
@@ -55,18 +53,58 @@ TransformFilter::process( osg::Referenced* inputFeature, FilterContext& context 
             }
         }
     }
-
-    if ( !_outputProfile.valid() )
-    {
-        _outputProfile = new FeatureProfile(
-            _outputSRS.get(),
-            context._profile->getGeometryType(),
-            context._profile->getDimensionality(),
-            context._profile->isMultiGeometry() );
-    }
-
-    context._profile = _outputProfile.get();
-    
-    return inputFeature;
+    return true;
 }
 
+bool
+TransformFilter::push( FeatureList& input, FilterContext& context )
+{
+    bool ok = true;
+    for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
+        if ( !push( i->get(), context ) )
+            ok = false;
+    return true;
+}
+
+//osg::Referenced*
+//TransformFilter::process( osg::Referenced* inputFeature, FilterContext& context )
+//{
+//    Feature* input = static_cast<Feature*>( inputFeature );
+//
+//    for( int p=0; p<input->getNumParts(); p++ )
+//    {
+//        osg::Vec3dArray* part = input->getPart( p );
+//        bool success = _outputSRS->transformPoints( context._profile->getSRS(), part, false );
+//        if ( !success )
+//            return false;
+//
+//        if ( _isGeocentric && _outputSRS->isGeographic() )
+//        {
+//            const osg::EllipsoidModel* em = context._profile->getSRS()->getEllipsoid();
+//            for( int i=0; i<part->size(); i++ )
+//            {
+//                double x, y, z;
+//                em->convertLatLongHeightToXYZ(
+//                    osg::DegreesToRadians( (*part)[i].y() ),
+//                    osg::DegreesToRadians( (*part)[i].x() ),
+//                    (*part)[i].z(),
+//                    x, y, z );
+//                (*part)[i].set( x, y, z );
+//            }
+//        }
+//    }
+//
+//    if ( !_outputProfile.valid() )
+//    {
+//        _outputProfile = new FeatureProfile(
+//            _outputSRS.get(),
+//            context._profile->getGeometryType(),
+//            context._profile->getDimensionality(),
+//            context._profile->isMultiGeometry() );
+//    }
+//
+//    context._profile = _outputProfile.get();
+//    
+//    return inputFeature;
+//}
+//

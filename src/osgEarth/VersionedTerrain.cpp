@@ -333,6 +333,8 @@ VersionedTile::servicePendingRequests( int stamp )
 
         if ( _hasElevation && this->getElevationLayer() ) // don't need a layers lock here
         {
+            // TODO: insert an isKeyValid() here as well. But first, think about it....
+
             _elevRequest = new TileElevationLayerRequest(_key.get(), map, engine );
             //_elevRequest->setPriority( (float)_key->getLevelOfDetail() );
             float priority = (float)_key->getLevelOfDetail();
@@ -354,16 +356,20 @@ VersionedTile::servicePendingRequests( int stamp )
         {
             if (layerIndex < map->getImageMapLayers().size())
             {
-                unsigned int layerId = map->getImageMapLayers()[layerIndex].get()->getId();
-                // imagery is slighty higher priority than elevation data
-                TaskRequest* r = new TileColorLayerRequest( _key.get(), map, engine, layerIndex, layerId );
-                std::stringstream ss;
-                ss << "TileColorLayerRequest " << _key->str() << std::endl;
-                r->setName( ss.str() );
-                r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
-                r->setStamp( stamp );
-                r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
-                _requests.push_back( r );
+                MapLayer* mapLayer = map->getImageMapLayers()[layerIndex].get();
+                if ( mapLayer->isKeyValid( _key.get() ) )
+                {
+                    unsigned int layerId = mapLayer->getId();
+                    // imagery is slighty higher priority than elevation data
+                    TaskRequest* r = new TileColorLayerRequest( _key.get(), map, engine, layerIndex, layerId );
+                    std::stringstream ss;
+                    ss << "TileColorLayerRequest " << _key->str() << std::endl;
+                    r->setName( ss.str() );
+                    r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
+                    r->setStamp( stamp );
+                    r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
+                    _requests.push_back( r );
+                }
             }
         }
 

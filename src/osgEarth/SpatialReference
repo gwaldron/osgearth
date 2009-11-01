@@ -53,7 +53,7 @@ namespace osgEarth
          * Creates an SRS around a pre-existing OGR spatial reference handle. The new
          * SpatialReference object takes ownership of the handle.
          */
-        static SpatialReference* create( void* ogrHandle );
+        static SpatialReference* createFromHandle( void* ogrHandle );
 
     public:
         /** Transform a point to another SRS. */

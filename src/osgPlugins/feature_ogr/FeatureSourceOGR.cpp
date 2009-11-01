@@ -129,7 +129,7 @@ public:
                 OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
                 if ( srHandle )
                 {
-                    osg::ref_ptr<SpatialReference> srs = SpatialReference::create( srHandle );
+                    osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle );
 
                     // read the first feature to determine the geometry type and dimension.
                     OGR_L_ResetReading( _layerHandle );

@@ -206,7 +206,7 @@ SpatialReference::create( osg::CoordinateSystemNode* csn )
 
 
 SpatialReference*
-SpatialReference::create( void* ogrHandle )
+SpatialReference::createFromHandle( void* ogrHandle )
 {
     SpatialReference* srs = new SpatialReference( ogrHandle );
     return srs;

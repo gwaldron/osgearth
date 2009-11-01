@@ -60,11 +60,45 @@ namespace osgEarthFeatures
     public:
         FilterChain( const FilterContext& context );
 
+        /** copy ctor */
+        FilterChain( const FilterChain& rhs );
+
         osg::Referenced* process( Feature* input );
 
     protected:
         FilterContext _prototypeContext;
     };
+
+    ///**
+    // * A chain of Filter objects through which to pass Feature instances.
+    // */
+    //class OSGEARTHFEATURES_EXPORT FilterChain : public osg::Refernece, public osg::MixinVector< // public std::list< osg::ref_ptr<Filter> >
+    //{
+    //public:
+    //    FilterChain( const FilterContext& context );
+
+    //    /** copy ctor */
+    //    FilterChain( const FilterChain& rhs );
+
+    //    osg::Referenced* process( Feature* input );
+
+    //protected:
+    //    FilterContext _prototypeContext;
+    //};
+
+    ///** Cursor that pulls its features by executing a filter chain against another cursor. */
+    //class OSGEARTHFEATURES_EXPORT FilterChainCursor : public FeatureCursor
+    //{
+    //public:
+    //    FeatureCursor( const FilterChain& chain );
+
+    //public: // FeatureCursor
+    //    virtual bool hasMore() const;
+    //    virtual Feature* nextFeature();
+
+    //protected:
+    //    FilterChain _chain;
+    //};
 }
 
 #endif // OSGEARTHFEATURES_FEATURE_FILTER_H

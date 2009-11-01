@@ -16,7 +16,7 @@ map, it will only support data that covers at most one hemisphere.
     
     <model name="boundaries" driver="feature_overlay">
 
-        <!-- The OGR feature driver will read the shapefile -->
+        <!-- Configure the OGR feature driver to read the shapefile -->
         <features name="states" driver="ogr">
             <ogr_driver>ESRI Shapefile</ogr_driver>
             <url>../data/usa.shp</url>

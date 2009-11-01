@@ -38,6 +38,11 @@ _prototypeContext( context )
 {
     //NOP
 }
+FilterChain::FilterChain( const FilterChain& rhs ) :
+_prototypeContext( rhs._prototypeContext )
+{
+    //NOP
+}
 
 osg::Referenced*
 FilterChain::process( Feature* feature )

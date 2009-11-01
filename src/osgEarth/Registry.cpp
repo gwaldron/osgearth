@@ -43,6 +43,10 @@ _numGdalMutexGets( 0 )
     OGRRegisterAll();
     GDALAllRegister();
 
+    //getGlobalGeodeticProfile();
+    //getGlobalMercatorProfile();
+    //getCubeProfile();
+
     // add built-in mime-type extension mappings
     for( int i=0; ; i+=2 )
     {
@@ -91,10 +95,14 @@ Registry::getGlobalGeodeticProfile() const
     if ( !_global_geodetic_profile.valid() )
     {
         GDAL_SCOPED_LOCK;
-        const_cast<Registry*>(this)->_global_geodetic_profile = Profile::create(
-            "epsg:4326",
-            -180.0, -90.0, 180.0, 90.0,
-            2, 1 );
+
+        if ( !_global_geodetic_profile.valid() ) // double-check pattern
+        {
+            const_cast<Registry*>(this)->_global_geodetic_profile = Profile::create(
+                "epsg:4326",
+                -180.0, -90.0, 180.0, 90.0,
+                2, 1 );
+        }
     }
     return _global_geodetic_profile.get();
 }
@@ -106,13 +114,17 @@ Registry::getGlobalMercatorProfile() const
     if ( !_global_mercator_profile.valid() )
     {
         GDAL_SCOPED_LOCK;
-        // automatically figure out proper mercator extents:
-        const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
-        double e, dummy;
-        srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );
-        
-        const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-            srs, -e, -e, e, e, 1, 1 );
+
+        if ( !_global_mercator_profile.valid() ) // double-check pattern
+        {
+            // automatically figure out proper mercator extents:
+            const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
+            double e, dummy;
+            srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );
+            
+            const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+                srs, -e, -e, e, e, 1, 1 );
+        }
     }
     return _global_mercator_profile.get();
 }
@@ -123,8 +135,12 @@ Registry::getCubeProfile() const
     if ( !_cube_profile.valid() )
     {
         GDAL_SCOPED_LOCK;
-        const SpatialReference* srs = SpatialReference::create( "epsg:4326" );
-        const_cast<Registry*>(this)->_cube_profile = Profile::createCube( srs );
+
+        if ( !_cube_profile.valid() ) // double-check pattern
+        {
+            const SpatialReference* srs = SpatialReference::create( "epsg:4326" );
+            const_cast<Registry*>(this)->_cube_profile = Profile::createCube( srs );
+        }
     }
     return _cube_profile.get();
 }

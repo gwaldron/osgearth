@@ -23,7 +23,7 @@ map, it will only support data that covers at most one hemisphere.
             <geometry_type>line</geometry_type>
         </features>
     
-        <-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
+        <!-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
         <texture_size>2048</texture_size>
         <texture_unit>1</texture_unit>  
         

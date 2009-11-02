@@ -373,7 +373,7 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
     vertices->dirty();
 
     // re-smooth since the elevation has changed.
-    //smoothGeometry();
+    smoothGeometry();
 }
 
 
@@ -479,11 +479,9 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         numColumns = elevationLayer->getNumColumns();
         numRows = elevationLayer->getNumRows();
     }
-
-     
+    
     double i_sampleFactor, j_sampleFactor;
     calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
-
 
     bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
     osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
@@ -562,7 +560,6 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
 
     typedef std::vector<int> Indices;
     Indices indices(numVertices, -1);
-
     
     // populate vertex and tex coord arrays
     unsigned int i, j;

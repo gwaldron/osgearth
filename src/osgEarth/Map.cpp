@@ -451,10 +451,6 @@ Map::createHeightField( const TileKey* key,
 		}
 	}
 
-    //TODO:  Unhardcode
-    unsigned int width = 64;
-    unsigned int height = 64;
-
 	if (heightFields.size() == 0)
 	{
 	    //If we got no heightfields, return NULL
@@ -465,10 +461,7 @@ Map::createHeightField( const TileKey* key,
         if ( lowestLOD == key->getLevelOfDetail() )
         {
 		    //If we only have on heightfield, just return it.
-		    //result = heightFields[0]->takeHeightField();
-            osg::ref_ptr< GeoHeightField > geoHeightField = heightFields[0].get();
-            geoHeightField = geoHeightField->resize( width, height );
-            result = geoHeightField->takeHeightField();
+		    result = heightFields[0]->takeHeightField();
         }
         else
         {
@@ -479,6 +472,15 @@ Map::createHeightField( const TileKey* key,
 	}
 	else
 	{
+		//If we have multiple heightfields, we need to composite them together.
+		unsigned int width = 0;
+		unsigned int height = 0;
+
+		for (GeoHeightFieldList::const_iterator i = heightFields.begin(); i < heightFields.end(); ++i)
+		{
+			if (i->get()->getHeightField()->getNumColumns() > width) width = i->get()->getHeightField()->getNumColumns();
+			if (i->get()->getHeightField()->getNumRows() > height) height = i->get()->getHeightField()->getNumRows();
+		}
 		result = new osg::HeightField();
 		result->allocate( width, height );
 

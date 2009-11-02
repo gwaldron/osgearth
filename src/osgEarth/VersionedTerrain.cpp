@@ -161,7 +161,7 @@ _geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( true ),     // only matters when _useLayerRequests==true
+_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _neighbors( 4 ),                  // pre-allocate 4 slots. 0=W, 1=N, 2=E, 3=S.
 _elevationLOD( key->getLevelOfDetail() )
@@ -450,8 +450,6 @@ VersionedTile::serviceCompletedRequests()
     // make sure our reference to the parent tile is up to date.
     refreshParentTile();
 
-    VersionedTerrain *vt = static_cast<VersionedTerrain*>(getTerrain());
-
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
     {
         TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
@@ -460,20 +458,13 @@ VersionedTile::serviceCompletedRequests()
             osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
             if ( imgLayer )
             {
-                if (vt->canDirtyMoreTiles())
-                {
-                    this->setColorLayer( r->_layerIndex, imgLayer );
-                    if ( _usePerLayerUpdates )
-                        _colorLayersDirty = true;
-                    else
-                        this->setDirty( true );
-                    // remove from the list
-                    i = _requests.erase( i );
-                }
+                this->setColorLayer( r->_layerIndex, imgLayer );
+                if ( _usePerLayerUpdates )
+                    _colorLayersDirty = true;
                 else
-                {
-                    i++;
-                }
+                    this->setDirty( true );
+                // remove from the list
+                i = _requests.erase( i );
             }
             else
             {
@@ -506,27 +497,24 @@ VersionedTile::serviceCompletedRequests()
             osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>( er->getResult() );
             if ( hfLayer )
             {
-                if (vt->canDirtyMoreTiles())
-                {
-                    // need to write-lock the layer data since we'll be changing it:
-                    ScopedWriteLock lock( _tileLayersMutex );
+                // need to write-lock the layer data since we'll be changing it:
+                ScopedWriteLock lock( _tileLayersMutex );
 
-                    // copy the skirt height over:
-                    osg::HeightField* oldHF = static_cast<osgTerrain::HeightFieldLayer*>(getElevationLayer())->getHeightField();
-                    if ( oldHF )
-                        hfLayer->getHeightField()->setSkirtHeight( oldHF->getSkirtHeight() );
+                // copy the skirt height over:
+                osg::HeightField* oldHF = static_cast<osgTerrain::HeightFieldLayer*>(getElevationLayer())->getHeightField();
+                if ( oldHF )
+                    hfLayer->getHeightField()->setSkirtHeight( oldHF->getSkirtHeight() );
 
-                    this->setElevationLayer( hfLayer );
-                    if ( _usePerLayerUpdates )
-                        _elevationLayerDirty = true;
-                    else
-                        this->setDirty( true );
+                this->setElevationLayer( hfLayer );
+                if ( _usePerLayerUpdates )
+                    _elevationLayerDirty = true;
+                else
+                    this->setDirty( true );
+                
+                _elevationLOD = er->_key->getLevelOfDetail();
 
-                    _elevationLOD = er->_key->getLevelOfDetail();
-
-                    //osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
-                    _elevationLayerUpToDate = true;
-                }
+                //osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
+                _elevationLayerUpToDate = true;
             }
             else
             {
@@ -546,27 +534,24 @@ VersionedTile::serviceCompletedRequests()
 
         else if ( _elevPlaceholderRequest->isCompleted() )
         {
-            if (vt->canDirtyMoreTiles())
+            osgTerrain::HeightFieldLayer* newPhLayer = static_cast<osgTerrain::HeightFieldLayer*>(
+                _elevPlaceholderRequest->getResult() );
+
+            // write-lock the layer data since we'll be changing it:
+            ScopedWriteLock lock( _tileLayersMutex );
+
+            if ( newPhLayer )
             {
-                osgTerrain::HeightFieldLayer* newPhLayer = static_cast<osgTerrain::HeightFieldLayer*>(
-                    _elevPlaceholderRequest->getResult() );
+                this->setElevationLayer( newPhLayer );
 
-                // write-lock the layer data since we'll be changing it:
-                ScopedWriteLock lock( _tileLayersMutex );
+                if ( _usePerLayerUpdates )
+                    _elevationLayerDirty = true;
+                else
+                    this->setDirty( true );
 
-                if ( newPhLayer )
-                {
-                    this->setElevationLayer( newPhLayer );
-
-                    if ( _usePerLayerUpdates )
-                        _elevationLayerDirty = true;
-                    else
-                        this->setDirty( true );
-
-                    _elevationLOD = _parentTile->getElevationLOD();
-                }
-                _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
+                _elevationLOD = _parentTile->getElevationLOD();
             }
+            _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
         }
 
         else if ( _elevPlaceholderRequest->isCanceled() )
@@ -589,8 +574,6 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
 
         if ( getDirty() ) 
         {
-            VersionedTerrain* vt = static_cast<VersionedTerrain*>(getTerrain());
-            vt->incrementNumDirty();
             // if the whole tile is dirty, let it rebuild via the normal recourse:
             _elevationLayerDirty = true;
             _colorLayersDirty = true;
@@ -638,8 +621,7 @@ VersionedTerrain::VersionedTerrain( Map* map, MapEngine* engine ) :
 _map( map ),
 _engine( engine ),
 _revision(0),
-_numAsyncThreads( 0 ),
-_numDirty(0)
+_numAsyncThreads( 0 )
 {
     //See if the number of threads is explicitly provided
     const optional<int>& numThreads = engine->getEngineProperties().getNumLoadingThreads();
@@ -789,16 +771,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             i->second->setStamp( nv.getFrameStamp()->getFrameNumber() );
         }
     }
-    else if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-    {
-        _numDirty = 0;
-    }
     osgTerrain::Terrain::traverse( nv );
-
-    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-    {
-        //osg::notify(osg::NOTICE) << "Frame " << nv.getFrameStamp()->getFrameNumber() << ": updated " << _numDirty << std::endl;
-    }
 }
 
 TaskService*

@@ -222,6 +222,9 @@ namespace osgEarth
 
         void updateTaskServiceThreads();
 
+        void incrementNumDirty() { _numDirty++; }
+        bool canDirtyMoreTiles() { return true; }
+
 
     private:
 
@@ -241,6 +244,8 @@ namespace osgEarth
         OpenThreads::Mutex _taskServiceMutex;
 
         int _numAsyncThreads;
+
+        unsigned int _numDirty;
         
         VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
     };

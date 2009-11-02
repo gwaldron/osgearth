@@ -50,6 +50,8 @@ namespace osgEarth
         virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
 
         virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+        
+        virtual void generateGeometry2(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
 
         virtual void updateContent(bool updateGeom, bool updateTextures);
 

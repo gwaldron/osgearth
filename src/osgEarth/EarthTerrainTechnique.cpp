@@ -468,6 +468,322 @@ EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
 }
 
 
+void
+EarthTerrainTechnique::generateGeometry2( Locator* masterLocator, const osg::Vec3d& centerModel )
+{
+    BufferData& buffer = getWriteBuffer();
+    
+    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+
+    buffer._geode = new osg::Geode();
+    if(buffer._transform.valid())
+        buffer._transform->addChild(buffer._geode.get());
+    
+    buffer._geometry = new osg::Geometry;
+    buffer._geode->addDrawable(buffer._geometry.get());
+        
+    osg::Geometry* geometry = buffer._geometry.get();
+
+    int numRows = 20;
+    int numColumns = 20;
+    
+    if (elevationLayer)
+    {
+        numColumns = elevationLayer->getNumColumns();
+        numRows = elevationLayer->getNumRows();
+    }
+    
+    double i_sampleFactor, j_sampleFactor;
+    calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
+
+    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue(); 
+    float skirtHeight = 0.0f;
+    HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
+    if (hfl && hfl->getHeightField()) 
+    {
+        skirtHeight = hfl->getHeightField()->getSkirtHeight();
+    }
+    
+    //bool createSkirt = false; 
+    bool createSkirt = skirtHeight != 0.0f;    
+    
+    float scaleHeight = 
+        _verticalScaleOverride != 1.0? _verticalScaleOverride :
+        _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
+        1.0f;
+ 
+    int numVerticesInBody  = numColumns*numRows*2;
+    int numVerticesInSkirt = createSkirt ? numColumns*2 + numRows*2 - 4 : 0;
+    int numVertices        = numVerticesInBody + numVerticesInSkirt;
+
+    // allocate and assign vertices
+    osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+    vertices->reserve( numVertices );
+    geometry->setVertexArray( vertices.get() );
+
+    // allocate and assign normals
+    osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array();
+    if (normals.valid()) normals->reserve( numVertices );
+    geometry->setNormalArray( normals.get() );
+    geometry->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
+    // allocate and assign texture coordinates
+    typedef std::pair< osg::ref_ptr<osg::Vec2Array>, Locator* > TexCoordLocatorPair;
+    typedef std::map< Layer*, TexCoordLocatorPair > LayerToTexCoordMap;
+
+    LayerToTexCoordMap layerToTexCoordMap;
+    for(unsigned int layerNum=0; layerNum<_terrainTile->getNumColorLayers(); ++layerNum)
+    {
+        osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
+        if (colorLayer)
+        {
+            LayerToTexCoordMap::iterator itr = layerToTexCoordMap.find(colorLayer);
+            if (itr!=layerToTexCoordMap.end())
+            {
+                geometry->setTexCoordArray(layerNum, itr->second.first.get());
+            }
+            else
+            {
+
+                Locator* locator = colorLayer->getLocator();
+                
+				TexCoordLocatorPair& tclp = layerToTexCoordMap[colorLayer];
+                tclp.first = new osg::Vec2Array;
+                tclp.first->reserve(numVertices);
+                tclp.second = locator ? locator : masterLocator;
+                geometry->setTexCoordArray(layerNum, tclp.first.get());
+            }
+        }
+    }
+
+    // allocate and assign color
+    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    (*colors)[0].set(1.0f,1.0f,1.0f,1.0f);    
+    geometry->setColorArray( colors );
+    geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
+    
+    // populate vertex and tex coord arrays
+    int i, j;
+    for( j=0; j<numRows; ++j )
+    {
+        for( i=0; i<numColumns; ++i )
+        {
+            osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
+            bool validValue = true;
+            int i_equiv = i_sampleFactor==1.0 ? i : (int)( double(i)*i_sampleFactor );
+            int j_equiv = i_sampleFactor==1.0 ? j : (int)( double(j)*j_sampleFactor );
+        
+            if (elevationLayer)
+            {
+                float value = 0.0f;
+                validValue = elevationLayer->getValidValue( i_equiv, j_equiv, value );
+                ndc.z() = value * scaleHeight;
+            }
+        
+            if ( validValue )
+            {
+                // generate the vert:
+                osg::Vec3d model;
+                masterLocator->convertLocalToModel( ndc, model );
+                vertices->push_back( model - centerModel );
+        
+                // generate the tex coords:
+                for(LayerToTexCoordMap::iterator itr = layerToTexCoordMap.begin();
+                    itr != layerToTexCoordMap.end();
+                    ++itr)
+                {
+                    osg::Vec2Array* texcoords = itr->second.first.get();
+                    Locator* colorLocator = itr->second.second;
+                    if (colorLocator != masterLocator)
+                    {
+                        osg::Vec3d color_ndc;
+                        Locator::convertLocalCoordBetween(*masterLocator, ndc, *colorLocator, color_ndc);
+                        (*texcoords).push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
+                    }
+                    else
+                    {
+                        (*texcoords).push_back(osg::Vec2(ndc.x(), ndc.y()));
+                    }
+                }
+
+                // compute the local normal
+                osg::Vec3d ndc_one = ndc; ndc_one.z() += 1.0;
+                osg::Vec3d model_one;
+                masterLocator->convertLocalToModel( ndc_one, model_one );
+                model_one = model_one - model;
+                model_one.normalize();        
+                normals->push_back( model_one );
+            }
+        }
+    }
+
+    // create prim sets:
+    int vertsPerRowStrip = numColumns*2;
+    for( int row=0; row<numRows-1; row++ )
+    {
+        osg::DrawElementsUShort* rowStrip = new osg::DrawElementsUShort( GL_TRIANGLE_STRIP );
+        rowStrip->reserve( vertsPerRowStrip );
+        for( int c=0; c<numColumns; c++ )
+        {
+            rowStrip->push_back( (row+1)*numColumns+c );
+            rowStrip->push_back( row*numColumns+c );
+        }                
+        geometry->addPrimitiveSet( rowStrip );
+    }
+
+    // smooth the verts:
+    if ( elevationLayer )
+    {
+        smoothGeometry();
+    }
+
+    // make skirts:
+    if ( createSkirt )
+    {
+        // SOUTH:
+        {
+            osg::DrawElementsUShort* skirt = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+            skirt->reserve( numColumns*2 );
+
+            int r = 0;
+            for( int col=0; col<numColumns; col++ )
+            {
+                int iv = r*numColumns + col;
+                osg::Vec3 newV = (*vertices)[iv] - (*normals)[iv] * skirtHeight;
+                vertices->push_back( newV );
+                normals->push_back( (*normals)[iv] );
+
+                for(LayerToTexCoordMap::iterator itr = layerToTexCoordMap.begin();
+                    itr != layerToTexCoordMap.end();
+                    ++itr)
+                {
+                    itr->second.first->push_back((*itr->second.first)[iv]);
+                }
+                
+                skirt->push_back( iv );
+                skirt->push_back( vertices->size()-1 );
+            }
+
+            geometry->addPrimitiveSet( skirt );
+        }
+
+        // EAST:
+        {
+            osg::DrawElementsUShort* skirt = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+            skirt->reserve( numColumns*2 );
+
+            int col = numColumns-1;
+            for( int r=0; r<numRows; r++ )
+            {
+                int iv = r*numColumns + col;
+                osg::Vec3 newV = (*vertices)[iv] - (*normals)[iv] * skirtHeight;
+                vertices->push_back( newV );
+                normals->push_back( (*normals)[iv] );
+
+                for(LayerToTexCoordMap::iterator itr = layerToTexCoordMap.begin();
+                    itr != layerToTexCoordMap.end();
+                    ++itr)
+                {
+                    itr->second.first->push_back((*itr->second.first)[iv]);
+                }
+                
+                skirt->push_back( vertices->size()-1 );
+                skirt->push_back( iv );
+            }
+
+            geometry->addPrimitiveSet( skirt );
+        }
+
+        // NORTH:
+        {
+            osg::DrawElementsUShort* skirt = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+            skirt->reserve( numColumns*2 );
+
+            int r = numRows-1;
+            for( int col=0; col<numColumns; col++ )
+            {
+                int iv = r*numColumns + col;
+                osg::Vec3 newV = (*vertices)[iv] - (*normals)[iv] * skirtHeight;
+                vertices->push_back( newV );
+                normals->push_back( (*normals)[iv] );
+
+                for(LayerToTexCoordMap::iterator itr = layerToTexCoordMap.begin();
+                    itr != layerToTexCoordMap.end();
+                    ++itr)
+                {
+                    itr->second.first->push_back((*itr->second.first)[iv]);
+                }
+                
+                skirt->push_back( vertices->size()-1 );
+                skirt->push_back( iv );
+            }
+
+            geometry->addPrimitiveSet( skirt );
+        }
+
+        // WEST:
+        {
+            osg::DrawElementsUShort* skirt = new osg::DrawElementsUShort(GL_TRIANGLE_STRIP);
+            skirt->reserve( numColumns*2 );
+
+            int col = 0;
+            for( int r=0; r<numRows; r++ )
+            {
+                int iv = r*numColumns + col;
+                osg::Vec3 newV = (*vertices)[iv] - (*normals)[iv] * skirtHeight;
+                vertices->push_back( newV );
+                normals->push_back( (*normals)[iv] );
+
+                for(LayerToTexCoordMap::iterator itr = layerToTexCoordMap.begin();
+                    itr != layerToTexCoordMap.end();
+                    ++itr)
+                {
+                    itr->second.first->push_back((*itr->second.first)[iv]);
+                }
+                
+                skirt->push_back( iv );
+                skirt->push_back( vertices->size()-1 );
+            }
+
+            geometry->addPrimitiveSet( skirt );
+        }
+    }
+
+    geometry->setUseVertexBufferObjects(true);
+    
+    
+    if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
+        osgDB::Registry::instance()->getKdTreeBuilder())
+    {
+    
+        
+        //osg::Timer_t before = osg::Timer::instance()->tick();
+        //osg::notify(osg::NOTICE)<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
+        osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
+        buffer._geode->accept(*builder);
+        //osg::Timer_t after = osg::Timer::instance()->tick();
+        //osg::notify(osg::NOTICE)<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
+    }
+
+    //DEBUGGING
+#if 0
+    osgText::Text* text = new osgText::Text();
+    text->setThreadSafeRefUnref( true );
+    std::stringstream buf;
+    buf << "" << _terrainTile->getTileID().level << "," <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y;
+    text->setText( buf.str() );
+    text->setFont( osgText::readFontFile( "arialbd.ttf" ) );
+    text->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
+    text->setCharacterSize( 64 );
+    text->setColor( osg::Vec4f(1,1,1,1) );
+    text->setBackdropType( osgText::Text::OUTLINE );
+    text->setAutoRotateToScreen(true);
+    text->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
+    buffer._geode->addDrawable( text );
+#endif
+}
+
+
 void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
 {
     osg::ref_ptr< Locator > masterTextureLocator = masterLocator;

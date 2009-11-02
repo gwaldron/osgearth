@@ -14,7 +14,7 @@ map, it will only support data that covers at most one hemisphere.
         <url>../data/world.tif</url>
     </image>
     
-    <model name="boundaries" driver="feature_overlay">
+    <model name="states" driver="feature_overlay">
 
         <!-- Configure the OGR feature driver to read the shapefile -->
         <features name="states" driver="ogr">
@@ -25,7 +25,36 @@ map, it will only support data that covers at most one hemisphere.
     
         <!-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
         <texture_size>2048</texture_size>
-        <texture_unit>1</texture_unit>  
+        <texture_unit>auto</texture_unit>  
+        
+        <style type="text/css">
+            states {
+               stroke: #FFFF00;
+               stroke-width: 2.5;               
+            }            
+        </style>
+        
+        <style type="application/vnd.ogc.sld+xml">
+            boundaries.sld
+        </style>
+                     
+        <style type="application/vnd.ogc.sld+xml">
+            <sld:FeatureTypeStyle>
+                <sld:Rule>
+                	<ogc:Filter/>
+                	<sld:LineSymbolizer>
+                		<sld:Stroke>
+                			<sld:CssParameter name="stroke">
+                				<ogc:Literal>#ffff00</ogc:Literal>
+                			</sld:CssParameter>
+                			<sld:CssParameter name="stroke-width">
+                				<ogc:Literal>2.0</ogc:Literal>
+                			</sld:CssParameter>
+                		</sld:Stroke>
+                	</sld:PolygonSymbolizer>
+                </sld:Rule>
+            </sld:FeatureTypeStyle>
+        </style>
         
     </model>
   

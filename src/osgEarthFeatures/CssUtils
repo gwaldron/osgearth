@@ -17,34 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_TRANSFORM_FILTER_H
-#define OSGEARTHFEATURES_TRANSFORM_FILTER_H 1
+#ifndef OSGEARTHFEATURES_CSSUTILS_H
+#define OSGEARTHFEATURES_CSSUTILS_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Filter>
+#include <osgEarth/Config>
 
-using namespace osgEarth;
-
-namespace osgEarthFeatures
+namespace osgEarthFeatures { namespace Styling
 {
-    /**
-     * Feature filter that transforms features from one FeatureProfile to 
-     * another.
-     */
-    class OSGEARTHFEATURES_EXPORT TransformFilter // : public Filter
+    class OSGEARTHFEATURES_EXPORT CssUtils
     {
     public:
-        TransformFilter( const SpatialReference* outputSRS, bool isGeocentric );
-
-        bool push( Feature* feature, FilterContext& context );
-
-        bool push( FeatureList& features, FilterContext& context );
-
-    protected:
-        osg::ref_ptr<const SpatialReference> _outputSRS;
-        bool _isGeocentric;
+        static Config readConfig( std::istream& in );
     };
-}
+}}
 
-#endif // OSGEARTHFEATURES_TRANSFORM_FILTER_H
+#endif // OSGEARTHFEATURES_CSSUTILS_H

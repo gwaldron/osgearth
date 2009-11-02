@@ -16,35 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_TRANSFORM_FILTER_H
-#define OSGEARTHFEATURES_TRANSFORM_FILTER_H 1
+#ifndef OSGEARTHFEATURES_STYLING_SLD_H
+#define OSGEARTHFEATURES_STYLING_SLD_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
+#include <osgEarth/Config>
+#include <iostream>
 
-using namespace osgEarth;
-
-namespace osgEarthFeatures
+namespace osgEarthFeatures { namespace Styling
 {
-    /**
-     * Feature filter that transforms features from one FeatureProfile to 
-     * another.
-     */
-    class OSGEARTHFEATURES_EXPORT TransformFilter // : public Filter
+    class OSGEARTHFEATURES_EXPORT SLDReader
     {
     public:
-        TransformFilter( const SpatialReference* outputSRS, bool isGeocentric );
+        static bool readConfig( const Config& conf, StyledLayerDescriptor& out_sld );
 
-        bool push( Feature* feature, FilterContext& context );
+        static bool readXML( std::istream& input, StyledLayerDescriptor& out_sld );
 
-        bool push( FeatureList& features, FilterContext& context );
-
-    protected:
-        osg::ref_ptr<const SpatialReference> _outputSRS;
-        bool _isGeocentric;
+        static bool readRulesCSS( std::istream& css, RuleList& out_rules );
     };
-}
 
-#endif // OSGEARTHFEATURES_TRANSFORM_FILTER_H
+} }
+
+#endif // OSGEARTHFEATURES_STYLING_SLD_H

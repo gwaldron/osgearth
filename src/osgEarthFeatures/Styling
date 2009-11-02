@@ -1,0 +1,293 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHFEATURES_STYLING_H
+#define OSGEARTHFEATURES_STYLING_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarth/Config>
+#include <osg/Vec4>
+#include <list>
+
+#define PROP(X,Y) \
+    protected: _##Y; \
+    public: X& Y () { return _##Y; } const X& Y() const { return _##Y; }
+
+namespace osgEarthFeatures { namespace Styling
+{
+    class OSGEARTHFEATURES_EXPORT StyleComponent
+    {
+    public:
+        virtual void accept( class StyleVisitor& visitor ) =0;
+    };
+
+    class OSGEARTHFEATURES_EXPORT StyleVisitor
+    {
+    public:
+        virtual void apply( class Stroke& obj );
+        virtual void apply( class Fill& obj );
+        virtual void apply( class LineSymbolizer& obj );
+        virtual void apply( class PolygonSymbolizer& obj );
+        virtual void apply( class Rule& obj );
+        virtual void apply( class RuleFilter& obj );
+        virtual void apply( class FeatureTypeStyle& obj );
+        virtual void apply( class UserLayer& obj );
+        virtual void apply( class StyledLayerDescriptor& obj );
+    };
+
+    class OSGEARTHFEATURES_EXPORT Stroke : public StyleComponent
+    {
+    public:
+        enum LineCap {
+            LINECAP_BUTT
+        };
+
+        enum LineJoin {
+            LINEJOIN_MITER
+        };
+
+    public:
+        Stroke() { }
+        Stroke( const Stroke& rhs )
+            : _lineJoin( rhs._lineJoin ),
+              _lineCap( rhs._lineCap ),
+              _color( rhs._color ) { }
+
+        osg::Vec4ub& color() {
+            return _color; }
+        const osg::Vec4ub color() const {
+            return _color; }
+
+        LineCap& lineCap() {
+            return _lineCap; }
+        const LineCap& lineCap() const {
+            return _lineCap; }
+
+        LineJoin& lineJoin() {
+            return _lineJoin; }
+        const LineJoin& lineJoin() const {
+            return _lineJoin; }
+
+        float& width() { 
+            return _width; }        
+        const float& width() const {
+            return _width; }
+
+        float& dashOffset() {
+            return _dashOffset; }
+        const float& dashOffset() const {
+            return _dashOffset; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+        osg::Vec4ub _color;
+        LineJoin _lineJoin;
+        LineCap  _lineCap;
+        float _width;
+        float _dashOffset;
+    };
+
+    class OSGEARTHFEATURES_EXPORT Fill : public StyleComponent
+    {
+    public:
+        Fill() { }
+        Fill( const Fill& rhs )
+            : _color( rhs._color ) { }
+
+        osg::Vec4ub& color() {
+            return _color; }
+        const osg::Vec4ub color() const {
+            return _color; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+        osg::Vec4ub _color;
+    };
+
+    class OSGEARTHFEATURES_EXPORT Symbolizer : public StyleComponent
+    {
+    protected:
+        Symbolizer() { }
+        Symbolizer( const Symbolizer& rhs ) { }
+    };
+
+    class OSGEARTHFEATURES_EXPORT LineSymbolizer : public Symbolizer
+    {
+    public:
+        LineSymbolizer() { }
+        LineSymbolizer( const LineSymbolizer& rhs )
+            : _stroke( rhs._stroke ) { }
+
+        Stroke& stroke() {
+            return _stroke; }
+        const Stroke& stroke() const {
+            return _stroke; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+        Stroke _stroke;
+    };
+
+    class OSGEARTHFEATURES_EXPORT PolygonSymbolizer : public Symbolizer
+    {
+    public:
+        PolygonSymbolizer() { }
+        PolygonSymbolizer( const PolygonSymbolizer& rhs )
+            : _fill( rhs._fill ) { }
+
+        Fill& fill() {
+            return _fill; }
+        const Fill& fill() const {
+            return _fill; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+        Fill _fill;
+    };
+
+    class OSGEARTHFEATURES_EXPORT RuleFilter : public StyleComponent
+    {
+    public:
+        RuleFilter() { }
+        RuleFilter( const RuleFilter& rhs ) { }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+    };
+
+    class OSGEARTHFEATURES_EXPORT Rule : public StyleComponent
+    {
+    public:
+        Rule() { }
+        Rule( const Rule& rhs )
+            : _filter( rhs._filter ),
+              _lineSymbolizer( rhs._lineSymbolizer ),
+              _polygonSymbolizer( rhs._polygonSymbolizer ) { }
+
+        RuleFilter& filter() {
+            return _filter; }
+        const RuleFilter& filter() const {
+            return _filter; }
+
+        LineSymbolizer& lineSymbolizer() {
+            return _lineSymbolizer; }
+        const LineSymbolizer& lineSymbolizer() const {
+            return _lineSymbolizer; }
+
+        PolygonSymbolizer& polygonSymbolizer() {
+            return _polygonSymbolizer; }
+        const PolygonSymbolizer& polygonSymbolizer() const {
+            return _polygonSymbolizer; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+        
+
+    protected:
+        RuleFilter _filter;
+        LineSymbolizer _lineSymbolizer;
+        PolygonSymbolizer _polygonSymbolizer;
+    };
+
+    typedef std::list< Rule > RuleList;
+
+    class OSGEARTHFEATURES_EXPORT FeatureTypeStyle : public StyleComponent
+    {
+    public:
+        FeatureTypeStyle() { }
+        FeatureTypeStyle( const FeatureTypeStyle& rhs )
+            : _rules( rhs._rules ) { }
+
+        RuleList& rules() {
+            return _rules; }
+        const RuleList& rules() const {
+            return _rules; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+        RuleList _rules;
+    };
+
+    class OSGEARTHFEATURES_EXPORT UserLayer : public StyleComponent
+    {
+    public:
+        UserLayer() { }
+        UserLayer( const UserLayer& rhs )
+            : _name( rhs._name ),
+              _title( rhs._title ),
+              _featureTypeStyle( rhs._featureTypeStyle ) { }
+
+        std::string& name() {
+            return _name; }
+        const std::string& name() const {
+            return _name; }
+
+        std::string& title() {
+            return _title; }
+        const std::string& title() const {
+            return _title; }
+
+        FeatureTypeStyle& featureTypeStyle() {
+            return _featureTypeStyle; }
+        const FeatureTypeStyle& featureTypeStyle() const {
+            return _featureTypeStyle; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+        std::string _name;
+        std::string _title;
+        FeatureTypeStyle _featureTypeStyle;
+    };
+
+    typedef std::list< UserLayer > UserLayerList;
+
+    class OSGEARTHFEATURES_EXPORT StyledLayerDescriptor : public StyleComponent
+    {
+    public:
+        StyledLayerDescriptor() { }
+        StyledLayerDescriptor( const StyledLayerDescriptor& rhs )
+            : _userLayers( rhs._userLayers ) { }
+
+        UserLayerList& userLayers() { 
+            return _userLayers; }
+        const UserLayerList& userLayers() const { 
+            return _userLayers; }
+
+        virtual void accept( class StyleVisitor& visitor ) {
+            visitor.apply( *this ); }
+
+    protected:
+        UserLayerList _userLayers;
+    };
+} }
+
+#endif // OSGEARTHFEATURES_STYLING_H

@@ -41,6 +41,10 @@ namespace osgEarth
 
         Config( const Config& rhs ) : _name(rhs._name), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children) { }
 
+        bool empty() const {
+            return _name.empty() && _defaultValue.empty() && _children.empty();
+        }
+
         std::string& name() {
             return _name;
         }

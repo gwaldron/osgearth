@@ -727,35 +727,6 @@ GeoHeightField::createSubSample( const GeoExtent& destEx ) const
     return new GeoHeightField( dest, destEx );
 }
 
-GeoHeightField*
-GeoHeightField::resize(unsigned int numCols, unsigned int numRows)
-{
-    if (numCols == _heightField->getNumColumns() && numRows == _heightField->getNumRows())
-    {
-        return this;
-    }
-    float dx = _extent.width() / (float)(numCols-1);
-    float dy = _extent.height() / (float)(numRows-1);
-
-    osg::HeightField* dest = new osg::HeightField();
-    dest->allocate( numCols, numRows );
-    dest->setXInterval( dx );
-    dest->setYInterval( dy );
-
-    double x, y;
-    int col, row;
-
-    for( x = _extent.xMin(), col=0; col < numCols; x += dx, col++ )
-    {
-        for( y = _extent.yMin(), row=0; row < numRows; y += dy, row++ )
-        {
-            float h = HeightFieldUtils::getHeightAtLocation( _heightField.get(), x, y );
-            dest->setHeight( col, row, h );
-        }
-    }
-    return new GeoHeightField( dest, _extent );
-}
-
 const GeoExtent&
 GeoHeightField::getGeoExtent() const
 {

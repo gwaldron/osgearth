@@ -239,8 +239,6 @@ namespace osgEarth
          */
         GeoHeightField* createSubSample( const GeoExtent& destEx ) const;
 
-        GeoHeightField* resize( unsigned int numCols, unsigned int numRows );
-
         /**
          * Gets the geospatial extent of the heightfield.
          */

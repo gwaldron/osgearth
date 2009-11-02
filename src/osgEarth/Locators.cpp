@@ -127,6 +127,21 @@ GeoLocator::cropLocal( osg::Vec3d& local ) const
     local.y() = osg::clampBetween( _y0 + local.y()*(_y1 - _y0), 0.0, 1.0 );
 }
 
+GeoLocator* 
+GeoLocator::getGeographicFromGeocentric( )
+{
+    if (getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
+    {
+        double xmin, ymin, xmax, ymax;
+        getDataExtent().getBounds( xmin, ymin,  xmax, ymax );
+        GeoLocator* geographic = new GeoLocator( getDataExtent() );
+        geographic->setCoordinateSystemType( Locator::GEOGRAPHIC );
+        geographic->setTransformAsExtents( xmin, ymin, xmax, ymax);
+        return geographic;
+    }
+    return NULL;
+}
+
 
 /****************************************************************************/
 
@@ -254,5 +269,20 @@ MercatorLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
     }
 
     return result;
+}
+
+GeoLocator* 
+MercatorLocator::getGeographicFromGeocentric( )
+{
+    if (getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
+    {
+        double xmin, ymin, xmax, ymax;
+        getDataExtent().getBounds( xmin, ymin, xmax, ymax );
+        MercatorLocator* geographic = new MercatorLocator( *this, getDataExtent() );
+        geographic->setCoordinateSystemType( Locator::GEOGRAPHIC );
+        geographic->setTransformAsExtents( xmin, ymin, xmax, ymax);
+        return geographic;
+    }
+    return NULL;
 }
 

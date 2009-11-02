@@ -50,6 +50,8 @@ namespace osgEarth
 
         /** Clones the current locator, applying a new display (i.e. crop) extent. */
         virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
+
+        virtual GeoLocator* getGeographicFromGeocentric( );
         
     public: // Locator
         virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
@@ -81,6 +83,8 @@ namespace osgEarth
         
         /** Clones the current locator, applying a new display (i.e. crop) extent. */
         virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
+
+        virtual GeoLocator* getGeographicFromGeocentric( );
 
     private:
         GeoExtent _geoDataExtent;

@@ -162,7 +162,7 @@ _geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( true ),     // only matters when _useLayerRequests==true
+_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _neighbors( 4 ),                  // pre-allocate 4 slots. 0=W, 1=N, 2=E, 3=S.
 _elevationLOD( key->getLevelOfDetail() )

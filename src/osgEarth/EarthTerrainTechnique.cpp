@@ -93,6 +93,7 @@ void EarthTerrainTechnique::swapBuffers()
 void
 EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
 {
+    //osg::Timer_t before = osg::Timer::instance()->tick();
     if ( !_terrainTile ) return;
 
     // lock changes to the layers while we're rendering them
@@ -121,6 +122,9 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
     }
 
     swapBuffers();
+
+    //osg::Timer_t after = osg::Timer::instance()->tick();   
+    //osg::notify( osg::NOTICE ) << "updateContentTime " << osg::Timer::instance()->delta_m(before, after) << std::endl;
 }
 
 void EarthTerrainTechnique::init()
@@ -270,6 +274,7 @@ EarthTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& 
 void
 EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
 {
+    //osg::Timer_t before = osg::Timer::instance()->tick();
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
     if ( !elevationLayer ) 
         return;
@@ -372,6 +377,9 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
 
     vertices->dirty();
 
+    //osg::Timer_t after = osg::Timer::instance()->tick();
+    //osg::notify(osg::NOTICE) << "  updateGeometry " << osg::Timer::instance()->delta_m(before,after) << std::endl;
+
     // re-smooth since the elevation has changed.
     //smoothGeometry();
 }
@@ -380,6 +388,7 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
 void
 EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
 {
+    //osg::Timer_t before = osg::Timer::instance()->tick();
     BufferData& writeBuf = getWriteBuffer();
 
     for(unsigned int layerNum=0; layerNum<_terrainTile->getNumColorLayers(); ++layerNum)
@@ -453,11 +462,26 @@ EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
             }
         }
     }
+
+    //osg::Timer_t after = osg::Timer::instance()->tick();
+    //osg::notify(osg::NOTICE) << "  updateColorLayersTime " << osg::Timer::instance()->delta_m(before,after) << std::endl;
 }
 
 
 void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
 {
+    osg::ref_ptr< Locator > masterTextureLocator = masterLocator;
+    GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(masterLocator);
+
+    //If we have a geocentric locator, get a geographic version of it to avoid converting
+    //to/from geocentric when computing texture coordinats
+    if (geoMasterLocator && masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
+    {
+        masterTextureLocator = geoMasterLocator->getGeographicFromGeocentric();
+    }
+
+
+    //osg::Timer_t before = osg::Timer::instance()->tick();
     BufferData& buffer = getWriteBuffer();
     
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
@@ -518,7 +542,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         1.0f;
 
     // allocate and assign tex coords
-    typedef std::pair< osg::ref_ptr<osg::Vec2Array>, Locator* > TexCoordLocatorPair;
+    typedef std::pair< osg::ref_ptr<osg::Vec2Array>, osg::ref_ptr<Locator> > TexCoordLocatorPair;
     typedef std::map< Layer*, TexCoordLocatorPair > LayerToTexCoordMap;
 
     LayerToTexCoordMap layerToTexCoordMap;
@@ -540,7 +564,15 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
 				TexCoordLocatorPair& tclp = layerToTexCoordMap[colorLayer];
                 tclp.first = new osg::Vec2Array;
                 tclp.first->reserve(numVertices);
-                tclp.second = locator ? locator : masterLocator;
+                if (locator && locator->getCoordinateSystemType() == Locator::GEOCENTRIC)
+                {
+                    GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
+                    if (geo)
+                    {
+                        locator = geo->getGeographicFromGeocentric();
+                    }
+                }
+                tclp.second = locator ? locator : masterTextureLocator.get();
                 geometry->setTexCoordArray(layerNum, tclp.first.get());
             }
         }
@@ -560,9 +592,15 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
 
     typedef std::vector<int> Indices;
     Indices indices(numVertices, -1);
+
+
     
     // populate vertex and tex coord arrays
+
+    
     unsigned int i, j;
+
+    //osg::Timer_t populateBefore = osg::Timer::instance()->tick();
     for(j=0; j<numRows; ++j)
     {
         for(i=0; i<numColumns; ++i)
@@ -602,7 +640,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
                     if (colorLocator != masterLocator)
                     {
                         osg::Vec3d color_ndc;
-                        Locator::convertLocalCoordBetween(*masterLocator, ndc, *colorLocator, color_ndc);
+                        Locator::convertLocalCoordBetween(*masterTextureLocator.get(), ndc, *colorLocator, color_ndc);
                         (*texcoords).push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
                     }
                     else
@@ -630,16 +668,35 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
             }
         }
     }
+    //osg::Timer_t populateAfter = osg::Timer::instance()->tick();
+
+    //osg::notify(osg::NOTICE) << "  PopulateTime " << osg::Timer::instance()->delta_m(populateBefore, populateAfter) << std::endl;
     
     // populate primitive sets
 //    bool optimizeOrientations = elevations!=0;
     bool swapOrientation = !(masterLocator->orientationOpenGL());
     
+
+    //osg::Timer_t genPrimBefore = osg::Timer::instance()->tick();
     osg::ref_ptr<osg::DrawElementsUInt> elements = new osg::DrawElementsUInt(GL_TRIANGLES);
     elements->reserve((numRows-1) * (numColumns-1) * 6);
 
     geometry->addPrimitiveSet(elements.get());
 
+    bool recalcNormals = elevationLayer != NULL;
+
+    //Clear out the normals
+    if (recalcNormals)
+    {
+        osg::Vec3Array::iterator nitr;
+        for(nitr = normals->begin();
+            nitr!=normals->end();
+            ++nitr)
+        {
+            nitr->set(0.0f,0.0f,0.0f);
+        }
+    }
+    
     for(j=0; j<numRows-1; ++j)
     {
         for(i=0; i<numColumns-1; ++i)
@@ -679,6 +736,11 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
                 float e01 = (*elevations)[i01];
                 float e11 = (*elevations)[i11];
 
+                osg::Vec3f &v00 = (*vertices)[i00];
+                osg::Vec3f &v10 = (*vertices)[i10];
+                osg::Vec3f &v01 = (*vertices)[i01];
+                osg::Vec3f &v11 = (*vertices)[i11];
+
                 if (fabsf(e00-e11)<fabsf(e01-e10))
                 {
                     elements->push_back(i01);
@@ -688,6 +750,19 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
                     elements->push_back(i00);
                     elements->push_back(i10);
                     elements->push_back(i11);
+
+                    if (recalcNormals)
+                    {                        
+                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);
+                        (*normals)[i01] += normal1;
+                        (*normals)[i00] += normal1;
+                        (*normals)[i11] += normal1;
+
+                        osg::Vec3 normal2 = (v10-v00)^(v11-v00);
+                        (*normals)[i00] += normal2;
+                        (*normals)[i10] += normal2;
+                        (*normals)[i11] += normal2;
+                    }
                 }
                 else
                 {
@@ -698,30 +773,80 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
                     elements->push_back(i01);
                     elements->push_back(i10);
                     elements->push_back(i11);
+
+                    if (recalcNormals)
+                    {                       
+                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                        (*normals)[i01] += normal1;
+                        (*normals)[i00] += normal1;
+                        (*normals)[i10] += normal1;
+
+                        osg::Vec3 normal2 = (v10-v01)^(v11-v01);
+                        (*normals)[i01] += normal2;
+                        (*normals)[i10] += normal2;
+                        (*normals)[i11] += normal2;
+                    }
                 }
             }
             else if (numValid==3)
             {
-                if (i00>=0) elements->push_back(i00);
-                if (i01>=0) elements->push_back(i01);
-                if (i11>=0) elements->push_back(i11);
-                if (i10>=0) elements->push_back(i10);
-            }
-            
+                int indices[3];
+                int indexPtr = 0;
+                if (i00>=0)
+                {
+                    elements->push_back(i00);
+                    indices[indexPtr++] = i00;
+                }
+
+                if (i01>=0)
+                {
+                    elements->push_back(i01);
+                    indices[indexPtr++] = i01;
+                }
+
+                if (i11>=0)
+                {
+                    elements->push_back(i11);
+                    indices[indexPtr++] = i11;
+                }
+
+                if (i10>=0)
+                {
+                    elements->push_back(i10);
+                    indices[indexPtr++] = i10;
+                }
+
+                osg::Vec3f &v1 = (*vertices)[indices[0]];
+                osg::Vec3f &v2 = (*vertices)[indices[1]];
+                osg::Vec3f &v3 = (*vertices)[indices[2]];
+                osg::Vec3f normal = (v2 - v1) ^ (v3 - v1);
+                (*normals)[indices[0]] += normal;
+                (*normals)[indices[1]] += normal;
+                (*normals)[indices[2]] += normal;
+            }            
         }
     }
+
+    //Clear out the normals
+    if (recalcNormals)
+    {
+        osg::Vec3Array::iterator nitr;
+        for(nitr = normals->begin();
+            nitr!=normals->end();
+            ++nitr)
+        {
+            nitr->normalize();
+        }
+    }
+
+    //osg::Timer_t genPrimAfter = osg::Timer::instance()->tick();
+    //osg::notify(osg::NOTICE) << "  genPrimTime " << osg::Timer::instance()->delta_m(genPrimBefore, genPrimAfter) << std::endl;
     
     osg::ref_ptr<osg::Vec3Array> skirtVectors = new osg::Vec3Array((*normals));
     
-    if (elevationLayer)
-    {
-        smoothGeometry();
-        
-        normals = dynamic_cast<osg::Vec3Array*>(geometry->getNormalArray());
-        
-        if (!normals) createSkirt = false;
-    }
+    if (!normals) createSkirt = false;
 
+    //osg::Timer_t skirtBefore = osg::Timer::instance()->tick();
     if (createSkirt)
     {
         osg::ref_ptr<osg::DrawElementsUShort> skirtDrawElements = new osg::DrawElementsUShort(GL_QUAD_STRIP);
@@ -881,6 +1006,9 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         }
     }
 
+    //osg::Timer_t skirtAfter = osg::Timer::instance()->tick();
+    //osg::notify(osg::NOTICE) << "  skirtTime " << osg::Timer::instance()->delta_m(skirtBefore, skirtAfter) << std::endl;
+
 
     //geometry->setUseDisplayList(false);
     geometry->setUseVertexBufferObjects(true);
@@ -888,9 +1016,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
-    {
-    
-        
+    {            
         //osg::Timer_t before = osg::Timer::instance()->tick();
         //osg::notify(osg::NOTICE)<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
@@ -915,6 +1041,9 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     text->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
     buffer._geode->addDrawable( text );
 #endif
+
+    //osg::Timer_t after = osg::Timer::instance()->tick();
+    //osg::notify( osg::NOTICE ) << "generateGeometryTime " << osg::Timer::instance()->delta_m(before, after) << std::endl;
 }
 
 void EarthTerrainTechnique::applyColorLayers()
@@ -1036,12 +1165,18 @@ void EarthTerrainTechnique::applyTransparency()
 void EarthTerrainTechnique::smoothGeometry()
 {
     BufferData& buffer = getWriteBuffer();
+
+    //osg::Timer_t before = osg::Timer::instance()->tick();
     
     if (buffer._geometry.valid())
     {
         osgUtil::SmoothingVisitor smoother;
         smoother.smooth(*buffer._geometry);
     }
+
+    //osg::Timer_t after = osg::Timer::instance()->tick();
+
+    //osg::notify(osg::NOTICE) << "Smooth time " << osg::Timer::instance()->delta_m(before, after) << std::endl;
 }
 
 void EarthTerrainTechnique::update(osgUtil::UpdateVisitor* uv)

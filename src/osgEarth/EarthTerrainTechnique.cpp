@@ -373,7 +373,7 @@ EarthTerrainTechnique::updateGeometry(osgTerrain::Locator* masterLocator, const 
     vertices->dirty();
 
     // re-smooth since the elevation has changed.
-    smoothGeometry();
+    //smoothGeometry();
 }
 
 

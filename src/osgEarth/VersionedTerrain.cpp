@@ -161,7 +161,7 @@ _geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
+_usePerLayerUpdates( true ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _neighbors( 4 ),                  // pre-allocate 4 slots. 0=W, 1=N, 2=E, 3=S.
 _elevationLOD( key->getLevelOfDetail() )
@@ -505,8 +505,18 @@ VersionedTile::serviceCompletedRequests()
                 if ( oldHF )
                     hfLayer->getHeightField()->setSkirtHeight( oldHF->getSkirtHeight() );
 
+                bool sameSize = true;
+                if ( oldHF )
+                {
+                    if (oldHF->getNumColumns() != hfLayer->getNumColumns() || 
+                        oldHF->getNumRows() != hfLayer->getNumRows())
+                    {
+                        sameSize = false;
+                    }
+                }
+
                 this->setElevationLayer( hfLayer );
-                if ( _usePerLayerUpdates )
+                if ( _usePerLayerUpdates && sameSize )
                     _elevationLayerDirty = true;
                 else
                     this->setDirty( true );
@@ -540,11 +550,26 @@ VersionedTile::serviceCompletedRequests()
             // write-lock the layer data since we'll be changing it:
             ScopedWriteLock lock( _tileLayersMutex );
 
+            // copy the skirt height over:
+            osg::HeightField* oldHF = static_cast<osgTerrain::HeightFieldLayer*>(getElevationLayer())->getHeightField();
+            if ( oldHF )
+                newPhLayer->getHeightField()->setSkirtHeight( oldHF->getSkirtHeight() );
+
+            bool sameSize = true;
+            if ( oldHF )
+            {
+                if (oldHF->getNumColumns() != newPhLayer->getNumColumns() || 
+                    oldHF->getNumRows() != newPhLayer->getNumRows())
+                {
+                    sameSize = false;
+                }
+            }
+
             if ( newPhLayer )
             {
                 this->setElevationLayer( newPhLayer );
 
-                if ( _usePerLayerUpdates )
+                if ( _usePerLayerUpdates && sameSize )
                     _elevationLayerDirty = true;
                 else
                     this->setDirty( true );

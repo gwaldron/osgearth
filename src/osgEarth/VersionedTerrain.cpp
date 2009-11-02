@@ -161,7 +161,7 @@ _geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( true ),     // only matters when _useLayerRequests==true
+_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _neighbors( 4 ),                  // pre-allocate 4 slots. 0=W, 1=N, 2=E, 3=S.
 _elevationLOD( key->getLevelOfDetail() )
@@ -463,9 +463,15 @@ VersionedTile::serviceCompletedRequests()
                     _colorLayersDirty = true;
                 else
                     this->setDirty( true );
+                // remove from the list
+                i = _requests.erase( i );
             }
-            // remove from the list
-            i = _requests.erase( i );
+            else
+            {
+                //The color layer request failed, probably due to a server error.  Requeue it.
+                r->setState( TaskRequest::STATE_IDLE );
+                ++i;
+            }
         }
         else if ( r->isCanceled() )
         {
@@ -508,9 +514,13 @@ VersionedTile::serviceCompletedRequests()
                 _elevationLOD = er->_key->getLevelOfDetail();
 
                 //osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
+                _elevationLayerUpToDate = true;
             }
-
-            _elevationLayerUpToDate = true;
+            else
+            {
+                //Reque the elevation request.
+                _elevRequest->setState( TaskRequest::STATE_IDLE );
+            }
         }
 
         else if ( _elevRequest->isCanceled() )
@@ -518,6 +528,8 @@ VersionedTile::serviceCompletedRequests()
             // If the request was canceled, reset it to IDLE and reset the callback. On the next
             // servicePendingRequests, the request will be re-scheduled.
             _elevRequest->setState( TaskRequest::STATE_IDLE );
+            _elevRequest->setProgressCallback( new TileRequestProgressCallback(
+                _elevRequest.get(), getVersionedTerrain()->getElevationTaskService()));
         }
 
         else if ( _elevPlaceholderRequest->isCompleted() )
@@ -539,13 +551,14 @@ VersionedTile::serviceCompletedRequests()
 
                 _elevationLOD = _parentTile->getElevationLOD();
             }
-
             _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
         }
 
         else if ( _elevPlaceholderRequest->isCanceled() )
         {
             _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
+            _elevPlaceholderRequest->setProgressCallback( new TileRequestProgressCallback(
+                _elevPlaceholderRequest.get(), getVersionedTerrain()->getElevationTaskService()));
         }
     }
 }

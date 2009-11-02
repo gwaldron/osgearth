@@ -142,6 +142,7 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
     osg::ref_ptr<GeoLocator>    _keyLocator;
 };
 
+
 /*****************************************************************************/
 
 // neighbor tile indicies
@@ -591,40 +592,50 @@ VersionedTile::serviceCompletedRequests()
 void
 VersionedTile::traverse( osg::NodeVisitor& nv )
 {
-    bool serviceRequests = _useLayerRequests && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
-
-    if ( serviceRequests )
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
-        serviceCompletedRequests();
+        if ( getVersionedTerrain()->updateBudgetRemaining() )
+        {
+            bool serviceRequests = _useLayerRequests && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
 
-        if ( getDirty() ) 
-        {
-            // if the whole tile is dirty, let it rebuild via the normal recourse:
-            _elevationLayerDirty = true;
-            _colorLayersDirty = true;
-        }
-        else if ( _elevationLayerDirty || _colorLayersDirty )
-        {
-            // if the tile is only partly dirty, update it piecemeal:
-            EarthTerrainTechnique* tech = static_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+            if ( serviceRequests )
             {
-                ScopedReadLock lock( _tileLayersMutex );
-                tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
+                serviceCompletedRequests();
+
+                if ( getDirty() ) 
+                {
+                    // if the whole tile is dirty, let it rebuild via the normal recourse:
+                    _elevationLayerDirty = true;
+                    _colorLayersDirty = true;
+                }
+                else if ( _elevationLayerDirty || _colorLayersDirty )
+                {
+                    // if the tile is only partly dirty, update it piecemeal:
+                    EarthTerrainTechnique* tech = static_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+                    {
+                        ScopedReadLock lock( _tileLayersMutex );
+                        tech->updateContent( _elevationLayerDirty, _colorLayersDirty );
+                    }
+                }
+            }
+
+            // continue the normal traversal. If the tile is "dirty" it will regenerate here.
+            osgTerrain::TerrainTile::traverse( nv );
+
+            if ( serviceRequests )
+            {
+                // bump the geometry revision if the tile's geometry was updated.
+                if ( _elevationLayerDirty )
+                    _geometryRevision++;
+
+                _elevationLayerDirty = false;
+                _colorLayersDirty = false;        
             }
         }
     }
-
-    // continue the normal traversal. If the tile is "dirty" it will regenerate here.
-    osgTerrain::TerrainTile::traverse( nv );
-
-    if ( serviceRequests )
+    else
     {
-        // bump the geometry revision if the tile's geometry was updated.
-        if ( _elevationLayerDirty )
-            _geometryRevision++;
-
-        _elevationLayerDirty = false;
-        _colorLayersDirty = false;        
+        osgTerrain::TerrainTile::traverse( nv );
     }
 }
 
@@ -646,7 +657,8 @@ VersionedTerrain::VersionedTerrain( Map* map, MapEngine* engine ) :
 _map( map ),
 _engine( engine ),
 _revision(0),
-_numAsyncThreads( 0 )
+_numAsyncThreads( 0 ),
+_updateBudgetSeconds( 0.0167 )
 {
     //See if the number of threads is explicitly provided
     const optional<int>& numThreads = engine->getEngineProperties().getNumLoadingThreads();
@@ -679,6 +691,17 @@ _numAsyncThreads( 0 )
     }
 
     osg::notify(osg::INFO) << "Using " << _numAsyncThreads << " loading threads " << std::endl;
+
+    //Install a time-budget for update traversals that handle the tile requests.
+    const char* env_updateTravBudgetSeconds = getenv("OSGEARTH_PREEMPTIVE_UPDATE_MAX_SECONDS_PER_FRAME");
+    if ( env_updateTravBudgetSeconds )
+    {
+        _updateBudgetSeconds = ::atof( env_updateTravBudgetSeconds );
+        if ( _updateBudgetSeconds <= 0.0 )
+            _updateBudgetSeconds = 999.0;
+
+        osg::notify(osg::NOTICE) << "[osgEarth] Tile update budget = " << _updateBudgetSeconds << " seconds per frame" << std::endl;
+    }
 }
 
 void
@@ -796,7 +819,20 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             i->second->setStamp( nv.getFrameStamp()->getFrameNumber() );
         }
     }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        _updateStartTime = osg::Timer::instance()->tick();
+    }
+
     osgTerrain::Terrain::traverse( nv );
+}
+
+bool
+VersionedTerrain::updateBudgetRemaining() const
+{
+    osg::Timer_t now = osg::Timer::instance()->tick();
+    return osg::Timer::instance()->delta_s( _updateStartTime, now ) < _updateBudgetSeconds;
 }
 
 TaskService*
@@ -870,13 +906,14 @@ VersionedTerrain::updateTaskServiceThreads()
     {
         //Determine how many threads each layer gets
         int numElevationThreads = (int)osg::round((float)_numAsyncThreads * (elevationWeight / totalWeight ));
+        osg::notify(osg::NOTICE) << "HtFld Threads = " << numElevationThreads << std::endl;
         getElevationTaskService()->setNumThreads( numElevationThreads );
     }
 
     for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
     {
         int imageThreads = (int)osg::round((float)_numAsyncThreads * (itr->get()->getLoadWeight() / totalWeight ));
-        osg::notify(osg::NOTICE) << "ImageThreads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
+        osg::notify(osg::NOTICE) << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
     }
 

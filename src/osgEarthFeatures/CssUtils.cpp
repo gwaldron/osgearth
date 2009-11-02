@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/CssUtils>
 #include <iostream>
 #include <sstream>
+#include <iterator>
 
 using namespace osgEarth;
 using namespace osgEarthFeatures;

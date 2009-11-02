@@ -222,6 +222,7 @@ namespace osgEarth
 
         void updateTaskServiceThreads();
 
+        bool updateBudgetRemaining() const;
 
     private:
 
@@ -239,6 +240,9 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile> _profile;
         OpenThreads::Mutex _taskServiceMutex;
+
+        double _updateBudgetSeconds;
+        osg::Timer_t _updateStartTime;
 
         int _numAsyncThreads;
         

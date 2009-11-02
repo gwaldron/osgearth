@@ -385,7 +385,7 @@ mapToConfig( Map* map, const MapEngineProperties& engineProps )
     else
     {
         osg::notify(osg::NOTICE) << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
-        return NULL;
+        return Config();
     }
     conf.attr( ATTR_CSTYPE ) = cs;
 

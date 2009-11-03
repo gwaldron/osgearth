@@ -509,6 +509,7 @@ MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, 
 osg::Node*
 MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const TileKey* key )
 {
+    osg::notify(osg::INFO) << "Creating placeholder for " << key->str() << std::endl;
     ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
@@ -545,7 +546,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     osg::ref_ptr<VersionedTile> ancestorTile = 0L;
     std::string indent = "";
     
-    while( !ancestorTile && ancestorKey.valid() )
+    while( !ancestorTile.valid() && ancestorKey.valid() )
     {
         ancestorKey = ancestorKey->createParentKey();
         if ( ancestorKey.valid() )
@@ -563,6 +564,11 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
         tile->setElevationLOD( ancestorTile->getElevationLOD() );
     }
+    else
+    {
+        osg::notify(osg::NOTICE) << "Warning:  Could not get ancestor tile for " << key->str() << std::endl;
+        return NULL;
+    }
 
     
     // calculate the switching distances:
@@ -573,6 +579,10 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // Set the skirt height of the heightfield
     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
+    if (!hfLayer)
+    {
+        osg::notify(osg::NOTICE) << "Warning:  Couldn't get hfLayer for " << key->str() << std::endl;
+    }
     hfLayer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
                 
     // In a Plate Carre tesselation, scale the heightfield elevations from meters to degrees

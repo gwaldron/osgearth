@@ -190,6 +190,8 @@ Cache::setHeightField( const TileKey* key,
 
 /*****************************************************************************/
 
+static OpenThreads::Mutex s_mutex;
+
 DiskCache::DiskCache():
 _writeWorldFiles(false)
 {
@@ -255,6 +257,7 @@ DiskCache::getImage( const TileKey* key,
 					 const std::string& layerName,
 					 const std::string& format)
 {
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mutex);
 	std::string filename = getFilename(key,layerName,format);
 
     //If the path doesn't contain a zip file, check to see that it actually exists on disk
@@ -262,6 +265,7 @@ DiskCache::getImage( const TileKey* key,
     {
         if (!osgDB::fileExists(filename)) return 0;
     }
+
     return osgDB::readImageFile( filename );
 }
 
@@ -294,7 +298,7 @@ DiskCache::setImage( const TileKey* key,
 	}
 
     // serialize cache writes.
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fs_mutex );
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mutex );
 
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))

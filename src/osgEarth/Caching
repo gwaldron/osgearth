@@ -317,8 +317,7 @@ namespace osgEarth
 		typedef std::map< std::string, LayerProperties > LayerPropertiesCache;
 		LayerPropertiesCache _layerPropertiesCache;
 		std::string _path;
-        bool        _writeWorldFiles;
-        OpenThreads::Mutex _fs_mutex;
+        bool        _writeWorldFiles;       
 	};
 
 	class OSGEARTH_EXPORT TMSCache : public DiskCache

@@ -71,7 +71,6 @@ namespace osgEarth
         osg::ref_ptr<osg::Referenced> _result;
         osg::ref_ptr< ProgressCallback > _progress;
         std::string _name;
-        bool _isElevation;
     };
 
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;

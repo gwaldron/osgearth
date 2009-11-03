@@ -143,6 +143,11 @@ struct TileDataLoaderCallback : public osg::NodeCallback
                 tile->servicePendingRequests( nv->getFrameStamp()->getFrameNumber() );
             }
             
+            //TODO:  This code reloads an entire tile from scratch using the database pager when the underlying data has changed.
+            //       This is an issue b/c it results in multiple tiles with the same TileID being registered with the 
+            //       osgTerrain::Terrain object and this causes ancestor tiles to not be found when creating placeholder tiles
+            //       Refactor to just update the existing tile and not replace it.
+            /*
             if ( !switcher->_loaded )
             {
                 float priority = -(99.0f - (float)(tile->getTileID().level));
@@ -152,7 +157,7 @@ struct TileDataLoaderCallback : public osg::NodeCallback
             else
             {
                 _databaseRequest = 0L;
-            }
+            }*/
             //osg::notify(osg::NOTICE) << "Culling " << tile->getKey()->str() << std::endl;
         }
         traverse( node, nv );

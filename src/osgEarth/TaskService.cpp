@@ -8,7 +8,6 @@ using namespace OpenThreads;
 TaskRequest::TaskRequest( float priority ) :
 _priority( priority ),
 _state( STATE_IDLE ),
-_isElevation( false ),
 osg::Referenced( true )
 {
     _progress = new ProgressCallback();

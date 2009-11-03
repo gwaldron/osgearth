@@ -1106,39 +1106,42 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
             }
             else if (numValid==3)
             {
-                int indices[3];
+                int validIndices[3];
                 int indexPtr = 0;
                 if (i00>=0)
                 {
                     elements->push_back(i00);
-                    indices[indexPtr++] = i00;
+                    validIndices[indexPtr++] = i00;
                 }
 
                 if (i01>=0)
                 {
                     elements->push_back(i01);
-                    indices[indexPtr++] = i01;
+                    validIndices[indexPtr++] = i01;
                 }
 
                 if (i11>=0)
                 {
                     elements->push_back(i11);
-                    indices[indexPtr++] = i11;
+                    validIndices[indexPtr++] = i11;
                 }
 
                 if (i10>=0)
                 {
                     elements->push_back(i10);
-                    indices[indexPtr++] = i10;
+                    validIndices[indexPtr++] = i10;
                 }
 
-                osg::Vec3f &v1 = (*vertices)[indices[0]];
-                osg::Vec3f &v2 = (*vertices)[indices[1]];
-                osg::Vec3f &v3 = (*vertices)[indices[2]];
-                osg::Vec3f normal = (v2 - v1) ^ (v3 - v1);
-                (*normals)[indices[0]] += normal;
-                (*normals)[indices[1]] += normal;
-                (*normals)[indices[2]] += normal;
+                if (recalcNormals)
+                {
+                    osg::Vec3f &v1 = (*vertices)[validIndices[0]];
+                    osg::Vec3f &v2 = (*vertices)[validIndices[1]];
+                    osg::Vec3f &v3 = (*vertices)[validIndices[2]];
+                    osg::Vec3f normal = (v2 - v1) ^ (v3 - v1);
+                    (*normals)[validIndices[0]] += normal;
+                    (*normals)[validIndices[1]] += normal;
+                    (*normals)[validIndices[2]] += normal;
+                }
             }            
         }
     }

@@ -419,8 +419,9 @@ Map::createHeightField( const TileKey* key,
                         SamplePolicy samplePolicy,
                         ProgressCallback* progress)
 {
-	//osg::notify(osg::INFO) << "[osgEarth::Map::createHeightField]" << std::endl;
-    OpenThreads::ScopedReadLock lock( _mapDataMutex );
+	//osg::notify(osg::INFO) << "[osgEarth::Map::createHeightField]" << std::endl;\
+       //Note:  Assumes that the map data mutex is locked before calling.  Avoids reentrantcy issue on Linux.
+//     OpenThreads::ScopedReadLock lock( _mapDataMutex );
 
 	osg::HeightField *result = NULL;
     int lowestLOD = key->getLevelOfDetail();

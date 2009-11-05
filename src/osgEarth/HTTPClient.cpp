@@ -581,6 +581,11 @@ HTTPClient::doReadImageFile(const std::string &filename,
     }
     else
     {
+        if ( response.isCancelled() )
+            osg::notify(osg::INFO) << "[osgEarth] HTTP cancel: " << filename << std::endl;
+        else
+            osg::notify(osg::NOTICE) << "[osgEarth] HTTP ERROR " << response.getCode() << ": " << filename << std::endl;
+
         /*if (response.isCancelled())
             osg::notify(osg::NOTICE) << "Request for " << filename << " was cancelled " << std::endl;*/
     }

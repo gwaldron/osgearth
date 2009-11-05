@@ -64,6 +64,7 @@ namespace osgEarth
         void setProgressCallback(ProgressCallback* progress) { _progress = progress; }
         const std::string& getName() const { return _name; }
         void setName( const std::string& name ) { _name = name; }
+        void reset() { _result = 0L; }
     protected:
         float _priority;
         State _state;

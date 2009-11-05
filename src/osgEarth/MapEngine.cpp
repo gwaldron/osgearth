@@ -115,35 +115,35 @@ public:
 
 /*****************************************************************************/
 
-struct MyTileDataLoaderCallback : public osg::NodeCallback
-{
-    typedef std::vector< osg::observer_ptr< VersionedTile > > TileObserverList;
-    TileObserverList _tiles;
-
-    MyTileDataLoaderCallback()
-    {
-    }
-
-    virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
-    {
-        if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-        {
-            for (TileObserverList::iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
-            {
-                osg::ref_ptr< VersionedTile > tile = itr->get();
-                //If we are using the task service, service pending requests for the tile
-                //By doing this here instead of in the actual tile itself, we can ensure that each tile
-                //gets a chance to fill itself in even if it isn't being rendered, which allows for a very
-                //nice backfilling effect.
-                if (tile->getUseLayerRequests())
-                {
-                    tile->servicePendingRequests( nv->getFrameStamp()->getFrameNumber() );
-                } 
-            }             
-        }
-        traverse( node, nv );
-    }
-};
+//struct MyTileDataLoaderCallback : public osg::NodeCallback
+//{
+//    typedef std::vector< osg::observer_ptr< VersionedTile > > TileObserverList;
+//    TileObserverList _tiles;
+//
+//    MyTileDataLoaderCallback()
+//    {
+//    }
+//
+//    virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
+//    {
+//        if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+//        {
+//            for (TileObserverList::iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
+//            {
+//                osg::ref_ptr< VersionedTile > tile = itr->get();
+//                //If we are using the task service, service pending requests for the tile
+//                //By doing this here instead of in the actual tile itself, we can ensure that each tile
+//                //gets a chance to fill itself in even if it isn't being rendered, which allows for a very
+//                //nice backfilling effect.
+//                if (tile->getUseLayerRequests())
+//                {
+//                    tile->servicePendingRequests( nv->getFrameStamp()->getFrameNumber() );
+//                } 
+//            }             
+//        }
+//        traverse( node, nv );
+//    }
+//};
 
 struct TileDataLoaderCallback : public osg::NodeCallback
 {
@@ -168,11 +168,10 @@ struct TileDataLoaderCallback : public osg::NodeCallback
             //By doing this here instead of in the actual tile itself, we can ensure that each tile
             //gets a chance to fill itself in even if it isn't being rendered, which allows for a very
             //nice backfilling effect.
-            if (tile->getUseLayerRequests())
+            if ( tile->getUseLayerRequests() )
             {
-                tile->servicePendingRequests( nv->getFrameStamp()->getFrameNumber() );
-            } 
-
+                tile->servicePendingImageRequests( nv->getFrameStamp()->getFrameNumber() );
+            }
         }
         traverse( node, nv );
     }
@@ -260,11 +259,11 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
                     tile_parent->addChild( q2.get() );
                     tile_parent->addChild( q3.get() );
 
-                    osg::ref_ptr< MyTileDataLoaderCallback > cb = new MyTileDataLoaderCallback;
-                    VersionedTile* tile_q0 = (VersionedTile*)((osg::Group*)((osg::Group*)q0.get())->getChild(0))->getChild(0);
-                    VersionedTile* tile_q1 = (VersionedTile*)((osg::Group*)((osg::Group*)q1.get())->getChild(0))->getChild(0);
-                    VersionedTile* tile_q2 = (VersionedTile*)((osg::Group*)((osg::Group*)q2.get())->getChild(0))->getChild(0);
-                    VersionedTile* tile_q3 = (VersionedTile*)((osg::Group*)((osg::Group*)q3.get())->getChild(0))->getChild(0);
+//                    osg::ref_ptr< MyTileDataLoaderCallback > cb = new MyTileDataLoaderCallback;
+                    //VersionedTile* tile_q0 = (VersionedTile*)((osg::Group*)((osg::Group*)q0.get())->getChild(0))->getChild(0);
+                    //VersionedTile* tile_q1 = (VersionedTile*)((osg::Group*)((osg::Group*)q1.get())->getChild(0))->getChild(0);
+                    //VersionedTile* tile_q2 = (VersionedTile*)((osg::Group*)((osg::Group*)q2.get())->getChild(0))->getChild(0);
+                    //VersionedTile* tile_q3 = (VersionedTile*)((osg::Group*)((osg::Group*)q3.get())->getChild(0))->getChild(0);
                     /*osg::Group* q0_grp = dynamic_cast<osg::Group*>(q0.get());
                     if (q0_grp)
                     {
@@ -700,8 +699,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     result = plod;
 
     // Install a callback that will load the actual tile data via the pager.
-    //    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
-    //result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    //plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    result->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
     //result = plod;
 

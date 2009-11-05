@@ -105,7 +105,9 @@ namespace osgEarth
         int getGeometryRevision() const;
 
         /** Updates and services this tile's service pending requests. */
-        void servicePendingRequests( int frameStamp );
+        //void servicePendingRequests( int frameStamp );
+        void servicePendingImageRequests( int stamp );
+        void servicePendingElevationRequests( int stamp );
 
         /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
         void setHasElevationHint( bool hasElevation );
@@ -178,8 +180,6 @@ namespace osgEarth
 
         /** Deals with completed requests during the UPDATE traversal. */
         void installRequests( int stamp );
-        void servicePendingImageRequests( int stamp );
-        void servicePendingElevationRequests( int stamp );
         bool readyForNewElevation();
         void serviceCompletedRequests();
         //void refreshParentTile();

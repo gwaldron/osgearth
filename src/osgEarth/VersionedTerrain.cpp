@@ -32,10 +32,10 @@ using namespace OpenThreads;
 
 //#define PREEMPTIVE_DEBUG 1
 
-struct TileRequestProgressCallback : ProgressCallback
+struct StampedProgressCallback : ProgressCallback
 {
 public:
-    TileRequestProgressCallback(TaskRequest* request, TaskService* service):
+    StampedProgressCallback(TaskRequest* request, TaskService* service):
       _request(request),
       _service(service)
     {
@@ -206,10 +206,10 @@ VersionedTile::~VersionedTile()
     {
         for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
         {
-            //if (i->get()->getState() == TaskRequest::STATE_IN_PROGRESS)
-            //{
-            //    osg::notify(osg::NOTICE) << "Request (" << (int)this << ") in progress, cancelling " << std::endl;
-            //}
+            if (i->get()->getState() == TaskRequest::STATE_IN_PROGRESS)
+            {
+                //osg::notify(osg::NOTICE) << "IR (" << _key->str() << ") in progress, cancelling " << std::endl;
+            }
             i->get()->cancel();
         }
 
@@ -340,6 +340,41 @@ VersionedTile::isElevationLayerUpToDate() const
 //    }
 //}
 
+// returns TRUE if it's safe for this tile to load its next elevation data layer.
+bool
+VersionedTile::readyForNewElevation()
+{
+    if ( _elevationLOD == _key->getLevelOfDetail() )
+        return false;
+
+    if ( _family[PARENT].elevLOD < 0 )
+        return false;
+
+    bool ready = true;
+
+    for( int i=PARENT; i<=SOUTH; i++) 
+    {
+        if ( _family[i].exists && _family[i].elevLOD >= 0 && _family[i].elevLOD < _elevationLOD )
+        {
+            ready = false;
+            break;
+        }
+    }
+
+#ifdef PREEMPTIVE_DEBUG
+    osg::notify(osg::NOTICE)
+        << "Tile (" << _key->str() << ") at (" << _elevationLOD << "), parent at ("
+        << _family[PARENT].elevLOD << "), sibs at (";
+    if ( _family[WEST].exists ) osg::notify( osg::NOTICE ) << "W=" << _family[WEST].elevLOD << " ";
+    if ( _family[NORTH].exists ) osg::notify( osg::NOTICE ) << "N=" << _family[NORTH].elevLOD << " ";
+    if ( _family[EAST].exists ) osg::notify( osg::NOTICE ) << "E=" << _family[EAST].elevLOD << " ";
+    if ( _family[SOUTH].exists ) osg::notify( osg::NOTICE ) << "S=" << _family[SOUTH].elevLOD << " ";
+    osg::notify(osg::NOTICE) << ", ready = " << (ready? "YES" : "no") << std::endl;
+#endif
+
+    return ready;
+}
+
 
 #define PRI_IMAGE_OFFSET 0.1f // priority offset of imagery relative to elevation
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
@@ -390,16 +425,24 @@ VersionedTile::installRequests( int stamp )
                 r->setName( ss.str() );
                 r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail() + (PRI_LAYER_OFFSET * (float)(numColorLayers-1-layerIndex)) );
                 r->setStamp( stamp );
-                r->setProgressCallback( new TileRequestProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
+                r->setProgressCallback( new StampedProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
                 _requests.push_back( r );
             }
         }
     }
 }
 
+// This method is called from the CULL TRAVERSAL, from TileLoaderCullCallback in MapEngine.cpp.
 void
 VersionedTile::servicePendingImageRequests( int stamp )
-{
+{       
+    // install our requests if they are not already installed:
+    if ( !_requestsInstalled )
+    {
+        installRequests( stamp );
+        _requestsInstalled = true;
+    }
+
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
     {
         TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
@@ -408,7 +451,7 @@ VersionedTile::servicePendingImageRequests( int stamp )
         //and it was either deemed out of date or was cancelled, so we need to add it again.
         if ( r->isIdle() )
         {
-            //osg::notify(osg::NOTICE) << "Re-queueing request " << std::endl;
+            //osg::notify(osg::NOTICE) << "Queuing IR (" << _key->str() << ")" << std::endl;
             r->setStamp( stamp );
             getVersionedTerrain()->getImageryTaskService(r->_layerId)->add( r );
         }
@@ -419,46 +462,19 @@ VersionedTile::servicePendingImageRequests( int stamp )
     }
 }
 
-// returns TRUE if it's safe for this tile to load its next elevation data layer.
-bool
-VersionedTile::readyForNewElevation()
-{
-    if ( _elevationLOD == _key->getLevelOfDetail() )
-        return false;
-
-    if ( _family[PARENT].elevLOD < 0 )
-        return false;
-
-    bool ready = true;
-
-    for( int i=PARENT; i<=SOUTH; i++) 
-    {
-        if ( _family[i].exists && _family[i].elevLOD >= 0 && _family[i].elevLOD < _elevationLOD )
-        {
-            ready = false;
-            break;
-        }
-    }
-
-#ifdef PREEMPTIVE_DEBUG
-    osg::notify(osg::NOTICE)
-        << "Tile (" << _key->str() << ") at (" << _elevationLOD << "), parent at ("
-        << _family[PARENT].elevLOD << "), sibs at (";
-    if ( _family[WEST].exists ) osg::notify( osg::NOTICE ) << "W=" << _family[WEST].elevLOD << " ";
-    if ( _family[NORTH].exists ) osg::notify( osg::NOTICE ) << "N=" << _family[NORTH].elevLOD << " ";
-    if ( _family[EAST].exists ) osg::notify( osg::NOTICE ) << "E=" << _family[EAST].elevLOD << " ";
-    if ( _family[SOUTH].exists ) osg::notify( osg::NOTICE ) << "S=" << _family[SOUTH].elevLOD << " ";
-    osg::notify(osg::NOTICE) << ", ready = " << (ready? "YES" : "no") << std::endl;
-#endif
-
-    return ready;
-}
-
+// This method is called from the CULL TRAVERSAL, from VersionedTerrain::traverse.
 void
 VersionedTile::servicePendingElevationRequests( int stamp )
 {
-    if ( _hasElevation && !_elevationLayerUpToDate )
+    if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
     {  
+        // install our requests if they are not already installed:
+        if ( !_requestsInstalled )
+        {
+            installRequests( stamp );
+            _requestsInstalled = true;
+        }
+
         VersionedTerrain* terrain = getVersionedTerrain();
 
         // make sure we know where to find our parent and sibling tiles:
@@ -494,7 +510,7 @@ VersionedTile::servicePendingElevationRequests( int stamp )
                     TileElevationPlaceholderLayerRequest* er = static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get());
 
                     er->setStamp( stamp );
-                    er->setProgressCallback( new TileRequestProgressCallback( er, terrain->getElevationTaskService()));
+                    er->setProgressCallback( new ProgressCallback() ); //( ck( er, terrain->getElevationTaskService()));
                     float priority = (float)_key->getLevelOfDetail();
                     er->setPriority( priority );
                     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(parentTile->getElevationLayer());
@@ -511,8 +527,7 @@ VersionedTile::servicePendingElevationRequests( int stamp )
             else
             {
                 _elevRequest->setStamp( stamp );
-                _elevRequest->setProgressCallback( new TileRequestProgressCallback(
-                    _elevRequest.get(), terrain->getElevationTaskService() ) );
+                _elevRequest->setProgressCallback( new ProgressCallback() );
                 terrain->getElevationTaskService()->add( _elevRequest.get() );
 #ifdef PREEMPTIVE_DEBUG
                 osg::notify(osg::NOTICE) << "..queued FE req for (" << _key->str() << ")" << std::endl;
@@ -523,34 +538,29 @@ VersionedTile::servicePendingElevationRequests( int stamp )
 }
 
 // This method is called from the CULL TRAVERSAL, and only is _useLayerRequests == true.
-void
-VersionedTile::servicePendingRequests( int stamp )
-{
-    VersionedTerrain* terrain = getVersionedTerrain();
-    if ( !terrain ) return;
-
-    // make sure our refernece to the parent is up to date.
-    //refreshParentTile();
-
-    // The first time through, initialize all the data request tasks we will need to load
-    // imagery, elevation, and elevation placeholders.
-    if ( !_requestsInstalled )
-    {
-        installRequests( stamp );
-        _requestsInstalled = true;
-    }
-
-    if ( _requestsInstalled )
-    {
-        servicePendingImageRequests( stamp );
-        servicePendingElevationRequests( stamp );
-    }
-}
+//void
+//VersionedTile::servicePendingRequests( int stamp )
+//{
+//    VersionedTerrain* terrain = getVersionedTerrain();
+//    if ( !terrain ) return;
+//
+//    // make sure our refernece to the parent is up to date.
+//    //refreshParentTile();
+//
+//    if ( _requestsInstalled )
+//    {
+//        servicePendingImageRequests( stamp );
+//        servicePendingElevationRequests( stamp );
+//    }
+//}
 
 // called from the UPDATE TRAVERSAL.
 void
 VersionedTile::serviceCompletedRequests()
 {
+    if ( !_requestsInstalled )
+        return;
+
     // make sure our reference to the parent tile is up to date.
     //refreshParentTile();
 
@@ -569,11 +579,16 @@ VersionedTile::serviceCompletedRequests()
                     this->setDirty( true );
                 // remove from the list
                 i = _requests.erase( i );
+                
+                //osg::notify(osg::NOTICE) << "Complet IR (" << _key->str() << ")" << std::endl;
             }
             else
-            {
-                //The color layer request failed, probably due to a server error.  Requeue it.
+            {                
+                osg::notify(osg::NOTICE) << "IReq error (" << _key->str() << "), retrying" << std::endl;
+
+                //The color layer request failed, probably due to a server error. Reset it.
                 r->setState( TaskRequest::STATE_IDLE );
+                r->reset();
                 ++i;
             }
         }
@@ -581,8 +596,9 @@ VersionedTile::serviceCompletedRequests()
         {
             //Reset the cancelled task to IDLE and give it a new progress callback.
             i->get()->setState( TaskRequest::STATE_IDLE );
-            i->get()->setProgressCallback( new TileRequestProgressCallback(
+            i->get()->setProgressCallback( new StampedProgressCallback(
                 i->get(), getVersionedTerrain()->getImageryTaskService(r->_layerId)));
+            r->reset();
             ++i;
         }
         else
@@ -631,11 +647,16 @@ VersionedTile::serviceCompletedRequests()
                 osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
 #endif
                 _elevationLayerUpToDate = true;
+                
+                // done with our Elevation requests!
+                _elevRequest = 0L;
+                _elevPlaceholderRequest = 0L;
             }
             else
             {
                 //Reque the elevation request.
                 _elevRequest->setState( TaskRequest::STATE_IDLE );
+                _elevRequest->reset();
             }
         }
 
@@ -644,8 +665,8 @@ VersionedTile::serviceCompletedRequests()
             // If the request was canceled, reset it to IDLE and reset the callback. On the next
             // servicePendingRequests, the request will be re-scheduled.
             _elevRequest->setState( TaskRequest::STATE_IDLE );
-            _elevRequest->setProgressCallback( new TileRequestProgressCallback(
-                _elevRequest.get(), getVersionedTerrain()->getElevationTaskService()));
+            _elevRequest->setProgressCallback( new ProgressCallback() );            
+            _elevRequest->reset();
         }
 
         else if ( _elevPlaceholderRequest->isCompleted() )
@@ -687,13 +708,14 @@ VersionedTile::serviceCompletedRequests()
 #endif
             }
             _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
+            _elevPlaceholderRequest->reset();
         }
 
         else if ( _elevPlaceholderRequest->isCanceled() )
         {
             _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
-            _elevPlaceholderRequest->setProgressCallback( new TileRequestProgressCallback(
-                _elevPlaceholderRequest.get(), getVersionedTerrain()->getElevationTaskService()));
+            _elevPlaceholderRequest->setProgressCallback( new ProgressCallback() );
+            _elevPlaceholderRequest->reset();
         }
     }
 }
@@ -761,6 +783,7 @@ void VersionedTile::releaseGLObjects(osg::State* state) const
 
     if (_terrainTechnique.valid())
     {
+        //NOTE: crashes sometimes if OSG_RELEASE_DELAY is set -gw
         _terrainTechnique->releaseGLObjects( state );
     }
 }
@@ -995,9 +1018,11 @@ VersionedTerrain::expireTile( const osgTerrain::TileID& tileId )
 void
 VersionedTerrain::updateTileTable()
 {
-    if ( _tileIDsToExpire.size() > 0 || _tilesToAdd.size() > 0 )
+    //if ( _tileIDsToExpire.size() > 0 || _tilesToAdd.size() > 0 )
     {
         ScopedWriteLock lock( _tilesMutex );
+
+        int sizeOld = _tiles.size();
 
         //while( _tileIDsToExpire.size() > 0 )
         //{
@@ -1020,6 +1045,9 @@ VersionedTerrain::updateTileTable()
             _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
             _tilesToAdd.pop();
         }
+
+        if ( sizeOld != _tiles.size() )
+            osg::notify(osg::NOTICE) << "TILES = " << _tiles.size() << std::endl;
     }
 }
 
@@ -1072,7 +1100,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             {
                 if ( i->second.valid() && i->second->getUseLayerRequests() )
                 {
-                    i->second->servicePendingRequests( stamp );
+                    i->second->servicePendingElevationRequests( stamp );
                 }
             }
         }

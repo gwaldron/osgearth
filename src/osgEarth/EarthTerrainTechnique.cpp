@@ -803,6 +803,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
     buffer._geode = new osg::Geode;
+    buffer._geode->setThreadSafeRefUnref(true);
     if(buffer._transform.valid())
         buffer._transform->addChild(buffer._geode.get());
     
@@ -810,6 +811,9 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     buffer._geode->addDrawable(buffer._geometry.get());
         
     osg::Geometry* geometry = buffer._geometry.get();
+    geometry->setThreadSafeRefUnref(true);
+
+    buffer._transform->setThreadSafeRefUnref(true);
 
     int numRows = 20;
     int numColumns = 20;
@@ -928,8 +932,9 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
      
             
             unsigned int i_equiv = i_sampleFactor==1.0 ? i : (unsigned int) (double(i)*i_sampleFactor);
-            unsigned int j_equiv = i_sampleFactor==1.0 ? j : (unsigned int) (double(j)*j_sampleFactor);
-            
+
+            unsigned int j_equiv = j_sampleFactor==1.0 ? j : (unsigned int) (double(j)*j_sampleFactor);
+
             if (elevationLayer)
             {
                 float value = 0.0f;
@@ -1344,14 +1349,18 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         //osg::notify(osg::NOTICE)<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 
+//    static osgText::Font* s_font = osgText::readFontFile( "arialbd.ttf" );
+
     //DEBUGGING
 #if 0
     osgText::Text* text = new osgText::Text();
     text->setThreadSafeRefUnref( true );
     std::stringstream buf;
-    buf << "" << _terrainTile->getTileID().level << "," <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y;
+    buf << "" << _terrainTile->getTileID().level << "," <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y
+        << " (" << static_cast<VersionedTile*>(_terrainTile)->getElevationLOD() << ")";
     text->setText( buf.str() );
-    text->setFont( osgText::readFontFile( "arialbd.ttf" ) );
+    //text->setFont( s_font );
+    //text->setFont( osgText::readFontFile( "arialbd.ttf" ) );
     text->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
     text->setCharacterSize( 64 );
     text->setColor( osg::Vec4f(1,1,1,1) );

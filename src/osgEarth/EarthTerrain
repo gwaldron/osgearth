@@ -40,7 +40,7 @@ namespace osgEarth
             TerrainTileMap::iterator itr = _terrainTileMap.find(tileID);
             if (itr == _terrainTileMap.end()) return 0;
 
-            return itr->second;
+            return itr->second; //.get();
         }
 
         typedef std::vector< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;

@@ -23,7 +23,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/Progress>
-#include <osgEarth/Profile>
 #include <osg/Referenced>
 
 namespace osgEarth

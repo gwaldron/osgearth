@@ -36,6 +36,14 @@ namespace osgEarth
 
     typedef std::vector< osg::observer_ptr<VersionedTile> > VersionedTileObsVec;
 
+    struct Relative {
+        bool exists;
+        osg::observer_ptr<VersionedTile> tile;
+        int elevLOD;
+    };
+
+    typedef std::vector<Relative> Relatives;
+
     /**
      * An OSG terrain tile that supports change detection.
      *
@@ -147,6 +155,7 @@ namespace osgEarth
         bool _elevationLayerRequested;
         bool _elevationLayerUpToDate;
         int  _elevationLOD;
+        bool _tileRegisteredWithTerrain;
 
         osg::ref_ptr<const TileKey> _key;
         osg::ref_ptr<GeoLocator> _keyLocator;
@@ -160,12 +169,20 @@ namespace osgEarth
         osg::observer_ptr<VersionedTile> _parentTileObserver;
         osg::ref_ptr<VersionedTile> _parentTile; // safe
 
-        VersionedTileObsVec _neighbors;
+        osg::ref_ptr<VersionedTerrain> _versionedTerrain;
+
+        Relatives _family;
+        //VersionedTileObsVec _family;
+        //std::vector<int> _familyElevLOD;
         OpenThreads::ReadWriteMutex _tileLayersMutex;
 
         /** Deals with completed requests during the UPDATE traversal. */
+        void installRequests( int stamp );
+        void servicePendingImageRequests( int stamp );
+        void servicePendingElevationRequests( int stamp );
+        bool readyForNewElevation();
         void serviceCompletedRequests();
-        void refreshParentTile();
+        //void refreshParentTile();
     };
 
 
@@ -203,14 +220,12 @@ namespace osgEarth
         /**
          * Gets a tile given its version ID.
          */
-        VersionedTile* getVersionedTile( const osgTerrain::TileID& tileId );
+        //VersionedTile* getVersionedTile( const osgTerrain::TileID& tileId );
 
-        /**
-         * Populates the output tile list with all the tiles owned by this terrain.
-         */
-        void getTerrainTiles( TerrainTileList& out_tiles );
 
-        void refreshNeighbors( const osgTerrain::TileID& tileId, VersionedTileObsVec& output );
+        void refreshFamily(
+            const osgTerrain::TileID& tileId, 
+            Relatives& family );
 
         Map* getMap();
         MapEngine* getEngine();
@@ -224,7 +239,29 @@ namespace osgEarth
 
         bool updateBudgetRemaining() const;
 
+    protected:
+
+        typedef std::map< osgTerrain::TileID, osg::ref_ptr<VersionedTile> > TileTable;
+        typedef std::queue< osg::ref_ptr<VersionedTile> > TileQueue;
+        typedef std::queue< osgTerrain::TileID > TileIDQueue;
+
+        OpenThreads::ReadWriteMutex _tilesMutex;
+        TileTable _tiles;
+        TileQueue _tilesToAdd;
+        TileIDQueue _tileIDsToExpire;
+
+    public:
+
+        void registerTile( VersionedTile* newTile );
+        void expireTile( const osgTerrain::TileID& tileId );
+
+        void getVersionedTile( const osgTerrain::TileID& id, osg::ref_ptr<VersionedTile>& out_tile );
+        void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile );
+        void getTerrainTiles( TerrainTileList& out_tiles );
+
     private:
+
+        void updateTileTable();
 
         TaskService* createTaskService( int id, int numThreads );
         TaskService* getTaskService( int id );
@@ -246,7 +283,7 @@ namespace osgEarth
 
         int _numAsyncThreads;
         
-        VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
+        //VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
     };
 }
 

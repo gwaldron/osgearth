@@ -18,6 +18,7 @@
 */
 
 #include <osgEarth/MapEngine>
+#include <osgEarth/Map>
 #include <osgEarth/Caching>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Compositing>
@@ -114,6 +115,35 @@ public:
 
 /*****************************************************************************/
 
+struct MyTileDataLoaderCallback : public osg::NodeCallback
+{
+    typedef std::vector< osg::observer_ptr< VersionedTile > > TileObserverList;
+    TileObserverList _tiles;
+
+    MyTileDataLoaderCallback()
+    {
+    }
+
+    virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
+    {
+        if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        {
+            for (TileObserverList::iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
+            {
+                osg::ref_ptr< VersionedTile > tile = itr->get();
+                //If we are using the task service, service pending requests for the tile
+                //By doing this here instead of in the actual tile itself, we can ensure that each tile
+                //gets a chance to fill itself in even if it isn't being rendered, which allows for a very
+                //nice backfilling effect.
+                if (tile->getUseLayerRequests())
+                {
+                    tile->servicePendingRequests( nv->getFrameStamp()->getFrameNumber() );
+                } 
+            }             
+        }
+        traverse( node, nv );
+    }
+};
 
 struct TileDataLoaderCallback : public osg::NodeCallback
 {
@@ -141,24 +171,8 @@ struct TileDataLoaderCallback : public osg::NodeCallback
             if (tile->getUseLayerRequests())
             {
                 tile->servicePendingRequests( nv->getFrameStamp()->getFrameNumber() );
-            }
-            
-            //TODO:  This code reloads an entire tile from scratch using the database pager when the underlying data has changed.
-            //       This is an issue b/c it results in multiple tiles with the same TileID being registered with the 
-            //       osgTerrain::Terrain object and this causes ancestor tiles to not be found when creating placeholder tiles
-            //       Refactor to just update the existing tile and not replace it.
-            /*
-            if ( !switcher->_loaded )
-            {
-                float priority = -(99.0f - (float)(tile->getTileID().level));
-                nv->getDatabaseRequestHandler()->requestNodeFile(
-                    _filename, switcher, priority, nv->getFrameStamp(), _databaseRequest );
-            }
-            else
-            {
-                _databaseRequest = 0L;
-            }*/
-            //osg::notify(osg::NOTICE) << "Culling " << tile->getKey()->str() << std::endl;
+            } 
+
         }
         traverse( node, nv );
     }
@@ -166,6 +180,8 @@ struct TileDataLoaderCallback : public osg::NodeCallback
     std::string _filename;
     osg::ref_ptr<osg::Referenced> _databaseRequest;
 };
+
+
 
 
 /*****************************************************************************/
@@ -218,6 +234,7 @@ MapEngine::getTransformFromExtents(double minX, double minY, double maxX, double
 osg::Node*
 MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers )
 {
+    //osg::notify(osg::NOTICE) << "createSubTiles" << std::endl;
     osg::ref_ptr<TileKey> k0 = key->createSubkey(0);
     osg::ref_ptr<TileKey> k1 = key->createSubkey(1);
     osg::ref_ptr<TileKey> k2 = key->createSubkey(2);
@@ -242,6 +259,42 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
                     tile_parent->addChild( q1.get() );
                     tile_parent->addChild( q2.get() );
                     tile_parent->addChild( q3.get() );
+
+                    osg::ref_ptr< MyTileDataLoaderCallback > cb = new MyTileDataLoaderCallback;
+                    VersionedTile* tile_q0 = (VersionedTile*)((osg::Group*)((osg::Group*)q0.get())->getChild(0))->getChild(0);
+                    VersionedTile* tile_q1 = (VersionedTile*)((osg::Group*)((osg::Group*)q1.get())->getChild(0))->getChild(0);
+                    VersionedTile* tile_q2 = (VersionedTile*)((osg::Group*)((osg::Group*)q2.get())->getChild(0))->getChild(0);
+                    VersionedTile* tile_q3 = (VersionedTile*)((osg::Group*)((osg::Group*)q3.get())->getChild(0))->getChild(0);
+                    /*osg::Group* q0_grp = dynamic_cast<osg::Group*>(q0.get());
+                    if (q0_grp)
+                    {
+                        VersionedTile* vt = dynamic_cast<VersionedTile*>(((osg::Group*)q0_grp->getChild(0))->getChild(0));
+                        if (vt)
+                        {
+                            osg::notify(osg::NOTICE) << "Got tile " << std::endl;
+                        }
+                        else
+                        {
+                            osg::notify(osg::NOTICE) << "No tile " << std::endl;
+                        }
+                    }
+                    else
+                    {
+                        osg::notify(osg::NOTICE) << " No group " << std::endl;
+                    }*/
+                    /*cb->_tiles.push_back(tile_q0);
+                    cb->_tiles.push_back(tile_q1);
+                    cb->_tiles.push_back(tile_q2);
+                    cb->_tiles.push_back(tile_q3);*/
+
+
+                    //tile_parent->setCullCallback( cb.get() );
+                    //tile_parent->setUpdateCallback( cb.get() );
+                    /*osg::notify(osg::NOTICE) << "Tiles:" <<
+                        tile_q0->getKey()->str() << std::endl <<
+                        tile_q1->getKey()->str() << std::endl <<
+                        tile_q2->getKey()->str() << std::endl <<
+                        tile_q3->getKey()->str() << std::endl << std::endl;*/
                     return tile_parent;
                 }
             }
@@ -557,7 +610,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         if ( ancestorKey.valid() )
         {
             osgTerrain::TileID tid = ancestorKey->getTileId();
-            ancestorTile = terrain->getVersionedTile( ancestorKey->getTileId() );
+            terrain->getVersionedTile( ancestorKey->getTileId(), ancestorTile );
         }
     }
 
@@ -568,6 +621,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
         tile->setElevationLOD( ancestorTile->getElevationLOD() );
+        //osg::notify(osg::NOTICE) << "createPlaceholderTile Got placeholder " << ancestorTile->getKey()->str() << "(" << ancestorTile->getElevationLOD() << ") for " << key->str() << std::endl;
     }
     else
     {
@@ -606,6 +660,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
     TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range, markTileLoaded );
+    switcher->setDataVariance( osg::Object::DYNAMIC );
 
     // Install a cluster culler (FIXME for cube mode)
     bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
@@ -646,7 +701,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // Install a callback that will load the actual tile data via the pager.
     //    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
-    result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    //result->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
     //result = plod;
 
@@ -900,6 +955,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
     TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range, true );
+    switcher->setDataVariance( osg::Object::DYNAMIC );
 
     osg::Node* result = 0L;
 
@@ -926,7 +982,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setDatabaseOptions( options );
 #endif
         result = plod;
-        result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+        //result->addCullCallback( new TileDataLoaderCallback( map, key ) );
     }
     else
     {

@@ -22,8 +22,6 @@
 
 #include <osgEarth/Export>
 #include <osgEarth/Common>
-#include <osgEarth/MapLayer>
-#include <osgEarth/Map>
 #include <osgEarth/TileSource>
 
 namespace osgEarth

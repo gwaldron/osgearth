@@ -686,7 +686,6 @@ VersionedTile::serviceCompletedRequests()
                 osg::notify(osg::NOTICE) << "..tile (" << _key->str() << ") is now at (" << _elevationLOD << ")" << std::endl;
 #endif
             }
-
             _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
         }
 
@@ -1071,7 +1070,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             ScopedReadLock lock( _tilesMutex );
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
-                if ( i->second.valid() )
+                if ( i->second.valid() && i->second->getUseLayerRequests() )
                 {
                     i->second->servicePendingRequests( stamp );
                 }

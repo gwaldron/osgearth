@@ -560,8 +560,6 @@ MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, 
 }
 
 
-#define MAX_LOD 30
-
 
 osg::Node*
 MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const TileKey* key )
@@ -680,7 +678,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     plod->setCenter( bs.center() );
     plod->addChild( switcher, min_range, max_range );
 
-    if ( key->getLevelOfDetail() < MAX_LOD )
+    if ( key->getLevelOfDetail() < getEngineProperties().getMaxLOD() )
     {
         plod->setFileName( 1, createURI( map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );
@@ -965,7 +963,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setCenter( bs.center() );
         plod->addChild( switcher, min_range, max_range );
 
-        if ( key->getLevelOfDetail() < MAX_LOD )
+        if ( key->getLevelOfDetail() < this->getEngineProperties().getMaxLOD() )
         {
             plod->setFileName( 1, createURI( map->getId(), key ) );
             plod->setRange( 1, 0.0, min_range );

@@ -36,6 +36,7 @@ MapEngineProperties::MapEngineProperties()
     _preemptive_lod = false;
     _use_task_service = false;
 	_layering_technique = MULTITEXTURE;
+    _max_lod = 30;
 }
 
 MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )
@@ -61,6 +62,7 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _layering_technique = rhs._layering_technique;
     _num_loading_threads_per_logical_processor = rhs._num_loading_threads_per_logical_processor;
     _num_loading_threads = rhs._num_loading_threads;
+    _max_lod = rhs._max_lod;
     return *this;
 }
 
@@ -236,5 +238,17 @@ void
 MapEngineProperties::setLayeringTechnique(osgEarth::MapEngineProperties::LayeringTechnique technique)
 {
 	_layering_technique = technique;
+}
+
+unsigned int
+MapEngineProperties::getMaxLOD() const
+{
+    return _max_lod;
+}
+
+void
+MapEngineProperties::setMaxLOD( unsigned int max_lod )
+{
+    _max_lod = max_lod;
 }
 

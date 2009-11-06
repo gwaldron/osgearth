@@ -87,6 +87,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
 #define ELEM_MODEL                    "model"
+#define ELEM_MAX_LOD                  "max_lod"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -312,6 +313,9 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     engineProps.setProxyPort(
         conf.value<unsigned short>( ELEM_PROXY_PORT, engineProps.getProxyPort() ) );
 
+    engineProps.setMaxLOD(
+        conf.value<unsigned int>( ELEM_MAX_LOD, engineProps.getMaxLOD() ) );
+
     //Read the profile definition
     if ( conf.hasChild( ELEM_PROFILE ) )
         map->profileConfig() = ProfileConfig( conf.child( ELEM_PROFILE ) );
@@ -397,6 +401,7 @@ mapToConfig( Map* map, const MapEngineProperties& engineProps )
     conf.add( ELEM_MIN_TILE_RANGE, toString<float>( engineProps.getMinTileRangeFactor() ) );
     conf.add( ELEM_SKIRT_RATIO, toString<float>( engineProps.getSkirtRatio() ) );
     conf.add( ELEM_SAMPLE_RATIO, toString<float>( engineProps.getSampleRatio() ) );
+    conf.add( ELEM_MAX_LOD, toString<unsigned int>( engineProps.getMaxLOD() ) );
 
     conf.add( ELEM_PROXY_HOST, engineProps.getProxyHost() );
     conf.add( ELEM_PROXY_PORT, toString<unsigned short>( engineProps.getProxyPort() ) );

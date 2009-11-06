@@ -224,6 +224,16 @@ namespace osgEarth
 		 */
 		void setLayeringTechnique(LayeringTechnique technique);
 
+        /**
+         * Gets the maximum LOD that the map should subdivide to
+         */
+        unsigned int getMaxLOD() const;
+
+        /**
+         * Sets the maximum LOD that the map should subdivide to
+         */
+        void setMaxLOD( unsigned int max_lod );
+
     private:
             
         std::string _filename;
@@ -242,6 +252,7 @@ namespace osgEarth
 		optional<LayeringTechnique> _layering_technique;
         optional<int> _num_loading_threads_per_logical_processor;
         optional<int> _num_loading_threads;
+        unsigned int _max_lod;
     };
 }
 

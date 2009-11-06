@@ -90,6 +90,10 @@ EarthTerrainTechnique::getVerticalScaleOverride() const
 void EarthTerrainTechnique::swapBuffers()
 {
     std::swap(_currentReadOnlyBuffer,_currentWriteBuffer);
+
+    getWriteBuffer()._transform = 0L;
+    getWriteBuffer()._geode = 0L;
+    getWriteBuffer()._geometry = 0L;
 }
 
 void

@@ -1082,12 +1082,12 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 {
                     i->second->servicePendingElevationRequests( stamp );
                 }
-                else
-                {
-                    osg::notify( osg::NOTICE ) << "TILE "
-                        << i->first.level << "," << i->first.x << "," << i->first.y
-                        << "   HAS an INVALID PTR in the TABLE" << std::endl;
-                }
+                //else
+                //{
+                //    osg::notify( osg::NOTICE ) << "TILE "
+                //        << i->first.level << "," << i->first.x << "," << i->first.y
+                //        << "   HAS an INVALID PTR in the TABLE" << std::endl;
+                //}
             }
         }
     }

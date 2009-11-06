@@ -104,6 +104,7 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_MODE                     "mode"
 #define ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR "loading_threads_per_logical_processor"
 #define ATTR_LOADING_THREADS          "loading_threads"
+#define ATTR_TILE_GEN_THREADS         "tile_generation_threads"
 
 
 static osg::Vec4ub
@@ -286,6 +287,11 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
         if ( lp.hasValue( ATTR_LOADING_THREADS ) )
         {
             engineProps.setNumLoadingThreads( lp.value<int>( ATTR_LOADING_THREADS, 0 ) );
+        }
+
+        if ( lp.hasValue( ATTR_TILE_GEN_THREADS ) )
+        {
+            engineProps.setNumTileGeneratorThreads( lp.value<int>( ATTR_TILE_GEN_THREADS, 4 ) );
         }
     }
 

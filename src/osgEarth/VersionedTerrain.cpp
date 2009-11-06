@@ -663,7 +663,7 @@ VersionedTile::serviceCompletedRequests()
                 }
                 else
                 {                
-                    osg::notify(osg::NOTICE) << "IReq error (" << _key->str() << "), retrying" << std::endl;
+                    osg::notify(osg::INFO) << "IReq error (" << _key->str() << ") (layer " << r->_layerIndex << "), retrying" << std::endl;
 
                     //The color layer request failed, probably due to a server error. Reset it.
                     r->setState( TaskRequest::STATE_IDLE );
@@ -1218,7 +1218,7 @@ VersionedTerrain::getTaskService(int id)
 
 #define ELEVATION_TASK_SERVICE_ID 9999
 #define TILE_GENERATION_TASK_SERVICE_ID 10000
-#define NUM_TILE_GENERATION_THREADS 2
+#define NUM_TILE_GENERATION_THREADS 4
 
 TaskService*
 VersionedTerrain::getElevationTaskService()
@@ -1249,7 +1249,14 @@ VersionedTerrain::getTileGenerationTaskSerivce()
     TaskService* service = getTaskService( TILE_GENERATION_TASK_SERVICE_ID );
     if (!service)
     {
-        service = createTaskService( TILE_GENERATION_TASK_SERVICE_ID, NUM_TILE_GENERATION_THREADS );
+        int numThreads = _engine->getEngineProperties().getNumTileGeneratorThreads().isSet() ?
+            _engine->getEngineProperties().getNumTileGeneratorThreads().get() :
+            NUM_TILE_GENERATION_THREADS;
+
+        if ( numThreads < 1 )
+            numThreads = 1;
+
+        service = createTaskService( TILE_GENERATION_TASK_SERVICE_ID, numThreads );
     }
     return service;
 }

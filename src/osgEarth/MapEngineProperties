@@ -161,20 +161,6 @@ namespace osgEarth
         bool getPreemptiveLOD() const;
 
         /**
-         * Sets whether to use osgEarth's "task service" for downloading map tile layers when
-         * operating in preemptive LOD mode. If enabled, the map engine will relegate the
-         * loading of tile image and heightfield layers to a pool of background threads (instead
-         * of loading them all at once when the tile pages in). Default value = false.
-         */
-        //void setUseTaskService( bool value );
-
-        /**
-         * Gets whether the osgEarth task service is enabled for preemptive LOD mode. See
-         * setUseTaskService().
-         */
-        //bool getUseTaskService() const;
-
-        /**
          * Sets whether to load tile layers asynchronously using a thread pool. This option is
          * only available if preemptive LOD mode is enabled. When active, osgEarth will load 
          * each terrain tile layer (imagery and heightfield) in a background thread, and merge
@@ -201,6 +187,9 @@ namespace osgEarth
 
         const optional<int>& getNumLoadingThreads() const;
         void setNumLoadingThreads( int numLoadingThreads );
+
+        const optional<int>& getNumTileGeneratorThreads() const;
+        void setNumTileGeneratorThreads( int num );
 
         /**
          * Available techniques for compositing multiple image layers at runtime.
@@ -252,6 +241,7 @@ namespace osgEarth
 		optional<LayeringTechnique> _layering_technique;
         optional<int> _num_loading_threads_per_logical_processor;
         optional<int> _num_loading_threads;
+        optional<int> _num_tile_gen_threads;
         unsigned int _max_lod;
     };
 }

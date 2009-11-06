@@ -107,6 +107,15 @@ MapEngineProperties::setNumLoadingThreads( int numLoadingThreads ) {
     _num_loading_threads = numLoadingThreads;
 }
 
+const optional<int>&
+MapEngineProperties::getNumTileGeneratorThreads() const {
+    return _num_tile_gen_threads;
+}
+
+void
+MapEngineProperties::setNumTileGeneratorThreads( int num ) {
+    _num_tile_gen_threads = num;
+}
 
 void
 MapEngineProperties::setFilename(const std::string& filename)

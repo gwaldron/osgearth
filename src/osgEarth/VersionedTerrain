@@ -129,6 +129,8 @@ namespace osgEarth
 
         OpenThreads::ReadWriteMutex& getTileLayersMutex();
 
+        void cancelRequests();
+
     public: // OVERRIDES
 
         virtual void traverse( class osg::NodeVisitor& nv );
@@ -248,12 +250,10 @@ namespace osgEarth
         OpenThreads::ReadWriteMutex _tilesMutex;
         TileTable _tiles;
         TileQueue _tilesToAdd;
-        TileIDQueue _tileIDsToExpire;
 
     public:
 
         void registerTile( VersionedTile* newTile );
-        void expireTile( const osgTerrain::TileID& tileId );
 
         void getVersionedTile( const osgTerrain::TileID& id, osg::ref_ptr<VersionedTile>& out_tile );
         void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile );

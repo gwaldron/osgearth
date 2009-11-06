@@ -406,7 +406,8 @@ EarthTerrainTechnique::updateColorLayers( Locator* masterLocator )
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
                 // GW TEST:
-                //texture2D->setUnRefImageDataAfterApply( false );
+                //texture2D->setUnRefImageDataAfterApply( true );
+                //colorLayer->setImage(0L);
 
 #if OSG_MIN_VERSION_REQUIRED(2,8,0)
                 texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
@@ -1404,7 +1405,8 @@ void EarthTerrainTechnique::applyColorLayers()
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
                 //GW TEST:
-                //texture2D->setUnRefImageDataAfterApply( false );
+                //texture2D->setUnRefImageDataAfterApply( true );
+                //imageLayer->setImage(0L);
 
 #if OSG_MIN_VERSION_REQUIRED(2,8,0)
                 texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());

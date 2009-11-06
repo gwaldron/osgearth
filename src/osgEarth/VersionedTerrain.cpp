@@ -124,11 +124,6 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
         _nextLOD = nextLOD;
     }
 
-    //void setParentTile( VersionedTile* parentTile )
-    //{
-    //    _parentTile = parentTile;
-    //}
-
     void operator()( ProgressCallback* progress )
     {
         _result = _engine->createPlaceholderHeightfieldLayer(
@@ -136,28 +131,10 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
             _parentKey.get(),
             _key.get(),
             _keyLocator.get() );
-        //if ( _parentTile.valid() )
-        //{
-        //    osg::ref_ptr<osg::HeightField> parentHF;
-        //    {
-        //        ScopedReadLock lock( _parentTile->getTileLayersMutex() );
-        //        parentHF = static_cast<osgTerrain::HeightFieldLayer*>(_parentTile->getElevationLayer())->getHeightField();
-        //    }
-
-        //    if ( parentHF.valid() )
-        //    {
-        //        _result = _engine->createPlaceholderHeightfieldLayer(
-        //            parentHF.get(),
-        //            _parentTile->getKey(),
-        //            _key.get(),
-        //            _keyLocator.get() );
-        //    }
-        //}
     }
 
     osg::ref_ptr<osg::HeightField> _parentHF;
     osg::ref_ptr<const TileKey> _parentKey;
-    //osg::ref_ptr<VersionedTile> _parentTile;
     osg::ref_ptr<GeoLocator>    _keyLocator;
     int _nextLOD;
 };
@@ -193,14 +170,16 @@ _tileRegisteredWithTerrain( false )
 
     // because the lowest LOD (1) is always loaded fully:
     _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;
-
-    //setTerrainTechnique( new EarthTerrainTechnique( keyLocator ) );
 }
 
 VersionedTile::~VersionedTile()
 {
     //osg::notify(osg::NOTICE) << "Destroying VersionedTile " << this->getKey()->str() << std::endl;
+}
 
+void
+VersionedTile::cancelRequests()
+{
     //Cancel any pending requests
     if (_requestsInstalled)
     {
@@ -223,12 +202,6 @@ VersionedTile::~VersionedTile()
             _elevPlaceholderRequest->cancel();
         }
     }
-
-    // queue this tile for delisting
-    //if ( _tileRegisteredWithTerrain && _versionedTerrain.valid() )
-    //{
-    //    _versionedTerrain->expireTile( getTileID() );
-    //}
 }
 
 
@@ -344,20 +317,31 @@ VersionedTile::isElevationLayerUpToDate() const
 bool
 VersionedTile::readyForNewElevation()
 {
-    if ( _elevationLOD == _key->getLevelOfDetail() )
-        return false;
-
-    if ( _family[PARENT].elevLOD < 0 )
-        return false;
-
     bool ready = true;
 
-    for( int i=PARENT; i<=SOUTH; i++) 
+    if ( _elevationLOD == _key->getLevelOfDetail() )
     {
-        if ( _family[i].exists && _family[i].elevLOD >= 0 && _family[i].elevLOD < _elevationLOD )
+        ready = false;
+    }
+    else if ( _family[PARENT].elevLOD < 0 )
+    {
+        ready = false;
+    }
+    else
+    {
+        for( int i=PARENT; i<=SOUTH; i++) 
+        {
+            if ( _family[i].exists && _family[i].elevLOD >= 0 && _family[i].elevLOD < _elevationLOD )
+            {
+                ready = false;
+                break;
+            }
+        }
+
+        // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
+        if ( ready && _elevationLOD+1 < _key->getLevelOfDetail() && _elevationLOD == _family[PARENT].elevLOD )
         {
             ready = false;
-            break;
         }
     }
 
@@ -369,7 +353,7 @@ VersionedTile::readyForNewElevation()
     if ( _family[NORTH].exists ) osg::notify( osg::NOTICE ) << "N=" << _family[NORTH].elevLOD << " ";
     if ( _family[EAST].exists ) osg::notify( osg::NOTICE ) << "E=" << _family[EAST].elevLOD << " ";
     if ( _family[SOUTH].exists ) osg::notify( osg::NOTICE ) << "S=" << _family[SOUTH].elevLOD << " ";
-    osg::notify(osg::NOTICE) << ", ready = " << (ready? "YES" : "no") << std::endl;
+    osg::notify(osg::NOTICE) << "), ready = " << (ready? "YES" : "no") << std::endl;
 #endif
 
     return ready;
@@ -466,23 +450,41 @@ VersionedTile::servicePendingImageRequests( int stamp )
 void
 VersionedTile::servicePendingElevationRequests( int stamp )
 {
+    // install our requests if they are not already installed:
+    if ( !_requestsInstalled )
+    {
+        installRequests( stamp );
+        _requestsInstalled = true;
+    }
+
+    // make sure we know where to find our parent and sibling tiles:
+    if (getVersionedTerrain())
+    {
+        getVersionedTerrain()->refreshFamily( getTileID(), _family );
+        //readyForNewElevation();
+        //osg::notify(osg::NOTICE) << "TILE (" << _key->str() << ") _has=" << _hasElevation << ", _upToDate="
+        //    << _elevationLayerUpToDate 
+        //    << " ERvalid=" << _elevRequest.valid() << ", "
+        //    << " PRvalid=" << _elevPlaceholderRequest.valid()
+        //    << " reqInst=" << _requestsInstalled
+        //    << std::endl;
+    }
+    else
+    {
+        //osg::notify(osg::NOTICE) << "TILE (" << _key->str() << ") HAS NO TERRAIN." << std::endl;
+    }
+
     if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
     {  
-        // install our requests if they are not already installed:
-        if ( !_requestsInstalled )
-        {
-            installRequests( stamp );
-            _requestsInstalled = true;
-        }
-
         VersionedTerrain* terrain = getVersionedTerrain();
-
-        // make sure we know where to find our parent and sibling tiles:
-        terrain->refreshFamily( getTileID(), _family );
 
         // update the main elevation request if it's running:
         if ( !_elevRequest->isIdle() )
         {
+#ifdef PREEMPTIVE_DEBUG
+            osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") .. ER not idle" << std::endl;
+#endif
+            
             if ( !_elevRequest->isCompleted() )
             {
                 _elevRequest->setStamp( stamp );
@@ -492,6 +494,9 @@ VersionedTile::servicePendingElevationRequests( int stamp )
         // update the placeholder request if it's running:
         else if ( !_elevPlaceholderRequest->isIdle() )
         {
+#ifdef PREEMPTIVE_DEBUG
+            osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") .. PR not idle" << std::endl;
+#endif
             if ( !_elevPlaceholderRequest->isCompleted() )
             {
                _elevPlaceholderRequest->setStamp( stamp );
@@ -501,8 +506,17 @@ VersionedTile::servicePendingElevationRequests( int stamp )
         // otherwise, see if it is legal yet to start a new request:
         else if ( readyForNewElevation() )
         {
-            // queue up the next placeholder:
-            if ( _elevationLOD + 1 < _key->getLevelOfDetail() )
+            if ( _elevationLOD + 1 == _key->getLevelOfDetail() )
+            {
+                _elevRequest->setStamp( stamp );
+                _elevRequest->setProgressCallback( new ProgressCallback() );
+                terrain->getElevationTaskService()->add( _elevRequest.get() );
+#ifdef PREEMPTIVE_DEBUG
+                osg::notify(osg::NOTICE) << "..queued FE req for (" << _key->str() << ")" << std::endl;
+#endif
+            }
+            
+            else if ( _family[PARENT].elevLOD > _elevationLOD )
             {
                 osg::ref_ptr<VersionedTile> parentTile = _family[PARENT].tile.get();
                 if ( _elevationLOD < _family[PARENT].elevLOD && parentTile.valid() )
@@ -511,7 +525,7 @@ VersionedTile::servicePendingElevationRequests( int stamp )
 
                     er->setStamp( stamp );
                     er->setProgressCallback( new ProgressCallback() ); //( ck( er, terrain->getElevationTaskService()));
-                    float priority = (float)_key->getLevelOfDetail();
+                    float priority = -(float)_key->getLevelOfDetail();
                     er->setPriority( priority );
                     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(parentTile->getElevationLayer());
                     er->setParentHF( hfLayer->getHeightField() );
@@ -521,17 +535,18 @@ VersionedTile::servicePendingElevationRequests( int stamp )
                     osg::notify(osg::NOTICE) << "..queued PH req for (" << _key->str() << ")" << std::endl;
 #endif
                 }
+
+                else 
+                {
+#ifdef PREEMPTIVE_DEBUG
+                    osg::notify(osg::NOTICE) << "...tile (" << _key->str() << ") ready, but nothing to do." << std::endl;
+#endif
+                }
             }
 
             // queue up the final data:
             else
             {
-                _elevRequest->setStamp( stamp );
-                _elevRequest->setProgressCallback( new ProgressCallback() );
-                terrain->getElevationTaskService()->add( _elevRequest.get() );
-#ifdef PREEMPTIVE_DEBUG
-                osg::notify(osg::NOTICE) << "..queued FE req for (" << _key->str() << ")" << std::endl;
-#endif
             }
         }
     }
@@ -641,7 +656,7 @@ VersionedTile::serviceCompletedRequests()
                 else
                     this->setDirty( true );
                 
-                _elevationLOD = er->_key->getLevelOfDetail();
+                _elevationLOD = _key->getLevelOfDetail();
 
 #ifdef PREEMPTIVE_DEBUG
                 osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
@@ -986,21 +1001,6 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     }
 }
 
-//void 
-//VersionedTerrain::getTerrainTiles( TerrainTileList& out_tiles )
-//{
-//    ScopedLock<Mutex> lock(_mutex);
-//
-//    out_tiles.reserve( _terrainTileMap.size() );
-//
-//    for(TerrainTileSet::iterator itr = _terrainTileSet.begin();
-//        itr != _terrainTileSet.end();
-//        ++itr)
-//    {
-//        out_tiles.push_back( (*itr) );
-//    }
-//}
-
 void
 VersionedTerrain::registerTile( VersionedTile* newTile )
 {
@@ -1009,46 +1009,34 @@ VersionedTerrain::registerTile( VersionedTile* newTile )
 }
 
 void
-VersionedTerrain::expireTile( const osgTerrain::TileID& tileId )
-{
-    ScopedWriteLock lock( _tilesMutex );
-    _tileIDsToExpire.push( tileId );
-}
-
-void
 VersionedTerrain::updateTileTable()
 {
-    //if ( _tileIDsToExpire.size() > 0 || _tilesToAdd.size() > 0 )
+    ScopedWriteLock lock( _tilesMutex );
+
+    int sizeOld = _tiles.size();
+
+    for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
     {
-        ScopedWriteLock lock( _tilesMutex );
-
-        int sizeOld = _tiles.size();
-
-        //while( _tileIDsToExpire.size() > 0 )
-        //{
-        //    osgTerrain::TileID tileID = _tileIDsToExpire.front();
-        //    _tileIDsToExpire.pop();
-        //    _tiles.erase( tileID );
-        //}
-
-        for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
+        if ( i->second.valid() && i->second->referenceCount() == 1 )
         {
-            if ( i->second.valid() && i->second->referenceCount() == 1 )
-                i = _tiles.erase( i );
-            else
-                ++i;
-
+            i->second->cancelRequests();
+            i = _tiles.erase( i );
+        }
+        else
+        {
+            ++i;
         }
 
-        while( _tilesToAdd.size() > 0 )
-        {
-            _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
-            _tilesToAdd.pop();
-        }
-
-        if ( sizeOld != _tiles.size() )
-            osg::notify(osg::NOTICE) << "TILES = " << _tiles.size() << std::endl;
     }
+
+    while( _tilesToAdd.size() > 0 )
+    {
+        _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
+        _tilesToAdd.pop();
+    }
+
+    //if ( sizeOld != _tiles.size() )
+    //    osg::notify(osg::NOTICE) << "TILES = " << _tiles.size() << std::endl;
 }
 
 Map*
@@ -1060,18 +1048,6 @@ MapEngine*
 VersionedTerrain::getEngine() {
     return _engine.get();
 }
-
-//struct ServicePendingRequestsVisitor : public osg::NodeVisitor {
-//    ServicePendingRequestsVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
-//    void apply(osg::Group& group) {
-//        if ( dynamic_cast<VersionedTile*>(&group)) {
-//            VersionedTile* tile = static_cast<VersionedTile*>(&group);
-//            tile->servicePendingRequests( _stamp );
-//        }
-//        osg::NodeVisitor::apply(group);
-//    }
-//    int _stamp;
-//};
 
 void
 VersionedTerrain::traverse( osg::NodeVisitor &nv )
@@ -1095,12 +1071,22 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
 
         // service data requests for each tile:
         {
-            ScopedReadLock lock( _tilesMutex );
+            // dont' need a lock here, because the only time you can write to the tile table is 
+            // in updateTileTable, called earlier in this method! Besides, locking here would
+            // violate double-reentrant locks in servicePending*
+            //ScopedReadLock lock( _tilesMutex );
+
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
                 if ( i->second.valid() && i->second->getUseLayerRequests() )
                 {
                     i->second->servicePendingElevationRequests( stamp );
+                }
+                else
+                {
+                    osg::notify( osg::NOTICE ) << "TILE "
+                        << i->first.level << "," << i->first.x << "," << i->first.y
+                        << "   HAS an INVALID PTR in the TABLE" << std::endl;
                 }
             }
         }

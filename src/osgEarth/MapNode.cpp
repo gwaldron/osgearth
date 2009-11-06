@@ -209,6 +209,13 @@ MapNode::init()
 	ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
     //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
+    if ( _engineProps.getEnableLighting().isSet() )
+    {
+        ss->setMode( GL_LIGHTING, _engineProps.getEnableLighting().get() ? 
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    }
+
     registerMapNode(this);
 }
 
@@ -269,8 +276,12 @@ MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUn
     }
     else
     {
-        overlay->addChild( _terrains[0].get() );
-        this->replaceChild( _terrains[0].get(), overlay );
+        overlay->addChild( this->getChild(0) );
+        this->replaceChild( this->getChild(0), overlay );
+
+        //overlay->addChild( _terrains[0].get() );
+        //this->replaceChild( _terrains[0].get(), overlay );
+
         _pendingOverlayNode = 0L;
 
         if ( autoSetTextureUnit )

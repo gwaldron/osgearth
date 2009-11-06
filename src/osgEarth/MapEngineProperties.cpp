@@ -63,7 +63,18 @@ MapEngineProperties::operator = ( const MapEngineProperties& rhs )
     _num_loading_threads_per_logical_processor = rhs._num_loading_threads_per_logical_processor;
     _num_loading_threads = rhs._num_loading_threads;
     _max_lod = rhs._max_lod;
+    _lighting = rhs._lighting;
     return *this;
+}
+
+const optional<bool>& 
+MapEngineProperties::getEnableLighting() const {
+    return _lighting;
+}
+
+void 
+MapEngineProperties::setEnableLighting( bool value ) {
+    _lighting = value;
 }
 
 void

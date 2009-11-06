@@ -223,6 +223,9 @@ namespace osgEarth
          */
         void setMaxLOD( unsigned int max_lod );
 
+        const optional<bool>& getEnableLighting() const;
+        void setEnableLighting( bool value );
+
     private:
             
         std::string _filename;
@@ -243,6 +246,7 @@ namespace osgEarth
         optional<int> _num_loading_threads;
         optional<int> _num_tile_gen_threads;
         unsigned int _max_lod;
+        optional<bool> _lighting;
     };
 }
 

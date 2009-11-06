@@ -20,6 +20,7 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarthFeatures/Styling>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
@@ -38,6 +39,7 @@ using namespace OpenThreads;
 #define PROP_FEATURES     "features"
 #define PROP_TEXTURE_UNIT "texture_unit"
 #define PROP_TEXTURE_SIZE "texture_size"
+#define PROP_STYLE        "style"
 
 class FeatureOverlaySource : public ModelSource
 {
@@ -69,12 +71,21 @@ public:
             _textureUnit = 0; // AUTO
 
         _textureSize = conf.value<int>( PROP_TEXTURE_SIZE, _textureSize );
+
+        if ( conf.hasChild( PROP_STYLE ) )
+        {
+            Styling::StyleReader::read( conf.child(PROP_STYLE), _styles );
+        }
     }
 
 
     osg::Node* getNode( ProgressCallback* progress =0L )
     {
         if ( !_features.valid() ) return 0L;
+
+        // figure out which rule to use to style the geometry.
+        Styling::NamedLayer styleLayer;
+        bool hasStyle = _styles.getNamedLayer( _features->getName(), styleLayer );
 
         bool isGeocentric = _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC;
 
@@ -94,6 +105,11 @@ public:
 
         // Build geometry:
         BuildGeometryFilter buildGeom;
+
+        // apply the style rule if we have one:
+        if ( hasStyle && !styleLayer.empty() )
+            buildGeom.setStyleRule( *styleLayer.userStyle().featureTypeStyle().rules().begin() );
+
         buildGeom.push( features, context );
 
         osg::Node* result = buildGeom.getOutput( context );
@@ -125,6 +141,7 @@ private:
     int _textureSize;
     int _textureUnit;
     osg::ref_ptr<const Map> _map;
+    Styling::StyleCatalog _styles;
 };
 
 

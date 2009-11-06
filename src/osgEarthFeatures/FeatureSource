@@ -164,6 +164,7 @@ namespace osgEarthFeatures
 		 * Creates a FeatureSource with the given driver and properties.
 		 */
 		static FeatureSource* create(
+            const std::string& name,
             const std::string& driver,
             const Config&      driverConf,
             const osgDB::ReaderWriter::Options* globalOptions =NULL );

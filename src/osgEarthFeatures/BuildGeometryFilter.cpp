@@ -27,10 +27,24 @@
 
 using namespace osgEarth;
 using namespace osgEarthFeatures;
+using namespace osgEarthFeatures::Styling;
+
 
 BuildGeometryFilter::BuildGeometryFilter()
 {
     reset();
+}
+
+BuildGeometryFilter::BuildGeometryFilter( const Rule& rule ) :
+_styleRule( rule )
+{
+    reset();
+}
+
+void
+BuildGeometryFilter::setStyleRule( const Rule& rule )
+{
+    _styleRule = rule;
 }
 
 void
@@ -49,9 +63,22 @@ BuildGeometryFilter::push( Feature* input, FilterContext& context )
         geomType == FeatureProfile::GEOM_POLYGON ? GL_LINE_LOOP : // for later tessellation
         GL_POINTS;
 
+    osg::Vec4ub color;
+    
+    if (geomType == FeatureProfile::GEOM_POLYGON)
+    {
+        color = _styleRule.polygonSymbolizer().fill().color();
+        color.a() = (int)(255.0f * _styleRule.polygonSymbolizer().fill().opacity());
+    }
+    else
+    {
+        color = _styleRule.lineSymbolizer().stroke().color();
+        color.a() = (int)(255.0f * _styleRule.lineSymbolizer().stroke().opacity());
+    }
+
     osg::Geometry* geom = new osg::Geometry();
-    osg::Vec4Array* colors = new osg::Vec4Array(1);
-    (*colors)[0].set( 1, 1, 1, 1 );
+    osg::Vec4ubArray* colors = new osg::Vec4ubArray(1);
+    (*colors)[0] = color;
     geom->setColorArray( colors );
     geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
@@ -97,5 +124,22 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 osg::Node*
 BuildGeometryFilter::getOutput( FilterContext& context )
 {
+    FeatureProfile::GeometryType geomType = context._profile->getGeometryType();
+
+    if ( geomType == FeatureProfile::GEOM_POLYGON )
+    {
+        //NOP
+    }
+    else if ( geomType == FeatureProfile::GEOM_POINT )
+    {
+        float size = _styleRule.lineSymbolizer().stroke().width();
+        _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
+    }
+    else // GEOM_LINE
+    {
+        float width = _styleRule.lineSymbolizer().stroke().width();
+        _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
+    }
+
     return _geode.get();
 }

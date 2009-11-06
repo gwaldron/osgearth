@@ -29,11 +29,11 @@ namespace osgEarthFeatures { namespace Styling
     class OSGEARTHFEATURES_EXPORT SLDReader
     {
     public:
-        static bool readConfig( const Config& conf, StyledLayerDescriptor& out_sld );
+        static bool readConfig( const Config& conf, StyleCatalog& out_sld );
 
-        static bool readXML( std::istream& input, StyledLayerDescriptor& out_sld );
+        static bool readXML( std::istream& input, StyleCatalog& out_sld );
 
-        static bool readRulesCSS( std::istream& css, RuleList& out_rules );
+        static bool readRuleFromCSSParams( const Config& conf, Rule& out_rule );
     };
 
 } }

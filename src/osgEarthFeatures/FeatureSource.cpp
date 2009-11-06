@@ -83,7 +83,8 @@ FeatureSource::getDataExtent() const
 /****************************************************************************/
 
 FeatureSource*
-FeatureSourceFactory::create(const std::string& driver,
+FeatureSourceFactory::create(const std::string& name,
+                             const std::string& driver,
                              const Config&      driverConf,
                              const osgDB::ReaderWriter::Options* globalOptions )
 {
@@ -101,7 +102,11 @@ FeatureSourceFactory::create(const std::string& driver,
     osg::ref_ptr<FeatureSource> source = dynamic_cast<FeatureSource*>(
                 osgDB::readObjectFile( ".osgearth_feature_" + driver, options.get()));
 
-	if ( !source.valid() )
+    if ( source.valid() )
+    {
+        source->setName( name );
+    }
+    else
 	{
 		osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load Feature Source for driver "  << driver << std::endl;
 	}
@@ -115,6 +120,7 @@ FeatureSourceFactory::create(const Config& featureStoreConf,
                              const osgDB::ReaderWriter::Options* globalOptions )
 {
     return create(
+        featureStoreConf.attr( "name" ),
         featureStoreConf.attr( "driver" ),
         featureStoreConf,
         globalOptions );

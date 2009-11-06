@@ -27,35 +27,20 @@ map, it will only support data that covers at most one hemisphere.
         <texture_size>2048</texture_size>
         <texture_unit>auto</texture_unit>  
         
+        <!-- CSS stylesheet. Note the style name ("states" here) should match
+             the feature set that you are styling. The attributes are OGC SLD
+             line- and polygon-symbolizer CSS parameters. -->
+             
         <style type="text/css">
             states {
                stroke: #FFFF00;
-               stroke-width: 2.5;               
+               stroke-opacity: 1.0;
+               stroke-width: 3.5;
             }            
         </style>
         
-        <style type="application/vnd.ogc.sld+xml">
-            boundaries.sld
-        </style>
-                     
-        <style type="application/vnd.ogc.sld+xml">
-            <sld:FeatureTypeStyle>
-                <sld:Rule>
-                	<ogc:Filter/>
-                	<sld:LineSymbolizer>
-                		<sld:Stroke>
-                			<sld:CssParameter name="stroke">
-                				<ogc:Literal>#ffff00</ogc:Literal>
-                			</sld:CssParameter>
-                			<sld:CssParameter name="stroke-width">
-                				<ogc:Literal>2.0</ogc:Literal>
-                			</sld:CssParameter>
-                		</sld:Stroke>
-                	</sld:PolygonSymbolizer>
-                </sld:Rule>
-            </sld:FeatureTypeStyle>
-        </style>
-        
     </model>
+    
+    <lighting>false</lighting>
   
 </map>

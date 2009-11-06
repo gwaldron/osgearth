@@ -202,9 +202,11 @@ XmlElement::toConfig() const
         XmlNode* n = c->get();
         if ( n->isElement() )
             conf.children().push_back( static_cast<const XmlElement*>(n)->toConfig() );
-        else 
-            conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
     }
+
+    conf.value() = getText();
+        //else 
+        //    conf.value() = trim( static_cast<const XmlText*>(n)->getValue() );
     return conf;
 }
 

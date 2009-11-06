@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Styling>
+#include <osgEarthFeatures/CssUtils>
+#include <osgEarthFeatures/SLD>
 #include <stack>
 
 using namespace osgEarth;
@@ -62,15 +64,67 @@ StyleVisitor::apply( class FeatureTypeStyle& obj ) {
 }
 
 void
-StyleVisitor::apply( class UserLayer& obj ) {
+StyleVisitor::apply( class UserStyle& obj ) {
     obj.featureTypeStyle().accept( *this );
 }
 
 void
-StyleVisitor::apply( class StyledLayerDescriptor& obj ) {
-    for(UserLayerList::iterator i = obj.userLayers().begin(); i != obj.userLayers().end(); i++ )
+StyleVisitor::apply( class NamedLayer& obj ) {
+    obj.userStyle().accept( *this );
+}
+
+void
+StyleVisitor::apply( class StyleCatalog& obj ) {
+    for(NamedLayerList::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
         i->accept( *this );
 }
 
 /**************************************************************************/
 
+bool
+StyleReader::read( const Config& conf, StyleCatalog& out_catalog )
+{
+    if ( conf.attr("type") == "text/css" )
+    {
+        return readCSS( conf.value(), out_catalog );
+    }
+    else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
+              conf.attr("type") == "application/vnd.ogc.sld" )
+    {
+        return readSLD( conf.children(), out_catalog );
+    }
+    else
+        return false;
+}
+
+bool
+StyleReader::readCSS( const std::string& css, StyleCatalog& out_catalog )
+{
+    std::stringstream buf( css );
+    Config root = CssUtils::readConfig( buf );
+
+    for(ConfigSet::const_iterator i = root.children().begin(); i != root.children().end(); i++ )
+    {
+        const Config& conf = *i;
+        if ( !conf.name().empty() )
+        {
+            NamedLayer layer;
+            layer.name() = conf.name();
+
+            Rule rule;
+            if ( SLDReader::readRuleFromCSSParams( conf, rule ) )
+            {
+                layer.userStyle().featureTypeStyle().rules().push_back( rule );
+            }
+
+            out_catalog.namedLayers().push_back( layer );               
+        }
+    }
+    return true;
+}
+
+bool
+StyleReader::readSLD( const ConfigSet& confSet, StyleCatalog& out_catalog )
+{
+    return true;
+}

@@ -68,7 +68,7 @@ public:
         _offset = j;
         return true;
     }
-    const std::string& token() const { 
+    std::string token() const { 
         return trim( _token );
     }
 protected:
@@ -99,10 +99,10 @@ CssUtils::readConfig( std::istream& in )
             Config elementConf( name );
             std::string props = tok.token();
             Tokenizer propsTok( props, ":;" );
-            while( tok.nextToken() ) {
-                std::string key = tok.token();
-                if ( tok.nextToken() ) {
-                    std::string value = tok.token();
+            while( propsTok.nextToken() ) {
+                std::string key = propsTok.token();
+                if ( propsTok.nextToken() ) {
+                    std::string value = propsTok.token();
                     elementConf.attr(key) = value;
                 }
             }    

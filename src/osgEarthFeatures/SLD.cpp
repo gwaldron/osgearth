@@ -29,23 +29,25 @@ using namespace osgEarthFeatures::Styling;
 static osg::Vec4ub
 htmlColorToVec4ub( const std::string& html )
 {
-    std::string t;
-    std::transform( html.begin(), html.end(), t.begin(), tolower );
+    std::string t = html;
+    std::transform( t.begin(), t.end(), t.begin(), ::tolower );
     osg::Vec4ub c(0,0,0,255);
     if ( t.length() == 7 ) {
-        c.r() |= t[1]<='9' ? (t[1]-'0')<<8 : (t[1]-'a');
-        c.r() |= t[2]<='9' ? (t[2]-'0') : t[2]-'a';
-        c.g() |= t[3]<='9' ? (t[3]-'0')<<8 : (t[3]-'a');
-        c.g() |= t[4]<='9' ? (t[4]-'0') : t[4]-'a';
-        c.b() |= t[5]<='9' ? (t[5]-'0')<<8 : (t[5]-'a');
-        c.b() |= t[6]<='9' ? (t[6]-'0') : t[6]-'a';
+        c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;
+        c.r() |= t[2]<='9' ? (t[2]-'0')    : (10+(t[2]-'a'));
+        c.g() |= t[3]<='9' ? (t[3]-'0')<<4 : (10+(t[3]-'a'))<<4;
+        c.g() |= t[4]<='9' ? (t[4]-'0')    : (10+(t[4]-'a'));
+        c.b() |= t[5]<='9' ? (t[5]-'0')<<4 : (10+(t[5]-'a'))<<4;
+        c.b() |= t[6]<='9' ? (t[6]-'0')    : (10+(t[6]-'a'));
     }
     return c;
 }
 
-#define CSS_STROKE       "stroke"
-#define CSS_STROKE_WIDTH "stroke-width"
-#define CSS_FILL         "fill"
+#define CSS_STROKE         "stroke"
+#define CSS_STROKE_WIDTH   "stroke-width"
+#define CSS_STROKE_OPACITY "stroke-opacity"
+#define CSS_FILL           "fill"
+#define CSS_FILL_OPACITY   "fill-opacity"
 
 struct SLDFromConfigVisitor : public StyleVisitor
 {
@@ -89,15 +91,18 @@ struct SLDFromConfigVisitor : public StyleVisitor
             obj.rules().push_back( rule );
         }
     }
-    void apply( class UserLayer& obj ) {
+    void apply( class UserStyle& obj ) {        
         traverse( _conf.top().child( "sld:FeatureTypeStyle" ), obj.featureTypeStyle() );
     }
-    void apply( class StyledLayerDescriptor& obj ) {
-        ConfigSet c = _conf.top().children("sld:UserLayer");
+    void apply( class NamedLayer& obj ) {
+        traverse( _conf.top().child( "sld:UserStyle" ), obj.userStyle() );
+    }
+    void apply( class StyleCatalog& obj ) {
+        ConfigSet c = _conf.top().children( "sld:NamedLayer" );
         for(ConfigSet::iterator i = c.begin(); i != c.end(); i++ ) {
-            UserLayer userLayer;
-            traverse( *i, userLayer );
-            obj.userLayers().push_back( userLayer );
+            NamedLayer namedLayer;
+            traverse( *i, namedLayer );
+            obj.namedLayers().push_back( namedLayer );
         }
     }
 
@@ -115,7 +120,7 @@ struct SLDFromConfigVisitor : public StyleVisitor
 };
 
 bool
-SLDReader::readConfig( const Config& conf, StyledLayerDescriptor& out_sld )
+SLDReader::readConfig( const Config& conf, StyleCatalog& out_sld )
 {
     SLDFromConfigVisitor visitor;
     visitor.pushConfig( conf );
@@ -124,7 +129,7 @@ SLDReader::readConfig( const Config& conf, StyledLayerDescriptor& out_sld )
 }
 
 bool
-SLDReader::readXML( std::istream& in, StyledLayerDescriptor& out_sld )
+SLDReader::readXML( std::istream& in, StyleCatalog& out_sld )
 {
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in );
     Config conf = xml->toConfig();
@@ -132,24 +137,21 @@ SLDReader::readXML( std::istream& in, StyledLayerDescriptor& out_sld )
 }
 
 bool
-SLDReader::readRulesCSS( std::istream& css, RuleList& out_rules )
+SLDReader::readRuleFromCSSParams( const Config& conf, Rule& rule )
 {
-    Config root = CssUtils::readConfig( css );
-    for(ConfigSet::const_iterator i = root.children().begin(); i != root.children().end(); i++ )
+    for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
-        const Config& conf = *i;
-        Rule rule;
-        for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
-        {
-            if ( p->first == CSS_STROKE )
-                rule.lineSymbolizer().stroke().color() = htmlColorToVec4ub( p->second );
-            else if ( p->first == CSS_STROKE_WIDTH )
-                rule.lineSymbolizer().stroke().width() = as<float>( p->second, 1.0f );
-            else if ( p->first == CSS_FILL )
-                rule.polygonSymbolizer().fill().color() == htmlColorToVec4ub( p->second );
-            //TODO more..
-        }
-        out_rules.push_back( rule );
+        if ( p->first == CSS_STROKE )
+            rule.lineSymbolizer().stroke().color() = htmlColorToVec4ub( p->second );
+        else if ( p->first == CSS_STROKE_OPACITY )
+            rule.lineSymbolizer().stroke().opacity() = as<float>( p->second, 1.0f );
+        else if ( p->first == CSS_STROKE_WIDTH )
+            rule.lineSymbolizer().stroke().width() = as<float>( p->second, 1.0f );
+        else if ( p->first == CSS_FILL )
+            rule.polygonSymbolizer().fill().color() = htmlColorToVec4ub( p->second );
+        else if ( p->first == CSS_FILL_OPACITY )
+            rule.polygonSymbolizer().fill().opacity() = as<float>( p->second, 1.0f );
+        //TODO more..
     }
     return true;
 }

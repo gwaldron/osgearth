@@ -88,6 +88,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_CACHE_FORMAT             "cache_format"
 #define ELEM_MODEL                    "model"
 #define ELEM_MAX_LOD                  "max_lod"
+#define ELEM_LIGHTING                 "lighting"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -321,6 +322,9 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
     engineProps.setMaxLOD(
         conf.value<unsigned int>( ELEM_MAX_LOD, engineProps.getMaxLOD() ) );
+
+    if ( conf.hasValue( ELEM_LIGHTING ) )
+        engineProps.setEnableLighting( conf.value<bool>( ELEM_LIGHTING, false ) );
 
     //Read the profile definition
     if ( conf.hasChild( ELEM_PROFILE ) )

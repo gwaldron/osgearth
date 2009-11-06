@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
 #include <osg/Geode>
 
 using namespace osgEarth;
@@ -37,6 +38,10 @@ namespace osgEarthFeatures
     public:
         BuildGeometryFilter();
 
+        BuildGeometryFilter( const Styling::Rule& styleRule );
+
+        void setStyleRule( const Styling::Rule& styleRule );
+
         bool push( Feature* input, FilterContext& context );
 
         bool push( FeatureList& input, FilterContext& context );
@@ -45,7 +50,7 @@ namespace osgEarthFeatures
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
-
+        Styling::Rule _styleRule;
         void reset();
     };
 }

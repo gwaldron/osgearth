@@ -185,6 +185,8 @@ namespace osgEarth
         bool readyForNewElevation();
         void serviceCompletedRequests();
         //void refreshParentTile();
+        void checkNeedsUpdate();
+        bool _needsUpdate;
     };
 
 
@@ -259,7 +261,7 @@ namespace osgEarth
         void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile );
         void getTerrainTiles( TerrainTileList& out_tiles );
 
-    private:
+    private:        
 
         void updateTileTable();
 

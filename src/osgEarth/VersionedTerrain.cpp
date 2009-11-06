@@ -164,7 +164,8 @@ _usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _family( 5 ),
 _elevationLOD( key->getLevelOfDetail() ),
-_tileRegisteredWithTerrain( false )
+_tileRegisteredWithTerrain( false ),
+_needsUpdate(false)
 {
     setTileID( key->getTileId() );
 
@@ -251,8 +252,8 @@ VersionedTile::setUseLayerRequests( bool value )
         _useLayerRequests = value;   
 
         // if layer requests are on, we need an update traversal.
-        int oldNum = getNumChildrenRequiringUpdateTraversal();
-        setNumChildrenRequiringUpdateTraversal( _useLayerRequests? oldNum+1 : oldNum-1 );
+        //int oldNum = getNumChildrenRequiringUpdateTraversal();
+        //setNumChildrenRequiringUpdateTraversal( _useLayerRequests? oldNum+1 : oldNum-1 );
     }
 }
 
@@ -364,6 +365,34 @@ VersionedTile::readyForNewElevation()
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
 
 void
+VersionedTile::checkNeedsUpdate()
+{
+    //See if we have any completed requests
+    bool hasCompletedRequests = false;
+
+    if (_elevRequest.valid() && _elevRequest->isCompleted()) hasCompletedRequests = true;
+    else if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isCompleted()) hasCompletedRequests = true;
+    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+    {
+        if (i->get()->isCompleted())
+        {
+            hasCompletedRequests = true;
+        }
+    }
+
+    if (hasCompletedRequests && !_needsUpdate)
+    {
+        setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() + 1 );
+        _needsUpdate = true;
+    }
+    else if (!hasCompletedRequests && _needsUpdate)
+    {
+        setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() - 1 );
+        _needsUpdate = false;
+    }
+}
+
+void
 VersionedTile::installRequests( int stamp )
 {
     VersionedTerrain* terrain = getVersionedTerrain();
@@ -444,6 +473,8 @@ VersionedTile::servicePendingImageRequests( int stamp )
             r->setStamp( stamp );
         }
     }
+
+    checkNeedsUpdate();
 }
 
 // This method is called from the CULL TRAVERSAL, from VersionedTerrain::traverse.
@@ -550,6 +581,8 @@ VersionedTile::servicePendingElevationRequests( int stamp )
             }
         }
     }
+
+    checkNeedsUpdate();
 }
 
 // This method is called from the CULL TRAVERSAL, and only is _useLayerRequests == true.
@@ -733,6 +766,8 @@ VersionedTile::serviceCompletedRequests()
             _elevPlaceholderRequest->reset();
         }
     }
+
+    checkNeedsUpdate();
 }
 
 void

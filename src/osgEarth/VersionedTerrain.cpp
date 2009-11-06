@@ -900,7 +900,7 @@ _map( map ),
 _engine( engine ),
 _revision(0),
 _numAsyncThreads( 0 ),
-_updateBudgetSeconds( 0.0167 )
+_updateBudgetSeconds( 1.0 )
 {
     //See if the number of threads is explicitly provided
     const optional<int>& numThreads = engine->getEngineProperties().getNumLoadingThreads();

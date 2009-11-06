@@ -45,6 +45,10 @@ namespace osgEarth
     public: /* overrides */
         virtual void init();
 
+        virtual void init( bool swapNow );
+
+        void swapIfNecessary();
+
         virtual osgTerrain::Locator* computeMasterLocator();
 
         virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
@@ -123,6 +127,8 @@ namespace osgEarth
         float _verticalScaleOverride;
 
         osg::ref_ptr<osgTerrain::Locator> _masterLocator;
+
+        bool _swapPending;
     };
 
 }

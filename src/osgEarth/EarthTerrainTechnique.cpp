@@ -52,7 +52,8 @@ EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
 _masterLocator( masterLocator ),
 _currentReadOnlyBuffer(1),
 _currentWriteBuffer(0),
-_verticalScaleOverride(1.0f)
+_verticalScaleOverride(1.0f),
+_swapPending( false )
 {
     //nop
 }
@@ -63,7 +64,8 @@ _masterLocator( gt._masterLocator ),
 _lastCenterModel( gt._lastCenterModel ),
 _currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),
 _currentWriteBuffer( gt._currentWriteBuffer ),
-_verticalScaleOverride( gt._verticalScaleOverride )
+_verticalScaleOverride( gt._verticalScaleOverride ),
+_swapPending( gt._swapPending )
 {
     _bufferData[0] = gt._bufferData[0];
     _bufferData[1] = gt._bufferData[1];
@@ -127,10 +129,23 @@ EarthTerrainTechnique::updateContent(bool updateGeom, bool updateTextures)
     //osg::notify( osg::NOTICE ) << "updateContentTime " << osg::Timer::instance()->delta_m(before, after) << std::endl;
 }
 
-void EarthTerrainTechnique::init()
+void
+EarthTerrainTechnique::init()
+{
+    init( true );
+}
+
+void EarthTerrainTechnique::init( bool swapNow )
 {
     // lock changes to the layers while we're rendering them
     ScopedReadLock lock( getMutex() );
+
+    // we cannot run this method is there is a swap currently pending!
+    if ( _swapPending )
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth] illegal; cannot init() with a pending swap!" << std::endl;
+        return;
+    }
 
     //osg::notify(osg::INFO)<<"Doing GeometryTechnique::init()"<<std::endl;
     
@@ -153,7 +168,19 @@ void EarthTerrainTechnique::init()
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);
 
-    swapBuffers();
+    if ( swapNow )
+        swapBuffers();
+
+    _swapPending = !swapNow;
+}
+
+void
+EarthTerrainTechnique::swapIfNecessary()
+{
+    ScopedReadLock lock( getMutex() );
+    if ( _swapPending )
+        swapBuffers();
+    _swapPending = false;
 }
 
 Locator* EarthTerrainTechnique::computeMasterLocator()

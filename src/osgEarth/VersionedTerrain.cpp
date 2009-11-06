@@ -139,6 +139,27 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
     int _nextLOD;
 };
 
+struct TileGenRequest : public TaskRequest
+{
+    TileGenRequest( VersionedTile* tile ) : _tile(tile) { }
+
+    void operator()( ProgressCallback* progress )
+    {
+//        osg::notify(osg::NOTICE) << "TILEGEN start" << std::endl;
+        if ( _tile.valid() )
+        {
+            EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>(_tile->getTerrainTechnique());
+            if ( tech )
+            {
+                tech->init( false );
+            }
+        }
+        //osg::notify(osg::NOTICE) << "TILEGEN done" << std::endl;
+    }
+
+    osg::observer_ptr<VersionedTile> _tile;
+};
+
 
 /*****************************************************************************/
 
@@ -165,6 +186,8 @@ _elevationLayerUpToDate( true ),
 _family( 5 ),
 _elevationLOD( key->getLevelOfDetail() ),
 _tileRegisteredWithTerrain( false ),
+_useTileGenRequest( true ),
+_tileGenNeeded( false ),
 _needsUpdate(false)
 {
     setTileID( key->getTileId() );
@@ -201,6 +224,11 @@ VersionedTile::cancelRequests()
         if (_elevPlaceholderRequest.valid())
         {
             _elevPlaceholderRequest->cancel();
+        }
+
+        if (_tileGenRequest.valid())
+        {
+            _tileGenRequest->cancel();
         }
     }
 }
@@ -372,6 +400,7 @@ VersionedTile::checkNeedsUpdate()
 
     if (_elevRequest.valid() && _elevRequest->isCompleted()) hasCompletedRequests = true;
     else if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isCompleted()) hasCompletedRequests = true;
+    else if (_tileGenRequest.valid() && _tileGenRequest->isCompleted()) hasCompletedRequests = true;
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
     {
         if (i->get()->isCompleted())
@@ -421,6 +450,8 @@ VersionedTile::installRequests( int stamp )
         ss << "TileElevationPlaceholderLayerRequest " << _key->str() << std::endl;
         _elevPlaceholderRequest->setName( ss.str() );
     }
+
+    _tileGenRequest = new TileGenRequest( this );
 
     int numColorLayers = getNumColorLayers();
     for( int layerIndex = 0; layerIndex < numColorLayers; layerIndex++ ) 
@@ -556,7 +587,7 @@ VersionedTile::servicePendingElevationRequests( int stamp )
 
                     er->setStamp( stamp );
                     er->setProgressCallback( new ProgressCallback() ); //( ck( er, terrain->getElevationTaskService()));
-                    float priority = -(float)_key->getLevelOfDetail();
+                    float priority = (float)_key->getLevelOfDetail();
                     er->setPriority( priority );
                     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(parentTile->getElevationLayer());
                     er->setParentHF( hfLayer->getHeightField() );
@@ -573,11 +604,6 @@ VersionedTile::servicePendingElevationRequests( int stamp )
                     osg::notify(osg::NOTICE) << "...tile (" << _key->str() << ") ready, but nothing to do." << std::endl;
 #endif
                 }
-            }
-
-            // queue up the final data:
-            else
-            {
             }
         }
     }
@@ -614,45 +640,86 @@ VersionedTile::serviceCompletedRequests()
 
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
     {
-        TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
-        if ( r->isCompleted() )
-        {
-            osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
-            if ( imgLayer )
-            {
-                this->setColorLayer( r->_layerIndex, imgLayer );
-                if ( _usePerLayerUpdates )
-                    _colorLayersDirty = true;
-                else
-                    this->setDirty( true );
-                // remove from the list
-                i = _requests.erase( i );
-                
-                //osg::notify(osg::NOTICE) << "Complet IR (" << _key->str() << ")" << std::endl;
-            }
-            else
-            {                
-                osg::notify(osg::NOTICE) << "IReq error (" << _key->str() << "), retrying" << std::endl;
+        bool increment = true;
 
-                //The color layer request failed, probably due to a server error. Reset it.
-                r->setState( TaskRequest::STATE_IDLE );
+        if ( dynamic_cast<TileColorLayerRequest*>( i->get() ) )
+        {
+            TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
+            if ( r->isCompleted() )
+            {
+                osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
+                if ( imgLayer )
+                {
+                    this->setColorLayer( r->_layerIndex, imgLayer );
+                    if ( _useTileGenRequest )
+                    {
+                        _tileGenNeeded = true;
+                    }
+                    else
+                    {
+                        if ( _usePerLayerUpdates )
+                            _colorLayersDirty = true;
+                        else
+                            this->setDirty( true );
+                    }
+
+                    // remove from the list
+                    i = _requests.erase( i );
+                    increment = false;
+                    
+                    //osg::notify(osg::NOTICE) << "Complet IR (" << _key->str() << ")" << std::endl;
+                }
+                else
+                {                
+                    osg::notify(osg::NOTICE) << "IReq error (" << _key->str() << "), retrying" << std::endl;
+
+                    //The color layer request failed, probably due to a server error. Reset it.
+                    r->setState( TaskRequest::STATE_IDLE );
+                    r->reset();
+                }
+            }
+            else if ( r->isCanceled() )
+            {
+                //Reset the cancelled task to IDLE and give it a new progress callback.
+                i->get()->setState( TaskRequest::STATE_IDLE );
+                i->get()->setProgressCallback( new StampedProgressCallback(
+                    i->get(), getVersionedTerrain()->getImageryTaskService(r->_layerId)));
                 r->reset();
-                ++i;
             }
         }
-        else if ( r->isCanceled() )
-        {
-            //Reset the cancelled task to IDLE and give it a new progress callback.
-            i->get()->setState( TaskRequest::STATE_IDLE );
-            i->get()->setProgressCallback( new StampedProgressCallback(
-                i->get(), getVersionedTerrain()->getImageryTaskService(r->_layerId)));
-            r->reset();
+
+        //else if ( dynamic_cast<TileGenRequest*>( i->get() ) )
+        //{
+        //    TileGenRequest* r = static_cast<TileGenRequest*>( i->get() );
+        //    
+        //    if ( r->isCompleted() )
+        //    {
+        //        EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+        //        if ( tech )
+        //            tech->swapIfNecessary();
+
+        //        i = _requests.erase( i );
+        //        increment = false;
+        //    }
+        //    else if ( r->isCanceled() )
+        //    {
+        //        // what do we do here?
+        //    }
+        //}
+
+        if ( increment )
             ++i;
-        }
-        else
-        {
-            ++i;
-        }
+    }
+    
+    //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") tile gen state = " << _tileGenRequest->getState() << std::endl;
+    if ( _tileGenRequest->isCompleted() )
+    {
+        //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") tile gen complete, swapping" << std::endl;
+        EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+        if ( tech )
+            tech->swapIfNecessary();
+
+        _tileGenRequest->setState( TaskRequest::STATE_IDLE );
     }
 
     // check the progress of the elevation data...
@@ -684,10 +751,18 @@ VersionedTile::serviceCompletedRequests()
                 }
 
                 this->setElevationLayer( hfLayer );
-                if ( _usePerLayerUpdates && sameSize )
-                    _elevationLayerDirty = true;
+                
+                if ( _useTileGenRequest )
+                {
+                    _tileGenNeeded = true;
+                }
                 else
-                    this->setDirty( true );
+                {
+                    if ( _usePerLayerUpdates && sameSize )
+                        _elevationLayerDirty = true;
+                    else
+                        this->setDirty( true );
+                }
                 
                 _elevationLOD = _key->getLevelOfDetail();
 
@@ -744,11 +819,18 @@ VersionedTile::serviceCompletedRequests()
             if ( newPhLayer )
             {
                 this->setElevationLayer( newPhLayer );
-
-                if ( _usePerLayerUpdates && sameSize )
-                    _elevationLayerDirty = true;
+                
+                if ( _useTileGenRequest )
+                {
+                    _tileGenNeeded = true;
+                }
                 else
-                    this->setDirty( true );
+                {
+                    if ( _usePerLayerUpdates && sameSize )
+                        _elevationLayerDirty = true;
+                    else
+                        this->setDirty( true );
+                }
 
                 _elevationLOD = er->_nextLOD;
 #ifdef PREEMPTIVE_DEBUG
@@ -765,6 +847,15 @@ VersionedTile::serviceCompletedRequests()
             _elevPlaceholderRequest->setProgressCallback( new ProgressCallback() );
             _elevPlaceholderRequest->reset();
         }
+    }
+
+    // if we have a new TileGenRequest, queue it up now.
+    if ( _tileGenNeeded && _tileGenRequest->isIdle() )
+    {
+        //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") queuing new tile gen" << std::endl;
+
+        getVersionedTerrain()->getElevationTaskService()->add( _tileGenRequest.get() );
+        _tileGenNeeded = false;
     }
 
     checkNeedsUpdate();

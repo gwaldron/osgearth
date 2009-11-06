@@ -816,7 +816,7 @@ VersionedTile::serviceCompletedRequests()
     {
         //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") queuing new tile gen" << std::endl;
 
-        getVersionedTerrain()->getElevationTaskService()->add( _tileGenRequest.get() );
+        getVersionedTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
         _tileGenNeeded = false;
     }
 
@@ -1217,6 +1217,8 @@ VersionedTerrain::getTaskService(int id)
 }
 
 #define ELEVATION_TASK_SERVICE_ID 9999
+#define TILE_GENERATION_TASK_SERVICE_ID 10000
+#define NUM_TILE_GENERATION_THREADS 2
 
 TaskService*
 VersionedTerrain::getElevationTaskService()
@@ -1237,6 +1239,17 @@ VersionedTerrain::getImageryTaskService(int layerId)
     if (!service)
     {
         service = createTaskService( layerId, 1 );
+    }
+    return service;
+}
+
+TaskService*
+VersionedTerrain::getTileGenerationTaskSerivce()
+{
+    TaskService* service = getTaskService( TILE_GENERATION_TASK_SERVICE_ID );
+    if (!service)
+    {
+        service = createTaskService( TILE_GENERATION_TASK_SERVICE_ID, NUM_TILE_GENERATION_THREADS );
     }
     return service;
 }

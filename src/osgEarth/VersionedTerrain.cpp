@@ -145,16 +145,15 @@ struct TileGenRequest : public TaskRequest
 
     void operator()( ProgressCallback* progress )
     {
-//        osg::notify(osg::NOTICE) << "TILEGEN start" << std::endl;
-        if ( _tile.valid() )
+        osg::ref_ptr<VersionedTile> tempRef = _tile.get();
+        if ( tempRef.valid() )
         {
-            EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>(_tile->getTerrainTechnique());
+            EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( tempRef->getTerrainTechnique() );
             if ( tech )
             {
                 tech->init( false );
             }
         }
-        //osg::notify(osg::NOTICE) << "TILEGEN done" << std::endl;
     }
 
     osg::observer_ptr<VersionedTile> _tile;
@@ -326,21 +325,6 @@ VersionedTile::isElevationLayerUpToDate() const
 {
     return _elevationLayerUpToDate;
 }
-
-
-// this safely refreshes the _parentTile member, and should be called at the top of the 
-// any traversal that plans to use the reference.
-//void
-//VersionedTile::refreshParentTile()
-//{
-//    _parentTile = _parentTileObserver.get();
-//    if ( !_parentTile.valid() )
-//    {
-//        osg::ref_ptr<const TileKey> _parentKey = _key->createParentKey();
-//        _parentTileObserver = getVersionedTerrain()->getVersionedTile( _parentKey->getTileId() );
-//        _parentTile = _parentTileObserver.get();
-//    }
-//}
 
 // returns TRUE if it's safe for this tile to load its next elevation data layer.
 bool
@@ -635,9 +619,17 @@ VersionedTile::serviceCompletedRequests()
     if ( !_requestsInstalled )
         return;
 
-    // make sure our reference to the parent tile is up to date.
-    //refreshParentTile();
+    // First service the tile generator:
+    if ( _tileGenRequest->isCompleted() )
+    {
+        EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+        if ( tech )
+            tech->swapIfNecessary();
 
+        _tileGenRequest->setState( TaskRequest::STATE_IDLE );
+    }
+
+    // Then the image requests:
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
     {
         bool increment = true;
@@ -688,41 +680,11 @@ VersionedTile::serviceCompletedRequests()
             }
         }
 
-        //else if ( dynamic_cast<TileGenRequest*>( i->get() ) )
-        //{
-        //    TileGenRequest* r = static_cast<TileGenRequest*>( i->get() );
-        //    
-        //    if ( r->isCompleted() )
-        //    {
-        //        EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
-        //        if ( tech )
-        //            tech->swapIfNecessary();
-
-        //        i = _requests.erase( i );
-        //        increment = false;
-        //    }
-        //    else if ( r->isCanceled() )
-        //    {
-        //        // what do we do here?
-        //    }
-        //}
-
         if ( increment )
             ++i;
     }
-    
-    //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") tile gen state = " << _tileGenRequest->getState() << std::endl;
-    if ( _tileGenRequest->isCompleted() )
-    {
-        //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") tile gen complete, swapping" << std::endl;
-        EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
-        if ( tech )
-            tech->swapIfNecessary();
 
-        _tileGenRequest->setState( TaskRequest::STATE_IDLE );
-    }
-
-    // check the progress of the elevation data...
+    // Finally, the elevation requests:
     if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
     {
         if ( _elevRequest->isCompleted() )

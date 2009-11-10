@@ -70,7 +70,7 @@ public:
             _format = "png";
 
         // read metadata from the server
-        if ( !_map_service.init( _url ) )
+        if ( !_map_service.init( _url, getOptions()) )
         {
             osg::notify(osg::WARN) << "[osgearth] [ArcGIS] map service initialization failed: "
                 << _map_service.getError() << std::endl;

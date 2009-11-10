@@ -32,6 +32,12 @@
 #include <osgEarth/Common>
 
 #include <osg/Referenced>
+#include <osgDB/ReaderWriter>
+
+#include <osg/Version>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
 
 namespace osgEarth
 {
@@ -390,7 +396,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileMapReaderWriter
     {
     public:
-        static TileMap* read( const std::string &location );
+        static TileMap* read( const std::string &location, const osgDB::ReaderWriter::Options* options );
         static TileMap* read( std::istream &in );
 
         static void write(const TileMap* tileMap, const std::string& location);

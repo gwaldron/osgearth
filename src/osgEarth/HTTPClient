@@ -117,9 +117,11 @@ namespace osgEarth
          * Performs an HTTP "GET".
          */
         static HTTPResponse get( const HTTPRequest& request,
+                                 const osgDB::ReaderWriter::Options* = 0,
                                  ProgressCallback* callback = 0);
 
         static HTTPResponse get( const std::string& url,
+                                 const osgDB::ReaderWriter::Options* options = 0,
                                  ProgressCallback* callback = 0);
 
         static osg::Image*  readImageFile( const std::string& filename, 
@@ -131,16 +133,18 @@ namespace osgEarth
                                           ProgressCallback* callback = 0);
 
     private:
-        HTTPClient( const osgDB::ReaderWriter::Options* options =NULL );
+        HTTPClient();
         ~HTTPClient();
 
-        void setProxyHost( const std::string& hostname );
+        void readOptions( const osgDB::ReaderWriter::Options* options, std::string &proxy_host, std::string &proxy_port ) const;
 
-        void setProxyPort( const std::string& port );
+        HTTPResponse doGet( const HTTPRequest& request,
+                            const osgDB::ReaderWriter::Options* options = 0,
+                            ProgressCallback* callback = 0) const;
 
-        HTTPResponse doGet( const HTTPRequest& request, ProgressCallback* callback = 0) const;
-
-        HTTPResponse doGet( const std::string& url, ProgressCallback* callback = 0 ) const;
+        HTTPResponse doGet( const std::string& url,
+                            const osgDB::ReaderWriter::Options* options = 0,
+                            ProgressCallback* callback = 0 ) const;
 
         osg::Image* doReadImageFile(const std::string& filename,
                                   const osgDB::ReaderWriter::Options* options = 0,
@@ -156,11 +160,7 @@ namespace osgEarth
         bool downloadFile(const std::string& url, const std::string& filename);
 
     private:
-        std::string _proxy_host;
-        std::string _proxy_port;
-
         void *_curl_handle;
-
         static HTTPClient& getClient();
 
     private:

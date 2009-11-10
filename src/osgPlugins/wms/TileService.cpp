@@ -208,12 +208,12 @@ TileService::createProfile(TilePatternList &patterns)
 #define ATTR_MAXY              "maxy"
 
 TileService* 
-TileServiceReader::read( const std::string &location )
+TileServiceReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
 {
     TileService *tileService = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPResponse response = HTTPClient::get( location );
+        HTTPResponse response = HTTPClient::get( location, options);
         if (response.isOK() && response.getNumParts() > 0 )
         {
             tileService = read( response.getPartStream( 0 ) );

@@ -133,12 +133,12 @@ Capabilities::getLayerByName(const std::string &name)
 }
 
 Capabilities* 
-CapabilitiesReader::read( const std::string &location )
+CapabilitiesReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
 {
     Capabilities *caps = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPResponse response = HTTPClient::get( location );
+        HTTPResponse response = HTTPClient::get( location, options );
         if ( response.isOK() && response.getNumParts() > 0 )
         {
             caps = read( response.getPartStream( 0 ) );

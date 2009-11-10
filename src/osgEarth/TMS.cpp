@@ -337,12 +337,12 @@ TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
 
 
 TileMap* 
-TileMapReaderWriter::read( const std::string &location )
+TileMapReaderWriter::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
 {
     TileMap *tileMap = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
-        HTTPResponse response = HTTPClient::get( location );
+        HTTPResponse response = HTTPClient::get( location, options );
         if (response.isOK() && response.getNumParts() > 0 )
         {
             tileMap = read( response.getPartStream( 0 ) );

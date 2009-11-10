@@ -225,7 +225,7 @@ private:
 class TileServiceReader
 {
 public:
-    static TileService* read( const std::string &location );
+    static TileService* read( const std::string &location, const osgDB::ReaderWriter::Options* options);
     static TileService* read( std::istream &in );
 private:
     TileServiceReader(){}

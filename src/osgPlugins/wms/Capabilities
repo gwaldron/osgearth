@@ -22,6 +22,14 @@
 
 #include <osg/Referenced>
 #include <osg/ref_ptr>
+
+#include <osgDB/ReaderWriter>
+#include <osg/Version>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
+
+
 #include <string>
 #include <vector>
 
@@ -233,7 +241,7 @@ namespace osgEarth
     class CapabilitiesReader
     {
     public:
-        static Capabilities* read( const std::string &location );
+        static Capabilities* read( const std::string &location, const osgDB::ReaderWriter::Options *options );
         static Capabilities* read( std::istream &in );
     private:
         CapabilitiesReader(){}

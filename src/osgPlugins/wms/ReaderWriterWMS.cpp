@@ -105,7 +105,7 @@ public:
             _capabilitiesURL = _prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read(_capabilitiesURL);
+        osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read(_capabilitiesURL, getOptions());
         if ( !capabilities.valid() )
         {
             osg::notify(osg::WARN) << "[osgEarth::WMS] Unable to read WMS GetCapabilities; failing." << std::endl;
@@ -200,7 +200,7 @@ public:
             _tileServiceURL = _prefix + sep + "request=GetTileService";
 
         osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << _tileServiceURL << std::endl;
-        _tileService = TileServiceReader::read(_tileServiceURL);
+        _tileService = TileServiceReader::read(_tileServiceURL, getOptions());
         if (_tileService.valid())
         {
             osg::notify(osg::NOTICE) << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;

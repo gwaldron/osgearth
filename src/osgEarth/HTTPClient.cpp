@@ -213,7 +213,7 @@ HTTPClient& HTTPClient::getClient()
     return *client;
 }
 
-HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
+HTTPClient::HTTPClient()
 {
     _curl_handle = curl_easy_init();
     curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0" );
@@ -222,9 +222,17 @@ HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
     curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
+}
 
-    _proxy_port = "8080";
+HTTPClient::~HTTPClient()
+{
+    if (_curl_handle) curl_easy_cleanup( _curl_handle );
+    _curl_handle = 0;
+}
 
+void
+HTTPClient::readOptions( const osgDB::ReaderWriter::Options* options, std::string& proxy_host, std::string& proxy_port) const
+{
     // try to set proxy host/port by reading the CURL proxy options
     if ( options )
     {
@@ -235,35 +243,14 @@ HTTPClient::HTTPClient( const osgDB::ReaderWriter::Options* options )
             int index = opt.find( "=" );
             if( opt.substr( 0, index ) == "OSG_CURL_PROXY" )
             {
-                setProxyHost( opt.substr( index+1 ) );
-                osg::notify(osg::INFO) << "[osgEarth::HTTPClient] set proxy host = " << _proxy_host << std::endl;
+                proxy_host = opt.substr( index+1 );
             }
             else if ( opt.substr( 0, index ) == "OSG_CURL_PROXYPORT" )
             {
-                setProxyPort( opt.substr( index+1 ) );
-                //setProxyPort( (unsigned short)::atoi( opt.substr( index+1 ).c_str() ) );
-                osg::notify(osg::INFO) << "[osgEarth::HTTPClient] set proxy port = " << _proxy_port << std::endl;
+                proxy_port = opt.substr( index+1 );
             }
         }
     }
-}
-
-HTTPClient::~HTTPClient()
-{
-    if (_curl_handle) curl_easy_cleanup( _curl_handle );
-    _curl_handle = 0;
-}
-
-void
-HTTPClient::setProxyHost( const std::string& host )
-{
-    _proxy_host = host;
-}
-
-void
-HTTPClient::setProxyPort( const std::string& port )
-{
-    _proxy_port = port;
 }
 
 // from: http://www.rosettacode.org/wiki/Tokenizing_A_String#C.2B.2B
@@ -380,16 +367,18 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
 
 HTTPResponse
 HTTPClient::get( const HTTPRequest& request,
+                 const osgDB::ReaderWriter::Options* options,
                  ProgressCallback* callback)
 {
-    return getClient().doGet( request, callback );
+    return getClient().doGet( request, options, callback );
 }
 
 HTTPResponse 
 HTTPClient::get( const std::string &url,
+                 const osgDB::ReaderWriter::Options* options,
                  ProgressCallback* callback)
 {
-    return getClient().doGet( url, callback);
+    return getClient().doGet( url, options, callback);
 }
 
 osg::Image*
@@ -409,19 +398,23 @@ HTTPClient::readNodeFile(const std::string &filename,
 }
 
 HTTPResponse
-HTTPClient::doGet( const HTTPRequest& request, ProgressCallback* callback) const
+HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
 {
+    std::string proxy_host;
+    std::string proxy_port = "8080";
+    readOptions( options, proxy_host, proxy_port );
+
     HTTPResponse response(0);
 
     // Set up proxy server:
     std::string proxy_addr;
-    if ( !_proxy_host.empty() )
+    if ( !proxy_host.empty() )
     {
         std::stringstream buf;
-        buf << _proxy_host << ":" << _proxy_port;
+        buf << proxy_host << ":" << proxy_port;
         proxy_addr = buf.str();
     
-        //osg::notify(osg::INFO) << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 
@@ -501,9 +494,9 @@ HTTPClient::doGet( const HTTPRequest& request, ProgressCallback* callback) const
 
 
 HTTPResponse
-HTTPClient::doGet( const std::string& url, ProgressCallback* callback) const
+HTTPClient::doGet( const std::string& url, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
 {
-    return doGet( HTTPRequest( url ), callback );
+    return doGet( HTTPRequest( url ), options, callback );
 }
 
 bool
@@ -543,7 +536,7 @@ HTTPClient::doReadImageFile(const std::string &filename,
                             const osgDB::ReaderWriter::Options *options,
                             osgEarth::ProgressCallback *callback)
 {
-    HTTPResponse response = this->doGet(filename, callback);
+    HTTPResponse response = this->doGet(filename, options, callback);
 
     if (response.isOK())
     {
@@ -597,7 +590,7 @@ HTTPClient::doReadNodeFile(const std::string &filename,
                            const osgDB::ReaderWriter::Options *options,
                            osgEarth::ProgressCallback *callback)
 {
-    HTTPResponse response = this->doGet(filename, callback);
+    HTTPResponse response = this->doGet(filename, options, callback);
 
     if (response.isOK())
     {

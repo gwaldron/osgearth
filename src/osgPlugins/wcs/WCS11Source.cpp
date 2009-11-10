@@ -113,7 +113,7 @@ WCS11Source::createImage( const TileKey* key,
     key->getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
 
     // download the data
-    HTTPResponse response = HTTPClient::get( request, progress );
+    HTTPResponse response = HTTPClient::get( request, getOptions(), progress );
     if ( !response.isOK() )
     {
         osg::notify(osg::WARN) << "[osgEarth::WCS1.1] WARNING: HTTP request failed" << std::endl;

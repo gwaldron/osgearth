@@ -125,12 +125,12 @@ MapService::getTileInfo() const {
 }
 
 bool
-MapService::init( const std::string& _url )
+MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* options )
 {
     url = _url;
     std::string json_url = url + "?f=pjson";  // request the data in JSON format
 
-    HTTPResponse response = HTTPClient::get( json_url );
+    HTTPResponse response = HTTPClient::get( json_url, options );
     if ( !response.isOK() )
         return setError( "Unable to read metadata from ArcGIS service" );
 

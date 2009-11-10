@@ -405,7 +405,7 @@ const Profile* DiskCache::loadLayerProperties( const std::string& layerName,
 
 	if (osgDB::fileExists( path ) )
 	{
-		osg::ref_ptr<TileMap> tileMap = TileMapReaderWriter::read(path);
+		osg::ref_ptr<TileMap> tileMap = TileMapReaderWriter::read(path, NULL);
 		if (tileMap.valid())
 		{
 			LayerProperties props;

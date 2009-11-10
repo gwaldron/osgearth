@@ -1168,7 +1168,7 @@ VersionedTerrain::updateTileTable()
         if ( i->second.valid() && i->second->referenceCount() == 1 )
         {
             i->second->cancelRequests();
-            i = _tiles.erase( i );
+            _tiles.erase( i++ );
         }
         else
         {

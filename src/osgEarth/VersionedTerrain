@@ -131,6 +131,13 @@ namespace osgEarth
 
         void cancelRequests();
 
+        void updateImagery( unsigned int layerId, Map* map, MapEngine* engine );
+
+        void setTileGenNeeded( bool tileGenNeeded );
+        bool getTileGenNeeded() const;
+
+        bool getUseTileGenRequest() const;
+
     public: // OVERRIDES
 
         virtual void traverse( class osg::NodeVisitor& nv );

@@ -24,6 +24,7 @@
 #include <osgEarth/MultiPassTerrainTechnique>
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/Registry>
+#include <osgEarth/ImageUtils>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/Notify>
@@ -384,20 +385,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
-    if ( _engine->getEngineProperties().getPreemptiveLOD() )
-    {
-        if ( layer && layer->getTileSource() )
-        {
-            for( unsigned int i=0; i<_terrains.size(); i++ )
-            {
-                _terrains[i]->incrementRevision();
-                _terrains[i]->updateTaskServiceThreads();
-            }
-        }
-        updateStateSet();
-    }
-
-    else if ( layer && layer->getTileSource() )
+    if ( layer && layer->getTileSource() )
     {        
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {
@@ -413,26 +401,29 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 void
 MapNode::addImageLayer( MapLayer* layer )
 {
-    OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
-
     for( unsigned int i=0; i<_terrains.size(); i++ )
     {            
         VersionedTerrain* terrain = _terrains[i].get();
-        //EarthTerrain* terrain = _terrains[i].get();
         TerrainTileList tiles;
-        //EarthTerrain::TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+            OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
             //Create a TileKey from the TileID
-            osgTerrain::TileID tileId = itr->get()->getTileID();
+            osgTerrain::TileID tileId = tile->getTileID();
 		    osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
 
-            osg::ref_ptr< GeoImage > geoImage = _engine->createValidGeoImage( layer, key.get() );
+            osg::ref_ptr< GeoImage > geoImage;
+
+            //If we are in preemptiveLOD mode, just add an empty placeholder image for the new layer.  Otherwise, go ahead and get the image
+            if (_engine->getEngineProperties().getPreemptiveLOD())
+                geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
+            else
+                geoImage = _engine->createValidGeoImage( layer, key.get() );
 
             if (geoImage.valid())
             {
@@ -474,14 +465,27 @@ MapNode::addImageLayer( MapLayer* layer )
                 img_layer->setLocator( img_locator.get());
 
                 unsigned int newLayer = _map->getImageMapLayers().size() - 1;
-                osg::notify(osg::INFO) << "Inserting layer at position " << newLayer << std::endl;
-                itr->get()->setColorLayer( newLayer, img_layer );
+                tile->setColorLayer( newLayer, img_layer );
+
+                //If we are in preemtpive mode, tell the tile to update the new imagery layer as it is a placeholder
+                if (_engine->getEngineProperties().getPreemptiveLOD())
+                {
+                    tile->updateImagery( layer->getId(), _map.get(), _engine.get());
+                }
             }
             else
             {
                 osg::notify(osg::NOTICE) << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
             }
-            itr->get()->setDirty(true);
+
+            if (tile->getUseTileGenRequest())
+            {
+                tile->setTileGenNeeded( true );
+            }
+            else
+            {
+                tile->setDirty( true );
+            }
         }
     }
 
@@ -494,8 +498,6 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
 {
     osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldLayer] Begin " << std::endl;
 
-    OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() ); // _mapConfig.getSourceMutex());
-
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -505,7 +507,8 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+            OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
 
             //Create a TileKey from the TileID
             osgTerrain::TileID tileId = itr->get()->getTileID();
@@ -519,7 +522,15 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }
-            itr->get()->setDirty(true);
+
+            if (tile->getUseTileGenRequest())
+            {
+                tile->setTileGenNeeded( true );
+            }
+            else
+            {
+                tile->setDirty( true );
+            }
         }
     }
 }
@@ -527,20 +538,7 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
 void
 MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
 {
-    if ( _engine->getEngineProperties().getPreemptiveLOD() )
-    {
-        if ( layer && layer->getTileSource() )
-        {
-            for( unsigned int i=0; i<_terrains.size(); i++ )
-            {
-                _terrains[i]->incrementRevision();
-                _terrains[i]->updateTaskServiceThreads();
-            }
-        }
-        updateStateSet();
-    }
-
-    else if ( layer )
+    if ( layer )
     {
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {
@@ -556,8 +554,6 @@ MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
 void
 MapNode::removeImageLayer( unsigned int index )
 {
-    OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
-
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -566,6 +562,9 @@ MapNode::removeImageLayer( unsigned int index )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
+            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+            OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+
             //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
             //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
             std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
@@ -589,7 +588,15 @@ MapNode::removeImageLayer( unsigned int index )
             {
                 itr->get()->setColorLayer( i, layers[i].get() );
             }
-            itr->get()->setDirty(true);
+
+            if (tile->getUseTileGenRequest())
+            {
+                tile->setTileGenNeeded( true );
+            }
+            else
+            {
+                tile->setDirty( true );
+            }
         }
     }
 
@@ -601,8 +608,6 @@ MapNode::removeImageLayer( unsigned int index )
 void
 MapNode::removeHeightFieldLayer( unsigned int index )
 {
-    OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
-
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -612,7 +617,9 @@ MapNode::removeHeightFieldLayer( unsigned int index )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+            OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
+
             osgTerrain::TileID tileId = itr->get()->getTileID();
 			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
@@ -623,7 +630,15 @@ MapNode::removeHeightFieldLayer( unsigned int index )
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }
-            itr->get()->setDirty(true);
+
+            if (tile->getUseTileGenRequest())
+            {
+                tile->setTileGenNeeded( true );
+            }
+            else
+            {
+                tile->setDirty( true );
+            }
         }
     }
 }
@@ -631,19 +646,7 @@ MapNode::removeHeightFieldLayer( unsigned int index )
 void
 MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
-    if ( _engine->getEngineProperties().getPreemptiveLOD() )
-    {
-        if ( layer && layer->getTileSource() )
-        {
-            for( unsigned int i=0; i<_terrains.size(); i++ )
-            {
-                _terrains[i]->incrementRevision();
-            }
-        }
-        updateStateSet();
-    }
-
-    else if ( layer )
+    if ( layer )
     {
         if ( layer->getType() == MapLayer::TYPE_IMAGE )
         {
@@ -659,8 +662,6 @@ MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int n
 void
 MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
-
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -670,7 +671,9 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+            OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+
             //Collect the current color layers
             std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
 
@@ -688,7 +691,16 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
             {
                 itr->get()->setColorLayer( i, layers[i].get() );
             }
-            itr->get()->setDirty(true);
+
+
+            if (tile->getUseTileGenRequest())
+            {
+                tile->setTileGenNeeded( true );
+            }
+            else
+            {
+                tile->setDirty( true );
+            }
         }
     } 
 
@@ -698,8 +710,6 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 void
 MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    OpenThreads::ScopedWriteLock lock( _map->getMapDataMutex() );
-
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -709,7 +719,8 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
-            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+            OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
 
             osgTerrain::TileID tileId = itr->get()->getTileID();
 			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
@@ -721,7 +732,15 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
                 heightFieldLayer->setHeightField( hf );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }                
-            itr->get()->setDirty(true);
+            
+            if (tile->getUseTileGenRequest())
+            {
+                tile->setTileGenNeeded( true );
+            }
+            else
+            {
+                tile->setDirty( true );
+            }
         }
     }
 }

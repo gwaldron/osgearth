@@ -16,6 +16,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureRasterizer
     FeatureSource
     Filter
+	Query
     SLD
     Styling
     TransformFilter
@@ -30,6 +31,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureRasterizer.cpp
     FeatureSource.cpp
     Filter.cpp
+	Query.cpp
     SLD.cpp
     Styling.cpp
     TransformFilter.cpp

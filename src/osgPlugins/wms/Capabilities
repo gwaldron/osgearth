@@ -22,6 +22,7 @@
 
 #include <osg/Referenced>
 #include <osg/ref_ptr>
+#include <osgEarth/Common>
 
 #include <osgDB/ReaderWriter>
 #include <osg/Version>

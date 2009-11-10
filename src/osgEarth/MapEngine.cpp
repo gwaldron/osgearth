@@ -975,7 +975,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setDatabaseOptions( options );
 #endif
         result = plod;
-        result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+        //result->addCullCallback( new TileDataLoaderCallback( map, key ) );
     }
     else
     {

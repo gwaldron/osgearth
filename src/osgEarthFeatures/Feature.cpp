@@ -73,7 +73,7 @@ _fid( rhs._fid )
 {
     // copy the parts using the copy-operator:
     _parts.reserve( rhs._parts.size() );
-    for( FeatureGeomParts::const_iterator p = rhs._parts.begin(); p != rhs._parts.end(); p++ )
+    for( FeatureGeometry::const_iterator p = rhs._parts.begin(); p != rhs._parts.end(); p++ )
     {
         _parts.push_back( static_cast<osg::Vec3dArray*>( copyOp( p->get() ) ) );
     }
@@ -98,6 +98,12 @@ Feature::setPart( int part, osg::Vec3dArray* points )
 
         _parts[part] = points;
     }
+}
+
+void
+Feature::setGeometry( const FeatureGeometry& newGeom )
+{
+    _parts = newGeom;
 }
 
 void

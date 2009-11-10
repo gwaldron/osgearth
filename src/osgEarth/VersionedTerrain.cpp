@@ -26,6 +26,7 @@
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
 #include <osg/Node>
+#include <osg/Texture2D>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -192,7 +193,7 @@ _needsUpdate(false)
     setTileID( key->getTileId() );
 
     // because the lowest LOD (1) is always loaded fully:
-    _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;
+    _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;        
 }
 
 VersionedTile::~VersionedTile()

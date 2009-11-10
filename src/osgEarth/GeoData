@@ -104,6 +104,17 @@ namespace osgEarth
         bool contains(double x, double y, const SpatialReference* xy_srs =0L) const;
 
         /**
+         * Returns TRUE if this extent intersects another extent.
+         */
+        bool intersects( const GeoExtent& rhs ) const;
+
+        /**
+         * Grow this extent to include the specified point (which is assumed to be
+         * in the extent's SRS.
+         */
+        bool expandToInclude( double x, double y );
+
+        /**
          * Returns a human-readable string containing the extent data (without the SRS)
          */
         std::string toString() const;

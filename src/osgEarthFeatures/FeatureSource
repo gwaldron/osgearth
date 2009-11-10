@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Query>
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
 #include <osgDB/ReaderWriter>
@@ -30,41 +31,6 @@ using namespace osgEarth;
 
 namespace osgEarthFeatures
 {   
-    /**
-     * A filter that you can use to limit the set of features returned in a
-     * FeatureCursor from a FeatureStore.
-     */
-    class OSGEARTHFEATURES_EXPORT FeatureQuery
-    {
-    public:
-        FeatureQuery();
-        FeatureQuery( const FeatureQuery& rhs );
-        ~FeatureQuery() { }
-
-        /** Sets the geospatial extent bounding this query. */
-        void setExtent( const GeoExtent& extent );
-
-        /** TRUE if this query contains a geospatial extent. */
-        bool hasExtent() const
-            { return _extent.isValid(); } // .isSet(); }
-
-        /** Gets the geospatial extent (if hasExtent() == true) */
-        const GeoExtent& getExtent() const
-            { return _extent; } //.get(); }
-
-        /** Sets a driver-specific query expression. */
-        void setExpression( const std::string& expr )
-            { _expression = expr; }
-
-        /** Gets the driver-specific query expression. */
-        const std::string& getExpression() const
-            { return _expression; }       
-
-    protected:
-        GeoExtent _extent;
-        std::string _expression;
-    };
-
     /**
      * A cursor that lets you iterate over a collection of features returned 
      * from a feature query performed on a FeatureStore.
@@ -106,7 +72,7 @@ namespace osgEarthFeatures
          * parameters.
          * Caller is responsible for deleting the returned object.
          */
-        virtual FeatureCursor* createCursor( const FeatureQuery& query ) const =0;
+        virtual FeatureCursor* createCursor( const Query& query ) const =0;
 
         /** Gets the options that were passed into this object's CTOR. */
         const PluginOptions* getOptions() const;

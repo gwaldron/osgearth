@@ -209,6 +209,45 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     }
 }
 
+bool
+GeoExtent::intersects( const GeoExtent& rhs ) const
+{
+    if ( !isValid() || !rhs.isValid() )
+        return false;
+
+    GeoExtent temp_rhs = rhs;
+    if ( !_srs->isEquivalentTo( rhs.getSRS() ) )
+    {
+        temp_rhs = rhs.transform( _srs.get() );
+    }
+
+    if ( !temp_rhs.isValid() )
+        return false;
+
+    if (xMax() < temp_rhs.xMin() ||
+        xMin() > temp_rhs.xMax() ||
+        yMax() < temp_rhs.yMin() ||
+        yMin() > temp_rhs.yMax() )
+    {
+        return false;
+    }
+    return true;
+}
+
+bool
+GeoExtent::expandToInclude( double x, double y )
+{
+    if ( !isValid() )
+        return false;
+
+    if ( x < xMin() ) _xmin = x;
+    if ( x > xMax() ) _xmax = x;
+    if ( y < yMin() ) _ymin = y;
+    if ( y > yMax() ) _ymax = y;
+
+    return true;
+}
+
 std::string
 GeoExtent::toString() const
 {

@@ -33,9 +33,10 @@ using namespace osgEarthFeatures;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
-#define PROPERTY_URL "url"
-#define PROPERTY_OGR_DRIVER "ogr_driver"
-#define PROPERTY_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
+#define PROP_URL           "url"
+#define PROP_OGR_DRIVER    "ogr_driver"
+#define PROP_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
+#define PROP_SQL           "query"
 
 /**
  * A FeatureSource that reads features from an OGR driver.
@@ -52,10 +53,10 @@ public:
     {
         const Config& conf = getOptions()->config();
 
-        _url = conf.value( PROPERTY_URL );
-        _ogrDriver = conf.value( PROPERTY_OGR_DRIVER );
+        _url = conf.value( PROP_URL );
+        _ogrDriver = conf.value( PROP_OGR_DRIVER );
 
-        std::string gt = conf.value( PROPERTY_GEOMETRY_TYPE );
+        std::string gt = conf.value( PROP_GEOMETRY_TYPE );
         if ( gt == "line" || gt == "lines" )
             _geomTypeOverride = FeatureProfile::GEOM_LINE;
         else if ( gt == "point" || gt == "points" )
@@ -204,9 +205,9 @@ public:
     }
 
 
-    FeatureCursor* createCursor( const FeatureQuery& query ) const
+    FeatureCursor* createCursor( const Query& query ) const
     {
-        return new FeatureCursorOGR( _layerHandle, getFeatureProfile(), query );
+        return new FeatureCursorOGR( _dsHandle, _layerHandle, getFeatureProfile(), query );
     }
 
 protected:

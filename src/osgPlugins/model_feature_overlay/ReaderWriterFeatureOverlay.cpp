@@ -39,7 +39,12 @@ using namespace OpenThreads;
 #define PROP_FEATURES     "features"
 #define PROP_TEXTURE_UNIT "texture_unit"
 #define PROP_TEXTURE_SIZE "texture_size"
-#define PROP_STYLE        "style"
+#define PROP_OVERLAY_TECH "overlay_technique"
+#define PROP_BASE_HEIGHT  "base_height"
+
+#define VAL_OT_ODWOO      "object_dependent_with_orthographic_overlay"
+#define VAL_OT_VDWOO      "view_dependent_with_orthographic_overlay"
+#define VAL_OT_VDWPO      "view_dependent_with_perspective_overlay"
 
 class FeatureOverlaySource : public ModelSource
 {
@@ -47,7 +52,9 @@ public:
     FeatureOverlaySource( const PluginOptions* options, int sourceId ) : ModelSource( options ),
         _sourceId( sourceId ),
         _textureUnit( 0 ),
-        _textureSize( 1024 )
+        _textureSize( 1024 ),
+        _baseHeight( 0.0 ),
+        _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
     {
         //TODO
     }
@@ -72,26 +79,32 @@ public:
 
         _textureSize = conf.value<int>( PROP_TEXTURE_SIZE, _textureSize );
 
-        if ( conf.hasChild( PROP_STYLE ) )
+        _baseHeight = conf.value<double>( PROP_BASE_HEIGHT, _baseHeight );
+
+        if ( conf.hasValue( PROP_OVERLAY_TECH ) )
         {
-            Styling::StyleReader::read( conf.child(PROP_STYLE), _styles );
+            if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_ODWOO )
+                _overlayTech = osgSim::OverlayNode::OBJECT_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
+            else if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_VDWOO )
+                _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
+            else if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_VDWPO )
+                _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
         }
+
+        // load up the style catalog.
+        Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
     }
 
-
-    osg::Node* getNode( ProgressCallback* progress =0L )
+    osg::Node* buildClass( const Styling::StyleClass& style )
     {
-        if ( !_features.valid() ) return 0L;
-
-        // figure out which rule to use to style the geometry.
-        Styling::NamedLayer styleLayer;
-        bool hasStyle = _styles.getNamedLayer( _features->getName(), styleLayer );
-
         bool isGeocentric = _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC;
+
+        osg::notify(osg::NOTICE)
+            << "Building class " << style.name() << ", SQL = " << style.query().getExpression() << std::endl;
 
         // read all features into a list:
         FeatureList features;
-        osg::ref_ptr<FeatureCursor> c = _features->createCursor( FeatureQuery() );
+        osg::ref_ptr<FeatureCursor> c = _features->createCursor( style.query() );
         while( c->hasMore() )
             features.push_back( c->nextFeature() );
 
@@ -107,32 +120,48 @@ public:
         BuildGeometryFilter buildGeom;
 
         // apply the style rule if we have one:
-        if ( hasStyle && !styleLayer.empty() )
-            buildGeom.setStyleRule( *styleLayer.userStyle().featureTypeStyle().rules().begin() );
+        buildGeom.setStyleClass( style );
 
         buildGeom.push( features, context );
 
-        osg::Node* result = buildGeom.getOutput( context );
-        if ( result )
+        osg::Node* result = buildGeom.takeOutput( context );
+        return result;
+    }
+
+    osg::Node* getNode( ProgressCallback* progress =0L )
+    {
+        if ( !_features.valid() ) return 0L;
+
+
+        // figure out which rule to use to style the geometry.
+        Styling::NamedLayer styleLayer;
+        bool hasStyle = _styles.getNamedLayer( getName(), styleLayer );
+
+        osg::Group* group = new osg::Group();
+
+        for( Styling::StyleClasses::iterator i = styleLayer.styleClasses().begin(); i != styleLayer.styleClasses().end(); ++i )
         {
-            // set up the appearance: (Later the symbolizer engine will do this)
-            osg::StateSet* ss = result->getOrCreateStateSet();
-            ss->setMode( GL_LIGHTING, 0 );
-            ss->setAttributeAndModes( new osg::LineWidth( 2 ) );
+            const Styling::StyleClass& style = *i;
 
-            // finally, build the overlay node.
-            osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
-            overlayNode->setOverlayTechnique( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY );
-            overlayNode->setContinuousUpdate( false );
-            overlayNode->setOverlaySubgraph( result );
-            overlayNode->setOverlayBaseHeight( 0.0 );
-            overlayNode->setOverlayTextureSizeHint( _textureSize );
-            overlayNode->setOverlayTextureUnit( _textureUnit ); 
-
-            result = overlayNode;
+            osg::Node* node = buildClass( style );
+            if ( node )
+                group->addChild( node );
         }
 
-        return result;
+        osg::StateSet* ss = group->getOrCreateStateSet();
+        ss->setMode( GL_LIGHTING, 0 );
+
+        // finally, build the overlay node.
+        osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
+        overlayNode->setName( this->getName() );
+        overlayNode->setOverlayTechnique( _overlayTech );
+        overlayNode->setOverlayBaseHeight( _baseHeight );
+        overlayNode->setOverlayTextureSizeHint( _textureSize );
+        overlayNode->setOverlayTextureUnit( _textureUnit ); 
+        overlayNode->setContinuousUpdate( false );
+        overlayNode->setOverlaySubgraph( group );
+
+        return overlayNode;
     }
 
 private:
@@ -140,6 +169,8 @@ private:
     int _sourceId;
     int _textureSize;
     int _textureUnit;
+    double _baseHeight;
+    osgSim::OverlayNode::OverlayTechnique _overlayTech;
     osg::ref_ptr<const Map> _map;
     Styling::StyleCatalog _styles;
 };

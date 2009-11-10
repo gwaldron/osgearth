@@ -16,26 +16,31 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_STYLING_SLD_H
-#define OSGEARTHFEATURES_STYLING_SLD_H 1
+#include <osgEarthFeatures/Query>
 
-#include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Styling>
-#include <osgEarth/Config>
-#include <iostream>
+using namespace osgEarthFeatures;
 
-namespace osgEarthFeatures { namespace Styling
+
+Query::Query()
 {
-    class OSGEARTHFEATURES_EXPORT SLDReader
-    {
-    public:
-        static bool readConfig( const Config& conf, StyleCatalog& out_sld );
+    //nop
+}
 
-        static bool readXML( std::istream& input, StyleCatalog& out_sld );
+Query::Query( const Query& rhs ) :
+_extent( rhs._extent ),
+_expression( rhs._expression )
+{
+    //nop
+}
 
-        static bool readStyleClassFromCSSParams( const Config& conf, StyleClass& out_styleClass );
-    };
+Query::Query( const Config& conf )
+{
+//    _name = conf.value( "name" );
+    _expression = conf.value( "expr" );
+    if ( _expression.empty() ) _expression = conf.value( "where" );
+    if ( _expression.empty() ) _expression = conf.value( "sql" );
+    if ( _expression.empty() ) _expression = conf.value( "expression" );
 
-} }
+    //TODO: extent
+}
 
-#endif // OSGEARTHFEATURES_STYLING_SLD_H

@@ -49,54 +49,62 @@ htmlColorToVec4ub( const std::string& html )
 #define CSS_FILL           "fill"
 #define CSS_FILL_OPACITY   "fill-opacity"
 
+
 struct SLDFromConfigVisitor : public StyleVisitor
 {
     void apply( class Stroke& obj ) {
         ConfigSet set = _conf.top().children( "sld:CssParameter" );
         for(ConfigSet::iterator i = set.begin(); i != set.end(); i++) {
             if ( i->attr("name") == CSS_STROKE )
-                obj.color() == htmlColorToVec4ub( i->value( "ogc:Literal" ) );
-            else if ( i->attr("name") == CSS_STROKE_WIDTH)
+                obj.color() = htmlColorToVec4ub( i->value( "ogc:Literal" ) );
+            else if ( i->attr("name") == CSS_STROKE_OPACITY )
+                obj.opacity() = i->value<float>( "ogc:Literal", obj.opacity() );
+            else if ( i->attr("name") == CSS_STROKE_WIDTH )
                 obj.width() = i->value<float>( "ogc:Literal", obj.width() );
             //todo
         }
     }
+
     void apply( class Fill& obj ) {
         ConfigSet set = _conf.top().children( "sld:CssParameter" );
         for(ConfigSet::iterator i = set.begin(); i != set.end(); i++) {
             if ( i->attr("name") == CSS_FILL )
-                obj.color() == htmlColorToVec4ub( i->value( "ogc:Literal" ) );
+                obj.color() = htmlColorToVec4ub( i->value( "ogc:Literal" ) );
+            else if ( i->attr("name") == CSS_FILL_OPACITY )
+                obj.opacity() = i->value<float>( "ogc:Literal", obj.opacity() );
             //todo
         }
     }
+
     void apply( class LineSymbolizer& obj ) {
         traverse( _conf.top().child( "sld:Stroke" ), obj.stroke() );
     }
+
     void apply( class PolygonSymbolizer& obj ) {
         traverse( _conf.top().child( "sld:Fill" ), obj.fill() );
     }
-    void apply( class RuleFilter& obj ) {
-        //todo
-    }
-    void apply( class Rule& obj ) {
-        traverse( _conf.top().child( "sld:Filter" ), obj.filter() );
+
+    //void apply( class FeatureQuery& obj ) {
+    //    //TODO
+    //}
+
+    void apply( class StyleClass& obj ) {
+        //traverse( _conf.top().child( "sld:Filter" ), obj.filter() );
         traverse( _conf.top().child( "sld:LineSymbolizer" ), obj.lineSymbolizer() );
         traverse( _conf.top().child( "sld:PolygonSymbolizer" ), obj.polygonSymbolizer() );
     }
-    void apply( class FeatureTypeStyle& obj ) {
-        ConfigSet set = _conf.top().children( "sld:Rule" );
-        for(ConfigSet::iterator i = set.begin(); i != set.end(); i++ ) {
-            Rule rule;
-            traverse( *i, rule );
-            obj.rules().push_back( rule );
-        }
-    }
-    void apply( class UserStyle& obj ) {        
-        traverse( _conf.top().child( "sld:FeatureTypeStyle" ), obj.featureTypeStyle() );
-    }
+
     void apply( class NamedLayer& obj ) {
-        traverse( _conf.top().child( "sld:UserStyle" ), obj.userStyle() );
+        traverse( _conf.top().child( "sld:UserStyle" ), obj );
+        traverse( _conf.top().child( "sld:FeatureTypeStyle" ), obj );
+        ConfigSet rules = _conf.top().children( "sld:Rule" );
+        for( ConfigSet::iterator i = rules.begin(); i != rules.end(); ++i ) {
+            StyleClass styleClass;
+            traverse( *i, styleClass );
+            obj.styleClasses().push_back( styleClass );
+        }            
     }
+
     void apply( class StyleCatalog& obj ) {
         ConfigSet c = _conf.top().children( "sld:NamedLayer" );
         for(ConfigSet::iterator i = c.begin(); i != c.end(); i++ ) {
@@ -137,20 +145,20 @@ SLDReader::readXML( std::istream& in, StyleCatalog& out_sld )
 }
 
 bool
-SLDReader::readRuleFromCSSParams( const Config& conf, Rule& rule )
+SLDReader::readStyleClassFromCSSParams( const Config& conf, StyleClass& sc )
 {
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
         if ( p->first == CSS_STROKE )
-            rule.lineSymbolizer().stroke().color() = htmlColorToVec4ub( p->second );
+            sc.lineSymbolizer().stroke().color() = htmlColorToVec4ub( p->second );
         else if ( p->first == CSS_STROKE_OPACITY )
-            rule.lineSymbolizer().stroke().opacity() = as<float>( p->second, 1.0f );
+            sc.lineSymbolizer().stroke().opacity() = as<float>( p->second, 1.0f );
         else if ( p->first == CSS_STROKE_WIDTH )
-            rule.lineSymbolizer().stroke().width() = as<float>( p->second, 1.0f );
+            sc.lineSymbolizer().stroke().width() = as<float>( p->second, 1.0f );
         else if ( p->first == CSS_FILL )
-            rule.polygonSymbolizer().fill().color() = htmlColorToVec4ub( p->second );
+            sc.polygonSymbolizer().fill().color() = htmlColorToVec4ub( p->second );
         else if ( p->first == CSS_FILL_OPACITY )
-            rule.polygonSymbolizer().fill().opacity() = as<float>( p->second, 1.0f );
+            sc.polygonSymbolizer().fill().opacity() = as<float>( p->second, 1.0f );
         //TODO more..
     }
     return true;

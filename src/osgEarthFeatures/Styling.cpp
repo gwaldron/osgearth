@@ -47,84 +47,168 @@ StyleVisitor::apply( class PolygonSymbolizer& obj ) {
 }
 
 void
-StyleVisitor::apply( class Rule& obj ) {
-    obj.filter().accept( *this );
+StyleVisitor::apply( class StyleClass& obj ) {
+    //obj.query().accept( *this );
     obj.lineSymbolizer().accept( *this );
     obj.polygonSymbolizer().accept( *this );
 }
 
 void
-StyleVisitor::apply( class RuleFilter& obj ) {
-}
-
-void
-StyleVisitor::apply( class FeatureTypeStyle& obj ) {
-    for(RuleList::iterator i = obj.rules().begin(); i != obj.rules().end(); i++ )
+StyleVisitor::apply( class NamedLayer& obj ) {
+    for(StyleClasses::iterator i = obj.styleClasses().begin(); i != obj.styleClasses().end(); i++ )
         i->accept( *this );
 }
 
 void
-StyleVisitor::apply( class UserStyle& obj ) {
-    obj.featureTypeStyle().accept( *this );
-}
-
-void
-StyleVisitor::apply( class NamedLayer& obj ) {
-    obj.userStyle().accept( *this );
-}
-
-void
 StyleVisitor::apply( class StyleCatalog& obj ) {
-    for(NamedLayerList::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
+    for(NamedLayers::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
         i->accept( *this );
 }
 
 /**************************************************************************/
 
+// reads inline style information into a style class (if the names match)
 bool
-StyleReader::read( const Config& conf, StyleCatalog& out_catalog )
+StyleReader::readStyleClassFromCSS( const Config& conf, StyleClass& out_sc, bool matchesOnly )
+{
+    std::string css = conf.value();
+
+    if ( !conf.attr("href").empty() )
+    {
+        //TODO: load css from href url
+    }
+    std::stringstream buf( conf.value() );
+    Config root = CssUtils::readConfig( buf );
+
+    for(ConfigSet::const_iterator i = root.children().begin(); i != root.children().end(); i++ )
+    {
+        const Config& subConf = *i;
+        if ( subConf.name() == out_sc.name() || !matchesOnly )
+        {
+            SLDReader::readStyleClassFromCSSParams( subConf, out_sc );
+        }
+    }
+    
+    return true;    
+}
+
+bool
+StyleReader::readStyleClassesFromCSS( const Config& conf, StyleClasses& out_classes, bool createIfNecessary )
+{
+    std::string css = conf.value();
+
+    if ( !conf.attr("href").empty() )
+    {
+        //TODO: load css from href url
+    }
+    std::stringstream buf( css );
+    Config root = CssUtils::readConfig( buf );
+
+    for(ConfigSet::const_iterator i = root.children().begin(); i != root.children().end(); i++ )
+    {
+        const Config& subConf = *i;
+        if ( !subConf.name().empty() )
+        {
+            bool found = false;
+            for( StyleClasses::iterator k = out_classes.begin(); k != out_classes.end(); k++ )
+            {
+                if ( k->name() == subConf.name() )
+                {
+                    SLDReader::readStyleClassFromCSSParams( subConf, *k );
+                    found = true;
+                    break;
+                }
+            }
+
+            if ( !found && createIfNecessary )
+            {
+                StyleClass sc;
+                sc.name() == subConf.name();
+                SLDReader::readStyleClassFromCSSParams( subConf, sc );
+                out_classes.push_back( sc );
+            }
+        }
+    }
+    
+    return true;
+}
+
+bool
+StyleReader::readStyleClassFromSLD( const ConfigSet& confSet, StyleClass& out_class, bool matchesOnly )
+{
+    return false;
+}
+
+bool
+StyleReader::readStyleClassesFromSLD( const ConfigSet& confSet, StyleClasses& out_classes, bool createIfNecessary )
+{
+    return false;
+}
+
+bool
+StyleReader::readStyleClass( const Config& conf, StyleClass& out_class, bool matchesOnly )
 {
     if ( conf.attr("type") == "text/css" )
     {
-        return readCSS( conf.value(), out_catalog );
+        return readStyleClassFromCSS( conf, out_class, matchesOnly );
     }
     else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
               conf.attr("type") == "application/vnd.ogc.sld" )
     {
-        return readSLD( conf.children(), out_catalog );
+        return readStyleClassFromSLD( conf.children(), out_class, matchesOnly );
     }
     else
         return false;
 }
 
 bool
-StyleReader::readCSS( const std::string& css, StyleCatalog& out_catalog )
+StyleReader::readStyleClasses( const Config& conf, StyleClasses& out_styleClasses )
 {
-    std::stringstream buf( css );
-    Config root = CssUtils::readConfig( buf );
-
-    for(ConfigSet::const_iterator i = root.children().begin(); i != root.children().end(); i++ )
+    if ( conf.attr("type") == "text/css" )
     {
-        const Config& conf = *i;
-        if ( !conf.name().empty() )
-        {
-            NamedLayer layer;
-            layer.name() = conf.name();
-
-            Rule rule;
-            if ( SLDReader::readRuleFromCSSParams( conf, rule ) )
-            {
-                layer.userStyle().featureTypeStyle().rules().push_back( rule );
-            }
-
-            out_catalog.namedLayers().push_back( layer );               
-        }
+        return readStyleClassesFromCSS( conf, out_styleClasses, true );
     }
-    return true;
+    else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
+              conf.attr("type") == "application/vnd.ogc.sld" )
+    {
+        return readStyleClassesFromSLD( conf.children(), out_styleClasses, true );
+    }
+    else
+        return false;
 }
 
-bool
-StyleReader::readSLD( const ConfigSet& confSet, StyleCatalog& out_catalog )
+bool 
+StyleReader::readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_cat )
 {
+    NamedLayer layer;
+    layer.name() = layerName;    
+
+    // first read any style class definitions:
+    ConfigSet classes = conf.children( "class" );
+    for( ConfigSet::iterator i = classes.begin(); i != classes.end(); ++i )
+    {
+        const Config& classConf = *i;
+        StyleClass sc;
+
+        sc.name() = classConf.value( "name" );
+        sc.query() = Query( classConf.child( "query" ) );
+        if ( classConf.hasChild( "style" ) )
+        {
+            readStyleClass( classConf.child("style"), sc, false );
+        }
+
+        layer.styleClasses().push_back( sc );
+    }
+
+    // next, read any style data:
+    ConfigSet styles = conf.children( "style" );
+    for( ConfigSet::iterator i = styles.begin(); i != styles.end(); ++i )
+    {
+        const Config& styleConf = *i;
+        readStyleClasses( styleConf, layer.styleClasses() );        
+    }
+
+    // finally, add the new style layer.
+    out_cat.namedLayers().push_back( layer );
     return true;
 }

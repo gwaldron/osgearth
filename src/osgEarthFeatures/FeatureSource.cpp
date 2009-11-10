@@ -26,20 +26,6 @@ using namespace OpenThreads;
 
 /****************************************************************************/
 
-FeatureQuery::FeatureQuery()
-{
-    //nop
-}
-
-FeatureQuery::FeatureQuery( const FeatureQuery& rhs ) :
-_extent( rhs._extent ),
-_expression( rhs._expression )
-{
-    //nop
-}
-
-/****************************************************************************/
-
 FeatureSource::FeatureSource( const PluginOptions* options ) :
 _options( options )
 {

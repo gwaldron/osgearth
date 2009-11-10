@@ -19,6 +19,7 @@
 #include "FeatureCursorOGR"
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/Registry>
+#include <algorithm>
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
@@ -26,19 +27,47 @@ using namespace osgEarth;
 using namespace osgEarthFeatures;
 
 
-FeatureCursorOGR::FeatureCursorOGR(OGRLayerH layerHandle,
+FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
+                                   OGRLayerH layerHandle,
                                    const FeatureProfile* profile,
-                                   const FeatureQuery& query ) :
+                                   const Query& query ) :
+_dsHandle( dsHandle ),
 _layerHandle( layerHandle ),
+_resultSetHandle( 0L ),
 _query( query ),
 _profile( profile ),
 _chunkSize( 50 ),
 _nextHandleToQueue( 0L )
 {
+    _resultSetHandle = _layerHandle;
     {
         OGR_SCOPED_LOCK;
-        OGR_L_ResetReading( _layerHandle );
+
+        if ( !query.getExpression().empty() || query.hasExtent() )
+        {
+            std::string expr = query.getExpression();
+
+            // if the expression is just a where clause, expand it into a complete SQL expression.
+            std::string temp = expr;
+            std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+            bool complete = temp.find( "select" ) == 0;
+            if ( temp.find( "select" ) != 0 )
+            {
+                OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn( _layerHandle );
+                std::stringstream buf;
+                buf << "SELECT * FROM " << OGR_FD_GetName( layerDef ) << " WHERE " << expr;
+                expr = buf.str();
+            }
+
+            _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), 0L, 0 );
+        }
+
+        if ( _resultSetHandle )
+        {
+            OGR_L_ResetReading( _layerHandle );
+        }
     }
+
     readChunk();
 }
 
@@ -48,12 +77,15 @@ FeatureCursorOGR::~FeatureCursorOGR()
 
     if ( _nextHandleToQueue )
         OGR_F_Destroy( _nextHandleToQueue );
+
+    if ( _resultSetHandle != _layerHandle )
+        OGR_DS_ReleaseResultSet( _dsHandle, _resultSetHandle );
 }
 
 bool
 FeatureCursorOGR::hasMore() const
 {
-    return _queue.size() > 0 || _nextHandleToQueue != 0L;
+    return _resultSetHandle && ( _queue.size() > 0 || _nextHandleToQueue != 0L );
 }
 
 Feature*
@@ -77,6 +109,9 @@ FeatureCursorOGR::nextFeature()
 void
 FeatureCursorOGR::readChunk()
 {
+    if ( !_resultSetHandle )
+        return;
+
     if ( _nextHandleToQueue )
     {
         Feature* f = createFeature( _nextHandleToQueue );
@@ -183,4 +218,3 @@ FeatureCursorOGR::createFeature( OGRFeatureH handle )
 
     return feature;
 }
-

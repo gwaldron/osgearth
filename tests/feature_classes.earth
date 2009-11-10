@@ -1,0 +1,64 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to render feature data using "feature classes". Feature
+classes let you break down the features into categories and style them
+individually.
+-->
+
+<map name="Feature Class demo" type="geocentric">
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="states" driver="feature_overlay">
+
+        <!-- Configure the OGR feature driver to read the shapefile -->
+        <features name="states" driver="ogr">
+            <url>../data/usa.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <geometry_type>line</geometry_type>
+        </features>
+    
+        <!-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
+        <texture_size>2048</texture_size>
+        <texture_unit>1</texture_unit>
+             
+        <!-- Each feature class renders a subset of features (based on a query filter) using
+             a style that defines the features' appearance. The query can contain an
+             expression (an SQL WHERE clause, or a full SQL statement) and an extent. -->
+                          
+        <class name="states1">
+            <query>
+                <expr>name LIKE "N%"</expr>
+            </query>
+            <style type="text/css">
+                style {
+                   stroke: #FFFF00;
+                   stroke-opacity: 1.0;
+                   stroke-width: 4.0;
+                }            
+            </style>
+        </class>   
+             
+        <class name="states2">
+            <query>
+                <expr>name NOT LIKE "N%"</expr>
+            </query>
+        </class>  
+
+        <!-- This defines a style, associating it with the feature class by name. -->
+        <style type="text/css">
+            states2 {
+               stroke: #FFFF00;
+               stroke-opacity: 1.0;
+               stroke-width: 2.0;
+            }            
+        </style>        
+        
+    </model>
+    
+    <lighting>false</lighting>
+  
+</map>

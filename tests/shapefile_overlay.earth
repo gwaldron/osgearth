@@ -18,26 +18,25 @@ map, it will only support data that covers at most one hemisphere.
 
         <!-- Configure the OGR feature driver to read the shapefile -->
         <features name="states" driver="ogr">
-            <ogr_driver>ESRI Shapefile</ogr_driver>
             <url>../data/usa.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
             <geometry_type>line</geometry_type>
         </features>
     
         <!-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
         <texture_size>2048</texture_size>
-        <texture_unit>auto</texture_unit>  
+        <texture_unit>1</texture_unit>
         
-        <!-- CSS stylesheet. Note the style name ("states" here) should match
-             the feature set that you are styling. The attributes are OGC SLD
-             line- and polygon-symbolizer CSS parameters. -->
-             
-        <style type="text/css">
-            states {
-               stroke: #FFFF00;
-               stroke-opacity: 1.0;
-               stroke-width: 3.5;
-            }            
-        </style>
+        <!-- A default feature class for styling the geometry. -->
+        <class name="default">
+            <style type="text/css">
+                style {
+                   stroke: #FFFF00;
+                   stroke-opacity: 1.0;
+                   stroke-width: 4.0;
+                }            
+            </style>
+        </class>
         
     </model>
     

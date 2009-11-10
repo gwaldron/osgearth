@@ -20,6 +20,7 @@
 #define OSGEARTHFEATURES_STYLING_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/Config>
 #include <osg/Vec4>
 #include <list>
@@ -43,10 +44,7 @@ namespace osgEarthFeatures { namespace Styling
         virtual void apply( class Fill& obj );
         virtual void apply( class LineSymbolizer& obj );
         virtual void apply( class PolygonSymbolizer& obj );
-        virtual void apply( class Rule& obj );
-        virtual void apply( class RuleFilter& obj );
-        virtual void apply( class FeatureTypeStyle& obj );
-        virtual void apply( class UserStyle& obj );
+        virtual void apply( class StyleClass& obj );
         virtual void apply( class NamedLayer& obj );
         virtual void apply( class StyleCatalog& obj );
     };
@@ -65,11 +63,13 @@ namespace osgEarthFeatures { namespace Styling
     public:
         Stroke()
             : _color( 255, 255, 255, 255 ),
+              _width( 1.0f ),
               _opacity( 1.0f ) { }
         Stroke( const Stroke& rhs )
             : _lineJoin( rhs._lineJoin ),
               _lineCap( rhs._lineCap ),
               _color( rhs._color ),
+              _width( rhs._width ),
               _opacity( rhs._opacity ) { }
 
         osg::Vec4ub& color() {
@@ -187,31 +187,25 @@ namespace osgEarthFeatures { namespace Styling
         Fill _fill;
     };
 
-    class OSGEARTHFEATURES_EXPORT RuleFilter : public StyleComponent
+    class OSGEARTHFEATURES_EXPORT StyleClass : public StyleComponent
     {
     public:
-        RuleFilter() { }
-        RuleFilter( const RuleFilter& rhs ) { }
-
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
-
-    protected:
-    };
-
-    class OSGEARTHFEATURES_EXPORT Rule : public StyleComponent
-    {
-    public:
-        Rule() { }
-        Rule( const Rule& rhs )
-            : _filter( rhs._filter ),
+        StyleClass() { }
+        StyleClass( const StyleClass& rhs )
+            : _name( rhs._name ),
+              _query( rhs._query ),
               _lineSymbolizer( rhs._lineSymbolizer ),
               _polygonSymbolizer( rhs._polygonSymbolizer ) { }
 
-        RuleFilter& filter() {
-            return _filter; }
-        const RuleFilter& filter() const {
-            return _filter; }
+        std::string& name() {
+            return _name; }
+        const std::string& name() const {
+            return _name; }
+
+        Query& query() {
+            return _query; }
+        const Query& query() const {
+            return _query; }
 
         LineSymbolizer& lineSymbolizer() {
             return _lineSymbolizer; }
@@ -228,50 +222,13 @@ namespace osgEarthFeatures { namespace Styling
         
 
     protected:
-        RuleFilter _filter;
+        std::string _name;
+        Query _query;
         LineSymbolizer _lineSymbolizer;
         PolygonSymbolizer _polygonSymbolizer;
     };
 
-    typedef std::list< Rule > RuleList;
-
-    class OSGEARTHFEATURES_EXPORT FeatureTypeStyle : public StyleComponent
-    {
-    public:
-        FeatureTypeStyle() { }
-        FeatureTypeStyle( const FeatureTypeStyle& rhs )
-            : _rules( rhs._rules ) { }
-
-        RuleList& rules() {
-            return _rules; }
-        const RuleList& rules() const {
-            return _rules; }
-
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
-
-    protected:
-        RuleList _rules;
-    };
-
-    class OSGEARTHFEATURES_EXPORT UserStyle : public StyleComponent
-    {
-    public:
-        UserStyle() { }
-        UserStyle( const UserStyle& rhs )
-            : _featureTypeStyle( rhs._featureTypeStyle ) { }
-
-        FeatureTypeStyle& featureTypeStyle() {
-            return _featureTypeStyle; }
-        const FeatureTypeStyle& featureTypeStyle() const {
-            return _featureTypeStyle; }
-
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
-
-    protected:
-        FeatureTypeStyle _featureTypeStyle;
-    };
+    typedef std::list< StyleClass > StyleClasses;
 
     class OSGEARTHFEATURES_EXPORT NamedLayer : public StyleComponent
     {
@@ -279,32 +236,30 @@ namespace osgEarthFeatures { namespace Styling
         NamedLayer() { }
         NamedLayer( const NamedLayer& rhs )
             : _name( rhs._name ),
-              _userStyle( rhs._userStyle ) { }
+            _styleClasses( rhs._styleClasses ) { }
 
         std::string& name() {
             return _name; }
         const std::string& name() const {
             return _name; }
-
-        UserStyle& userStyle() {
-            return _userStyle; }
-        const UserStyle& userStyle() const {
-            return _userStyle; }
+        
+        StyleClasses& styleClasses() {
+            return _styleClasses; }
+        const StyleClasses& styleClasses() const {
+            return _styleClasses; }
 
         bool empty() const {
-            return _name.empty() ||
-                userStyle().featureTypeStyle().rules().empty(); 
-        }
+            return _name.empty() || _styleClasses.empty(); }
 
         virtual void accept( class StyleVisitor& visitor ) {
             visitor.apply( *this ); }
 
     protected:
         std::string _name;
-        UserStyle _userStyle;
+        StyleClasses _styleClasses;
     };
 
-    typedef std::list< NamedLayer > NamedLayerList;
+    typedef std::list< NamedLayer > NamedLayers;
 
     class OSGEARTHFEATURES_EXPORT StyleCatalog : public StyleComponent
     {
@@ -313,13 +268,13 @@ namespace osgEarthFeatures { namespace Styling
         StyleCatalog( const StyleCatalog& rhs )
             : _namedLayers( rhs._namedLayers ) { }
 
-        NamedLayerList& namedLayers() { 
+        NamedLayers& namedLayers() { 
             return _namedLayers; }
-        const NamedLayerList& namedLayers() const { 
+        const NamedLayers& namedLayers() const { 
             return _namedLayers; }
 
         bool getNamedLayer( const std::string& name, NamedLayer& out_layer ) const {
-            for( NamedLayerList::const_iterator i = _namedLayers.begin(); i != _namedLayers.end(); i++ ) {
+            for( NamedLayers::const_iterator i = _namedLayers.begin(); i != _namedLayers.end(); i++ ) {
                 if ( i->name() == name ) {
                     out_layer = *i;
                     return true;
@@ -332,16 +287,20 @@ namespace osgEarthFeatures { namespace Styling
             visitor.apply( *this ); }
 
     protected:
-        NamedLayerList _namedLayers;
+        NamedLayers _namedLayers;
     };
 
 
     class OSGEARTHFEATURES_EXPORT StyleReader
     {
     public:
-        static bool read   ( const Config& styleConf, StyleCatalog& out_styles );
-        static bool readCSS( const std::string& css, StyleCatalog& out_styles );
-        static bool readSLD( const ConfigSet& conf, StyleCatalog& out_styles );
+        static bool readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_catalog );
+        static bool readStyleClass( const Config& conf, StyleClass& out_styleClass, bool matchesOnly =true );
+        static bool readStyleClassFromCSS( const Config& conf, StyleClass& out_styleClass, bool matchesOnly =true);
+        static bool readStyleClassFromSLD( const ConfigSet& confSet, StyleClass& out_styleClass, bool matchesOnly =true);
+        static bool readStyleClasses( const Config& conf, StyleClasses& out_classes );
+        static bool readStyleClassesFromCSS( const Config& conf, StyleClasses& out_classes, bool createIfNecessary =false);
+        static bool readStyleClassesFromSLD( const ConfigSet& confSet, StyleClasses& out_classes, bool createIfNecessary =false);
     };
 } }
 

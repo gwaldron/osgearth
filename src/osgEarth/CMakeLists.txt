@@ -51,6 +51,7 @@ SET(LIB_PUBLIC_HEADERS
 	Progress
     Registry
     SpatialReference
+    StringUtils
     TaskService
     TerrainTileEdgeNormalizerUpdateCallback
     TileKey

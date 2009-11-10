@@ -35,16 +35,16 @@ BuildGeometryFilter::BuildGeometryFilter()
     reset();
 }
 
-BuildGeometryFilter::BuildGeometryFilter( const Rule& rule ) :
-_styleRule( rule )
+BuildGeometryFilter::BuildGeometryFilter( const StyleClass& styleClass ) :
+_styleClass( styleClass )
 {
     reset();
 }
 
 void
-BuildGeometryFilter::setStyleRule( const Rule& rule )
+BuildGeometryFilter::setStyleClass( const StyleClass& styleClass )
 {
-    _styleRule = rule;
+    _styleClass = styleClass;
 }
 
 void
@@ -67,13 +67,13 @@ BuildGeometryFilter::push( Feature* input, FilterContext& context )
     
     if (geomType == FeatureProfile::GEOM_POLYGON)
     {
-        color = _styleRule.polygonSymbolizer().fill().color();
-        color.a() = (int)(255.0f * _styleRule.polygonSymbolizer().fill().opacity());
+        color = _styleClass.polygonSymbolizer().fill().color();
+        color.a() = (int)(255.0f * _styleClass.polygonSymbolizer().fill().opacity());
     }
     else
     {
-        color = _styleRule.lineSymbolizer().stroke().color();
-        color.a() = (int)(255.0f * _styleRule.lineSymbolizer().stroke().opacity());
+        color = _styleClass.lineSymbolizer().stroke().color();
+        color.a() = (int)(255.0f * _styleClass.lineSymbolizer().stroke().opacity());
     }
 
     osg::Geometry* geom = new osg::Geometry();
@@ -132,14 +132,21 @@ BuildGeometryFilter::getOutput( FilterContext& context )
     }
     else if ( geomType == FeatureProfile::GEOM_POINT )
     {
-        float size = _styleRule.lineSymbolizer().stroke().width();
+        float size = _styleClass.lineSymbolizer().stroke().width();
         _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
     }
     else // GEOM_LINE
     {
-        float width = _styleRule.lineSymbolizer().stroke().width();
+        float width = _styleClass.lineSymbolizer().stroke().width();
         _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
     }
 
     return _geode.get();
+}
+
+osg::Node*
+BuildGeometryFilter::takeOutput( FilterContext& context )
+{
+    getOutput( context );
+    return _geode.release();
 }

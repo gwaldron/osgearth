@@ -17,44 +17,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H
-#define OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H 1
+#ifndef OSGEARTHFEATURES_CROP_FILTER_H
+#define OSGEARTHFEATURES_CROP_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/Styling>
-#include <osg/Geode>
-
-using namespace osgEarth;
+#include <osgEarth/GeoData>
 
 namespace osgEarthFeatures
 {
-    /**
-     * Builds geometry from a stream of input features.
-     */
-    class OSGEARTHFEATURES_EXPORT BuildGeometryFilter // : public Filter
+    class OSGEARTHFEATURES_EXPORT CropFilter
     {
     public:
-        BuildGeometryFilter();
+        CropFilter( const GeoExtent& cropExtent );
 
-        BuildGeometryFilter( const Styling::StyleClass& style );
+        bool push( Feature* feature, FilterContext& context );
 
-        void setStyleClass( const Styling::StyleClass& style );
-
-        bool push( Feature* input, FilterContext& context );
-
-        bool push( FeatureList& input, FilterContext& context );
-
-        osg::Node* getOutput( FilterContext& context );
-
-        osg::Node* takeOutput( FilterContext& context );
+        bool push( FeatureList& features, FilterContext& context );
 
     protected:
-        osg::ref_ptr<osg::Geode> _geode;
-        Styling::StyleClass _styleClass;
-        void reset();
+        GeoExtent _cropExtent;
     };
 }
 
-#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H
+#endif // OSGEARTHFEATURES_CROP_FILTER_H

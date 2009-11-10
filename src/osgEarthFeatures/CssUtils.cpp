@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/CssUtils>
+#include <osgEarth/StringUtils>
 #include <iostream>
 #include <sstream>
 #include <iterator>
@@ -24,60 +25,6 @@
 using namespace osgEarth;
 using namespace osgEarthFeatures;
 using namespace osgEarthFeatures::Styling;
-
-static std::string
-trim( const std::string& in )
-{
-    std::string whitespace (" \t\f\v\n\r");
-    // by Rodrigo C F Dias
-    // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
-    std::string str = in;
-    std::string::size_type pos = str.find_last_not_of( whitespace );
-    if(pos != std::string::npos) {
-        str.erase(pos + 1);
-        pos = str.find_first_not_of( whitespace );
-        if(pos != std::string::npos) str.erase(0, pos);
-    }
-    else str.erase(str.begin(), str.end());
-    return str;
-}
-
-// http://stackoverflow.com/questions/53849/how-do-i-tokenize-a-string-in-c
-class Tokenizer 
-{
-public:
-    Tokenizer(const std::string& s)
-        : _string(s), _offset(0), _delimiters(" \t\n\r") { }
-    Tokenizer(const std::string& s, const std::string& delimiters)
-        : _string(s), _offset(0), _delimiters(delimiters) { }
-    bool nextToken() {
-        return nextToken( _delimiters ); }
-    bool nextToken(const std::string& delimiters) {
-        size_t i = _string.find_first_not_of(delimiters, _offset);
-        if (std::string::npos == i) {
-            _offset = _string.length();
-            return false;
-        }
-        size_t j = _string.find_first_of(delimiters, i);
-        if (std::string::npos == j) {
-            _token = _string.substr(i);
-            _offset = _string.length();
-            return true;
-        }
-        _token = _string.substr(i, j - i);
-        _offset = j;
-        return true;
-    }
-    std::string token() const { 
-        return trim( _token );
-    }
-protected:
-    size_t _offset;
-    const std::string _string;
-    std::string _token;
-    std::string _delimiters;
-};
-
 
 Config
 CssUtils::readConfig( std::istream& in )
@@ -92,13 +39,13 @@ CssUtils::readConfig( std::istream& in )
     // tokenize the CSS into a config object..
     Config conf( "css" );
 
-    Tokenizer tok( css, "{}" );
+    StringTokenizer tok( css, "{}" );
     while( tok.nextToken() ) {
         std::string name = tok.token();
         if ( tok.nextToken() ) {
             Config elementConf( name );
             std::string props = tok.token();
-            Tokenizer propsTok( props, ":;" );
+            StringTokenizer propsTok( props, ":;" );
             while( propsTok.nextToken() ) {
                 std::string key = propsTok.token();
                 if ( propsTok.nextToken() ) {

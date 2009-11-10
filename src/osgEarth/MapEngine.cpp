@@ -465,28 +465,24 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
     for( unsigned int j=0; j<ancestorTile->getNumColorLayers(); j++ )
     {
         osgTerrain::ImageLayer* ancestorLayer = static_cast<osgTerrain::ImageLayer*>(ancestorTile->getColorLayer(j));
-
-        GeoLocator* newImageLocator = 0L;
-
-        GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
-        if ( ancestorLocator )
-        {
-            newImageLocator = ancestorLocator->cloneAndCrop( *defaultLocator, key->getGeoExtent() );
-        }
-        else
-        {
-            newImageLocator = defaultLocator;
-        }
-
         if (ancestorLayer)
         {
-            //osg::Image* ancestorImage = ancestorLayer->getImage();
-            //osgTerrain::ImageLayer* imgLayer = ance
-            //osgTerrain::ImageLayer* imgLayer = new TransparentLayer(ancestorImage, imageMapLayers[j].get() );
-            //imgLayer->setLocator( newImageLocator );
-            //img_layer->setName( layerName );
-            tile->setColorLayer( j, ancestorLayer );
-            //layer++;
+            GeoLocator* newImageLocator = 0L;
+
+            GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
+            if ( ancestorLocator )
+            {
+                newImageLocator = ancestorLocator->cloneAndCrop( *defaultLocator, key->getGeoExtent() );
+            }
+            else
+            {
+                newImageLocator = defaultLocator;
+            }
+
+            if (ancestorLayer)
+            {
+                tile->setColorLayer( j, ancestorLayer );
+            }
         }
     }
 }
@@ -979,7 +975,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setDatabaseOptions( options );
 #endif
         result = plod;
-        //result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+        result->addCullCallback( new TileDataLoaderCallback( map, key ) );
     }
     else
     {

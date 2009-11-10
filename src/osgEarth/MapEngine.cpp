@@ -464,26 +464,7 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
     //int layer = 0;
     for( unsigned int j=0; j<ancestorTile->getNumColorLayers(); j++ )
     {
-        osgTerrain::ImageLayer* ancestorLayer = static_cast<osgTerrain::ImageLayer*>(ancestorTile->getColorLayer(j));
-        if (ancestorLayer)
-        {
-            GeoLocator* newImageLocator = 0L;
-
-            GeoLocator* ancestorLocator = dynamic_cast<GeoLocator*>( ancestorLayer->getLocator() );
-            if ( ancestorLocator )
-            {
-                newImageLocator = ancestorLocator->cloneAndCrop( *defaultLocator, key->getGeoExtent() );
-            }
-            else
-            {
-                newImageLocator = defaultLocator;
-            }
-
-            if (ancestorLayer)
-            {
-                tile->setColorLayer( j, ancestorLayer );
-            }
-        }
+        tile->setColorLayer( j,  ancestorTile->getColorLayer( j ) );
     }
 }
 

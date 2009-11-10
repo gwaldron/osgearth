@@ -642,6 +642,7 @@ VersionedTile::serviceCompletedRequests()
                 osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
                 if ( imgLayer )
                 {
+                    OpenThreads::ScopedWriteLock tileLock( getTileLayersMutex() );
                     this->setColorLayer( r->_layerIndex, imgLayer );
                     if ( _useTileGenRequest )
                     {

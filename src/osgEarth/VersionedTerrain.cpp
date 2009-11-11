@@ -208,8 +208,6 @@ VersionedTile::~VersionedTile()
 void
 VersionedTile::cancelRequests()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
-
     //Cancel any pending requests
     if (_requestsInstalled)
     {
@@ -397,8 +395,6 @@ VersionedTile::readyForNewElevation()
 void
 VersionedTile::checkNeedsUpdate()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
-
     //See if we have any completed requests
     bool hasCompletedRequests = false;
 
@@ -470,8 +466,6 @@ VersionedTile::installRequests( int stamp )
 
 void VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
-
     VersionedTerrain* terrain = getVersionedTerrain();
 
     MapLayer* mapLayer = NULL;
@@ -523,7 +517,6 @@ void VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* eng
 void
 VersionedTile::servicePendingImageRequests( int stamp )
 {       
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
@@ -556,7 +549,6 @@ VersionedTile::servicePendingImageRequests( int stamp )
 void
 VersionedTile::servicePendingElevationRequests( int stamp )
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
@@ -660,8 +652,6 @@ VersionedTile::servicePendingElevationRequests( int stamp )
 void
 VersionedTile::serviceCompletedRequests()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
-
     Map* map = this->getVersionedTerrain()->getMap();
     if ( !_requestsInstalled )
         return;
@@ -685,17 +675,18 @@ VersionedTile::serviceCompletedRequests()
             TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
             if ( r->isCompleted() )
             {
-                OpenThreads::ScopedReadLock mapDataLock( map->getMapDataMutex() );
-                OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
-
                 int index = -1;
-                //See if we even care about the request
-                for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
                 {
-                    if (map->getImageMapLayers()[j]->getId() == r->_layerId)
+                    //Lock the map data mutex
+                    OpenThreads::ScopedReadLock mapDataLock( map->getMapDataMutex() );
+                    //See if we even care about the request
+                    for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
                     {
-                        index = j;
-                        break;
+                        if (map->getImageMapLayers()[j]->getId() == r->_layerId)
+                        {
+                            index = j;
+                            break;
+                        }
                     }
                 }
 
@@ -711,6 +702,7 @@ VersionedTile::serviceCompletedRequests()
                     osgTerrain::ImageLayer* imgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
                     if ( imgLayer )
                     {
+                        OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
                         this->setColorLayer( index, imgLayer );
                         if ( _useTileGenRequest )
                         {

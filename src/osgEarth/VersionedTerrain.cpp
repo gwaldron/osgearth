@@ -501,8 +501,8 @@ void VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* eng
         //If we already have a request for this layer, remove it from the list and use the new one
         for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
         {
-            TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
-            if (r->_layerId == layerId)
+            TileColorLayerRequest* r2 = static_cast<TileColorLayerRequest*>( i->get() );
+            if (r2->_layerId == layerId)
             {
                 _requests.erase( i );
                 break;
@@ -714,11 +714,11 @@ VersionedTile::serviceCompletedRequests()
                                 this->setDirty( true );
                         }
 
-                        // remove from the list
+                        osg::notify(osg::INFO) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
+
+                        // remove from the list (don't reference "r" after this!)
                         i = _requests.erase( i );
                         increment = false;
-
-                        osg::notify(osg::INFO) << "Complet IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
                     }
                     else
                     {  
@@ -1168,7 +1168,9 @@ VersionedTerrain::updateTileTable()
         if ( i->second.valid() && i->second->referenceCount() == 1 )
         {
             i->second->cancelRequests();
-            _tiles.erase( i++ );
+            TileTable::iterator j = i;
+            i++;
+            _tiles.erase( j );
         }
         else
         {

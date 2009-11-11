@@ -551,7 +551,8 @@ public:
                 osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(layer);
                 if (imageLayer)
                 {
-                    return imageLayer->getImage();
+                    //return imageLayer->getImage();
+                    return new osg::Image( *imageLayer->getImage() );
                 }
             }
         }
@@ -570,7 +571,8 @@ public:
             osgTerrain::HeightFieldLayer* hfLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(elevationLayer);
             if (hfLayer) 
             {
-                return hfLayer->getHeightField();
+                //return hfLayer->getHeightField();
+                return new osg::HeightField(*hfLayer->getHeightField());
             }
         }
 

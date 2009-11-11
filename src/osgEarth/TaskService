@@ -97,7 +97,7 @@ namespace osgEarth
         TaskRequestList _requests;
         OpenThreads::Mutex _mutex;
         OpenThreads::Condition _cond;
-        bool _done;
+        volatile bool _done;
         //osg::ref_ptr< osg::RefBlock > _block;
 
         int _stamp;

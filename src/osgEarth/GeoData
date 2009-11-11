@@ -30,12 +30,14 @@
 namespace osgEarth
 {
     /** A non-georeferenced extent. */
-    class OSGEARTH_EXPORT Bounds
+    // note: header-only class; no export directive please
+    class /*OSGEARTH_EXPORT*/ Bounds
     {
     public:
-        Bounds();
-        Bounds( const Bounds& rhs );
-        Bounds( double xmin, double ymin, double xmax, double ymax );
+        Bounds() : _xmin(0), _ymin(0), _xmax(-1), _ymax(-1) { }
+        Bounds( const Bounds& rhs ) : _xmin(rhs._xmin), _ymin(rhs._ymin), _xmax(rhs._xmax), _ymax(rhs._ymax) { }
+        Bounds(double xmin, double ymin, double xmax, double ymax ) :
+            _xmin(xmin), _ymin(ymin), _xmax(xmax), _ymax(ymax) { }
 
         double xMin() const { return _xmin; }
         double& xMin() { return _xmin; }
@@ -46,20 +48,12 @@ namespace osgEarth
         double yMax() const { return _ymax; }
         double& yMax() { return _ymax; }
 
-        double width() const;
-        double height() const;
+        double width() const { return _xmax-_xmin; }
+        double height() const { return _ymax-_ymin; }
 
-        void getCentroid( double& out_x, double& out_y ) const;
-
-        /**
-         * Returns true is that extent is in a Geographic (lat/long) SRS that spans
-         * the international date line.
-         */
-        bool crossesDateLine() const;
-
-        bool intersects( const Bounds& rhs ) const;
-
-        void getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const;
+        bool intersects(const Bounds& rhs) {
+            return !( _xmin > rhs.xMax() || _xmax < rhs.xMin() || _ymin > rhs.yMax() || _ymax < rhs.yMin() );
+        }
 
     protected:
         double _xmin, _ymin, _xmax, _ymax;
@@ -72,7 +66,7 @@ namespace osgEarth
      * TODO: this class needs better integrated support for geographic extents
      * that cross the date line.
      */
-    class OSGEARTH_EXPORT GeoExtent : public Bounds
+    class OSGEARTH_EXPORT GeoExtent
     {
     public:
         /** Default ctor creates an "invalid" extent */
@@ -94,6 +88,28 @@ namespace osgEarth
         bool operator != ( const GeoExtent& rhs ) const;
 
         const SpatialReference* getSRS() const;
+
+        double xMin() const { return _xmin; }
+        double& xMin() { return _xmin; }
+        double yMin() const { return _ymin; }
+        double& yMin() { return _ymin; }
+        double xMax() const { return _xmax; }
+        double& xMax() { return _xmax; }
+        double yMax() const { return _ymax; }
+        double& yMax() { return _ymax; }
+
+        double width() const;
+        double height() const;
+
+        void getCentroid( double& out_x, double& out_y ) const;
+
+        /**
+         * Returns true is that extent is in a Geographic (lat/long) SRS that spans
+         * the international date line.
+         */
+        bool crossesDateLine() const;
+
+        void getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const;
 
         bool isValid() const;
         bool defined() const { return isValid(); }
@@ -126,11 +142,14 @@ namespace osgEarth
          */
         bool intersects( const GeoExtent& rhs ) const;
 
+
+        Bounds bounds() const;
+
         /**
          * Grow this extent to include the specified point (which is assumed to be
          * in the extent's SRS.
          */
-        bool expandToInclude( double x, double y );
+        void expandToInclude( double x, double y );
 
         /**
          * Returns a human-readable string containing the extent data (without the SRS)

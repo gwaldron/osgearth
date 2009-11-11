@@ -64,6 +64,7 @@ TaskRequestQueue::add( TaskRequest* request )
         if ( request->getPriority() > i->get()->getPriority() )
         {
             _requests.insert( i, request );
+            inserted = true;
             //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
             break;
         }
@@ -100,6 +101,8 @@ TaskRequestQueue::get()
     _requests.pop_front();
 
     // I'm done, someone else take a turn:
+    // (technically this shouldn't be necessary since add() bumps the semaphore once
+    // for each request in the queue)
     _cond.signal();
 
     return next.release();

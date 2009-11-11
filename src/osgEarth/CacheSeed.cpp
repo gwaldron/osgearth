@@ -139,8 +139,8 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
 
         //Check to see if the bounds intersects ANY of the tile's children.  If it does, then process all of the children
         //for this level
-        if (_bounds.intersects(k0->getGeoExtent()) || _bounds.intersects(k1->getGeoExtent()) ||
-            _bounds.intersects(k2->getGeoExtent()) || _bounds.intersects(k3->getGeoExtent()) )
+        if (_bounds.intersects( k0->getGeoExtent().bounds() ) || _bounds.intersects(k1->getGeoExtent().bounds()) ||
+            _bounds.intersects( k2->getGeoExtent().bounds() ) || _bounds.intersects(k3->getGeoExtent().bounds()) )
         {
             processKey(map, engine, k0.get()); 
             processKey(map, engine, k1.get()); 

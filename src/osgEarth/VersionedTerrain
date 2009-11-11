@@ -176,6 +176,9 @@ namespace osgEarth
         osg::ref_ptr<TaskRequest> _elevRequest;
         osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
         osg::ref_ptr<TaskRequest> _tileGenRequest;
+        OpenThreads::Mutex _requestsMutex;
+
+
         int _numActiveRequests;       
 
         // this is an obs ptr so we can "cache" the parent tile reference and refresh it 

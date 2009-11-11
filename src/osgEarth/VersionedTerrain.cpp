@@ -208,6 +208,8 @@ VersionedTile::~VersionedTile()
 void
 VersionedTile::cancelRequests()
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
+
     //Cancel any pending requests
     if (_requestsInstalled)
     {
@@ -395,6 +397,8 @@ VersionedTile::readyForNewElevation()
 void
 VersionedTile::checkNeedsUpdate()
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
+
     //See if we have any completed requests
     bool hasCompletedRequests = false;
 
@@ -466,6 +470,8 @@ VersionedTile::installRequests( int stamp )
 
 void VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
+
     VersionedTerrain* terrain = getVersionedTerrain();
 
     MapLayer* mapLayer = NULL;
@@ -517,6 +523,7 @@ void VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* eng
 void
 VersionedTile::servicePendingImageRequests( int stamp )
 {       
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
@@ -549,6 +556,7 @@ VersionedTile::servicePendingImageRequests( int stamp )
 void
 VersionedTile::servicePendingElevationRequests( int stamp )
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
@@ -652,6 +660,8 @@ VersionedTile::servicePendingElevationRequests( int stamp )
 void
 VersionedTile::serviceCompletedRequests()
 {
+    OpenThreads::ScopedLock< OpenThreads::Mutex > lock( _requestsMutex );
+
     Map* map = this->getVersionedTerrain()->getMap();
     if ( !_requestsInstalled )
         return;

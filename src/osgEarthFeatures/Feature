@@ -103,6 +103,8 @@ namespace osgEarthFeatures
 
         void setGeometry( const FeatureGeometry& geom );
 
+        FeatureGeometry& getGeometry();
+
         const FeatureGeometry& getGeometry() const;
 
         int getNumParts() const;

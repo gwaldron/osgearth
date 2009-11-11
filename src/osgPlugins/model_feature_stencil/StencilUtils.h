@@ -24,10 +24,13 @@
 #include <osg/Stencil>
 #include <osg/StencilTwoSided>
 #include <osg/Depth>
+#include <osg/Drawable>
+#include <osg/CopyOp>
 #include <osg/CullFace>
 #include <osg/MatrixTransform>
 #include <osg/Projection>
 #include <osg/GLExtensions>
+#include <osg/Notify>
 
 using namespace osgEarthFeatures;
 
@@ -43,7 +46,9 @@ struct StencilUtils
         static bool s_EXT_stencil_wrap     = osg::isGLExtensionSupported(0, "GL_EXT_stencil_wrap");
         static bool s_EXT_stencil_two_side = osg::isGLExtensionSupported(0, "GL_EXT_stencil_two_side");
 
+        // zFail=true if more compute intensive, but lets you get inside the volume.
         bool zFail = true;
+
         osg::Group* root = new osg::Group();
 
         osg::notify(osg::NOTICE) << "Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
@@ -179,7 +184,7 @@ struct StencilUtils
     }
 
     static
-    osg::Node* createMaskPass( const Styling::StyleClass& style, int& ref_renderBin )
+    osg::Node* createMaskPass( const osg::Vec4ub& color, int& ref_renderBin )
     {
         osg::Group* result = new osg::Group();
 
@@ -192,6 +197,10 @@ struct StencilUtils
         (*verts)[3].set( 1, 1, 0 );
         quad->setVertexArray( verts );
         quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
+        osg::Vec4ubArray* colors = new osg::Vec4ubArray(1);
+        (*colors)[0] = color;
+        quad->setColorArray( colors );
+        quad->setColorBinding( osg::Geometry::BIND_OVERALL );
         osg::Geode* quad_geode = new osg::Geode();
         quad_geode->addDrawable( quad );
 
@@ -203,7 +212,8 @@ struct StencilUtils
 
         osg::Stencil* quad_stencil = new osg::Stencil();
         quad_stencil->setFunction( osg::Stencil::NOTEQUAL, 128, (unsigned int)~0 );
-        quad_stencil->setOperation( osg::Stencil::KEEP, osg::Stencil::KEEP, osg::Stencil::KEEP );
+        //quad_stencil->setOperation( osg::Stencil::KEEP, osg::Stencil::KEEP, osg::Stencil::KEEP );
+        quad_stencil->setOperation( osg::Stencil::REPLACE, osg::Stencil::REPLACE, osg::Stencil::REPLACE );
         quad_ss->setAttributeAndModes( quad_stencil, ON_AND_PROTECTED );
 
         osg::MatrixTransform* abs = new osg::MatrixTransform();

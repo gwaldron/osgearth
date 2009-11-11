@@ -35,7 +35,7 @@ namespace osgEarthFeatures
     class OSGEARTHFEATURES_EXPORT TransformFilter // : public Filter
     {
     public:
-        TransformFilter( const SpatialReference* outputSRS, bool isGeocentric );
+        TransformFilter( const SpatialReference* outputSRS, bool makeGeocentric );
 
         bool push( Feature* feature, FilterContext& context );
 
@@ -43,7 +43,7 @@ namespace osgEarthFeatures
 
     protected:
         osg::ref_ptr<const SpatialReference> _outputSRS;
-        bool _isGeocentric;
+        bool _makeGeocentric;
     };
 }
 

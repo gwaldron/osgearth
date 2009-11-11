@@ -144,6 +144,12 @@ Feature::getGeometry() const
     return _parts;
 }
 
+FeatureGeometry&
+Feature::getGeometry()
+{
+    return _parts;
+}
+
 osg::Vec3dArray*
 Feature::getPart( int part ) const
 { 

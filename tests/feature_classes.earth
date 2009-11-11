@@ -15,19 +15,22 @@ individually.
     <model name="states" driver="feature_overlay">
 
         <!-- Configure the OGR feature driver to read the shapefile -->
+        
         <features name="states" driver="ogr">
             <url>../data/usa.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
             <geometry_type>line</geometry_type>
         </features>
     
-        <!-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
+        <!-- Customize the parameters of the osgSim::OverlayNode -->
+        
         <texture_size>2048</texture_size>
         <texture_unit>1</texture_unit>
              
-        <!-- Each feature class renders a subset of features (based on a query filter) using
-             a style that defines the features' appearance. The query can contain an
-             expression (an SQL WHERE clause, or a full SQL statement) and an extent. -->
+        <!-- Each feature class renders a subset of features (based
+             on a query filter) using a style that defines the features'
+             appearance. The query can contain an expression (an SQL
+             WHERE clause, or a full SQL statement) and an extent. -->
                           
         <class name="states1">
             <query>
@@ -42,18 +45,26 @@ individually.
             </style>
         </class>   
              
+        <!-- This class will render for states not starting with "N" 
+             and in the western part of the country. Note that the 
+             limits of the extnet are expressed in the same coordinate
+             system as the feature source (the shapefile in this case). -->
+             
         <class name="states2">
             <query>
                 <expr>name NOT LIKE "N%"</expr>
+                <extent xmin="-121" ymin="0" xmax="-100" ymax="90"/>
             </query>
         </class>  
 
-        <!-- This defines a style, associating it with the feature class by name. -->
+        <!-- Here is a standalone style CSS block. Each component of the CSS
+             binds to a feature class by name. -->
+        
         <style type="text/css">
             states2 {
-               stroke: #FFFF00;
+               stroke: #FF0000;
                stroke-opacity: 1.0;
-               stroke-width: 2.0;
+               stroke-width: 3.0;
             }            
         </style>        
         

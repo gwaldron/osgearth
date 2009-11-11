@@ -1,0 +1,76 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to read feature data from a shapefile and display it
+on the map using a stenciling technique.
+
+The "feature_stencil" driver...
+-->
+
+<map name="Feature Stencil Demo" type="geocentric">
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="states" driver="feature_stencil">
+
+        <!-- Configure the OGR feature driver to read the shapefile -->
+        <features name="states" driver="ogr">
+            <url>../data/usa.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+        </features>
+        
+        <class name="NStates">
+            <query>
+                <expr>name like "A%"</expr>
+            </query>
+            <style type="text/css">
+                style {
+                   fill: #7FFF7F;
+                   fill-opacity: 0.5;
+                }            
+            </style>
+        </class>
+        
+        <class name="NStates">
+            <query>
+                <expr>name like "N%"</expr>
+            </query>
+            <style type="text/css">
+                style {
+                   fill: #7F7FFF;
+                   fill-opacity: 0.5;
+                }            
+            </style>
+        </class>
+
+        <class name="WStates">
+            <query>
+                <expr>name like "W%"</expr>
+            </query>
+            <style type="text/css">
+                style {
+                   fill: #CC6600;
+                   fill-opacity: 0.6;
+                }            
+            </style>
+        </class>  
+
+        <class name="OtherStates">
+            <query>
+                <expr>name not like "N%" and name not like "A%" and name not like "W%"</expr>
+            </query>
+            <style type="text/css">
+                style {
+                   fill: #FFFF00;
+                   fill-opacity: 0.4;
+                }            
+            </style>
+        </class>   
+        
+    </model>
+    
+    <lighting>false</lighting>
+  
+</map>

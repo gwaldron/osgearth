@@ -51,6 +51,13 @@ namespace osgEarthFeatures
             return _profile;
         }
 
+        bool isGeocentric() const {
+            return _isGeocentric;
+        }
+        bool& isGeocentric() {
+            return _isGeocentric; 
+        }        
+
         const osg::Matrixd& referenceFrame() const {
             return _referenceFrame;
         }
@@ -69,6 +76,7 @@ namespace osgEarthFeatures
         //    return _profile.get(); }             
 
     protected:
+        bool _isGeocentric;
         optional<GeoExtent> _extent;
         osg::ref_ptr<const FeatureProfile> _profile;
         osg::Matrixd _referenceFrame;

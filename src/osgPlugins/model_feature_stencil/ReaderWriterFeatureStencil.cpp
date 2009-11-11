@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osg/Notify>
+#include <osg/ClearNode>
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
@@ -44,7 +45,7 @@ public:
         _sourceId( sourceId ),
         _renderBinStart( 8000 )
     {
-        //TODO
+        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
     }
 
     void initialize( const std::string& referenceURI, const Map* map )
@@ -80,22 +81,30 @@ public:
         // Transform them into the map's SRS:
         TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
         xform.push( features, context );
+        context.isGeocentric() = isGeocentric;
 
         // Extrude the geometry in both directions to build a stencil volume:
-        ExtrudeGeometryFilter extrude( -250000, 250000 );
+        ExtrudeGeometryFilter extrude( -250000, 500000 );
         extrude.push( features, context );
 
-        // take the volumes, and build a stencil volume graph:
+        //TESTING:
+        //return extrude.takeOutput( context );
+
+        // build some capped volumes:
         osg::Node* volumes = extrude.getOutput( context );
+
+        // render the volumes to the stencil buffer:
         osg::Node* geomPass = StencilUtils::createGeometryPass( volumes, ref_renderBin );
 
-        // build the stencil mask that will style the steniled pixels:
-        osg::Node* maskPass = StencilUtils::createMaskPass( style, ref_renderBin );
+        // render a full screen quad to write to the masked pixels:
+        osg::Vec4ub maskColor = style.getColor( context.profile()->getGeometryType() );
+        osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, ref_renderBin );
 
         osg::Group* classGroup = new osg::Group();
         classGroup->setName( style.name() );
         classGroup->addChild( geomPass );
         classGroup->addChild( maskPass );
+        classGroup->setDataVariance( osg::Object::DYNAMIC );
         return classGroup;
     }
 
@@ -123,8 +132,9 @@ public:
         ss->setMode( GL_LIGHTING, 0 );
 
         // install the node.
+        return group;
 
-        return 0L; // we installed it ourselves :)
+        //return 0L; // we installed it ourselves :)
     }
 
 private:

@@ -67,6 +67,25 @@ StyleVisitor::apply( class StyleCatalog& obj ) {
 
 /**************************************************************************/
 
+osg::Vec4ub
+StyleClass::getColor( const FeatureProfile::GeometryType& geomType ) const
+{
+    osg::Vec4ub color;
+    if ( geomType == FeatureProfile::GEOM_POLYGON )
+    {
+        color = polygonSymbolizer().fill().color();
+        color.a() = (int)(255.0 * polygonSymbolizer().fill().opacity());
+    }
+    else
+    {
+        color = lineSymbolizer().stroke().color();
+        color.a() = (int)(255.0 * lineSymbolizer().stroke().opacity());
+    }
+    return color;
+}
+
+/**************************************************************************/
+
 // reads inline style information into a style class (if the names match)
 bool
 StyleReader::readStyleClassFromCSS( const Config& conf, StyleClass& out_sc, bool matchesOnly )

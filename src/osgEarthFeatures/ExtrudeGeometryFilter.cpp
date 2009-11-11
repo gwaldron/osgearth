@@ -60,18 +60,42 @@ _distance( distance )
 }
 
 static
-bool extrudeWallsUp(const FeatureGeometry&     parts,
+bool extrudeWallsUp(FeatureGeometry&           parts,
+                    double                     offset,
                     double                     height,
                     bool                       uniform_height,
                     osg::Geometry*             walls,
                     osg::Geometry*             top_cap,
                     osg::Geometry*             bottom_cap,
                     optional<osg::Vec4ub>&     color,
-                    bool                       isGeocentric,
                     bool                       makeNormals,
                     bool                       makeTexCoords,
                     FilterContext&             context )
 {
+    // start by offsetting the input data.
+    if ( offset != 0.0 )
+    {
+        for( FeatureGeometry::iterator i = parts.begin(); i != parts.end(); ++i )
+        {
+            osg::Vec3dArray* part = i->get();
+            for( osg::Vec3dArray::iterator j = part->begin(); j != part->end(); j++ )
+            {
+                if ( context.isGeocentric() )
+                {
+                    // TODO: get the proper up vector; this is spherical.
+                    osg::Vec3d offset_vec = *j;
+                    offset_vec.normalize();
+                    (*j) += offset_vec * offset;
+                }
+                else
+                {
+                    (*j).z() += offset;
+                }
+            }
+        }
+    }
+
+
     bool made_geom = true;
     const SpatialReference* srs = context.profile()->getSRS();
 
@@ -157,7 +181,7 @@ bool extrudeWallsUp(const FeatureGeometry&     parts,
         for( osg::Vec3dArray::const_iterator m = part->begin(); m != part->end(); m++ )
         {
             osg::Vec3d m_world = *m * context.inverseReferenceFrame();
-            if ( isGeocentric )
+            if ( context.isGeocentric() )
             {
                 osg::Vec3d p_vec = m_world;
                 osg::Vec3d e_vec = p_vec;
@@ -202,7 +226,7 @@ bool extrudeWallsUp(const FeatureGeometry&     parts,
         double part_len = 0.0;
 
         double max_height = 0;
-        if ( isGeocentric )
+        if ( context.isGeocentric() )
         {
             max_height = target_len - min_loc.length();
         }
@@ -224,9 +248,9 @@ bool extrudeWallsUp(const FeatureGeometry&     parts,
             if ( srs )
             {
                 osg::Vec3d m_world = *m * context.inverseReferenceFrame(); //srs->getInverseReferenceFrame();
-                if ( isGeocentric )
+                if ( context.isGeocentric() )
                 {
-                    osg::Vec3d p_vec = m_world;
+                    osg::Vec3d p_vec = m_world; // not exactly right; spherical..?
                     
                     if ( uniform_height )
                     {
@@ -350,9 +374,21 @@ bool extrudeWallsUp(const FeatureGeometry&     parts,
     return made_geom;
 }
 
+static
+void tessellate( osg::Geometry* geom )
+{
+    osgUtil::Tessellator tess;
+    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+    tess.retessellatePolygons( *geom );
+}
+
 bool
 ExtrudeGeometryFilter::push( Feature* input, FilterContext& context )
 {   
+    if ( !_geode.valid() )
+        _geode = new osg::Geode();
+
     FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
     GLenum primType =
         geomType == FeatureProfile::GEOM_LINE ? GL_LINE_STRIP :
@@ -360,27 +396,52 @@ ExtrudeGeometryFilter::push( Feature* input, FilterContext& context )
         geomType == FeatureProfile::GEOM_POLYGON ? GL_LINE_LOOP : // for later tessellation
         GL_POINTS;
 
-    osg::Vec4ub color(255,255,255,255);
-    
+    optional<osg::Vec4ub> color;
     if ( _styleClass.isSet() )
     {
         if (geomType == FeatureProfile::GEOM_POLYGON)
         {
             color = _styleClass->polygonSymbolizer().fill().color();
-            color.a() = (int)(255.0f * _styleClass->polygonSymbolizer().fill().opacity());
+            color->a() = (int)(255.0f * _styleClass->polygonSymbolizer().fill().opacity());
         }
         else
         {
             color = _styleClass->lineSymbolizer().stroke().color();
-            color.a() = (int)(255.0f * _styleClass->lineSymbolizer().stroke().opacity());
+            color->a() = (int)(255.0f * _styleClass->lineSymbolizer().stroke().opacity());
         }
     }
 
-    osg::Geometry* geom = new osg::Geometry();
-    osg::Vec4ubArray* colors = new osg::Vec4ubArray(1);
-    (*colors)[0] = color;
-    geom->setColorArray( colors );
-    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+    osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
+    osg::ref_ptr<osg::Geometry> topCap = new osg::Geometry();
+    osg::ref_ptr<osg::Geometry> bottomCap = new osg::Geometry();
+
+    extrudeWallsUp(
+        input->getGeometry(),
+        _offset,
+        _distance,
+        true,
+        walls,
+        topCap,
+        bottomCap,
+        color,
+        false,
+        false,
+        context );
+
+    if ( walls.valid() )
+        _geode->addDrawable( walls.get() );
+
+    if ( topCap.valid() )
+    {
+        tessellate( topCap.get() );
+        _geode->addDrawable( topCap.get() );
+    }
+
+    if ( bottomCap.valid() )
+    {
+        tessellate( bottomCap.get() );
+        _geode->addDrawable( bottomCap.get() );
+    }
 
     return true;
 }

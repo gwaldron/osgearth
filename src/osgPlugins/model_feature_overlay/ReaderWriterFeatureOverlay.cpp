@@ -116,6 +116,7 @@ public:
         // Transform them into the map's SRS:
         TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
         xform.push( features, context );
+        context.isGeocentric() = isGeocentric;
 
         // Build geometry:
         BuildGeometryFilter buildGeom;

@@ -207,7 +207,7 @@ MapNode::init()
     _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
 
     osg::StateSet* ss = getOrCreateStateSet();
-	ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
+	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
     //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
     if ( _engineProps.getEnableLighting().isSet() )

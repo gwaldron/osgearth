@@ -21,14 +21,16 @@
 using namespace osgEarth;
 using namespace osgEarthFeatures;
 
-FilterContext::FilterContext()
+FilterContext::FilterContext() :
+_isGeocentric( false )
 {
     //NOP
 }
 
 FilterContext::FilterContext(const FilterContext& rhs) :
 _extent( rhs._extent ),
-_profile( rhs._profile )
+_profile( rhs._profile ),
+_isGeocentric( rhs._isGeocentric )
 {
     //NOP
 }

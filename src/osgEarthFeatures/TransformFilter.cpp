@@ -21,9 +21,9 @@
 using namespace osgEarth;
 using namespace osgEarthFeatures;
 
-TransformFilter::TransformFilter(const SpatialReference* outputSRS, bool isGeocentric ) :
+TransformFilter::TransformFilter(const SpatialReference* outputSRS, bool makeGeocentric ) :
 _outputSRS( outputSRS ),
-_isGeocentric( isGeocentric )
+_makeGeocentric( makeGeocentric )
 {
     //NOP
 }
@@ -38,7 +38,7 @@ TransformFilter::push( Feature* input, FilterContext& context )
         if ( !success )
             return false;
 
-        if ( _isGeocentric && _outputSRS->isGeographic() )
+        if ( _makeGeocentric && _outputSRS->isGeographic() )
         {
             const osg::EllipsoidModel* em = context.profile()->getSRS()->getEllipsoid();
             for( int i=0; i<part->size(); i++ )
@@ -53,6 +53,7 @@ TransformFilter::push( Feature* input, FilterContext& context )
             }
         }
     }
+
     return true;
 }
 

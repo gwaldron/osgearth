@@ -37,15 +37,19 @@ _resultSetHandle( 0L ),
 _query( query ),
 _profile( profile ),
 _chunkSize( 50 ),
-_nextHandleToQueue( 0L )
+_nextHandleToQueue( 0L ),
+_spatialFilter( 0L )
 {
     _resultSetHandle = _layerHandle;
     {
         OGR_SCOPED_LOCK;
 
-        if ( !query.getExpression().empty() || query.hasExtent() )
+        std::string expr;
+        if ( !query.expression().empty() )
         {
-            std::string expr = query.getExpression();
+            // build the SQL: allow the Query to include either a full SQL statement or
+            // just the WHERE clause.
+            expr = query.expression();
 
             // if the expression is just a where clause, expand it into a complete SQL expression.
             std::string temp = expr;
@@ -53,18 +57,43 @@ _nextHandleToQueue( 0L )
             bool complete = temp.find( "select" ) == 0;
             if ( temp.find( "select" ) != 0 )
             {
-                OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn( _layerHandle );
+                OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn( _layerHandle ); // just a ref.
                 std::stringstream buf;
                 buf << "SELECT * FROM " << OGR_FD_GetName( layerDef ) << " WHERE " << expr;
                 expr = buf.str();
             }
+        }
 
-            _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), 0L, 0 );
+        // if there's a spatial extent in the query, build the spatial filter:
+        if ( !query.bounds().empty() )
+        {
+            OGRGeometryH ring = OGR_G_CreateGeometry( wkbLinearRing );
+            OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMin(), 0 );
+            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMin(), 0 );
+            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMax(), 0 );
+            OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMax(), 0 );
+
+            _spatialFilter = OGR_G_CreateGeometry( wkbPolygon );
+            OGR_G_AddGeometryDirectly( _spatialFilter, ring ); 
+            // note: "Directly" above means _spatialFilter takes ownership if ring handle
+        }
+
+        if ( !expr.empty() ) 
+        {
+            // an SQL expression, with or without a spatial filter:
+            _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.empty()? 0L : expr.c_str(), _spatialFilter, 0L );
+        }
+        else if ( _spatialFilter ) 
+        {
+            // just a spatial filter. If it not clear from the docs whether this will take
+            // advantage of a source-supplied spatial index; the docs say this operates at
+            // the OGR_L_GetNextFeature level.
+            OGR_L_SetSpatialFilter( _resultSetHandle, _spatialFilter );
         }
 
         if ( _resultSetHandle )
         {
-            OGR_L_ResetReading( _layerHandle );
+            OGR_L_ResetReading( _resultSetHandle );
         }
     }
 
@@ -80,6 +109,9 @@ FeatureCursorOGR::~FeatureCursorOGR()
 
     if ( _resultSetHandle != _layerHandle )
         OGR_DS_ReleaseResultSet( _dsHandle, _resultSetHandle );
+
+    if ( _spatialFilter )
+        OGR_G_DestroyGeometry( _spatialFilter );
 }
 
 bool
@@ -98,14 +130,16 @@ FeatureCursorOGR::nextFeature()
         readChunk();
 
     // do this in order to hold a reference to the feature we return, so the caller
-    // doesn't have to. This will avoid requiring the caller to use a ref_ptr when 
-    // simply iterating over the cursor.
+    // doesn't have to. This lets us avoid requiring the caller to use a ref_ptr when 
+    // simply iterating over the cursor, making the cursor move conventient to use.
     _lastFeatureReturned = _queue.front();
     _queue.pop();
 
     return _lastFeatureReturned.get();
 }
 
+// reads a chunk of features into a memory cache; do this for performance
+// and to avoid needing the OGR Mutex every time
 void
 FeatureCursorOGR::readChunk()
 {
@@ -129,6 +163,7 @@ FeatureCursorOGR::readChunk()
         {
             Feature* f = createFeature( handle );
             if ( f ) _queue.push( f );
+            OGR_F_Destroy( handle );
         }
         else
             break;

@@ -56,7 +56,7 @@ BuildGeometryFilter::reset()
 bool
 BuildGeometryFilter::push( Feature* input, FilterContext& context )
 {
-    FeatureProfile::GeometryType geomType = context._profile->getGeometryType();
+    FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
     GLenum primType =
         geomType == FeatureProfile::GEOM_LINE ? GL_LINE_STRIP :
         geomType == FeatureProfile::GEOM_POINT ? GL_POINTS :
@@ -124,7 +124,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 osg::Node*
 BuildGeometryFilter::getOutput( FilterContext& context )
 {
-    FeatureProfile::GeometryType geomType = context._profile->getGeometryType();
+    FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
 
     if ( geomType == FeatureProfile::GEOM_POLYGON )
     {

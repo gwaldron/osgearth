@@ -616,7 +616,7 @@ CropFilter::push( Feature* input, FilterContext& context )
     for( int p=0; p<input->getNumParts(); p++ )
     {
         osg::Vec3dArray* part = input->getPart( p );
-        cropPart( part, _cropExtent, context._profile->getGeometryType(), newParts );
+        cropPart( part, _cropExtent, context.profile()->getGeometryType(), newParts );
     }
 
     input->setGeometry( newParts );

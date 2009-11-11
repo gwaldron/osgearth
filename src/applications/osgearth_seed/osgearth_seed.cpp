@@ -63,8 +63,8 @@ int main(int argc, char** argv)
     
     //Read the bounds
     Bounds bounds(0, 0, 0, 0);
-    while (args.read("--bounds", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
-    while (args.read("-b", bounds._min.x(), bounds._min.y(), bounds._max.x(), bounds._max.y()));
+    while (args.read("--bounds", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
+    while (args.read("-b", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
 
     std::string filename;
     //Find the input filename

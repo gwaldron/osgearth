@@ -69,36 +69,37 @@ namespace osgEarth
     {
       return value ? "true" : "false";
     }
-
-    template<typename T> struct optional {
-        optional() : _set(false) { }
-        optional(T value) : _set(true), _value(value) { }
-        optional(const optional<T>& rhs) { (*this)=rhs; }
-        virtual ~optional() { }
-        optional<T>& operator =(const optional<T>& rhs) { _set=rhs._set; _value=rhs._value; return *this; }
-        const T& operator =(const T& value) { _set=true; _value=value; return _value; }
-        bool operator ==(const optional<T>& rhs) const { return _set && rhs._set && _value==rhs._value; }
-        bool operator !=(const optional<T>& rhs) const { return !( (*this)==rhs); }
-        bool isSet() const { return _set; }
-        void clear() { _set = false; }
-
-        T& get() { return _value; }
-        const T& get() const { return _value; }
-
-        operator T* () const { return &_value; }
-        operator const T*() const { return &_value; }
-
-        T* operator ->() { return &_value; }
-        const T* operator ->() const { return &_value; }
-    
-    private:
-        bool _set;
-        T _value;
-        typedef T* optional::*unspecified_bool_type;
-
-    public:
-        operator unspecified_bool_type() const { return 0; } //return valid()? &ref_ptr::_ptr : 0; }
-    };
 }
+
+template<typename T> struct optional {
+    optional() : _set(false) { }
+    optional(T value) : _set(true), _value(value) { }
+    optional(const optional<T>& rhs) { (*this)=rhs; }
+    virtual ~optional() { }
+    optional<T>& operator =(const optional<T>& rhs) { _set=rhs._set; _value=rhs._value; return *this; }
+    const T& operator =(const T& value) { _set=true; _value=value; return _value; }
+    bool operator ==(const optional<T>& rhs) const { return _set && rhs._set && _value==rhs._value; }
+    bool operator !=(const optional<T>& rhs) const { return !( (*this)==rhs); }
+    bool empty() const { return !_set; }
+    bool isSet() const { return _set; }
+    void clear() { _set = false; }
+
+    T& get() { return _value; }
+    const T& get() const { return _value; }
+
+    operator T* () const { return &_value; }
+    operator const T*() const { return &_value; }
+
+    T* operator ->() { return &_value; }
+    const T* operator ->() const { return &_value; }
+
+private:
+    bool _set;
+    T _value;
+    typedef T* optional::*unspecified_bool_type;
+
+public:
+    operator unspecified_bool_type() const { return 0; } //return valid()? &ref_ptr::_ptr : 0; }
+};
 
 #endif // OSGEARTH_COMMON_H

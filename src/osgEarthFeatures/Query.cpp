@@ -27,7 +27,7 @@ Query::Query()
 }
 
 Query::Query( const Query& rhs ) :
-_extent( rhs._extent ),
+_bounds( rhs._bounds ),
 _expression( rhs._expression )
 {
     //nop
@@ -35,12 +35,19 @@ _expression( rhs._expression )
 
 Query::Query( const Config& conf )
 {
-//    _name = conf.value( "name" );
     _expression = conf.value( "expr" );
     if ( _expression.empty() ) _expression = conf.value( "where" );
     if ( _expression.empty() ) _expression = conf.value( "sql" );
     if ( _expression.empty() ) _expression = conf.value( "expression" );
 
-    //TODO: extent
+    Config b = conf.child( "extent" );
+    if( !b.empty() )
+    {
+        _bounds = Bounds(
+            b.value<double>( "xmin", 0.0 ),
+            b.value<double>( "ymin", 0.0 ),
+            b.value<double>( "xmax", 0.0 ),
+            b.value<double>( "ymax", 0.0 ) );
+    }
 }
 

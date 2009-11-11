@@ -72,7 +72,13 @@ namespace osgEarthFeatures
     
     typedef osg::ref_ptr<osg::Vec3dArray> FeatureGeomPart;
 
-    typedef std::vector<FeatureGeomPart> FeatureGeometry;
+    class FeatureGeometry : public std::vector<FeatureGeomPart>
+    {
+    public:
+        int getTotalPointCount() const;
+
+        bool isClosed( const osg::Vec3dArray* part ) const;
+    };
 
     /**
      * Basic building block of vector feature data.
@@ -95,7 +101,9 @@ namespace osgEarthFeatures
 
         void addPart( osg::Vec3dArray* points );
 
-        void setGeometry( const FeatureGeometry& parts );
+        void setGeometry( const FeatureGeometry& geom );
+
+        const FeatureGeometry& getGeometry() const;
 
         int getNumParts() const;
 

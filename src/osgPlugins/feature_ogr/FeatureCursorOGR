@@ -61,6 +61,7 @@ private:
     OGRDataSourceH _dsHandle;
     OGRLayerH _layerHandle;
     OGRLayerH _resultSetHandle;
+    OGRGeometryH _spatialFilter;
     Query _query;
     int _chunkSize;
     OGRFeatureH _nextHandleToQueue;

@@ -35,15 +35,12 @@ void CacheSeed::seed( Map* map )
     map->getProfile()->getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
-    if (_bounds._min.x() == 0 && _bounds._min.y() == 0 &&
-        _bounds._max.x() == 0 && _bounds._max.y() == 0)
+    if (_bounds.xMin() == 0 && _bounds.yMin() == 0 &&
+        _bounds.xMax() == 0 && _bounds.yMax() == 0)
     {
         const GeoExtent& mapEx =  map->getProfile()->getExtent();
-
-        _bounds._min.x() = mapEx.xMin();
-        _bounds._min.y() = mapEx.yMin();
-        _bounds._max.x() = mapEx.xMax();
-        _bounds._max.y() = mapEx.yMax();    }
+        _bounds = Bounds( mapEx.xMin(), mapEx.yMin(), mapEx.xMax(), mapEx.yMax() );
+    }
 
 
     bool hasCaches = false;
@@ -142,8 +139,8 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
 
         //Check to see if the bounds intersects ANY of the tile's children.  If it does, then process all of the children
         //for this level
-        if (_bounds.intersects(k0.get()) || _bounds.intersects(k1.get()) ||
-            _bounds.intersects(k2.get()) || _bounds.intersects(k3.get()) )
+        if (_bounds.intersects(k0->getGeoExtent()) || _bounds.intersects(k1->getGeoExtent()) ||
+            _bounds.intersects(k2->getGeoExtent()) || _bounds.intersects(k3->getGeoExtent()) )
         {
             processKey(map, engine, k0.get()); 
             processKey(map, engine, k1.get()); 

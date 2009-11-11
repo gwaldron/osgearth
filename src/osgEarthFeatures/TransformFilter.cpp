@@ -34,13 +34,13 @@ TransformFilter::push( Feature* input, FilterContext& context )
     for( int p=0; p<input->getNumParts(); p++ )
     {
         osg::Vec3dArray* part = input->getPart( p );
-        bool success = _outputSRS->transformPoints( context._profile->getSRS(), part, false );
+        bool success = _outputSRS->transformPoints( context.profile()->getSRS(), part, false );
         if ( !success )
             return false;
 
         if ( _isGeocentric && _outputSRS->isGeographic() )
         {
-            const osg::EllipsoidModel* em = context._profile->getSRS()->getEllipsoid();
+            const osg::EllipsoidModel* em = context.profile()->getSRS()->getEllipsoid();
             for( int i=0; i<part->size(); i++ )
             {
                 double x, y, z;

@@ -34,8 +34,82 @@
 using namespace osgEarth;
 
 
-GeoExtent GeoExtent::INVALID = GeoExtent();
+Bounds::Bounds() :
+_xmin(0), _ymin(0), _xmax(-1), _ymax(-1)
+{
+    //NOP
+}
 
+Bounds::Bounds( const Bounds& rhs ) :
+_xmin( rhs._xmin ),
+_ymin( rhs._ymin ),
+_xmax( rhs._xmax ),
+_ymax( rhs._ymax )
+{
+    //NOP
+}
+
+Bounds::Bounds( double xmin, double ymin, double xmax, double ymax ) :
+_xmin( xmin ),
+_ymin( ymin ),
+_xmax( xmax ),
+_ymax( ymax )
+{
+    //NOP
+}
+
+void
+Bounds::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const
+{
+    xmin = _xmin;
+    ymin = _ymin;
+    xmax = _xmax;
+    ymax = _ymax;
+}
+
+double
+Bounds::width() const
+{
+    return crossesDateLine()?
+        (180-_xmin) + (_xmax+180) :
+        _xmax - _xmin;
+}
+
+double
+Bounds::height() const
+{
+    return _ymax - _ymin;
+}
+
+void
+Bounds::getCentroid( double& out_x, double& out_y ) const
+{
+    out_x = _xmin+width()/2.0;
+    out_y = _ymin+height()/2.0;
+}
+
+bool
+Bounds::crossesDateLine() const
+{
+    return _xmax < _xmin;
+    //return _srs.valid() && _srs->isGeographic() && _xmax < _xmin;
+}
+
+bool
+Bounds::intersects( const Bounds& rhs ) const
+{
+    if (xMax() < rhs.xMin() ||
+        xMin() > rhs.xMax() ||
+        yMax() < rhs.yMin() ||
+        yMin() > rhs.yMax() )
+    {
+        return false;
+    }
+    return true;
+}
+/***************************************************************************/
+
+GeoExtent GeoExtent::INVALID = GeoExtent();
 
 GeoExtent::GeoExtent()
 {
@@ -44,15 +118,22 @@ GeoExtent::GeoExtent()
 
 GeoExtent::GeoExtent(const SpatialReference* srs,
                      double xmin, double ymin, double xmax, double ymax) :
-_srs( srs ),
-_xmin(xmin),_ymin(ymin),_xmax(xmax),_ymax(ymax)
+Bounds( xmin, ymin, xmax, ymax ),
+_srs( srs )
 {
     //NOP
 }
 
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :
-_srs( rhs._srs ),
-_xmin( rhs._xmin ), _ymin( rhs._ymin ), _xmax( rhs._xmax ), _ymax( rhs._ymax )
+Bounds( rhs ),
+_srs( rhs._srs )
+{
+    //NOP
+}
+
+GeoExtent::GeoExtent( const SpatialReference* srs, const Bounds& bounds )
+: Bounds( bounds ),
+_srs( srs )
 {
     //NOP
 }
@@ -88,54 +169,6 @@ GeoExtent::isValid() const
 const SpatialReference*
 GeoExtent::getSRS() const {
     return _srs.get(); 
-}
-
-double
-GeoExtent::xMin() const {
-    return _xmin;
-}
-
-double
-GeoExtent::yMin() const {
-    return _ymin;
-}
-
-double
-GeoExtent::xMax() const {
-    return _xmax; 
-}
-
-double
-GeoExtent::yMax() const {
-    return _ymax; 
-}
-
-double
-GeoExtent::width() const
-{
-    return crossesDateLine()?
-        (180-_xmin) + (_xmax+180) :
-        _xmax - _xmin;
-}
-
-double
-GeoExtent::height() const
-{
-    return _ymax - _ymin;
-}
-
-void
-GeoExtent::getCentroid( double& out_x, double& out_y ) const
-{
-    out_x = _xmin+width()/2.0;
-    out_y = _ymin+height()/2.0;
-}
-
-bool
-GeoExtent::crossesDateLine() const
-{
-    return _xmax < _xmin;
-    //return _srs.valid() && _srs->isGeographic() && _xmax < _xmin;
 }
 
 bool
@@ -181,15 +214,6 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
 
     }
     return GeoExtent(); // invalid
-}
-
-void
-GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const
-{
-    xmin = _xmin;
-    ymin = _ymin;
-    xmax = _xmax;
-    ymax = _ymax;
 }
 
 //TODO:: support crossesDateLine!

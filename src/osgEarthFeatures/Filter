@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/GeoData>
+#include <osg/Matrix>
 #include <list>
 
 using namespace osgEarth;
@@ -36,11 +37,42 @@ namespace osgEarthFeatures
     {
     public:
         FilterContext();
+
         FilterContext( const FilterContext& rhs );
 
-    public:
-        GeoExtent _extent;
+        /** spatial envelope that filters should honor when operating under this context */
+        optional<GeoExtent>& extent() {
+            return _extent; }
+
+        const FeatureProfile* profile() const {
+            return _profile.get();
+        }
+        osg::ref_ptr<const FeatureProfile>& profile() {
+            return _profile;
+        }
+
+        const osg::Matrixd& referenceFrame() const {
+            return _referenceFrame;
+        }
+        const osg::Matrix& inverseReferenceFrame() const {
+            return _inverseReferenceFrame;
+        }
+        void setReferenceFrame( const osg::Matrixd& in ) {
+            _referenceFrame = in;
+            _inverseReferenceFrame = osg::Matrixd::inverse( _referenceFrame );
+        }
+
+        //void setProfile( const FeatureProfile* profile ) {
+        //    _profile = profile; }
+
+        //const FeatureProfile* getProfile() const {
+        //    return _profile.get(); }             
+
+    protected:
+        optional<GeoExtent> _extent;
         osg::ref_ptr<const FeatureProfile> _profile;
+        osg::Matrixd _referenceFrame;
+        osg::Matrixd _inverseReferenceFrame;
     };
 
     /**

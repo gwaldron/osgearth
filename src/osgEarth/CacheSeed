@@ -27,24 +27,6 @@
 
 namespace osgEarth
 {
-    struct Bounds
-    {
-        Bounds(double minx, double miny, double maxx, double maxy):
-            _min(minx, miny),
-            _max(maxx, maxy) { }
-
-        bool intersects(TileKey* key)
-        {
-            double minx, miny, maxx, maxy;
-            key->getGeoExtent().getBounds( minx, miny, maxx, maxy );
-
-            return ! ( minx >= _max.x() || maxx <= _min.x() || miny >= _max.y() || maxy <= _min.y() );
-        }
-
-        osg::Vec2d _min;
-        osg::Vec2d _max;
-    };
-
     /**
     * Utility class for seeding a cache
     */

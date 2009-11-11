@@ -23,39 +23,26 @@
 #include <osgEarthFeatures/Styling>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TransformFilter>
-#include <osgEarthFeatures/BuildGeometryFilter>
-#include <osgEarthFeatures/CropFilter>
+#include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osg/Notify>
-#include <osg/LineWidth>
 #include <osgDB/FileNameUtils>
-#include <osgUtil/Tessellator>
-#include <osgSim/OverlayNode>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
+#include "StencilUtils.h"
 
 using namespace osgEarth;
 using namespace osgEarthFeatures;
 using namespace OpenThreads;
 
 #define PROP_FEATURES     "features"
-#define PROP_TEXTURE_UNIT "texture_unit"
-#define PROP_TEXTURE_SIZE "texture_size"
-#define PROP_OVERLAY_TECH "overlay_technique"
-#define PROP_BASE_HEIGHT  "base_height"
 
-#define VAL_OT_ODWOO      "object_dependent_with_orthographic_overlay"
-#define VAL_OT_VDWOO      "view_dependent_with_orthographic_overlay"
-#define VAL_OT_VDWPO      "view_dependent_with_perspective_overlay"
 
-class FeatureOverlaySource : public ModelSource
+class FeatureStencilSource : public ModelSource
 {
 public:
-    FeatureOverlaySource( const PluginOptions* options, int sourceId ) : ModelSource( options ),
+    FeatureStencilSource( const PluginOptions* options, int sourceId ) : ModelSource( options ),
         _sourceId( sourceId ),
-        _textureUnit( 0 ),
-        _textureSize( 1024 ),
-        _baseHeight( 0.0 ),
-        _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
+        _renderBinStart( 8000 )
     {
         //TODO
     }
@@ -69,39 +56,16 @@ public:
         _features = FeatureSourceFactory::create( conf.child( PROP_FEATURES ) );
         if ( !_features.valid() )
         {
-            osg::notify( osg::WARN ) << "[osgEarth] Feature Overlay driver - no valid feature source provided" << std::endl;
-        }
-
-        // omitting the texture unit implies "AUTO" mode - MapNode will set one automatically
-        if ( conf.hasValue( PROP_TEXTURE_UNIT ) )
-            _textureUnit = conf.value<int>( PROP_TEXTURE_UNIT, _textureUnit ); 
-        else
-            _textureUnit = 0; // AUTO
-
-        _textureSize = conf.value<int>( PROP_TEXTURE_SIZE, _textureSize );
-
-        _baseHeight = conf.value<double>( PROP_BASE_HEIGHT, _baseHeight );
-
-        if ( conf.hasValue( PROP_OVERLAY_TECH ) )
-        {
-            if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_ODWOO )
-                _overlayTech = osgSim::OverlayNode::OBJECT_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
-            else if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_VDWOO )
-                _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
-            else if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_VDWPO )
-                _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
+            osg::notify( osg::WARN ) << "[osgEarth] Feature Stencil driver - no valid feature source provided" << std::endl;
         }
 
         // load up the style catalog.
         Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
     }
 
-    osg::Node* buildClass( const Styling::StyleClass& style )
+    osg::Node* buildClass( const Styling::StyleClass& style, int& ref_renderBin )
     {
         bool isGeocentric = _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC;
-
-        //osg::notify(osg::NOTICE)
-        //    << "Building class " << style.name() << ", SQL = " << style.query().expression() << std::endl;
 
         // read all features into a list:
         FeatureList features;
@@ -117,22 +81,27 @@ public:
         TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
         xform.push( features, context );
 
-        // Build geometry:
-        BuildGeometryFilter buildGeom;
+        // Extrude the geometry in both directions to build a stencil volume:
+        ExtrudeGeometryFilter extrude( -250000, 250000 );
+        extrude.push( features, context );
 
-        // apply the style rule if we have one:
-        buildGeom.setStyleClass( style );
+        // take the volumes, and build a stencil volume graph:
+        osg::Node* volumes = extrude.getOutput( context );
+        osg::Node* geomPass = StencilUtils::createGeometryPass( volumes, ref_renderBin );
 
-        buildGeom.push( features, context );
+        // build the stencil mask that will style the steniled pixels:
+        osg::Node* maskPass = StencilUtils::createMaskPass( style, ref_renderBin );
 
-        osg::Node* result = buildGeom.takeOutput( context );
-        return result;
+        osg::Group* classGroup = new osg::Group();
+        classGroup->setName( style.name() );
+        classGroup->addChild( geomPass );
+        classGroup->addChild( maskPass );
+        return classGroup;
     }
 
     osg::Node* createOrInstallNode( MapNode* mapNode, ProgressCallback* progress =0L )
     {
         if ( !_features.valid() ) return 0L;
-
 
         // figure out which rule to use to style the geometry.
         Styling::NamedLayer styleLayer;
@@ -140,11 +109,12 @@ public:
 
         osg::Group* group = new osg::Group();
 
+        int renderBin = _renderBinStart;
         for( Styling::StyleClasses::iterator i = styleLayer.styleClasses().begin(); i != styleLayer.styleClasses().end(); ++i )
         {
             const Styling::StyleClass& style = *i;
 
-            osg::Node* node = buildClass( style );
+            osg::Node* node = buildClass( style, renderBin );
             if ( node )
                 group->addChild( node );
         }
@@ -152,53 +122,42 @@ public:
         osg::StateSet* ss = group->getOrCreateStateSet();
         ss->setMode( GL_LIGHTING, 0 );
 
-        // finally, build the overlay node.
-        osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
-        overlayNode->setName( this->getName() );
-        overlayNode->setOverlayTechnique( _overlayTech );
-        overlayNode->setOverlayBaseHeight( _baseHeight );
-        overlayNode->setOverlayTextureSizeHint( _textureSize );
-        overlayNode->setOverlayTextureUnit( _textureUnit ); 
-        overlayNode->setContinuousUpdate( false );
-        overlayNode->setOverlaySubgraph( group );
+        // install the node.
 
-        return overlayNode;
+        return 0L; // we installed it ourselves :)
     }
 
 private:
     osg::ref_ptr<FeatureSource> _features;
     int _sourceId;
-    int _textureSize;
-    int _textureUnit;
-    double _baseHeight;
-    osgSim::OverlayNode::OverlayTechnique _overlayTech;
+    int _renderBinStart;
     osg::ref_ptr<const Map> _map;
     Styling::StyleCatalog _styles;
 };
 
 
-class ReaderWriterFeatureOverlay : public osgDB::ReaderWriter
+class ReaderWriterFeatureStencil : public osgDB::ReaderWriter
 {
 public:
-    ReaderWriterFeatureOverlay()
+    ReaderWriterFeatureStencil()
     {
-        supportsExtension( "osgearth_model_feature_overlay", "osgEarth feature overlay plugin" );
+        supportsExtension( "osgearth_model_feature_stencil", "osgEarth feature stencil plugin" );
     }
 
     virtual const char* className()
     {
-        return "osgEarth Feature Overlay Model Plugin";
+        return "osgEarth Feature Stencil Model Plugin";
     }
 
-    FeatureOverlaySource* create( const PluginOptions* options )
+    FeatureStencilSource* create( const PluginOptions* options )
     {
         ScopedLock<Mutex> lock( _sourceIdMutex );
-        FeatureOverlaySource* obj = new FeatureOverlaySource( options, _sourceId );
+        FeatureStencilSource* obj = new FeatureStencilSource( options, _sourceId );
         if ( obj ) _sourceMap[_sourceId++] = obj;
         return obj;
     }
 
-    FeatureOverlaySource* get( int sourceId )
+    FeatureStencilSource* get( int sourceId )
     {
         ScopedLock<Mutex> lock( _sourceIdMutex );
         return _sourceMap[sourceId].get();
@@ -209,7 +168,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        ReaderWriterFeatureOverlay* nonConstThis = const_cast<ReaderWriterFeatureOverlay*>(this);
+        ReaderWriterFeatureStencil* nonConstThis = const_cast<ReaderWriterFeatureStencil*>(this);
         return nonConstThis->create( static_cast<const PluginOptions*>(options) );
     }
 
@@ -224,15 +183,15 @@ public:
         int sourceId = 0;
         sscanf( stripped.c_str(), "%d", &sourceId );
 
-        ReaderWriterFeatureOverlay* nonConstThis = const_cast<ReaderWriterFeatureOverlay*>(this);
+        ReaderWriterFeatureStencil* nonConstThis = const_cast<ReaderWriterFeatureStencil*>(this);
         return ReadResult( nonConstThis->get( sourceId ) );
     }
 
 protected:
     Mutex _sourceIdMutex;
     int _sourceId;
-    std::map<int, osg::ref_ptr<FeatureOverlaySource> > _sourceMap;
+    std::map<int, osg::ref_ptr<FeatureStencilSource> > _sourceMap;
 };
 
-REGISTER_OSGPLUGIN(osgearth_model_feature_overlay, ReaderWriterFeatureOverlay)
+REGISTER_OSGPLUGIN(osgearth_model_feature_stencil, ReaderWriterFeatureStencil)
 

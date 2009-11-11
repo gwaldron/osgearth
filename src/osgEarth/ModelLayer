@@ -34,7 +34,9 @@ namespace osgEarth
     public:
         ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf );
 
-        osg::Node* getNode();
+        osg::Node* createNode();
+
+        osg::Node* createOrInstallNode( class MapNode* mapNode );
 
     public:
 

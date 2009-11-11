@@ -62,6 +62,25 @@ FeatureProfile::isMultiGeometry() const
 
 /****************************************************************************/
 
+int
+FeatureGeometry::getTotalPointCount() const
+{
+    int count = 0;
+    for( const_iterator i = begin(); i != end(); ++i )
+    {
+        count += i->get()->size();
+    }
+    return count;
+}
+
+bool
+FeatureGeometry::isClosed( const osg::Vec3dArray* part ) const 
+{
+    return ( part && part->size() > 1 && *(part->begin()) == *(part->end()-1) );
+}
+
+/****************************************************************************/
+
 Feature::Feature( long fid ) :
 _fid( fid )
 {
@@ -117,6 +136,12 @@ int
 Feature::getNumParts() const
 {
     return _parts.size();
+}
+
+const FeatureGeometry&
+Feature::getGeometry() const 
+{
+    return _parts;
 }
 
 osg::Vec3dArray*

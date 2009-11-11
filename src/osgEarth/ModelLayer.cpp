@@ -39,7 +39,13 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 }
 
 osg::Node*
-ModelLayer::getNode()
+ModelLayer::createNode()
 {
-    return _modelSource.valid() ? _modelSource->getNode() : 0L;
+    return createOrInstallNode( 0L );
+}
+
+osg::Node*
+ModelLayer::createOrInstallNode( MapNode* mapNode )
+{
+    return _modelSource.valid() ? _modelSource->createOrInstallNode( mapNode ) : 0L;
 }

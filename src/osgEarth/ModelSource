@@ -37,7 +37,14 @@ namespace osgEarth
     public:        
         ModelSource( const PluginOptions* options =NULL );
 
-        virtual osg::Node* getNode( ProgressCallback* progress =0L ) =0;
+        /**
+         * Subclass implements this method to create the mode node.
+         * You have the CHOICE of EITHER returning the created node, OR 
+         * inserting it manually into a MapNode. You should do one but not
+         * both! (Also, it is correct usage to always return the node IF 
+         * the [mapNode] parameter is null.)
+         */
+        virtual osg::Node* createOrInstallNode( class MapNode* mapNode, ProgressCallback* progress =0L ) =0;
 
     public: // META_Object specialization
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate

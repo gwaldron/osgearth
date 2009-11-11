@@ -85,8 +85,10 @@ namespace osgEarth
         TaskRequest* get();
         void clear();
 
-        void block() { _block->block(); }
-        void release() { _block->release(); }
+        void setDone();
+
+        //void block() { _block->block(); }
+        //void release() { _block->release(); }
 
         void setStamp( int value ) { _stamp = value; }
         int getStamp() const { return _stamp; }
@@ -94,7 +96,9 @@ namespace osgEarth
     private:
         TaskRequestList _requests;
         OpenThreads::Mutex _mutex;
-        osg::ref_ptr< osg::RefBlock > _block;
+        OpenThreads::Condition _cond;
+        bool _done;
+        //osg::ref_ptr< osg::RefBlock > _block;
 
         int _stamp;
     };

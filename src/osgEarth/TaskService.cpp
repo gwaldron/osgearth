@@ -37,9 +37,10 @@ TaskRequest::isCanceled() const {
 
 /**************************************************************************/
 
-TaskRequestQueue::TaskRequestQueue()
+TaskRequestQueue::TaskRequestQueue() :
+_done( false )
 {
-    _block = new osg::RefBlock();
+//    _block = new osg::RefBlock();
 }
 
 void
@@ -57,45 +58,88 @@ TaskRequestQueue::add( TaskRequest* request )
     request->setState( TaskRequest::STATE_PENDING );
 
     // insert by priority.
+    bool inserted = false;
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); i++ )
     {
         if ( request->getPriority() > i->get()->getPriority() )
         {
             _requests.insert( i, request );
             //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
-            _block->set( true );
-            return;
+            break;
         }
     }
 
-    _requests.push_back( request );
+    if ( !inserted )
+        _requests.push_back( request );
+
+    // since there is data in the queue, wake up one waiting task thread.
+    _cond.signal();
+    //_block->set( true );
+
     //osg::notify(osg::NOTICE) << "Queue has items, setting block to true " << std::endl;
-    _block->set( true );
     //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
 }
 
 TaskRequest* 
 TaskRequestQueue::get()
 {
-    if (_requests.empty())
-    {
-        _block->block();
-        //osg::notify(osg::NOTICE) << "Unblocked" << std::endl;
-    }
-
     ScopedLock<Mutex> lock(_mutex);
 
-    if (_requests.empty()) return 0;
-    
+    while ( !_done && _requests.empty() )
+    {
+        // releases the mutex and waits on the condition.
+        _cond.wait( &_mutex );
+    }
+
+    if ( _done )
+    {
+        return 0L;
+    }
+
     osg::ref_ptr<TaskRequest> next = _requests.front();
     _requests.pop_front();
-    if (_requests.empty())
-    {
-        //osg::notify(osg::NOTICE) << "Queue empty, setting block to false " << std::endl;
-        _block->set(false);
-    }
-    //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
+
+    // I'm done, someone else take a turn:
+    _cond.signal();
+
     return next.release();
+
+
+    //if (_requests.empty())
+    //{
+    //    _block->block();
+    //    //osg::notify(osg::NOTICE) << "Unblocked" << std::endl;
+    //}
+
+    //ScopedLock<Mutex> lock(_mutex);
+
+    //if (_requests.empty()) return 0;
+    //
+    //osg::ref_ptr<TaskRequest> next = _requests.front();
+    //_requests.pop_front();
+    //if (_requests.empty())
+    //{
+    //    //osg::notify(osg::NOTICE) << "Queue empty, setting block to false " << std::endl;
+    //    _block->set(false);
+    //}
+    ////osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
+    //return next.release();
+}
+
+void
+TaskRequestQueue::setDone()
+{
+    // we need to obtain the mutex since we're using the Condition
+    ScopedLock<Mutex> lock(_mutex);
+
+    _done = true;
+
+    // wake everyone up so they can see the _done flag set and exit.
+    //_cond.broadcast();
+
+    // alternative to buggy broadcast:
+    for(int i=0; i<128; i++)
+        _cond.signal();
 }
 
 /**************************************************************************/
@@ -148,21 +192,21 @@ TaskThread::run()
 int
 TaskThread::cancel()
 {
-    if (isRunning())
+    if ( isRunning() )
     {
       _done = true;  
 
       //Remove any pending requests
-      _queue->clear();
+      //_queue->clear();
 
-      _queue->release();
+      //_queue->release();
 
       if (_request.valid())
           _request->cancel();
 
       while (isRunning())
       {
-          _queue->release();          
+          //_queue->release();          
           OpenThreads::Thread::YieldCurrentThread();
       }
     }
@@ -186,6 +230,8 @@ TaskService::add( TaskRequest* request )
 
 TaskService::~TaskService()
 {
+    _queue->setDone();
+
     for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
     {
         (*i)->setDone(true);

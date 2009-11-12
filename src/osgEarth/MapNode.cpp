@@ -388,6 +388,19 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
+    if ( _engine->getEngineProperties().getPreemptiveLOD() )
+    {
+        if ( layer && layer->getTileSource() )
+        {
+            for( unsigned int i=0; i<_terrains.size(); i++ )
+            {
+                _terrains[i]->incrementRevision();
+                _terrains[i]->updateTaskServiceThreads();
+            }
+        }
+        updateStateSet();
+    }
+
     if ( layer && layer->getTileSource() )
     {        
         if ( layer->getType() == MapLayer::TYPE_IMAGE )

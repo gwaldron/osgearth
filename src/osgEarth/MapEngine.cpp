@@ -640,14 +640,14 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // Create the images for the tile
     for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
     {
-        GeoImage* image = NULL;
+        osg::ref_ptr<GeoImage> image;
         TileSource* source = i->get()->getTileSource();
 		//Only create images if the key is valid
         if ( i->get()->isKeyValid( key ) )
         {
             image = i->get()->createImage( key );
         }
-        image_tiles.push_back(image);
+        image_tiles.push_back(image.get());
     }
 
     bool hasElevation = false;
@@ -951,7 +951,7 @@ MapEngine::createHeightFieldLayer( Map* map, const TileKey* key, bool exactOnly 
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
 
     // try to create a heightfield at native res:
-    osg::HeightField* hf = map->createHeightField( key, !exactOnly );
+    osg::ref_ptr<osg::HeightField> hf = map->createHeightField( key, !exactOnly );
     if ( !hf )
     {
         if ( exactOnly )
@@ -966,7 +966,7 @@ MapEngine::createHeightFieldLayer( Map* map, const TileKey* key, bool exactOnly 
         HeightFieldUtils::scaleHeightFieldToDegrees( hf );
     }
 
-    osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
+    osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );
 
     GeoLocator* locator = GeoLocator::createForKey( key, map );
     hfLayer->setLocator( locator );

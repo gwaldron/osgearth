@@ -68,21 +68,21 @@ TileSource::getImage( const TileKey* key,
                       )
 {
 	//Try to get it from the memcache fist
-	osg::Image* image = NULL;
+    osg::ref_ptr<osg::Image> image = NULL;
 	if (_memCache.valid())
 	{
 		image = _memCache->getImage( key,"","");
 	}
 
-	if (!image)
+	if (!image.valid())
 	{
 		image = createImage( key, progress );
-		if (image && _memCache.valid())
+		if (image.valid() && _memCache.valid())
 		{
-			_memCache->setImage( key, "", "",image );
+			_memCache->setImage( key, "", "",image.get() );
 		}
 	}
-	return image;
+	return image.release();
 }
 
 osg::HeightField*
@@ -90,21 +90,21 @@ TileSource::getHeightField( const TileKey* key,
                             ProgressCallback* progress
                            )
 {
-	osg::HeightField* hf = NULL;
+    osg::ref_ptr<osg::HeightField> hf = NULL;
 	if (_memCache.valid())
 	{
 		hf = _memCache->getHeightField( key, "", "" );
 	}
 
-	if (!hf)
+	if (!hf.valid())
 	{
 		hf = createHeightField( key, progress );
-		if (hf && _memCache.valid())
+		if (hf.valid() && _memCache.valid())
 		{
-			_memCache->setHeightField( key, "", "", hf );
+			_memCache->setHeightField( key, "", "", hf.get() );
 		}
 	}
-	return hf;
+	return hf.release();
 }
 
 osg::HeightField*

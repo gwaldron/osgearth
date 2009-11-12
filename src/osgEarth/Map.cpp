@@ -445,20 +445,20 @@ Map::createHeightField( const TileKey* key,
 		if (i->get()->getEnabled())
 		{
 			osg::ref_ptr< const TileKey > hf_key = key;
-			osg::HeightField* hf = NULL;
+            osg::ref_ptr< osg::HeightField > hf;
 			while (hf_key.valid())
 			{
 				hf = i->get()->createHeightField( hf_key.get(), progress );
-				if (hf || !fallback) break;
+				if (hf.valid() || !fallback) break;
 				hf_key = hf_key->createParentKey();
 			}
 
-			if (hf)
+			if (hf.valid())
 			{
                 if ( hf_key->getLevelOfDetail() < lowestLOD )
                     lowestLOD = hf_key->getLevelOfDetail();
 
-				heightFields.push_back( new GeoHeightField( hf, hf_key->getGeoExtent() ) );
+				heightFields.push_back( new GeoHeightField( hf.get(), hf_key->getGeoExtent() ) );
 			}
 		}
 	}

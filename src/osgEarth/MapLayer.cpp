@@ -398,11 +398,11 @@ MapLayer::createImage( const TileKey* key,
 	//If we are caching in the map profile, try to get the image immediately.
 	if (cacheInMapProfile && _cache.valid())
 	{
-		osg::Image* image = _cache->getImage( key, _name, _cacheFormat);
+        osg::ref_ptr<osg::Image> image = _cache->getImage( key, _name, _cacheFormat);
 		if (image)
 		{
 			osg::notify(osg::INFO) << "Layer " << _name << " got tile " << key->str() << " from map cache " << std::endl;
-			return new GeoImage( image, key->getGeoExtent() );
+			return new GeoImage( image.get(), key->getGeoExtent() );
 		}
 	}
 
@@ -410,10 +410,10 @@ MapLayer::createImage( const TileKey* key,
     if ( mapProfile->isEquivalentTo( layerProfile ) )
     {
 		osg::notify(osg::INFO) << "  Key and source profiles are equivalent, requesting single tile" << std::endl;
-        osg::Image* image = createImageWrapper( key, cacheInLayerProfile, progress );
+        osg::ref_ptr<osg::Image> image = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( image )
         {
-            result = new GeoImage( image, key->getGeoExtent() );
+            result = new GeoImage( image.get(), key->getGeoExtent() );
         }
     }
     // Otherwise, we need to process the tiles.
@@ -421,7 +421,6 @@ MapLayer::createImage( const TileKey* key,
     {
 		osg::notify(osg::INFO) << "  Key and source profiles are different, creating mosaic" << std::endl;
 		osg::ref_ptr<GeoImage> mosaic;
-		osg::Image* image = NULL;
 
 		// Determine the intersecting keys and create and extract an appropriate image from the tiles
 		std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;

@@ -520,9 +520,9 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _map->createHeightField( key.get(), true );
-                if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
-                heightFieldLayer->setHeightField( hf );
+                osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
+                if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
+                heightFieldLayer->setHeightField( hf.get() );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }
 
@@ -628,9 +628,9 @@ MapNode::removeHeightFieldLayer( unsigned int index )
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _map->createHeightField( key.get(), true );
-                if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
-                heightFieldLayer->setHeightField( hf );
+                osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
+                if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
+                heightFieldLayer->setHeightField( hf.get() );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }
 
@@ -730,9 +730,9 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
             osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
             if (heightFieldLayer)
             {
-                osg::HeightField* hf = _map->createHeightField( key.get(), true );
-                if (!hf) hf = MapEngine::createEmptyHeightField( key.get() );
-                heightFieldLayer->setHeightField( hf );
+                osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
+                if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
+                heightFieldLayer->setHeightField( hf.get() );
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }                
             

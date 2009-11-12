@@ -575,8 +575,8 @@ GeoHeightField*
 MapLayer::createGeoHeightField(const TileKey* key,
                                ProgressCallback * progress)
 {
-	osg::HeightField* hf = getTileSource()->getHeightField( key, progress );
-	if (hf)
+    osg::ref_ptr<osg::HeightField> hf = getTileSource()->getHeightField( key, progress );
+	if (hf.valid())
 	{
 		//Modify the heightfield data so that is contains a standard value for NO_DATA
 		osg::ref_ptr<CompositeValidValueOperator> ops = new CompositeValidValueOperator;
@@ -588,7 +588,7 @@ MapLayer::createGeoHeightField(const TileKey* key,
 		o.setValidDataOperator(ops.get());
 		o(hf);
 
-		return new GeoHeightField(hf, key->getGeoExtent());
+		return new GeoHeightField(hf.get(), key->getGeoExtent());
 	}
 	return NULL;
 }
@@ -638,10 +638,10 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 				{
 					if (isKeyValid( intersectingTiles[i].get() ) )
 					{
-						GeoHeightField *hf = createGeoHeightField( intersectingTiles[i].get(), progress );
-						if (hf)
+                        osg::ref_ptr<GeoHeightField> hf = createGeoHeightField( intersectingTiles[i].get(), progress );
+						if (hf.valid())
 						{
-							heightFields.push_back(hf);
+							heightFields.push_back(hf.get());
 						}
 					}
 				}

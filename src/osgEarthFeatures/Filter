@@ -67,13 +67,7 @@ namespace osgEarthFeatures
         void setReferenceFrame( const osg::Matrixd& in ) {
             _referenceFrame = in;
             _inverseReferenceFrame = osg::Matrixd::inverse( _referenceFrame );
-        }
-
-        //void setProfile( const FeatureProfile* profile ) {
-        //    _profile = profile; }
-
-        //const FeatureProfile* getProfile() const {
-        //    return _profile.get(); }             
+        }      
 
     protected:
         bool _isGeocentric;

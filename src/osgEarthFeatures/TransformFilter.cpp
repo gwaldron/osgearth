@@ -29,7 +29,7 @@ _makeGeocentric( makeGeocentric )
 }
 
 bool
-TransformFilter::push( Feature* input, FilterContext& context )
+TransformFilter::push( Feature* input, const FilterContext& context )
 {
     for( int p=0; p<input->getNumParts(); p++ )
     {
@@ -57,12 +57,23 @@ TransformFilter::push( Feature* input, FilterContext& context )
     return true;
 }
 
-bool
-TransformFilter::push( FeatureList& input, FilterContext& context )
+FilterContext
+TransformFilter::push( FeatureList& input, const FilterContext& context )
 {
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
         if ( !push( i->get(), context ) )
             ok = false;
-    return true;
+
+    FilterContext outputCx( context );
+
+    outputCx.isGeocentric() = _makeGeocentric;
+
+    outputCx.profile() = new FeatureProfile(
+        _outputSRS.get(),
+        context.profile()->getGeometryType(),
+        context.profile()->getDimensionality(),
+        context.profile()->isMultiGeometry() );
+
+    return outputCx;
 }

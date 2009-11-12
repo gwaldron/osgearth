@@ -36,7 +36,10 @@ using namespace osgEarthFeatures;
 #define PROP_URL           "url"
 #define PROP_OGR_DRIVER    "ogr_driver"
 #define PROP_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
+#define PROP_GEOMETRY_OP   "geometry_op"   // "buffer", etc...
 #define PROP_SQL           "query"
+
+#define BUFFER_ATTR_DISTANCE "distance"
 
 /**
  * A FeatureSource that reads features from an OGR driver.

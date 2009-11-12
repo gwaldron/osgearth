@@ -37,13 +37,14 @@ namespace osgEarthFeatures
     public:
         TransformFilter( const SpatialReference* outputSRS, bool makeGeocentric );
 
-        bool push( Feature* feature, FilterContext& context );
-
-        bool push( FeatureList& features, FilterContext& context );
+    public:
+        FilterContext push( FeatureList& features, const FilterContext& context );
 
     protected:
         osg::ref_ptr<const SpatialReference> _outputSRS;
         bool _makeGeocentric;
+        
+        bool push( Feature* feature, const FilterContext& context );
     };
 }
 

@@ -30,67 +30,9 @@ _isGeocentric( false )
 FilterContext::FilterContext(const FilterContext& rhs) :
 _extent( rhs._extent ),
 _profile( rhs._profile ),
-_isGeocentric( rhs._isGeocentric )
+_isGeocentric( rhs._isGeocentric ),
+_referenceFrame( rhs._referenceFrame ),
+_inverseReferenceFrame( rhs._inverseReferenceFrame )
 {
     //NOP
 }
-
-//template<typename T>
-//FilterChain<T>::FilterChain( const FilterContext& context ) :
-//_prototypeContext( context )
-//{
-//    //NOP
-//}
-//template<typename T>
-//FilterChain<T>::FilterChain( const FilterChain& rhs ) :
-//_prototypeContext( rhs._prototypeContext )
-//{
-//    //NOP
-//}
-//
-//template<typename T>
-//bool
-//FilterChain<T>::run(FeatureCursor* inputCursor,
-//                    std::list< osg::ref_ptr<T> >& output )
-//{
-//    while( inputCursor->hasMore() )
-//    {
-//        osg::Referenced* obj = inputCursor->nextFeature();
-//        if ( obj )
-//        {
-//            for( std::list< osg::ref_ptr<Filter> >::iterator k = begin(); k != end(); k++ )
-//            {
-//                FilterContext context( _prototypeContext );
-//                obj = k->get()->process( obj, context );
-//                if ( !obj.valid() )
-//                    break;
-//            }
-//
-//            if ( obj.valid() )
-//                output.push_back( obj.get() );
-//        }
-//    }
-//}
-//
-//
-//template<typename T>
-//bool
-//FilterChain<T>::run(std::list< osg::ref_ptr<osg::Referenced> >& input,
-//                    std::list< osg::ref_ptr<T> >& output)
-//{
-//    for( std::list< osg::ref_ptr<T> >::iterator i = begin(); i != end(); i++ )
-//    {
-//        osg::ref_ptr< osg::Referenced > input = i->get();
-//
-//        for( std::list< osg::ref_ptr<Filter> >::iterator k = begin(); k != end(); k++ )
-//        {
-//            FilterContext context( _prototypeContext );
-//            input = k->get()->process( input.get(), context );
-//            if ( !input.valid() ) break;
-//        }
-//
-//        if ( input.valid() )
-//            output.push_back( input.get() );
-//    }
-//}
-//

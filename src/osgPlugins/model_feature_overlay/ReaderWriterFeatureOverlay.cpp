@@ -115,19 +115,17 @@ public:
 
         // Transform them into the map's SRS:
         TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
-        xform.push( features, context );
-        context.isGeocentric() = isGeocentric;
+        context = xform.push( features, context );
 
         // Build geometry:
         BuildGeometryFilter buildGeom;
 
         // apply the style rule if we have one:
+        osg::ref_ptr<osg::Node> result;
         buildGeom.setStyleClass( style );
+        context = buildGeom.push( features, result, context );
 
-        buildGeom.push( features, context );
-
-        osg::Node* result = buildGeom.takeOutput( context );
-        return result;
+        return result.release();
     }
 
     osg::Node* createOrInstallNode( MapNode* mapNode, ProgressCallback* progress =0L )

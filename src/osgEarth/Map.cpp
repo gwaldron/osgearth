@@ -52,6 +52,12 @@ Map::getCoordinateSystemType() const {
     return _cstype;
 }
 
+bool
+Map::isGeocentric() const
+{
+    return _cstype == CSTYPE_GEOCENTRIC || _cstype == CSTYPE_GEOCENTRIC_CUBE;
+}
+
 const osgDB::ReaderWriter::Options*
 Map::getGlobalOptions() const {
     return _globalOptions.get();
@@ -104,6 +110,14 @@ Map::profileConfig() const {
 const MapLayerList& 
 Map::getImageMapLayers() const {
     return _imageMapLayers;
+}
+
+int
+Map::getImageMapLayers( MapLayerList& out_list ) const {
+    ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    for( MapLayerList::const_iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end(); ++i )
+        out_list.push_back( i->get() );
+    return _dataModelRevision;
 }
 
 const MapLayerList& 

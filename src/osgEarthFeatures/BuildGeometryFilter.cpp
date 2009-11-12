@@ -54,7 +54,7 @@ BuildGeometryFilter::reset()
 }
 
 bool
-BuildGeometryFilter::push( Feature* input, FilterContext& context )
+BuildGeometryFilter::push( Feature* input, const FilterContext& context )
 {
     FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
     GLenum primType =
@@ -111,42 +111,40 @@ BuildGeometryFilter::push( Feature* input, FilterContext& context )
     return true;
 }
 
-bool
-BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
+FilterContext
+BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context )
 {
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
         if ( !push( i->get(), context ) )
             ok = false;
-    return ok;
-}
 
-osg::Node*
-BuildGeometryFilter::getOutput( FilterContext& context )
-{
-    FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
-
-    if ( geomType == FeatureProfile::GEOM_POLYGON )
+    if ( ok )
     {
-        //NOP
+        FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
+
+        if ( geomType == FeatureProfile::GEOM_POLYGON )
+        {
+            //NOP
+        }
+        else if ( geomType == FeatureProfile::GEOM_POINT )
+        {
+            float size = _styleClass.lineSymbolizer().stroke().width();
+            _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
+        }
+        else // GEOM_LINE
+        {
+            float width = _styleClass.lineSymbolizer().stroke().width();
+            _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
+        }
+
+        output = _geode.release();
     }
-    else if ( geomType == FeatureProfile::GEOM_POINT )
+    else
     {
-        float size = _styleClass.lineSymbolizer().stroke().width();
-        _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
-    }
-    else // GEOM_LINE
-    {
-        float width = _styleClass.lineSymbolizer().stroke().width();
-        _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
+        output = 0L;
     }
 
-    return _geode.get();
-}
-
-osg::Node*
-BuildGeometryFilter::takeOutput( FilterContext& context )
-{
-    getOutput( context );
-    return _geode.release();
+    FilterContext outCx( context );
+    return outCx;
 }

@@ -4,7 +4,8 @@ osgEarth Sample
 This one demonstrates how to read feature data from a shapefile and display it
 on the map using a stenciling technique.
 
-The "feature_stencil" driver...
+The "feature_stencil" driver uses the stencil buffer to "drape" feature data
+on the terrain.
 -->
 
 <map name="Feature Stencil Demo" type="geocentric">
@@ -21,7 +22,7 @@ The "feature_stencil" driver...
             <ogr_driver>ESRI Shapefile</ogr_driver>
         </features>
         
-        <class name="NStates">
+        <class name="AStates">
             <query>
                 <expr>name like "A%"</expr>
             </query>
@@ -70,7 +71,5 @@ The "feature_stencil" driver...
         </class>   
         
     </model>
-    
-    <lighting>false</lighting>
   
 </map>

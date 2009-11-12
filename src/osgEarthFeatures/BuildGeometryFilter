@@ -42,18 +42,14 @@ namespace osgEarthFeatures
 
         void setStyleClass( const Styling::StyleClass& style );
 
-        bool push( Feature* input, FilterContext& context );
-
-        bool push( FeatureList& input, FilterContext& context );
-
-        osg::Node* getOutput( FilterContext& context );
-
-        osg::Node* takeOutput( FilterContext& context );
+        FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
         Styling::StyleClass _styleClass;
         void reset();
+        
+        bool push( Feature* input, const FilterContext& context );
     };
 }
 

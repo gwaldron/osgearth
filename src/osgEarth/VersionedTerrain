@@ -129,7 +129,7 @@ namespace osgEarth
 
         OpenThreads::ReadWriteMutex& getTileLayersMutex();
 
-        void cancelRequests();
+        bool cancelRequests();
 
         void updateImagery( unsigned int layerId, Map* map, MapEngine* engine );
 
@@ -137,6 +137,8 @@ namespace osgEarth
         bool getTileGenNeeded() const;
 
         bool getUseTileGenRequest() const;
+
+        Relatives& getFamily();
 
     public: // OVERRIDES
 
@@ -176,26 +178,25 @@ namespace osgEarth
         osg::ref_ptr<TaskRequest> _elevRequest;
         osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
         osg::ref_ptr<TaskRequest> _tileGenRequest;
-        int _numActiveRequests;       
+        int _numActiveRequests;    
+   
 
         // this is an obs ptr so we can "cache" the parent tile reference and refresh it 
         // if the parent tile changes (which it could if it gets rebuilt)
-        osg::observer_ptr<VersionedTile> _parentTileObserver;
-        osg::ref_ptr<VersionedTile> _parentTile; // safe
+        //osg::observer_ptr<VersionedTile> _parentTileObserver;
+        //osg::ref_ptr<VersionedTile> _parentTile; // safe
 
         osg::ref_ptr<VersionedTerrain> _versionedTerrain;
 
         Relatives _family;
-        //VersionedTileObsVec _family;
-        //std::vector<int> _familyElevLOD;
         OpenThreads::ReadWriteMutex _tileLayersMutex;
 
         /** Deals with completed requests during the UPDATE traversal. */
         void installRequests( int stamp );
         bool readyForNewElevation();
         void serviceCompletedRequests();
-        //void refreshParentTile();
         void checkNeedsUpdate();
+        void markTileForRegeneration();
         bool _needsUpdate;
     };
 
@@ -237,10 +238,6 @@ namespace osgEarth
         //VersionedTile* getVersionedTile( const osgTerrain::TileID& tileId );
 
 
-        void refreshFamily(
-            const osgTerrain::TileID& tileId, 
-            Relatives& family );
-
         Map* getMap();
         MapEngine* getEngine();
 
@@ -258,27 +255,31 @@ namespace osgEarth
 
         typedef std::map< osgTerrain::TileID, osg::ref_ptr<VersionedTile> > TileTable;
         typedef std::queue< osg::ref_ptr<VersionedTile> > TileQueue;
+        typedef std::list< osg::ref_ptr<VersionedTile> > TileList;
+        typedef std::vector< osg::ref_ptr<VersionedTile> > TileVector;
         typedef std::queue< osgTerrain::TileID > TileIDQueue;
 
         OpenThreads::ReadWriteMutex _tilesMutex;
-        TileTable _tiles;
-        TileQueue _tilesToAdd;
+        TileTable  _tiles;
+        TileList   _tilesToShutDown;
+        TileQueue  _tilesToAdd;
+        TileVector _tilesToServiceElevation;
 
     public:
 
         void registerTile( VersionedTile* newTile );
 
-        void getVersionedTile( const osgTerrain::TileID& id, osg::ref_ptr<VersionedTile>& out_tile );
-        void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile );
+        void getVersionedTile( const osgTerrain::TileID& id, osg::ref_ptr<VersionedTile>& out_tile, bool lock =true );
+        void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile, bool lock =true);
+        void getVersionedTiles( TileList& out_tiles );
         void getTerrainTiles( TerrainTileList& out_tiles );
 
-    private:        
-
-        void updateTileTable();
+    private:
 
         TaskService* createTaskService( int id, int numThreads );
         TaskService* getTaskService( int id );
 
+        void refreshFamily( const osgTerrain::TileID& tileId, Relatives& family, bool tileTableLocked );
 
         int _revision; 
         OpenThreads::Mutex _revisionMutex;
@@ -290,9 +291,6 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile> _profile;
         OpenThreads::Mutex _taskServiceMutex;
-
-        double _updateBudgetSeconds;
-        osg::Timer_t _updateStartTime;
 
         int _numAsyncThreads;
         

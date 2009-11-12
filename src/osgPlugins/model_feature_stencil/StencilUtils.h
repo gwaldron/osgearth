@@ -51,11 +51,11 @@ struct StencilUtils
 
         osg::Group* root = new osg::Group();
 
-        osg::notify(osg::NOTICE) << "Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
+        osg::notify(osg::INFO) << "[osgEarth] Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
 
         if ( s_EXT_stencil_two_side )
         {
-            osg::notify(osg::NOTICE) << "Two-sided stenciling" << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth] Two-sided stenciling" << std::endl;
 
             osg::StencilTwoSided::Operation incrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::INCR_WRAP : osg::StencilTwoSided::INCR;
             osg::StencilTwoSided::Operation decrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::DECR_WRAP : osg::StencilTwoSided::DECR;
@@ -92,12 +92,10 @@ struct StencilUtils
         }
         else
         {
-            osg::notify(osg::NOTICE) << "One-sided stenciling" << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth] One-sided stenciling" << std::endl;
             
             if ( !zFail )  // Z-Pass
             {
-                osg::notify( osg::NOTICE) << "ZPass" << std::endl;
-
                 osg::Group* front_group = new osg::Group();
                 osg::StateSet* front_ss = front_group->getOrCreateStateSet();
                 front_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
@@ -136,8 +134,6 @@ struct StencilUtils
             }
             else
             {
-                osg::notify( osg::NOTICE) << "ZFail" << std::endl;
-
                 // incrementing stencil op for back faces:
                 {
                     osg::Group* front_group = new osg::Group();

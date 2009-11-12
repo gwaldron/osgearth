@@ -80,21 +80,15 @@ public:
 
         // Transform them into the map's SRS:
         TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
-        xform.push( features, context );
-        context.isGeocentric() = isGeocentric;
+        context = xform.push( features, context );
 
         // Extrude the geometry in both directions to build a stencil volume:
+        osg::ref_ptr<osg::Node> volumes;
         ExtrudeGeometryFilter extrude( -250000, 500000 );
-        extrude.push( features, context );
-
-        //TESTING:
-        //return extrude.takeOutput( context );
-
-        // build some capped volumes:
-        osg::Node* volumes = extrude.getOutput( context );
+        context = extrude.push( features, volumes, context );
 
         // render the volumes to the stencil buffer:
-        osg::Node* geomPass = StencilUtils::createGeometryPass( volumes, ref_renderBin );
+        osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), ref_renderBin );
 
         // render a full screen quad to write to the masked pixels:
         osg::Vec4ub maskColor = style.getColor( context.profile()->getGeometryType() );

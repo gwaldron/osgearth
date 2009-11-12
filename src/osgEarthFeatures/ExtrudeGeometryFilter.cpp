@@ -70,7 +70,7 @@ bool extrudeWallsUp(FeatureGeometry&           parts,
                     optional<osg::Vec4ub>&     color,
                     bool                       makeNormals,
                     bool                       makeTexCoords,
-                    FilterContext&             context )
+                    const FilterContext&       context )
 {
     // start by offsetting the input data.
     if ( offset != 0.0 )
@@ -384,7 +384,7 @@ void tessellate( osg::Geometry* geom )
 }
 
 bool
-ExtrudeGeometryFilter::push( Feature* input, FilterContext& context )
+ExtrudeGeometryFilter::push( Feature* input, const FilterContext& context )
 {   
     if ( !_geode.valid() )
         _geode = new osg::Geode();
@@ -446,48 +446,44 @@ ExtrudeGeometryFilter::push( Feature* input, FilterContext& context )
     return true;
 }
 
-bool
-ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
+FilterContext
+ExtrudeGeometryFilter::push(FeatureList& input,
+                            osg::ref_ptr<osg::Node>& output,
+                            const FilterContext& context )
 {
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
         if ( !push( i->get(), context ) )
             ok = false;
-    return ok;
-}
 
-osg::Node*
-ExtrudeGeometryFilter::getOutput( FilterContext& context )
-{
-    if ( _styleClass.isSet() )
+    if ( ok )
     {
-        FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
+        if ( _styleClass.isSet() )
+        {
+            FeatureProfile::GeometryType geomType = context.profile()->getGeometryType();
 
-        if ( geomType == FeatureProfile::GEOM_POLYGON )
-        {
-            //NOP
+            if ( geomType == FeatureProfile::GEOM_POLYGON )
+            {
+                //NOP
+            }
+            else if ( geomType == FeatureProfile::GEOM_POINT )
+            {
+                float size = _styleClass->lineSymbolizer().stroke().width();
+                _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
+            }
+            else // GEOM_LINE
+            {
+                float width = _styleClass->lineSymbolizer().stroke().width();
+                _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
+            }
         }
-        else if ( geomType == FeatureProfile::GEOM_POINT )
-        {
-            float size = _styleClass->lineSymbolizer().stroke().width();
-            _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
-        }
-        else // GEOM_LINE
-        {
-            float width = _styleClass->lineSymbolizer().stroke().width();
-            _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
-        }
+
+        output = _geode.release();
+    }
+    else
+    {
+        output = 0L;
     }
 
-    return _geode.get();
+    return FilterContext( context );
 }
-
-osg::Node* 
-ExtrudeGeometryFilter::takeOutput( FilterContext& context )
-{
-    getOutput( context );
-    return _geode.release();
-}
-
-
-

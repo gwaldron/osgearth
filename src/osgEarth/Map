@@ -99,6 +99,13 @@ namespace osgEarth
         const MapLayerList& getImageMapLayers() const;
 
         /**
+         * Copies references of the map image layers into the output list.
+         * This method is thread safe. It returns the map revision that was
+         * in effect when the data was copied.
+         */
+        int getImageMapLayers( MapLayerList& out_list ) const;
+
+        /**
          * Gets the ordered list of heightfield layers in this map. Be sure to use
          * getMapDataMutex() when iterating the list.
          */
@@ -239,6 +246,12 @@ namespace osgEarth
          * in the map model (as a alternative to installing a MapCallback).
          */
         int getDataModelRevision() const;
+
+        /**
+         * Convenience function that returns TRUE if the map cs type is
+         * geocentric.
+         */
+        bool isGeocentric() const;
 
     protected:
 

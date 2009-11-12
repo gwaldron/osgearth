@@ -158,6 +158,9 @@ HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inpu
     dest->setXInterval( dx );
     dest->setYInterval( dy );
 
+    // copy over the skirt height, adjusting it for relative tile size.
+    dest->setSkirtHeight( input->getSkirtHeight() * div );
+
     double x, y;
     int col, row;
 

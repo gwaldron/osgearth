@@ -33,6 +33,7 @@ namespace osgEarthFeatures
     class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter
     {
     public:
+
         ExtrudeGeometryFilter();
         ExtrudeGeometryFilter( const ExtrudeGeometryFilter& rhs );
         ExtrudeGeometryFilter( double offset, double distance );
@@ -46,13 +47,13 @@ namespace osgEarthFeatures
 
         optional<Styling::StyleClass>& styleClass() { return _styleClass; }
 
-        bool push( Feature* input, FilterContext& context );
+    public:
 
-        bool push( FeatureList& input, FilterContext& context );
+        FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
 
-        osg::Node* getOutput( FilterContext& context );
+        //osg::Node* getOutput( const FilterContext& context );
 
-        osg::Node* takeOutput( FilterContext& context );
+        //osg::Node* takeOutput( FilterContext& context );
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
@@ -60,6 +61,8 @@ namespace osgEarthFeatures
         double _offset;
         double _distance;
         void reset();
+
+        bool push( Feature* input, const FilterContext& context );
     };
 }
 

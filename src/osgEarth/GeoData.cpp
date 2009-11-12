@@ -716,6 +716,9 @@ GeoHeightField::createSubSample( const GeoExtent& destEx ) const
     dest->setXInterval( dx );
     dest->setYInterval( dy );
 
+    // copy over the skirt height, adjusting it for tile size.
+    dest->setSkirtHeight( _heightField->getSkirtHeight() * div );
+
     double x, y;
     int col, row;
 

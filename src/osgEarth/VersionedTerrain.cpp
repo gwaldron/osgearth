@@ -212,7 +212,13 @@ _needsUpdate(false)
     this->setTileID( key->getTileId() );
 
     // because the lowest LOD (1) is always loaded fully:
-    _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;        
+    _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;
+
+    // initially bump the update requirement so that this tile will receive an update
+    // traversal the first time through. It is on the first update traversal that we
+    // know the tile is in the scene graph and that it can be registered with the terrain.
+    this->setNumChildrenRequiringUpdateTraversal(
+        this->getNumChildrenRequiringUpdateTraversal() + 1 );
 }
 
 VersionedTile::~VersionedTile()
@@ -923,19 +929,28 @@ VersionedTile::serviceCompletedRequests()
 void
 VersionedTile::traverse( osg::NodeVisitor& nv )
 {
-    // register this tile with its terrain if we've not already done it.
-    if ( !_tileRegisteredWithTerrain && getVersionedTerrain() )
+    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
+    bool isUpdate = nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
+
+    if ( !_tileRegisteredWithTerrain && getVersionedTerrain() && (isCull || isUpdate) ) 
     {
+        // register this tile with its terrain if we've not already done it.
+        // we want to be sure that the tile is already in the scene graph at the
+        // time of registration (otherwise VersionedTerrain will see its refcount
+        // at 1 and schedule it for removal as soon as it's added. Therefore, we
+        // make sure this is either a CULL or UPDATE traversal.
         getVersionedTerrain()->registerTile( this );
         _tileRegisteredWithTerrain = true;
+
+        // we constructed this tile with an update traversal count of 1 so it would get
+        // here and we could register the tile. Now we can decrement it back to normal.
+        this->setNumChildrenRequiringUpdateTraversal(
+            this->getNumChildrenRequiringUpdateTraversal() - 1 );
     }
 
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    if ( isUpdate && _useLayerRequests )
     {
-        if ( _useLayerRequests )
-        {
-            serviceCompletedRequests();
-        }
+        serviceCompletedRequests();
     }
 
     osgTerrain::TerrainTile::traverse( nv );
@@ -949,7 +964,8 @@ void VersionedTile::releaseGLObjects(osg::State* state) const
     if (_terrainTechnique.valid())
     {
         //NOTE: crashes sometimes if OSG_RELEASE_DELAY is set -gw
-        //_terrainTechnique->releaseGLObjects( state );
+        _terrainTechnique->releaseGLObjects( state );
+        //osg::notify(osg::NOTICE) << "[osgEarth] VT releasing GL objects" << std::endl;
     }
 }
 
@@ -1205,7 +1221,6 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             
             //osg::notify(osg::NOTICE) << "Shutting down " << _tilesToShutDown.size() << " tiles." << std::endl;
 
-
             for( TileList::iterator i = _tilesToShutDown.begin(); i != _tilesToShutDown.end(); )
             {
                 if ( i->get()->cancelRequests() )
@@ -1216,6 +1231,9 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 else
                     ++i;
             }
+
+            // Add any newly registered tiles to the table. If a tile is in the _tilesToAdd
+            // queue, we know it is already in the scene graph.
             while( _tilesToAdd.size() > 0 )
             {
                 _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();

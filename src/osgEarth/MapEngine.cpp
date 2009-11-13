@@ -412,28 +412,38 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
                                           const TileKey* key,
                                           const TileKey* ancestorKey)
 {
+    osgTerrain::HeightFieldLayer* newHFLayer = 0L;
+
     if ( ancestorTile && ancestorKey )
     {
-        osgTerrain::HeightFieldLayer* ancestorLayer = static_cast<osgTerrain::HeightFieldLayer*>(ancestorTile->getElevationLayer());
-        if ( ancestorLayer && ancestorLayer->getHeightField() )
-        {   
-            osg::HeightField* newHF = HeightFieldUtils::createSubSample(
-                ancestorLayer->getHeightField(),
-                ancestorKey->getGeoExtent(),
-                key->getGeoExtent() );
-            
-            osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( newHF );
-            hfLayer->setLocator( defaultLocator );
-            tile->setElevationLayer( hfLayer );
+        osg::ref_ptr<osgTerrain::HeightFieldLayer> ancestorLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(ancestorTile->getElevationLayer());
+        if ( ancestorLayer.valid() )
+        {
+            osg::ref_ptr<osg::HeightField> ancestorHF = ancestorLayer->getHeightField();
+            if ( ancestorHF.valid() )
+            {
+                osg::HeightField* newHF = HeightFieldUtils::createSubSample(
+                    ancestorHF.get(),
+                    ancestorKey->getGeoExtent(),
+                    key->getGeoExtent() );
+
+                newHFLayer = new osgTerrain::HeightFieldLayer( newHF );
+                newHFLayer->setLocator( defaultLocator );
+                tile->setElevationLayer( newHFLayer );
+            }
         }
     }
 
-    if ( !tile->getElevationLayer() )
+    if ( !newHFLayer )
     {
-        osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer();
-        hfLayer->setHeightField( createEmptyHeightField( key, 8, 8 ) );
-        hfLayer->setLocator( defaultLocator );
-        tile->setElevationLayer( hfLayer );
+        newHFLayer = new osgTerrain::HeightFieldLayer();
+        newHFLayer->setHeightField( createEmptyHeightField( key, 8, 8 ) );
+        newHFLayer->setLocator( defaultLocator );
+    }
+
+    if ( newHFLayer )
+    {
+        tile->setElevationLayer( newHFLayer );
     }
 }
 
@@ -477,6 +487,23 @@ MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, 
 osg::Node*
 MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const TileKey* key )
 {
+    // Start out by finding the nearest registered ancestor tile, since the placeholder is
+    // going to be based on inherited data. Note- the ancestor may not be the immediate
+    // parent, b/c the parent may or may not be in the scene graph.
+    osg::ref_ptr<const TileKey> ancestorKey = key->createParentKey();
+    osg::ref_ptr<VersionedTile> ancestorTile;
+    while( !ancestorTile.valid() && ancestorKey.valid() )
+    {
+        terrain->getVersionedTile( ancestorKey->getTileId(), ancestorTile );
+        if ( !ancestorTile.valid() )
+            ancestorKey = ancestorKey->createParentKey();
+    }
+    if ( !ancestorTile.valid() )
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth] cannot find ancestor tile for (" << key->str() << ")" <<std::endl;
+        return 0L;
+    }
+
     osg::notify(osg::INFO) << "Creating placeholder for " << key->str() << std::endl;
     ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -509,36 +536,14 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         tile->setDataVariance(osg::Object::DYNAMIC);
     }
 
-    // Now generate imagery and elevation placeholders:
-    osg::ref_ptr<const TileKey> ancestorKey = key;
-    osg::ref_ptr<VersionedTile> ancestorTile = 0L;
-    std::string indent = "";
-    
-    while( !ancestorTile.valid() && ancestorKey.valid() )
+    // Generate placeholder imagery and elevation layers. These "inherit" data from an
+    // ancestor tile.
     {
-        ancestorKey = ancestorKey->createParentKey();
-        if ( ancestorKey.valid() )
-        {
-            osgTerrain::TileID tid = ancestorKey->getTileId();
-            terrain->getVersionedTile( ancestorKey->getTileId(), ancestorTile );
-        }
-    }
-
-    if (ancestorTile.valid())
-    {
-        // install placeholder image and heightfield layers.
-        ScopedReadLock ancestorLock( ancestorTile->getTileLayersMutex() );
+        ScopedReadLock parentLock( ancestorTile->getTileLayersMutex() );
         addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
         tile->setElevationLOD( ancestorTile->getElevationLOD() );
-        //osg::notify(osg::NOTICE) << "createPlaceholderTile Got placeholder " << ancestorTile->getKey()->str() << "(" << ancestorTile->getElevationLOD() << ") for " << key->str() << std::endl;
     }
-    else
-    {
-        osg::notify(osg::NOTICE) << "Warning:  Could not get ancestor tile for " << key->str() << std::endl;
-        return NULL;
-    }
-
     
     // calculate the switching distances:
     osg::BoundingSphere bs = tile->getBound();

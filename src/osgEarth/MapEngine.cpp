@@ -155,12 +155,14 @@ struct TileDataLoaderCallback : public osg::NodeCallback
 
 /*****************************************************************************/
 
-MapEngine::MapEngine()
+MapEngine::MapEngine() :
+osg::Referenced( true )
 {
     //nop
 }
 
 MapEngine::MapEngine( const MapEngineProperties& props ) :
+osg::Referenced( true ),
 _engineProps( props )
 {
     //nop

@@ -21,12 +21,14 @@
 
 using namespace osgEarth;
 
-TileKey::TileKey()
+TileKey::TileKey() :
+osg::Referenced( true )
 {
     //NOP
 }
 
 TileKey::TileKey( const TileKey& rhs ) :
+osg::Referenced( rhs ),
 _face(rhs._face),
 _lod(rhs._lod),
 _x(rhs._x),

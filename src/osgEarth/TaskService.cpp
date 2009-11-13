@@ -6,9 +6,9 @@ using namespace OpenThreads;
 /**************************************************************************/
 
 TaskRequest::TaskRequest( float priority ) :
+osg::Referenced( true ),
 _priority( priority ),
-_state( STATE_IDLE ),
-osg::Referenced( true )
+_state( STATE_IDLE )
 {
     _progress = new ProgressCallback();
     //_progress = new ConsoleProgressCallback();
@@ -38,6 +38,7 @@ TaskRequest::isCanceled() const {
 /**************************************************************************/
 
 TaskRequestQueue::TaskRequestQueue() :
+osg::Referenced( true ),
 _done( false )
 {
 //    _block = new osg::RefBlock();
@@ -106,27 +107,6 @@ TaskRequestQueue::get()
     _cond.signal();
 
     return next.release();
-
-
-    //if (_requests.empty())
-    //{
-    //    _block->block();
-    //    //osg::notify(osg::NOTICE) << "Unblocked" << std::endl;
-    //}
-
-    //ScopedLock<Mutex> lock(_mutex);
-
-    //if (_requests.empty()) return 0;
-    //
-    //osg::ref_ptr<TaskRequest> next = _requests.front();
-    //_requests.pop_front();
-    //if (_requests.empty())
-    //{
-    //    //osg::notify(osg::NOTICE) << "Queue empty, setting block to false " << std::endl;
-    //    _block->set(false);
-    //}
-    ////osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
-    //return next.release();
 }
 
 void
@@ -199,17 +179,11 @@ TaskThread::cancel()
     {
       _done = true;  
 
-      //Remove any pending requests
-      //_queue->clear();
-
-      //_queue->release();
-
       if (_request.valid())
           _request->cancel();
 
       while (isRunning())
-      {
-          //_queue->release();          
+      {        
           OpenThreads::Thread::YieldCurrentThread();
       }
     }
@@ -219,6 +193,7 @@ TaskThread::cancel()
 /**************************************************************************/
 
 TaskService::TaskService( int numThreads ):
+osg::Referenced( true ),
 _lastRemoveFinishedThreadsStamp(0)
 {
     _queue = new TaskRequestQueue();

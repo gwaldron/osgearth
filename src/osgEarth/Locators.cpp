@@ -29,7 +29,7 @@ _x0(0.0), _x1(1.0),
 _y0(0.0), _y1(1.0),
 _inverseCalculated(false)
 {
-    //nop
+    this->setThreadSafeRefUnref(true);
 }
 
 GeoLocator::GeoLocator( const GeoExtent& dataExtent ) :
@@ -38,7 +38,7 @@ _x0(0.0), _x1(1.0),
 _y0(0.0), _y1(1.0),
 _inverseCalculated(false)
 {
-    //nop
+    this->setThreadSafeRefUnref(true);
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :

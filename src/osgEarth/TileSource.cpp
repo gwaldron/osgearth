@@ -45,6 +45,8 @@ _noDataMinValue(-FLT_MAX),
 _noDataMaxValue(FLT_MAX),
 _max_data_level(INT_MAX)
 {
+    this->setThreadSafeRefUnref( true );
+
     if ( options )
     {
         const Config& conf = options->config();

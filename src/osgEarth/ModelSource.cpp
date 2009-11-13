@@ -28,6 +28,7 @@ using namespace OpenThreads;
 ModelSource::ModelSource( const PluginOptions* options ) :
 _options( options )
 {
+    this->setThreadSafeRefUnref( true );
 }
 
 const PluginOptions* 

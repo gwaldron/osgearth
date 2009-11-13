@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_BUFFER_FILTER_H
+#define OSGEARTHFEATURES_BUFFER_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
+#include <osg/Geode>
+
+using namespace osgEarth;
+
+namespace osgEarthFeatures {
+
+    class OSGEARTHFEATURES_EXPORT BufferFilter
+    {
+    public:
+        // Call this determine whether this filter is available. This filter uses
+        // the GEOS library, so you must compile osgEarth against GEOS for this 
+        // filter to be available.
+        static bool isSupported();
+
+    public:
+        BufferFilter();
+        BufferFilter( double distance, int _numSegsPer90deg =4 );
+        BufferFilter( const BufferFilter& rhs );
+
+    public:
+        FilterContext push( FeatureList& input, const FilterContext& context );
+
+    protected:
+        double _distance;
+        int _numSegsPer90deg;
+
+        bool push( Feature* input, const FilterContext& context );
+    };
+
+} // namespace osgEarth::Features
+
+#endif // 

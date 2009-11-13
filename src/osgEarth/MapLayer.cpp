@@ -26,6 +26,7 @@ using namespace osgEarth;
 static unsigned int s_mapLayerID = 0;
 
 MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Config& driverConf ) :
+osg::Referenced( true ),
 _name( name ),
 _type( type ),
 _driver( driver ),
@@ -45,6 +46,7 @@ _loadWeight( 1.0f )
 
 // this ctor is for backwards compat only
 MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Properties& driverProps ) :
+osg::Referenced( true ),
 _name( name ),
 _type( type ),
 _driver( driver ),
@@ -65,6 +67,7 @@ _loadWeight( 1.0f )
 }
 
 MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
+osg::Referenced( true ),
 _name( name ),
 _type( type ),
 _tileSource( source ),

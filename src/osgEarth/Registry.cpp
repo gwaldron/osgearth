@@ -190,6 +190,7 @@ class RegisterEarthTileExtension
 public:
     RegisterEarthTileExtension()
     {
+        osg::Referenced::setThreadSafeReferenceCounting( true );
         osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
 		osgDB::Registry::instance()->addFileExtensionAlias("earth_tile_data", "earth");
     }

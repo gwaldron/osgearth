@@ -23,7 +23,8 @@
 
 using namespace osgEarth;
 
-ProgressCallback::ProgressCallback():
+ProgressCallback::ProgressCallback() :
+osg::Referenced( true ),
 _canceled(false)
 {
 }
@@ -35,7 +36,7 @@ ProgressCallback::reportProgress(double current, double total)
 }
 
 /******************************************************************************/
-ConsoleProgressCallback::ConsoleProgressCallback():
+ConsoleProgressCallback::ConsoleProgressCallback() :
 ProgressCallback()
 {
 }

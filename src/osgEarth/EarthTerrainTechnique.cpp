@@ -49,13 +49,14 @@ using namespace OpenThreads;
 
 
 EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
+TerrainTechnique(),
 _masterLocator( masterLocator ),
 _currentReadOnlyBuffer(1),
 _currentWriteBuffer(0),
 _verticalScaleOverride(1.0f),
 _swapPending( false )
 {
-    //nop
+    this->setThreadSafeRefUnref(true);
 }
 
 EarthTerrainTechnique::EarthTerrainTechnique(const EarthTerrainTechnique& gt,const osg::CopyOp& copyop):

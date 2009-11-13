@@ -16,37 +16,39 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/ModelLayer>
-#include <osgEarth/Map>
+
+#ifndef OSGEARTHFEATURES_FEATURE_OP_FILTER_H
+#define OSGEARTHFEATURES_FEATURE_OP_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#ifdef OSGEARTH_HAVE_GEOS
+#  include <geos/geom/Geometry.h>
+#endif // OSGEARTH_HAVE_GEOS
 
 using namespace osgEarth;
 
-ModelLayer::ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf ) :
-osg::Referenced( true ),
-_name( name ),
-_driver( driver ),
-_driverConf( driverConf )
-{
-    //NOP
+namespace osgEarthFeatures {
+
+    class OSGEARTHFEATURES_EXPORT FeatureOpFilter
+    {
+    public:
+        
+        virtual FilterContext push( FeatureList& input, const FilterContext& context ) =0;
+
+    public:
+
+#ifdef OSGEARTH_HAVE_GEOS
+
+        geos::geom::Geometry* encode( const FeatureGeometry& input, const FilterContext& context );
+
+        void decode( geos::geom::Geometry* input, FeatureGeometry& output, const FilterContext& context );
+
+#endif // OSGEARTH_HAVE_GEOS
+
+    };
 }
 
-void
-ModelLayer::initialize( const std::string& referenceURI, const Map* map )
-{
-    _referenceURI = referenceURI;
-    _modelSource = ModelSourceFactory::create( _driver, _driverConf );
-    if ( _modelSource.valid() )
-        _modelSource->initialize( _referenceURI, map );
-}
+#endif // OSGEARTHFEATURES_FEATURE_OP_FILTER_H
 
-osg::Node*
-ModelLayer::createNode()
-{
-    return createOrInstallNode( 0L );
-}
-
-osg::Node*
-ModelLayer::createOrInstallNode( MapNode* mapNode )
-{
-    return _modelSource.valid() ? _modelSource->createOrInstallNode( mapNode ) : 0L;
-}

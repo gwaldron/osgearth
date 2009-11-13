@@ -45,6 +45,7 @@ using namespace osgTerrain;
 MultiPassTerrainTechnique::MultiPassTerrainTechnique():
 _terrainTileInitialized(false)
 {
+    this->setThreadSafeRefUnref( true );
     setFilterBias(0);
     setFilterWidth(0.1);
     setFilterMatrixAs(GAUSSIAN);   

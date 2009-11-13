@@ -280,7 +280,8 @@ Profile::create( const ProfileConfig& conf )
 Profile::Profile(const SpatialReference* srs,
                  double xmin, double ymin, double xmax, double ymax,
                  unsigned int numTilesWideAtLod0,
-                 unsigned int numTilesHighAtLod0)
+                 unsigned int numTilesHighAtLod0) :
+osg::Referenced( true )
 {
     _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
 

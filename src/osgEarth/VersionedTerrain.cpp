@@ -207,7 +207,9 @@ _useTileGenRequest( true ),
 _tileGenNeeded( false ),
 _needsUpdate(false)
 {
-    setTileID( key->getTileId() );
+    this->setThreadSafeRefUnref( true );
+
+    this->setTileID( key->getTileId() );
 
     // because the lowest LOD (1) is always loaded fully:
     _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;        
@@ -936,6 +938,8 @@ _engine( engine ),
 _revision(0),
 _numAsyncThreads( 0 )
 {
+    this->setThreadSafeRefUnref( true );
+
     //See if the number of threads is explicitly provided
     const optional<int>& numThreads = engine->getEngineProperties().getNumLoadingThreads();
     if (numThreads.isSet())

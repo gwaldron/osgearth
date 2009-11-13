@@ -25,6 +25,7 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 Map::Map(const CoordinateSystemType& cstype) :
+osg::Referenced(true),
 _cstype( cstype ),
 _id(-1),
 _use_mercator_locator(true),

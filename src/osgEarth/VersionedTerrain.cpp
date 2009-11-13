@@ -240,29 +240,52 @@ VersionedTile::cancelRequests()
             //}
             i->get()->cancel();
 
-            if ( i->get()->referenceCount() > 1 )
+            if ( i->get()->isRunning() )
+            {
+                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") IR still running ... " << std::endl;
                 done = false;
+            }
+            //if ( i->get()->referenceCount() > 1 )
+            //    done = false;
         }
 
         if ( _elevRequest.valid() )
         {
             _elevRequest->cancel();
-            if ( _elevRequest->referenceCount() > 1 )
+
+            if ( _elevRequest->isRunning() )
+            {
+                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") ER still running ... " << std::endl;
                 done = false;
+            }
+            //if ( _elevRequest->referenceCount() > 1 )
+            //    done = false;
         }
 
         if (_elevPlaceholderRequest.valid())
         {
             _elevPlaceholderRequest->cancel();
-            if ( _elevPlaceholderRequest->referenceCount() > 1 )
+
+            if ( _elevPlaceholderRequest->isRunning() )
+            {
+                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") PH still running ... " << std::endl;
                 done = false;
+            }
+            //if ( _elevPlaceholderRequest->referenceCount() > 1 )
+            //    done = false;
         }
 
         if (_tileGenRequest.valid())
         {
             _tileGenRequest->cancel();
-            if ( _tileGenRequest->referenceCount() > 1 )
+
+            if ( _tileGenRequest->isRunning() )
+            {
+                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") TG still running ... " << std::endl;
                 done = false;
+            }
+            //if ( _tileGenRequest->referenceCount() > 1 )
+            //    done = false;
         }
     }
 
@@ -829,12 +852,14 @@ VersionedTile::serviceCompletedRequests()
                 
                 // GW- just reset these and leave them alone and let cancelRequests() take care of cleanup later.
                 // done with our Elevation requests!
-                //_elevRequest = 0L;
-                //_elevPlaceholderRequest = 0L;
+                _elevRequest = 0L;
+                _elevPlaceholderRequest = 0L;
             }
-
-            _elevRequest->setState( TaskRequest::STATE_IDLE );
-            _elevRequest->reset();
+            else
+            {
+                _elevRequest->setState( TaskRequest::STATE_IDLE );
+                _elevRequest->reset();
+            }
         }
 
         else if ( _elevRequest->isCanceled() )
@@ -1165,6 +1190,8 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             {
                 if ( i->second.valid() && i->second->referenceCount() == 1 )
                 {
+                    //osg::notify(osg::NOTICE) << "Tile (" << i->second->getKey()->str() << ") expired..." << std::endl;
+
                     _tilesToShutDown.push_back( i->second.get() );
                     TileTable::iterator j = i;
                     ++i;
@@ -1175,15 +1202,20 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                     ++i;
                 }
             }
+            
+            //osg::notify(osg::NOTICE) << "Shutting down " << _tilesToShutDown.size() << " tiles." << std::endl;
+
 
             for( TileList::iterator i = _tilesToShutDown.begin(); i != _tilesToShutDown.end(); )
             {
                 if ( i->get()->cancelRequests() )
+                {
+                    //osg::notify(osg::NOTICE) << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
                     i = _tilesToShutDown.erase( i );
+                }
                 else
                     ++i;
             }
-
             while( _tilesToAdd.size() > 0 )
             {
                 _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
@@ -1220,6 +1252,8 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 }
             }
         }
+
+        //osg::notify(osg::NOTICE) << "Servicing " << _tilesToServiceElevation.size() << " tiles." << std::endl;
 
         // now we can service all the without holding a lock on the tile table.
         for( TileVector::iterator i = _tilesToServiceElevation.begin(); i != _tilesToServiceElevation.end(); ++i )

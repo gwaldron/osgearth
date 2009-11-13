@@ -149,7 +149,7 @@ public:
       primary_split_level(-1),
       secondary_split_level(-1),
       directory_structure(FLAT_TASK_DIRECTORIES),
-      maxNumTilesInCache(128),
+      maxNumTilesInCache(32),
       profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() )
     {
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;

@@ -23,6 +23,10 @@ TaskRequest::run()
 
         _state = _progress->isCanceled() ? STATE_CANCELED : STATE_COMPLETED;
     }
+    else
+    {
+        _state = STATE_CANCELED;
+    }
 }
 
 void 
@@ -141,15 +145,17 @@ TaskThread::run()
     {
         _request = _queue->get();
         //osg::notify(osg::NOTICE) << "Run thraed " << std::endl;
+
         if ( _done )
             break;
 
         if (_request.valid())
-        {
+        { 
             // discard a completed or canceled request:
             if ( _request->getState() != TaskRequest::STATE_PENDING || _request->isCanceled() )
             {
-                _request = 0;
+                _request->setState( TaskRequest::STATE_CANCELED );
+                _request = 0; // drop our reference
                 continue;
             }
 

@@ -41,7 +41,7 @@ namespace osgEarth
         osgTerrain::TileID tileID;
         // yes, a ref ptr here, b/c observer_ptr is not really thread safe.
         // we will check its validity by looking at its parent count.
-        osg::ref_ptr<VersionedTile> tile;
+        //osg::ref_ptr<VersionedTile> tile;
     };
 
     //typedef std::vector<Relative> Relatives;
@@ -264,10 +264,12 @@ namespace osgEarth
         OpenThreads::ReadWriteMutex _tilesMutex;
         TileTable  _tiles;
         TileList   _tilesToShutDown;
+        TileQueue  _tilesToRelease;
         TileQueue  _tilesToAdd;
         TileVector _tilesToServiceElevation;
 
     public:
+        void releaseGLObjectsForTiles(osg::State*);
 
         void registerTile( VersionedTile* newTile );
 
@@ -295,6 +297,8 @@ namespace osgEarth
         OpenThreads::Mutex _taskServiceMutex;
 
         int _numAsyncThreads;
+
+        bool _releaseCBInstalled;
         
         //VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
     };

@@ -971,17 +971,58 @@ void VersionedTile::releaseGLObjects(osg::State* state) const
         _terrainTechnique->releaseGLObjects( state );
         //osg::notify(osg::NOTICE) << "[osgEarth] VT releasing GL objects" << std::endl;
     }
+    else
+    {
+        //osg::notify(osg::NOTICE) << "[osgEarth] Tried but failed to VT releasing GL objects" << std::endl;
+    }
 }
 
 
 /****************************************************************************/
 
+// finds a camera in a node's parent hierarchy.
+static osg::Camera* findCam( osg::Node* n )
+{
+    osg::Camera* c = 0L;
+    while ( n && n->getNumParents() > 0 )
+    {
+        osg::Group* g = n->getParent(0);
+        c = dynamic_cast<osg::Camera*>(g);
+        if ( c ) return c;
+        n = g;
+    }
+    return 0L;
+}
+
+// a simple draw callback, to be installed on a Camera, that tells the
+// versionedterrain to release GL memory on any expired tiles.
+struct ReleaseGLCallback : public osg::Camera::DrawCallback
+{
+    ReleaseGLCallback(VersionedTerrain* terrain) : _terrain(terrain) { }
+    void operator()( osg::RenderInfo& renderInfo ) const {
+        _terrain->releaseGLObjectsForTiles(renderInfo.getState());
+    }
+    VersionedTerrain* _terrain;
+};
+
+// immediately release GL memory for any expired tiles.
+void
+VersionedTerrain::releaseGLObjectsForTiles(osg::State* state)
+{
+    ScopedReadLock lock( _tilesMutex );
+    while( _tilesToRelease.size() > 0 )
+    {
+        _tilesToRelease.front()->releaseGLObjects( state );
+        _tilesToRelease.pop();
+    }
+}
 
 VersionedTerrain::VersionedTerrain( Map* map, MapEngine* engine ) :
 _map( map ),
 _engine( engine ),
 _revision(0),
-_numAsyncThreads( 0 )
+_numAsyncThreads( 0 ),
+_releaseCBInstalled( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -1189,6 +1230,17 @@ VersionedTerrain::registerTile( VersionedTile* newTile )
 void
 VersionedTerrain::traverse( osg::NodeVisitor &nv )
 {
+    if ( !_releaseCBInstalled )
+    {
+        osg::Camera* cam = findCam( this );
+        if ( cam )
+        {
+            cam->setPostDrawCallback( new ReleaseGLCallback(this) );
+            _releaseCBInstalled = true;
+            //osg::notify(osg::NOTICE) << "release cb installed." << std::endl;
+        }
+    }
+
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         int stamp = nv.getFrameStamp()->getFrameNumber();
@@ -1226,6 +1278,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 if ( i->get()->cancelRequests() )
                 {
                     //osg::notify(osg::NOTICE) << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
+                    _tilesToRelease.push( i->get() );
                     i = _tilesToShutDown.erase( i );
                 }
                 else
@@ -1240,10 +1293,10 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 _tilesToAdd.pop();
             }
 
-            if ( _tiles.size() != oldSize )
-            {
-                osg::notify(osg::NOTICE) << "Tiles registered = " << _tiles.size() << std::endl;
-            }
+            //if ( _tiles.size() != oldSize )
+            //{
+            //    osg::notify(osg::NOTICE) << "Tiles registered = " << _tiles.size() << std::endl;
+            //}
         }
 
         // update the frame stamp on the task services. This is necessary to support 

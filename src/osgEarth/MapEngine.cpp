@@ -50,7 +50,7 @@ using namespace osgEarth;
 
 /*****************************************************************************/
 
-
+//todo: deprecate..
 class TileSwitcher : public osg::Group
 {
 public:
@@ -114,6 +114,25 @@ public:
 
 
 /*****************************************************************************/
+
+struct TileImageBackfillCallback : public osg::NodeCallback
+{
+    void operator()( osg::Node* node, osg::NodeVisitor* nv )
+    {
+        if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        {
+            if ( node->asGroup()->getNumChildren() > 0 )
+            {
+                osg::ref_ptr<VersionedTile> tile = dynamic_cast<VersionedTile*>( node->asGroup()->getChild(0) );
+                if ( tile.valid() && tile->getUseLayerRequests() )
+                {
+                    tile->servicePendingImageRequests( nv->getFrameStamp()->getFrameNumber() );
+                }
+            }
+        }
+        traverse( node, nv );
+    }
+};
 
 struct TileDataLoaderCallback : public osg::NodeCallback
 {
@@ -429,7 +448,8 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
 
                 newHFLayer = new osgTerrain::HeightFieldLayer( newHF );
                 newHFLayer->setLocator( defaultLocator );
-                tile->setElevationLayer( newHFLayer );
+                tile->setElevationLayer( newHFLayer );                
+                tile->setElevationLOD( ancestorTile->getElevationLOD() );
             }
         }
     }
@@ -439,6 +459,7 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
         newHFLayer = new osgTerrain::HeightFieldLayer();
         newHFLayer->setHeightField( createEmptyHeightField( key, 8, 8 ) );
         newHFLayer->setLocator( defaultLocator );
+        tile->setElevationLOD( -1 );
     }
 
     if ( newHFLayer )
@@ -542,7 +563,6 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         ScopedReadLock parentLock( ancestorTile->getTileLayersMutex() );
         addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
-        tile->setElevationLOD( ancestorTile->getElevationLOD() );
     }
     
     // calculate the switching distances:
@@ -574,16 +594,16 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
-    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range, markTileLoaded );
-    switcher->setDataVariance( osg::Object::DYNAMIC );
+    //TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range, markTileLoaded );
+    //switcher->setDataVariance( osg::Object::DYNAMIC );
 
-    // Install a cluster culler (FIXME for cube mode)
-    bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
-    if ( isGeocentric && !isCube )
-    {
-        osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
-        switcher->addCullCallback( ccc );
-    }     
+    //// Install a cluster culler (FIXME for cube mode)
+    //bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
+    //if ( isGeocentric && !isCube )
+    //{
+    //    osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
+    //    switcher->addCullCallback( ccc );
+    //}     
 
     // register the temporary tile with the terrain:
     tile->setTerrain( terrain );
@@ -594,7 +614,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     // create a PLOD so we can keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
-    plod->addChild( switcher, min_range, max_range );
+    //plod->addChild( switcher, min_range, max_range );
+    plod->addChild( tile, min_range, max_range );
 
     if ( key->getLevelOfDetail() < getEngineProperties().getMaxLOD() )
     {
@@ -616,7 +637,17 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // Install a callback that will load the actual tile data via the pager.
     //plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
-    result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+    result->addCullCallback( new TileImageBackfillCallback() );
+    //result->addCullCallback( new TileDataLoaderCallback( map, key ) );
+
+    // Install a cluster culler (FIXME for cube mode)
+    bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
+    if ( isGeocentric && !isCube )
+    {
+        osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
+        result->addCullCallback( ccc );
+    }     
+
 
     //result = plod;
 

@@ -43,7 +43,7 @@ namespace osgEarthFeatures {
 
         geos::geom::Geometry* encode( const FeatureGeometry& input, const FilterContext& context );
 
-        void decode( geos::geom::Geometry* input, FeatureGeometry& output, const FilterContext& context );
+        bool decode( geos::geom::Geometry* input, FeatureGeometry& output, const FilterContext& context );
 
 #endif // OSGEARTH_HAVE_GEOS
 

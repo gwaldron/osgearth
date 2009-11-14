@@ -53,20 +53,23 @@ public:
         //Check to see if we were marked cancelled on a previous check
         if (_canceled) return _canceled;
 
-        osg::ref_ptr<TaskRequest> safeRequest = _request.get();
-        osg::ref_ptr<TaskService> safeService = _service.get();
+        //osg::ref_ptr<TaskRequest> safeRequest = _request.get();
+        //osg::ref_ptr<TaskService> safeService = _service.get();
 
-        if ( !safeRequest.valid() || !safeService.valid() )
-            return true; // cancel if we lose a ref
+        //if ( !safeReqeust.valid() || !safeService.valid() )
+        //    return true;
 
-        _canceled = (safeService->getStamp() - safeRequest->getStamp() > 2);
+        _canceled = (_service->getStamp() - _request->getStamp() > 2);
 
         //osg::notify(osg::NOTICE) << "Marking cancelled " << _request->getName() << std::endl;
         return _canceled;
     }
 
-    osg::observer_ptr<TaskRequest> _request;
-    osg::observer_ptr<TaskService> _service;
+    //// don't make these ref_ptrs.. that's a leaker
+    //osg::observer_ptr<TaskRequest> _request;
+    //osg::observer_ptr<TaskService> _service;
+    TaskRequest* _request;
+    TaskService* _service;
 };
 
 
@@ -160,21 +163,21 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 // A task request that rebuilds a tile's terrain technique in the background. It
 // re-init's the geometry but does NOT swap the buffers (since this constitutes
 // altering the scene graph and must therefore be done in the update traversal).
+//
+// NOTE! this doesn't work for multipass technique!
 struct TileGenRequest : public TaskRequest
 {
     TileGenRequest( osgTerrain::TerrainTechnique* tech ) :
-        _tech( static_cast<EarthTerrainTechnique*>(tech) ) { }
+        _tech( dynamic_cast<EarthTerrainTechnique*>(tech) ) { }
 
     void operator()( ProgressCallback* progress )
     {
-        osg::ref_ptr<EarthTerrainTechnique> safeTech = _tech.get();
-        if ( safeTech.valid() )
-        {
-            safeTech->init( false );
-        }
+        if ( _tech.valid() )
+            _tech->init( false );
     }
 
-    osg::observer_ptr<EarthTerrainTechnique> _tech;
+    osg::ref_ptr<EarthTerrainTechnique> _tech;
+    //osg::observer_ptr<EarthTerrainTechnique> _tech;
 };
 
 
@@ -200,7 +203,6 @@ _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
 _usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
-_family( 5 ),
 _elevationLOD( key->getLevelOfDetail() ),
 _tileRegisteredWithTerrain( false ),
 _useTileGenRequest( true ),
@@ -223,7 +225,7 @@ _needsUpdate(false)
 
 VersionedTile::~VersionedTile()
 {
-//    osg::notify(osg::NOTICE) << "Destroying VersionedTile " << this->getKey()->str() << std::endl;
+    //osg::notify(osg::NOTICE) << "Destroying VersionedTile " << this->getKey()->str() << std::endl;
 }
 
 bool
@@ -421,7 +423,7 @@ VersionedTile::readyForNewElevation()
     {
         for( int i=PARENT; i<=SOUTH; i++) 
         {
-            if ( _family[i].exists && _family[i].elevLOD >= 0 && _family[i].elevLOD < _elevationLOD )
+            if ( _family[i].expected && _family[i].elevLOD >= 0 && _family[i].elevLOD < _elevationLOD )
             {
                 ready = false;
                 break;
@@ -619,7 +621,7 @@ VersionedTile::servicePendingImageRequests( int stamp )
     checkNeedsUpdate();
 }
 
-Relatives&
+Relative*
 VersionedTile::getFamily() {
     return _family;
 }
@@ -1046,23 +1048,23 @@ VersionedTerrain::getVersionedTile( const osgTerrain::TileID& tileID,
     }
 }
 
-void
-VersionedTerrain::getVersionedTile(const osgTerrain::TileID& tileID,
-                                   osg::observer_ptr<VersionedTile>& out_tile,
-                                   bool lock )
-{
-    if ( lock )
-    {
-        ScopedReadLock lock( _tilesMutex );
-        TileTable::iterator i = _tiles.find( tileID );
-        out_tile = i != _tiles.end()? i->second.get() : 0L;
-    }
-    else
-    {
-        TileTable::iterator i = _tiles.find( tileID );
-        out_tile = i != _tiles.end()? i->second.get() : 0L;
-    }
-}
+//void
+//VersionedTerrain::getVersionedTile(const osgTerrain::TileID& tileID,
+//                                   osg::observer_ptr<VersionedTile>& out_tile,
+//                                   bool lock )
+//{
+//    if ( lock )
+//    {
+//        ScopedReadLock lock( _tilesMutex );
+//        TileTable::iterator i = _tiles.find( tileID );
+//        out_tile = i != _tiles.end()? i->second.get() : 0L;
+//    }
+//    else
+//    {
+//        TileTable::iterator i = _tiles.find( tileID );
+//        out_tile = i != _tiles.end()? i->second.get() : 0L;
+//    }
+//}
 
 void
 VersionedTerrain::getVersionedTiles( TileList& out_list )
@@ -1085,31 +1087,51 @@ VersionedTerrain::getTerrainTiles( TerrainTileList& out_list )
 // This method is called by VersionedTerrain::traverse().
 void
 VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
-                                Relatives& family,
+                                Relative* family,
                                 bool tileTableLocked )
 {
-    // parent
-    family[PARENT].exists = true;
-    if ( ! family[PARENT].tile.valid() )
-    {
-        getVersionedTile( osgTerrain::TileID( tileId.level-1, tileId.x/2, tileId.y/2 ), family[PARENT].tile, !tileTableLocked );
-    }
-    osg::ref_ptr<VersionedTile> safeParent = family[PARENT].tile.get();
-    if ( safeParent.valid() )
-        family[PARENT].elevLOD = safeParent->getElevationLOD();
-
-    // technically it should check for a geocentric rendering...
+    // geocentric maps wrap around in the X dimension.
     bool wrapX = _map->isGeocentric();
-
     unsigned int tilesX, tilesY;
     _map->getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
-
     unsigned int x, y;
 
+    // we examine each of 5 relatives: parent, north, south, east, and west tiles.
+    // For each one:
+    // a) First determine is it should exist at all (the "expected" member). This flag
+    //    indicates whether we expect to find a tile there. For example, if the input
+    //    tileId is for a tile on the southern edge of the map, we do not expect to
+    //    find a southern neighbor.
+    // b) If the tile is deemed to "exist", we move on and try to lookup that tile in
+    //    the terrain's registry. It may or may be there, depending on whether it's in
+    //    the scene graph at the moment.
+    // c) If we find it, check to make sure it is not an orphaned tile (i.e. a tile that
+    //    has been expired by the DBPager. We check for this be seeing if the tile has
+    //    any parents. If not, it's orphaned and we discard our reference to it.
+    // d) Fianlly, if the tile is valid, we read it's elevation LOD value and store it
+    //    for later.
+
+    // parent
+    family[PARENT].expected = true;
+    family[PARENT].elevLOD = -1;
+    if ( ! family[PARENT].tile.valid() )
+    {
+        x = tileId.x/2;
+        y = tileId.y/2;
+        getVersionedTile( osgTerrain::TileID( tileId.level-1, x, y ), family[PARENT].tile, !tileTableLocked );
+    }
+    if ( family[PARENT].tile.valid() )
+    {
+        if ( family[PARENT].tile->getNumParents() > 0 )
+            family[PARENT].elevLOD = family[PARENT].tile->getElevationLOD();
+        else
+            family[PARENT].tile = 0L;
+    }        
+
     // west
-    family[WEST].exists = tileId.x > 0 || wrapX;
+    family[WEST].expected = tileId.x > 0 || wrapX;
     family[WEST].elevLOD = -1;
-    if ( family[WEST].exists )
+    if ( family[WEST].expected )
     {
         if ( !family[WEST].tile.valid() )
         {
@@ -1117,15 +1139,19 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             y = tileId.y;
             getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[WEST].tile, !tileTableLocked );
         }
-        osg::ref_ptr<VersionedTile> safeWest = family[WEST].tile.get();
-        if ( safeWest.valid() )
-            family[WEST].elevLOD = safeWest->getElevationLOD();
+        if ( family[WEST].tile.valid() )
+        {
+            if ( family[WEST].tile->getNumParents() > 0 )
+                family[WEST].elevLOD = family[WEST].tile->getElevationLOD();
+            else
+                family[WEST].tile = 0L;
+        }
     }
 
     // north
-    family[NORTH].exists = tileId.y < tilesY-1;
+    family[NORTH].expected = tileId.y < tilesY-1;
     family[NORTH].elevLOD = -1;
-    if ( family[NORTH].exists )
+    if ( family[NORTH].expected )
     {
         if ( !family[NORTH].tile.valid() )
         {
@@ -1133,15 +1159,19 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             y = tileId.y < tilesY-1 ? tileId.y+1 : 0;
             getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[NORTH].tile, !tileTableLocked );
         }
-        osg::ref_ptr<VersionedTile> safeNorth = family[NORTH].tile.get();
-        if ( safeNorth.valid() )
-            family[NORTH].elevLOD = safeNorth->getElevationLOD();
+        if ( family[NORTH].tile.valid() )
+        {
+            if ( family[NORTH].tile->getNumParents() > 0 )
+                family[NORTH].elevLOD = family[NORTH].tile->getElevationLOD();
+            else
+                family[NORTH].tile = 0L;
+        }
     }
 
     // east
-    family[EAST].exists = tileId.x < tilesX-1 || wrapX;
+    family[EAST].expected = tileId.x < tilesX-1 || wrapX;
     family[EAST].elevLOD = -1;
-    if ( family[EAST].exists )
+    if ( family[EAST].expected )
     {
         if ( !family[EAST].tile.valid() )
         {
@@ -1149,15 +1179,19 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             y = tileId.y;
             getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[EAST].tile, !tileTableLocked );
         }
-        osg::ref_ptr<VersionedTile> safeEast = family[EAST].tile.get();
-        if ( safeEast.valid() )
-            family[EAST].elevLOD = safeEast->getElevationLOD();
+        if ( family[EAST].tile.valid() )
+        {
+            if ( family[EAST].tile->getNumParents() > 0 )
+                family[EAST].elevLOD = family[EAST].tile->getElevationLOD();
+            else
+                family[EAST].tile = 0L;
+        }
     }
 
     // south
-    family[SOUTH].exists = tileId.y > 0;
+    family[SOUTH].expected = tileId.y > 0;
     family[SOUTH].elevLOD = -1;
-    if ( family[SOUTH].exists )
+    if ( family[SOUTH].expected )
     {
         if ( !family[SOUTH].tile.valid() )
         {   
@@ -1165,9 +1199,13 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             y = tileId.y > 0 ? tileId.y-1 : tilesY-1;
             getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[SOUTH].tile, !tileTableLocked );
         }
-        osg::ref_ptr<VersionedTile> safeSouth = family[SOUTH].tile.get();
-        if ( safeSouth.valid() )
-            family[SOUTH].elevLOD = safeSouth->getElevationLOD();
+        if ( family[SOUTH].tile.valid() )
+        {
+            if ( family[SOUTH].tile->getNumParents() > 0 )
+                family[SOUTH].elevLOD = family[SOUTH].tile->getElevationLOD();
+            else
+                family[SOUTH].tile = 0L;
+        }
     }
 }
 
@@ -1201,6 +1239,8 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
         // the _tilesToAdd queue.
         {
             ScopedWriteLock lock( _tilesMutex );
+
+            int oldSize = _tiles.size();
 
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
             {
@@ -1239,6 +1279,11 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
                 _tilesToAdd.pop();
             }
+
+            //if ( _tiles.size() != oldSize )
+            //{
+            //    osg::notify(osg::NOTICE) << "Tiles registered = " << _tiles.size() << std::endl;
+            //}
         }
 
         // update the frame stamp on the task services. This is necessary to support 
@@ -1251,36 +1296,34 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             }
         }
 
-        // get a safe copy of the tiles to process, and refresh each tile's family
-        // records in the meantime. We do this so we don't have to worry about
-        // whether Tile::servicePendingElevationRequests wants to obtain the tile
-        // table mutex (and cause a dangerous double-locking situation).
+        // should probably find a way to not hold this mutex during the loop.. oh well
         {
             ScopedReadLock lock( _tilesMutex );
 
             // grow the vector if necessary:
-            _tilesToServiceElevation.reserve( _tiles.size() );
+            //_tilesToServiceElevation.reserve( _tiles.size() );
 
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
                 if ( i->second.valid() && i->second->getUseLayerRequests() )
                 {
                     refreshFamily( i->first, i->second->getFamily(), true );
-                    _tilesToServiceElevation.push_back( i->second.get() );
+                    i->second->servicePendingElevationRequests( stamp );
+                    //_tilesToServiceElevation.push_back( i->second.get() );
                 }
             }
         }
 
-        //osg::notify(osg::NOTICE) << "Servicing " << _tilesToServiceElevation.size() << " tiles." << std::endl;
+        //osg::notify(osg::NOTICE) << "Servicing " << _tiles.size() << " tiles." << std::endl;
 
         // now we can service all the without holding a lock on the tile table.
-        for( TileVector::iterator i = _tilesToServiceElevation.begin(); i != _tilesToServiceElevation.end(); ++i )
-        {
-            i->get()->servicePendingElevationRequests( stamp );
-        }
+        //for( TileVector::iterator i = _tilesToServiceElevation.begin(); i != _tilesToServiceElevation.end(); ++i )
+        //{
+        //    i->get()->servicePendingElevationRequests( stamp );
+        //}
         
         // clean up the vector so we can reuse it next time around.
-        _tilesToServiceElevation.clear();
+        //_tilesToServiceElevation.clear();
     }
 
     osgTerrain::Terrain::traverse( nv );

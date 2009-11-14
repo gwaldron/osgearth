@@ -34,15 +34,16 @@ namespace osgEarth
     class VersionedTerrain;
     class VersionedTile;
 
-    typedef std::vector< osg::observer_ptr<VersionedTile> > VersionedTileObsVec;
-
+    // Please refer the refreshFamily() method for more info on this structure.
     struct Relative {
-        bool exists;
-        osg::observer_ptr<VersionedTile> tile;
+        bool expected;
         int elevLOD;
+        // yes, a ref ptr here, b/c observer_ptr is not really thread safe.
+        // we will check its validity by looking at its parent count.
+        osg::ref_ptr<VersionedTile> tile;
     };
 
-    typedef std::vector<Relative> Relatives;
+    //typedef std::vector<Relative> Relatives;
 
     /**
      * An OSG terrain tile that supports change detection.
@@ -138,7 +139,7 @@ namespace osgEarth
 
         bool getUseTileGenRequest() const;
 
-        Relatives& getFamily();
+        Relative* getFamily();
 
     public: // OVERRIDES
 
@@ -188,7 +189,7 @@ namespace osgEarth
 
         osg::ref_ptr<VersionedTerrain> _versionedTerrain;
 
-        Relatives _family;
+        Relative _family[5];
         OpenThreads::ReadWriteMutex _tileLayersMutex;
 
         /** Deals with completed requests during the UPDATE traversal. */
@@ -270,7 +271,7 @@ namespace osgEarth
         void registerTile( VersionedTile* newTile );
 
         void getVersionedTile( const osgTerrain::TileID& id, osg::ref_ptr<VersionedTile>& out_tile, bool lock =true );
-        void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile, bool lock =true);
+        //void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile, bool lock =true);
         void getVersionedTiles( TileList& out_tiles );
         void getTerrainTiles( TerrainTileList& out_tiles );
 
@@ -279,7 +280,7 @@ namespace osgEarth
         TaskService* createTaskService( int id, int numThreads );
         TaskService* getTaskService( int id );
 
-        void refreshFamily( const osgTerrain::TileID& tileId, Relatives& family, bool tileTableLocked );
+        void refreshFamily( const osgTerrain::TileID& tileId, Relative* family, bool tileTableLocked );
 
         int _revision; 
         OpenThreads::Mutex _revisionMutex;

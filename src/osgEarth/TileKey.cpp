@@ -33,7 +33,7 @@ _face(rhs._face),
 _lod(rhs._lod),
 _x(rhs._x),
 _y(rhs._y),
-_profile( rhs._profile ),
+_profile( rhs._profile.get() ),
 _extent( rhs._extent)
 {
     //NOP

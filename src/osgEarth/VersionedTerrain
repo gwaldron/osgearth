@@ -38,6 +38,7 @@ namespace osgEarth
     struct Relative {
         bool expected;
         int elevLOD;
+        osgTerrain::TileID tileID;
         // yes, a ref ptr here, b/c observer_ptr is not really thread safe.
         // we will check its validity by looking at its parent count.
         osg::ref_ptr<VersionedTile> tile;
@@ -108,7 +109,7 @@ namespace osgEarth
         /** Updates and services this tile's service pending requests. */
         //void servicePendingRequests( int frameStamp );
         void servicePendingImageRequests( int stamp );
-        void servicePendingElevationRequests( int stamp );
+        void servicePendingElevationRequests( int stamp, bool tileTableLocked );
 
         /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
         void setHasElevationHint( bool hasElevation );

@@ -628,7 +628,7 @@ VersionedTile::getFamily() {
 
 // This method is called from the CULL TRAVERSAL, from VersionedTerrain::traverse.
 void
-VersionedTile::servicePendingElevationRequests( int stamp )
+VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
 {
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
@@ -687,7 +687,9 @@ VersionedTile::servicePendingElevationRequests( int stamp )
             
             else if ( _family[PARENT].elevLOD > _elevationLOD )
             {
-                osg::ref_ptr<VersionedTile> parentTile = _family[PARENT].tile.get();
+                osg::ref_ptr<VersionedTile> parentTile;
+                terrain->getVersionedTile( _family[PARENT].tileID, parentTile, !tileTableLocked );
+
                 if ( _elevationLOD < _family[PARENT].elevLOD && parentTile.valid() )
                 {
                     TileElevationPlaceholderLayerRequest* er = static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get());
@@ -1112,100 +1114,58 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     //    for later.
 
     // parent
-    family[PARENT].expected = true;
-    family[PARENT].elevLOD = -1;
-    if ( ! family[PARENT].tile.valid() )
     {
-        x = tileId.x/2;
-        y = tileId.y/2;
-        getVersionedTile( osgTerrain::TileID( tileId.level-1, x, y ), family[PARENT].tile, !tileTableLocked );
+        family[PARENT].expected = true;
+        family[PARENT].elevLOD = -1;
+        family[PARENT].tileID = osgTerrain::TileID( tileId.level-1, tileId.x/2, tileId.y/2 );
+        osg::ref_ptr<VersionedTile> parent;
+        getVersionedTile( family[PARENT].tileID, parent, !tileTableLocked );
+        if ( parent.valid() )
+            family[PARENT].elevLOD = parent->getElevationLOD();
     }
-    if ( family[PARENT].tile.valid() )
-    {
-        if ( family[PARENT].tile->getNumParents() > 0 )
-            family[PARENT].elevLOD = family[PARENT].tile->getElevationLOD();
-        else
-            family[PARENT].tile = 0L;
-    }        
 
     // west
-    family[WEST].expected = tileId.x > 0 || wrapX;
-    family[WEST].elevLOD = -1;
-    if ( family[WEST].expected )
     {
-        if ( !family[WEST].tile.valid() )
-        {
-            x = tileId.x > 0? tileId.x-1 : tilesX-1;
-            y = tileId.y;
-            getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[WEST].tile, !tileTableLocked );
-        }
-        if ( family[WEST].tile.valid() )
-        {
-            if ( family[WEST].tile->getNumParents() > 0 )
-                family[WEST].elevLOD = family[WEST].tile->getElevationLOD();
-            else
-                family[WEST].tile = 0L;
-        }
+        family[WEST].expected = tileId.x > 0 || wrapX;
+        family[WEST].elevLOD = -1;
+        family[WEST].tileID = osgTerrain::TileID( tileId.level, tileId.x > 0? tileId.x-1 : tilesX-1, tileId.y );
+        osg::ref_ptr<VersionedTile> west;
+        getVersionedTile( family[WEST].tileID, west, !tileTableLocked );
+        if ( west.valid() )
+            family[WEST].elevLOD = west->getElevationLOD();
     }
 
     // north
-    family[NORTH].expected = tileId.y < tilesY-1;
-    family[NORTH].elevLOD = -1;
-    if ( family[NORTH].expected )
     {
-        if ( !family[NORTH].tile.valid() )
-        {
-            x = tileId.x;
-            y = tileId.y < tilesY-1 ? tileId.y+1 : 0;
-            getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[NORTH].tile, !tileTableLocked );
-        }
-        if ( family[NORTH].tile.valid() )
-        {
-            if ( family[NORTH].tile->getNumParents() > 0 )
-                family[NORTH].elevLOD = family[NORTH].tile->getElevationLOD();
-            else
-                family[NORTH].tile = 0L;
-        }
+        family[NORTH].expected = tileId.y < tilesY-1;
+        family[NORTH].elevLOD = -1;
+        family[NORTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y < tilesY-1 ? tileId.y+1 : 0 );
+        osg::ref_ptr<VersionedTile> north;
+        getVersionedTile( family[NORTH].tileID, north, !tileTableLocked );
+        if ( north.valid() )
+            family[NORTH].elevLOD = north->getElevationLOD();
     }
 
     // east
-    family[EAST].expected = tileId.x < tilesX-1 || wrapX;
-    family[EAST].elevLOD = -1;
-    if ( family[EAST].expected )
     {
-        if ( !family[EAST].tile.valid() )
-        {
-            x = tileId.x < tilesX-1 ? tileId.x+1 : 0;
-            y = tileId.y;
-            getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[EAST].tile, !tileTableLocked );
-        }
-        if ( family[EAST].tile.valid() )
-        {
-            if ( family[EAST].tile->getNumParents() > 0 )
-                family[EAST].elevLOD = family[EAST].tile->getElevationLOD();
-            else
-                family[EAST].tile = 0L;
-        }
+        family[EAST].expected = tileId.x < tilesX-1 || wrapX;
+        family[EAST].elevLOD = -1;
+        family[EAST].tileID = osgTerrain::TileID( tileId.level, tileId.x < tilesX-1 ? tileId.x+1 : 0, tileId.y );
+        osg::ref_ptr<VersionedTile> east;
+        getVersionedTile( family[EAST].tileID, east, !tileTableLocked );
+        if ( east.valid() )
+            family[EAST].elevLOD = east->getElevationLOD();
     }
 
     // south
-    family[SOUTH].expected = tileId.y > 0;
-    family[SOUTH].elevLOD = -1;
-    if ( family[SOUTH].expected )
     {
-        if ( !family[SOUTH].tile.valid() )
-        {   
-            x = tileId.x;
-            y = tileId.y > 0 ? tileId.y-1 : tilesY-1;
-            getVersionedTile( osgTerrain::TileID( tileId.level, x, y ), family[SOUTH].tile, !tileTableLocked );
-        }
-        if ( family[SOUTH].tile.valid() )
-        {
-            if ( family[SOUTH].tile->getNumParents() > 0 )
-                family[SOUTH].elevLOD = family[SOUTH].tile->getElevationLOD();
-            else
-                family[SOUTH].tile = 0L;
-        }
+        family[SOUTH].expected = tileId.y > 0;
+        family[SOUTH].elevLOD = -1;
+        family[SOUTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y > 0 ? tileId.y-1 : tilesY-1 );
+        osg::ref_ptr<VersionedTile> south;
+        getVersionedTile( family[SOUTH].tileID, south, !tileTableLocked );
+        if ( south.valid() )
+            family[SOUTH].elevLOD = south->getElevationLOD();
     }
 }
 
@@ -1280,10 +1240,10 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 _tilesToAdd.pop();
             }
 
-            //if ( _tiles.size() != oldSize )
-            //{
-            //    osg::notify(osg::NOTICE) << "Tiles registered = " << _tiles.size() << std::endl;
-            //}
+            if ( _tiles.size() != oldSize )
+            {
+                osg::notify(osg::NOTICE) << "Tiles registered = " << _tiles.size() << std::endl;
+            }
         }
 
         // update the frame stamp on the task services. This is necessary to support 
@@ -1308,7 +1268,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 if ( i->second.valid() && i->second->getUseLayerRequests() )
                 {
                     refreshFamily( i->first, i->second->getFamily(), true );
-                    i->second->servicePendingElevationRequests( stamp );
+                    i->second->servicePendingElevationRequests( stamp, true );
                     //_tilesToServiceElevation.push_back( i->second.get() );
                 }
             }

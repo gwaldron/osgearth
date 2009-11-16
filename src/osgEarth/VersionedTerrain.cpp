@@ -207,7 +207,7 @@ _elevationLOD( key->getLevelOfDetail() ),
 _tileRegisteredWithTerrain( false ),
 _useTileGenRequest( true ),
 _tileGenNeeded( false ),
-_needsUpdate(false)
+_neededUpdateLastTime( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -246,7 +246,7 @@ VersionedTile::cancelRequests()
             //{
             //    osg::notify(osg::NOTICE) << "IR (" << _key->str() << ") in progress, cancelling " << std::endl;
             //}
-            i->get()->cancel();
+            //i->get()->cancel();
 
             if ( i->get()->isRunning() )
             {
@@ -458,31 +458,65 @@ VersionedTile::readyForNewElevation()
 void
 VersionedTile::checkNeedsUpdate()
 {
-    //See if we have any completed requests
-    bool hasCompletedRequests = false;
+    bool needsUpdate = false;
 
-    if (_elevRequest.valid() && _elevRequest->isCompleted()) hasCompletedRequests = true;
-    else if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isCompleted()) hasCompletedRequests = true;
-    else if (_tileGenRequest.valid() && _tileGenRequest->isCompleted()) hasCompletedRequests = true;
-    else if (_tileGenNeeded) hasCompletedRequests = true;
-    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+    if ( _elevRequest.valid() && (_elevRequest->isCompleted() || _elevRequest->isCanceled()) )
+        needsUpdate = true;
+
+    else if ( _elevPlaceholderRequest.valid() && ( _elevPlaceholderRequest->isCompleted() || _elevPlaceholderRequest->isCanceled() ) )
+        needsUpdate = true;
+
+    else if ( _tileGenRequest.valid() && ( _tileGenRequest->isCompleted() || _tileGenRequest->isCanceled() ) )
+        needsUpdate = true;
+
+    else if ( _tileGenNeeded )
+        needsUpdate = true;
+
+    else
     {
-        if (i->get()->isCompleted())
-        {
-            hasCompletedRequests = true;
+        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i ) {
+            if ( i->get()->isCompleted() || i->get()->isCanceled() ) {
+                needsUpdate = true;
+                break;
+            }
         }
     }
 
-    if (hasCompletedRequests && !_needsUpdate)
-    {
-        setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() + 1 );
-        _needsUpdate = true;
-    }
-    else if (!hasCompletedRequests && _needsUpdate)
-    {
-        setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() - 1 );
-        _needsUpdate = false;
-    }
+    int delta = 
+        needsUpdate && !_neededUpdateLastTime ? 1 :
+        !needsUpdate && _neededUpdateLastTime ? -1 :
+        0;
+
+    if ( delta != 0 )
+        setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() + delta );
+
+    _neededUpdateLastTime = needsUpdate;
+    
+    ////See if we have any completed requests
+    //bool hasCompletedRequests = false;
+
+    //if (_elevRequest.valid() && _elevRequest->isCompleted()) hasCompletedRequests = true;
+    //else if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isCompleted()) hasCompletedRequests = true;
+    //else if (_tileGenRequest.valid() && _tileGenRequest->isCompleted()) hasCompletedRequests = true;
+    //else if (_tileGenNeeded) hasCompletedRequests = true;
+    //for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+    //{
+    //    if (i->get()->isCompleted())
+    //    {
+    //        hasCompletedRequests = true;
+    //    }
+    //}
+
+    //if (hasCompletedRequests && !_needsUpdate)
+    //{
+    //    setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() + 1 );
+    //    _needsUpdate = true;
+    //}
+    //else if (!hasCompletedRequests && _needsUpdate)
+    //{
+    //    setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() - 1 );
+    //    _needsUpdate = false;
+    //}
 }
 
 void
@@ -590,7 +624,7 @@ VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
     }
 }
 
-// This method is called from the CULL TRAVERSAL, from TileLoaderCullCallback in MapEngine.cpp.
+// This method is called from the CULL TRAVERSAL, from TileImageBackfillCallback in MapEngine.cpp.
 void
 VersionedTile::servicePendingImageRequests( int stamp )
 {       
@@ -608,7 +642,7 @@ VersionedTile::servicePendingImageRequests( int stamp )
         //and it was either deemed out of date or was cancelled, so we need to add it again.
         if ( r->isIdle() )
         {
-            //osg::notify(osg::INFO) << "Queuing IR (" << _key->str() << ")" << std::endl;
+            //osg::notify(osg::NOTICE) << "Queuing IR (" << _key->str() << ")" << std::endl;
             r->setStamp( stamp );
             getVersionedTerrain()->getImageryTaskService(r->_layerId)->add( r );
         }
@@ -759,6 +793,7 @@ VersionedTile::serviceCompletedRequests()
         if ( dynamic_cast<TileColorLayerRequest*>( i->get() ) )
         {
             TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
+
             if ( r->isCompleted() )
             {
                 int index = -1;
@@ -797,7 +832,7 @@ VersionedTile::serviceCompletedRequests()
 
                         markTileForRegeneration();
 
-                        //osg::notify(osg::INFO) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
+                        //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
 
                         // remove from the list (don't reference "r" after this!)
                         i = _requests.erase( i );
@@ -805,7 +840,7 @@ VersionedTile::serviceCompletedRequests()
                     }
                     else
                     {  
-                        //osg::notify(osg::INFO) << "IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
+                        osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
 
                         //The color layer request failed, probably due to a server error. Reset it.
                         r->setState( TaskRequest::STATE_IDLE );
@@ -820,6 +855,12 @@ VersionedTile::serviceCompletedRequests()
                 r->setProgressCallback( new StampedProgressCallback(
                     r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
                 r->reset();
+
+                //osg::notify(osg::NOTICE) << "IR (" <<_key->str()<<") CANCELED." << std::endl;
+            }
+            else if ( r->isRunning() )
+            {
+                //osg::notify(osg::NOTICE) << "IR (" <<_key->str()<<") still running.." << std::endl;
             }
         }
 

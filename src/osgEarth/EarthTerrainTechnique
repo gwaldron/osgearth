@@ -55,9 +55,9 @@ namespace osgEarth
 
         virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
         
-        virtual void generateGeometry2(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+        //virtual void generateGeometry2(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
 
-        virtual void updateContent(bool updateGeom, bool updateTextures);
+        //virtual void updateContent(bool updateGeom, bool updateTextures);
 
         virtual void applyColorLayers();
 
@@ -97,9 +97,9 @@ namespace osgEarth
 
     protected:
 
-        void updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+        //void updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
 
-        void updateColorLayers(osgTerrain::Locator* masterLocator);
+        //void updateColorLayers(osgTerrain::Locator* masterLocator);
 
         void calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j );
 

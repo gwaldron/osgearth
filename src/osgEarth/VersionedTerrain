@@ -199,7 +199,8 @@ namespace osgEarth
         void serviceCompletedRequests();
         void checkNeedsUpdate();
         void markTileForRegeneration();
-        bool _needsUpdate;
+
+        bool _neededUpdateLastTime;
     };
 
 

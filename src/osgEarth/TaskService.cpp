@@ -34,11 +34,6 @@ TaskRequest::cancel() {
     _progress->cancel();
 }
 
-bool
-TaskRequest::isCanceled() const {
-    return _progress->isCanceled();
-}
-
 /**************************************************************************/
 
 TaskRequestQueue::TaskRequestQueue() :

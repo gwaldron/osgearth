@@ -52,7 +52,8 @@ namespace osgEarth
         bool isPending() const { return _state == STATE_PENDING; }
         bool isCompleted() const { return _state == STATE_COMPLETED; }
         bool isInProgress() const { return _state == STATE_IN_PROGRESS; }
-        bool isCanceled() const;
+        bool isCanceled() const { return _state == STATE_CANCELED; }
+
         bool isRunning() const { return isPending() || isInProgress(); }
         void setPriority( float value ) { _priority = value; }
         float getPriority() const { return _priority; }

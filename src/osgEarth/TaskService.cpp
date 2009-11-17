@@ -11,7 +11,6 @@ _priority( priority ),
 _state( STATE_IDLE )
 {
     _progress = new ProgressCallback();
-    //_progress = new ConsoleProgressCallback();
 }
 
 void
@@ -20,18 +19,23 @@ TaskRequest::run()
     if ( _state == STATE_IN_PROGRESS )
     {
         (*this)( _progress.get() );
-
-        _state = _progress->isCanceled() ? STATE_CANCELED : STATE_COMPLETED;
     }
     else
     {
-        _state = STATE_CANCELED;
+        _progress->cancel();
     }
 }
 
 void 
-TaskRequest::cancel() {
+TaskRequest::cancel()
+{
     _progress->cancel();
+}
+
+bool
+TaskRequest::wasCanceled() const
+{
+    return _progress->isCanceled();
 }
 
 /**************************************************************************/
@@ -40,7 +44,6 @@ TaskRequestQueue::TaskRequestQueue() :
 osg::Referenced( true ),
 _done( false )
 {
-//    _block = new osg::RefBlock();
 }
 
 void
@@ -56,6 +59,10 @@ TaskRequestQueue::add( TaskRequest* request )
     ScopedLock<Mutex> lock(_mutex);
 
     request->setState( TaskRequest::STATE_PENDING );
+
+    // install a progress callback if one isn't already installed
+    if ( !request->getProgressCallback() )
+        request->setProgressCallback( new ProgressCallback() );
 
     // insert by priority.
     bool inserted = false;
@@ -75,10 +82,6 @@ TaskRequestQueue::add( TaskRequest* request )
 
     // since there is data in the queue, wake up one waiting task thread.
     _cond.signal();
-    //_block->set( true );
-
-    //osg::notify(osg::NOTICE) << "Queue has items, setting block to true " << std::endl;
-    //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
 }
 
 TaskRequest* 
@@ -119,7 +122,7 @@ TaskRequestQueue::setDone()
     // wake everyone up so they can see the _done flag set and exit.
     //_cond.broadcast();
 
-    // alternative to buggy broadcast:
+    // alternative to buggy win32 broadcast:
     for(int i=0; i<128; i++)
         _cond.signal();
 }
@@ -139,7 +142,6 @@ TaskThread::run()
     while( !_done )
     {
         _request = _queue->get();
-        //osg::notify(osg::NOTICE) << "Run thraed " << std::endl;
 
         if ( _done )
             break;
@@ -147,29 +149,22 @@ TaskThread::run()
         if (_request.valid())
         { 
             // discard a completed or canceled request:
-            if ( _request->getState() != TaskRequest::STATE_PENDING || _request->isCanceled() )
+            if ( _request->getState() != TaskRequest::STATE_PENDING )
             {
-                _request->setState( TaskRequest::STATE_CANCELED );
-                _request = 0; // drop our reference
-                continue;
+                _request->cancel();
             }
 
-            //osg::notify(osg::NOTICE) << "Thread " << this->getThreadId() << " running request" << std::endl;
+            else if ( !_request->wasCanceled() )
+            {
+                _request->setState( TaskRequest::STATE_IN_PROGRESS );
+                _request->run();
+            }
+            
+            _request->setState( TaskRequest::STATE_COMPLETED );
 
-            _request->setState( TaskRequest::STATE_IN_PROGRESS );
-
-            //osg::notify(osg::NOTICE) << "Executing Task (" << _request->getPriority() << ") : " << _request->getName() << std::endl;
-            _request->run();
-
-            //Release the request
+            // Release the request
             _request = 0;
         }
-        else
-        {
-            OpenThreads::Thread::YieldCurrentThread();
-        }
-
-        //osg::notify(osg::NOTICE) << "Thread " << this->getThreadId() << " completed request" << std::endl;
     }
 }
 
@@ -178,15 +173,17 @@ TaskThread::cancel()
 {
     if ( isRunning() )
     {
-      _done = true;  
+        _done = true;  
 
-      if (_request.valid())
-          _request->cancel();
+        if (_request.valid())
+        {
+            _request->cancel();
+        }
 
-      while (isRunning())
-      {        
-          OpenThreads::Thread::YieldCurrentThread();
-      }
+        while( isRunning() )
+        {        
+            OpenThreads::Thread::YieldCurrentThread();
+        }
     }
     return 0;
 }

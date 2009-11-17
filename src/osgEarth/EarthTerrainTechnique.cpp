@@ -88,22 +88,28 @@ EarthTerrainTechnique::getVerticalScaleOverride() const
     return _verticalScaleOverride;
 }
 
+void
+EarthTerrainTechnique::clearBuffer( int b )
+{
+    _bufferData[b]._transform = 0L;
+    _bufferData[b]._geode = 0L;
+    _bufferData[b]._geometry = 0L;
+}
+
 void EarthTerrainTechnique::swapBuffers()
 {
     std::swap(_currentReadOnlyBuffer,_currentWriteBuffer);
-
-    getWriteBuffer()._transform = 0L;
-    getWriteBuffer()._geode = 0L;
-    getWriteBuffer()._geometry = 0L;
+    clearBuffer( _currentWriteBuffer );
 }
 
 void
 EarthTerrainTechnique::init()
 {
-    init( true );
+    init( true, 0L );
 }
 
-void EarthTerrainTechnique::init( bool swapNow )
+void
+EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
 {
     // lock changes to the layers while we're rendering them
     ScopedReadLock lock( getMutex() );
@@ -124,8 +130,14 @@ void EarthTerrainTechnique::init( bool swapNow )
     Locator* masterLocator = computeMasterLocator();
     
     osg::Vec3d centerModel = computeCenterModel(masterLocator);
+
+    if ( progress && progress->isCanceled() )
+    {
+        clearBuffer( _currentWriteBuffer );
+        return;
+    }
     
-    generateGeometry(masterLocator, centerModel);
+    generateGeometry( masterLocator, centerModel );
     
     applyColorLayers();
     applyTransparency();
@@ -135,6 +147,12 @@ void EarthTerrainTechnique::init( bool swapNow )
 
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);
+
+    if ( progress && progress->isCanceled() )
+    {
+        clearBuffer( _currentWriteBuffer );
+        return;
+    }
 
     if ( swapNow )
         swapBuffers();
@@ -1053,9 +1071,33 @@ void EarthTerrainTechnique::cleanSceneGraph()
 {
 }
 
-void EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
+void
+EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
-    if (_bufferData[0]._transform.valid()) _bufferData[0]._transform->releaseGLObjects(state);
-    if (_bufferData[1]._transform.valid()) _bufferData[1]._transform->releaseGLObjects(state);    
+    EarthTerrainTechnique* ncThis = const_cast<EarthTerrainTechnique*>(this);
+
+    ScopedWriteLock lock( ncThis->getMutex() );
+
+    if (_bufferData[0]._transform.valid())
+    {
+        _bufferData[0]._transform->releaseGLObjects(state);
+        ncThis->clearBuffer( 0 );
+    }
+    if (_bufferData[1]._transform.valid())
+    {
+        _bufferData[1]._transform->releaseGLObjects(state);   
+        ncThis->clearBuffer( 1 );
+    }
 }
 
+//void
+//EarthTerrainTechnique::releaseStaleGLObjects(osg::State* state) const
+//{     
+//    ScopedReadLock lock( const_cast<EarthTerrainTechnique*>(this)->getMutex() );
+//
+//    for( ObjectList::const_iterator i = _objsToRelease.begin(); i != _objsToRelease.end(); ++i )
+//    {        
+//        i->get()->releaseGLObjects( state );
+//    }
+//    const_cast<EarthTerrainTechnique*>(this)->_objsToRelease.clear();
+//}

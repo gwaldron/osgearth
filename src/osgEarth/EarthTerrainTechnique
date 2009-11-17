@@ -28,6 +28,7 @@
 #include <osgTerrain/TerrainTechnique>
 #include <osgTerrain/Locator>
 #include <osgEarth/Export>
+#include <osgEarth/Progress>
 
 namespace osgEarth
 {
@@ -45,7 +46,7 @@ namespace osgEarth
     public: /* overrides */
         virtual void init();
 
-        virtual void init( bool swapNow );
+        virtual void init( bool swapNow, ProgressCallback* progress );
 
         void swapIfNecessary();
 
@@ -73,6 +74,10 @@ namespace osgEarth
         virtual void traverse(osg::NodeVisitor& nv);
 
         virtual void cleanSceneGraph();
+
+        //typedef std::list< osg::ref_ptr<osg::Object> > ObjectList;
+        //ObjectList _objsToRelease;
+        //void releaseStaleGLObjects(osg::State*) const;
 
     public:
 
@@ -122,6 +127,8 @@ namespace osgEarth
 
         inline BufferData& getReadOnlyBuffer() { return _bufferData[_currentReadOnlyBuffer]; }
         inline BufferData& getWriteBuffer() { return _bufferData[_currentWriteBuffer]; }
+
+        void clearBuffer( int which );
 
         osg::Vec3d _lastCenterModel;
         float _verticalScaleOverride;

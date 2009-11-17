@@ -39,9 +39,6 @@ namespace osgEarth
         bool expected;
         int elevLOD;
         osgTerrain::TileID tileID;
-        // yes, a ref ptr here, b/c observer_ptr is not really thread safe.
-        // we will check its validity by looking at its parent count.
-        //osg::ref_ptr<VersionedTile> tile;
     };
 
     //typedef std::vector<Relative> Relatives;
@@ -150,7 +147,6 @@ namespace osgEarth
         * the specified graphics context. Otherwise, releases OpenGL objects
         * for all graphics contexts. */
         virtual void releaseGLObjects(osg::State* = 0) const;
-
 
     protected:
 

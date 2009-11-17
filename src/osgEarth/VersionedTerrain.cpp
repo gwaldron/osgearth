@@ -53,21 +53,11 @@ public:
         //Check to see if we were marked cancelled on a previous check
         if (_canceled) return _canceled;
 
-        //osg::ref_ptr<TaskRequest> safeRequest = _request.get();
-        //osg::ref_ptr<TaskService> safeService = _service.get();
-
-        //if ( !safeReqeust.valid() || !safeService.valid() )
-        //    return true;
-
         _canceled = (_service->getStamp() - _request->getStamp() > 2);
 
-        //osg::notify(osg::NOTICE) << "Marking cancelled " << _request->getName() << std::endl;
         return _canceled;
     }
 
-    //// don't make these ref_ptrs.. that's a leaker
-    //osg::observer_ptr<TaskRequest> _request;
-    //osg::observer_ptr<TaskService> _service;
     TaskRequest* _request;
     TaskService* _service;
 };
@@ -147,11 +137,14 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 
     void operator()( ProgressCallback* progress )
     {
-        _result = _engine->createPlaceholderHeightfieldLayer(
-            _parentHF.get(),
-            _parentKey.get(),
-            _key.get(),
-            _keyLocator.get() );
+        if ( !progress->isCanceled() )
+        {
+            _result = _engine->createPlaceholderHeightfieldLayer(
+                _parentHF.get(),
+                _parentKey.get(),
+                _key.get(),
+                _keyLocator.get() );
+        }
     }
 
     osg::ref_ptr<osg::HeightField> _parentHF;
@@ -173,11 +166,10 @@ struct TileGenRequest : public TaskRequest
     void operator()( ProgressCallback* progress )
     {
         if ( _tech.valid() )
-            _tech->init( false );
+            _tech->init( false, progress );
     }
 
     osg::ref_ptr<EarthTerrainTechnique> _tech;
-    //osg::observer_ptr<EarthTerrainTechnique> _tech;
 };
 
 
@@ -237,63 +229,27 @@ VersionedTile::cancelRequests()
 
     bool done = true;
 
-    //Cancel any pending requests
-    if (_requestsInstalled)
+    // Cancel all active requests
+    if ( _requestsInstalled )
     {
         for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
         {
-            //if (i->get()->getState() == TaskRequest::STATE_IN_PROGRESS)
-            //{
-            //    osg::notify(osg::NOTICE) << "IR (" << _key->str() << ") in progress, cancelling " << std::endl;
-            //}
-            //i->get()->cancel();
-
-            if ( i->get()->isRunning() )
-            {
-                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") IR still running ... " << std::endl;
-                done = false;
-            }
-            //if ( i->get()->referenceCount() > 1 )
-            //    done = false;
+            i->get()->cancel();
         }
 
         if ( _elevRequest.valid() )
         {
             _elevRequest->cancel();
-
-            if ( _elevRequest->isRunning() )
-            {
-                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") ER still running ... " << std::endl;
-                done = false;
-            }
-            //if ( _elevRequest->referenceCount() > 1 )
-            //    done = false;
         }
 
         if (_elevPlaceholderRequest.valid())
         {
             _elevPlaceholderRequest->cancel();
-
-            if ( _elevPlaceholderRequest->isRunning() )
-            {
-                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") PH still running ... " << std::endl;
-                done = false;
-            }
-            //if ( _elevPlaceholderRequest->referenceCount() > 1 )
-            //    done = false;
         }
 
         if (_tileGenRequest.valid())
         {
             _tileGenRequest->cancel();
-
-            if ( _tileGenRequest->isRunning() )
-            {
-                //osg::notify(osg::NOTICE) << "Tile ("<<_key->str()<<") TG still running ... " << std::endl;
-                done = false;
-            }
-            //if ( _tileGenRequest->referenceCount() > 1 )
-            //    done = false;
         }
     }
 
@@ -460,13 +416,13 @@ VersionedTile::checkNeedsUpdate()
 {
     bool needsUpdate = false;
 
-    if ( _elevRequest.valid() && (_elevRequest->isCompleted() || _elevRequest->isCanceled()) )
+    if ( _elevRequest.valid() && _elevRequest->isCompleted() )
         needsUpdate = true;
 
-    else if ( _elevPlaceholderRequest.valid() && ( _elevPlaceholderRequest->isCompleted() || _elevPlaceholderRequest->isCanceled() ) )
+    else if ( _elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isCompleted() )
         needsUpdate = true;
 
-    else if ( _tileGenRequest.valid() && ( _tileGenRequest->isCompleted() || _tileGenRequest->isCanceled() ) )
+    else if ( _tileGenRequest.valid() && _tileGenRequest->isCompleted() )
         needsUpdate = true;
 
     else if ( _tileGenNeeded )
@@ -474,8 +430,10 @@ VersionedTile::checkNeedsUpdate()
 
     else
     {
-        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i ) {
-            if ( i->get()->isCompleted() || i->get()->isCanceled() ) {
+        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+        {
+            if ( i->get()->isCompleted() )
+            {
                 needsUpdate = true;
                 break;
             }
@@ -491,32 +449,6 @@ VersionedTile::checkNeedsUpdate()
         setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() + delta );
 
     _neededUpdateLastTime = needsUpdate;
-    
-    ////See if we have any completed requests
-    //bool hasCompletedRequests = false;
-
-    //if (_elevRequest.valid() && _elevRequest->isCompleted()) hasCompletedRequests = true;
-    //else if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isCompleted()) hasCompletedRequests = true;
-    //else if (_tileGenRequest.valid() && _tileGenRequest->isCompleted()) hasCompletedRequests = true;
-    //else if (_tileGenNeeded) hasCompletedRequests = true;
-    //for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
-    //{
-    //    if (i->get()->isCompleted())
-    //    {
-    //        hasCompletedRequests = true;
-    //    }
-    //}
-
-    //if (hasCompletedRequests && !_needsUpdate)
-    //{
-    //    setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() + 1 );
-    //    _needsUpdate = true;
-    //}
-    //else if (!hasCompletedRequests && _needsUpdate)
-    //{
-    //    setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() - 1 );
-    //    _needsUpdate = false;
-    //}
 }
 
 void
@@ -670,13 +602,6 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
         installRequests( stamp );
     }
 
-    // GW: this is now called at the Terrain level.
-    // make sure we know where to find our parent and sibling tiles:
-    //if (getVersionedTerrain())
-    //{
-    //    getVersionedTerrain()->refreshFamily( getTileID(), _family );
-    //}
-
     if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
     {  
         VersionedTerrain* terrain = getVersionedTerrain();
@@ -729,7 +654,7 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
                     TileElevationPlaceholderLayerRequest* er = static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get());
 
                     er->setStamp( stamp );
-                    er->setProgressCallback( new ProgressCallback() ); //( ck( er, terrain->getElevationTaskService()));
+                    er->setProgressCallback( new ProgressCallback() );
                     float priority = (float)_key->getLevelOfDetail();
                     er->setPriority( priority );
                     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(parentTile->getElevationLayer());
@@ -790,11 +715,19 @@ VersionedTile::serviceCompletedRequests()
     {
         bool increment = true;
 
-        if ( dynamic_cast<TileColorLayerRequest*>( i->get() ) )
+        if ( i->get()->isCompleted() )
         {
             TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
 
-            if ( r->isCompleted() )
+            if ( r->wasCanceled() )
+            {
+                //Reset the cancelled task to IDLE and give it a new progress callback.
+                r->setState( TaskRequest::STATE_IDLE );
+                r->setProgressCallback( new StampedProgressCallback(
+                    r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
+                r->reset();
+            }
+            else // success..
             {
                 int index = -1;
                 {
@@ -848,20 +781,6 @@ VersionedTile::serviceCompletedRequests()
                     }
                 }
             }
-            else if ( r->isCanceled() )
-            {
-                //Reset the cancelled task to IDLE and give it a new progress callback.
-                r->setState( TaskRequest::STATE_IDLE );
-                r->setProgressCallback( new StampedProgressCallback(
-                    r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
-                r->reset();
-
-                //osg::notify(osg::NOTICE) << "IR (" <<_key->str()<<") CANCELED." << std::endl;
-            }
-            else if ( r->isRunning() )
-            {
-                //osg::notify(osg::NOTICE) << "IR (" <<_key->str()<<") still running.." << std::endl;
-            }
         }
 
         if ( increment )
@@ -875,51 +794,53 @@ VersionedTile::serviceCompletedRequests()
         // and can shut down the elevation requests for this tile.
         if ( _elevRequest->isCompleted() )
         {
-            // if the elevation request succeeded, install the new elevation layer!
-            TileElevationLayerRequest* r = static_cast<TileElevationLayerRequest*>( _elevRequest.get() );
-            osg::ref_ptr<osgTerrain::HeightFieldLayer> newHFLayer = static_cast<osgTerrain::HeightFieldLayer*>( r->getResult() );
-            if ( newHFLayer.valid() && newHFLayer->getHeightField() != NULL )
+            if ( _elevRequest->wasCanceled() )
             {
-                newHFLayer->getHeightField()->setSkirtHeight( 
-                    getVersionedTerrain()->getEngine()->getEngineProperties().getSkirtRatio() * this->getBound().radius() );
-
-                // need to write-lock the layer data since we'll be changing it:
-                {
-                    ScopedWriteLock lock( _tileLayersMutex );
-                    this->setElevationLayer( newHFLayer.get() );
-                }
-
-                // the tile needs rebuilding. This will kick off a TileGenRequest.
-                markTileForRegeneration();
-                
-                // finalize the LOD marker for this tile, so other tiles can see where we are.
-                _elevationLOD = _key->getLevelOfDetail();
-
-#ifdef PREEMPTIVE_DEBUG
-                osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
-#endif
-                // this was the final elev request, so mark elevation as DONE.
-                _elevationLayerUpToDate = true;
-                
-                // GW- just reset these and leave them alone and let cancelRequests() take care of cleanup later.
-                // done with our Elevation requests!
-                _elevRequest = 0L;
-                _elevPlaceholderRequest = 0L;
-            }
-            else
-            {
+                // If the request was canceled, reset it to IDLE and reset the callback. On the next
+                // servicePendingRequests, the request will be re-scheduled.
                 _elevRequest->setState( TaskRequest::STATE_IDLE );
+                _elevRequest->setProgressCallback( new ProgressCallback() );            
                 _elevRequest->reset();
             }
-        }
+            else // success:
+            {
+                // if the elevation request succeeded, install the new elevation layer!
+                TileElevationLayerRequest* r = static_cast<TileElevationLayerRequest*>( _elevRequest.get() );
+                osg::ref_ptr<osgTerrain::HeightFieldLayer> newHFLayer = static_cast<osgTerrain::HeightFieldLayer*>( r->getResult() );
+                if ( newHFLayer.valid() && newHFLayer->getHeightField() != NULL )
+                {
+                    newHFLayer->getHeightField()->setSkirtHeight( 
+                        getVersionedTerrain()->getEngine()->getEngineProperties().getSkirtRatio() * this->getBound().radius() );
 
-        else if ( _elevRequest->isCanceled() )
-        {
-            // If the request was canceled, reset it to IDLE and reset the callback. On the next
-            // servicePendingRequests, the request will be re-scheduled.
-            _elevRequest->setState( TaskRequest::STATE_IDLE );
-            _elevRequest->setProgressCallback( new ProgressCallback() );            
-            _elevRequest->reset();
+                    // need to write-lock the layer data since we'll be changing it:
+                    {
+                        ScopedWriteLock lock( _tileLayersMutex );
+                        this->setElevationLayer( newHFLayer.get() );
+                    }
+
+                    // the tile needs rebuilding. This will kick off a TileGenRequest.
+                    markTileForRegeneration();
+                    
+                    // finalize the LOD marker for this tile, so other tiles can see where we are.
+                    _elevationLOD = _key->getLevelOfDetail();
+
+    #ifdef PREEMPTIVE_DEBUG
+                    osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
+    #endif
+                    // this was the final elev request, so mark elevation as DONE.
+                    _elevationLayerUpToDate = true;
+                    
+                    // GW- just reset these and leave them alone and let cancelRequests() take care of cleanup later.
+                    // done with our Elevation requests!
+                    _elevRequest = 0L;
+                    _elevPlaceholderRequest = 0L;
+                }
+                else
+                {
+                    _elevRequest->setState( TaskRequest::STATE_IDLE );
+                    _elevRequest->reset();
+                }
+            }
         }
 
         else if ( _elevPlaceholderRequest->isCompleted() )
@@ -927,35 +848,37 @@ VersionedTile::serviceCompletedRequests()
             TileElevationPlaceholderLayerRequest* r = 
                 static_cast<TileElevationPlaceholderLayerRequest*>(_elevPlaceholderRequest.get());
 
-            osg::ref_ptr<osgTerrain::HeightFieldLayer> newPhLayer = static_cast<osgTerrain::HeightFieldLayer*>( r->getResult() );
-            if ( newPhLayer.valid() && newPhLayer->getHeightField() != NULL )
+            if ( r->wasCanceled() )
             {
-                // install the new elevation layer.
-                {
-                    ScopedWriteLock lock( _tileLayersMutex );
-                    this->setElevationLayer( newPhLayer.get() );
-                }
-
-                // tile needs to be recompiled.
-                markTileForRegeneration();
-
-                // update the elevation LOD for this tile, now that the new HF data is installed. This will
-                // allow other tiles to see where this tile's HF data is.
-                _elevationLOD = r->_nextLOD;
-
-#ifdef PREEMPTIVE_DEBUG
-                osg::notify(osg::NOTICE) << "..tile (" << _key->str() << ") is now at (" << _elevationLOD << ")" << std::endl;
-#endif
+                r->setState( TaskRequest::STATE_IDLE );
+                r->setProgressCallback( new ProgressCallback() );
+                r->reset();
             }
-            _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
-            _elevPlaceholderRequest->reset();
-        }
+            else // success:
+            {
+                osg::ref_ptr<osgTerrain::HeightFieldLayer> newPhLayer = static_cast<osgTerrain::HeightFieldLayer*>( r->getResult() );
+                if ( newPhLayer.valid() && newPhLayer->getHeightField() != NULL )
+                {
+                    // install the new elevation layer.
+                    {
+                        ScopedWriteLock lock( _tileLayersMutex );
+                        this->setElevationLayer( newPhLayer.get() );
+                    }
 
-        else if ( _elevPlaceholderRequest->isCanceled() )
-        {
-            _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
-            _elevPlaceholderRequest->setProgressCallback( new ProgressCallback() );
-            _elevPlaceholderRequest->reset();
+                    // tile needs to be recompiled.
+                    markTileForRegeneration();
+
+                    // update the elevation LOD for this tile, now that the new HF data is installed. This will
+                    // allow other tiles to see where this tile's HF data is.
+                    _elevationLOD = r->_nextLOD;
+
+    #ifdef PREEMPTIVE_DEBUG
+                    osg::notify(osg::NOTICE) << "..tile (" << _key->str() << ") is now at (" << _elevationLOD << ")" << std::endl;
+    #endif
+                }
+                _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
+                _elevPlaceholderRequest->reset();
+            }
         }
     }
 
@@ -1001,8 +924,8 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
     osgTerrain::TerrainTile::traverse( nv );
 }
 
-
-void VersionedTile::releaseGLObjects(osg::State* state) const
+void
+VersionedTile::releaseGLObjects(osg::State* state) const
 {
     Group::releaseGLObjects(state);
 
@@ -1047,12 +970,15 @@ struct ReleaseGLCallback : public osg::Camera::DrawCallback
 };
 
 // immediately release GL memory for any expired tiles.
+// called from the DRAW thread
 void
 VersionedTerrain::releaseGLObjectsForTiles(osg::State* state)
 {
     ScopedReadLock lock( _tilesMutex );
+
     while( _tilesToRelease.size() > 0 )
     {
+        //osg::notify(osg::NOTICE) << "("<<_tilesToRelease.front()->getKey()->str()<<") release GL " << std::endl;
         _tilesToRelease.front()->releaseGLObjects( state );
         _tilesToRelease.pop();
     }
@@ -1132,24 +1058,6 @@ VersionedTerrain::getVersionedTile( const osgTerrain::TileID& tileID,
     }
 }
 
-//void
-//VersionedTerrain::getVersionedTile(const osgTerrain::TileID& tileID,
-//                                   osg::observer_ptr<VersionedTile>& out_tile,
-//                                   bool lock )
-//{
-//    if ( lock )
-//    {
-//        ScopedReadLock lock( _tilesMutex );
-//        TileTable::iterator i = _tiles.find( tileID );
-//        out_tile = i != _tiles.end()? i->second.get() : 0L;
-//    }
-//    else
-//    {
-//        TileTable::iterator i = _tiles.find( tileID );
-//        out_tile = i != _tiles.end()? i->second.get() : 0L;
-//    }
-//}
-
 void
 VersionedTerrain::getVersionedTiles( TileList& out_list )
 {
@@ -1179,21 +1087,6 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     unsigned int tilesX, tilesY;
     _map->getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
     unsigned int x, y;
-
-    // we examine each of 5 relatives: parent, north, south, east, and west tiles.
-    // For each one:
-    // a) First determine is it should exist at all (the "expected" member). This flag
-    //    indicates whether we expect to find a tile there. For example, if the input
-    //    tileId is for a tile on the southern edge of the map, we do not expect to
-    //    find a southern neighbor.
-    // b) If the tile is deemed to "exist", we move on and try to lookup that tile in
-    //    the terrain's registry. It may or may be there, depending on whether it's in
-    //    the scene graph at the moment.
-    // c) If we find it, check to make sure it is not an orphaned tile (i.e. a tile that
-    //    has been expired by the DBPager. We check for this be seeing if the tile has
-    //    any parents. If not, it's orphaned and we discard our reference to it.
-    // d) Fianlly, if the tile is valid, we read it's elevation LOD value and store it
-    //    for later.
 
     // parent
     {

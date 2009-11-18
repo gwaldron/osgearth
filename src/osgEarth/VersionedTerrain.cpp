@@ -931,10 +931,10 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
         adjustUpdateTraversalCount( -1 );
     }
 
-    if ( isUpdate && _useLayerRequests )
+    /*if ( isUpdate && _useLayerRequests )
     {
         serviceCompletedRequests();
-    }
+    }*/
 
     osgTerrain::TerrainTile::traverse( nv );
 }

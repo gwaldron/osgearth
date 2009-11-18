@@ -160,16 +160,23 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 // NOTE! this doesn't work for multipass technique!
 struct TileGenRequest : public TaskRequest
 {
-    TileGenRequest( osgTerrain::TerrainTechnique* tech ) :
-        _tech( dynamic_cast<EarthTerrainTechnique*>(tech) ) { }
+    TileGenRequest( VersionedTile* tile ) :
+        _tile( tile ) { }
 
     void operator()( ProgressCallback* progress )
     {
-        if ( _tech.valid() )
-            _tech->init( false, progress );
+        if (_tile.valid())
+        {
+            EarthTerrainTechnique* et = static_cast<EarthTerrainTechnique*>(_tile->getTerrainTechnique());
+            if (et)
+            {
+                et->init(false, progress);
+            }
+        }
+        //We don't need the tile anymore
+        _tile = NULL;
     }
-
-    osg::ref_ptr<EarthTerrainTechnique> _tech;
+    osg::ref_ptr< VersionedTile > _tile;
 };
 
 
@@ -505,7 +512,7 @@ VersionedTile::installRequests( int stamp )
     }
 
     // a tile generator request will rebuild tile geometry in the background:
-    _tileGenRequest = new TileGenRequest( this->getTerrainTechnique() );
+    //_tileGenRequest = new TileGenRequest( this->getTerrainTechnique() );
 
     // safely loop through the map layers and update the imagery for each:
     MapLayerList imageMapLayers;
@@ -718,12 +725,12 @@ VersionedTile::serviceCompletedRequests()
         return;
 
     // First service the tile generator:
-    if ( _tileGenRequest->isCompleted() )
+    if ( _tileGenRequest.valid() && _tileGenRequest->isCompleted() )
     {
         EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
         if ( tech )
             tech->swapIfNecessary();
-        _tileGenRequest->setState( TaskRequest::STATE_IDLE );
+        _tileGenRequest = 0;
     }
 
     // Then the image requests:
@@ -899,10 +906,10 @@ VersionedTile::serviceCompletedRequests()
     }
 
     // if we have a new TileGenRequest, queue it up now.
-    if ( _tileGenNeeded && _tileGenRequest->isIdle() )
+    if ( _tileGenNeeded && !_tileGenRequest.valid())
     {
+        _tileGenRequest = new TileGenRequest(this);
         //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") queuing new tile gen" << std::endl;
-
         getVersionedTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
         _tileGenNeeded = false;
     }

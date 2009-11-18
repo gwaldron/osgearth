@@ -195,6 +195,7 @@ namespace osgEarth
         void serviceCompletedRequests();
         void checkNeedsUpdate();
         void markTileForRegeneration();
+        void adjustUpdateTraversalCount( int delta );
 
         bool _neededUpdateLastTime;
     };

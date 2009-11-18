@@ -211,13 +211,29 @@ _neededUpdateLastTime( false )
     // initially bump the update requirement so that this tile will receive an update
     // traversal the first time through. It is on the first update traversal that we
     // know the tile is in the scene graph and that it can be registered with the terrain.
-    this->setNumChildrenRequiringUpdateTraversal(
-        this->getNumChildrenRequiringUpdateTraversal() + 1 );
+    adjustUpdateTraversalCount( 1 );
 }
 
 VersionedTile::~VersionedTile()
 {
     //osg::notify(osg::NOTICE) << "Destroying VersionedTile " << this->getKey()->str() << std::endl;
+}
+
+void
+VersionedTile::adjustUpdateTraversalCount( int delta )
+{
+    int oldCount = this->getNumChildrenRequiringUpdateTraversal();
+    if ( oldCount + delta >= 0 )
+    {
+        this->setNumChildrenRequiringUpdateTraversal(
+            (unsigned int)(oldCount + delta) );
+    }
+    else
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth] WARNING, tile (" 
+            << _key->str() << ") tried to set a negative NCRUT"
+            << std::endl;
+    }
 }
 
 bool
@@ -446,7 +462,7 @@ VersionedTile::checkNeedsUpdate()
         0;
 
     if ( delta != 0 )
-        setNumChildrenRequiringUpdateTraversal( getNumChildrenRequiringUpdateTraversal() + delta );
+        adjustUpdateTraversalCount( delta );
 
     _neededUpdateLastTime = needsUpdate;
 }
@@ -912,8 +928,7 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
 
         // we constructed this tile with an update traversal count of 1 so it would get
         // here and we could register the tile. Now we can decrement it back to normal.
-        this->setNumChildrenRequiringUpdateTraversal(
-            this->getNumChildrenRequiringUpdateTraversal() - 1 );
+        adjustUpdateTraversalCount( -1 );
     }
 
     if ( isUpdate && _useLayerRequests )

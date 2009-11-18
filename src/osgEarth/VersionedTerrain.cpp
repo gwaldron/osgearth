@@ -205,8 +205,7 @@ _elevationLayerUpToDate( true ),
 _elevationLOD( key->getLevelOfDetail() ),
 _tileRegisteredWithTerrain( false ),
 _useTileGenRequest( true ),
-_tileGenNeeded( false ),
-_neededUpdateLastTime( false )
+_tileGenNeeded( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -434,7 +433,7 @@ VersionedTile::readyForNewElevation()
 #define PRI_IMAGE_OFFSET 0.1f // priority offset of imagery relative to elevation
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
 
-void
+/*void
 VersionedTile::checkNeedsUpdate()
 {
     bool needsUpdate = false;
@@ -472,7 +471,7 @@ VersionedTile::checkNeedsUpdate()
         adjustUpdateTraversalCount( delta );
 
     _neededUpdateLastTime = needsUpdate;
-}
+}*/
 
 void
 VersionedTile::installRequests( int stamp )
@@ -605,9 +604,7 @@ VersionedTile::servicePendingImageRequests( int stamp )
         {
             r->setStamp( stamp );
         }
-    }
-
-    checkNeedsUpdate();
+    }    
 }
 
 Relative*
@@ -698,8 +695,6 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
             }
         }
     }
-
-    checkNeedsUpdate();
 }
 
 void
@@ -913,8 +908,6 @@ VersionedTile::serviceCompletedRequests()
         getVersionedTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
         _tileGenNeeded = false;
     }
-
-    checkNeedsUpdate();
 }
 
 void
@@ -1013,6 +1006,7 @@ _revision(0),
 _numAsyncThreads( 0 ),
 _releaseCBInstalled( false )
 {
+    setNumChildrenRequiringUpdateTraversal( 1 );
     this->setThreadSafeRefUnref( true );
 
     //See if the number of threads is explicitly provided
@@ -1108,7 +1102,6 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     bool wrapX = _map->isGeocentric();
     unsigned int tilesX, tilesY;
     _map->getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
-    unsigned int x, y;
 
     // parent
     {
@@ -1197,7 +1190,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
         }
     }
 
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
         int stamp = nv.getFrameStamp()->getFrameNumber();
 
@@ -1278,6 +1271,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 {
                     refreshFamily( i->first, i->second->getFamily(), true );
                     i->second->servicePendingElevationRequests( stamp, true );
+                    i->second->serviceCompletedRequests();
                     //_tilesToServiceElevation.push_back( i->second.get() );
                 }
             }

@@ -107,6 +107,7 @@ namespace osgEarth
         //void servicePendingRequests( int frameStamp );
         void servicePendingImageRequests( int stamp );
         void servicePendingElevationRequests( int stamp, bool tileTableLocked );
+        void serviceCompletedRequests();
 
         /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
         void setHasElevationHint( bool hasElevation );
@@ -192,12 +193,11 @@ namespace osgEarth
         /** Deals with completed requests during the UPDATE traversal. */
         void installRequests( int stamp );
         bool readyForNewElevation();
-        void serviceCompletedRequests();
-        void checkNeedsUpdate();
+        //void checkNeedsUpdate();
         void markTileForRegeneration();
         void adjustUpdateTraversalCount( int delta );
 
-        bool _neededUpdateLastTime;
+        //bool _neededUpdateLastTime;
     };
 
 

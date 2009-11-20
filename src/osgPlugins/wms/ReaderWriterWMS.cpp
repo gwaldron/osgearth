@@ -76,8 +76,14 @@ public:
         _layers = conf.value( PROPERTY_LAYERS );
         _style  = conf.value( PROPERTY_STYLE );
         _format = conf.value( PROPERTY_FORMAT );
+
         _wms_format = conf.value( PROPERTY_WMS_FORMAT );
-        _wms_version = conf.value( PROPERTY_WMS_VERSION );
+        
+        if ( conf.hasValue( PROPERTY_WMS_VERSION ) )
+        {
+            _wms_version = conf.value( PROPERTY_WMS_VERSION );
+        }
+
         _capabilitiesURL = conf.value( PROPERTY_CAPABILITIES_URL );
         _tileServiceURL = conf.value( PROPERTY_TILESERVICE_URL );
         _elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );

@@ -24,7 +24,7 @@
 #include <osgEarth/Config>
 #include <osgDB/ReaderWriter>
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT FeatureRasterizer : public osg::Referenced
     {
@@ -43,6 +43,7 @@ namespace osgEarthFeatures
             const Config&      driverConf,
             const osgDB::ReaderWriter::Options* globalOptions =NULL );
     };
-}
+
+} } // namespace osgEarth::Features
 
 #endif //OSGEARTHFEATURES_FEATURE_RASTERIZER_H

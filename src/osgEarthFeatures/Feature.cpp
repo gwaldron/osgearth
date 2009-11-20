@@ -17,8 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Feature>
+#include <algorithm>
 
-using namespace osgEarthFeatures;
+using namespace osgEarth;
+using namespace osgEarth::Features;
 
 static
 std::string EMPTY_STRING;
@@ -74,9 +76,56 @@ FeatureGeometry::getTotalPointCount() const
 }
 
 bool
-FeatureGeometry::isClosed( const osg::Vec3dArray* part ) const 
+FeatureGeometry::isClosed( const osg::Vec3dArray* part ) 
 {
-    return ( part && part->size() > 1 && *(part->begin()) == *(part->end()-1) );
+    return part && part->size() > 1 && part->front() == part->back();
+    //return ( part && part->size() > 1 && *(part->begin()) == *(part->end()-1) );
+}
+
+double
+FeatureGeometry::getSignedAreaOfOpenPolygon( const osg::Vec3dArray* part )
+{
+    double sum = 0.0;
+    for( osg::Vec3dArray::const_iterator i = part->begin(); i != part->end(); ++i )
+    {
+        const osg::Vec3d& p0 = *i;
+        const osg::Vec3d& p1 = i != part->end()-1? *(i+1) : *(part->begin());
+        sum += p0.x()*p1.y() - p1.x()*p0.y();
+    }
+    return 0.5 * sum;
+}
+
+bool
+FeatureGeometry::isCCW( const osg::Vec3dArray* part )
+{
+    return getSignedAreaOfOpenPolygon( part ) > 0.0;
+}
+
+void
+FeatureGeometry::openPart( osg::Vec3dArray* part )
+{
+    if ( part->size() > 2 && part->front() == part->back() )
+    {
+        part->erase( part->end()-1 );
+    }
+}
+
+void
+FeatureGeometry::rewindOpenPolygon( osg::Vec3dArray* poly, bool makeCCW )
+{
+    if ( isCCW( poly ) != makeCCW )
+        std::reverse( poly->begin(), poly->end() );
+}
+
+void 
+FeatureGeometry::normalizePolygon()
+{
+    for( FeatureGeometry::iterator i = begin(); i != end(); ++i )
+    {
+        osg::Vec3dArray* part = i->get();
+        openPart( part );
+        rewindOpenPolygon( part, i == begin() );
+    }
 }
 
 /****************************************************************************/

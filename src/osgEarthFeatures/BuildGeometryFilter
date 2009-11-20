@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features 
 {
     /**
      * Builds geometry from a stream of input features.
@@ -51,6 +51,7 @@ namespace osgEarthFeatures
         
         bool push( Feature* input, const FilterContext& context );
     };
-}
+
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

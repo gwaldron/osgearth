@@ -19,12 +19,11 @@
 #include <osgEarthFeatures/BufferFilter>
 
 #ifdef OSGEARTH_HAVE_GEOS
-#  include <geos.h>
-#  include <geos/operation/buffer/BufferOp.h>
+#  include <osgEarthFeatures/GEOS>
 #endif
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 bool
 BufferFilter::isSupported()
@@ -65,15 +64,41 @@ _numSegsPer90deg( rhs._numSegsPer90deg )
 bool
 BufferFilter::push( Feature* input, const FilterContext& context )
 {
+    bool success = false;
+
 #ifdef OSGEARTH_HAVE_GEOS
+
+    FeatureGeometry output;
+    bool ok = GEOSUtils::buffer( _distance, input->getGeometry(), output, context.profile() );
+    if ( ok )
+    {
+        input->setGeometry( output );
+    }
     
-    return true;
+    success = ok;
 
 #else // OSGEARTH_HAVE_GEOS
 
-    return false;
+    double tolerance = context.profile()->getSRS()->isGeographic() ? 0.000001 : 0.001;
+
+    if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_LINE )
+    {
+        FeatureGeometry output;
+//        bufferLinesToPolygons( input->getGeometry(), _distance, tolerance, output );
+        input->setGeometry( output );
+        success = true;
+    }
+    else if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_POLYGON )
+    {
+        FeatureGeometry output;
+        bufferPolys( input->getGeometry(), _distance, tolerance, output );
+        input->setGeometry( output );
+        success = true;
+    }
 
 #endif
+    
+    return success;
 }
 
 FilterContext
@@ -85,6 +110,7 @@ BufferFilter::push( FeatureList& input, const FilterContext& context )
         return context;
     }
 
+    //osg::notify(osg::NOTICE) << "[osgEarth] Buffer: input = " << input.size() << " features" << std::endl;
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
         if ( !push( i->get(), context ) )

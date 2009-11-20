@@ -25,11 +25,7 @@
 #include <osg/Vec4>
 #include <list>
 
-#define PROP(X,Y) \
-    protected: _##Y; \
-    public: X& Y () { return _##Y; } const X& Y() const { return _##Y; }
-
-namespace osgEarthFeatures { namespace Styling
+namespace osgEarth { namespace Features { namespace Styling
 {
     class OSGEARTHFEATURES_EXPORT StyleComponent
     {
@@ -303,6 +299,7 @@ namespace osgEarthFeatures { namespace Styling
         static bool readStyleClassesFromCSS( const Config& conf, StyleClasses& out_classes, bool createIfNecessary =false);
         static bool readStyleClassesFromSLD( const ConfigSet& confSet, StyleClasses& out_classes, bool createIfNecessary =false);
     };
-} }
+
+} } } // namespace osgEarth::Features::Styling
 
 #endif // OSGEARTHFEATURES_STYLING_H

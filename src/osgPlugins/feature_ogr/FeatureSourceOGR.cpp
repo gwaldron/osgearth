@@ -19,25 +19,26 @@
 
 #include <osgEarth/Registry>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/BufferFilter>
+#include <osgEarthFeatures/ScaleFilter>
 #include "FeatureCursorOGR"
-
 #include <osg/Notify>
-
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
-
+#include <list>
 #include <ogr_api.h>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
 #define PROP_URL           "url"
 #define PROP_OGR_DRIVER    "ogr_driver"
 #define PROP_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
-#define PROP_GEOMETRY_OP   "geometry_op"   // "buffer", etc...
 #define PROP_SQL           "query"
+#define PROP_BUFFER_OP     "buffer"
 
 #define BUFFER_ATTR_DISTANCE "distance"
 
@@ -66,6 +67,13 @@ public:
             _geomTypeOverride = FeatureProfile::GEOM_POINT;
         else if ( gt == "polygon" || gt == "polygons" )
             _geomTypeOverride = FeatureProfile::GEOM_POLYGON;
+
+        if ( conf.hasChild( PROP_BUFFER_OP ) )
+        {
+            BufferFilter* buffer = new BufferFilter();
+            buffer->distance() = conf.child( PROP_BUFFER_OP ).value<double>( BUFFER_ATTR_DISTANCE, 1.0 );
+            _filters.push_back( buffer );
+        }
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -84,6 +92,9 @@ public:
             OGRReleaseDataSource( _dsHandle );
             _dsHandle = 0L;
         }
+
+        for( std::list<FeatureFilter*>::iterator i = _filters.begin(); i != _filters.end(); ++i )
+            delete (*i);
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile )
@@ -208,9 +219,9 @@ public:
     }
 
 
-    FeatureCursor* createCursor( const Query& query ) const
+    FeatureCursor* createCursor( const Query& query )
     {
-        return new FeatureCursorOGR( _dsHandle, _layerHandle, getFeatureProfile(), query );
+        return new FeatureCursorOGR( _dsHandle, _layerHandle, getFeatureProfile(), query, _filters );
     }
 
 protected:
@@ -243,6 +254,7 @@ private:
     bool _supportsRandomRead;
     bool _ready;
     FeatureProfile::GeometryType _geomTypeOverride;
+    std::list<FeatureFilter*> _filters;
 };
 
 

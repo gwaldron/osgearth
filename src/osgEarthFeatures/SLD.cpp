@@ -23,8 +23,8 @@
 #include <algorithm>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
-using namespace osgEarthFeatures::Styling;
+using namespace osgEarth::Features;
+using namespace osgEarth::Features::Styling;
 
 static osg::Vec4ub
 htmlColorToVec4ub( const std::string& html )

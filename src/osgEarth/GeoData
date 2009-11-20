@@ -34,7 +34,7 @@ namespace osgEarth
     class /*OSGEARTH_EXPORT*/ Bounds
     {
     public:
-        Bounds() : _xmin(0), _ymin(0), _xmax(-1), _ymax(-1) { }
+        Bounds() : _xmin(DBL_MAX), _ymin(DBL_MAX), _xmax(-DBL_MAX), _ymax(-DBL_MAX) { }
         Bounds( const Bounds& rhs ) : _xmin(rhs._xmin), _ymin(rhs._ymin), _xmax(rhs._xmax), _ymax(rhs._ymax) { }
         Bounds(double xmin, double ymin, double xmax, double ymax ) :
             _xmin(xmin), _ymin(ymin), _xmax(xmax), _ymax(ymax) { }
@@ -53,6 +53,13 @@ namespace osgEarth
 
         bool intersects(const Bounds& rhs) {
             return !( _xmin > rhs.xMax() || _xmax < rhs.xMin() || _ymin > rhs.yMax() || _ymax < rhs.yMin() );
+        }
+
+        void expandToInclude( double x, double y ) {
+            if ( x < _xmin ) _xmin = x;
+            if ( x > _xmax ) _xmax = x;
+            if ( y < _ymin ) _ymin = y;
+            if ( y > _ymax ) _ymax = y;
         }
 
     protected:

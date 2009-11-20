@@ -28,9 +28,9 @@
 
 using namespace osgEarth;
 
-namespace osgEarthFeatures {
-
-    class OSGEARTHFEATURES_EXPORT BufferFilter
+namespace osgEarth { namespace Features
+{
+    class OSGEARTHFEATURES_EXPORT BufferFilter : public FeatureFilter
     {
     public:
         // Call this determine whether this filter is available. This filter uses
@@ -44,7 +44,14 @@ namespace osgEarthFeatures {
         BufferFilter( const BufferFilter& rhs );
 
     public:
-        FilterContext push( FeatureList& input, const FilterContext& context );
+        double distance() const { return _distance; }
+        double& distance() { return _distance; }
+
+        int numSegsPer90deg() const { return _numSegsPer90deg; }
+        int& numSegsPer90deg() { return _numSegsPer90deg; }
+
+    public:
+        virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
     protected:
         double _distance;
@@ -53,6 +60,6 @@ namespace osgEarthFeatures {
         bool push( Feature* input, const FilterContext& context );
     };
 
-} // namespace osgEarth::Features
+} } // namespace osgEarth::Features
 
 #endif // 

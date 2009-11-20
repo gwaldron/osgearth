@@ -21,7 +21,7 @@
 #include <stack>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 #define UINT int
 #define UINTList std::vector<int>

@@ -20,7 +20,7 @@
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 FeatureRasterizer::FeatureRasterizer( const osgDB::ReaderWriter::Options* options ) :
 _options( options )

@@ -21,12 +21,13 @@
 
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/Query>
 #include <ogr_api.h>
 #include <queue>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 class FeatureCursorOGR : public FeatureCursor
 {
@@ -47,7 +48,8 @@ public:
         OGRLayerH dsHandle,
         OGRLayerH layerHandle,
         const FeatureProfile* profile,
-        const Query& query );
+        const Query& query,
+        std::list<FeatureFilter*>& filters );
 
 public: // FeatureCursor
 
@@ -68,6 +70,7 @@ private:
     osg::ref_ptr<const FeatureProfile> _profile;
     std::queue< osg::ref_ptr<Feature> > _queue;
     osg::ref_ptr<Feature> _lastFeatureReturned;
+    std::list<FeatureFilter*>& _filters;
 
 private:
     void readChunk();

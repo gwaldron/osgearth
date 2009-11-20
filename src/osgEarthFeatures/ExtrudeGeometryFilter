@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter
     {
@@ -64,7 +64,8 @@ namespace osgEarthFeatures
 
         bool push( Feature* input, const FilterContext& context );
     };
-}
+
+} } // namespace osgEarth::Features
 
 
 #endif // OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H

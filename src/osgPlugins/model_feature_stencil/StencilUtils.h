@@ -32,9 +32,6 @@
 #include <osg/GLExtensions>
 #include <osg/Notify>
 
-using namespace osgEarthFeatures;
-
-
 #define ON_AND_PROTECTED  osg::StateAttribute::ON | osg::StateAttribute::PROTECTED
 #define OFF_AND_PROTECTED osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED
 

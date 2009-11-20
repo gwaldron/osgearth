@@ -19,7 +19,7 @@
 #include <osgEarthFeatures/TransformFilter>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 TransformFilter::TransformFilter(const SpatialReference* outputSRS, bool makeGeocentric ) :
 _outputSRS( outputSRS ),

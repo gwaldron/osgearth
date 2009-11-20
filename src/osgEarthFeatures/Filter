@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features
 {
     /**
      * Context within which a chain of filters is executed.
@@ -77,46 +77,13 @@ namespace osgEarthFeatures
         osg::Matrixd _inverseReferenceFrame;
     };
 
-    /**
-     * Base class for filters that perform some kind of processing on an
-     * input feature.
-     */
-    //class OSGEARTHFEATURES_EXPORT Filter : public osg::Referenced
-    //{
-    //public:
-    //    virtual osg::Referenced* process( osg::Referenced* input, FilterContext& context ) =0;
-    //};
+    class /*OSGEARTHFEATURES_EXPORT*/ FeatureFilter 
+    {
+    public:
+        virtual FilterContext push( FeatureList& input, const FilterContext& context ) =0;
+    };
 
-    /**
-     * A chain of Filter objects through which to pass Feature instances.
-     * The "T" parameter denotes the OUTPUT type of the chain.
-     */
-    //template<typename T>
-    //class OSGEARTHFEATURES_EXPORT FilterChain : public std::list< osg::ref_ptr<Filter> >
-    //{
-    //public:
-    //    FilterChain( const FilterContext& context );
-
-    //    /** copy ctor */
-    //    FilterChain( const FilterChain& rhs );
-
-    //    /** Run one object through the chain. */
-    //    //T* run( osg::Referenced* input );
-
-    //    /** Read data from a cursor and run it through the chain. */
-    //    bool run(
-    //        FeatureCursor* inputCursor,
-    //        std::list< osg::ref_ptr<T> >& output );            
-
-    //    /** Read data from a list and run it through the chain. */
-    //    bool run(
-    //        std::list< osg::ref_ptr<osg::Referenced> >& input,
-    //        std::list< osg::ref_ptr<T> >& output );
-
-    //protected:
-    //    FilterContext _prototypeContext;
-    //};
-}
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_FEATURE_FILTER_H
 

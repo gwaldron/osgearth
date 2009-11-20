@@ -32,10 +32,12 @@
 #include "StencilUtils.h"
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_FEATURES     "features"
+#define PROP_FEATURES           "features"
+#define PROP_SHOW_VOLUMES       "show_volumes"
+#define PROP_EXTRUSION_DISTANCE "extrusion_distance"
 
 
 class FeatureStencilSource : public ModelSource
@@ -43,7 +45,9 @@ class FeatureStencilSource : public ModelSource
 public:
     FeatureStencilSource( const PluginOptions* options, int sourceId ) : ModelSource( options ),
         _sourceId( sourceId ),
-        _renderBinStart( 8000 )
+        _renderBinStart( 80000 ),
+        _showVolumes( false ),
+        _extrusionDistance( 300000.0 )
     {
         osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
     }
@@ -59,6 +63,10 @@ public:
         {
             osg::notify( osg::WARN ) << "[osgEarth] Feature Stencil driver - no valid feature source provided" << std::endl;
         }
+
+        _showVolumes = conf.value( PROP_SHOW_VOLUMES ) == "true";
+
+        _extrusionDistance = conf.value<double>( PROP_EXTRUSION_DISTANCE, _extrusionDistance );
 
         // load up the style catalog.
         Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
@@ -84,20 +92,29 @@ public:
 
         // Extrude the geometry in both directions to build a stencil volume:
         osg::ref_ptr<osg::Node> volumes;
-        ExtrudeGeometryFilter extrude( -250000, 500000 );
+        ExtrudeGeometryFilter extrude( -_extrusionDistance, _extrusionDistance*2.0 );
         context = extrude.push( features, volumes, context );
-
-        // render the volumes to the stencil buffer:
-        osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), ref_renderBin );
-
-        // render a full screen quad to write to the masked pixels:
-        osg::Vec4ub maskColor = style.getColor( context.profile()->getGeometryType() );
-        osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, ref_renderBin );
 
         osg::Group* classGroup = new osg::Group();
         classGroup->setName( style.name() );
-        classGroup->addChild( geomPass );
-        classGroup->addChild( maskPass );
+
+        if ( _showVolumes )
+        {
+            classGroup->addChild( volumes.get() );
+        }
+        else
+        {
+            // render the volumes to the stencil buffer:
+            osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), ref_renderBin );
+            classGroup->addChild( geomPass );
+
+            // render a full screen quad to write to the masked pixels:
+            osg::Vec4ub maskColor = style.getColor( context.profile()->getGeometryType() );
+            osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, ref_renderBin );
+            classGroup->addChild( maskPass );
+        }
+
+        // lock out the optimizer:
         classGroup->setDataVariance( osg::Object::DYNAMIC );
         return classGroup;
     }
@@ -127,8 +144,6 @@ public:
 
         // install the node.
         return group;
-
-        //return 0L; // we installed it ourselves :)
     }
 
 private:
@@ -137,6 +152,8 @@ private:
     int _renderBinStart;
     osg::ref_ptr<const Map> _map;
     Styling::StyleCatalog _styles;
+    bool _showVolumes;
+    double _extrusionDistance;
 };
 
 

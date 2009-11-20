@@ -23,8 +23,8 @@
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
-using namespace osgEarthFeatures::Styling;
+using namespace osgEarth::Features;
+using namespace osgEarth::Features::Styling;
 
 Config
 CssUtils::readConfig( std::istream& in )

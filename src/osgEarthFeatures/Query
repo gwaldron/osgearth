@@ -24,7 +24,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features
 {
     /**
      * A query filter that you can use to limit a set of features to process.
@@ -53,6 +53,7 @@ namespace osgEarthFeatures
         optional<Bounds> _bounds;
         std::string _expression;
     };
-}
+
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_QUERY_H

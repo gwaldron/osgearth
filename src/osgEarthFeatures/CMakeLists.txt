@@ -19,11 +19,12 @@ SET(LIB_PUBLIC_HEADERS
     CssUtils
     ExtrudeGeometryFilter
     Feature
-    FeatureOpFilter
     FeatureRasterizer
     FeatureSource
     Filter
+    GEOS
 	Query
+	ScaleFilter
     SLD
     Styling
     TransformFilter
@@ -37,11 +38,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CssUtils.cpp
     ExtrudeGeometryFilter.cpp
     Feature.cpp
-    FeatureOpFilter.cpp
     FeatureRasterizer.cpp
     FeatureSource.cpp
     Filter.cpp
+    GEOS.cpp
 	Query.cpp
+	ScaleFilter.cpp
     SLD.cpp
     Styling.cpp
     TransformFilter.cpp

@@ -17,36 +17,47 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_TRANSFORM_FILTER_H
-#define OSGEARTHFEATURES_TRANSFORM_FILTER_H 1
+#ifndef OSGEARTHFEATURES_GEOS_H
+#define OSGEARTHFEATURES_GEOS_H 1
+
+#ifdef OSGEARTH_HAVE_GEOS
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osg/Vec3>
+#include <geos/geom/Geometry.h>
 
 using namespace osgEarth;
 
 namespace osgEarth { namespace Features
 {
-    /**
-     * Feature filter that transforms features from one FeatureProfile to 
-     * another.
-     */
-    class OSGEARTHFEATURES_EXPORT TransformFilter // : public Filter
+    class GEOSUtils // not exported
     {
     public:
-        TransformFilter( const SpatialReference* outputSRS, bool makeGeocentric );
 
-    public:
-        FilterContext push( FeatureList& features, const FilterContext& context );
+        static bool buffer(
+            double distance,
+            const FeatureGeometry& input,
+            FeatureGeometry& output,
+            const FeatureProfile* profile );
 
     protected:
-        osg::ref_ptr<const SpatialReference> _outputSRS;
-        bool _makeGeocentric;
-        
-        bool push( Feature* feature, const FilterContext& context );
+
+        static bool exportGeometry(
+            geos::geom::Geometry* input,
+            FeatureGeometry& output,
+            const FeatureProfile* context );
+
+        static geos::geom::Geometry* importGeometry(
+            const FeatureGeometry& input,
+            const FeatureProfile* profile );
+
     };
 
 } } // namespace osgEarth::Features
 
-#endif // OSGEARTHFEATURES_TRANSFORM_FILTER_H
+#endif // OSGEARTH_HAVE_GEOS
+
+#endif // OSGEARTHFEATURES_GEOS_H
+

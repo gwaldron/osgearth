@@ -18,8 +18,7 @@
  */
 #include <osgEarthFeatures/Query>
 
-using namespace osgEarthFeatures;
-
+using namespace osgEarth::Features;
 
 Query::Query()
 {

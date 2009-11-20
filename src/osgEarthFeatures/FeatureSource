@@ -29,7 +29,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features
 {   
     /**
      * A cursor that lets you iterate over a collection of features returned 
@@ -72,7 +72,7 @@ namespace osgEarthFeatures
          * parameters.
          * Caller is responsible for deleting the returned object.
          */
-        virtual FeatureCursor* createCursor( const Query& query ) const =0;
+        virtual FeatureCursor* createCursor( const Query& query ) =0;
 
         /** Gets the options that were passed into this object's CTOR. */
         const PluginOptions* getOptions() const;
@@ -139,7 +139,8 @@ namespace osgEarthFeatures
             const Config& featureStoreConf,
             const osgDB::ReaderWriter::Options* globalOptions =NULL );
     };
-}
+
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
 

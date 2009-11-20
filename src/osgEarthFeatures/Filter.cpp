@@ -19,7 +19,7 @@
 #include <osgEarthFeatures/Filter>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 FilterContext::FilterContext() :
 _isGeocentric( false )

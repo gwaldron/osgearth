@@ -26,8 +26,8 @@
 #include <osgUtil/Tessellator>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
-using namespace osgEarthFeatures::Styling;
+using namespace osgEarth::Features;
+using namespace osgEarth::Features::Styling;
 
 ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
 _offset( 0 ),
@@ -379,7 +379,8 @@ void tessellate( osg::Geometry* geom )
 {
     osgUtil::Tessellator tess;
     tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
+//    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
     tess.retessellatePolygons( *geom );
 }
 

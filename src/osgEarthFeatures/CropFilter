@@ -25,7 +25,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarth/GeoData>
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT CropFilter
     {
@@ -39,6 +39,7 @@ namespace osgEarthFeatures
     protected:
         GeoExtent _cropExtent;
     };
-}
+
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_CROP_FILTER_H

@@ -81,9 +81,8 @@ using namespace osgEarth;
 \namespace osgEarthFeatures
 */
 
-namespace osgEarthFeatures
-{
+namespace osgEarth { namespace Features {
     
-}
+} }
 
 #endif // OSGEARTHFEATURES_COMMON_H

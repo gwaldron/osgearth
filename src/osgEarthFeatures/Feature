@@ -26,7 +26,7 @@
 #include <map>
 #include <list>
 
-namespace osgEarthFeatures
+namespace osgEarth { namespace Features
 {
     /**
      * Metadata and schema information for feature data.
@@ -72,12 +72,30 @@ namespace osgEarthFeatures
     
     typedef osg::ref_ptr<osg::Vec3dArray> FeatureGeomPart;
 
-    class FeatureGeometry : public std::vector<FeatureGeomPart>
+    class OSGEARTHFEATURES_EXPORT FeatureGeometry : public std::vector<FeatureGeomPart>
     {
     public:
         int getTotalPointCount() const;
 
-        bool isClosed( const osg::Vec3dArray* part ) const;
+        // true if the first point and the last point are the same.
+        static bool isClosed( const osg::Vec3dArray* part );
+        
+        // gets the signed area of a part that is known to be open. A positive
+        // area means it's would CCW; negative means it's would CW.
+        static double getSignedAreaOfOpenPolygon( const osg::Vec3dArray* part );
+
+        // checks to see if the part is would counter-clockwise.
+        static bool isCCW( const osg::Vec3dArray* part );
+
+        // ensures that the part does not have identical first and last points.
+        static void openPart( osg::Vec3dArray* part );
+
+        // reorders the verts in an open poly to be either CCW or CW.
+        static void rewindOpenPolygon( osg::Vec3dArray* poly, bool toCCW );
+
+        // ensures polygon verts are would properly and don't contain duplicates.
+        // only call this on a poly.
+        void normalizePolygon();
     };
 
     /**
@@ -122,6 +140,7 @@ namespace osgEarthFeatures
     };
 
     typedef std::list< osg::ref_ptr<Feature> > FeatureList;
-}
+
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_FEATURE_H

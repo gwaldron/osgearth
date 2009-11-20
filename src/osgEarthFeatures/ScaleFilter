@@ -17,38 +17,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_FEATURE_OP_FILTER_H
-#define OSGEARTHFEATURES_FEATURE_OP_FILTER_H 1
+#ifndef OSGEARTHFEATURES_SCALE_FILTER_H
+#define OSGEARTHFEATURES_SCALE_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
-#ifdef OSGEARTH_HAVE_GEOS
-#  include <geos/geom/Geometry.h>
-#endif // OSGEARTH_HAVE_GEOS
 
 using namespace osgEarth;
 
-namespace osgEarthFeatures {
-
-    class OSGEARTHFEATURES_EXPORT FeatureOpFilter
+namespace osgEarth { namespace Features
+{
+    /**
+     * The scale filter is kind of a poor-man's buffer. It simply
+     * scales and re-centers the feature geometry within its envelope.
+     */
+    class OSGEARTHFEATURES_EXPORT ScaleFilter : public FeatureFilter
     {
     public:
-        
-        virtual FilterContext push( FeatureList& input, const FilterContext& context ) =0;
+        ScaleFilter();
+        ScaleFilter( double scale );
+
+        double scale() const { return _scale; }
+        double& scale() { return _scale; }
 
     public:
+        virtual FilterContext push( FeatureList& input, const FilterContext& cx );
 
-#ifdef OSGEARTH_HAVE_GEOS
+    protected:
+        double _scale;
 
-        geos::geom::Geometry* encode( const FeatureGeometry& input, const FilterContext& context );
-
-        bool decode( geos::geom::Geometry* input, FeatureGeometry& output, const FilterContext& context );
-
-#endif // OSGEARTH_HAVE_GEOS
-
+        bool push( Feature* input, const FilterContext& cx );
     };
-}
 
-#endif // OSGEARTHFEATURES_FEATURE_OP_FILTER_H
+} } // namespace osgEarth::Features
 
+#endif // OSGEARTHFEATURES_SCALE_FILTER_H

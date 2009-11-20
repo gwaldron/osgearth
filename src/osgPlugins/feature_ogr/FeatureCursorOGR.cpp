@@ -24,17 +24,19 @@
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 
 
 FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
                                    OGRLayerH layerHandle,
                                    const FeatureProfile* profile,
-                                   const Query& query ) :
+                                   const Query& query,
+                                   std::list<FeatureFilter*>& filters ) :
 _dsHandle( dsHandle ),
 _layerHandle( layerHandle ),
 _resultSetHandle( 0L ),
 _query( query ),
+_filters( filters ),
 _profile( profile ),
 _chunkSize( 50 ),
 _nextHandleToQueue( 0L ),
@@ -145,16 +147,25 @@ FeatureCursorOGR::readChunk()
 {
     if ( !_resultSetHandle )
         return;
+    
+    FeatureList preProcessList;
+    
+    OGR_SCOPED_LOCK;
 
     if ( _nextHandleToQueue )
     {
         Feature* f = createFeature( _nextHandleToQueue );
-        if ( f ) _queue.push( f );
+        if ( f ) 
+        {
+            _queue.push( f );
+            
+            if ( _filters.size() > 0 )
+                preProcessList.push_back( f );
+        }
+        OGR_F_Destroy( _nextHandleToQueue );
     }
 
     int handlesToQueue = _chunkSize - _queue.size();
-        
-    OGR_SCOPED_LOCK;
 
     for( int i=0; i<handlesToQueue; i++ )
     {
@@ -162,15 +173,36 @@ FeatureCursorOGR::readChunk()
         if ( handle )
         {
             Feature* f = createFeature( handle );
-            if ( f ) _queue.push( f );
+            if ( f ) 
+            {
+                _queue.push( f );
+
+                if ( _filters.size() > 0 )
+                    preProcessList.push_back( f );
+            }
             OGR_F_Destroy( handle );
         }
         else
             break;
     }
 
+    // preprocess the features using the filter list:
+    if ( preProcessList.size() > 0 )
+    {
+        FilterContext cx;
+        cx.profile() = _profile.get();
+
+        for( std::list<FeatureFilter*>::iterator i = _filters.begin(); i != _filters.end(); ++i )
+        {
+            FeatureFilter* filter = *i;
+            cx = filter->push( preProcessList, cx );
+        }
+    }
+
     // read one more for "more" detection:
     _nextHandleToQueue = OGR_L_GetNextFeature( _layerHandle );
+
+    //osg::notify(osg::NOTICE) << "read " << _queue.size() << " features ... " << std::endl;
 }
 
 static void
@@ -181,13 +213,17 @@ insertPart( OGRGeometryH geomHandle, const FeatureProfile* profile, Feature* fea
     {
         osg::Vec3dArray* points = new osg::Vec3dArray( numPoints );
 
-        for( int v = numPoints-1, j=0; v >= 0; v--, j++ ) // reserve winding
+        int j=0;
+        for( int v = numPoints-1; v >= 0; v-- ) // reserve winding
         {
             double x=0, y=0, z=0;
             OGR_G_GetPoint( geomHandle, v, &x, &y, &z );
-            (*points)[j].set( x, y, z );
+            osg::Vec3d p( x, y, z );
+            if ( j == 0 || p != (*points)[j-1] ) // remove dupes
+                (*points)[j++] = p;
         }
-        
+        if ( j > 0 ) points->resize( j );
+
         feature->addPart( points );
     }
 }
@@ -231,23 +267,18 @@ FeatureCursorOGR::createFeature( OGRFeatureH handle )
                 OGRGeometryH subGeomRef = OGR_G_GetGeometryRef( geomRef, n );
                 if ( subGeomRef )
                     insertGeometry( subGeomRef, _profile.get(), feature );               
-                //if ( shape.getParts().size() )
-                //{
-                //    shapes.push_back( shape );
-                //    extent.expandToInclude( shape.getExtent() );
-                //}
             }
         }
         else // single-geometry
         {
             insertGeometry( geomRef, _profile.get(), feature );
-            //if ( shape.getParts().size() > 0 )
-            //{
-            //    shapes.push_back( shape );
-            //    extent.expandToInclude( shape.getExtent() );
-            //}
         }
 	}
+
+    if ( _profile->getGeometryType() == FeatureProfile::GEOM_POLYGON )
+    {
+        feature->getGeometry().normalizePolygon();
+    }
 
     //loadAttributes();
 

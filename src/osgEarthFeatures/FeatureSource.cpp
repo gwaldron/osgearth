@@ -21,7 +21,7 @@
 #include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
 
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 using namespace OpenThreads;
 
 /****************************************************************************/

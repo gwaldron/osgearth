@@ -34,7 +34,7 @@
 #include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
-using namespace osgEarthFeatures;
+using namespace osgEarth::Features;
 using namespace OpenThreads;
 
 #define PROP_FEATURES     "features"

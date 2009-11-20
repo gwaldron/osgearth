@@ -27,10 +27,12 @@
 #include <geos/geom/CoordinateSequence.h>
 #include <geos/geom/CoordinateArraySequenceFactory.h>
 #include <geos/geom/Geometry.h>
+#include <geos/geom/Point.h>
 #include <geos/geom/MultiPoint.h>
 #include <geos/geom/Polygon.h>
 #include <geos/geom/MultiPolygon.h>
 #include <geos/geom/LineString.h>
+#include <geos/geom/MultiLineString.h>
 #include <geos/geom/LinearRing.h>
 #include <geos/operation/buffer/BufferOp.h>
 
@@ -70,13 +72,34 @@ GEOSUtils::importGeometry( const FeatureGeometry& input, const FeatureProfile* p
     {
     case FeatureProfile::GEOM_POINT:
         {
-            output = 0L;
+            std::vector<geom::Geometry*>* points = new std::vector<geom::Geometry*>();
+            for( FeatureGeometry::const_iterator part_i = input.begin(); part_i != input.end(); ++part_i )
+            {
+                // every time we find a solid (ccw) call it a new poly.
+                osg::Vec3dArray* part = part_i->get();                
+                if ( part->size() >= 2 )
+                {
+                    geom::CoordinateSequence* seq = vec3dArray2CoordSeq( part, false, factory->getCoordinateSequenceFactory() );
+                    points->push_back( factory->createPoint( seq ) );
+                }
+            }
+            output = factory->createMultiPoint( points );
         }
         break;
 
     case FeatureProfile::GEOM_LINE:
         {
-            output = 0L;
+            std::vector<geom::Geometry*>* lines = new std::vector<geom::Geometry*>();
+            for( FeatureGeometry::const_iterator part_i = input.begin(); part_i != input.end(); ++part_i )
+            {
+                osg::Vec3dArray* part = part_i->get();                
+                if ( part->size() >= 2 )
+                {
+                    geom::CoordinateSequence* seq = vec3dArray2CoordSeq( part, false, factory->getCoordinateSequenceFactory() );
+                    lines->push_back( factory->createLineString( seq ) );
+                }
+            }
+            output = factory->createMultiLineString( lines );
         }
         break;
 
@@ -132,11 +155,28 @@ GEOSUtils::importGeometry( const FeatureGeometry& input, const FeatureProfile* p
 bool
 GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const FeatureProfile* context )
 {
-    if ( dynamic_cast<geom::MultiPoint*>( input ) )
+    if ( dynamic_cast<geom::Point*>( input ) )
     {
+        osg::notify(osg::NOTICE) << "[osgEarth] GEOS point NYI" << std::endl;        
+    }
+    else if ( dynamic_cast<geom::MultiPoint*>( input ) )
+    {
+        geom::MultiPoint* mp = static_cast<geom::MultiPoint*>( input );
+        osg::Vec3dArray* part = new osg::Vec3dArray( mp->getNumPoints() );
+        for( int i=0; i < mp->getNumPoints(); i++ )
+        {
+            geom::Point* p = (geom::Point*)(mp->getGeometryN(i));
+            part->push_back( osg::Vec3d( p->getX(), p->getY(), 0 ) );            
+        }
+        output.push_back( part );
     }
     else if ( dynamic_cast<geom::LineString*>( input ) )
     {
+        osg::notify(osg::NOTICE) << "[osgEarth] GEOS line string NYI" << std::endl;        
+    }
+    else if ( dynamic_cast<geom::MultiLineString*>( input ) )
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth] GEOS multi line string NYI" << std::endl;
     }
     else if ( dynamic_cast<geom::Polygon*>( input ) )
     {
@@ -147,14 +187,27 @@ GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const
         const geom::LineString* outerRing = poly->getExteriorRing();
         if ( outerRing )
         {
-            geom::CoordinateSequence* s = outerRing->getCoordinates();
+            const geom::CoordinateSequence* s = outerRing->getCoordinates();
             osg::Vec3dArray* part = new osg::Vec3dArray( s->getSize() );
             for( int j=0; j<s->getSize(); j++ ) 
             {
                 const geom::Coordinate& c = s->getAt( j );
-                (*part)[j].set( c.x, c.y, c.z );                
+                (*part)[j].set( c.x, c.y, 0 );                
             }
             output.push_back( part );
+
+            for( int k=0; k < poly->getNumInteriorRing(); k++ )
+            {
+                const geom::LineString* inner = poly->getInteriorRingN( k );
+                const geom::CoordinateSequence* s = inner->getCoordinates();
+                osg::Vec3dArray* part = new osg::Vec3dArray(s->getSize());
+                for( int m = s->getSize()-1; m >= 0; m-- )
+                {
+                    const geom::Coordinate& c = s->getAt( m );
+                    (*part)[m].set( c.x, c.y, 0 );
+                }
+                output.push_back( part );
+            }
         }
     }
     else if ( dynamic_cast<geom::MultiPolygon*>( input ) )
@@ -172,7 +225,7 @@ GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const
                 for( int j=0; j<s->getSize(); j++ ) 
                 {
                     const geom::Coordinate& c = s->getAt( j );
-                    (*part)[j].set( c.x, c.y, (*part)[j].z() ); //c.z );                
+                    (*part)[j].set( c.x, c.y, 0 );               
                 }
                 output.push_back( part );
             }

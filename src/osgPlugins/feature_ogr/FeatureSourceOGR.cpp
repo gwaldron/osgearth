@@ -200,7 +200,7 @@ public:
                             if ( srs.valid() && dim >= 2 && dim <= 3 && geomType != FeatureProfile::GEOM_UNKNOWN )
                             {
                                 result = new FeatureProfile( srs.get(), geomType, dim, multiGeom );
-                                //osg::notify(osg::NOTICE) << "_geomTypeOverride = " << _geomTypeOverride << std::endl;
+                                osg::notify(osg::NOTICE) << "_geomTypeOverride = " << _geomTypeOverride << std::endl;
                             }
 
                         }

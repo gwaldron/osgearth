@@ -120,11 +120,25 @@ FeatureGeometry::rewindOpenPolygon( osg::Vec3dArray* poly, bool makeCCW )
 void 
 FeatureGeometry::normalizePolygon()
 {
-    for( FeatureGeometry::iterator i = begin(); i != end(); ++i )
+    FeatureGeometry cwParts;
+    for( FeatureGeometry::iterator i = begin(); i != end(); )
     {
         osg::Vec3dArray* part = i->get();
         openPart( part );
-        rewindOpenPolygon( part, i == begin() );
+        if ( !isCCW( part ) )
+        {
+            cwParts.push_back( part );
+            i = erase( i );
+        }
+        else
+        {
+            ++i;
+        }
+    }
+
+    for( FeatureGeometry::iterator j = cwParts.begin(); j != cwParts.end(); ++j )
+    {
+        push_back( j->get() );
     }
 }
 

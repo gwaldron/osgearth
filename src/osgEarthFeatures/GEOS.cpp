@@ -201,7 +201,8 @@ GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const
                 const geom::LineString* inner = poly->getInteriorRingN( k );
                 const geom::CoordinateSequence* s = inner->getCoordinates();
                 osg::Vec3dArray* part = new osg::Vec3dArray(s->getSize());
-                for( int m = s->getSize()-1; m >= 0; m-- )
+                //for( int m = s->getSize()-1; m >= 0; m-- )
+                for( int m = 0; m<s->getSize(); m++ )
                 {
                     const geom::Coordinate& c = s->getAt( m );
                     (*part)[m].set( c.x, c.y, 0 );
@@ -226,6 +227,20 @@ GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const
                 {
                     const geom::Coordinate& c = s->getAt( j );
                     (*part)[j].set( c.x, c.y, 0 );               
+                }
+                output.push_back( part );
+            }
+
+            for( int k=0; k < poly->getNumInteriorRing(); k++ )
+            {
+                const geom::LineString* inner = poly->getInteriorRingN( k );
+                const geom::CoordinateSequence* s = inner->getCoordinates();
+                osg::Vec3dArray* part = new osg::Vec3dArray(s->getSize());
+                //for( int m = s->getSize()-1; m >= 0; m-- )
+                for( int m = 0; m<s->getSize(); m++ )
+                {
+                    const geom::Coordinate& c = s->getAt( m );
+                    (*part)[m].set( c.x, c.y, 0 );
                 }
                 output.push_back( part );
             }
@@ -254,19 +269,23 @@ GEOSUtils::buffer(double distance,
         if ( outGeom )
         {
             exportGeometry( outGeom, output, profile );
-            geom::GeometryFactory::getDefaultInstance()->destroyGeometry( outGeom );
+            outGeom->getFactory()->destroyGeometry( outGeom );
+            //geom::GeometryFactory::getDefaultInstance()->destroyGeometry( outGeom );
+            ok = true;
         }
         else
         {
-//            osg::notify(osg::NOTICE) << "[osgEarth] Buffer: no output geometry.." << std::endl;
+            osg::notify(osg::NOTICE) << "[osgEarth] Buffer: no output geometry.." << std::endl;
+            ok = false;
         }
 
-        geom::GeometryFactory::getDefaultInstance()->destroyGeometry( inGeom );
-        ok = true;
+        inGeom->getFactory()->destroyGeometry( inGeom );
+        //geom::GeometryFactory::getDefaultInstance()->destroyGeometry( inGeom );
     }
     else
     {
-//        osg::notify(osg::NOTICE) << "[osgEarth] Buffer: importGeom failed" << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth] Buffer: importGeom failed" << std::endl;
+        ok = false;
     }
 
     return ok;

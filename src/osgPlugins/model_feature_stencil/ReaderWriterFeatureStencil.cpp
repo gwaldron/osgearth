@@ -140,9 +140,13 @@ public:
         }
 
         osg::StateSet* ss = group->getOrCreateStateSet();
-        ss->setMode( GL_LIGHTING, 0 );
+        if ( !_showVolumes )
+            ss->setMode( GL_LIGHTING, 0 );
 
         // install the node.
+
+        group->setNodeMask( 0xfffffffe );
+
         return group;
     }
 

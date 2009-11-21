@@ -74,6 +74,10 @@ BufferFilter::push( Feature* input, const FilterContext& context )
     {
         input->setGeometry( output );
     }
+    else
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth] Buffer: op failed for FID " << input->getFID() << std::endl;
+    }
     
     success = ok;
 

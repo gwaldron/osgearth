@@ -23,15 +23,11 @@ block.
     
     <model name="states" driver="feature_stencil">
 
-        <!-- Configure the OGR feature driver to read the shapefile;
-             apply a negative buffer to each feature in order to 
-             emphasize country borders. (If you did not build osgEarth
-             with GEOS support, the buffer will have no effect.) -->
+        <!-- Configure the OGR feature driver to read the shapefile. -->
              
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
-            <!-- <buffer distance="-0.02"/> -->
         </features>
         
         <!-- Since some countries span large areas on the globe, we need to

@@ -83,22 +83,22 @@ BufferFilter::push( Feature* input, const FilterContext& context )
 
 #else // OSGEARTH_HAVE_GEOS
 
-    double tolerance = context.profile()->getSRS()->isGeographic() ? 0.000001 : 0.001;
-
-    if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_LINE )
-    {
-        FeatureGeometry output;
-//        bufferLinesToPolygons( input->getGeometry(), _distance, tolerance, output );
-        input->setGeometry( output );
-        success = true;
-    }
-    else if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_POLYGON )
-    {
-        FeatureGeometry output;
-        bufferPolys( input->getGeometry(), _distance, tolerance, output );
-        input->setGeometry( output );
-        success = true;
-    }
+//    double tolerance = context.profile()->getSRS()->isGeographic() ? 0.000001 : 0.001;
+//
+//    if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_LINE )
+//    {
+//        FeatureGeometry output;
+////        bufferLinesToPolygons( input->getGeometry(), _distance, tolerance, output );
+//        input->setGeometry( output );
+//        success = true;
+//    }
+//    else if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_POLYGON )
+//    {
+//        FeatureGeometry output;
+//        bufferPolys( input->getGeometry(), _distance, tolerance, output );
+//        input->setGeometry( output );
+//        success = true;
+//    }
 
 #endif
     

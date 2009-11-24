@@ -63,7 +63,7 @@ namespace osgEarth
         void setStamp(int stamp) { _stamp = stamp; }
         int getStamp() const { return _stamp; }
         osg::Referenced* getResult() const { return _result.get(); }
-        ProgressCallback* getProgressCallback() { return _progress; }
+        ProgressCallback* getProgressCallback() { return _progress.get(); }
         void setProgressCallback(ProgressCallback* progress) { _progress = progress? progress : new ProgressCallback(); }
         const std::string& getName() const { return _name; }
         void setName( const std::string& name ) { _name = name; }

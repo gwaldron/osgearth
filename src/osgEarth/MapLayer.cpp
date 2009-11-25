@@ -600,6 +600,8 @@ osg::HeightField*
 MapLayer::createHeightField(const osgEarth::TileKey *key,
                             ProgressCallback* progress)
 {
+    const Profile* mapProfile = getProfile();
+
 	osg::ref_ptr<osg::HeightField> result;
 
 	//See if we can get it from the cache.
@@ -615,7 +617,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	if (!result.valid() && getTileSource())
 	{
 		//If the profiles are equivalent, get the HF from the TileSource.
-		if (key->getProfile()->isEquivalentTo( getProfile() ))
+		if (key->getProfile()->isEquivalentTo( mapProfile ))
 		{
 			if (isKeyValid( key ) )
 			{

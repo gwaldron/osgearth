@@ -9,7 +9,7 @@ map, it will only support data that covers at most one hemisphere.
 -->
 
 <map name="Feature Overlay Demo" type="geocentric">
-
+    
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
     </image>

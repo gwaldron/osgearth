@@ -239,12 +239,12 @@ namespace osgEarth
 		/**
 		 * Gets the Cache to be used on this MapLayer.
 		 */
-		Cache* getCache() const { return _cache.get(); }
+		Cache* getCache() const;
 
 		/**
 		 * Sets the cache to be used on this MapLayer
 		 */
-		void setCache( Cache* cache ) { _cache = cache; }
+		void setCache( Cache* cache );
 
 		/**
 		 * Gets whether to try to run this MapLayer strictly from the cache only.
@@ -265,6 +265,11 @@ namespace osgEarth
          * Sets the load weight of this MapLayer
          */
         void setLoadWeight(float loadWeight );
+
+        /**
+         * Suggests a cache format for this layer
+         */
+        std::string suggestCacheFormat() const;
 
     protected:
 

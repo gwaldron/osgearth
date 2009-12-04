@@ -21,6 +21,8 @@
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/ImageUtils>
 
+#include <osg/Version>
+
 using namespace osgEarth;
 
 static unsigned int s_mapLayerID = 0;
@@ -64,6 +66,7 @@ _loadWeight( 1.0f )
 
 	readEnvironmentalVariables();
     _id = s_mapLayerID++;
+    _cacheFormat = suggestCacheFormat();
 }
 
 MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
@@ -82,6 +85,7 @@ _loadWeight( 1.0f )
 {
 	readEnvironmentalVariables();
     _id = s_mapLayerID++;
+    _cacheFormat = suggestCacheFormat();
 }
 
 optional<int>&
@@ -137,6 +141,41 @@ void MapLayer::setCacheOnly( bool cacheOnly )
 	_cacheOnly = cacheOnly;
 }
 
+Cache*
+MapLayer::getCache() const
+{
+    return _cache.get();
+}
+
+void
+MapLayer::setCache(Cache* cache)
+{
+    if (_cache.get() != cache)
+    {
+        _cache = cache;        
+
+        //Read properties from the cache if not already set
+        if (_cache.valid())
+        {
+            std::string format;
+            unsigned int tile_size;
+            osg::ref_ptr< const Profile > profile = _cache->loadLayerProperties(_name, format, tile_size);
+
+            //Set the profile if it hasn't already been set
+            if (!_profile.valid() && profile.valid())
+            {
+                _profile = profile.get();
+            }
+
+            //Set the cache format if it hasn't already been set
+            if (_cacheFormat.empty())
+            {
+                _cacheFormat = format;
+            }
+        }
+    }
+}
+
 TileSource* 
 MapLayer::getTileSource() const {
 	//Only load the TileSource if it hasn't been loaded previously and we aren't running strictly off the cache.
@@ -157,18 +196,6 @@ MapLayer::getProfile() const
 		{
 			const_cast<MapLayer*>(this)->_profile = getTileSource()->getProfile();
 		}	
-		else if (_cache.valid())
-		{
-			//Get it from the Cache if possible.
-			std::string format;
-			unsigned int tile_size;
-			const_cast<MapLayer*>(this)->_profile = _cache->loadLayerProperties(_name, format, tile_size);
-			//Initialize the cache format if it hasn't been set already.
-			if (_profile.valid() && _cacheFormat.empty())
-			{
-				const_cast<MapLayer*>(this)->_cacheFormat = format;
-			}
-		}
 	}
 	return _profile.get();
 }
@@ -203,6 +230,30 @@ void
 MapLayer::setCacheFormat(const std::string& cacheFormat)
 {
 	_cacheFormat = cacheFormat;
+}
+
+std::string
+MapLayer::suggestCacheFormat() const
+{
+    if (_type == MapLayer::TYPE_HEIGHTFIELD)
+    {
+#if OSG_MIN_VERSION_REQUIRED(2,8,0)
+        //OSG 2.8 onwards should use TIF for heightfields
+        return "tif";
+#else
+        //OSG 2.8 and below should use DDS
+        return "dds";
+#endif
+    }
+
+    //Use the format of the TileSource if it is valid.
+    if (_tileSource.valid())
+    {
+        return _tileSource->getExtension();
+    }
+
+    //Default to PNG
+    return "png";
 }
 
 float
@@ -268,12 +319,12 @@ MapLayer::initTileSource()
 		}
 	}
 	_tileSource = tileSource;
-
-	//Set the cache format to the native format of the TileSource if it isn't already set.
-	if (_tileSource.valid() && _cacheFormat.empty())
-	{
-		_cacheFormat = _tileSource->getExtension();
-	}
+    
+    //Set the cache format to the native format of the TileSource if it isn't already set.
+    if (_cacheFormat.empty())
+    {
+        _cacheFormat = suggestCacheFormat();
+    }
 
 	if (_tileSource.valid() && _cache.valid())
 	{

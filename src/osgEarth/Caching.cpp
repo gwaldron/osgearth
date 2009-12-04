@@ -549,6 +549,9 @@ static bool getProp(const std::map<std::string,std::string> &map, const std::str
 Cache* CacheFactory::create(const CacheConfig &cacheConfig)
 {
 	CacheConfig::CacheType type = cacheConfig.getType();
+    //Default to TMS if the default is selected.
+    if (type == CacheConfig::TYPE_DEFAULT) type = CacheConfig::TYPE_TMS;
+
     if (type == CacheConfig::TYPE_TMS || type == CacheConfig::TYPE_TILECACHE )
     {
         std::string path;

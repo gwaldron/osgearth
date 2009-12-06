@@ -618,11 +618,12 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 static bool
 mercatorToGeographic( double* x, double* y, int numPoints )
 {
-    static const GeoExtent m = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+    const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+
     for( int i=0; i<numPoints; i++ )
     {
-        double xr = -osg::PI + ((x[i]-m.xMin())/m.width())*2.0*osg::PI;
-        double yr = -osg::PI + ((y[i]-m.yMin())/m.height())*2.0*osg::PI;
+        double xr = -osg::PI + ((x[i]-merc.xMin())/merc.width())*2.0*osg::PI;
+        double yr = -osg::PI + ((y[i]-merc.yMin())/merc.height())*2.0*osg::PI;
         x[i] = osg::RadiansToDegrees( xr );
         y[i] = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
     }
@@ -633,14 +634,15 @@ mercatorToGeographic( double* x, double* y, int numPoints )
 static bool
 geographicToMercator( double* x, double* y, int numPoints )
 {
-    static const GeoExtent m = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+    const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
+
     for( int i=0; i<numPoints; i++ )
     {
         double xr = (osg::DegreesToRadians(x[i]) - (-osg::PI)) / (2.0*osg::PI);
         double sinLat = sin(osg::DegreesToRadians(y[i]));
         double yr = ((0.5 * log( (1+sinLat)/(1-sinLat) )) - (-osg::PI)) / (2.0*osg::PI);
-        x[i] = m.xMin() + (xr * m.width());
-        y[i] = m.yMin() + (yr * m.height());
+        x[i] = merc.xMin() + (xr * merc.width());
+        y[i] = merc.yMin() + (yr * merc.height());
     }
     return true;
 }
@@ -769,17 +771,22 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
                                   double& in_out_xmax,
                                   double& in_out_ymax) const
 {
-    double x[2] = { in_out_xmin, in_out_xmax };
-    double y[2] = { in_out_ymin, in_out_ymax };
-    bool ok = transformPoints( to_srs, x, y, 2 );
-    if ( ok )
-    {
-        in_out_xmin = x[0];
-        in_out_ymin = y[0];
-        in_out_xmax = x[1];
-        in_out_ymax = y[1];
-    }
-    return ok;
+    int oks = 0;
+    oks += transform( in_out_xmin, in_out_ymin, to_srs, in_out_xmin, in_out_ymin ) == true;
+    oks += transform( in_out_xmax, in_out_ymax, to_srs, in_out_xmax, in_out_ymax ) == true;
+    return oks == 2;
+
+    //double x[2] = { in_out_xmin, in_out_xmax };
+    //double y[2] = { in_out_ymin, in_out_ymax };
+    //bool ok = transformPoints( to_srs, x, y, 2 );
+    //if ( ok )
+    //{
+    //    in_out_xmin = x[0];
+    //    in_out_ymin = y[0];
+    //    in_out_xmax = x[1];
+    //    in_out_ymax = y[1];
+    //}
+    //return ok;
 }
 
 void

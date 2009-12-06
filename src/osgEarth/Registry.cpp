@@ -191,8 +191,13 @@ public:
     RegisterEarthTileExtension()
     {
         osg::Referenced::setThreadSafeReferenceCounting( true );
+
         osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
 		osgDB::Registry::instance()->addFileExtensionAlias("earth_tile_data", "earth");
+
+        Registry::instance()->getGlobalGeodeticProfile();
+        Registry::instance()->getGlobalMercatorProfile();
+        Registry::instance()->getCubeProfile();
     }
 };
 static RegisterEarthTileExtension s_registerEarthTileExtension;

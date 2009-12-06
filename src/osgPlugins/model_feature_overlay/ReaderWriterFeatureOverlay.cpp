@@ -60,7 +60,7 @@ public:
         //TODO
     }
 
-    void initialize( const std::string& referenceURI, const Map* map )
+    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         _map = map;
 
@@ -74,7 +74,7 @@ public:
 
         // omitting the texture unit implies "AUTO" mode - MapNode will set one automatically
         if ( conf.hasValue( PROP_TEXTURE_UNIT ) )
-            _textureUnit = conf.value<int>( PROP_TEXTURE_UNIT, _textureUnit ); 
+            _textureUnit = conf.value<int>( PROP_TEXTURE_UNIT, _textureUnit );
         else
             _textureUnit = 0; // AUTO
 
@@ -98,7 +98,7 @@ public:
 
     osg::Node* buildClass( const Styling::StyleClass& style )
     {
-        bool isGeocentric = _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC;
+        bool isGeocentric = _map->getCoordinateSystemType() == osgEarth::Map::CSTYPE_GEOCENTRIC;
 
         //osg::notify(osg::NOTICE)
         //    << "Building class " << style.name() << ", SQL = " << style.query().expression() << std::endl;
@@ -157,7 +157,7 @@ public:
         overlayNode->setOverlayTechnique( _overlayTech );
         overlayNode->setOverlayBaseHeight( _baseHeight );
         overlayNode->setOverlayTextureSizeHint( _textureSize );
-        overlayNode->setOverlayTextureUnit( _textureUnit ); 
+        overlayNode->setOverlayTextureUnit( _textureUnit );
         overlayNode->setContinuousUpdate( false );
         overlayNode->setOverlaySubgraph( group );
 
@@ -171,7 +171,7 @@ private:
     int _textureUnit;
     double _baseHeight;
     osgSim::OverlayNode::OverlayTechnique _overlayTech;
-    osg::ref_ptr<const Map> _map;
+    osg::ref_ptr<const osgEarth::Map> _map;
     Styling::StyleCatalog _styles;
 };
 
@@ -213,12 +213,12 @@ public:
     }
 
     // NOTE: this doesn't do anything, yet. it's a template for recursing into the
-    // plugin during pagedlod traversals. 
+    // plugin during pagedlod traversals.
     virtual ReadResult readNode(const std::string& fileName, const Options* options) const
     {
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( fileName )))
             return ReadResult::FILE_NOT_HANDLED;
-    
+   
         std::string stripped = osgDB::getNameLessExtension( fileName );
         int sourceId = 0;
         sscanf( stripped.c_str(), "%d", &sourceId );
@@ -233,5 +233,4 @@ protected:
     std::map<int, osg::ref_ptr<FeatureOverlaySource> > _sourceMap;
 };
 
-REGISTER_OSGPLUGIN(osgearth_model_feature_overlay, ReaderWriterFeatureOverlay)
-
+REGISTER_OSGPLUGIN(osgearth_model_feature_overlay, ReaderWriterFeatureOverlay) 

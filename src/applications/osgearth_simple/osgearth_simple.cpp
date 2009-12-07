@@ -67,31 +67,39 @@ int main(int argc, char** argv)
     osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
     viewer.setCameraManipulator( manip );
 
-    // The "Map" is the data model object that we will be visualizing. It will be
-    // geocentric by default, but you can specify a projected map in the constructor.
-    osgEarth::Map* map = new osgEarth::Map();
+    osg::Node* sceneData = osgDB::readNodeFiles( arguments );
 
-    // Add an image layer to the map.
+    if (!sceneData)
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
-        osgEarth::MapLayer* layer = new osgEarth::MapLayer( "NASA", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf );
-        map->addMapLayer( layer );
+        // Create a "Map" dynamically if no nodes were loaded
+        // The "Map" is the data model object that we will be visualizing. It will be
+        // geocentric by default, but you can specify a projected map in the constructor.
+        osgEarth::Map* map = new osgEarth::Map();
+
+        // Add an image layer to the map.
+        {
+            osgEarth::Config conf;
+            conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
+            osgEarth::MapLayer* layer = new osgEarth::MapLayer( "NASA", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf );
+            map->addMapLayer( layer );
+        }
+
+        // Add a heightfield layer to the map. You can add any number of heightfields and
+        // osgEarth will composite them automatically.
+        {
+            osgEarth::Config conf;
+            conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
+            osgEarth::MapLayer* layer = new osgEarth::MapLayer( "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf );
+            map->addMapLayer( layer );
+        }
+
+        // The MapNode will render the Map object in the scene graph.
+        osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );
+
+        sceneData = mapNode;
     }
 
-    // Add a heightfield layer to the map. You can add any number of heightfields and
-    // osgEarth will composite them automatically.
-    {
-        osgEarth::Config conf;
-        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
-        osgEarth::MapLayer* layer = new osgEarth::MapLayer( "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf );
-        map->addMapLayer( layer );
-    }
-
-    // The MapNode will render the Map object in the scene graph.
-    osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );
-
-    viewer.setSceneData( mapNode );
+    viewer.setSceneData( sceneData );
 
     manip->getSettings()->bindMouseDoubleClick(
         osgEarthUtil::EarthManipulator::ACTION_GOTO,

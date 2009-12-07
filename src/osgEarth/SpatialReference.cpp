@@ -640,9 +640,13 @@ geographicToMercator( double* x, double* y, int numPoints )
     {
         double xr = (osg::DegreesToRadians(x[i]) - (-osg::PI)) / (2.0*osg::PI);
         double sinLat = sin(osg::DegreesToRadians(y[i]));
-        double yr = ((0.5 * log( (1+sinLat)/(1-sinLat) )) - (-osg::PI)) / (2.0*osg::PI);
-        x[i] = merc.xMin() + (xr * merc.width());
-        y[i] = merc.yMin() + (yr * merc.height());
+        double oneMinusSinLat = 1-sinLat;
+        if ( oneMinusSinLat != 0.0 )
+        {
+            double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
+            x[i] = merc.xMin() + (xr * merc.width());
+            y[i] = merc.yMin() + (yr * merc.height());
+        }
     }
     return true;
 }

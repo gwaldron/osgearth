@@ -31,7 +31,7 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
                                    OGRLayerH layerHandle,
                                    const FeatureProfile* profile,
                                    const Query& query,
-                                   std::list<FeatureFilter*>& filters ) :
+                                   FeatureFilterList& filters ) :
 _dsHandle( dsHandle ),
 _layerHandle( layerHandle ),
 _resultSetHandle( 0L ),
@@ -192,9 +192,9 @@ FeatureCursorOGR::readChunk()
         FilterContext cx;
         cx.profile() = _profile.get();
 
-        for( std::list<FeatureFilter*>::iterator i = _filters.begin(); i != _filters.end(); ++i )
+        for( FeatureFilterList::iterator i = _filters.begin(); i != _filters.end(); ++i )
         {
-            FeatureFilter* filter = *i;
+            FeatureFilter* filter = i->get(); //*i;
             cx = filter->push( preProcessList, cx );
         }
     }

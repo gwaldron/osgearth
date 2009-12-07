@@ -23,9 +23,11 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Query>
+#include <osgEarthFeatures/Filter>
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
 #include <osgDB/ReaderWriter>
+#include <list>
 
 using namespace osgEarth;
 
@@ -77,6 +79,21 @@ namespace osgEarth { namespace Features
         /** Gets the options that were passed into this object's CTOR. */
         const PluginOptions* getOptions() const;
 
+    public: // properties
+        
+        /**
+         * Set or get an override geometry type. You can force input vectors to be
+         * interpreted as a particular type using this property.
+         */
+        void setGeometryTypeOverride( FeatureProfile::GeometryType type );
+        FeatureProfile::GeometryType getGeometryTypeOverride() const;
+
+        /**
+         * Accesses the list of feature filters that will transform features
+         * before they are returned in a feature cursor.
+         */
+        FeatureFilterList& getFilters();
+
     public:
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
@@ -114,6 +131,8 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         osg::ref_ptr<const PluginOptions>  _options;
         GeoExtent _dataExtent;
+        FeatureProfile::GeometryType _geomTypeOverride;
+        FeatureFilterList _filters;
 
         friend class Map;
         friend class FeatureSourceFactory;

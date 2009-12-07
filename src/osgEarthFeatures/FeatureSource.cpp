@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/BufferFilter>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
@@ -24,11 +25,36 @@
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
+#define PROP_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
+#define PROP_BUFFER_OP     "buffer"
+
+#define BUFFER_ATTR_DISTANCE "distance"
+
 /****************************************************************************/
 
 FeatureSource::FeatureSource( const PluginOptions* options ) :
-_options( options )
-{
+_options( options ),
+_geomTypeOverride( FeatureProfile::GEOM_UNKNOWN )
+{    
+    const Config& conf = getOptions()->config();
+
+    // geometry type override: the config can ask that input geometry
+    // be interpreted as a particular geometry type
+    std::string gt = conf.value( PROP_GEOMETRY_TYPE );
+    if ( gt == "line" || gt == "lines" )
+        _geomTypeOverride = FeatureProfile::GEOM_LINE;
+    else if ( gt == "point" || gt == "points" )
+        _geomTypeOverride = FeatureProfile::GEOM_POINT;
+    else if ( gt == "polygon" || gt == "polygons" )
+        _geomTypeOverride = FeatureProfile::GEOM_POLYGON;
+
+    // optional feature operations
+    if ( conf.hasChild( PROP_BUFFER_OP ) )
+    {
+        BufferFilter* buffer = new BufferFilter();
+        buffer->distance() = conf.child( PROP_BUFFER_OP ).value<double>( BUFFER_ATTR_DISTANCE, 1.0 );
+        _filters.push_back( buffer );
+    }
 }
 
 FeatureSource::~FeatureSource()
@@ -64,6 +90,24 @@ FeatureSource::getDataExtent() const
         nonConstThis->_dataExtent = nonConstThis->createDataExtent();
     }
     return _dataExtent;
+}
+
+FeatureProfile::GeometryType
+FeatureSource::getGeometryTypeOverride() const
+{
+    return _geomTypeOverride;
+}
+
+void 
+FeatureSource::setGeometryTypeOverride( FeatureProfile::GeometryType type )
+{
+    _geomTypeOverride = type;
+}
+
+FeatureFilterList&
+FeatureSource::getFilters()
+{
+    return _filters;
 }
 
 /****************************************************************************/

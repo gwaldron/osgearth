@@ -36,11 +36,7 @@ using namespace osgEarth::Features;
 
 #define PROP_URL           "url"
 #define PROP_OGR_DRIVER    "ogr_driver"
-#define PROP_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
 #define PROP_SQL           "query"
-#define PROP_BUFFER_OP     "buffer"
-
-#define BUFFER_ATTR_DISTANCE "distance"
 
 /**
  * A FeatureSource that reads features from an OGR driver.
@@ -52,28 +48,12 @@ public:
       _ready( false ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
-      _supportsRandomRead( false ),
-      _geomTypeOverride( FeatureProfile::GEOM_UNKNOWN )
+      _supportsRandomRead( false )
     {
         const Config& conf = getOptions()->config();
 
         _url = conf.value( PROP_URL );
         _ogrDriver = conf.value( PROP_OGR_DRIVER );
-
-        std::string gt = conf.value( PROP_GEOMETRY_TYPE );
-        if ( gt == "line" || gt == "lines" )
-            _geomTypeOverride = FeatureProfile::GEOM_LINE;
-        else if ( gt == "point" || gt == "points" )
-            _geomTypeOverride = FeatureProfile::GEOM_POINT;
-        else if ( gt == "polygon" || gt == "polygons" )
-            _geomTypeOverride = FeatureProfile::GEOM_POLYGON;
-
-        if ( conf.hasChild( PROP_BUFFER_OP ) )
-        {
-            BufferFilter* buffer = new BufferFilter();
-            buffer->distance() = conf.child( PROP_BUFFER_OP ).value<double>( BUFFER_ATTR_DISTANCE, 1.0 );
-            _filters.push_back( buffer );
-        }
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -92,9 +72,6 @@ public:
             OGRReleaseDataSource( _dsHandle );
             _dsHandle = 0L;
         }
-
-        for( std::list<FeatureFilter*>::iterator i = _filters.begin(); i != _filters.end(); ++i )
-            delete (*i);
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile )
@@ -190,8 +167,8 @@ public:
                             bool multiGeom = wkb_type == wkbMultiPolygon || wkb_type == wkbMultiPolygon25D;
 
                             // still need to do the above to determine the multiGeom flag..
-                            if ( _geomTypeOverride != FeatureProfile::GEOM_UNKNOWN )
-                                geomType = _geomTypeOverride;
+                            if ( getGeometryTypeOverride() != FeatureProfile::GEOM_UNKNOWN )
+                                geomType = getGeometryTypeOverride();
 
                             // extract the dimensionality of the geometry:
                             int dim = OGR_G_GetCoordinateDimension( geomHandleRef );
@@ -200,7 +177,7 @@ public:
                             if ( srs.valid() && dim >= 2 && dim <= 3 && geomType != FeatureProfile::GEOM_UNKNOWN )
                             {
                                 result = new FeatureProfile( srs.get(), geomType, dim, multiGeom );
-                                osg::notify(osg::NOTICE) << "_geomTypeOverride = " << _geomTypeOverride << std::endl;
+                                osg::notify(osg::NOTICE) << "[osgEarth] _geomTypeOverride = " << getGeometryTypeOverride() << std::endl;
                             }
 
                         }
@@ -221,7 +198,7 @@ public:
 
     FeatureCursor* createCursor( const Query& query )
     {
-        return new FeatureCursorOGR( _dsHandle, _layerHandle, getFeatureProfile(), query, _filters );
+        return new FeatureCursorOGR( _dsHandle, _layerHandle, getFeatureProfile(), query, getFilters() );
     }
 
 protected:
@@ -253,8 +230,6 @@ private:
     OGRLayerH _layerHandle;
     bool _supportsRandomRead;
     bool _ready;
-    FeatureProfile::GeometryType _geomTypeOverride;
-    std::list<FeatureFilter*> _filters;
 };
 
 

@@ -48,7 +48,8 @@ namespace osgEarth
 
         virtual void init( bool swapNow, ProgressCallback* progress );
 
-        void swapIfNecessary();
+        // returns TRUE if a swap occurred and a new subgraph is now in place.
+        bool swapIfNecessary();
 
         virtual osgTerrain::Locator* computeMasterLocator();
 

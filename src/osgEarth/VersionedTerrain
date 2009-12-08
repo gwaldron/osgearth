@@ -26,6 +26,7 @@
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <OpenThreads/ReadWriteMutex>
+#include <list>
 
 namespace osgEarth
 {
@@ -33,6 +34,19 @@ namespace osgEarth
     class MapEngine;
     class VersionedTerrain;
     class VersionedTile;
+
+
+    typedef std::list< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
+
+    /**
+     * Callback object for linstening to terrain events.
+     */
+    struct OSGEARTH_EXPORT TerrainCallback : public osg::Referenced
+    {
+        virtual void onTerrainTilesUpdated( const TerrainTileList& tiles ) { }
+    };
+    typedef std::list< osg::ref_ptr<TerrainCallback> > TerrainCallbackList;
+
 
     // Please refer the refreshFamily() method for more info on this structure.
     struct Relative {
@@ -107,7 +121,9 @@ namespace osgEarth
         //void servicePendingRequests( int frameStamp );
         void servicePendingImageRequests( int stamp );
         void servicePendingElevationRequests( int stamp, bool tileTableLocked );
-        void serviceCompletedRequests();
+
+        // returns TRUE if the tile was modified as a result of a completed request.
+        bool serviceCompletedRequests();
 
         /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
         void setHasElevationHint( bool hasElevation );
@@ -177,13 +193,7 @@ namespace osgEarth
         osg::ref_ptr<TaskRequest> _elevRequest;
         osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
         osg::ref_ptr<TaskRequest> _tileGenRequest;
-        int _numActiveRequests;    
-   
-
-        // this is an obs ptr so we can "cache" the parent tile reference and refresh it 
-        // if the parent tile changes (which it could if it gets rebuilt)
-        //osg::observer_ptr<VersionedTile> _parentTileObserver;
-        //osg::ref_ptr<VersionedTile> _parentTile; // safe
+        int _numActiveRequests; 
 
         osg::ref_ptr<VersionedTerrain> _versionedTerrain;
 
@@ -199,9 +209,6 @@ namespace osgEarth
 
         //bool _neededUpdateLastTime;
     };
-
-
-    typedef std::vector< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
 
 
     /**
@@ -232,11 +239,6 @@ namespace osgEarth
          */
         int getRevision() const;
 
-        /**
-         * Gets a tile given its version ID.
-         */
-        //VersionedTile* getVersionedTile( const osgTerrain::TileID& tileId );
-
 
         Map* getMap();
         MapEngine* getEngine();
@@ -250,6 +252,8 @@ namespace osgEarth
         void updateTaskServiceThreads();
 
         bool updateBudgetRemaining() const;
+
+        void addTerrainCallback( TerrainCallback* cb );
 
     protected:
 
@@ -272,7 +276,6 @@ namespace osgEarth
         void registerTile( VersionedTile* newTile );
 
         void getVersionedTile( const osgTerrain::TileID& id, osg::ref_ptr<VersionedTile>& out_tile, bool lock =true );
-        //void getVersionedTile( const osgTerrain::TileID& id, osg::observer_ptr<VersionedTile>& out_tile, bool lock =true);
         void getVersionedTiles( TileList& out_tiles );
         void getTerrainTiles( TerrainTileList& out_tiles );
 
@@ -297,8 +300,7 @@ namespace osgEarth
         int _numAsyncThreads;
 
         bool _releaseCBInstalled;
-        
-        //VersionedTile* getVersionedTileNoLock(const osgTerrain::TileID& tileID);
+        TerrainCallbackList _terrainCallbacks;
     };
 }
 

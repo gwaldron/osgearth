@@ -132,6 +132,9 @@ namespace osgEarth
                                           const osgDB::ReaderWriter::Options* options = 0,
                                           ProgressCallback* callback = 0);
 
+        static std::string  readString( const std::string& filename,
+                                        ProgressCallback* callback = 0);
+
     private:
         HTTPClient();
         ~HTTPClient();
@@ -153,6 +156,10 @@ namespace osgEarth
         osg::Node* doReadNodeFile(const std::string& filename,
                                   const osgDB::ReaderWriter::Options* options = 0,
                                   osgEarth::ProgressCallback *callback = 0);
+
+        std::string doReadString(const std::string& filename,
+                                 osgEarth::ProgressCallback *callback = 0);
+
 
         /**
          * Convenience method for downloading a URL directly to a file

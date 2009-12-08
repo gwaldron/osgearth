@@ -45,7 +45,7 @@ namespace osgEarth { namespace Features
         FeatureProfile(
             const SpatialReference* srs,
             GeometryType geomType,
-            int dimensionality,
+            int dimensionality =2,
             bool multiGeometry =false );
 
         /** Gets the spatial reference system of feature shapes in this class. */

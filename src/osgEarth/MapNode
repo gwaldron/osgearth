@@ -33,6 +33,10 @@
 
 namespace osgEarth
 {
+    /**
+     * OSG Node that forms the root of an osgEarth terrain. This node is a "view" component
+     * that renders data from a "Map" data model.
+     */
     class OSGEARTH_EXPORT MapNode : public osg::CoordinateSystemNode //, public MapCallback
     {
     public:
@@ -133,8 +137,14 @@ namespace osgEarth
          */
         static MapNode* getMapNodeById(unsigned int id);
 
+        /**
+         * Adds a terrain callback that will operate on this node's underlying 
+         * Terrains objects.
+         */
+        void addTerrainCallback( TerrainCallback* callback );
 
-    public: // MapCallback
+
+    public: // MapCallback adapter funcs
 
         void onMapProfileEstablished( const Profile* profile );
 
@@ -146,9 +156,8 @@ namespace osgEarth
         
         void onModelLayerAdded( ModelLayer* layer );
 
-    public:
+    protected:    
 
-    protected:        
         virtual ~MapNode();
 
         //Registers the given MapNode with osgEarth.  This should not be called by user code
@@ -179,6 +188,8 @@ namespace osgEarth
 
         osg::ref_ptr< osgSim::OverlayNode > _pendingOverlayNode;
         bool _pendingOverlayAutoSetTextureUnit;
+
+        TerrainCallbackList _pendingTerrainCallbacks;
 
         osg::ref_ptr< osg::Group > _models;
 

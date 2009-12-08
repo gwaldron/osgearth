@@ -32,6 +32,19 @@ using namespace osgEarth;
 
 #define TO_LOWER( S ) std::transform( S.begin(), S.end(), S.begin(), ::tolower )
 
+//struct TestCB : public TerrainCallback {
+//    void onTerrainTilesUpdated( const TerrainTileList& tiles ) {
+//        osg::notify(osg::NOTICE) << "" << tiles.size() << " tiles updated" << std::endl;
+//        for( TerrainTileList::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
+//            osg::notify(osg::NOTICE) << "   (" 
+//                << i->get()->getTileID().level << ","
+//                << i->get()->getTileID().x << ","
+//                << i->get()->getTileID().y << ")"
+//                << std::endl;
+//
+//        }
+//    }
+//};
 
 class ReaderWriterEarth : public osgDB::ReaderWriter
 {
@@ -101,6 +114,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if ( success )
                 {
                     osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), earthFile.getMapEngineProperties() );
+
+                    // TESTING
+                    //mapNode->addTerrainCallback( new TestCB() );
  
                     //Create the root node for the scene
                     node = mapNode.release();
@@ -157,30 +173,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     osg::notify(osg::NOTICE) << "Error:  Could not find Map with id=" << id << std::endl;
                 }
             }
-
-            //// Reading the actual layer data that will populate a tile
-            //else if (ext == "earth_tile_data")
-            //{
-            //    std::string tileDef = osgDB::getNameLessExtension(file_name);
-
-            //    unsigned int face, lod, x, y, id;
-            //    sscanf(tileDef.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
-
-            //    osg::ref_ptr<MapNode> mapNode = MapNode::getMapNodeById( id );
-            //    if ( mapNode.valid() )
-            //    {
-            //        //TODO
-            //        osg::notify(osg::NOTICE) << "Tile Load Data for tile " << tileDef << std::endl;
-
-            //        const Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
-            //        osg::ref_ptr<TileKey> key = new TileKey( face, lod, x, y, face_profile );
-            //        mapNode->getEngine()->loadTileData( key.get() );
-            //    }
-            //    else
-            //    {
-            //        osg::notify(osg::NOTICE) << "Error:  Could not find Map with id=" << id << std::endl;
-            //    }
-            //}
 
             return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;                     
         }

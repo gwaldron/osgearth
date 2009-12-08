@@ -160,13 +160,20 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
     _swapPending = !swapNow;
 }
 
-void
+bool
 EarthTerrainTechnique::swapIfNecessary()
 {
+    bool swapped = false;
+
     ScopedReadLock lock( getMutex() );
     if ( _swapPending )
+    {
         swapBuffers();
+        swapped = true;
+    }
     _swapPending = false;
+
+    return swapped;
 }
 
 Locator* EarthTerrainTechnique::computeMasterLocator()

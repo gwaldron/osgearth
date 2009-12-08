@@ -51,6 +51,7 @@ MapNodeCache& getMapNodeCache()
     return s_cache;
 }
 
+// adapter that lets MapNode listen to Map events
 struct MapNodeMapCallbackProxy : public MapCallback
 {
     MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
@@ -268,6 +269,22 @@ MapNode::getTerrain( unsigned int i ) const
 }
 
 void
+MapNode::addTerrainCallback( TerrainCallback* cb )
+{
+    if ( _terrains.size() > 0 )
+    {
+        for( int i=0; i < _terrains.size(); i++ )
+        {
+            _terrains[i]->addTerrainCallback( cb );
+        }
+    }
+    else
+    {
+        _pendingTerrainCallbacks.push_back( cb );
+    }
+}
+
+void
 MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUnit )
 {
     if ( _terrains.empty() )
@@ -279,9 +296,6 @@ MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUn
     {
         overlay->addChild( this->getChild(0) );
         this->replaceChild( this->getChild(0), overlay );
-
-        //overlay->addChild( _terrains[0].get() );
-        //this->replaceChild( _terrains[0].get(), overlay );
 
         _pendingOverlayNode = 0L;
 
@@ -299,9 +313,6 @@ MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUn
 void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
-    // Note: CSN must always be at the top
-    //osg::CoordinateSystemNode* csn = createCoordinateSystemNode();
-
     // set up the CSN values
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
     
@@ -316,6 +327,8 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     {
         VersionedTerrain* terrain = new VersionedTerrain( _map.get(), _engine.get() );
 
+        // install the proper layering technique:
+
 		if (_engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
 		{
 			terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
@@ -325,9 +338,16 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
 		}
 
+        // apply any pending callbacks:
+        for( TerrainCallbackList::iterator c = _pendingTerrainCallbacks.begin(); c != _pendingTerrainCallbacks.end(); ++c )
+        {
+            terrain->addTerrainCallback( c->get() );
+        }
+        _pendingTerrainCallbacks.clear();
+
+
         terrain->setVerticalScale( _engineProps.getVerticalScale() );
         terrain->setSampleRatio( _engineProps.getSampleRatio() );
-        //csn->addChild( terrain );
         this->addChild( terrain );
         _terrains.push_back( terrain );
 

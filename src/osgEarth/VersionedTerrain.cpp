@@ -712,19 +712,23 @@ VersionedTile::markTileForRegeneration()
 
 // called from the UPDATE TRAVERSAL, because this method can potentially alter
 // the scene graph.
-void
+bool
 VersionedTile::serviceCompletedRequests()
 {
+    bool tileModified = false;
+
     Map* map = this->getVersionedTerrain()->getMap();
     if ( !_requestsInstalled )
-        return;
+        return false;
 
     // First service the tile generator:
     if ( _tileGenRequest.valid() && _tileGenRequest->isCompleted() )
     {
         EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
         if ( tech )
-            tech->swapIfNecessary();
+        {
+            tileModified = tech->swapIfNecessary();
+        }
         _tileGenRequest = 0;
     }
 
@@ -908,6 +912,8 @@ VersionedTile::serviceCompletedRequests()
         getVersionedTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
         _tileGenNeeded = false;
     }
+
+    return tileModified;
 }
 
 void
@@ -930,11 +936,6 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
         // here and we could register the tile. Now we can decrement it back to normal.
         adjustUpdateTraversalCount( -1 );
     }
-
-    /*if ( isUpdate && _useLayerRequests )
-    {
-        serviceCompletedRequests();
-    }*/
 
     osgTerrain::TerrainTile::traverse( nv );
 }
@@ -1170,6 +1171,12 @@ VersionedTerrain::getEngine() {
 }
 
 void
+VersionedTerrain::addTerrainCallback( TerrainCallback* cb )
+{
+    _terrainCallbacks.push_back( cb );
+}
+
+void
 VersionedTerrain::registerTile( VersionedTile* newTile )
 {
     ScopedWriteLock lock( _tilesMutex );
@@ -1265,28 +1272,32 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             // grow the vector if necessary:
             //_tilesToServiceElevation.reserve( _tiles.size() );
 
+            TerrainTileList _modifiedTiles;
+
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
                 if ( i->second.valid() && i->second->getUseLayerRequests() )
                 {
                     refreshFamily( i->first, i->second->getFamily(), true );
                     i->second->servicePendingElevationRequests( stamp, true );
-                    i->second->serviceCompletedRequests();
-                    //_tilesToServiceElevation.push_back( i->second.get() );
+
+                    bool tileModified = i->second->serviceCompletedRequests();
+                    if ( tileModified && _terrainCallbacks.size() > 0 )
+                    {
+                        _modifiedTiles.push_back( i->second.get() );
+                    }
+                }
+            }
+
+            // notify listeners of tile modifications.
+            if ( _modifiedTiles.size() > 0 )
+            {
+                for( TerrainCallbackList::iterator n = _terrainCallbacks.begin(); n != _terrainCallbacks.end(); ++n )
+                {
+                    n->get()->onTerrainTilesUpdated( _modifiedTiles );
                 }
             }
         }
-
-        //osg::notify(osg::NOTICE) << "Servicing " << _tiles.size() << " tiles." << std::endl;
-
-        // now we can service all the without holding a lock on the tile table.
-        //for( TileVector::iterator i = _tilesToServiceElevation.begin(); i != _tilesToServiceElevation.end(); ++i )
-        //{
-        //    i->get()->servicePendingElevationRequests( stamp );
-        //}
-        
-        // clean up the vector so we can reuse it next time around.
-        //_tilesToServiceElevation.clear();
     }
 
     osgTerrain::Terrain::traverse( nv );

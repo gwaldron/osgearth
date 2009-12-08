@@ -26,6 +26,10 @@
 #include <osg/Notify>
 #include <string.h>
 #include <sstream>
+#include <fstream>
+#include <iterator>
+#include <iostream>
+#include <algorithm>
 
 using namespace osgEarth;
 
@@ -397,6 +401,13 @@ HTTPClient::readNodeFile(const std::string &filename,
     return getClient().doReadNodeFile( filename, options, callback );
 }
 
+std::string
+HTTPClient::readString(const std::string& filename,
+                       osgEarth::ProgressCallback* callback)
+{
+    return getClient().doReadString( filename, callback );
+}
+
 HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
 {
@@ -632,4 +643,30 @@ HTTPClient::doReadNodeFile(const std::string &filename,
             osg::notify(osg::NOTICE) << "Request for " << filename << " was cancelled " << std::endl;*/
     }
     return 0;
+}
+
+
+std::string 
+HTTPClient::doReadString(const std::string& filename,
+                         osgEarth::ProgressCallback* callback )
+{
+    if ( osgDB::containsServerAddress( filename ) )
+    {
+        HTTPResponse res = this->doGet( filename, NULL, callback );
+        return res.isOK() ? res.getPartAsString(0) : std::string();
+    }
+    else
+    {
+        std::ifstream input( filename.c_str() );
+        input >> std::noskipws;
+        std::stringstream output;
+        output << input.rdbuf();
+        return output.str();
+        //std::string result;
+        //std::copy(
+        //    std::istream_iterator<char>(input), 
+        //    std::istream_iterator<char>(),
+        //    std::back_inserter(result) );
+        //return result;        
+    }
 }

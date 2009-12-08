@@ -1200,6 +1200,8 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
     if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
         int stamp = nv.getFrameStamp()->getFrameNumber();
+        
+        TerrainTileList _updatedTiles;
 
         // update the internal Tile table. This block is the ONLY PLACE where _tiles
         // can be changed, hence the Write Lock. The only other time this mutex is
@@ -1246,6 +1248,8 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             while( _tilesToAdd.size() > 0 )
             {
                 _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
+                if ( _terrainCallbacks.size() > 0 )
+                    _updatedTiles.push_back( _tilesToAdd.front().get() );
                 _tilesToAdd.pop();
             }
 
@@ -1272,8 +1276,6 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             // grow the vector if necessary:
             //_tilesToServiceElevation.reserve( _tiles.size() );
 
-            TerrainTileList _modifiedTiles;
-
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
                 if ( i->second.valid() && i->second->getUseLayerRequests() )
@@ -1284,17 +1286,17 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                     bool tileModified = i->second->serviceCompletedRequests();
                     if ( tileModified && _terrainCallbacks.size() > 0 )
                     {
-                        _modifiedTiles.push_back( i->second.get() );
+                        _updatedTiles.push_back( i->second.get() );
                     }
                 }
             }
 
             // notify listeners of tile modifications.
-            if ( _modifiedTiles.size() > 0 )
+            if ( _updatedTiles.size() > 0 )
             {
                 for( TerrainCallbackList::iterator n = _terrainCallbacks.begin(); n != _terrainCallbacks.end(); ++n )
                 {
-                    n->get()->onTerrainTilesUpdated( _modifiedTiles );
+                    n->get()->onTerrainTilesUpdated( _updatedTiles );
                 }
             }
         }

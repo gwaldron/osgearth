@@ -36,7 +36,7 @@ MapEngineProperties::MapEngineProperties()
     _preemptive_lod = false;
     _use_task_service = false;
 	_layering_technique = MULTITEXTURE;
-    _max_lod = 30;
+    _max_lod = 23;
 }
 
 MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )

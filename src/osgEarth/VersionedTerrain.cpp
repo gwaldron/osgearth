@@ -419,10 +419,10 @@ VersionedTile::readyForNewElevation()
     osg::notify(osg::NOTICE)
         << "Tile (" << _key->str() << ") at (" << _elevationLOD << "), parent at ("
         << _family[PARENT].elevLOD << "), sibs at (";
-    if ( _family[WEST].exists ) osg::notify( osg::NOTICE ) << "W=" << _family[WEST].elevLOD << " ";
-    if ( _family[NORTH].exists ) osg::notify( osg::NOTICE ) << "N=" << _family[NORTH].elevLOD << " ";
-    if ( _family[EAST].exists ) osg::notify( osg::NOTICE ) << "E=" << _family[EAST].elevLOD << " ";
-    if ( _family[SOUTH].exists ) osg::notify( osg::NOTICE ) << "S=" << _family[SOUTH].elevLOD << " ";
+    if ( _family[WEST].expected ) osg::notify( osg::NOTICE ) << "W=" << _family[WEST].elevLOD << " ";
+    if ( _family[NORTH].expected ) osg::notify( osg::NOTICE ) << "N=" << _family[NORTH].elevLOD << " ";
+    if ( _family[EAST].expected ) osg::notify( osg::NOTICE ) << "E=" << _family[EAST].elevLOD << " ";
+    if ( _family[SOUTH].expected ) osg::notify( osg::NOTICE ) << "S=" << _family[SOUTH].elevLOD << " ";
     osg::notify(osg::NOTICE) << "), ready = " << (ready? "YES" : "no") << std::endl;
 #endif
 

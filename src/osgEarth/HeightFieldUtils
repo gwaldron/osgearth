@@ -41,13 +41,17 @@ namespace osgEarth
     public:
         static float getHeightAtPixel(
             const osg::HeightField* hf, 
-            float c, float r, 
+            double c, double r, 
             ElevationInterpolation interpoltion = BILINEAR);
-
+        
         static float getHeightAtLocation(
             const osg::HeightField* hf, 
-            float x, float y, 
+            double x, double y, 
+            double llx, double lly,
+            double dx, double dy,
             ElevationInterpolation interpolation = BILINEAR);
+
+
 
         static void scaleHeightFieldToDegrees( osg::HeightField* hf );
 

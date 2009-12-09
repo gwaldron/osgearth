@@ -689,7 +689,9 @@ bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double 
 
     if ( _extent.contains(local_x, local_y) )
     {
-        elevation = HeightFieldUtils::getHeightAtLocation(_heightField.get(), local_x, local_y, interp);
+        double xInterval = _extent.width()  / (double)(_heightField->getNumColumns()-1);
+        double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
+        elevation = HeightFieldUtils::getHeightAtLocation(_heightField.get(), local_x, local_y, _extent.xMin(), _extent.yMin(), xInterval, yInterval, interp);
         return true;
     }
     else
@@ -702,14 +704,18 @@ bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double 
 GeoHeightField*
 GeoHeightField::createSubSample( const GeoExtent& destEx ) const
 {
-    float div = destEx.width()/_extent.width();
+    double div = destEx.width()/_extent.width();
     if ( div >= 1.0f )
         return 0L;
 
     int w = _heightField->getNumColumns();
     int h = _heightField->getNumRows();
-    float dx = _heightField->getXInterval() * div;
-    float dy = _heightField->getYInterval() * div;
+    //double dx = _heightField->getXInterval() * div;
+    //double dy = _heightField->getYInterval() * div;
+    double xInterval = _extent.width() / (double)(_heightField->getNumColumns()-1);
+    double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
+    double dx = xInterval * div;
+    double dy = yInterval * div;
 
     osg::HeightField* dest = new osg::HeightField();
     dest->allocate( w, h );
@@ -726,8 +732,8 @@ GeoHeightField::createSubSample( const GeoExtent& destEx ) const
     {
         for( y = destEx.yMin(), row=0; row < h; y += dy, row++ )
         {
-            float h = HeightFieldUtils::getHeightAtLocation( _heightField.get(), x, y );
-            dest->setHeight( col, row, h );
+            float height = HeightFieldUtils::getHeightAtLocation( _heightField.get(), x, y, _extent.xMin(), _extent.yMin(), xInterval, yInterval );
+            dest->setHeight( col, row, height );
         }
     }
 

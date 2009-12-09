@@ -24,7 +24,7 @@
 using namespace osgEarth;
 
 float
-HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, float c, float r, ElevationInterpolation interpolation)
+HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, ElevationInterpolation interpolation)
 {
     float result = 0.0;
     if (interpolation == NEAREST)
@@ -68,24 +68,24 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, float c, float r,
             {
                 //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
                 //Linear interpolate vertically
-                result = ((float)rowMax - r) * llHeight + (r - (float)rowMin) * ulHeight;
+                result = ((double)rowMax - r) * llHeight + (r - (double)rowMin) * ulHeight;
             }
             else if (rowMax == rowMin)
             {
                 //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
                 //Linear interpolate horizontally
-                result = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
+                result = ((double)colMax - c) * llHeight + (c - (double)colMin) * lrHeight;
             }
             else
             {
                 //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
                 //Bilinear interpolate
-                float r1 = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
-                float r2 = ((float)colMax - c) * ulHeight + (c - (float)colMin) * urHeight;
+                float r1 = ((double)colMax - c) * llHeight + (c - (double)colMin) * lrHeight;
+                float r2 = ((double)colMax - c) * ulHeight + (c - (double)colMin) * urHeight;
 
                 //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
 
-                result = ((float)rowMax - r) * r1 + (r - (float)rowMin) * r2;
+                result = ((double)rowMax - r) * r1 + (r - (double)rowMin) * r2;
             }
         }
         else if (interpolation == AVERAGE)
@@ -106,14 +106,11 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, float c, float r,
 }
 
 float
-HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, float x, float y, ElevationInterpolation interpolation)
+HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, double y, double llx, double lly, double dx, double dy, ElevationInterpolation interpolation)
 {
     //Determine the pixel to sample
-    osg::Vec3 origin = hf->getOrigin();
-
-    float px = osg::clampBetween( (x - origin.x()) / hf->getXInterval(), 0.0f, (float)(hf->getNumColumns()-1) );
-    float py = osg::clampBetween( (y - origin.y()) / hf->getYInterval(), 0.0f, (float)(hf->getNumRows()-1) );
-
+    double px = osg::clampBetween( (x - llx) / dx, 0.0, (double)(hf->getNumColumns()-1) );
+    double py = osg::clampBetween( (y - lly) / dy, 0.0, (double)(hf->getNumRows()-1) );
     return getHeightAtPixel(hf, px, py, interpolation);
 }
 
@@ -143,15 +140,21 @@ osg::HeightField*
 HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inputEx, 
                                   const GeoExtent& outputEx )
 {
-    float div = outputEx.width()/inputEx.width();
+    double div = outputEx.width()/inputEx.width();
     if ( div >= 1.0f )
         return 0L;
 
     int numCols = input->getNumColumns();
     int numRows = input->getNumRows();
 
-    float dx = input->getXInterval() * div;
-    float dy = input->getYInterval() * div;
+    //float dx = input->getXInterval() * div;
+    //float dy = input->getYInterval() * div;
+
+    double xInterval = inputEx.width()  / (double)(input->getNumColumns()-1);
+    double yInterval = inputEx.height()  / (double)(input->getNumRows()-1);
+    double dx = div * xInterval;
+    double dy = div * yInterval;
+
 
     osg::HeightField* dest = new osg::HeightField();
     dest->allocate( numCols, numRows );
@@ -168,8 +171,8 @@ HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inpu
     {
         for( y = outputEx.yMin(), row=0; row < numRows; y += dy, row++ )
         {
-            float h = HeightFieldUtils::getHeightAtLocation( input, x, y );
-            dest->setHeight( col, row, h );
+            float height = HeightFieldUtils::getHeightAtLocation( input, x, y, inputEx.xMin(), inputEx.yMin(), xInterval, yInterval );
+            dest->setHeight( col, row, height );
         }
     }
 

@@ -21,13 +21,17 @@ stenciling technique.
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
             <geometry_type>line</geometry_type>
-            <buffer distance="0.05"/>
         </features>
                 
+        <!-- This driver must apply a buffering operation to line
+             geometry in order to give it width. The "stroke-width"
+             property below defines how wide the lines will be
+             (in data source coordinates). -->
         <style type="text/css">
             world {
                stroke: #ffff00;
                stroke-opacity: 0.5;
+               stroke-width: 0.1;
             }            
         </style>
         

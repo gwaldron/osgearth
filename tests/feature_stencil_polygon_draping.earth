@@ -23,11 +23,16 @@ block.
     
     <model name="states" driver="feature_stencil">
 
-        <!-- Configure the OGR feature driver to read the shapefile. -->
+        <!-- Configure the OGR feature driver to read the shapefile.
+             Applying a slight negative buffer will "erode" the
+             shapes, highlighting the borders between countries. -->
+             
+        <debug show_volumes="false"/>
              
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
+            <buffer distance="-0.01"/>
         </features>
         
         <!-- Since some countries span large areas on the globe, we need to
@@ -100,4 +105,5 @@ block.
         
     </model>
   
+    <lighting>false</lighting>
 </map>

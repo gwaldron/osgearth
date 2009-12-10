@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
@@ -25,10 +26,14 @@
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_GEOMETRY_TYPE "geometry_type" // "line", "point", "polygon"
-#define PROP_BUFFER_OP     "buffer"
+#define PROP_GEOMETRY_TYPE      "geometry_type" // "line", "point", "polygon"
 
-#define BUFFER_ATTR_DISTANCE "distance"
+#define PROP_RESAMPLE_OP         "resample"
+#define RESAMPLE_ATTR_MIN_LENGTH "min_length"
+#define RESAMPLE_ATTR_MAX_LENGTH "max_length"
+
+#define PROP_BUFFER_OP          "buffer"
+#define BUFFER_ATTR_DISTANCE    "distance"
 
 /****************************************************************************/
 
@@ -49,6 +54,19 @@ _geomTypeOverride( FeatureProfile::GEOM_UNKNOWN )
         _geomTypeOverride = FeatureProfile::GEOM_POLYGON;
 
     // optional feature operations
+    // TODO: at some point, move all this stuff elsewhere into some sort of filter
+    // pipeline manager
+
+    // resample operation:
+    if ( conf.hasChild( PROP_RESAMPLE_OP ) )
+    {
+        ResampleFilter* resample = new ResampleFilter();
+        resample->minLength() = conf.child( PROP_RESAMPLE_OP ).value<double>( RESAMPLE_ATTR_MIN_LENGTH, resample->minLength() );
+        resample->maxLength() = conf.child( PROP_RESAMPLE_OP ).value<double>( RESAMPLE_ATTR_MAX_LENGTH, resample->maxLength() );
+        _filters.push_back( resample );
+    }
+
+    // buffer operation:
     if ( conf.hasChild( PROP_BUFFER_OP ) )
     {
         BufferFilter* buffer = new BufferFilter();
@@ -76,6 +94,16 @@ FeatureSource::getFeatureProfile() const
         // caching pattern
         FeatureSource* nonConstThis = const_cast<FeatureSource*>(this);
         nonConstThis->_featureProfile = nonConstThis->createFeatureProfile();
+
+        // apply a geometry type override.
+        if ( _geomTypeOverride != FeatureProfile::GEOM_UNKNOWN )
+        {
+            nonConstThis->_featureProfile = new FeatureProfile(
+                _featureProfile->getSRS(),
+                _geomTypeOverride,
+                _featureProfile->getDimensionality(),
+                _featureProfile->isMultiGeometry() );
+        }
     }
     return _featureProfile.get();
 }

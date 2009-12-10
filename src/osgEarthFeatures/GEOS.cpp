@@ -201,7 +201,6 @@ GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const
                 const geom::LineString* inner = poly->getInteriorRingN( k );
                 const geom::CoordinateSequence* s = inner->getCoordinates();
                 osg::Vec3dArray* part = new osg::Vec3dArray(s->getSize());
-                //for( int m = s->getSize()-1; m >= 0; m-- )
                 for( int m = 0; m<s->getSize(); m++ )
                 {
                     const geom::Coordinate& c = s->getAt( m );
@@ -236,7 +235,6 @@ GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const
                 const geom::LineString* inner = poly->getInteriorRingN( k );
                 const geom::CoordinateSequence* s = inner->getCoordinates();
                 osg::Vec3dArray* part = new osg::Vec3dArray(s->getSize());
-                //for( int m = s->getSize()-1; m >= 0; m-- )
                 for( int m = 0; m<s->getSize(); m++ )
                 {
                     const geom::Coordinate& c = s->getAt( m );
@@ -249,47 +247,54 @@ GEOSUtils::exportGeometry( geom::Geometry* input, FeatureGeometry& output, const
     return true;
 }
 
-bool
-GEOSUtils::buffer(double distance,
-                  const FeatureGeometry& input,
-                  FeatureGeometry& output,
-                  const FeatureProfile* profile )
-{
-    bool ok = false;
-
-    geom::Geometry* inGeom = importGeometry( input, profile );
-    if ( inGeom )
-    {
-        geom::Geometry* outGeom = buffer::BufferOp::bufferOp(
-            inGeom,
-            distance );
-        //    //buffer::OffsetCurveBuilder::DEFAULT_QUADRANT_SEGMENTS,
-        //    //buffer::BufferOp::CAP_::CAP_BUTT ); //:CAP_SQUARE );
-
-        if ( outGeom )
-        {
-            exportGeometry( outGeom, output, profile );
-            outGeom->getFactory()->destroyGeometry( outGeom );
-            //geom::GeometryFactory::getDefaultInstance()->destroyGeometry( outGeom );
-            ok = true;
-        }
-        else
-        {
-            osg::notify(osg::NOTICE) << "[osgEarth] Buffer: no output geometry.." << std::endl;
-            ok = false;
-        }
-
-        inGeom->getFactory()->destroyGeometry( inGeom );
-        //geom::GeometryFactory::getDefaultInstance()->destroyGeometry( inGeom );
-    }
-    else
-    {
-        osg::notify(osg::NOTICE) << "[osgEarth] Buffer: importGeom failed" << std::endl;
-        ok = false;
-    }
-
-    return ok;
-}
+//bool
+//GEOSUtils::buffer(double distance,
+//                  int numSegsPer90deg,
+//                  const StyleClass& style,
+//                  const FeatureGeometry& input,
+//                  FeatureGeometry& output,
+//                  const FeatureProfile* profile )
+//{
+//    bool ok = false;
+//
+//    geom::Geometry* inGeom = importGeometry( input, profile );
+//    if ( inGeom )
+//    {
+//        Stroke& stroke = style.lineSymbolizer().stroke();
+//
+//        buffer::BufferParameters::EndCapStyle endCap =
+//            stroke.lineCap() == Stroke::CAP_
+//        geom::Geometry* outGeom = buffer::BufferOp::bufferOp(
+//            inGeom,
+//            distance,
+//            numSegsPer90deg );
+//        //    //buffer::OffsetCurveBuilder::DEFAULT_QUADRANT_SEGMENTS,
+//        //    //buffer::BufferOp::CAP_::CAP_BUTT ); //:CAP_SQUARE );
+//
+//        if ( outGeom )
+//        {
+//            exportGeometry( outGeom, output, profile );
+//            outGeom->getFactory()->destroyGeometry( outGeom );
+//            //geom::GeometryFactory::getDefaultInstance()->destroyGeometry( outGeom );
+//            ok = true;
+//        }
+//        else
+//        {
+//            osg::notify(osg::NOTICE) << "[osgEarth] Buffer: no output geometry.." << std::endl;
+//            ok = false;
+//        }
+//
+//        inGeom->getFactory()->destroyGeometry( inGeom );
+//        //geom::GeometryFactory::getDefaultInstance()->destroyGeometry( inGeom );
+//    }
+//    else
+//    {
+//        osg::notify(osg::NOTICE) << "[osgEarth] Buffer: importGeom failed" << std::endl;
+//        ok = false;
+//    }
+//
+//    return ok;
+//}
 
 
 

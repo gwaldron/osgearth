@@ -35,8 +35,8 @@ TransformFilter::push( Feature* input, const FilterContext& context )
     {
         osg::Vec3dArray* part = input->getPart( p );
         bool success = _outputSRS->transformPoints( context.profile()->getSRS(), part, false );
-        if ( !success )
-            return false;
+        //if ( !success )
+        //    return false;
 
         if ( _makeGeocentric && _outputSRS->isGeographic() )
         {

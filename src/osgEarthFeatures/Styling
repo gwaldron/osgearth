@@ -20,7 +20,8 @@
 #define OSGEARTHFEATURES_STYLING_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Query>
 #include <osgEarth/Config>
 #include <osg/Vec4>
 #include <list>
@@ -48,12 +49,15 @@ namespace osgEarth { namespace Features { namespace Styling
     class OSGEARTHFEATURES_EXPORT Stroke : public StyleComponent
     {
     public:
-        enum LineCap {
-            LINECAP_BUTT
+        enum LineCapStyle {
+            LINECAP_DEFAULT,
+            LINECAP_BUTT,
+            LINECAP_SQUARE,
+            LINECAP_ROUND
         };
 
-        enum LineJoin {
-            LINEJOIN_MITER
+        enum LineJoinStyle {
+            LINEJOIN_DEFAULT
         };
 
     public:
@@ -78,14 +82,14 @@ namespace osgEarth { namespace Features { namespace Styling
         const float& opacity() const {
             return _opacity; }
 
-        LineCap& lineCap() {
+        LineCapStyle& lineCap() {
             return _lineCap; }
-        const LineCap& lineCap() const {
+        const LineCapStyle& lineCap() const {
             return _lineCap; }
 
-        LineJoin& lineJoin() {
+        LineJoinStyle& lineJoin() {
             return _lineJoin; }
-        const LineJoin& lineJoin() const {
+        const LineJoinStyle& lineJoin() const {
             return _lineJoin; }
 
         float& width() { 
@@ -104,8 +108,8 @@ namespace osgEarth { namespace Features { namespace Styling
     protected:
         osg::Vec4ub _color;
         float _opacity;
-        LineJoin _lineJoin;
-        LineCap  _lineCap;
+        LineJoinStyle _lineJoin;
+        LineCapStyle  _lineCap;
         float _width;
         float _dashOffset;
     };

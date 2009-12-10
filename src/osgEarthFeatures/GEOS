@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
 #include <osg/Vec3>
 #include <geos/geom/Geometry.h>
 
@@ -35,14 +36,6 @@ namespace osgEarth { namespace Features
     class GEOSUtils // not exported
     {
     public:
-
-        static bool buffer(
-            double distance,
-            const FeatureGeometry& input,
-            FeatureGeometry& output,
-            const FeatureProfile* profile );
-
-    protected:
 
         static bool exportGeometry(
             geos::geom::Geometry* input,

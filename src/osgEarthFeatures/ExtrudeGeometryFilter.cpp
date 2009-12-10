@@ -60,6 +60,16 @@ _distance( distance )
 }
 
 static
+void tessellate( osg::Geometry* geom )
+{
+    osgUtil::Tessellator tess;
+    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
+//    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+    tess.retessellatePolygons( *geom );
+}
+
+static
 bool extrudeWallsUp(FeatureGeometry&           parts,
                     double                     offset,
                     double                     height,
@@ -371,17 +381,13 @@ bool extrudeWallsUp(FeatureGeometry&           parts,
         }
     }
 
-    return made_geom;
-}
+    if ( top_cap )
+        tessellate( top_cap );
 
-static
-void tessellate( osg::Geometry* geom )
-{
-    osgUtil::Tessellator tess;
-    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
-//    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-    tess.retessellatePolygons( *geom );
+    if ( bottom_cap )
+        tessellate( bottom_cap );
+
+    return made_geom;
 }
 
 bool
@@ -434,13 +440,13 @@ ExtrudeGeometryFilter::push( Feature* input, const FilterContext& context )
 
     if ( topCap.valid() )
     {
-        tessellate( topCap.get() );
+        //tessellate( topCap.get() );
         _geode->addDrawable( topCap.get() );
     }
 
     if ( bottomCap.valid() )
     {
-        tessellate( bottomCap.get() );
+        //tessellate( bottomCap.get() );
         _geode->addDrawable( bottomCap.get() );
     }
 

@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Query>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
 #include <osgDB/ReaderWriter>
@@ -45,8 +46,8 @@ namespace osgEarth { namespace Features
     };
 
     /**
-     * A FeatureSource is an object that can create FeatureCursors for use
-     * in a FeatureLayer.
+     * A FeatureSource is a pluggable object that generates Features, and 
+     * optionally, styling information to go along with them.
      */
     class OSGEARTHFEATURES_EXPORT FeatureSource : public virtual osg::Object
     {
@@ -69,15 +70,47 @@ namespace osgEarth { namespace Features
         virtual const GeoExtent& getDataExtent() const;
 
         /**
-         * Creates and returns new cursor that the caller can use to iterate
-         * over a collection of features corresponding to the specified query
-         * parameters.
-         * Caller is responsible for deleting the returned object.
+         * Gets the options that were passed into this object's CTOR.
+         */
+        const PluginOptions* getOptions() const;
+
+        /**
+         * Creates a cursor that iterates over all the features corresponding to the
+         * specified query.
+         *
+         * Caller takes ownership of the returned object.
          */
         virtual FeatureCursor* createCursor( const Query& query ) =0;
 
-        /** Gets the options that were passed into this object's CTOR. */
-        const PluginOptions* getOptions() const;
+
+    public: // methods for feature sources that support embedded styling (optional).
+
+        /**
+         * Gets whether the feature source can generate style information for features.
+         * If true, you can use call getStyleClasses() to retrieve the available styles,
+         * and createCursor( StyleClass, ... ) to get all the features for a particular
+         * style class.
+         */
+        virtual bool supportsStyling() const {
+            return false; }
+
+        /**
+         * When supportsStyling() is true, this method will populate the output
+         * parameter with the available style classes and returns TRUE. Otherwise,
+         * it will return FALSE.
+         */
+        virtual bool getStyleClasses( Styling::StyleClasses& out_classes ) {
+            return false; }
+
+        /**
+         * When supportsStyling() is true, this method creates a cursor that iterates
+         * over all the features in a particular style class.
+         *
+         * Caller takes ownership of the returned object.
+         */
+        virtual FeatureCursor* createCursor( const Styling::StyleClass& sc, const Query& query ) {
+            return NULL; }
+
 
     public: // properties
         
@@ -94,7 +127,9 @@ namespace osgEarth { namespace Features
          */
         FeatureFilterList& getFilters();
 
-    public:
+    public: 
+
+        // META_Object specialization:
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const FeatureSource*>(obj)!=NULL; }

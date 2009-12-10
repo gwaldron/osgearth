@@ -22,7 +22,9 @@
 #include <osgEarth/Map>
 #include <osgEarthFeatures/Styling>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osg/Notify>
 #include <osg/ClearNode>
@@ -36,7 +38,6 @@ using namespace osgEarth::Features;
 using namespace OpenThreads;
 
 #define PROP_FEATURES           "features"
-#define PROP_SHOW_VOLUMES       "show_volumes"
 #define PROP_EXTRUSION_DISTANCE "extrusion_distance"
 
 
@@ -49,7 +50,10 @@ public:
         _showVolumes( false ),
         _extrusionDistance( 300000.0 )
     {
-        osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+        if ( osg::DisplaySettings::instance()->getMinimumNumStencilBits() < 8 )
+        {
+            osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+        }
     }
 
     void initialize( const std::string& referenceURI, const Map* map )
@@ -64,17 +68,19 @@ public:
             osg::notify( osg::WARN ) << "[osgEarth] Feature Stencil driver - no valid feature source provided" << std::endl;
         }
 
-        _showVolumes = conf.value( PROP_SHOW_VOLUMES ) == "true";
-
         _extrusionDistance = conf.value<double>( PROP_EXTRUSION_DISTANCE, _extrusionDistance );
 
         // load up the style catalog.
         Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
+
+        // debugging:
+        _showVolumes = conf.child( "debug" ).attr( "show_volumes" ) == "true";
     }
+
 
     osg::Node* buildClass( const Styling::StyleClass& style, int& ref_renderBin )
     {
-        bool isGeocentric = _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC;
+        bool isGeocentric = _map->isGeocentric();
 
         // read all features into a list:
         FeatureList features;
@@ -86,9 +92,30 @@ public:
         FilterContext context;
         context.profile() = _features->getFeatureProfile();
 
+        // If the geometry is lines, we need to buffer them before they will work with stenciling
+        if ( _features->getFeatureProfile()->getGeometryType() != FeatureProfile::GEOM_POLYGON )
+        {
+            BufferFilter buffer;
+            buffer.distance() = 0.5 * style.lineSymbolizer().stroke().width();
+            buffer.capStyle() = style.lineSymbolizer().stroke().lineCap();
+            context = buffer.push( features, context );
+        }
+
         // Transform them into the map's SRS:
         TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
         context = xform.push( features, context );
+
+        if ( isGeocentric )
+        {
+            // We need to make sure that on a round globe, the points are sampled such that
+            // long segments follow the curvature of the earth. By the way, if a Buffer was
+            // applied, that will also remove colinear segment points. Resample the points to 
+            // achieve a usable tesselation.
+            ResampleFilter simplify;
+            simplify.minLength() = 1.0; // need?
+            simplify.maxLength() = 100000.0;
+            context = simplify.push( features, context );
+        }
 
         // Extrude the geometry in both directions to build a stencil volume:
         osg::ref_ptr<osg::Node> volumes;

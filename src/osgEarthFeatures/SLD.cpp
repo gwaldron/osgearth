@@ -43,9 +43,11 @@ htmlColorToVec4ub( const std::string& html )
     return c;
 }
 
-#define CSS_STROKE         "stroke"
-#define CSS_STROKE_WIDTH   "stroke-width"
-#define CSS_STROKE_OPACITY "stroke-opacity"
+#define CSS_STROKE          "stroke"
+#define CSS_STROKE_WIDTH    "stroke-width"
+#define CSS_STROKE_OPACITY  "stroke-opacity"
+#define CSS_STROKE_LINECAP  "stroke-linecap"
+
 #define CSS_FILL           "fill"
 #define CSS_FILL_OPACITY   "fill-opacity"
 
@@ -144,6 +146,14 @@ SLDReader::readXML( std::istream& in, StyleCatalog& out_sld )
     return readConfig( conf, out_sld );
 }
 
+static void
+parseLineCap( const std::string& value, Stroke::LineCapStyle& cap )
+{
+    if ( value == "butt" ) cap = Stroke::LINECAP_BUTT;
+    if ( value == "round" ) cap = Stroke::LINECAP_ROUND;
+    if ( value == "square" ) cap = Stroke::LINECAP_SQUARE;
+}
+
 bool
 SLDReader::readStyleClassFromCSSParams( const Config& conf, StyleClass& sc )
 {
@@ -155,6 +165,8 @@ SLDReader::readStyleClassFromCSSParams( const Config& conf, StyleClass& sc )
             sc.lineSymbolizer().stroke().opacity() = as<float>( p->second, 1.0f );
         else if ( p->first == CSS_STROKE_WIDTH )
             sc.lineSymbolizer().stroke().width() = as<float>( p->second, 1.0f );
+        else if ( p->first == CSS_STROKE_LINECAP )
+            parseLineCap( p->second, sc.lineSymbolizer().stroke().lineCap() );
         else if ( p->first == CSS_FILL )
             sc.polygonSymbolizer().fill().color() = htmlColorToVec4ub( p->second );
         else if ( p->first == CSS_FILL_OPACITY )

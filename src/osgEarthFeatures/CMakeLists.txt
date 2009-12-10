@@ -17,6 +17,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     CropFilter
     CssUtils
+    ResampleFilter
     ExtrudeGeometryFilter
     Feature
     FeatureRasterizer
@@ -36,6 +37,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     BuildGeometryFilter.cpp
     CropFilter.cpp
     CssUtils.cpp
+    ResampleFilter.cpp
     ExtrudeGeometryFilter.cpp
     Feature.cpp
     FeatureRasterizer.cpp

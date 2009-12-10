@@ -36,10 +36,11 @@ using namespace osgEarth::Features;
 
 #define PROP_URL           "url"
 #define PROP_OGR_DRIVER    "ogr_driver"
-#define PROP_SQL           "query"
 
 /**
  * A FeatureSource that reads features from an OGR driver.
+ *
+ * This FeatureSource does NOT support styling.
  */
 class FeatureSourceOGR : public FeatureSource
 {

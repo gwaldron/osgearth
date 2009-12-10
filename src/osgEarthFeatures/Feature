@@ -93,7 +93,7 @@ namespace osgEarth { namespace Features
         // reorders the verts in an open poly to be either CCW or CW.
         static void rewindOpenPolygon( osg::Vec3dArray* poly, bool toCCW );
 
-        // ensures polygon verts are would properly and don't contain duplicates.
+        // ensures polygon verts are wound properly and don't contain duplicates.
         // only call this on a poly.
         void normalizePolygon();
     };

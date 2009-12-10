@@ -366,18 +366,6 @@ VersionedTile::isElevationLayerUpToDate() const
 }
 
 bool
-VersionedTile::getTileGenNeeded() const
-{
-    return _tileGenNeeded;
-}
-
-void
-VersionedTile::setTileGenNeeded( bool tileGenNeeded )
-{
-    _tileGenNeeded = tileGenNeeded;
-}
-
-bool
 VersionedTile::getUseTileGenRequest() const
 {
     return _useTileGenRequest;

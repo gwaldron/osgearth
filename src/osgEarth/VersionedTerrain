@@ -149,12 +149,11 @@ namespace osgEarth
 
         void updateImagery( unsigned int layerId, Map* map, MapEngine* engine );
 
-        void setTileGenNeeded( bool tileGenNeeded );
-        bool getTileGenNeeded() const;
-
         bool getUseTileGenRequest() const;
 
         Relative* getFamily();
+
+        void markTileForRegeneration();
 
     public: // OVERRIDES
 
@@ -204,7 +203,6 @@ namespace osgEarth
         void installRequests( int stamp );
         bool readyForNewElevation();
         //void checkNeedsUpdate();
-        void markTileForRegeneration();
         void adjustUpdateTraversalCount( int delta );
 
         //bool _neededUpdateLastTime;

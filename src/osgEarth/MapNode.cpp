@@ -514,13 +514,13 @@ MapNode::addImageLayer( MapLayer* layer )
                 osg::notify(osg::NOTICE) << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
             }
 
-            if (tile->getUseTileGenRequest())
+            if (_engineProps.getPreemptiveLOD())
             {
-                tile->setTileGenNeeded( true );
+                tile->markTileForRegeneration();
             }
             else
             {
-                tile->setDirty( true );
+                tile->setDirty(true);
             }
         }
     }
@@ -559,13 +559,13 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }
 
-            if (tile->getUseTileGenRequest())
+            if (_engineProps.getPreemptiveLOD())
             {
-                tile->setTileGenNeeded( true );
+                tile->markTileForRegeneration();
             }
             else
             {
-                tile->setDirty( true );
+                tile->setDirty(true);
             }
         }
     }
@@ -625,13 +625,13 @@ MapNode::removeImageLayer( unsigned int index )
                 itr->get()->setColorLayer( i, layers[i].get() );
             }
 
-            if (tile->getUseTileGenRequest())
+            if (_engineProps.getPreemptiveLOD())
             {
-                tile->setTileGenNeeded( true );
+                tile->markTileForRegeneration();
             }
             else
             {
-                tile->setDirty( true );
+                tile->setDirty(true);
             }
         }
     }
@@ -667,13 +667,13 @@ MapNode::removeHeightFieldLayer( unsigned int index )
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }
 
-            if (tile->getUseTileGenRequest())
+            if (_engineProps.getPreemptiveLOD())
             {
-                tile->setTileGenNeeded( true );
+                tile->markTileForRegeneration();
             }
             else
             {
-                tile->setDirty( true );
+                tile->setDirty(true);
             }
         }
     }
@@ -729,13 +729,13 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
             }
 
 
-            if (tile->getUseTileGenRequest())
+            if (_engineProps.getPreemptiveLOD())
             {
-                tile->setTileGenNeeded( true );
+                tile->markTileForRegeneration();
             }
             else
             {
-                tile->setDirty( true );
+                tile->setDirty(true);
             }
         }
     } 
@@ -769,13 +769,13 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
                 hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
             }                
             
-            if (tile->getUseTileGenRequest())
+            if (_engineProps.getPreemptiveLOD())
             {
-                tile->setTileGenNeeded( true );
+                tile->markTileForRegeneration();
             }
             else
             {
-                tile->setDirty( true );
+                tile->setDirty(true);
             }
         }
     }

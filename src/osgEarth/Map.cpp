@@ -215,20 +215,21 @@ Map::addMapLayer( MapLayer* layer )
 		//Set the Cache for the MapLayer to our cache.
 		layer->setCache( this->getCache() );
 
-		ScopedWriteLock lock( getMapDataMutex() );
+        {
+            ScopedWriteLock lock( getMapDataMutex() );
+            MapLayerList& list = 
+                layer->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers : _heightFieldMapLayers;
+            list.push_back( layer );
+            index = list.size()-1;
+            _dataModelRevision++;
+        }
 
-		MapLayerList& list = 
-			layer->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers : _heightFieldMapLayers;
-		list.push_back( layer );
-		index = list.size()-1;
-
-        _dataModelRevision++;
-
-		for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-		{
-			i->get()->onMapLayerAdded( layer, index );
-		}		
-    }
+        // a separate block b/c we don't need the mutex   
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapLayerAdded( layer, index );
+        }	
+    }	
 }
 
 void 
@@ -324,12 +325,13 @@ Map::addModelLayer( ModelLayer* layer )
 {
     if ( layer )
     {
-        ScopedWriteLock lock( getMapDataMutex() );
+        {
+            ScopedWriteLock lock( getMapDataMutex() );
+            _modelLayers.push_back( layer );
+            layer->initialize( getReferenceURI(), this );
+        }
 
-        _modelLayers.push_back( layer );
-
-        layer->initialize( getReferenceURI(), this );
-
+        // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onModelLayerAdded( layer );
@@ -401,7 +403,7 @@ Map::calculateProfile()
     // At this point, if we don't have a profile we need to search tile sources until we find one.
     if ( !_profile.valid() )
     {
-        ScopedWriteLock lock( getMapDataMutex() );
+        ScopedReadLock lock( getMapDataMutex() );
 
         for( MapLayerList::iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end() && !_profile.valid(); i++ )
         {

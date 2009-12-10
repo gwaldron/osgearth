@@ -50,68 +50,6 @@ using namespace osgEarth;
 
 /*****************************************************************************/
 
-//todo: deprecate..
-class TileSwitcher : public osg::Group
-{
-public:
-    TileSwitcher( VersionedTile* tile, const TileKey* key, VersionedTerrain* terrain, float minRange,
-        bool markTileLoaded ) :
-    _terrain( terrain ),
-    _keyStr( key->str() ),
-    _minRange( minRange ),
-    _tile( tile ),
-    _loaded( markTileLoaded )
-    {
-        //_loaded = false;
-        tile->setTerrainRevision( terrain->getRevision() );
-        osg::Group::addChild( tile );
-    }
-
-    virtual ~TileSwitcher() {
-    }
-
-    // simply checks whether this loadgroup's tile is out of revision, and if so,
-    // flags it for reloading.
-    void checkTileRevision()
-    {
-        if (_loaded && 
-            getNumChildren() > 0 &&
-            _terrain.valid() && 
-            _tile->getTerrainRevision() != _terrain->getRevision() )
-        {
-            _loaded = false;
-        }
-    }
-
-    // only called by the database pager when the POPULATED tile get merged:
-    virtual bool addChild( osg::Node* node )
-    {
-        if ( !_loaded )
-        {
-            _loaded = true;
-            
-            // this will remove the old tile AND unregister it with the terrain:
-            removeChildren( 0, getNumChildren() );
-
-            _tile = static_cast<VersionedTile*>( node );
-
-            _tile->setTerrain( 0L );             // unregisters with the old one
-            _tile->setTerrain( _terrain.get() ); // registers with the new one
-
-            osg::Group::addChild( _tile.get() );
-        }
-        return true;
-
-        //return osg::Group::addChild( node );
-    }
-
-    bool _loaded;
-    std::string _keyStr;
-    osg::observer_ptr<VersionedTerrain> _terrain;
-    float _minRange;
-    osg::observer_ptr<VersionedTile> _tile;
-};
-
 
 /*****************************************************************************/
 
@@ -133,44 +71,6 @@ struct TileImageBackfillCallback : public osg::NodeCallback
         traverse( node, nv );
     }
 };
-
-struct TileDataLoaderCallback : public osg::NodeCallback
-{
-    TileDataLoaderCallback( Map* map, const TileKey* key)
-    {
-        std::stringstream buf;
-        buf << key->str() << "." << map->getId() << ".earth_tile_data";
-        _filename = buf.str();
-    }
-
-    virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
-    {
-        if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-        {
-            //TileSwitcher* switcher = static_cast<TileSwitcher*>( node );
-            TileSwitcher* switcher = static_cast<TileSwitcher*>( node->asGroup()->getChild(0) );
-            switcher->checkTileRevision();
-
-            VersionedTile* tile = static_cast<VersionedTile*>( switcher->getChild(0) );
-
-            //If we are using the task service, service pending requests for the tile
-            //By doing this here instead of in the actual tile itself, we can ensure that each tile
-            //gets a chance to fill itself in even if it isn't being rendered, which allows for a very
-            //nice backfilling effect.
-            if ( tile->getUseLayerRequests() )
-            {
-                tile->servicePendingImageRequests( nv->getFrameStamp()->getFrameNumber() );
-            }
-        }
-        traverse( node, nv );
-    }
-
-    std::string _filename;
-    osg::ref_ptr<osg::Referenced> _databaseRequest;
-};
-
-
-
 
 /*****************************************************************************/
 
@@ -594,27 +494,12 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
-    //TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range, markTileLoaded );
-    //switcher->setDataVariance( osg::Object::DYNAMIC );
-
-    //// Install a cluster culler (FIXME for cube mode)
-    //bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
-    //if ( isGeocentric && !isCube )
-    //{
-    //    osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
-    //    switcher->addCullCallback( ccc );
-    //}     
-
-    // register the temporary tile with the terrain:
-    tile->setTerrain( terrain );
-
     osg::Node* result = 0L;
 
 
     // create a PLOD so we can keep subdividing:
     osg::PagedLOD* plod = new osg::PagedLOD();
     plod->setCenter( bs.center() );
-    //plod->addChild( switcher, min_range, max_range );
     plod->addChild( tile, min_range, max_range );
 
     if ( key->getLevelOfDetail() < getEngineProperties().getMaxLOD() )
@@ -636,9 +521,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     result = plod;
 
     // Install a callback that will load the actual tile data via the pager.
-    //plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
     result->addCullCallback( new TileImageBackfillCallback() );
-    //result->addCullCallback( new TileDataLoaderCallback( map, key ) );
 
     // Install a cluster culler (FIXME for cube mode)
     bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
@@ -770,19 +653,11 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     }
 
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( key, map );
-    //key->getProfile()->getSRS()->createLocator(
-    //    xmin, ymin, xmax, ymax, isPlateCarre );
-
-    //if ( isGeocentric )
-    //    locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-
     osgTerrain::HeightFieldLayer* hf_layer = new osgTerrain::HeightFieldLayer();
     hf_layer->setLocator( locator.get() );
     hf_layer->setHeightField( hf.get() );
 
     VersionedTile* tile = new VersionedTile( key, locator.get() );
-    //tile->setTileID(key->getTileId());
-
     tile->setLocator( locator.get() );
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
@@ -884,13 +759,10 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     //
     // If there's already a placeholder tile registered, this will be ignored. If there isn't,
     // this will register the new tile.
-    tile->setTerrain( terrain );
+    //tile->setTerrain( terrain );
 
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
-
-    // build the geometry immediately
-    //tile->init();
 
     if ( _engineProps.getAsyncTileLayers() )
     {
@@ -898,10 +770,8 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         tile->setHasElevationHint( hasElevation );
     }
 
-    // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
-    TileSwitcher* switcher = new TileSwitcher( tile, key, terrain, min_range, true );
-    switcher->setDataVariance( osg::Object::DYNAMIC );
+    tile->setDataVariance( osg::Object::DYNAMIC );
 
     osg::Node* result = 0L;
 
@@ -910,7 +780,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         // create a PLOD so we can keep subdividing:
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-        plod->addChild( switcher, min_range, max_range );
+        plod->addChild( tile, min_range, max_range );
 
         if ( key->getLevelOfDetail() < this->getEngineProperties().getMaxLOD() )
         {
@@ -928,18 +798,13 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setDatabaseOptions( options );
 #endif
         result = plod;
-        result->addCullCallback( new TileDataLoaderCallback( map, key ) );
     }
     else
     {
         result = tile;
     }
 
-    // Install a callback that will load the actual tile data via the pager.
-    //    plod->addCullCallback( new TileDataLoaderCallback( map, key ) );
-    
-
-    //result = plod;
+    result->addCullCallback( new TileImageBackfillCallback() );
 
     return result;
 }

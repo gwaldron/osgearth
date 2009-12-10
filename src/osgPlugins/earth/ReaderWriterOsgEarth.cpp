@@ -59,8 +59,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         virtual bool acceptsExtension(const std::string& extension) const
         {
             return (osgDB::equalCaseInsensitive( extension, "earth" ) ||
-                    osgDB::equalCaseInsensitive( extension, "earth_tile" ) ||
-                    osgDB::equalCaseInsensitive( extension, "earth_tile_data" ));
+                    osgDB::equalCaseInsensitive( extension, "earth_tile" ));
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -128,7 +127,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             }
 
             // Reading a specific tile from an existing TileBuilder
-            else if (ext == "earth_tile" || ext == "earth_tile_data" )
+            else if (ext == "earth_tile")
             {
                 std::string tileDef = osgDB::getNameLessExtension(file_name);
                 //osg::notify(osg::NOTICE) << "Reading Tile " << tileDef << std::endl;
@@ -157,15 +156,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                             mapNode->getTerrain( face ),
                             key.get(),
                             populateLayers );
-                    }
-                    else if ( ext == "earth_tile_data" )
-                    {
-                        node = mapNode->getEngine()->createTile(
-                            mapNode->getMap(),
-                            mapNode->getTerrain( face ),
-                            key.get(),
-                            true,    // populate now
-                            false ); // no paged LOD (since this is replacing a placeholder)
                     }
                 }
                 else

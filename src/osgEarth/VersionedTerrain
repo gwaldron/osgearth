@@ -111,14 +111,7 @@ namespace osgEarth
          */
         int getTileRevision() const;
 
-        /**
-         * Gets the revision # of the generated geometry for this tile. If this
-         * changes from the previous frame, that means the tile's geometry changed.
-         */
-        int getGeometryRevision() const;
-
         /** Updates and services this tile's service pending requests. */
-        //void servicePendingRequests( int frameStamp );
         void servicePendingImageRequests( int stamp );
         void servicePendingElevationRequests( int stamp, bool tileTableLocked );
 
@@ -127,10 +120,6 @@ namespace osgEarth
 
         /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
         void setHasElevationHint( bool hasElevation );
-
-        /** Force the tile to compile its geometry now. The new geometry will join the
-            scene graph on the next update traversal. */
-        //void preCompile();
 
         /** Gets whether the tile's real (not placeholder) elevation data has been loaded. */
         bool isElevationLayerUpToDate() const;
@@ -172,7 +161,6 @@ namespace osgEarth
     private:
         int  _terrainRevision;
         int  _tileRevision;
-        int  _geometryRevision;
         bool _useLayerRequests;
         bool _requestsInstalled;
         bool _usePerLayerUpdates;
@@ -192,7 +180,6 @@ namespace osgEarth
         osg::ref_ptr<TaskRequest> _elevRequest;
         osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
         osg::ref_ptr<TaskRequest> _tileGenRequest;
-        int _numActiveRequests; 
 
         osg::ref_ptr<VersionedTerrain> _versionedTerrain;
 
@@ -202,10 +189,7 @@ namespace osgEarth
         /** Deals with completed requests during the UPDATE traversal. */
         void installRequests( int stamp );
         bool readyForNewElevation();
-        //void checkNeedsUpdate();
         void adjustUpdateTraversalCount( int delta );
-
-        //bool _neededUpdateLastTime;
     };
 
 

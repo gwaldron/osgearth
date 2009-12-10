@@ -196,7 +196,6 @@ _keyLocator( keyLocator ),
 _useLayerRequests( false ),       // always set this to false here; use setUseLayerRequests() to enable
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
-_geometryRevision( 0 ),
 _requestsInstalled( false ),
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
@@ -420,46 +419,6 @@ VersionedTile::readyForNewElevation()
 
 #define PRI_IMAGE_OFFSET 0.1f // priority offset of imagery relative to elevation
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
-
-/*void
-VersionedTile::checkNeedsUpdate()
-{
-    bool needsUpdate = false;
-
-    if ( _elevRequest.valid() && _elevRequest->isCompleted() )
-        needsUpdate = true;
-
-    else if ( _elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isCompleted() )
-        needsUpdate = true;
-
-    else if ( _tileGenRequest.valid() && _tileGenRequest->isCompleted() )
-        needsUpdate = true;
-
-    else if ( _tileGenNeeded )
-        needsUpdate = true;
-
-    else
-    {
-        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
-        {
-            if ( i->get()->isCompleted() )
-            {
-                needsUpdate = true;
-                break;
-            }
-        }
-    }
-
-    int delta = 
-        needsUpdate && !_neededUpdateLastTime ? 1 :
-        !needsUpdate && _neededUpdateLastTime ? -1 :
-        0;
-
-    if ( delta != 0 )
-        adjustUpdateTraversalCount( delta );
-
-    _neededUpdateLastTime = needsUpdate;
-}*/
 
 void
 VersionedTile::installRequests( int stamp )
@@ -807,7 +766,6 @@ VersionedTile::serviceCompletedRequests()
             if ( _elevRequest->wasCanceled() )
             {
                 // If the request was canceled, reset it to IDLE and reset the callback. On the next
-                // servicePendingRequests, the request will be re-scheduled.
                 _elevRequest->setState( TaskRequest::STATE_IDLE );
                 _elevRequest->setProgressCallback( new ProgressCallback() );            
                 _elevRequest->reset();

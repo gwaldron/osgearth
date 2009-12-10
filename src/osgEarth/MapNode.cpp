@@ -437,6 +437,8 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 void
 MapNode::addImageLayer( MapLayer* layer )
 {
+    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+
     for( unsigned int i=0; i<_terrains.size(); i++ )
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -524,7 +526,6 @@ MapNode::addImageLayer( MapLayer* layer )
             }
         }
     }
-
     updateStateSet();       
 }
 
@@ -533,6 +534,7 @@ void
 MapNode::addHeightFieldLayer( MapLayer* layer )
 {
     osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldLayer] Begin " << std::endl;
+    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
@@ -590,6 +592,8 @@ MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
 void
 MapNode::removeImageLayer( unsigned int index )
 {
+    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -644,6 +648,8 @@ MapNode::removeImageLayer( unsigned int index )
 void
 MapNode::removeHeightFieldLayer( unsigned int index )
 {
+    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -698,6 +704,8 @@ MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int n
 void
 MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
+    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();
@@ -746,6 +754,8 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 void
 MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 {
+    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+
     for (unsigned int i = 0; i < _terrains.size(); ++i)
     {            
         VersionedTerrain* terrain = _terrains[i].get();

@@ -234,7 +234,10 @@ ElevationManager::getElevation(double x, double y,
     // finally it's time to get a height value:
     if ( _technique = TECHNIQUE_PARAMETRIC )
     {
-        out_elevation = (double) HeightFieldUtils::getHeightAtLocation( hf.get(), map_x, map_y );
+        const GeoExtent& extent = key->getGeoExtent();
+        double xInterval = extent.width()  / (double)(hf->getNumColumns()-1);
+        double yInterval = extent.height() / (double)(hf->getNumRows()-1);
+        out_elevation = (double) HeightFieldUtils::getHeightAtLocation( hf.get(), map_x, map_y, extent.xMin(), extent.yMin(), xInterval, yInterval );
         return true;
     }
     else // ( _technique == TECHNIQUE_GEOMETRIC )

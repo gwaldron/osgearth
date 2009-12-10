@@ -798,13 +798,12 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setDatabaseOptions( options );
 #endif
         result = plod;
+        result->addCullCallback( new TileImageBackfillCallback() );
     }
     else
     {
         result = tile;
     }
-
-    result->addCullCallback( new TileImageBackfillCallback() );
 
     return result;
 }

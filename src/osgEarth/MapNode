@@ -203,6 +203,8 @@ namespace osgEarth
 
         void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
         void moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex );
+
+        void updateElevation(VersionedTile* tile);
     };
 }
 

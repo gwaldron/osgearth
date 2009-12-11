@@ -529,6 +529,73 @@ MapNode::addImageLayer( MapLayer* layer )
     updateStateSet();       
 }
 
+void
+MapNode::updateElevation(VersionedTile* tile)
+{
+    OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
+
+    osg::ref_ptr< const TileKey > key = tile->getKey();
+
+    bool hasElevation;
+    {
+        OpenThreads::ScopedReadLock mapDataLock(_map->getMapDataMutex());
+        hasElevation = _map->getHeightFieldMapLayers().size() > 0;
+    }    
+
+    //Update the elevation hint
+    tile->setHasElevationHint( hasElevation );
+
+    osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
+    if (heightFieldLayer)
+    {
+        //In sequential mode, just load the elevation data and dirty the tile.
+        if (!_engineProps.getPreemptiveLOD())
+        {
+            osg::ref_ptr<osg::HeightField> hf;
+            if (hasElevation)
+            {
+                hf = _map->createHeightField( key.get(), true );
+            }
+            if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
+            heightFieldLayer->setHeightField( hf.get() );
+            hf->setSkirtHeight( tile->getBound().radius() * _engineProps.getSkirtRatio() );
+            tile->setDirty(true);
+        }
+        else
+        {
+            //In preemptive mode, if there is no elevation, just clear out all the elevation on the tiles
+            if (!hasElevation)
+            {
+                osg::ref_ptr<osg::HeightField> hf = MapEngine::createEmptyHeightField( key.get() );
+                heightFieldLayer->setHeightField( hf.get() );
+                hf->setSkirtHeight( tile->getBound().radius() * _engineProps.getSkirtRatio() );
+                tile->setElevationLOD( key->getLevelOfDetail() );
+                tile->resetElevationRequests();
+                tile->markTileForRegeneration();
+            }
+            else
+            {
+                //Always load the first LOD so the children tiles can have something to use for placeholders
+                if (tile->getKey()->getLevelOfDetail() == 1)
+                {
+                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
+                    if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
+                    heightFieldLayer->setHeightField( hf.get() );
+                    hf->setSkirtHeight( tile->getBound().radius() * _engineProps.getSkirtRatio() );
+                    tile->setElevationLOD(tile->getKey()->getLevelOfDetail());
+                    tile->markTileForRegeneration();
+                }
+                else
+                {
+                    //Set the elevation LOD to -1
+                    tile->setElevationLOD(-1);
+                    tile->resetElevationRequests();
+                }
+            }
+        }
+    }
+}
+
 
 void
 MapNode::addHeightFieldLayer( MapLayer* layer )
@@ -546,29 +613,7 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
-
-            //Create a TileKey from the TileID
-            osgTerrain::TileID tileId = itr->get()->getTileID();
-			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
-
-            osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
-            if (heightFieldLayer)
-            {
-                osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
-                if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
-                heightFieldLayer->setHeightField( hf.get() );
-                hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
-            }
-
-            if (_engineProps.getPreemptiveLOD())
-            {
-                tile->markTileForRegeneration();
-            }
-            else
-            {
-                tile->setDirty(true);
-            }
+            updateElevation(tile);
         }
     }
 }
@@ -660,27 +705,7 @@ MapNode::removeHeightFieldLayer( unsigned int index )
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
-
-            osgTerrain::TileID tileId = itr->get()->getTileID();
-			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
-            osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
-            if (heightFieldLayer)
-            {
-                osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
-                if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
-                heightFieldLayer->setHeightField( hf.get() );
-                hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
-            }
-
-            if (_engineProps.getPreemptiveLOD())
-            {
-                tile->markTileForRegeneration();
-            }
-            else
-            {
-                tile->setDirty(true);
-            }
+            updateElevation( tile );
         }
     }
 }
@@ -766,27 +791,7 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
             VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
-
-            osgTerrain::TileID tileId = itr->get()->getTileID();
-			osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
-            osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(itr->get()->getElevationLayer() );
-            if (heightFieldLayer)
-            {
-                osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
-                if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
-                heightFieldLayer->setHeightField( hf.get() );
-                hf->setSkirtHeight( itr->get()->getBound().radius() * _engineProps.getSkirtRatio() );
-            }                
-            
-            if (_engineProps.getPreemptiveLOD())
-            {
-                tile->markTileForRegeneration();
-            }
-            else
-            {
-                tile->setDirty(true);
-            }
+            updateElevation(tile);
         }
     }
 }

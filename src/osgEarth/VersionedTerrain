@@ -144,6 +144,8 @@ namespace osgEarth
 
         void markTileForRegeneration();
 
+        void resetElevationRequests();
+
     public: // OVERRIDES
 
         virtual void traverse( class osg::NodeVisitor& nv );

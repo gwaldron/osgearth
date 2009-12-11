@@ -294,6 +294,12 @@ void
 VersionedTile::setElevationLOD( int lod )
 {
     _elevationLOD = lod;
+    _elevationLayerUpToDate = _elevationLOD == _key->getLevelOfDetail();
+
+    //Should probably just reset the placeholder requests
+    //if (_elevPlaceholderRequest.valid()) _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
+    //if (_elevRequest.valid()) _elevRequest->setState( TaskRequest::STATE_IDLE );
+    //resetElevationRequests();
 }
 
 int
@@ -438,27 +444,10 @@ VersionedTile::installRequests( int stamp )
         numColorLayers = this->getNumColorLayers();
     }
 
-    if ( _hasElevation && hasElevationLayer )
-    {        
-        // this request will load real elevation data for the tile:
-        _elevRequest = new TileElevationLayerRequest(_key.get(), map, engine );
-        float priority = (float)_key->getLevelOfDetail();
-        _elevRequest->setPriority( priority );
-        std::stringstream ss;
-        ss << "TileElevationLayerRequest " << _key->str() << std::endl;
-        _elevRequest->setName( ss.str() );
-
-        // this request will load placeholder elevation data for the tile:
-        _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
-            _key.get(), map, engine, _keyLocator.get() );
-        _elevPlaceholderRequest->setPriority( priority );
-        ss.str("");
-        ss << "TileElevationPlaceholderLayerRequest " << _key->str() << std::endl;
-        _elevPlaceholderRequest->setName( ss.str() );
+    if ( hasElevationLayer )
+    {
+        resetElevationRequests();     
     }
-
-    // a tile generator request will rebuild tile geometry in the background:
-    //_tileGenRequest = new TileGenRequest( this->getTerrainTechnique() );
 
     // safely loop through the map layers and update the imagery for each:
     MapLayerList imageMapLayers;
@@ -471,9 +460,32 @@ VersionedTile::installRequests( int stamp )
             updateImagery( imageMapLayers[layerIndex]->getId(), map, engine );
         }
     }
-
     _requestsInstalled = true;
 }
+
+void
+VersionedTile::resetElevationRequests()
+{
+    if (_elevRequest.valid() && _elevRequest->isRunning()) _elevRequest->cancel();
+    if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isRunning()) _elevPlaceholderRequest->cancel();
+
+    // this request will load real elevation data for the tile:
+    _elevRequest = new TileElevationLayerRequest(_key.get(), getVersionedTerrain()->getMap(), getVersionedTerrain()->getEngine());
+    float priority = (float)_key->getLevelOfDetail();
+    _elevRequest->setPriority( priority );
+    std::stringstream ss;
+    ss << "TileElevationLayerRequest " << _key->str() << std::endl;
+    _elevRequest->setName( ss.str() );
+
+    // this request will load placeholder elevation data for the tile:
+    _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
+        _key.get(), getVersionedTerrain()->getMap(), getVersionedTerrain()->getEngine(), _keyLocator.get() );
+    _elevPlaceholderRequest->setPriority( priority );
+    ss.str("");
+    ss << "TileElevationPlaceholderLayerRequest " << _key->str() << std::endl;
+    _elevPlaceholderRequest->setName( ss.str() );
+}
+
 
 void
 VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
@@ -800,8 +812,8 @@ VersionedTile::serviceCompletedRequests()
                     
                     // GW- just reset these and leave them alone and let cancelRequests() take care of cleanup later.
                     // done with our Elevation requests!
-                    _elevRequest = 0L;
-                    _elevPlaceholderRequest = 0L;
+                    //_elevRequest = 0L;
+                    //_elevPlaceholderRequest = 0L;
                 }
                 else
                 {

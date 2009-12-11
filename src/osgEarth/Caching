@@ -32,7 +32,7 @@
 #include <osg/Timer>
 #include <osgDB/ReadFile>
 
-#include <OpenThreads/Mutex>
+#include <OpenThreads/ReadWriteMutex>
 
 #include <string>
 
@@ -228,7 +228,7 @@ namespace osgEarth
         KeyToIteratorMap _keyToIterMap;
 
         unsigned int _maxNumTilesInCache;
-        OpenThreads::Mutex _mutex;
+        OpenThreads::ReadWriteMutex _mutex;
 
 	};
 

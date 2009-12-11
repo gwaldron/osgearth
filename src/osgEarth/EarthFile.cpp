@@ -86,6 +86,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
+#define ELEM_CACHE_ENABLED            "cache_enabled"
 #define ELEM_MODEL                    "model"
 #define ELEM_MAX_LOD                  "max_lod"
 #define ELEM_LIGHTING                 "lighting"
@@ -176,6 +177,16 @@ readMapLayer( const Config& conf, const Config& additional )
 		layer->noDataImageFilename() = noDataImage;
 
     layer->setCacheFormat( conf.value( ELEM_CACHE_FORMAT ) );
+
+    std::string cacheEnabled = conf.value( ELEM_CACHE_ENABLED );
+    if (cacheEnabled == VALUE_TRUE)
+    {
+        layer->setCacheEnabled( true );
+    }
+    else if ( cacheEnabled == VALUE_FALSE)
+    {
+        layer->setCacheEnabled( false );
+    }
 
     if ( !conf.value( ELEM_TRANSPARENT_COLOR ).empty() )
 		layer->transparentColor() = getColor( conf.value( ELEM_TRANSPARENT_COLOR ), osg::Vec4ub() );

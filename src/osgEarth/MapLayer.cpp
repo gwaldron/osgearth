@@ -40,6 +40,7 @@ _useMercatorFastPath(true),
 _reprojected_tile_size(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
+_cacheEnabled(true),
 _loadWeight( 1.0f )
 {
 	readEnvironmentalVariables();
@@ -59,6 +60,7 @@ _useMercatorFastPath(true),
 _reprojected_tile_size(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
+_cacheEnabled(true),
 _loadWeight( 1.0f )
 {
     for( Properties::const_iterator i = driverProps.begin(); i != driverProps.end(); i++ )
@@ -141,6 +143,16 @@ void MapLayer::setCacheOnly( bool cacheOnly )
 	_cacheOnly = cacheOnly;
 }
 
+bool MapLayer::getCacheEnabled() const
+{
+    return _cacheEnabled;
+}
+
+void MapLayer::setCacheEnabled( bool cacheEnabled)
+{
+    _cacheEnabled = cacheEnabled;
+}
+
 Cache*
 MapLayer::getCache() const
 {
@@ -155,7 +167,7 @@ MapLayer::setCache(Cache* cache)
         _cache = cache;        
 
         //Read properties from the cache if not already set
-        if (_cache.valid())
+        if (_cache.valid() && _cacheEnabled)
         {
             std::string format;
             unsigned int tile_size;
@@ -326,7 +338,7 @@ MapLayer::initTileSource()
         _cacheFormat = suggestCacheFormat();
     }
 
-	if (_tileSource.valid() && _cache.valid())
+	if (_tileSource.valid() && _cache.valid() && _cacheEnabled)
 	{
 		_cache->storeLayerProperties( _name, _tileSource->getProfile(), _cacheFormat, _tileSource->getPixelsPerTile() );
 	}
@@ -450,7 +462,7 @@ MapLayer::createImage( const TileKey* key,
 	}
 
 	//If we are caching in the map profile, try to get the image immediately.
-	if (cacheInMapProfile && _cache.valid())
+	if (cacheInMapProfile && _cache.valid() && _cacheEnabled)
 	{
         osg::ref_ptr<osg::Image> image = _cache->getImage( key, _name, _cacheFormat);
 		if (image)
@@ -555,7 +567,7 @@ MapLayer::createImage( const TileKey* key,
     }
 
 	//If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
-	if (result && _cache.valid() && cacheInMapProfile)
+	if (result && _cache.valid() && _cacheEnabled && cacheInMapProfile)
 	{
 		osg::notify(osg::INFO) << "Layer " << _name << " writing tile " << key->str() << " to cache " << std::endl;
 		_cache->setImage( key, _name, _cacheFormat, result->getImage());
@@ -573,7 +585,7 @@ MapLayer::createImageWrapper( const TileKey* key,
 
 	osg::ref_ptr<osg::Image> image;
 
-	if (_cache.valid() && cacheInLayerProfile)
+	if (_cache.valid() && cacheInLayerProfile && _cacheEnabled)
 		image = _cache->getImage( key, _name, _cacheFormat );
 
 	if (image.valid())
@@ -617,7 +629,7 @@ MapLayer::createImageWrapper( const TileKey* key,
 			}
 		}
 
-		if (image.valid() && _cache.valid() && cacheInLayerProfile)
+		if (image.valid() && _cache.valid() && cacheInLayerProfile && _cacheEnabled)
 		{
 			_cache->setImage( key, _name, _cacheFormat, image);
 		}
@@ -656,7 +668,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	osg::ref_ptr<osg::HeightField> result;
 
 	//See if we can get it from the cache.
-	if (_cache.valid())
+	if (_cache.valid() && _cacheEnabled)
 	{
 		result = _cache->getHeightField( key, _name, _cacheFormat );
 		if (result.valid())
@@ -765,7 +777,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	}
 
 	//Write the result to the cache.
-	if (result.valid() && _cache.valid())
+	if (result.valid() && _cache.valid() && _cacheEnabled)
 	{
 		_cache->setHeightField( key, _name, _cacheFormat, result.get() );
 	}

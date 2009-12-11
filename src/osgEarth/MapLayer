@@ -236,6 +236,16 @@ namespace osgEarth
 		 */
 		void setCacheFormat(const std::string& cacheFormat);
 
+        /**
+         * Gets whether to cache this layer or not.
+         */
+        bool getCacheEnabled() const;
+
+        /**
+         * Sets whether to cache this layer or not
+         */
+        void setCacheEnabled( bool cacheEnabled );
+
 		/**
 		 * Gets the Cache to be used on this MapLayer.
 		 */
@@ -293,6 +303,7 @@ namespace osgEarth
         Config      _driverConf;
 
 		std::string _cacheFormat;
+        bool _cacheEnabled;
        
         optional<ProfileConfig> _profileConf;
         optional<int> _minLevel;

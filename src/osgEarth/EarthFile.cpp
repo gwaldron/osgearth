@@ -215,7 +215,7 @@ writeLayer( MapLayer* layer )
     conf.attr( ATTR_DRIVER ) = layer->getDriver();
 
     //Add all the properties
-    conf.add( layer->getDriverConfig() );
+    conf.add( layer->getDriverConfig().children() );
 
 	if ( layer->profileConfig().isSet() )
         conf.addChild( layer->profileConfig()->toConfig() );

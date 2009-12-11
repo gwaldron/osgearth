@@ -69,10 +69,18 @@ XmlElement::XmlElement( const Config& conf )
         attrs[i->first] = i->second;
     for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
     {
-        if ( j->value().empty() )
+        if (!j->children().empty())
+        {
+            children.push_back( new XmlElement( *j ) );
+        }
+        else
+        {
+            addSubElement(j->name(), j->value());
+        }
+        /*if ( j->value().empty() )
             children.push_back( new XmlElement( *j ) );
         else
-            children.push_back( new XmlText( j->value() ) );
+            children.push_back( new XmlText( j->value() ) );*/
     }
 }
 
@@ -333,7 +341,7 @@ XmlDocument::load( std::istream& in )
 #define INDENT 4
 
 static void
-storeNode( XmlNode* node, int depth, std::ostream& out )
+storeNode( const XmlNode* node, int depth, std::ostream& out )
 {
     for( int k=0; k<depth*INDENT; k++ ) out << " ";
 
@@ -364,8 +372,9 @@ void
 XmlDocument::store( std::ostream& out ) const
 {
     out << "<?xml version=\"1.0\"?>" << std::endl;
-    for( XmlNodeList::const_iterator i = getChildren().begin(); i != getChildren().end(); i++ )
+    storeNode( this, 0, out);
+    /*for( XmlNodeList::const_iterator i = getChildren().begin(); i != getChildren().end(); i++ )
     {
         storeNode( i->get(), 0, out );
-    }
+    }*/
 }

@@ -510,165 +510,6 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
 
     geometry->addPrimitiveSet(elements.get());
 
-    bool recalcNormals = elevationLayer != NULL;
-
-    //Clear out the normals
-    if (recalcNormals)
-    {
-        osg::Vec3Array::iterator nitr;
-        for(nitr = normals->begin();
-            nitr!=normals->end();
-            ++nitr)
-        {
-            nitr->set(0.0f,0.0f,0.0f);
-        }
-    }
-    
-    for(j=0; j<numRows-1; ++j)
-    {
-        for(i=0; i<numColumns-1; ++i)
-        {
-            int i00;
-            int i01;
-            if (swapOrientation)
-            {
-                i01 = j*numColumns + i;
-                i00 = i01+numColumns;
-            }
-            else
-            {
-                i00 = j*numColumns + i;
-                i01 = i00+numColumns;
-            }
-
-            int i10 = i00+1;
-            int i11 = i01+1;
-
-            // remap indices to final vertex positions
-            i00 = indices[i00];
-            i01 = indices[i01];
-            i10 = indices[i10];
-            i11 = indices[i11];
-            
-            unsigned int numValid = 0;
-            if (i00>=0) ++numValid;
-            if (i01>=0) ++numValid;
-            if (i10>=0) ++numValid;
-            if (i11>=0) ++numValid;
-            
-            if (numValid==4)
-            {
-                float e00 = (*elevations)[i00];
-                float e10 = (*elevations)[i10];
-                float e01 = (*elevations)[i01];
-                float e11 = (*elevations)[i11];
-
-                osg::Vec3f &v00 = (*vertices)[i00];
-                osg::Vec3f &v10 = (*vertices)[i10];
-                osg::Vec3f &v01 = (*vertices)[i01];
-                osg::Vec3f &v11 = (*vertices)[i11];
-
-                if (fabsf(e00-e11)<fabsf(e01-e10))
-                {
-                    elements->push_back(i01);
-                    elements->push_back(i00);
-                    elements->push_back(i11);
-
-                    elements->push_back(i00);
-                    elements->push_back(i10);
-                    elements->push_back(i11);
-
-                    if (recalcNormals)
-                    {                        
-                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);
-                        (*normals)[i01] += normal1;
-                        (*normals)[i00] += normal1;
-                        (*normals)[i11] += normal1;
-
-                        osg::Vec3 normal2 = (v10-v00)^(v11-v00);
-                        (*normals)[i00] += normal2;
-                        (*normals)[i10] += normal2;
-                        (*normals)[i11] += normal2;
-                    }
-                }
-                else
-                {
-                    elements->push_back(i01);
-                    elements->push_back(i00);
-                    elements->push_back(i10);
-
-                    elements->push_back(i01);
-                    elements->push_back(i10);
-                    elements->push_back(i11);
-
-                    if (recalcNormals)
-                    {                       
-                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
-                        (*normals)[i01] += normal1;
-                        (*normals)[i00] += normal1;
-                        (*normals)[i10] += normal1;
-
-                        osg::Vec3 normal2 = (v10-v01)^(v11-v01);
-                        (*normals)[i01] += normal2;
-                        (*normals)[i10] += normal2;
-                        (*normals)[i11] += normal2;
-                    }
-                }
-            }
-            else if (numValid==3)
-            {
-                int validIndices[3];
-                int indexPtr = 0;
-                if (i00>=0)
-                {
-                    elements->push_back(i00);
-                    validIndices[indexPtr++] = i00;
-                }
-
-                if (i01>=0)
-                {
-                    elements->push_back(i01);
-                    validIndices[indexPtr++] = i01;
-                }
-
-                if (i11>=0)
-                {
-                    elements->push_back(i11);
-                    validIndices[indexPtr++] = i11;
-                }
-
-                if (i10>=0)
-                {
-                    elements->push_back(i10);
-                    validIndices[indexPtr++] = i10;
-                }
-
-                if (recalcNormals)
-                {
-                    osg::Vec3f &v1 = (*vertices)[validIndices[0]];
-                    osg::Vec3f &v2 = (*vertices)[validIndices[1]];
-                    osg::Vec3f &v3 = (*vertices)[validIndices[2]];
-                    osg::Vec3f normal = (v2 - v1) ^ (v3 - v1);
-                    (*normals)[validIndices[0]] += normal;
-                    (*normals)[validIndices[1]] += normal;
-                    (*normals)[validIndices[2]] += normal;
-                }
-            }            
-        }
-    }
-
-    //Clear out the normals
-    if (recalcNormals)
-    {
-        osg::Vec3Array::iterator nitr;
-        for(nitr = normals->begin();
-            nitr!=normals->end();
-            ++nitr)
-        {
-            nitr->normalize();
-        }
-    }
-
     //osg::Timer_t genPrimAfter = osg::Timer::instance()->tick();
     //osg::notify(osg::NOTICE) << "  genPrimTime " << osg::Timer::instance()->delta_m(genPrimBefore, genPrimAfter) << std::endl;
     
@@ -833,6 +674,165 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         {
             geometry->addPrimitiveSet(skirtDrawElements.get());
             skirtDrawElements = new osg::DrawElementsUShort(GL_QUAD_STRIP);
+        }
+    }
+
+       bool recalcNormals = elevationLayer != NULL;
+
+    //Clear out the normals
+    if (recalcNormals)
+    {
+        osg::Vec3Array::iterator nitr;
+        for(nitr = normals->begin();
+            nitr!=normals->end();
+            ++nitr)
+        {
+            nitr->set(0.0f,0.0f,0.0f);
+        }
+    }
+    
+    for(j=0; j<numRows-1; ++j)
+    {
+        for(i=0; i<numColumns-1; ++i)
+        {
+            int i00;
+            int i01;
+            if (swapOrientation)
+            {
+                i01 = j*numColumns + i;
+                i00 = i01+numColumns;
+            }
+            else
+            {
+                i00 = j*numColumns + i;
+                i01 = i00+numColumns;
+            }
+
+            int i10 = i00+1;
+            int i11 = i01+1;
+
+            // remap indices to final vertex positions
+            i00 = indices[i00];
+            i01 = indices[i01];
+            i10 = indices[i10];
+            i11 = indices[i11];
+            
+            unsigned int numValid = 0;
+            if (i00>=0) ++numValid;
+            if (i01>=0) ++numValid;
+            if (i10>=0) ++numValid;
+            if (i11>=0) ++numValid;
+            
+            if (numValid==4)
+            {
+                float e00 = (*elevations)[i00];
+                float e10 = (*elevations)[i10];
+                float e01 = (*elevations)[i01];
+                float e11 = (*elevations)[i11];
+
+                osg::Vec3f &v00 = (*vertices)[i00];
+                osg::Vec3f &v10 = (*vertices)[i10];
+                osg::Vec3f &v01 = (*vertices)[i01];
+                osg::Vec3f &v11 = (*vertices)[i11];
+
+                if (fabsf(e00-e11)<fabsf(e01-e10))
+                {
+                    elements->push_back(i01);
+                    elements->push_back(i00);
+                    elements->push_back(i11);
+
+                    elements->push_back(i00);
+                    elements->push_back(i10);
+                    elements->push_back(i11);
+
+                    if (recalcNormals)
+                    {                        
+                        osg::Vec3 normal1 = (v00-v01) ^ (v11-v01);
+                        (*normals)[i01] += normal1;
+                        (*normals)[i00] += normal1;
+                        (*normals)[i11] += normal1;
+
+                        osg::Vec3 normal2 = (v10-v00)^(v11-v00);
+                        (*normals)[i00] += normal2;
+                        (*normals)[i10] += normal2;
+                        (*normals)[i11] += normal2;
+                    }
+                }
+                else
+                {
+                    elements->push_back(i01);
+                    elements->push_back(i00);
+                    elements->push_back(i10);
+
+                    elements->push_back(i01);
+                    elements->push_back(i10);
+                    elements->push_back(i11);
+
+                    if (recalcNormals)
+                    {                       
+                        osg::Vec3 normal1 = (v00-v01) ^ (v10-v01);
+                        (*normals)[i01] += normal1;
+                        (*normals)[i00] += normal1;
+                        (*normals)[i10] += normal1;
+
+                        osg::Vec3 normal2 = (v10-v01)^(v11-v01);
+                        (*normals)[i01] += normal2;
+                        (*normals)[i10] += normal2;
+                        (*normals)[i11] += normal2;
+                    }
+                }
+            }
+            else if (numValid==3)
+            {
+                int validIndices[3];
+                int indexPtr = 0;
+                if (i00>=0)
+                {
+                    elements->push_back(i00);
+                    validIndices[indexPtr++] = i00;
+                }
+
+                if (i01>=0)
+                {
+                    elements->push_back(i01);
+                    validIndices[indexPtr++] = i01;
+                }
+
+                if (i11>=0)
+                {
+                    elements->push_back(i11);
+                    validIndices[indexPtr++] = i11;
+                }
+
+                if (i10>=0)
+                {
+                    elements->push_back(i10);
+                    validIndices[indexPtr++] = i10;
+                }
+
+                if (recalcNormals)
+                {
+                    osg::Vec3f &v1 = (*vertices)[validIndices[0]];
+                    osg::Vec3f &v2 = (*vertices)[validIndices[1]];
+                    osg::Vec3f &v3 = (*vertices)[validIndices[2]];
+                    osg::Vec3f normal = (v2 - v1) ^ (v3 - v1);
+                    (*normals)[validIndices[0]] += normal;
+                    (*normals)[validIndices[1]] += normal;
+                    (*normals)[validIndices[2]] += normal;
+                }
+            }            
+        }
+    }
+
+    //Normalize the normals
+    if (recalcNormals)
+    {
+        osg::Vec3Array::iterator nitr;
+        for(nitr = normals->begin();
+            nitr!=normals->end();
+            ++nitr)
+        {
+            nitr->normalize();
         }
     }
 

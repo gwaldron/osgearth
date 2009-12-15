@@ -460,17 +460,18 @@ tileMapToXmlDocument(const TileMap* tileMap)
 {
     //Create the root XML document
     osg::ref_ptr<XmlDocument> doc = new XmlDocument();
+    doc->setName( ELEM_TILEMAP );
     
     //Create the root node
-    osg::ref_ptr<XmlElement> e_tile_map = new XmlElement( ELEM_TILEMAP );
-    doc->getChildren().push_back( e_tile_map.get() );
+    //osg::ref_ptr<XmlElement> e_tile_map = new XmlElement( ELEM_TILEMAP );
+    //doc->getChildren().push_back( e_tile_map.get() );
 
-    e_tile_map->getAttrs()[ ATTR_VERSION ] = tileMap->getVersion();
-    e_tile_map->getAttrs()[ ATTR_TILEMAPSERVICE ] = tileMap->getTileMapService();
+    doc->getAttrs()[ ATTR_VERSION ] = tileMap->getVersion();
+    doc->getAttrs()[ ATTR_TILEMAPSERVICE ] = tileMap->getTileMapService();
   
-    e_tile_map->addSubElement( ELEM_TITLE, tileMap->getTitle() );
-    e_tile_map->addSubElement( ELEM_ABSTRACT, tileMap->getAbstract() );
-    e_tile_map->addSubElement( ELEM_SRS, tileMap->getSRS() );
+    doc->addSubElement( ELEM_TITLE, tileMap->getTitle() );
+    doc->addSubElement( ELEM_ABSTRACT, tileMap->getAbstract() );
+    doc->addSubElement( ELEM_SRS, tileMap->getSRS() );
 
     osg::ref_ptr<XmlElement> e_bounding_box = new XmlElement( ELEM_BOUNDINGBOX );
     double minX, minY, maxX, maxY;
@@ -479,19 +480,19 @@ tileMapToXmlDocument(const TileMap* tileMap)
     e_bounding_box->getAttrs()[ATTR_MINY] = toString(minY);
     e_bounding_box->getAttrs()[ATTR_MAXX] = toString(maxX);
     e_bounding_box->getAttrs()[ATTR_MAXY] = toString(maxY);
-    e_tile_map->getChildren().push_back(e_bounding_box.get() );
+    doc->getChildren().push_back(e_bounding_box.get() );
 
     osg::ref_ptr<XmlElement> e_origin = new XmlElement( ELEM_ORIGIN );
     e_origin->getAttrs()[ATTR_X] = toString(tileMap->getOriginX());
     e_origin->getAttrs()[ATTR_Y] = toString(tileMap->getOriginY());
-    e_tile_map->getChildren().push_back(e_origin.get());
+    doc->getChildren().push_back(e_origin.get());
 
     osg::ref_ptr<XmlElement> e_tile_format = new XmlElement( ELEM_TILE_FORMAT );
     e_tile_format->getAttrs()[ ATTR_EXTENSION ] = tileMap->getFormat().getExtension();
     e_tile_format->getAttrs()[ ATTR_MIME_TYPE ] = tileMap->getFormat().getMimeType();
     e_tile_format->getAttrs()[ ATTR_WIDTH ] = toString<unsigned int>(tileMap->getFormat().getWidth());
     e_tile_format->getAttrs()[ ATTR_HEIGHT ] = toString<unsigned int>(tileMap->getFormat().getHeight());
-    e_tile_map->getChildren().push_back(e_tile_format.get());
+    doc->getChildren().push_back(e_tile_format.get());
 
     osg::ref_ptr<XmlElement> e_tile_sets = new XmlElement ( ELEM_TILESETS );
     std::string profileString = "none";
@@ -518,7 +519,7 @@ tileMapToXmlDocument(const TileMap* tileMap)
         e_tile_set->getAttrs()[ATTR_UNITSPERPIXEL] = toString(itr->getUnitsPerPixel());
         e_tile_sets->getChildren().push_back( e_tile_set.get() );
     }
-    e_tile_map->getChildren().push_back(e_tile_sets.get());
+    doc->getChildren().push_back(e_tile_sets.get());
 
     return doc.release();
 }

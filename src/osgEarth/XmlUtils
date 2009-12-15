@@ -64,6 +64,8 @@ namespace osgEarth
 
         const std::string& getName() const;
 
+        void setName( const std::string& name );
+
         XmlAttributes& getAttrs();
         
         const XmlAttributes& getAttrs() const;

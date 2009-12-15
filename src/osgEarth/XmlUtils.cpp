@@ -77,10 +77,6 @@ XmlElement::XmlElement( const Config& conf )
         {
             addSubElement(j->name(), j->value());
         }
-        /*if ( j->value().empty() )
-            children.push_back( new XmlElement( *j ) );
-        else
-            children.push_back( new XmlText( j->value() ) );*/
     }
 }
 
@@ -88,6 +84,12 @@ const std::string&
 XmlElement::getName() const
 {
     return name;
+}
+
+void
+XmlElement::setName( const std::string& name)
+{
+    this->name = name;
 }
 
 XmlAttributes&

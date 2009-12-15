@@ -141,6 +141,11 @@ CacheConfig::toString() const
 
 /*****************************************************************************/
 
+Cache::Cache():
+osg::Referenced(true)
+{
+}
+
 void Cache::storeLayerProperties( const std::string& layerName,
 		                          const Profile* profile,
 			                      const std::string& format,
@@ -448,7 +453,7 @@ MemCache::getImage(const osgEarth::TileKey *key,
 {
 	osg::Timer_t now = osg::Timer::instance()->tick();
 
-    OpenThreads::ScopedReadLock lock(_mutex);
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
     //osg::notify(osg::NOTICE) << "List contains: " << _images.size() << std::endl;
 
@@ -474,7 +479,7 @@ MemCache::setImage(const osgEarth::TileKey *key,
 				   const std::string& format,
 				   osg::Image *image)
 {
-    OpenThreads::ScopedWriteLock lock(_mutex);
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
     std::string id = key->str();
 

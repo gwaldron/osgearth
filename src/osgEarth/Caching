@@ -173,6 +173,8 @@ namespace osgEarth
 
 	protected:
 
+        Cache();
+
 		std::string _mapConfigFilename;
 	};
 
@@ -228,7 +230,7 @@ namespace osgEarth
         KeyToIteratorMap _keyToIterMap;
 
         unsigned int _maxNumTilesInCache;
-        OpenThreads::ReadWriteMutex _mutex;
+        OpenThreads::Mutex _mutex;
 
 	};
 

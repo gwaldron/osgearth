@@ -195,7 +195,12 @@ MapLayer::getTileSource() const {
 	//Only load the TileSource if it hasn't been loaded previously and we aren't running strictly off the cache.
 	if (!_tileSource.valid() && !getCacheOnly())
 	{
-		const_cast<MapLayer*>(this)->initTileSource();
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<MapLayer*>(this)->_initMutex );
+        //Double check
+        if (!_tileSource.valid() && !getCacheOnly())
+        {
+            const_cast<MapLayer*>(this)->initTileSource();
+        }
 	}
     return _tileSource.get();
 }
@@ -205,11 +210,8 @@ MapLayer::getProfile() const
 {
 	if (!_profile.valid())
 	{
-		//Try first to get the profile from the TileSource
-		if (getTileSource())
-		{
-			const_cast<MapLayer*>(this)->_profile = getTileSource()->getProfile();
-		}	
+		//Make sure the tileSource is initialized, the profile will be set when the tilesource is initialized.
+		getTileSource();
 	}
 	return _profile.get();
 }
@@ -344,6 +346,11 @@ MapLayer::initTileSource()
 	{
 		_cache->storeLayerProperties( _name, _tileSource->getProfile(), _cacheFormat, _tileSource->getPixelsPerTile() );
 	}
+
+    if (_tileSource.valid())
+    {
+      _profile = _tileSource->getProfile();
+    }
 }
 
 float

@@ -338,6 +338,8 @@ namespace osgEarth
 		osg::ref_ptr< const Profile > _profile;
 
         float _loadWeight;
+
+        OpenThreads::Mutex _initMutex;
     };
 
 

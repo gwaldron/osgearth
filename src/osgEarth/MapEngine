@@ -26,6 +26,7 @@
 #include <osgEarth/VersionedTerrain>
 #include <osgEarth/MapLayer>
 #include <osgEarth/Locators>
+#include <osgEarth/MapLayer>
 
 #include <OpenThreads/ReadWriteMutex>
 #include <osgDB/ReaderWriter>
@@ -161,6 +162,7 @@ namespace osgEarth
     protected:
 
         MapEngineProperties _engineProps;
+        L2Cache* _L2cache;
     };
 }
 

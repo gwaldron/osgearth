@@ -20,10 +20,10 @@
 #define OSGEARTH_TASK_SERVICE 1
 
 #include <osgEarth/Common>
-#include <osgEarth/MapLayer>
 #include <osgEarth/HTTPClient>
 #include <OpenThreads/Thread>
 #include <OpenThreads/Condition>
+#include <OpenThreads/ReentrantMutex>
 #include <osg/Referenced>
 #include <queue>
 #include <list>

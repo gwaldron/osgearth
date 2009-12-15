@@ -28,9 +28,9 @@
 #include <osg/io_utils>
 #include <map>
 
-#ifdef WIN32
-#include <windows.h>
-#endif
+//#ifdef WIN32
+//#  include <windows.h>
+//#endif
 
 
 namespace osgEarth

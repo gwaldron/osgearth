@@ -20,10 +20,12 @@
 #include <osgEarth/Compositing>
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/ImageUtils>
-
+#include <osgEarth/TaskService>
 #include <osg/Version>
+#include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
+using namespace OpenThreads;
 
 static unsigned int s_mapLayerID = 0;
 
@@ -785,3 +787,97 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	return result.release();
 }
 
+//----------------------------------------------------------------------------
+
+struct FetchTask : public TaskRequest 
+{
+    FetchTask( MapLayer* layer, const TileKey* key, L2Cache::TileCache& cache )
+        : _layer(layer), _key(key), _cache(cache) { }
+
+    void operator() ( ProgressCallback* progress )
+    {
+        //osg::notify(osg::NOTICE) << "Task: fetching " << _key->str() << std::endl;
+
+        if ( _layer->getType() == MapLayer::TYPE_IMAGE ) {
+            GeoImage* img = _layer->createImage( _key );
+            if ( img ) _cache.put( L2Cache::TileTag(_layer.get(),_key->str()), img );
+        }
+        else { // MapLayer::TYPE_HEIGHTFIELD
+            osg::HeightField* hf = _layer->createHeightField( _key.get() );
+            if ( hf ) _cache.put( L2Cache::TileTag(_layer.get(),_key->str()), hf );
+        }
+    }
+    osg::ref_ptr<MapLayer> _layer;
+    osg::ref_ptr<const TileKey> _key;
+    L2Cache::TileCache& _cache;
+};
+
+void
+L2Cache::TileCache::put( const L2Cache::TileTag& tag, osg::Referenced* obj )
+{
+    ScopedLock<Mutex> lock(_mutex);
+    _map[tag] = obj;
+    _fifo.push(tag);
+    if ( _fifo.size() > 1024 ) {
+        _map.erase( _fifo.front() );
+        _fifo.pop();
+    }
+}
+
+osg::Referenced*
+L2Cache::TileCache::get( const L2Cache::TileTag& tag )
+{
+    ScopedLock<Mutex> lock(_mutex);
+    L2Cache::TileMap::iterator i = _map.find(tag);
+    osg::ref_ptr<osg::Referenced> result = i != _map.end() ? i->second.get() : 0L;
+    if ( result.valid() ) {
+        _map.erase( i );
+    }
+    if ( result.valid() )
+        _hits++;
+    else
+        _misses++;
+    if ( result.valid() )
+        osg::notify(osg::NOTICE) << "hit, ratio = " << (float)_hits/((float)_hits+(float)_misses) << "%, cache size=" << _map.size() << std::endl;
+    else
+        osg::notify(osg::NOTICE) << "miss, ratio = " << (float)_hits/((float)_hits+(float)_misses) << "%, cache size=" << _map.size() << std::endl;
+    return result.release();
+}
+
+L2Cache::L2Cache()
+{
+    _service = new TaskService(16);
+}
+
+void
+L2Cache::scheduleSubKeys(MapLayer* layer, const TileKey* key)
+{
+    for( int i=0; i<4; i++ )
+    {
+        osg::ref_ptr<TileKey> subkey = key->createSubkey( i );
+        if ( layer->isKeyValid( subkey.get() ) )
+            _service->add( new FetchTask( layer, subkey.get(), _cache ) );
+    }
+}
+
+GeoImage*
+L2Cache::createImage(MapLayer* layer, const TileKey* key)
+{
+    scheduleSubKeys(layer,key);
+    osg::ref_ptr<GeoImage> result;
+    result = dynamic_cast<GeoImage*>( _cache.get( TileTag(layer,key->str()) ) );
+    if ( !result.valid() )
+        result = layer->createImage( key );
+    return result.release();
+}
+
+osg::HeightField*
+L2Cache::createHeightField(MapLayer* layer, const TileKey* key)
+{
+    scheduleSubKeys(layer,key);
+    osg::ref_ptr<osg::HeightField> result;
+    result = dynamic_cast<osg::HeightField*>( _cache.get( TileTag(layer,key->str()) ) );
+    if ( !result.valid() )
+        result = layer->createHeightField( key );
+    return result.release();
+}

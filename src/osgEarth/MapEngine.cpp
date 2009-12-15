@@ -77,14 +77,16 @@ struct TileImageBackfillCallback : public osg::NodeCallback
 MapEngine::MapEngine() :
 osg::Referenced( true )
 {
-    //nop
+    const char* useL2 = ::getenv("OSGEARTH_L2_CACHE");
+    _L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
 }
 
 MapEngine::MapEngine( const MapEngineProperties& props ) :
 osg::Referenced( true ),
 _engineProps( props )
 {
-    //nop
+    const char* useL2 = ::getenv("OSGEARTH_L2_CACHE");
+    _L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
 }
 
 MapEngine::~MapEngine()
@@ -537,7 +539,6 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     return result;
 }
 
-
 osg::Node*
 MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool wrapInPagedLOD )
 {
@@ -566,7 +567,10 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
 		//Only create images if the key is valid
         if ( i->get()->isKeyValid( key ) )
         {
-            image = i->get()->createImage( key );
+            if ( _L2cache )
+                image = _L2cache->createImage( i->get(), key );
+            else
+                image = i->get()->createImage( key );
         }
         image_tiles.push_back(image.get());
     }

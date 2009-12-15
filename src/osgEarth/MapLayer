@@ -25,6 +25,11 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
+#include <osgEarth/TaskService>
+#include <map>
+#include <utility>
+#include <queue>
+#include <OpenThreads/Mutex>
 
 namespace osgEarth
 {
@@ -357,10 +362,35 @@ namespace osgEarth
 			return _mapLayer->getEnabled();
 		}
 
-
-
 		osg::ref_ptr<MapLayer> _mapLayer;
 	};
+
+
+    class L2Cache
+    {
+    public:
+        L2Cache();
+        GeoImage* createImage( MapLayer* layer, const TileKey* key );
+        osg::HeightField* createHeightField( MapLayer* layer, const TileKey* key );
+    public:
+        typedef std::pair<MapLayer*,std::string> TileTag;
+        typedef std::map<TileTag,osg::ref_ptr<osg::Referenced> > TileMap;
+        typedef std::queue<TileTag> TileTagQueue;
+        struct TileCache {
+            TileCache() : _hits(0), _misses(0) { }
+            TileMap _map;
+            TileTagQueue _fifo;
+            OpenThreads::Mutex _mutex;
+            void put(const TileTag& tag, osg::Referenced* obj);
+            osg::Referenced* get(const TileTag& tag);
+            int _hits, _misses;
+        };
+
+    protected:
+        TileCache _cache;
+        TaskService* _service;
+        void scheduleSubKeys(MapLayer*,const TileKey*);
+    };
 }
 
 #endif // OSGEARTH_MAP_LAYER_H

@@ -52,6 +52,7 @@ namespace osgEarth
     struct Relative {
         bool expected;
         int elevLOD;
+        int imageryLOD;
         osgTerrain::TileID tileID;
     };
 
@@ -116,7 +117,7 @@ namespace osgEarth
         void servicePendingElevationRequests( int stamp, bool tileTableLocked );
 
         // returns TRUE if the tile was modified as a result of a completed request.
-        bool serviceCompletedRequests();
+        bool serviceCompletedRequests( bool tileTableLocked );
 
         /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
         void setHasElevationHint( bool hasElevation );
@@ -126,7 +127,9 @@ namespace osgEarth
 
         /** Gets or sets the LOD of this tile's current heightfield data. */
         int getElevationLOD() const;
+        int getImageryLOD() const;
         void setElevationLOD( int lod );
+        void setImageryLOD( int lod );
 
         /** Gets the terrain object to which this tile belongs. */
         class VersionedTerrain* getVersionedTerrain();
@@ -172,9 +175,11 @@ namespace osgEarth
         bool _elevationLayerRequested;
         bool _elevationLayerUpToDate;
         int  _elevationLOD;
+        int  _imageryLOD;
         bool _tileRegisteredWithTerrain;
         bool _useTileGenRequest;
         bool _tileGenNeeded;
+        bool _sequentialImagery;
 
         osg::ref_ptr<const TileKey> _key;
         osg::ref_ptr<GeoLocator> _keyLocator;
@@ -191,6 +196,7 @@ namespace osgEarth
         /** Deals with completed requests during the UPDATE traversal. */
         void installRequests( int stamp );
         bool readyForNewElevation();
+        bool readyForNewImagery();
         void adjustUpdateTraversalCount( int delta );
     };
 

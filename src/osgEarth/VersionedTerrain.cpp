@@ -153,6 +153,45 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
     int _nextLOD;
 };
 
+//struct TileImagePlaceholderLayerRequest : public TileLayerRequest
+//{
+//    TileImagePlaceholderLayerRequest( const TileKey* key, Map* map, MapEngine* engine, GeoLocator* keyLocator ) 
+//        : TileLayerRequest( key, map, engine ),
+//          _keyLocator(keyLocator)
+//    {
+//        _parentKey = key->createParentKey();
+//    }
+//
+//    void setParentImage( osg::Image* parentImage )
+//    {
+//        _parentImage = parentImage;
+//    }
+//
+//    void setNextLOD( int nextLOD )
+//    {
+//        _nextLOD = nextLOD;
+//    }
+//
+//    void operator()( ProgressCallback* progress )
+//    {
+//        if ( !progress->isCanceled() )
+//        {
+//            _result = _engine->createPlaceholderImageLayer(
+//
+//            _result = _engine->createPlaceholderHeightfieldLayer(
+//                _parentHF.get(),
+//                _parentKey.get(),
+//                _key.get(),
+//                _keyLocator.get() );
+//        }
+//    }
+//
+//    osg::ref_ptr<osg::HeightField> _parentHF;
+//    osg::ref_ptr<const TileKey> _parentKey;
+//    osg::ref_ptr<GeoLocator>    _keyLocator;
+//    int _nextLOD;
+//};
+
 // A task request that rebuilds a tile's terrain technique in the background. It
 // re-init's the geometry but does NOT swap the buffers (since this constitutes
 // altering the scene graph and must therefore be done in the update traversal).
@@ -202,9 +241,11 @@ _colorLayersDirty( false ),
 _usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _elevationLOD( key->getLevelOfDetail() ),
+_imageryLOD( 1 ),
 _tileRegisteredWithTerrain( false ),
 _useTileGenRequest( true ),
-_tileGenNeeded( false )
+_tileGenNeeded( false ),
+_sequentialImagery( true )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -306,6 +347,18 @@ int
 VersionedTile::getElevationLOD() const
 {
     return _elevationLOD;
+}
+
+void
+VersionedTile::setImageryLOD( int lod )
+{
+    _imageryLOD = lod;
+}
+
+int
+VersionedTile::getImageryLOD() const
+{
+    return _imageryLOD;
 }
 
 VersionedTerrain*
@@ -423,6 +476,43 @@ VersionedTile::readyForNewElevation()
 }
 
 
+
+// returns TRUE if it's safe for this tile to load its next elevation data layer.
+bool
+VersionedTile::readyForNewImagery()
+{
+    bool ready = true;
+
+    if ( _imageryLOD == _key->getLevelOfDetail() )
+    {
+        ready = false;
+    }
+    else if ( _family[PARENT].imageryLOD < 0 )
+    {
+        ready = false;
+    }
+    else
+    {
+        for( int i=PARENT; i<=SOUTH; i++) 
+        {
+            if ( _family[i].expected && _family[i].imageryLOD >= 0 && _family[i].imageryLOD < _imageryLOD )
+            {
+                ready = false;
+                break;
+            }
+        }
+
+        // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
+        if ( ready && _imageryLOD+1 < _key->getLevelOfDetail() && _imageryLOD == _family[PARENT].imageryLOD )
+        {
+            ready = false;
+        }
+    }
+
+    return ready;
+}
+
+
 #define PRI_IMAGE_OFFSET 0.1f // priority offset of imagery relative to elevation
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
 
@@ -519,7 +609,10 @@ VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
         ss << "TileColorLayerRequest " << _key->str() << std::endl;
         r->setName( ss.str() );
         r->setState( osgEarth::TaskRequest::STATE_IDLE );
-        r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail());
+        if ( _sequentialImagery )
+            r->setPriority( -(float)_key->getLevelOfDetail() + PRI_IMAGE_OFFSET );
+        else
+            r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail());
         r->setProgressCallback( new StampedProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
 
         //If we already have a request for this layer, remove it from the list and use the new one
@@ -636,6 +729,7 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
                     er->setProgressCallback( new ProgressCallback() );
                     float priority = (float)_key->getLevelOfDetail();
                     er->setPriority( priority );
+                    //TODO: should there be a read lock here when accessing the parent tile's elevation layer? GW
                     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(parentTile->getElevationLayer());
                     er->setParentHF( hfLayer->getHeightField() );
                     er->setNextLOD( _family[PARENT].elevLOD );
@@ -672,7 +766,7 @@ VersionedTile::markTileForRegeneration()
 // called from the UPDATE TRAVERSAL, because this method can potentially alter
 // the scene graph.
 bool
-VersionedTile::serviceCompletedRequests()
+VersionedTile::serviceCompletedRequests( bool tileTableLocked )
 {
     bool tileModified = false;
 
@@ -691,81 +785,114 @@ VersionedTile::serviceCompletedRequests()
         _tileGenRequest = 0;
     }
 
-    // Then the image requests:
-    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
+    if ( !_sequentialImagery || readyForNewImagery() )
     {
-        bool increment = true;
-
-        if ( i->get()->isCompleted() )
+        if ( _sequentialImagery && _imageryLOD+1 < _key->getLevelOfDetail() )
         {
-            TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
-
-            if ( r->wasCanceled() )
+            if ( _family[PARENT].imageryLOD > _imageryLOD )
             {
-                //Reset the cancelled task to IDLE and give it a new progress callback.
-                r->setState( TaskRequest::STATE_IDLE );
-                r->setProgressCallback( new StampedProgressCallback(
-                    r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
-                r->reset();
-            }
-            else // success..
-            {
-                int index = -1;
-                {
-                    // Lock the map data mutex, since we are querying the map model:
-                    ScopedReadLock mapDataLock( map->getMapDataMutex() );
+                osg::ref_ptr<VersionedTile> parentTile;
+                getVersionedTerrain()->getVersionedTile( _family[PARENT].tileID, parentTile, !tileTableLocked );
 
-                    //See if we even care about the request
-                    for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
-                    {
-                        if (map->getImageMapLayers()[j]->getId() == r->_layerId)
-                        {
-                            index = j;
-                            break;
-                        }
-                    }
+                std::vector< osg::ref_ptr<osgTerrain::ImageLayer> > parentColorLayers;
+                {
+                    ScopedReadLock l2( parentTile->getTileLayersMutex() );
+                    for( int i=0; i<parentTile->getNumColorLayers(); i++ )
+                        parentColorLayers.push_back( static_cast<osgTerrain::ImageLayer*>(parentTile->getColorLayer(i)) );
                 }
 
-                //The maplayer was probably deleted
-                if (index < 0)
                 {
-                    osg::notify(osg::INFO) << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
-                    i = _requests.erase(i);
-                    increment = false;
+                    ScopedWriteLock lock( getTileLayersMutex() );
+                    for(int i=0; i<parentColorLayers.size(); i++ )
+                        this->setColorLayer(i, parentColorLayers[i].get());
                 }
-                else
-                {
-                    osg::ref_ptr<osgTerrain::ImageLayer> newImgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
-                    if ( newImgLayer.valid() )
-                    {
-                        // update the color layer safely:
-                        {
-                            OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
-                            this->setColorLayer( index, newImgLayer.get() );
-                        }
 
-                        markTileForRegeneration();
+                setImageryLOD( _imageryLOD+1 );
 
-                        //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
-
-                        // remove from the list (don't reference "r" after this!)
-                        i = _requests.erase( i );
-                        increment = false;
-                    }
-                    else
-                    {  
-                        osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
-
-                        //The color layer request failed, probably due to a server error. Reset it.
-                        r->setState( TaskRequest::STATE_IDLE );
-                        r->reset();
-                    }
-                }
+                markTileForRegeneration();
             }
         }
 
-        if ( increment )
-            ++i;
+        else
+        {
+            // Then the image requests:
+            for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
+            {
+                bool increment = true;
+
+                if ( i->get()->isCompleted() )
+                {
+                    TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
+
+                    if ( r->wasCanceled() )
+                    {
+                        //Reset the cancelled task to IDLE and give it a new progress callback.
+                        r->setState( TaskRequest::STATE_IDLE );
+                        r->setProgressCallback( new StampedProgressCallback(
+                            r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
+                        r->reset();
+                    }
+                    else // success..
+                    {
+                        int index = -1;
+                        {
+                            // Lock the map data mutex, since we are querying the map model:
+                            ScopedReadLock mapDataLock( map->getMapDataMutex() );
+
+                            //See if we even care about the request
+                            for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
+                            {
+                                if (map->getImageMapLayers()[j]->getId() == r->_layerId)
+                                {
+                                    index = j;
+                                    break;
+                                }
+                            }
+                        }
+
+                        //The maplayer was probably deleted
+                        if (index < 0)
+                        {
+                            osg::notify(osg::INFO) << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
+                            i = _requests.erase(i);
+                            increment = false;
+                        }
+                        else
+                        {
+                            osg::ref_ptr<osgTerrain::ImageLayer> newImgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
+                            if ( newImgLayer.valid() )
+                            {
+                                // update the color layer safely:
+                                {
+                                    OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
+                                    this->setColorLayer( index, newImgLayer.get() );
+                                }
+
+                                setImageryLOD( _key->getLevelOfDetail() );
+                                markTileForRegeneration();
+
+                                //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
+
+                                // remove from the list (don't reference "r" after this!)
+                                i = _requests.erase( i );
+                                increment = false;
+                            }
+                            else
+                            {  
+                                osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
+
+                                //The color layer request failed, probably due to a server error. Reset it.
+                                r->setState( TaskRequest::STATE_IDLE );
+                                r->reset();
+                            }
+                        }
+                    }
+                }
+
+                if ( increment )
+                    ++i;
+            }
+        }
     }
 
     // Finally, the elevation requests:
@@ -1066,55 +1193,70 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     {
         family[PARENT].expected = true;
         family[PARENT].elevLOD = -1;
+        family[PARENT].imageryLOD = -1;
         family[PARENT].tileID = osgTerrain::TileID( tileId.level-1, tileId.x/2, tileId.y/2 );
         osg::ref_ptr<VersionedTile> parent;
         getVersionedTile( family[PARENT].tileID, parent, !tileTableLocked );
-        if ( parent.valid() )
+        if ( parent.valid() ) {
             family[PARENT].elevLOD = parent->getElevationLOD();
+            family[PARENT].imageryLOD = parent->getImageryLOD();
+        }
     }
 
     // west
     {
         family[WEST].expected = tileId.x > 0 || wrapX;
         family[WEST].elevLOD = -1;
+        family[WEST].imageryLOD = -1;
         family[WEST].tileID = osgTerrain::TileID( tileId.level, tileId.x > 0? tileId.x-1 : tilesX-1, tileId.y );
         osg::ref_ptr<VersionedTile> west;
         getVersionedTile( family[WEST].tileID, west, !tileTableLocked );
-        if ( west.valid() )
+        if ( west.valid() ) {
             family[WEST].elevLOD = west->getElevationLOD();
+            family[WEST].imageryLOD = west->getImageryLOD();
+        }
     }
 
     // north
     {
         family[NORTH].expected = tileId.y < tilesY-1;
         family[NORTH].elevLOD = -1;
+        family[NORTH].imageryLOD = -1;
         family[NORTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y < tilesY-1 ? tileId.y+1 : 0 );
         osg::ref_ptr<VersionedTile> north;
         getVersionedTile( family[NORTH].tileID, north, !tileTableLocked );
-        if ( north.valid() )
+        if ( north.valid() ) {
             family[NORTH].elevLOD = north->getElevationLOD();
+            family[NORTH].imageryLOD = north->getImageryLOD();
+        }
     }
 
     // east
     {
         family[EAST].expected = tileId.x < tilesX-1 || wrapX;
         family[EAST].elevLOD = -1;
+        family[EAST].imageryLOD = -1;
         family[EAST].tileID = osgTerrain::TileID( tileId.level, tileId.x < tilesX-1 ? tileId.x+1 : 0, tileId.y );
         osg::ref_ptr<VersionedTile> east;
         getVersionedTile( family[EAST].tileID, east, !tileTableLocked );
-        if ( east.valid() )
+        if ( east.valid() ) {
             family[EAST].elevLOD = east->getElevationLOD();
+            family[EAST].imageryLOD = east->getImageryLOD();
+        }
     }
 
     // south
     {
         family[SOUTH].expected = tileId.y > 0;
         family[SOUTH].elevLOD = -1;
+        family[SOUTH].imageryLOD = -1;
         family[SOUTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y > 0 ? tileId.y-1 : tilesY-1 );
         osg::ref_ptr<VersionedTile> south;
         getVersionedTile( family[SOUTH].tileID, south, !tileTableLocked );
-        if ( south.valid() )
+        if ( south.valid() ) {
             family[SOUTH].elevLOD = south->getElevationLOD();
+            family[SOUTH].imageryLOD = south->getImageryLOD();
+        }
     }
 }
 
@@ -1241,7 +1383,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                     refreshFamily( i->first, i->second->getFamily(), true );
                     i->second->servicePendingElevationRequests( stamp, true );
 
-                    bool tileModified = i->second->serviceCompletedRequests();
+                    bool tileModified = i->second->serviceCompletedRequests( true );
                     if ( tileModified && _terrainCallbacks.size() > 0 )
                     {
                         _updatedTiles.push_back( i->second.get() );

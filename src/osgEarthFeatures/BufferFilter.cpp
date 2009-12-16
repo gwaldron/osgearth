@@ -69,9 +69,9 @@ BufferFilter::push( Feature* input, const FilterContext& context )
     if ( !input || !input->getGeometry() )
         return true;
 
-#ifdef OSGEARTH_HAVE_GEOS
-
     osg::ref_ptr<Geometry> output;
+
+#ifdef OSGEARTH_HAVE_GEOS   
 
     geom::Geometry* inGeom = GEOSUtils::importGeometry( input->getGeometry() );
     if ( inGeom )
@@ -123,7 +123,6 @@ BufferFilter::push( Feature* input, const FilterContext& context )
     }
 
 #endif // OSGEARTH_HAVE_GEOS
-    
     return output.valid();
 }
 

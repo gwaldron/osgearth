@@ -83,12 +83,14 @@ _cellsY( 0 )
 
 FeatureGridder::~FeatureGridder()
 {
+#ifdef OSGEARTH_HAVE_GEOS
     for( std::list<void*>::iterator i = _geosGeoms.begin(); i != _geosGeoms.end(); ++i )
     {
         geom::Geometry* geom = static_cast<geom::Geometry*>( *i );
         if ( geom )
             geom->getFactory()->destroyGeometry( geom );
     }
+#endif
 }
 
 int

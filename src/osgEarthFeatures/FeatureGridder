@@ -17,29 +17,45 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_CROP_FILTER_H
-#define OSGEARTHFEATURES_CROP_FILTER_H 1
+#ifndef OSGEARTHFEATURES_FEATURE_GRIDDER_H
+#define OSGEARTHFEATURES_FEATURE_GRIDDER_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Filter>
 #include <osgEarth/GeoData>
+
+using namespace osgEarth;
 
 namespace osgEarth { namespace Features
 {
-    class OSGEARTHFEATURES_EXPORT CropFilter
+    /**
+     * Given a list of features, this will grid them up and return one
+     * grid cell at a time. For each grid cell, it will crop the feature
+     * geometry to the cell boundary.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureGridder : public osg::Referenced
     {
     public:
-        CropFilter( const GeoExtent& cropExtent );
+        static bool isSupported();
 
-        bool push( Feature* feature, FilterContext& context );
+    public:
+        FeatureGridder( const FeatureList& features, const GeoExtent& extent, double width, double height );
 
-        bool push( FeatureList& features, FilterContext& context );
+        int getNumCells() const;
+
+        bool getCell( int i, FeatureList& output ) const;
+
+    public:
+        virtual ~FeatureGridder();
 
     protected:
-        GeoExtent _cropExtent;
+        const FeatureList& _input;
+        GeoExtent _inputExtent;
+        double _cellWidth, _cellHeight;
+        int _cellsX, _cellsY;
+        std::list<void*> _geosGeoms;
     };
 
 } } // namespace osgEarth::Features
 
-#endif // OSGEARTHFEATURES_CROP_FILTER_H
+#endif //OSGEARTHFEATURES_FEATURE_GRIDDER_H

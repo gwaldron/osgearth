@@ -123,67 +123,74 @@ public:
                 if ( srHandle )
                 {
                     osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle );
-
-                    // read the first feature to determine the geometry type and dimension.
-                    OGR_L_ResetReading( _layerHandle );
-                    OGRFeatureH testFeatureHandle = OGR_L_GetNextFeature( _layerHandle );
-                    if ( testFeatureHandle )
+                    if ( srs.valid() )
                     {
-                        OGRGeometryH geomHandleRef = OGR_F_GetGeometryRef( testFeatureHandle ); // no need to destroy "refs"
-                	    if ( geomHandleRef )
-                        {
-                            OGRwkbGeometryType wkb_type = OGR_G_GetGeometryType( geomHandleRef );
-
-                            FeatureProfile::GeometryType geomType = FeatureProfile::GEOM_UNKNOWN;
-
-                            if ( 
-                                wkb_type == wkbLineString ||
-                                wkb_type == wkbLineString25D ||
-                                wkb_type == wkbMultiLineString ||
-                                wkb_type == wkbMultiLineString25D )
-                            {
-                                geomType = FeatureProfile::GEOM_LINE;
-                            }
-                            else if (
-                                wkb_type == wkbMultiPoint ||
-                                wkb_type == wkbMultiPoint25D ||
-                                wkb_type == wkbPoint ||
-                                wkb_type == wkbPoint25D )
-                            {
-                                geomType = FeatureProfile::GEOM_POINT;
-                            }
-                            else if (
-                                wkb_type == wkbMultiPolygon ||
-                                wkb_type == wkbMultiPolygon25D ||
-                                wkb_type == wkbPolygon ||
-                                wkb_type == wkbPolygon25D )
-                            {
-                                geomType = FeatureProfile::GEOM_POLYGON;
-                            }
-                            else // unsupported type.
-                            {
-                                osg::notify( osg::WARN ) << "[osgEarth::FeatureSourceOGR] Unsupported WKB shape type:" << wkb_type << std::endl;
-                            }
-                           
-                            bool multiGeom = wkb_type == wkbMultiPolygon || wkb_type == wkbMultiPolygon25D;
-
-                            // still need to do the above to determine the multiGeom flag..
-                            if ( getGeometryTypeOverride() != FeatureProfile::GEOM_UNKNOWN )
-                                geomType = getGeometryTypeOverride();
-
-                            // extract the dimensionality of the geometry:
-                            int dim = OGR_G_GetCoordinateDimension( geomHandleRef );
-
-                            // if all went well, make the new profile.
-                            if ( srs.valid() && dim >= 2 && dim <= 3 && geomType != FeatureProfile::GEOM_UNKNOWN )
-                            {
-                                result = new FeatureProfile( srs.get(), geomType, dim, multiGeom );
-                                osg::notify(osg::NOTICE) << "[osgEarth] _geomTypeOverride = " << getGeometryTypeOverride() << std::endl;
-                            }
-
-                        }
-                        OGR_F_Destroy( testFeatureHandle );
+                        result = new FeatureProfile( srs.get() );
                     }
+
+                    //// read the first feature to determine the geometry type and dimension.
+                    //OGR_L_ResetReading( _layerHandle );
+                    //OGRFeatureH testFeatureHandle = OGR_L_GetNextFeature( _layerHandle );
+                    //if ( testFeatureHandle )
+                    //{
+                    //    OGRGeometryH geomHandleRef = OGR_F_GetGeometryRef( testFeatureHandle ); // no need to destroy "refs"
+                	   // if ( geomHandleRef )
+                    //    {
+                    //        OGRwkbGeometryType wkb_type = OGR_G_GetGeometryType( geomHandleRef );
+
+                    //        Geometry::Type geomType = Geometry::TYPE_UNKNOWN;
+
+                    //        //FeatureProfile::GeometryType geomType = FeatureProfile::GEOM_UNKNOWN;
+
+                    //        //if ( 
+                    //        //    wkb_type == wkbLineString ||
+                    //        //    wkb_type == wkbLineString25D ||
+                    //        //    wkb_type == wkbMultiLineString ||
+                    //        //    wkb_type == wkbMultiLineString25D )
+                    //        //{
+                    //        //    geomType = FeatureProfile::GEOM_LINE;
+                    //        //}
+                    //        //else if (
+                    //        //    wkb_type == wkbMultiPoint ||
+                    //        //    wkb_type == wkbMultiPoint25D ||
+                    //        //    wkb_type == wkbPoint ||
+                    //        //    wkb_type == wkbPoint25D )
+                    //        //{
+                    //        //    geomType = FeatureProfile::GEOM_POINT;
+                    //        //}
+                    //        //else if (
+                    //        //    wkb_type == wkbMultiPolygon ||
+                    //        //    wkb_type == wkbMultiPolygon25D ||
+                    //        //    wkb_type == wkbPolygon ||
+                    //        //    wkb_type == wkbPolygon25D )
+                    //        //{
+                    //        //    geomType = FeatureProfile::GEOM_POLYGON;
+                    //        //}
+                    //        //else // unsupported type.
+                    //        //{
+                    //        //    osg::notify( osg::WARN ) << "[osgEarth::FeatureSourceOGR] Unsupported WKB shape type:" << wkb_type << std::endl;
+                    //        //}
+                    //       
+                    //        //bool multiGeom = wkb_type == wkbMultiPolygon || wkb_type == wkbMultiPolygon25D;
+
+                    //        // still need to do the above to determine the multiGeom flag..
+                    //        if ( getGeometryTypeOverride() != FeatureProfile::GEOM_UNKNOWN )
+                    //            geomType = getGeometryTypeOverride();
+
+                    //        // extract the dimensionality of the geometry:
+                    //        //int dim = OGR_G_GetCoordinateDimension( geomHandleRef );
+
+                    //        // if all went well, make the new profile.
+                    //        if ( srs.valid() ) //&& dim >= 2 && dim <= 3 && geomType != FeatureProfile::GEOM_UNKNOWN )
+                    //        {
+                    //            result = new FeatureProfile( srs.get(), geomType );
+                    //            //result = new FeatureProfile( srs.get(), geomType, dim, multiGeom );
+                    //            osg::notify(osg::NOTICE) << "[osgEarth] _geomTypeOverride = " << getGeometryTypeOverride() << std::endl;
+                    //        }
+
+                    //    }
+                    //    OGR_F_Destroy( testFeatureHandle );
+                    //}
                 }
             }
 	    }
@@ -199,7 +206,12 @@ public:
 
     FeatureCursor* createCursor( const Query& query )
     {
-        return new FeatureCursorOGR( _dsHandle, _layerHandle, getFeatureProfile(), query, getFilters() );
+        return new FeatureCursorOGR( 
+            _dsHandle, 
+            _layerHandle, 
+            getFeatureProfile(),
+            query, 
+            getFilters() );
     }
 
 protected:

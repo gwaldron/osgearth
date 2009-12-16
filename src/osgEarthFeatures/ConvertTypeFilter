@@ -17,55 +17,47 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H
-#define OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H 1
+#ifndef OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H
+#define OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/Styling>
 #include <osg/Geode>
 
 using namespace osgEarth;
 
 namespace osgEarth { namespace Features
 {
-    class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter
+    /**
+     * This filter will change geometry from one type to another.
+     */
+    class OSGEARTHFEATURES_EXPORT ConvertTypeFilter : public FeatureFilter
     {
     public:
-
-        ExtrudeGeometryFilter();
-        ExtrudeGeometryFilter( const ExtrudeGeometryFilter& rhs );
-        ExtrudeGeometryFilter( double offset, double distance );
-        ExtrudeGeometryFilter( double distance );
-
-        double offset() const { return _offset; }
-        double& offset() { return _offset; }
-
-        double distance() const { return _distance; }
-        double& distance() { return _distance; }
-
-        optional<Styling::StyleClass>& styleClass() { return _styleClass; }
+        // Call this determine whether this filter is available.
+        static bool isSupported() { return true; }
 
     public:
+        ConvertTypeFilter();
+        ConvertTypeFilter( const Geometry::Type& toType );
+        ConvertTypeFilter( const ConvertTypeFilter& rhs );
 
-        FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
+    public:
+        Geometry::Type& toType() {
+            return _toType; }
+        const Geometry::Type& toType() const {
+            return _toType; }
 
-        //osg::Node* getOutput( const FilterContext& context );
-
-        //osg::Node* takeOutput( FilterContext& context );
+    public:
+        virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
     protected:
-        osg::ref_ptr<osg::Geode> _geode;
-        optional<Styling::StyleClass> _styleClass;
-        double _offset;
-        double _distance;
-        void reset();
+        Geometry::Type _toType;
 
         bool push( Feature* input, const FilterContext& context );
     };
 
 } } // namespace osgEarth::Features
 
-
-#endif // OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H
+#endif // OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H

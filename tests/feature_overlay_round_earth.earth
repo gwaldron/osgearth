@@ -20,23 +20,25 @@ map, it will only support data that covers at most one hemisphere.
         <features name="states" driver="ogr">
             <url>../data/usa.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
-            <geometry_type>line</geometry_type>
         </features>
-    
+        
+        <!-- Convert polygons to lines;
+             Comment this out to project the polys instead -->
+        <geometry_type>line</geometry_type>
+            
         <!-- Customize the parameters of the projected overlay (osgSim::OverlayNode) -->
         <texture_size>2048</texture_size>
-        <texture_unit>1</texture_unit>
+        <texture_unit>1</texture_unit>   
         
-        <!-- A default feature class for styling the geometry. -->
-        <class name="default">
-            <style type="text/css">
-                style {
-                   stroke: #FFFF00;
-                   stroke-opacity: 1.0;
-                   stroke-width: 4.0;
-                }            
-            </style>
-        </class>
+        <!-- Appearance details -->
+        <style type="text/css">
+            states {
+               stroke: #ffff00;
+               stroke-width: 4.0;
+               fill:   #ff0000;
+               fill-opacity: 0.4;
+            }            
+        </style>
         
     </model>
     

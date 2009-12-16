@@ -37,14 +37,10 @@ namespace osgEarth { namespace Features
     {
     public:
 
-        static bool exportGeometry(
-            geos::geom::Geometry* input,
-            FeatureGeometry& output,
-            const FeatureProfile* context );
+        static Geometry* exportGeometry( const geos::geom::Geometry* input );
 
-        static geos::geom::Geometry* importGeometry(
-            const FeatureGeometry& input,
-            const FeatureProfile* profile );
+
+        static geos::geom::Geometry* importGeometry( const Geometry* input );
 
     };
 

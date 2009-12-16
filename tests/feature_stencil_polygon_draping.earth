@@ -26,9 +26,7 @@ block.
         <!-- Configure the OGR feature driver to read the shapefile.
              Applying a slight negative buffer will "erode" the
              shapes, highlighting the borders between countries. -->
-             
-        <debug show_volumes="false"/>
-             
+                          
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
@@ -37,7 +35,7 @@ block.
         
         <!-- Since some countries span large areas on the globe, we need to
              use a larger-than-normal extrusion distance on the stencil
-             volumes. (300000 is the default.) -->
+             volumes. (300000 is the default for a geocentric map.) -->
              
         <extrusion_distance>400000</extrusion_distance>
         
@@ -69,7 +67,7 @@ block.
         
         <class name="P3">
             <query>
-                <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY < 97228750 ]]></expr>
+                <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
             </query>
             <style type="text/css">
                 style {

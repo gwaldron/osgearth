@@ -31,25 +31,34 @@ _makeGeocentric( makeGeocentric )
 bool
 TransformFilter::push( Feature* input, const FilterContext& context )
 {
-    for( int p=0; p<input->getNumParts(); p++ )
-    {
-        osg::Vec3dArray* part = input->getPart( p );
-        bool success = _outputSRS->transformPoints( context.profile()->getSRS(), part, false );
-        //if ( !success )
-        //    return false;
+    if ( !input || !input->getGeometry() )
+        return true;
 
-        if ( _makeGeocentric && _outputSRS->isGeographic() )
+    Geometry* container = input->getGeometry();
+    if ( container )
+    {
+        GeometryIterator iter( container );
+        while( iter.hasMore() )
         {
-            const osg::EllipsoidModel* em = context.profile()->getSRS()->getEllipsoid();
-            for( int i=0; i<part->size(); i++ )
+            Geometry* geom = iter.next();
+            bool success = _outputSRS->transformPoints( context.profile()->getSRS(), geom, false );
+            
+            // todo: handle errors
+            // if ( !success ) return false;
+
+            if ( _makeGeocentric && _outputSRS->isGeographic() )
             {
-                double x, y, z;
-                em->convertLatLongHeightToXYZ(
-                    osg::DegreesToRadians( (*part)[i].y() ),
-                    osg::DegreesToRadians( (*part)[i].x() ),
-                    (*part)[i].z(),
-                    x, y, z );
-                (*part)[i].set( x, y, z );
+                const osg::EllipsoidModel* em = context.profile()->getSRS()->getEllipsoid();
+                for( int i=0; i<geom->size(); i++ )
+                {
+                    double x, y, z;
+                    em->convertLatLongHeightToXYZ(
+                        osg::DegreesToRadians( (*geom)[i].y() ),
+                        osg::DegreesToRadians( (*geom)[i].x() ),
+                        (*geom)[i].z(),
+                        x, y, z );
+                    (*geom)[i].set( x, y, z );
+                }
             }
         }
     }
@@ -69,11 +78,11 @@ TransformFilter::push( FeatureList& input, const FilterContext& context )
 
     outputCx.isGeocentric() = _makeGeocentric;
 
-    outputCx.profile() = new FeatureProfile(
-        _outputSRS.get(),
-        context.profile()->getGeometryType(),
-        context.profile()->getDimensionality(),
-        context.profile()->isMultiGeometry() );
+    outputCx.profile() = new FeatureProfile( _outputSRS.get() );
+    
+        //context.profile()->getGeometryType() );
+        //context.profile()->getDimensionality(),
+        //context.profile()->isMultiGeometry() );
 
     return outputCx;
 }

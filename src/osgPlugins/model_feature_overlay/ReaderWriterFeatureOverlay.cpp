@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
-#include <osgEarthFeatures/CropFilter>
 #include <osg/Notify>
 #include <osg/LineWidth>
 #include <osgDB/FileNameUtils>
@@ -37,11 +36,12 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_FEATURES     "features"
-#define PROP_TEXTURE_UNIT "texture_unit"
-#define PROP_TEXTURE_SIZE "texture_size"
-#define PROP_OVERLAY_TECH "overlay_technique"
-#define PROP_BASE_HEIGHT  "base_height"
+#define PROP_FEATURES      "features"
+#define PROP_TEXTURE_UNIT  "texture_unit"
+#define PROP_TEXTURE_SIZE  "texture_size"
+#define PROP_OVERLAY_TECH  "overlay_technique"
+#define PROP_BASE_HEIGHT   "base_height"
+#define PROP_GEOMETRY_TYPE "geometry_type"
 
 #define VAL_OT_ODWOO      "object_dependent_with_orthographic_overlay"
 #define VAL_OT_VDWOO      "view_dependent_with_orthographic_overlay"
@@ -57,7 +57,7 @@ public:
         _baseHeight( 0.0 ),
         _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
     {
-        //TODO
+        //nop
     }
 
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
@@ -92,13 +92,27 @@ public:
                 _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
         }
 
+        // force a particular geometry type
+        if ( conf.hasValue( PROP_GEOMETRY_TYPE ) )
+        {
+            // geometry type override: the config can ask that input geometry
+            // be interpreted as a particular geometry type
+            std::string gt = conf.value( PROP_GEOMETRY_TYPE );
+            if ( gt == "line" || gt == "lines" || gt == "linestrip" )
+                _geomTypeOverride = Geometry::TYPE_LINESTRING;
+            else if ( gt == "point" || gt == "points" || gt == "pointset" )
+                _geomTypeOverride = Geometry::TYPE_POINTSET;
+            else if ( gt == "polygon" || gt == "polygons" )
+                _geomTypeOverride = Geometry::TYPE_POLYGON;
+        }
+
         // load up the style catalog.
         Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
     }
 
     osg::Node* buildClass( const Styling::StyleClass& style )
     {
-        bool isGeocentric = _map->getCoordinateSystemType() == osgEarth::Map::CSTYPE_GEOCENTRIC;
+        bool isGeocentric = _map->isGeocentric();
 
         //osg::notify(osg::NOTICE)
         //    << "Building class " << style.name() << ", SQL = " << style.query().expression() << std::endl;
@@ -118,12 +132,14 @@ public:
         context = xform.push( features, context );
 
         // Build geometry:
-        BuildGeometryFilter buildGeom;
+        BuildGeometryFilter build;    
+        if ( _geomTypeOverride.isSet() )
+            build.geomTypeOverride() = _geomTypeOverride.get();
 
         // apply the style rule if we have one:
         osg::ref_ptr<osg::Node> result;
-        buildGeom.setStyleClass( style );
-        context = buildGeom.push( features, result, context );
+        build.styleClass() = style;
+        context = build.push( features, result, context );
 
         return result.release();
     }
@@ -131,7 +147,6 @@ public:
     osg::Node* createOrInstallNode( MapNode* mapNode, ProgressCallback* progress =0L )
     {
         if ( !_features.valid() ) return 0L;
-
 
         // figure out which rule to use to style the geometry.
         Styling::NamedLayer styleLayer;
@@ -173,6 +188,7 @@ private:
     osgSim::OverlayNode::OverlayTechnique _overlayTech;
     osg::ref_ptr<const osgEarth::Map> _map;
     Styling::StyleCatalog _styles;
+    optional<Geometry::Type> _geomTypeOverride;
 };
 
 

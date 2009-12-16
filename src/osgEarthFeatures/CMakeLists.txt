@@ -15,14 +15,14 @@ SET(LIB_PUBLIC_HEADERS
     BufferFilter
     BuildGeometryFilter  
     Common
-    CropFilter
+    ConvertTypeFilter
     CssUtils
     ResampleFilter
-    ExtrudeGeometryFilter
     Feature
-    FeatureRasterizer
+    FeatureGridder
     FeatureSource
     Filter
+    Geometry
     GEOS
 	Query
 	ScaleFilter
@@ -35,15 +35,15 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     BufferFilter.cpp
     BuildGeometryFilter.cpp
-    CropFilter.cpp
+    ConvertTypeFilter.cpp
     CssUtils.cpp
     ResampleFilter.cpp
-    ExtrudeGeometryFilter.cpp
     Feature.cpp
-    FeatureRasterizer.cpp
+    FeatureGridder.cpp
     FeatureSource.cpp
     Filter.cpp
     GEOS.cpp
+    Geometry.cpp
 	Query.cpp
 	ScaleFilter.cpp
     SLD.cpp

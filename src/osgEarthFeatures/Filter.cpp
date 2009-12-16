@@ -36,3 +36,5 @@ _inverseReferenceFrame( rhs._inverseReferenceFrame )
 {
     //NOP
 }
+
+//---------------------------------------------------------------------------

@@ -68,10 +68,10 @@ StyleVisitor::apply( class StyleCatalog& obj ) {
 /**************************************************************************/
 
 osg::Vec4ub
-StyleClass::getColor( const FeatureProfile::GeometryType& geomType ) const
+StyleClass::getColor( const Geometry::Type& geomType ) const
 {
     osg::Vec4ub color;
-    if ( geomType == FeatureProfile::GEOM_POLYGON )
+    if ( geomType == Geometry::TYPE_POLYGON )
     {
         color = polygonSymbolizer().fill().color();
         color.a() = (int)(255.0 * polygonSymbolizer().fill().opacity());

@@ -35,9 +35,9 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
 _dsHandle( dsHandle ),
 _layerHandle( layerHandle ),
 _resultSetHandle( 0L ),
+_profile( profile ),
 _query( query ),
 _filters( filters ),
-_profile( profile ),
 _chunkSize( 50 ),
 _nextHandleToQueue( 0L ),
 _spatialFilter( 0L )
@@ -194,7 +194,7 @@ FeatureCursorOGR::readChunk()
 
         for( FeatureFilterList::iterator i = _filters.begin(); i != _filters.end(); ++i )
         {
-            FeatureFilter* filter = i->get(); //*i;
+            FeatureFilter* filter = i->get();
             cx = filter->push( preProcessList, cx );
         }
     }
@@ -206,46 +206,117 @@ FeatureCursorOGR::readChunk()
 }
 
 static void
-insertPart( OGRGeometryH geomHandle, const FeatureProfile* profile, Feature* feature )
-{    
-    int numPoints = OGR_G_GetPointCount( geomHandle );
-    if ( numPoints > 0 )
+populate( OGRGeometryH geomHandle, Geometry* target, int numPoints )
+{
+    for( int v = numPoints-1; v >= 0; v-- ) // reverse winding.. we like ccw
     {
-        osg::Vec3dArray* points = new osg::Vec3dArray( numPoints );
-
-        int j=0;
-        for( int v = numPoints-1; v >= 0; v-- ) // reserve winding
-        {
-            double x=0, y=0, z=0;
-            OGR_G_GetPoint( geomHandle, v, &x, &y, &z );
-            osg::Vec3d p( x, y, z );
-            if ( j == 0 || p != (*points)[j-1] ) // remove dupes
-                (*points)[j++] = p;
-        }
-        if ( j > 0 ) points->resize( j );
-
-        feature->addPart( points );
+        double x=0, y=0, z=0;
+        OGR_G_GetPoint( geomHandle, v, &x, &y, &z );
+        osg::Vec3d p( x, y, z );
+        if ( target->size() == 0 || p != target->back() ) // remove dupes
+            target->push_back( p );
     }
 }
 
-static void
-insertGeometry( OGRGeometryH geomHandle, const FeatureProfile* profile, Feature* feature )
+static Polygon*
+createPolygon( OGRGeometryH geomHandle )
 {
-    int numParts = OGR_G_GetGeometryCount( geomHandle );
+    Polygon* output = 0L;
 
+    int numParts = OGR_G_GetGeometryCount( geomHandle );
     if ( numParts == 0 )
     {
-        insertPart( geomHandle, profile, feature );
+        int numPoints = OGR_G_GetPointCount( geomHandle );
+        output = new Polygon( numPoints );
+        populate( geomHandle, output, numPoints );
+        output->open();
     }
-    else
+    else if ( numParts > 0 )
     {
+        Polygon* poly = 0L;
         for( int p = 0; p < numParts; p++ )
         {
             OGRGeometryH partRef = OGR_G_GetGeometryRef( geomHandle, p );
-            if ( partRef )
-                insertPart( partRef, profile, feature );
+            int numPoints = OGR_G_GetPointCount( partRef );
+            if ( p == 0 )
+            {
+                output = new Polygon( numPoints );
+                populate( partRef, output, numPoints );
+                output->open();
+            }
+            else
+            {
+                Ring* hole = new Ring( numPoints );
+                populate( partRef, hole, numPoints );
+                hole->open();
+                output->getHoles().push_back( hole );
+            }
         }
     }
+    return output;
+}
+
+static Geometry*
+createGeometry( OGRGeometryH geomHandle )
+{
+    Geometry* output = 0L;
+
+    OGRwkbGeometryType wkbType = OGR_G_GetGeometryType( geomHandle );        
+    
+    if (
+        wkbType == wkbPolygon ||
+        wkbType == wkbPolygon25D )
+    {
+        output = createPolygon( geomHandle );
+    }
+    else if (
+        wkbType == wkbLineString ||
+        wkbType == wkbLineString25D )
+    {
+        int numPoints = OGR_G_GetPointCount( geomHandle );
+        output = new LineString( numPoints );
+        populate( geomHandle, output, numPoints );
+    }
+    else if (
+        wkbType == wkbLinearRing )
+    {
+        int numPoints = OGR_G_GetPointCount( geomHandle );
+        output = new Ring( numPoints );
+        populate( geomHandle, output, numPoints );
+    }
+    else if ( 
+        wkbType == wkbPoint ||
+        wkbType == wkbPoint25D )
+    {
+        //todo
+    }
+    else if (
+        wkbType == wkbGeometryCollection ||
+        wkbType == wkbGeometryCollection25D ||
+        wkbType == wkbMultiPoint ||
+        wkbType == wkbMultiPoint25D ||
+        wkbType == wkbMultiLineString ||
+        wkbType == wkbMultiLineString25D ||
+        wkbType == wkbMultiPolygon ||
+        wkbType == wkbMultiPolygon25D )
+    {
+        MultiGeometry* multi = new MultiGeometry();
+
+        int numGeoms = OGR_G_GetGeometryCount( geomHandle );
+        for( int n=0; n<numGeoms; n++ )
+        {
+            OGRGeometryH subGeomRef = OGR_G_GetGeometryRef( geomHandle, n );
+            if ( subGeomRef )
+            {
+                Geometry* geom = createGeometry( subGeomRef );
+                if ( geom ) multi->getComponents().push_back( geom );
+            }
+        } 
+
+        output = multi;
+    }
+
+    return output;
 }
 
 // NOTE: ASSUMES that OGR_SCOPED_LOCK is already in effect upon entry!
@@ -259,26 +330,14 @@ FeatureCursorOGR::createFeature( OGRFeatureH handle )
     OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
 	if ( geomRef )
 	{
-        if ( _profile->isMultiGeometry() )
-        {
-            int numGeoms = OGR_G_GetGeometryCount( geomRef );
-            for( int n=0; n<numGeoms; n++ )
-            {
-                OGRGeometryH subGeomRef = OGR_G_GetGeometryRef( geomRef, n );
-                if ( subGeomRef )
-                    insertGeometry( subGeomRef, _profile.get(), feature );               
-            }
-        }
-        else // single-geometry
-        {
-            insertGeometry( geomRef, _profile.get(), feature );
-        }
+        Geometry* geom = createGeometry( geomRef );
+        feature->setGeometry( geom );
 	}
 
-    if ( _profile->getGeometryType() == FeatureProfile::GEOM_POLYGON )
-    {
-        feature->getGeometry().normalizePolygon();
-    }
+    //if ( _profile->getGeometryType() == FeatureProfile::GEOM_POLYGON )
+    //{
+    //    feature->getGeometry().normalizePolygon();
+    //}
 
     //loadAttributes();
 

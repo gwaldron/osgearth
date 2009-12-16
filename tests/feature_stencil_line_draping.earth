@@ -5,7 +5,7 @@ This one demonstrates how to "drape" line data on the map using a
 stenciling technique.
 -->
 
-<map name="Feature Stencil Demo" type="geocentric">
+<map name="Feature Stencil Demo" type="round">
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -20,13 +20,14 @@ stenciling technique.
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
-            <geometry_type>line</geometry_type>
         </features>
+        
+        <geometry_type>line</geometry_type>
                 
-        <!-- This driver must apply a buffering operation to line
-             geometry in order to give it width. The "stroke-width"
-             property below defines how wide the lines will be
-             (in data source coordinates). -->
+        <!-- This driver uses the "stroke-width" property below to define
+             the width (in data source coordinated) of the draped lines.
+             In this case the units are degrees. -->
+             
         <style type="text/css">
             world {
                stroke: #ffff00;

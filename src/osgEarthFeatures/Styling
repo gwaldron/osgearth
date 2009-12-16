@@ -220,7 +220,7 @@ namespace osgEarth { namespace Features { namespace Styling
         virtual void accept( class StyleVisitor& visitor ) {
             visitor.apply( *this ); }
         
-        osg::Vec4ub getColor( const FeatureProfile::GeometryType& geomType ) const;
+        osg::Vec4ub getColor( const Geometry::Type& geomType ) const;
 
     protected:
         std::string _name;

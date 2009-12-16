@@ -21,6 +21,7 @@
 #define OSGEARTHFEATURES_FEATURE_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Geometry>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
 #include <map>
@@ -33,70 +34,19 @@ namespace osgEarth { namespace Features
      */
     class OSGEARTHFEATURES_EXPORT FeatureProfile : public osg::Referenced
     {
-    public:
-        enum GeometryType {
-            GEOM_UNKNOWN,
-            GEOM_POINT,
-            GEOM_LINE,
-            GEOM_POLYGON
-        };
-
-    public:
+    public:        
         FeatureProfile(
-            const SpatialReference* srs,
-            GeometryType geomType,
-            int dimensionality =2,
-            bool multiGeometry =false );
+            const SpatialReference* srs ); 
 
         /** Gets the spatial reference system of feature shapes in this class. */
-        const SpatialReference* getSRS() const;
-
-        /** Gets the vector shape type for features in this class. */
-        GeometryType getGeometryType() const;
-
-        /** Gets the dimensionality for features in this class. */
-        int getDimensionality() const;
-
-        /** Whether each feature contains more than one multipart geometry. (Not the
-            same as multi-part...all features are assumed to be multi-part) */
-        bool isMultiGeometry() const;
+        const SpatialReference* getSRS() const {
+            return _srs.get(); }
 
     protected:
         osg::ref_ptr<const SpatialReference> _srs;
-        GeometryType _geomType;
-        int _dimensionality;
-        bool _multiGeometry;
     };
 
     typedef std::map<std::string, std::string> FeatureAttributes;
-    
-    typedef osg::ref_ptr<osg::Vec3dArray> FeatureGeomPart;
-
-    class OSGEARTHFEATURES_EXPORT FeatureGeometry : public std::vector<FeatureGeomPart>
-    {
-    public:
-        int getTotalPointCount() const;
-
-        // true if the first point and the last point are the same.
-        static bool isClosed( const osg::Vec3dArray* part );
-        
-        // gets the signed area of a part that is known to be open. A positive
-        // area means it's would CCW; negative means it's would CW.
-        static double getSignedAreaOfOpenPolygon( const osg::Vec3dArray* part );
-
-        // checks to see if the part is would counter-clockwise.
-        static bool isCCW( const osg::Vec3dArray* part );
-
-        // ensures that the part does not have identical first and last points.
-        static void openPart( osg::Vec3dArray* part );
-
-        // reorders the verts in an open poly to be either CCW or CW.
-        static void rewindOpenPolygon( osg::Vec3dArray* poly, bool toCCW );
-
-        // ensures polygon verts are wound properly and don't contain duplicates.
-        // only call this on a poly.
-        void normalizePolygon();
-    };
 
     /**
      * Basic building block of vector feature data.
@@ -115,19 +65,17 @@ namespace osgEarth { namespace Features
 
         long getFID() const;
 
-        void setPart( int part, osg::Vec3dArray* points );
+        void setGeometry( Geometry* geom ) {
+            _geom = geom; }
 
-        void addPart( osg::Vec3dArray* points );
+        Geometry* getGeometry() {
+            return _geom; }
 
-        void setGeometry( const FeatureGeometry& geom );
+        const Geometry* getGeometry() const {
+            return _geom; }
 
-        FeatureGeometry& getGeometry();
-
-        const FeatureGeometry& getGeometry() const;
-
-        int getNumParts() const;
-
-        osg::Vec3dArray* getPart( int part ) const;
+        const FeatureAttributes& getAttrs() const {
+            return _attrs; }
 
         void setAttr( const std::string& name, const std::string& value );
 
@@ -135,7 +83,7 @@ namespace osgEarth { namespace Features
 
     protected:
         long _fid;
-        FeatureGeometry _parts;
+        osg::ref_ptr<Geometry> _geom;
         FeatureAttributes _attrs;
     };
 

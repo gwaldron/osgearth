@@ -1,6 +1,7 @@
 # Locate GEOS.
 # This module defines
 # GEOS_LIBRARY
+# GEOS_LIBRARY_DEBUG
 # GEOS_FOUND, if false, do not try to link to geos
 # GEOS_INCLUDE_DIR, where to find the headers
 
@@ -37,6 +38,14 @@ FIND_PATH(GEOS_INCLUDE_DIR geos.h
 
 FIND_LIBRARY(GEOS_LIBRARY
   NAMES geos
+  PATHS
+    $ENV{GEOS_DIR}
+    NO_DEFAULT_PATH
+    PATH_SUFFIXES lib64 lib
+)
+
+FIND_LIBRARY(GEOS_LIBRARY_DEBUG
+  NAMES geod_d geos_i_d geosd
   PATHS
     $ENV{GEOS_DIR}
     NO_DEFAULT_PATH

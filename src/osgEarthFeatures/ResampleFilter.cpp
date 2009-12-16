@@ -53,11 +53,16 @@ _maxLen( rhs._maxLen )
 bool
 ResampleFilter::push( Feature* input, const FilterContext& context )
 {
+    if ( !input || !input->getGeometry() )
+        return true;
+
     bool success = true;
 
-    for( FeatureGeometry::iterator i = input->getGeometry().begin(); i != input->getGeometry().end(); ++i )
+    GeometryIterator i( input->getGeometry() );
+    while( i.hasMore() )
     {
-        osg::Vec3dArray* part = i->get();
+        Geometry* part = i.next();
+
         if ( part->size() < 3 ) continue;
         int partSize0 = part->size();
 

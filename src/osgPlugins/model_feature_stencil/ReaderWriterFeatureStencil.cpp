@@ -25,7 +25,8 @@
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ResampleFilter>
-#include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/ConvertTypeFilter>
+#include <osgEarthFeatures/FeatureGridder>
 #include <osg/Notify>
 #include <osg/ClearNode>
 #include <osgDB/FileNameUtils>
@@ -39,14 +40,14 @@ using namespace OpenThreads;
 
 #define PROP_FEATURES           "features"
 #define PROP_EXTRUSION_DISTANCE "extrusion_distance"
+#define PROP_GEOMETRY_TYPE      "geometry_type"
 
-
-class FeatureStencilSource : public ModelSource
+class FeatureStencilModelSource : public ModelSource
 {
 public:
-    FeatureStencilSource( const PluginOptions* options, int sourceId ) : ModelSource( options ),
+    FeatureStencilModelSource( const PluginOptions* options, int renderBinStart, int sourceId ) : ModelSource( options ),
         _sourceId( sourceId ),
-        _renderBinStart( 80000 ),
+        _renderBinStart( renderBinStart ),
         _showVolumes( false ),
         _extrusionDistance( 300000.0 )
     {
@@ -60,6 +61,14 @@ public:
     {
         _map = map;
 
+        // figure out a "reasonable" default extrusion size
+        if ( _map->isGeocentric() )
+            _extrusionDistance = 300000.0; // meters geocentric
+        else if ( _map->getProfile()->getSRS()->isGeographic() )
+            _extrusionDistance = 5.0; // degrees-as-distance
+        else
+            _extrusionDistance = 12000.0; // meters
+
         const Config& conf = getOptions()->config();
 
         _features = FeatureSourceFactory::create( conf.child( PROP_FEATURES ) );
@@ -68,10 +77,25 @@ public:
             osg::notify( osg::WARN ) << "[osgEarth] Feature Stencil driver - no valid feature source provided" << std::endl;
         }
 
+        // overrides the default stencil volume extrusion size
         _extrusionDistance = conf.value<double>( PROP_EXTRUSION_DISTANCE, _extrusionDistance );
 
         // load up the style catalog.
         Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
+
+        // force a particular geometry type
+        if ( conf.hasValue( PROP_GEOMETRY_TYPE ) )
+        {
+            // geometry type override: the config can ask that input geometry
+            // be interpreted as a particular geometry type
+            std::string gt = conf.value( PROP_GEOMETRY_TYPE );
+            if ( gt == "line" || gt == "lines" || gt == "linestrip" )
+                _geomTypeOverride = Geometry::TYPE_LINESTRING;
+            else if ( gt == "point" || gt == "points" || gt == "pointset" )
+                _geomTypeOverride = Geometry::TYPE_POINTSET;
+            else if ( gt == "polygon" || gt == "polygons" )
+                _geomTypeOverride = Geometry::TYPE_POLYGON;
+        }
 
         // debugging:
         _showVolumes = conf.child( "debug" ).attr( "show_volumes" ) == "true";
@@ -84,61 +108,117 @@ public:
 
         // read all features into a list:
         FeatureList features;
+        bool hasLines = false;
         osg::ref_ptr<FeatureCursor> c = _features->createCursor( style.query() );
+
         while( c->hasMore() )
-            features.push_back( c->nextFeature() );
-
-        // A processing context to use with the filters:
-        FilterContext context;
-        context.profile() = _features->getFeatureProfile();
-
-        // If the geometry is lines, we need to buffer them before they will work with stenciling
-        if ( _features->getFeatureProfile()->getGeometryType() != FeatureProfile::GEOM_POLYGON )
         {
-            BufferFilter buffer;
-            buffer.distance() = 0.5 * style.lineSymbolizer().stroke().width();
-            buffer.capStyle() = style.lineSymbolizer().stroke().lineCap();
-            context = buffer.push( features, context );
+            Feature* feature = c->nextFeature();
+            Geometry* geom = feature->getGeometry();
+            if ( geom )
+            {
+                // apply a type override if requested:
+                if ( _geomTypeOverride.isSet() && _geomTypeOverride.get() != geom->getComponentType() )
+                {
+                    geom = geom->cloneAs( _geomTypeOverride.get() );
+                    if ( geom )
+                        feature->setGeometry( geom );
+                }
+            }
+            if ( geom )
+            {
+                features.push_back( feature );
+                if ( !hasLines && geom->getType() == Geometry::TYPE_LINESTRING )
+                    hasLines = true;
+            }
         }
 
-        // Transform them into the map's SRS:
-        TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
-        context = xform.push( features, context );
+        //FilterContext cx;
+        //if ( _geomTypeOverride.isSet() )
+        //{
+        //    ConvertTypeFilter changeType( _geomTypeOverride.get() );
+        //    cx = changeType.push( features, cx );
+        //
+        //    if ( _geomTypeOverride.get() == Geometry::TYPE_LINESTRING )
+        //        hasLines = true;
+        //}
 
-        if ( isGeocentric )
-        {
-            // We need to make sure that on a round globe, the points are sampled such that
-            // long segments follow the curvature of the earth. By the way, if a Buffer was
-            // applied, that will also remove colinear segment points. Resample the points to 
-            // achieve a usable tesselation.
-            ResampleFilter simplify;
-            simplify.minLength() = 1.0; // need?
-            simplify.maxLength() = 100000.0;
-            context = simplify.push( features, context );
-        }
-
-        // Extrude the geometry in both directions to build a stencil volume:
-        osg::ref_ptr<osg::Node> volumes;
-        ExtrudeGeometryFilter extrude( -_extrusionDistance, _extrusionDistance*2.0 );
-        context = extrude.push( features, volumes, context );
-
+        // Grid the features:
+        // TODO: use the actual input extent...
+        //GeoExtent ex = osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getExtent();
+        //FeatureGridder gridder( features, ex, 360, 180 );
+        
         osg::Group* classGroup = new osg::Group();
         classGroup->setName( style.name() );
 
-        if ( _showVolumes )
+        //for( int cell=0; cell < gridder.getNumCells(); ++cell )
         {
-            classGroup->addChild( volumes.get() );
-        }
-        else
-        {
-            // render the volumes to the stencil buffer:
-            osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), ref_renderBin );
-            classGroup->addChild( geomPass );
+            FeatureList& cellFeatures = features;
+            //FeatureList cellFeatures;
+            //gridder.getCell( cell, cellFeatures );
 
-            // render a full screen quad to write to the masked pixels:
-            osg::Vec4ub maskColor = style.getColor( context.profile()->getGeometryType() );
-            osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, ref_renderBin );
-            classGroup->addChild( maskPass );
+            // A processing context to use with the filters:
+            FilterContext context;
+            context.profile() = _features->getFeatureProfile();
+
+            // If the geometry is lines, we need to buffer them before they will work with stenciling
+            if ( hasLines )
+            {
+                BufferFilter buffer;
+                buffer.distance() = 0.5 * style.lineSymbolizer().stroke().width();
+                buffer.capStyle() = style.lineSymbolizer().stroke().lineCap();
+                context = buffer.push( cellFeatures, context );
+            }
+
+            // Transform them into the map's SRS:
+            TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
+            context = xform.push( cellFeatures, context );
+
+            if ( isGeocentric )
+            {
+                // We need to make sure that on a round globe, the points are sampled such that
+                // long segments follow the curvature of the earth. By the way, if a Buffer was
+                // applied, that will also remove colinear segment points. Resample the points to 
+                // achieve a usable tesselation.
+                ResampleFilter simplify;
+                simplify.minLength() = 1.0; // need?
+                simplify.maxLength() = 100000.0;
+                context = simplify.push( cellFeatures, context );
+            }
+
+            // Extrude and cap the geometry in both directions to build a stencil volume:
+            osg::ref_ptr<osg::Group> volumes = new osg::Group();
+
+            for( FeatureList::iterator i = cellFeatures.begin(); i != cellFeatures.end(); ++i )
+            {
+                osg::Node* volume = StencilUtils::createVolume(
+                    i->get()->getGeometry(),
+                    -_extrusionDistance,
+                    _extrusionDistance * 2.0,
+                    context );
+
+                if ( volume )
+                    volumes->addChild( volume );
+            }
+
+            //ExtrudeGeometryFilter extrude( -_extrusionDistance, _extrusionDistance*2.0 );
+            //context = extrude.push( cellFeatures, volumes, context );
+
+            if ( _showVolumes )
+            {
+                classGroup->addChild( volumes.get() );
+            }
+            else
+            {
+                // render the volumes to the stencil buffer:
+                osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), ref_renderBin );
+                classGroup->addChild( geomPass );
+
+                // render a full screen quad to write to the masked pixels:
+                osg::Vec4ub maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
+                osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, ref_renderBin );
+                classGroup->addChild( maskPass );
+            }
         }
 
         // lock out the optimizer:
@@ -185,13 +265,15 @@ private:
     Styling::StyleCatalog _styles;
     bool _showVolumes;
     double _extrusionDistance;
+    optional<Geometry::Type> _geomTypeOverride;
 };
 
 
-class ReaderWriterFeatureStencil : public osgDB::ReaderWriter
+class FeatureStencilModelSourceFactory : public osgDB::ReaderWriter
 {
 public:
-    ReaderWriterFeatureStencil()
+    FeatureStencilModelSourceFactory() :
+      _renderBinStart( 80000 )
     {
         supportsExtension( "osgearth_model_feature_stencil", "osgEarth feature stencil plugin" );
     }
@@ -201,15 +283,16 @@ public:
         return "osgEarth Feature Stencil Model Plugin";
     }
 
-    FeatureStencilSource* create( const PluginOptions* options )
+    FeatureStencilModelSource* create( const PluginOptions* options )
     {
         ScopedLock<Mutex> lock( _sourceIdMutex );
-        FeatureStencilSource* obj = new FeatureStencilSource( options, _sourceId );
+        FeatureStencilModelSource* obj = new FeatureStencilModelSource( options, _renderBinStart, _sourceId );
+        _renderBinStart += 1000;
         if ( obj ) _sourceMap[_sourceId++] = obj;
         return obj;
     }
 
-    FeatureStencilSource* get( int sourceId )
+    FeatureStencilModelSource* get( int sourceId )
     {
         ScopedLock<Mutex> lock( _sourceIdMutex );
         return _sourceMap[sourceId].get();
@@ -220,7 +303,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        ReaderWriterFeatureStencil* nonConstThis = const_cast<ReaderWriterFeatureStencil*>(this);
+        FeatureStencilModelSourceFactory* nonConstThis = const_cast<FeatureStencilModelSourceFactory*>(this);
         return nonConstThis->create( static_cast<const PluginOptions*>(options) );
     }
 
@@ -235,15 +318,16 @@ public:
         int sourceId = 0;
         sscanf( stripped.c_str(), "%d", &sourceId );
 
-        ReaderWriterFeatureStencil* nonConstThis = const_cast<ReaderWriterFeatureStencil*>(this);
+        FeatureStencilModelSourceFactory* nonConstThis = const_cast<FeatureStencilModelSourceFactory*>(this);
         return ReadResult( nonConstThis->get( sourceId ) );
     }
 
 protected:
     Mutex _sourceIdMutex;
+    int _renderBinStart;
     int _sourceId;
-    std::map<int, osg::ref_ptr<FeatureStencilSource> > _sourceMap;
+    std::map<int, osg::ref_ptr<FeatureStencilModelSource> > _sourceMap;
 };
 
-REGISTER_OSGPLUGIN(osgearth_model_feature_stencil, ReaderWriterFeatureStencil)
+REGISTER_OSGPLUGIN(osgearth_model_feature_stencil, FeatureStencilModelSourceFactory)
 

@@ -26,32 +26,19 @@
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_GEOMETRY_TYPE      "geometry_type" // "line", "point", "polygon"
-
 #define PROP_RESAMPLE_OP         "resample"
 #define RESAMPLE_ATTR_MIN_LENGTH "min_length"
 #define RESAMPLE_ATTR_MAX_LENGTH "max_length"
 
-#define PROP_BUFFER_OP          "buffer"
-#define BUFFER_ATTR_DISTANCE    "distance"
+#define PROP_BUFFER_OP           "buffer"
+#define BUFFER_ATTR_DISTANCE     "distance"
 
 /****************************************************************************/
 
 FeatureSource::FeatureSource( const PluginOptions* options ) :
-_options( options ),
-_geomTypeOverride( FeatureProfile::GEOM_UNKNOWN )
+_options( options )
 {    
     const Config& conf = getOptions()->config();
-
-    // geometry type override: the config can ask that input geometry
-    // be interpreted as a particular geometry type
-    std::string gt = conf.value( PROP_GEOMETRY_TYPE );
-    if ( gt == "line" || gt == "lines" )
-        _geomTypeOverride = FeatureProfile::GEOM_LINE;
-    else if ( gt == "point" || gt == "points" )
-        _geomTypeOverride = FeatureProfile::GEOM_POINT;
-    else if ( gt == "polygon" || gt == "polygons" )
-        _geomTypeOverride = FeatureProfile::GEOM_POLYGON;
 
     // optional feature operations
     // TODO: at some point, move all this stuff elsewhere into some sort of filter
@@ -95,15 +82,19 @@ FeatureSource::getFeatureProfile() const
         FeatureSource* nonConstThis = const_cast<FeatureSource*>(this);
         nonConstThis->_featureProfile = nonConstThis->createFeatureProfile();
 
-        // apply a geometry type override.
-        if ( _geomTypeOverride != FeatureProfile::GEOM_UNKNOWN )
-        {
-            nonConstThis->_featureProfile = new FeatureProfile(
-                _featureProfile->getSRS(),
-                _geomTypeOverride,
-                _featureProfile->getDimensionality(),
-                _featureProfile->isMultiGeometry() );
-        }
+        //// apply a geometry type override.
+        //if ( _geomTypeOverride != Geometry::TYPE_UNKNOWN )
+        //{
+        //    nonConstThis->_featureProfile = new FeatureProfile(
+        //        _featureProfile->getSRS(),
+        //        _geomTypeOverride );
+
+        //    //nonConstThis->_featureProfile = new FeatureProfile(
+        //    //    _featureProfile->getSRS(),
+        //    //    _geomTypeOverride,
+        //    //    _featureProfile->getDimensionality(),
+        //    //    _featureProfile->isMultiGeometry() );
+        //}
     }
     return _featureProfile.get();
 }
@@ -120,17 +111,17 @@ FeatureSource::getDataExtent() const
     return _dataExtent;
 }
 
-FeatureProfile::GeometryType
-FeatureSource::getGeometryTypeOverride() const
-{
-    return _geomTypeOverride;
-}
+//const Geometry::Type&
+//FeatureSource::getGeometryTypeOverride() const
+//{
+//    return _geomTypeOverride;
+//}
 
-void 
-FeatureSource::setGeometryTypeOverride( FeatureProfile::GeometryType type )
-{
-    _geomTypeOverride = type;
-}
+//void 
+//FeatureSource::setGeometryTypeOverride( const Geometry::Type& type )
+//{
+//    _geomTypeOverride = type;
+//}
 
 FeatureFilterList&
 FeatureSource::getFilters()

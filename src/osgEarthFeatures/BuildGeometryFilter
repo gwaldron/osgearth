@@ -37,16 +37,20 @@ namespace osgEarth { namespace Features
     {
     public:
         BuildGeometryFilter();
-
         BuildGeometryFilter( const Styling::StyleClass& style );
 
-        void setStyleClass( const Styling::StyleClass& style );
+        optional<Styling::StyleClass>& styleClass() { return _styleClass; }
+
+        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
         FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
-        Styling::StyleClass _styleClass;
+        optional<Styling::StyleClass> _styleClass;
+        optional<Geometry::Type> _geomTypeOverride;
+        bool _hasPoints;
+        bool _hasLines;
         void reset();
         
         bool push( Feature* input, const FilterContext& context );

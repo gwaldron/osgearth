@@ -84,13 +84,13 @@ template<typename T> struct optional {
     bool isSet() const { return _set; }
     void clear() { _set = false; }
 
-    T& get() { return _value; }
+    T& get() { _set=true; return _value; }
     const T& get() const { return _value; }
 
-    operator T* () const { return &_value; }
+    operator T* () const { _set=true; return &_value; }
     operator const T*() const { return &_value; }
 
-    T* operator ->() { return &_value; }
+    T* operator ->() { _set=true; return &_value; }
     const T* operator ->() const { return &_value; }
 
 private:

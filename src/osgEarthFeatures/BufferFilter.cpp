@@ -66,39 +66,43 @@ BufferFilter::push( Feature* input, const FilterContext& context )
 {
     bool ok = false;
 
+    if ( !input || !input->getGeometry() )
+        return true;
+
 #ifdef OSGEARTH_HAVE_GEOS
 
-    FeatureGeometry output;
+    osg::ref_ptr<Geometry> output;
 
-    geom::Geometry* inGeom = GEOSUtils::importGeometry( input->getGeometry(), context.profile() );
+    geom::Geometry* inGeom = GEOSUtils::importGeometry( input->getGeometry() );
     if ( inGeom )
     {
-        int geosCapStyle = 
-            //buffer::BufferOp::BufferParameters::EndCapStyle geosEndCap =
-            _capStyle == Stroke::LINECAP_ROUND  ? buffer::BufferOp::CAP_ROUND : //buffer::BufferParameters::CAP_ROUND :
-            _capStyle == Stroke::LINECAP_SQUARE ? buffer::BufferOp::CAP_SQUARE : //buffer::BufferParameters::CAP_SQUARE :
-            _capStyle == Stroke::LINECAP_BUTT   ? buffer::BufferOp::CAP_BUTT : //buffer::BufferParameters::CAP_BUTT :
-            buffer::BufferOp::CAP_ROUND;
-            //buffer::BufferParameters::CAP_ROUND;
+        buffer::BufferParameters::EndCapStyle geosEndCap =
+            _capStyle == Stroke::LINECAP_ROUND  ? buffer::BufferParameters::CAP_ROUND :
+            _capStyle == Stroke::LINECAP_SQUARE ? buffer::BufferParameters::CAP_SQUARE :
+            _capStyle == Stroke::LINECAP_BUTT   ? buffer::BufferParameters::CAP_FLAT :
+            buffer::BufferParameters::CAP_ROUND;
 
-        int geosQuadSegs = _numQuadSegs > 0 ? _numQuadSegs : buffer::OffsetCurveBuilder::DEFAULT_QUADRANT_SEGMENTS;
+        //buffer::BufferParameters::JoinStyle geosJoin =
+        //    _joinStyle
+
+        int geosQuadSegs = _numQuadSegs > 0 
+            ? _numQuadSegs
+            : buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS;
 
         geom::Geometry* outGeom = buffer::BufferOp::bufferOp(
             inGeom,
             _distance,
             geosQuadSegs,
-            geosCapStyle );
+            geosEndCap );
 
         if ( outGeom )
         {
-            GEOSUtils::exportGeometry( outGeom, output, context.profile() );
+            output = GEOSUtils::exportGeometry( outGeom );
             outGeom->getFactory()->destroyGeometry( outGeom );
-            ok = true;
         }
         else
         {
             osg::notify(osg::NOTICE) << "[osgEarth] Buffer: no output geometry.." << std::endl;
-            ok = false;
         }
 
         inGeom->getFactory()->destroyGeometry( inGeom );
@@ -106,22 +110,21 @@ BufferFilter::push( Feature* input, const FilterContext& context )
     else
     {
         osg::notify(osg::NOTICE) << "[osgEarth] Buffer: importGeom failed" << std::endl;
-        ok = false;
     }
 
-    if ( ok )
+    if ( output.valid() )
     {
-        input->setGeometry( output );
+        input->setGeometry( output.get() );
 
-        if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_POLYGON )
-        {   
-            output.normalizePolygon();
-        }
+        //if ( context.profile()->getGeometryType() == FeatureProfile::GEOM_POLYGON )
+        //{   
+        //    output.normalizePolygon();
+        //}
     }
 
-#endif
+#endif // OSGEARTH_HAVE_GEOS
     
-    return ok;
+    return output.valid();
 }
 
 FilterContext
@@ -140,13 +143,13 @@ BufferFilter::push( FeatureList& input, const FilterContext& context )
             ok = false;
 
     // construct a new context -- output of buffering is always polygons.
-    FilterContext outCx( context );
+    //FilterContext outCx( context );
 
-    outCx.profile() = new FeatureProfile(
-        context.profile()->getSRS(),
-        FeatureProfile::GEOM_POLYGON,
-        context.profile()->getDimensionality(),
-        context.profile()->isMultiGeometry() );
+    //outCx.profile() = new FeatureProfile(
+    //    context.profile()->getSRS(),
+    //    FeatureProfile::GEOM_POLYGON,
+    //    context.profile()->getDimensionality(),
+    //    context.profile()->isMultiGeometry() );
 
     return context;
 }

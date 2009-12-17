@@ -690,6 +690,12 @@ public:
             osg::notify(osg::NOTICE) <<"  " << files[i] << std::endl;
         }
 
+        if (files.empty())
+        {
+            osg::notify(osg::NOTICE) << "[osgEarth::GDAL] Could not find any valid files " << std::endl;
+            return;
+        }
+
         //If we found more than one file, try to combine them into a single logical dataset
         if (files.size() > 1)
         {
@@ -700,17 +706,16 @@ public:
                 return;
             }
         }
-
-        //If we couldn't build a VRT, just try opening the file directly
-        if ( !_srcDS )
+        else
         {
+            //If we couldn't build a VRT, just try opening the file directly
             //Open the dataset
-            _srcDS = (GDALDataset*)GDALOpen( path.c_str(), GA_ReadOnly );
-        }
-        if ( !_srcDS )
-        {
-            osg::notify(osg::WARN) << "[osgEarth::GDAL] Failed to open dataset " << path << std::endl;
-            return;
+            _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
+            if ( !_srcDS )
+            {
+                osg::notify(osg::WARN) << "[osgEarth::GDAL] Failed to open dataset " << files[0] << std::endl;
+                return;
+            }
         }
 
 

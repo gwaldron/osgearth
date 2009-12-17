@@ -1088,12 +1088,10 @@ EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
     if (_bufferData[0]._transform.valid())
     {
         _bufferData[0]._transform->releaseGLObjects(state);
-        ncThis->clearBuffer( 0 );
     }
     if (_bufferData[1]._transform.valid())
     {
         _bufferData[1]._transform->releaseGLObjects(state);   
-        ncThis->clearBuffer( 1 );
     }
 }
 

@@ -448,6 +448,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // The empty tile:
     VersionedTile* tile = new VersionedTile( key, locator.get() );
+    tile->setVerticalScale( _engineProps.verticalScale().value() );
     tile->setRequiresNormals( true );
     tile->setDataVariance( osg::Object::DYNAMIC );
     tile->setLocator( locator.get() );
@@ -662,6 +663,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     hf_layer->setHeightField( hf.get() );
 
     VersionedTile* tile = new VersionedTile( key, locator.get() );
+    tile->setVerticalScale( _engineProps.verticalScale().value() );
     tile->setLocator( locator.get() );
     tile->setElevationLayer( hf_layer );
     tile->setRequiresNormals( true );
@@ -887,6 +889,13 @@ MapEngine::createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::Elli
     osg::HeightField* grid = ((osgTerrain::HeightFieldLayer*)tile->getElevationLayer())->getHeightField();
     if (!grid) return 0;
 
+    float verticalScale = 1.0f;
+    osgEarth::VersionedTile *versionedTile = dynamic_cast<osgEarth::VersionedTile*>(tile);
+    if (versionedTile)
+    {
+        verticalScale = versionedTile->getVerticalScale();
+    }
+
     double globe_radius = et ? et->getRadiusPolar() : 1.0;
     unsigned int numColumns = grid->getNumColumns();
     unsigned int numRows = grid->getNumRows();
@@ -925,7 +934,7 @@ MapEngine::createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::Elli
         {
             double X = orig_X + delta_X*(double)c;
             double Y = orig_Y + delta_Y*(double)r;
-            double Z = orig_Z + grid->getHeight(c,r);
+            double Z = orig_Z + grid->getHeight(c,r) * verticalScale;
             double height = Z;
 
             et->convertLatLongHeightToXYZ(

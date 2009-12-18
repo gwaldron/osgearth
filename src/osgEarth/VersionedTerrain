@@ -150,6 +150,10 @@ namespace osgEarth
 
         void resetElevationRequests();
 
+        float getVerticalScale() const;
+        void setVerticalScale(float verticalScale);
+
+
     public: // OVERRIDES
 
         virtual void traverse( class osg::NodeVisitor& nv );
@@ -158,6 +162,8 @@ namespace osgEarth
         * the specified graphics context. Otherwise, releases OpenGL objects
         * for all graphics contexts. */
         virtual void releaseGLObjects(osg::State* = 0) const;
+
+        virtual osg::BoundingSphere computeBound() const;
 
     protected:
 
@@ -199,6 +205,8 @@ namespace osgEarth
         bool readyForNewElevation();
         bool readyForNewImagery();
         void adjustUpdateTraversalCount( int delta );
+
+        float _verticalScale;
     };
 
 

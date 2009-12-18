@@ -205,7 +205,8 @@ _elevationLOD( key->getLevelOfDetail() ),
 _imageryLOD( 1 ),
 _tileRegisteredWithTerrain( false ),
 _useTileGenRequest( true ),
-_tileGenNeeded( false )
+_tileGenNeeded( false ),
+_verticalScale(1.0f)
 {
     this->setThreadSafeRefUnref( true );
 
@@ -387,6 +388,76 @@ bool
 VersionedTile::getUseTileGenRequest() const
 {
     return _useTileGenRequest;
+}
+
+float
+VersionedTile::getVerticalScale() const
+{
+    return _verticalScale;
+}
+
+void
+VersionedTile::setVerticalScale(float verticalScale)
+{
+    if (_verticalScale != verticalScale)
+    {
+        _verticalScale = verticalScale;
+        dirtyBound();
+    }
+}
+
+osg::BoundingSphere
+VersionedTile::computeBound() const
+{
+    //Overriden computeBound that takes into account the vertical scale.
+    //osg::notify(osg::NOTICE) << "VersionedTile::computeBound verticalScale = " << _verticalScale << std::endl;
+
+    osg::BoundingSphere bs;
+
+    if (_elevationLayer.valid())
+    {        
+        if (!_elevationLayer->getLocator()) return bs;
+
+        osg::BoundingBox bb;
+        unsigned int numColumns = _elevationLayer->getNumColumns();
+        unsigned int numRows = _elevationLayer->getNumRows();
+        for(unsigned int r=0;r<numRows;++r)
+        {
+            for(unsigned int c=0;c<numColumns;++c)
+            {
+                float value = 0.0f;
+                bool validValue = _elevationLayer->getValidValue(c,r, value);
+                if (validValue) 
+                {
+                    //Multiply by the vertical scale.
+                    value *= _verticalScale;
+                    osg::Vec3d ndc, v;
+                    ndc.x() = ((double)c)/(double)(numColumns-1), 
+                        ndc.y() = ((double)r)/(double)(numRows-1);
+                    ndc.z() = value;
+
+                    if (_elevationLayer->getLocator()->convertLocalToModel(ndc, v))
+                    {
+                        bb.expandBy(v);
+                    }
+                }
+            }
+        }
+        bs.expandBy(bb);
+
+    }
+    else
+    {
+        for(Layers::const_iterator itr = _colorLayers.begin();
+            itr != _colorLayers.end();
+            ++itr)
+        {
+            if (itr->valid()) bs.expandBy((*itr)->computeBound(false));
+        }
+    }
+
+    return bs;
+    
 }
 
 // returns TRUE if it's safe for this tile to load its next elevation data layer.
@@ -912,6 +983,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                     {
                         ScopedWriteLock lock( _tileLayersMutex );
                         this->setElevationLayer( newHFLayer.get() );
+                        this->dirtyBound();
                     }
 
                     // the tile needs rebuilding. This will kick off a TileGenRequest.
@@ -960,6 +1032,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                     {
                         ScopedWriteLock lock( _tileLayersMutex );
                         this->setElevationLayer( newPhLayer.get() );
+                        this->dirtyBound();
                     }
 
                     // tile needs to be recompiled.
@@ -1032,7 +1105,6 @@ VersionedTile::releaseGLObjects(osg::State* state) const
         //osg::notify(osg::NOTICE) << "[osgEarth] Tried but failed to VT releasing GL objects" << std::endl;
     }
 }
-
 
 /****************************************************************************/
 

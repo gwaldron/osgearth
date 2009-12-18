@@ -29,7 +29,9 @@ osg::Referenced(true),
 _cstype( cstype ),
 _id(-1),
 _use_mercator_locator(true),
-_dataModelRevision(0)
+_dataModelRevision(0),
+_cacheConf( CacheConfig() ),
+_profileConf( ProfileConfig() )
 {
 }
 

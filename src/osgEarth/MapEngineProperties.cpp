@@ -22,253 +22,52 @@
 
 using namespace osgEarth;
 
-MapEngineProperties::MapEngineProperties()
+LoadingPolicy::LoadingPolicy() :
+_mode( MODE_STANDARD ),
+_numThreads( 2 ),
+_numThreadsPerCore( 2 ),
+_numTileGenThreads( 4 )
 {
-    _vertical_scale = 1.0f;
-    _skirt_ratio = 0.02f;
-    _sample_ratio = 1.0f;
-    _proxy_port = 8080;
-    _min_tile_range_factor = 6;
-    _cache_only = false;
-    _normalize_edges = false;
-    _combine_layers = true;
-    _filename = "";
-    _preemptive_lod = false;
-    _use_task_service = false;
-	_layering_technique = MULTITEXTURE;
-    _max_lod = 23;
+    //nop
 }
 
-MapEngineProperties::MapEngineProperties( const MapEngineProperties& rhs )
+LoadingPolicy::LoadingPolicy( const LoadingPolicy::Mode& mode ) :
+_mode( mode ),
+_numThreads( 2 ),
+_numThreadsPerCore( 2 ),
+_numTileGenThreads( 4 )
 {
-    (*this) = rhs;
+    //nop
 }
 
-MapEngineProperties&
-MapEngineProperties::operator = ( const MapEngineProperties& rhs )
+//----------------------------------------------------------------------------
+
+ProxySettings::ProxySettings() {
+    //nop
+}
+
+ProxySettings::ProxySettings( const std::string& host, int port ) :
+_hostName(host),
+_port(port)
 {
-    _vertical_scale = rhs._vertical_scale;
-    _skirt_ratio = rhs._skirt_ratio;
-    _sample_ratio = rhs._sample_ratio;
-    _proxy_host = rhs._proxy_host;
-    _proxy_port = rhs._proxy_port;
-    _min_tile_range_factor = rhs._min_tile_range_factor;
-    _cache_only = rhs._cache_only;
-    _combine_layers = rhs._combine_layers;
-    _normalize_edges = rhs._normalize_edges;
-    _filename = rhs._filename;   
-    _preemptive_lod = rhs._preemptive_lod;
-    _use_task_service = rhs._use_task_service;
-    _layering_technique = rhs._layering_technique;
-    _num_loading_threads_per_logical_processor = rhs._num_loading_threads_per_logical_processor;
-    _num_loading_threads = rhs._num_loading_threads;
-    _max_lod = rhs._max_lod;
-    _lighting = rhs._lighting;
-    return *this;
+    //nop
 }
 
-const optional<bool>& 
-MapEngineProperties::getEnableLighting() const {
-    return _lighting;
-}
+//----------------------------------------------------------------------------
 
-void 
-MapEngineProperties::setEnableLighting( bool value ) {
-    _lighting = value;
-}
-
-void
-MapEngineProperties::setPreemptiveLOD( bool value ) {
-    _preemptive_lod = value;
-}
-
-bool
-MapEngineProperties::getPreemptiveLOD() const {
-    return _preemptive_lod;
-}
-
-void
-MapEngineProperties::setAsyncTileLayers( bool value ) {
-    _use_task_service = value;
-}
-
-bool
-MapEngineProperties::getAsyncTileLayers() const {
-    return _use_task_service;
-}
-
-const optional<int>&
-MapEngineProperties::getNumLoadingThreadsPerLogicalProcessor() const {
-    return _num_loading_threads_per_logical_processor;
-}
-
-void 
-MapEngineProperties::setNumLoadingThreadsPerLogicalProcessor( int numLoadingThreadsPerLogicalProcessor )
+MapEngineProperties::MapEngineProperties() :
+_loadingPolicy( LoadingPolicy() ),
+_verticalScale( 1.0f ),
+_heightFieldSkirtRatio( 0.02f ),
+_heightFieldSampleRatio( 1.0f ),
+_proxySettings( ProxySettings() ),
+_cacheOnly( false ),
+_minTileRangeFactor( 6.0 ),
+_normalizeEdges( false ),
+_combineLayers( true ),
+_maxLOD( 23 ),
+_layeringTechnique( LAYERING_MULTITEXTURE ),
+_enableLighting( true )
 {
-    _num_loading_threads_per_logical_processor = numLoadingThreadsPerLogicalProcessor;
+    //nop
 }
-
-const optional<int>&
-MapEngineProperties::getNumLoadingThreads() const {
-    return _num_loading_threads;
-}
-
-void
-MapEngineProperties::setNumLoadingThreads( int numLoadingThreads ) {
-    _num_loading_threads = numLoadingThreads;
-}
-
-const optional<int>&
-MapEngineProperties::getNumTileGeneratorThreads() const {
-    return _num_tile_gen_threads;
-}
-
-void
-MapEngineProperties::setNumTileGeneratorThreads( int num ) {
-    _num_tile_gen_threads = num;
-}
-
-void
-MapEngineProperties::setFilename(const std::string& filename)
-{
-    _filename = filename;
-}
-
-const std::string&
-MapEngineProperties::getFilename() const
-{
-    return _filename;
-}
-
-void
-MapEngineProperties::setVerticalScale( float value )
-{
-    _vertical_scale = value;
-}
-
-float
-MapEngineProperties::getVerticalScale() const
-{
-    return _vertical_scale;
-}
-
-void
-MapEngineProperties::setSampleRatio(float sample_ratio)
-{
-    _sample_ratio = sample_ratio;
-}
-
-float
-MapEngineProperties::getSampleRatio() const
-{
-    return _sample_ratio;
-}
-
-void
-MapEngineProperties::setSkirtRatio( float value )
-{
-    _skirt_ratio = value;
-}
-
-float
-MapEngineProperties::getSkirtRatio() const
-{
-    return _skirt_ratio;
-}
-
-void
-MapEngineProperties::setProxyHost( const std::string& value )
-{
-    _proxy_host = value;
-}
-
-const std::string&
-MapEngineProperties::getProxyHost() const 
-{
-    return _proxy_host;
-}
-
-void
-MapEngineProperties::setProxyPort( unsigned short value )
-{
-    _proxy_port = value;
-}
-
-unsigned short
-MapEngineProperties::getProxyPort() const
-{
-    return _proxy_port;
-}
-
-void
-MapEngineProperties::setMinTileRangeFactor( float value )
-{
-    _min_tile_range_factor = value;
-}
-
-float
-MapEngineProperties::getMinTileRangeFactor() const
-{
-    return _min_tile_range_factor;
-}
-
-void
-MapEngineProperties::setCacheOnly(bool cacheOnly)
-{
-    _cache_only = cacheOnly;
-}
-
-bool
-MapEngineProperties::getCacheOnly() const
-{
-    return _cache_only;
-}
-
-void
-MapEngineProperties::setCombineLayers(bool combineLayers)
-{
-    _combine_layers = combineLayers;
-}
-
-bool
-MapEngineProperties::getCombineLayers() const
-{
-    return _combine_layers;
-}
-
-bool
-MapEngineProperties::getNormalizeEdges() const
-{
-    return _normalize_edges;
-}
-
-void
-MapEngineProperties::setNormalizeEdges(bool normalize_edges)
-{
-    _normalize_edges = normalize_edges;
-}
-
-const optional<MapEngineProperties::LayeringTechnique>&
-MapEngineProperties::getLayeringTechnique() const
-{
-	return _layering_technique;
-}
-
-void
-MapEngineProperties::setLayeringTechnique(osgEarth::MapEngineProperties::LayeringTechnique technique)
-{
-	_layering_technique = technique;
-}
-
-unsigned int
-MapEngineProperties::getMaxLOD() const
-{
-    return _max_lod;
-}
-
-void
-MapEngineProperties::setMaxLOD( unsigned int max_lod )
-{
-    _max_lod = max_lod;
-}
-

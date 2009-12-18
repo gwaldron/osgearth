@@ -47,11 +47,11 @@ _spatialFilter( 0L )
         OGR_SCOPED_LOCK;
 
         std::string expr;
-        if ( !query.expression().empty() )
+        if ( query.expression().isSet() )
         {
             // build the SQL: allow the Query to include either a full SQL statement or
             // just the WHERE clause.
-            expr = query.expression();
+            expr = query.expression().value();
 
             // if the expression is just a where clause, expand it into a complete SQL expression.
             std::string temp = expr;
@@ -67,7 +67,7 @@ _spatialFilter( 0L )
         }
 
         // if there's a spatial extent in the query, build the spatial filter:
-        if ( !query.bounds().empty() )
+        if ( query.bounds().isSet() )
         {
             OGRGeometryH ring = OGR_G_CreateGeometry( wkbLinearRing );
             OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMin(), 0 );
@@ -80,10 +80,10 @@ _spatialFilter( 0L )
             // note: "Directly" above means _spatialFilter takes ownership if ring handle
         }
 
-        if ( !expr.empty() ) 
+        if ( !expr.empty() )
         {
             // an SQL expression, with or without a spatial filter:
-            _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.empty()? 0L : expr.c_str(), _spatialFilter, 0L );
+            _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
         }
         else if ( _spatialFilter ) 
         {

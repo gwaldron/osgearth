@@ -92,9 +92,10 @@ public:
 		std::string base = buf.str();
 
         osg::notify(osg::INFO) << key->str() << "=" << buf.str() << std::endl;
-
-        osg::Image* image = HTTPClient::readImageFile(base, getOptions(), progress);
-		return image;
+        
+        osg::ref_ptr<osg::Image> image;
+        HTTPClient::readImageFile( base, image, getOptions(), progress );
+        return image.release();
     }
 
     osg::HeightField* createHeightField( const TileKey* key,

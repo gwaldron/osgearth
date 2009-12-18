@@ -43,7 +43,12 @@ _reprojected_tile_size(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _cacheEnabled(true),
-_loadWeight( 1.0f )
+_loadWeight( 1.0f ),
+_profileConf( ProfileConfig() ),
+_minLevel(0),
+_maxLevel(99),
+_nodata_image_filename(""),
+_transparentColor(osg::Vec4ub(0,0,0,0))
 {
 	readEnvironmentalVariables();
     _id = s_mapLayerID++;
@@ -63,7 +68,12 @@ _reprojected_tile_size(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _cacheEnabled(true),
-_loadWeight( 1.0f )
+_loadWeight( 1.0f ),
+_profileConf( ProfileConfig() ),
+_minLevel(0),
+_maxLevel(99),
+_nodata_image_filename(""),
+_transparentColor(osg::Vec4ub(0,0,0,0))
 {
     for( Properties::const_iterator i = driverProps.begin(); i != driverProps.end(); i++ )
         _driverConf.add( i->first, i->second );
@@ -85,7 +95,12 @@ _useMercatorFastPath(true),
 _reprojected_tile_size(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
-_loadWeight( 1.0f )
+_loadWeight( 1.0f ),
+_profileConf( ProfileConfig() ),
+_minLevel(0),
+_maxLevel(99),
+_nodata_image_filename(""),
+_transparentColor(osg::Vec4ub(0,0,0,0))
 {
 	readEnvironmentalVariables();
     _id = s_mapLayerID++;

@@ -31,69 +31,75 @@ using namespace osgEarth;
 
 /***********************************************************************/
 
-ProfileConfig::ProfileConfig():
-_minX(DBL_MAX),
-_minY(DBL_MAX),
-_maxX(-DBL_MAX),
-_maxY(-DBL_MAX),
-_empty(true)
+ProfileConfig::ProfileConfig() :
+_namedProfile( "" ),
+_srs( "" ),
+_bounds( Bounds() )
 {
     //NOP
 }
 
-ProfileConfig::ProfileConfig( const ProfileConfig& rhs ) :
-_minX( rhs._minX ),
-_minY( rhs._minY ),
-_maxX( rhs._maxX ),
-_maxY( rhs._maxY ),
-_empty( rhs._empty ),
-_srs( rhs._srs ),
-_namedProfile( rhs._namedProfile ),
-_refLayer( rhs._refLayer )
+//ProfileConfig::ProfileConfig( const ProfileConfig& rhs ) :
+//_minX( rhs._minX ),
+//_minY( rhs._minY ),
+//_maxX( rhs._maxX ),
+//_maxY( rhs._maxY ),
+//_empty( rhs._empty ),
+//_srs( rhs._srs ),
+//_namedProfile( rhs._namedProfile ),
+//_refLayer( rhs._refLayer )
+//{
+//    //NOP
+//}
+
+ProfileConfig::ProfileConfig( const std::string& namedProfile ) :
+_namedProfile( namedProfile ),
+_srs( "" ),
+_bounds( Bounds() )
 {
-    //NOP
+    //nop
 }
 
-ProfileConfig::ProfileConfig( const std::string& namedProfile )
+ProfileConfig::ProfileConfig( const Config& conf ) :
+_namedProfile( "" ),
+_srs( "" ),
+_bounds( Bounds() )
 {
-    _namedProfile = namedProfile;
-    _empty = false;
-}
+    if ( !conf.value().empty() )
+        _namedProfile = conf.value();
 
-ProfileConfig::ProfileConfig( const Config& conf )
-{
-    _namedProfile = conf.value();
-    _srs = conf.value( "srs" );
-    _minX = conf.value<double>( "xmin", _minX );
-    _minY = conf.value<double>( "ymin", _minY );
-    _maxX = conf.value<double>( "xmax", _maxX );
-    _maxY = conf.value<double>( "ymax", _maxY );
+    if ( !conf.value( "srs" ).empty() )
+        _srs = conf.value( "srs" );
 
-    _empty = _namedProfile.empty() && _srs.empty() && !areExtentsValid();
+    if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
+    {
+        _bounds = Bounds(
+            conf.value<double>( "xmin", 0 ),
+            conf.value<double>( "ymin", 0 ),
+            conf.value<double>( "xmax", 0 ),
+            conf.value<double>( "ymax", 0 ) );
+    }
 }
 
 Config
 ProfileConfig::toConfig( const std::string& name ) const
 {
     Config conf( name.empty() ? "profile" : name );
-    if ( !_empty )
+    if ( _namedProfile.isSet() )
     {
-        if ( !_namedProfile.empty() )
-        {
-            conf.value() = _namedProfile;
-        }
-        else
-        {
-            if ( !_srs.empty() )
-                conf.add( "srs", _srs );
+        conf.value() = _namedProfile.value();
+    }
+    else
+    {
+        if ( _srs.isSet() )
+            conf.add( "srs", _srs.value() );
 
-            if ( areExtentsValid() )
-            {
-                conf.attr( "xmin" ) = osgEarth::toString( _minX );
-                conf.attr( "ymin" ) = osgEarth::toString( _minY );
-                conf.attr( "xmin" ) = osgEarth::toString( _maxX );
-                conf.attr( "ymax" ) = osgEarth::toString( _maxY );
-            }
+        if ( _bounds.isSet() )
+        {
+            conf.add( "xmin", toString(_bounds->xMin()) );
+            conf.add( "ymin", toString(_bounds->yMin()) );
+            conf.add( "xmax", toString(_bounds->xMax()) );
+            conf.add( "ymax", toString(_bounds->yMax()) );
         }
     }
     return conf;
@@ -102,70 +108,70 @@ ProfileConfig::toConfig( const std::string& name ) const
 bool
 ProfileConfig::defined() const
 {
-    return !_empty;
+    return _namedProfile.isSet() || _srs.isSet();
 }
-
-const std::string&
-ProfileConfig::getNamedProfile() const
-{
-    return _namedProfile;
-}
-
-void
-ProfileConfig::setNamedProfile( const std::string& namedProfile)
-{
-    _namedProfile = namedProfile;
-    _empty = false;
-}
-
-const std::string&
-ProfileConfig::getSRS() const
-{
-    return _srs;
-}
-
-void
-ProfileConfig::setSRS(const std::string& srs)
-{
-    _srs = srs;
-    _empty = false;
-}
-
-bool ProfileConfig::areExtentsValid() const
-{
-    return _maxX >= _minX && _maxY >= _minY;
-}
-
-void
-ProfileConfig::getExtents(double &minX, double &minY, double &maxX, double &maxY) const
-{
-    minX = _minX;
-    minY = _minY;
-    maxX = _maxX;
-    maxY = _maxY;
-}
-
-void
-ProfileConfig::setExtents(double minX, double minY, double maxX, double maxY)
-{
-    _minX = minX;
-    _minY = minY;
-    _maxX = maxX;
-    _maxY = maxY;
-    _empty = false;
-}
-
-double
-ProfileConfig::xMin() const { return _minX; }
-
-double
-ProfileConfig::xMax() const { return _maxX; }
-
-double 
-ProfileConfig::yMin() const { return _minY; }
-
-double 
-ProfileConfig::yMax() const { return _maxY; }
+//
+//const std::string&
+//ProfileConfig::getNamedProfile() const
+//{
+//    return _namedProfile;
+//}
+//
+//void
+//ProfileConfig::setNamedProfile( const std::string& namedProfile)
+//{
+//    _namedProfile = namedProfile;
+//    _empty = false;
+//}
+//
+//const std::string&
+//ProfileConfig::getSRS() const
+//{
+//    return _srs;
+//}
+//
+//void
+//ProfileConfig::setSRS(const std::string& srs)
+//{
+//    _srs = srs;
+//    _empty = false;
+//}
+//
+//bool ProfileConfig::areExtentsValid() const
+//{
+//    return _maxX >= _minX && _maxY >= _minY;
+//}
+//
+//void
+//ProfileConfig::getExtents(double &minX, double &minY, double &maxX, double &maxY) const
+//{
+//    minX = _minX;
+//    minY = _minY;
+//    maxX = _maxX;
+//    maxY = _maxY;
+//}
+//
+//void
+//ProfileConfig::setExtents(double minX, double minY, double maxX, double maxY)
+//{
+//    _minX = minX;
+//    _minY = minY;
+//    _maxX = maxX;
+//    _maxY = maxY;
+//    _empty = false;
+//}
+//
+//double
+//ProfileConfig::xMin() const { return _minX; }
+//
+//double
+//ProfileConfig::xMax() const { return _maxX; }
+//
+//double 
+//ProfileConfig::yMin() const { return _minY; }
+//
+//double 
+//ProfileConfig::yMax() const { return _maxY; }
 
 
 /***********************************************************************/
@@ -254,21 +260,26 @@ Profile::create( const ProfileConfig& conf )
     const Profile* result = 0L;
 
     // Check for a "well known named" profile:
-    if ( !conf.getNamedProfile().empty() )
+    if ( conf.namedProfile().isSet() )
     {
-        result = osgEarth::Registry::instance()->getNamedProfile( conf.getNamedProfile() );
+        result = osgEarth::Registry::instance()->getNamedProfile( conf.namedProfile().value() );
     }
 
     // Next check for a user-defined extents:
-    else if ( conf.areExtentsValid() )
+    else if ( conf.srsString().isSet() && conf.bounds().isSet() )
     {
-        result = Profile::create( conf.getSRS(), conf.xMin(), conf.yMin(), conf.xMax(), conf.yMax() );
+        result = Profile::create(
+            conf.srsString().value(),
+            conf.bounds()->xMin(),
+            conf.bounds()->yMin(),
+            conf.bounds()->xMax(),
+            conf.bounds()->yMax() );
     }
 
     // Next try SRS with default extents
-    else
+    else if ( conf.srsString().isSet() )
     {
-        result = Profile::create( conf.getSRS() );
+        result = Profile::create( conf.srsString().value() );
     }
 
     return result;

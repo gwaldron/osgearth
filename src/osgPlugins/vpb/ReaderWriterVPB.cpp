@@ -356,13 +356,13 @@ public:
         osg::ref_ptr<osgTerrain::TerrainTile> tile = findTile(tileID, false);
         if (tile.valid()) return tile.get();
         
-        osg::notify(osg::INFO)<<"Max_x = "<<max_x<<std::endl;
-        osg::notify(osg::INFO)<<"Max_y = "<<max_y<<std::endl;
+        //osg::notify(osg::INFO)<<"Max_x = "<<max_x<<std::endl;
+        //osg::notify(osg::INFO)<<"Max_y = "<<max_y<<std::endl;
 
-        osg::notify(osg::INFO)<<"base_name = "<<base_name<<" psl="<<primary_split_level<<" ssl="<<secondary_split_level<<std::endl;
-        osg::notify(osg::INFO)<<"level = "<<level<<", x = "<<tile_x<<", tile_y = "<<tile_y<<std::endl;
-        osg::notify(osg::INFO)<<"tile_name "<<createTileName(level, tile_x, tile_y)<<std::endl;
-        osg::notify(osg::INFO)<<"thread "<<OpenThreads::Thread::CurrentThread()<<std::endl;
+        //osg::notify(osg::INFO)<<"base_name = "<<base_name<<" psl="<<primary_split_level<<" ssl="<<secondary_split_level<<std::endl;
+        //osg::notify(osg::INFO)<<"level = "<<level<<", x = "<<tile_x<<", tile_y = "<<tile_y<<std::endl;
+        //osg::notify(osg::INFO)<<"tile_name "<<createTileName(level, tile_x, tile_y)<<std::endl;
+        //osg::notify(osg::INFO)<<"thread "<<OpenThreads::Thread::CurrentThread()<<std::endl;
 
         std::string filename = createTileName(level, tile_x, tile_y);
         
@@ -371,7 +371,6 @@ public:
             if (blacklistedFilenames.count(filename)==1)
             {
                 osg::notify(osg::INFO)<<"file has been found in black list : "<<filename<<std::endl;
-
                 insertTile(tileID, 0);
                 return 0;
             }
@@ -381,20 +380,13 @@ public:
         osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
         localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
+
         //osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename, localOptions.get());
         osg::ref_ptr<osg::Node> node;
-        if (osgDB::containsServerAddress( filename ) )
+        HTTPClient::ResultCode result = HTTPClient::readNodeFile( filename, node, localOptions.get(), progress );
+        if ( result == HTTPClient::RESULT_OK && node.valid() )
         {
-            node = HTTPClient::readNodeFile( filename, localOptions.get(), progress );
-        }
-        else
-        {
-            node = osgDB::readNodeFile( filename, localOptions.get() );
-        }
-
-        if (node.valid())
-        {
-            osg::notify(osg::INFO)<<"Loaded model "<<filename<<std::endl;
+            //osg::notify(osg::INFO)<<"Loaded model "<<filename<<std::endl;
             CollectTiles ct;
             node->accept(ct);
 
@@ -429,13 +421,19 @@ public:
         }
         else
         {
-            //Only blacklist if the request wasn't cancelled by the callback.
-            if (!progress || (!progress->isCanceled()))
+            // in the case of an "unrecoverable" error, black-list the URL for this tile.
+            if ( ! HTTPClient::isRecoverable( result ) )
             {
-                osg::notify(osg::INFO)<<"Black listing : "<<filename<<std::endl;
+                //osg::notify(osg::NOTICE)<<"Black listing : "<< filename<< " (" << result << ")" << std::endl;
                 OpenThreads::ScopedLock<OpenThreads::Mutex> lock(blacklistMutex);
                 blacklistedFilenames.insert(filename);
             }
+
+            //if ( progress && !progress->isCanceled() && !progress->message().empty() )
+            //{
+            //    osg::notify(osg::NOTICE) << "[osgEarth] [vpb] error '" << progress->message() << "' on " << filename << 
+            //        std::endl;
+            //}
         }
         
         return findTile(tileID, true);

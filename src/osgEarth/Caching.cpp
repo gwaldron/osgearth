@@ -39,20 +39,14 @@ using namespace osgEarth;
 
 
 CacheConfig::CacheConfig() :
-_type( CacheConfig::TYPE_DEFAULT )
+_type( CacheConfig::TYPE_DEFAULT ),
+_runOffCacheOnly( false )
 {
     //NOP
 }
 
-CacheConfig::CacheConfig( const CacheConfig& rhs ) :
-_type( rhs._type ),
-_properties( rhs._properties ),
-_runOffCacheOnly( rhs._runOffCacheOnly )
-{
-    //NOP
-}
-
-CacheConfig::CacheConfig( const Config& conf ) 
+CacheConfig::CacheConfig( const Config& conf ) :
+_runOffCacheOnly( false )
 {
     _type =
         conf.attr( "type" ) == "tilecache" ? TYPE_TILECACHE :

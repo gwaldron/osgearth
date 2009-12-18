@@ -239,11 +239,16 @@ public:
                              )
     {
         std::string uri = createURI( key );
-        if (osgDB::containsServerAddress( uri ))
-        {
-            return HTTPClient::readImageFile( uri, getOptions(), progress );
-        }
-        return osgDB::readImageFile( createURI( key ), getOptions() );
+        
+        osg::ref_ptr<osg::Image> image;
+        HTTPClient::readImageFile( uri, image, getOptions(), progress );
+        return image.release();
+
+        //if (osgDB::containsServerAddress( uri ))
+        //{
+        //    return HTTPClient::readImageFile( uri, getOptions(), progress );
+        //}
+        //return osgDB::readImageFile( createURI( key ), getOptions() );
     }
 
     /** override */

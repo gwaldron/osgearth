@@ -453,7 +453,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     tile->setLocator( locator.get() );
 
     // Attach an updatecallback to normalize the edges of TerrainTiles.
-    if ( hasElevation && _engineProps.getNormalizeEdges() )
+    if ( hasElevation && _engineProps.normalizeEdges().get() )
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
@@ -471,7 +471,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     osg::BoundingSphere bs = tile->getBound();
     double max_range = 1e10;
     double radius = bs.radius();
-    double min_range = radius * _engineProps.getMinTileRangeFactor();
+    double min_range = radius * _engineProps.minTileRangeFactor().get();
 
     // Set the skirt height of the heightfield
     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
@@ -479,7 +479,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     {
         osg::notify(osg::NOTICE) << "Warning:  Couldn't get hfLayer for " << key->str() << std::endl;
     }
-    hfLayer->getHeightField()->setSkirtHeight(radius * _engineProps.getSkirtRatio());
+    hfLayer->getHeightField()->setSkirtHeight(radius * _engineProps.heightFieldSkirtRatio().get() );
                 
     // In a Plate Carre tesselation, scale the heightfield elevations from meters to degrees
     if ( isPlateCarre && hfLayer->getHeightField() )
@@ -487,7 +487,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     bool markTileLoaded = false;
 
-    if ( _engineProps.getAsyncTileLayers() )
+    if ( _engineProps.loadingPolicy()->mode().get() != LoadingPolicy::MODE_STANDARD )
     {
         markTileLoaded = true;
         tile->setUseLayerRequests( true );
@@ -504,7 +504,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     plod->setCenter( bs.center() );
     plod->addChild( tile, min_range, max_range );
 
-    if ( key->getLevelOfDetail() < getEngineProperties().getMaxLOD() )
+    if ( key->getLevelOfDetail() < getEngineProperties().maxLOD().get() )
     {
         plod->setFileName( 1, createURI( map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );
@@ -668,7 +668,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     tile->setDataVariance(osg::Object::DYNAMIC);
 
     //Attach an updatecallback to normalize the edges of TerrainTiles.
-    if (hasElevation && _engineProps.getNormalizeEdges())
+    if (hasElevation && _engineProps.normalizeEdges().get() )
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
@@ -735,7 +735,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     double radius = bs.radius();
 
 #if 1
-    double min_range = radius * _engineProps.getMinTileRangeFactor();
+    double min_range = radius * _engineProps.minTileRangeFactor().get();
     osg::LOD::RangeMode mode = osg::LOD::DISTANCE_FROM_EYE_POINT;
 #else
 	double width = key->getGeoExtent().width();	
@@ -746,7 +746,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
 
 
     // a skirt hides cracks when transitioning between LODs:
-    hf->setSkirtHeight(radius * _engineProps.getSkirtRatio());
+    hf->setSkirtHeight(radius * _engineProps.heightFieldSkirtRatio().get() );
 
     // for now, cluster culling does not work for CUBE rendering
     bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
@@ -768,7 +768,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
 
-    if ( _engineProps.getAsyncTileLayers() )
+    if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
     {
         tile->setUseLayerRequests( true );
         tile->setHasElevationHint( hasElevation );
@@ -786,7 +786,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setCenter( bs.center() );
         plod->addChild( tile, min_range, max_range );
 
-        if ( key->getLevelOfDetail() < this->getEngineProperties().getMaxLOD() )
+        if ( key->getLevelOfDetail() < this->getEngineProperties().maxLOD().value() )
         {
             plod->setFileName( 1, createURI( map->getId(), key ) );
             plod->setRange( 1, 0.0, min_range );

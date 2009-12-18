@@ -105,14 +105,18 @@ public:
         {
             path = osgEarth::getFullPath(_configPath, path);
         }
+        
+        osg::ref_ptr<osg::Image> image;
+        HTTPClient::readImageFile(path, image, getOptions() );
+        return image.release();
 
-        if (osgDB::containsServerAddress(path))
-        {
-            //Use the HTTPClient if it's a server address.
-            return HTTPClient::readImageFile( path, getOptions(), progress );
-        }
+        //if (osgDB::containsServerAddress(path))
+        //{
+        //    //Use the HTTPClient if it's a server address.
+        //    return HTTPClient::readImageFile( path, getOptions(), progress );
+        //}
 
-        return osgDB::readImageFile( path, getOptions() );
+        //return osgDB::readImageFile( path, getOptions() );
     }
 
     virtual std::string getExtension()  const 

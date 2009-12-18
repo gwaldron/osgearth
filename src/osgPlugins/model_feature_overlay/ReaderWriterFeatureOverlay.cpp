@@ -55,7 +55,8 @@ public:
         _textureUnit( 0 ),
         _textureSize( 1024 ),
         _baseHeight( 0.0 ),
-        _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
+        _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY ),
+        _geomTypeOverride( Geometry::TYPE_UNKNOWN )
     {
         //nop
     }

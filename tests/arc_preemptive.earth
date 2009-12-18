@@ -20,8 +20,8 @@ This map shows how to use the preemptive loading mode of osgearth
     </image>
 
 	<!--Explicitly set the number of threads -->
-    <!--<loading_policy mode="preemptive" loading_threads = "32"/>-->
+    <!--<loading_policy mode="preemptive" loading_threads = "16"/>-->
 	
 	<!--Set the number of loading threads to use by specifying the number of threads per processor -->
-	<loading_policy mode="preemptive" loading_threads_per_logical_processor = "3"/>
+	<loading_policy mode="preemptive" loading_threads_per_core="3"/>
 </map>

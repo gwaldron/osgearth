@@ -30,16 +30,18 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Features::Styling;
 
 
-BuildGeometryFilter::BuildGeometryFilter()
+BuildGeometryFilter::BuildGeometryFilter() :
+_styleClass( StyleClass() ),
+_geomTypeOverride( Geometry::TYPE_UNKNOWN )
 {
     reset();
 }
 
-BuildGeometryFilter::BuildGeometryFilter( const StyleClass& styleClass ) :
-_styleClass( styleClass )
-{
-    reset();
-}
+//BuildGeometryFilter::BuildGeometryFilter( const StyleClass& styleClass ) :
+//_styleClass( styleClass )
+//{
+//    reset();
+//}
 
 void
 BuildGeometryFilter::reset()

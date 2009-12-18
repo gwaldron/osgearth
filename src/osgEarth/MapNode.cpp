@@ -151,15 +151,15 @@ MapNode::init()
         NULL;
 
     // transcribe proxy settings:
-    if ( !_engineProps.getProxyHost().empty() )
+    if ( !_engineProps.proxySettings().isSet() )
     {
         if ( !local_options.valid() )
             local_options = new osgDB::ReaderWriter::Options();
 
         std::stringstream buf;
         buf << local_options->getOptionString() << " "
-            << "OSG_CURL_PROXY=" << _engineProps.getProxyHost() << " "
-            << "OSG_CURL_PROXYPORT=" << _engineProps.getProxyPort();
+            << "OSG_CURL_PROXY=" << _engineProps.proxySettings()->hostName() << " "
+            << "OSG_CURL_PROXYPORT=" << _engineProps.proxySettings()->port();
         local_options->setOptionString( buf.str() );
     }
 
@@ -211,9 +211,9 @@ MapNode::init()
 	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
     //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
-    if ( _engineProps.getEnableLighting().isSet() )
+    if ( _engineProps.enableLighting().isSet() )
     {
-        ss->setMode( GL_LIGHTING, _engineProps.getEnableLighting().get() ? 
+        ss->setMode( GL_LIGHTING, _engineProps.enableLighting().value() ? 
             osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
@@ -302,7 +302,7 @@ MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUn
         if ( autoSetTextureUnit )
         {
             int nextTextureUnit =
-                _engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS ? 1 :
+                _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS ? 1 :
                 _map->getImageMapLayers().size();
 
             overlay->setOverlayTextureUnit( nextTextureUnit );
@@ -329,14 +329,14 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 
         // install the proper layering technique:
 
-		if (_engineProps.getLayeringTechnique() == MapEngineProperties::MULTIPASS)
-		{
+        if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
+        {
 			terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
-		}
-		else if ( _engineProps.getLayeringTechnique() == MapEngineProperties::MULTITEXTURE)
-		{
+        }
+        else // LAYERING_MULTITEXTURE (default)
+        {
 			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
-		}
+        }
 
         // apply any pending callbacks:
         for( TerrainCallbackList::iterator c = _pendingTerrainCallbacks.begin(); c != _pendingTerrainCallbacks.end(); ++c )
@@ -346,8 +346,8 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         _pendingTerrainCallbacks.clear();
 
 
-        terrain->setVerticalScale( _engineProps.getVerticalScale() );
-        terrain->setSampleRatio( _engineProps.getSampleRatio() );
+        terrain->setVerticalScale( _engineProps.verticalScale().value() );
+        terrain->setSampleRatio( _engineProps.heightFieldSampleRatio().value() );
         this->addChild( terrain );
         _terrains.push_back( terrain );
 
@@ -408,7 +408,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
-    if ( _engine->getEngineProperties().getPreemptiveLOD() )
+    if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
     {
         if ( layer && layer->getTileSource() )
         {
@@ -458,10 +458,10 @@ MapNode::addImageLayer( MapLayer* layer )
             osg::ref_ptr< GeoImage > geoImage;
 
             //If we are in preemptiveLOD mode, just add an empty placeholder image for the new layer.  Otherwise, go ahead and get the image
-            if (_engine->getEngineProperties().getPreemptiveLOD())
-                geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
-            else
+            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
                 geoImage = _engine->createValidGeoImage( layer, key.get() );
+            else
+                geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
 
             if (geoImage.valid())
             {
@@ -506,7 +506,7 @@ MapNode::addImageLayer( MapLayer* layer )
                 tile->setColorLayer( newLayer, img_layer );
 
                 //If we are in preemtpive mode, tell the tile to update the new imagery layer as it is a placeholder
-                if (_engine->getEngineProperties().getPreemptiveLOD())
+                if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
                 {
                     tile->updateImagery( layer->getId(), _map.get(), _engine.get());
                 }
@@ -516,14 +516,11 @@ MapNode::addImageLayer( MapLayer* layer )
                 osg::notify(osg::NOTICE) << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
             }
 
-            if (_engineProps.getPreemptiveLOD())
-            {
-                tile->markTileForRegeneration();
-            }
-            else
-            {
+            
+            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
                 tile->setDirty(true);
-            }
+            else
+                tile->markTileForRegeneration();
         }
     }
     updateStateSet();       
@@ -548,8 +545,10 @@ MapNode::updateElevation(VersionedTile* tile)
     osgTerrain::HeightFieldLayer* heightFieldLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
     if (heightFieldLayer)
     {
-        //In sequential mode, just load the elevation data and dirty the tile.
-        if (!_engineProps.getPreemptiveLOD())
+        //In standard mode, just load the elevation data and dirty the tile.
+        
+        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        //if (!_engineProps.getPreemptiveLOD())
         {
             osg::ref_ptr<osg::HeightField> hf;
             if (hasElevation)
@@ -558,7 +557,7 @@ MapNode::updateElevation(VersionedTile* tile)
             }
             if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
             heightFieldLayer->setHeightField( hf.get() );
-            hf->setSkirtHeight( tile->getBound().radius() * _engineProps.getSkirtRatio() );
+            hf->setSkirtHeight( tile->getBound().radius() * _engineProps.heightFieldSkirtRatio().value() );
             tile->setDirty(true);
         }
         else
@@ -568,7 +567,7 @@ MapNode::updateElevation(VersionedTile* tile)
             {
                 osg::ref_ptr<osg::HeightField> hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf.get() );
-                hf->setSkirtHeight( tile->getBound().radius() * _engineProps.getSkirtRatio() );
+                hf->setSkirtHeight( tile->getBound().radius() * _engineProps.heightFieldSkirtRatio().value() );
                 tile->setElevationLOD( key->getLevelOfDetail() );
                 tile->resetElevationRequests();
                 tile->markTileForRegeneration();
@@ -581,7 +580,7 @@ MapNode::updateElevation(VersionedTile* tile)
                     osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
                     if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
                     heightFieldLayer->setHeightField( hf.get() );
-                    hf->setSkirtHeight( tile->getBound().radius() * _engineProps.getSkirtRatio() );
+                    hf->setSkirtHeight( tile->getBound().radius() * _engineProps.heightFieldSkirtRatio().value() );
                     tile->setElevationLOD(tile->getKey()->getLevelOfDetail());
                     tile->markTileForRegeneration();
                 }
@@ -674,14 +673,11 @@ MapNode::removeImageLayer( unsigned int index )
                 itr->get()->setColorLayer( i, layers[i].get() );
             }
 
-            if (_engineProps.getPreemptiveLOD())
-            {
-                tile->markTileForRegeneration();
-            }
+            
+            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+                tile->setDirty( true );
             else
-            {
-                tile->setDirty(true);
-            }
+                tile->markTileForRegeneration();
         }
     }
 
@@ -761,15 +757,10 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
                 itr->get()->setColorLayer( i, layers[i].get() );
             }
 
-
-            if (_engineProps.getPreemptiveLOD())
-            {
-                tile->markTileForRegeneration();
-            }
+            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+                tile->setDirty( true );
             else
-            {
-                tile->setDirty(true);
-            }
+                tile->markTileForRegeneration();
         }
     } 
 
@@ -798,12 +789,12 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 
 void MapNode::updateStateSet()
 {
-	if (_engineProps.getLayeringTechnique() == osgEarth::MapEngineProperties::MULTIPASS)
+	if (_engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS)
         return;
 
-    if ( _engineProps.getCombineLayers() )
+    if ( _engineProps.combineLayers() == true )
     {
-        int numLayers = _map->getImageMapLayers().size(); //getNumImageSources();
+        int numLayers = _map->getImageMapLayers().size();
 
         osg::StateSet* stateset = getOrCreateStateSet();
 

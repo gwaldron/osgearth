@@ -57,7 +57,7 @@ int main(int argc, char** argv)
   {
       //Create the map dynamically
 	  MapEngineProperties props;
-	  props.setLayeringTechnique( MapEngineProperties::MULTIPASS );
+	  props.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
       osg::ref_ptr<MapNode> mapNode = new MapNode(props);
 
       //Add the yahoo satellite layer

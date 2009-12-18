@@ -37,7 +37,7 @@ namespace osgEarth { namespace Features
     {
     public:
         BuildGeometryFilter();
-        BuildGeometryFilter( const Styling::StyleClass& style );
+        //BuildGeometryFilter( const Styling::StyleClass& style );
 
         optional<Styling::StyleClass>& styleClass() { return _styleClass; }
 

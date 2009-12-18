@@ -99,7 +99,11 @@ public:
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
         //return osgDB::readImageFile( buf.str(), getOptions() );
-        return HTTPClient::readImageFile( buf.str(), getOptions(), progress);
+        //return HTTPClient::readImageFile( buf.str(), getOptions(), progress);
+        
+        osg::ref_ptr<osg::Image> image;
+        HTTPClient::readImageFile( buf.str(), image, getOptions(), progress );
+        return image.release();
     }
 
     // override

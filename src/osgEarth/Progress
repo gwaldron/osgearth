@@ -48,9 +48,12 @@ namespace osgEarth
 
         void cancel() { _canceled = true; }
         bool isCanceled() const { return _canceled; }
+
+        std::string& message() { return _message; }
         
     protected:
         volatile bool _canceled;
+        std::string _message;
     };
 
     /**

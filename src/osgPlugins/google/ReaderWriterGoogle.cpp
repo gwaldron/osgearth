@@ -158,7 +158,9 @@ public:
         //    << std::endl;
 
         //return osgDB::readImageFile( buf.str(), getOptions() );
-        return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
+        osg::ref_ptr<osg::Image> image;
+        HTTPClient::readImageFile( buf.str(), image, getOptions(), progress );
+        return image.release();
     }
 
     osg::HeightField* createHeightField( const TileKey* key,

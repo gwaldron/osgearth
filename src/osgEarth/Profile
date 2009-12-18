@@ -41,9 +41,6 @@ namespace osgEarth
         /** Constructs an empty (undefined) profile configuration */
         ProfileConfig();
 
-        /** Copy constructor. */
-        ProfileConfig( const ProfileConfig& rhs );
-
         /** Materialize from configuration object */
         ProfileConfig( const Config& conf );
 
@@ -54,42 +51,45 @@ namespace osgEarth
         bool defined() const;
 
         /** Gets the optional Well-Known Profile string. */
-        const std::string& getNamedProfile() const;
-
-        /** Sets an optional Well-Known Profile string. */
-        void setNamedProfile( const std::string& namedProfile);
+        optional<std::string>& namedProfile() { return _namedProfile; }
+        const optional<std::string>& namedProfile() const { return _namedProfile; }
 
         /** Gets the spatial reference system initialization string to use for the profile. */
-        const std::string& getSRS() const;
+        optional<std::string>& srsString() { return _srs; }
+        const optional<std::string>& srsString() const { return _srs; }
 
-        /** Sets the spatial reference system initialization string to use for the profile. */
-        void setSRS(const std::string& srs);
+        optional<Bounds>& bounds() { return _bounds; }
+        const optional<Bounds>& bounds() const { return _bounds; }
 
-        /** Returns true is the extents are set and form a valid spatial envelope. */         
-        bool areExtentsValid() const;
-        
-        /** Gets the spatial extents of the profile */
-        void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
-        double xMin() const;
-        double yMin() const;
-        double xMax() const;
-        double yMax() const;
+        ///** Returns true is the extents are set and form a valid spatial envelope. */         
+        //bool areExtentsValid() const;
+        //
+        ///** Gets the spatial extents of the profile */
+        //void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
+        double xMin() const { return _bounds->xMin(); }
+        double yMin() const { return _bounds->yMin(); }
+        double xMax() const { return _bounds->xMax(); }
+        double yMax() const { return _bounds->yMax(); }
 
-        /** Sets the spatial extents of the profile */
-        void setExtents(double minX, double minY, double maxX, double maxY);
+        ///** Sets the spatial extents of the profile */
+        //void setExtents(double minX, double minY, double maxX, double maxY);
 
         /** Serialize to configuration object */
         Config toConfig( const std::string& name ="profile" ) const;
 
     private:
-        bool _empty;
-        std::string _namedProfile;
-        std::string _refLayer;
-        std::string _srs;
-        double _minX;
-        double _minY;
-        double _maxX;
-        double _maxY;
+        optional<std::string> _namedProfile;
+        optional<std::string> _srs;
+        optional<Bounds>      _bounds;
+
+        //bool _empty;
+        //std::string _namedProfile;
+        //std::string _refLayer;
+        //std::string _srs;
+        //double _minX;
+        //double _minY;
+        //double _maxX;
+        //double _maxY;
     };
 
 

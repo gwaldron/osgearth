@@ -489,17 +489,16 @@ int main(int argc, char** argv)
 
     if ( arguments.read( "--preemptive" ) || arguments.read( "--preemptive=ON" ) )
     {
-        engineProps.setPreemptiveLOD( true );
-        engineProps.setAsyncTileLayers( true );
+        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_PREEMPTIVE;
     }
-    else
-    {
-        engineProps.setPreemptiveLOD( false );
-    }
+    //else
+    //{
+    //    //engineProps.setPreemptiveLOD( false );
+    //}
 
 	if (arguments.read( "--multipass") )
 	{
-		engineProps.setLayeringTechnique( MapEngineProperties::MULTIPASS );
+		engineProps.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
 	}
 
     // construct the viewer.

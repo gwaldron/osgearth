@@ -68,6 +68,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT HTTPResponse
     {
     public:
+        enum Code {
+            NONE         = 0,
+            OK           = 200,
+            NOT_FOUND    = 404,
+            SERVER_ERROR = 500
+        };
+
+    public:
         HTTPResponse( long code );
 
         HTTPResponse( const HTTPResponse& rhs );
@@ -112,6 +120,44 @@ namespace osgEarth
     class OSGEARTH_EXPORT HTTPClient : public osg::Referenced
     {
     public:
+        enum ResultCode {
+            RESULT_OK,
+            RESULT_CANCELED,
+            RESULT_NOT_FOUND,
+            RESULT_SERVER_ERROR,
+            RESULT_NO_READER,
+            RESULT_READER_ERROR,
+            RESULT_UNKNOWN_ERROR
+        };
+
+        // returns true is the result code represents a recoverable
+        // situation, i.e. one in which retrying might work.
+        static bool isRecoverable( ResultCode code ) {
+            return
+                code == RESULT_OK ||
+                code == RESULT_SERVER_ERROR ||
+                code == RESULT_CANCELED;
+        }
+
+    public:
+        static ResultCode readImageFile(
+            const std::string& uri,
+            osg::ref_ptr<osg::Image>& output,
+            const osgDB::ReaderWriter::Options* options = 0,
+            ProgressCallback* callback = 0 );
+
+        static ResultCode readNodeFile(
+            const std::string& uri,
+            osg::ref_ptr<osg::Node>& output,
+            const osgDB::ReaderWriter::Options* options = 0,
+            ProgressCallback* callback = 0 );
+
+        static ResultCode readString(
+            const std::string& uri,
+            std::string& output,
+            ProgressCallback* callback =0);
+
+    public:
 
         /**
          * Performs an HTTP "GET".
@@ -123,17 +169,6 @@ namespace osgEarth
         static HTTPResponse get( const std::string& url,
                                  const osgDB::ReaderWriter::Options* options = 0,
                                  ProgressCallback* callback = 0);
-
-        static osg::Image*  readImageFile( const std::string& filename, 
-                                           const osgDB::ReaderWriter::Options* options = 0,
-                                           ProgressCallback* callback = 0);
-
-        static osg::Node*   readNodeFile( const std::string& filename, 
-                                          const osgDB::ReaderWriter::Options* options = 0,
-                                          ProgressCallback* callback = 0);
-
-        static std::string  readString( const std::string& filename,
-                                        ProgressCallback* callback = 0);
 
     private:
         HTTPClient();
@@ -149,16 +184,22 @@ namespace osgEarth
                             const osgDB::ReaderWriter::Options* options = 0,
                             ProgressCallback* callback = 0 ) const;
 
-        osg::Image* doReadImageFile(const std::string& filename,
-                                  const osgDB::ReaderWriter::Options* options = 0,
-                                  osgEarth::ProgressCallback *callback = 0);
+        ResultCode doReadImageFile(
+            const std::string& filename,
+            osg::ref_ptr<osg::Image>& output,
+            const osgDB::ReaderWriter::Options* options = 0,
+            osgEarth::ProgressCallback *callback = 0);
 
-        osg::Node* doReadNodeFile(const std::string& filename,
-                                  const osgDB::ReaderWriter::Options* options = 0,
-                                  osgEarth::ProgressCallback *callback = 0);
+        ResultCode doReadNodeFile(
+            const std::string& filename,
+            osg::ref_ptr<osg::Node>& output,
+            const osgDB::ReaderWriter::Options* options = 0,
+            osgEarth::ProgressCallback *callback = 0);
 
-        std::string doReadString(const std::string& filename,
-                                 osgEarth::ProgressCallback *callback = 0);
+        ResultCode doReadString(
+            const std::string& filename,
+            std::string& output,
+            osgEarth::ProgressCallback *callback = 0);
 
 
         /**

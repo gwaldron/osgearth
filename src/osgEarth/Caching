@@ -57,9 +57,6 @@ namespace osgEarth
          */
         CacheConfig();
 
-        /** Copy constructor */
-        CacheConfig( const CacheConfig& rhs );
-
         /** materialize from a configuration object */
         CacheConfig( const Config& conf );
 

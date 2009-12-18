@@ -149,7 +149,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                     if ( ext == "earth_tile" )
                     {
-                        bool populateLayers = !mapNode->getEngine()->getEngineProperties().getPreemptiveLOD();
+                        bool populateLayers = mapNode->getEngine()->getEngineProperties().loadingPolicy()->mode() 
+                            == LoadingPolicy::MODE_STANDARD;
 
                         node = mapNode->getEngine()->createSubTiles(
                             mapNode->getMap(),

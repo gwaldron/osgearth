@@ -49,7 +49,8 @@ public:
         _sourceId( sourceId ),
         _renderBinStart( renderBinStart ),
         _showVolumes( false ),
-        _extrusionDistance( 300000.0 )
+        _extrusionDistance( 300000.0 ),
+        _geomTypeOverride( Geometry::TYPE_UNKNOWN )
     {
         if ( osg::DisplaySettings::instance()->getMinimumNumStencilBits() < 8 )
         {

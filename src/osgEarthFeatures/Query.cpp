@@ -20,24 +20,25 @@
 
 using namespace osgEarth::Features;
 
-Query::Query()
+Query::Query() :
+_bounds( Bounds() ),
+_expression( "" )
 {
     //nop
 }
 
-Query::Query( const Query& rhs ) :
-_bounds( rhs._bounds ),
-_expression( rhs._expression )
+Query::Query( const Config& conf ) :
+_bounds( Bounds() ),
+_expression( "" )
 {
-    //nop
-}
-
-Query::Query( const Config& conf )
-{
-    _expression = conf.value( "expr" );
-    if ( _expression.empty() ) _expression = conf.value( "where" );
-    if ( _expression.empty() ) _expression = conf.value( "sql" );
-    if ( _expression.empty() ) _expression = conf.value( "expression" );
+    if ( conf.hasValue( "expr" ) )
+        _expression = conf.value( "expr" );
+    else if ( conf.hasValue( "where" ) )
+        _expression = conf.value( "where" );
+    else if ( conf.hasValue( "sql" ) )
+        _expression = conf.value( "sql" );
+    else if ( conf.hasValue( "expression" ) )
+        _expression = conf.value( "expression" );
 
     Config b = conf.child( "extent" );
     if( !b.empty() )

@@ -23,6 +23,7 @@
 #include <osgEarth/TaskService>
 #include <osgEarth/Locators>
 #include <osgEarth/Profile>
+#include <osgEarth/MapEngineProperties>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <OpenThreads/ReadWriteMutex>
@@ -269,6 +270,8 @@ namespace osgEarth
         void getVersionedTiles( TileList& out_tiles );
         void getTerrainTiles( TerrainTileList& out_tiles );
 
+        const LoadingPolicy& getLoadingPolicy() const;
+
     private:
 
         TaskService* createTaskService( int id, int numThreads );
@@ -291,6 +294,8 @@ namespace osgEarth
 
         bool _releaseCBInstalled;
         TerrainCallbackList _terrainCallbacks;
+
+        LoadingPolicy _loadingPolicy;
     };
 }
 

@@ -34,24 +34,19 @@ namespace osgEarth { namespace Features
     public:
         Query();
         Query( const Config& conf );
-        Query( const Query& rhs );
         ~Query() { }
 
         /** Sets the geospatial extent bounding this query. */
-        optional<Bounds>& bounds() {
-            return _bounds; }
-        const optional<Bounds>& bounds() const {
-            return _bounds; }
+        optional<Bounds>& bounds() { return _bounds; }
+        const optional<Bounds>& bounds() const { return _bounds; }
 
         /** Sets a driver-specific query expression. */
-        std::string& expression() {
-            return _expression; }
-        const std::string& expression() const {
-            return _expression; }
+        optional<std::string>& expression() { return _expression; }
+        const optional<std::string>& expression() const { return _expression; }
 
     protected:
         optional<Bounds> _bounds;
-        std::string _expression;
+        optional<std::string> _expression;
     };
 
 } } // namespace osgEarth::Features

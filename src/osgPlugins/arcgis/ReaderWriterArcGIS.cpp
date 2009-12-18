@@ -40,7 +40,8 @@ class ArcGISSource : public TileSource
 {
 public:
     ArcGISSource( const PluginOptions* options ) :
-      TileSource( options )
+      TileSource( options ),
+      _profileConf( ProfileConfig() )
     {
         if ( options )
         {
@@ -49,16 +50,11 @@ public:
             // this is the ArcGIS REST services URL for the map service,
             // e.g. http://server/ArcGIS/rest/services/Layer/MapServer
             _url = conf.value( PROPERTY_URL );
-            //if ( options->getPluginData( PROPERTY_URL ) )
-            //    _url = std::string( (const char*)options->getPluginData( PROPERTY_URL ) );
 
             // force a profile type
             // TODO? do we need this anymore? doesn't this happen with overrideprofile now?
             if ( conf.hasChild( PROPERTY_PROFILE ) )
                 _profileConf = ProfileConfig( conf.child( PROPERTY_PROFILE ) );
-
-            //if ( options->getPluginData( PROPERTY_PROFILE ) )
-            //    _profile_str = std::string( (const char*)options->getPluginData( PROPERTY_PROFILE ) );
         }
 
         //TODO: allow single layers vs. "fused view"
@@ -172,7 +168,11 @@ public:
 
         //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
         //return osgDB::readImageFile( buf.str(), getOptions() );
-        return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
+        //return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
+        
+        osg::ref_ptr<osg::Image> image;
+        HTTPClient::readImageFile( buf.str(), image, getOptions(), progress );
+        return image.release();
     }
 
     // override

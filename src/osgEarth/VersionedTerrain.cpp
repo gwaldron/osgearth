@@ -153,45 +153,6 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
     int _nextLOD;
 };
 
-//struct TileImagePlaceholderLayerRequest : public TileLayerRequest
-//{
-//    TileImagePlaceholderLayerRequest( const TileKey* key, Map* map, MapEngine* engine, GeoLocator* keyLocator ) 
-//        : TileLayerRequest( key, map, engine ),
-//          _keyLocator(keyLocator)
-//    {
-//        _parentKey = key->createParentKey();
-//    }
-//
-//    void setParentImage( osg::Image* parentImage )
-//    {
-//        _parentImage = parentImage;
-//    }
-//
-//    void setNextLOD( int nextLOD )
-//    {
-//        _nextLOD = nextLOD;
-//    }
-//
-//    void operator()( ProgressCallback* progress )
-//    {
-//        if ( !progress->isCanceled() )
-//        {
-//            _result = _engine->createPlaceholderImageLayer(
-//
-//            _result = _engine->createPlaceholderHeightfieldLayer(
-//                _parentHF.get(),
-//                _parentKey.get(),
-//                _key.get(),
-//                _keyLocator.get() );
-//        }
-//    }
-//
-//    osg::ref_ptr<osg::HeightField> _parentHF;
-//    osg::ref_ptr<const TileKey> _parentKey;
-//    osg::ref_ptr<GeoLocator>    _keyLocator;
-//    int _nextLOD;
-//};
-
 // A task request that rebuilds a tile's terrain technique in the background. It
 // re-init's the geometry but does NOT swap the buffers (since this constitutes
 // altering the scene graph and must therefore be done in the update traversal).
@@ -244,8 +205,7 @@ _elevationLOD( key->getLevelOfDetail() ),
 _imageryLOD( 1 ),
 _tileRegisteredWithTerrain( false ),
 _useTileGenRequest( true ),
-_tileGenNeeded( false ),
-_sequentialImagery( true )
+_tileGenNeeded( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -609,10 +569,19 @@ VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
         ss << "TileColorLayerRequest " << _key->str() << std::endl;
         r->setName( ss.str() );
         r->setState( osgEarth::TaskRequest::STATE_IDLE );
-        if ( _sequentialImagery )
+
+        // in image-sequential mode, we want to prioritize lower-LOD imagery since it
+        // needs to come in before higher-resolution stuff. 
+        if ( getVersionedTerrain()->getLoadingPolicy().mode() == LoadingPolicy::MODE_SEQUENTIAL )
+        {
             r->setPriority( -(float)_key->getLevelOfDetail() + PRI_IMAGE_OFFSET );
-        else
+        }
+        // in image-preemptive mode, the highest LOD should get higher load priority:
+        else // MODE_PREEMPTIVE
+        {
             r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail());
+        }
+
         r->setProgressCallback( new StampedProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
 
         //If we already have a request for this layer, remove it from the list and use the new one
@@ -785,9 +754,22 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
         _tileGenRequest = 0;
     }
 
-    if ( !_sequentialImagery || readyForNewImagery() )
+
+    // now deal with imagery.
+    const LoadingPolicy& lp = getVersionedTerrain()->getLoadingPolicy();
+    bool checkForFinalImagery = false;
+
+    if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
     {
-        if ( _sequentialImagery && _imageryLOD+1 < _key->getLevelOfDetail() )
+        // in preemptive mode, always check for the final imagery - there are no intermediate
+        // placeholders.
+        checkForFinalImagery = true;
+    }
+    else if ( lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && readyForNewImagery() )
+    {
+        // in sequential mode, we have to incrementally increase imagery resolution by
+        // creating placeholders based of parent tiles, one LOD at a time.
+        if ( _imageryLOD+1 < _key->getLevelOfDetail() )
         {
             if ( _family[PARENT].imageryLOD > _imageryLOD )
             {
@@ -807,93 +789,99 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                         this->setColorLayer(i, parentColorLayers[i].get());
                 }
 
-                setImageryLOD( _imageryLOD+1 );
-
+                setImageryLOD( _family[PARENT].imageryLOD );
                 markTileForRegeneration();
             }
         }
-
         else
         {
-            // Then the image requests:
-            for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
+            // we've gone as far as we can with placeholders; time to check for the
+            // final imagery tile.
+            checkForFinalImagery = true;
+        }
+    }
+
+    if ( checkForFinalImagery )
+    {
+        // Then the image requests:
+        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
+        {
+            bool increment = true;
+
+            if ( i->get()->isCompleted() )
             {
-                bool increment = true;
+                TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
 
-                if ( i->get()->isCompleted() )
+                if ( r->wasCanceled() )
                 {
-                    TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
+                    //Reset the cancelled task to IDLE and give it a new progress callback.
+                    r->setState( TaskRequest::STATE_IDLE );
+                    r->setProgressCallback( new StampedProgressCallback(
+                        r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
+                    r->reset();
+                }
+                else // success..
+                {
+                    int index = -1;
+                    {
+                        // Lock the map data mutex, since we are querying the map model:
+                        ScopedReadLock mapDataLock( map->getMapDataMutex() );
 
-                    if ( r->wasCanceled() )
-                    {
-                        //Reset the cancelled task to IDLE and give it a new progress callback.
-                        r->setState( TaskRequest::STATE_IDLE );
-                        r->setProgressCallback( new StampedProgressCallback(
-                            r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
-                        r->reset();
-                    }
-                    else // success..
-                    {
-                        int index = -1;
+                        //See if we even care about the request
+                        for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
                         {
-                            // Lock the map data mutex, since we are querying the map model:
-                            ScopedReadLock mapDataLock( map->getMapDataMutex() );
-
-                            //See if we even care about the request
-                            for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
+                            if (map->getImageMapLayers()[j]->getId() == r->_layerId)
                             {
-                                if (map->getImageMapLayers()[j]->getId() == r->_layerId)
-                                {
-                                    index = j;
-                                    break;
-                                }
+                                index = j;
+                                break;
                             }
                         }
+                    }
 
-                        //The maplayer was probably deleted
-                        if (index < 0)
+                    //The maplayer was probably deleted
+                    if (index < 0)
+                    {
+                        osg::notify(osg::INFO) << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
+                        i = _requests.erase(i);
+                        increment = false;
+                    }
+                    else
+                    {
+                        osg::ref_ptr<osgTerrain::ImageLayer> newImgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
+                        if ( newImgLayer.valid() )
                         {
-                            osg::notify(osg::INFO) << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
-                            i = _requests.erase(i);
+                            // update the color layer safely:
+                            {
+                                OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
+                                this->setColorLayer( index, newImgLayer.get() );
+                            }
+
+                            setImageryLOD( _key->getLevelOfDetail() );
+                            markTileForRegeneration();
+
+                            //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
+
+                            // remove from the list (don't reference "r" after this!)
+                            i = _requests.erase( i );
                             increment = false;
                         }
                         else
-                        {
-                            osg::ref_ptr<osgTerrain::ImageLayer> newImgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
-                            if ( newImgLayer.valid() )
-                            {
-                                // update the color layer safely:
-                                {
-                                    OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
-                                    this->setColorLayer( index, newImgLayer.get() );
-                                }
+                        {  
+                            osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
 
-                                setImageryLOD( _key->getLevelOfDetail() );
-                                markTileForRegeneration();
-
-                                //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
-
-                                // remove from the list (don't reference "r" after this!)
-                                i = _requests.erase( i );
-                                increment = false;
-                            }
-                            else
-                            {  
-                                osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
-
-                                //The color layer request failed, probably due to a server error. Reset it.
-                                r->setState( TaskRequest::STATE_IDLE );
-                                r->reset();
-                            }
+                            //The color layer request failed, probably due to a server error. Reset it.
+                            r->setState( TaskRequest::STATE_IDLE );
+                            r->reset();
                         }
                     }
                 }
-
-                if ( increment )
-                    ++i;
             }
+
+            if ( increment )
+                ++i;
         }
     }
+
 
     // Finally, the elevation requests:
     if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
@@ -917,7 +905,8 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                 if ( newHFLayer.valid() && newHFLayer->getHeightField() != NULL )
                 {
                     newHFLayer->getHeightField()->setSkirtHeight( 
-                        getVersionedTerrain()->getEngine()->getEngineProperties().getSkirtRatio() * this->getBound().radius() );
+                        getVersionedTerrain()->getEngine()->getEngineProperties().heightFieldSkirtRatio().get()
+                        * this->getBound().radius() );
 
                     // need to write-lock the layer data since we'll be changing it:
                     {
@@ -929,6 +918,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                     markTileForRegeneration();
                     
                     // finalize the LOD marker for this tile, so other tiles can see where we are.
+                    //setElevationLOD( _key->getLevelOfDetail() );
                     _elevationLOD = _key->getLevelOfDetail();
 
     #ifdef PREEMPTIVE_DEBUG
@@ -978,6 +968,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                     // update the elevation LOD for this tile, now that the new HF data is installed. This will
                     // allow other tiles to see where this tile's HF data is.
                     _elevationLOD = r->_nextLOD;
+                    //setElevationLOD( r->_nextLOD );
 
     #ifdef PREEMPTIVE_DEBUG
                     osg::notify(osg::NOTICE) << "..tile (" << _key->str() << ") is now at (" << _elevationLOD << ")" << std::endl;
@@ -1095,32 +1086,24 @@ _releaseCBInstalled( false )
     setNumChildrenRequiringUpdateTraversal( 1 );
     this->setThreadSafeRefUnref( true );
 
-    //See if the number of threads is explicitly provided
-    const optional<int>& numThreads = engine->getEngineProperties().getNumLoadingThreads();
-    if (numThreads.isSet())
-    {
-        _numAsyncThreads = numThreads.get();
-    }
+    _loadingPolicy = engine->getEngineProperties().loadingPolicy().get();
 
-    //See if an environment variable was set
     const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
     if ( env_numTaskServiceThreads )
     {
         _numAsyncThreads = ::atoi( env_numTaskServiceThreads );
     }
-
-    //See if a processors per core option was provided
-    if (_numAsyncThreads == 0)
+    else
+    if ( _loadingPolicy.numThreads().isSet() )
     {
-        const optional<int>& threadsPerProcessor = engine->getEngineProperties().getNumLoadingThreadsPerLogicalProcessor();
-        if (threadsPerProcessor.isSet())
-        {
-            _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * threadsPerProcessor.get();
-        }
+        _numAsyncThreads = _loadingPolicy.numThreads().get();
     }
-
-    //Default to using 2 threads per core
-    if (_numAsyncThreads == 0 )
+    else
+    if ( _loadingPolicy.numThreadsPerCore().isSet() )
+    {
+        _numAsyncThreads = _loadingPolicy.numThreadsPerCore().get() * OpenThreads::GetNumberOfProcessors();
+    }
+    else
     {
         _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * 2;
     }
@@ -1176,6 +1159,12 @@ VersionedTerrain::getTerrainTiles( TerrainTileList& out_list )
     {
         out_list.push_back( i->second.get() );
     }
+}
+
+const LoadingPolicy&
+VersionedTerrain::getLoadingPolicy() const
+{
+    return _loadingPolicy;
 }
 
 // This method is called by VersionedTerrain::traverse().
@@ -1459,8 +1448,8 @@ VersionedTerrain::getTileGenerationTaskSerivce()
     TaskService* service = getTaskService( TILE_GENERATION_TASK_SERVICE_ID );
     if (!service)
     {
-        int numThreads = _engine->getEngineProperties().getNumTileGeneratorThreads().isSet() ?
-            _engine->getEngineProperties().getNumTileGeneratorThreads().get() :
+        int numThreads = _loadingPolicy.numTileGeneratorThreads().isSet() ?
+            _loadingPolicy.numTileGeneratorThreads().get() :
             NUM_TILE_GENERATION_THREADS;
 
         if ( numThreads < 1 )

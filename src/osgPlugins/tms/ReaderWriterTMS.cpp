@@ -144,7 +144,8 @@ public:
             {
                 if (osgDB::containsServerAddress( image_url ))
                 {
-                    return HTTPClient::readImageFile( image_url, getOptions(), progress );
+                    HTTPClient::readImageFile( image_url, image, getOptions(), progress );
+                    //return HTTPClient::readImageFile( image_url, getOptions(), progress );
                 }
                 image = osgDB::readImageFile( image_url, getOptions() );
             }

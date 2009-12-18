@@ -37,7 +37,7 @@ namespace osgEarth { namespace Features
     public:
         FilterContext();
 
-        FilterContext( const FilterContext& rhs );
+        //FilterContext( const FilterContext& rhs );
 
         /** spatial envelope that filters should honor when operating under this context */
         optional<GeoExtent>& extent() {

@@ -3,7 +3,7 @@
        <url>http://onearth.jpl.nasa.gov/wms.cgi</url>
        <layers>global_mosaic</layers>
        <format>jpeg</format>
-       <styles></styles>
+       <styles>visual</styles>
        <tile_size>512</tile_size>
    </image> 
    <loading_policy mode="preemptive"/>

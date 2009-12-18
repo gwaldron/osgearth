@@ -266,8 +266,6 @@ namespace osgEarth
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         OpenThreads::ReadWriteMutex _mapDataMutex;
-        optional<CacheConfig> _cacheConf;
-        optional<ProfileConfig> _profileConf;
         std::string _referenceURI;
         osg::ref_ptr<const Profile> _profile;
         unsigned int _id;
@@ -275,6 +273,9 @@ namespace osgEarth
 		osg::ref_ptr<Cache> _cache;
 		bool _use_mercator_locator;
         int _dataModelRevision;
+        
+        optional<CacheConfig> _cacheConf;
+        optional<ProfileConfig> _profileConf;
 
     private:
         void calculateProfile();

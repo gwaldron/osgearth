@@ -73,7 +73,11 @@ public:
                              ProgressCallback* progress)
     {
         //return osgDB::readImageFile(  createURI( key ), getOptions() );
-        return HTTPClient::readImageFile( createURI( key ), getOptions(), progress );
+        //return HTTPClient::readImageFile( createURI( key ), getOptions(), progress );
+        
+        osg::ref_ptr<osg::Image> image;
+        HTTPClient::readImageFile( createURI( key ), image, getOptions(), progress );
+        return image.release();
     }
 
     osg::HeightField* createHeightField( const TileKey* key,

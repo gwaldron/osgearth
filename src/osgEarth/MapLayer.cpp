@@ -105,6 +105,12 @@ _transparentColor(osg::Vec4ub(0,0,0,0))
 	readEnvironmentalVariables();
     _id = s_mapLayerID++;
     _cacheFormat = suggestCacheFormat();
+
+    //Try to get the profile from the TileSource
+    if (_tileSource)
+    {
+        _profile = _tileSource->getProfile();
+    }
 }
 
 optional<int>&

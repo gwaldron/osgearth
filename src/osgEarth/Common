@@ -73,7 +73,8 @@ namespace osgEarth
 
 template<typename T> struct optional {
     //optional() : _set(false) { }
-    optional(T value) : _set(false), _value(value), _defaultValue(value) { }
+    optional(T defaultValue) : _set(false), _value(defaultValue), _defaultValue(defaultValue) { }
+    optional(T defaultValue, T value) : _set(true), _value(value), _defaultValue(defaultValue) { }
     //optional(T value) : _set(true), _value(value) { }
     optional(const optional<T>& rhs) { (*this)=rhs; }
     virtual ~optional() { }

@@ -487,11 +487,21 @@ int main(int argc, char** argv)
 
     MapEngineProperties engineProps;
 
+    engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
+
     if ( arguments.read( "--preemptive" ) || arguments.read( "--preemptive=ON" ) )
     {
         engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_PREEMPTIVE;
     }
-    //else
+    else if ( arguments.read( "--standard" ) || arguments.read( "--standard=ON" ) )
+    {
+        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+    }
+    else if ( arguments.read( "--sequential" ) || arguments.read( "--sequential=ON" ) )
+    {
+        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
+    }
+    //else 
     //{
     //    //engineProps.setPreemptiveLOD( false );
     //}

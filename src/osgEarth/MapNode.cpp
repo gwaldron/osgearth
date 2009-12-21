@@ -457,11 +457,21 @@ MapNode::addImageLayer( MapLayer* layer )
 
             osg::ref_ptr< GeoImage > geoImage;
 
+            bool needToUpdateImagery = false;
+
             //If we are in preemptiveLOD mode, just add an empty placeholder image for the new layer.  Otherwise, go ahead and get the image
-            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+            if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
+               ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
+            {
                 geoImage = _engine->createValidGeoImage( layer, key.get() );
+                tile->setImageryLOD( key->getLevelOfDetail() );
+            }
             else
+            {
                 geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
+                tile->setImageryLOD(-1);
+                needToUpdateImagery = true;
+            }
 
             if (geoImage.valid())
             {
@@ -505,8 +515,7 @@ MapNode::addImageLayer( MapLayer* layer )
                 unsigned int newLayer = _map->getImageMapLayers().size() - 1;
                 tile->setColorLayer( newLayer, img_layer );
 
-                //If we are in preemtpive mode, tell the tile to update the new imagery layer as it is a placeholder
-                if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+                if (needToUpdateImagery)
                 {
                     tile->updateImagery( layer->getId(), _map.get(), _engine.get());
                 }

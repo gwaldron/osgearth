@@ -53,7 +53,7 @@ _bounds( Bounds() )
 //}
 
 ProfileConfig::ProfileConfig( const std::string& namedProfile ) :
-_namedProfile( namedProfile ),
+_namedProfile( namedProfile, namedProfile ),
 _srs( "" ),
 _bounds( Bounds() )
 {

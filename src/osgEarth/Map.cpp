@@ -178,18 +178,22 @@ Map::getCache() const
 void
 Map::setCache( Cache* cache)
 {
-	_cache = cache;
+    if (_cache != cache)
+    {
+        _cache = cache;
+        _cache->setMapConfigFilename( _referenceURI );
 
-	//Propagate the cache to any of our layers
-	for (MapLayerList::iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end(); ++i)
-	{
-		i->get()->setCache( _cache.get() );
-	}
+        //Propagate the cache to any of our layers
+        for (MapLayerList::iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end(); ++i)
+        {
+            i->get()->setCache( _cache.get() );
+        }
 
-	for (MapLayerList::iterator i = _heightFieldMapLayers.begin(); i != _heightFieldMapLayers.end(); ++i)
-	{
-		i->get()->setCache( _cache.get() );
-	}
+        for (MapLayerList::iterator i = _heightFieldMapLayers.begin(); i != _heightFieldMapLayers.end(); ++i)
+        {
+            i->get()->setCache( _cache.get() );
+        }
+    }
 }
 
 void 

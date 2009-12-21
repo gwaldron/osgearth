@@ -203,7 +203,7 @@ _usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _elevationLOD( key->getLevelOfDetail() ),
 _imageryLOD( 1 ),
-_tileRegisteredWithTerrain( false ),
+_hasBeenTraversed(false),
 _useTileGenRequest( true ),
 _tileGenNeeded( false ),
 _verticalScale(1.0f)
@@ -320,6 +320,12 @@ int
 VersionedTile::getImageryLOD() const
 {
     return _imageryLOD;
+}
+
+bool
+VersionedTile::getHasBeenTraversed() const
+{
+    return _hasBeenTraversed;
 }
 
 VersionedTerrain*
@@ -674,6 +680,9 @@ VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
 void
 VersionedTile::servicePendingImageRequests( int stamp )
 {       
+    //Don't do anything until we have been added to the scene graph
+    if (!_hasBeenTraversed) return;
+
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
@@ -708,6 +717,10 @@ VersionedTile::getFamily() {
 void
 VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
 {
+    //Don't do anything until we have been added to the scene graph
+    if (!_hasBeenTraversed) return;
+
+
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
@@ -808,6 +821,9 @@ VersionedTile::markTileForRegeneration()
 bool
 VersionedTile::serviceCompletedRequests( bool tileTableLocked )
 {
+    //Don't do anything until we have been added to the scene graph
+    if (!_hasBeenTraversed) return false;
+
     bool tileModified = false;
 
     Map* map = this->getVersionedTerrain()->getMap();
@@ -1071,15 +1087,16 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
     bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
     bool isUpdate = nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
 
-    if ( !_tileRegisteredWithTerrain && getVersionedTerrain() && (isCull || isUpdate) ) 
+    if ( !_hasBeenTraversed && getVersionedTerrain() && (isCull || isUpdate) ) 
     {
         // register this tile with its terrain if we've not already done it.
         // we want to be sure that the tile is already in the scene graph at the
         // time of registration (otherwise VersionedTerrain will see its refcount
         // at 1 and schedule it for removal as soon as it's added. Therefore, we
         // make sure this is either a CULL or UPDATE traversal.
-        getVersionedTerrain()->registerTile( this );
-        _tileRegisteredWithTerrain = true;
+        //getVersionedTerrain()->registerTile( this );
+        //_tileRegisteredWithTerrain = true;
+        _hasBeenTraversed = true;
 
         // we constructed this tile with an update traversal count of 1 so it would get
         // here and we could register the tile. Now we can decrement it back to normal.
@@ -1341,6 +1358,8 @@ void
 VersionedTerrain::registerTile( VersionedTile* newTile )
 {
     ScopedWriteLock lock( _tilesMutex );
+    //Register the new tile immediately, but also add it to the queue so that
+    _tiles[ newTile->getTileID() ] = newTile;
     _tilesToAdd.push( newTile );
 }
 
@@ -1375,7 +1394,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
 
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
             {
-                if ( i->second.valid() && i->second->referenceCount() == 1 )
+                if ( i->second.valid() && i->second->referenceCount() == 1 && i->second->getHasBeenTraversed() )
                 {
                     //osg::notify(osg::NOTICE) << "Tile (" << i->second->getKey()->str() << ") expired..." << std::endl;
 
@@ -1408,7 +1427,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             // queue, we know it is already in the scene graph.
             while( _tilesToAdd.size() > 0 )
             {
-                _tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
+                //_tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
                 if ( _terrainCallbacks.size() > 0 )
                     _updatedTiles.push_back( _tilesToAdd.front().get() );
                 _tilesToAdd.pop();

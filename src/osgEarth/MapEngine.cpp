@@ -497,6 +497,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
+    tile->setTerrain( terrain );
+    terrain->registerTile( tile );
     osg::Node* result = 0L;
 
 
@@ -765,7 +767,8 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     //
     // If there's already a placeholder tile registered, this will be ignored. If there isn't,
     // this will register the new tile.
-    //tile->setTerrain( terrain );
+    tile->setTerrain( terrain );
+    terrain->registerTile( tile );
 
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );

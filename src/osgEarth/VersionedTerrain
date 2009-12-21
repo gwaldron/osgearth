@@ -136,6 +136,8 @@ namespace osgEarth
         class VersionedTerrain* getVersionedTerrain();
         const class VersionedTerrain* getVersionedTerrain() const;
 
+        bool getHasBeenTraversed() const;
+
         OpenThreads::ReadWriteMutex& getTileLayersMutex();
 
         bool cancelRequests();
@@ -183,7 +185,7 @@ namespace osgEarth
         bool _elevationLayerUpToDate;
         int  _elevationLOD;
         int  _imageryLOD;
-        bool _tileRegisteredWithTerrain;
+        bool _hasBeenTraversed;
         bool _useTileGenRequest;
         bool _tileGenNeeded;
         bool _sequentialImagery;

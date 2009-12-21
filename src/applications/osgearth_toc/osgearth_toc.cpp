@@ -509,6 +509,8 @@ int main(int argc, char** argv)
 	if (arguments.read( "--multipass") )
 	{
 		engineProps.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
+        //Multipass mode is currently only available in STANDARD mode.
+        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
 	}
 
     // construct the viewer.

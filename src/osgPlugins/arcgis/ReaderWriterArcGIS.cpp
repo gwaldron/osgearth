@@ -224,5 +224,6 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_arcgis, ReaderWriterArcGIS);
+REGISTER_OSGPLUGIN(osgearth_arcgis, ReaderWriterArcGIS)
+
 

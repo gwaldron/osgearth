@@ -67,7 +67,7 @@ namespace osgEarthUtil
             EVENT_MOUSE_DOUBLE_CLICK = osgGA::GUIEventAdapter::DOUBLECLICK,
             EVENT_MOUSE_DRAG         = osgGA::GUIEventAdapter::DRAG,
             EVENT_KEY_DOWN           = osgGA::GUIEventAdapter::KEYDOWN,
-            EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL,
+            EVENT_SCROLL             = osgGA::GUIEventAdapter::SCROLL
         };
 
         /** Bindable mouse buttons. */

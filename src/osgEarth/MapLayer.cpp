@@ -363,11 +363,6 @@ MapLayer::initTileSource()
         _cacheFormat = suggestCacheFormat();
     }
 
-	if (_tileSource.valid() && _cache.valid() && _cacheEnabled)
-	{
-		_cache->storeLayerProperties( _name, _tileSource->getProfile(), _cacheFormat, _tileSource->getPixelsPerTile() );
-	}
-
     if (_tileSource.valid())
     {
       _profile = _tileSource->getProfile();
@@ -485,6 +480,13 @@ MapLayer::createImage( const TileKey* key,
 	}
 
 	bool cacheInLayerProfile = !cacheInMapProfile;
+
+    //Write the cache TMS file if it hasn't been written yet.
+    if (!_cacheProfile.valid() && _cache.valid() && _cacheEnabled && _tileSource.valid())
+    {
+        _cacheProfile = cacheInMapProfile ? mapProfile : _profile.get();
+        _cache->storeLayerProperties( _name, _cacheProfile, _cacheFormat, _tileSource->getPixelsPerTile() );
+    }
 
 	if (cacheInMapProfile)
 	{
@@ -696,6 +698,13 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
     const Profile* mapProfile = getProfile();
 
 	osg::ref_ptr<osg::HeightField> result;
+
+    //Write the layer properties if they haven't been written yet.  Heightfields are always stored in the map profile.
+    if (!_cacheProfile.valid() && _cache.valid() && _cacheEnabled && _tileSource.valid())
+    {
+        _cacheProfile = mapProfile;
+        _cache->storeLayerProperties( _name, _cacheProfile, _cacheFormat, _tileSource->getPixelsPerTile() );
+    }
 
 	//See if we can get it from the cache.
 	if (_cache.valid() && _cacheEnabled)

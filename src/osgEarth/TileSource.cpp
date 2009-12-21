@@ -156,7 +156,7 @@ TileSource::getNoDataValue()
 void
 TileSource::setNoDataValue(float noDataValue)
 {
-    _noDataValue;
+    _noDataValue = noDataValue;
 }
 
 float

@@ -718,15 +718,25 @@ public:
             }
         }
 
-
         //Create a spatial reference for the source.
         osg::ref_ptr<SpatialReference> src_srs = SpatialReference::create( _srcDS->GetProjectionRef() );
         
         // assert SRS is present
         if ( !src_srs.valid() )
         {
-            osg::notify(osg::WARN) << "[osgEarth::GDAL] Dataset has no spatial reference information: " << path << std::endl;
-            return;
+            // not found in the dataset; try loading a .prj file
+            std::string prjLocation = osgDB::getNameLessExtension( path ) + ".prj";
+            std::string wkt;
+            if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
+            {
+                src_srs = SpatialReference::create( wkt );
+            }
+
+            if ( !src_srs.valid() )
+            {
+                osg::notify(osg::WARN) << "[osgEarth::GDAL] Dataset has no spatial reference information: " << path << std::endl;
+                return;
+            }
         }
 
         const Profile* profile = NULL;
@@ -746,6 +756,8 @@ public:
         {
             profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
         }
+
+        std::string warpedSRSWKT;
 
         if ( profile && !profile->getSRS()->isEquivalentTo( src_srs.get() ) )
         {
@@ -770,11 +782,19 @@ public:
                     NULL);
             }
 
+            if ( _warpedDS )
+            {
+                warpedSRSWKT = _warpedDS->GetProjectionRef();
+            }
+
             //GDALAutoCreateWarpedVRT(srcDS, src_wkt.c_str(), t_srs.c_str(), GRA_NearestNeighbour, 5.0, NULL);
         }
         else
         {
             _warpedDS = _srcDS;
+            warpedSRSWKT = _srcDS->GetProjectionRef();
+            if ( warpedSRSWKT.empty() )
+                warpedSRSWKT = src_srs->getWKT();
         }
 
         //Get the _geotransform
@@ -816,11 +836,13 @@ public:
         if ( !profile )
         {
             profile = Profile::create( 
-                _warpedDS->GetProjectionRef(),
+                warpedSRSWKT,
+                //_warpedDS->GetProjectionRef(),
                 _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
 
             osg::notify(osg::INFO) << "[osgEarth::GDAL] " << _url << " is projected, SRS = " 
-                << _warpedDS->GetProjectionRef() << std::endl;
+                << warpedSRSWKT << std::endl;
+                //<< _warpedDS->GetProjectionRef() << std::endl;
         }
 
         //Compute the min and max data levels
@@ -850,7 +872,7 @@ public:
 
         // record the data extent in profile space:
         GeoExtent local_extent(
-            SpatialReference::create( _warpedDS->GetProjectionRef() ),
+            SpatialReference::create( warpedSRSWKT ), //_warpedDS->GetProjectionRef() ),
             _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
         GeoExtent profile_extent = local_extent.transform( profile->getSRS() );
         setDataExtent( profile_extent );

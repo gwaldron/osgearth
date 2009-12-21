@@ -268,6 +268,12 @@ MapNode::getTerrain( unsigned int i ) const
     return _terrains[i].get();
 }
 
+osg::Group*
+MapNode::getModelLayerGroup()
+{
+    return _models.get();
+}
+
 void
 MapNode::addTerrainCallback( TerrainCallback* cb )
 {

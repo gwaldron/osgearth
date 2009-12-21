@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/ResampleFilter>
 #include <list>
 #include <deque>
+#include <cstdlib>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -31,23 +32,18 @@ ResampleFilter::isSupported()
 
 ResampleFilter::ResampleFilter() :
 _minLen( 0 ),
-_maxLen( DBL_MAX )
+_maxLen( DBL_MAX ),
+_perturbThresh( 0 )
 {
     //NOP
 }
 
 ResampleFilter::ResampleFilter( double minLen, double maxLen ) :
 _minLen( minLen ),
-_maxLen( maxLen )
+_maxLen( maxLen ),
+_perturbThresh( 0 )
 {
     // NOP
-}
-
-ResampleFilter::ResampleFilter( const ResampleFilter& rhs ) :
-_minLen( rhs._minLen ),
-_maxLen( rhs._maxLen )
-{
-    //NOP
 }
 
 bool
@@ -95,6 +91,13 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
                 int numDivs = (1 + (int)(segLen/_maxLen));
                 double newSegLen = segLen/(double)numDivs;
                 seg.normalize();
+                osg::Vec3d newPt = p0 + seg * newSegLen;
+                if ( _perturbThresh > 0.0 && _perturbThresh < newSegLen )
+                {
+                    float r = 0.5 - (float)::rand()/(float)RAND_MAX;
+                    newPt.x() += r;
+                    newPt.y() += r;
+                }
                 v1 = plist.insert( v1, p0 + seg * newSegLen );
             }
 

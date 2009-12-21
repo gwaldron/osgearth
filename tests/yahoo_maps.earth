@@ -14,5 +14,6 @@ the provider's terms of service when using their data.
     </image>
     
     <loading_policy mode="preemptive"/>
+    <lighting>false</lighting>
    
 </map>

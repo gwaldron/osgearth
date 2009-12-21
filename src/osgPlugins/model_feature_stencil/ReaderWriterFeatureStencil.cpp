@@ -38,9 +38,10 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_FEATURES           "features"
-#define PROP_EXTRUSION_DISTANCE "extrusion_distance"
-#define PROP_GEOMETRY_TYPE      "geometry_type"
+#define PROP_FEATURES               "features"
+#define PROP_EXTRUSION_DISTANCE     "extrusion_distance"
+#define PROP_DENSIFICATION_THRESH   "densification_threshold"
+#define PROP_GEOMETRY_TYPE          "geometry_type"
 
 class FeatureStencilModelSource : public ModelSource
 {
@@ -50,6 +51,7 @@ public:
         _renderBinStart( renderBinStart ),
         _showVolumes( false ),
         _extrusionDistance( 300000.0 ),
+        _densificationThresh( 1000000.0 ),
         _geomTypeOverride( Geometry::TYPE_UNKNOWN )
     {
         if ( osg::DisplaySettings::instance()->getMinimumNumStencilBits() < 8 )
@@ -80,6 +82,9 @@ public:
 
         // overrides the default stencil volume extrusion size
         _extrusionDistance = conf.value<double>( PROP_EXTRUSION_DISTANCE, _extrusionDistance );
+
+        // overrides the default segment densification threshold.
+        _densificationThresh = conf.value<double>( PROP_DENSIFICATION_THRESH, _densificationThresh );
 
         // load up the style catalog.
         Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
@@ -181,10 +186,11 @@ public:
                 // long segments follow the curvature of the earth. By the way, if a Buffer was
                 // applied, that will also remove colinear segment points. Resample the points to 
                 // achieve a usable tesselation.
-                ResampleFilter simplify;
-                simplify.minLength() = 1.0; // need?
-                simplify.maxLength() = 100000.0;
-                context = simplify.push( cellFeatures, context );
+                ResampleFilter resample;
+                resample.minLength() = 0.0;
+                resample.maxLength() = _densificationThresh;
+                resample.perturbationThreshold() = 0.1;
+                context = resample.push( cellFeatures, context );
             }
 
             // Extrude and cap the geometry in both directions to build a stencil volume:
@@ -248,12 +254,8 @@ public:
         }
 
         osg::StateSet* ss = group->getOrCreateStateSet();
-        if ( !_showVolumes )
+        if ( _showVolumes )
             ss->setMode( GL_LIGHTING, 0 );
-
-        // install the node.
-
-        group->setNodeMask( 0xfffffffe );
 
         return group;
     }
@@ -266,6 +268,7 @@ private:
     Styling::StyleCatalog _styles;
     bool _showVolumes;
     double _extrusionDistance;
+    double _densificationThresh;
     optional<Geometry::Type> _geomTypeOverride;
 };
 

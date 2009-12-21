@@ -199,7 +199,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                       ul_id = getNeighborTile(lr_id, NORTH_WEST);
                       ur_id = getNeighborTile(lr_id, NORTH);
                   }
-                  else if (direction = SOUTH_EAST)
+                  else if (direction == SOUTH_EAST)
                   {
                       ul_id = tile->getTileID();
                       ll_id = getNeighborTile(ul_id, SOUTH);

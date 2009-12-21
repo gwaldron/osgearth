@@ -574,7 +574,7 @@ Map::createHeightField( const TileKey* key,
                             if (elevation > elevations[i]) elevation = elevations[i];
                         }
                     }
-                    else if (samplePolicy = AVERAGE)
+                    else if (samplePolicy == AVERAGE)
                     {
                         elevation = 0.0;
                         for (unsigned i = 0; i < elevations.size(); ++i)

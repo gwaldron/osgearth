@@ -107,7 +107,7 @@ public:
         }
         
         osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile(path, image, getOptions() );
+        HTTPClient::readImageFile(path, image, getOptions(), progress );
         return image.release();
 
         //if (osgDB::containsServerAddress(path))

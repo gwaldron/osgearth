@@ -180,7 +180,31 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, std::vec
     }
 }
 
-//Adapted from the gdalbuildvrt application
+// "build_vrt()" is adapted from the gdalbuildvrt application. Following is
+// the copyright notice from the source. The original code can be found at
+// http://trac.osgeo.org/gdal/browser/trunk/gdal/apps/gdalbuildvrt.cpp
+
+/******************************************************************************
+ * Copyright (c) 2007, Even Rouault
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ ****************************************************************************/
 static GDALDatasetH
 build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy)
 {
@@ -337,12 +361,14 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                 else if (resolutionStrategy == HIGHEST_RESOLUTION)
                 {
                     we_res = MIN(we_res, psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_WE_RES]);
-                    ns_res = MIN(ns_res, psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_NS_RES]);
+                    /* Yes : as ns_res is negative, the highest resolution is the max value */
+                    ns_res = MAX(ns_res, psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_NS_RES]);
                 }
                 else
                 {
                     we_res = MAX(we_res, psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_WE_RES]);
-                    ns_res = MAX(ns_res, psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_NS_RES]);
+                    /* Yes : as ns_res is negative, the lowest resolution is the min value */
+                    ns_res = MIN(ns_res, psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_NS_RES]);
                 }
             }
 

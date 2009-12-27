@@ -142,12 +142,7 @@ public:
             
             if (!image_url.empty())
             {
-                if (osgDB::containsServerAddress( image_url ))
-                {
-                    HTTPClient::readImageFile( image_url, image, getOptions(), progress );
-                    //return HTTPClient::readImageFile( image_url, getOptions(), progress );
-                }
-                image = osgDB::readImageFile( image_url, getOptions() );
+                HTTPClient::readImageFile( image_url, image, getOptions(), progress );
             }
 
             if (!image.valid())

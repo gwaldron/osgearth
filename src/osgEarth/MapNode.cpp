@@ -392,12 +392,11 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 void
 MapNode::onModelLayerAdded( ModelLayer* layer )
 {
-    osg::Node* node = layer->createOrInstallNode( this );
+    osg::Node* node = layer->createNode();
 
-    // if the method above returned a value, assume it did NOT add it to the
-    // mapnode manually; so we will do it here.
     if ( node )
     {
+        // treat overlay node as a special case
         if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
         {
             osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );

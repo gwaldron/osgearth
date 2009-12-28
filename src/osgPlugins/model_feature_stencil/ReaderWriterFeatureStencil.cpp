@@ -233,7 +233,7 @@ public:
         return classGroup;
     }
 
-    osg::Node* createOrInstallNode( MapNode* mapNode, ProgressCallback* progress =0L )
+    osg::Node* createNode( ProgressCallback* progress =0L )
     {
         if ( !_features.valid() ) return 0L;
 

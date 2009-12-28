@@ -32,10 +32,15 @@ namespace osgEarth { namespace Features
      * Feature filter that transforms features from one FeatureProfile to 
      * another.
      */
-    class OSGEARTHFEATURES_EXPORT TransformFilter // : public Filter
+    class OSGEARTHFEATURES_EXPORT TransformFilter : public FeatureFilter
     {
     public:
+        TransformFilter();
         TransformFilter( const SpatialReference* outputSRS, bool makeGeocentric );
+
+        /** Height offset to apply after doing the SRS transformation. Output SRS units. */
+        double& heightOffset() { return _heightOffset; }
+        double heightOffset() const { return _heightOffset; }
 
     public:
         FilterContext push( FeatureList& features, const FilterContext& context );
@@ -43,6 +48,7 @@ namespace osgEarth { namespace Features
     protected:
         osg::ref_ptr<const SpatialReference> _outputSRS;
         bool _makeGeocentric;
+        double _heightOffset;
         
         bool push( Feature* feature, const FilterContext& context );
     };

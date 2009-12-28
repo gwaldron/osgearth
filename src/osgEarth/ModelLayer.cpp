@@ -40,13 +40,7 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 }
 
 osg::Node*
-ModelLayer::createNode()
+ModelLayer::createNode( ProgressCallback* progress )
 {
-    return createOrInstallNode( 0L );
-}
-
-osg::Node*
-ModelLayer::createOrInstallNode( MapNode* mapNode )
-{
-    return _modelSource.valid() ? _modelSource->createOrInstallNode( mapNode ) : 0L;
+    return _modelSource.valid() ? _modelSource->createNode( progress ) : 0L;
 }

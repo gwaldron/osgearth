@@ -21,9 +21,17 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
+TransformFilter::TransformFilter() :
+_makeGeocentric( false ),
+_heightOffset( 0.0 )
+{
+    // nop
+}
+
 TransformFilter::TransformFilter(const SpatialReference* outputSRS, bool makeGeocentric ) :
 _outputSRS( outputSRS ),
-_makeGeocentric( makeGeocentric )
+_makeGeocentric( makeGeocentric ),
+_heightOffset( 0.0 )
 {
     //NOP
 }
@@ -55,10 +63,15 @@ TransformFilter::push( Feature* input, const FilterContext& context )
                     em->convertLatLongHeightToXYZ(
                         osg::DegreesToRadians( (*geom)[i].y() ),
                         osg::DegreesToRadians( (*geom)[i].x() ),
-                        (*geom)[i].z(),
+                        (*geom)[i].z() + _heightOffset,
                         x, y, z );
                     (*geom)[i].set( x, y, z );
                 }
+            }
+            else if ( _heightOffset != 0.0 )
+            {
+                for( int i=0; i<geom->size(); i++ )
+                    (*geom)[i].z() += _heightOffset;
             }
         }
     }
@@ -79,10 +92,6 @@ TransformFilter::push( FeatureList& input, const FilterContext& context )
     outputCx.isGeocentric() = _makeGeocentric;
 
     outputCx.profile() = new FeatureProfile( _outputSRS.get() );
-    
-        //context.profile()->getGeometryType() );
-        //context.profile()->getDimensionality(),
-        //context.profile()->isMultiGeometry() );
 
     return outputCx;
 }

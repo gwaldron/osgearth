@@ -50,6 +50,7 @@ IF(GDAL_FOUND)
   ADD_SUBDIRECTORY(feature_ogr)
   ADD_SUBDIRECTORY(model_feature_overlay)
   ADD_SUBDIRECTORY(model_feature_stencil)
+  ADD_SUBDIRECTORY(model_feature_geom)
 ENDIF(GDAL_FOUND)
 
     

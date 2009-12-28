@@ -1,13 +1,15 @@
 <!--
 osgEarth Sample
 
-This example tests osgEarth's image reprojection capabilities.  The imagery coming from ESRI is in WGS1984 Geodetic
-and it is being reprojected on the fly to UTM epsg:26917.  Also notice that the 
-reproject_before_caching attribute is set to true on the imagery sources.  This tells
-osgEarth to reproject the imagery before it is written to the cache, which means that
-after the initial speed hit of compositing and reprojecting the data, you will have a very
-fast cache to work off.  The "tile_size" attribute is used to tell osgEarth what size
-the reprojected imagery should be.
+This example tests osgEarth's image reprojection capabilities.  The imagery coming from
+ESRI is in WGS1984 Geodetic and it is being reprojected on the fly to UTM zone 17N. The
+"tile_size" attribute tells osgEarth what size the reprojected imagery should be.
+
+Refer to this site for spatial reference EPSG codes:
+http://spatialreference.org
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 -->
 
 <map name="ESRI Imagery and Roads" type="projected">
@@ -15,6 +17,11 @@ the reprojected imagery should be.
     <!--Specify the profile to use since we want to reproject to UTM-->        
     <profile srs="epsg:26917" xmin="560725.500" ymin="4385762.500" xmax="573866.500" ymax="4400705.500"/>
     
+    <!-- Configure a cache for the reprojected imagery -->
+    <cache>
+       <path>cache</path>
+    </cache>
+
     <image name="arcgisonline esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
 
@@ -30,8 +37,4 @@ the reprojected imagery should be.
         <tile_size>512</tile_size>
     </image>
 
-    <!--Configure a cache-->
-    <cache reproject_before_caching="true">
-       <path>cache</path>
-    </cache>
 </map>

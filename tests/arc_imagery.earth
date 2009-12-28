@@ -2,6 +2,9 @@
 osgEarth Sample
 
 This example shows how to pull map tiles from an ESRI ArcGIS Server.
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 -->
 
 <map name="ESRI Imagery and Roads" type="geocentric">        

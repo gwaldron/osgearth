@@ -2,6 +2,9 @@
 osgEarth sample - ESRI ArcGIS Server REST map services
 
 This sample composites the ESRI world roads reference layer with their Physical terrain layer.
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 -->
 <map name="The World" type="geocentric">
 

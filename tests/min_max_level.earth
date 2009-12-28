@@ -1,6 +1,8 @@
 <!--
 This example demonstrates how to use two image sources and switch between them
 at a given resolution level.
+
+Please note that usage of Yahoo! map data is subject to Yahoo!'s terms of service.
 -->
 
 <map name="Yahoo Levels" type="geocentric">

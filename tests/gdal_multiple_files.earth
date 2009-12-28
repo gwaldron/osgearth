@@ -3,12 +3,10 @@ osgEarth Sample - Multipe files in GDAL driver
 
 This example displays how to use the GDAL driver to load files in a directory as a single, logical layer.
 
-Note:  There are tons of NoData areas in the sample terrain files, so expect see some holes:)
+Note:  There are tons of NoData areas in the sample terrain files, so expect see some holes :)
 -->
 
 <map type="geocentric">
-
-    <profile>global-geodetic</profile>
 
     <!--Load a simple base image of the world-->
     <image name="world" driver="gdal">
@@ -16,7 +14,7 @@ Note:  There are tons of NoData areas in the sample terrain files, so expect see
     </image>
 
     <!--Load a folder full of terrain data as an elevation source-->
-    <heightfield name="terrain" driver = "gdal">
+    <heightfield name="terrain" driver="gdal">
 
         <!--To load the files in a directory, just point the URL to a directory instead of a file-->
         <url>..\data\terrain</url>

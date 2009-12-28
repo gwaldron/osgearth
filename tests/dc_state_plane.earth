@@ -11,14 +11,17 @@ To define a custom profile, you must provide an SRS initialization string. In th
 using a PROJ4 string, but you can also use WKT or an EPSG string. (Note: If you use an EPSG code
 string (example: "epsg:4326") then you must have GDAL_DATA defined in your environment.)
 
-A handy place to find SRS definitions is: http://spatialreference.org
+A handy place to find SRS definitions is:
+http://spatialreference.org
 
-Usually image tiles are cached as close "to the source" as possible, i.e. before any image
-processing take place. The "reproject_before_caching" attribute on the cache definition changes
-this behavior, forcing the engine to mosaic and reproject the data before it goes in the cache.
-This speeds up the viewing of cached data tremendously (when reprojection is involved); the 
-downside is that you cannot use that cache for other map profiles. It becomes tied to the 
-specific map profile under which it was created.
+osgEarth reprojects tiles before caching them. Note, this does have the side effect that you 
+cannot use the same cache for separate maps in different projections.
+
+For SRS initialization strings, see:
+http://spatialreference.org
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 -->
 
 <map name="DC State Plane" type="projected">
@@ -28,15 +31,14 @@ specific map profile under which it was created.
         <xmin>390021</xmin><ymin>126298</ymin>
         <xmax>407833</xmax><ymax>147521</ymax>
     </profile>
-    
-    <!-- This image layer returns global geodetic tiles -->
-    <image name="ags-msp" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
-        <max_level>16</max_level>
-    </image>
-    
-    <cache type="tms" reproject_before_caching="true">
+
+    <cache type="tms">
         <path>cache</path>
     </cache>
+    
+    <!-- This image layer returns global geodetic tiles -->
+    <image name="ags-msp" driver="arcgis" max_level="16">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+    </image>    
     
 </map>

@@ -1,8 +1,12 @@
 <!--
 osgEarth sample - ESRI ArcGIS Server REST map services
 
-This sample loads a map from the ArcGIS server that has 8x4 tiles at the root level
+This sample loads a map from the ArcGIS server that has 8x4 tiles at the root level.
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 -->
+
 <map name="The World" type="geocentric">
 
   <image name="ESRI_Political_World_2D" driver="arcgis">

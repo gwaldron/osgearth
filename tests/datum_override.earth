@@ -7,6 +7,9 @@ to specify a different one is so desired. The contents of the "srs" tag can be
 any SRS initialization string (like PROJ4 or WKT).
 
 This example renders a NAD27 globe instead of a WGS84 globe.
+
+See this site for SRS codes and PROJ4 initialization strings:
+http://spatialreference.org
 -->
 
 <map name="datum override example" type="geocentric">

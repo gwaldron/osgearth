@@ -73,8 +73,9 @@ namespace osgEarth
 
         osgTerrain::ImageLayer* createImageLayer(
             Map* map,
+            MapLayer* layer,
             const TileKey* key,
-            GeoImage* geoImage);
+            ProgressCallback* progress);
 
         osgTerrain::HeightFieldLayer* createHeightFieldLayer(
             Map* map,

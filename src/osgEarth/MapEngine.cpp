@@ -237,7 +237,7 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
         }
         else
         {
-            layer->getTileSource()->getProfile()->getIntersectingTiles( key, keys );
+            layer->getProfile()->getIntersectingTiles( key, keys );
         }
 
         for (unsigned int j = 0; j < keys.size(); ++j)
@@ -717,7 +717,8 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
             if ( isGeocentric )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-			osgTerrain::ImageLayer* img_layer = new TransparentLayer(geo_image->getImage(), imageMapLayers[i].get());
+			TransparentLayer* img_layer = new TransparentLayer(geo_image->getImage(), imageMapLayers[i].get());
+            img_layer->setLevelOfDetail( key->getLevelOfDetail() );
             img_layer->setName( imageMapLayers[i]->getName() );
             img_layer->setLocator( img_locator.get());
 
@@ -819,38 +820,57 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
 
 
 osgTerrain::ImageLayer* 
-MapEngine::createImageLayer( Map* map, 
+MapEngine::createImageLayer(Map* map, 
+                            MapLayer* layer,
                             const TileKey* key,
-                            GeoImage* geoImage)
+                            ProgressCallback* progress)
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 
-    bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
-    bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-    bool isGeocentric = !isProjected;
-
-    osg::ref_ptr<GeoLocator> imgLocator;
-
-    // Use a special locator for mercator images (instead of reprojecting)
-    if ( map->getProfile()->getSRS()->isGeographic() && geoImage->getSRS()->isMercator() && map->getUseMercatorLocator() )
+    osg::ref_ptr< GeoImage > geoImage;
+    
+    //If the key is valid, try to get the image from the MapLayer
+    if (layer->isKeyValid( key ) )
     {
-        GeoExtent gx = geoImage->getExtent().transform( geoImage->getExtent().getSRS()->getGeographicSRS() );
-        imgLocator = key->getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax() );
-        imgLocator = new MercatorLocator( *imgLocator.get(), geoImage->getExtent() );
+        geoImage = layer->createImage(key, progress);
     }
     else
     {
-        const GeoExtent& gx = geoImage->getExtent();
-        imgLocator = GeoLocator::createForKey( key, map );
+        //If the key is not valid, simply make a transparent tile
+        geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
     }
 
-    if ( isGeocentric )
-        imgLocator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+    if (geoImage.valid())
+    {
+        bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
+        bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
+        bool isGeocentric = !isProjected;
 
-    osgTerrain::ImageLayer* imgLayer = new osgTerrain::ImageLayer( geoImage->getImage() );
-    imgLayer->setLocator( imgLocator.get() );
+        osg::ref_ptr<GeoLocator> imgLocator;
 
-    return imgLayer;
+        // Use a special locator for mercator images (instead of reprojecting)
+        if ( map->getProfile()->getSRS()->isGeographic() && geoImage->getSRS()->isMercator() && map->getUseMercatorLocator() )
+        {
+            GeoExtent gx = geoImage->getExtent().transform( geoImage->getExtent().getSRS()->getGeographicSRS() );
+            imgLocator = key->getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax() );
+            imgLocator = new MercatorLocator( *imgLocator.get(), geoImage->getExtent() );
+        }
+        else
+        {
+            const GeoExtent& gx = geoImage->getExtent();
+            imgLocator = GeoLocator::createForKey( key, map );
+        }
+
+        if ( isGeocentric )
+            imgLocator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+
+        //osgTerrain::ImageLayer* imgLayer = new osgTerrain::ImageLayer( geoImage->getImage() );
+        TransparentLayer* imgLayer = new TransparentLayer(geoImage->getImage(), layer);
+        imgLayer->setLocator( imgLocator.get() );
+        imgLayer->setLevelOfDetail( key->getLevelOfDetail() );
+        return imgLayer;
+    }
+    return NULL;
 }
 
 osgTerrain::HeightFieldLayer* 

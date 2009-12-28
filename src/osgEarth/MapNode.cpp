@@ -463,18 +463,18 @@ MapNode::addImageLayer( MapLayer* layer )
             osg::ref_ptr< GeoImage > geoImage;
 
             bool needToUpdateImagery = false;
+            int imageLOD = -1;
 
             //If we are in preemptiveLOD mode, just add an empty placeholder image for the new layer.  Otherwise, go ahead and get the image
             if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
                ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
             {
                 geoImage = _engine->createValidGeoImage( layer, key.get() );
-                tile->setImageryLOD( key->getLevelOfDetail() );
+                imageLOD = key->getLevelOfDetail();
             }
             else
             {
                 geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
-                tile->setImageryLOD(-1);
                 needToUpdateImagery = true;
             }
 
@@ -514,7 +514,8 @@ MapNode::addImageLayer( MapLayer* layer )
                 }
 
                 //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
-				osgTerrain::ImageLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
+				TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
+                img_layer->setLevelOfDetail(imageLOD);
                 img_layer->setLocator( img_locator.get());
 
                 unsigned int newLayer = _map->getImageMapLayers().size() - 1;

@@ -95,9 +95,10 @@ struct TileColorLayerRequest : public TileLayerRequest
         }
         if ( mapLayer.valid() )
         {
-            osg::ref_ptr<GeoImage> image = mapLayer->createImage( _key.get(), progress );
+            /*osg::ref_ptr<GeoImage> image = mapLayer->createImage( _key.get(), progress );
             if ( image.get() )
-                _result = _engine->createImageLayer( _map.get(), _key.get(), image.get() );
+                _result = _engine->createImageLayer( _map.get(), _key.get(), image.get() );*/
+            _result = _engine->createImageLayer(_map.get(), mapLayer, _key.get(), progress);
         }
     }
     unsigned int _layerId;
@@ -202,7 +203,6 @@ _colorLayersDirty( false ),
 _usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _elevationLOD( key->getLevelOfDetail() ),
-_imageryLOD( 1 ),
 _hasBeenTraversed(false),
 _useTileGenRequest( true ),
 _tileGenNeeded( false ),
@@ -308,18 +308,6 @@ int
 VersionedTile::getElevationLOD() const
 {
     return _elevationLOD;
-}
-
-void
-VersionedTile::setImageryLOD( int lod )
-{
-    _imageryLOD = lod;
-}
-
-int
-VersionedTile::getImageryLOD() const
-{
-    return _imageryLOD;
 }
 
 bool
@@ -516,15 +504,15 @@ VersionedTile::readyForNewElevation()
 
 // returns TRUE if it's safe for this tile to load its next elevation data layer.
 bool
-VersionedTile::readyForNewImagery()
+VersionedTile::readyForNewImagery(MapLayer* layer, int currentLOD)
 {
     bool ready = true;
 
-    if ( _imageryLOD == _key->getLevelOfDetail() )
+    if ( currentLOD == _key->getLevelOfDetail() )
     {
         ready = false;
     }
-    else if ( _family[PARENT].imageryLOD < 0 )
+    else if ( _family[PARENT].getImageLOD(layer->getId()) < 0 )
     {
         ready = false;
     }
@@ -532,7 +520,7 @@ VersionedTile::readyForNewImagery()
     {
         for( int i=PARENT; i<=SOUTH; i++) 
         {
-            if ( _family[i].expected && _family[i].imageryLOD >= 0 && _family[i].imageryLOD < _imageryLOD )
+            if ( _family[i].expected && _family[i].getImageLOD(layer->getId()) >= 0 && _family[i].getImageLOD(layer->getId()) < currentLOD )
             {
                 ready = false;
                 break;
@@ -540,7 +528,7 @@ VersionedTile::readyForNewImagery()
         }
 
         // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
-        if ( ready && _imageryLOD+1 < _key->getLevelOfDetail() && _imageryLOD == _family[PARENT].imageryLOD )
+        if ( ready && currentLOD+1 < _key->getLevelOfDetail() && currentLOD == _family[PARENT].getImageLOD(layer->getId()) )
         {
             ready = false;
         }
@@ -637,7 +625,7 @@ VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
         return;
     }
 
-    if ( mapLayer->isKeyValid( _key.get() ) )
+    //if ( mapLayer->isKeyValid( _key.get() ) )
     {
         unsigned int layerId = mapLayer->getId();
         // imagery is slighty higher priority than elevation data
@@ -844,131 +832,154 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
 
     // now deal with imagery.
     const LoadingPolicy& lp = getVersionedTerrain()->getLoadingPolicy();
-    bool checkForFinalImagery = false;
 
-    if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
+    //Get the image map layers
+    MapLayerList imageMapLayers;
     {
-        // in preemptive mode, always check for the final imagery - there are no intermediate
-        // placeholders.
-        checkForFinalImagery = true;
+        OpenThreads::ScopedReadLock mapDataLock(map->getMapDataMutex());
+        map->getImageMapLayers(imageMapLayers);
     }
-    else if ( lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && readyForNewImagery() )
+
+    //Check each layer independently.
+    for (unsigned int i = 0; i < imageMapLayers.size(); ++i)
     {
-        // in sequential mode, we have to incrementally increase imagery resolution by
-        // creating placeholders based of parent tiles, one LOD at a time.
-        if ( _imageryLOD+1 < _key->getLevelOfDetail() )
+        bool checkForFinalImagery = false;
+
+        //if (imageMapLayers[i]->isKeyValid(_key.get()) && (i < getNumColorLayers()))
+        if (i < getNumColorLayers())
         {
-            if ( _family[PARENT].imageryLOD > _imageryLOD )
+            TransparentLayer* layer = static_cast<TransparentLayer*>(getColorLayer( i ));
+            if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
             {
-                osg::ref_ptr<VersionedTile> parentTile;
-                getVersionedTerrain()->getVersionedTile( _family[PARENT].tileID, parentTile, !tileTableLocked );
-
-                std::vector< osg::ref_ptr<osgTerrain::ImageLayer> > parentColorLayers;
+                // in preemptive mode, always check for the final imagery - there are no intermediate
+                // placeholders.
+                checkForFinalImagery = true;
+            }
+            else if ( lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && layer && readyForNewImagery(imageMapLayers[i].get(), layer->getLevelOfDetail()) )
+            {
+                // in sequential mode, we have to incrementally increase imagery resolution by
+                // creating placeholders based of parent tiles, one LOD at a time.
+                if ( layer->getLevelOfDetail()+1 < _key->getLevelOfDetail() )
                 {
-                    ScopedReadLock l2( parentTile->getTileLayersMutex() );
-                    for( int i=0; i<parentTile->getNumColorLayers(); i++ )
-                        parentColorLayers.push_back( static_cast<osgTerrain::ImageLayer*>(parentTile->getColorLayer(i)) );
-                }
+                    if ( _family[PARENT].getImageLOD(layer->getId()) > layer->getLevelOfDetail() )
+                    {
+                        osg::ref_ptr<VersionedTile> parentTile;
+                        getVersionedTerrain()->getVersionedTile( _family[PARENT].tileID, parentTile, !tileTableLocked );
 
+                        //Get the parent color layer
+                        osg::ref_ptr<osgTerrain::Layer> parentColorLayer;
+                        {
+                            ScopedReadLock l2( parentTile->getTileLayersMutex() );
+                            if (i < parentTile->getNumColorLayers())
+                            {
+                                parentColorLayer = parentTile->getColorLayer(i);
+                            }
+                        }
+
+                        //Set the parent color layer
+                        {
+                            ScopedWriteLock lock( getTileLayersMutex() );
+                            if (parentColorLayer.valid())
+                            {
+                                setColorLayer(i, parentColorLayer.get());
+                            }
+                        }
+                        markTileForRegeneration();
+                    }
+                }
+                else
                 {
-                    ScopedWriteLock lock( getTileLayersMutex() );
-                    for(int i=0; i<parentColorLayers.size(); i++ )
-                        this->setColorLayer(i, parentColorLayers[i].get());
+                    // we've gone as far as we can with placeholders; time to check for the
+                    // final imagery tile.
+                    checkForFinalImagery = true;
                 }
-
-                setImageryLOD( _family[PARENT].imageryLOD );
-                markTileForRegeneration();
             }
         }
-        else
-        {
-            // we've gone as far as we can with placeholders; time to check for the
-            // final imagery tile.
-            checkForFinalImagery = true;
-        }
-    }
 
-    if ( checkForFinalImagery )
-    {
-        // Then the image requests:
-        for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
+        if ( checkForFinalImagery )
         {
-            bool increment = true;
-
-            if ( i->get()->isCompleted() )
+            // Then the image requests:
+            for( TaskRequestList::iterator itr = _requests.begin(); itr != _requests.end(); )
             {
-                TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( i->get() );
-
-                if ( r->wasCanceled() )
+                bool increment = true;
+                TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( itr->get() );
+                //We only care about the current layer we are checking
+                if (r->_layerId == imageMapLayers[i]->getId())
                 {
-                    //Reset the cancelled task to IDLE and give it a new progress callback.
-                    r->setState( TaskRequest::STATE_IDLE );
-                    r->setProgressCallback( new StampedProgressCallback(
-                        r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
-                    r->reset();
-                }
-                else // success..
-                {
-                    int index = -1;
+                    if ( itr->get()->isCompleted() )
                     {
-                        // Lock the map data mutex, since we are querying the map model:
-                        ScopedReadLock mapDataLock( map->getMapDataMutex() );
-
-                        //See if we even care about the request
-                        for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
+                        if ( r->wasCanceled() )
                         {
-                            if (map->getImageMapLayers()[j]->getId() == r->_layerId)
-                            {
-                                index = j;
-                                break;
-                            }
-                        }
-                    }
-
-                    //The maplayer was probably deleted
-                    if (index < 0)
-                    {
-                        osg::notify(osg::INFO) << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
-                        i = _requests.erase(i);
-                        increment = false;
-                    }
-                    else
-                    {
-                        osg::ref_ptr<osgTerrain::ImageLayer> newImgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
-                        if ( newImgLayer.valid() )
-                        {
-                            // update the color layer safely:
-                            {
-                                OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
-                                this->setColorLayer( index, newImgLayer.get() );
-                            }
-
-                            setImageryLOD( _key->getLevelOfDetail() );
-                            markTileForRegeneration();
-
-                            //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
-
-                            // remove from the list (don't reference "r" after this!)
-                            i = _requests.erase( i );
-                            increment = false;
-                        }
-                        else
-                        {  
-                            osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
-
-                            //The color layer request failed, probably due to a server error. Reset it.
+                            //Reset the cancelled task to IDLE and give it a new progress callback.
                             r->setState( TaskRequest::STATE_IDLE );
+                            r->setProgressCallback( new StampedProgressCallback(
+                                r, getVersionedTerrain()->getImageryTaskService(r->_layerId)));
                             r->reset();
                         }
+                        else // success..
+                        {
+                            int index = -1;
+                            {
+                                // Lock the map data mutex, since we are querying the map model:
+                                ScopedReadLock mapDataLock( map->getMapDataMutex() );
+
+                                //See if we even care about the request
+                                for (unsigned int j = 0; j < map->getImageMapLayers().size(); ++j)
+                                {
+                                    if (map->getImageMapLayers()[j]->getId() == r->_layerId)
+                                    {
+                                        index = j;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            //The maplayer was probably deleted
+                            if (index < 0)
+                            {
+                                osg::notify(osg::INFO) << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
+                                itr = _requests.erase(itr);
+                                increment = false;
+                            }
+                            else
+                            {
+                                osg::ref_ptr<osgTerrain::ImageLayer> newImgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
+                                if ( newImgLayer.valid() )
+                                {
+                                    // update the color layer safely:
+                                    {
+                                        OpenThreads::ScopedWriteLock layerLock( getTileLayersMutex() );
+                                        this->setColorLayer( index, newImgLayer.get() );
+                                    }
+
+                                    markTileForRegeneration();
+
+                                    //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
+
+                                    // remove from the list (don't reference "r" after this!)
+                                    itr = _requests.erase( itr );
+                                    increment = false;
+                                }
+                                else
+                                {  
+                                    osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
+
+                                    //The color layer request failed, probably due to a server error. Reset it.
+                                    r->setState( TaskRequest::STATE_IDLE );
+                                    r->reset();
+                                }
+                            }
+                        }
                     }
                 }
+
+                if ( increment )
+                    ++itr;
             }
-
-            if ( increment )
-                ++i;
         }
-    }
 
+
+    }
 
     // Finally, the elevation requests:
     if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
@@ -1271,13 +1282,21 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     {
         family[PARENT].expected = true;
         family[PARENT].elevLOD = -1;
-        family[PARENT].imageryLOD = -1;
+        family[PARENT].imageLODs.clear();
         family[PARENT].tileID = osgTerrain::TileID( tileId.level-1, tileId.x/2, tileId.y/2 );
+
         osg::ref_ptr<VersionedTile> parent;
         getVersionedTile( family[PARENT].tileID, parent, !tileTableLocked );
         if ( parent.valid() ) {
             family[PARENT].elevLOD = parent->getElevationLOD();
-            family[PARENT].imageryLOD = parent->getImageryLOD();
+            for (unsigned int i = 0; i < parent->getNumColorLayers(); ++i)
+            {
+                TransparentLayer* layer = static_cast<TransparentLayer*>(parent->getColorLayer(i));
+                if (layer)
+                {
+                    family[PARENT].imageLODs[layer->getId()] = layer->getLevelOfDetail();
+                }
+            }
         }
     }
 
@@ -1285,13 +1304,22 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     {
         family[WEST].expected = tileId.x > 0 || wrapX;
         family[WEST].elevLOD = -1;
-        family[WEST].imageryLOD = -1;
+        family[WEST].imageLODs.clear();
+        //family[WEST].imageryLOD = -1;
         family[WEST].tileID = osgTerrain::TileID( tileId.level, tileId.x > 0? tileId.x-1 : tilesX-1, tileId.y );
         osg::ref_ptr<VersionedTile> west;
         getVersionedTile( family[WEST].tileID, west, !tileTableLocked );
         if ( west.valid() ) {
             family[WEST].elevLOD = west->getElevationLOD();
-            family[WEST].imageryLOD = west->getImageryLOD();
+            //family[WEST].imageryLOD = west->getImageryLOD();
+            for (unsigned int i = 0; i < west->getNumColorLayers(); ++i)
+            {
+                TransparentLayer* layer = static_cast<TransparentLayer*>(west->getColorLayer(i));
+                if (layer)
+                {
+                    family[WEST].imageLODs[layer->getId()] = layer->getLevelOfDetail();
+                }
+            }
         }
     }
 
@@ -1299,13 +1327,22 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     {
         family[NORTH].expected = tileId.y < tilesY-1;
         family[NORTH].elevLOD = -1;
-        family[NORTH].imageryLOD = -1;
+        //family[NORTH].imageryLOD = -1;
+        family[NORTH].imageLODs.clear();
         family[NORTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y < tilesY-1 ? tileId.y+1 : 0 );
         osg::ref_ptr<VersionedTile> north;
         getVersionedTile( family[NORTH].tileID, north, !tileTableLocked );
         if ( north.valid() ) {
             family[NORTH].elevLOD = north->getElevationLOD();
-            family[NORTH].imageryLOD = north->getImageryLOD();
+            //family[NORTH].imageryLOD = north->getImageryLOD();
+            for (unsigned int i = 0; i < north->getNumColorLayers(); ++i)
+            {
+                TransparentLayer* layer = static_cast<TransparentLayer*>(north->getColorLayer(i));
+                if (layer)
+                {
+                    family[NORTH].imageLODs[layer->getId()] = layer->getLevelOfDetail();
+                }
+            }
         }
     }
 
@@ -1313,13 +1350,22 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     {
         family[EAST].expected = tileId.x < tilesX-1 || wrapX;
         family[EAST].elevLOD = -1;
-        family[EAST].imageryLOD = -1;
+        //family[EAST].imageryLOD = -1;
+        family[EAST].imageLODs.clear();
         family[EAST].tileID = osgTerrain::TileID( tileId.level, tileId.x < tilesX-1 ? tileId.x+1 : 0, tileId.y );
         osg::ref_ptr<VersionedTile> east;
         getVersionedTile( family[EAST].tileID, east, !tileTableLocked );
         if ( east.valid() ) {
             family[EAST].elevLOD = east->getElevationLOD();
-            family[EAST].imageryLOD = east->getImageryLOD();
+            //family[EAST].imageryLOD = east->getImageryLOD();
+            for (unsigned int i = 0; i < east->getNumColorLayers(); ++i)
+            {
+                TransparentLayer* layer = static_cast<TransparentLayer*>(east->getColorLayer(i));
+                if (layer)
+                {
+                    family[EAST].imageLODs[layer->getId()] = layer->getLevelOfDetail();
+                }
+            }
         }
     }
 
@@ -1327,13 +1373,22 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     {
         family[SOUTH].expected = tileId.y > 0;
         family[SOUTH].elevLOD = -1;
-        family[SOUTH].imageryLOD = -1;
+        //family[SOUTH].imageryLOD = -1;
+        family[SOUTH].imageLODs.clear();
         family[SOUTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y > 0 ? tileId.y-1 : tilesY-1 );
         osg::ref_ptr<VersionedTile> south;
         getVersionedTile( family[SOUTH].tileID, south, !tileTableLocked );
         if ( south.valid() ) {
             family[SOUTH].elevLOD = south->getElevationLOD();
-            family[SOUTH].imageryLOD = south->getImageryLOD();
+            //family[SOUTH].imageryLOD = south->getImageryLOD();
+            for (unsigned int i = 0; i < south->getNumColorLayers(); ++i)
+            {
+                TransparentLayer* layer = static_cast<TransparentLayer*>(south->getColorLayer(i));
+                if (layer)
+                {
+                    family[SOUTH].imageLODs[layer->getId()] = layer->getLevelOfDetail();
+                }
+            }
         }
     }
 }

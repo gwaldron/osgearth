@@ -352,9 +352,15 @@ namespace osgEarth
 	public:
 		TransparentLayer(osg::Image* image, MapLayer* mapLayer):
 			osgTerrain::ImageLayer(image),
-		    _mapLayer(mapLayer)
+		    _mapLayer(mapLayer),
+            _lod(-1)
 		{
 		}
+
+        unsigned int getId() const
+        {
+            return _mapLayer->getId();
+        }
 
 		float getOpacity() const
 		{
@@ -366,6 +372,17 @@ namespace osgEarth
 			return _mapLayer->getEnabled();
 		}
 
+        int getLevelOfDetail() const
+        {
+            return _lod;
+        }
+
+        void setLevelOfDetail(int lod)
+        {
+            _lod = lod;
+        }
+
+        int _lod;
 		osg::ref_ptr<MapLayer> _mapLayer;
 	};
 

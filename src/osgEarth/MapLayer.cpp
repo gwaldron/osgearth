@@ -421,9 +421,31 @@ MapLayer::isKeyValid(const TileKey* key) const
 {
 	if (!key) return false;
 
-	if (_minLevel.isSet() && key->getLevelOfDetail() < _minLevel.get()) return false;
-	if (_maxLevel.isSet() && key->getLevelOfDetail() > _maxLevel.get()) return false;
-	return true;
+    const Profile* keyProfile = key->getProfile();
+    const Profile* layerProfile = getProfile();
+
+    std::vector< osg::ref_ptr< const TileKey > > keys;
+    //If the key profile and the layer profile are equivalent, just use the incoming key
+    if (keyProfile->isEquivalentTo(layerProfile))
+    {
+        keys.push_back( key );
+    }
+    else
+    {
+        //Get the intersecting keys
+        layerProfile->getIntersectingTiles( key, keys );
+    }
+    
+    if (keys.size() > 0)
+    {
+        //Only need to check the first key, all of them should be at the same level
+        const TileKey* k = keys[0].get();
+        if (_minLevel.isSet() && k->getLevelOfDetail() < _minLevel.get()) return false;
+        if (_maxLevel.isSet() && k->getLevelOfDetail() > _maxLevel.get()) return false;
+        return true;
+    }
+
+	return false;
 }
 
 const std::string&

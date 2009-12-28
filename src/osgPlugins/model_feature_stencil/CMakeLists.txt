@@ -1,5 +1,5 @@
 SET(TARGET_SRC
-    ReaderWriterFeatureStencil.cpp
+    FeatureStencilModelSource.cpp
     StencilUtils.cpp
 )
     

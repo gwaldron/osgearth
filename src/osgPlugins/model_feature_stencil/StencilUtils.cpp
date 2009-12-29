@@ -37,10 +37,16 @@
 osg::Node*
 StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
 {
-    static bool s_EXT_stencil_wrap     = osg::isGLExtensionSupported(0, "GL_EXT_stencil_wrap");
-    static bool s_EXT_stencil_two_side = osg::isGLExtensionSupported(0, "GL_EXT_stencil_two_side");
+    // For now we are hard-coding these to what are hopefully "safe" values.
+    // In the future we hope to rewrite this as a custom StencilVolumeNode that 
+    // will automatically detect extension availability at draw time and choose
+    // the optimal GL rendering path.
+    static bool s_EXT_stencil_wrap     = true; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_wrap");
+    static bool s_EXT_stencil_two_side = false; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_two_side");
 
     // zFail=true if more compute intensive, but lets you get inside the volume.
+    // Again, a custom node will give us a better opportunity to choose between zFail and zPass based on
+    // the eye location (you only need zFail if you camera is inside the volume).
     bool zFail = true;
 
     osg::Group* root = new osg::Group();

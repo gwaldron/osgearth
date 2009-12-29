@@ -42,6 +42,7 @@ using namespace OpenThreads;
 
 #define DEFAULT_EXTRUSION_DISTANCE      300000.0
 #define DEFAULT_DENSIFICATION_THRESHOLD 1000000.0
+#define RENDER_BIN_START                80000
 
 class FeatureStencilModelSource : public FeatureModelSource
 {
@@ -113,11 +114,10 @@ public:
         // read all features into a list:
         FeatureList features;
         bool hasLines = false;
-        osg::ref_ptr<FeatureCursor> c = _features->createCursor( style.query() );
 
-        while( c->hasMore() )
+        while( cursor->hasMore() )
         {
-            Feature* feature = c->nextFeature();
+            Feature* feature = cursor->nextFeature();
             Geometry* geom = feature->getGeometry();
             if ( geom )
             {
@@ -153,7 +153,7 @@ public:
 
             // A processing context to use with the filters:
             FilterContext context;
-            context.profile() = _features->getFeatureProfile();
+            context.profile() = getFeatureSource()->getFeatureProfile();
 
             // If the geometry is lines, we need to buffer them before they will work with stenciling
             if ( hasLines )
@@ -202,7 +202,7 @@ public:
             }
             else
             {
-                // render the volumes to the stencil buffer:
+                //// render the volumes to the stencil buffer:
                 osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), buildData->_renderBin );
                 classGroup->addChild( geomPass );
 
@@ -215,6 +215,7 @@ public:
 
         // lock out the optimizer:
         classGroup->setDataVariance( osg::Object::DYNAMIC );
+
         return classGroup;
     }
 
@@ -234,7 +235,7 @@ class FeatureStencilModelSourceFactory : public osgDB::ReaderWriter
 {
 public:
     FeatureStencilModelSourceFactory() :
-      _renderBinStart( 80000 )
+      _renderBinStart( RENDER_BIN_START )
     {
         supportsExtension( "osgearth_model_feature_stencil", "osgEarth feature stencil plugin" );
     }

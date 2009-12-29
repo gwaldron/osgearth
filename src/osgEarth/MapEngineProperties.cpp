@@ -58,7 +58,7 @@ _port(port)
 MapEngineProperties::MapEngineProperties() :
 _loadingPolicy( LoadingPolicy() ),
 _verticalScale( 1.0f ),
-_heightFieldSkirtRatio( 0.02f ),
+_heightFieldSkirtRatio( 0.05f ),
 _heightFieldSampleRatio( 1.0f ),
 _proxySettings( ProxySettings() ),
 _cacheOnly( false ),

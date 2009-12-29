@@ -23,7 +23,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace osgEarth::Features::Styling;
 
 
 void
@@ -47,28 +46,28 @@ StyleVisitor::apply( class PolygonSymbolizer& obj ) {
 }
 
 void
-StyleVisitor::apply( class StyleClass& obj ) {
+StyleVisitor::apply( class Style& obj ) {
     //obj.query().accept( *this );
     obj.lineSymbolizer().accept( *this );
     obj.polygonSymbolizer().accept( *this );
 }
 
 void
-StyleVisitor::apply( class NamedLayer& obj ) {
-    for(StyleClasses::iterator i = obj.styleClasses().begin(); i != obj.styleClasses().end(); i++ )
+StyleVisitor::apply( class StyledLayer& obj ) {
+    for(StyleList::iterator i = obj.styles().begin(); i != obj.styles().end(); i++ )
         i->accept( *this );
 }
 
 void
 StyleVisitor::apply( class StyleCatalog& obj ) {
-    for(NamedLayers::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
+    for(StyledLayers::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
         i->accept( *this );
 }
 
 /**************************************************************************/
 
 osg::Vec4ub
-StyleClass::getColor( const Geometry::Type& geomType ) const
+Style::getColor( const Geometry::Type& geomType ) const
 {
     osg::Vec4ub color;
     if ( geomType == Geometry::TYPE_POLYGON )
@@ -88,7 +87,7 @@ StyleClass::getColor( const Geometry::Type& geomType ) const
 
 // reads inline style information into a style class (if the names match)
 bool
-StyleReader::readStyleClassFromCSS( const Config& conf, StyleClass& out_sc, bool matchesOnly )
+StyleReader::readStyleFromCSS( const Config& conf, Style& out_sc, bool matchesOnly )
 {
     std::string css = conf.value();
 
@@ -104,7 +103,7 @@ StyleReader::readStyleClassFromCSS( const Config& conf, StyleClass& out_sc, bool
         const Config& subConf = *i;
         if ( subConf.name() == out_sc.name() || !matchesOnly )
         {
-            SLDReader::readStyleClassFromCSSParams( subConf, out_sc );
+            SLDReader::readStyleFromCSSParams( subConf, out_sc );
         }
     }
     
@@ -112,7 +111,7 @@ StyleReader::readStyleClassFromCSS( const Config& conf, StyleClass& out_sc, bool
 }
 
 bool
-StyleReader::readStyleClassesFromCSS( const Config& conf, StyleClasses& out_classes, bool createIfNecessary )
+StyleReader::readStyleListFromCSS( const Config& conf, StyleList& out_classes, bool createIfNecessary )
 {
     std::string css = conf.value();
 
@@ -129,11 +128,11 @@ StyleReader::readStyleClassesFromCSS( const Config& conf, StyleClasses& out_clas
         if ( !subConf.name().empty() )
         {
             bool found = false;
-            for( StyleClasses::iterator k = out_classes.begin(); k != out_classes.end(); k++ )
+            for( StyleList::iterator k = out_classes.begin(); k != out_classes.end(); k++ )
             {
                 if ( k->name() == subConf.name() )
                 {
-                    SLDReader::readStyleClassFromCSSParams( subConf, *k );
+                    SLDReader::readStyleFromCSSParams( subConf, *k );
                     found = true;
                     break;
                 }
@@ -141,9 +140,9 @@ StyleReader::readStyleClassesFromCSS( const Config& conf, StyleClasses& out_clas
 
             if ( !found && createIfNecessary )
             {
-                StyleClass sc;
+                Style sc;
                 sc.name() == subConf.name();
-                SLDReader::readStyleClassFromCSSParams( subConf, sc );
+                SLDReader::readStyleFromCSSParams( subConf, sc );
                 out_classes.push_back( sc );
             }
         }
@@ -153,44 +152,44 @@ StyleReader::readStyleClassesFromCSS( const Config& conf, StyleClasses& out_clas
 }
 
 bool
-StyleReader::readStyleClassFromSLD( const ConfigSet& confSet, StyleClass& out_class, bool matchesOnly )
+StyleReader::readStyleFromSLD( const ConfigSet& confSet, Style& out_class, bool matchesOnly )
 {
     return false;
 }
 
 bool
-StyleReader::readStyleClassesFromSLD( const ConfigSet& confSet, StyleClasses& out_classes, bool createIfNecessary )
+StyleReader::readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary )
 {
     return false;
 }
 
 bool
-StyleReader::readStyleClass( const Config& conf, StyleClass& out_class, bool matchesOnly )
+StyleReader::readStyle( const Config& conf, Style& out_class, bool matchesOnly )
 {
     if ( conf.attr("type") == "text/css" )
     {
-        return readStyleClassFromCSS( conf, out_class, matchesOnly );
+        return readStyleFromCSS( conf, out_class, matchesOnly );
     }
     else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
               conf.attr("type") == "application/vnd.ogc.sld" )
     {
-        return readStyleClassFromSLD( conf.children(), out_class, matchesOnly );
+        return readStyleFromSLD( conf.children(), out_class, matchesOnly );
     }
     else
         return false;
 }
 
 bool
-StyleReader::readStyleClasses( const Config& conf, StyleClasses& out_styleClasses )
+StyleReader::readStyleList( const Config& conf, StyleList& out_styles )
 {
     if ( conf.attr("type") == "text/css" )
     {
-        return readStyleClassesFromCSS( conf, out_styleClasses, true );
+        return readStyleListFromCSS( conf, out_styles, true );
     }
     else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
               conf.attr("type") == "application/vnd.ogc.sld" )
     {
-        return readStyleClassesFromSLD( conf.children(), out_styleClasses, true );
+        return readStyleListFromSLD( conf.children(), out_styles, true );
     }
     else
         return false;
@@ -199,24 +198,27 @@ StyleReader::readStyleClasses( const Config& conf, StyleClasses& out_styleClasse
 bool 
 StyleReader::readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_cat )
 {
-    NamedLayer layer;
+    StyledLayer layer;
     layer.name() = layerName;    
+
+    bool readAtLeastOne = false;
 
     // first read any style class definitions:
     ConfigSet classes = conf.children( "class" );
     for( ConfigSet::iterator i = classes.begin(); i != classes.end(); ++i )
     {
         const Config& classConf = *i;
-        StyleClass sc;
+        Style style;
 
-        sc.name() = classConf.value( "name" );
-        sc.query() = Query( classConf.child( "query" ) );
+        style.name() = classConf.value( "name" );
+        style.query() = Query( classConf.child( "query" ) );
         if ( classConf.hasChild( "style" ) )
         {
-            readStyleClass( classConf.child("style"), sc, false );
+            readStyle( classConf.child("style"), style, false );
+            readAtLeastOne = true;
         }
 
-        layer.styleClasses().push_back( sc );
+        layer.styles().push_back( style );
     }
 
     // next, read any style data:
@@ -224,10 +226,13 @@ StyleReader::readLayerStyles( const std::string& layerName, const Config& conf, 
     for( ConfigSet::iterator i = styles.begin(); i != styles.end(); ++i )
     {
         const Config& styleConf = *i;
-        readStyleClasses( styleConf, layer.styleClasses() );        
+        readStyleList( styleConf, layer.styles() );  
+        readAtLeastOne = true;
     }
 
     // finally, add the new style layer.
-    out_cat.namedLayers().push_back( layer );
+    if ( readAtLeastOne )
+        out_cat.namedLayers().push_back( layer );
+
     return true;
 }

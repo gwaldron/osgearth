@@ -21,8 +21,8 @@
 #define OSGEARTHFEATURES_FEATURE_SOURCE_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Geometry>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Geometry>
 #include <osgEarthFeatures/Query>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/Styling>
@@ -44,6 +44,21 @@ namespace osgEarth { namespace Features
     public:
         virtual bool hasMore() const =0;
         virtual Feature* nextFeature() =0;
+    };
+
+    /**
+     * A simple cursor implementation that returns features from an in-memory
+     * feature list.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureListCursor : public FeatureCursor
+    {
+    public:
+        FeatureListCursor( const FeatureList& input );
+        virtual bool hasMore() const;
+        virtual Feature* nextFeature();
+    protected:
+        FeatureList _features;
+        FeatureList::iterator _iter;
     };
 
     /**
@@ -84,36 +99,17 @@ namespace osgEarth { namespace Features
         virtual FeatureCursor* createCursor( const Query& query ) =0;
 
 
-    public: // methods for feature sources that support embedded styling (optional).
+    public: // Styling
 
         /**
-         * Gets whether the feature source can generate style information for features.
-         * If true, you can use call getStyleClasses() to retrieve the available styles,
-         * and createCursor( StyleClass, ... ) to get all the features for a particular
-         * style class.
+         * Returns true if this source creates features with embedded style information.
+         * By default, this is false (features are not expected to carry their own
+         * style definitions).
          */
-        virtual bool supportsStyling() const {
+        virtual bool hasEmbeddedStyles() const {
             return false; }
 
-        /**
-         * When supportsStyling() is true, this method will populate the output
-         * parameter with the available style classes and returns TRUE. Otherwise,
-         * it will return FALSE.
-         */
-        virtual bool getStyleClasses( Styling::StyleClasses& out_classes ) {
-            return false; }
-
-        /**
-         * When supportsStyling() is true, this method creates a cursor that iterates
-         * over all the features in a particular style class.
-         *
-         * Caller takes ownership of the returned object.
-         */
-        virtual FeatureCursor* createCursor( const Styling::StyleClass& sc, const Query& query ) {
-            return NULL; }
-
-
-    public: // properties
+    public:
 
         /**
          * Accesses the list of feature filters that will transform features

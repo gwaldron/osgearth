@@ -24,7 +24,7 @@
 #include <osgEarth/Config>
 #include <iostream>
 
-namespace osgEarth { namespace Features { namespace Styling
+namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT SLDReader
     {
@@ -33,9 +33,9 @@ namespace osgEarth { namespace Features { namespace Styling
 
         static bool readXML( std::istream& input, StyleCatalog& out_sld );
 
-        static bool readStyleClassFromCSSParams( const Config& conf, StyleClass& out_styleClass );
+        static bool readStyleFromCSSParams( const Config& conf, Style& out_style );
     };
 
-} } } // namespace osgEarth::Features::Styling
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_STYLING_SLD_H

@@ -78,6 +78,7 @@ namespace osgEarth
     public:
 		/** Create a model source with the given driver and properties */
 		static ModelSource* create(
+            const std::string& name,
             const std::string& driver,
             const Config&      driverConf,
             const osgDB::ReaderWriter::Options* global_options =NULL );

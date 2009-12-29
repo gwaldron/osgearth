@@ -35,14 +35,16 @@ _srs( srs )
 /****************************************************************************/
 
 Feature::Feature( long fid ) :
-_fid( fid )
+_fid( fid ),
+_style( Style() )
 {
     //NOP
 }
 
 Feature::Feature( const Feature& rhs, const osg::CopyOp& copyOp ) :
 _fid( rhs._fid ),
-_attrs( rhs._attrs )
+_attrs( rhs._attrs ),
+_style( rhs._style )
 {
     if ( rhs._geom.valid() )
         _geom = dynamic_cast<Geometry*>( copyOp( rhs._geom.get() ) );

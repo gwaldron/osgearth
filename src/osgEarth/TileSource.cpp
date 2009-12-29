@@ -32,7 +32,7 @@
 
 using namespace osgEarth;
 
-
+#define PROPERTY_NAME         "name"
 #define PROPERTY_NODATA_VALUE "nodata_value"
 #define PROPERTY_NODATA_MIN   "nodata_min"
 #define PROPERTY_NODATA_MAX   "nodata_max"
@@ -50,6 +50,7 @@ _max_data_level(INT_MAX)
     if ( options )
     {
         const Config& conf = options->config();
+        _name = conf.value( PROPERTY_NAME );
         _noDataValue    = conf.value<float>( PROPERTY_NODATA_VALUE, _noDataValue );
         _noDataMinValue = conf.value<float>( PROPERTY_NODATA_MIN, _noDataMinValue );
         _noDataMaxValue = conf.value<float>( PROPERTY_NODATA_MAX, _noDataMaxValue );

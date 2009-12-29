@@ -20,6 +20,7 @@ SET(LIB_PUBLIC_HEADERS
     ResampleFilter
     Feature
     FeatureGridder
+    FeatureModelSource
     FeatureSource
     Filter
     Geometry
@@ -40,6 +41,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ResampleFilter.cpp
     Feature.cpp
     FeatureGridder.cpp
+    FeatureModelSource.cpp
     FeatureSource.cpp
     Filter.cpp
     GEOS.cpp

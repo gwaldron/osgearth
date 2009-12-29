@@ -20,13 +20,14 @@
 #define OSGEARTHFEATURES_STYLING_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Query>
+#include <osgEarthFeatures/Geometry>
 #include <osgEarth/Config>
 #include <osg/Vec4>
+#include <osg/Notify>
 #include <list>
 
-namespace osgEarth { namespace Features { namespace Styling
+namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT StyleComponent
     {
@@ -41,8 +42,8 @@ namespace osgEarth { namespace Features { namespace Styling
         virtual void apply( class Fill& obj );
         virtual void apply( class LineSymbolizer& obj );
         virtual void apply( class PolygonSymbolizer& obj );
-        virtual void apply( class StyleClass& obj );
-        virtual void apply( class NamedLayer& obj );
+        virtual void apply( class Style& obj );
+        virtual void apply( class StyledLayer& obj );
         virtual void apply( class StyleCatalog& obj );
     };
 
@@ -187,11 +188,11 @@ namespace osgEarth { namespace Features { namespace Styling
         Fill _fill;
     };
 
-    class OSGEARTHFEATURES_EXPORT StyleClass : public StyleComponent
+    class OSGEARTHFEATURES_EXPORT Style : public StyleComponent
     {
     public:
-        StyleClass() { }
-        StyleClass( const StyleClass& rhs )
+        Style() { }
+        Style( const Style& rhs )
             : _name( rhs._name ),
               _query( rhs._query ),
               _lineSymbolizer( rhs._lineSymbolizer ),
@@ -229,38 +230,38 @@ namespace osgEarth { namespace Features { namespace Styling
         PolygonSymbolizer _polygonSymbolizer;
     };
 
-    typedef std::list< StyleClass > StyleClasses;
+    typedef std::list< Style > StyleList;
 
-    class OSGEARTHFEATURES_EXPORT NamedLayer : public StyleComponent
+    class OSGEARTHFEATURES_EXPORT StyledLayer : public StyleComponent
     {
     public:
-        NamedLayer() { }
-        NamedLayer( const NamedLayer& rhs )
+        StyledLayer() { }
+        StyledLayer( const StyledLayer& rhs )
             : _name( rhs._name ),
-            _styleClasses( rhs._styleClasses ) { }
+            _styles( rhs._styles ) { }
 
         std::string& name() {
             return _name; }
         const std::string& name() const {
             return _name; }
         
-        StyleClasses& styleClasses() {
-            return _styleClasses; }
-        const StyleClasses& styleClasses() const {
-            return _styleClasses; }
+        StyleList& styles() {
+            return _styles; }
+        const StyleList& styles() const {
+            return _styles; }
 
         bool empty() const {
-            return _name.empty() || _styleClasses.empty(); }
+            return _name.empty() || _styles.empty(); }
 
         virtual void accept( class StyleVisitor& visitor ) {
             visitor.apply( *this ); }
 
     protected:
         std::string _name;
-        StyleClasses _styleClasses;
+        StyleList _styles;
     };
 
-    typedef std::list< NamedLayer > NamedLayers;
+    typedef std::list< StyledLayer > StyledLayers;
 
     class OSGEARTHFEATURES_EXPORT StyleCatalog : public StyleComponent
     {
@@ -269,13 +270,13 @@ namespace osgEarth { namespace Features { namespace Styling
         StyleCatalog( const StyleCatalog& rhs )
             : _namedLayers( rhs._namedLayers ) { }
 
-        NamedLayers& namedLayers() { 
+        StyledLayers& namedLayers() { 
             return _namedLayers; }
-        const NamedLayers& namedLayers() const { 
+        const StyledLayers& namedLayers() const { 
             return _namedLayers; }
 
-        bool getNamedLayer( const std::string& name, NamedLayer& out_layer ) const {
-            for( NamedLayers::const_iterator i = _namedLayers.begin(); i != _namedLayers.end(); i++ ) {
+        bool getNamedLayer( const std::string& name, StyledLayer& out_layer ) const {
+            for( StyledLayers::const_iterator i = _namedLayers.begin(); i != _namedLayers.end(); i++ ) {
                 if ( i->name() == name ) {
                     out_layer = *i;
                     return true;
@@ -288,7 +289,7 @@ namespace osgEarth { namespace Features { namespace Styling
             visitor.apply( *this ); }
 
     protected:
-        NamedLayers _namedLayers;
+        StyledLayers _namedLayers;
     };
 
 
@@ -296,14 +297,14 @@ namespace osgEarth { namespace Features { namespace Styling
     {
     public:
         static bool readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_catalog );
-        static bool readStyleClass( const Config& conf, StyleClass& out_styleClass, bool matchesOnly =true );
-        static bool readStyleClassFromCSS( const Config& conf, StyleClass& out_styleClass, bool matchesOnly =true);
-        static bool readStyleClassFromSLD( const ConfigSet& confSet, StyleClass& out_styleClass, bool matchesOnly =true);
-        static bool readStyleClasses( const Config& conf, StyleClasses& out_classes );
-        static bool readStyleClassesFromCSS( const Config& conf, StyleClasses& out_classes, bool createIfNecessary =false);
-        static bool readStyleClassesFromSLD( const ConfigSet& confSet, StyleClasses& out_classes, bool createIfNecessary =false);
+        static bool readStyle( const Config& conf, Style& out_style, bool matchesOnly =true );
+        static bool readStyleFromCSS( const Config& conf, Style& out_style, bool matchesOnly =true);
+        static bool readStyleFromSLD( const ConfigSet& confSet, Style& out_style, bool matchesOnly =true);
+        static bool readStyleList( const Config& conf, StyleList& out_classes );
+        static bool readStyleListFromCSS( const Config& conf, StyleList& out_classes, bool createIfNecessary =false);
+        static bool readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary =false);
     };
 
-} } } // namespace osgEarth::Features::Styling
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_STYLING_H

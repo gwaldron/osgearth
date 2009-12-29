@@ -24,7 +24,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace osgEarth::Features::Styling;
 
 static osg::Vec4ub
 htmlColorToVec4ub( const std::string& html )
@@ -90,27 +89,27 @@ struct SLDFromConfigVisitor : public StyleVisitor
     //    //TODO
     //}
 
-    void apply( class StyleClass& obj ) {
+    void apply( class Style& obj ) {
         //traverse( _conf.top().child( "sld:Filter" ), obj.filter() );
         traverse( _conf.top().child( "sld:LineSymbolizer" ), obj.lineSymbolizer() );
         traverse( _conf.top().child( "sld:PolygonSymbolizer" ), obj.polygonSymbolizer() );
     }
 
-    void apply( class NamedLayer& obj ) {
+    void apply( class StyledLayer& obj ) {
         traverse( _conf.top().child( "sld:UserStyle" ), obj );
         traverse( _conf.top().child( "sld:FeatureTypeStyle" ), obj );
         ConfigSet rules = _conf.top().children( "sld:Rule" );
         for( ConfigSet::iterator i = rules.begin(); i != rules.end(); ++i ) {
-            StyleClass styleClass;
-            traverse( *i, styleClass );
-            obj.styleClasses().push_back( styleClass );
+            Style style;
+            traverse( *i, style );
+            obj.styles().push_back( style );
         }            
     }
 
     void apply( class StyleCatalog& obj ) {
         ConfigSet c = _conf.top().children( "sld:NamedLayer" );
         for(ConfigSet::iterator i = c.begin(); i != c.end(); i++ ) {
-            NamedLayer namedLayer;
+            StyledLayer namedLayer;
             traverse( *i, namedLayer );
             obj.namedLayers().push_back( namedLayer );
         }
@@ -155,7 +154,7 @@ parseLineCap( const std::string& value, Stroke::LineCapStyle& cap )
 }
 
 bool
-SLDReader::readStyleClassFromCSSParams( const Config& conf, StyleClass& sc )
+SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 {
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {

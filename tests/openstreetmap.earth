@@ -22,5 +22,7 @@ invert the Y tile index.
     </image>
     
     <loading_policy mode="preemptive"/>
+    <min_tile_range_factor>8</min_tile_range_factor>
+    <lighting>false</lighting>
     
 </map>

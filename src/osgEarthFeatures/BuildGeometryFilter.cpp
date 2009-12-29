@@ -27,18 +27,17 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace osgEarth::Features::Styling;
 
 
 BuildGeometryFilter::BuildGeometryFilter() :
-_styleClass( StyleClass() ),
+_style( Style() ),
 _geomTypeOverride( Geometry::TYPE_UNKNOWN )
 {
     reset();
 }
 
-//BuildGeometryFilter::BuildGeometryFilter( const StyleClass& styleClass ) :
-//_styleClass( styleClass )
+//BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
+//_style( style )
 //{
 //    reset();
 //}
@@ -97,13 +96,13 @@ BuildGeometryFilter::push( Feature* input, const FilterContext& context )
         osg::Vec4ub color;
         if ( renderType == Geometry::TYPE_POLYGON )
         {
-            color = _styleClass.get().polygonSymbolizer().fill().color();
-            color.a() = (int)(255.0f * _styleClass.get().polygonSymbolizer().fill().opacity());
+            color = _style.get().polygonSymbolizer().fill().color();
+            color.a() = (int)(255.0f * _style.get().polygonSymbolizer().fill().opacity());
         }
         else
         {
-            color = _styleClass->lineSymbolizer().stroke().color();
-            color.a() = (int)(255.0f * _styleClass->lineSymbolizer().stroke().opacity());
+            color = _style->lineSymbolizer().stroke().color();
+            color.a() = (int)(255.0f * _style->lineSymbolizer().stroke().opacity());
         }
     
         osg::Geometry* osgGeom = new osg::Geometry();
@@ -163,13 +162,13 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
 
     if ( ok )
     {
-        if ( _styleClass.isSet() && _geode.valid() )
+        if ( _style.isSet() && _geode.valid() )
         {
             // could optimize this to only happen is lines or points were created ..
-            float size = _styleClass->lineSymbolizer().stroke().width();
+            float size = _style->lineSymbolizer().stroke().width();
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
 
-            float width = _styleClass->lineSymbolizer().stroke().width();
+            float width = _style->lineSymbolizer().stroke().width();
             _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
         }
 

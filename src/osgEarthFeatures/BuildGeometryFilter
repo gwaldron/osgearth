@@ -37,9 +37,8 @@ namespace osgEarth { namespace Features
     {
     public:
         BuildGeometryFilter();
-        //BuildGeometryFilter( const Styling::StyleClass& style );
 
-        optional<Styling::StyleClass>& styleClass() { return _styleClass; }
+        optional<Style>& style() { return _style; }
 
         optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
@@ -47,7 +46,7 @@ namespace osgEarth { namespace Features
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
-        optional<Styling::StyleClass> _styleClass;
+        optional<Style> _style;
         optional<Geometry::Type> _geomTypeOverride;
         bool _hasPoints;
         bool _hasLines;

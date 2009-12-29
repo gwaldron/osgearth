@@ -29,6 +29,10 @@ ModelSource::ModelSource( const PluginOptions* options ) :
 _options( options )
 {
     this->setThreadSafeRefUnref( true );
+    if ( options )
+    {
+        _name = options->config().value( "name" );
+    }
 }
 
 const PluginOptions* 
@@ -41,7 +45,8 @@ ModelSource::getOptions() const
 /****************************************************************************/
 
 ModelSource*
-ModelSourceFactory::create(const std::string& driver,
+ModelSourceFactory::create(const std::string& name,
+                           const std::string& driver,
                            const Config&      driverConf,
                            const osgDB::ReaderWriter::Options* globalOptions )
 {
@@ -59,7 +64,11 @@ ModelSourceFactory::create(const std::string& driver,
     osg::ref_ptr<ModelSource> source = dynamic_cast<ModelSource*>(
                 osgDB::readObjectFile( ".osgearth_model_" + driver, options.get()));
 
-	if ( !source.valid() )
+    if ( source.valid() )
+    {
+        source->setName( name );
+    }
+    else
 	{
 		osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load Model driver "  << driver << std::endl;
 	}
@@ -73,6 +82,7 @@ ModelSourceFactory::create(const Config& sourceConf,
                            const osgDB::ReaderWriter::Options* globalOptions )
 {
     return create(
+        sourceConf.attr( "name" ),
         sourceConf.attr( "driver" ),
         sourceConf,
         globalOptions );

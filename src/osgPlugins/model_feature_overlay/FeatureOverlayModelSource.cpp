@@ -17,61 +17,41 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 #include <osgEarthFeatures/Styling>
+#include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osg/Notify>
-#include <osg/LineWidth>
 #include <osgDB/FileNameUtils>
-#include <osgUtil/Tessellator>
 #include <osgSim/OverlayNode>
-#include <OpenThreads/Mutex>
-#include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_FEATURES      "features"
 #define PROP_TEXTURE_UNIT  "texture_unit"
 #define PROP_TEXTURE_SIZE  "texture_size"
 #define PROP_OVERLAY_TECH  "overlay_technique"
 #define PROP_BASE_HEIGHT   "base_height"
-#define PROP_GEOMETRY_TYPE "geometry_type"
 
 #define VAL_OT_ODWOO      "object_dependent_with_orthographic_overlay"
 #define VAL_OT_VDWOO      "view_dependent_with_orthographic_overlay"
 #define VAL_OT_VDWPO      "view_dependent_with_perspective_overlay"
 
-class FeatureOverlaySource : public ModelSource
+class FeatureOverlayModelSource : public FeatureModelSource
 {
 public:
-    FeatureOverlaySource( const PluginOptions* options, int sourceId ) : ModelSource( options ),
-        _sourceId( sourceId ),
+    FeatureOverlayModelSource( const PluginOptions* options ) :
+        FeatureModelSource( options ),
         _textureUnit( 0 ),
         _textureSize( 1024 ),
         _baseHeight( 0.0 ),
-        _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY ),
-        _geomTypeOverride( Geometry::TYPE_UNKNOWN )
+        _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
     {
-        //nop
-    }
-
-    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
-    {
-        _map = map;
-
         const Config& conf = getOptions()->config();
-
-        _features = FeatureSourceFactory::create( conf.child( PROP_FEATURES ) );
-        if ( !_features.valid() )
-        {
-            osg::notify( osg::WARN ) << "[osgEarth] Feature Overlay driver - no valid feature source provided" << std::endl;
-        }
 
         // omitting the texture unit implies "AUTO" mode - MapNode will set one automatically
         if ( conf.hasValue( PROP_TEXTURE_UNIT ) )
@@ -80,7 +60,6 @@ public:
             _textureUnit = 0; // AUTO
 
         _textureSize = conf.value<int>( PROP_TEXTURE_SIZE, _textureSize );
-
         _baseHeight = conf.value<double>( PROP_BASE_HEIGHT, _baseHeight );
 
         if ( conf.hasValue( PROP_OVERLAY_TECH ) )
@@ -92,44 +71,28 @@ public:
             else if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_VDWPO )
                 _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
         }
-
-        // force a particular geometry type
-        if ( conf.hasValue( PROP_GEOMETRY_TYPE ) )
-        {
-            // geometry type override: the config can ask that input geometry
-            // be interpreted as a particular geometry type
-            std::string gt = conf.value( PROP_GEOMETRY_TYPE );
-            if ( gt == "line" || gt == "lines" || gt == "linestrip" )
-                _geomTypeOverride = Geometry::TYPE_LINESTRING;
-            else if ( gt == "point" || gt == "points" || gt == "pointset" )
-                _geomTypeOverride = Geometry::TYPE_POINTSET;
-            else if ( gt == "polygon" || gt == "polygons" )
-                _geomTypeOverride = Geometry::TYPE_POLYGON;
-        }
-
-        // load up the style catalog.
-        Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
     }
 
-    osg::Node* buildClass( const Styling::StyleClass& style )
+    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
-        bool isGeocentric = _map->isGeocentric();
+        _mapSRS = map->getProfile()->getSRS();
+        _mapIsGeocentric = map->isGeocentric();
+    }
 
-        //osg::notify(osg::NOTICE)
-        //    << "Building class " << style.name() << ", SQL = " << style.query().expression() << std::endl;
-
+    //override
+    osg::Node* renderStyle( const Style& style, FeatureCursor* cursor, osg::Referenced* data )
+    {
         // read all features into a list:
         FeatureList features;
-        osg::ref_ptr<FeatureCursor> c = _features->createCursor( style.query() );
-        while( c->hasMore() )
-            features.push_back( c->nextFeature() );
+        while( cursor->hasMore() )
+            features.push_back( cursor->nextFeature() );
 
         // A processing context to use with the filters:
         FilterContext context;
-        context.profile() = _features->getFeatureProfile();
+        context.profile() = getFeatureSource()->getFeatureProfile();
 
         // Transform them into the map's SRS:
-        TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
+        TransformFilter xform( _mapSRS.get(), _mapIsGeocentric );
         context = xform.push( features, context );
 
         // Build geometry:
@@ -139,35 +102,18 @@ public:
 
         // apply the style rule if we have one:
         osg::ref_ptr<osg::Node> result;
-        build.styleClass() = style;
+        build.style() = style;
         context = build.push( features, result, context );
 
         return result.release();
     }
 
+    //override
     osg::Node* createNode( ProgressCallback* progress =0L )
     {
-        if ( !_features.valid() ) return 0L;
+        osg::Node* node = FeatureModelSource::createNode( progress );
 
-        // figure out which rule to use to style the geometry.
-        Styling::NamedLayer styleLayer;
-        bool hasStyle = _styles.getNamedLayer( getName(), styleLayer );
-
-        osg::Group* group = new osg::Group();
-
-        for( Styling::StyleClasses::iterator i = styleLayer.styleClasses().begin(); i != styleLayer.styleClasses().end(); ++i )
-        {
-            const Styling::StyleClass& style = *i;
-
-            osg::Node* node = buildClass( style );
-            if ( node )
-                group->addChild( node );
-        }
-
-        osg::StateSet* ss = group->getOrCreateStateSet();
-        ss->setMode( GL_LIGHTING, 0 );
-
-        // finally, build the overlay node.
+        // build an overlay node around the geometry
         osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
         overlayNode->setName( this->getName() );
         overlayNode->setOverlayTechnique( _overlayTech );
@@ -175,28 +121,25 @@ public:
         overlayNode->setOverlayTextureSizeHint( _textureSize );
         overlayNode->setOverlayTextureUnit( _textureUnit );
         overlayNode->setContinuousUpdate( false );
-        overlayNode->setOverlaySubgraph( group );
+        overlayNode->setOverlaySubgraph( node );
 
         return overlayNode;
     }
 
 private:
-    osg::ref_ptr<FeatureSource> _features;
-    int _sourceId;
     int _textureSize;
     int _textureUnit;
     double _baseHeight;
     osgSim::OverlayNode::OverlayTechnique _overlayTech;
-    osg::ref_ptr<const osgEarth::Map> _map;
-    Styling::StyleCatalog _styles;
-    optional<Geometry::Type> _geomTypeOverride;
+    osg::ref_ptr<const SpatialReference> _mapSRS;
+    bool _mapIsGeocentric;
 };
 
 
-class ReaderWriterFeatureOverlay : public osgDB::ReaderWriter
+class FeatureOverlayModelSourceFactory : public osgDB::ReaderWriter
 {
 public:
-    ReaderWriterFeatureOverlay()
+    FeatureOverlayModelSourceFactory()
     {
         supportsExtension( "osgearth_model_feature_overlay", "osgEarth feature overlay plugin" );
     }
@@ -206,48 +149,13 @@ public:
         return "osgEarth Feature Overlay Model Plugin";
     }
 
-    FeatureOverlaySource* create( const PluginOptions* options )
-    {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        FeatureOverlaySource* obj = new FeatureOverlaySource( options, _sourceId );
-        if ( obj ) _sourceMap[_sourceId++] = obj;
-        return obj;
-    }
-
-    FeatureOverlaySource* get( int sourceId )
-    {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        return _sourceMap[sourceId].get();
-    }
-
     virtual ReadResult readObject(const std::string& file_name, const Options* options) const
     {
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        ReaderWriterFeatureOverlay* nonConstThis = const_cast<ReaderWriterFeatureOverlay*>(this);
-        return nonConstThis->create( static_cast<const PluginOptions*>(options) );
+        return ReadResult( new FeatureOverlayModelSource( dynamic_cast<const PluginOptions*>(options) ) );
     }
-
-    // NOTE: this doesn't do anything, yet. it's a template for recursing into the
-    // plugin during pagedlod traversals.
-    virtual ReadResult readNode(const std::string& fileName, const Options* options) const
-    {
-        if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( fileName )))
-            return ReadResult::FILE_NOT_HANDLED;
-   
-        std::string stripped = osgDB::getNameLessExtension( fileName );
-        int sourceId = 0;
-        sscanf( stripped.c_str(), "%d", &sourceId );
-
-        ReaderWriterFeatureOverlay* nonConstThis = const_cast<ReaderWriterFeatureOverlay*>(this);
-        return ReadResult( nonConstThis->get( sourceId ) );
-    }
-
-protected:
-    Mutex _sourceIdMutex;
-    int _sourceId;
-    std::map<int, osg::ref_ptr<FeatureOverlaySource> > _sourceMap;
 };
 
-REGISTER_OSGPLUGIN(osgearth_model_feature_overlay, ReaderWriterFeatureOverlay) 
+REGISTER_OSGPLUGIN(osgearth_model_feature_overlay, FeatureOverlayModelSourceFactory) 

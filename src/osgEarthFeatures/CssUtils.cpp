@@ -24,7 +24,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace osgEarth::Features::Styling;
 
 Config
 CssUtils::readConfig( std::istream& in )

@@ -23,7 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarth/Config>
 
-namespace osgEarth { namespace Features { namespace Styling
+namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT CssUtils
     {
@@ -31,6 +31,6 @@ namespace osgEarth { namespace Features { namespace Styling
         static Config readConfig( std::istream& in );
     };
 
-} } } // namespace osgEarth::Features::Styling
+} } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_CSSUTILS_H

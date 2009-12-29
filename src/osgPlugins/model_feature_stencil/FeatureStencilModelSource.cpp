@@ -17,18 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
-#include <osgEarthFeatures/Styling>
+#include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
 #include <osgEarthFeatures/FeatureGridder>
+#include <osgEarthFeatures/Styling>
 #include <osg/Notify>
-#include <osg/ClearNode>
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
@@ -38,78 +37,77 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_FEATURES               "features"
 #define PROP_EXTRUSION_DISTANCE     "extrusion_distance"
 #define PROP_DENSIFICATION_THRESH   "densification_threshold"
-#define PROP_GEOMETRY_TYPE          "geometry_type"
 
-class FeatureStencilModelSource : public ModelSource
+#define DEFAULT_EXTRUSION_DISTANCE      300000.0
+#define DEFAULT_DENSIFICATION_THRESHOLD 1000000.0
+
+class FeatureStencilModelSource : public FeatureModelSource
 {
 public:
-    FeatureStencilModelSource( const PluginOptions* options, int renderBinStart, int sourceId ) : ModelSource( options ),
+    FeatureStencilModelSource( const PluginOptions* options, int renderBinStart, int sourceId ) :
+        FeatureModelSource( options ),
         _sourceId( sourceId ),
         _renderBinStart( renderBinStart ),
         _showVolumes( false ),
-        _extrusionDistance( 300000.0 ),
-        _densificationThresh( 1000000.0 ),
-        _geomTypeOverride( Geometry::TYPE_UNKNOWN )
+        _extrusionDistance( DEFAULT_EXTRUSION_DISTANCE ),
+        _densificationThresh( DEFAULT_DENSIFICATION_THRESHOLD )
     {
         if ( osg::DisplaySettings::instance()->getMinimumNumStencilBits() < 8 )
         {
             osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
         }
+
+        const Config& conf = getOptions()->config();
+
+        // overrides the default stencil volume extrusion size
+        if ( conf.hasValue( PROP_EXTRUSION_DISTANCE ) )
+            _extrusionDistance = conf.value<double>( PROP_EXTRUSION_DISTANCE, DEFAULT_EXTRUSION_DISTANCE );
+
+        // overrides the default segment densification threshold.
+        _densificationThresh = conf.value<double>( PROP_DENSIFICATION_THRESH, DEFAULT_DENSIFICATION_THRESHOLD );
+
+        // debugging:
+        _showVolumes = conf.child( "debug" ).attr( "show_volumes" ) == "true";
+        if ( _showVolumes )
+            _lit = false;
     }
 
+    //override
     void initialize( const std::string& referenceURI, const Map* map )
     {
         _map = map;
 
-        // figure out a "reasonable" default extrusion size
-        if ( _map->isGeocentric() )
-            _extrusionDistance = 300000.0; // meters geocentric
-        else if ( _map->getProfile()->getSRS()->isGeographic() )
-            _extrusionDistance = 5.0; // degrees-as-distance
-        else
-            _extrusionDistance = 12000.0; // meters
-
-        const Config& conf = getOptions()->config();
-
-        _features = FeatureSourceFactory::create( conf.child( PROP_FEATURES ) );
-        if ( !_features.valid() )
+        if ( !_extrusionDistance.isSet() )
         {
-            osg::notify( osg::WARN ) << "[osgEarth] Feature Stencil driver - no valid feature source provided" << std::endl;
+            // figure out a "reasonable" default extrusion size
+            if ( _map->isGeocentric() )
+                _extrusionDistance = 300000.0; // meters geocentric
+            else if ( _map->getProfile()->getSRS()->isGeographic() )
+                _extrusionDistance = 5.0; // degrees-as-distance
+            else
+                _extrusionDistance = 12000.0; // meters
         }
-
-        // overrides the default stencil volume extrusion size
-        _extrusionDistance = conf.value<double>( PROP_EXTRUSION_DISTANCE, _extrusionDistance );
-
-        // overrides the default segment densification threshold.
-        _densificationThresh = conf.value<double>( PROP_DENSIFICATION_THRESH, _densificationThresh );
-
-        // load up the style catalog.
-        Styling::StyleReader::readLayerStyles( getName(), conf, _styles );
-
-        // force a particular geometry type
-        if ( conf.hasValue( PROP_GEOMETRY_TYPE ) )
-        {
-            // geometry type override: the config can ask that input geometry
-            // be interpreted as a particular geometry type
-            std::string gt = conf.value( PROP_GEOMETRY_TYPE );
-            if ( gt == "line" || gt == "lines" || gt == "linestrip" )
-                _geomTypeOverride = Geometry::TYPE_LINESTRING;
-            else if ( gt == "point" || gt == "points" || gt == "pointset" )
-                _geomTypeOverride = Geometry::TYPE_POINTSET;
-            else if ( gt == "polygon" || gt == "polygons" )
-                _geomTypeOverride = Geometry::TYPE_POLYGON;
-        }
-
-        // debugging:
-        _showVolumes = conf.child( "debug" ).attr( "show_volumes" ) == "true";
     }
 
+    // implementation-specific data to pass to buildNodeForStyle:
+    struct BuildData : public osg::Referenced {
+        BuildData( int renderBinStart ) : _renderBin( renderBinStart ) { }
+        int _renderBin;
+    };
 
-    osg::Node* buildClass( const Styling::StyleClass& style, int& ref_renderBin )
+    //override
+    osg::Referenced* createBuildData()
     {
+        return new BuildData( _renderBinStart );
+    }
+
+    //override
+    osg::Node* renderStyle( const Style& style, FeatureCursor* cursor, osg::Referenced* data )
+    {
+        BuildData* buildData = static_cast<BuildData*>(data);
+
         bool isGeocentric = _map->isGeocentric();
 
         // read all features into a list:
@@ -138,16 +136,6 @@ public:
                     hasLines = true;
             }
         }
-
-        //FilterContext cx;
-        //if ( _geomTypeOverride.isSet() )
-        //{
-        //    ConvertTypeFilter changeType( _geomTypeOverride.get() );
-        //    cx = changeType.push( features, cx );
-        //
-        //    if ( _geomTypeOverride.get() == Geometry::TYPE_LINESTRING )
-        //        hasLines = true;
-        //}
 
         // Grid the features:
         // TODO: use the actual input extent...
@@ -200,16 +188,13 @@ public:
             {
                 osg::Node* volume = StencilUtils::createVolume(
                     i->get()->getGeometry(),
-                    -_extrusionDistance,
-                    _extrusionDistance * 2.0,
+                    -_extrusionDistance.get(),
+                    _extrusionDistance.get() * 2.0,
                     context );
 
                 if ( volume )
                     volumes->addChild( volume );
             }
-
-            //ExtrudeGeometryFilter extrude( -_extrusionDistance, _extrusionDistance*2.0 );
-            //context = extrude.push( cellFeatures, volumes, context );
 
             if ( _showVolumes )
             {
@@ -218,12 +203,12 @@ public:
             else
             {
                 // render the volumes to the stencil buffer:
-                osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), ref_renderBin );
+                osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), buildData->_renderBin );
                 classGroup->addChild( geomPass );
 
                 // render a full screen quad to write to the masked pixels:
                 osg::Vec4ub maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
-                osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, ref_renderBin );
+                osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, buildData->_renderBin );
                 classGroup->addChild( maskPass );
             }
         }
@@ -233,43 +218,15 @@ public:
         return classGroup;
     }
 
-    osg::Node* createNode( ProgressCallback* progress =0L )
-    {
-        if ( !_features.valid() ) return 0L;
 
-        // figure out which rule to use to style the geometry.
-        Styling::NamedLayer styleLayer;
-        bool hasStyle = _styles.getNamedLayer( getName(), styleLayer );
-
-        osg::Group* group = new osg::Group();
-
-        int renderBin = _renderBinStart;
-        for( Styling::StyleClasses::iterator i = styleLayer.styleClasses().begin(); i != styleLayer.styleClasses().end(); ++i )
-        {
-            const Styling::StyleClass& style = *i;
-
-            osg::Node* node = buildClass( style, renderBin );
-            if ( node )
-                group->addChild( node );
-        }
-
-        osg::StateSet* ss = group->getOrCreateStateSet();
-        if ( _showVolumes )
-            ss->setMode( GL_LIGHTING, 0 );
-
-        return group;
-    }
 
 private:
-    osg::ref_ptr<FeatureSource> _features;
     int _sourceId;
     int _renderBinStart;
     osg::ref_ptr<const Map> _map;
-    Styling::StyleCatalog _styles;
-    bool _showVolumes;
-    double _extrusionDistance;
+    optional<double> _extrusionDistance;
     double _densificationThresh;
-    optional<Geometry::Type> _geomTypeOverride;
+    bool _showVolumes;
 };
 
 

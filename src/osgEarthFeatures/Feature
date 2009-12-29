@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Geometry>
+#include <osgEarthFeatures/Styling>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
 #include <map>
@@ -81,10 +82,14 @@ namespace osgEarth { namespace Features
 
         const std::string& getAttr( const std::string& name ) const;
 
+        optional<Style>& style() { return _style; }
+        const optional<Style>& style() const { return _style; }
+
     protected:
         long _fid;
         osg::ref_ptr<Geometry> _geom;
         FeatureAttributes _attrs;
+        optional<Style> _style;
     };
 
     typedef std::list< osg::ref_ptr<Feature> > FeatureList;

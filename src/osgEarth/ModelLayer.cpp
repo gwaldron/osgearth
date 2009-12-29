@@ -34,7 +34,7 @@ void
 ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 {
     _referenceURI = referenceURI;
-    _modelSource = ModelSourceFactory::create( _driver, _driverConf );
+    _modelSource = ModelSourceFactory::create( _name, _driver, _driverConf );
     if ( _modelSource.valid() )
         _modelSource->initialize( _referenceURI, map );
 }

@@ -27,7 +27,6 @@
 #include <osg/Geode>
 
 using namespace osgEarth;
-using namespace osgEarth::Features::Styling;
 
 namespace osgEarth { namespace Features
 {

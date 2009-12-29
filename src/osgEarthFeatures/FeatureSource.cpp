@@ -33,6 +33,27 @@ using namespace OpenThreads;
 #define PROP_BUFFER_OP           "buffer"
 #define BUFFER_ATTR_DISTANCE     "distance"
 
+
+/****************************************************************************/
+
+FeatureListCursor::FeatureListCursor( const FeatureList& features ) :
+_features( features )
+{
+    _iter = _features.begin();
+}
+
+bool
+FeatureListCursor::hasMore() const {
+    return _iter != _features.end();
+}
+
+Feature*
+FeatureListCursor::nextFeature() {
+    Feature* r = _iter->get();
+    _iter++;
+    return r;
+}
+
 /****************************************************************************/
 
 FeatureSource::FeatureSource( const PluginOptions* options ) :
@@ -81,20 +102,6 @@ FeatureSource::getFeatureProfile() const
         // caching pattern
         FeatureSource* nonConstThis = const_cast<FeatureSource*>(this);
         nonConstThis->_featureProfile = nonConstThis->createFeatureProfile();
-
-        //// apply a geometry type override.
-        //if ( _geomTypeOverride != Geometry::TYPE_UNKNOWN )
-        //{
-        //    nonConstThis->_featureProfile = new FeatureProfile(
-        //        _featureProfile->getSRS(),
-        //        _geomTypeOverride );
-
-        //    //nonConstThis->_featureProfile = new FeatureProfile(
-        //    //    _featureProfile->getSRS(),
-        //    //    _geomTypeOverride,
-        //    //    _featureProfile->getDimensionality(),
-        //    //    _featureProfile->isMultiGeometry() );
-        //}
     }
     return _featureProfile.get();
 }
@@ -110,18 +117,6 @@ FeatureSource::getDataExtent() const
     }
     return _dataExtent;
 }
-
-//const Geometry::Type&
-//FeatureSource::getGeometryTypeOverride() const
-//{
-//    return _geomTypeOverride;
-//}
-
-//void 
-//FeatureSource::setGeometryTypeOverride( const Geometry::Type& type )
-//{
-//    _geomTypeOverride = type;
-//}
 
 FeatureFilterList&
 FeatureSource::getFilters()

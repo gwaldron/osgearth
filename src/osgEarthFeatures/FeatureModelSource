@@ -1,0 +1,95 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_MODEL_SOURCE_H
+#define OSGEARTHFEATURES_FEATURE_MODEL_SOURCE_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Styling>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/ModelSource>
+#include <osgDB/ReaderWriter>
+#include <list>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * A ModelSource that renders Feature data from a FeatureSource.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureModelSource : public ModelSource
+    {
+    public:      
+        /**
+         * Constructs a new feature model source with the provided options.
+         */
+        FeatureModelSource( const PluginOptions* options =NULL );
+
+    public:
+
+        // override
+        virtual osg::Node* createNode( ProgressCallback* progress );
+
+    protected:
+
+        /** Creates an OSG graph containing objects rendered with the provided style. */
+        virtual osg::Node* renderStyle(
+            const Style& style,
+            FeatureCursor* cursor,
+            osg::Referenced* buildData ) =0;
+
+        /** Accesses the underlying feature source. */
+        FeatureSource* getFeatureSource() {
+            return _features.get(); }
+
+        /** Access to the forced geometry type */
+        optional<Geometry::Type>& geomTypeOverride() {
+            return _geomTypeOverride; }
+
+        /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
+        virtual osg::Referenced* createBuildData() {
+            return NULL; }
+
+    public: 
+
+        // META_Object specialization:
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const FeatureModelSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "FeatureModelSource"; }
+        virtual const char* libraryName() const { return "osgEarthFeatures"; }
+
+    protected:
+
+        /** DTOR is protected to prevent this object from being allocated on the stack */
+        virtual ~FeatureModelSource() { }
+
+    protected:
+
+        StyleCatalog _styleCatalog;
+        optional<Geometry::Type> _geomTypeOverride;
+        osg::ref_ptr<FeatureSource> _features;
+        optional<bool> _lit;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
+

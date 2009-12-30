@@ -436,7 +436,7 @@ public:
             //}
         }
         
-        return findTile(tileID, true);
+        return findTile(tileID, false);
     }
     
     void insertTile(const osgTerrain::TileID& tileID, osgTerrain::TerrainTile* tile)

@@ -21,6 +21,7 @@
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
 #include <osgEarth/VersionedTerrain>
+#include <osgEarth/MapLayer>
 
 #include <osgEarth/EarthTerrainTechnique>
 
@@ -855,24 +856,36 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         //osg::notify(osg::NOTICE)<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 
-//    static osgText::Font* s_font = osgText::readFontFile( "arialbd.ttf" );
+    
 
     //DEBUGGING
 #if 0
+    static osgText::Font* s_font = osgText::readFontFile( "arialbd.ttf" );
     osgText::Text* text = new osgText::Text();
     text->setThreadSafeRefUnref( true );
+    text->setDataVariance( osg::Object::DYNAMIC );
+    text->setFont( s_font );
     std::stringstream buf;
-    buf << "" << _terrainTile->getTileID().level << "," <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y
-        << " (" << static_cast<VersionedTile*>(_terrainTile)->getElevationLOD() << ")";
+    buf << "" << _terrainTile->getTileID().level << "(" <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y << ")" << std::endl
+        << "elev=" << static_cast<VersionedTile*>(_terrainTile)->getElevationLOD() << std::endl;
+
+        buf << "imglod" << std::endl;
+    for (unsigned int i = 0; i < _terrainTile->getNumColorLayers(); ++i)
+    {
+        TransparentLayer* tl = static_cast<TransparentLayer*>( _terrainTile->getColorLayer(i) );
+        buf << tl->getId() << "=" << tl->getLevelOfDetail() << std::endl;
+    }
+
     text->setText( buf.str() );
     //text->setFont( s_font );
     //text->setFont( osgText::readFontFile( "arialbd.ttf" ) );
     text->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
-    text->setCharacterSize( 64 );
+    text->setCharacterSize( 32 );
     text->setColor( osg::Vec4f(1,1,1,1) );
     text->setBackdropType( osgText::Text::OUTLINE );
     text->setAutoRotateToScreen(true);
     text->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
+    
     buffer._geode->addDrawable( text );
 #endif
 

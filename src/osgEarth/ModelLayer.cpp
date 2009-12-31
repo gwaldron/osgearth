@@ -21,11 +21,29 @@
 
 using namespace osgEarth;
 
+#define ATTR_MIN_RANGE "min_range"
+#define ATTR_MAX_RANGE "max_range"
+
 ModelLayer::ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf ) :
 osg::Referenced( true ),
 _name( name ),
 _driver( driver ),
-_driverConf( driverConf )
+_driverConf( driverConf ),
+_minRange( 0 ),
+_maxRange( FLT_MAX )
+{
+    if ( driverConf.hasValue( ATTR_MIN_RANGE ) )
+        _minRange = driverConf.value<float>( ATTR_MIN_RANGE, 0.0f );
+    if ( driverConf.hasValue( ATTR_MAX_RANGE ) )
+        _maxRange = driverConf.value<float>( ATTR_MAX_RANGE, FLT_MAX );
+}
+
+ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
+osg::Referenced( true ),
+_name( name ),
+_modelSource( source ),
+_minRange( 0 ),
+_maxRange( FLT_MAX )
 {
     //NOP
 }
@@ -34,13 +52,34 @@ void
 ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 {
     _referenceURI = referenceURI;
-    _modelSource = ModelSourceFactory::create( _name, _driver, _driverConf );
+
+    if ( !_modelSource.valid() )
+    {
+        _modelSource = ModelSourceFactory::create( _name, _driver, _driverConf );
+    }
+
     if ( _modelSource.valid() )
+    {
         _modelSource->initialize( _referenceURI, map );
+    }
 }
 
 osg::Node*
 ModelLayer::createNode( ProgressCallback* progress )
 {
-    return _modelSource.valid() ? _modelSource->createNode( progress ) : 0L;
+    osg::Node* result = 0L;
+
+    if ( _modelSource.valid() )
+    {
+        result = _modelSource->createNode( progress );
+
+        if ( _minRange.isSet() || _maxRange.isSet() )
+        {
+            osg::LOD* lod = new osg::LOD();
+            lod->addChild( result, _minRange.get(), _maxRange.get() );
+            result = lod;
+        }
+    }
+
+    return result;
 }

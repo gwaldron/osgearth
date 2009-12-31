@@ -32,9 +32,29 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelLayer : public osg::Referenced
     {
     public:
+        /**
+         * Constructs a new model layer based on a configuration setup.
+         */
         ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf );
+        
+        /**
+         * Constructs a new model layer with a user-provided model source.
+         */
+        ModelLayer( const std::string& name, ModelSource* source );
+
+    public:
 
         osg::Node* createNode( ProgressCallback* progress =0L );
+
+    public: // properties
+
+        // minimum LOD range of this model layer.
+        optional<float>& minRange() { return _minRange; }
+        const optional<float>& minRange() const { return _minRange; }
+
+        // maximum LOD range of this model layer.
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
 
     public:
 
@@ -46,6 +66,8 @@ namespace osgEarth
         std::string _driver;
         Config _driverConf;
         osg::ref_ptr<ModelSource> _modelSource;
+        optional<float> _minRange;
+        optional<float> _maxRange;
     };
 
     typedef std::list< osg::ref_ptr<ModelLayer> > ModelLayerList;

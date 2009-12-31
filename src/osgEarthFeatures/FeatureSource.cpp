@@ -65,21 +65,22 @@ _options( options )
     // TODO: at some point, move all this stuff elsewhere into some sort of filter
     // pipeline manager
 
+    // buffer operation:
+    if ( conf.hasChild( PROP_BUFFER_OP ) )
+    {
+        BufferFilter* buffer = new BufferFilter();
+        buffer->distance() = conf.child( PROP_BUFFER_OP ).value<double>( BUFFER_ATTR_DISTANCE, 0.1 );
+        _filters.push_back( buffer );
+    }
+
     // resample operation:
+    // resampling must occur AFTER buffering, because the buffer op will remove colinear segments.
     if ( conf.hasChild( PROP_RESAMPLE_OP ) )
     {
         ResampleFilter* resample = new ResampleFilter();
         resample->minLength() = conf.child( PROP_RESAMPLE_OP ).value<double>( RESAMPLE_ATTR_MIN_LENGTH, resample->minLength() );
         resample->maxLength() = conf.child( PROP_RESAMPLE_OP ).value<double>( RESAMPLE_ATTR_MAX_LENGTH, resample->maxLength() );
         _filters.push_back( resample );
-    }
-
-    // buffer operation:
-    if ( conf.hasChild( PROP_BUFFER_OP ) )
-    {
-        BufferFilter* buffer = new BufferFilter();
-        buffer->distance() = conf.child( PROP_BUFFER_OP ).value<double>( BUFFER_ATTR_DISTANCE, 1.0 );
-        _filters.push_back( buffer );
     }
 }
 

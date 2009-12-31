@@ -405,7 +405,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
         }
         else
         {
-            _models->addChild( node );
+           _models->addChild( node );
         }
     }
 }

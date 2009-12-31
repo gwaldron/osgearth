@@ -30,7 +30,8 @@ block.
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
-            <buffer distance="-0.01"/>
+            <resample max_length="5.0"/>
+            <buffer distance="-0.05"/>
         </features>
         
         <!-- Since some countries span large areas on the globe, we need to

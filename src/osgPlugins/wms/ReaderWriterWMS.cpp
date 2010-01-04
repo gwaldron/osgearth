@@ -114,12 +114,15 @@ public:
         osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read(_capabilitiesURL, getOptions());
         if ( !capabilities.valid() )
         {
-            osg::notify(osg::WARN) << "[osgEarth::WMS] Unable to read WMS GetCapabilities; failing." << std::endl;
-            return;
+            osg::notify(osg::WARN) << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
+            //return;
+        }
+        else
+        {
+            osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << _capabilitiesURL << std::endl;
         }
 
-        osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << _capabilitiesURL << std::endl;
-        if (_format.empty())
+        if (_format.empty() && capabilities.valid())
         {
             _format = capabilities->suggestExtension();
             osg::notify(osg::NOTICE) << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _format << std::endl;
@@ -159,7 +162,7 @@ public:
 		}
 
         // Next, try to glean the extents from the layer list
-        if ( !result.valid() )
+        if ( !result.valid() && capabilities.valid() )
         {
             //TODO: "layers" mights be a comma-separated list. need to loop through and
             //combine the extents?? yes

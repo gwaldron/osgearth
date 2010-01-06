@@ -382,8 +382,8 @@ namespace osgEarth
             _lod = lod;
         }
 
-        int _lod;
 		osg::ref_ptr<MapLayer> _mapLayer;
+        int _lod;
 	};
 
 

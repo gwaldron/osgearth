@@ -1262,10 +1262,32 @@ public:
         double r, c;
         GDALApplyGeoTransform(invTransform, x, y, &c, &r);
 
+        //Account for the half pixel offset in the geotransform.  If the pixel value is -0.5 we are still technically in the dataset
+        //since 0,0 is now the center of the pixel.  So, if are within a half pixel above or a half pixel below the dataset just use
+        //the edge values
+        if (c < 0 && c >= -0.5)
+        {
+            c = 0;
+        }
+        else if (c > _warpedDS->GetRasterXSize()-1 && c <= _warpedDS->GetRasterXSize()-0.5)
+        {
+            c = _warpedDS->GetRasterXSize()-1;
+        }
+
+        if (r < 0 && r >= -0.5)
+        {
+            r = 0;
+        }
+        else if (r > _warpedDS->GetRasterYSize()-1 && r <= _warpedDS->GetRasterYSize()-0.5)
+        {
+            r = _warpedDS->GetRasterYSize()-1;
+        }
+
         float result = 0.0f;
 
         //If the location is outside of the pixel values of the dataset, just return 0
-        if (c < 0 || r < 0 || c > _warpedDS->GetRasterXSize()-1 || r > _warpedDS->GetRasterYSize()-1) return NO_DATA_VALUE;
+        if (c < 0 || r < 0 || c > _warpedDS->GetRasterXSize()-1 || r > _warpedDS->GetRasterYSize()-1)
+            return NO_DATA_VALUE;
 
         if (_interpolation == NEAREST)
         {

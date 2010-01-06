@@ -1228,18 +1228,21 @@ public:
     {
         GDAL_SCOPED_LOCK;
 
-        float noDataValue = -32767.0f;
+        float bandNoData = -32767.0f;
         int success;
         float value = band->GetNoDataValue(&success);
         if (success)
         {
-            noDataValue = value;
+            bandNoData = value;
         }
 
-        float minValue = -32000.0f;
+        //Check to see if the value is equal to the bands specified no data
+        if (bandNoData == v) return false;
+        //Check to see if the value is equal to the user specified nodata value
+        if (getNoDataValue() == v) return false;
 
-        if (noDataValue == v) return false;
-        if (v < minValue) return false;
+        if (v < getNoDataMinValue()) return false;
+        if (v > getNoDataMaxValue()) return false;
         return true;
     }
 

@@ -204,7 +204,7 @@ namespace osgEarth
         osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
         osg::ref_ptr<TaskRequest> _tileGenRequest;
 
-        osg::ref_ptr<VersionedTerrain> _versionedTerrain;
+        osg::observer_ptr<VersionedTerrain> _versionedTerrain;
 
         Relative _family[5];
         OpenThreads::ReadWriteMutex _tileLayersMutex;

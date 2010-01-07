@@ -1239,10 +1239,16 @@ public:
         //Check to see if the value is equal to the bands specified no data
         if (bandNoData == v) return false;
         //Check to see if the value is equal to the user specified nodata value
-        if (getNoDataValue() == v) return false;
+        if (getNoDataValue() == v) return false;        
 
+        //Check to see if the user specified a custom min/max
         if (v < getNoDataMinValue()) return false;
         if (v > getNoDataMaxValue()) return false;
+
+        //Check within a sensible range
+        if (v < -32000) return false;
+        if (v > 32000) return false;
+
         return true;
     }
 

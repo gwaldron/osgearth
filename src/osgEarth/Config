@@ -26,6 +26,7 @@
 #include <osgDB/Options>
 #endif
 #include <list>
+#include <istream>
 
 namespace osgEarth
 {
@@ -41,6 +42,8 @@ namespace osgEarth
         Config( const std::string& name, const std::string& value ) : _name( name ), _defaultValue( value ) { }
 
         Config( const Config& rhs ) : _name(rhs._name), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children) { }
+
+        bool loadXML( std::istream& in );
 
         bool empty() const {
             return _name.empty() && _defaultValue.empty() && _children.empty();

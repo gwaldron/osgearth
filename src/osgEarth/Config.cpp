@@ -17,11 +17,21 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/Config>
+#include <osgEarth/XmlUtils>
 #include <sstream>
 
 using namespace osgEarth;
 
 static Config emptyConfig;
+
+bool
+Config::loadXML( std::istream& in )
+{
+    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in );
+    if ( xml.valid() )
+        *this = xml->toConfig();
+    return xml.valid();
+}
 
 const Config&
 Config::child( const std::string& childName ) const

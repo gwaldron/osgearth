@@ -27,6 +27,7 @@
 #include <osg/Referenced>
 #include <queue>
 #include <list>
+#include <string>
 
 namespace osgEarth
 {

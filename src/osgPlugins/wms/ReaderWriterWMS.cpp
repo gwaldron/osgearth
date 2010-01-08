@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
+#include <osgEarth/XmlUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -212,7 +213,7 @@ public:
         _tileService = TileServiceReader::read(_tileServiceURL, getOptions());
         if (_tileService.valid())
         {
-            osg::notify(osg::NOTICE) << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
             _tileService->getMatchingPatterns(_layers, _format, _style, _srs, _tile_size, _tile_size, patterns);
 
@@ -236,23 +237,70 @@ public:
 		setProfile( result.get() );
     }
 
-    /** override */
-    osg::Image* createImage( const TileKey* key,
-                             ProgressCallback* progress
-                             )
+    // fetch a tile from the WMS service and report any exceptions.
+    osgDB::ReaderWriter* fetchTileAndReader( const TileKey* key, ProgressCallback* progress, HTTPResponse& out_response )
     {
-        std::string uri = createURI( key );
-        
-        osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile( uri, image, getOptions(), progress );
-        return image.release();
+        osgDB::ReaderWriter* result = 0L;
 
-        //if (osgDB::containsServerAddress( uri ))
-        //{
-        //    return HTTPClient::readImageFile( uri, getOptions(), progress );
-        //}
-        //return osgDB::readImageFile( createURI( key ), getOptions() );
+        out_response = HTTPClient::get( createURI(key), getOptions(), progress );
+
+        if ( out_response.isOK() )
+        {
+            const std::string& mt = out_response.getMimeType();
+
+            if ( mt == "application/vnd.ogc.se_xml" || mt == "text/xml" )
+            {
+                // an XML result means there was a WMS service exception:
+                Config se;
+                if ( se.loadXML( out_response.getPartStream(0) ) )
+                {
+                    Config ex = se.child("serviceexceptionreport").child("serviceexception");
+                    if ( !ex.empty() ) {
+                        osg::notify(osg::NOTICE) << "[osgEarth] WMS Service Exception: " << ex.value() << std::endl;
+                    }
+                    else {
+                        osg::notify(osg::NOTICE) << "[osgEarth] WMS Response: " << se.toString() << std::endl;
+                    }
+                }
+                else {
+                    osg::notify(osg::NOTICE) << "[osgEarth] WMS: unknown error." << std::endl;
+                }
+            }
+            else
+            {
+                // really ought to use mime-type support here -GW
+                std::string typeExt = mt.substr( mt.find_last_of("/")+1 );
+                result = osgDB::Registry::instance()->getReaderWriterForExtension( typeExt );
+                if ( !result ) {
+                    osg::notify(osg::NOTICE) << "[osgEarth] WMS: no reader registered; URI=" << createURI(key) << std::endl;
+                }
+            }
+        }
+        return result;
     }
+
+
+    /** override */
+    osg::Image* createImage( const TileKey* key, ProgressCallback* progress )
+    {
+        osg::ref_ptr<osg::Image> image;
+
+        HTTPResponse response;
+        osgDB::ReaderWriter* reader = fetchTileAndReader( key, progress, response );
+        if ( reader )
+        {
+            osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
+            if ( readResult.error() ) {
+                osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+            }
+            else {
+                image = readResult.getImage();
+            }
+        }
+
+        return image.release();
+    }
+
 
     /** override */
     osg::HeightField* createHeightField( const TileKey* key,
@@ -275,6 +323,7 @@ public:
         ImageToHeightFieldConverter conv;
         return conv.convert( image, scaleFactor );
     }
+
 
     std::string createURI( const TileKey* key ) const
     {

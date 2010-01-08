@@ -1158,7 +1158,7 @@ struct ReleaseGLCallback : public osg::Camera::DrawCallback
     void operator()( osg::RenderInfo& renderInfo ) const {
         _terrain->releaseGLObjectsForTiles(renderInfo.getState());
     }
-    VersionedTerrain* _terrain;
+    osg::ref_ptr< VersionedTerrain >  _terrain;
 };
 
 // immediately release GL memory for any expired tiles.

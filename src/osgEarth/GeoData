@@ -239,6 +239,9 @@ namespace osgEarth
             unsigned int width = 0,
             unsigned int height = 0) const;
 
+
+        GeoImage* addTransparentBorder(bool leftBorder=true, bool rightBorder=true, bool bottomBorder=true, bool topBorder=true);
+
         /**
          * Returns the underlying OSG image and releases the reference pointer.
          */

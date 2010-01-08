@@ -778,10 +778,13 @@ public:
             profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
         }
 
+        //Note:  Can cause odd rendering artifacts if we have a dataset that is mercator that doesn't encompass the whole globe
+        //       if we take on the global profile.
+        /*
         if ( !profile && src_srs->isMercator() )
         {
             profile = osgEarth::Registry::instance()->getGlobalMercatorProfile();
-        }
+        }*/
 
         std::string warpedSRSWKT;
 
@@ -939,7 +942,7 @@ public:
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
             //osg::notify(osg::NOTICE) << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
-            //return NULL;
+            return NULL;
         }
 
         GDAL_SCOPED_LOCK;

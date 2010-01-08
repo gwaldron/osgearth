@@ -21,6 +21,8 @@
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TaskService>
+#include <osgEarth/Registry>
+#include <osgDB/WriteFile>
 #include <osg/Version>
 #include <OpenThreads/ScopedLock>
 
@@ -440,7 +442,7 @@ GeoImage*
 MapLayer::createImage( const TileKey* key,
                        ProgressCallback* progress)
 {
-	GeoImage* result = NULL;
+    osg::ref_ptr<GeoImage> result = NULL;
     const Profile* mapProfile = key->getProfile();
 	const Profile* layerProfile = getProfile();
 
@@ -529,6 +531,7 @@ MapLayer::createImage( const TileKey* key,
 			double dst_minx, dst_miny, dst_maxx, dst_maxy;
 			key->getGeoExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 
+
 			osg::ref_ptr<MultiImage> mi = new MultiImage;
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
@@ -575,6 +578,29 @@ MapLayer::createImage( const TileKey* key,
                 !mosaic->getSRS()->isEquivalentTo( key->getProfile()->getSRS()) &&
                 !(mosaic->getSRS()->isGeographic() && key->getProfile()->getSRS()->isGeographic());
 
+            bool needsLeftBorder = false;
+            bool needsRightBorder = false;
+            bool needsTopBorder = false;
+            bool needsBottomBorder = false;
+
+            //If we don't need to reproject the data, we had to composite the data, so check to see if we need to add an extra, transparent pixel on the sides
+            //because the data doesn't encompass the entire map.
+            if (!needsReprojection)
+            {
+                GeoExtent keyExtent = key->getGeoExtent();
+                //If the key is geographic and the mosaic is mercator, we need to get the mercator extents to determine if we need
+                //to add the border or not
+                if (key->getGeoExtent().getSRS()->isGeographic() && mosaic->getSRS()->isMercator())
+                {
+                    keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( key->getGeoExtent( ));
+                }
+
+                needsLeftBorder  = mosaic->getExtent().xMin() > keyExtent.xMin();
+                needsBottomBorder = mosaic->getExtent().yMin() > keyExtent.yMin();
+                needsRightBorder = mosaic->getExtent().xMax() < keyExtent.xMax();
+                needsTopBorder = mosaic->getExtent().yMax() < keyExtent.yMax();
+            }
+
             if ( needsReprojection )
             {
 				osg::notify(osg::INFO) << "  Reprojecting image" << std::endl;
@@ -595,6 +621,12 @@ MapLayer::createImage( const TileKey* key,
                 else
                     result = NULL;
             }
+
+            //Add the transparent pixel AFTER the crop so that it doesn't get cropped out
+            if (result && (needsLeftBorder || needsRightBorder || needsBottomBorder || needsTopBorder))
+            {
+                result = result->addTransparentBorder(needsLeftBorder, needsRightBorder, needsBottomBorder, needsTopBorder);
+            }
         }
     }
 
@@ -605,7 +637,7 @@ MapLayer::createImage( const TileKey* key,
 		_cache->setImage( key, _name, _cacheFormat, result->getImage());
 	}
 
-    return result;
+    return result.release();
 }
 
 osg::Image*

@@ -310,6 +310,33 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     }
 }
 
+GeoImage* GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool bottomBorder, bool topBorder)
+{
+    unsigned int buffer = 1;
+
+    unsigned int newS = _image->s();
+    if (leftBorder) newS += buffer;
+    if (rightBorder) newS += buffer;
+
+    unsigned int newT = _image->t();
+    if (topBorder)    newT += buffer;
+    if (bottomBorder) newT += buffer;
+
+    osg::Image* newImage = new osg::Image;
+    newImage->allocateImage(newS, newT, _image->r(), _image->getPixelFormat(), _image->getDataType());
+    memset(newImage->data(), 0, newImage->getImageSizeInBytes());
+    unsigned startC = leftBorder ? buffer : 0;
+    unsigned startR = bottomBorder ? buffer : 0;
+    ImageUtils::copyAsSubImage(_image.get(), newImage, startC, startR );
+
+    double upp = getUnitsPerPixel();
+    double xmin = leftBorder ? _extent.xMin() - buffer * upp : _extent.xMin();
+    double ymin = bottomBorder ? _extent.yMin() - buffer * upp : _extent.yMin();
+    double xmax = rightBorder ? _extent.xMax() + buffer * upp : _extent.xMax();
+    double ymax = topBorder ? _extent.yMax() + buffer * upp : _extent.yMax();
+    return new GeoImage(newImage, GeoExtent(getSRS(), xmin, ymin, xmax, ymax));
+}
+
 static osg::Image*
 createImageFromDataset(GDALDataset* ds)
 {
@@ -404,6 +431,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
                const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
                int width = 0, int height = 0)
 {
+    osg::notify(osg::NOTICE) << "Reprojecting..." << std::endl;
     GDAL_SCOPED_LOCK;
 	osg::Timer_t start = osg::Timer::instance()->tick();
 

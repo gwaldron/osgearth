@@ -595,10 +595,39 @@ MapLayer::createImage( const TileKey* key,
                     keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( key->getGeoExtent( ));
                 }
 
-                needsLeftBorder  = mosaic->getExtent().xMin() > keyExtent.xMin();
-                needsBottomBorder = mosaic->getExtent().yMin() > keyExtent.yMin();
-                needsRightBorder = mosaic->getExtent().xMax() < keyExtent.xMax();
-                needsTopBorder = mosaic->getExtent().yMax() < keyExtent.yMax();
+
+                //Use an epsilon to only add the border if it is significant enough.
+                double eps = 1e-6;
+                
+                double leftDiff = mosaic->getExtent().xMin() - keyExtent.xMin();
+                if (leftDiff > eps)
+                {
+                    needsLeftBorder = true;
+                }
+
+                double rightDiff = keyExtent.xMax() - mosaic->getExtent().xMax();
+                if (rightDiff > eps)
+                {
+                    needsRightBorder = true;
+                }
+
+                double bottomDiff = mosaic->getExtent().yMin() - keyExtent.yMin();
+                if (bottomDiff > eps)
+                {
+                    needsBottomBorder = true;
+                }
+
+                double topDiff = keyExtent.yMax() - mosaic->getExtent().yMax();
+                if (topDiff > eps)
+                {
+                    needsTopBorder = true;
+                }
+
+               
+                //needsLeftBorder  = mosaic->getExtent().xMin() > keyExtent.xMin();
+                //needsBottomBorder = mosaic->getExtent().yMin() > keyExtent.yMin();
+                //needsRightBorder = mosaic->getExtent().xMax() < keyExtent.xMax();
+                //needsTopBorder = mosaic->getExtent().yMax() < keyExtent.yMax();
             }
 
             if ( needsReprojection )

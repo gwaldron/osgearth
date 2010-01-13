@@ -49,7 +49,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
         while( iter.hasMore() )
         {
             Geometry* geom = iter.next();
-            bool success = _outputSRS->transformPoints( context.profile()->getSRS(), geom, false );
+            bool success = context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom, false );
             
             // todo: handle errors
             // if ( !success ) return false;

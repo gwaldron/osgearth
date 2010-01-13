@@ -461,30 +461,66 @@ Map::createHeightField( const TileKey* key,
     int lowestLOD = key->getLevelOfDetail();
     bool hfInitialized = false;
 
+    typedef std::map< MapLayer*, bool> LayerValidMap;
+    LayerValidMap layerValidMap;
+
 	//Get a HeightField for each of the enabled layers
 	GeoHeightFieldList heightFields;
-	for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
-	{
-		if (i->get()->getEnabled())
-		{
-			osg::ref_ptr< const TileKey > hf_key = key;
-            osg::ref_ptr< osg::HeightField > hf;
-			while (hf_key.valid())
-			{
-				hf = i->get()->createHeightField( hf_key.get(), progress );
-				if (hf.valid() || !fallback) break;
-				hf_key = hf_key->createParentKey();
-			}
 
-			if (hf.valid())
-			{
-                if ( hf_key->getLevelOfDetail() < lowestLOD )
-                    lowestLOD = hf_key->getLevelOfDetail();
+    unsigned int numValidHeightFields = 0;
 
-				heightFields.push_back( new GeoHeightField( hf.get(), hf_key->getGeoExtent() ) );
-			}
-		}
-	}
+    
+    //First pass:  Try to get the exact LOD requested for each enabled heightfield
+    for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
+    {
+        if (i->get()->getEnabled())
+        {
+            osg::ref_ptr< osg::HeightField > hf = i->get()->createHeightField( key, progress );
+            layerValidMap[ i->get() ] = hf.valid();
+            if (hf.valid())
+            {
+                numValidHeightFields++;
+                heightFields.push_back( new GeoHeightField( hf.get(), key->getGeoExtent() ) );
+            }
+        }
+    }
+
+    //If we didn't get any heightfields and weren't requested to fallback, just return NULL
+    if (numValidHeightFields == 0 && !fallback)
+    {
+        return NULL;
+    }
+
+    //Second pass:  We were either asked to fallback or we might have some heightfields at the requested LOD and some that are NULL
+    //              Fall back on parent tiles to fill in the missing data if possible.
+    for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
+    {
+        if (i->get()->getEnabled())
+        {
+            if (!layerValidMap[ i->get()])
+            {
+                osg::ref_ptr< const TileKey > hf_key = key;
+                osg::ref_ptr< osg::HeightField > hf;
+                while (hf_key.valid())
+                {
+                    hf = i->get()->createHeightField( hf_key.get(), progress );
+                    if (hf.valid()) break;
+                    hf_key = hf_key->createParentKey();
+                }
+
+                if (hf.valid())
+                {
+                    if ( hf_key->getLevelOfDetail() < lowestLOD )
+                        lowestLOD = hf_key->getLevelOfDetail();
+                    heightFields.push_back( new GeoHeightField( hf.get(), hf_key->getGeoExtent() ) );
+                }
+            }
+        }
+    }
+
+
+
+
 
 	if (heightFields.size() == 0)
 	{

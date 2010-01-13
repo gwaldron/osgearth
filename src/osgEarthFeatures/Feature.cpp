@@ -26,8 +26,8 @@ static
 std::string EMPTY_STRING;
 
 
-FeatureProfile::FeatureProfile(const SpatialReference* srs ) :
-_srs( srs )
+FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
+_extent( extent )
 {
     //nop
 }

@@ -107,18 +107,6 @@ FeatureSource::getFeatureProfile() const
     return _featureProfile.get();
 }
 
-const GeoExtent&
-FeatureSource::getDataExtent() const
-{
-    if ( _dataExtent.defined() )
-    {
-        // caching pattern
-        FeatureSource* nonConstThis = const_cast<FeatureSource*>(this);
-        nonConstThis->_dataExtent = nonConstThis->createDataExtent();
-    }
-    return _dataExtent;
-}
-
 FeatureFilterList&
 FeatureSource::getFilters()
 {

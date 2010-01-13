@@ -81,11 +81,6 @@ namespace osgEarth { namespace Features
         const FeatureProfile* getFeatureProfile() const;
 
         /**
-         * Gets the extent of available data accessible through this feature source.
-         */
-        virtual const GeoExtent& getDataExtent() const;
-
-        /**
          * Gets the options that were passed into this object's CTOR.
          */
         const PluginOptions* getOptions() const;
@@ -142,12 +137,6 @@ namespace osgEarth { namespace Features
         virtual FeatureProfile* createFeatureProfile() =0;
 
         /**
-         * Calculates and returns the extent of the data available through this feature store.
-         * This is called the first time getDataExtent() is called on this object.
-         */
-        virtual GeoExtent createDataExtent() =0;
-
-        /**
          * DTOR is protected to prevent this object from being allocated on the stack.
          */
         virtual ~FeatureSource();
@@ -155,7 +144,6 @@ namespace osgEarth { namespace Features
     private:
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         osg::ref_ptr<const PluginOptions>  _options;
-        GeoExtent _dataExtent;
         FeatureFilterList _filters;
 
         friend class Map;

@@ -50,7 +50,7 @@ Geometry::getBounds() const
 {
     Bounds bounds;
     for( const_iterator i = begin(); i != end(); ++i )
-        bounds.expandToInclude( i->x(), i->y() );
+        bounds.expandBy( i->x(), i->y() );
     return bounds;
 }
 
@@ -248,9 +248,7 @@ MultiGeometry::getBounds() const
     Bounds bounds;
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
     {
-        Bounds pb = i->get()->getBounds();
-        bounds.expandToInclude( pb.xMin(), pb.yMin() );
-        bounds.expandToInclude( pb.xMax(), pb.yMax() );
+        bounds.expandBy( i->get()->getBounds() );
     }
     return bounds;
 }

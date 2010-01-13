@@ -29,6 +29,43 @@ using namespace osgEarth;
 namespace osgEarth { namespace Features
 {
     /**
+     * Defines how to grid and crop feature data when creating a model.
+     */
+    class OSGEARTHFEATURES_EXPORT GriddingPolicy
+    {
+    public:
+        enum CullingTechnique
+        {
+            /* crop a feature's shape to the oundaries of the grid cell;
+               default for lines */
+            CULL_BY_CROPPING,   
+
+            /* include a feature in the cell only if its centroid is in the cell;
+               default for polygons and points */
+            CULL_BY_CENTROID
+        };
+
+    public:
+        GriddingPolicy();
+        GriddingPolicy( const Config& conf );
+        Config toConfig() const;
+
+    public: // properties
+
+        /** The maximum size (width and height) of each square grid cell. */
+        optional<double>& cellSize() { return _cellSize; }
+        const optional<double>& cellSize() const { return _cellSize; }
+
+        /** The technique to use to figure out how to include a feature in a cell. */
+        optional<CullingTechnique>& cullingTechnique() { return _cullingTechnique; }
+        const optional<CullingTechnique>& cullingTechnique() const { return _cullingTechnique; }
+
+    protected:
+        optional<double> _cellSize;
+        optional<CullingTechnique> _cullingTechnique;
+    };
+
+    /**
      * Given a list of features, this will grid them up and return one
      * grid cell at a time. For each grid cell, it will crop the feature
      * geometry to the cell boundary.
@@ -39,19 +76,21 @@ namespace osgEarth { namespace Features
         static bool isSupported();
 
     public:
-        FeatureGridder( const FeatureList& features, const GeoExtent& extent, double width, double height );
+        FeatureGridder( const Bounds& bounds, const GriddingPolicy& policy ); //double cellWidth, double cellHeight );
 
         int getNumCells() const;
 
-        bool getCell( int i, FeatureList& output ) const;
+        bool getCellBounds( int i, Bounds& output ) const;
+
+        bool cullFeatureListToCell( int i, FeatureList& features ) const;
 
     public:
         virtual ~FeatureGridder();
 
     protected:
-        const FeatureList& _input;
-        GeoExtent _inputExtent;
-        double _cellWidth, _cellHeight;
+        Bounds _inputBounds;
+        GriddingPolicy _policy;
+        //double _cellWidth, _cellHeight;
         int _cellsX, _cellsY;
         std::list<void*> _geosGeoms;
     };

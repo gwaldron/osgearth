@@ -34,8 +34,9 @@ using namespace osgEarth::Features;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
-#define PROP_URL           "url"
-#define PROP_OGR_DRIVER    "ogr_driver"
+#define PROP_URL                     "url"
+#define PROP_OGR_DRIVER              "ogr_driver"
+#define PROP_OGR_BUILD_SPATIAL_INDEX "build_spatial_index"
 
 /**
  * A FeatureSource that reads features from an OGR driver.
@@ -49,12 +50,14 @@ public:
       _ready( false ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
-      _supportsRandomRead( false )
+      _supportsRandomRead( false ),
+      _buildSpatialIndex( false )
     {
         const Config& conf = getOptions()->config();
 
         _url = conf.value( PROP_URL );
         _ogrDriver = conf.value( PROP_OGR_DRIVER );
+        _buildSpatialIndex = conf.value( PROP_OGR_BUILD_SPATIAL_INDEX ) == "true";
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -116,91 +119,48 @@ public:
                 //            << "SRS = " << ogr_srs->getWKT() << std::endl
                 //            << std::endl;
                 //    }
-                //}
+                //}           
+                
+                // read the data extent.
+                GeoExtent extent;
 
-                // extract the SRS.
+
+                // extract the SRS and Extent:                
                 OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
                 if ( srHandle )
                 {
                     osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle );
                     if ( srs.valid() )
                     {
-                        result = new FeatureProfile( srs.get() );
+                        // extract the full extent of the layer:
+                        OGREnvelope env;
+                        if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
+                        {
+                            GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
+                            
+                            // got enough info to make the profile!
+                            result = new FeatureProfile( extent );
+                        }
                     }
+                }
 
-                    //// read the first feature to determine the geometry type and dimension.
-                    //OGR_L_ResetReading( _layerHandle );
-                    //OGRFeatureH testFeatureHandle = OGR_L_GetNextFeature( _layerHandle );
-                    //if ( testFeatureHandle )
-                    //{
-                    //    OGRGeometryH geomHandleRef = OGR_F_GetGeometryRef( testFeatureHandle ); // no need to destroy "refs"
-                	   // if ( geomHandleRef )
-                    //    {
-                    //        OGRwkbGeometryType wkb_type = OGR_G_GetGeometryType( geomHandleRef );
+                // assuming we successfully opened the layer, build a spatial index if requested.
+                if ( _buildSpatialIndex )
+                {
+                    osg::notify(osg::NOTICE) <<
+                        "[osgEarth] Building spatial index for " << getName() << " ..." << std::flush;
 
-                    //        Geometry::Type geomType = Geometry::TYPE_UNKNOWN;
+                    std::stringstream buf;
+                    const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
+                    buf << "CREATE SPATIAL INDEX ON " << name; 
+                    OGR_DS_ExecuteSQL( _dsHandle, buf.str().c_str(), 0L, 0L );
 
-                    //        //FeatureProfile::GeometryType geomType = FeatureProfile::GEOM_UNKNOWN;
-
-                    //        //if ( 
-                    //        //    wkb_type == wkbLineString ||
-                    //        //    wkb_type == wkbLineString25D ||
-                    //        //    wkb_type == wkbMultiLineString ||
-                    //        //    wkb_type == wkbMultiLineString25D )
-                    //        //{
-                    //        //    geomType = FeatureProfile::GEOM_LINE;
-                    //        //}
-                    //        //else if (
-                    //        //    wkb_type == wkbMultiPoint ||
-                    //        //    wkb_type == wkbMultiPoint25D ||
-                    //        //    wkb_type == wkbPoint ||
-                    //        //    wkb_type == wkbPoint25D )
-                    //        //{
-                    //        //    geomType = FeatureProfile::GEOM_POINT;
-                    //        //}
-                    //        //else if (
-                    //        //    wkb_type == wkbMultiPolygon ||
-                    //        //    wkb_type == wkbMultiPolygon25D ||
-                    //        //    wkb_type == wkbPolygon ||
-                    //        //    wkb_type == wkbPolygon25D )
-                    //        //{
-                    //        //    geomType = FeatureProfile::GEOM_POLYGON;
-                    //        //}
-                    //        //else // unsupported type.
-                    //        //{
-                    //        //    osg::notify( osg::WARN ) << "[osgEarth::FeatureSourceOGR] Unsupported WKB shape type:" << wkb_type << std::endl;
-                    //        //}
-                    //       
-                    //        //bool multiGeom = wkb_type == wkbMultiPolygon || wkb_type == wkbMultiPolygon25D;
-
-                    //        // still need to do the above to determine the multiGeom flag..
-                    //        if ( getGeometryTypeOverride() != FeatureProfile::GEOM_UNKNOWN )
-                    //            geomType = getGeometryTypeOverride();
-
-                    //        // extract the dimensionality of the geometry:
-                    //        //int dim = OGR_G_GetCoordinateDimension( geomHandleRef );
-
-                    //        // if all went well, make the new profile.
-                    //        if ( srs.valid() ) //&& dim >= 2 && dim <= 3 && geomType != FeatureProfile::GEOM_UNKNOWN )
-                    //        {
-                    //            result = new FeatureProfile( srs.get(), geomType );
-                    //            //result = new FeatureProfile( srs.get(), geomType, dim, multiGeom );
-                    //            osg::notify(osg::NOTICE) << "[osgEarth] _geomTypeOverride = " << getGeometryTypeOverride() << std::endl;
-                    //        }
-
-                    //    }
-                    //    OGR_F_Destroy( testFeatureHandle );
-                    //}
+                    osg::notify(osg::NOTICE) <<  "done." << std::endl;
                 }
             }
 	    }
 
         return result;
-    }
-
-    GeoExtent createDataExtent()
-    {
-        return GeoExtent::INVALID;
     }
 
 
@@ -243,6 +203,7 @@ private:
     OGRLayerH _layerHandle;
     bool _supportsRandomRead;
     bool _ready;
+    bool _buildSpatialIndex;
 };
 
 

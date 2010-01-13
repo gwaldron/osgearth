@@ -37,12 +37,13 @@ namespace osgEarth { namespace Features
     public:
         FilterContext();
 
-        //FilterContext( const FilterContext& rhs );
+    public: // properties
 
-        /** spatial envelope that filters should honor when operating under this context */
-        optional<GeoExtent>& extent() {
-            return _extent; }
+        ///** spatial envelope that filters should honor when operating under this context */
+        //optional<GeoExtent>& extent() {
+        //    return _extent; }
 
+        /** The spatial profile of the feature data in this context. */
         const FeatureProfile* profile() const {
             return _profile.get();
         }
@@ -50,6 +51,7 @@ namespace osgEarth { namespace Features
             return _profile;
         }
 
+        /** Whether to assume a geocentric coordinate system for geographic profiles. */
         bool isGeocentric() const {
             return _isGeocentric;
         }
@@ -57,16 +59,32 @@ namespace osgEarth { namespace Features
             return _isGeocentric; 
         }        
 
+        // Multiplying by the reference frame takes a point from world coords into
+        // local coords.
         const osg::Matrixd& referenceFrame() const {
             return _referenceFrame;
         }
+        // Multiplying by the inverse reference frame takes a point from local
+        // coords into world coords.
         const osg::Matrix& inverseReferenceFrame() const {
             return _inverseReferenceFrame;
         }
+
         void setReferenceFrame( const osg::Matrixd& in ) {
             _referenceFrame = in;
             _inverseReferenceFrame = osg::Matrixd::inverse( _referenceFrame );
         }      
+
+    public:
+        bool hasReferenceFrame() const {
+            return !_referenceFrame.isIdentity();
+        }
+
+        osg::Vec3d toLocal( const osg::Vec3d& world ) const {
+            return world * _referenceFrame; }
+
+        osg::Vec3d toWorld( const osg::Vec3d& local ) const {
+            return local * _inverseReferenceFrame; }
 
     protected:
         bool _isGeocentric;

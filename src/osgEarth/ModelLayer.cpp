@@ -21,29 +21,19 @@
 
 using namespace osgEarth;
 
-#define ATTR_MIN_RANGE "min_range"
-#define ATTR_MAX_RANGE "max_range"
-
 ModelLayer::ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf ) :
 osg::Referenced( true ),
 _name( name ),
 _driver( driver ),
-_driverConf( driverConf ),
-_minRange( 0 ),
-_maxRange( FLT_MAX )
+_driverConf( driverConf )
 {
-    if ( driverConf.hasValue( ATTR_MIN_RANGE ) )
-        _minRange = driverConf.value<float>( ATTR_MIN_RANGE, 0.0f );
-    if ( driverConf.hasValue( ATTR_MAX_RANGE ) )
-        _maxRange = driverConf.value<float>( ATTR_MAX_RANGE, FLT_MAX );
+    //nop
 }
 
 ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
 osg::Referenced( true ),
 _name( name ),
-_modelSource( source ),
-_minRange( 0 ),
-_maxRange( FLT_MAX )
+_modelSource( source )
 {
     //NOP
 }
@@ -72,13 +62,6 @@ ModelLayer::createNode( ProgressCallback* progress )
     if ( _modelSource.valid() )
     {
         result = _modelSource->createNode( progress );
-
-        if ( _minRange.isSet() || _maxRange.isSet() )
-        {
-            osg::LOD* lod = new osg::LOD();
-            lod->addChild( result, _minRange.get(), _maxRange.get() );
-            result = lod;
-        }
     }
 
     return result;

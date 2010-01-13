@@ -42,6 +42,14 @@ namespace osgEarth
          */
         virtual osg::Node* createNode( ProgressCallback* progress =0L ) =0;
 
+    public: // properties
+
+        optional<double>& minRange() { return _minRange; }
+        const optional<double>& minRange() const { return _minRange; }
+
+        optional<double>& maxRange() { return _maxRange; }
+        const optional<double>& maxRange() const { return _maxRange; }
+
     public: // META_Object specialization
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
@@ -62,6 +70,8 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const PluginOptions> _options;
+        optional<double> _minRange;
+        optional<double> _maxRange;
 
         friend class Map;
         friend class MapEngine;

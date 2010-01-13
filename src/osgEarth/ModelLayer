@@ -48,14 +48,6 @@ namespace osgEarth
 
     public: // properties
 
-        // minimum LOD range of this model layer.
-        optional<float>& minRange() { return _minRange; }
-        const optional<float>& minRange() const { return _minRange; }
-
-        // maximum LOD range of this model layer.
-        optional<float>& maxRange() { return _maxRange; }
-        const optional<float>& maxRange() const { return _maxRange; }
-
     public:
 
         void initialize( const std::string& referenceURI, const Map* map );
@@ -66,8 +58,6 @@ namespace osgEarth
         std::string _driver;
         Config _driverConf;
         osg::ref_ptr<ModelSource> _modelSource;
-        optional<float> _minRange;
-        optional<float> _maxRange;
     };
 
     typedef std::list< osg::ref_ptr<ModelLayer> > ModelLayerList;

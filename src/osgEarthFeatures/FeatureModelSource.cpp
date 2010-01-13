@@ -17,19 +17,68 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureModelSource>
+#include <osgEarthFeatures/FeatureGridder>
+#include <osgEarthFeatures/Styling>
 #include <osg/Notify>
+#include <osg/Timer>
+#include <osg/LOD>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
+#define PROP_CELL_SIZE         "cell_size"
+#define PROP_CULLING_TECHNIQUE "culling_technique"
+
+GriddingPolicy::GriddingPolicy() :
+_cellSize( DBL_MAX ),
+_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID )
+{
+    //nop
+}
+
+GriddingPolicy::GriddingPolicy( const Config& conf ) :
+_cellSize( DBL_MAX ),
+_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID )
+{
+    // read the cell size
+    if ( conf.hasValue( PROP_CELL_SIZE ) )
+        _cellSize = conf.value<double>( PROP_CELL_SIZE, _cellSize.defaultValue() );
+
+    // read the culling technique
+    if ( conf.value(PROP_CULLING_TECHNIQUE) == "crop" )
+        _cullingTechnique = CULL_BY_CROPPING;
+    else if ( conf.value(PROP_CULLING_TECHNIQUE) == "centroid" )
+        _cullingTechnique = CULL_BY_CENTROID;
+}
+
+Config
+GriddingPolicy::toConfig() const 
+{
+    Config conf;
+    if ( _cellSize.isSet() )
+        conf.add( PROP_CELL_SIZE, toString(_cellSize.value()) );
+    if ( _cullingTechnique.isSet() ) {
+        if ( _cullingTechnique == CULL_BY_CROPPING )
+            conf.add( PROP_CULLING_TECHNIQUE, "crop" );
+        else if ( _cullingTechnique == CULL_BY_CENTROID )
+            conf.add( PROP_CULLING_TECHNIQUE, "centroid" );
+    }
+    return conf;        
+}
+
+/***************************************************************************/
+
 #define PROP_FEATURES      "features"
 #define PROP_GEOMETRY_TYPE "geometry_type"
 #define PROP_LIGHTING      "lighting"
+#define PROP_GRIDDING      "gridding"
+
 
 FeatureModelSource::FeatureModelSource( const PluginOptions* options ) :
 ModelSource( options ),
 _geomTypeOverride( Geometry::TYPE_UNKNOWN ),
-_lit( false )
+_lit( false ),
+_gridding( GriddingPolicy() )
 {
     const Config& conf = options->config();
 
@@ -52,6 +101,12 @@ _lit( false )
             _geomTypeOverride = Geometry::TYPE_POINTSET;
         else if ( gt == "polygon" || gt == "polygons" )
             _geomTypeOverride = Geometry::TYPE_POLYGON;
+    }
+
+    // gridding policy
+    if ( conf.hasChild( PROP_GRIDDING ) )
+    {
+        _gridding = GriddingPolicy( conf.child( PROP_GRIDDING ) );
     }
 
     // lighting
@@ -79,6 +134,8 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     if ( !_features.valid() )
         return 0L;
 
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
     // implementation-specific data
     osg::ref_ptr<osg::Referenced> buildData = createBuildData();
 
@@ -97,9 +154,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         for( StyleList::iterator i = layer.styles().begin(); i != layer.styles().end(); ++i )
         {
             const Style& style = *i;
-
-            osg::ref_ptr<FeatureCursor> cursor = _features->createCursor( style.query() );
-            osg::Node* node = renderStyle( style, cursor.get(), buildData.get() );
+            osg::Node* node = gridAndRenderFeaturesForStyle( style, buildData.get() );
             if ( node )
                 group->addChild( node );
         }
@@ -117,8 +172,8 @@ FeatureModelSource::createNode( ProgressCallback* progress )
             {
                 FeatureList list;
                 list.push_back( feature );
-                osg::ref_ptr<FeatureCursor> tempCursor = new FeatureListCursor( list );
-                osg::Node* node = renderStyle( feature->style().get(), tempCursor.get(), buildData.get() );
+                // gridding is not supported for embedded styles.
+                osg::Node* node = renderFeaturesForStyle( feature->style().get(), list, buildData.get() );
                 if ( node )
                     group->addChild( node );
             }
@@ -129,8 +184,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         osg::notify(osg::NOTICE) << "[osgEarth] FeatureModelSource: No styles found for '" << this->getName() << "'" << std::endl;
 
         // There is no style data, so use the default.
-        osg::ref_ptr<FeatureCursor> cursor = _features->createCursor( Query() );
-        osg::Node* node = renderStyle( Style(), cursor.get(), buildData.get() );
+        osg::Node* node = gridAndRenderFeaturesForStyle( Style(), buildData.get() );
         if ( node )
             group->addChild( node );
     }
@@ -143,5 +197,92 @@ FeatureModelSource::createNode( ProgressCallback* progress )
             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
 
+    osg::Timer_t end = osg::Timer::instance()->tick();
+
+    osg::notify(osg::NOTICE) << "[osgEarth] layer " << getName() << ", time to compile = " << 
+        osg::Timer::instance()->delta_s( start, end ) << "s" << std::endl;
+
     return group;
+}
+
+
+osg::Node*
+FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
+                                                  osg::Referenced* data )
+{
+    osg::Group* styleGroup = 0L;
+
+    // first we need the overall extent of the layer:
+    const GeoExtent& extent = getFeatureSource()->getFeatureProfile()->getExtent();
+
+    // next set up a gridder/cropper:
+    FeatureGridder gridder( extent.bounds(), _gridding.get() );
+
+    // now query the feature source once for each grid cell extent:
+    for( int cell=0; cell<gridder.getNumCells(); ++cell )
+    {
+        Bounds cellBounds;
+        if ( gridder.getCellBounds( cell, cellBounds ) )
+        {
+            // incorporate the cell bounds into the query:
+            Query query = style.query();
+            query.bounds() = query.bounds().isSet()?
+                query.bounds()->unionWith( cellBounds ) :
+                cellBounds;
+
+            // query the feature source:
+            osg::ref_ptr<FeatureCursor> cursor = _features->createCursor( query );
+
+            // now copy the resulting feature set into a list, converting the data
+            // types along the way if a geometry override is in place:
+            FeatureList cellFeatures;
+            while( cursor->hasMore() )
+            {
+                Feature* feature = cursor->nextFeature();
+                Geometry* geom = feature->getGeometry();
+                if ( geom )
+                {
+                    // apply a type override if requested:
+                    if ( _geomTypeOverride.isSet() && _geomTypeOverride.get() != geom->getComponentType() )
+                    {
+                        geom = geom->cloneAs( _geomTypeOverride.get() );
+                        if ( geom )
+                            feature->setGeometry( geom );
+                    }
+                }
+                if ( geom )
+                {
+                    cellFeatures.push_back( feature );
+                }
+            }
+
+            // cut the features so they fall completely within the cell. Note, we only need to 
+            // do this is gridding is enabled.
+            if ( gridder.getNumCells() > 1 )
+            {
+                gridder.cullFeatureListToCell( cell, cellFeatures );
+            }
+
+            // next ask the implementation to construct OSG geometry for the cell features:
+            osg::Node* styleNode = renderFeaturesForStyle( style, cellFeatures, data );
+            if ( styleNode )
+            {
+                if ( !styleGroup )
+                    styleGroup = new osg::Group();
+
+                if ( minRange().isSet() || maxRange().isSet() )
+                {
+                    osg::LOD* lod = new osg::LOD();
+                    lod->addChild( styleNode, minRange().value(), maxRange().value() );
+                    styleGroup->addChild( lod );
+                }
+                else
+                {
+                    styleGroup->addChild( styleNode );
+                }
+            }
+        }
+    }
+
+    return styleGroup;
 }

@@ -65,13 +65,17 @@ TransformFilter::push( Feature* input, const FilterContext& context )
                         osg::DegreesToRadians( (*geom)[i].x() ),
                         (*geom)[i].z() + _heightOffset,
                         x, y, z );
-                    (*geom)[i].set( x, y, z );
+                    (*geom)[i].set( x, y, z );                    
+                    _bbox.expandBy( x, y, z );
                 }
             }
             else if ( _heightOffset != 0.0 )
             {
                 for( int i=0; i<geom->size(); i++ )
+                {
                     (*geom)[i].z() += _heightOffset;
+                    _bbox.expandBy( (*geom)[i] );
+                }
             }
         }
     }
@@ -79,19 +83,49 @@ TransformFilter::push( Feature* input, const FilterContext& context )
     return true;
 }
 
-FilterContext
-TransformFilter::push( FeatureList& input, const FilterContext& context )
+static void
+localizeGeometry( Feature* input, const osg::Matrixd& refFrame )
 {
+    if ( input && input->getGeometry() )
+    {
+        GeometryIterator iter( input->getGeometry() );
+        while( iter.hasMore() )
+        {
+            Geometry* geom = iter.next();
+            for( int i=0; i<geom->size(); i++ )
+            {
+                (*geom)[i] = (*geom)[i] * refFrame;
+            }
+        }
+    }
+}
+
+FilterContext
+TransformFilter::push( FeatureList& input, const FilterContext& incx )
+{
+    _bbox = osg::BoundingBoxd(); // reset the extent:
+
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
-        if ( !push( i->get(), context ) )
+        if ( !push( i->get(), incx ) )
             ok = false;
 
-    FilterContext outputCx( context );
+    FilterContext outcx( incx );
+    outcx.isGeocentric() = _makeGeocentric;
+    outcx.profile() = new FeatureProfile( 
+        incx.profile()->getExtent().transform( _outputSRS.get() ) );
 
-    outputCx.isGeocentric() = _makeGeocentric;
+    // set the reference frame to shift data to the centroid. This will
+    // prevent floating point precision errors in the openGL pipeline for
+    // properly gridded data.
+    if ( _bbox.valid() )
+    {       
+        osg::Matrixd localizer = osg::Matrixd::translate( -_bbox.center() );
+        for( FeatureList::iterator i = input.begin(); i != input.end(); i++ ) {
+            localizeGeometry( i->get(), localizer );
+        }
+        outcx.setReferenceFrame( localizer );
+    }
 
-    outputCx.profile() = new FeatureProfile( _outputSRS.get() );
-
-    return outputCx;
+    return outcx;
 }

@@ -30,40 +30,19 @@
 namespace osgEarth
 {
     /** A non-georeferenced extent. */
-    // note: header-only class; no export directive please
-    class /*OSGEARTH_EXPORT*/ Bounds
+    class OSGEARTH_EXPORT Bounds : public osg::BoundingBoxImpl<osg::Vec3d>
     {
     public:
-        Bounds() : _xmin(DBL_MAX), _ymin(DBL_MAX), _xmax(-DBL_MAX), _ymax(-DBL_MAX) { }
-        Bounds( const Bounds& rhs ) : _xmin(rhs._xmin), _ymin(rhs._ymin), _xmax(rhs._xmax), _ymax(rhs._ymax) { }
-        Bounds(double xmin, double ymin, double xmax, double ymax ) :
-            _xmin(xmin), _ymin(ymin), _xmax(xmax), _ymax(ymax) { }
+        Bounds();
+        Bounds(double xmin, double ymin, double xmax, double ymax );
 
-        double xMin() const { return _xmin; }
-        double& xMin() { return _xmin; }
-        double yMin() const { return _ymin; }
-        double& yMin() { return _ymin; }
-        double xMax() const { return _xmax; }
-        double& xMax() { return _xmax; }
-        double yMax() const { return _ymax; }
-        double& yMax() { return _ymax; }
-
-        double width() const { return _xmax-_xmin; }
-        double height() const { return _ymax-_ymin; }
-
-        bool intersects(const Bounds& rhs) {
-            return !( _xmin > rhs.xMax() || _xmax < rhs.xMin() || _ymin > rhs.yMax() || _ymax < rhs.yMin() );
-        }
-
-        void expandToInclude( double x, double y ) {
-            if ( x < _xmin ) _xmin = x;
-            if ( x > _xmax ) _xmax = x;
-            if ( y < _ymin ) _ymin = y;
-            if ( y > _ymax ) _ymax = y;
-        }
-
-    protected:
-        double _xmin, _ymin, _xmax, _ymax;
+        double width() const;
+        double height() const;
+        double depth() const;
+        bool contains(double x, double y ) const;
+        Bounds unionWith(const Bounds& rhs) const; 
+        void expandBy( double x, double y );
+        void expandBy( const Bounds& rhs );
     };
 
     /**

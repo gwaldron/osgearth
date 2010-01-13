@@ -36,15 +36,18 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureProfile : public osg::Referenced
     {
     public:        
-        FeatureProfile(
-            const SpatialReference* srs ); 
+        FeatureProfile( const GeoExtent& extent );
+
+        /** Gets the spatial extents of the features in this profile. */
+        const GeoExtent& getExtent() const {
+            return _extent; }
 
         /** Gets the spatial reference system of feature shapes in this class. */
         const SpatialReference* getSRS() const {
-            return _srs.get(); }
+            return _extent.getSRS(); }
 
     protected:
-        osg::ref_ptr<const SpatialReference> _srs;
+        GeoExtent _extent;
     };
 
     typedef std::map<std::string, std::string> FeatureAttributes;

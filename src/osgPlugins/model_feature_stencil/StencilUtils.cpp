@@ -260,10 +260,12 @@ StencilUtils::createVolume(Geometry*            geom,
             {
                 if ( context.isGeocentric() )
                 {
-                    // TODO: get the proper up vector; this is spherical.
-                    osg::Vec3d offset_vec = *j;
+                    osg::Vec3d world = context.toWorld( *j );
+                    // TODO: get the proper up vector; this is spherical.. or does it really matter for
+                    // stencil volumes?
+                    osg::Vec3d offset_vec = world;
                     offset_vec.normalize();
-                    (*j) += offset_vec * offset;
+                    *j = context.toLocal( world + offset_vec * offset ); //(*j) += offset_vec * offset;
                 }
                 else
                 {
@@ -325,7 +327,7 @@ StencilUtils::createVolume(Geometry*            geom,
 
             if ( srs )
             {
-                osg::Vec3d m_world = *m * context.inverseReferenceFrame();
+                osg::Vec3d m_world = context.toWorld( *m ); //*m * context.inverseReferenceFrame();
                 if ( context.isGeocentric() )
                 {
                     osg::Vec3d p_vec = m_world; // todo: not exactly right; spherical
@@ -334,12 +336,12 @@ StencilUtils::createVolume(Geometry*            geom,
                     unit_vec.normalize();
                     p_vec = p_vec + unit_vec*height;
 
-                    extrude_vec = p_vec * context.referenceFrame();
+                    extrude_vec = context.toLocal( p_vec ); //p_vec * context.referenceFrame();
                 }
                 else
                 {
                     extrude_vec.set( m_world.x(), m_world.y(), height );
-                    extrude_vec = extrude_vec * context.referenceFrame();
+                    extrude_vec = context.toLocal( extrude_vec ); //extrude_vec * context.referenceFrame();
                 }
             }
             else

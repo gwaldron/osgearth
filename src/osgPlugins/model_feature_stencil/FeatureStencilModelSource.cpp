@@ -28,6 +28,8 @@
 #include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/Styling>
 #include <osg/Notify>
+#include <osg/MatrixTransform>
+#include <osg/ClusterCullingCallback>
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
@@ -102,122 +104,233 @@ public:
     osg::Referenced* createBuildData()
     {
         return new BuildData( _renderBinStart );
-    }
-
+    }    
+    
     //override
-    osg::Node* renderStyle( const Style& style, FeatureCursor* cursor, osg::Referenced* data )
+    osg::Node* renderFeaturesForStyle( const Style& style, FeatureList& features, osg::Referenced* data )
     {
         BuildData* buildData = static_cast<BuildData*>(data);
 
+        // Scan the geometry to see if it includes line data, since that will require 
+        // buffering:
+        bool hasLines = false;
+        for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
+        {
+            Feature* f = i->get();
+            if ( f->getGeometry() && f->getGeometry()->getComponentType() == Geometry::TYPE_LINESTRING )
+            {
+                hasLines = true;
+                break;
+            }
+        }
+
         bool isGeocentric = _map->isGeocentric();
 
-        // read all features into a list:
-        FeatureList features;
-        bool hasLines = false;
+        // A processing context to use with the filters:
+        FilterContext context;
+        context.profile() = getFeatureSource()->getFeatureProfile();
 
-        while( cursor->hasMore() )
+        // If the geometry is lines, we need to buffer them before they will work with stenciling
+        if ( hasLines )
         {
-            Feature* feature = cursor->nextFeature();
-            Geometry* geom = feature->getGeometry();
-            if ( geom )
-            {
-                // apply a type override if requested:
-                if ( _geomTypeOverride.isSet() && _geomTypeOverride.get() != geom->getComponentType() )
-                {
-                    geom = geom->cloneAs( _geomTypeOverride.get() );
-                    if ( geom )
-                        feature->setGeometry( geom );
-                }
-            }
-            if ( geom )
-            {
-                features.push_back( feature );
-                if ( !hasLines && geom->getType() == Geometry::TYPE_LINESTRING )
-                    hasLines = true;
-            }
+            BufferFilter buffer;
+            buffer.distance() = 0.5 * style.lineSymbolizer().stroke().width();
+            buffer.capStyle() = style.lineSymbolizer().stroke().lineCap();
+            context = buffer.push( features, context );
         }
 
-        // Grid the features:
-        // TODO: use the actual input extent...
-        //GeoExtent ex = osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getExtent();
-        //FeatureGridder gridder( features, ex, 360, 180 );
-        
-        osg::Group* classGroup = new osg::Group();
-        classGroup->setName( style.name() );
+        // Transform them into the map's SRS:
+        TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
+        context = xform.push( features, context );
 
-        //for( int cell=0; cell < gridder.getNumCells(); ++cell )
+        if ( isGeocentric )
         {
-            FeatureList& cellFeatures = features;
-            //FeatureList cellFeatures;
-            //gridder.getCell( cell, cellFeatures );
-
-            // A processing context to use with the filters:
-            FilterContext context;
-            context.profile() = getFeatureSource()->getFeatureProfile();
-
-            // If the geometry is lines, we need to buffer them before they will work with stenciling
-            if ( hasLines )
-            {
-                BufferFilter buffer;
-                buffer.distance() = 0.5 * style.lineSymbolizer().stroke().width();
-                buffer.capStyle() = style.lineSymbolizer().stroke().lineCap();
-                context = buffer.push( cellFeatures, context );
-            }
-
-            // Transform them into the map's SRS:
-            TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
-            context = xform.push( cellFeatures, context );
-
-            if ( isGeocentric )
-            {
-                // We need to make sure that on a round globe, the points are sampled such that
-                // long segments follow the curvature of the earth. By the way, if a Buffer was
-                // applied, that will also remove colinear segment points. Resample the points to 
-                // achieve a usable tesselation.
-                ResampleFilter resample;
-                resample.minLength() = 0.0;
-                resample.maxLength() = _densificationThresh;
-                resample.perturbationThreshold() = 0.1;
-                context = resample.push( cellFeatures, context );
-            }
-
-            // Extrude and cap the geometry in both directions to build a stencil volume:
-            osg::ref_ptr<osg::Group> volumes = new osg::Group();
-
-            for( FeatureList::iterator i = cellFeatures.begin(); i != cellFeatures.end(); ++i )
-            {
-                osg::Node* volume = StencilUtils::createVolume(
-                    i->get()->getGeometry(),
-                    -_extrusionDistance.get(),
-                    _extrusionDistance.get() * 2.0,
-                    context );
-
-                if ( volume )
-                    volumes->addChild( volume );
-            }
-
-            if ( _showVolumes )
-            {
-                classGroup->addChild( volumes.get() );
-            }
-            else
-            {
-                //// render the volumes to the stencil buffer:
-                osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), buildData->_renderBin );
-                classGroup->addChild( geomPass );
-
-                // render a full screen quad to write to the masked pixels:
-                osg::Vec4ub maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
-                osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, buildData->_renderBin );
-                classGroup->addChild( maskPass );
-            }
+            // We need to make sure that on a round globe, the points are sampled such that
+            // long segments follow the curvature of the earth. By the way, if a Buffer was
+            // applied, that will also remove colinear segment points. Resample the points to 
+            // achieve a usable tesselation.
+            ResampleFilter resample;
+            resample.minLength() = 0.0;
+            resample.maxLength() = _densificationThresh;
+            resample.perturbationThreshold() = 0.1;
+            context = resample.push( features, context );
         }
 
-        // lock out the optimizer:
-        classGroup->setDataVariance( osg::Object::DYNAMIC );
+        // Extrude and cap the geometry in both directions to build a stencil volume:
+        osg::ref_ptr<osg::Group> volumes = new osg::Group();
 
-        return classGroup;
+        for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
+        {
+            osg::Node* volume = StencilUtils::createVolume(
+                i->get()->getGeometry(),
+                -_extrusionDistance.get(),
+                _extrusionDistance.get() * 2.0,
+                context );
+
+            if ( volume )
+                volumes->addChild( volume );
+        }
+
+        osg::Group* result = 0L;
+
+        // Resolve the localizing reference frame if necessary:
+        if ( context.hasReferenceFrame() )
+            result = new osg::MatrixTransform( context.inverseReferenceFrame() );
+        else
+            result = new osg::Group();
+
+        if ( _showVolumes )
+        {
+            result->addChild( volumes.get() );
+        }
+        else
+        {
+            //// render the volumes to the stencil buffer:
+            osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), buildData->_renderBin );
+            result->addChild( geomPass );
+
+            // render a full screen quad to write to the masked pixels:
+            osg::Vec4ub maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
+            osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, buildData->_renderBin );
+            result->addChild( maskPass );
+        }
+
+        return result;
     }
+
+    //override
+    //osg::Node* renderStyle( const Style& style, FeatureCursor* cursor, osg::Referenced* data )
+    //{
+    //    BuildData* buildData = static_cast<BuildData*>(data);
+
+    //    bool isGeocentric = _map->isGeocentric();
+
+    //    // read all features into a list, transforming geometry types and calculating
+    //    // the extent.
+    //    FeatureList features;
+    //    bool hasLines = false;
+    //    Bounds featuresBounds;
+
+    //    while( cursor->hasMore() )
+    //    {
+    //        Feature* feature = cursor->nextFeature();
+    //        Geometry* geom = feature->getGeometry();
+    //        if ( geom )
+    //        {
+    //            // apply a type override if requested:
+    //            if ( _geomTypeOverride.isSet() && _geomTypeOverride.get() != geom->getComponentType() )
+    //            {
+    //                geom = geom->cloneAs( _geomTypeOverride.get() );
+    //                if ( geom )
+    //                    feature->setGeometry( geom );
+    //            }
+    //        }
+    //        if ( geom )
+    //        {
+    //            features.push_back( feature );
+    //            if ( !hasLines && geom->getType() == Geometry::TYPE_LINESTRING )
+    //                hasLines = true;
+
+    //            featuresBounds.expandToInclude( geom->getBounds() );
+    //        }
+    //    }
+
+    //    // Grid the features:
+    //    FeatureGridder gridder( 
+    //        features, 
+    //        featuresBounds,
+    //        gridCellSize().value(),
+    //        gridCellSize().value() );
+    //    
+    //    osg::Group* classGroup = new osg::Group();
+    //    classGroup->setName( style.name() );
+
+    //    for( int cell=0; cell < gridder.getNumCells(); ++cell )
+    //    {
+    //        // Fetch the next cell
+    //        FeatureList cellFeatures;
+    //        gridder.getCell( cell, cellFeatures );
+
+    //        // A processing context to use with the filters:
+    //        FilterContext context;
+    //        context.profile() = getFeatureSource()->getFeatureProfile();
+
+    //        // If the geometry is lines, we need to buffer them before they will work with stenciling
+    //        if ( hasLines )
+    //        {
+    //            BufferFilter buffer;
+    //            buffer.distance() = 0.5 * style.lineSymbolizer().stroke().width();
+    //            buffer.capStyle() = style.lineSymbolizer().stroke().lineCap();
+    //            context = buffer.push( cellFeatures, context );
+    //        }
+
+    //        // Transform them into the map's SRS:
+    //        TransformFilter xform( _map->getProfile()->getSRS(), isGeocentric );
+    //        context = xform.push( cellFeatures, context );
+
+    //        if ( isGeocentric )
+    //        {
+    //            // We need to make sure that on a round globe, the points are sampled such that
+    //            // long segments follow the curvature of the earth. By the way, if a Buffer was
+    //            // applied, that will also remove colinear segment points. Resample the points to 
+    //            // achieve a usable tesselation.
+    //            ResampleFilter resample;
+    //            resample.minLength() = 0.0;
+    //            resample.maxLength() = _densificationThresh;
+    //            resample.perturbationThreshold() = 0.1;
+    //            context = resample.push( cellFeatures, context );
+    //        }
+
+    //        // Extrude and cap the geometry in both directions to build a stencil volume:
+    //        osg::ref_ptr<osg::Group> volumes = new osg::Group();
+
+    //        for( FeatureList::iterator i = cellFeatures.begin(); i != cellFeatures.end(); ++i )
+    //        {
+    //            osg::Node* volume = StencilUtils::createVolume(
+    //                i->get()->getGeometry(),
+    //                -_extrusionDistance.get(),
+    //                _extrusionDistance.get() * 2.0,
+    //                context );
+
+    //            if ( volume )
+    //                volumes->addChild( volume );
+    //        }
+
+    //        osg::Group* cellGroup = 0L;
+
+    //        // Resolve the localizing reference frame if necessary:
+    //        if ( context.hasReferenceFrame() )
+    //            cellGroup = new osg::MatrixTransform( context.inverseReferenceFrame() );
+    //        else
+    //            cellGroup = new osg::Group();
+
+    //        if ( _showVolumes )
+    //        {
+    //            cellGroup->addChild( volumes.get() );
+    //        }
+    //        else
+    //        {
+    //            //// render the volumes to the stencil buffer:
+    //            osg::Node* geomPass = StencilUtils::createGeometryPass( volumes.get(), buildData->_renderBin );
+    //            cellGroup->addChild( geomPass );
+
+    //            // render a full screen quad to write to the masked pixels:
+    //            osg::Vec4ub maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
+    //            osg::Node* maskPass = StencilUtils::createMaskPass( maskColor, buildData->_renderBin );
+    //            cellGroup->addChild( maskPass );
+    //        }
+
+    //        osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
+    //        ccc->
+
+    //        classGroup->addChild( cellGroup );
+    //    }
+
+    //    // lock out the optimizer:
+    //    classGroup->setDataVariance( osg::Object::DYNAMIC );
+
+    //    return classGroup;
+    //}
 
 
 

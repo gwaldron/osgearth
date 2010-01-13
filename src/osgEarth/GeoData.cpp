@@ -34,6 +34,68 @@
 using namespace osgEarth;
 
 
+Bounds::Bounds() :
+osg::BoundingBoxImpl<osg::Vec3d>( DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX, DBL_MAX )
+{
+    //nop
+}
+
+Bounds::Bounds(double xmin, double ymin, double xmax, double ymax ) :
+osg::BoundingBoxImpl<osg::Vec3d>( xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX )
+{
+    //nop
+}
+
+bool 
+Bounds::contains(double x, double y ) const {
+    return x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
+}
+
+void
+Bounds::expandBy( double x, double y ) {
+    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, 0 );
+}
+
+void
+Bounds::expandBy( const Bounds& rhs ) {
+    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( rhs );
+}
+
+Bounds 
+Bounds::unionWith(const Bounds& rhs) const {
+    if ( valid() && !rhs.valid() ) return *this;
+    if ( !valid() && rhs.valid() ) return rhs;
+
+    Bounds u;
+    if ( intersects(rhs) ) {
+        u.xMin() = xMin() >= rhs.xMin() && xMin() <= rhs.xMax() ? xMin() : rhs.xMin();
+        u.xMax() = xMax() >= rhs.xMin() && xMax() <= rhs.xMax() ? xMax() : rhs.xMax();
+        u.yMin() = yMin() >= rhs.yMin() && yMin() <= rhs.yMax() ? yMin() : rhs.yMin();
+        u.yMax() = yMax() >= rhs.yMin() && yMax() <= rhs.yMax() ? yMax() : rhs.yMax();
+        u.zMin() = zMin() >= rhs.zMin() && zMin() <= rhs.zMax() ? zMin() : rhs.zMin();
+        u.zMax() = zMax() >= rhs.zMin() && zMax() <= rhs.zMax() ? zMax() : rhs.zMax();
+    }
+    return u;
+}
+
+double
+Bounds::width() const {
+    return xMax()-xMin();
+}
+
+double
+Bounds::height() const {
+    return yMax()-yMin();
+}
+
+double
+Bounds::depth() const {
+    return zMax()-zMin();
+}
+
+
+/*************************************************************/
+
 GeoExtent GeoExtent::INVALID = GeoExtent();
 
 

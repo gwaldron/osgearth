@@ -80,13 +80,8 @@ public:
     }
 
     //override
-    osg::Node* renderStyle( const Style& style, FeatureCursor* cursor, osg::Referenced* data )
+    osg::Node* features( const Style& style, FeatureList& features, osg::Referenced* data )
     {
-        // read all features into a list:
-        FeatureList features;
-        while( cursor->hasMore() )
-            features.push_back( cursor->nextFeature() );
-
         // A processing context to use with the filters:
         FilterContext context;
         context.profile() = getFeatureSource()->getFeatureProfile();

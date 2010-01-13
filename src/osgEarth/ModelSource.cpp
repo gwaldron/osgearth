@@ -24,14 +24,26 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
+#define ATTR_MIN_RANGE "min_range"
+#define ATTR_MAX_RANGE "max_range"
+
 
 ModelSource::ModelSource( const PluginOptions* options ) :
-_options( options )
+_options( options ),
+_minRange( 0.0f ),
+_maxRange( FLT_MAX )
 {
     this->setThreadSafeRefUnref( true );
     if ( options )
     {
-        _name = options->config().value( "name" );
+        const Config& conf = options->config();
+
+        _name = conf.value( "name" );
+        
+        if ( conf.hasValue( ATTR_MIN_RANGE ) )
+            _minRange = conf.value<float>( ATTR_MIN_RANGE, 0.0f );
+        if ( conf.hasValue( ATTR_MAX_RANGE ) )
+            _maxRange = conf.value<float>( ATTR_MAX_RANGE, FLT_MAX );
     }
 }
 

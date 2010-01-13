@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osg/BoundingBox>
 
 using namespace osgEarth;
 
@@ -49,6 +50,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const SpatialReference> _outputSRS;
         bool _makeGeocentric;
         double _heightOffset;
+        osg::BoundingBoxd _bbox;
         
         bool push( Feature* feature, const FilterContext& context );
     };

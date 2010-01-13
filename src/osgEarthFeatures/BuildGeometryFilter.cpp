@@ -23,6 +23,7 @@
 #include <osg/LineWidth>
 #include <osg/Point>
 #include <osg/PolygonOffset>
+#include <osg/MatrixTransform>
 #include <osgUtil/Tessellator>
 
 using namespace osgEarth;
@@ -35,12 +36,6 @@ _geomTypeOverride( Geometry::TYPE_UNKNOWN )
 {
     reset();
 }
-
-//BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
-//_style( style )
-//{
-//    reset();
-//}
 
 void
 BuildGeometryFilter::reset()
@@ -173,6 +168,14 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
         }
 
         output = _geode.release();
+
+        if ( context.hasReferenceFrame() )
+        {
+            osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
+                context.inverseReferenceFrame() );
+            delocalizer->addChild( output.get() );
+            output = delocalizer;
+        }
     }
     else
     {
@@ -180,5 +183,6 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
     }
 
     FilterContext outCx( context );
+    outCx.setReferenceFrame( osg::Matrixd::identity() ); // clear the ref frame.
     return outCx;
 }

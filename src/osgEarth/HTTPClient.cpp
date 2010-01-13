@@ -226,6 +226,7 @@ HTTPClient::HTTPClient()
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
     curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //FALSE);
+    //curl_easy_setopt( _curl_handle, CURLOPT_TIMEOUT, 1L );
 }
 
 HTTPClient::~HTTPClient()
@@ -440,7 +441,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     curl_easy_setopt( _curl_handle, CURLOPT_URL, request.getURL().c_str() );
     if (callback)
     {
-        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA,progressCallback.get());
+        curl_easy_setopt(_curl_handle, CURLOPT_PROGRESSDATA, progressCallback.get());
     }
 
     char errorBuf[CURL_ERROR_SIZE];
@@ -462,14 +463,16 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 
     HTTPResponse response( code );
    
-    if ( code == 200L && res != CURLE_ABORTED_BY_CALLBACK ) //res == 0 )
+    if ( code == 200L && res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT ) //res == 0 )
     {
         // check for multipart content:
         char* content_type_cp;
         curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
         if ( content_type_cp == NULL )
         {
-            osg::notify(osg::NOTICE) << "[osgEarth::HTTPClient] NULL Content-Type (protocol violation)" << std::endl;
+            osg::notify(osg::NOTICE) 
+                << "[osgEarth::HTTPClient] NULL Content-Type (protocol violation) " 
+                << "URL=" << request.getURL() << std::endl;
             return NULL;
         }
 
@@ -492,7 +495,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
             response._parts.push_back( part.get() );
         }
     }
-    else if (res == CURLE_ABORTED_BY_CALLBACK)
+    else if (res == CURLE_ABORTED_BY_CALLBACK || res == CURLE_OPERATION_TIMEDOUT)
     {
         //If we were aborted by a callback, then it was cancelled by a user
         response._cancelled = true;
@@ -613,7 +616,9 @@ HTTPClient::doReadImageFile(const std::string& filename,
                 else 
                 {
                     if (rr.error()) 
-                        osg::notify(osg::WARN) << rr.message() << std::endl;
+                    {
+                        osg::notify(osg::WARN) << "[osgEarth] HTTP Reader Error: " << rr.message() << std::endl;
+                    }
                     result = RESULT_READER_ERROR;
                 }
             }
@@ -692,7 +697,9 @@ HTTPClient::doReadNodeFile(const std::string& filename,
                 else
                 {
                     if ( rr.error() )
-                        osg::notify(osg::WARN) << rr.message() << std::endl;
+                    {
+                        osg::notify(osg::WARN) << "[osgEarth] HTTP Reader Error: " << rr.message() << std::endl;
+                    }
                     result = RESULT_READER_ERROR;
                 }
             }

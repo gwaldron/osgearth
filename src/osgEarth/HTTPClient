@@ -76,7 +76,7 @@ namespace osgEarth
         };
 
     public:
-        HTTPResponse( long code );
+        HTTPResponse( long code =0L );
 
         HTTPResponse( const HTTPResponse& rhs );
 
@@ -125,6 +125,7 @@ namespace osgEarth
             RESULT_CANCELED,
             RESULT_NOT_FOUND,
             RESULT_SERVER_ERROR,
+            RESULT_TIMEOUT,
             RESULT_NO_READER,
             RESULT_READER_ERROR,
             RESULT_UNKNOWN_ERROR
@@ -132,10 +133,12 @@ namespace osgEarth
 
         // returns true is the result code represents a recoverable
         // situation, i.e. one in which retrying might work.
-        static bool isRecoverable( ResultCode code ) {
+        static bool isRecoverable( ResultCode code )
+        {
             return
                 code == RESULT_OK ||
                 code == RESULT_SERVER_ERROR ||
+                code == RESULT_TIMEOUT ||
                 code == RESULT_CANCELED;
         }
 
@@ -188,18 +191,18 @@ namespace osgEarth
             const std::string& filename,
             osg::ref_ptr<osg::Image>& output,
             const osgDB::ReaderWriter::Options* options = 0,
-            osgEarth::ProgressCallback *callback = 0);
+            ProgressCallback *callback = 0);
 
         ResultCode doReadNodeFile(
             const std::string& filename,
             osg::ref_ptr<osg::Node>& output,
             const osgDB::ReaderWriter::Options* options = 0,
-            osgEarth::ProgressCallback *callback = 0);
+            ProgressCallback *callback = 0);
 
         ResultCode doReadString(
             const std::string& filename,
             std::string& output,
-            osgEarth::ProgressCallback *callback = 0);
+            ProgressCallback *callback = 0);
 
 
         /**

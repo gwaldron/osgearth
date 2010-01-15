@@ -34,9 +34,66 @@
 #define ON_AND_PROTECTED  osg::StateAttribute::ON | osg::StateAttribute::PROTECTED
 #define OFF_AND_PROTECTED osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED
 
-osg::Node*
-StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
+
+StencilVolumeNode::StencilVolumeNode() :
+_stencilGroup1( 0L ),
+_stencilGroup2( 0L ),
+_maskGroup( 0L ),
+_maskColorArray( 0L )
 {
+    init();
+}
+
+StencilVolumeNode::StencilVolumeNode(const StencilVolumeNode& rhs,
+                                     const osg::CopyOp& op) :
+osg::Group( rhs, op ),
+_stencilGroup1( rhs._stencilGroup1 ),
+_stencilGroup2( rhs._stencilGroup2 ),
+_maskGroup( rhs._maskGroup ),
+_maskColorArray( rhs._maskColorArray )
+{
+    //nop
+}
+
+int
+StencilVolumeNode::setBaseRenderBin( int bin )
+{
+    if ( _stencilGroup1 )
+    {
+        _stencilGroup1->getOrCreateStateSet()->setRenderBinDetails( bin++, "RenderBin" );
+    }
+    if ( _stencilGroup2 )
+    {
+        _stencilGroup2->getOrCreateStateSet()->setRenderBinDetails( bin++, "RenderBin" );
+    }
+    if ( _maskGroup )
+    {
+        _maskGroup->getOrCreateStateSet()->setRenderBinDetails( bin++, "RenderBin" );
+    }
+    return bin;
+}
+
+void
+StencilVolumeNode::setColor( const osg::Vec4ub& color )
+{
+    (*_maskColorArray)[0] = color;
+    // dirty?
+}
+
+void
+StencilVolumeNode::addVolumes( osg::Node* node )
+{
+    if ( _stencilGroup1 )
+        _stencilGroup1->addChild( node );
+    if ( _stencilGroup2 )
+        _stencilGroup2->addChild( node );
+}
+
+void
+StencilVolumeNode::init()
+{
+    // FIRST create the stenciled geometry pass:
+
     // For now we are hard-coding these to what are hopefully "safe" values.
     // In the future we hope to rewrite this as a custom StencilVolumeNode that 
     // will automatically detect extension availability at draw time and choose
@@ -44,12 +101,12 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
     static bool s_EXT_stencil_wrap     = true; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_wrap");
     static bool s_EXT_stencil_two_side = false; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_two_side");
 
+
     // zFail=true if more compute intensive, but lets you get inside the volume.
     // Again, a custom node will give us a better opportunity to choose between zFail and zPass based on
     // the eye location (you only need zFail if you camera is inside the volume).
     bool zFail = true;
-
-    osg::Group* root = new osg::Group();
+    int baseBin = 100;
 
     osg::notify(osg::INFO) << "[osgEarth] Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
 
@@ -59,9 +116,10 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
 
         osg::StencilTwoSided::Operation incrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::INCR_WRAP : osg::StencilTwoSided::INCR;
         osg::StencilTwoSided::Operation decrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::DECR_WRAP : osg::StencilTwoSided::DECR;
-        osg::Group* stencil_group = new osg::Group();
-        osg::StateSet* ss = stencil_group->getOrCreateStateSet();
-        ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+        _stencilGroup1 = new osg::Group();
+        //osg::Group* stencil_group = new osg::Group();
+        osg::StateSet* ss = _stencilGroup1->getOrCreateStateSet();
+        ss->setRenderBinDetails( baseBin++, "RenderBin" );
 
         if ( zFail )
         {
@@ -86,9 +144,10 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
 
         ss->setAttributeAndModes(new osg::ColorMask(false,false,false,false), ON_AND_PROTECTED);
         ss->setAttributeAndModes(new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
-        stencil_group->addChild( geometry );
+        //stencil_group->addChild( geometry );
 
-        root->addChild( stencil_group );
+        this->addChild( _stencilGroup1 );
+        //root->addChild( stencil_group );
     }
     else
     {
@@ -96,9 +155,9 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
 
         if ( !zFail )  // Z-Pass
         {
-            osg::Group* front_group = new osg::Group();
-            osg::StateSet* front_ss = front_group->getOrCreateStateSet();
-            front_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+            _stencilGroup1 = new osg::Group();
+            osg::StateSet* front_ss = _stencilGroup1->getOrCreateStateSet();
+            front_ss->setRenderBinDetails( baseBin++, "RenderBin" );
 
             // incrementing stencil op for front faces:
             osg::Stencil* front_stencil = new osg::Stencil();
@@ -111,13 +170,14 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
             front_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), ON_AND_PROTECTED);
             front_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
 
-            front_group->addChild( geometry );
-            root->addChild( front_group );
+            //front_group->addChild( geometry );
+            this->addChild( _stencilGroup1 );
+            //root->addChild( front_group );
 
             // decrementing stencil op for back faces:
-            osg::Group* back_group = new osg::Group();
-            osg::StateSet* back_ss = back_group->getOrCreateStateSet();
-            back_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+            _stencilGroup2 = new osg::Group();
+            osg::StateSet* back_ss = _stencilGroup2->getOrCreateStateSet();
+            back_ss->setRenderBinDetails( baseBin++, "RenderBin" );
 
             osg::Stencil* back_stencil = new osg::Stencil();
             back_stencil->setFunction( osg::Stencil::ALWAYS, 1, ~0u );
@@ -129,16 +189,17 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
             back_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::FRONT), ON_AND_PROTECTED);
             back_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
 
-            back_group->addChild( geometry );
-            root->addChild( back_group );       
+            //back_group->addChild( geometry );
+            this->addChild( _stencilGroup2 );
+            //root->addChild( back_group );       
         }
         else
         {
             // incrementing stencil op for back faces:
             {
-                osg::Group* front_group = new osg::Group();
-                osg::StateSet* front_ss = front_group->getOrCreateStateSet();
-                front_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+                _stencilGroup1 = new osg::Group();
+                osg::StateSet* front_ss = _stencilGroup1->getOrCreateStateSet();
+                front_ss->setRenderBinDetails( baseBin++, "RenderBin" );
 
                 osg::Stencil* front_stencil = new osg::Stencil();
                 front_stencil->setFunction( osg::Stencil::ALWAYS ); //, 1, ~0u );
@@ -150,15 +211,16 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
                 front_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::FRONT), ON_AND_PROTECTED);
                 front_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
 
-                front_group->addChild( geometry );
-                root->addChild( front_group );
+                //front_group->addChild( geometry );
+                this->addChild( _stencilGroup1 );
+                //root->addChild( front_group );
             }
 
             // decrementing stencil buf for front faces
             {
-                osg::Group* back_group = new osg::Group();
-                osg::StateSet* back_ss = back_group->getOrCreateStateSet();
-                back_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+                _stencilGroup2 = new osg::Group();
+                osg::StateSet* back_ss = _stencilGroup2->getOrCreateStateSet();
+                back_ss->setRenderBinDetails( baseBin++, "RenderBin" );
 
                 osg::Stencil* back_stencil = new osg::Stencil();
                 back_stencil->setFunction( osg::Stencil::ALWAYS ); //, 1, ~0u );
@@ -170,19 +232,17 @@ StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
                 back_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), ON_AND_PROTECTED);
                 back_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
 
-                back_group->addChild( geometry );
-                root->addChild( back_group );
+                //back_group->addChild( geometry );
+                this->addChild( _stencilGroup2 );
+                //root->addChild( back_group );
             }
         }
     }
+    
 
-    return root;
-}
+    // NOW built the full-screen quad mask that will paint the volume:
 
-osg::Node*
-StencilUtils::createMaskPass( const osg::Vec4ub& color, int& ref_renderBin )
-{
-    osg::Group* result = new osg::Group();
+    _maskGroup = new osg::Group();
 
     // make a full screen quad:
     osg::Geometry* quad = new osg::Geometry();
@@ -193,15 +253,14 @@ StencilUtils::createMaskPass( const osg::Vec4ub& color, int& ref_renderBin )
     (*verts)[3].set( 1, 1, 0 );
     quad->setVertexArray( verts );
     quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
-    osg::Vec4ubArray* colors = new osg::Vec4ubArray(1);
-    (*colors)[0] = color;
-    quad->setColorArray( colors );
+    _maskColorArray = new osg::Vec4ubArray(1);
+    (*_maskColorArray)[0] = osg::Vec4ub(255,255,255,255);
+    quad->setColorArray( _maskColorArray );
     quad->setColorBinding( osg::Geometry::BIND_OVERALL );
     osg::Geode* quad_geode = new osg::Geode();
     quad_geode->addDrawable( quad );
 
     osg::StateSet* quad_ss = quad->getOrCreateStateSet();
-    quad_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
     quad_ss->setMode( GL_CULL_FACE, OFF_AND_PROTECTED );
     quad_ss->setMode( GL_DEPTH_TEST, OFF_AND_PROTECTED );
     quad_ss->setMode( GL_LIGHTING, OFF_AND_PROTECTED );
@@ -221,10 +280,206 @@ StencilUtils::createMaskPass( const osg::Vec4ub& color, int& ref_renderBin )
     proj->setMatrix( osg::Matrix::ortho(0, 1, 0, 1, 0, -1) );
     proj->addChild( abs );
 
-    result->addChild( proj );
-    result->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
-    return result;
+    _maskGroup->addChild( proj );
+    _maskGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );    
+    _maskGroup->getOrCreateStateSet()->setRenderBinDetails( baseBin++, "RenderBin" );
+
+    this->addChild( _maskGroup );
 }
+
+
+
+//osg::Node*
+//StencilUtils::createGeometryPass( osg::Node* geometry, int& ref_renderBin )
+//{
+//    // For now we are hard-coding these to what are hopefully "safe" values.
+//    // In the future we hope to rewrite this as a custom StencilVolumeNode that 
+//    // will automatically detect extension availability at draw time and choose
+//    // the optimal GL rendering path.
+//    static bool s_EXT_stencil_wrap     = true; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_wrap");
+//    static bool s_EXT_stencil_two_side = false; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_two_side");
+//
+//    // zFail=true if more compute intensive, but lets you get inside the volume.
+//    // Again, a custom node will give us a better opportunity to choose between zFail and zPass based on
+//    // the eye location (you only need zFail if you camera is inside the volume).
+//    bool zFail = true;
+//
+//    osg::Group* root = new osg::Group();
+//
+//    osg::notify(osg::INFO) << "[osgEarth] Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
+//
+//    if ( s_EXT_stencil_two_side )
+//    {
+//        osg::notify(osg::INFO) << "[osgEarth] Two-sided stenciling" << std::endl;
+//
+//        osg::StencilTwoSided::Operation incrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::INCR_WRAP : osg::StencilTwoSided::INCR;
+//        osg::StencilTwoSided::Operation decrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::DECR_WRAP : osg::StencilTwoSided::DECR;
+//        osg::Group* stencil_group = new osg::Group();
+//        osg::StateSet* ss = stencil_group->getOrCreateStateSet();
+//        ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+//
+//        if ( zFail )
+//        {
+//            osg::StencilTwoSided* stencil = new osg::StencilTwoSided();
+//            stencil->setFunction(osg::StencilTwoSided::BACK, osg::StencilTwoSided::ALWAYS, 1, ~0u); 
+//            stencil->setOperation(osg::StencilTwoSided::BACK, osg::StencilTwoSided::KEEP, incrOp, osg::StencilTwoSided::KEEP);
+//
+//            stencil->setFunction(osg::StencilTwoSided::FRONT, osg::StencilTwoSided::ALWAYS, 1, ~0u); 
+//            stencil->setOperation(osg::StencilTwoSided::FRONT, osg::StencilTwoSided::KEEP, decrOp, osg::StencilTwoSided::KEEP);
+//            ss->setAttributeAndModes( stencil, ON_AND_PROTECTED );
+//        }
+//        else
+//        {
+//            osg::StencilTwoSided* stencil = new osg::StencilTwoSided();
+//            stencil->setFunction(osg::StencilTwoSided::FRONT, osg::StencilTwoSided::ALWAYS, 1, ~0u); 
+//            stencil->setOperation(osg::StencilTwoSided::FRONT, osg::StencilTwoSided::KEEP, osg::StencilTwoSided::KEEP, incrOp);
+//
+//            stencil->setFunction(osg::StencilTwoSided::BACK, osg::StencilTwoSided::ALWAYS, 1, ~0u); 
+//            stencil->setOperation(osg::StencilTwoSided::BACK, osg::StencilTwoSided::KEEP, osg::StencilTwoSided::KEEP, decrOp);
+//            ss->setAttributeAndModes( stencil, ON_AND_PROTECTED );
+//        }
+//
+//        ss->setAttributeAndModes(new osg::ColorMask(false,false,false,false), ON_AND_PROTECTED);
+//        ss->setAttributeAndModes(new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
+//        stencil_group->addChild( geometry );
+//
+//        root->addChild( stencil_group );
+//    }
+//    else
+//    {
+//        osg::notify(osg::INFO) << "[osgEarth] One-sided stenciling" << std::endl;
+//
+//        if ( !zFail )  // Z-Pass
+//        {
+//            osg::Group* front_group = new osg::Group();
+//            osg::StateSet* front_ss = front_group->getOrCreateStateSet();
+//            front_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+//
+//            // incrementing stencil op for front faces:
+//            osg::Stencil* front_stencil = new osg::Stencil();
+//            front_stencil->setFunction( osg::Stencil::ALWAYS, 1, ~0u );
+//            osg::Stencil::Operation incrOp = s_EXT_stencil_wrap ? osg::Stencil::INCR_WRAP : osg::Stencil::INCR;
+//            front_stencil->setOperation( osg::Stencil::KEEP, osg::Stencil::KEEP, incrOp );
+//            front_ss->setAttributeAndModes( front_stencil, ON_AND_PROTECTED );
+//
+//            front_ss->setAttributeAndModes( new osg::ColorMask(false,false,false,false), ON_AND_PROTECTED);
+//            front_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), ON_AND_PROTECTED);
+//            front_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
+//
+//            front_group->addChild( geometry );
+//            root->addChild( front_group );
+//
+//            // decrementing stencil op for back faces:
+//            osg::Group* back_group = new osg::Group();
+//            osg::StateSet* back_ss = back_group->getOrCreateStateSet();
+//            back_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+//
+//            osg::Stencil* back_stencil = new osg::Stencil();
+//            back_stencil->setFunction( osg::Stencil::ALWAYS, 1, ~0u );
+//            osg::Stencil::Operation decrOp = s_EXT_stencil_wrap ? osg::Stencil::DECR_WRAP : osg::Stencil::DECR;
+//            back_stencil->setOperation( osg::Stencil::KEEP, osg::Stencil::KEEP, decrOp );
+//            back_ss->setAttributeAndModes( back_stencil, ON_AND_PROTECTED );
+//
+//            back_ss->setAttributeAndModes( new osg::ColorMask(false,false,false,false), ON_AND_PROTECTED);
+//            back_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::FRONT), ON_AND_PROTECTED);
+//            back_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
+//
+//            back_group->addChild( geometry );
+//            root->addChild( back_group );       
+//        }
+//        else
+//        {
+//            // incrementing stencil op for back faces:
+//            {
+//                osg::Group* front_group = new osg::Group();
+//                osg::StateSet* front_ss = front_group->getOrCreateStateSet();
+//                front_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+//
+//                osg::Stencil* front_stencil = new osg::Stencil();
+//                front_stencil->setFunction( osg::Stencil::ALWAYS ); //, 1, ~0u );
+//                osg::Stencil::Operation incrOp = s_EXT_stencil_wrap ? osg::Stencil::INCR_WRAP : osg::Stencil::INCR;
+//                front_stencil->setOperation( osg::Stencil::KEEP, incrOp, osg::Stencil::KEEP );
+//                front_ss->setAttributeAndModes( front_stencil, ON_AND_PROTECTED );
+//
+//                front_ss->setAttributeAndModes( new osg::ColorMask(false,false,false,false), ON_AND_PROTECTED);
+//                front_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::FRONT), ON_AND_PROTECTED);
+//                front_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
+//
+//                front_group->addChild( geometry );
+//                root->addChild( front_group );
+//            }
+//
+//            // decrementing stencil buf for front faces
+//            {
+//                osg::Group* back_group = new osg::Group();
+//                osg::StateSet* back_ss = back_group->getOrCreateStateSet();
+//                back_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+//
+//                osg::Stencil* back_stencil = new osg::Stencil();
+//                back_stencil->setFunction( osg::Stencil::ALWAYS ); //, 1, ~0u );
+//                osg::Stencil::Operation decrOp = s_EXT_stencil_wrap ? osg::Stencil::DECR_WRAP : osg::Stencil::DECR;
+//                back_stencil->setOperation( osg::Stencil::KEEP, decrOp, osg::Stencil::KEEP );
+//                back_ss->setAttributeAndModes( back_stencil, ON_AND_PROTECTED );
+//
+//                back_ss->setAttributeAndModes( new osg::ColorMask(false,false,false,false), ON_AND_PROTECTED);
+//                back_ss->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), ON_AND_PROTECTED);
+//                back_ss->setAttributeAndModes( new osg::Depth(osg::Depth::LESS,0,1,false), ON_AND_PROTECTED);
+//
+//                back_group->addChild( geometry );
+//                root->addChild( back_group );
+//            }
+//        }
+//    }
+//
+//    return root;
+//}
+//
+//osg::Node*
+//StencilUtils::createMaskPass( const osg::Vec4ub& color, int& ref_renderBin )
+//{
+//    osg::Group* result = new osg::Group();
+//
+//    // make a full screen quad:
+//    osg::Geometry* quad = new osg::Geometry();
+//    osg::Vec3Array* verts = new osg::Vec3Array(4);
+//    (*verts)[0].set( 0, 1, 0 );
+//    (*verts)[1].set( 0, 0, 0 );
+//    (*verts)[2].set( 1, 0, 0 );
+//    (*verts)[3].set( 1, 1, 0 );
+//    quad->setVertexArray( verts );
+//    quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
+//    osg::Vec4ubArray* maskColorArray = new osg::Vec4ubArray(1);
+//    (*maskColorArray)[0] = color;
+//    quad->setColorArray( maskColorArray );
+//    quad->setColorBinding( osg::Geometry::BIND_OVERALL );
+//    osg::Geode* quad_geode = new osg::Geode();
+//    quad_geode->addDrawable( quad );
+//
+//    osg::StateSet* quad_ss = quad->getOrCreateStateSet();
+//    quad_ss->setRenderBinDetails( ref_renderBin++, "RenderBin" );
+//    quad_ss->setMode( GL_CULL_FACE, OFF_AND_PROTECTED );
+//    quad_ss->setMode( GL_DEPTH_TEST, OFF_AND_PROTECTED );
+//    quad_ss->setMode( GL_LIGHTING, OFF_AND_PROTECTED );
+//
+//    osg::Stencil* quad_stencil = new osg::Stencil();
+//    quad_stencil->setFunction( osg::Stencil::NOTEQUAL, 128, (unsigned int)~0 );
+//    // this will conveniently re-clear the stencil buffer in prep for the next pass:
+//    quad_stencil->setOperation( osg::Stencil::REPLACE, osg::Stencil::REPLACE, osg::Stencil::REPLACE );
+//    quad_ss->setAttributeAndModes( quad_stencil, ON_AND_PROTECTED );
+//
+//    osg::MatrixTransform* abs = new osg::MatrixTransform();
+//    abs->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+//    abs->setMatrix( osg::Matrix::identity() );
+//    abs->addChild( quad_geode );
+//
+//    osg::Projection* proj = new osg::Projection();
+//    proj->setMatrix( osg::Matrix::ortho(0, 1, 0, 1, 0, -1) );
+//    proj->addChild( abs );
+//
+//    result->addChild( proj );
+//    result->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+//    return result;
+//}
 
 
 static
@@ -278,6 +533,42 @@ StencilUtils::createVolume(Geometry*            geom,
             if ( part->getType() == Geometry::TYPE_POLYGON || part->getType() == Geometry::TYPE_RING )
             {
                 numRings++;
+            }
+        }
+    }
+
+    // now, go thru and remove any coplanar segments from the geometry. The tesselator will
+    // not work include a vert connecting two colinear segments in the tesselation, and this
+    // will break the stenciling logic.
+#define PARALLEL_EPSILON 0.01
+    GeometryIterator i( geom );
+    i.traverseMultiGeometry() = true;
+    i.traversePolygonHoles() = true;
+    while( i.hasMore() )
+    {
+        Geometry* part = i.next();
+        if ( part->size() >= 3 )
+        {
+            osg::Vec3d prevVec = part->front() - part->back();
+            prevVec.normalize();
+
+            for( osg::Vec3dArray::iterator j = part->begin(); part->size() >= 3 && j != part->end(); )
+            {
+                osg::Vec3d& p0 = *j;
+                osg::Vec3d& p1 = j+1 != part->end() ? *(j+1) : part->front();
+                osg::Vec3d vec = p1-p0; vec.normalize();
+
+                // if the vectors are essentially parallel, remove the extraneous vertex.
+                if ( (prevVec ^ vec).length() < PARALLEL_EPSILON )
+                {
+                    j = part->erase( j );
+                    //osg::notify(osg::NOTICE) << "[osgEarth] removed colinear segment" << std::endl;
+                }
+                else
+                {
+                    ++j;
+                    prevVec = vec;
+                }
             }
         }
     }

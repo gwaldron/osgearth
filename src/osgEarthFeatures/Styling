@@ -65,7 +65,10 @@ namespace osgEarth { namespace Features
         Stroke()
             : _color( 255, 255, 255, 255 ),
               _width( 1.0f ),
-              _opacity( 1.0f ) { }
+              _opacity( 1.0f ),
+              _lineJoin( LINEJOIN_DEFAULT ),
+              _lineCap( LINECAP_DEFAULT ) { }
+
         Stroke( const Stroke& rhs )
             : _lineJoin( rhs._lineJoin ),
               _lineCap( rhs._lineCap ),

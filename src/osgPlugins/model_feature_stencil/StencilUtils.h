@@ -21,8 +21,10 @@
 
 #include <osg/Node>
 #include <osg/Geode>
+#include <osg/Group>
 #include <osgEarthFeatures/Geometry>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
 
 using namespace osgEarth::Features;
 
@@ -42,5 +44,32 @@ struct StencilUtils
         double               height,
         const FilterContext& context );
 };
+
+class StencilVolumeNode : public osg::Group
+{
+public:
+    StencilVolumeNode();
+    StencilVolumeNode( const StencilVolumeNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+
+    META_Node(osgEarth::Features,StencilVolumeNode);
+
+    // sets the render bins and returns the next available bin.
+    int setBaseRenderBin( int bin );
+
+    // sets the render color
+    void setColor( const osg::Vec4ub& color );
+
+    // adds volume geometry to the node
+    void addVolumes( osg::Node* node );
+
+protected:
+    void init();
+
+    osg::Group* _stencilGroup1;
+    osg::Group* _stencilGroup2;
+    osg::Group* _maskGroup;
+    osg::Vec4ubArray* _maskColorArray;
+};
+
 
 #endif // OSGEARTH_MODEL_FEATURE_STENCIL_STENCIL_UTILS_H

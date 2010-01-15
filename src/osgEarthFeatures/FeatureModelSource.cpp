@@ -263,21 +263,15 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
                 gridder.cullFeatureListToCell( cell, cellFeatures );
             }
 
-            // next ask the implementation to construct OSG geometry for the cell features:
-            osg::Node* styleNode = renderFeaturesForStyle( style, cellFeatures, data );
-            if ( styleNode )
+            if ( cellFeatures.size() > 0 )
             {
-                if ( !styleGroup )
-                    styleGroup = new osg::Group();
+                // next ask the implementation to construct OSG geometry for the cell features:
+                osg::Node* styleNode = renderFeaturesForStyle( style, cellFeatures, data );
+                if ( styleNode )
+                {
+                    if ( !styleGroup )
+                        styleGroup = new osg::Group();
 
-                if ( minRange().isSet() || maxRange().isSet() )
-                {
-                    osg::LOD* lod = new osg::LOD();
-                    lod->addChild( styleNode, minRange().value(), maxRange().value() );
-                    styleGroup->addChild( lod );
-                }
-                else
-                {
                     styleGroup->addChild( styleNode );
                 }
             }

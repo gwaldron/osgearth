@@ -80,7 +80,7 @@ BufferFilter::push( Feature* input, const FilterContext& context )
             _capStyle == Stroke::LINECAP_ROUND  ? buffer::BufferParameters::CAP_ROUND :
             _capStyle == Stroke::LINECAP_SQUARE ? buffer::BufferParameters::CAP_SQUARE :
             _capStyle == Stroke::LINECAP_BUTT   ? buffer::BufferParameters::CAP_FLAT :
-            buffer::BufferParameters::CAP_ROUND;
+            buffer::BufferParameters::CAP_SQUARE;
 
         //buffer::BufferParameters::JoinStyle geosJoin =
         //    _joinStyle

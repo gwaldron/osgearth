@@ -53,7 +53,7 @@ _policy( policy )
     _cellsX = osg::clampAbove( _cellsX, 1 );
     _cellsY = osg::clampAbove( _cellsY, 1 );
 
-    osg::notify(osg::NOTICE) << "[osgEarth] Grid cells = " << _cellsX << " x " << _cellsY << std::endl;
+    osg::notify(osg::INFO) << "[osgEarth] Grid cells = " << _cellsX << " x " << _cellsY << std::endl;
 
 #ifndef OSGEARTH_HAVE_GEOS
 
@@ -198,7 +198,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
 
     }
 
-    osg::notify(osg::NOTICE)
+    osg::notify(osg::INFO)
             << "[osgEarth] Grid cell " << i << ": bounds="
             << b.xMin() << "," << b.yMin() << " => " << b.xMax() << "," << b.yMax()
             << "; in=" << inCount << "; out=" << features.size()

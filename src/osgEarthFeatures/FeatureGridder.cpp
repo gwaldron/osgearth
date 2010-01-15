@@ -63,7 +63,7 @@ _policy( policy )
             << "[osgEarth] Warning: Gridding policy 'cull by cropping' requires GEOS. Falling back on 'cull by centroid'." 
             << std::endl;
 
-        policy.cullingTechnique() = GriddingPolicy::CULL_BY_CENTROID;
+        _policy.cullingTechnique() = GriddingPolicy::CULL_BY_CENTROID;
     }
 
 #endif // !OSGEARTH_HAVE_GEOS
@@ -191,9 +191,10 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
             // clean up
             f->destroyGeometry( cropGeom );
             delete f;
-        }
         
 #endif // OSGEARTH_HAVE_GEOS
+
+        }
 
     }
 

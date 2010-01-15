@@ -21,7 +21,7 @@ block.
         <url>../data/world.tif</url>
     </image>
     
-    <model name="states" driver="feature_stencil">
+    <model name="countries" driver="feature_stencil">
 
         <!-- Configure the OGR feature driver to read the shapefile.
              Applying a slight negative buffer will "erode" the
@@ -30,7 +30,7 @@ block.
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
-            <resample max_length="5.0"/>
+            <!-- <resample max_length="5.0"/> -->
             <buffer distance="-0.05"/>
         </features>
         

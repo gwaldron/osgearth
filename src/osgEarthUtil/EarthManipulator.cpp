@@ -305,7 +305,9 @@ _t_factor(1.0),
 _time_s_last_frame( osg::Timer::instance()->time_s() ),
 _local_azim( 0.0 ),
 _local_pitch( 0.0 ),
-_has_pending_viewpoint( false )
+_has_pending_viewpoint( false ),
+_homeViewpoint( Viewpoint() ),
+_homeViewpointDuration( 0.0 )
 {
     // install default action bindings:
     ActionOptions options;
@@ -1614,9 +1616,16 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
     switch( action._type )
     {
     case ACTION_HOME:
-        if ( getAutoComputeHomePosition() )
-            computeHomePosition();
-        setByLookAt( _homeEye, _homeCenter, _homeUp );
+        if ( _homeViewpoint.isSet() )
+        {
+            setViewpoint( _homeViewpoint.value(), _homeViewpointDuration );
+        }
+        else
+        {
+            if ( getAutoComputeHomePosition() )
+                computeHomePosition();
+            setByLookAt( _homeEye, _homeCenter, _homeUp );
+        }
         break;
 
 
@@ -1714,4 +1723,11 @@ EarthManipulator::recalculateLocalPitchAndAzimuth()
 	getHPRFromQuat( _rotation, _local_azim, _local_pitch, r);
 	_local_pitch -= osg::PI_2;
 	//osg::notify(osg::NOTICE) << "Azim=" << osg::RadiansToDegrees(_local_azim) << " Pitch=" << osg::RadiansToDegrees(_local_pitch) << std::endl;
+}
+
+void
+EarthManipulator::setHomeViewpoint( const Viewpoint& vp, double duration_s )
+{
+    _homeViewpoint = vp;
+    _homeViewpointDuration = duration_s;
 }

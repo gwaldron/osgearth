@@ -486,6 +486,11 @@ namespace osgEarthUtil
         void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
 
         /**
+         * Sets the viewpoint to activate when performing the ACTION_HOME action.
+         */
+        void setHomeViewpoint( const Viewpoint& vp, double duration_s = 0.0 );
+
+        /**
          * Locks the camera's focal point on the center of a node's bounding sphere.
          * While tethered, you can still call navigate or call setViewpoint() to move the
          * camera relative to the tether object. Pass NULL to deactivate the tether.
@@ -744,6 +749,9 @@ namespace osgEarthUtil
         osg::Node::NodeMask     _traversalMask;
 
         osg::ref_ptr<Settings> _settings;		
+
+        optional<Viewpoint> _homeViewpoint;
+        double _homeViewpointDuration;
 
         Action _last_action;
     };

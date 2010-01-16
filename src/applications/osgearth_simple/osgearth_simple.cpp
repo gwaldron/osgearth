@@ -98,6 +98,16 @@ int main(int argc, char** argv)
 
         sceneData = mapNode;
     }
+    
+    // Set a home viewpoint
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( sceneData );
+    if ( mapNode && mapNode->getMap()->isGeocentric() )
+    {
+        manip->setHomeViewpoint( 
+            osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 4e7 ),
+            1.0 );
+    }
+
 
     viewer.setSceneData( sceneData );
 

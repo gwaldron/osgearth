@@ -37,7 +37,7 @@ Zoom in to see the US interstates.
         
     </model>
     
-    <model name="us-interstates" driver="feature_stencil" max_range="1000000">
+    <model name="us-interstates" driver="feature_stencil" max_range="2000000">
                          
         <features name="interstates" driver="ogr">
             <url>../data/istates_dissolve.shp</url>

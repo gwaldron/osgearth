@@ -60,9 +60,15 @@ namespace osgEarth { namespace Features
         optional<CullingTechnique>& cullingTechnique() { return _cullingTechnique; }
         const optional<CullingTechnique>& cullingTechnique() const { return _cullingTechnique; }
 
+        /** Whether to run the optimizer's spatialize-groups pass on the gridded geometry */
+        optional<bool>& spatializeGroups() { return _spatializeGroups; }
+        const optional<bool>& spatializeGroups() const { return _spatializeGroups; }
+
+
     protected:
         optional<double> _cellSize;
         optional<CullingTechnique> _cullingTechnique;
+        optional<bool> _spatializeGroups;
     };
 
     /**

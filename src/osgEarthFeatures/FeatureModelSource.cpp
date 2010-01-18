@@ -22,23 +22,27 @@
 #include <osg/Notify>
 #include <osg/Timer>
 #include <osg/LOD>
+#include <osgUtil/Optimizer>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
 #define PROP_CELL_SIZE         "cell_size"
 #define PROP_CULLING_TECHNIQUE "culling_technique"
+#define PROP_SPATIALIZE_GROUPS "spatialize_groups"
 
 GriddingPolicy::GriddingPolicy() :
 _cellSize( DBL_MAX ),
-_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID )
+_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
+_spatializeGroups( true )
 {
     //nop
 }
 
 GriddingPolicy::GriddingPolicy( const Config& conf ) :
 _cellSize( DBL_MAX ),
-_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID )
+_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
+_spatializeGroups( true )
 {
     // read the cell size
     if ( conf.hasValue( PROP_CELL_SIZE ) )
@@ -49,6 +53,12 @@ _cullingTechnique( GriddingPolicy::CULL_BY_CENTROID )
         _cullingTechnique = CULL_BY_CROPPING;
     else if ( conf.value(PROP_CULLING_TECHNIQUE) == "centroid" )
         _cullingTechnique = CULL_BY_CENTROID;
+
+    // spatial optimization
+    if ( conf.value(PROP_SPATIALIZE_GROUPS) == "true" )
+        _spatializeGroups = true;
+    else if ( conf.value(PROP_SPATIALIZE_GROUPS) == "false" )
+        _spatializeGroups = false;
 }
 
 Config
@@ -62,6 +72,9 @@ GriddingPolicy::toConfig() const
             conf.add( PROP_CULLING_TECHNIQUE, "crop" );
         else if ( _cullingTechnique == CULL_BY_CENTROID )
             conf.add( PROP_CULLING_TECHNIQUE, "centroid" );
+    }
+    if ( _spatializeGroups.isSet() ) {
+        conf.add( PROP_SPATIALIZE_GROUPS, toString(_spatializeGroups.value()) );
     }
     return conf;        
 }
@@ -181,7 +194,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     }
     else
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] FeatureModelSource: No styles found for '" << this->getName() << "'" << std::endl;
+        osg::notify(osg::NOTICE) << "[osgEarth] " << getName() << ": no styles found for '" << this->getName() << "'" << std::endl;
 
         // There is no style data, so use the default.
         osg::Node* node = gridAndRenderFeaturesForStyle( Style(), buildData.get() );
@@ -189,6 +202,15 @@ FeatureModelSource::createNode( ProgressCallback* progress )
             group->addChild( node );
     }
 
+    // run the SpatializeGroups optimization pass on the result
+    if ( _gridding.isSet() && _gridding->spatializeGroups() == true )
+    {
+        osg::notify(osg::NOTICE) << "[osgEarth] " << getName() << ": running spatial optimization" << std::endl;
+        osgUtil::Optimizer optimizer;
+        optimizer.optimize( group, osgUtil::Optimizer::SPATIALIZE_GROUPS );
+    }
+
+    // apply explicit lighting if necessary:
     if ( _lit.isSet() )
     {
         osg::StateSet* ss = group->getOrCreateStateSet();

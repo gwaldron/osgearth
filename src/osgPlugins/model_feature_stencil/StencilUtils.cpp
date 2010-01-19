@@ -74,7 +74,7 @@ StencilVolumeNode::setBaseRenderBin( int bin )
 }
 
 void
-StencilVolumeNode::setColor( const osg::Vec4ub& color )
+StencilVolumeNode::setColor( const osg::Vec4f& color )
 {
     (*_maskColorArray)[0] = color;
     // dirty?
@@ -253,8 +253,8 @@ StencilVolumeNode::init()
     (*verts)[3].set( 1, 1, 0 );
     quad->setVertexArray( verts );
     quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
-    _maskColorArray = new osg::Vec4ubArray(1);
-    (*_maskColorArray)[0] = osg::Vec4ub(255,255,255,255);
+    _maskColorArray = new osg::Vec4Array(1);
+    (*_maskColorArray)[0] = osg::Vec4f(1,1,1,1);
     quad->setColorArray( _maskColorArray );
     quad->setColorBinding( osg::Geometry::BIND_OVERALL );
     osg::Geode* quad_geode = new osg::Geode();

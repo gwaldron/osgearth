@@ -750,7 +750,7 @@ namespace osgEarthUtil
 
         osg::ref_ptr<Settings> _settings;		
 
-        optional<Viewpoint> _homeViewpoint;
+        osgEarth::optional<Viewpoint> _homeViewpoint;
         double _homeViewpointDuration;
 
         Action _last_action;

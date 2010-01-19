@@ -11,13 +11,13 @@ ENDIF(GEOS_FOUND)
 SET(LIB_NAME osgEarthFeatures)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
-SET(LIB_PUBLIC_HEADERS  
+SET(LIB_PUBLIC_HEADERS
+    Annotation  
     BufferFilter
     BuildGeometryFilter  
     Common
     ConvertTypeFilter
     CssUtils
-    ResampleFilter
     Feature
     FeatureGridder
     FeatureModelSource
@@ -26,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     Geometry
     GEOS
 	Query
+    ResampleFilter
 	ScaleFilter
     SLD
     Styling
@@ -34,11 +35,11 @@ SET(LIB_PUBLIC_HEADERS
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
+    Annotation.cpp
     BufferFilter.cpp
     BuildGeometryFilter.cpp
     ConvertTypeFilter.cpp
     CssUtils.cpp
-    ResampleFilter.cpp
     Feature.cpp
     FeatureGridder.cpp
     FeatureModelSource.cpp
@@ -47,6 +48,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GEOS.cpp
     Geometry.cpp
 	Query.cpp
+    ResampleFilter.cpp
 	ScaleFilter.cpp
     SLD.cpp
     Styling.cpp

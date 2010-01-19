@@ -25,62 +25,136 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 
 
-void
-StyleVisitor::apply( class Stroke& obj ) { 
-    //nop
-}
-
-void
-StyleVisitor::apply( class Fill& obj ) {
-    //nop
-}
-
-void
-StyleVisitor::apply( class LineSymbolizer& obj ) {
-    obj.stroke().accept( *this );
-}
-
-void
-StyleVisitor::apply( class PolygonSymbolizer& obj ) {
-    obj.fill().accept( *this );
-}
-
-void
-StyleVisitor::apply( class Style& obj ) {
-    //obj.query().accept( *this );
-    obj.lineSymbolizer().accept( *this );
-    obj.polygonSymbolizer().accept( *this );
-}
-
-void
-StyleVisitor::apply( class StyledLayer& obj ) {
-    for(StyleList::iterator i = obj.styles().begin(); i != obj.styles().end(); i++ )
-        i->accept( *this );
-}
-
-void
-StyleVisitor::apply( class StyleCatalog& obj ) {
-    for(StyledLayers::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
-        i->accept( *this );
-}
+//void
+//StyleVisitor::apply( class Stroke& obj ) { 
+//    //nop
+//}
+//
+//void
+//StyleVisitor::apply( class Fill& obj ) {
+//    //nop
+//}
+//
+//void
+//StyleVisitor::apply( class LineSymbolizer& obj ) {
+//    obj.stroke().accept( *this );
+//}
+//
+//void
+//StyleVisitor::apply( class PolygonSymbolizer& obj ) {
+//    obj.fill().accept( *this );
+//}
+//
+//void
+//StyleVisitor::apply( class TextSymbolizer& obj ) {
+//    obj.fill().accept( *this );
+//    obj.halo().accept( *this );
+//}
+//
+//void
+//StyleVisitor::apply( class Style& obj ) {
+//    //obj.query().accept( *this );
+//    obj.lineSymbolizer().accept( *this );
+//    obj.polygonSymbolizer().accept( *this );
+//}
+//
+//void
+//StyleVisitor::apply( class StyledLayer& obj ) {
+//    for(StyleList::iterator i = obj.styles().begin(); i != obj.styles().end(); i++ )
+//        i->accept( *this );
+//}
+//
+//void
+//StyleVisitor::apply( class StyleCatalog& obj ) {
+//    for(StyledLayers::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
+//        i->accept( *this );
+//}
 
 /**************************************************************************/
 
-osg::Vec4ub
+
+Stroke::Stroke() :
+_color( 1, 1, 1, 1 ),
+_width( 1.0f ),
+_lineJoin( LINEJOIN_DEFAULT ),
+_lineCap( LINECAP_DEFAULT )
+{
+    //nop
+}
+
+Fill::Fill() :
+_color( 1, 1, 1, 1 )
+{
+    //nop
+}
+
+Symbolizer::Symbolizer()
+{
+    //nop
+}
+
+LineSymbolizer::LineSymbolizer() :
+_stroke( Stroke() )
+{
+    //nop
+}
+
+PolygonSymbolizer::PolygonSymbolizer() :
+_fill( Fill() )
+{
+    //nop
+}
+
+TextSymbolizer::TextSymbolizer() :
+_fill( Fill() ),
+_halo( Stroke() ),
+_size( 16.0f ),
+_font( "fonts/arial.ttf" )
+{
+    //nop
+}
+
+StyledLayer::StyledLayer()
+{
+    //nop
+}
+
+StyleCatalog::StyleCatalog()
+{
+    //nop
+}
+
+bool 
+StyleCatalog::getNamedLayer( const std::string& name, StyledLayer& out_layer ) const
+{
+    for( StyledLayers::const_iterator i = _namedLayers.begin(); i != _namedLayers.end(); i++ )
+    {
+        if ( i->name() == name ) {
+            out_layer = *i;
+            return true;
+        }
+    }
+    return false;
+}
+
+
+/**************************************************************************/
+
+Style::Style() :
+_query( Query() ),
+_lineSymbolizer( LineSymbolizer() ),
+_polygonSymbolizer( PolygonSymbolizer() ),
+_textSymbolizer( TextSymbolizer() )
+{
+    //nop
+}
+
+osg::Vec4f
 Style::getColor( const Geometry::Type& geomType ) const
 {
-    osg::Vec4ub color;
-    if ( geomType == Geometry::TYPE_POLYGON )
-    {
-        color = polygonSymbolizer().fill().color();
-        color.a() = (int)(255.0 * polygonSymbolizer().fill().opacity());
-    }
-    else
-    {
-        color = lineSymbolizer().stroke().color();
-        color.a() = (int)(255.0 * lineSymbolizer().stroke().opacity());
-    }
-    return color;
+    return
+        geomType == Geometry::TYPE_POLYGON ? polygonSymbolizer()->fill()->color() :
+        lineSymbolizer()->stroke()->color();
 }
 
 /**************************************************************************/
@@ -151,17 +225,17 @@ StyleReader::readStyleListFromCSS( const Config& conf, StyleList& out_classes, b
     return true;
 }
 
-bool
-StyleReader::readStyleFromSLD( const ConfigSet& confSet, Style& out_class, bool matchesOnly )
-{
-    return false;
-}
-
-bool
-StyleReader::readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary )
-{
-    return false;
-}
+//bool
+//StyleReader::readStyleFromSLD( const ConfigSet& confSet, Style& out_class, bool matchesOnly )
+//{
+//    return false;
+//}
+//
+//bool
+//StyleReader::readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary )
+//{
+//    return false;
+//}
 
 bool
 StyleReader::readStyle( const Config& conf, Style& out_class, bool matchesOnly )
@@ -170,11 +244,11 @@ StyleReader::readStyle( const Config& conf, Style& out_class, bool matchesOnly )
     {
         return readStyleFromCSS( conf, out_class, matchesOnly );
     }
-    else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
-              conf.attr("type") == "application/vnd.ogc.sld" )
-    {
-        return readStyleFromSLD( conf.children(), out_class, matchesOnly );
-    }
+    //else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
+    //          conf.attr("type") == "application/vnd.ogc.sld" )
+    //{
+    //    return readStyleFromSLD( conf.children(), out_class, matchesOnly );
+    //}
     else
         return false;
 }
@@ -186,11 +260,11 @@ StyleReader::readStyleList( const Config& conf, StyleList& out_styles )
     {
         return readStyleListFromCSS( conf, out_styles, true );
     }
-    else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
-              conf.attr("type") == "application/vnd.ogc.sld" )
-    {
-        return readStyleListFromSLD( conf.children(), out_styles, true );
-    }
+    //else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
+    //          conf.attr("type") == "application/vnd.ogc.sld" )
+    //{
+    //    return readStyleListFromSLD( conf.children(), out_styles, true );
+    //}
     else
         return false;
 }

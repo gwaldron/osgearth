@@ -82,6 +82,7 @@ namespace osgEarth { namespace Features
             const Style& style,
             FeatureList& features,
             osg::Referenced* buildData ) { return 0L; }
+
     public: 
 
         // META_Object specialization:

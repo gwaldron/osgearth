@@ -42,6 +42,7 @@ namespace osgEarth
         bool contains(double x, double y ) const;
         Bounds unionWith(const Bounds& rhs) const; 
         void expandBy( double x, double y );
+        void expandBy( double x, double y, double z );
         void expandBy( const Bounds& rhs );
     };
 

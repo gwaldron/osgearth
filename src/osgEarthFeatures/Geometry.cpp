@@ -50,7 +50,7 @@ Geometry::getBounds() const
 {
     Bounds bounds;
     for( const_iterator i = begin(); i != end(); ++i )
-        bounds.expandBy( i->x(), i->y() );
+        bounds.expandBy( i->x(), i->y(), i->z() );
     return bounds;
 }
 

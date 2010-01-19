@@ -31,21 +31,22 @@ namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT StyleComponent
     {
-    public:
-        virtual void accept( class StyleVisitor& visitor ) =0;
+    //public:
+    //    virtual void accept( class StyleVisitor& visitor ) =0;
     };
 
-    class OSGEARTHFEATURES_EXPORT StyleVisitor
-    {
-    public:
-        virtual void apply( class Stroke& obj );
-        virtual void apply( class Fill& obj );
-        virtual void apply( class LineSymbolizer& obj );
-        virtual void apply( class PolygonSymbolizer& obj );
-        virtual void apply( class Style& obj );
-        virtual void apply( class StyledLayer& obj );
-        virtual void apply( class StyleCatalog& obj );
-    };
+    //class OSGEARTHFEATURES_EXPORT StyleVisitor
+    //{
+    //public:
+    //    virtual void apply( class Stroke& obj );
+    //    virtual void apply( class Fill& obj );
+    //    virtual void apply( class LineSymbolizer& obj );
+    //    virtual void apply( class PolygonSymbolizer& obj );
+    //    virtual void apply( class TextSymbolizer& obj );
+    //    virtual void apply( class Style& obj );
+    //    virtual void apply( class StyledLayer& obj );
+    //    virtual void apply( class StyleCatalog& obj );
+    //};
 
     class OSGEARTHFEATURES_EXPORT Stroke : public StyleComponent
     {
@@ -62,175 +63,150 @@ namespace osgEarth { namespace Features
         };
 
     public:
-        Stroke()
-            : _color( 255, 255, 255, 255 ),
-              _width( 1.0f ),
-              _opacity( 1.0f ),
-              _lineJoin( LINEJOIN_DEFAULT ),
-              _lineCap( LINECAP_DEFAULT ) { }
+        Stroke();
 
-        Stroke( const Stroke& rhs )
-            : _lineJoin( rhs._lineJoin ),
-              _lineCap( rhs._lineCap ),
-              _color( rhs._color ),
-              _width( rhs._width ),
-              _opacity( rhs._opacity ) { }
+        osg::Vec4f& color() { return _color; }
+        const osg::Vec4f& color() const { return _color; }
 
-        osg::Vec4ub& color() {
-            return _color; }
-        const osg::Vec4ub color() const {
-            return _color; }
+        optional<LineCapStyle>& lineCap() { return _lineCap; }
+        const optional<LineCapStyle>& lineCap() const { return _lineCap; }
 
-        float& opacity() {
-            return _opacity; }
-        const float& opacity() const {
-            return _opacity; }
+        optional<LineJoinStyle>& lineJoin() { return _lineJoin; }
+        const optional<LineJoinStyle>& lineJoin() const { return _lineJoin; }
 
-        LineCapStyle& lineCap() {
-            return _lineCap; }
-        const LineCapStyle& lineCap() const {
-            return _lineCap; }
+        optional<float>& width() { return _width; }        
+        const optional<float>& width() const { return _width; }
 
-        LineJoinStyle& lineJoin() {
-            return _lineJoin; }
-        const LineJoinStyle& lineJoin() const {
-            return _lineJoin; }
+        //optional<float>& dashOffset() { return _dashOffset; }
+        //const optional<float>& dashOffset() const { return _dashOffset; }
 
-        float& width() { 
-            return _width; }        
-        const float& width() const {
-            return _width; }
-
-        float& dashOffset() {
-            return _dashOffset; }
-        const float& dashOffset() const {
-            return _dashOffset; }
-
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
 
     protected:
-        osg::Vec4ub _color;
-        float _opacity;
-        LineJoinStyle _lineJoin;
-        LineCapStyle  _lineCap;
-        float _width;
-        float _dashOffset;
+        osg::Vec4f              _color;
+        optional<LineCapStyle>  _lineCap;
+        optional<LineJoinStyle> _lineJoin;
+        optional<float>         _width;
     };
 
     class OSGEARTHFEATURES_EXPORT Fill : public StyleComponent
     {
     public:
-        Fill()
-            : _color( 255, 255, 255, 255 ),
-              _opacity( 1.0f ) { }
-        Fill( const Fill& rhs )
-            : _color( rhs._color ),
-              _opacity( rhs._opacity ) { }
+        Fill();
 
-        osg::Vec4ub& color() {
-            return _color; }
-        const osg::Vec4ub color() const {
-            return _color; }
+        osg::Vec4f& color() { return _color; }
+        const osg::Vec4f& color() const { return _color; }
 
-        float& opacity() {
-            return _opacity; }
-        const float& opacity() const {
-            return _opacity; }
-
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
 
     protected:
-        osg::Vec4ub _color;
-        float _opacity;
+        osg::Vec4f _color;
     };
 
     class OSGEARTHFEATURES_EXPORT Symbolizer : public StyleComponent
     {
     protected:
-        Symbolizer() { }
-        Symbolizer( const Symbolizer& rhs ) { }
+        Symbolizer();
     };
 
     class OSGEARTHFEATURES_EXPORT LineSymbolizer : public Symbolizer
     {
     public:
-        LineSymbolizer() { }
-        LineSymbolizer( const LineSymbolizer& rhs )
-            : _stroke( rhs._stroke ) { }
+        LineSymbolizer();
 
-        Stroke& stroke() {
-            return _stroke; }
-        const Stroke& stroke() const {
-            return _stroke; }
+        optional<Stroke>& stroke() { return _stroke; }
+        const optional<Stroke>& stroke() const { return _stroke; }
 
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
-
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
     protected:
-        Stroke _stroke;
+        optional<Stroke> _stroke;
     };
 
     class OSGEARTHFEATURES_EXPORT PolygonSymbolizer : public Symbolizer
     {
     public:
-        PolygonSymbolizer() { }
-        PolygonSymbolizer( const PolygonSymbolizer& rhs )
-            : _fill( rhs._fill ) { }
+        PolygonSymbolizer();
 
-        Fill& fill() {
-            return _fill; }
-        const Fill& fill() const {
-            return _fill; }
+        optional<Fill>& fill() { return _fill; }
+        const optional<Fill>& fill() const { return _fill; }
 
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
+
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
 
     protected:
-        Fill _fill;
+        optional<Fill> _fill;
+    };
+
+    class OSGEARTHFEATURES_EXPORT TextSymbolizer : public Symbolizer
+    {
+    public:
+        TextSymbolizer();
+
+        optional<Fill>& fill() { return _fill; }
+        const optional<Fill>& fill() const { return _fill; }
+
+        optional<Stroke>& halo() { return _halo; }
+        const optional<Stroke>& halo() const { return _halo; }
+
+        optional<std::string>& font() { return _font; }
+        const optional<std::string> font() const { return _font; }
+
+        optional<float>& size() { return _size; }
+        const optional<float>& size() const { return _size; }
+
+
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
+    protected:
+        optional<Fill>        _fill;
+        optional<Stroke>      _halo;
+        optional<std::string> _font;
+        optional<float>       _size;
     };
 
     class OSGEARTHFEATURES_EXPORT Style : public StyleComponent
     {
     public:
-        Style() { }
-        Style( const Style& rhs )
-            : _name( rhs._name ),
-              _query( rhs._query ),
-              _lineSymbolizer( rhs._lineSymbolizer ),
-              _polygonSymbolizer( rhs._polygonSymbolizer ) { }
+        Style();
 
-        std::string& name() {
-            return _name; }
-        const std::string& name() const {
-            return _name; }
+        /** Name of this style. */
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
 
-        Query& query() {
-            return _query; }
-        const Query& query() const {
-            return _query; }
+        /** Expression/spatial filter used to select items to which the style will apply */
+        optional<Query>& query() { return _query; }
+        const optional<Query>& query() const { return _query; }
 
-        LineSymbolizer& lineSymbolizer() {
-            return _lineSymbolizer; }
-        const LineSymbolizer& lineSymbolizer() const {
-            return _lineSymbolizer; }
+        /** Style information for line elements. */
+        optional<LineSymbolizer>& lineSymbolizer() { return _lineSymbolizer; }
+        const optional<LineSymbolizer>& lineSymbolizer() const { return _lineSymbolizer; }
 
-        PolygonSymbolizer& polygonSymbolizer() {
-            return _polygonSymbolizer; }
-        const PolygonSymbolizer& polygonSymbolizer() const {
-            return _polygonSymbolizer; }
+        /** Style information for polygon elements. */
+        optional<PolygonSymbolizer>& polygonSymbolizer() { return _polygonSymbolizer; }
+        const optional<PolygonSymbolizer>& polygonSymbolizer() const { return _polygonSymbolizer; }
 
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
+        /** Style information for text elements. */
+        optional<TextSymbolizer>& textSymbolizer() { return _textSymbolizer; }
+        const optional<TextSymbolizer>& textSymbolizer() const { return _textSymbolizer; }
+
+
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
         
-        osg::Vec4ub getColor( const Geometry::Type& geomType ) const;
+        /** Convenience method to easily grab wither the line- or poly- color based
+            on the geometry type. */
+        osg::Vec4f getColor( const Geometry::Type& geomType ) const;
 
     protected:
-        std::string _name;
-        Query _query;
-        LineSymbolizer _lineSymbolizer;
-        PolygonSymbolizer _polygonSymbolizer;
+        std::string       _name;
+        optional<Query>             _query;
+        optional<LineSymbolizer>    _lineSymbolizer;
+        optional<PolygonSymbolizer> _polygonSymbolizer;
+        optional<TextSymbolizer>    _textSymbolizer;
     };
 
     typedef std::list< Style > StyleList;
@@ -238,26 +214,22 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT StyledLayer : public StyleComponent
     {
     public:
-        StyledLayer() { }
-        StyledLayer( const StyledLayer& rhs )
-            : _name( rhs._name ),
-            _styles( rhs._styles ) { }
+        StyledLayer();
 
-        std::string& name() {
-            return _name; }
-        const std::string& name() const {
-            return _name; }
+        /** Name of this styled layer. */
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
         
-        StyleList& styles() {
-            return _styles; }
-        const StyleList& styles() const {
-            return _styles; }
+        /** Collection of styles in this layer. */
+        StyleList& styles() { return _styles; }
+        const StyleList& styles() const { return _styles; }
 
+        /** Whether this styled layer definition is "empty" (undefined) */
         bool empty() const {
             return _name.empty() || _styles.empty(); }
 
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
 
     protected:
         std::string _name;
@@ -269,27 +241,15 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT StyleCatalog : public StyleComponent
     {
     public:
-        StyleCatalog() { }
-        StyleCatalog( const StyleCatalog& rhs )
-            : _namedLayers( rhs._namedLayers ) { }
+        StyleCatalog();
 
-        StyledLayers& namedLayers() { 
-            return _namedLayers; }
-        const StyledLayers& namedLayers() const { 
-            return _namedLayers; }
+        StyledLayers& namedLayers() { return _namedLayers; }
+        const StyledLayers& namedLayers() const { return _namedLayers; }
 
-        bool getNamedLayer( const std::string& name, StyledLayer& out_layer ) const {
-            for( StyledLayers::const_iterator i = _namedLayers.begin(); i != _namedLayers.end(); i++ ) {
-                if ( i->name() == name ) {
-                    out_layer = *i;
-                    return true;
-                }
-            }
-            return false;
-        }
+        bool getNamedLayer( const std::string& name, StyledLayer& out_layer ) const;
 
-        virtual void accept( class StyleVisitor& visitor ) {
-            visitor.apply( *this ); }
+        //virtual void accept( class StyleVisitor& visitor ) {
+        //    visitor.apply( *this ); }
 
     protected:
         StyledLayers _namedLayers;
@@ -302,10 +262,10 @@ namespace osgEarth { namespace Features
         static bool readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_catalog );
         static bool readStyle( const Config& conf, Style& out_style, bool matchesOnly =true );
         static bool readStyleFromCSS( const Config& conf, Style& out_style, bool matchesOnly =true);
-        static bool readStyleFromSLD( const ConfigSet& confSet, Style& out_style, bool matchesOnly =true);
+        //static bool readStyleFromSLD( const ConfigSet& confSet, Style& out_style, bool matchesOnly =true);
         static bool readStyleList( const Config& conf, StyleList& out_classes );
         static bool readStyleListFromCSS( const Config& conf, StyleList& out_classes, bool createIfNecessary =false);
-        static bool readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary =false);
+        //static bool readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary =false);
     };
 
 } } // namespace osgEarth::Features

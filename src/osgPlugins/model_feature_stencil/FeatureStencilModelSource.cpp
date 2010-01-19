@@ -152,8 +152,8 @@ public:
         if ( hasLines )
         {
             BufferFilter buffer;
-            buffer.distance() = 0.5 * style.lineSymbolizer().stroke().width();
-            buffer.capStyle() = style.lineSymbolizer().stroke().lineCap();
+            buffer.distance() = 0.5 * style.lineSymbolizer()->stroke()->width().value();
+            buffer.capStyle() = style.lineSymbolizer()->stroke()->lineCap().value();
             context = buffer.push( features, context );
         }
 
@@ -223,7 +223,7 @@ public:
                 {
                     osg::notify(osg::NOTICE) << "[osgEarth] Creating new style group for '" << style.name() << "'" << std::endl;
                     styleNode = new StencilVolumeNode();
-                    osg::Vec4ub maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
+                    osg::Vec4f maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
                     styleNode->setColor( maskColor );
                     buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
                     buildData->_styleGroups.push_back( BuildData::StyleGroup( style.name(), styleNode ) );

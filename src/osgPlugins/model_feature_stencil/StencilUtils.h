@@ -57,7 +57,7 @@ public:
     int setBaseRenderBin( int bin );
 
     // sets the render color
-    void setColor( const osg::Vec4ub& color );
+    void setColor( const osg::Vec4f& color );
 
     // adds volume geometry to the node
     void addVolumes( osg::Node* node );
@@ -68,7 +68,7 @@ protected:
     osg::Group* _stencilGroup1;
     osg::Group* _stencilGroup2;
     osg::Group* _maskGroup;
-    osg::Vec4ubArray* _maskColorArray;
+    osg::Vec4Array* _maskColorArray;
 };
 
 

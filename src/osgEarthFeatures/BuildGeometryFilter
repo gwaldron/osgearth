@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Annotation>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/Styling>
 #include <osg/Geode>
@@ -53,6 +54,8 @@ namespace osgEarth { namespace Features
         void reset();
         
         bool push( Feature* input, const FilterContext& context );
+        bool pushRegularFeature( Feature* input, const FilterContext& context );
+        bool pushTextAnnotation( TextAnnotation* input, const FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

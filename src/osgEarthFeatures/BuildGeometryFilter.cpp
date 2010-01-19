@@ -22,8 +22,11 @@
 #include <osg/Geometry>
 #include <osg/LineWidth>
 #include <osg/Point>
+#include <osg/Depth>
 #include <osg/PolygonOffset>
 #include <osg/MatrixTransform>
+#include <osg/ClusterCullingCallback>
+#include <osgText/Text>
 #include <osgUtil/Tessellator>
 
 using namespace osgEarth;
@@ -46,11 +49,60 @@ BuildGeometryFilter::reset()
 }
 
 bool
-BuildGeometryFilter::push( Feature* input, const FilterContext& context )
+BuildGeometryFilter::pushTextAnnotation( TextAnnotation* anno, const FilterContext& context )
 {
-    if ( !input || !input->getGeometry() )
-        return true;
+    // find the centroid
+    osg::Vec3d centroid = anno->getGeometry()->getBounds().center();
 
+    osgText::Text* t = new osgText::Text();
+    t->setText( anno->text() );
+    t->setFont( "fonts/arial.ttf" );
+    t->setAutoRotateToScreen( true );
+    t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
+    t->setCharacterSize( 32.0f );
+    //t->setCharacterSizeMode( osgText::TextBase::OBJECT_COORDS_WITH_MAXIMUM_SCREEN_SIZE_CAPPED_BY_FONT_HEIGHT );
+    //t->setCharacterSize( 300000.0f );
+    t->setPosition( centroid );
+    t->setAlignment( osgText::TextBase::CENTER_CENTER );
+    t->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
+    t->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin" );
+
+    // apply styling as appropriate:
+    osg::Vec4f textColor(1,1,1,1);
+    osg::Vec4f haloColor(0,0,0,1);
+
+    if ( _style->textSymbolizer().isSet() )
+    {
+        textColor = _style->textSymbolizer()->fill()->color();
+        if ( _style->textSymbolizer()->halo().isSet() )
+        {
+            haloColor = _style->textSymbolizer()->halo()->color();
+        }
+    }
+
+    t->setColor( textColor );
+    t->setBackdropColor( haloColor );
+    t->setBackdropType( osgText::Text::OUTLINE );
+
+    if ( context.isGeocentric() )
+    {
+        // install a cluster culler: note that the CCC control point and normal must be
+        // in world coordinates
+        const osg::EllipsoidModel* ellip = context.profile()->getSRS()->getEllipsoid();
+        osg::Vec3d cp = centroid * context.inverseReferenceFrame();
+        osg::Vec3d normal = ellip->computeLocalUpVector( cp.x(), cp.y(), cp.z() );
+        osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback( cp, normal, 0.0f );
+        t->setCullCallback( ccc );
+    }
+
+    _geode->addDrawable( t );
+
+    return true;    
+}
+
+bool
+BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& context )
+{
     GeometryIterator parts( input->getGeometry() );
     parts.traversePolygonHoles() = false;
     while( parts.hasMore() )
@@ -88,21 +140,19 @@ BuildGeometryFilter::push( Feature* input, const FilterContext& context )
             break;
         }
 
-        osg::Vec4ub color;
-        if ( renderType == Geometry::TYPE_POLYGON )
-        {
-            color = _style.get().polygonSymbolizer().fill().color();
-            color.a() = (int)(255.0f * _style.get().polygonSymbolizer().fill().opacity());
-        }
-        else
-        {
-            color = _style->lineSymbolizer().stroke().color();
-            color.a() = (int)(255.0f * _style->lineSymbolizer().stroke().opacity());
-        }
+        osg::Vec4f color = _style->getColor( renderType );
+        //if ( renderType == Geometry::TYPE_POLYGON )
+        //{
+        //    color = _style->polygonSymbolizer()->fill()->color();
+        //}
+        //else
+        //{
+        //    color = _style->lineSymbolizer()->stroke()->color().value();
+        //}
     
         osg::Geometry* osgGeom = new osg::Geometry();
 
-        osg::Vec4ubArray* colors = new osg::Vec4ubArray(1);
+        osg::Vec4Array* colors = new osg::Vec4Array(1);
         (*colors)[0] = color;
         osgGeom->setColorArray( colors );
         osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
@@ -147,6 +197,17 @@ BuildGeometryFilter::push( Feature* input, const FilterContext& context )
     return true;
 }
 
+bool
+BuildGeometryFilter::push( Feature* input, const FilterContext& context )
+{
+    if ( !input || !input->getGeometry() )
+        return true;
+    else if ( dynamic_cast<TextAnnotation*>(input) )
+        return pushTextAnnotation( static_cast<TextAnnotation*>(input), context );
+    else
+        return pushRegularFeature( input, context );
+}
+
 FilterContext
 BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context )
 {
@@ -160,11 +221,9 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
         if ( _style.isSet() && _geode.valid() )
         {
             // could optimize this to only happen is lines or points were created ..
-            float size = _style->lineSymbolizer().stroke().width();
+            float size = _style->lineSymbolizer()->stroke()->width().value();
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
-
-            float width = _style->lineSymbolizer().stroke().width();
-            _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(width), osg::StateAttribute::ON );
+            _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(size), osg::StateAttribute::ON );
         }
 
         output = _geode.release();

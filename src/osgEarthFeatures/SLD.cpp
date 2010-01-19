@@ -25,8 +25,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-static osg::Vec4ub
-htmlColorToVec4ub( const std::string& html )
+static osg::Vec4f
+htmlColorToVec4f( const std::string& html )
 {
     std::string t = html;
     std::transform( t.begin(), t.end(), t.begin(), ::tolower );
@@ -39,7 +39,7 @@ htmlColorToVec4ub( const std::string& html )
         c.b() |= t[5]<='9' ? (t[5]-'0')<<4 : (10+(t[5]-'a'))<<4;
         c.b() |= t[6]<='9' ? (t[6]-'0')    : (10+(t[6]-'a'));
     }
-    return c;
+    return osg::Vec4f( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, 1.0f );
 }
 
 #define CSS_STROKE          "stroke"
@@ -51,102 +51,102 @@ htmlColorToVec4ub( const std::string& html )
 #define CSS_FILL_OPACITY   "fill-opacity"
 
 
-struct SLDFromConfigVisitor : public StyleVisitor
-{
-    void apply( class Stroke& obj ) {
-        ConfigSet set = _conf.top().children( "sld:CssParameter" );
-        for(ConfigSet::iterator i = set.begin(); i != set.end(); i++) {
-            if ( i->attr("name") == CSS_STROKE )
-                obj.color() = htmlColorToVec4ub( i->value( "ogc:Literal" ) );
-            else if ( i->attr("name") == CSS_STROKE_OPACITY )
-                obj.opacity() = i->value<float>( "ogc:Literal", obj.opacity() );
-            else if ( i->attr("name") == CSS_STROKE_WIDTH )
-                obj.width() = i->value<float>( "ogc:Literal", obj.width() );
-            //todo
-        }
-    }
-
-    void apply( class Fill& obj ) {
-        ConfigSet set = _conf.top().children( "sld:CssParameter" );
-        for(ConfigSet::iterator i = set.begin(); i != set.end(); i++) {
-            if ( i->attr("name") == CSS_FILL )
-                obj.color() = htmlColorToVec4ub( i->value( "ogc:Literal" ) );
-            else if ( i->attr("name") == CSS_FILL_OPACITY )
-                obj.opacity() = i->value<float>( "ogc:Literal", obj.opacity() );
-            //todo
-        }
-    }
-
-    void apply( class LineSymbolizer& obj ) {
-        traverse( _conf.top().child( "sld:Stroke" ), obj.stroke() );
-    }
-
-    void apply( class PolygonSymbolizer& obj ) {
-        traverse( _conf.top().child( "sld:Fill" ), obj.fill() );
-    }
-
-    //void apply( class FeatureQuery& obj ) {
-    //    //TODO
-    //}
-
-    void apply( class Style& obj ) {
-        //traverse( _conf.top().child( "sld:Filter" ), obj.filter() );
-        traverse( _conf.top().child( "sld:LineSymbolizer" ), obj.lineSymbolizer() );
-        traverse( _conf.top().child( "sld:PolygonSymbolizer" ), obj.polygonSymbolizer() );
-    }
-
-    void apply( class StyledLayer& obj ) {
-        traverse( _conf.top().child( "sld:UserStyle" ), obj );
-        traverse( _conf.top().child( "sld:FeatureTypeStyle" ), obj );
-        ConfigSet rules = _conf.top().children( "sld:Rule" );
-        for( ConfigSet::iterator i = rules.begin(); i != rules.end(); ++i ) {
-            Style style;
-            traverse( *i, style );
-            obj.styles().push_back( style );
-        }            
-    }
-
-    void apply( class StyleCatalog& obj ) {
-        ConfigSet c = _conf.top().children( "sld:NamedLayer" );
-        for(ConfigSet::iterator i = c.begin(); i != c.end(); i++ ) {
-            StyledLayer namedLayer;
-            traverse( *i, namedLayer );
-            obj.namedLayers().push_back( namedLayer );
-        }
-    }
-
-    void pushConfig( const Config& conf ) { _conf.push( conf ); }
-    void popConfig() { _conf.pop(); }
-    void traverse( const Config& conf, StyleComponent& sc ) {
-        if ( !conf.empty() ) {
-            pushConfig( conf );
-            sc.accept( *this );
-            popConfig();
-        }
-    }
-
-    std::stack<Config> _conf;
-};
-
-bool
-SLDReader::readConfig( const Config& conf, StyleCatalog& out_sld )
-{
-    SLDFromConfigVisitor visitor;
-    visitor.pushConfig( conf );
-    out_sld.accept( visitor );
-    return true;
-}
-
-bool
-SLDReader::readXML( std::istream& in, StyleCatalog& out_sld )
-{
-    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in );
-    Config conf = xml->toConfig();
-    return readConfig( conf, out_sld );
-}
+//struct SLDFromConfigVisitor : public StyleVisitor
+//{
+//    void apply( class Stroke& obj ) {
+//        ConfigSet set = _conf.top().children( "sld:CssParameter" );
+//        for(ConfigSet::iterator i = set.begin(); i != set.end(); i++) {
+//            if ( i->attr("name") == CSS_STROKE )
+//                obj.color() = htmlColorToVec4ub( i->value( "ogc:Literal" ) );
+//            else if ( i->attr("name") == CSS_STROKE_OPACITY )
+//                obj.opacity() = i->value<float>( "ogc:Literal", obj.opacity() );
+//            else if ( i->attr("name") == CSS_STROKE_WIDTH )
+//                obj.width() = i->value<float>( "ogc:Literal", obj.width() );
+//            //todo
+//        }
+//    }
+//
+//    void apply( class Fill& obj ) {
+//        ConfigSet set = _conf.top().children( "sld:CssParameter" );
+//        for(ConfigSet::iterator i = set.begin(); i != set.end(); i++) {
+//            if ( i->attr("name") == CSS_FILL )
+//                obj.color() = htmlColorToVec4ub( i->value( "ogc:Literal" ) );
+//            else if ( i->attr("name") == CSS_FILL_OPACITY )
+//                obj.opacity() = i->value<float>( "ogc:Literal", obj.opacity() );
+//            //todo
+//        }
+//    }
+//
+//    void apply( class LineSymbolizer& obj ) {
+//        traverse( _conf.top().child( "sld:Stroke" ), obj.stroke() );
+//    }
+//
+//    void apply( class PolygonSymbolizer& obj ) {
+//        traverse( _conf.top().child( "sld:Fill" ), obj.fill() );
+//    }
+//
+//    //void apply( class FeatureQuery& obj ) {
+//    //    //TODO
+//    //}
+//
+//    void apply( class Style& obj ) {
+//        //traverse( _conf.top().child( "sld:Filter" ), obj.filter() );
+//        traverse( _conf.top().child( "sld:LineSymbolizer" ), obj.lineSymbolizer() );
+//        traverse( _conf.top().child( "sld:PolygonSymbolizer" ), obj.polygonSymbolizer() );
+//    }
+//
+//    void apply( class StyledLayer& obj ) {
+//        traverse( _conf.top().child( "sld:UserStyle" ), obj );
+//        traverse( _conf.top().child( "sld:FeatureTypeStyle" ), obj );
+//        ConfigSet rules = _conf.top().children( "sld:Rule" );
+//        for( ConfigSet::iterator i = rules.begin(); i != rules.end(); ++i ) {
+//            Style style;
+//            traverse( *i, style );
+//            obj.styles().push_back( style );
+//        }            
+//    }
+//
+//    void apply( class StyleCatalog& obj ) {
+//        ConfigSet c = _conf.top().children( "sld:NamedLayer" );
+//        for(ConfigSet::iterator i = c.begin(); i != c.end(); i++ ) {
+//            StyledLayer namedLayer;
+//            traverse( *i, namedLayer );
+//            obj.namedLayers().push_back( namedLayer );
+//        }
+//    }
+//
+//    void pushConfig( const Config& conf ) { _conf.push( conf ); }
+//    void popConfig() { _conf.pop(); }
+//    void traverse( const Config& conf, StyleComponent& sc ) {
+//        if ( !conf.empty() ) {
+//            pushConfig( conf );
+//            sc.accept( *this );
+//            popConfig();
+//        }
+//    }
+//
+//    std::stack<Config> _conf;
+//};
+//
+//bool
+//SLDReader::readConfig( const Config& conf, StyleCatalog& out_sld )
+//{
+//    SLDFromConfigVisitor visitor;
+//    visitor.pushConfig( conf );
+//    out_sld.accept( visitor );
+//    return true;
+//}
+//
+//bool
+//SLDReader::readXML( std::istream& in, StyleCatalog& out_sld )
+//{
+//    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in );
+//    Config conf = xml->toConfig();
+//    return readConfig( conf, out_sld );
+//}
 
 static void
-parseLineCap( const std::string& value, Stroke::LineCapStyle& cap )
+parseLineCap( const std::string& value, optional<Stroke::LineCapStyle>& cap )
 {
     if ( value == "butt" ) cap = Stroke::LINECAP_BUTT;
     if ( value == "round" ) cap = Stroke::LINECAP_ROUND;
@@ -158,19 +158,26 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 {
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
-        if ( p->first == CSS_STROKE )
-            sc.lineSymbolizer().stroke().color() = htmlColorToVec4ub( p->second );
-        else if ( p->first == CSS_STROKE_OPACITY )
-            sc.lineSymbolizer().stroke().opacity() = as<float>( p->second, 1.0f );
-        else if ( p->first == CSS_STROKE_WIDTH )
-            sc.lineSymbolizer().stroke().width() = as<float>( p->second, 1.0f );
-        else if ( p->first == CSS_STROKE_LINECAP )
-            parseLineCap( p->second, sc.lineSymbolizer().stroke().lineCap() );
-        else if ( p->first == CSS_FILL )
-            sc.polygonSymbolizer().fill().color() = htmlColorToVec4ub( p->second );
-        else if ( p->first == CSS_FILL_OPACITY )
-            sc.polygonSymbolizer().fill().opacity() = as<float>( p->second, 1.0f );
-        //TODO more..
+        if ( p->first == CSS_STROKE ) {
+            sc.lineSymbolizer()->stroke()->color() = htmlColorToVec4f( p->second );
+        }
+        else if ( p->first == CSS_STROKE_OPACITY ) {
+            sc.lineSymbolizer()->stroke()->color().a() = as<float>( p->second, 1.0f );
+        }
+        else if ( p->first == CSS_STROKE_WIDTH ) {
+            sc.lineSymbolizer()->stroke()->width() = as<float>( p->second, 1.0f );
+        }
+        else if ( p->first == CSS_STROKE_LINECAP ) {
+            parseLineCap( p->second, sc.lineSymbolizer()->stroke()->lineCap() );
+        }
+        else if ( p->first == CSS_FILL ) {
+            sc.polygonSymbolizer()->fill()->color() = htmlColorToVec4f( p->second );
+        }
+        else if ( p->first == CSS_FILL_OPACITY ) {
+            sc.polygonSymbolizer()->fill()->color().a() = as<float>( p->second, 1.0f );
+        }
     }
     return true;
 }
+
+

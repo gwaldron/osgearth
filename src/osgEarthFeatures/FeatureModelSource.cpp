@@ -177,7 +177,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         //osg::notify(osg::NOTICE) << "Using embedded style info" << std::endl;
 
         // Each feature has its own embedded style data, so use that:
-        osg::ref_ptr<FeatureCursor> cursor = _features->createCursor( Query() );
+        osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
         while( cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
@@ -247,13 +247,13 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
         if ( gridder.getCellBounds( cell, cellBounds ) )
         {
             // incorporate the cell bounds into the query:
-            Query query = style.query();
+            Query query = style.query().value();
             query.bounds() = query.bounds().isSet()?
                 query.bounds()->unionWith( cellBounds ) :
                 cellBounds;
 
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = _features->createCursor( query );
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( query );
 
             // now copy the resulting feature set into a list, converting the data
             // types along the way if a geometry override is in place:

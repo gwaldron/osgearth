@@ -29,9 +29,9 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT SLDReader
     {
     public:
-        static bool readConfig( const Config& conf, StyleCatalog& out_sld );
+        //static bool readConfig( const Config& conf, StyleCatalog& out_sld );
 
-        static bool readXML( std::istream& input, StyleCatalog& out_sld );
+        //static bool readXML( std::istream& input, StyleCatalog& out_sld );
 
         static bool readStyleFromCSSParams( const Config& conf, Style& out_style );
     };

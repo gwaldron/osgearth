@@ -35,7 +35,7 @@ using namespace osgEarth;
 
 
 Bounds::Bounds() :
-osg::BoundingBoxImpl<osg::Vec3d>( DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX, DBL_MAX )
+osg::BoundingBoxImpl<osg::Vec3d>( DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX )
 {
     //nop
 }
@@ -54,6 +54,11 @@ Bounds::contains(double x, double y ) const {
 void
 Bounds::expandBy( double x, double y ) {
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, 0 );
+}
+
+void
+Bounds::expandBy( double x, double y, double z ) {
+    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, z );
 }
 
 void

@@ -164,7 +164,8 @@ public:
     }
 
 
-    FeatureCursor* createCursor( const Query& query )
+    //override
+    FeatureCursor* createFeatureCursor( const Query& query )
     {
         return new FeatureCursorOGR( 
             _dsHandle, 

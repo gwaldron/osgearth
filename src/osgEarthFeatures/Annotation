@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_ANNOTATION_H
+#define OSGEARTHFEATURES_ANNOTATION_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osg/Object>
+#include <list>
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * An "Annotation" is a feature that uses the geometry to place text or graphics;
+     * the geometry itself is not rendered.
+     */
+    class OSGEARTHFEATURES_EXPORT Annotation : public Feature
+    {
+    public:
+        /** Default constructor */
+        Annotation( long fid =0L );
+
+        /** Copy contructor */
+        Annotation( const Annotation& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+
+        META_Object( osgEarthFeatures, Annotation );
+    };
+
+    /**
+     * A "Text Annotation" is an Annotation consisting of a simple free-floating
+     * text string.
+     */
+    class OSGEARTHFEATURES_EXPORT TextAnnotation : public Annotation
+    {
+    public:
+        /** Default constructor */
+        TextAnnotation( long fid =0L );
+
+        /** Constructs a new text annotation. */
+        TextAnnotation( const std::string& text );
+
+        /** Copy constructor. */
+        TextAnnotation( const TextAnnotation& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+
+        META_Object( osgEarthFeatures, TextAnnotation );
+
+    public: // properties
+
+        /** The text string to be shown as annotation. */
+        std::string& text() { return _text; }
+        const std::string& text() const { return _text; }
+
+    protected:
+        std::string _text;
+    };
+
+} } // osgEarth::Features
+
+#endif // OSGEARTHFEATURES_ANNOTATION_H
+

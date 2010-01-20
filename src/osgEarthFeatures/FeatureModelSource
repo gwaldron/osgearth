@@ -25,6 +25,8 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureGridder>
 #include <osgEarth/ModelSource>
+#include <osgEarth/Map>
+#include <osg/Node>
 #include <osgDB/ReaderWriter>
 #include <list>
 
@@ -43,7 +45,11 @@ namespace osgEarth { namespace Features
          */
         FeatureModelSource( const PluginOptions* options =NULL );
 
+
     public:
+
+        //override 
+        virtual void initialize( const std::string& referenceURI, const osgEarth::Map* map );
 
         // override
         virtual osg::Node* createNode( ProgressCallback* progress );
@@ -68,20 +74,41 @@ namespace osgEarth { namespace Features
 
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
         virtual osg::Referenced* createBuildData() {
-            return NULL; }        
+            return NULL; }     
+
+        /**
+         * Creates OSG graph(s) representing the specified feature list.
+         *
+         * @param style
+         *      Styling information for the feature geometry
+         * @param features
+         *      Features to render
+         * @param buildData
+         *      Implementation-specific build data (from createBuildData)
+         * @param out_newNode 
+         *      Populate this field with a pointer to the new node created by this method.
+         *      This may be the same as the node returned by the method. If you do NOT
+         *      return the node, that means that the method added the node to the scene
+         *      graph itself (presumably by adding it to a group that it returned during
+         *      a previous invocation).
+         *
+         * @return Node to add to the scene graph.
+         */
+        virtual osg::Node* renderFeaturesForStyle(
+            const Style& style,
+            FeatureList& features,
+            osg::Referenced* buildData,
+            osg::Node** out_newNode =0L ) { return 0L; }
+
+    private:   
         
         /** Creates an OSG graph containing objects rendered with the provided style. The model 
             source calls this once for each style class associated with this model source. This
             method will also grid the input features into cells if necessary, calling
             renderStyleCell() for each cell. */
-        virtual osg::Node* gridAndRenderFeaturesForStyle(
+        osg::Node* gridAndRenderFeaturesForStyle(
             const Style& style,
             osg::Referenced* buildData );
-
-        virtual osg::Node* renderFeaturesForStyle(
-            const Style& style,
-            FeatureList& features,
-            osg::Referenced* buildData ) { return 0L; }
 
     public: 
 
@@ -105,6 +132,9 @@ namespace osgEarth { namespace Features
         optional<Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
         optional<GriddingPolicy> _gridding;
+
+    private:
+        osg::ref_ptr<const osgEarth::Map> _map;
 
     };
 

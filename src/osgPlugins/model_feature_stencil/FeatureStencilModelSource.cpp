@@ -80,6 +80,8 @@ public:
     //override
     void initialize( const std::string& referenceURI, const Map* map )
     {
+        FeatureModelSource::initialize( referenceURI, map );
+
         _map = map;
 
         if ( !_extrusionDistance.isSet() )
@@ -122,7 +124,7 @@ public:
     }    
     
     //override
-    osg::Node* renderFeaturesForStyle( const Style& style, FeatureList& features, osg::Referenced* data )
+    osg::Node* renderFeaturesForStyle(const Style& style, FeatureList& features, osg::Referenced* data, osg::Node** out_createdNode )
     {
         BuildData* buildData = static_cast<BuildData*>(data);
 
@@ -231,13 +233,7 @@ public:
             
                 styleNode->addVolumes( volumes );
                 result = styleNodeAlreadyCreated ? 0L : styleNode;
-
-                //osg::Vec4ub maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
-                //StencilVolumeNode* svn = new StencilVolumeNode();
-                //buildData->_renderBin = svn->setBaseRenderBin( buildData->_renderBin );
-                //svn->setColor( maskColor );
-                //svn->addVolumes( volumes.get() );
-                //result->addChild( svn );
+                if ( out_createdNode ) *out_createdNode = volumes;
             }
         }
 

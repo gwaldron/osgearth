@@ -19,9 +19,11 @@
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/Styling>
+#include <osgEarth/SpatialReference>
 #include <osg/Notify>
 #include <osg/Timer>
 #include <osg/LOD>
+#include <osg/ClusterCullingCallback>
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth;
@@ -141,6 +143,12 @@ _gridding( GriddingPolicy() )
     StyleReader::readLayerStyles( this->getName(), conf, _styleCatalog );
 }
 
+void 
+FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth::Map* map )
+{
+    _map = map;
+}
+
 osg::Node*
 FeatureModelSource::createNode( ProgressCallback* progress )
 {
@@ -240,6 +248,13 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
     // next set up a gridder/cropper:
     FeatureGridder gridder( extent.bounds(), _gridding.get() );
 
+    if ( gridder.getNumCells() > 1 )
+    {
+        osg::notify(osg::NOTICE)
+            << "[osgEarth] " << getName() << ": grid cells = " << gridder.getNumCells()
+            << std::endl;
+    }
+
     // now query the feature source once for each grid cell extent:
     for( int cell=0; cell<gridder.getNumCells(); ++cell )
     {
@@ -287,14 +302,58 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
 
             if ( cellFeatures.size() > 0 )
             {
-                // next ask the implementation to construct OSG geometry for the cell features:
-                osg::Node* styleNode = renderFeaturesForStyle( style, cellFeatures, data );
-                if ( styleNode )
+                // next ask the implementation to construct OSG geometry for the cell features.
+                // note: just b/c render* returns NULL does not mean it didn't generate anything.
+                // Some implementations might return a group node on the first pass and add children
+                // to it on subsequent passes.
+                osg::Node* createdNode = 0L;
+                osg::Node* nodeToAdd = renderFeaturesForStyle( style, cellFeatures, data, &createdNode );
+                if ( nodeToAdd )
                 {
                     if ( !styleGroup )
                         styleGroup = new osg::Group();
 
-                    styleGroup->addChild( styleNode );
+                    styleGroup->addChild( nodeToAdd );
+                }
+
+                // if the method created a node, apply a cluter culler to it if neceesary:
+                if ( createdNode )
+                {
+                    //if ( _map->isGeocentric() )
+                    //{
+                    //    const SpatialReference* mapSRS = _map->getProfile()->getSRS()->getGeographicSRS();
+                    //    GeoExtent cellExtent( extent.getSRS(), cellBounds );
+                    //    GeoExtent mapCellExtent = cellExtent.transform( mapSRS );
+
+                    //    double cx, cy;
+                    //    mapCellExtent.getCentroid( cx, cy );
+                    //    osg::Vec3d geoc_center;
+                    //    mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
+                    //        osg::DegreesToRadians( cy ), osg::DegreesToRadians( cx ), 0,
+                    //        geoc_center.x(), geoc_center.y(), geoc_center.z() );
+
+                    //    osg::Vec3d geoc_corner;
+                    //    mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
+                    //        osg::DegreesToRadians( mapCellExtent.yMin() ), osg::DegreesToRadians( mapCellExtent.xMin()), 0,
+                    //        geoc_corner.x(), geoc_corner.y(), geoc_corner.z() );
+
+                    //    osg::Vec3d normal = geoc_center; normal.normalize();
+                    //    double deviation = -0.75;
+
+                    //    osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback(
+                    //        geoc_center, normal, deviation );
+
+                    //    double radius = (geoc_center - geoc_corner).length();
+                    //    ccc->setRadius( radius );
+
+                    //    createdNode->setCullCallback( ccc );
+
+                    //    //osg::notify(osg::NOTICE)
+                    //    //    << "[osgEarth] Cell: " << mapCellExtent.toString()
+                    //    //    << ": centroid = " << cx << "," << cy
+                    //    //    << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()
+                    //    //    << std::endl;
+                    //}
                 }
             }
         }

@@ -53,8 +53,6 @@ _policy( policy )
     _cellsX = osg::clampAbove( _cellsX, 1 );
     _cellsY = osg::clampAbove( _cellsY, 1 );
 
-    osg::notify(osg::INFO) << "[osgEarth] Grid cells = " << _cellsX << " x " << _cellsY << std::endl;
-
 #ifndef OSGEARTH_HAVE_GEOS
 
     if ( policy.cullingTechnique().isSet() && policy.cullingTechnique() == GriddingPolicy::CULL_BY_CROPPING )

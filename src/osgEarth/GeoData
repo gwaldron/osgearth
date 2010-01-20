@@ -44,6 +44,7 @@ namespace osgEarth
         void expandBy( double x, double y );
         void expandBy( double x, double y, double z );
         void expandBy( const Bounds& rhs );
+        osg::Vec2d center2d() const;
     };
 
     /**

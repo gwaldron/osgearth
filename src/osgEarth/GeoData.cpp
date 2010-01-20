@@ -98,6 +98,12 @@ Bounds::depth() const {
     return zMax()-zMin();
 }
 
+osg::Vec2d
+Bounds::center2d() const {
+    osg::Vec3d c = center();
+    return osg::Vec2d( c.x(), c.y() );
+}
+
 
 /*************************************************************/
 
@@ -115,6 +121,17 @@ _srs( srs ),
 _xmin(xmin),_ymin(ymin),_xmax(xmax),_ymax(ymax)
 {
     //NOP
+}
+
+
+GeoExtent::GeoExtent( const SpatialReference* srs, const Bounds& bounds ) :
+_srs( srs ),
+_xmin( bounds.xMin() ),
+_ymin( bounds.yMin() ),
+_xmax( bounds.xMax() ),
+_ymax( bounds.yMax() )
+{
+    //nop
 }
 
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :

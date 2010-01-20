@@ -75,12 +75,14 @@ public:
 
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
+        FeatureModelSource::initialize( referenceURI, map );
+
         _mapSRS = map->getProfile()->getSRS();
         _mapIsGeocentric = map->isGeocentric();
     }
 
     //override
-    osg::Node* features( const Style& style, FeatureList& features, osg::Referenced* data )
+    osg::Node* renderFeaturesForStyle( const Style& style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
     {
         // A processing context to use with the filters:
         FilterContext context;
@@ -100,6 +102,7 @@ public:
         build.style() = style;
         context = build.push( features, result, context );
 
+        if ( out_newNode ) *out_newNode = result.get();
         return result.release();
     }
 

@@ -116,6 +116,12 @@ namespace osgEarth
             _children.push_back( Config( name, value ) );
         }
 
+        template<typename T>
+        void addOptional( const std::string& name, const optional<T>& opt ) {
+            if ( opt.isSet() )
+                add( name, osgEarth::toString<T>( opt.value() ) );
+        }
+
         void addChild( const Config& conf ) {
             add( conf );
         }
@@ -147,6 +153,20 @@ namespace osgEarth
                 r = child(name).value();
             return osgEarth::as<T>( r, fallback );
         }            
+
+        template<typename T>
+        bool getOptional( const std::string& name, optional<T>& output ) const {
+            std::string r = attr(name);
+            if ( r.empty() && hasChild(name) )
+                r = child(name).value();
+            if ( !r.empty() ) {
+                output = osgEarth::as<T>( r, output.defaultValue() );
+                return true;
+            } 
+            else {
+                return false;
+            }
+        }
 
         std::string toString( int indent =0 ) const;
 

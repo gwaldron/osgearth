@@ -29,60 +29,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-#define PROP_CELL_SIZE         "cell_size"
-#define PROP_CULLING_TECHNIQUE "culling_technique"
-#define PROP_SPATIALIZE_GROUPS "spatialize_groups"
-
-GriddingPolicy::GriddingPolicy() :
-_cellSize( DBL_MAX ),
-_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
-_spatializeGroups( true )
-{
-    //nop
-}
-
-GriddingPolicy::GriddingPolicy( const Config& conf ) :
-_cellSize( DBL_MAX ),
-_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
-_spatializeGroups( true )
-{
-    // read the cell size
-    if ( conf.hasValue( PROP_CELL_SIZE ) )
-        _cellSize = conf.value<double>( PROP_CELL_SIZE, _cellSize.defaultValue() );
-
-    // read the culling technique
-    if ( conf.value(PROP_CULLING_TECHNIQUE) == "crop" )
-        _cullingTechnique = CULL_BY_CROPPING;
-    else if ( conf.value(PROP_CULLING_TECHNIQUE) == "centroid" )
-        _cullingTechnique = CULL_BY_CENTROID;
-
-    // spatial optimization
-    if ( conf.value(PROP_SPATIALIZE_GROUPS) == "true" )
-        _spatializeGroups = true;
-    else if ( conf.value(PROP_SPATIALIZE_GROUPS) == "false" )
-        _spatializeGroups = false;
-}
-
-Config
-GriddingPolicy::toConfig() const 
-{
-    Config conf;
-    if ( _cellSize.isSet() )
-        conf.add( PROP_CELL_SIZE, toString(_cellSize.value()) );
-    if ( _cullingTechnique.isSet() ) {
-        if ( _cullingTechnique == CULL_BY_CROPPING )
-            conf.add( PROP_CULLING_TECHNIQUE, "crop" );
-        else if ( _cullingTechnique == CULL_BY_CENTROID )
-            conf.add( PROP_CULLING_TECHNIQUE, "centroid" );
-    }
-    if ( _spatializeGroups.isSet() ) {
-        conf.add( PROP_SPATIALIZE_GROUPS, toString(_spatializeGroups.value()) );
-    }
-    return conf;        
-}
-
-/***************************************************************************/
-
 #define PROP_FEATURES      "features"
 #define PROP_GEOMETRY_TYPE "geometry_type"
 #define PROP_LIGHTING      "lighting"
@@ -319,41 +265,49 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
                 // if the method created a node, apply a cluter culler to it if neceesary:
                 if ( createdNode )
                 {
-                    //if ( _map->isGeocentric() )
-                    //{
-                    //    const SpatialReference* mapSRS = _map->getProfile()->getSRS()->getGeographicSRS();
-                    //    GeoExtent cellExtent( extent.getSRS(), cellBounds );
-                    //    GeoExtent mapCellExtent = cellExtent.transform( mapSRS );
+                    if ( _map->isGeocentric() && _gridding->clusterCulling() == true )
+                    {
+                        const SpatialReference* mapSRS = _map->getProfile()->getSRS()->getGeographicSRS();
+                        GeoExtent cellExtent( extent.getSRS(), cellBounds );
+                        GeoExtent mapCellExtent = cellExtent.transform( mapSRS );
 
-                    //    double cx, cy;
-                    //    mapCellExtent.getCentroid( cx, cy );
-                    //    osg::Vec3d geoc_center;
-                    //    mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
-                    //        osg::DegreesToRadians( cy ), osg::DegreesToRadians( cx ), 0,
-                    //        geoc_center.x(), geoc_center.y(), geoc_center.z() );
+                        double cx, cy;
+                        mapCellExtent.getCentroid( cx, cy );
 
-                    //    osg::Vec3d geoc_corner;
-                    //    mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
-                    //        osg::DegreesToRadians( mapCellExtent.yMin() ), osg::DegreesToRadians( mapCellExtent.xMin()), 0,
-                    //        geoc_corner.x(), geoc_corner.y(), geoc_corner.z() );
+                        osg::Vec3d geoc_center;
+                        mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
+                            osg::DegreesToRadians( cy ), osg::DegreesToRadians( cx ), 0,
+                            geoc_center.x(), geoc_center.y(), geoc_center.z() );
 
-                    //    osg::Vec3d normal = geoc_center; normal.normalize();
-                    //    double deviation = -0.75;
+                        osg::Vec3d geoc_corner;
+                        mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
+                            osg::DegreesToRadians( mapCellExtent.yMin() ), osg::DegreesToRadians( mapCellExtent.xMin()), 0,
+                            geoc_corner.x(), geoc_corner.y(), geoc_corner.z() );
 
-                    //    osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback(
-                    //        geoc_center, normal, deviation );
+                        osg::Vec3d normal = mapSRS->getEllipsoid()->computeLocalUpVector(
+                            geoc_center.x(), geoc_center.y(), geoc_center.z() );
 
-                    //    double radius = (geoc_center - geoc_corner).length();
-                    //    ccc->setRadius( radius );
+                        // the "deviation" determines how far below the tangent plane of the cell your
+                        // camera has to be before culling occurs. 0.0 is at the plane; -1.0 is 90deg
+                        // below the plane (which means never cull).
+                        osg::Vec3d radialVector = geoc_corner - geoc_center;
+                        double radius = radialVector.length();
+                        radialVector.normalize();
+                        double minDotProduct = radialVector * normal;                     
 
-                    //    createdNode->setCullCallback( ccc );
+                        osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
+                        ccc->set( geoc_center, normal, minDotProduct, radius );
 
-                    //    //osg::notify(osg::NOTICE)
-                    //    //    << "[osgEarth] Cell: " << mapCellExtent.toString()
-                    //    //    << ": centroid = " << cx << "," << cy
-                    //    //    << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()
-                    //    //    << std::endl;
-                    //}
+                        createdNode->setCullCallback( ccc );
+
+                        osg::notify(osg::NOTICE)
+                            << "[osgEarth] Cell: " << mapCellExtent.toString()
+                            << ": centroid = " << cx << "," << cy
+                            << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()
+                            << "; dev = " << minDotProduct
+                            << "; radius = " << radius
+                            << std::endl;
+                    }
                 }
             }
         }

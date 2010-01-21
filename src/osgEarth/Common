@@ -27,6 +27,7 @@
 #include <sstream>
 #include <osg/io_utils>
 #include <map>
+#include <algorithm>
 
 //#ifdef WIN32
 //#  include <windows.h>
@@ -53,6 +54,18 @@ namespace osgEarth
         return temp;
     }
 
+    // template specialization for a bool
+    template<> inline bool
+    as<bool>( const std::string& str, bool default_value )
+    {
+        std::string temp = str;
+        std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+        return
+            temp == "true" || temp == "yes" || temp == "on" ? true :
+            temp == "false" || temp == "no" || temp == "off" ? false :
+            default_value;
+    }
+
     // converts a primitive to a string
     // TODO: precision??
     template<typename T> inline std::string
@@ -65,7 +78,7 @@ namespace osgEarth
 
     // template speciallization for a bool to print out "true" or "false"
     template<> inline std::string
-      toString<bool>(const bool value)
+    toString<bool>(const bool value)
     {
       return value ? "true" : "false";
     }

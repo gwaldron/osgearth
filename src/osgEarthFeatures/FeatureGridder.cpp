@@ -33,6 +33,66 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
+/**************************************************************************/
+
+#define PROP_CELL_SIZE         "cell_size"
+#define PROP_CULLING_TECHNIQUE "culling_technique"
+#define PROP_SPATIALIZE_GROUPS "spatialize_groups"
+#define PROP_CLUSTER_CULLING   "cluster_culling"
+
+GriddingPolicy::GriddingPolicy() :
+_cellSize( DBL_MAX ),
+_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
+_spatializeGroups( true ),
+_clusterCulling( false )
+{
+    //nop
+}
+
+GriddingPolicy::GriddingPolicy( const Config& conf ) :
+_cellSize( DBL_MAX ),
+_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
+_spatializeGroups( true ),
+_clusterCulling( false )
+{
+    // read the cell size
+    if ( conf.hasValue( PROP_CELL_SIZE ) )
+        _cellSize = conf.value<double>( PROP_CELL_SIZE, _cellSize.defaultValue() );
+
+    // read the culling technique
+    if ( conf.value(PROP_CULLING_TECHNIQUE) == "crop" )
+        _cullingTechnique = CULL_BY_CROPPING;
+    else if ( conf.value(PROP_CULLING_TECHNIQUE) == "centroid" )
+        _cullingTechnique = CULL_BY_CENTROID;
+
+    // spatial optimization
+    conf.getOptional<bool>( PROP_SPATIALIZE_GROUPS, _spatializeGroups );
+
+    // cluster culling
+    conf.getOptional<bool>( PROP_CLUSTER_CULLING, _clusterCulling );
+}
+
+Config
+GriddingPolicy::toConfig() const 
+{
+    Config conf;
+
+    conf.addOptional( PROP_CELL_SIZE, _cellSize );
+
+    if ( _cullingTechnique.isSet() ) {
+        if ( _cullingTechnique == CULL_BY_CROPPING )
+            conf.add( PROP_CULLING_TECHNIQUE, "crop" );
+        else if ( _cullingTechnique == CULL_BY_CENTROID )
+            conf.add( PROP_CULLING_TECHNIQUE, "centroid" );
+    }
+
+    conf.addOptional( PROP_SPATIALIZE_GROUPS, _spatializeGroups );
+    conf.addOptional( PROP_CLUSTER_CULLING, _clusterCulling );
+
+    return conf;        
+}
+
+/***************************************************************************/
 
 FeatureGridder::FeatureGridder(const Bounds& inputBounds,
                                const GriddingPolicy& policy ) :

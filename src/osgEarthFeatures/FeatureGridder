@@ -64,11 +64,15 @@ namespace osgEarth { namespace Features
         optional<bool>& spatializeGroups() { return _spatializeGroups; }
         const optional<bool>& spatializeGroups() const { return _spatializeGroups; }
 
+        /** Whether to install cluster cullers on the grid cell nodes */
+        optional<bool>& clusterCulling() { return _clusterCulling; }
+        const optional<bool>& clusterCulling() const { return _clusterCulling; }
 
     protected:
         optional<double> _cellSize;
         optional<CullingTechnique> _cullingTechnique;
         optional<bool> _spatializeGroups;
+        optional<bool> _clusterCulling;
     };
 
     /**

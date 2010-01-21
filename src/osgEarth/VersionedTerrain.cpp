@@ -1183,32 +1183,36 @@ _revision(0),
 _numAsyncThreads( 0 ),
 _releaseCBInstalled( false )
 {
-    setNumChildrenRequiringUpdateTraversal( 1 );
     this->setThreadSafeRefUnref( true );
 
     _loadingPolicy = engine->getEngineProperties().loadingPolicy().get();
 
-    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
-    if ( env_numTaskServiceThreads )
+    if ( _loadingPolicy.mode() != LoadingPolicy::MODE_STANDARD )
     {
-        _numAsyncThreads = ::atoi( env_numTaskServiceThreads );
-    }
-    else
-    if ( _loadingPolicy.numThreads().isSet() )
-    {
-        _numAsyncThreads = _loadingPolicy.numThreads().get();
-    }
-    else
-    if ( _loadingPolicy.numThreadsPerCore().isSet() )
-    {
-        _numAsyncThreads = _loadingPolicy.numThreadsPerCore().get() * OpenThreads::GetNumberOfProcessors();
-    }
-    else
-    {
-        _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * 2;
-    }
+        setNumChildrenRequiringUpdateTraversal( 1 );
 
-    osg::notify(osg::INFO) << "Using " << _numAsyncThreads << " loading threads " << std::endl;
+        const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
+        if ( env_numTaskServiceThreads )
+        {
+            _numAsyncThreads = ::atoi( env_numTaskServiceThreads );
+        }
+        else
+        if ( _loadingPolicy.numThreads().isSet() )
+        {
+            _numAsyncThreads = _loadingPolicy.numThreads().get();
+        }
+        else
+        if ( _loadingPolicy.numThreadsPerCore().isSet() )
+        {
+            _numAsyncThreads = _loadingPolicy.numThreadsPerCore().get() * OpenThreads::GetNumberOfProcessors();
+        }
+        else
+        {
+            _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * 2;
+        }
+
+        osg::notify(osg::INFO) << "[osgEarth] VT: using " << _numAsyncThreads << " loading threads " << std::endl;
+    }
 }
 
 void

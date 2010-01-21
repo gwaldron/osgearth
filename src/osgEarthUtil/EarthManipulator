@@ -483,7 +483,7 @@ namespace osgEarthUtil
         /**
          * Sets the camera position, optionally moving it there over time.
          */
-        void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
+        virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
 
         /**
          * Sets the viewpoint to activate when performing the ACTION_HOME action.
@@ -515,17 +515,17 @@ namespace osgEarthUtil
         /**
          * Move the focal point of the camera using deltas (normalized screen coords).
          */
-        void pan( double dx, double dy );
+        virtual void pan( double dx, double dy );
 
         /**
          * Rotate the camera (dx = azimuth, dy = pitch) using deltas (radians).
          */
-        void rotate( double dx, double dy );
+        virtual void rotate( double dx, double dy );
 
         /**
          * Zoom the camera using deltas (dy only)
          */
-        void zoom( double dx, double dy );
+        virtual void zoom( double dx, double dy );
 
         /**
          * Sets a traversal mask for any operation that involves traversing the scene

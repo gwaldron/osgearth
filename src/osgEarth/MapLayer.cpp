@@ -764,7 +764,10 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
     if (!_cacheProfile.valid() && _cache.valid() && _cacheEnabled && _tileSource.valid())
     {
         _cacheProfile = mapProfile;
-        _cache->storeLayerProperties( _name, _cacheProfile, _cacheFormat, _tileSource->getPixelsPerTile() );
+        if ( _tileSource->isOK() )
+        {
+            _cache->storeLayerProperties( _name, _cacheProfile, _cacheFormat, _tileSource->getPixelsPerTile() );
+        }
     }
 
 	//See if we can get it from the cache.
@@ -777,7 +780,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 		}
 	}
 
-	if (!result.valid() && getTileSource())
+	if (!result.valid() && getTileSource() && getTileSource()->isOK() )
 	{
 		//If the profiles are equivalent, get the HF from the TileSource.
 		if (key->getProfile()->isEquivalentTo( mapProfile ))

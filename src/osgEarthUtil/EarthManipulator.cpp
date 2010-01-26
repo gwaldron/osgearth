@@ -467,8 +467,10 @@ EarthManipulator::getSRS() const
 
 static double
 normalizeAzimRad( double input ) {
-    while( input < -osg::PI ) input += osg::PI*2.0;
-    while( input > osg::PI ) input -= osg::PI*2.0;
+	if(fabs(input) > 2*osg::PI)
+		input = fmod(input,2*osg::PI);
+    if( input < -osg::PI ) input += osg::PI*2.0;
+    if( input > osg::PI ) input -= osg::PI*2.0;
     return input;
 }
 
@@ -569,8 +571,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         _thrown = false;
         _task->_type = TASK_NONE;
 
-        // update the center point in case there's been paging.
-        //recalculateCenter( getCoordinateFrame(_center) );
+        recalculateCenter( getCoordinateFrame(_center) );
     }
     else
     {
@@ -637,7 +638,10 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         _local_pitch = new_pitch;
         _local_azim  = new_azim;
 
-        //recalculateCenter( local_frame );
+        // re-intersect the terrain to get a new correct center point, but only if this is
+        // NOT a viewpoint transition update.
+        if ( !_setting_viewpoint )
+            recalculateCenter( local_frame );
     }
 }
 
@@ -819,6 +823,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     {
         _time_s_last_frame = _time_s_now;
         _time_s_now = ea.getTime();
+        _time_s_now = osg::Timer::instance()->time_s();
         _delta_t = _time_s_now - _time_s_last_frame;
         // this factor adjusts for the variation of frame rate relative to 60fps
         _t_factor = _delta_t / 0.01666666666;
@@ -901,10 +906,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             else if ( isMouseClick( &ea ) )
             {
                 addMouseEvent( ea );
-                action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-                if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
-                    aa.requestRedraw();
-                
+                if ( _mouse_down_event )
+                {
+                    action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+                    if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
+                        aa.requestRedraw();                
+                }
                 resetMouse( aa );
             }
             else

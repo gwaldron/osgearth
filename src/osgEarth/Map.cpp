@@ -133,6 +133,11 @@ Map::getModelLayers() const {
     return _modelLayers;
 }
 
+ModelLayer*
+Map::getTerrainMaskLayer() const {
+    return _terrainMaskLayer.get();
+}
+
 void
 Map::setName( const std::string& name ) {
     _name = name;
@@ -334,14 +339,35 @@ Map::addModelLayer( ModelLayer* layer )
         {
             ScopedWriteLock lock( getMapDataMutex() );
             _modelLayers.push_back( layer );
-            layer->initialize( getReferenceURI(), this );
         }
+
+        layer->initialize( getReferenceURI(), this );        
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onModelLayerAdded( layer );
         }
+    }
+}
+
+void
+Map::setTerrainMaskLayer( ModelLayer* layer )
+{
+    if ( layer )
+    {
+        {
+            ScopedWriteLock lock( getMapDataMutex() );
+            _terrainMaskLayer = layer;
+        }
+
+        layer->initialize( getReferenceURI(), this );
+
+        // a separate block b/c we don't need the mutex   
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onTerrainMaskLayerAdded( layer );
+        }	
     }
 }
 

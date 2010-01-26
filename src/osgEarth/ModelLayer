@@ -42,6 +42,26 @@ namespace osgEarth
          */
         ModelLayer( const std::string& name, ModelSource* source );
 
+        /** 
+         * Gets the name of this model layer
+         */
+        const std::string& getName() const { return _name; }
+
+        /**
+         * Gets the name of the driver to use to create model data.
+         */
+        const std::string& getDriver() const { return _driver; }
+
+        /**
+         * Gets the reference URI (for resolving relative paths)
+         */
+        const std::string& getReferenceURI() const { return _referenceURI; }
+
+        /**
+         * Gets the driver configuration object. 
+         */
+        const Config& getDriverConfig() const { return _driverConf; }
+
     public:
 
         osg::Node* createNode( ProgressCallback* progress =0L );

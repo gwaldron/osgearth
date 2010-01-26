@@ -106,7 +106,7 @@ namespace osgEarth { namespace Features
             source calls this once for each style class associated with this model source. This
             method will also grid the input features into cells if necessary, calling
             renderStyleCell() for each cell. */
-        osg::Node* gridAndRenderFeaturesForStyle(
+        osg::Group* gridAndRenderFeaturesForStyle(
             const Style& style,
             osg::Referenced* buildData );
 

@@ -27,13 +27,16 @@
 #include <osgEarthFeatures/ConvertTypeFilter>
 #include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/Styling>
+#include <osgEarthFeatures/StencilVolumeNode>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osg/ClusterCullingCallback>
+#include <osg/Geode>
+#include <osg/Projection>
+#include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
-#include "StencilUtils.h"
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -41,10 +44,53 @@ using namespace OpenThreads;
 
 #define PROP_EXTRUSION_DISTANCE     "extrusion_distance"
 #define PROP_DENSIFICATION_THRESH   "densification_threshold"
+#define PROP_INVERTED               "inverted"
+#define PROP_MASK_MODEL             "mask_model"
 
 #define DEFAULT_EXTRUSION_DISTANCE      300000.0
 #define DEFAULT_DENSIFICATION_THRESHOLD 1000000.0
 #define RENDER_BIN_START                80000
+
+#define OFF_PROTECTED osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED
+
+/** Creates a full-screen quad to fill in the colors on the stencil volume. */
+static
+osg::Node* createColorNode( const osg::Vec4f& color )
+{
+    // make a full screen quad:
+    osg::Geometry* quad = new osg::Geometry();
+    osg::Vec3Array* verts = new osg::Vec3Array(4);
+    (*verts)[0].set( 0, 1, 0 );
+    (*verts)[1].set( 0, 0, 0 );
+    (*verts)[2].set( 1, 0, 0 );
+    (*verts)[3].set( 1, 1, 0 );
+    quad->setVertexArray( verts );
+    quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
+    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    (*colors)[0] = color;
+    quad->setColorArray( colors );
+    quad->setColorBinding( osg::Geometry::BIND_OVERALL );
+    osg::Geode* quad_geode = new osg::Geode();
+    quad_geode->addDrawable( quad );
+
+    osg::StateSet* quad_ss = quad->getOrCreateStateSet();
+    quad_ss->setMode( GL_CULL_FACE, OFF_PROTECTED );
+    quad_ss->setMode( GL_DEPTH_TEST, OFF_PROTECTED );
+    quad_ss->setMode( GL_LIGHTING, OFF_PROTECTED );
+    osg::MatrixTransform* abs = new osg::MatrixTransform();
+    abs->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+    abs->setMatrix( osg::Matrix::identity() );
+    abs->addChild( quad_geode );
+
+    osg::Projection* proj = new osg::Projection();
+    proj->setMatrix( osg::Matrix::ortho(0, 1, 0, 1, 0, -1) );
+    proj->addChild( abs );
+
+    proj->getOrCreateStateSet()->setMode( GL_BLEND, 1 );    
+
+    return proj;
+}
+
 
 class FeatureStencilModelSource : public FeatureModelSource
 {
@@ -55,7 +101,9 @@ public:
         _renderBinStart( renderBinStart ),
         _showVolumes( false ),
         _extrusionDistance( DEFAULT_EXTRUSION_DISTANCE ),
-        _densificationThresh( DEFAULT_DENSIFICATION_THRESHOLD )
+        _densificationThresh( DEFAULT_DENSIFICATION_THRESHOLD ),
+        _invertStencil( false ),
+        _maskOnly( false )
     {
         if ( osg::DisplaySettings::instance()->getMinimumNumStencilBits() < 8 )
         {
@@ -65,11 +113,18 @@ public:
         const Config& conf = getOptions()->config();
 
         // overrides the default stencil volume extrusion size
-        if ( conf.hasValue( PROP_EXTRUSION_DISTANCE ) )
-            _extrusionDistance = conf.value<double>( PROP_EXTRUSION_DISTANCE, DEFAULT_EXTRUSION_DISTANCE );
+        conf.getOptional<double>( PROP_EXTRUSION_DISTANCE, _extrusionDistance );
 
         // overrides the default segment densification threshold.
-        _densificationThresh = conf.value<double>( PROP_DENSIFICATION_THRESH, DEFAULT_DENSIFICATION_THRESHOLD );
+        conf.getOptional<double>( PROP_DENSIFICATION_THRESH, _densificationThresh );
+
+        // inverts the stencil volume rendering.
+        conf.getOptional<bool>( PROP_INVERTED, _invertStencil );
+
+        // the mask-only flag (whether to include coloration). We actually check the
+        // name of the incoming Config to see if this was intended to be a mask.
+        if ( conf.name() == PROP_MASK_MODEL )
+            _maskOnly = true;
 
         // debugging:
         _showVolumes = conf.child( "debug" ).attr( "show_volumes" ) == "true";
@@ -171,7 +226,7 @@ public:
             // achieve a usable tesselation.
             ResampleFilter resample;
             resample.minLength() = 0.0;
-            resample.maxLength() = _densificationThresh;
+            resample.maxLength() = _densificationThresh.value();
             resample.perturbationThreshold() = 0.1;
             context = resample.push( features, context );
         }
@@ -181,7 +236,7 @@ public:
 
         for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
         {
-            osg::Node* volume = StencilUtils::createVolume(
+            osg::Node* volume = StencilVolumeFactory::createVolume(
                 i->get()->getGeometry(),
                 -_extrusionDistance.get(),
                 _extrusionDistance.get() * 2.0,
@@ -195,7 +250,7 @@ public:
             }
         }
 
-        osg::Group* result = 0L;
+        osg::Node* result = 0L;
 
         if ( volumes )
         {
@@ -224,9 +279,12 @@ public:
                 if ( !styleNodeAlreadyCreated )
                 {
                     osg::notify(osg::NOTICE) << "[osgEarth] Creating new style group for '" << style.name() << "'" << std::endl;
-                    styleNode = new StencilVolumeNode();
-                    osg::Vec4f maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
-                    styleNode->setColor( maskColor );
+                    styleNode = new StencilVolumeNode( _maskOnly.value(), _invertStencil.get() );
+                    if ( _maskOnly == false )
+                    {
+                        osg::Vec4f maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
+                        styleNode->addChild( createColorNode(maskColor) );
+                    }
                     buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
                     buildData->_styleGroups.push_back( BuildData::StyleGroup( style.name(), styleNode ) );
                 }
@@ -244,8 +302,12 @@ private:
     int _sourceId;
     int _renderBinStart;
     osg::ref_ptr<const Map> _map;
+
     optional<double> _extrusionDistance;
-    double _densificationThresh;
+    optional<bool>   _invertStencil;
+    optional<double> _densificationThresh;
+    optional<bool>   _maskOnly;
+
     bool _showVolumes;
 };
 

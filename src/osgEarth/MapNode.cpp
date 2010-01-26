@@ -25,6 +25,7 @@
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/MaskNode>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/Notify>
@@ -42,6 +43,9 @@ static unsigned int s_mapNodeID = 0;
 //Caches the MapNodes that have been created
 typedef std::map<unsigned int, osg::observer_ptr<MapNode> > MapNodeCache;
 
+
+#define CHILD_TERRAINS 0
+#define CHILD_MODELS   1
 
 
 static
@@ -71,6 +75,9 @@ struct MapNodeMapCallbackProxy : public MapCallback
     }
     void onModelLayerAdded( ModelLayer* layer ) {
         _node->onModelLayerAdded( layer );
+    }
+    void onTerrainMaskLayerAdded( ModelLayer* layer ) {
+        _node->onTerrainMaskLayerAdded( layer );
     }
 };
 
@@ -175,6 +182,10 @@ MapNode::init()
     // create the map engine that wil geneate tiles for this node:
     _engine = new MapEngine( _engineProps ); //_map->createMapEngine( _engineProps );
 
+    // make a group for terrains:
+    _terrains = new osg::Group();
+    this->addChild( _terrains.get() );
+
     // handle an already-established map profile:
     if ( _map->getProfile() )
     {
@@ -202,6 +213,10 @@ MapNode::init()
     for( ModelLayerList::const_iterator k = _map->getModelLayers().begin(); k != _map->getModelLayers().end(); k++ )
     {
         onModelLayerAdded( k->get() );
+    }
+    if ( _map->getTerrainMaskLayer() )
+    {
+        onTerrainMaskLayerAdded( _map->getTerrainMaskLayer() );
     }
 
     updateStateSet();
@@ -261,13 +276,13 @@ MapNode::isGeocentric() const
 unsigned int
 MapNode::getNumTerrains() const
 {
-    return _terrains.size();
+    return _terrainVec.size();
 }
 
 osgEarth::VersionedTerrain*
 MapNode::getTerrain( unsigned int i ) const
 {
-    return _terrains[i].get();
+    return _terrainVec[i].get();
 }
 
 osg::Group*
@@ -279,11 +294,11 @@ MapNode::getModelLayerGroup()
 void
 MapNode::addTerrainCallback( TerrainCallback* cb )
 {
-    if ( _terrains.size() > 0 )
+    if ( _terrainVec.size() > 0 )
     {
-        for( int i=0; i < _terrains.size(); i++ )
+        for( int i=0; i < _terrainVec.size(); i++ )
         {
-            _terrains[i]->addTerrainCallback( cb );
+            _terrainVec[i]->addTerrainCallback( cb );
         }
     }
     else
@@ -295,15 +310,15 @@ MapNode::addTerrainCallback( TerrainCallback* cb )
 void
 MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUnit )
 {
-    if ( _terrains.empty() )
+    if ( _terrainVec.empty() )
     {
         _pendingOverlayNode = overlay;
         _pendingOverlayAutoSetTextureUnit = autoSetTextureUnit;
     }
     else
     {
-        overlay->addChild( this->getChild(0) );
-        this->replaceChild( this->getChild(0), overlay );
+        overlay->addChild( this->getChild(CHILD_TERRAINS) );
+        this->replaceChild( this->getChild(CHILD_TERRAINS), overlay );
 
         _pendingOverlayNode = 0L;
 
@@ -356,8 +371,8 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 
         terrain->setVerticalScale( _engineProps.verticalScale().value() );
         terrain->setSampleRatio( _engineProps.heightFieldSampleRatio().value() );
-        this->addChild( terrain );
-        _terrains.push_back( terrain );
+        _terrains->addChild( terrain );
+        _terrainVec.push_back( terrain );
 
         std::vector< osg::ref_ptr<TileKey> > keys;
         _map->getProfile()->getFaceProfile( face )->getRootKeys( keys, face );
@@ -412,6 +427,39 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
     }
 }
 
+struct MaskNodeFinder : public osg::NodeVisitor {
+    MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+    void apply( osg::Group& group ) {
+        if ( dynamic_cast<MaskNode*>( &group ) ) {
+            _groups.push_back( &group );
+        }
+        traverse(group);
+    }
+    std::list< osg::Group* > _groups;
+};
+
+void
+MapNode::onTerrainMaskLayerAdded( ModelLayer* layer )
+{
+    osg::Node* node = layer->createNode();
+
+    if ( node && node->asGroup() )
+    {
+        int count = 0;
+        MaskNodeFinder f;
+        node->accept( f );
+        for( std::list<osg::Group*>::iterator i = f._groups.begin(); i != f._groups.end(); ++i )
+        {
+            (*i)->addChild( _terrains.get() );
+            count++;
+        }
+        this->replaceChild( _terrains.get(), node );
+        
+        osg::notify(osg::NOTICE)<<"[osgEarth] Installed terrain mask ("
+            <<count<< " mask nodes found)" << std::endl;
+    }
+} 
+
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
@@ -419,10 +467,10 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
     {
         if ( layer && layer->getTileSource() )
         {
-            for( unsigned int i=0; i<_terrains.size(); i++ )
+            for( unsigned int i=0; i<_terrainVec.size(); i++ )
             {
-                _terrains[i]->incrementRevision();
-                _terrains[i]->updateTaskServiceThreads();
+                _terrainVec[i]->incrementRevision();
+                _terrainVec[i]->updateTaskServiceThreads();
             }
         }
         updateStateSet();
@@ -446,9 +494,9 @@ MapNode::addImageLayer( MapLayer* layer )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for( unsigned int i=0; i<_terrains.size(); i++ )
+    for( unsigned int i=0; i<_terrainVec.size(); i++ )
     {            
-        VersionedTerrain* terrain = _terrains[i].get();
+        VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
@@ -619,9 +667,9 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
     osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldLayer] Begin " << std::endl;
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
     {            
-        VersionedTerrain* terrain = _terrains[i].get();
+        VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
@@ -655,9 +703,9 @@ MapNode::removeImageLayer( unsigned int index )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
     {            
-        VersionedTerrain* terrain = _terrains[i].get();
+        VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
 
@@ -708,9 +756,9 @@ MapNode::removeHeightFieldLayer( unsigned int index )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
     {            
-        VersionedTerrain* terrain = _terrains[i].get();
+        VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         //osg::notify(osg::NOTICE) << "Found " << tiles.size() << std::endl;
@@ -744,9 +792,9 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
     {            
-        VersionedTerrain* terrain = _terrains[i].get();
+        VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
@@ -789,9 +837,9 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrains.size(); ++i)
+    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
     {            
-        VersionedTerrain* terrain = _terrains[i].get();
+        VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
         osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;

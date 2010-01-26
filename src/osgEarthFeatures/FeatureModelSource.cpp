@@ -182,7 +182,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 }
 
 
-osg::Node*
+osg::Group*
 FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
                                                   osg::Referenced* data )
 {

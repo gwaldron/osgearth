@@ -44,6 +44,7 @@ SET(LIB_PUBLIC_HEADERS
     MapNode
     MapEngine
     MapEngineProperties
+    MaskNode
     ModelLayer
     ModelSource
 	MultiPassTerrainTechnique
@@ -85,6 +86,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapNode.cpp
     MapEngine.cpp
     MapEngineProperties.cpp
+    MaskNode.cpp
 	MimeTypes.cpp
 	ModelLayer.cpp
 	ModelSource.cpp

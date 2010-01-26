@@ -29,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     ResampleFilter
 	ScaleFilter
     SLD
+    StencilVolumeNode
     Styling
     TransformFilter
 )
@@ -51,6 +52,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ResampleFilter.cpp
 	ScaleFilter.cpp
     SLD.cpp
+    StencilVolumeNode.cpp
     Styling.cpp
     TransformFilter.cpp
 )

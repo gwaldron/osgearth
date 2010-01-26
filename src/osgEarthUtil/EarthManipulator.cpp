@@ -822,7 +822,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
         _time_s_last_frame = _time_s_now;
-        _time_s_now = ea.getTime();
+        //_time_s_now = ea.getTime();
         _time_s_now = osg::Timer::instance()->time_s();
         _delta_t = _time_s_now - _time_s_last_frame;
         // this factor adjusts for the variation of frame rate relative to 60fps

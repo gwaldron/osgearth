@@ -90,6 +90,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_MODEL                    "model"
 #define ELEM_MAX_LOD                  "max_lod"
 #define ELEM_LIGHTING                 "lighting"
+#define ELEM_MASK_MODEL               "mask_model"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -206,11 +207,12 @@ readMapLayer( const Config& conf, const Config& additional )
 }
 
 static Config
-writeLayer( MapLayer* layer )
+writeLayer( MapLayer* layer, const std::string& typeName ="" )
 {
     Config conf;
 
     conf.name() =
+        !typeName.empty() ? typeName :
         layer->getType() == MapLayer::TYPE_HEIGHTFIELD ? ELEM_HEIGHTFIELD :
         ELEM_IMAGE;
 
@@ -231,6 +233,22 @@ writeLayer( MapLayer* layer )
 
     if ( !layer->getCacheFormat().empty() )
         conf.addChild( ELEM_CACHE_FORMAT, layer->getCacheFormat() );
+
+    return conf;
+}
+
+static Config
+writeLayer( ModelLayer* layer, const std::string& typeName ="" )
+{
+    Config conf;
+
+    conf.name() = !typeName.empty() ? typeName : ELEM_MODEL;
+
+    conf.attr( ATTR_NAME ) = layer->getName();
+    conf.attr( ATTR_DRIVER ) = layer->getDriver();
+
+    //Add all the properties
+    conf.add( layer->getDriverConfig().children() );
 
     return conf;
 }
@@ -411,6 +429,14 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
             map->addModelLayer( layer );
     }
 
+    Config maskModel = conf.child( ELEM_MASK_MODEL );
+    if ( !maskModel.empty() )
+    {
+        ModelLayer* layer = readModelLayer( maskModel );
+        if ( layer )
+            map->setTerrainMaskLayer( layer );
+    }
+
     earth->setMap( map.get() );
     earth->setMapEngineProperties( ep );
 
@@ -512,6 +538,18 @@ mapToConfig( Map* map, const MapEngineProperties& ep )
     for (MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
         conf.add( writeLayer( i->get() ) );
+    }
+
+    //Write all the model layers
+    for(ModelLayerList::const_iterator i = map->getModelLayers().begin(); i != map->getModelLayers().end(); i++ )
+    {
+        conf.add( writeLayer( i->get() ) );
+    }
+
+    //Terrain mask layer, if necc.
+    if ( map->getTerrainMaskLayer() )
+    {
+        conf.add( writeLayer( map->getTerrainMaskLayer(), ELEM_MASK_MODEL ) );
     }
 
 	//TODO:  Get this from the getCache call itself, not a CacheConfig.

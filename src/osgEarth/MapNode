@@ -161,6 +161,8 @@ namespace osgEarth
         
         void onModelLayerAdded( ModelLayer* layer );
 
+        void onTerrainMaskLayerAdded( ModelLayer* layer );
+
     protected:    
 
         virtual ~MapNode();
@@ -187,7 +189,7 @@ namespace osgEarth
 
         ////Use observer_ptr so the Map does not prevent the main scene graph from being deleted
         typedef std::vector< osg::observer_ptr<VersionedTerrain> > TerrainVec;
-        TerrainVec _terrains;
+        TerrainVec _terrainVec;
 
         static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
 
@@ -196,6 +198,7 @@ namespace osgEarth
 
         TerrainCallbackList _pendingTerrainCallbacks;
 
+        osg::ref_ptr< osg::Group > _terrains;
         osg::ref_ptr< osg::Group > _models;
 
         void init();

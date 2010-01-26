@@ -171,7 +171,9 @@ public:
         //return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
         
         osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile( buf.str(), image, getOptions(), progress );
+		std::string bufStr;
+		bufStr = buf.str();
+        HTTPClient::readImageFile( bufStr, image, getOptions(), progress );
         return image.release();
     }
 

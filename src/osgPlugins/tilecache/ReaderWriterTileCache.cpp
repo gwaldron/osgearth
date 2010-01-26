@@ -97,7 +97,7 @@ public:
         //If we have a relative path and the map file contains a server address, just concat the server path and the cache together.
         if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress( _configPath ) )
         {
-            path = osgDB::getFilePath(_configPath) + "/" + path;
+            path = osgDB::getFilePath(_configPath) + std::string("/") + path;
         }
 
         //If the path doesn't contain a server address, get the full path to the file.

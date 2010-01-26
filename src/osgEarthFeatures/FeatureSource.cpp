@@ -133,7 +133,7 @@ FeatureSourceFactory::create(const std::string& name,
 
 	// Load the source from a plugin.
     osg::ref_ptr<FeatureSource> source = dynamic_cast<FeatureSource*>(
-                osgDB::readObjectFile( ".osgearth_feature_" + driver, options.get()));
+                osgDB::readObjectFile( std::string(".osgearth_feature_") + driver, options.get()));
 
     if ( source.valid() )
     {

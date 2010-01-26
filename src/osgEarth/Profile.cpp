@@ -343,7 +343,9 @@ Profile::toString() const
         << " max=" << _extent.xMax() << "," << _extent.yMax()
         << " lod0=" << _numTilesWideAtLod0 << "," << _numTilesHighAtLod0
         << "]";
-    return buf.str();
+    std::string bufStr;
+	bufStr = buf.str();
+	return bufStr;
 }
 
 int

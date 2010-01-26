@@ -38,8 +38,8 @@ int main(int argc, char** argv)
     osg::ArgumentParser args(&argc,argv);
 
     args.getApplicationUsage()->setApplicationName(args.getApplicationName());
-    args.getApplicationUsage()->setDescription(args.getApplicationName() + " is an application used to seed a cache for an osgEarth.");
-    args.getApplicationUsage()->setCommandLineUsage(args.getApplicationName()+" [options] filename");
+    args.getApplicationUsage()->setDescription(args.getApplicationName() + std::string(" is an application used to seed a cache for an osgEarth."));
+    args.getApplicationUsage()->setCommandLineUsage(args.getApplicationName()+ std::string(" [options] filename"));
     args.getApplicationUsage()->addCommandLineOption("--min-level level","The minimum level to seed down to.");
     args.getApplicationUsage()->addCommandLineOption("--max-level level","The maximum level to seed down to.");
     args.getApplicationUsage()->addCommandLineOption("--bounds minx miny maxx maxy","The geospatial extents to seed.");

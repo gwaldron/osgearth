@@ -246,7 +246,7 @@ public:
           setColor(1.0f, 1.0f, 1.0f, 0.0f);
           setFontSize(textSize);
           setFontColor(1.0f, 1.0f, 1.0f, 1.0f);
-          setLabel("Add " + layer->getName());
+          setLabel(std::string("Add ") + layer->getName());
           addCallback(new HotTrackingCallback(normalColor, hotColor));
           getText()->setBackdropType(osgText::Text::OUTLINE);
       }
@@ -380,7 +380,9 @@ public:
             std::stringstream ss;
             unsigned int index = (_map->getImageMapLayers().size() - _layerIndex);
             ss << index << ") ";
-            _lblNum->setLabel(ss.str());
+			std::string ssStr;
+			ssStr = ss.str();
+            _lblNum->setLabel(ssStr);
             _lblName->setLabel(name);
         }
     }

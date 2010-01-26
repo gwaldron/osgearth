@@ -46,7 +46,9 @@ TileKey::str() const
     {
         std::stringstream ss;
         ss << _face << "_" << _lod << "_" << _x << "_" << _y;
-        const_cast<TileKey*>(this)->_key = ss.str();
+		std::string ssStr;
+		ssStr = ss.str();
+        const_cast<TileKey*>(this)->_key = ssStr;
     }
     return _key;
 }

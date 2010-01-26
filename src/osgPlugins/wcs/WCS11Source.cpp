@@ -232,19 +232,23 @@ WCS11Source::createRequest( const TileKey* key ) const
     //the edge of this TileKey's extents.  Doing this makes neighboring tiles have the same elevation values so there is no need
     //to run the tile edge normalization code.
     buf << lon_min - halfLon << "," << lat_min - halfLat << "," << lon_max + halfLon << "," << lat_max + halfLat << ",EPSG:4326";
-    req.addParameter( "BOUNDINGBOX", buf.str() );
+	std::string bufStr;
+	bufStr = buf.str();
+    req.addParameter( "BOUNDINGBOX", bufStr );
 
     double originX = lon_min;
     double originY = lat_max;
 
     buf.str("");
     buf << originX << "," << originY; 
-    req.addParameter( "GridOrigin", buf.str() );
+	bufStr = buf.str();
+    req.addParameter( "GridOrigin", bufStr );
     
     buf.str("");
     buf << lon_interval << "," << lat_interval;   // note: top-down
     //buf << lon_interval << "," << lat_interval;
-    req.addParameter( "GridOffsets", buf.str() );
+	bufStr = buf.str();
+    req.addParameter( "GridOffsets", bufStr );
 
     if (!_range_subset.empty())
     {

@@ -131,7 +131,9 @@ toColor( const osg::Vec4ub& c )
 {
     std::stringstream ss;
     ss << c.r() << " " << c.g() << " " << c.b() << " " << c.a();
-    return ss.str();
+    std::string ssStr;
+	ssStr = ss.str();
+	return ssStr;
 }
 
 static ModelLayer*

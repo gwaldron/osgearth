@@ -129,7 +129,9 @@ CacheConfig::toString() const
     for (Properties::const_iterator i = _properties.begin(); i != _properties.end(); i++ )
         buf << ", " << i->first << "=" << i->second;   
 
-    return buf.str();
+	std::string bufStr;
+	bufStr = buf.str();
+    return bufStr;
 }
 
 
@@ -327,7 +329,7 @@ DiskCache::setImage( const TileKey* key,
             worldFileExt[1] = ext[2];
             worldFileExt[2] = 'w';
         }
-        std::string worldFileName = baseFilename + "." + worldFileExt;
+        std::string worldFileName = baseFilename + std::string(".") + worldFileExt;
         std::ofstream worldFile;
         worldFile.open(worldFileName.c_str());
 
@@ -370,7 +372,7 @@ DiskCache::setImage( const TileKey* key,
 std::string
 DiskCache::getTMSPath(const std::string &layerName)
 {
-    return getPath() + "/" + layerName + "/tms.xml";
+    return getPath() + std::string("/") + layerName + std::string("/tms.xml");
 }
 
 void DiskCache::storeLayerProperties( const std::string& layerName,
@@ -529,7 +531,9 @@ TMSCache::getFilename( const TileKey* key,
 
     std::stringstream buf;
     buf << getPath() << "/" << layerName << "/" << lod << "/" << x << "/" << y << "." << format;
-    return buf.str();
+	std::string bufStr;
+	bufStr = buf.str();
+    return bufStr;
 }
 
 static bool getProp(const std::map<std::string,std::string> &map, const std::string &key, std::string &value)

@@ -941,19 +941,25 @@ Value::asString() const
        {
            std::stringstream buf;
            buf << value_.int_;
-           return buf.str();
+		   std::string bufStr;
+		   bufStr = buf.str();
+           return bufStr;
        }
    case uintValue:
        {
            std::stringstream buf;
            buf << value_.uint_;
-           return buf.str();
+           std::string bufStr;
+		   bufStr = buf.str();
+		   return bufStr;
        }
    case realValue:
        {
            std::stringstream buf;
            buf << value_.real_;
-           return buf.str();
+           std::string bufStr;
+		   bufStr = buf.str();
+		   return bufStr;
        }
    case arrayValue:
    case objectValue:
@@ -2467,7 +2473,7 @@ Reader::decodeNumber( Token &token )
    {
       Char c = *current++;
       if ( c < '0'  ||  c > '9' )
-         return addError( "'" + std::string( token.start_, token.end_ ) + "' is not a number.", token );
+         return addError( std::string("'") + std::string( token.start_, token.end_ ) + std::string("' is not a number."), token );
       if ( value >= threshold )
          return decodeDouble( token );
       value = value * 10 + Value::UInt(c - '0');
@@ -2503,7 +2509,7 @@ Reader::decodeDouble( Token &token )
    }
 
    if ( count != 1 )
-      return addError( "'" + std::string( token.start_, token.end_ ) + "' is not a number.", token );
+      return addError( std::string("'") + std::string( token.start_, token.end_ ) + std::string("' is not a number."), token );
    currentValue() = value;
    return true;
 }
@@ -2701,10 +2707,10 @@ Reader::getFormatedErrorMessages() const
          ++itError )
    {
       const ErrorInfo &error = *itError;
-      formattedMessage += "* " + getLocationLineAndColumn( error.token_.start_ ) + "\n";
-      formattedMessage += "  " + error.message_ + "\n";
+      formattedMessage += std::string("* ") + getLocationLineAndColumn( error.token_.start_ ) + std::string("\n");
+      formattedMessage += std::string("  ") + error.message_ + std::string("\n");
       if ( error.extra_ )
-         formattedMessage += "See " + getLocationLineAndColumn( error.extra_ ) + " for detail.\n";
+         formattedMessage += std::string("See ") + getLocationLineAndColumn( error.extra_ ) + std::string(" for detail.\n");
    }
    return formattedMessage;
 }
@@ -2810,7 +2816,7 @@ namespace osgEarth {
 
            // Not sure how to handle unicode...
            if (strpbrk(value, "\"\\\b\f\n\r\t") == NULL)
-              return std::string("\"") + value + "\"";
+			   return std::string("\"") + std::string(value) + std::string("\"");
            // We have to walk value and escape any special characters.
            // Appending to std::string is not efficient, but this should be rare.
            // (Note: forward slashes are *not* rare, but I am not escaping them.)
@@ -3178,7 +3184,7 @@ void
 StyledWriter::writeCommentAfterValueOnSameLine( const Value &root )
 {
    if ( root.hasComment( commentAfterOnSameLine ) )
-      document_ += " " + normalizeEOL( root.getComment( commentAfterOnSameLine ) );
+      document_ += std::string(" ") + normalizeEOL( root.getComment( commentAfterOnSameLine ) );
 
    if ( root.hasComment( commentAfter ) )
    {
@@ -3458,7 +3464,7 @@ void
 StyledStreamWriter::writeCommentAfterValueOnSameLine( const Value &root )
 {
    if ( root.hasComment( commentAfterOnSameLine ) )
-      *document_ << " " + normalizeEOL( root.getComment( commentAfterOnSameLine ) );
+      *document_ << std::string(" ") + normalizeEOL( root.getComment( commentAfterOnSameLine ) );
 
    if ( root.hasComment( commentAfter ) )
    {

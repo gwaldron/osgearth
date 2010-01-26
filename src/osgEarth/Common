@@ -73,7 +73,9 @@ namespace osgEarth
     {
         std::stringstream out;
         out << value;
-        return out.str();
+        std::string outStr;
+        outStr = out.str();
+        return outStr;
     }
 
     // template speciallization for a bool to print out "true" or "false"

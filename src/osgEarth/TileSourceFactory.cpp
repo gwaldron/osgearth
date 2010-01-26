@@ -42,7 +42,7 @@ TileSourceFactory::create( const std::string& driver,
 	//Load the source from the a plugin.  The "." prefix causes OSG to select the correct plugin.
     //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
     osg::ref_ptr<TileSource> tileSource = dynamic_cast<TileSource*>(
-                osgDB::readObjectFile( ".osgearth_" + driver, options.get()));
+                osgDB::readObjectFile( std::string(".osgearth_") + driver, options.get()));
 
 	if (!tileSource.valid())
 	{

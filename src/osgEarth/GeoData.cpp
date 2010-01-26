@@ -305,7 +305,9 @@ GeoExtent::toString() const
 {
     std::stringstream buf;
     buf << "MIN=" << _xmin << "," << _ymin << " MAX=" << _xmax << "," << _ymax;
-    return buf.str();
+	std::string bufStr;
+	bufStr = buf.str();
+    return bufStr;
 }
 
 /***************************************************************************/

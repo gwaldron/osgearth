@@ -65,5 +65,7 @@ Config::toString( int indent ) const
 
     buf << " }";
 
-    return buf.str();
+	std::string bufStr;
+	bufStr = buf.str();
+    return bufStr;
 }

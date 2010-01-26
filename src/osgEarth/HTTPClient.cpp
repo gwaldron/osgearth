@@ -97,7 +97,9 @@ HTTPRequest::addParameter( const std::string& name, int value )
 {
     std::stringstream buf;
     buf << value;
-    _parameters[name] = buf.str();
+	std::string bufStr;
+    bufStr = buf.str();
+    _parameters[name] = bufStr;
 }
 
 void
@@ -105,7 +107,9 @@ HTTPRequest::addParameter( const std::string& name, double value )
 {
     std::stringstream buf;
     buf << value;
-    _parameters[name] = buf.str();
+	std::string bufStr;
+    bufStr = buf.str();
+    _parameters[name] = bufStr;
 }
 
 const HTTPRequest::Parameters&
@@ -130,7 +134,9 @@ HTTPRequest::getURL() const
             buf << ( i == _parameters.begin() && _url.find( "?" ) == std::string::npos? "?" : "&" );
             buf << i->first << "=" << i->second;
         }
-        return buf.str();
+		std::string bufStr;
+		bufStr = buf.str();
+        return bufStr;
     }
 }
 
@@ -189,7 +195,9 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 
 std::string
 HTTPResponse::getPartAsString( unsigned int n ) const {
-    return _parts[n]->_stream.str();
+	std::string streamStr;
+	streamStr = _parts[n]->_stream.str();
+    return streamStr;
 }
 
 const std::string&
@@ -290,7 +298,7 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
                                   HTTPResponse::Part*  input,
                                   HTTPResponse::Parts& output) const
 {
-    std::string bstr = "--" + boundary;
+    std::string bstr = std::string("--") + boundary;
     std::string line;
     char tempbuf[256];
 
@@ -425,7 +433,9 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     {
         std::stringstream buf;
         buf << proxy_host << ":" << proxy_port;
-        proxy_addr = buf.str();
+		std::string bufStr;
+		bufStr = buf.str();
+        proxy_addr = bufStr;
     
         osg::notify(osg::INFO) << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
@@ -758,7 +768,9 @@ HTTPClient::doReadString(const std::string& filename,
             input >> std::noskipws;
             std::stringstream buf;
             buf << input.rdbuf();
-            output = buf.str();
+			std::string bufStr;
+		    bufStr = buf.str();
+            output = bufStr;
         }
         else
         {

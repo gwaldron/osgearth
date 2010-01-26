@@ -74,7 +74,7 @@ ModelSourceFactory::create(const std::string& name,
 
 	// Load the source from a plugin.
     osg::ref_ptr<ModelSource> source = dynamic_cast<ModelSource*>(
-                osgDB::readObjectFile( ".osgearth_model_" + driver, options.get()));
+                osgDB::readObjectFile( std::string(".osgearth_model_") + driver, options.get()));
 
     if ( source.valid() )
     {

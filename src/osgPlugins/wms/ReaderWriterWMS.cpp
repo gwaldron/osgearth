@@ -109,7 +109,7 @@ public:
         char sep = _prefix.find_first_of('?') == std::string::npos? '?' : '&';
 
         if ( _capabilitiesURL.empty() )
-            _capabilitiesURL = _prefix + sep + "SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
+            _capabilitiesURL = _prefix + sep + std::string("SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities");
 
         //Try to read the WMS capabilities
         osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read(_capabilitiesURL, getOptions());
@@ -141,13 +141,14 @@ public:
             << std::fixed << _prefix << sep
             << "SERVICE=WMS&VERSION=" << _wms_version << "&REQUEST=GetMap"
             << "&LAYERS=" << _layers
-            << "&FORMAT=" << (_wms_format.empty()? "image/" + _format : _wms_format)
+            << "&FORMAT=" << (_wms_format.empty()? std::string("image/") + _format : _wms_format)
             << "&STYLES=" << _style
             << "&SRS=" << _srs
             << "&WIDTH="<< _tile_size
             << "&HEIGHT="<< _tile_size
             << "&BBOX=%lf,%lf,%lf,%lf";
 
+		_prototype = "";
         _prototype = buf.str();
 
         osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create( _srs );
@@ -207,7 +208,7 @@ public:
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
         if (_tileServiceURL.empty())
-            _tileServiceURL = _prefix + sep + "request=GetTileService";
+            _tileServiceURL = _prefix + sep + std::string("request=GetTileService");
 
         osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << _tileServiceURL << std::endl;
         _tileService = TileServiceReader::read(_tileServiceURL, getOptions());
@@ -220,7 +221,7 @@ public:
             if (patterns.size() > 0)
             {
                 result = _tileService->createProfile( patterns );
-                _prototype = _prefix + sep + patterns[0].getPrototype();
+				_prototype = _prefix + sep + patterns[0].getPrototype();
             }
         }
         else
@@ -229,7 +230,7 @@ public:
         }
 
         //TODO: won't need this for OSG 2.9+, b/c of mime-type support
-        _prototype = _prototype + "&." + _format;
+        _prototype = _prototype + std::string("&.") + _format;
 
         // populate the data metadata:
         // TODO

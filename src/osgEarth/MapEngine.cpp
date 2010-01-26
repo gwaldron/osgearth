@@ -105,7 +105,9 @@ MapEngine::createURI( unsigned int id, const TileKey* key )
 {
     std::stringstream ss;
     ss << key->str() << "." <<id<<".earth_tile";
-    return ss.str();
+    std::string ssStr;
+	ssStr = ss.str();
+	return ssStr;
 }
 
 // Make a MatrixTransform suitable for use with a Locator object based on the given extents.

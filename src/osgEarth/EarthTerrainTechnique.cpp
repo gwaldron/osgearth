@@ -876,7 +876,9 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         buf << tl->getId() << "=" << tl->getLevelOfDetail() << std::endl;
     }
 
-    text->setText( buf.str() );
+	std::string bufStr;
+	bufStr = buf.str();
+    text->setText( bufStr );
     //text->setFont( s_font );
     //text->setFont( osgText::readFontFile( "arialbd.ttf" ) );
     text->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );

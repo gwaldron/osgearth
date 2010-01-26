@@ -80,7 +80,7 @@ public:
         //If we have a relative path and the map file contains a server address, just concat the server path and the url together
         if (osgEarth::isRelativePath(tmsPath) && osgDB::containsServerAddress(referenceURI))
         {
-            tmsPath = osgDB::getFilePath(referenceURI) + "/" + tmsPath;
+            tmsPath = osgDB::getFilePath(referenceURI) + std::string("/") + tmsPath;
         }
 
         //If the path doesn't contain a server address, get the full path to the file.

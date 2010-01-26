@@ -89,9 +89,10 @@ public:
                 << "&z=" << zoom + 2;
         }
 
-		std::string base = buf.str();
+		std::string base;
+		base = buf.str();
 
-        osg::notify(osg::INFO) << key->str() << "=" << buf.str() << std::endl;
+        osg::notify(osg::INFO) << key->str() << "=" << base << std::endl;
         
         osg::ref_ptr<osg::Image> image;
         HTTPClient::readImageFile( base, image, getOptions(), progress );

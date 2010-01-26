@@ -335,9 +335,11 @@ public:
             }
         }
         
-        osg::notify(osg::INFO)<<"VPBDatabase::createTileName(), buf.str()=="<<buf.str()<<std::endl;
+		std::string bufStr;
+		bufStr = buf.str();
+        osg::notify(osg::INFO)<<"VPBDatabase::createTileName(), buf.str()=="<< bufStr <<std::endl;
         
-        return buf.str();
+		return bufStr;
     }
     
     osgTerrain::TerrainTile* getTerrainTile( const TileKey* key, ProgressCallback* progress )

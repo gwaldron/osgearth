@@ -177,7 +177,7 @@ SpatialReference::create( const std::string& init )
     }
     else if ( low.find( "epsg:" ) == 0 || low.find( "osgeo:" ) == 0 )
     {
-        srs = createFromPROJ4( "+init=" + low, init );
+        srs = createFromPROJ4( std::string("+init=") + low, init );
     }
     else if ( low.find( "projcs" ) == 0 || low.find( "geogcs" ) == 0 )
     {

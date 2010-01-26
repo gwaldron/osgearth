@@ -38,7 +38,9 @@ static std::string toString(double value, int precision = 25)
 {
     std::stringstream out;
     out << std::fixed << std::setprecision(precision) << value;
-    return out.str();
+	std::string outStr;
+	outStr = out.str();
+    return outStr;
 }
 
 TileFormat::TileFormat():
@@ -215,7 +217,9 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
                 std::string path = osgDB::getFilePath(_filename);
                 ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format.getExtension();
                 //osg::notify(osg::NOTICE) << "Returning URL " << ss.str() << std::endl;
-                return ss.str();
+                std::string ssStr;
+				ssStr = ss.str();
+				return ssStr;
             }
         }
     }
@@ -224,7 +228,9 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
         std::stringstream ss;
         std::string path = osgDB::getFilePath(_filename);
         ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format.getExtension();
-        return ss.str();        
+        std::string ssStr;
+		ssStr = ss.str();
+		return ssStr;        
     }
 
     return "";

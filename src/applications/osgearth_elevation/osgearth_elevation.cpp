@@ -63,7 +63,9 @@ updateFlag( osg::MatrixTransform* xf, const osg::Matrix& mat, double elev )
     osg::Geode* g = static_cast<osg::Geode*>( xf->getChild(0)->asGroup()->getChild(0) );
     std::stringstream buf;
     buf << elev;
-    static_cast<osgText::Text*>( g->getDrawable(1) )->setText( buf.str() );
+	std::string bufStr;
+	bufStr = buf.str();
+    static_cast<osgText::Text*>( g->getDrawable(1) )->setText( bufStr );
     xf->setMatrix( mat );
 }
 

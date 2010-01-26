@@ -153,7 +153,9 @@ public:
                     std::stringstream buf;
                     const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
                     buf << "CREATE SPATIAL INDEX ON " << name; 
-                    OGR_DS_ExecuteSQL( _dsHandle, buf.str().c_str(), 0L, 0L );
+					std::string bufStr;
+					bufStr = buf.str();
+                    OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
 
                     osg::notify(osg::NOTICE) <<  "done." << std::endl;
                 }

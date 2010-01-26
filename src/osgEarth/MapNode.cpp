@@ -160,7 +160,9 @@ MapNode::init()
         buf << local_options->getOptionString() << " "
             << "OSG_CURL_PROXY=" << _engineProps.proxySettings()->hostName() << " "
             << "OSG_CURL_PROXYPORT=" << _engineProps.proxySettings()->port();
-        local_options->setOptionString( buf.str() );
+		std::string bufStr;
+		bufStr = buf.str();
+        local_options->setOptionString( bufStr );
     }
 
     osg::notify(osg::INFO) 

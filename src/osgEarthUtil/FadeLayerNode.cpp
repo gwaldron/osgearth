@@ -245,17 +245,21 @@ void FadeLayerNode::updateStateSet()
 
 			std::stringstream ss;
 			ss << "osgEarth_Layer" << i << "_unit";
-			osg::Uniform* unitUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::INT);
+			std::string ssStr;
+			ssStr = ss.str();
+			osg::Uniform* unitUniform = stateset->getOrCreateUniform(ssStr, osg::Uniform::INT);
 			unitUniform->set( (int)i );
 
 			ss.str("");
 			ss << "osgEarth_Layer" << i << "_enabled";
-			osg::Uniform* enabledUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::BOOL);
+			ssStr = ss.str();
+			osg::Uniform* enabledUniform = stateset->getOrCreateUniform(ssStr, osg::Uniform::BOOL);
 			enabledUniform->set(enabled);
 
 			ss.str("");
 			ss << "osgEarth_Layer" << i << "_opacity";
-			osg::Uniform* opacityUniform = stateset->getOrCreateUniform(ss.str(), osg::Uniform::FLOAT);
+			ssStr = ss.str();
+			osg::Uniform* opacityUniform = stateset->getOrCreateUniform(ssStr, osg::Uniform::FLOAT);
 			opacityUniform->set(opacity);
 		}
 	}

@@ -33,7 +33,8 @@ CssUtils::readConfig( std::istream& in )
     std::copy( std::istream_iterator<char>(in),
         std::istream_iterator<char>(),
         std::ostream_iterator<char>( buf ) );
-    std::string css = buf.str();
+    std::string css;
+	css = buf.str();
 
     // tokenize the CSS into a config object..
     Config conf( "css" );

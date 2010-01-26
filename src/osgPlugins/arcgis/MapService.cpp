@@ -128,7 +128,7 @@ bool
 MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* options )
 {
     url = _url;
-    std::string json_url = url + "?f=pjson";  // request the data in JSON format
+    std::string json_url = url + std::string("?f=pjson");  // request the data in JSON format
 
     HTTPResponse response = HTTPClient::get( json_url, options );
     if ( !response.isOK() )
@@ -233,8 +233,10 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
         }
     }
 
+	std::string ssStr;
+	ssStr = ss.str();
     profile = Profile::create(
-        ss.str(),
+        ssStr,
         xmin, ymin, xmax, ymax,
         num_tiles_wide,
         num_tiles_high);

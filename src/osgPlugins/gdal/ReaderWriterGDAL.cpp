@@ -691,7 +691,7 @@ public:
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
         if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(referenceURI))
         {
-            path = osgDB::getFilePath(referenceURI) + "/" + path;
+            path = osgDB::getFilePath(referenceURI) + std::string("/") + path;
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
@@ -751,7 +751,7 @@ public:
         if ( !src_srs.valid() )
         {
             // not found in the dataset; try loading a .prj file
-            std::string prjLocation = osgDB::getNameLessExtension( path ) + ".prj";
+            std::string prjLocation = osgDB::getNameLessExtension( path ) + std::string(".prj");
             std::string wkt;
             if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
             {

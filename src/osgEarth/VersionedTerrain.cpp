@@ -590,7 +590,9 @@ VersionedTile::resetElevationRequests()
     _elevRequest->setPriority( priority );
     std::stringstream ss;
     ss << "TileElevationLayerRequest " << _key->str() << std::endl;
-    _elevRequest->setName( ss.str() );
+	std::string ssStr;
+	ssStr = ss.str();
+    _elevRequest->setName( ssStr );
 
     // this request will load placeholder elevation data for the tile:
     _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
@@ -598,7 +600,8 @@ VersionedTile::resetElevationRequests()
     _elevPlaceholderRequest->setPriority( priority );
     ss.str("");
     ss << "TileElevationPlaceholderLayerRequest " << _key->str() << std::endl;
-    _elevPlaceholderRequest->setName( ss.str() );
+	ssStr = ss.str();
+    _elevPlaceholderRequest->setName( ssStr );
 }
 
 
@@ -632,7 +635,9 @@ VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
         TaskRequest* r = new TileColorLayerRequest( _key.get(), map, engine, layerId );
         std::stringstream ss;
         ss << "TileColorLayerRequest " << _key->str() << std::endl;
-        r->setName( ss.str() );
+		std::string ssStr;
+		ssStr = ss.str();
+        r->setName( ssStr );
         r->setState( osgEarth::TaskRequest::STATE_IDLE );
 
         // in image-sequential mode, we want to prioritize lower-LOD imagery since it

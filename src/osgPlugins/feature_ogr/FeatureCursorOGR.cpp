@@ -62,7 +62,9 @@ _spatialFilter( 0L )
                 OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn( _layerHandle ); // just a ref.
                 std::stringstream buf;
                 buf << "SELECT * FROM " << OGR_FD_GetName( layerDef ) << " WHERE " << expr;
-                expr = buf.str();
+				std::string bufStr;
+				bufStr = buf.str();
+                expr = bufStr;
             }
         }
 

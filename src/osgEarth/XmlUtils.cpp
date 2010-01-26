@@ -157,7 +157,9 @@ XmlElement::getText() const
         }
     }
 
-    std::string result = trim( builder.str() );
+	std::string builderStr;
+	builderStr = builder.str();
+    std::string result = trim( builderStr );
     return result;
 }
 

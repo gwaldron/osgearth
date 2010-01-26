@@ -92,7 +92,7 @@ void TilePattern::init()
         {
             afterBB = _pattern.substr(after, _pattern.length() - after);
         }
-        _prototype = beforeBB + "%lf,%lf,%lf,%lf" + afterBB;
+        _prototype = beforeBB + std::string("%lf,%lf,%lf,%lf") + afterBB;
     }
 }
 

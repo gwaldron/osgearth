@@ -102,7 +102,9 @@ public:
             << "&x=" << x
             << "&y=" << y
             << "&." << _format;//Add this to trick osg into using the correct loader.
-        return buf.str();
+        std::string bufStr;
+		bufStr = buf.str();
+		return bufStr;
     }
 
     virtual int getPixelsPerTile() const

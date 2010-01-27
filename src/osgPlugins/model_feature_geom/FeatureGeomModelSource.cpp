@@ -79,6 +79,14 @@ public:
         osg::ref_ptr<osg::Node> result;
         build.style() = style;
         context = build.push( features, result, context );
+        
+        // Apply an LOD if required:
+        if ( minRange().isSet() || maxRange().isSet() )
+        {
+            osg::LOD* lod = new osg::LOD();
+            lod->addChild( result.get(), minRange().value(), maxRange().value() );
+            result = lod;
+        }
 
         if ( out_newNode ) *out_newNode = result.get();
         return result.release();

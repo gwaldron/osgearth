@@ -1,0 +1,299 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAP_H
+#define OSGEARTH_MAP_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Caching>
+#include <osgEarth/Profile>
+#include <osgEarth/MapLayer>
+#include <osgEarth/ModelLayer>
+#include <osgEarth/MapEngine>
+#include <osgEarth/MapEngineProperties>
+#include <osgDB/ReaderWriter>
+#include <OpenThreads/ReadWriteMutex>
+
+namespace osgEarth
+{    
+    /**
+     * Callback that the Map object uses to notify listeners of map source changes.
+     */
+    struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
+    {
+        virtual void onMapProfileEstablished( const Profile* profile ) { }
+
+        virtual void onMapLayerAdded( MapLayer* layer, unsigned int index ) { }
+
+        virtual void onMapLayerRemoved( MapLayer* layer, unsigned int index ) { }
+
+        virtual void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+
+        virtual void onModelLayerAdded( ModelLayer* layer ) { }
+
+        virtual void onTerrainMaskLayerAdded( ModelLayer* layer ) { }
+    };
+
+    typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
+
+
+    /**
+     * A Map is a container that holds a number of ordered MapLayer objects. This is the data model
+     * that a MapNode will render.
+     */
+    class OSGEARTH_EXPORT Map : public osg::Referenced
+    {
+    public:
+        enum CoordinateSystemType
+        {
+            CSTYPE_GEOCENTRIC,
+            CSTYPE_GEOCENTRIC_CUBE,
+            CSTYPE_PROJECTED
+        };
+		
+        enum SamplePolicy
+        {
+            FIRST_VALID,
+            HIGHEST,
+            LOWEST,
+            AVERAGE
+        };
+
+    public:
+        /**
+         * Constructs a new, empty map.
+         */
+        Map( const CoordinateSystemType& ctype =CSTYPE_GEOCENTRIC );
+
+    public:
+        /**
+         * Gets the coordinate system type for this map. This affects the profile in
+         * which tiles are generated for this map.
+         */
+        const CoordinateSystemType& getCoordinateSystemType() const;
+
+        /**
+         * Gets the map's master profile. This value may not be available until 
+         * after autoCalculateProfile has been called.
+         */
+        const Profile* getProfile() const;
+
+        /**
+         * Gets the ordered list of image layers in this map. Be sure to use
+         * getMapDataMutex() when iterating the list.
+         */
+        const MapLayerList& getImageMapLayers() const;
+
+        /**
+         * Copies references of the map image layers into the output list.
+         * This method is thread safe. It returns the map revision that was
+         * in effect when the data was copied.
+         */
+        int getImageMapLayers( MapLayerList& out_list ) const;
+
+        /**
+         * Gets the ordered list of heightfield layers in this map. Be sure to use
+         * getMapDataMutex() when iterating the list.
+         */
+        const MapLayerList& getHeightFieldMapLayers() const;
+
+        /** 
+         * Gets the unordered list of model layer in this map. Be sure to use
+         * getMapDataMutex() when iterating the list.
+         */
+        const ModelLayerList& getModelLayers() const;
+
+        /**
+         * Gets the model layer to draw as a terrain mask.
+         */
+        ModelLayer* getTerrainMaskLayer() const;
+
+        /**
+         * Adds a map layer callback to this map. This will be notified whenever layers are
+         * added, removed, or re-ordered.
+         */
+        void addMapCallback( MapCallback* callback );
+
+        /**
+         * Adds a new map layer to the map.
+         */
+        void addMapLayer( MapLayer* layer );
+
+        /**
+         * Removes a map layer from the map.
+         */
+        void removeMapLayer( MapLayer* layer );
+
+        /**
+         * Moves a map layer to another index position in its list.
+         */
+        void moveMapLayer( MapLayer* layer, unsigned int newIndex );
+
+        /**
+         * Adds a new model layer to the map.
+         */
+        void addModelLayer( ModelLayer* layer );
+        
+        /**
+         * Set a layer to use as a terrain mask. The map engine will draw
+         * this layer using the stencil buffer.
+         */
+        void setTerrainMaskLayer( ModelLayer* layer );
+
+    public:
+        /**
+         * Gets the user-provided options structure stored in this map.
+         */
+        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
+
+        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
+
+        /**
+         * Sets the readable name of this map.
+         */
+        void setName( const std::string& name );
+
+        /** 
+         * Gets the readable name of this map.
+         */
+        const std::string& getName() const;
+
+        /**
+         * Gets the mutex that protects access to the Map layer lists.
+         */
+        OpenThreads::ReadWriteMutex& getMapDataMutex();
+
+        /**
+         * Sets/Gets the caching setup for the entire map. By default, Map Layers added to
+         * the map will inherit this setup unless they override or customize it with
+         * their own settings.
+         *
+         * Note: Set this before adding any layers to the map.
+         */
+        optional<CacheConfig>& cacheConfig();
+        const optional<CacheConfig>& cacheConfig() const;
+
+        /**
+         * Sets/Gets an explicit master profile for the Map. Usually this is calculated automatically,
+         * but in some cases you need to set it manually. 
+         *
+         * Note: Set thie before adding any layers to the map.
+         */
+        optional<ProfileConfig>& profileConfig();
+        const optional<ProfileConfig>& profileConfig() const;
+
+        /**
+         * Gets the reference URI. See setReferenceURI for more info.
+         */
+        const std::string& getReferenceURI() const;
+
+        /**
+         * Sets a reference URI. Usually this is the location of a file from which this map
+         * was created. This acts as a reference point for any relative paths/URIS that may
+         * occur elsewhere in the configuration.
+         *
+         * Note: Set this before adding any layers to the map.
+         */
+        void setReferenceURI( const std::string& uri );
+
+        // internal.
+        void setId( unsigned int id );
+        unsigned int getId() const;
+
+        /**
+         * Creates a heightfield for the region covered by the given TileKey, falling back on
+         * lower resolutions if necessary. 
+         *
+         * @param key
+         *      Tile key defining the region (and ideal LOD) for which to return a heightfield
+         * @param samplePolicy
+         *      See enum SamplePolicy in this class.
+         */
+        osg::HeightField* createHeightField(
+            const TileKey* key,
+            bool fallback,
+            SamplePolicy samplePolicy =FIRST_VALID,
+            ProgressCallback* progress = 0);
+
+		/**
+		 * Gets the Cache for this Map
+		 */
+		Cache* getCache() const;
+
+		/**
+		 * Sets the Cache for this Map
+		 */
+		void setCache( Cache* cache );
+
+		/**
+		* Sets whether to use a customer Locator for spherical mercator data.
+		* Disable this on systems that don't support NPOT textures or if you
+		* see texture "smearing" with mercator globes.
+		*/
+		void setUseMercatorLocator( bool value );
+
+		/**
+		* Gets whether to use a customer Locator for spherical mercator data.
+		*/
+		bool getUseMercatorLocator() const;
+
+        /**
+         * Gets the revision # of the map. The revision # changes every time
+         * you add, remove, or move layers. You can use this to track changes
+         * in the map model (as a alternative to installing a MapCallback).
+         */
+        int getDataModelRevision() const;
+
+        /**
+         * Convenience function that returns TRUE if the map cs type is
+         * geocentric.
+         */
+        bool isGeocentric() const;
+
+    protected:
+
+        ~Map() { }
+
+    private:
+
+        std::string _name;
+        MapLayerList _imageMapLayers;
+        MapLayerList _heightFieldMapLayers;
+        ModelLayerList _modelLayers;
+        osg::ref_ptr<ModelLayer> _terrainMaskLayer;
+        MapCallbackList _mapCallbacks;
+        osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
+        OpenThreads::ReadWriteMutex _mapDataMutex;
+        std::string _referenceURI;
+        osg::ref_ptr<const Profile> _profile;
+        unsigned int _id;
+        CoordinateSystemType _cstype;
+		osg::ref_ptr<Cache> _cache;
+		bool _use_mercator_locator;
+        int _dataModelRevision;
+        
+        optional<CacheConfig> _cacheConf;
+        optional<ProfileConfig> _profileConf;
+
+    private:
+        void calculateProfile();
+    };
+}
+
+#endif // OSGEARTH_MAP_H

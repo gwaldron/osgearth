@@ -1,0 +1,229 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_MAP_ENGINE_PROPERTIES_H
+#define OSGEARTH_MAP_ENGINE_PROPERTIES_H 1
+
+#include <osgEarth/Common>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT LoadingPolicy
+    {
+    public:
+        /** Tile loading modes. */
+        enum Mode {
+            /** Load tiles using the standard OSG database pager mechanism. The default. */
+            MODE_STANDARD,
+
+            /** Load tiles using a task service thread pool, enforcing sequential display
+                of tile LODs. */
+            MODE_SEQUENTIAL,
+
+            /** Load tiles using a task service thread pool, but prioritize loading of the
+                highest visible LOD for imagery (elevation data is always sequential). */
+            MODE_PREEMPTIVE
+        };
+
+    public:
+        LoadingPolicy();
+        LoadingPolicy( const Mode& mode );
+
+    public:
+        /**
+         * Gets or sets the tile loading mode.
+         */
+        optional<Mode>& mode() { return _mode; }
+        const optional<Mode>& mode() const { return _mode; }
+
+        /**
+         * Gets or sets the number of loading threads to use per CPU core.
+         *
+         * In STANDARD mode, this affects the number of OSG database pager threads;
+         * in SEQUENTIAL or PREEMPTIVE mode, this sets the number of task thread
+         * pool threads.
+         */
+        optional<int>& numThreadsPerCore() { return _numThreadsPerCore; }
+        const optional<int>& numThreadsPerCore() const { return _numThreadsPerCore; }
+
+        /**
+         * Gets or sets the total number of loading threads to use.
+         *
+         * In STANDARD mode, this affects the number of OSG database pager threads;
+         * in SEQUENTIAL or PREEMPTIVE mode, this sets the number of task thread
+         * pool threads.
+         */
+        const optional<int>& numThreads() const { return _numThreads; }
+        optional<int>& numThreads() { return _numThreads; }
+
+        /**
+         * Gets or sets the number of threads to allocate for regenerating terrain
+         * tiles in the background. This only applies in SEQUENTIAL or PREEMPTIVE
+         * mode.
+         */
+        const optional<int>& numTileGeneratorThreads() const { return _numTileGenThreads; }
+        optional<int>& numTileGeneratorThreads() { return _numTileGenThreads; }
+
+    protected:
+        optional<Mode> _mode;
+        optional<int> _numThreads;
+        optional<int> _numThreadsPerCore;
+        optional<int> _numTileGenThreads;
+    };
+
+
+    class OSGEARTH_EXPORT ProxySettings
+    {
+    public:
+        ProxySettings();
+        ProxySettings( const std::string& host, int port );
+
+        std::string& hostName() { return _hostName; }
+        const std::string& hostName() const { return _hostName; }
+
+        int& port() { return _port; }
+        const int& port() const { return _port; }
+
+    protected:
+        std::string _hostName;
+        int _port;
+    };
+
+
+    class OSGEARTH_EXPORT MapEngineProperties
+    {
+    public:
+        MapEngineProperties();
+       
+        /**
+         * Sets or gets the scale factor for height-field values.
+         * Default = 1.0
+         */
+        optional<float>& verticalScale() { return _verticalScale; }
+        const optional<float>& verticalScale() const { return _verticalScale; }
+
+        /**
+         * The skirt ratio to be used when creating height field tiles. This
+         * is the ratio of the height of the tile "skirt" to the width of the tile.
+         * Default = 0.02
+         */
+        optional<float>& heightFieldSkirtRatio() { return _heightFieldSkirtRatio; }
+        const optional<float>& heightFieldSkirtRatio() const { return _heightFieldSkirtRatio; }
+
+        /**
+         * The sample ratio for height fields. I.e., the terrain engine
+         * will sample heightfield grids at this ratio
+         * Default = 1.0
+         */
+        optional<float>& heightFieldSampleRatio() { return _heightFieldSampleRatio; }
+        const optional<float>& heightFieldSampleRatio() const { return _heightFieldSampleRatio; }
+
+        /** 
+         * The hostname/port of a proxy server to use for all HTTP communications.
+         * Default = no proxy.
+         */
+        optional<ProxySettings>& proxySettings() { return _proxySettings; }
+        const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
+
+        /**
+         * The minimum tile LOD range as a factor of the tile's radius.
+         * Default = 6.0.
+         */
+        optional<float>& minTileRangeFactor() { return _minTileRangeFactor; }
+        const optional<float>& minTileRangeFactor() const { return _minTileRangeFactor; }
+
+        /**
+         * Whether the map should be run exclusively off of the cache.
+         * Default = false
+         */
+        optional<bool>& cacheOnly() { return _cacheOnly; }
+        const optional<bool>& cacheOnly() const { return _cacheOnly; }
+
+        /**
+         * Whether to monitor terrain tile boundaries and match up the vertices.
+         * Default = false.
+         */
+        optional<bool>& normalizeEdges() { return _normalizeEdges; }
+        const optional<bool>& normalizeEdges() const { return _normalizeEdges; }
+
+        /**
+         * Whether to apply the default layer combination logic using TexEnvCombine.
+         * Set this to false if you want to assume all control of how layers are combined.
+         * This only applies when the LayeringTechnique is MULTITEXTURE.
+         * Default = true.
+         */
+        optional<bool>& combineLayers() { return _combineLayers; }
+        const optional<bool>& combineLayers() const { return _combineLayers; }
+
+        /**
+         * Properties associated with the tile loading subsystem.
+         */
+        optional<LoadingPolicy>& loadingPolicy() { return _loadingPolicy; }
+        const optional<LoadingPolicy>& loadingPolicy() const { return _loadingPolicy; }
+
+        /**
+         * Available techniques for compositing multiple image layers at runtime.
+         */
+		enum LayeringTechnique
+		{
+            /** Use multiple rendering passes to blend image layers together */
+			LAYERING_MULTIPASS,
+
+            /** Use a multitexture control to blend image layers together (DEFAULT) */
+			LAYERING_MULTITEXTURE
+		};
+
+		/**
+		 * The technique that should be used when rendering Terrain Tiles.
+		 */
+        optional<LayeringTechnique>& layeringTechnique() {
+            return _layeringTechnique; }
+        const optional<LayeringTechnique>& layeringTechnique() const { 
+            return _layeringTechnique; }
+
+        /**
+         * The maximum level of detail to which the terrain should subdivide.
+         */
+        optional<int>& maxLOD() { return _maxLOD; }
+        const optional<int>& maxLOD() const { return _maxLOD; }
+
+        /**
+         * Whether to explicity enable or disable GL lighting on the map node.
+         */
+        optional<bool>& enableLighting() { return _enableLighting; }
+        const optional<bool>& enableLighting() const { return _enableLighting; }
+
+    private:
+            
+        optional<float> _verticalScale;
+        optional<float> _heightFieldSkirtRatio;
+        optional<float> _heightFieldSampleRatio;
+        optional<ProxySettings> _proxySettings;
+        optional<float> _minTileRangeFactor;
+        optional<bool> _cacheOnly;
+        optional<bool> _normalizeEdges;
+        optional<bool> _combineLayers;
+        optional<LoadingPolicy> _loadingPolicy;
+        optional<LayeringTechnique> _layeringTechnique;
+        optional<int> _maxLOD;
+        optional<bool> _enableLighting;
+    };
+}
+
+#endif // OSGEARTH_MAP_ENGINE_PROPERTIES_H

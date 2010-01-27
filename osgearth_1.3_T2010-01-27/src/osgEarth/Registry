@@ -1,0 +1,100 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_REGISTRY
+#define OSGEARTH_REGISTRY 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Caching>
+#include <osgEarth/Profile>
+#include <osgEarth/TaskService>
+#include <OpenThreads/ReentrantMutex>
+#include <OpenThreads/ScopedLock>
+
+#include <osg/Referenced>
+
+/*#define GDAL_SCOPED_LOCK \
+    osg::Timer_t gdal_start = osg::Timer::instance()->tick();\
+    osg::notify(osg::NOTICE) << "Waiting for lock..." << std::endl; \
+    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() );\
+    osg::Timer_t gdal_end = osg::Timer::instance()->tick();\
+    osg::notify(osg::NOTICE) << "Got lock in " << osg::Timer::instance()->delta_m(gdal_start,gdal_end) << "ms" << std::endl; \
+*/
+
+#define GDAL_SCOPED_LOCK \
+    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
+    
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT Registry : public osg::Referenced
+    {
+    public:
+        static Registry* instance(bool erase = false);
+
+        const Profile* getNamedProfile( const std::string& name ) const;
+
+        const Profile* getGlobalGeodeticProfile() const;
+
+        const Profile* getGlobalMercatorProfile() const;
+
+        const Profile* getCubeProfile() const;
+
+        OpenThreads::ReentrantMutex& getGDALMutex();
+
+		Cache* getCacheOverride() const;
+		void setCacheOverride( Cache* cacheOverride );
+
+        /** Registers a mapping of a mime-type to an extension. A process fetching data
+          * over HTTP can use this facility to determine the proper ReaderWriter to use
+          * when there is no filename extension to rely upon.
+          */
+        void addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt);
+
+        /** gets a reader/writer that handles the extension mapped to by one of
+          * the registered mime-types. */
+        osgDB::ReaderWriter* getReaderWriterForMimeType(const std::string& mimeType);
+
+    protected:
+        virtual ~Registry();
+        Registry();
+
+
+        void destruct();
+
+        OpenThreads::ReentrantMutex _gdal_mutex;
+        bool _gdal_registered;
+
+        osg::ref_ptr<const Profile> _global_geodetic_profile;
+        osg::ref_ptr<const Profile> _global_mercator_profile;
+        osg::ref_ptr<const Profile> _cube_profile;
+
+        OpenThreads::Mutex _regMutex;        
+        int _numGdalMutexGets;
+        
+        typedef std::map< std::string, std::string> MimeTypeExtensionMap;
+        // maps mime-types to extensions.
+        MimeTypeExtensionMap _mimeTypeExtMap;
+
+
+		osg::ref_ptr<Cache> _cacheOverride;
+    };
+}
+
+#endif //OSGEARTH_REGISTRY

@@ -1,0 +1,202 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_CONFIG_H
+#define OSGEARTH_CONFIG_H 1
+
+#include <osgEarth/Common>
+#include <osgDB/ReaderWriter>
+#include <osg/Version>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
+#include <list>
+#include <istream>
+
+namespace osgEarth
+{
+    typedef std::list<class Config> ConfigSet;
+
+    class OSGEARTH_EXPORT Config
+    {
+    public:
+        Config() { }
+
+        Config( const std::string& name ) : _name( name ) { }
+
+        Config( const std::string& name, const std::string& value ) : _name( name ), _defaultValue( value ) { }
+
+        Config( const Config& rhs ) : _name(rhs._name), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children) { }
+
+        bool loadXML( std::istream& in );
+
+        bool empty() const {
+            return _name.empty() && _defaultValue.empty() && _children.empty();
+        }
+
+        std::string& name() {
+            return _name;
+        }
+
+        const std::string& name() const {
+            return _name;
+        }
+
+        const std::string& value() const {
+            return _defaultValue;
+        }
+
+        std::string& value() {
+            return _defaultValue;
+        }
+
+        Properties& attrs() {
+            return _attrs;
+        }
+
+        std::string attr( const std::string& name ) const {
+            Properties::const_iterator i = _attrs.find(name);
+            return i != _attrs.end()? i->second : "";
+        }
+
+        std::string& attr( const std::string& name ) {
+            return _attrs[name];
+        }
+
+        const Properties& attrs() const {
+            return _attrs;
+        }
+
+        ConfigSet& children() {
+            return _children;
+        }
+
+        const ConfigSet& children() const {
+            return _children;
+        }
+
+        const ConfigSet children( const std::string& name ) const {
+            ConfigSet r;
+            for(ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
+                if ( i->name() == name )
+                    r.push_back( *i );
+            }
+            return r;
+        }
+
+        bool hasChild( const std::string& name ) const {
+            for(ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ )
+                if ( i->name() == name )
+                    return true;
+            return false;
+        }
+
+        const Config& child( const std::string& name ) const;
+
+        void addChild( const std::string& name, const std::string& value ) {
+            add( name, value );
+        }
+
+        void add( const std::string& name, const std::string& value ) {
+            _children.push_back( Config( name, value ) );
+        }
+
+        template<typename T>
+        void addOptional( const std::string& name, const optional<T>& opt ) {
+            if ( opt.isSet() )
+                add( name, osgEarth::toString<T>( opt.value() ) );
+        }
+
+        void addChild( const Config& conf ) {
+            add( conf );
+        }
+
+        void add( const Config& conf ) {
+            _children.push_back( conf );
+        }
+
+        void add( const ConfigSet& set ) {
+            for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
+                _children.push_back( *i );
+        }
+
+        bool hasValue( const std::string& name ) const {
+            return !value(name).empty();
+        }
+
+        std::string value( const std::string& name ) const {
+            std::string r = child(name).value();
+            if ( r.empty() )
+                r = attr(name);
+            return r;
+        }
+
+        template<typename T>
+        T value( const std::string& name, T fallback ) const {
+            std::string r = attr(name);
+            if ( r.empty() && hasChild( name ) )
+                r = child(name).value();
+            return osgEarth::as<T>( r, fallback );
+        }            
+
+        template<typename T>
+        bool getOptional( const std::string& name, optional<T>& output ) const {
+            std::string r = attr(name);
+            if ( r.empty() && hasChild(name) )
+                r = child(name).value();
+            if ( !r.empty() ) {
+                output = osgEarth::as<T>( r, output.defaultValue() );
+                return true;
+            } 
+            else {
+                return false;
+            }
+        }
+
+        std::string toString( int indent =0 ) const;
+
+    protected:
+        std::string _name;
+        std::string _defaultValue;
+        Properties  _attrs;
+        ConfigSet   _children;
+    };
+
+    class OSGEARTH_EXPORT PluginOptions : public osgDB::ReaderWriter::Options
+    {
+    public:
+        PluginOptions() { }
+        PluginOptions( const PluginOptions& rhs, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY ) :
+            osgDB::ReaderWriter::Options( rhs, copyop ), _conf( rhs._conf ) { }
+        PluginOptions( const osgDB::ReaderWriter::Options& toCopy ) :
+            osgDB::ReaderWriter::Options( toCopy ) { }
+
+        META_Object(osgEarth, PluginOptions);
+
+        Config& config() { return _conf; }
+        const Config& config() const { return _conf; }
+
+    protected:
+        Config _conf;
+    };
+
+
+}
+
+#endif // OSGEARTH_CONFIG_H
+

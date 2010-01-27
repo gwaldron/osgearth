@@ -1,0 +1,63 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H
+#define OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Annotation>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
+#include <osg/Geode>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Features 
+{
+    /**
+     * Builds geometry from a stream of input features.
+     */
+    class OSGEARTHFEATURES_EXPORT BuildGeometryFilter // : public Filter
+    {
+    public:
+        BuildGeometryFilter();
+
+        optional<Style>& style() { return _style; }
+
+        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
+
+        FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
+
+    protected:
+        osg::ref_ptr<osg::Geode> _geode;
+        optional<Style> _style;
+        optional<Geometry::Type> _geomTypeOverride;
+        bool _hasPoints;
+        bool _hasLines;
+        void reset();
+        
+        bool push( Feature* input, const FilterContext& context );
+        bool pushRegularFeature( Feature* input, const FilterContext& context );
+        bool pushTextAnnotation( TextAnnotation* input, const FilterContext& context );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

@@ -1,0 +1,19 @@
+<!--
+osgEarth Sample
+
+WorldWind TileService example
+
+TileService was created to support WorldWind layers. This example shows how
+to use it.
+-->
+
+<map name="TileService" type="geocentric">
+
+   <image name="tileservice" driver="tileservice">
+       <url>http://s0.tileservice.worldwindcentral.com/getTile?</url>
+       <dataset>bmng.topo.bathy.200401</dataset>
+       <format>jpg</format>
+	   <max_level>7</max_level>
+   </image>  
+   
+</map>

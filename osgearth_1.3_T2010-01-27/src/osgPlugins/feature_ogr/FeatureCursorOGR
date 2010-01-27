@@ -1,0 +1,81 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHFEATURES_FEATURE_CURSOR_OGR
+#define OSGEARTHFEATURES_FEATURE_CURSOR_OGR 1
+
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Query>
+#include <ogr_api.h>
+#include <queue>
+
+using namespace osgEarth;
+using namespace osgEarth::Features;
+
+class FeatureCursorOGR : public FeatureCursor
+{
+public:
+    /**
+     * Creates a new feature cursor that iterates over an OGR layer.
+     *
+     * @param dsHandle
+     *      Handle on the OGR data source to which the results layer belongs
+     * @param layerHandle
+     *      Handle to the OGR layer containing the features
+     * @param profile
+     *      Profile of the feature layer corresponding to the feature data
+     * @param query
+     *      The the query from which this cursor was created.
+     */
+    FeatureCursorOGR(
+        OGRLayerH dsHandle,
+        OGRLayerH layerHandle,
+        const FeatureProfile* profile,
+        const Query& query,
+        FeatureFilterList& filters );
+
+public: // FeatureCursor
+
+    bool hasMore() const;
+    Feature* nextFeature();
+
+protected:
+    virtual ~FeatureCursorOGR();
+
+private:
+    OGRDataSourceH _dsHandle;
+    OGRLayerH _layerHandle;
+    OGRLayerH _resultSetHandle;
+    OGRGeometryH _spatialFilter;
+    Query _query;
+    int _chunkSize;
+    OGRFeatureH _nextHandleToQueue;
+    osg::ref_ptr<const FeatureProfile> _profile;
+    std::queue< osg::ref_ptr<Feature> > _queue;
+    osg::ref_ptr<Feature> _lastFeatureReturned;
+    FeatureFilterList& _filters;
+
+private:
+    void readChunk();
+    Feature* createFeature( OGRFeatureH handle );
+};
+
+
+#endif // OSGEARTHFEATURES_FEATURE_CURSOR_OGR

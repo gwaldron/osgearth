@@ -1,0 +1,178 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_SOURCE_H
+#define OSGEARTHFEATURES_FEATURE_SOURCE_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Annotation>
+#include <osgEarthFeatures/Geometry>
+#include <osgEarthFeatures/Query>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Styling>
+#include <osgEarth/Profile>
+#include <osgEarth/GeoData>
+#include <osgDB/ReaderWriter>
+#include <list>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Features
+{   
+    /**
+     * A cursor that lets you iterate over a collection of features returned 
+     * from a feature query performed on a FeatureStore.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureCursor : public osg::Referenced
+    {
+    public:
+        virtual bool hasMore() const =0;
+        virtual Feature* nextFeature() =0;
+    };
+
+    /**
+     * A simple cursor implementation that returns features from an in-memory
+     * feature list.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureListCursor : public FeatureCursor
+    {
+    public:
+        FeatureListCursor( const FeatureList& input );
+        virtual bool hasMore() const;
+        virtual Feature* nextFeature();
+    protected:
+        FeatureList _features;
+        FeatureList::iterator _iter;
+    };
+
+    /**
+     * A FeatureSource is a pluggable object that generates Features, and 
+     * optionally, styling information to go along with them.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureSource : public virtual osg::Object
+    {
+    public:      
+        /**
+         * Constructs a new feature source with the provided read/write options.
+         */
+        FeatureSource( const PluginOptions* options =NULL );
+
+        /**
+         * Gets a reference to the metadata that describes features that you can
+         * get from this FeatureSource. A valid feature profile indiciates that the
+         * feature source successfully initialized.
+         */
+        const FeatureProfile* getFeatureProfile() const;
+
+        /**
+         * Gets the options that were passed into this object's CTOR.
+         */
+        const PluginOptions* getOptions() const;
+
+        /**
+         * Creates a cursor that iterates over all the features corresponding to the
+         * specified query.
+         *
+         * Caller takes ownership of the returned object.
+         */
+        virtual FeatureCursor* createFeatureCursor( const Query& query ) =0;
+
+
+    public: // Styling
+
+        /**
+         * Returns true if this source creates features with embedded style information.
+         * By default, this is false (features are not expected to carry their own
+         * style definitions).
+         */
+        virtual bool hasEmbeddedStyles() const {
+            return false; }
+
+    public:
+
+        /**
+         * Accesses the list of feature filters that will transform features
+         * before they are returned in a feature cursor.
+         */
+        FeatureFilterList& getFilters();
+
+    public: 
+
+        // META_Object specialization:
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const FeatureSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "FeatureSource"; }
+        virtual const char* libraryName() const { return "osgEarthFeatures"; }
+
+
+		/**
+		 * Initialize the FeatureSource.  The profile should be computed and set here using setProfile()
+		 */
+		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL) =0;
+
+    protected:
+
+        /**
+         * Creates and returns a metadata structure describing the features in a named
+         * feature class. This method is called by the public function getFeatureProfile()
+         * in this same object to create the metadata structure.
+         */
+        virtual FeatureProfile* createFeatureProfile() =0;
+
+        /**
+         * DTOR is protected to prevent this object from being allocated on the stack.
+         */
+        virtual ~FeatureSource();
+
+    private:
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+        osg::ref_ptr<const PluginOptions>  _options;
+        FeatureFilterList _filters;
+
+        friend class Map;
+        friend class FeatureSourceFactory;
+    };
+
+
+    /**
+     * Factory class that will instantiate a FeatureSource corresponding to a driver name.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureSourceFactory
+    {
+	public:
+		/**
+		 * Creates a FeatureSource with the given driver and properties.
+		 */
+		static FeatureSource* create(
+            const std::string& name,
+            const std::string& driver,
+            const Config&      driverConf,
+            const osgDB::ReaderWriter::Options* globalOptions =NULL );
+
+        static FeatureSource* create(
+            const Config& featureStoreConf,
+            const osgDB::ReaderWriter::Options* globalOptions =NULL );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_SOURCE_H
+

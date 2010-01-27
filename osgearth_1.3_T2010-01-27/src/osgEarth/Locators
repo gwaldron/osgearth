@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_LOCATORS_H
+#define OSGEARTH_LOCATORS_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/GeoData>
+#include <osgTerrain/Locator>
+
+namespace osgEarth
+{
+    /**
+     * Locator that stores the extent of its source data (which might be different
+     * than the extent of the locator's transform). This locator can also automatically
+     * crop out a section of the source image.
+     */
+    class OSGEARTH_EXPORT GeoLocator : public osgTerrain::Locator
+    {
+    public:
+        GeoLocator();
+
+        GeoLocator( const GeoExtent& dataExtent );
+
+        GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );
+
+        /** Construct a locator that crops to a display extent. */
+        GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent );
+
+        static GeoLocator* createForKey( const class TileKey* key, class Map* map );
+
+        void setDataExtent( const GeoExtent& extent );
+        const GeoExtent& getDataExtent() const;
+
+        /** Clones the current locator, applying a new display (i.e. crop) extent. */
+        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
+
+        virtual GeoLocator* getGeographicFromGeocentric( );
+        
+    public: // Locator
+        virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
+
+    protected:
+        void cropLocal( osg::Vec3d& local ) const;
+
+        bool _inverseCalculated;
+
+    private:
+        GeoExtent _dataExtent;
+        double _x0, _y0, _x1, _y1;
+    };
+
+    
+    /**
+     * A terrain locator that generates texture coordinates that warp a Mercator image.
+     *
+     * Note: the MercatorLocator doesn't have a "cropping" variation b/c it automatically
+     * self-crops as necessary.
+     */
+    class MercatorLocator : public GeoLocator
+    {
+    public:
+        MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );
+
+        //virtual bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
+        virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
+        
+        /** Clones the current locator, applying a new display (i.e. crop) extent. */
+        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
+
+        virtual GeoLocator* getGeographicFromGeocentric( );
+
+    private:
+        GeoExtent _geoDataExtent;
+    };
+}
+
+#endif // OSGEARTH_LOCATORS_H

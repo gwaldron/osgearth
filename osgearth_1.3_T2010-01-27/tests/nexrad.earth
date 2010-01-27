@@ -1,0 +1,20 @@
+<!--
+osgEarth Sample
+
+US NEXRAD 45 minute radar returns overlaid on imagery.
+-->
+
+<map name="WMS Radar returns" type="geocentric">   
+     
+    <image name="pelican nasa blue marble" driver="tms">
+        <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
+    </image>
+    
+    <image name="nexrad45min" driver="wms">
+        <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi?transparent=true</url>
+        <format>png</format>
+        <layers>nexrad-n0r</layers>
+        <tile_size>256</tile_size>
+        <srs>EPSG:4326</srs>
+    </image>
+</map>

@@ -1,0 +1,256 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TILE_GRID_PROFILE_H
+#define OSGEARTH_TILE_GRID_PROFILE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/GeoData>
+#include <osgEarth/SpatialReference>
+#include <osg/CoordinateSystemNode>
+#include <vector>
+
+namespace osgEarth
+{
+    class TileKey;
+
+    /**
+     * Configures a geospatial profile, defining the spatial reference and tile layout
+     * structure of map content.
+     */
+    class OSGEARTH_EXPORT ProfileConfig
+    {
+    public:
+        /** Constructs an empty (undefined) profile configuration */
+        ProfileConfig();
+
+        /** Materialize from configuration object */
+        ProfileConfig( const Config& conf );
+
+        /** Constructs a profile configuration and sets the named profile. */
+        ProfileConfig( const std::string& named_profile );
+
+        /** Returns true if this configuration is well-defined and usable */
+        bool defined() const;
+
+        /** Gets the optional Well-Known Profile string. */
+        optional<std::string>& namedProfile() { return _namedProfile; }
+        const optional<std::string>& namedProfile() const { return _namedProfile; }
+
+        /** Gets the spatial reference system initialization string to use for the profile. */
+        optional<std::string>& srsString() { return _srs; }
+        const optional<std::string>& srsString() const { return _srs; }
+
+        optional<Bounds>& bounds() { return _bounds; }
+        const optional<Bounds>& bounds() const { return _bounds; }
+
+        optional<int>& numTilesWideAtLod0() { return _numTilesWideAtLod0; }
+        const optional<int>& numTilesWideAtLod0() const { return _numTilesWideAtLod0; }
+
+        optional<int>& numTilesHighAtLod0() { return _numTilesHighAtLod0; }
+        const optional<int>& numTilesHighAtLod0() const { return _numTilesHighAtLod0; }
+
+        ///** Gets the spatial extents of the profile */
+        //void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
+        double xMin() const { return _bounds->xMin(); }
+        double yMin() const { return _bounds->yMin(); }
+        double xMax() const { return _bounds->xMax(); }
+        double yMax() const { return _bounds->yMax(); }
+
+        /** Serialize to configuration object */
+        Config toConfig( const std::string& name ="profile" ) const;
+
+    private:
+        optional<std::string> _namedProfile;
+        optional<std::string> _srs;
+        optional<Bounds>      _bounds;
+        optional<int>         _numTilesWideAtLod0;
+        optional<int>         _numTilesHighAtLod0;
+
+        //bool _empty;
+        //std::string _namedProfile;
+        //std::string _refLayer;
+        //std::string _srs;
+        //double _minX;
+        //double _minY;
+        //double _maxX;
+        //double _maxY;
+    };
+
+
+    /**
+     * A "profile" defines the layout of a data source. The profile conveys the
+     * spatial reference system (SRS), the geospatial extents within that SRS, and
+     * the tiling scheme.
+     */
+    class OSGEARTH_EXPORT Profile : public osg::Referenced
+    {
+    public:
+        // profile types:
+        enum ProfileType
+        {
+            TYPE_UNKNOWN,
+            TYPE_GEODETIC,
+            TYPE_MERCATOR,
+            TYPE_LOCAL
+        };
+
+    public:
+
+        static const Profile* create(
+            const std::string& srs_string,
+            double xmin, double ymin, double xmax, double ymax,
+            unsigned int numTilesWideAtLod0 =0,
+            unsigned int numTilesHighAtLod0 =0 );
+
+        static const Profile* create(
+            const SpatialReference* srs,
+            double xmin, double ymin, double xmax, double ymax,
+            unsigned int numTilesWideAtLod0 =0,
+            unsigned int numTilesHighAtLod0 =0 );
+
+        static const Profile* create(
+            const std::string& srs_string,
+            unsigned int numTilesWideAtLod0 =0,
+            unsigned int numTilesHighAtLod0 =0 );
+
+        static const Profile* createCube(
+            const SpatialReference* geog_srs);
+
+        static const Profile* create(
+            const ProfileConfig& conf );
+
+        /**
+         * Returns true if the profile is properly initialized.
+         */
+        bool isOK() const;
+
+        /**
+         * Gets the extent of the profile (in the profile's SRS)
+         */
+        const GeoExtent& getExtent() const;
+
+        /**
+         * Gets the extent of the profile (in lat/long.)
+         */
+        const GeoExtent& getLatLongExtent() const;
+        
+        /**
+         * Gets the spatial reference system underlying this profile.
+         */
+        const SpatialReference* getSRS() const;
+
+        /**
+         * Gets the profile type
+         */
+        ProfileType getProfileType() const;  
+
+        /**
+         * Given an x-resolution, specified in the profile's SRS units, calculates and
+         * returns the closest LOD level.
+         */
+        unsigned int getLevelOfDetailForHorizResolution( double resolution, int tileSize ) const;
+
+        /**
+         * Gets the number of faces in this profile.
+         */
+        int getNumFaces() const;
+
+        /**
+         * Gets the profile assigned to a specific face, if this is a multi-face profile.
+         */
+        const Profile* getFaceProfile( int face ) const;
+
+        /**
+         * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
+         * profile.
+         */
+        void getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, int face =0) const;
+
+        /**
+         * Deduces a profile type given an SRS string.
+         */
+        static ProfileType getProfileTypeFromSRS(const std::string &srs);
+
+        /**
+         * Gets whether the two profiles can be treated as equivalent.
+         */
+        bool isEquivalentTo( const Profile* rhs ) const;
+
+        /**
+         *Gets the tile dimensions at the given lod.
+         */
+        void getTileDimensions(unsigned int lod, double& out_width, double& out_height) const;
+
+        /**
+         *Gets the number wide and high at the given lod
+         */
+        void getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned int& out_tiles_high) const;
+
+        /**
+         *Gets the intersecting tiles of this Profile with the given TileKey.
+         */
+        void getIntersectingTiles(const TileKey *key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+
+        /** 
+         * Clamps the incoming extents to the extents of this profile, and then converts the 
+         * clamped extents to this profile's SRS, and returns the result. Returned GeoExtent::INVALID
+         * if the transformation fails.
+         */
+        GeoExtent clampAndTransformExtent( const GeoExtent& input ) const;
+
+        /**
+         * Creates a tile key for a tile that contains the input location at the specified LOD.
+         * Express the coordinates in the profile's SRS.
+         * Returns NULL if the point lies outside the profile's extents.
+         */
+        TileKey* createTileKey( double x, double y, unsigned int level, unsigned int face =0 ) const;
+
+        /**
+         * Returns a readable description of the profile.
+         */
+        std::string toString() const;
+
+    private:       
+
+        Profile(
+            const SpatialReference* srs,
+            double xmin, double ymin, double xmax, double ymax,
+            unsigned int x_tiles_at_lod0 =0,
+            unsigned int y_tiles_at_lod0 =0 );
+        
+
+        void addIntersectingTiles(
+            const GeoExtent& key_ext,
+            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+
+
+    private:
+
+        GeoExtent _extent;
+        GeoExtent _latlong_extent;
+        unsigned int _numTilesWideAtLod0;
+        unsigned int _numTilesHighAtLod0;
+
+        std::vector< osg::ref_ptr<Profile> > _face_profiles;
+    };
+}
+
+#endif // OSGEARTH_TILE_GRID_PROFILE_H

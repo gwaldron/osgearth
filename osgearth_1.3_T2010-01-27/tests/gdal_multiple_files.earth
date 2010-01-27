@@ -1,0 +1,36 @@
+<!--
+osgEarth Sample - Multipe files in GDAL driver
+
+This example displays how to use the GDAL driver to load files in a directory as a single, logical layer.
+
+Note:  There are tons of NoData areas in the sample terrain files, so expect see some holes :)
+-->
+
+<map type="geocentric">
+
+    <!--Load a simple base image of the world-->
+    <image name="world" driver="gdal">
+        <url>..\data\world.tif</url>
+    </image>
+
+    <!--Load a folder full of terrain data as an elevation source-->
+    <heightfield name="terrain" driver="gdal">
+
+        <!--To load the files in a directory, just point the URL to a directory instead of a file-->
+        <url>..\data\terrain</url>
+
+        <!--
+          You can filter out what files you want to load by providing a semi-colon delimited list of files.
+          Uncomment the following, for instance, to load only DTED levels 0, 1 or 2.  If you don't provide
+          an extensions list, the GDAL driver will try every file in the directory.
+        -->
+        <!--<extensions>dt0;dt1;dt2</extensions>-->	  
+	  
+	    <!--Tell the GDAL driver to just look for tifs-->
+	    <extensions>tif</extensions>  
+
+    </heightfield>
+    
+    <vertical_scale>3</vertical_scale>
+    
+</map>

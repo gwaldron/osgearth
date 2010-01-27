@@ -1,0 +1,65 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to grid your feature data using the
+<gridding> tag.
+
+Zoom in to see the US interstates.
+-->
+
+<map name="Feature Stencil Demo" type="geocentric">
+
+    <loading_policy mode="sequential"/>
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="states" driver="feature_stencil">
+                         
+        <features name="states" driver="ogr">
+            <url>../data/usa.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <build_spatial_index>true</build_spatial_index>
+            <buffer distance="-0.02"/>
+        </features>
+             
+        <gridding cell_size="6.0" culling_technique="centroid"/>
+        
+        <extrusion_distance>200000</extrusion_distance>
+    
+        <style type="text/css">
+            interstates {
+                fill: #ffffff;
+                fill-opacity: 0.4;
+            }            
+        </style>
+        
+    </model>
+    
+    <model name="us-interstates" driver="feature_stencil" max_range="2000000">
+                         
+        <features name="interstates" driver="ogr">
+            <url>../data/istates_dissolve.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <resample min_length=".01"/>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+             
+        <gridding cell_size="2.0" culling_technique="crop"/>
+        
+        <extrusion_distance>20000</extrusion_distance>
+    
+        <style type="text/css">
+            interstates {
+                stroke: #ffff00;
+                stroke-opacity: 0.6;
+                stroke-width: 0.009;
+                stroke-linecap: butt;
+            }            
+        </style>
+        
+    </model>
+  
+    <lighting>false</lighting>
+</map>

@@ -1,0 +1,41 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to "drape" line data on the map using a
+stenciling technique.
+-->
+
+<map name="Feature Stencil Demo" type="round">
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="states" driver="feature_stencil">
+
+        <!-- Configure the OGR feature driver to read the shapefile.
+             Convert the goemetry to lines, and apply a small buffer
+             to give the lines thickness. -->
+             
+        <features name="world" driver="ogr">
+            <url>../data/world.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+        </features>
+        
+        <geometry_type>line</geometry_type>
+                
+        <!-- This driver uses the "stroke-width" property below to define
+             the width (in data source coordinated) of the draped lines.
+             In this case the units are degrees. -->
+             
+        <style type="text/css">
+            world {
+               stroke: #ffff00;
+               stroke-opacity: 0.5;
+               stroke-width: 0.1;
+            }            
+        </style>
+        
+    </model>
+  
+</map>

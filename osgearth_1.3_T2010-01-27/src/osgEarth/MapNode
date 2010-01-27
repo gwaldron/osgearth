@@ -1,0 +1,219 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_MAPNODE_H
+#define OSGEARTH_MAPNODE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Map>
+#include <osgEarth/MapLayer>
+#include <osgEarth/MapEngine>
+#include <osgEarth/MapEngineProperties>
+#include <osgEarth/VersionedTerrain>
+#include <osgDB/ReaderWriter>
+#include <osg/CoordinateSystemNode>
+#include <osgSim/OverlayNode>
+#include <OpenThreads/ReentrantMutex>
+
+namespace osgEarth
+{
+    /**
+     * OSG Node that forms the root of an osgEarth terrain. This node is a "view" component
+     * that renders data from a "Map" data model.
+     */
+    class OSGEARTH_EXPORT MapNode : public osg::CoordinateSystemNode //, public MapCallback
+    {
+    public:
+        /**
+         * Creates an empty map node.
+         */
+        MapNode();
+
+        /**
+         * Creates an empty map node.
+         * 
+         * @param props
+         *      Tile creation and rendering properties
+         */
+        MapNode( const MapEngineProperties& props );
+
+        /**
+         * Creates a new map node.
+         *
+         * @param map
+         *      Map data that this map node will render.
+         */
+        MapNode( Map* map );
+
+        /**
+         * Creates a new map node.
+         *
+         * @param map
+         *      Map data that this map node will render.
+         * @param props
+         *      Tile creation and rendering properties
+         */
+        MapNode( Map* map, const MapEngineProperties& props );
+
+    public:
+
+        /**
+         * Gets the Map that this MapNode is rendering.
+         */
+        Map* getMap();
+
+        /**
+         * Finds the topmost Map node in the specified scene graph, or returns NULL if
+         * no Map node exists in the graph.
+         *
+         * @param graph
+         *      Node graph in which to search for a MapNode
+         */
+        static MapNode* findMapNode( osg::Node* graph );   
+
+        /**
+         * Returns true if the realized terrain model is geocentric, false if
+         * it is flat/projected.
+         */
+        bool isGeocentric() const;
+
+        /**
+         * Gets the underlying map engine that generates data for this map node.
+         */
+        MapEngine* getEngine() const;
+
+        /**
+         * Gets the number of terrains that this MapNode is managing
+         */
+        unsigned int getNumTerrains() const;
+
+        /**
+         * Gets one of the terrains in this map node.
+         */
+        VersionedTerrain* getTerrain( unsigned int i ) const;
+
+        /**
+         * Accesses the group node that contains all the ModelLayers.
+         */
+        osg::Group* getModelLayerGroup();
+
+        /**
+         * Gets the engine properties associated with this node. The engine
+         * properties dictate how the map engine will create scene graph elements.
+         */
+        const MapEngineProperties& getMapEngineProperties() const;
+
+        /**
+         * Installs a new overlay node in this map node.
+         *
+         * @param overlay
+         *      Node to install within the MapNode
+         * @param autoSetTextureUnit
+         *      Automatically assign a texture unit to the overlay node based on
+         *      the currently active map layers
+         */
+        void installOverlayNode(
+            osgSim::OverlayNode* overlay,
+            bool autoSetTextureUnit =true );
+
+        /**
+         * Gets the ID for this MapNode
+         */
+        unsigned int getId() const;
+
+        /**
+         * Gets a registered MapNode by its unique ID.
+         */
+        static MapNode* getMapNodeById(unsigned int id);
+
+        /**
+         * Adds a terrain callback that will operate on this node's underlying 
+         * Terrains objects.
+         */
+        void addTerrainCallback( TerrainCallback* callback );
+
+
+    public: // MapCallback adapter funcs
+
+        void onMapProfileEstablished( const Profile* profile );
+
+        void onMapLayerAdded( MapLayer*, unsigned int index );
+
+        void onMapLayerRemoved( MapLayer* layer, unsigned int index );
+
+        void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex );
+        
+        void onModelLayerAdded( ModelLayer* layer );
+
+        void onTerrainMaskLayerAdded( ModelLayer* layer );
+
+    protected:    
+
+        virtual ~MapNode();
+
+        //Registers the given MapNode with osgEarth.  This should not be called by user code
+        static void registerMapNode( MapNode* mapNode );
+
+        //Unregisters the given MapNode.  This should not be called by user code
+        static void unregisterMapNode( unsigned int id );
+
+    private:
+
+        unsigned int _id;
+
+        TileSource* installTileSource( MapLayer* layer );
+
+        osg::ref_ptr<MapEngine> _engine;
+
+        void updateStateSet();
+
+        osg::ref_ptr<Map> _map;
+
+        MapEngineProperties _engineProps;
+
+        ////Use observer_ptr so the Map does not prevent the main scene graph from being deleted
+        typedef std::vector< osg::observer_ptr<VersionedTerrain> > TerrainVec;
+        TerrainVec _terrainVec;
+
+        static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
+
+        osg::ref_ptr< osgSim::OverlayNode > _pendingOverlayNode;
+        bool _pendingOverlayAutoSetTextureUnit;
+
+        TerrainCallbackList _pendingTerrainCallbacks;
+
+        osg::ref_ptr< osg::Group > _terrains;
+        osg::ref_ptr< osg::Group > _models;
+
+        void init();
+        
+        void addImageLayer( MapLayer* layer );
+        void addHeightFieldLayer( MapLayer* layer );
+
+        void removeImageLayer( unsigned int index );
+        void removeHeightFieldLayer( unsigned int index );
+
+        void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
+        void moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex );
+
+        void updateElevation(VersionedTile* tile);
+    };
+}
+
+#endif // OSGEARTH_MAPNODE_H

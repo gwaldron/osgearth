@@ -1,0 +1,14 @@
+<!--
+osgEarth Sample
+
+This example shows how to use the "sequential" loading policy.
+-->
+
+<map name="ESRI Imagery" type="geocentric">      
+    <image name="arcgisonline esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </image>
+
+    <loading_policy mode="sequential" loading_threads="12"/>
+</map>

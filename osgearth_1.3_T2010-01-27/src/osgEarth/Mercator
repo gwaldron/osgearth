@@ -1,0 +1,46 @@
+///* -*-c++-*- */
+///* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+// * Copyright 2008-2009 Pelican Ventures, Inc.
+// * http://osgearth.org
+// *
+// * osgEarth is free software; you can redistribute it and/or modify
+// * it under the terms of the GNU Lesser General Public License as published by
+// * the Free Software Foundation; either version 2 of the License, or
+// * (at your option) any later version.
+// *
+// * This program is distributed in the hope that it will be useful,
+// * but WITHOUT ANY WARRANTY; without even the implied warranty of
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// * GNU Lesser General Public License for more details.
+// *
+// * You should have received a copy of the GNU Lesser General Public License
+// * along with this program.  If not, see <http://www.gnu.org/licenses/>
+// */
+//
+//#ifndef OSGEARTH_MERCATOR_H
+//#define OSGEARTH_MERCATOR_H 1
+//
+//#include <osgEarth/Common>
+//#include <osgEarth/TileKey>
+//#include <osgEarth/TileSource>
+//#include <osgTerrain/Locator>
+//#include <osgTerrain/TerrainTechnique>
+//#include <osgDB/ReaderWriter>
+//#include <string>
+//
+//namespace osgEarth
+//{
+//    class MercatorLocator : public osgTerrain::Locator
+//    {
+//    public:
+//        MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& image_extent );
+//
+//        bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& model) const;
+//        bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
+//
+//    private:
+//        GeoExtent _image_ext;
+//    };
+//}
+//
+//#endif // OSGEARTH_MERCATOR_H

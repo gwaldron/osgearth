@@ -1,0 +1,24 @@
+<!--
+osgEarth Sample
+
+This example demonstrates how to set a particular datum for a geocentric map.
+By default, a geocentric map will use a WGS84 datum. Use the "profile" tag
+to specify a different one is so desired. The contents of the "srs" tag can be
+any SRS initialization string (like PROJ4 or WKT).
+
+This example renders a NAD27 globe instead of a WGS84 globe.
+
+See this site for SRS codes and PROJ4 initialization strings:
+http://spatialreference.org
+-->
+
+<map name="datum override example" type="geocentric">
+
+    <profile>
+        <srs>+proj=longlat +ellps=clrk66 +datum=NAD27 +no_defs</srs>
+    </profile>   
+    
+    <image name="pelican nasa blue marble" driver="tms">
+        <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
+    </image>
+</map>

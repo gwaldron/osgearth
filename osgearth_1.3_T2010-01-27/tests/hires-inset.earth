@@ -1,0 +1,27 @@
+<!--
+osgEarth Sample : Hi-resolution inset
+
+This example shows how to use a global basemap and superimpose a high-
+resolution imagery inset from a local GeoTIFF file.
+
+Look for hi-res insets over the cities of Boston and New York.
+-->
+
+<map name="hi-res inset" type="geocentric">
+     
+    <image name="pelican nasa blue marble" driver="tms">
+        <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
+    </image>
+    
+    <image name="boston_inset" driver="gdal">
+        <url>../data/boston-inset-wgs84.tif</url>
+        <tile_size>256</tile_size>
+    </image>
+    
+    <image name="nyc_inset" driver="gdal">
+        <url>../data/nyc-inset-wgs84.tif</url>
+        <tile_size>256</tile_size>
+    </image>
+
+    <lighting>false</lighting>
+</map>

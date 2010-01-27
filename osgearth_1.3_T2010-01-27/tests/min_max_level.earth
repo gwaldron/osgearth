@@ -1,0 +1,23 @@
+<!--
+This example demonstrates how to use two image sources and switch between them
+at a given resolution level.
+
+Please note that usage of Yahoo! map data is subject to Yahoo!'s terms of service.
+-->
+
+<map name="Yahoo Levels" type="geocentric">
+
+    <preemptive_lod>false</preemptive_lod>
+
+    <!-- this level will be visible at lower resolutions -->
+    <image name="yahoo_sat" driver="yahoo">
+        <dataset>satellite</dataset>
+        <max_level>5</max_level>
+    </image> 
+
+    <!-- this level will be visible at higher resolutions -->
+    <image name="yahoo_maps" driver="yahoo">
+        <min_level>6</min_level>
+    </image> 
+   
+</map>

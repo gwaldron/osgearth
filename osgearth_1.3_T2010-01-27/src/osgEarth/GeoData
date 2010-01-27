@@ -1,0 +1,305 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_GEODATA_H
+#define OSGEARTH_GEODATA_H 1
+
+#include <osg/Referenced>
+#include <osg/Image>
+#include <osg/Shape>
+#include <osgTerrain/Locator>
+#include <osgEarth/Common>
+#include <osgEarth/SpatialReference>
+#include <osgEarth/HeightFieldUtils>
+
+namespace osgEarth
+{
+    /** A non-georeferenced extent. */
+    class OSGEARTH_EXPORT Bounds : public osg::BoundingBoxImpl<osg::Vec3d>
+    {
+    public:
+        Bounds();
+        Bounds(double xmin, double ymin, double xmax, double ymax );
+
+        double width() const;
+        double height() const;
+        double depth() const;
+        bool contains(double x, double y ) const;
+        Bounds unionWith(const Bounds& rhs) const; 
+        void expandBy( double x, double y );
+        void expandBy( double x, double y, double z );
+        void expandBy( const Bounds& rhs );
+        osg::Vec2d center2d() const;
+    };
+
+    /**
+     * A georeferenced extent. A bounding box that is aligned with a
+     * spatial reference's coordinate system.
+     *
+     * TODO: this class needs better integrated support for geographic extents
+     * that cross the date line.
+     */
+    class OSGEARTH_EXPORT GeoExtent
+    {
+    public:
+        /** Default ctor creates an "invalid" extent */
+        GeoExtent(); 
+
+        /** Contructs a valid extent */
+        GeoExtent(
+            const SpatialReference* srs,
+            double xmin, double ymin,
+            double xmax, double ymax );
+
+        /** Copy ctor */
+        GeoExtent( const GeoExtent& rhs );
+
+        /** create from Bounds object */
+        GeoExtent( const SpatialReference* srs, const Bounds& bounds );
+
+        bool operator == ( const GeoExtent& rhs ) const;
+        bool operator != ( const GeoExtent& rhs ) const;
+
+        const SpatialReference* getSRS() const;
+
+        double xMin() const { return _xmin; }
+        double& xMin() { return _xmin; }
+        double yMin() const { return _ymin; }
+        double& yMin() { return _ymin; }
+        double xMax() const { return _xmax; }
+        double& xMax() { return _xmax; }
+        double yMax() const { return _ymax; }
+        double& yMax() { return _ymax; }
+
+        double width() const;
+        double height() const;
+
+        void getCentroid( double& out_x, double& out_y ) const;
+
+        /**
+         * Returns true is that extent is in a Geographic (lat/long) SRS that spans
+         * the international date line.
+         */
+        bool crossesDateLine() const;
+
+        void getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const;
+
+        bool isValid() const;
+        bool defined() const { return isValid(); }
+
+        /**
+         * If this extent crosses the international date line, populates two extents, one for
+         * each side, and returns true. Otherwise returns false and leaves the reference
+         * parameters untouched.
+         */
+        bool splitAcrossDateLine( GeoExtent& first, GeoExtent& second ) const;
+
+        /**
+         * Returns this extent transformed into another spatial reference.
+         */
+        GeoExtent transform( const SpatialReference* to_srs ) const;
+
+        /**
+         * Returns true if the specified point falls within the bounds of the extent.
+         *
+         * @param x, y
+         *      Coordinates to test
+         * @param xy_srs
+         *      SRS of input x and y coordinates; if null, the method assumes x and y
+         *      are in the same SRS as this object.
+         */
+        bool contains(double x, double y, const SpatialReference* xy_srs =0L) const;
+
+        /**
+         * Returns TRUE if this extent intersects another extent.
+         */
+        bool intersects( const GeoExtent& rhs ) const;
+
+
+        Bounds bounds() const;
+
+        /**
+         * Grow this extent to include the specified point (which is assumed to be
+         * in the extent's SRS.
+         */
+        void expandToInclude( double x, double y );
+
+        /**
+         * Returns a human-readable string containing the extent data (without the SRS)
+         */
+        std::string toString() const;
+
+    public:
+        static GeoExtent INVALID;
+
+    private:
+        osg::ref_ptr<const SpatialReference> _srs;
+        double _xmin, _ymin, _xmax, _ymax;
+    };
+
+
+    /**
+     * A georeferenced image; i.e. an osg::Image and an associated
+     * GeoExtent with SRS.
+     */
+    class OSGEARTH_EXPORT GeoImage : public osg::Referenced
+    {
+    public:
+        /**
+         * Constructs a new goereferenced image.
+         */
+        GeoImage( osg::Image* image, const GeoExtent& extent );
+
+    public:
+        /**
+         * Gets a pointer to the underlying OSG image.
+         */
+        osg::Image* getImage() const;
+
+        /**
+         * Gets the geospatial extent of the image.
+         */
+        const GeoExtent& getExtent() const;
+
+        /**
+         * Shortcut to get the spatial reference system describing
+         * the projection of the image.
+         */
+        const SpatialReference* getSRS() const;
+
+        /**
+         * Crops the image to a new geospatial extent. 
+         *
+         * @param extent
+         *      New extent to which to crop the image.
+         * @param exact
+         *      If "exact" is true, the output image will have exactly the extents requested;
+         *      this process may require resampling and will therefore be more expensive. If
+         *      "exact" is false, we do a simple crop of the image that is rounded to the nearest
+         *      pixel. The resulting extent will be close but usually not exactly what was
+         *      requested - however, this method is faster.
+         * @param width, height
+         *      New pixel size for the output image. By default, the method will automatically
+         *      calculate a new pixel size.
+         */
+        GeoImage* crop( const GeoExtent& extent,
+                        bool exact = false,
+                        unsigned int width = 0,
+                        unsigned int height = 0) const;
+
+        /**
+         * Warps the image into a new spatial reference system.
+         *
+         * @param to_srs
+         *      SRS into which to warp the image.
+         * @param to_extent
+         *      Supply this extent if you wish to warp AND crop the image in one step. This is
+         *      faster than calling reproject() and then crop().
+         * @param width, height
+         *      New pixel size for the output image. Be default, the method will automatically
+         *      calculate a new pixel size.
+         */
+        GeoImage* reproject(
+            const SpatialReference* to_srs,
+            const GeoExtent* to_extent = 0,
+            unsigned int width = 0,
+            unsigned int height = 0) const;
+
+
+        GeoImage* addTransparentBorder(bool leftBorder=true, bool rightBorder=true, bool bottomBorder=true, bool topBorder=true);
+
+        /**
+         * Returns the underlying OSG image and releases the reference pointer.
+         */
+        osg::Image* takeImage();
+
+		/**
+		 * Gets the units per pixel of this geoimage
+		 */
+		double getUnitsPerPixel() const;
+
+    private:
+        osg::ref_ptr<osg::Image> _image;
+        GeoExtent _extent;
+    };
+
+    typedef std::vector< osg::ref_ptr<GeoImage> > GeoImageList;
+
+    /**
+     * A georeferenced heightfield.
+     */
+    class OSGEARTH_EXPORT GeoHeightField : public osg::Referenced
+    {
+    public:
+        /**
+         * Constructs a new georeferenced heightfield.
+         */
+        GeoHeightField(osg::HeightField* heightField, const GeoExtent& extent);
+
+        /**
+         * Gets the elevation value at a specified point.
+         *
+         * @param srs
+         *      Spatial reference of the query coordinates.
+         * @param x, y
+         *      Coordinates at which to query the elevation value.
+         * @param interp
+         *      Interpolation method for the elevation query.
+         * @param out_elevation
+         *      Output: the elevation value
+         * @return
+         *      True if the elevation query was succesful; false if not (e.g. if the query
+         *      fell outside the geospatial extent of the heightfield)
+         */
+        bool getElevation(
+            const SpatialReference* srs, 
+            double x, double y,
+            ElevationInterpolation interp, float& out_elevation);
+
+        
+        /**
+         * Subsamples the heightfield, returning a new heightfield corresponding ///and Takes the source heightfield and its extent, and takes a subsample that corresponds to 
+         * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
+         */
+        GeoHeightField* createSubSample( const GeoExtent& destEx ) const;
+
+        /**
+         * Gets the geospatial extent of the heightfield.
+         */
+        const GeoExtent& getGeoExtent() const;
+
+        /**
+         * Gets a pointer to the underlying OSG heightfield.
+         */
+        const osg::HeightField* getHeightField() const;
+        osg::HeightField* getHeightField();
+
+        /**
+         * Gets a pointer to the underlying OSG heightfield, and releases the internal reference.
+         */
+        osg::HeightField* takeHeightField();
+
+    protected:
+        osg::ref_ptr<osg::HeightField> _heightField;
+        GeoExtent _extent;
+    };
+
+	typedef std::vector< osg::ref_ptr< GeoHeightField > > GeoHeightFieldList;
+}
+
+#endif // OSGEARTH_GEODATA_H

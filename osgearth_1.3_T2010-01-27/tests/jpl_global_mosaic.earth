@@ -1,0 +1,10 @@
+<map name="JPL" type="geocentric">   
+   <image name="daily_planet" driver="wms">
+       <url>http://onearth.jpl.nasa.gov/wms.cgi</url>
+       <layers>global_mosaic</layers>
+       <format>jpeg</format>
+       <styles>visual</styles>
+       <tile_size>512</tile_size>
+   </image> 
+   <loading_policy mode="preemptive"/>
+</map>

@@ -1,0 +1,40 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to read feature data from a shapefile and build
+OSG geometry out of it.
+-->
+
+<map name="Feature Geometry Demo" type="geocentric">
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="states" driver="feature_geom">
+
+        <!-- Configure the OGR feature driver to read the shapefile -->
+        <features name="states" driver="ogr">
+            <url>../data/usa.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+        </features>
+        
+        <!-- Convert polygons to lines -->
+        <geometry_type>line</geometry_type>
+        
+        <!-- Render the geometry at a height offset to prevent Z fighting -->
+        <height_offset>10000</height_offset>
+        
+        <!-- Appearance details -->
+        <style type="text/css">
+            states {
+               stroke: #ffff00;
+               stroke-width: 1.0;
+            }            
+        </style>
+        
+    </model>
+    
+    <lighting>false</lighting>
+  
+</map>

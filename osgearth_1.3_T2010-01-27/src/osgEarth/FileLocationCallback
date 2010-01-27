@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_FILE_LOCATION_CALLBACK_H
+#define OSGEARTH_FILE_LOCATION_CALLBACK_H 1
+
+#include <osg/Version>
+#include <osgEarth/Export>
+#include <osgEarth/MapNode>
+
+
+#define  USE_FILELOCATIONCALLBACK OSG_MIN_VERSION_REQUIRED(2,9,5)
+
+#if USE_FILELOCATIONCALLBACK
+
+namespace osgEarth
+{
+    /**
+     * A callback that determines if the given filename is cached or not
+     */
+    class FileLocationCallback : public osgDB::FileLocationCallback
+    {
+    public:
+        FileLocationCallback()
+        {
+
+        }
+
+        virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
+        {
+            //osg::notify(osg::NOTICE)<<"fileLocation = "<<filename<<std::endl;
+
+            unsigned int face, lod, x, y, id;
+            sscanf(filename.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
+
+            osg::ref_ptr<MapNode> mapNode = MapNode::getMapNodeById( id );
+
+            if ( mapNode.valid() )
+            {
+                const osgEarth::Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
+                osg::ref_ptr<osgEarth::TileKey> mapKey = new osgEarth::TileKey( face, lod, x, y, face_profile );
+
+                //Split the key into it's 4 children and check to see if all 4 are cached.
+                std::vector< osg::ref_ptr< osgEarth::TileKey > > keys;
+                for (unsigned int i = 0; i < 4; ++i) keys.push_back(mapKey->getSubkey(i));
+
+                for (unsigned int i = 0; i < keys.size(); ++i)
+                {
+                    if (!mapNode->getEngine()->isCached(mapNode->getMap(), keys[i]))
+                    {
+                        osg::notify(osg::INFO) << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
+                        return REMOTE_FILE;
+                    }
+                }
+
+                osg::notify(osg::INFO) << "Returning LOCAL_FILE for " << mapKey->str() << std::endl;
+                return LOCAL_FILE;
+            }
+
+            return REMOTE_FILE;
+        }
+
+        virtual bool useFileCache() const { return false; }
+    };
+}
+#endif
+
+
+#endif //OSGEARTH_FILE_LOCATION_CALLBACK_H

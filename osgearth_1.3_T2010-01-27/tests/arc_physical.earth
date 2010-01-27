@@ -1,0 +1,21 @@
+<!--
+osgEarth sample - ESRI ArcGIS Server REST map services
+
+This sample composites the ESRI world roads reference layer with their Physical terrain layer.
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
+-->
+<map name="The World" type="geocentric">
+
+  <image name="NPS" driver="arcgis">
+    <url>http://server.arcgisonline.com/ArcGIS/rest/services/NPS_Physical_World_2D/MapServer</url>
+    <profile>global-geodetic</profile>
+  </image>
+  
+  <image name="trans" driver="arcgis">
+    <url>http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer</url>
+    <profile>global-geodetic</profile>
+  </image>
+  
+</map>

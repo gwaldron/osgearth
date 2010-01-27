@@ -1,0 +1,18 @@
+<!-- 
+osgEarth Sample - TMS
+
+Show how to use CloudMade's TMS interface to pull down OpenStreetMap image tiles.
+-->
+
+<map name="Cloudmade" type="geocentric">
+
+   <image name="osm-cloudmade-997" driver="tms">
+       <url>http://b.tile.cloudmade.com/f10ecb40ab2159639c5f2d4b9a273f1d/997/256/</url>
+       <profile>global-mercator</profile>
+       <format>png</format>
+       <tile_size>256</tile_size>
+       <tms_type>google</tms_type>
+       <transparent_color>255 0 0 0</transparent_color>
+   </image>    
+   
+</map>

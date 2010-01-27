@@ -1,0 +1,25 @@
+<!--
+  JPL TileService example
+  
+  The JPL uses a custom custom tiling scheme as an extension to WMS to provide pre-cached tiles for fast access.  This example shows
+  how to use this capability in osgEarth. 
+-->
+
+<map name="JPL" type="geocentric">
+   
+   <!--Decrease the min_tile_range_factor so tiles don't come in so early-->
+   <min_tile_range_factor>4</min_tile_range_factor>
+
+   <!--
+    Specify the JPL source.  There are certain patterns that are pre-tiled.
+    If the layers, format and tile_size all match one of those patterns, then the tiled access will be used.
+	If not, osgEarth will fall back to using the regular WMS server.
+	-->
+   <image name="daily_planet" driver="wms">
+       <url>http://onearth.jpl.nasa.gov/wms.cgi</url>
+       <layers>daily_planet</layers>
+       <format>jpeg</format>
+       <styles></styles>
+       <tile_size>512</tile_size>
+   </image> 
+</map>

@@ -1,0 +1,19 @@
+<!--
+osgEarth Sample
+
+This shows how to mix data from a Mercator and a Geodetic source on the same
+geodetic globe.
+-->
+<map name="mercator data on a geodetic globe" type="round">
+
+    <preemptive_lod>false</preemptive_lod>
+   
+    <image name="mercator-imagery" driver="yahoo">
+        <dataset>satellite</dataset>
+    </image>
+    
+    <image name="geodetic-roads" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer</url>
+    </image>
+    
+</map>

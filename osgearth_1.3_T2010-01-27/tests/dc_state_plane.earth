@@ -1,0 +1,44 @@
+<!--
+osgEarth Sample - Image reprojection and caching
+
+This example shows how to:
+
+a) define a custom profile for a projected map
+b) read imagery from a geodetic image source and reproject it to the custom profile; and
+c) configure the cache to store the reprojected imagery.
+
+To define a custom profile, you must provide an SRS initialization string. In that case we are
+using a PROJ4 string, but you can also use WKT or an EPSG string. (Note: If you use an EPSG code
+string (example: "epsg:4326") then you must have GDAL_DATA defined in your environment.)
+
+A handy place to find SRS definitions is:
+http://spatialreference.org
+
+osgEarth reprojects tiles before caching them. Note, this does have the side effect that you 
+cannot use the same cache for separate maps in different projections.
+
+For SRS initialization strings, see:
+http://spatialreference.org
+
+Please note that use of ESRI's free maps is subject to certain restrictions:
+http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
+-->
+
+<map name="DC State Plane" type="projected">
+
+    <profile name="NAD83 Maryland State Plane (meters)">
+        <srs>+proj=lcc +lat_1=38.3 +lat_2=39.45 +lat_0=37.66666666666666 +lon_0=-77 +x_0=399999.9999999999 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=1.0 +no_defs</srs>
+        <xmin>390021</xmin><ymin>126298</ymin>
+        <xmax>407833</xmax><ymax>147521</ymax>
+    </profile>
+
+    <cache type="tms">
+        <path>cache</path>
+    </cache>
+    
+    <!-- This image layer returns global geodetic tiles -->
+    <image name="ags-msp" driver="arcgis" max_level="16">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+    </image>    
+    
+</map>

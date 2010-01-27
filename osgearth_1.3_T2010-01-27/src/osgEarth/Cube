@@ -1,0 +1,86 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_CUBE_H
+#define OSGEARTH_CUBE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileKey>
+#include <osgEarth/Locators>
+
+namespace osgEarth
+{
+    class CubeGridUtils
+    {
+    public:
+        static bool LatLonToFaceCoord(const osg::Vec2d& LatLon, osg::Vec2d& Coord, int& Face);
+        static bool FaceCoordToLatLon(const osg::Vec2d& Coord, const int Face, osg::Vec2d& LatLon);
+    protected:
+        CubeGridUtils();
+    };
+
+
+    class CubeFaceLocator : public GeoLocator
+    {
+    public:
+        CubeFaceLocator(unsigned int face);
+
+        // This method will generate geocentric vertex coordinates, given local tile
+        // coordinates (0=>1).
+        bool convertLocalToModel(const osg::Vec3d& local, osg::Vec3d& world) const;
+
+        // This method will generate the texture coordinates for a given location on
+        // the globe.
+        bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;
+
+    private:
+        unsigned int _face;
+    };
+    
+
+    class CubeFaceSpatialReference : public SpatialReference
+    {
+    public:
+        CubeFaceSpatialReference(void* handle, unsigned int face);
+
+        virtual GeoLocator* createLocator(
+            double xmin, double ymin, double xmax, double ymax,
+            bool plate_carre =false ) const;
+
+        unsigned int getFace() const { return _face; }
+
+        virtual bool isGeographic() const { return false; }
+        virtual bool isProjected() const { return true; }
+
+        virtual bool preTransform(double &x, double &y) const;
+        virtual bool postTransform(double &x, double &y) const;
+
+        virtual bool transformExtent(const SpatialReference* to_srs,
+                                          double& in_out_xmin,
+                                          double& in_out_ymin,
+                                          double& in_out_xmax,
+                                          double& in_out_ymax) const;
+
+    protected:
+        unsigned int _face;
+    };
+
+}
+
+#endif // OSGEARTH_CUBE_H

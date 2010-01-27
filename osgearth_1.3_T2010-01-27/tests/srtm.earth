@@ -1,0 +1,22 @@
+<!--
+osgEarth Sample - SRTM global elevation
+
+This sample demonstrates the use of a global SRTM TMS data source for world-wide elevation.
+The heightfield is draped with the NASA Blue Marble imagery.
+-->
+
+<map name="srtm sample" type="globe">
+
+  <image name="pelican nasa blue marble" driver="tms">
+    <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
+  </image>
+  
+  <heightfield name="pelican srtm" driver="tms">
+    <url>http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml</url>
+  </heightfield>
+  
+  <vertical_scale>2</vertical_scale>
+  <skirt_ratio>0.01</skirt_ratio>
+  <sample_ratio>0.25</sample_ratio>
+  
+</map>

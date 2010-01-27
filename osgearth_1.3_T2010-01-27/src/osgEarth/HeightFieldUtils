@@ -1,0 +1,117 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_HEIGHTFIELDUTILS_H
+#define OSGEARTH_HEIGHTFIELDUTILS_H
+
+#include <osgEarth/Common>
+#include <osg/Shape>
+#include <osgTerrain/ValidDataOperator>
+
+namespace osgEarth
+{
+#define NO_DATA_VALUE -FLT_MAX
+
+
+    enum OSGEARTH_EXPORT ElevationInterpolation
+    {
+        AVERAGE,
+        NEAREST,
+        BILINEAR
+    };
+
+    class OSGEARTH_EXPORT HeightFieldUtils
+    {
+    public:
+        static float getHeightAtPixel(
+            const osg::HeightField* hf, 
+            double c, double r, 
+            ElevationInterpolation interpoltion = BILINEAR);
+        
+        static float getHeightAtLocation(
+            const osg::HeightField* hf, 
+            double x, double y, 
+            double llx, double lly,
+            double dx, double dy,
+            ElevationInterpolation interpolation = BILINEAR);
+
+
+
+        static void scaleHeightFieldToDegrees( osg::HeightField* hf );
+
+        static osg::HeightField* createSubSample(
+            osg::HeightField* input, const class GeoExtent& inputEx,
+            const class GeoExtent& outputEx );
+    };
+
+    /**
+    *A collection of ValidDataOperators.  All operators must pass to be considered valid.
+    */
+    struct OSGEARTH_EXPORT CompositeValidValueOperator : public osgTerrain::ValidDataOperator
+    {
+        typedef std::vector<osg::ref_ptr<osgTerrain::ValidDataOperator> > ValidDataOperatorList;
+        ValidDataOperatorList& getOperators() { return _operators;}
+
+        virtual bool operator() (float value) const
+        {
+            for (ValidDataOperatorList::const_iterator itr = _operators.begin(); itr != _operators.end(); ++itr)
+            {
+                if (!(*itr->get())(value)) return false;
+            }
+            return true;
+        }
+
+        ValidDataOperatorList _operators;
+    };
+
+    struct OSGEARTH_EXPORT ReplaceInvalidDataOperator : public osg::Referenced
+    {
+        ReplaceInvalidDataOperator();
+
+        virtual void operator()(osg::HeightField* heightField);
+
+        osgTerrain::ValidDataOperator* getValidDataOperator() { return _validDataOperator.get(); }
+        void setValidDataOperator(osgTerrain::ValidDataOperator* validDataOperator) { _validDataOperator = validDataOperator; }
+
+        float getReplaceWith() { return _replaceWith; }
+        void setReplaceWith( float replaceWith ) { _replaceWith = replaceWith; }
+
+        osg::ref_ptr<osgTerrain::ValidDataOperator> _validDataOperator;
+        float _replaceWith;
+    };
+
+    struct OSGEARTH_EXPORT FillNoDataOperator : public osg::Referenced
+    {
+        FillNoDataOperator();
+
+        virtual void operator()(osg::HeightField* heightField);
+
+        osgTerrain::ValidDataOperator* getValidDataOperator() { return _validDataOperator.get(); }
+        void setValidDataOperator(osgTerrain::ValidDataOperator* validDataOperator) { _validDataOperator = validDataOperator; }
+
+        float getDefaultValue() { return _defaultValue; }
+        void setDefaultValue(float defaultValue) { _defaultValue = defaultValue; }
+
+        osg::ref_ptr<osgTerrain::ValidDataOperator> _validDataOperator;
+
+        float _defaultValue;
+    };
+}
+
+#endif //OSGEARTH_HEIGHTFIELDUTILS_H

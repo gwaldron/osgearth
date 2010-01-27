@@ -1,0 +1,103 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MODEL_SOURCE_H
+#define OSGEARTH_MODEL_SOURCE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/Progress>
+#include <osg/Referenced>
+
+namespace osgEarth
+{   
+    class Map;
+
+    /**
+     * A ModelSource is a plugin object that generates OSG nodes.
+     */
+    class OSGEARTH_EXPORT ModelSource : public virtual osg::Object
+    {
+    public:        
+        ModelSource( const PluginOptions* options =NULL );
+
+        /**
+         * Subclass implements this method to create the mode node.
+         */
+        virtual osg::Node* createNode( ProgressCallback* progress =0L ) =0;
+
+    public: // properties
+
+        optional<double>& minRange() { return _minRange; }
+        const optional<double>& minRange() const { return _minRange; }
+
+        optional<double>& maxRange() { return _maxRange; }
+        const optional<double>& maxRange() const { return _maxRange; }
+
+    public: // META_Object specialization
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const ModelSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "ModelSource"; }
+        virtual const char* libraryName() const { return "osgEarth"; }
+
+    public:
+		/** Initialize the NodeSource. */
+		virtual void initialize(
+            const std::string& referenceURI,
+            const Map* map ) =0;
+
+    protected:
+        virtual ~ModelSource() { }
+
+        const PluginOptions* getOptions() const;
+
+    private:
+        osg::ref_ptr<const PluginOptions> _options;
+        optional<double> _minRange;
+        optional<double> _maxRange;
+
+        friend class Map;
+        friend class MapEngine;
+        friend class ModelSourceFactory;
+    };
+
+
+    /**
+     * The factory object takes a driver name and loads the appropriate plugin
+     * and instantiates the source object.
+     */
+    class OSGEARTH_EXPORT ModelSourceFactory
+    {
+    public:
+		/** Create a model source with the given driver and properties */
+		static ModelSource* create(
+            const std::string& name,
+            const std::string& driver,
+            const Config&      driverConf,
+            const osgDB::ReaderWriter::Options* global_options =NULL );
+
+        /** Create a model source from a configuration object. */
+        static ModelSource* create(
+            const Config& sourceConfig,
+            const osgDB::ReaderWriter::Options* global_options =NULL );
+    };
+}
+
+#endif // OSGEARTH_MODEL_SOURCE_H

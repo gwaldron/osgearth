@@ -1,0 +1,20 @@
+<!--
+osgEarth Sample
+
+MetaCarta WMS/TileCache Service - VMap0
+
+This shows the basic use of the WMS driver. It is actually using
+WMS to hit a TileCache server, which has all the WMS tiles
+pre-rendered for speed.
+-->
+
+<map name="MetaCarta" type="geocentric">
+
+   <image name="vmap0" driver="wms">
+       <url>http://labs.metacarta.com/wms-c/Basic.py</url>
+       <layers>basic</layers>
+       <format>png</format>
+       <tile_size>256</tile_size>
+   </image>
+   
+</map>

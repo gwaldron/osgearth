@@ -1,0 +1,196 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_SPATIAL_REFERENCE_H
+#define OSGEARTH_SPATIAL_REFERENCE_H 1
+
+#include <osgEarth/Common>
+#include <osg/Referenced>
+#include <osg/CoordinateSystemNode>
+#include <osg/Vec3>
+#include <OpenThreads/ReentrantMutex>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT GeoLocator;
+
+    /** 
+     * SpatialReference holds information describing the reference ellipsoid/datum
+     * and the projection of geospatial data.
+     */
+    class OSGEARTH_EXPORT SpatialReference : public osg::Referenced
+    {
+    public:
+        /**
+         * Creates an SRS from an initialization string. This can be a variety of
+         * things, including a WKT spec, a PROJ4 init string, or a "well-known"
+         * idenfitier (e.g., "WGS84" or "spherical-mercator").
+         */
+        static SpatialReference* create( const std::string& init );
+
+        /**
+         * Attempts to create a spatial reference def from a pre-existing CSN, returning
+         * NULL if there is not enough information.
+         */
+        static SpatialReference* create( osg::CoordinateSystemNode* csn );
+
+        /**
+         * Creates an SRS around a pre-existing OGR spatial reference handle. The new
+         * SpatialReference object takes ownership of the handle.
+         */
+        static SpatialReference* createFromHandle( void* ogrHandle );
+
+    public:
+        /** Transform a point to another SRS. */
+        virtual bool transform(
+            double x, double y,
+            const SpatialReference* to_srs,
+            double& out_x, double& out_y ) const;
+
+        /**
+         * Transforms an array of 2D points from this SRS to another SRS.
+         */
+        virtual bool transformPoints(
+            const SpatialReference* to_srs, 
+            double* x, double *y,
+            unsigned int numPoints,
+            bool ignore_errors =false) const;
+
+        /**
+         * Transforms an array of points from this SRS to another SRS.
+         */
+        virtual bool transformPoints(
+            const SpatialReference* to_srs,
+            osg::Vec3dArray* points,
+            bool ignore_errors =false) const;
+
+        /**
+         * Transforms a spatial extent to another SRS. 
+         *
+         * TODO: Update this method to work for:
+         * a) Geographic extents that cross the date line; and
+         * b) Polar extents.
+         */
+        virtual bool transformExtent(
+            const SpatialReference* to_srs,
+            double& in_out_xmin, double& in_out_ymin,
+            double& in_out_xmax, double& in_out_ymax ) const;
+
+        /** True is this is a geographic SRS (i.e. unprojected lat/long) */
+        virtual bool isGeographic() const;
+
+        /** True if this is a projected SRS (i.e. local coordinate system) */
+        virtual bool isProjected() const;
+
+        /** Tests whether this SRS represents a Mercator projection. */
+        bool isMercator() const;
+
+        /** Tests whether this SRS represents a polar sterographic projection. */
+        bool isNorthPolar() const;
+        bool isSouthPolar() const;
+
+        /** Gets the readable name of this SRS. */
+        const std::string& getName() const;
+
+        /** Gets the underlying reference ellipsoid of this SRS */
+        const osg::EllipsoidModel* getEllipsoid() const;
+
+        /** Gets the WKT string */
+        const std::string& getWKT() const;
+
+        /** Gets the initialization type (PROJ4, WKT, etc.) */
+        const std::string& getInitType() const;
+
+        /** Gets the string that was used to initialize this SRS */
+        const std::string& getInitString() const;
+
+        /** Tests this SRS for equivalence with another. */
+        virtual bool isEquivalentTo( const SpatialReference* rhs ) const;
+
+        /** Gets a reference to this SRS's underlying geographic SRS. */
+        const SpatialReference* getGeographicSRS() const;
+
+        /** Creates a new CSN based on this spatial reference. */
+        osg::CoordinateSystemNode* createCoordinateSystemNode() const;
+
+        /** Populates the provided CSN with information from this SRS. */
+        bool populateCoordinateSystemNode( osg::CoordinateSystemNode* csn ) const;
+
+        /**
+         * Creates a new Locator object based on this spatial reference.
+         *
+         * @param xmin, ymin, xmax, ymax
+         *      Extents of the tile for which to create a locator. These should
+         *      be in degrees for a geographic/geocentric scene.
+         * @param plate_carre
+         *      Set this to true for the special case in which you are using a
+         *      geographic SRS with a PROJECTED map (like flat-earth lat/long).
+         */
+        virtual GeoLocator* createLocator(
+            double xmin, double ymin, double xmax, double ymax,
+            bool plate_carre =false ) const;
+
+    protected:
+        virtual ~SpatialReference();
+
+    protected:
+        SpatialReference( void* handle, const std::string& type, const std::string& init_str, const std::string& name );
+        SpatialReference( void* handle );
+        void init();
+
+        bool _initialized;
+        void* _handle;
+        bool _owns_handle;
+        bool _is_geographic;
+        bool _is_mercator;
+        bool _is_north_polar, _is_south_polar;
+        std::string _name;
+        std::string _wkt;
+        std::string _proj4;
+        std::string _init_type;
+        std::string _init_str;
+        std::string _init_str_lc;
+        osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
+        osg::ref_ptr<SpatialReference> _geo_srs;
+
+        typedef std::map<std::string,void*> TransformHandleCache;
+        TransformHandleCache _transformHandleCache;
+
+        virtual bool preTransform(double &x, double &y) const {return true;}
+        virtual bool postTransform(double &x, double &y) const { return true;}
+        
+    private:
+
+        typedef std::map< std::string, osg::ref_ptr<SpatialReference> > SpatialReferenceCache;
+        static SpatialReferenceCache& getSpatialReferenceCache();
+
+        static SpatialReference* createFromWKT(
+            const std::string& wkt, const std::string& alias, const std::string& name ="" );
+
+        static SpatialReference* createFromPROJ4(
+            const std::string& proj4, const std::string& alias, const std::string& name ="" );
+
+        static SpatialReference* createCube(unsigned int face);
+
+        SpatialReference* validate();
+    };
+
+}
+
+
+#endif // OSGEARTH_SPATIAL_REFERENCE_H

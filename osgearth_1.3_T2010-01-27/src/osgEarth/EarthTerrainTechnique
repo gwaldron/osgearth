@@ -1,0 +1,144 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2009 Pelican Ventures, Inc.
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGTERRAIN_EARTHTERRAINTECHNIQUE
+#define OSGTERRAIN_EARTHTERRAINTECHNIQUE 1
+
+#include <osg/MatrixTransform>
+#include <osg/Geode>
+#include <osg/Geometry>
+#include <OpenThreads/ReadWriteMutex>
+
+#include <osgTerrain/TerrainTechnique>
+#include <osgTerrain/Locator>
+#include <osgEarth/Export>
+#include <osgEarth/Progress>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT EarthTerrainTechnique : public osgTerrain::TerrainTechnique
+    {
+    public:
+
+        EarthTerrainTechnique( osgTerrain::Locator* locator =0L );
+
+        /** Copy constructor using CopyOp to manage deep vs shallow copy.*/
+        EarthTerrainTechnique(const EarthTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+
+        META_Object(osgEarth, EarthTerrainTechnique);
+
+    public: /* overrides */
+        virtual void init();
+
+        virtual void init( bool swapNow, ProgressCallback* progress );
+
+        // returns TRUE if a swap occurred and a new subgraph is now in place.
+        bool swapIfNecessary();
+
+        virtual osgTerrain::Locator* computeMasterLocator();
+
+        virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
+
+        virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+        
+        //virtual void generateGeometry2(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+
+        //virtual void updateContent(bool updateGeom, bool updateTextures);
+
+        virtual void applyColorLayers();
+
+        virtual void applyTransparency();
+
+        virtual void smoothGeometry();
+
+        virtual void update(osgUtil::UpdateVisitor* nv);
+
+        virtual void cull(osgUtil::CullVisitor* nv);
+
+        /** Traverse the terrain subgraph.*/
+        virtual void traverse(osg::NodeVisitor& nv);
+
+        virtual void cleanSceneGraph();
+
+        //typedef std::list< osg::ref_ptr<osg::Object> > ObjectList;
+        //ObjectList _objsToRelease;
+        //void releaseStaleGLObjects(osg::State*) const;
+
+    public:
+
+        inline OpenThreads::ReadWriteMutex& getMutex();
+
+        /**
+        * Sets a factor by which to scale elevation height values. By default, this object
+        * will get the vertical scale from the osgTerrain::Terrain with which the tile is
+        * associated. Setting this value overrides that (or sets it if there is no terrain).
+        */
+        void setVerticalScaleOverride( float value );
+
+        /**
+        * Gets the overriden vertical scale value.
+        */
+        float getVerticalScaleOverride() const;
+
+        /** If State is non-zero, this function releases any associated OpenGL objects for
+        * the specified graphics context. Otherwise, releases OpenGL objects
+        * for all graphics contexts. */
+        virtual void releaseGLObjects(osg::State* = 0) const;
+
+    protected:
+
+        //void updateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
+
+        //void updateColorLayers(osgTerrain::Locator* masterLocator);
+
+        void calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j );
+
+    private:
+
+        virtual ~EarthTerrainTechnique();
+
+        struct BufferData
+        {
+            osg::ref_ptr<osg::MatrixTransform>  _transform;
+            osg::ref_ptr<osg::Geode>            _geode;
+            osg::ref_ptr<osg::Geometry>         _geometry;
+        };
+
+        unsigned int _currentReadOnlyBuffer;
+        unsigned int _currentWriteBuffer;
+        BufferData _bufferData[2];
+
+        void swapBuffers();
+
+        inline BufferData& getReadOnlyBuffer() { return _bufferData[_currentReadOnlyBuffer]; }
+        inline BufferData& getWriteBuffer() { return _bufferData[_currentWriteBuffer]; }
+
+        void clearBuffer( int which );
+
+        osg::Vec3d _lastCenterModel;
+        float _verticalScaleOverride;
+
+        osg::ref_ptr<osgTerrain::Locator> _masterLocator;
+
+        bool _swapPending;
+    };
+
+}
+
+#endif

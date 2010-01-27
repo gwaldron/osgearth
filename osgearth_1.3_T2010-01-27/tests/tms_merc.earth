@@ -1,0 +1,5 @@
+<map name="TMS" type="geocentric">
+   <image name="TMS" driver="tms">
+     <url>http://labs.metacarta.com/wms-c/Basic.py/1.0.0/satellite-merc/</url>
+   </image>
+</map>

@@ -639,9 +639,9 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         _local_azim  = new_azim;
 
         // re-intersect the terrain to get a new correct center point, but only if this is
-        // NOT a viewpoint transition update.
-        if ( !_setting_viewpoint )
-            recalculateCenter( local_frame );
+        // NOT a viewpoint transition update. (disabled check for now)
+        //if ( !_setting_viewpoint )
+        recalculateCenter( local_frame );
     }
 }
 

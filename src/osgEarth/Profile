@@ -61,18 +61,18 @@ namespace osgEarth
         optional<Bounds>& bounds() { return _bounds; }
         const optional<Bounds>& bounds() const { return _bounds; }
 
-        ///** Returns true is the extents are set and form a valid spatial envelope. */         
-        //bool areExtentsValid() const;
-        //
+        optional<int>& numTilesWideAtLod0() { return _numTilesWideAtLod0; }
+        const optional<int>& numTilesWideAtLod0() const { return _numTilesWideAtLod0; }
+
+        optional<int>& numTilesHighAtLod0() { return _numTilesHighAtLod0; }
+        const optional<int>& numTilesHighAtLod0() const { return _numTilesHighAtLod0; }
+
         ///** Gets the spatial extents of the profile */
         //void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
         double xMin() const { return _bounds->xMin(); }
         double yMin() const { return _bounds->yMin(); }
         double xMax() const { return _bounds->xMax(); }
         double yMax() const { return _bounds->yMax(); }
-
-        ///** Sets the spatial extents of the profile */
-        //void setExtents(double minX, double minY, double maxX, double maxY);
 
         /** Serialize to configuration object */
         Config toConfig( const std::string& name ="profile" ) const;
@@ -81,6 +81,8 @@ namespace osgEarth
         optional<std::string> _namedProfile;
         optional<std::string> _srs;
         optional<Bounds>      _bounds;
+        optional<int>         _numTilesWideAtLod0;
+        optional<int>         _numTilesHighAtLod0;
 
         //bool _empty;
         //std::string _namedProfile;

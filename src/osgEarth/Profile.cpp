@@ -39,19 +39,6 @@ _bounds( Bounds() )
     //NOP
 }
 
-//ProfileConfig::ProfileConfig( const ProfileConfig& rhs ) :
-//_minX( rhs._minX ),
-//_minY( rhs._minY ),
-//_maxX( rhs._maxX ),
-//_maxY( rhs._maxY ),
-//_empty( rhs._empty ),
-//_srs( rhs._srs ),
-//_namedProfile( rhs._namedProfile ),
-//_refLayer( rhs._refLayer )
-//{
-//    //NOP
-//}
-
 ProfileConfig::ProfileConfig( const std::string& namedProfile ) :
 _namedProfile( namedProfile, namedProfile ),
 _srs( "" ),
@@ -79,6 +66,9 @@ _bounds( Bounds() )
             conf.value<double>( "xmax", 0 ),
             conf.value<double>( "ymax", 0 ) );
     }
+
+    conf.getOptional<int>( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+    conf.getOptional<int>( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
 }
 
 Config
@@ -101,6 +91,12 @@ ProfileConfig::toConfig( const std::string& name ) const
             conf.add( "xmax", toString(_bounds->xMax()) );
             conf.add( "ymax", toString(_bounds->yMax()) );
         }
+
+        if ( _numTilesWideAtLod0.isSet() )
+            conf.add( "num_tiles_wide_at_lod_0", toString(_numTilesWideAtLod0.value()) );
+
+        if ( _numTilesHighAtLod0.isSet() )
+            conf.add( "num_tiles_high_at_lod_0", toString(_numTilesHighAtLod0.value()) );
     }
     return conf;
 }
@@ -110,72 +106,8 @@ ProfileConfig::defined() const
 {
     return _namedProfile.isSet() || _srs.isSet();
 }
-//
-//const std::string&
-//ProfileConfig::getNamedProfile() const
-//{
-//    return _namedProfile;
-//}
-//
-//void
-//ProfileConfig::setNamedProfile( const std::string& namedProfile)
-//{
-//    _namedProfile = namedProfile;
-//    _empty = false;
-//}
-//
-//const std::string&
-//ProfileConfig::getSRS() const
-//{
-//    return _srs;
-//}
-//
-//void
-//ProfileConfig::setSRS(const std::string& srs)
-//{
-//    _srs = srs;
-//    _empty = false;
-//}
-//
-//bool ProfileConfig::areExtentsValid() const
-//{
-//    return _maxX >= _minX && _maxY >= _minY;
-//}
-//
-//void
-//ProfileConfig::getExtents(double &minX, double &minY, double &maxX, double &maxY) const
-//{
-//    minX = _minX;
-//    minY = _minY;
-//    maxX = _maxX;
-//    maxY = _maxY;
-//}
-//
-//void
-//ProfileConfig::setExtents(double minX, double minY, double maxX, double maxY)
-//{
-//    _minX = minX;
-//    _minY = minY;
-//    _maxX = maxX;
-//    _maxY = maxY;
-//    _empty = false;
-//}
-//
-//double
-//ProfileConfig::xMin() const { return _minX; }
-//
-//double
-//ProfileConfig::xMax() const { return _maxX; }
-//
-//double 
-//ProfileConfig::yMin() const { return _minY; }
-//
-//double 
-//ProfileConfig::yMax() const { return _maxY; }
-
 
 /***********************************************************************/
-
 
 
 // FACTORY METHODS:
@@ -268,12 +200,26 @@ Profile::create( const ProfileConfig& conf )
     // Next check for a user-defined extents:
     else if ( conf.srsString().isSet() && conf.bounds().isSet() )
     {
-        result = Profile::create(
-            conf.srsString().value(),
-            conf.bounds()->xMin(),
-            conf.bounds()->yMin(),
-            conf.bounds()->xMax(),
-            conf.bounds()->yMax() );
+        if ( conf.numTilesWideAtLod0().isSet() && conf.numTilesHighAtLod0().isSet() )
+        {
+            result = Profile::create(
+                conf.srsString().value(),
+                conf.bounds()->xMin(),
+                conf.bounds()->yMin(),
+                conf.bounds()->xMax(),
+                conf.bounds()->yMax(),
+                conf.numTilesWideAtLod0().value(),
+                conf.numTilesHighAtLod0().value() );
+        }
+        else
+        {
+            result = Profile::create(
+                conf.srsString().value(),
+                conf.bounds()->xMin(),
+                conf.bounds()->yMin(),
+                conf.bounds()->xMax(),
+                conf.bounds()->yMax() );
+        }
     }
 
     // Next try SRS with default extents

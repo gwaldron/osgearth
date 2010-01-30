@@ -21,6 +21,8 @@
 #include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
 
+#include <cstring>
+
 #define LOG2(X) (::log((double)(X))/::log(2.0))
 
 using namespace osgEarth;

@@ -241,6 +241,8 @@ MapNode::init()
 MapNode::~MapNode()
 {
     unregisterMapNode(_id);
+
+    removeChildren( 0, getNumChildren() );
 }
 
 Map*

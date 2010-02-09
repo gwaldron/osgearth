@@ -30,6 +30,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
 #include <osgDB/ReaderWriter>
+#include <OpenThreads/Mutex>
 #include <list>
 
 using namespace osgEarth;
@@ -146,6 +147,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         osg::ref_ptr<const PluginOptions>  _options;
         FeatureFilterList _filters;
+        OpenThreads::Mutex _createMutex;
 
         friend class Map;
         friend class FeatureSourceFactory;

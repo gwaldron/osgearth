@@ -100,9 +100,16 @@ FeatureSource::getFeatureProfile() const
 {
     if ( !_featureProfile.valid() )
     {
-        // caching pattern
         FeatureSource* nonConstThis = const_cast<FeatureSource*>(this);
-        nonConstThis->_featureProfile = nonConstThis->createFeatureProfile();
+
+        ScopedLock<Mutex> doubleCheckLock( nonConstThis->_createMutex );
+        {
+            if ( !_featureProfile.valid() )
+            {
+                // caching pattern                
+                nonConstThis->_featureProfile = nonConstThis->createFeatureProfile();
+            }
+        }
     }
     return _featureProfile.get();
 }

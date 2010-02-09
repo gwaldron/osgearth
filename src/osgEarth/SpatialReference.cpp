@@ -207,9 +207,9 @@ SpatialReference::create( osg::CoordinateSystemNode* csn )
 
 
 SpatialReference*
-SpatialReference::createFromHandle( void* ogrHandle )
+SpatialReference::createFromHandle( void* ogrHandle, bool xferOwnership )
 {
-    SpatialReference* srs = new SpatialReference( ogrHandle );
+    SpatialReference* srs = new SpatialReference( ogrHandle, xferOwnership );
     return srs;
 }
 
@@ -299,10 +299,10 @@ _initialized( false )
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
 }
 
-SpatialReference::SpatialReference(void* handle) :
+SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
 osg::Referenced( true ),
 _handle( handle ),
-_owns_handle( true ),
+_owns_handle( ownsHandle ),
 _initialized( false )
 {
     //setThreadSafeReferenceCounting(true);

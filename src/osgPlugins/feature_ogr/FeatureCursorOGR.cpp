@@ -38,11 +38,11 @@ _resultSetHandle( 0L ),
 _profile( profile ),
 _query( query ),
 _filters( filters ),
-_chunkSize( 50 ),
+_chunkSize( 500 ),
 _nextHandleToQueue( 0L ),
 _spatialFilter( 0L )
 {
-    _resultSetHandle = _layerHandle;
+    //_resultSetHandle = _layerHandle;
     {
         OGR_SCOPED_LOCK;
 
@@ -67,33 +67,43 @@ _spatialFilter( 0L )
                 expr = bufStr;
             }
         }
+        else
+        {
+            OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn( _layerHandle ); // just a ref.
+            std::stringstream buf;
+            buf << "SELECT * FROM " << OGR_FD_GetName( layerDef );
+            expr = buf.str();
+        }
 
         // if there's a spatial extent in the query, build the spatial filter:
         if ( query.bounds().isSet() )
         {
             OGRGeometryH ring = OGR_G_CreateGeometry( wkbLinearRing );
             OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMin(), 0 );
-            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMin(), 0 );
-            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMax(), 0 );
             OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMax(), 0 );
+            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMax(), 0 );
+            OGR_G_AddPoint(ring, query.bounds()->xMax(), query.bounds()->yMin(), 0 );
+            OGR_G_AddPoint(ring, query.bounds()->xMin(), query.bounds()->yMin(), 0 );
 
             _spatialFilter = OGR_G_CreateGeometry( wkbPolygon );
             OGR_G_AddGeometryDirectly( _spatialFilter, ring ); 
             // note: "Directly" above means _spatialFilter takes ownership if ring handle
         }
 
-        if ( !expr.empty() )
-        {
-            // an SQL expression, with or without a spatial filter:
-            _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
-        }
-        else if ( _spatialFilter ) 
-        {
-            // just a spatial filter. If it not clear from the docs whether this will take
-            // advantage of a source-supplied spatial index; the docs say this operates at
-            // the OGR_L_GetNextFeature level.
-            OGR_L_SetSpatialFilter( _resultSetHandle, _spatialFilter );
-        }
+        _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
+
+        //if ( !expr.empty() )
+        //{
+        //    // an SQL expression, with or without a spatial filter:
+        //    _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
+        //}
+        //else if ( _spatialFilter ) 
+        //{
+        //    // just a spatial filter. If it not clear from the docs whether this will take
+        //    // advantage of a source-supplied spatial index; the docs say this operates at
+        //    // the OGR_L_GetNextFeature level.
+        //    OGR_L_SetSpatialFilter( _resultSetHandle, _spatialFilter );
+        //}
 
         if ( _resultSetHandle )
         {
@@ -116,6 +126,9 @@ FeatureCursorOGR::~FeatureCursorOGR()
 
     if ( _spatialFilter )
         OGR_G_DestroyGeometry( _spatialFilter );
+
+    if ( _dsHandle )
+        OGRReleaseDataSource( _dsHandle );
 }
 
 bool
@@ -142,6 +155,7 @@ FeatureCursorOGR::nextFeature()
     return _lastFeatureReturned.get();
 }
 
+
 // reads a chunk of features into a memory cache; do this for performance
 // and to avoid needing the OGR Mutex every time
 void
@@ -165,13 +179,14 @@ FeatureCursorOGR::readChunk()
                 preProcessList.push_back( f );
         }
         OGR_F_Destroy( _nextHandleToQueue );
+        _nextHandleToQueue = 0L;
     }
 
     int handlesToQueue = _chunkSize - _queue.size();
 
     for( int i=0; i<handlesToQueue; i++ )
     {
-        OGRFeatureH handle = OGR_L_GetNextFeature( _layerHandle );
+        OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
         if ( handle )
         {
             Feature* f = createFeature( handle );
@@ -202,10 +217,11 @@ FeatureCursorOGR::readChunk()
     }
 
     // read one more for "more" detection:
-    _nextHandleToQueue = OGR_L_GetNextFeature( _layerHandle );
+    _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
 
     //osg::notify(osg::NOTICE) << "read " << _queue.size() << " features ... " << std::endl;
 }
+
 
 static void
 populate( OGRGeometryH geomHandle, Geometry* target, int numPoints )

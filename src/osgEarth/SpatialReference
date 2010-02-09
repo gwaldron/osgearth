@@ -52,8 +52,12 @@ namespace osgEarth
         /**
          * Creates an SRS around a pre-existing OGR spatial reference handle. The new
          * SpatialReference object takes ownership of the handle.
+         *
+         * @param xferOwnership
+         *      If true, the SpatialReference object is responsible for releasing the handle
+         *      upon destruction.
          */
-        static SpatialReference* createFromHandle( void* ogrHandle );
+        static SpatialReference* createFromHandle( void* ogrHandle, bool xferOwnership =false );
 
     public:
         /** Transform a point to another SRS. */
@@ -150,7 +154,7 @@ namespace osgEarth
 
     protected:
         SpatialReference( void* handle, const std::string& type, const std::string& init_str, const std::string& name );
-        SpatialReference( void* handle );
+        SpatialReference( void* handle, bool ownsHandle =true );
         void init();
 
         bool _initialized;

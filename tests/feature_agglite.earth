@@ -1,0 +1,46 @@
+<!--
+osgEarth Sample
+
+This demonstrates the "agglite" feature rasterizing driver. It "drapes" vector data by
+rasterizing it into image tiles.
+-->
+
+<map name="AGGLite Sample" type="geocentric">
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <image name="states" driver="agglite">
+        <features name="states" driver="ogr">
+            <url>../data/usa.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <style type="text/css">
+            states {
+                fill: #ffffff;
+                fill-opacity: 0.5;
+            }            
+        </style>        
+    </image>
+    
+    <image name="roads" driver="agglite" min_level="2">
+        <features name="roads" driver="ogr">
+            <url>../data/istates_dissolve.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <style type="text/css">
+            roads {
+                stroke: #ff6666;
+                stroke-width: 1.5;
+                stroke-opacity: 1.0;
+            }            
+        </style>
+    </image>
+  
+    <lighting>false</lighting>
+</map>

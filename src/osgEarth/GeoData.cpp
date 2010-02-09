@@ -300,6 +300,18 @@ GeoExtent::expandToInclude( double x, double y )
     if ( y > _ymax ) _ymax = y;
 }
 
+GeoExtent
+GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
+{
+    Bounds b(
+        osg::maximum( xMin(), rhs.xMin() ),
+        osg::maximum( yMin(), rhs.yMin() ),
+        osg::minimum( xMax(), rhs.xMax() ),
+        osg::minimum( yMax(), rhs.yMax() ) );
+
+    return b.width() > 0 && b.height() > 0 ? GeoExtent( getSRS(), b ) : GeoExtent::INVALID;
+}
+
 std::string
 GeoExtent::toString() const
 {

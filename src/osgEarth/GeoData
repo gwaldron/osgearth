@@ -138,6 +138,12 @@ namespace osgEarth
          * in the extent's SRS.
          */
         void expandToInclude( double x, double y );
+        
+        /**
+         * Intersect this extent with another extent in the same SRS and return the
+         * result.
+         */
+        GeoExtent intersectionSameSRS( const GeoExtent& rhs ) const;
 
         /**
          * Returns a human-readable string containing the extent data (without the SRS)

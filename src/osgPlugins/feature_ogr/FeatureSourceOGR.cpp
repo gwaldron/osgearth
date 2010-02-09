@@ -50,6 +50,7 @@ public:
       _ready( false ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
+      _ogrDriverHandle( 0L ),
       _supportsRandomRead( false ),
       _buildSpatialIndex( false )
     {
@@ -91,13 +92,12 @@ public:
 
         OGR_SCOPED_LOCK;
 
-        OGRSFDriverH ogrDriverHandle = 0L;
         if ( !_ogrDriver.empty() )
         {
-            ogrDriverHandle = OGRGetDriverByName( _ogrDriver.c_str() );
+            _ogrDriverHandle = OGRGetDriverByName( _ogrDriver.c_str() );
         }
 
-	    _dsHandle = OGROpenShared( _url.c_str(), 0, &ogrDriverHandle ); // last param is the driver spec..TODO!!
+	    _dsHandle = OGROpenShared( _url.c_str(), 0, &_ogrDriverHandle ); // last param is the driver spec..TODO!!
 	    if ( _dsHandle )
 	    {
 		    _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
@@ -129,7 +129,7 @@ public:
                 OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
                 if ( srHandle )
                 {
-                    osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle );
+                    osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle, false );
                     if ( srs.valid() )
                     {
                         // extract the full extent of the layer:
@@ -169,12 +169,27 @@ public:
     //override
     FeatureCursor* createFeatureCursor( const Query& query )
     {
-        return new FeatureCursorOGR( 
-            _dsHandle, 
-            _layerHandle, 
-            getFeatureProfile(),
-            query, 
-            getFilters() );
+        OGR_SCOPED_LOCK;
+
+        // Each cursor requires its own DS handle so that multi-threaded access will work.
+        // The cursor impl will dispose of the new DS handle.
+
+	    OGRDataSourceH dsHandle = OGROpenShared( _url.c_str(), 0, &_ogrDriverHandle );
+	    if ( dsHandle )
+	    {
+            OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, 0 );
+
+            return new FeatureCursorOGR( 
+                dsHandle,
+                layerHandle, 
+                getFeatureProfile(),
+                query, 
+                getFilters() );
+        }
+        else
+        {
+            return 0L;
+        }
     }
 
 protected:
@@ -204,6 +219,7 @@ private:
     std::string _ogrDriver;
     OGRDataSourceH _dsHandle;
     OGRLayerH _layerHandle;
+    OGRSFDriverH _ogrDriverHandle;
     bool _supportsRandomRead;
     bool _ready;
     bool _buildSpatialIndex;

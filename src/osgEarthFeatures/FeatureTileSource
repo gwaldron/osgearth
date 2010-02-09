@@ -1,0 +1,147 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H
+#define OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Styling>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/TileSource>
+#include <osgEarth/Map>
+#include <osg/Node>
+#include <osgDB/ReaderWriter>
+#include <list>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * A TileSource that renders Feature data from a FeatureSource. An implementation of
+     * this base class will render image or heightfield tiles from feature data.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureTileSource : public TileSource
+    {
+    public:      
+        /**
+         * Constructs a new feature tile source with the provided options.
+         */
+        FeatureTileSource( const PluginOptions* options =NULL );
+
+
+    public:
+        //override
+		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL);
+
+        //override
+        virtual osg::Image* createImage( const TileKey* key, ProgressCallback* progress );
+        
+        //override 
+        virtual int getPixelsPerTile() const { return _tileSize; }
+
+    public: // properties:
+
+        /** The underlying feature source. */
+        FeatureSource* getFeatureSource() { return _features.get(); }
+
+        /** Access to the forced geometry type */
+        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
+
+    protected:
+
+        /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
+        virtual osg::Referenced* createBuildData() {
+            return NULL; }     
+
+        /**
+         * Creates OSG graph(s) representing the specified feature list.
+         *
+         * @param style
+         *      Styling information for the feature geometry
+         * @param features
+         *      Features to render
+         * @param buildData
+         *      Implementation-specific build data (from createBuildData)
+         * @param out_image 
+         *      Pre-allocated image to which the implementation would render.
+         *
+         * @return true if the rendering succeeded, false if the out_image did not change.
+         */
+        virtual bool renderFeaturesForStyle(
+            const Style& style,
+            FeatureList& features,
+            osg::Referenced* buildData,
+            const GeoExtent& imageExtent,
+            osg::Image* out_image ) { return false; }            
+            
+        /**
+         * Optional implementation hook to pre-process an image tile before any calls to 
+         * renderFeaturesForStyle().
+         */
+        virtual bool preProcess(
+            osg::Image* image,
+            osg::Referenced* buildData ) { return true; }
+            
+        /**
+         * Optional implementation hook to post-process an image tile after all calls to 
+         * renderFeaturesForStyle() are complete.
+         */
+        virtual bool postProcess(
+            osg::Image* image,
+            osg::Referenced* buildData ) { return true; }
+
+    public: 
+
+        // META_Object specialization:
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const FeatureTileSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "FeatureTileSource"; }
+        virtual const char* libraryName() const { return "osgEarthFeatures"; }
+
+    protected:
+
+        /** DTOR is protected to prevent this object from being allocated on the stack */
+        virtual ~FeatureTileSource() { }
+
+    protected:
+
+        StyleCatalog _styleCatalog;
+        osg::ref_ptr<FeatureSource> _features;
+        int _tileSize;
+        optional<Geometry::Type> _geomTypeOverride;
+
+    private:
+        osg::ref_ptr<const osgEarth::Map> _map;
+        
+        bool queryAndRenderFeaturesForStyle(
+            const Style& style,
+            osg::Referenced* data,
+            const GeoExtent& imageExtent,
+            osg::Image* out_image );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H
+
+
+
+

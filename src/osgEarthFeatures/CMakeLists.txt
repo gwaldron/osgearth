@@ -22,6 +22,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureGridder
     FeatureModelSource
     FeatureSource
+    FeatureTileSource
     Filter
     Geometry
     GEOS
@@ -45,6 +46,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureGridder.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp
+    FeatureTileSource.cpp
     Filter.cpp
     GEOS.cpp
     Geometry.cpp

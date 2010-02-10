@@ -246,7 +246,7 @@ public:
 
     virtual std::string getExtension()  const 
     {
-        return "jpg";
+        return "png";
     }
 
 private:

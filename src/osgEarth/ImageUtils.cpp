@@ -93,10 +93,15 @@ ImageUtils::cropImage(const osg::Image* image,
                       double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy)
 {
     //Compute the desired cropping rectangle
-    int windowX       = osg::maximum( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0);
-    int windowY       = osg::maximum( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0);
-    int windowWidth   = osg::minimum( (int)ceil(  (dst_maxx - src_minx) / (src_maxx - src_minx) * (double)image->s()), image->s()) - windowX;
-    int windowHeight  = osg::minimum( (int)ceil(  (dst_maxy - src_miny) / (src_maxy - src_miny) * (double)image->t()), image->t()) - windowY;
+    int windowX       = osg::clampBetween( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0, image->s()-1);
+    int windowY       = osg::clampBetween( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0, image->t()-1);
+    int windowWidth   = osg::clampBetween( (int)ceil(  (dst_maxx - src_minx) / (src_maxx - src_minx) * (double)image->s()) - windowX, 0, image->s()-1);
+    int windowHeight   = osg::clampBetween( (int)ceil(  (dst_maxy - src_miny) / (src_maxy - src_miny) * (double)image->t()) - windowY, 0, image->t()-1);
+
+    if ((windowWidth * windowHeight) == 0)
+    {
+        return NULL;
+    }
 
     //Compute the actual bounds of the area we are computing
     double res_s = (src_maxx - src_minx) / (double)image->s();

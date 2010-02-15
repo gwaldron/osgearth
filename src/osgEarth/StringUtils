@@ -24,31 +24,28 @@
 
 namespace osgEarth
 {
-    class StringUtils
+    // by Rodrigo C F Dias
+    // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
+    static
+    std::string trim( const std::string& in )
     {
-    public:
-
-        // by Rodrigo C F Dias
-        // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
-        static std::string trim( const std::string& in )
-        {
-            std::string whitespace (" \t\f\v\n\r");
-            std::string str = in;
-            std::string::size_type pos = str.find_last_not_of( whitespace );
-            if(pos != std::string::npos) {
-                str.erase(pos + 1);
-                pos = str.find_first_not_of( whitespace );
-                if(pos != std::string::npos) str.erase(0, pos);
-            }
-            else str.erase(str.begin(), str.end());
-            return str;
+        std::string whitespace (" \t\f\v\n\r");
+        std::string str = in;
+        std::string::size_type pos = str.find_last_not_of( whitespace );
+        if(pos != std::string::npos) {
+            str.erase(pos + 1);
+            pos = str.find_first_not_of( whitespace );
+            if(pos != std::string::npos) str.erase(0, pos);
         }
+        else str.erase(str.begin(), str.end());
+        return str;
+    }
 
-        static bool startsWith( const std::string& ref, const std::string& pattern )
-        {
-            return ref.find( pattern ) == 0;
-        }
-    };
+    static
+    bool startsWith( const std::string& ref, const std::string& pattern )
+    {
+        return ref.find( pattern ) == 0;
+    }
 
     // http://stackoverflow.com/questions/53849/how-do-i-tokenize-a-string-in-c
     class StringTokenizer 
@@ -77,7 +74,7 @@ namespace osgEarth
             return true;
         }
         std::string token() const { 
-            return StringUtils::trim( _token );
+            return trim( _token );
         }
     protected:
         size_t _offset;
@@ -85,6 +82,15 @@ namespace osgEarth
         std::string _token;
         std::string _delimiters;
     };
+
+    static
+    void split( const std::string& input, const std::string& delims, std::vector<std::string>& output, bool allowEmpties =true )
+    {
+        StringTokenizer t(input, delims);
+        while( t.nextToken() )
+            if ( allowEmpties || !t.token().empty() )
+                output.push_back( t.token() );
+    }
 }
 
 #endif // OSGEARTH_STRING_UTILS_H

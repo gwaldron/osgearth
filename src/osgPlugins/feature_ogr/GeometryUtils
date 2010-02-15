@@ -147,13 +147,13 @@ struct GeometryUtils
     createGeometryFromWKT( const std::string& wkt )
     {       
         OGRwkbGeometryType type = 
-            StringUtils::startsWith( wkt, "POINT" ) ? wkbPoint :
-            StringUtils::startsWith( wkt, "LINESTRING" ) ? wkbLineString :
-            StringUtils::startsWith( wkt, "POLYGON" ) ? wkbPolygon :
-            StringUtils::startsWith( wkt, "MULTIPOINT" ) ? wkbMultiPoint :
-            StringUtils::startsWith( wkt, "MULTILINESTRING" ) ? wkbMultiLineString :
-            StringUtils::startsWith( wkt, "MULTIPOLYGON" ) ? wkbMultiPolygon :
-            StringUtils::startsWith( wkt, "GEOMETRYCOLLECTION" ) ? wkbGeometryCollection :
+            startsWith( wkt, "POINT" ) ? wkbPoint :
+            startsWith( wkt, "LINESTRING" ) ? wkbLineString :
+            startsWith( wkt, "POLYGON" ) ? wkbPolygon :
+            startsWith( wkt, "MULTIPOINT" ) ? wkbMultiPoint :
+            startsWith( wkt, "MULTILINESTRING" ) ? wkbMultiLineString :
+            startsWith( wkt, "MULTIPOLYGON" ) ? wkbMultiPolygon :
+            startsWith( wkt, "GEOMETRYCOLLECTION" ) ? wkbGeometryCollection :
             wkbNone;
             
         Geometry* output = 0L;

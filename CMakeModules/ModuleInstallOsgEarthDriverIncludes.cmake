@@ -1,0 +1,18 @@
+# Required Vars:
+# ${LIB_NAME}
+# ${LIB_PUBLIC_HEADERS}
+
+SET(INSTALL_INCDIR include)
+
+SET(HEADERS_GROUP "Header Files")
+
+SOURCE_GROUP(
+    ${HEADERS_GROUP}
+    FILES ${LIB_PUBLIC_HEADERS}
+)
+
+# FIXME: Do not run for OS X framework
+INSTALL(
+    FILES        ${LIB_PUBLIC_HEADERS}
+    DESTINATION ${INSTALL_INCDIR}/${LIB_NAME}
+)

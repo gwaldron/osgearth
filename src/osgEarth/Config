@@ -72,7 +72,7 @@ namespace osgEarth
 
         std::string attr( const std::string& name ) const {
             Properties::const_iterator i = _attrs.find(name);
-            return i != _attrs.end()? StringUtils::trim(i->second) : "";
+            return i != _attrs.end()? trim(i->second) : "";
         }
 
         std::string& attr( const std::string& name ) {
@@ -123,6 +123,12 @@ namespace osgEarth
                 add( name, osgEarth::toString<T>( opt.value() ) );
         }
 
+        template<typename T>
+        void addIfSet( const std::string& name, const optional<T>& opt ) {
+            if ( opt.isSet() )
+                add( name, osgEarth::toString<T>( opt.value() ) );
+        }
+
         void addChild( const Config& conf ) {
             add( conf );
         }
@@ -141,7 +147,7 @@ namespace osgEarth
         }
 
         std::string value( const std::string& name ) const {
-            std::string r = StringUtils::trim(child(name).value());
+            std::string r = trim(child(name).value());
             if ( r.empty() )
                 r = attr(name);
             return r;

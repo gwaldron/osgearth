@@ -33,7 +33,7 @@
 
 namespace osgEarth
 {
-    extern OSGEARTH_EXPORT std::string trim( const std::string& in );
+    extern std::string trim( const std::string& in );
 
     class OSGEARTH_EXPORT XmlNode : public osg::Referenced
     {

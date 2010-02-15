@@ -30,6 +30,8 @@
 #include <osgDB/FileUtils>
 
 #include <osg/io_utils>
+#include <osg/Texture2DArray>
+#include <osg/Texture3D>
 #include <osg/Texture2D>
 #include <osg/Texture1D>
 #include <osg/TexEnvCombine>
@@ -916,40 +918,72 @@ void EarthTerrainTechnique::applyColorLayers()
         {
             osg::StateSet* stateset = buffer._geode->getOrCreateStateSet();
 
-            osg::Texture2D* texture2D = dynamic_cast<osg::Texture2D*>(layerToTextureMap[colorLayer]);
-            if (!texture2D)
-            {
-                texture2D = new osg::Texture2D;
-                texture2D->setImage(image);
-                texture2D->setMaxAnisotropy(16.0f);
-                texture2D->setResizeNonPowerOfTwoHint(false);
+            osg::Texture* texture = dynamic_cast<osg::Texture*>( layerToTextureMap[colorLayer] );
 
-                //GW TEST:
-                //texture2D->setUnRefImageDataAfterApply( true );
-                //imageLayer->setImage(0L);
+            //osg::Texture2D* texture2D = dynamic_cast<osg::Texture2D*>(layerToTextureMap[colorLayer]);
+            if ( !texture ) // (!texture2D)
+            {   
+                if ( image->r() < 2 )
+                {
+                    osg::Texture2D* t2d = new osg::Texture2D();
+                    t2d->setImage( image );
+                    texture = t2d;
+                }
+                else
+                {
+                    // NOTE: Texture2DArray is not supported in NVIDIA 7 series
+                    //
+                    //osg::Texture2DArray* tarray = new osg::Texture2DArray();
+                    //tarray->setTextureSize( image->s(), image->t(), image->r() );
+                    //for( int r=0; r<image->r(); ++r )
+                    //{
+                    //    osg::Image* rImage = new osg::Image();
+                    //    rImage->allocateImage( image->s(), image->t(), 1, image->getPixelFormat(), image->getDataType(), image->getPacking() );
+                    //    memcpy( rImage->data(), image->data(0,0,r), image->getImageSizeInBytes() );
+                    //    tarray->setImage( r, rImage );
+                    //}
+
+                    osg::Texture3D* tarray = new osg::Texture3D();
+                    tarray->setTextureSize( image->s(), image->t(), image->r() );
+                    for( int r=0; r<image->r(); ++r )
+                    {
+                        osg::Image* rImage = new osg::Image();
+                        rImage->allocateImage( image->s(), image->t(), 1, image->getPixelFormat(), image->getDataType(), image->getPacking() );
+                        memcpy( rImage->data(), image->data(0,0,r), image->getImageSizeInBytes() );
+                        tarray->setImage( r, rImage );
+                    }
+
+                    texture = tarray;
+                }
+
+                //osg::Texture2D* texture2D = new osg::Texture2D;
+                //texture2D->setImage(image);
+                texture->setMaxAnisotropy(16.0f);
+                texture->setResizeNonPowerOfTwoHint(false);
 
 #if OSG_MIN_VERSION_REQUIRED(2,8,0)
-                texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
-                texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
+                texture->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
+                texture->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
 #else
 				texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
 				texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getFilter()==Layer::LINEAR ? osg::Texture::LINEAR :  osg::Texture::NEAREST);
 #endif
                 
-                texture2D->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
-                texture2D->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
+                texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
+                texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
 
-                bool mipMapping = !(texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
+                bool mipMapping = !(texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
                 bool s_NotPowerOfTwo = image->s()==0 || (image->s() & (image->s() - 1));
                 bool t_NotPowerOfTwo = image->t()==0 || (image->t() & (image->t() - 1));
 
                 if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
                 {
                     osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
-                    texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+                    texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
                 }
 
-                layerToTextureMap[colorLayer] = texture2D;
+                layerToTextureMap[colorLayer] = texture;
+                //texture = texture2D;
 
                 // osg::notify(osg::NOTICE)<<"Creating new ImageLayer texture "<<layerNum<<" image->s()="<<image->s()<<"  image->t()="<<image->t()<<std::endl;
 
@@ -959,7 +993,8 @@ void EarthTerrainTechnique::applyColorLayers()
                 // osg::notify(osg::NOTICE)<<"Reusing ImageLayer texture "<<layerNum<<std::endl;
             }
 
-            stateset->setTextureAttributeAndModes(layerNum, texture2D, osg::StateAttribute::ON);
+            //stateset->setTextureAttributeAndModes(layerNum, texture2D, osg::StateAttribute::ON);
+            stateset->setTextureAttributeAndModes(layerNum, texture, osg::StateAttribute::ON);
             
         }
         else if (contourLayer)

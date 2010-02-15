@@ -46,7 +46,10 @@ using namespace osgEarth;
 #define PROPERTY_TILE_SIZE        "tile_size"
 #define PROPERTY_ELEVATION_UNIT   "elevation_unit"
 #define PROPERTY_SRS              "srs"
+#define PROPERTY_TRANSPARENT      "transparent"
 #define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
+#define PROPERTY_TIME             "time"
+#define PROPERTY_TIMES            "times"
 
 static std::string&
 replaceIn( std::string& s, const std::string& sub, const std::string& other)
@@ -77,6 +80,7 @@ public:
         _layers = conf.value( PROPERTY_LAYERS );
         _style  = conf.value( PROPERTY_STYLE );
         _format = conf.value( PROPERTY_FORMAT );
+        _transparent = conf.value( PROPERTY_TRANSPARENT );
 
         _wms_format = conf.value( PROPERTY_WMS_FORMAT );
         
@@ -96,9 +100,13 @@ public:
         else
             _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
 
-
         if ( _elevation_unit.empty())
             _elevation_unit = "m";
+
+        if ( conf.hasValue( PROPERTY_TIMES ) )
+        {
+            osgEarth::split( conf.value( PROPERTY_TIMES ), ",", _times, false );
+        }
     }
 
     /** override */
@@ -140,6 +148,7 @@ public:
         buf
             << std::fixed << _prefix << sep
             << "SERVICE=WMS&VERSION=" << _wms_version << "&REQUEST=GetMap"
+            << "&TRANSPARENT=" << _transparent
             << "&LAYERS=" << _layers
             << "&FORMAT=" << (_wms_format.empty()? std::string("image/") + _format : _wms_format)
             << "&STYLES=" << _style
@@ -239,11 +248,22 @@ public:
     }
 
     // fetch a tile from the WMS service and report any exceptions.
-    osgDB::ReaderWriter* fetchTileAndReader( const TileKey* key, ProgressCallback* progress, HTTPResponse& out_response )
+    osgDB::ReaderWriter* fetchTileAndReader( 
+        const TileKey*     key, 
+        const std::string& extraAttrs,
+        ProgressCallback*  progress, 
+        HTTPResponse&      out_response )
     {
         osgDB::ReaderWriter* result = 0L;
 
-        out_response = HTTPClient::get( createURI(key), getOptions(), progress );
+        std::string uri = createURI(key);
+        if ( !extraAttrs.empty() )
+        {
+            std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
+            uri = uri + delim + extraAttrs;
+        }
+
+        out_response = HTTPClient::get( uri, getOptions(), progress );
 
         if ( out_response.isOK() )
         {
@@ -286,16 +306,68 @@ public:
     {
         osg::ref_ptr<osg::Image> image;
 
-        HTTPResponse response;
-        osgDB::ReaderWriter* reader = fetchTileAndReader( key, progress, response );
-        if ( reader )
+        if ( _times.size() > 1 )
         {
-            osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
-            if ( readResult.error() ) {
-                osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+            image = createImage3D( key, progress );
+        }
+        else
+        {
+            std::string extras;
+            if ( _times.size() == 1 )
+                extras = "TIME=" + _times[0];
+
+            HTTPResponse response;
+            osgDB::ReaderWriter* reader = fetchTileAndReader( key, extras, progress, response );
+            if ( reader )
+            {
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
+                if ( readResult.error() ) {
+                    osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+                }
+                else {
+                    image = readResult.getImage();
+                }
             }
-            else {
-                image = readResult.getImage();
+        }
+
+        return image.release();
+    }
+
+    /** creates a 3D image from timestamped data. */
+    osg::Image* createImage3D( const TileKey* key, ProgressCallback* progress )
+    {
+        osg::ref_ptr<osg::Image> image;
+
+        for( int r=0; r<_times.size(); ++r )
+        {
+            std::string extraAttrs = "TIME=" + _times[r];
+            HTTPResponse response;
+            osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
+            if ( reader )
+            {
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
+                if ( readResult.error() ) {
+                    osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+                }
+                else
+                {
+                    osg::Image* timeImage = readResult.getImage();
+
+                    if ( !image.valid() )
+                    {
+                        image = new osg::Image();
+                        image->allocateImage(
+                            timeImage->s(), timeImage->t(), _times.size(),
+                            timeImage->getPixelFormat(),
+                            timeImage->getDataType(),
+                            timeImage->getPacking() );
+                    }
+
+                    memcpy( 
+                        image->data(0,0,r), 
+                        timeImage->data(), 
+                        osg::minimum(image->getImageSizeInBytes(), timeImage->getImageSizeInBytes()) );
+                }
             }
         }
 
@@ -368,6 +440,8 @@ private:
     osg::ref_ptr<TileService> _tileService;
     osg::ref_ptr<const Profile> _profile;
     std::string _prototype;
+    std::string _transparent;
+    std::vector<std::string> _times;
 };
 
 

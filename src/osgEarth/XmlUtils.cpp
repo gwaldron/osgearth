@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/XmlUtils>
+#include <osgEarth/StringUtils>
 #include <osg/Notify>
 #include <algorithm>
 #include <sstream>
@@ -28,22 +29,22 @@ using namespace osgEarth;
 
 static std::string EMPTY_VALUE = "";
 
-std::string
-osgEarth::trim( const std::string& in )
-{
-    std::string whitespace (" \t\f\v\n\r");
-    // by Rodrigo C F Dias
-    // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
-    std::string str = in;
-    std::string::size_type pos = str.find_last_not_of( whitespace );
-    if(pos != std::string::npos) {
-        str.erase(pos + 1);
-        pos = str.find_first_not_of( whitespace );
-        if(pos != std::string::npos) str.erase(0, pos);
-    }
-    else str.erase(str.begin(), str.end());
-    return str;
-}
+//std::string
+//osgEarth::trim( const std::string& in )
+//{
+//    std::string whitespace (" \t\f\v\n\r");
+//    // by Rodrigo C F Dias
+//    // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
+//    std::string str = in;
+//    std::string::size_type pos = str.find_last_not_of( whitespace );
+//    if(pos != std::string::npos) {
+//        str.erase(pos + 1);
+//        pos = str.find_first_not_of( whitespace );
+//        if(pos != std::string::npos) str.erase(0, pos);
+//    }
+//    else str.erase(str.begin(), str.end());
+//    return str;
+//}
 
 
 XmlNode::XmlNode()

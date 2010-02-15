@@ -538,7 +538,7 @@ MapLayer::createImage( const TileKey* key,
 				double minX, minY, maxX, maxY;
 				intersectingTiles[j]->getGeoExtent().getBounds(minX, minY, maxX, maxY);
 
-				//osg::notify(osg::NOTICE) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
+				osg::notify(osg::INFO) << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
 				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j].get(), cacheInLayerProfile, progress);
 				if (img.valid())

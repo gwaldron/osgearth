@@ -56,6 +56,48 @@ FeatureListCursor::nextFeature() {
 
 /****************************************************************************/
 
+GeometryFeatureCursor::GeometryFeatureCursor( Geometry* geom ) :
+_geom( geom )
+{
+    //nop
+}
+
+GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
+                                             const FeatureProfile* fp,
+                                             FeatureFilterList& filters ) :
+_geom( geom ),
+_featureProfile( fp ),
+_filters( filters )
+{
+    //nop
+}
+
+bool
+GeometryFeatureCursor::hasMore() const {
+    return _geom.valid();
+}
+
+Feature*
+GeometryFeatureCursor::nextFeature()
+{
+    if ( hasMore() )
+    {
+        _lastFeature = new Feature();
+        _lastFeature->setGeometry( _geom.get() );
+        FilterContext cx;
+        cx.profile() = _featureProfile.get();
+        FeatureList list;
+        list.push_back( _lastFeature.get() );
+        for( FeatureFilterList::iterator i = _filters.begin(); i != _filters.end(); ++i ) {
+            cx = i->get()->push( list, cx );
+        }
+        _geom = 0L;
+    }
+    return _lastFeature.get();
+}
+
+/****************************************************************************/
+
 FeatureSource::FeatureSource( const PluginOptions* options ) :
 _options( options )
 {    

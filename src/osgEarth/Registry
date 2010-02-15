@@ -43,6 +43,9 @@
 
 namespace osgEarth
 {
+    /**
+     * Application-wide global repository.
+     */
     class OSGEARTH_EXPORT Registry : public osg::Referenced
     {
     public:
@@ -71,6 +74,7 @@ namespace osgEarth
           * the registered mime-types. */
         osgDB::ReaderWriter* getReaderWriterForMimeType(const std::string& mimeType);
 
+
     protected:
         virtual ~Registry();
         Registry();
@@ -91,7 +95,6 @@ namespace osgEarth
         typedef std::map< std::string, std::string> MimeTypeExtensionMap;
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
-
 
 		osg::ref_ptr<Cache> _cacheOverride;
     };

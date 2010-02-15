@@ -77,12 +77,15 @@ FeatureTileSource::initialize( const std::string& referenceURI, const Profile* o
         //Assume it is global-geodetic
         setProfile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() );
     }            
+
+    if ( _features.valid() )
+        _features->initialize( referenceURI );
 }
 
 osg::Image*
 FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
 {
-    if ( !_features.valid() )
+    if ( !_features.valid() || !_features->getFeatureProfile() )
         return 0L;
 
     // implementation-specific data

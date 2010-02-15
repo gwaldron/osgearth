@@ -50,6 +50,9 @@ namespace osgEarth
         optional<double>& maxRange() { return _maxRange; }
         const optional<double>& maxRange() const { return _maxRange; }
 
+        optional<int>& renderOrder() { return _renderOrder; }
+        const optional<int>& renderOrder() const { return _renderOrder; }
+
     public: // META_Object specialization
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
@@ -61,7 +64,7 @@ namespace osgEarth
 		/** Initialize the NodeSource. */
 		virtual void initialize(
             const std::string& referenceURI,
-            const Map* map ) =0;
+            const Map* map ) { }
 
     protected:
         virtual ~ModelSource() { }
@@ -72,6 +75,7 @@ namespace osgEarth
         osg::ref_ptr<const PluginOptions> _options;
         optional<double> _minRange;
         optional<double> _maxRange;
+        optional<int>    _renderOrder;
 
         friend class Map;
         friend class MapEngine;

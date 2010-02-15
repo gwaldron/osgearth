@@ -529,7 +529,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
                const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
                int width = 0, int height = 0)
 {
-    osg::notify(osg::NOTICE) << "Reprojecting..." << std::endl;
+    //osg::notify(osg::NOTICE) << "Reprojecting..." << std::endl;
     GDAL_SCOPED_LOCK;
 	osg::Timer_t start = osg::Timer::instance()->tick();
 

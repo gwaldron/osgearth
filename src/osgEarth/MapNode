@@ -148,6 +148,9 @@ namespace osgEarth
          */
         void addTerrainCallback( TerrainCallback* callback );
 
+        //override osg::Node
+        virtual osg::BoundingSphere computeBound() const;
+
 
     public: // MapCallback adapter funcs
 

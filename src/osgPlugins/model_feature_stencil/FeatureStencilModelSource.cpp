@@ -49,7 +49,8 @@ using namespace OpenThreads;
 
 #define DEFAULT_EXTRUSION_DISTANCE      300000.0
 #define DEFAULT_DENSIFICATION_THRESHOLD 1000000.0
-#define RENDER_BIN_START                80000
+#define RENDER_BIN_START                100
+#define MAX_NUM_STYLES                  100
 
 #define OFF_PROTECTED osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED
 
@@ -330,7 +331,7 @@ public:
     {
         ScopedLock<Mutex> lock( _sourceIdMutex );
         FeatureStencilModelSource* obj = new FeatureStencilModelSource( options, _renderBinStart, _sourceId );
-        _renderBinStart += 1000;
+        _renderBinStart += MAX_NUM_STYLES*4;
         if ( obj ) _sourceMap[_sourceId++] = obj;
         return obj;
     }

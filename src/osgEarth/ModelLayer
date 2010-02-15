@@ -62,6 +62,11 @@ namespace osgEarth
          */
         const Config& getDriverConfig() const { return _driverConf; }
 
+        /**
+         * Access the underlying model source.
+         */
+        ModelSource* getModelSource() const { return _modelSource.get(); }
+
     public:
 
         osg::Node* createNode( ProgressCallback* progress =0L );

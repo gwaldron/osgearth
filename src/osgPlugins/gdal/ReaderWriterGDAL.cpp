@@ -941,7 +941,7 @@ public:
     {
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
-            //osg::notify(osg::NOTICE) << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+            osg::notify(osg::INFO) << getName() << ": Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
 

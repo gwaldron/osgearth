@@ -42,23 +42,6 @@ void getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
         r = atan2( rot(0,2), rot(2,2) );
         h = atan2( rot(1,0), rot(1,1) );
     }
-
- //   //http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToEuler/index.htm
- //   p   = atan2( 2 * (q.y()*q.z() + q.w()*q.x()), (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z() * q.z()));
-	//h   = asin(2*q.x()*q.y() + 2*q.z()*q.w());
- //   r   = atan2(2*q.x()*q.w()-2*q.y()*q.z() , 1 - 2*q.x()*q.x() - 2*q.z()*q.z());
-
-	//
-	//if(q.x()*q.y() + q.z() *q.w() == 0.5) 
-	//{ 
-	//	p = (float)(2 * atan2( q.x(),q.w())); 
-	//	r = 0;     
-	//}  	 
-	//else if(q.x()*q.y() + q.z()*q.w() == -0.5) 
-	//{ 
-	//	p = (float)(-2 * atan2(q.x(), q.w())); 
-	//	r = 0; 
-	//} 
 }
 
 
@@ -402,8 +385,23 @@ void EarthManipulator::setNode(osg::Node* node)
 {
     if ( node )
     {
-        _node = osgEarth::MapNode::findMapNode( node );
-        if (getAutoComputeHomePosition()) computeHomePosition();
+        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( node );
+        _node = mapNode; //->getTerrain(0);
+
+        if ( mapNode->isGeocentric() )
+        {
+            setHomeViewpoint( 
+                Viewpoint(osg::Vec3d(0,0,0), 0, -89.9,
+                mapNode->getEllipsoidModel()->getRadiusEquator()*3.0 ) );
+        }
+        else
+        {
+            setHomeViewpoint( Viewpoint(
+                _node->getBound().center(),
+                0, -89.9, 
+                _node->getBound().radius()*2.0) );
+        }
+        //if (getAutoComputeHomePosition()) computeHomePosition();
 
         // reset the srs cache:
         _cached_srs = NULL;
@@ -766,9 +764,9 @@ EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg:
 void
 EarthManipulator::home(const osgGA::GUIEventAdapter& ,osgGA::GUIActionAdapter& us)
 {
-    if (getAutoComputeHomePosition()) computeHomePosition();
-
-    setByLookAt(_homeEye, _homeCenter, _homeUp);
+    handleAction( ACTION_HOME, 0, 0, 0 );
+    //if (getAutoComputeHomePosition()) computeHomePosition();
+    //setByLookAt(_homeEye, _homeCenter, _homeUp);
     us.requestRedraw();
 }
 
@@ -1640,12 +1638,12 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
         {
             setViewpoint( _homeViewpoint.value(), _homeViewpointDuration );
         }
-        else
-        {
-            if ( getAutoComputeHomePosition() )
-                computeHomePosition();
-            setByLookAt( _homeEye, _homeCenter, _homeUp );
-        }
+        //else
+        //{
+        //    if ( getAutoComputeHomePosition() )
+        //        computeHomePosition();
+        //    setByLookAt( _homeEye, _homeCenter, _homeUp );
+        //}
         break;
 
 

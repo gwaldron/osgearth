@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "FeatureCursorOGR"
+#include "GeometryUtils"
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/Registry>
 #include <algorithm>
@@ -91,19 +92,6 @@ _spatialFilter( 0L )
         }
 
         _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
-
-        //if ( !expr.empty() )
-        //{
-        //    // an SQL expression, with or without a spatial filter:
-        //    _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
-        //}
-        //else if ( _spatialFilter ) 
-        //{
-        //    // just a spatial filter. If it not clear from the docs whether this will take
-        //    // advantage of a source-supplied spatial index; the docs say this operates at
-        //    // the OGR_L_GetNextFeature level.
-        //    OGR_L_SetSpatialFilter( _resultSetHandle, _spatialFilter );
-        //}
 
         if ( _resultSetHandle )
         {
@@ -222,121 +210,6 @@ FeatureCursorOGR::readChunk()
     //osg::notify(osg::NOTICE) << "read " << _queue.size() << " features ... " << std::endl;
 }
 
-
-static void
-populate( OGRGeometryH geomHandle, Geometry* target, int numPoints )
-{
-    for( int v = numPoints-1; v >= 0; v-- ) // reverse winding.. we like ccw
-    {
-        double x=0, y=0, z=0;
-        OGR_G_GetPoint( geomHandle, v, &x, &y, &z );
-        osg::Vec3d p( x, y, z );
-        if ( target->size() == 0 || p != target->back() ) // remove dupes
-            target->push_back( p );
-    }
-}
-
-static Polygon*
-createPolygon( OGRGeometryH geomHandle )
-{
-    Polygon* output = 0L;
-
-    int numParts = OGR_G_GetGeometryCount( geomHandle );
-    if ( numParts == 0 )
-    {
-        int numPoints = OGR_G_GetPointCount( geomHandle );
-        output = new Polygon( numPoints );
-        populate( geomHandle, output, numPoints );
-        output->open();
-    }
-    else if ( numParts > 0 )
-    {
-        Polygon* poly = 0L;
-        for( int p = 0; p < numParts; p++ )
-        {
-            OGRGeometryH partRef = OGR_G_GetGeometryRef( geomHandle, p );
-            int numPoints = OGR_G_GetPointCount( partRef );
-            if ( p == 0 )
-            {
-                output = new Polygon( numPoints );
-                populate( partRef, output, numPoints );
-                output->open();
-            }
-            else
-            {
-                Ring* hole = new Ring( numPoints );
-                populate( partRef, hole, numPoints );
-                hole->open();
-                output->getHoles().push_back( hole );
-            }
-        }
-    }
-    return output;
-}
-
-static Geometry*
-createGeometry( OGRGeometryH geomHandle )
-{
-    Geometry* output = 0L;
-
-    OGRwkbGeometryType wkbType = OGR_G_GetGeometryType( geomHandle );        
-    
-    if (
-        wkbType == wkbPolygon ||
-        wkbType == wkbPolygon25D )
-    {
-        output = createPolygon( geomHandle );
-    }
-    else if (
-        wkbType == wkbLineString ||
-        wkbType == wkbLineString25D )
-    {
-        int numPoints = OGR_G_GetPointCount( geomHandle );
-        output = new LineString( numPoints );
-        populate( geomHandle, output, numPoints );
-    }
-    else if (
-        wkbType == wkbLinearRing )
-    {
-        int numPoints = OGR_G_GetPointCount( geomHandle );
-        output = new Ring( numPoints );
-        populate( geomHandle, output, numPoints );
-    }
-    else if ( 
-        wkbType == wkbPoint ||
-        wkbType == wkbPoint25D )
-    {
-        //todo
-    }
-    else if (
-        wkbType == wkbGeometryCollection ||
-        wkbType == wkbGeometryCollection25D ||
-        wkbType == wkbMultiPoint ||
-        wkbType == wkbMultiPoint25D ||
-        wkbType == wkbMultiLineString ||
-        wkbType == wkbMultiLineString25D ||
-        wkbType == wkbMultiPolygon ||
-        wkbType == wkbMultiPolygon25D )
-    {
-        MultiGeometry* multi = new MultiGeometry();
-
-        int numGeoms = OGR_G_GetGeometryCount( geomHandle );
-        for( int n=0; n<numGeoms; n++ )
-        {
-            OGRGeometryH subGeomRef = OGR_G_GetGeometryRef( geomHandle, n );
-            if ( subGeomRef )
-            {
-                Geometry* geom = createGeometry( subGeomRef );
-                if ( geom ) multi->getComponents().push_back( geom );
-            }
-        } 
-
-        output = multi;
-    }
-
-    return output;
-}
-
 // NOTE: ASSUMES that OGR_SCOPED_LOCK is already in effect upon entry!
 Feature*
 FeatureCursorOGR::createFeature( OGRFeatureH handle )
@@ -348,16 +221,12 @@ FeatureCursorOGR::createFeature( OGRFeatureH handle )
     OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
 	if ( geomRef )
 	{
-        Geometry* geom = createGeometry( geomRef );
+        Geometry* geom = GeometryUtils::createGeometry( geomRef );
         feature->setGeometry( geom );
 	}
-
-    //if ( _profile->getGeometryType() == FeatureProfile::GEOM_POLYGON )
-    //{
-    //    feature->getGeometry().normalizePolygon();
-    //}
 
     //loadAttributes();
 
     return feature;
 }
+

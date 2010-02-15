@@ -18,11 +18,13 @@
  */
 
 #include <osgEarth/Registry>
+#include <osgEarth/FileUtils>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
 #include "FeatureCursorOGR"
+#include "GeometryUtils"
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -37,16 +39,18 @@ using namespace osgEarth::Features;
 #define PROP_URL                     "url"
 #define PROP_OGR_DRIVER              "ogr_driver"
 #define PROP_OGR_BUILD_SPATIAL_INDEX "build_spatial_index"
+#define PROP_GEOMETRY                "geometry"
+#define PROP_PROFILE                 "geometry_profile"
 
 /**
  * A FeatureSource that reads features from an OGR driver.
  *
  * This FeatureSource does NOT support styling.
  */
-class FeatureSourceOGR : public FeatureSource
+class OGRFeatureSource : public FeatureSource
 {
 public:
-    FeatureSourceOGR( const PluginOptions* options ) : FeatureSource( options ),
+    OGRFeatureSource( const PluginOptions* options ) : FeatureSource( options ),
       _ready( false ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
@@ -59,10 +63,13 @@ public:
         _url = conf.value( PROP_URL );
         _ogrDriver = conf.value( PROP_OGR_DRIVER );
         _buildSpatialIndex = conf.value( PROP_OGR_BUILD_SPATIAL_INDEX ) == "true";
+        _geometry = parseGeometry( conf.value( PROP_GEOMETRY ) );
+        if ( conf.hasChild( PROP_PROFILE ) )
+            _geometryProfileConf = ProfileConfig( conf.child( PROP_PROFILE ) );
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
-    virtual ~FeatureSourceOGR()
+    virtual ~OGRFeatureSource()
     {       
         OGR_SCOPED_LOCK;
 
@@ -79,9 +86,10 @@ public:
         }
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile )
+    //override
+    void initialize( const std::string& referenceURI )//, const Profile* overrideProfile )
     {
-        // never called????
+        _url = osgEarth::getFullPath( osgDB::getFilePath(referenceURI), _url );
     }
 
     /** Called once at startup to create the profile for this feature set. Successful profile
@@ -90,77 +98,87 @@ public:
     {
         FeatureProfile* result = 0L;
 
-        OGR_SCOPED_LOCK;
-
-        if ( !_ogrDriver.empty() )
+        if ( _geometry.valid() )
         {
-            _ogrDriverHandle = OGRGetDriverByName( _ogrDriver.c_str() );
-        }
-
-	    _dsHandle = OGROpenShared( _url.c_str(), 0, &_ogrDriverHandle ); // last param is the driver spec..TODO!!
-	    if ( _dsHandle )
-	    {
-		    _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
-            if ( _layerHandle )
+            // if the user specified explicit geometry/profile, use that:
+            GeoExtent ex;
+            if ( _geometryProfileConf.isSet() )
             {
-                _supportsRandomRead = OGR_L_TestCapability( _layerHandle, OLCRandomRead ) == TRUE;
+                osg::ref_ptr<const Profile> _profile = Profile::create( _geometryProfileConf.value() );
+                if ( _profile.valid() )
+                    ex = _profile->getExtent();
+            }
 
-                // WARN the user if we load an ESRI-style LCC SRS, in which the PROJECTION["Lambert_Conformal_Conic"]
-                // should really be Lambert_Conformal_Conic_1SP or _2SP.
-                //OGR_SpatialReference* ogr_srs = dynamic_cast<OGR_SpatialReference*>( getSRS() );
-                //if ( ogr_srs )
-                //{
-                //    if ( ogr_srs->getAttrValue( "PROJECTION", 0 ) == "Lambert_Conformal_Conic" )
-                //    {
-                //        osgGIS::notify(osg::WARN)
-                //            << std::endl
-                //            << "***WANRING*** SRS has an invalid ESRI-style LCC projection ... transformations may not work"
-                //            << std::endl
-                //            << "SRS = " << ogr_srs->getWKT() << std::endl
-                //            << std::endl;
-                //    }
-                //}           
-                
-                // read the data extent.
-                GeoExtent extent;
+            if ( !ex.isValid() )
+            {
+                // default to WGS84 Lat/Long
+                ex = osgEarth::Registry::instance()->getGlobalGeodeticProfile()->getExtent();
+            }
+            result = new FeatureProfile( ex );
+        }
+        else if ( !_url.empty() )
+        {
+            // otherwise, assume we're loading from the URL:
+            OGR_SCOPED_LOCK;
 
+            // load up the driver, defaulting to shapefile if unspecified.
+            if ( _ogrDriver.empty() )
+                _ogrDriver = "ESRI Shapefile";
+            _ogrDriverHandle = OGRGetDriverByName( _ogrDriver.c_str() );
 
-                // extract the SRS and Extent:                
-                OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
-                if ( srHandle )
+            // attempt to open the dataset:
+	        _dsHandle = OGROpenShared( _url.c_str(), 0, &_ogrDriverHandle );
+	        if ( _dsHandle )
+	        {
+		        _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
+                if ( _layerHandle )
                 {
-                    osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle, false );
-                    if ( srs.valid() )
+                    //_supportsRandomRead = OGR_L_TestCapability( _layerHandle, OLCRandomRead ) == TRUE;
+                    
+                    GeoExtent extent;
+
+                    // extract the SRS and Extent:                
+                    OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
+                    if ( srHandle )
                     {
-                        // extract the full extent of the layer:
-                        OGREnvelope env;
-                        if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
+                        osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle, false );
+                        if ( srs.valid() )
                         {
-                            GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
-                            
-                            // got enough info to make the profile!
-                            result = new FeatureProfile( extent );
+                            // extract the full extent of the layer:
+                            OGREnvelope env;
+                            if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
+                            {
+                                GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
+                                
+                                // got enough info to make the profile!
+                                result = new FeatureProfile( extent );
+                            }
                         }
                     }
+
+                    // assuming we successfully opened the layer, build a spatial index if requested.
+                    if ( _buildSpatialIndex )
+                    {
+                        osg::notify(osg::NOTICE) <<
+                            "[osgEarth] Building spatial index for " << getName() << " ..." << std::flush;
+
+                        std::stringstream buf;
+                        const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
+                        buf << "CREATE SPATIAL INDEX ON " << name; 
+					    std::string bufStr;
+					    bufStr = buf.str();
+                        OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
+
+                        osg::notify(osg::NOTICE) <<  "done." << std::endl;
+                    }
                 }
-
-                // assuming we successfully opened the layer, build a spatial index if requested.
-                if ( _buildSpatialIndex )
-                {
-                    osg::notify(osg::NOTICE) <<
-                        "[osgEarth] Building spatial index for " << getName() << " ..." << std::flush;
-
-                    std::stringstream buf;
-                    const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
-                    buf << "CREATE SPATIAL INDEX ON " << name; 
-					std::string bufStr;
-					bufStr = buf.str();
-                    OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
-
-                    osg::notify(osg::NOTICE) <<  "done." << std::endl;
-                }
-            }
-	    }
+	        }
+        }
+        else
+        {
+            osg::notify(osg::NOTICE) 
+                << "[osgEarth] OGR Feature Source: no valid source data available" << std::endl;
+        }
 
         return result;
     }
@@ -169,26 +187,36 @@ public:
     //override
     FeatureCursor* createFeatureCursor( const Query& query )
     {
-        OGR_SCOPED_LOCK;
-
-        // Each cursor requires its own DS handle so that multi-threaded access will work.
-        // The cursor impl will dispose of the new DS handle.
-
-	    OGRDataSourceH dsHandle = OGROpenShared( _url.c_str(), 0, &_ogrDriverHandle );
-	    if ( dsHandle )
-	    {
-            OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, 0 );
-
-            return new FeatureCursorOGR( 
-                dsHandle,
-                layerHandle, 
+        if ( _geometry.valid() )
+        {
+            return new GeometryFeatureCursor(
+                _geometry.get(),
                 getFeatureProfile(),
-                query, 
                 getFilters() );
         }
         else
         {
-            return 0L;
+            OGR_SCOPED_LOCK;
+
+            // Each cursor requires its own DS handle so that multi-threaded access will work.
+            // The cursor impl will dispose of the new DS handle.
+
+	        OGRDataSourceH dsHandle = OGROpenShared( _url.c_str(), 0, &_ogrDriverHandle );
+	        if ( dsHandle )
+	        {
+                OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, 0 );
+
+                return new FeatureCursorOGR( 
+                    dsHandle,
+                    layerHandle, 
+                    getFeatureProfile(),
+                    query, 
+                    getFilters() );
+            }
+            else
+            {
+                return 0L;
+            }
         }
     }
 
@@ -214,6 +242,12 @@ protected:
         return true;
     }
 
+    // parses an explicit WKT geometry string into a Geometry.
+    Geometry* parseGeometry( const std::string& wkt )
+    {
+        return GeometryUtils::createGeometryFromWKT( wkt );
+    }
+
 private:
     std::string _url;
     std::string _ogrDriver;
@@ -223,13 +257,15 @@ private:
     bool _supportsRandomRead;
     bool _ready;
     bool _buildSpatialIndex;
+    osg::ref_ptr<Geometry> _geometry; // explicit geometry.
+    optional<ProfileConfig> _geometryProfileConf;
 };
 
 
-class ReaderWriterFeatureSourceOGR : public osgDB::ReaderWriter
+class OGRFeatureSourceFactory : public osgDB::ReaderWriter
 {
 public:
-    ReaderWriterFeatureSourceOGR()
+    OGRFeatureSourceFactory()
     {
         supportsExtension( "osgearth_feature_ogr", "OGR feature driver for osgEarth" );
     }
@@ -244,9 +280,9 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new FeatureSourceOGR( static_cast<const PluginOptions*>(options) );
+        return new OGRFeatureSource( static_cast<const PluginOptions*>(options) );
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_feature_ogr, ReaderWriterFeatureSourceOGR)
+REGISTER_OSGPLUGIN(osgearth_feature_ogr, OGRFeatureSourceFactory)
 

@@ -39,26 +39,6 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-static void 
-drawLine(agg::rasterizer& ras,
-         double x1, double y1, 
-         double x2, double y2,
-         double width)
-{
-
-    double dx = x2 - x1;
-    double dy = y2 - y1;
-    double d = sqrt(dx*dx + dy*dy);
-    
-    dx = width * (y2 - y1) / d;
-    dy = width * (x2 - x1) / d;
-
-    ras.move_to_d(x1 - dx,  y1 + dy);
-    ras.line_to_d(x2 - dx,  y2 + dy);
-    ras.line_to_d(x2 + dx,  y2 - dy);
-    ras.line_to_d(x1 + dx,  y1 - dy);
-}
-
 /********************************************************************/
 
 

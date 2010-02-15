@@ -100,29 +100,40 @@ StencilVolumeNode::addVolumes( osg::Node* node )
 bool 
 StencilVolumeNode::addChild( Node *child ) {
     if ( !child ) return false;
+    dirtyBound();
     if ( _depthPass )  _depthPass->addChild( child );
     return _renderPass->addChild( child );
 }
 bool 
 StencilVolumeNode::insertChild( unsigned int index, Node *child ) {
     if ( !child ) return false;
+    dirtyBound();
     if ( _depthPass ) _depthPass->insertChild( index, child );
     return _renderPass->insertChild( index, child );
 }
 bool 
 StencilVolumeNode::removeChildren(unsigned int pos,unsigned int numChildrenToRemove) {
+    dirtyBound();
     if ( _depthPass ) _depthPass->removeChildren( pos, numChildrenToRemove );
     return _renderPass->removeChildren( pos, numChildrenToRemove );
 }
 bool 
 StencilVolumeNode::replaceChild( Node *origChild, Node* newChild ) {
+    dirtyBound();
     if ( _depthPass ) _depthPass->replaceChild( origChild, newChild );
     return _renderPass->replaceChild( origChild, newChild );
 }
 bool 
 StencilVolumeNode::setChild( unsigned  int i, Node* node ) {
+    dirtyBound();
     if ( _depthPass ) _depthPass->setChild( i, node );
     return _renderPass->setChild( i, node );
+}
+
+osg::BoundingSphere
+StencilVolumeNode::computeBound() const {
+    if ( _depthPass ) return _depthPass->computeBound();
+    else return _renderPass->computeBound();
 }
 
 

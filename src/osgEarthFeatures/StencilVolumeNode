@@ -72,6 +72,7 @@ namespace osgEarth { namespace Features
         virtual bool removeChildren(unsigned int pos,unsigned int numChildrenToRemove);
         virtual bool replaceChild( Node *origChild, Node* newChild );
         virtual bool setChild( unsigned  int i, Node* node );
+        virtual osg::BoundingSphere computeBound() const;
 
     protected:
         void init();

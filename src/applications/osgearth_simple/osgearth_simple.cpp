@@ -65,7 +65,6 @@ int main(int argc, char** argv)
 
     // install the programmable manipulator.
     osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
-    viewer.setCameraManipulator( manip );
 
     osg::Node* sceneData = osgDB::readNodeFiles( arguments );
 
@@ -101,15 +100,20 @@ int main(int argc, char** argv)
     
     // Set a home viewpoint
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( sceneData );
-    if ( mapNode && mapNode->getMap()->isGeocentric() )
+    if ( mapNode )
     {
-        manip->setHomeViewpoint( 
-            osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 4e7 ),
-            1.0 );
+        manip->setNode( mapNode );
+        if ( mapNode->getMap()->isGeocentric() )
+        {
+            manip->setHomeViewpoint( 
+                osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 4e7 ),
+                1.0 );
+        }
     }
 
 
     viewer.setSceneData( sceneData );
+    viewer.setCameraManipulator( manip );
 
     manip->getSettings()->bindMouseDoubleClick(
         osgEarthUtil::EarthManipulator::ACTION_GOTO,

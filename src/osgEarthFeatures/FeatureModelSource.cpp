@@ -92,13 +92,18 @@ _gridding( GriddingPolicy() )
 void 
 FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth::Map* map )
 {
+    ModelSource::initialize( referenceURI, map );
+
+    if ( _features.valid() )
+        _features->initialize( referenceURI );
+
     _map = map;
 }
 
 osg::Node*
 FeatureModelSource::createNode( ProgressCallback* progress )
 {
-    if ( !_features.valid() )
+    if ( !_features.valid() || !_features->getFeatureProfile() )
         return 0L;
 
     osg::Timer_t start = osg::Timer::instance()->tick();

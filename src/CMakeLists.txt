@@ -3,7 +3,7 @@ FOREACH( myfolder
         osgEarth
         osgEarthFeatures
         osgEarthUtil
-        osgPlugins
+        osgEarthDrivers
         applications
     )
 

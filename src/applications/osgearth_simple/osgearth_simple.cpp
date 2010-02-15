@@ -27,6 +27,9 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Viewpoint>
+#include <osgEarthDrivers/tms/TMSOptions>
+
+using namespace osgEarth::Drivers;
 
 // some preset viewpoints.
 static osgEarthUtil::Viewpoint VPs[] = {
@@ -77,19 +80,27 @@ int main(int argc, char** argv)
 
         // Add an image layer to the map.
         {
-            osgEarth::Config conf;
-            conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
-            osgEarth::MapLayer* layer = new osgEarth::MapLayer( "NASA", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf );
-            map->addMapLayer( layer );
+            osg::ref_ptr<TMSOptions> tms = new TMSOptions();
+            tms->url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
+            map->addMapLayer( tms->createImageLayer( "NASA" ) );
+           
+            //osgEarth::Config conf;
+            //conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
+            //osgEarth::MapLayer* layer = new osgEarth::MapLayer( "NASA", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf );
+            //map->addMapLayer( layer );
         }
 
         // Add a heightfield layer to the map. You can add any number of heightfields and
         // osgEarth will composite them automatically.
         {
-            osgEarth::Config conf;
-            conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
-            osgEarth::MapLayer* layer = new osgEarth::MapLayer( "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf );
-            map->addMapLayer( layer );
+            osg::ref_ptr<TMSOptions> tms = new TMSOptions();
+            tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+            map->addMapLayer( tms->createHeightFieldLayer( "SRTM" ) );
+
+            //osgEarth::Config conf;
+            //conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
+            //osgEarth::MapLayer* layer = new osgEarth::MapLayer( "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf );
+            //map->addMapLayer( layer );
         }
 
         // The MapNode will render the Map object in the scene graph.

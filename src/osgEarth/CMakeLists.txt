@@ -25,7 +25,7 @@ SET(LIB_PUBLIC_HEADERS
     Compositing
     Config
     Cube
-    DriverFactory
+    DriverOptions
     EarthFile
     EarthTerrainTechnique
 	EarthTerrain

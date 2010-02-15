@@ -1,0 +1,82 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_DRIVER_OPTIONS_H
+#define OSGEARTH_DRIVER_OPTIONS_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/MapLayer>
+#include <osgEarth/ModelLayer>
+
+namespace osgEarth
+{
+    class DriverOptions : public PluginOptions // no export; header only
+    {
+    protected:
+        virtual Config createConfig() const { return Config(); }
+        DriverOptions( const Config& conf =Config() ) { }
+    };
+
+    class TileSourceDriverOptions : public DriverOptions // no export; header only
+    {
+    public:
+        MapLayer* createImageLayer( const std::string& name ="" ) {
+            Config conf = createConfig();
+            return new MapLayer( name, MapLayer::TYPE_IMAGE, conf.attr("driver"), conf );
+        }
+        MapLayer* createHeightFieldLayer( const std::string& name ="" ) {
+            Config conf = createConfig();
+            return new MapLayer( name, MapLayer::TYPE_HEIGHTFIELD, conf.attr("driver"), conf );
+        }
+
+    protected:
+        TileSourceDriverOptions( const Config& conf =Config()) : DriverOptions( conf ) { }
+        virtual Config createConfig() const { return DriverOptions::createConfig(); }
+    };
+
+    class ModelSourceDriverOptions : public DriverOptions // no export; header only.
+    {
+    public:
+        ModelLayer* createModelLayer( const std::string& name ="" ) {
+            Config conf = createConfig();
+            return new ModelLayer( name, conf.attr("driver"), conf );
+        }
+
+    public: // properties
+        optional<float> minRange() { return _minRange; }
+        optional<float> maxRange() { return _maxRange; }
+
+    protected:
+        ModelSourceDriverOptions() : _minRange(0), _maxRange(FLT_MAX) { }
+
+        virtual Config createConfig() const {
+            Config conf = DriverOptions::createConfig();
+            conf.addIfSet( "min_range", _minRange );
+            conf.addIfSet( "max_range", _maxRange );
+            return conf;
+        }
+
+        optional<float> _minRange, _maxRange;
+    };
+}
+
+#endif // OSGEARTH_DRIVER_OPTIONS_H
+
+

@@ -1,0 +1,32 @@
+<!--
+osgEarth Sample : Layer Opacity
+
+This example tests setting a layers initial opacity in the .earth file.
+
+The opacity will only take affect when using a technique that can blend layers together such as the multipass layering technique or the osgEarthUtil::FadeLayerNode
+
+Look for hi-res insets over the cities of Boston and New York.
+-->
+
+<map name="hi-res inset" type="geocentric">
+     
+    <image name="pelican nasa blue marble" driver="tms">
+        <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
+    </image>
+    
+    <image name="boston_inset" driver="gdal">
+	    <opacity>0.2</opacity>
+        <url>../data/boston-inset-wgs84.tif</url>
+        <tile_size>256</tile_size>
+    </image>
+    
+    <image name="nyc_inset" driver="gdal">
+	    <opacity>0.5</opacity>
+        <url>../data/nyc-inset-wgs84.tif</url>
+        <tile_size>256</tile_size>
+    </image>
+	
+	<layering_technique>multipass</layering_technique>
+
+    <lighting>false</lighting>
+</map>

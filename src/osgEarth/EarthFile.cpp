@@ -91,6 +91,8 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_MAX_LOD                  "max_lod"
 #define ELEM_LIGHTING                 "lighting"
 #define ELEM_MASK_MODEL               "mask_model"
+#define ELEM_OPACITY                  "opacity"
+#define ELEM_ENABLED                  "enabled"
 
 #define VALUE_TRUE                    "true"
 #define VALUE_FALSE                   "false"
@@ -201,6 +203,19 @@ readMapLayer( const Config& conf, const Config& additional )
         
     if ( conf.hasValue( ATTR_LOADING_WEIGHT ) )
         layer->setLoadWeight( conf.value<float>( ATTR_LOADING_WEIGHT, layer->getLoadWeight() ) );
+
+    if ( conf.hasValue( ELEM_OPACITY ) )
+        layer->setOpacity( conf.value<float>( ELEM_OPACITY, layer->getOpacity() ) );
+
+    std::string enabledString = conf.value( ELEM_ENABLED );
+    if (enabledString == VALUE_TRUE)
+    {
+        layer->setEnabled( true );
+    }
+    else if (enabledString == VALUE_FALSE)
+    {
+        layer->setEnabled( false);
+    }
 
 
     return layer;

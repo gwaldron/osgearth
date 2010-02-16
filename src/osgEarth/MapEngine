@@ -68,7 +68,8 @@ namespace osgEarth
             VersionedTerrain* terrain,
             const TileKey* key,
             bool populateLayers,
-            bool wrapInPagedLOD );
+            bool wrapInPagedLOD,
+            bool &validData);
 
 
         osgTerrain::ImageLayer* createImageLayer(
@@ -135,7 +136,8 @@ namespace osgEarth
             Map* map, 
             VersionedTerrain* terrain,
             const TileKey* key,
-            bool wrapInPagedLOD );
+            bool wrapInPagedLOD,
+            bool &validData);
         
         void addPlaceholderImageLayers(
             VersionedTile* tile,

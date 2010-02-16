@@ -134,29 +134,28 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
     osg::ref_ptr<TileKey> k2 = key->createSubkey(2);
     osg::ref_ptr<TileKey> k3 = key->createSubkey(3);
 
-    osg::ref_ptr<osg::Node> q0, q1, q2, q3;
+    bool hasValidData = false;
+    bool validData;
+    osg::ref_ptr<osg::Node> q0 = createTile( map, terrain, k0.get(), populateLayers, true, validData);
+    if (!hasValidData && validData) hasValidData = true;
+    
+    osg::ref_ptr<osg::Node> q1 = createTile( map, terrain, k1.get(), populateLayers, true, validData );
+    if (!hasValidData && validData) hasValidData = true;
+    
+    osg::ref_ptr<osg::Node> q2 = createTile( map, terrain, k2.get(), populateLayers, true, validData );
+    if (!hasValidData && validData) hasValidData = true;
+    
+    osg::ref_ptr<osg::Node> q3 = createTile( map, terrain, k3.get(), populateLayers, true, validData );
+    if (!hasValidData && validData) hasValidData = true;
 
-    q0 = createTile( map, terrain, k0.get(), populateLayers, true );
-    if ( q0.valid() )
+    if (hasValidData && q0.valid() && q1.valid() && q2.valid() && q3.valid())
     {
-        q1 = createTile( map, terrain, k1.get(), populateLayers, true );
-        if ( q1.valid() )
-        {
-            q2 = createTile( map, terrain, k2.get(), populateLayers, true );
-            if ( q2.valid() )
-            {
-                q3 = createTile( map, terrain, k3.get(), populateLayers, true );
-                if ( q3.valid() )
-                {
-                    osg::Group* tile_parent = new osg::Group();
-                    tile_parent->addChild( q0.get() );
-                    tile_parent->addChild( q1.get() );
-                    tile_parent->addChild( q2.get() );
-                    tile_parent->addChild( q3.get() );
-                    return tile_parent;
-                }
-            }
-        }
+        osg::Group* tile_parent = new osg::Group();
+        tile_parent->addChild( q0.get() );
+        tile_parent->addChild( q1.get() );
+        tile_parent->addChild( q2.get() );
+        tile_parent->addChild( q3.get() );
+        return tile_parent;
     }
 
     osg::notify(osg::INFO) << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
@@ -395,15 +394,17 @@ MapEngine::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
 }
 
 osg::Node*
-MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD )
+MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD, bool &validData )
 {
     if ( populateLayers )
     {        
-        return createPopulatedTile( map, terrain, key, wrapInPagedLOD );
+        return createPopulatedTile( map, terrain, key, wrapInPagedLOD, validData);
     }
     else
     {
-        return createPlaceholderTile( map, terrain, key );
+        //Placeholders always contain valid data
+        validData = true;
+        return createPlaceholderTile( map, terrain, key);
     }
 }
 
@@ -545,7 +546,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 }
 
 osg::Node*
-MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool wrapInPagedLOD )
+MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool wrapInPagedLOD, bool &validData )
 {
     ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -602,7 +603,11 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
         osg::notify(osg::INFO) << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
-        return NULL;
+        validData = false;
+    }
+    else
+    {
+        validData = true;
     }
    
     //Try to interpolate any missing image layers from parent tiles
@@ -794,7 +799,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setCenter( bs.center() );
         plod->addChild( tile, min_range, max_range );
 
-        if ( key->getLevelOfDetail() < this->getEngineProperties().maxLOD().value() )
+        if ( key->getLevelOfDetail() < this->getEngineProperties().maxLOD().value() && validData )
         {
             plod->setFileName( 1, createURI( map->getId(), key ) );
             plod->setRange( 1, 0.0, min_range );

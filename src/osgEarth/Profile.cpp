@@ -543,9 +543,11 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
     if ( key_ext.crossesDateLine() )
     {
         GeoExtent first, second;
-        key_ext.splitAcrossDateLine( first, second );
-        addIntersectingTiles( first, out_intersectingKeys );
-        addIntersectingTiles( second, out_intersectingKeys );
+        if (key_ext.splitAcrossDateLine( first, second ))
+        {
+            addIntersectingTiles( first, out_intersectingKeys );
+            addIntersectingTiles( second, out_intersectingKeys );
+        }
     }
     else
     {

@@ -166,7 +166,7 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 bool
 GeoExtent::isValid() const
 {
-    return _srs.valid();
+    return _srs.valid() && width() > 0 && height() > 0;
 }
 
 const SpatialReference*

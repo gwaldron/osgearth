@@ -649,8 +649,8 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
             hf = map->createHeightField( key, true );
             if (!hf.valid())
             {
-                osg::notify(osg::WARN) << "[osgEarth::MapEngine] Could not get valid heightfield for TileKey " << key->str() << std::endl;
-                return NULL;
+                //We couldn't get any heightfield, so just create an empty one.
+                hf = createEmptyHeightField( key );
             }
             else
             {

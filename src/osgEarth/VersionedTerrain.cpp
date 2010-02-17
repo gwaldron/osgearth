@@ -1110,8 +1110,7 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
         // time of registration (otherwise VersionedTerrain will see its refcount
         // at 1 and schedule it for removal as soon as it's added. Therefore, we
         // make sure this is either a CULL or UPDATE traversal.
-        //getVersionedTerrain()->registerTile( this );
-        //_tileRegisteredWithTerrain = true;
+        getVersionedTerrain()->registerTile( this );
         _hasBeenTraversed = true;
 
         // we constructed this tile with an update traversal count of 1 so it would get
@@ -1195,7 +1194,6 @@ _releaseCBInstalled( false )
     if ( _loadingPolicy.mode() != LoadingPolicy::MODE_STANDARD )
     {
         setNumChildrenRequiringUpdateTraversal( 1 );
-
         const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
         if ( env_numTaskServiceThreads )
         {
@@ -1425,6 +1423,7 @@ VersionedTerrain::registerTile( VersionedTile* newTile )
     //Register the new tile immediately, but also add it to the queue so that
     _tiles[ newTile->getTileID() ] = newTile;
     _tilesToAdd.push( newTile );
+    //osg::notify(osg::NOTICE) << "Registered " << newTile->getKey()->str() << " Count=" << _tiles.size() << std::endl;
 }
 
 void

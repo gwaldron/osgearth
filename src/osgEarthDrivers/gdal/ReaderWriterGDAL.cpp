@@ -1262,14 +1262,22 @@ public:
 
         double offsetTransform[6];
         memcpy(offsetTransform, _geotransform, 6 * sizeof(double));
-        //Offset the _geotransform by half a pixel
-        offsetTransform[0] += 0.5 * _geotransform[1];
-        offsetTransform[3] += 0.5 * _geotransform[5];
 
         double invTransform[6];
         GDALInvGeoTransform(offsetTransform, invTransform);
         double r, c;
         GDALApplyGeoTransform(invTransform, x, y, &c, &r);
+
+        //Account for slight rounding errors.  If we are right on the edge of the dataset, clamp to the edge
+        double eps = 0.0001;
+        if (osg::equivalent(c, 0, eps)) c = 0;
+        if (osg::equivalent(r, 0, eps)) r = 0;
+        if (osg::equivalent(c, (double)_warpedDS->GetRasterXSize(), eps)) c = _warpedDS->GetRasterXSize();
+        if (osg::equivalent(r, (double)_warpedDS->GetRasterYSize(), eps)) r = _warpedDS->GetRasterYSize();
+
+        //Apply half pixel offset
+        r-= 0.5;
+        c-= 0.5;
 
         //Account for the half pixel offset in the geotransform.  If the pixel value is -0.5 we are still technically in the dataset
         //since 0,0 is now the center of the pixel.  So, if are within a half pixel above or a half pixel below the dataset just use

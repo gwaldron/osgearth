@@ -28,55 +28,25 @@
 #include <osgDB/FileNameUtils>
 #include <osgSim/OverlayNode>
 
+#include "FeatureOverlayModelOptions"
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace OpenThreads;
-
-#define PROP_TEXTURE_UNIT  "texture_unit"
-#define PROP_TEXTURE_SIZE  "texture_size"
-#define PROP_OVERLAY_TECH  "overlay_technique"
-#define PROP_BASE_HEIGHT   "base_height"
-
-#define VAL_OT_ODWOO      "object_dependent_with_orthographic_overlay"
-#define VAL_OT_VDWOO      "view_dependent_with_orthographic_overlay"
-#define VAL_OT_VDWPO      "view_dependent_with_perspective_overlay"
+using namespace osgEarth::Drivers;
 
 class FeatureOverlayModelSource : public FeatureModelSource
 {
 public:
-    FeatureOverlayModelSource( const PluginOptions* options ) :
-        FeatureModelSource( options ),
-        _textureUnit( 0 ),
-        _textureSize( 1024 ),
-        _baseHeight( 0.0 ),
-        _overlayTech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
+    FeatureOverlayModelSource( const PluginOptions* options ) : FeatureModelSource( options )
     {
-        const Config& conf = getOptions()->config();
-
-        // omitting the texture unit implies "AUTO" mode - MapNode will set one automatically
-        if ( conf.hasValue( PROP_TEXTURE_UNIT ) )
-            _textureUnit = conf.value<int>( PROP_TEXTURE_UNIT, _textureUnit );
-        else
-            _textureUnit = 0; // AUTO
-
-        _textureSize = conf.value<int>( PROP_TEXTURE_SIZE, _textureSize );
-        _baseHeight = conf.value<double>( PROP_BASE_HEIGHT, _baseHeight );
-
-        if ( conf.hasValue( PROP_OVERLAY_TECH ) )
-        {
-            if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_ODWOO )
-                _overlayTech = osgSim::OverlayNode::OBJECT_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
-            else if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_VDWOO )
-                _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
-            else if ( conf.value( PROP_OVERLAY_TECH ) == VAL_OT_VDWPO )
-                _overlayTech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
-        }
+        _options = dynamic_cast<const FeatureOverlayModelOptions*>( options );
+        if ( !_options )
+            _options = new FeatureOverlayModelOptions( options );
     }
 
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         FeatureModelSource::initialize( referenceURI, map );
-
         _mapSRS = map->getProfile()->getSRS();
         _mapIsGeocentric = map->isGeocentric();
     }
@@ -94,8 +64,8 @@ public:
 
         // Build geometry:
         BuildGeometryFilter build;    
-        if ( _geomTypeOverride.isSet() )
-            build.geomTypeOverride() = _geomTypeOverride.get();
+        if ( _options->geometryTypeOverride().isSet() )
+            build.geomTypeOverride() = _options->geometryTypeOverride().value();
 
         // apply the style rule if we have one:
         osg::ref_ptr<osg::Node> result;
@@ -114,10 +84,10 @@ public:
         // build an overlay node around the geometry
         osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
         overlayNode->setName( this->getName() );
-        overlayNode->setOverlayTechnique( _overlayTech );
-        overlayNode->setOverlayBaseHeight( _baseHeight );
-        overlayNode->setOverlayTextureSizeHint( _textureSize );
-        overlayNode->setOverlayTextureUnit( _textureUnit );
+        overlayNode->setOverlayTechnique( _options->overlayTechnique().value() );
+        overlayNode->setOverlayBaseHeight( _options->baseHeight().value() );
+        overlayNode->setOverlayTextureSizeHint( _options->textureSize().value() );
+        overlayNode->setOverlayTextureUnit( _options->textureUnit().value() );
         overlayNode->setContinuousUpdate( false );
         overlayNode->setOverlaySubgraph( node );
 
@@ -125,10 +95,8 @@ public:
     }
 
 private:
-    int _textureSize;
-    int _textureUnit;
-    double _baseHeight;
-    osgSim::OverlayNode::OverlayTechnique _overlayTech;
+    osg::ref_ptr<const FeatureOverlayModelOptions> _options;
+
     osg::ref_ptr<const SpatialReference> _mapSRS;
     bool _mapIsGeocentric;
 };

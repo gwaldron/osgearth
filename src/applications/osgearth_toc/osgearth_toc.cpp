@@ -56,6 +56,9 @@
 #include <osgEarthUtil/FadeLayerNode>
 #include <osgEarthUtil/EarthManipulator>
 
+#include <osgEarthDrivers/arcgis/ArcGISOptions>
+#include <osgEarthDrivers/tms/TMSOptions>
+
 #include <osgGA/StateSetManipulator>
 #include <osgGA/AnimationPathManipulator>
 
@@ -73,6 +76,7 @@ using namespace osgDB;
 using namespace osgTerrain;
 using namespace osgEarth;
 using namespace osgEarthUtil;
+using namespace osgEarth::Drivers;
 using namespace osgWidget;
 
 Vec4 normalColor(1,1,1,1);
@@ -279,37 +283,36 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 
     // ESRI reference labels
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer" );
-        addLayersBox->addWidget( new AddLayerButton( map, view,
-            new MapLayer( "ESRI Boundaries", MapLayer::TYPE_IMAGE, "arcgis", conf ) ) );
+        ArcGISOptions* opt = new ArcGISOptions();
+        opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer";
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Boundaries", opt ) ) );
     }
 
     // ArcGIS transportation layer:
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer" );
-        MapLayer* layer = new MapLayer("ESRI Transportation", MapLayer::TYPE_IMAGE, "arcgis", conf );
-        addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
+        ArcGISOptions* opt = new ArcGISOptions();
+        opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Transportation", opt ) ) );
     }
 
     // OpenStreetMap:
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://tile.openstreetmap.org/" );
-        conf.add( "format", "png" );
-        conf.add( "tms_type", "google" );
-        MapLayer* layer = new MapLayer( "OpenStreetMap", MapLayer::TYPE_IMAGE, "tms", conf );
+        TMSOptions* opt = new TMSOptions();
+        opt->url() = "http://tile.openstreetmap.org";
+        opt->format() = "png";
+        opt->tileSize() = 256;
+        opt->tmsType() = "google";
+        MapLayer* layer = new ImageMapLayer( "OpenStreetMap", opt );
+
         layer->profileConfig() = ProfileConfig( "global-mercator" );
         addLayersBox->addWidget( new AddLayerButton( map, view, layer ) );
     }
 
     // ArcGIS imagery:
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer" );
-        MapLayer* layer = new MapLayer( "ESRI Imagery", MapLayer::TYPE_IMAGE, "arcgis", conf );
-        addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
+        ArcGISOptions* opt = new ArcGISOptions();
+        opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Imagery", opt ) ) );
     }
 
     addLayersBox->getBackground()->setColor(1,0,0,0.3);

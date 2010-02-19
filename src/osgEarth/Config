@@ -33,100 +33,117 @@ namespace osgEarth
 {
     typedef std::list<class Config> ConfigSet;
 
+    class Configurable : public osg::Referenced // marker interface class
+    {
+    public:
+        virtual class Config toConfig() const =0;
+        virtual void fromConfig( const Config& conf ) =0;
+    };
+
     class OSGEARTH_EXPORT Config
     {
     public:
         Config() { }
+        Config( const std::string& key ) : _key(key) { }
+        Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ) { }
 
-        Config( const std::string& name ) : _name( name ) { }
-
-        Config( const std::string& name, const std::string& value ) : _name( name ), _defaultValue( value ) { }
-
-        Config( const Config& rhs ) : _name(rhs._name), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children) { }
+        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children) { }
 
         bool loadXML( std::istream& in );
 
         bool empty() const {
-            return _name.empty() && _defaultValue.empty() && _children.empty();
+            return _key.empty() && _defaultValue.empty() && _children.empty();
         }
 
-        std::string& name() {
-            return _name;
-        }
+        std::string& key() { return _key; }
+        const std::string& key() const { return _key; }
 
-        const std::string& name() const {
-            return _name;
-        }
+        const std::string& value() const { return _defaultValue; }
+        std::string& value() { return _defaultValue; }
 
-        const std::string& value() const {
-            return _defaultValue;
-        }
-
-        std::string& value() {
-            return _defaultValue;
-        }
-
-        Properties& attrs() {
-            return _attrs;
-        }
+        Properties& attrs() { return _attrs; }
+        const Properties& attrs() const { return _attrs; }
 
         std::string attr( const std::string& name ) const {
             Properties::const_iterator i = _attrs.find(name);
             return i != _attrs.end()? trim(i->second) : "";
         }
 
-        std::string& attr( const std::string& name ) {
-            return _attrs[name];
-        }
+        std::string& attr( const std::string& name ) { return _attrs[name]; }
+        
+        ConfigSet& children() { return _children; }
+        const ConfigSet& children() const { return _children; }
 
-        const Properties& attrs() const {
-            return _attrs;
-        }
-
-        ConfigSet& children() {
-            return _children;
-        }
-
-        const ConfigSet& children() const {
-            return _children;
-        }
-
-        const ConfigSet children( const std::string& name ) const {
+        const ConfigSet children( const std::string& key ) const {
             ConfigSet r;
             for(ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
-                if ( i->name() == name )
+                if ( i->key() == key )
                     r.push_back( *i );
             }
             return r;
         }
 
-        bool hasChild( const std::string& name ) const {
+        bool hasChild( const std::string& key ) const {
             for(ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ )
-                if ( i->name() == name )
+                if ( i->key() == key )
                     return true;
             return false;
         }
 
-        const Config& child( const std::string& name ) const;
-
-        void addChild( const std::string& name, const std::string& value ) {
-            add( name, value );
+        void remove( const std::string& key ) {
+            _attrs.erase(key);            
+            for(ConfigSet::iterator i = _children.begin(); i != _children.end(); ) {
+                if ( i->key() == key )
+                    i = _children.erase( i );
+                else
+                    ++i;
+            }
         }
 
-        void add( const std::string& name, const std::string& value ) {
-            _children.push_back( Config( name, value ) );
+        const Config& child( const std::string& key ) const;
+
+
+        template<typename T>
+        void addIfSet( const std::string& key, const optional<T>& opt ) {
+            if ( opt.isSet() ) {
+                add( key, osgEarth::toString<T>( opt.value() ) );
+            }
+        }
+        
+        // specialization for Config
+        template<> inline
+        void addIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
+            if ( opt.isSet() ) {
+                Config conf = opt.value();
+                conf.key() = key;
+                add( conf );
+            }
         }
 
         template<typename T>
-        void addOptional( const std::string& name, const optional<T>& opt ) {
-            if ( opt.isSet() )
-                add( name, osgEarth::toString<T>( opt.value() ) );
+        void addObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
+            if ( opt.valid() ) {
+                Config conf = opt->toConfig();
+                conf.key() = key;
+                add( conf );
+            }
         }
 
         template<typename T>
-        void addIfSet( const std::string& name, const optional<T>& opt ) {
-            if ( opt.isSet() )
-                add( name, osgEarth::toString<T>( opt.value() ) );
+        void addObjIfSet( const std::string& key, const optional<T>& obj ) {
+            if ( obj.isSet() ) {
+                Config conf = obj->toConfig();
+                conf.key() = key;
+                add( conf );
+            }
+        }
+
+        void addChild( const std::string& key, const std::string& value ) {
+            add( key, value );
+        }
+
+        void add( const std::string& key, const std::string& value ) {
+            _children.push_back( Config( key, value ) );
         }
 
         void addChild( const Config& conf ) {
@@ -137,48 +154,155 @@ namespace osgEarth
             _children.push_back( conf );
         }
 
+        void add( const std::string& key, const Config& conf ) {
+            Config temp = conf;
+            temp.key() = key;
+            add( temp );
+        }
+
         void add( const ConfigSet& set ) {
             for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
                 _children.push_back( *i );
         }
 
-        bool hasValue( const std::string& name ) const {
-            return !value(name).empty();
+
+
+        template<typename T>
+        void updateIfSet( const std::string& key, const optional<T>& opt ) {
+            if ( opt.isSet() ) {
+                remove(key);
+                add( key, osgEarth::toString<T>( opt.value() ) );
+            }
+        }
+        
+        // specialization for Config
+        template<> inline
+        void updateIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
+            if ( opt.isSet() ) {
+                remove(key);
+                Config conf = opt.value();
+                conf.key() = key;
+                add( conf );
+            }
         }
 
-        std::string value( const std::string& name ) const {
-            std::string r = trim(child(name).value());
+        template<typename T>
+        void updateObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
+            if ( opt.valid() ) {
+                remove(key);
+                Config conf = opt->toConfig();
+                conf.key() = key;
+                add( conf );
+            }
+        }
+
+        template<typename T>
+        void updateObjIfSet( const std::string& key, const optional<T>& obj ) {
+            if ( obj.isSet() ) {
+                remove(key);
+                Config conf = obj->toConfig();
+                conf.key() = key;
+                add( conf );
+            }
+        }
+
+        void updateChild( const std::string& key, const std::string& value ) {
+            update( key, value );
+        }
+
+        void update( const std::string& key, const std::string& value ) {
+            remove(key);
+            _children.push_back( Config( key, value ) );
+        }
+
+        void updateChild( const Config& conf ) {
+            update( conf );
+        }
+
+        void update( const Config& conf ) {
+            remove(conf.key());
+            _children.push_back( conf );
+        }
+
+        void update( const std::string& key, const Config& conf ) {
+            remove(key);
+            Config temp = conf;
+            temp.key() = key;
+            add( temp );
+        }
+
+
+        bool hasValue( const std::string& key ) const {
+            return !value(key).empty();
+        }
+
+        std::string value( const std::string& key ) const {
+            std::string r = trim(child(key).value());
             if ( r.empty() )
-                r = attr(name);
+                r = attr(key);
             return r;
         }
 
+        // populates a primitive value.
         template<typename T>
-        T value( const std::string& name, T fallback ) const {
-            std::string r = attr(name);
-            if ( r.empty() && hasChild( name ) )
-                r = child(name).value();
+        T value( const std::string& key, T fallback ) const {
+            std::string r = attr(key);
+            if ( r.empty() && hasChild( key ) )
+                r = child(key).value();
             return osgEarth::as<T>( r, fallback );
-        }            
+        }
 
+        // populates the output value iff the Config exists.
         template<typename T>
-        bool getOptional( const std::string& name, optional<T>& output ) const {
-            std::string r = attr(name);
-            if ( r.empty() && hasChild(name) )
-                r = child(name).value();
+        bool getIfSet( const std::string& key, optional<T>& output ) const {
+            std::string r = attr(key);
+            if ( r.empty() && hasChild(key) )
+                r = child(key).value();
             if ( !r.empty() ) {
                 output = osgEarth::as<T>( r, output.defaultValue() );
                 return true;
             } 
-            else {
+            else
                 return false;
+        }
+
+        // specialization for Config.
+        template<> inline
+        bool getIfSet<Config>( const std::string& key, optional<Config>& output ) const {
+            if ( hasChild( key ) ) {
+                output = child(key);
+                return true;
             }
+            else
+                return false;
+        }
+
+        // for Configurable's
+        template<typename T>
+        bool getObjIfSet( const std::string& key, optional<T>& output ) const {
+            if ( hasChild( key ) ) {
+                output = T( child(key) );
+                return true;
+            }
+            else
+                return false;
+        }
+
+        // populates a Referenced that takes a Config in the constructor.
+        template<typename T>
+        bool getObjIfSet( const std::string& key, osg::ref_ptr<T>& output ) const {
+            if ( hasChild( key ) ) {
+                output = new T( child(key) );
+                return true;
+            }
+            else
+                return false;
         }
 
         std::string toString( int indent =0 ) const;
 
     protected:
-        std::string _name;
+        std::string _key;
         std::string _defaultValue;
         Properties  _attrs;
         ConfigSet   _children;
@@ -188,6 +312,7 @@ namespace osgEarth
     {
     public:
         PluginOptions() { }
+        PluginOptions( const Config& conf ) : _conf(conf) { }
         PluginOptions( const PluginOptions& rhs, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY ) :
             osgDB::ReaderWriter::Options( rhs, copyop ), _conf( rhs._conf ) { }
         PluginOptions( const osgDB::ReaderWriter::Options& toCopy ) :

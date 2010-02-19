@@ -29,64 +29,69 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-#define PROP_FEATURES      "features"
-#define PROP_GEOMETRY_TYPE "geometry_type"
-#define PROP_LIGHTING      "lighting"
-#define PROP_GRIDDING      "gridding"
+/****************************************************************/
 
+FeatureModelSourceOptions::FeatureModelSourceOptions( const PluginOptions* opt ) :
+ModelSourceOptions( opt ),
+_geomTypeOverride( Geometry::TYPE_UNKNOWN ),
+_lit( true )
+{
+    if ( config().hasChild("features") )
+        _featureOptions = new FeatureSourceOptions( new PluginOptions( config().child("features") ) );
+
+    config().getObjIfSet( "styles", _styles );
+    config().getObjIfSet( "gridding", _gridding );
+    config().getIfSet( "lighting", _lit );
+
+    std::string gt = config().value( "geometry_type" );
+    if ( gt == "line" || gt == "lines" || gt == "linestring" )
+        _geomTypeOverride = Geometry::TYPE_LINESTRING;
+    else if ( gt == "point" || gt == "pointset" || gt == "points" )
+        _geomTypeOverride = Geometry::TYPE_POINTSET;
+    else if ( gt == "polygon" || gt == "polygons" )
+        _geomTypeOverride = Geometry::TYPE_POLYGON;
+    
+    // load up the style catalog.
+    //StyleReader::readLayerStyles( name(), config(), _styles );
+}
+
+Config
+FeatureModelSourceOptions::toConfig() const
+{
+    Config conf = ModelSourceOptions::toConfig();
+
+    conf.updateObjIfSet( "features", _featureOptions );
+    conf.updateObjIfSet( "gridding", _gridding );
+    conf.updateObjIfSet( "styles", _styles );
+    conf.updateIfSet( "lighting", _lit );
+
+    if ( _geomTypeOverride.isSet() ) {
+        if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
+            conf.update( "geometry_type", "line" );
+        else if ( _geomTypeOverride == Geometry::TYPE_POINTSET )
+            conf.update( "geometry_type", "point" );
+        else if ( _geomTypeOverride == Geometry::TYPE_POLYGON )
+            conf.update( "geometry_type", "polygon" );
+    }
+
+    return conf;
+}
+
+/****************************************************************/
 
 FeatureModelSource::FeatureModelSource( const PluginOptions* options ) :
-ModelSource( options ),
-_geomTypeOverride( Geometry::TYPE_UNKNOWN ),
-_lit( false ),
-_gridding( GriddingPolicy() )
+ModelSource( options )
 {
-    const Config& conf = options->config();
+    _options = dynamic_cast<const FeatureModelSourceOptions*>( options );
+    if ( !_options )
+        _options = new FeatureModelSourceOptions( options );
 
     // the data source from which to pull features:
-    _features = FeatureSourceFactory::create( conf.child( PROP_FEATURES ) );
+    _features = FeatureSourceFactory::create( _options->featureOptions().get() );
     if ( !_features.valid() )
     {
         osg::notify( osg::WARN ) << "[osgEarth] FeatureModelSource - no valid feature source provided" << std::endl;
     }
-
-    // force a particular geometry type
-    if ( conf.hasValue( PROP_GEOMETRY_TYPE ) )
-    {
-        // geometry type override: the config can ask that input geometry
-        // be interpreted as a particular geometry type
-        std::string gt = conf.value( PROP_GEOMETRY_TYPE );
-        if ( gt == "line" || gt == "lines" || gt == "linestrip" )
-            _geomTypeOverride = Geometry::TYPE_LINESTRING;
-        else if ( gt == "point" || gt == "points" || gt == "pointset" )
-            _geomTypeOverride = Geometry::TYPE_POINTSET;
-        else if ( gt == "polygon" || gt == "polygons" )
-            _geomTypeOverride = Geometry::TYPE_POLYGON;
-    }
-
-    // gridding policy
-    if ( conf.hasChild( PROP_GRIDDING ) )
-    {
-        _gridding = GriddingPolicy( conf.child( PROP_GRIDDING ) );
-    }
-
-    // lighting
-    if ( conf.hasValue( PROP_LIGHTING ) )
-    {
-        if ( conf.value( PROP_LIGHTING ) == "true" )
-            _lit = true;
-        else if ( conf.value( PROP_LIGHTING ) == "false" )
-            _lit = false;
-        else if ( conf.value( PROP_LIGHTING ) == "default" )
-            _lit.unset();
-    }
-    else
-    {
-        _lit = false;
-    }
-
-    // load up the style catalog.
-    StyleReader::readLayerStyles( this->getName(), conf, _styleCatalog );
 }
 
 void 
@@ -113,28 +118,11 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     osg::Group* group = new osg::Group();
 
-    // figure out which rule to use to style the geometry.
-    //osg::notify(osg::NOTICE) << "checking for style layer named '" << this->getName() << "'" << std::endl;
-    StyledLayer layer;
-    bool hasStyledLayer = _styleCatalog.getNamedLayer( this->getName(), layer );
-
-    if ( hasStyledLayer )
+    const StyleCatalog* styles = _options->styles().get();
+    
+    // figure out if and how to style the geometry.
+    if ( _features->hasEmbeddedStyles() )
     {
-        //osg::notify(osg::NOTICE) << "Styled layer def found" << std::endl;
-
-        // The catalog contains style data for this source, so use it:
-        for( StyleList::iterator i = layer.styles().begin(); i != layer.styles().end(); ++i )
-        {
-            const Style& style = *i;
-            osg::Node* node = gridAndRenderFeaturesForStyle( style, buildData.get() );
-            if ( node )
-                group->addChild( node );
-        }
-    }
-    else if ( _features->hasEmbeddedStyles() )
-    {
-        //osg::notify(osg::NOTICE) << "Using embedded style info" << std::endl;
-
         // Each feature has its own embedded style data, so use that:
         osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
         while( cursor->hasMore() )
@@ -151,18 +139,37 @@ FeatureModelSource::createNode( ProgressCallback* progress )
             }
         }
     }
+    else if ( styles )
+    {
+        if ( styles->selectors().size() > 0 )
+        {
+            for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
+            {
+                const StyleSelector& sel = *i;
+                Style style;
+                styles->getStyle( sel.getSelectedStyleName(), style );
+                osg::Node* node = gridAndRenderFeaturesForStyle( style, sel.query().value(), buildData.get() );
+                if ( node )
+                    group->addChild( node );
+            }
+        }
+        else
+        {
+            Style style = styles->getDefaultStyle();
+            osg::Node* node = gridAndRenderFeaturesForStyle( style, Query(), buildData.get() );
+            if ( node )
+                group->addChild( node );
+        }
+    }
     else
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] " << getName() << ": no styles found for '" << this->getName() << "'" << std::endl;
-
-        // There is no style data, so use the default.
-        osg::Node* node = gridAndRenderFeaturesForStyle( Style(), buildData.get() );
+        osg::Node* node = gridAndRenderFeaturesForStyle( Style(), Query(), buildData.get() );
         if ( node )
             group->addChild( node );
     }
 
     // run the SpatializeGroups optimization pass on the result
-    if ( _gridding.isSet() && _gridding->spatializeGroups() == true )
+    if ( _options->gridding().valid() && _options->gridding()->spatializeGroups() == true )
     {
         osg::notify(osg::NOTICE) << "[osgEarth] " << getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;
@@ -170,10 +177,10 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     }
 
     // apply explicit lighting if necessary:
-    if ( _lit.isSet() )
+    if ( _options->enableLighting().isSet() )
     {
         osg::StateSet* ss = group->getOrCreateStateSet();
-        ss->setMode( GL_LIGHTING, _lit == true?
+        ss->setMode( GL_LIGHTING, _options->enableLighting() == true?
             osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
@@ -189,6 +196,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
 osg::Group*
 FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
+                                                  const Query& query,
                                                   osg::Referenced* data )
 {
     osg::Group* styleGroup = 0L;
@@ -196,8 +204,12 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
     // first we need the overall extent of the layer:
     const GeoExtent& extent = getFeatureSource()->getFeatureProfile()->getExtent();
 
+    osg::ref_ptr<GriddingPolicy> gridding = 
+        _options->gridding().valid() ? _options->gridding().get() :
+        new GriddingPolicy();
+
     // next set up a gridder/cropper:
-    FeatureGridder gridder( extent.bounds(), _gridding.get() );
+    FeatureGridder gridder( extent.bounds(), gridding );
 
     if ( gridder.getNumCells() > 1 )
     {
@@ -213,13 +225,13 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
         if ( gridder.getCellBounds( cell, cellBounds ) )
         {
             // incorporate the cell bounds into the query:
-            Query query = style.query().value();
-            query.bounds() = query.bounds().isSet()?
+            Query localQuery = query;
+            localQuery.bounds() = query.bounds().isSet()?
                 query.bounds()->unionWith( cellBounds ) :
                 cellBounds;
 
             // query the feature source:
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( query );
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( localQuery );
 
             // now copy the resulting feature set into a list, converting the data
             // types along the way if a geometry override is in place:
@@ -231,9 +243,9 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
                 if ( geom )
                 {
                     // apply a type override if requested:
-                    if ( _geomTypeOverride.isSet() && _geomTypeOverride.get() != geom->getComponentType() )
+                    if ( _options->geometryTypeOverride().isSet() && _options->geometryTypeOverride() != geom->getComponentType() )
                     {
-                        geom = geom->cloneAs( _geomTypeOverride.get() );
+                        geom = geom->cloneAs( _options->geometryTypeOverride().value() );
                         if ( geom )
                             feature->setGeometry( geom );
                     }
@@ -270,7 +282,7 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
                 // if the method created a node, apply a cluter culler to it if neceesary:
                 if ( createdNode )
                 {
-                    if ( _map->isGeocentric() && _gridding->clusterCulling() == true )
+                    if ( _map->isGeocentric() && gridding->clusterCulling() == true )
                     {
                         const SpatialReference* mapSRS = _map->getProfile()->getSRS()->getGeographicSRS();
                         GeoExtent cellExtent( extent.getSRS(), cellBounds );

@@ -20,25 +20,18 @@
 
 using namespace osgEarth::Features;
 
-Query::Query() :
-_bounds( Bounds() ),
-_expression( "" )
+Query::Query( const Config& conf )
 {
-    //nop
+    fromConfig( conf );
 }
 
-Query::Query( const Config& conf ) :
-_bounds( Bounds() ),
-_expression( "" )
+void
+Query::fromConfig( const Config& conf )
 {
-    if ( conf.hasValue( "expr" ) )
-        _expression = conf.value( "expr" );
-    else if ( conf.hasValue( "where" ) )
-        _expression = conf.value( "where" );
-    else if ( conf.hasValue( "sql" ) )
-        _expression = conf.value( "sql" );
-    else if ( conf.hasValue( "expression" ) )
-        _expression = conf.value( "expression" );
+    if ( !conf.getIfSet( "expr", _expression ) )
+        if ( !conf.getIfSet( "where", _expression ) )
+            if ( !conf.getIfSet( "sql", _expression ) )
+                conf.getIfSet( "expression", _expression );
 
     Config b = conf.child( "extent" );
     if( !b.empty() )
@@ -50,4 +43,21 @@ _expression( "" )
             b.value<double>( "ymax", 0.0 ) );
     }
 }
+
+Config
+Query::toConfig() const
+{
+    Config conf( "query" );
+    conf.addIfSet( "expr", _expression );
+    if ( _bounds.isSet() ) {
+        Config bc( "extent" );
+        bc.add( "xmin", toString(_bounds->xMin()) );
+        bc.add( "ymin", toString(_bounds->yMin()) );
+        bc.add( "xmax", toString(_bounds->xMax()) );
+        bc.add( "ymax", toString(_bounds->yMax()) );
+        conf.add( bc );
+    }
+    return conf;
+}
+
 

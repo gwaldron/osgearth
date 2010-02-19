@@ -20,28 +20,28 @@
 #define OSGEARTH_DRIVER_ARCGIS_DRIVEROPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarth/DriverOptions>
+#include <osgEarth/TileSource>
+
+using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers
 {
-    class ArcGISOptions : public osgEarth::TileSourceDriverOptions // NO EXPORT; header only
+    class ArcGISOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
         optional<std::string>& url() { return _url; }
         const optional<std::string>& url() const { return _url; }
 
     public:
-        ArcGISOptions() : TileSourceDriverOptions() { }
-
-        ArcGISOptions( const Config& conf ) : TileSourceDriverOptions(conf) {
-            _url = conf.value( "url" );
+        ArcGISOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ) {
+            driver() = "arcgis";
+            config().getIfSet( "url", _url );
         }
 
     protected:
-        Config createConfig() const {
-            Config conf = TileSourceDriverOptions::createConfig();
-            conf.attr("driver") = "arcgis";
-            conf.addIfSet("url", _url);
+        Config toConfig() const {
+            Config conf = TileSourceOptions::toConfig();
+            conf.updateIfSet("url", _url);
             return conf;
         }
 

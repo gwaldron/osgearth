@@ -52,9 +52,7 @@ public:
     {
         _settings = dynamic_cast<const TMSOptions*>( options );
         if ( !_settings.valid() )
-        {
-            _settings = new TMSOptions( options->config() );
-        }
+            _settings = new TMSOptions( options );
 
         _invertY = _settings->tmsType() == "google";
     }

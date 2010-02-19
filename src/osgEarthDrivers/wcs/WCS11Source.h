@@ -27,8 +27,10 @@
 #include <osg/Shape>
 #include <osgDB/ReaderWriter>
 #include <string>
+#include "WCSOptions"
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 class WCS11Source : public TileSource
 {
@@ -49,14 +51,18 @@ public: // TileSource interface
     void initialize( const std::string& referenceURI, const Profile* overrideProfile);
 
 private:
-    std::string _url;
-    std::string _identifier;
-    std::string _cov_format;
-    std::string _osg_format;
-    std::string _srs;
-    std::string _elevation_unit;
-    std::string _range_subset;
-    int         _tile_size;
+    osg::ref_ptr<const WCSOptions> _settings;
+
+    //std::string _url;
+    //std::string _identifier;
+    //std::string _cov_format;
+    //std::string _osg_format;
+    //std::string _srs;
+    //std::string _elevation_unit;
+    //std::string _range_subset;
+    //int         _tile_size;
+
+    std::string _covFormat, _osgFormat;
 
     HTTPRequest createRequest( const TileKey* key ) const;
 };

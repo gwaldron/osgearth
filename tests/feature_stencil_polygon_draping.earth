@@ -30,7 +30,6 @@ block.
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
-            <!-- <resample max_length="5.0"/> -->
             <buffer distance="-0.05"/>
         </features>
         
@@ -42,65 +41,62 @@ block.
         
         <!-- Define a feature style class for each category: -->
         
-        <class name="P1">
-            <query>
-                <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
-            </query>
+        <styles>
+        
             <style type="text/css">
-                style {
+                p1 {
                    fill: #ffff80;
                    fill-opacity: 0.4;
-                }            
-            </style>
-        </class>
-        
-        <class name="P2">
-            <query>
-                <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
-            </query>
-            <style type="text/css">
-                style {
+                }       
+                p2 {
                    fill: #fad155;
                    fill-opacity: 0.4;
-                }            
-            </style>
-        </class>
-        
-        <class name="P3">
-            <query>
-                <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
-            </query>
-            <style type="text/css">
-                style {
+                }   
+                p3 {
                    fill: #f2a82f;
                    fill-opacity: 0.4;
-                }            
-            </style>
-        </class>
-        
-        <class name="P4">
-            <query>
-                <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
-            </query>
-            <style type="text/css">
-                style {
+                }       
+                p4 {
                    fill: #b3520d;
                    fill-opacity: 0.4;
-                }            
-            </style>
-        </class>
-        
-        <class name="P5">
-            <query>
-                <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
-            </query>
-            <style type="text/css">
-                style {
+                }     
+                p5 {
                    fill: #6a0000;
                    fill-opacity: 0.4;
-                }            
+                }                                      
             </style>
-        </class>
+        
+            <selector name="p1">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
+                </query>
+            </selector>
+        
+            <selector name="p2">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector name="p3">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector name="p4">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector name="p5">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+        </styles>
         
     </model>
   

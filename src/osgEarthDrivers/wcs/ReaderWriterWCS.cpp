@@ -27,30 +27,30 @@
 
 using namespace osgEarth;
 
-class ReaderWriterWCS : public osgDB::ReaderWriter
+class WCSSourceFactory : public osgDB::ReaderWriter
 {
-    public:
-        ReaderWriterWCS() {}
+public:
+    WCSSourceFactory() {}
 
-        virtual const char* className()
-        {
-            return "WCS 1.1.0 Reader";
-        }
-        
-        virtual bool acceptsExtension(const std::string& extension) const
-        {
-            return osgDB::equalCaseInsensitive( extension, "osgearth_wcs" );
-        }
+    virtual const char* className()
+    {
+        return "WCS 1.1.0 Reader";
+    }
 
-        virtual ReadResult readObject(const std::string& file_name, const Options* opt) const
+    virtual bool acceptsExtension(const std::string& extension) const
+    {
+        return osgDB::equalCaseInsensitive( extension, "osgearth_wcs" );
+    }
+
+    virtual ReadResult readObject(const std::string& file_name, const Options* opt) const
+    {
+        std::string ext = osgDB::getFileExtension( file_name );
+        if ( !acceptsExtension( ext ) )
         {
-            std::string ext = osgDB::getFileExtension( file_name );
-            if ( !acceptsExtension( ext ) )
-            {
-                return ReadResult::FILE_NOT_HANDLED;
-            }
-            return new WCS11Source( static_cast<const PluginOptions*>(opt) );
+            return ReadResult::FILE_NOT_HANDLED;
         }
+        return new WCS11Source( static_cast<const PluginOptions*>(opt) );
+    }
 };
 
-REGISTER_OSGPLUGIN(osgearth_wcs, ReaderWriterWCS)
+REGISTER_OSGPLUGIN(osgearth_wcs, WCSSourceFactory)

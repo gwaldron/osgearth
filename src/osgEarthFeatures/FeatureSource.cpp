@@ -26,13 +26,6 @@
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-#define PROP_RESAMPLE_OP         "resample"
-#define RESAMPLE_ATTR_MIN_LENGTH "min_length"
-#define RESAMPLE_ATTR_MAX_LENGTH "max_length"
-
-#define PROP_BUFFER_OP           "buffer"
-#define BUFFER_ATTR_DISTANCE     "distance"
-
 
 /****************************************************************************/
 
@@ -64,7 +57,7 @@ _geom( geom )
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
                                              const FeatureProfile* fp,
-                                             FeatureFilterList& filters ) :
+                                             const FeatureFilterList& filters ) :
 _geom( geom ),
 _featureProfile( fp ),
 _filters( filters )
@@ -88,7 +81,7 @@ GeometryFeatureCursor::nextFeature()
         cx.profile() = _featureProfile.get();
         FeatureList list;
         list.push_back( _lastFeature.get() );
-        for( FeatureFilterList::iterator i = _filters.begin(); i != _filters.end(); ++i ) {
+        for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i ) {
             cx = i->get()->push( list, cx );
         }
         _geom = 0L;
@@ -98,43 +91,62 @@ GeometryFeatureCursor::nextFeature()
 
 /****************************************************************************/
 
-FeatureSource::FeatureSource( const PluginOptions* options ) :
-_options( options )
-{    
-    const Config& conf = getOptions()->config();
-
-    // optional feature operations
-    // TODO: at some point, move all this stuff elsewhere into some sort of filter
-    // pipeline manager
-
-    // buffer operation:
-    if ( conf.hasChild( PROP_BUFFER_OP ) )
+FeatureSourceOptions::FeatureSourceOptions( const PluginOptions* opt ) :
+DriverOptions( opt )
+{
+    const Config& bufferConf = config().child("buffer");
+    if ( !bufferConf.empty() )
     {
         BufferFilter* buffer = new BufferFilter();
-        buffer->distance() = conf.child( PROP_BUFFER_OP ).value<double>( BUFFER_ATTR_DISTANCE, 0.1 );
+        bufferConf.getIfSet( "distance", buffer->distance() );
         _filters.push_back( buffer );
     }
 
     // resample operation:
     // resampling must occur AFTER buffering, because the buffer op will remove colinear segments.
-    if ( conf.hasChild( PROP_RESAMPLE_OP ) )
+    const Config& resampleConf = config().child("resample");
+    if ( !resampleConf.empty() )
     {
         ResampleFilter* resample = new ResampleFilter();
-        resample->minLength() = conf.child( PROP_RESAMPLE_OP ).value<double>( RESAMPLE_ATTR_MIN_LENGTH, resample->minLength() );
-        resample->maxLength() = conf.child( PROP_RESAMPLE_OP ).value<double>( RESAMPLE_ATTR_MAX_LENGTH, resample->maxLength() );
+        resampleConf.getIfSet( "min_length", resample->minLength() );
+        resampleConf.getIfSet( "max_length", resample->maxLength() );
         _filters.push_back( resample );
     }
 }
 
-FeatureSource::~FeatureSource()
+Config
+FeatureSourceOptions::toConfig() const
 {
-    //nop
+    Config conf = DriverOptions::toConfig();
+
+    //TODO: make each of these filters Configurable.
+    for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
+    {
+        BufferFilter* buffer = dynamic_cast<BufferFilter*>( i->get() );
+        if ( buffer ) {
+            Config bufferConf( "buffer" );
+            bufferConf.addIfSet( "distance", buffer->distance() );
+            conf.update( bufferConf );
+        }
+        ResampleFilter* resample = dynamic_cast<ResampleFilter*>( i->get() );
+        if ( resample ) { 
+            Config resampleConf( "resample" );
+            resampleConf.addIfSet( "min_length", resample->minLength() );
+            resampleConf.addIfSet( "max_length", resample->maxLength() );
+            conf.update( resampleConf );
+        }
+    }
+
+    return conf;
 }
 
-const PluginOptions* 
-FeatureSource::getOptions() const
-{
-    return _options.get();
+/****************************************************************************/
+
+FeatureSource::FeatureSource( const PluginOptions* options )
+{    
+    _options = dynamic_cast<const FeatureSourceOptions*>( options );
+    if ( !_options.valid() )
+        _options = new FeatureSourceOptions( options );
 }
 
 const FeatureProfile*
@@ -156,14 +168,42 @@ FeatureSource::getFeatureProfile() const
     return _featureProfile.get();
 }
 
-FeatureFilterList&
-FeatureSource::getFilters()
-{
-    return _filters;
+const FeatureFilterList&
+FeatureSource::getFilters() const {
+    return _options->filters();
 }
 
 /****************************************************************************/
 
+FeatureSource*
+FeatureSourceFactory::create( const DriverOptions* driverOptions )
+{
+    FeatureSource* featureSource = 0L;
+    if ( driverOptions )
+    {
+        std::string driverExt = std::string(".osgearth_feature_") + driverOptions->driver();
+
+        featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, driverOptions ) );
+        if ( featureSource )
+        {
+            featureSource->setName( driverOptions->name() );
+        }
+        else
+        {
+            osg::notify(osg::NOTICE)
+                << "[osgEarth] WARNING: Failed to load feature driver for " << driverExt << std::endl;
+        }
+    }
+    else
+    {
+        osg::notify(osg::NOTICE)
+            << "[osgEarth] ERROR: null driver options to FeatureSourceFactory" << std::endl;
+    }
+
+    return featureSource;
+}
+
+// deprecated
 FeatureSource*
 FeatureSourceFactory::create(const std::string& name,
                              const std::string& driver,
@@ -197,6 +237,7 @@ FeatureSourceFactory::create(const std::string& name,
 }
 
 
+// deprecated
 FeatureSource*
 FeatureSourceFactory::create(const Config& featureStoreConf,
                              const osgDB::ReaderWriter::Options* globalOptions )

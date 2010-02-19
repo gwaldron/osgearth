@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/Styling>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureGridder>
+#include <osgEarthFeatures/DriverOptions>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
 #include <osg/Node>
@@ -34,6 +35,38 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Features
 {
+    class OSGEARTHFEATURES_EXPORT FeatureModelSourceOptions : public ModelSourceOptions
+    {
+    public: //properties
+
+        osg::ref_ptr<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const osg::ref_ptr<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+
+        osg::ref_ptr<GriddingPolicy>& gridding() { return _gridding; }
+        const osg::ref_ptr<GriddingPolicy>& gridding() const { return _gridding; }
+
+        osg::ref_ptr<StyleCatalog>& styles() { return _styles; }
+        const osg::ref_ptr<StyleCatalog>& styles() const { return _styles; }
+
+        optional<Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
+        const optional<Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+
+        optional<bool>& enableLighting() { return _lit; }
+        const optional<bool>& enableLighting() const { return _lit; }
+
+    public:
+        FeatureModelSourceOptions( const PluginOptions* opt =0L );
+
+        virtual Config toConfig() const;
+
+    protected:
+        osg::ref_ptr<FeatureSourceOptions> _featureOptions;
+        osg::ref_ptr<StyleCatalog> _styles;
+        osg::ref_ptr<GriddingPolicy> _gridding;
+        optional<Geometry::Type> _geomTypeOverride;
+        optional<bool> _lit;
+    };
+
     /**
      * A ModelSource that renders Feature data from a FeatureSource.
      */
@@ -44,7 +77,6 @@ namespace osgEarth { namespace Features
          * Constructs a new feature model source with the provided options.
          */
         FeatureModelSource( const PluginOptions* options =NULL );
-
 
     public:
 
@@ -59,16 +91,19 @@ namespace osgEarth { namespace Features
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
-        /** Access to the forced geometry type */
-        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
+        ///** Access to the forced geometry type */
+        //optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
-        /** Now to grid up the data and crop features to grid cells. */
-        optional<GriddingPolicy>& gridding() { return _gridding; }
-        const optional<GriddingPolicy>& gridding() const { return _gridding; }
+        ///** Now to grid up the data and crop features to grid cells. */
+        //optional<GriddingPolicy>& gridding() { return _gridding; }
+        //const optional<GriddingPolicy>& gridding() const { return _gridding; }
 
-        /** Whether to enable or disable lighting */
-        optional<bool>& enableLighting() { return _lit; }
-        const optional<bool>& enableLighting() const { return _lit; }
+        ///** Whether to enable or disable lighting */
+        //optional<bool>& enableLighting() { return _lit; }
+        //const optional<bool>& enableLighting() const { return _lit; }
+
+        const FeatureModelSourceOptions* getFeatureModelOptions() const {
+            return _options.get(); }
 
     protected:
 
@@ -108,6 +143,7 @@ namespace osgEarth { namespace Features
             renderStyleCell() for each cell. */
         osg::Group* gridAndRenderFeaturesForStyle(
             const Style& style,
+            const Query& query,
             osg::Referenced* buildData );
 
     public: 
@@ -124,17 +160,16 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-    protected:
-
-        StyleCatalog _styleCatalog;
+        //StyleCatalog _styleCatalog;
         osg::ref_ptr<FeatureSource> _features;
 
-        optional<Geometry::Type> _geomTypeOverride;
-        optional<bool> _lit;
-        optional<GriddingPolicy> _gridding;
+        //optional<Geometry::Type> _geomTypeOverride;
+        //optional<bool> _lit;
+        //optional<GriddingPolicy> _gridding;
 
     private:
         osg::ref_ptr<const osgEarth::Map> _map;
+        osg::ref_ptr<const FeatureModelSourceOptions> _options;
 
     };
 

@@ -32,43 +32,56 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_NAME         "name"
-#define PROPERTY_NODATA_VALUE "nodata_value"
-#define PROPERTY_NODATA_MIN   "nodata_min"
-#define PROPERTY_NODATA_MAX   "nodata_max"
-#define PROPERTY_PROFILE      "profile"
+
+/****************************************************************/
+
+TileSourceOptions::TileSourceOptions( const PluginOptions* po ) :
+DriverOptions( po ),
+_tileSize( 256 ),
+_noDataValue( (float)SHRT_MIN ),
+_noDataMinValue( -FLT_MAX ),
+_noDataMaxValue( FLT_MAX )
+{
+    config().getIfSet( "tile_size", _tileSize );
+    config().getIfSet( "nodata_value", _noDataValue );
+    config().getIfSet( "nodata_min", _noDataMinValue );
+    config().getIfSet( "nodata_max", _noDataMaxValue );
+}
+
+Config
+TileSourceOptions::toConfig() const
+{ 
+    Config conf = DriverOptions::toConfig();
+    conf.updateIfSet( "tile_size", _tileSize );
+    conf.updateIfSet( "nodata_value", _noDataValue );
+    conf.updateIfSet( "nodata_min", _noDataMinValue );
+    conf.updateIfSet( "nodata_max", _noDataMaxValue );
+    return conf;
+}
+
+/****************************************************************/  
 
 TileSource::TileSource(const PluginOptions* options) :
-_options( options ),
-_noDataValue(SHRT_MIN),
-_noDataMinValue(-FLT_MAX),
-_noDataMaxValue(FLT_MAX),
-_max_data_level(INT_MAX)
+_maxDataLevel( INT_MAX )
 {
     this->setThreadSafeRefUnref( true );
 
-    if ( options )
-    {
-        const Config& conf = options->config();
-        _name = conf.value( PROPERTY_NAME );
-        _noDataValue    = conf.value<float>( PROPERTY_NODATA_VALUE, _noDataValue );
-        _noDataMinValue = conf.value<float>( PROPERTY_NODATA_MIN, _noDataMinValue );
-        _noDataMaxValue = conf.value<float>( PROPERTY_NODATA_MAX, _noDataMaxValue );
-    }
+    _settings = dynamic_cast<const TileSourceOptions*>( options );
+    if ( !_settings.valid() )
+        _settings = new TileSourceOptions( options );
 
-	_memCache = new MemCache();
+    _memCache = new MemCache();
 }
 
-TileSource::~TileSource()
+int
+TileSource::getPixelsPerTile() const
 {
-    //NOP
+    return _settings->tileSize().value();
 }
-
 
 osg::Image*
 TileSource::getImage( const TileKey* key,
-                      ProgressCallback* progress
-                      )
+                      ProgressCallback* progress )
 {
 	//Try to get it from the memcache fist
     osg::ref_ptr<osg::Image> image = NULL;
@@ -142,70 +155,28 @@ TileSource::getProfile() const
     return _profile.get();
 }
 
-const PluginOptions*
-TileSource::getOptions() const
-{
-    return _options.get();
-}
-
-float
-TileSource::getNoDataValue()
-{
-    return _noDataValue;
-}
-
-void
-TileSource::setNoDataValue(float noDataValue)
-{
-    _noDataValue = noDataValue;
-}
-
-float
-TileSource::getNoDataMinValue()
-{
-    return _noDataMinValue;
-}
-
-void
-TileSource::setNoDataMinValue(float noDataMinValue)
-{
-    _noDataMinValue = noDataMinValue;
-}
-
-float
-TileSource::getNoDataMaxValue()
-{
-    return _noDataMaxValue;
-}
-
-void 
-TileSource::setNoDataMaxValue(float noDataMaxValue)
-{
-    _noDataMaxValue = noDataMaxValue;
-}
-
 const GeoExtent&
 TileSource::getDataExtent() const
 {
-    return _data_extent.defined() ? _data_extent : _profile->getExtent();
+    return _dataExtent.defined() ? _dataExtent : _profile->getExtent();
 }
 
 void 
 TileSource::setDataExtent( const GeoExtent& extent )
 {
-    _data_extent = extent;
+    _dataExtent = extent;
 }
 
 unsigned int
 TileSource::getMaxDataLevel() const
 {
-    return _max_data_level;
+    return _maxDataLevel;
 }
 
 void
 TileSource::setMaxDataLevel( unsigned int value )
 {
-    _max_data_level = value;
+    _maxDataLevel = value;
 }
 
 bool
@@ -213,3 +184,5 @@ TileSource::supportsPersistentCaching() const
 {
     return true;
 }
+
+

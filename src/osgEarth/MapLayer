@@ -26,6 +26,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
 #include <osgEarth/TaskService>
+#include <osgEarth/DriverOptions>
 #include <map>
 #include <utility>
 #include <queue>
@@ -47,12 +48,36 @@ namespace osgEarth
             TYPE_HEIGHTFIELD
         };
 
-    public:
+    public: //ctors
 
-		 /**
-         * Constructs a new map layer that will use a TileSource loaded from a
-         * plugin driver.
+        /**
+         * Constructs a new map layer with the specified driver options.
          */
+        MapLayer(
+            const std::string& name,
+            Type type,
+            const DriverOptions* options );
+
+        /**
+         * Constructs a new map layer based on information in a Config object. This is
+         * the typical method for creating a layer from a serialized definition (like
+         * the .earth file).
+         */
+        MapLayer(
+            Type type,
+            const Config& driverConf );
+
+        /**
+         * Constructs a new map layer with a user-provided TileSource driver.
+         */
+        MapLayer(
+            const std::string& name,
+            Type type,
+            TileSource* driver );
+
+    public: // deprecated ctors
+
+        // deprecated- for backwards compatibility only.
         MapLayer(
             const std::string& name,
             Type type,
@@ -66,13 +91,8 @@ namespace osgEarth
             const std::string& driver,
             const Properties& props );
 
-        /**
-         * Constructs a new map layer with a user-provided TileSource engine.
-         */
-        MapLayer(
-            const std::string& name,
-            Type type,
-            TileSource* source );
+
+    public: // properties
 
         /**
          * Gets the unique ID of this map layer
@@ -99,10 +119,23 @@ namespace osgEarth
          */
         const Config& getDriverConfig() const;
 
+        /**
+         * Gets the driver options used to create this layer.
+         */
+        const DriverOptions* getDriverOptions() const {
+            return _driverOptions.get(); }
+
 		/**
 		 * Gets the profile of this MapLayer
 		 */
 		const Profile* getProfile() const;
+
+        /**
+         * Gets the underlying TileSource engine that serves this map layer. Use with caution.
+         */
+        TileSource* getTileSource() const;
+
+    public: // properties
 
         /**
          * Gets the explicit profile setup for this map layer. By default, the layer will 
@@ -123,11 +156,6 @@ namespace osgEarth
          */
         optional<int>& maxLevel();
         const optional<int>& maxLevel() const;
-
-        /**
-         * Gets the underlying TileSource engine that serves this map layer. Use with caution.
-         */
-        TileSource* getTileSource() const;
 
 		/**
 		 * Gets the opacity of this MapLayer
@@ -162,19 +190,10 @@ namespace osgEarth
 		optional<osg::Vec4ub>& transparentColor();
 
 		/**
-		 *Gets whether the given key is valid for this MapLayer
-		 */
-		bool isKeyValid(const TileKey* key) const;
-
-		/**
 		 * Gets whether or not to allow the creation of Mercator images for Geographic scenes
 		 */
-		bool getUseMercatorFastPath() const { return _useMercatorFastPath; }
-
-		/**
-		 * Sets whether or not to allow the creation of Mercator images for Geographic scenes
-		 */
-		void setUseMercatorFastPath( bool useMercatorFastPath) { _useMercatorFastPath = useMercatorFastPath; }
+        optional<bool>& useMercatorFastPath() { return _useMercatorFastPath; }
+        const optional<bool>& useMercatorFastPath() const { return _useMercatorFastPath; }
 
 		/**
 		 * Gets whether to use exact cropping if image cropping is necessary
@@ -185,6 +204,47 @@ namespace osgEarth
 		 * Sets whether to use exact cropping if image cropping is necessary
 		 */
 		void setExactCropping( bool exactCropping ) { _exactCropping = exactCropping; }
+		/**
+		 * Gets the desired tile size to reproject imagery to if necessary.
+		 */
+		unsigned int getReprojectedTileSize() const { return _reprojected_tile_size; }
+
+		/**
+		 * Sets the desired tile size to reproject imagery to if it is necessary.
+		 * If set to 0, osgEarth will attempt to maintain a consistent resolution for the tiles.
+		 */
+		void setReprojectedTileSize( unsigned int tile_size) { _reprojected_tile_size = tile_size;}
+
+		/**
+		 * The format that this MapLayer should use when caching.
+		 */
+        optional<std::string>& cacheFormat() { return _cacheFormat; }
+        const optional<std::string>& cacheFormat() const { return _cacheFormat; }
+
+        /**
+         * Whether to cache this layer or not.
+         */
+        optional<bool>& cacheEnabled() { return _cacheEnabled; }
+        const optional<bool>& cacheEnabled() const { return _cacheEnabled; }
+
+		/**
+		 * Whether to try to run this MapLayer strictly from the cache only.
+		 */
+        optional<bool>& cacheOnly() { return _cacheOnly; }
+        const optional<bool>& cacheOnly() const { return _cacheOnly; }
+        
+        /**
+         * The loading weight of this MapLayer (for threaded loading policies).
+         */
+        optional<float> loadingWeight() { return _loadingWeight; }
+        const optional<float>& loadingWeight() const { return _loadingWeight; }
+
+    public: // methods
+
+		/**
+		 *Gets whether the given key is valid for this MapLayer
+		 */
+		bool isKeyValid(const TileKey* key) const;
 
 		/**
 		 * Creates a GeoImage from this MapLayer
@@ -220,36 +280,6 @@ namespace osgEarth
          */
         void setReferenceURI( const std::string& uri );
 
-		/**
-		 * Gets the desired tile size to reproject imagery to if necessary.
-		 */
-		unsigned int getReprojectedTileSize() const { return _reprojected_tile_size; }
-
-		/**
-		 * Sets the desired tile size to reproject imagery to if it is necessary.
-		 * If set to 0, osgEarth will attempt to maintain a consistent resolution for the tiles.
-		 */
-		void setReprojectedTileSize( unsigned int tile_size) { _reprojected_tile_size = tile_size;}
-
-		/**
-		 * Gets the format that this MapLayer should use when caching.
-		 */
-		const std::string& getCacheFormat() const;
-
-		/**
-		 * Sets the format that this MapLayer should use when caching.
-		 */
-		void setCacheFormat(const std::string& cacheFormat);
-
-        /**
-         * Gets whether to cache this layer or not.
-         */
-        bool getCacheEnabled() const;
-
-        /**
-         * Sets whether to cache this layer or not
-         */
-        void setCacheEnabled( bool cacheEnabled );
 
 		/**
 		 * Gets the Cache to be used on this MapLayer.
@@ -261,30 +291,13 @@ namespace osgEarth
 		 */
 		void setCache( Cache* cache );
 
-		/**
-		 * Gets whether to try to run this MapLayer strictly from the cache only.
-		 */
-		bool getCacheOnly() const;
-
-		/**
-		 * Sets whether to try to run this MapLayer strictly from the cache only.
-		 */
-		void setCacheOnly( bool cacheOnly );
-
-        /**
-         * Gets the load weight of this MapLayer.
-         */
-        float getLoadWeight() const;
-
-        /**
-         * Sets the load weight of this MapLayer
-         */
-        void setLoadWeight(float loadWeight );
-
         /**
          * Suggests a cache format for this layer
          */
         std::string suggestCacheFormat() const;
+
+        
+        virtual Config toConfig() const;
 
     protected:
 
@@ -306,28 +319,30 @@ namespace osgEarth
         Type        _type;
         std::string _driver;
         Config      _driverConf;
+        osg::ref_ptr<const DriverOptions> _driverOptions;
 
-		std::string _cacheFormat;
-        bool _cacheEnabled;
        
         optional<ProfileConfig> _profileConf;
         optional<int> _minLevel;
         optional<int> _maxLevel;
 	    optional<std::string> _nodata_image_filename;
 		optional<osg::Vec4ub> _transparentColor;
-	    osg::ref_ptr<osg::Image> _nodata_image;
+        optional<bool> _useMercatorFastPath;
+		optional<std::string> _cacheFormat;
+        optional<bool> _cacheEnabled;
+		optional<bool> _cacheOnly;
+        optional<float> _loadingWeight;
 
+        bool _exactCropping;
+		bool _cacheOnlyEnv;
 		float _opacity;
 		bool _enabled;
 
-		bool _cacheOnly;
-		bool _cacheOnlyEnv;
         
         osg::ref_ptr<TileSource> _tileSource;
 		osg::ref_ptr<Cache> _cache;
+	    osg::ref_ptr<osg::Image> _nodata_image;
 
-		bool _exactCropping;
-		bool _useMercatorFastPath;
 
 		std::string _referenceURI;
 
@@ -339,9 +354,30 @@ namespace osgEarth
 
         osg::ref_ptr< const Profile > _cacheProfile;
 
-        float _loadWeight;
-
         OpenThreads::Mutex _initMutex;
+    };
+
+    /**
+     * Convenience class that automatically sets the TYPE_IMAGE layer type.
+     */
+    class OSGEARTH_EXPORT ImageMapLayer : public MapLayer
+    {
+    public:
+        ImageMapLayer( const std::string& name, const DriverOptions* options ) :
+          MapLayer( name, MapLayer::TYPE_IMAGE, options ) { }
+        
+        ImageMapLayer( const std::string& name, TileSource* source ) :
+          MapLayer( name, MapLayer::TYPE_IMAGE, source ) { }
+    };
+    
+    class OSGEARTH_EXPORT HeightFieldMapLayer : public MapLayer
+    {
+    public:
+        HeightFieldMapLayer( const std::string& name, const DriverOptions* options ) :
+          MapLayer( name, MapLayer::TYPE_HEIGHTFIELD, options ) { }
+        
+        HeightFieldMapLayer( const std::string& name, TileSource* source ) :
+          MapLayer( name, MapLayer::TYPE_HEIGHTFIELD, source ) { }
     };
 
 

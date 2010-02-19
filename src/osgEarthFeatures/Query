@@ -29,12 +29,12 @@ namespace osgEarth { namespace Features
     /**
      * A query filter that you can use to limit a set of features to process.
      */
-    class OSGEARTHFEATURES_EXPORT Query
+    class OSGEARTHFEATURES_EXPORT Query : public Configurable
     {
     public:
-        Query();
-        Query( const Config& conf );
-        ~Query() { }
+        Query( const Config& conf =Config() );
+
+    public: // properties
 
         /** Sets the geospatial extent bounding this query. */
         optional<Bounds>& bounds() { return _bounds; }
@@ -43,6 +43,11 @@ namespace osgEarth { namespace Features
         /** Sets a driver-specific query expression. */
         optional<std::string>& expression() { return _expression; }
         const optional<std::string>& expression() const { return _expression; }
+
+    public: // configurable
+
+        virtual Config toConfig() const;
+        void fromConfig( const Config& conf );
 
     protected:
         optional<Bounds> _bounds;

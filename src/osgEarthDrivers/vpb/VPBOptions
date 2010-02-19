@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_VPB_DRIVEROPTIONS
+#define OSGEARTH_DRIVER_VPB_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/DriverOptions>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers
+{
+    class VPBOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public: // types
+
+        enum DirectoryStructure {
+            DS_NESTED,
+            DS_TASK,
+            DS_FLAT
+        };
+
+    public: // properties
+
+        optional<std::string>& url() { return _url; }
+        const optional<std::string>& url() const { return _url; }
+
+        optional<int>& primarySplitLevel() { return _primarySplitLevel; }
+        const optional<int>& primarySplitLevel() const { return _primarySplitLevel; }
+
+        optional<int>& secondarySplitLevel() { return _secondarySplitLevel; }
+        const optional<int>& secondarySplitLevel() const { return _secondarySplitLevel; }
+
+        optional<DirectoryStructure>& directoryStructure() { return _dirStruct; }
+        const optional<DirectoryStructure>& directoryStructure() const { return _dirStruct; }
+
+        optional<int>& layer() { return _layer; }
+        const optional<int>& layer() const { return _layer; }
+
+        optional<int>& numTilesWideAtLod0() { return _widthLod0; }
+        const optional<int>& numTilesWideAtLod0() const { return _widthLod0; }
+
+        optional<int>& numTilesHighAtLod0() { return _heightLod0; }
+        const optional<int>& numTilesHighAtLod0() const { return _heightLod0; }
+
+        optional<std::string>& baseName() { return _baseName; }
+        const optional<std::string>& baseName() const { return _baseName; }
+
+    public:
+        VPBOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
+            _primarySplitLevel( -1 ),
+            _secondarySplitLevel( -1 ),
+            _layer( 0 ),
+            _widthLod0( 1 ),
+            _heightLod0( 1 ),
+            _dirStruct( DS_FLAT )
+        {
+            driver() = "vpb";
+
+            config().getIfSet("url", _url);
+            config().getIfSet("primary_split_level", _primarySplitLevel);
+            config().getIfSet("secondary_split_level", _secondarySplitLevel);
+            config().getIfSet("layer", _layer);
+            config().getIfSet("numTilesWideAtLod0", _widthLod0 );
+            config().getIfSet("numTilesHighAtLod0", _heightLod0 );
+            config().getIfSet("base_name", _baseName);
+            
+            std::string ds = config().value("directory_structure");
+            if ( ds == "flat" ) _dirStruct = DS_FLAT;
+            else if ( ds == "task" ) _dirStruct = DS_TASK;
+            else if ( ds == "nested" ) _dirStruct = DS_NESTED;
+        }
+
+    protected:
+        Config toConfig() const {
+            Config conf = TileSourceOptions::toConfig();
+            conf.updateIfSet("url", _url);
+            conf.updateIfSet("primary_split_level", _primarySplitLevel);
+            conf.updateIfSet("secondary_split_level", _secondarySplitLevel);
+            conf.updateIfSet("layer", _layer);
+            conf.updateIfSet("num_tiles_wide_at_lod_0", _widthLod0 );
+            conf.updateIfSet("num_tiles_high_at_lod_0", _heightLod0 );
+            conf.updateIfSet("base_name", _baseName );
+            if ( _dirStruct.isSet() ) {
+                if ( _dirStruct == DS_FLAT ) conf.update("directory_structure", "flat");
+                else if ( _dirStruct == DS_TASK ) conf.update("directory_structure", "task");
+                else if ( _dirStruct == DS_NESTED ) conf.update("directory_structure", "nested");
+            }
+            return conf;
+        }
+
+        optional<std::string> _url, _baseName;
+        optional<int> _primarySplitLevel, _secondarySplitLevel, _layer, _widthLod0, _heightLod0;
+        optional<DirectoryStructure> _dirStruct;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_VPB_DRIVEROPTIONS
+

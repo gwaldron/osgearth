@@ -18,6 +18,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     ConvertTypeFilter
     CssUtils
+    DriverOptions
     Feature
     FeatureGridder
     FeatureModelSource
@@ -42,6 +43,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     BuildGeometryFilter.cpp
     ConvertTypeFilter.cpp
     CssUtils.cpp
+    DriverOptions.cpp
     Feature.cpp
     FeatureGridder.cpp
     FeatureModelSource.cpp

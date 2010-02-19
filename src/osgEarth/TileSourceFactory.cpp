@@ -24,6 +24,30 @@
 using namespace osgEarth;
 
 TileSource*
+TileSourceFactory::create( const DriverOptions* driverOptions )
+{
+    TileSource* tileSource = 0L;
+    if ( driverOptions )
+    {
+        std::string driverExt = std::string(".osgearth_") + driverOptions->driver();
+
+        tileSource = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, driverOptions ) );
+        if( !tileSource )
+        {
+            osg::notify(osg::NOTICE)
+                << "[osgEarth] WARNING: Failed to load tile source driver for " << driverExt << std::endl;
+        }
+    }
+    else
+    {
+        osg::notify(osg::NOTICE)
+            << "[osgEarth] ERROR: null driver options to TileSourceFactory" << std::endl;
+    }
+    return tileSource;
+}
+
+
+TileSource*
 TileSourceFactory::create( const std::string& driver,
                            const Config&      driverConf,
 						   const osgDB::ReaderWriter::Options* global_options

@@ -38,24 +38,27 @@ using namespace osgEarth;
 #define PROPERTY_RANGE_SUBSET   "range_subset"
 
 WCS11Source::WCS11Source( const PluginOptions* options ) :
-TileSource( options ),
-_tile_size(16)
+TileSource( options )
 {
-    const Config& conf = options->config();
+    _settings = dynamic_cast<const WCSOptions*>( options );
+    if ( !_settings.valid() )
+        _settings = new WCSOptions( options );
 
-    _url = conf.value( PROPERTY_URL );
-    _identifier = conf.value( PROPERTY_IDENTIFIER );
-    _cov_format = conf.value( PROPERTY_FORMAT );
-    _elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
+    //const Config& conf = options->config();
 
-    // Try to read the tile size
-    if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
-        _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
-    else
-        _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
+    //_url = conf.value( PROPERTY_URL );
+    //_identifier = conf.value( PROPERTY_IDENTIFIER );
+    //_cov_format = conf.value( PROPERTY_FORMAT );
+    //_elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
 
-    _srs = conf.value( PROPERTY_SRS );
-    _range_subset = conf.value( PROPERTY_RANGE_SUBSET );
+    //// Try to read the tile size
+    //if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
+    //    _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
+    //else
+    //    _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
+
+    //_srs = conf.value( PROPERTY_SRS );
+    //_range_subset = conf.value( PROPERTY_RANGE_SUBSET );
 
     //TODO: Read GetCapabilities and determine everything from that..
 
@@ -73,10 +76,12 @@ _tile_size(16)
     //cov_format = "GEOTIFFINT16";
     //osg_format = "tif";
 
-    if ( _cov_format.empty() )
-        _cov_format = "image/GeoTIFF";
+    _covFormat = _settings->format().value();
+    
+    if ( _covFormat.empty() )
+        _covFormat = "image/GeoTIFF";
 
-    _osg_format = "tif";
+    _osgFormat = "tif";
 }
 
 
@@ -189,18 +194,18 @@ WCS11Source::createRequest( const TileKey* key ) const
     double lon_min, lat_min, lon_max, lat_max;
     key->getGeoExtent().getBounds( lon_min, lat_min, lon_max, lat_max );
 
-    int lon_samples = _tile_size;
-    int lat_samples = _tile_size;
+    int lon_samples = _settings->tileSize().value();
+    int lat_samples = _settings->tileSize().value();
     double lon_interval = (lon_max-lon_min)/(double)(lon_samples-1);
     double lat_interval = (lat_max-lat_min)/(double)(lat_samples-1);
 
-    HTTPRequest req( _url );
+    HTTPRequest req( _settings->url().value() );
 
     req.addParameter( "SERVICE",    "WCS" );
     req.addParameter( "VERSION",    "1.1.0" );
     req.addParameter( "REQUEST",    "GetCoverage" );
-    req.addParameter( "IDENTIFIER", _identifier );
-    req.addParameter( "FORMAT",     _cov_format );
+    req.addParameter( "IDENTIFIER", _settings->identifier().value() );
+    req.addParameter( "FORMAT",     _covFormat );
 
     req.addParameter( "GridBaseCRS", "urn:ogc:def:crs:EPSG::4326" );
     req.addParameter( "GridCS",      "urn:ogc:def:crs:EPSG::4326" );
@@ -250,10 +255,8 @@ WCS11Source::createRequest( const TileKey* key ) const
 	bufStr = buf.str();
     req.addParameter( "GridOffsets", bufStr );
 
-    if (!_range_subset.empty())
-    {
-        req.addParameter( "RangeSubset", _range_subset );
-    }
+    if ( !_settings->rangeSubset()->empty() )
+        req.addParameter( "RangeSubset", _settings->rangeSubset().value() );
 
     return req;
 }

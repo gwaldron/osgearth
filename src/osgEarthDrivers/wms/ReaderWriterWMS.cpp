@@ -32,24 +32,26 @@
 
 #include "Capabilities"
 #include "TileService"
+#include "WMSOptions"
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
-#define PROPERTY_URL              "url"
-#define PROPERTY_CAPABILITIES_URL "capabilities_url"
-#define PROPERTY_TILESERVICE_URL  "tileservice_url"
-#define PROPERTY_LAYERS           "layers"
-#define PROPERTY_STYLE            "style"
-#define PROPERTY_FORMAT           "format"
-#define PROPERTY_WMS_FORMAT       "wms_format"
-#define PROPERTY_WMS_VERSION      "wms_version"
-#define PROPERTY_TILE_SIZE        "tile_size"
-#define PROPERTY_ELEVATION_UNIT   "elevation_unit"
-#define PROPERTY_SRS              "srs"
-#define PROPERTY_TRANSPARENT      "transparent"
-#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
-#define PROPERTY_TIME             "time"
-#define PROPERTY_TIMES            "times"
+//#define PROPERTY_URL              "url"
+//#define PROPERTY_CAPABILITIES_URL "capabilities_url"
+//#define PROPERTY_TILESERVICE_URL  "tileservice_url"
+//#define PROPERTY_LAYERS           "layers"
+//#define PROPERTY_STYLE            "style"
+//#define PROPERTY_FORMAT           "format"
+//#define PROPERTY_WMS_FORMAT       "wms_format"
+//#define PROPERTY_WMS_VERSION      "wms_version"
+//#define PROPERTY_TILE_SIZE        "tile_size"
+//#define PROPERTY_ELEVATION_UNIT   "elevation_unit"
+//#define PROPERTY_SRS              "srs"
+//#define PROPERTY_TRANSPARENT      "transparent"
+//#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
+//#define PROPERTY_TIME             "time"
+//#define PROPERTY_TIMES            "times"
 
 static std::string&
 replaceIn( std::string& s, const std::string& sub, const std::string& other)
@@ -69,44 +71,49 @@ replaceIn( std::string& s, const std::string& sub, const std::string& other)
 class WMSSource : public TileSource
 {
 public:
-	WMSSource( const PluginOptions* options ):
-    TileSource( options ),
-    _tile_size(256),
-    _wms_version( "1.1.1" )
+	WMSSource( const PluginOptions* options ) : TileSource( options )
     {
-        const Config& conf = options->config();
+        _settings = dynamic_cast<const WMSOptions*>( options );
+        if ( !_settings.valid() )
+            _settings = new WMSOptions( options );
 
-        _prefix = conf.value( PROPERTY_URL );
-        _layers = conf.value( PROPERTY_LAYERS );
-        _style  = conf.value( PROPERTY_STYLE );
-        _format = conf.value( PROPERTY_FORMAT );
-        _transparent = conf.value( PROPERTY_TRANSPARENT );
+        //const Config& conf = options->config();
 
-        _wms_format = conf.value( PROPERTY_WMS_FORMAT );
-        
-        if ( conf.hasValue( PROPERTY_WMS_VERSION ) )
+        //_prefix = conf.value( PROPERTY_URL );
+        //_layers = conf.value( PROPERTY_LAYERS );
+        //_style  = conf.value( PROPERTY_STYLE );
+        //_format = conf.value( PROPERTY_FORMAT );
+        //_transparent = conf.value( PROPERTY_TRANSPARENT );
+
+        //_wms_format = conf.value( PROPERTY_WMS_FORMAT );
+        //
+        //if ( conf.hasValue( PROPERTY_WMS_VERSION ) )
+        //{
+        //    _wms_version = conf.value( PROPERTY_WMS_VERSION );
+        //}
+
+        //_capabilitiesURL = conf.value( PROPERTY_CAPABILITIES_URL );
+        //_tileServiceURL = conf.value( PROPERTY_TILESERVICE_URL );
+        //_elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
+        //_srs = conf.value( PROPERTY_SRS );
+
+        ////Try to read the tile size
+        //if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
+        //    _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
+        //else
+        //    _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
+
+        //if ( _elevation_unit.empty())
+        //    _elevation_unit = "m";
+
+        if ( _settings->times().isSet() )
         {
-            _wms_version = conf.value( PROPERTY_WMS_VERSION );
+            osgEarth::split( _settings->times().value(), ",", _timesVec, false );
         }
 
-        _capabilitiesURL = conf.value( PROPERTY_CAPABILITIES_URL );
-        _tileServiceURL = conf.value( PROPERTY_TILESERVICE_URL );
-        _elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
-        _srs = conf.value( PROPERTY_SRS );
-
-        //Try to read the tile size
-        if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
-            _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
-        else
-            _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
-
-        if ( _elevation_unit.empty())
-            _elevation_unit = "m";
-
-        if ( conf.hasValue( PROPERTY_TIMES ) )
-        {
-            osgEarth::split( conf.value( PROPERTY_TIMES ), ",", _times, false );
-        }
+        // localize it since we might override them:
+        _formatToUse = _settings->format().value();
+        _srsToUse = _settings->srs().value();
     }
 
     /** override */
@@ -114,13 +121,21 @@ public:
     {
         osg::ref_ptr<const Profile> result;
 
-        char sep = _prefix.find_first_of('?') == std::string::npos? '?' : '&';
+        char sep = _settings->url()->find_first_of('?') == std::string::npos? '?' : '&';
 
-        if ( _capabilitiesURL.empty() )
-            _capabilitiesURL = _prefix + sep + std::string("SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities");
+        std::string capUrl = _settings->capabilitiesUrl().value();
+        if ( capUrl.empty() )
+        {
+            capUrl = 
+                _settings->url().value() + 
+                sep + 
+                "SERVICE=WMS" +
+                "&VERSION=" + _settings->wmsVersion().value() +
+                "&REQUEST=GetCapabilities";
+        }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read(_capabilitiesURL, getOptions());
+        osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read( capUrl, getOptions() );
         if ( !capabilities.valid() )
         {
             osg::notify(osg::WARN) << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
@@ -128,39 +143,49 @@ public:
         }
         else
         {
-            osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << _capabilitiesURL << std::endl;
+            osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << capUrl << std::endl;
         }
 
-        if (_format.empty() && capabilities.valid())
+        if ( _formatToUse.empty() && capabilities.valid() )
         {
-            _format = capabilities->suggestExtension();
-            osg::notify(osg::NOTICE) << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _format << std::endl;
+            _formatToUse = capabilities->suggestExtension();
+            osg::notify(osg::NOTICE) << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _formatToUse << std::endl;
         }
 
-        if ( _format.empty() )
-            _format = "png";
+        if ( _formatToUse.empty() )
+            _formatToUse = "png";
        
-        if ( _srs.empty() )
-            _srs = "EPSG:4326";
+        if ( _srsToUse.empty() )
+            _srsToUse = "EPSG:4326";
+
+        std::string wmsFormatToUse = _settings->wmsFormat().value();
 
         //Initialize the WMS request prototype
         std::stringstream buf;
+
+        // first the mandatory keys:
         buf
-            << std::fixed << _prefix << sep
-            << "SERVICE=WMS&VERSION=" << _wms_version << "&REQUEST=GetMap"
-            << "&TRANSPARENT=" << _transparent
-            << "&LAYERS=" << _layers
-            << "&FORMAT=" << (_wms_format.empty()? std::string("image/") + _format : _wms_format)
-            << "&STYLES=" << _style
-            << "&SRS=" << _srs
-            << "&WIDTH="<< _tile_size
-            << "&HEIGHT="<< _tile_size
+            << std::fixed << _settings->url().value() << sep
+            << "SERVICE=WMS"
+            << "&VERSION=" << _settings->wmsVersion().value()
+            << "&REQUEST=GetMap"
+            << "&LAYERS=" << _settings->layers().value()
+            << "&FORMAT=" << ( wmsFormatToUse.empty() ? std::string("image/") + _formatToUse : wmsFormatToUse )
+            << "&STYLES=" << _settings->style().value()
+            << "&SRS=" << _srsToUse
+            << "&WIDTH="<< _settings->tileSize().value()
+            << "&HEIGHT="<< _settings->tileSize().value()
             << "&BBOX=%lf,%lf,%lf,%lf";
+
+        // then the optional keys:
+        if ( _settings->transparent().isSet() )
+            buf << "&TRANSPARENT=" << (_settings->transparent() == true ? "TRUE" : "FALSE");
+            
 
 		_prototype = "";
         _prototype = buf.str();
 
-        osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create( _srs );
+        osg::ref_ptr<SpatialReference> wms_srs = SpatialReference::create( _srsToUse );
 
         // check for spherical mercator:
         if ( wms_srs.valid() && wms_srs->isEquivalentTo( osgEarth::Registry::instance()->getGlobalMercatorProfile()->getSRS() ) )
@@ -177,12 +202,11 @@ public:
         {
             //TODO: "layers" mights be a comma-separated list. need to loop through and
             //combine the extents?? yes
-            Layer* layer = capabilities->getLayerByName( _layers );
+            Layer* layer = capabilities->getLayerByName( _settings->layers().value() );
             if ( layer )
             {
                 double minx, miny, maxx, maxy;
                 layer->getExtents(minx, miny, maxx, maxy);
-
 
                 //Check to see if the profile is equivalent to global-geodetic
                 if (wms_srs->isGeographic())
@@ -202,7 +226,7 @@ public:
 
                 if (!result.valid())
                 {
-                    result = Profile::create( _srs, minx, miny, maxx, maxy );
+                    result = Profile::create( _srsToUse, minx, miny, maxx, maxy );
                 }
             }
         }
@@ -216,21 +240,31 @@ public:
 
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
-        if (_tileServiceURL.empty())
-            _tileServiceURL = _prefix + sep + std::string("request=GetTileService");
+        std::string tsUrl = _settings->tileServiceUrl().value();
+        if (tsUrl.empty() )
+        {
+            tsUrl = _settings->url().value() + sep + std::string("request=GetTileService");
+        }
 
-        osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << _tileServiceURL << std::endl;
-        _tileService = TileServiceReader::read(_tileServiceURL, getOptions());
+        osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl << std::endl;
+        _tileService = TileServiceReader::read(tsUrl, getOptions());
         if (_tileService.valid())
         {
             osg::notify(osg::INFO) << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
-            _tileService->getMatchingPatterns(_layers, _format, _style, _srs, _tile_size, _tile_size, patterns);
+            _tileService->getMatchingPatterns(
+                _settings->layers().value(),
+                _formatToUse,
+                _settings->style().value(),
+                _srsToUse,
+                _settings->tileSize().value(),
+                _settings->tileSize().value(),
+                patterns );
 
             if (patterns.size() > 0)
             {
                 result = _tileService->createProfile( patterns );
-				_prototype = _prefix + sep + patterns[0].getPrototype();
+				_prototype = _settings->url().value() + sep + patterns[0].getPrototype();
             }
         }
         else
@@ -239,7 +273,7 @@ public:
         }
 
         //TODO: won't need this for OSG 2.9+, b/c of mime-type support
-        _prototype = _prototype + std::string("&.") + _format;
+        _prototype = _prototype + std::string("&.") + _formatToUse;
 
         // populate the data metadata:
         // TODO
@@ -262,6 +296,8 @@ public:
             std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
             uri = uri + delim + extraAttrs;
         }
+
+        //osg::notify(osg::NOTICE) << "[osgEarth] WMS: URL = " << uri << std::endl;
 
         out_response = HTTPClient::get( uri, getOptions(), progress );
 
@@ -306,15 +342,15 @@ public:
     {
         osg::ref_ptr<osg::Image> image;
 
-        if ( _times.size() > 1 )
+        if ( _timesVec.size() > 1 )
         {
             image = createImage3D( key, progress );
         }
         else
         {
             std::string extras;
-            if ( _times.size() == 1 )
-                extras = "TIME=" + _times[0];
+            if ( _timesVec.size() == 1 )
+                extras = "TIME=" + _timesVec[0];
 
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extras, progress, response );
@@ -338,9 +374,9 @@ public:
     {
         osg::ref_ptr<osg::Image> image;
 
-        for( int r=0; r<_times.size(); ++r )
+        for( int r=0; r<_timesVec.size(); ++r )
         {
-            std::string extraAttrs = "TIME=" + _times[r];
+            std::string extraAttrs = "TIME=" + _timesVec[r];
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
             if ( reader )
@@ -357,7 +393,7 @@ public:
                     {
                         image = new osg::Image();
                         image->allocateImage(
-                            timeImage->s(), timeImage->t(), _times.size(),
+                            timeImage->s(), timeImage->t(), _timesVec.size(),
                             timeImage->getPixelFormat(),
                             timeImage->getDataType(),
                             timeImage->getPacking() );
@@ -388,7 +424,7 @@ public:
         float scaleFactor = 1;
 
         //Scale the heightfield to meters
-        if (_elevation_unit == "ft")
+        if ( _settings->elevationUnit() == "ft")
         {
             scaleFactor = 0.3048;
         }
@@ -417,38 +453,42 @@ public:
 
     virtual int getPixelsPerTile() const
     {
-        return _tile_size;
+        return _settings->tileSize().value();
     }
 
     virtual std::string getExtension()  const 
     {
-        return _format;
+        return _formatToUse;
     }
 
 private:
-    std::string _prefix;
-    std::string _layers;
-    std::string _style;
-    std::string _format;
-    std::string _wms_format;
-    std::string _wms_version;
-    std::string _srs;
-    std::string _tileServiceURL;
-    std::string _capabilitiesURL;
-	int _tile_size;
-    std::string _elevation_unit;
+    osg::ref_ptr<const WMSOptions> _settings;
+    std::string _formatToUse;
+    std::string _srsToUse;
+    //std::string _prefix;
+ //   std::string _layers;
+ //   std::string _style;
+ //   std::string _format;
+ //   std::string _wms_format;
+ //   std::string _wms_version;
+ //   std::string _srs;
+ //   std::string _tileServiceURL;
+ //   std::string _capabilitiesURL;
+	//int _tile_size;
+ //   std::string _elevation_unit;
+    //std::string _transparent;
+    //std::vector<std::string> _times;
     osg::ref_ptr<TileService> _tileService;
     osg::ref_ptr<const Profile> _profile;
     std::string _prototype;
-    std::string _transparent;
-    std::vector<std::string> _times;
+    std::vector<std::string> _timesVec;
 };
 
 
-class ReaderWriterWMS : public osgDB::ReaderWriter
+class WMSSourceFactory : public osgDB::ReaderWriter
 {
     public:
-        ReaderWriterWMS() {}
+        WMSSourceFactory() {}
 
         virtual const char* className()
         {
@@ -472,4 +512,5 @@ class ReaderWriterWMS : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(osgearth_wms, ReaderWriterWMS)
+REGISTER_OSGPLUGIN(osgearth_wms, WMSSourceFactory)
+

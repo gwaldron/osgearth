@@ -67,8 +67,8 @@ _bounds( Bounds() )
             conf.value<double>( "ymax", 0 ) );
     }
 
-    conf.getOptional<int>( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
-    conf.getOptional<int>( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+    conf.getIfSet<int>( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+    conf.getIfSet<int>( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
 }
 
 Config

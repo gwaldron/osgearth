@@ -40,36 +40,14 @@ using namespace osgEarth::Features;
 #define PROP_SPATIALIZE_GROUPS "spatialize_groups"
 #define PROP_CLUSTER_CULLING   "cluster_culling"
 
-GriddingPolicy::GriddingPolicy() :
-_cellSize( DBL_MAX ),
-_cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
-_spatializeGroups( true ),
-_clusterCulling( false )
-{
-    //nop
-}
-
 GriddingPolicy::GriddingPolicy( const Config& conf ) :
+Configurable(),
 _cellSize( DBL_MAX ),
 _cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
 _spatializeGroups( true ),
 _clusterCulling( false )
 {
-    // read the cell size
-    if ( conf.hasValue( PROP_CELL_SIZE ) )
-        _cellSize = conf.value<double>( PROP_CELL_SIZE, _cellSize.defaultValue() );
-
-    // read the culling technique
-    if ( conf.value(PROP_CULLING_TECHNIQUE) == "crop" )
-        _cullingTechnique = CULL_BY_CROPPING;
-    else if ( conf.value(PROP_CULLING_TECHNIQUE) == "centroid" )
-        _cullingTechnique = CULL_BY_CENTROID;
-
-    // spatial optimization
-    conf.getOptional<bool>( PROP_SPATIALIZE_GROUPS, _spatializeGroups );
-
-    // cluster culling
-    conf.getOptional<bool>( PROP_CLUSTER_CULLING, _clusterCulling );
+    fromConfig( conf );
 }
 
 Config
@@ -77,32 +55,52 @@ GriddingPolicy::toConfig() const
 {
     Config conf;
 
-    conf.addOptional( PROP_CELL_SIZE, _cellSize );
+    conf.updateIfSet( PROP_CELL_SIZE, _cellSize );
 
     if ( _cullingTechnique.isSet() ) {
         if ( _cullingTechnique == CULL_BY_CROPPING )
-            conf.add( PROP_CULLING_TECHNIQUE, "crop" );
+            conf.update( PROP_CULLING_TECHNIQUE, "crop" );
         else if ( _cullingTechnique == CULL_BY_CENTROID )
-            conf.add( PROP_CULLING_TECHNIQUE, "centroid" );
+            conf.update( PROP_CULLING_TECHNIQUE, "centroid" );
     }
 
-    conf.addOptional( PROP_SPATIALIZE_GROUPS, _spatializeGroups );
-    conf.addOptional( PROP_CLUSTER_CULLING, _clusterCulling );
+    conf.updateIfSet( PROP_SPATIALIZE_GROUPS, _spatializeGroups );
+    conf.updateIfSet( PROP_CLUSTER_CULLING, _clusterCulling );
 
     return conf;        
+}
+
+void
+GriddingPolicy::fromConfig( const Config& conf )
+{
+    conf.getIfSet( PROP_CELL_SIZE, _cellSize );
+
+    // read the culling technique
+    if ( conf.hasValue( PROP_CULLING_TECHNIQUE ) ) {
+        if ( conf.value( PROP_CULLING_TECHNIQUE ) == "crop" )
+            _cullingTechnique = CULL_BY_CROPPING;
+        else if ( conf.value( PROP_CULLING_TECHNIQUE ) == "centroid" )
+            _cullingTechnique = CULL_BY_CENTROID;
+    }
+
+    // spatial optimization
+    conf.getIfSet<bool>( PROP_SPATIALIZE_GROUPS, _spatializeGroups );
+
+    // cluster culling
+    conf.getIfSet<bool>( PROP_CLUSTER_CULLING, _clusterCulling );
 }
 
 /***************************************************************************/
 
 FeatureGridder::FeatureGridder(const Bounds& inputBounds,
-                               const GriddingPolicy& policy ) :
+                               const GriddingPolicy* policy ) :
 _inputBounds( inputBounds ),
-_policy( policy )
+_policy( policy ? new GriddingPolicy( *policy ) : new GriddingPolicy() )
 {
-    if ( _policy.cellSize().isSet() && _policy.cellSize().value() > 0.0 )
+    if ( _policy.valid() && _policy->cellSize().isSet() && _policy->cellSize().value() > 0.0 )
     {
-        _cellsX = (int)::ceil(_inputBounds.width() / _policy.cellSize().value() );
-        _cellsY = (int)::ceil(_inputBounds.height() / _policy.cellSize().value() );
+        _cellsX = (int)::ceil(_inputBounds.width() / _policy->cellSize().value() );
+        _cellsY = (int)::ceil(_inputBounds.height() / _policy->cellSize().value() );
     }
     else
     {
@@ -115,13 +113,13 @@ _policy( policy )
 
 #ifndef OSGEARTH_HAVE_GEOS
 
-    if ( policy.cullingTechnique().isSet() && policy.cullingTechnique() == GriddingPolicy::CULL_BY_CROPPING )
+    if ( _policy.valid() && _policy->cullingTechnique().isSet() && _policy->cullingTechnique() == GriddingPolicy::CULL_BY_CROPPING )
     {
         osg::notify(osg::WARN) 
             << "[osgEarth] Warning: Gridding policy 'cull by cropping' requires GEOS. Falling back on 'cull by centroid'." 
             << std::endl;
 
-        _policy.cullingTechnique() = GriddingPolicy::CULL_BY_CENTROID;
+        _policy->cullingTechnique() = GriddingPolicy::CULL_BY_CENTROID;
     }
 
 #endif // !OSGEARTH_HAVE_GEOS
@@ -146,10 +144,10 @@ FeatureGridder::getCellBounds( int i, Bounds& output ) const
         int x = i % _cellsX;
         int y = i / _cellsX;
 
-        double xmin = _inputBounds.xMin() + _policy.cellSize().value()  * (double)x;
-        double ymin = _inputBounds.yMin() + _policy.cellSize().value() * (double)y;
-        double xmax = osg::clampBelow( _inputBounds.xMin() + _policy.cellSize().value() * (double)(x+1), _inputBounds.xMax() );
-        double ymax = osg::clampBelow( _inputBounds.yMin() + _policy.cellSize().value() * (double)(y+1), _inputBounds.yMax() );
+        double xmin = _inputBounds.xMin() + _policy->cellSize().value()  * (double)x;
+        double ymin = _inputBounds.yMin() + _policy->cellSize().value() * (double)y;
+        double xmax = osg::clampBelow( _inputBounds.xMin() + _policy->cellSize().value() * (double)(x+1), _inputBounds.xMax() );
+        double ymax = osg::clampBelow( _inputBounds.yMin() + _policy->cellSize().value() * (double)(y+1), _inputBounds.yMax() );
 
         output = Bounds( xmin, ymin, xmax, ymax );
         return true;
@@ -166,7 +164,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
     Bounds b;
     if ( getCellBounds( i, b ) )
     {
-        if ( _policy.cullingTechnique() == GriddingPolicy::CULL_BY_CENTROID )
+        if ( _policy->cullingTechnique() == GriddingPolicy::CULL_BY_CENTROID )
         {
             for( FeatureList::iterator f_i = features.begin(); f_i != features.end();  )
             {

@@ -24,38 +24,72 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define ATTR_MIN_RANGE    "min_range"
-#define ATTR_MAX_RANGE    "max_range"
-#define ATTR_RENDER_ORDER "render_order"
+/****************************************************************/
 
-ModelSource::ModelSource( const PluginOptions* options ) :
-_options( options ),
-_minRange( 0.0f ),
-_maxRange( FLT_MAX ),
+ModelSourceOptions::ModelSourceOptions( const PluginOptions* po ) :
+DriverOptions( po ),
+_minRange(0),
+_maxRange(FLT_MAX),
 _renderOrder( 11 )
 {
-    this->setThreadSafeRefUnref( true );
-    if ( options )
-    {
-        const Config& conf = options->config();
-
-        _name = conf.value( "name" );
-
-        conf.getOptional<double>( ATTR_MIN_RANGE, _minRange );
-        conf.getOptional<double>( ATTR_MAX_RANGE, _maxRange );
-        conf.getOptional<int>   ( ATTR_RENDER_ORDER, _renderOrder );
-    }
+    config().getIfSet<float>( "min_range", _minRange );
+    config().getIfSet<float>( "max_range", _maxRange );
+    config().getIfSet<int>( "render_order", _renderOrder );
 }
 
-const PluginOptions* 
-ModelSource::getOptions() const
+Config
+ModelSourceOptions::toConfig() const
 {
-    return _options.get();
+    Config conf = DriverOptions::toConfig();
+    conf.updateIfSet( "min_range", _minRange );
+    conf.updateIfSet( "max_range", _maxRange );
+    conf.updateIfSet( "render_order", _renderOrder );
+    return conf;
+}
+
+/****************************************************************/
+
+ModelSource::ModelSource( const PluginOptions* options )
+{
+    this->setThreadSafeRefUnref( true );
+
+    _options = dynamic_cast<const ModelSourceOptions*>( options );
+    if ( !_options.valid() )
+        _options = new ModelSourceOptions( options );
+}
+
+/****************************************************************/
+
+ModelSource*
+ModelSourceFactory::create( const DriverOptions* driverOptions )
+{
+    ModelSource* modelSource = 0L;
+    if ( driverOptions )
+    {
+        std::string driverExt = std::string(".osgearth_model_") + driverOptions->driver();
+
+        modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, driverOptions ) );
+        if ( modelSource )
+        {
+            modelSource->setName( driverOptions->name() );
+        }
+        else
+        {
+            osg::notify(osg::NOTICE)
+                << "[osgEarth] WARNING: Failed to load model source driver for " << driverExt << std::endl;
+        }
+    }
+    else
+    {
+        osg::notify(osg::NOTICE)
+            << "[osgEarth] ERROR: null driver options to ModelSourceFactory" << std::endl;
+    }
+
+    return modelSource;
 }
 
 
-/****************************************************************************/
-
+// to be deprecated.
 ModelSource*
 ModelSourceFactory::create(const std::string& name,
                            const std::string& driver,

@@ -29,14 +29,15 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ElevationFadeCallback>
 
+#include <osgEarthDrivers/yahoo/YahooOptions>
+
 #include <iostream>
 
 using namespace osg;
 using namespace osgDB;
 using namespace osgEarth;
 using namespace osgEarthUtil;
-
-
+using namespace osgEarth::Drivers;
 
 
 int main(int argc, char** argv)
@@ -61,26 +62,16 @@ int main(int argc, char** argv)
 
       //Add the yahoo satellite layer
       {
-          osgEarth::Config driverProps;
-          driverProps.add( "dataset", "satellite" );
-
-          mapNode->getMap()->addMapLayer( new MapLayer(
-              "yahoo_satellite",
-              MapLayer::TYPE_IMAGE,
-              "yahoo",
-              driverProps ) );
+          YahooOptions* imagery = new YahooOptions();
+          imagery->dataset() = "satellite";
+          mapNode->getMap()->addMapLayer( new ImageMapLayer( "Satellite", imagery ) );
       }
 
       //Add the yahoo maps layer
       {
-          osgEarth::Config driverProps;
-          driverProps.add( "dataset", "roads" );
-
-          mapNode->getMap()->addMapLayer( new MapLayer(
-              "yahoo_roads",
-              MapLayer::TYPE_IMAGE,
-              "yahoo",
-              driverProps ) );
+          YahooOptions* roads = new YahooOptions();
+          roads->dataset() = "roads";
+          mapNode->getMap()->addMapLayer( new ImageMapLayer( "Roads", roads ) );
       }
 
       group->addChild(mapNode.get());

@@ -31,11 +31,10 @@
 #include <stdlib.h>
 #include <iomanip>
 
-using namespace osgEarth;
+#include "TileServiceOptions"
 
-#define PROPERTY_URL            "url"
-#define PROPERTY_DATASET        "dataset"
-#define PROPERTY_FORMAT         "format"
+using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 //http://www.worldwindcentral.com/wiki/TileService
 class TileServiceSource : public TileSource
@@ -43,14 +42,14 @@ class TileServiceSource : public TileSource
 public:
 	TileServiceSource( const PluginOptions* options ) : TileSource( options )
     {
-        const Config& conf = options->config();
-
-        _url = conf.value( PROPERTY_URL );
-        _format = conf.value( PROPERTY_FORMAT );
-        _dataset = conf.value( PROPERTY_DATASET );
-
-        if ( _format.empty() )
-           _format = "png";
+        _settings = dynamic_cast<const TileServiceOptions*>( options );
+        if ( !_settings.valid() )
+        {
+            _settings = new TileServiceOptions( options );
+        }
+        
+        _formatToUse =
+            _settings->format()->empty() ? "png" : _settings->format().value();
     }
 
 public:
@@ -96,38 +95,32 @@ public:
 
         std::stringstream buf;
         //http://s0.tileservice.worldwindcentral.com/getTile?interface=map&version=1&dataset=bmng.topo.bathy.200401&level=0&x=0&y=0
-        buf << _url << "interface=map&version=1"
-            << "&dataset=" << _dataset
+        buf << _settings->url().value() << "interface=map&version=1"
+            << "&dataset=" << _settings->dataset().value()
             << "&level=" << lod
             << "&x=" << x
             << "&y=" << y
-            << "&." << _format;//Add this to trick osg into using the correct loader.
+            << "&." << _formatToUse; //Add this to trick osg into using the correct loader.
         std::string bufStr;
 		bufStr = buf.str();
 		return bufStr;
     }
 
-    virtual int getPixelsPerTile() const
-    {
-        return 256;
-    }
-
     virtual std::string getExtension()  const 
     {
-        return _format;
+        return _formatToUse;
     }
 
 private:
-    std::string _url;
-    std::string _dataset;
-    std::string _format;
+    std::string _formatToUse;
+    osg::ref_ptr<const TileServiceOptions> _settings;
 };
 
 
-class ReaderWriterTileService : public osgDB::ReaderWriter
+class TileServiceSourceFactory : public osgDB::ReaderWriter
 {
     public:
-        ReaderWriterTileService() {}
+        TileServiceSourceFactory() {}
 
         virtual const char* className()
         {
@@ -151,4 +144,5 @@ class ReaderWriterTileService : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(osgearth_tileservice, ReaderWriterTileService)
+REGISTER_OSGPLUGIN(osgearth_tileservice, TileServiceSourceFactory)
+

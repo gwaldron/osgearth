@@ -86,6 +86,8 @@ namespace osgEarth
 
         void addSubElement(const std::string& tag, const std::string& text);
 
+        void addSubElement(const std::string& tag, const Properties& attrs, const std::string& text);
+
         Config toConfig() const;
 
     public: // XmlNode

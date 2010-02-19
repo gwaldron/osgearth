@@ -35,7 +35,13 @@ namespace osgEarth
         /**
          * Constructs a new model layer based on a configuration setup.
          */
+        // deprecated
         ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf );
+
+        /**
+         * Constructs a new model layer with a user-provided driver options.
+         */
+        ModelLayer( const std::string& name, const DriverOptions* options );
         
         /**
          * Constructs a new model layer with a user-provided model source.
@@ -77,12 +83,15 @@ namespace osgEarth
 
         void initialize( const std::string& referenceURI, const Map* map );
 
+        virtual Config toConfig() const;
+
     private:
         std::string _referenceURI;
         std::string _name;
         std::string _driver;
         Config _driverConf;
         osg::ref_ptr<ModelSource> _modelSource;
+        osg::ref_ptr<const DriverOptions> _driverOptions;
     };
 
     typedef std::list< osg::ref_ptr<ModelLayer> > ModelLayerList;

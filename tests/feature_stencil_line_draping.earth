@@ -28,13 +28,15 @@ stenciling technique.
              the width (in data source coordinated) of the draped lines.
              In this case the units are degrees. -->
              
-        <style type="text/css">
-            world {
-               stroke: #ffff00;
-               stroke-opacity: 0.5;
-               stroke-width: 0.1;
-            }            
-        </style>
+        <styles>
+            <style type="text/css">
+                world {
+                   stroke: #ffff00;
+                   stroke-opacity: 0.5;
+                   stroke-width: 0.1;
+                }            
+            </style>
+        </styles>
         
     </model>
   

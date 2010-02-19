@@ -440,10 +440,10 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
         }
 
         ModelSource* ms = layer->getModelSource();
-        if ( ms && ms->renderOrder().isSet() )
+        if ( ms && ms->getOptions()->renderOrder().isSet() )
         {
             node->getOrCreateStateSet()->setRenderBinDetails(
-                ms->renderOrder().value(), "RenderBin" );
+                ms->getOptions()->renderOrder().value(), "RenderBin" );
         }
     }
 }
@@ -565,7 +565,7 @@ MapNode::addImageLayer( MapLayer* layer )
                 bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
                 bool canUseMercatorLocator = geoImage->getSRS()->isMercator() && (isGeocentric || isGeographic);
 
-                if ( canUseMercatorLocator && _map->getUseMercatorLocator() )
+                if ( canUseMercatorLocator && layer->useMercatorFastPath() == true )
                 {
                     GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
                     geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);

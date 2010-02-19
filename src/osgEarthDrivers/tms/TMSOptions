@@ -22,9 +22,11 @@
 #include <osgEarth/Common>
 #include <osgEarth/DriverOptions>
 
+using namespace osgEarth;
+
 namespace osgEarth { namespace Drivers
 {
-    class TMSOptions : public osgEarth::TileSourceDriverOptions // NO EXPORT; header only
+    class TMSOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
         optional<std::string>& url() { return _url; }
@@ -33,36 +35,29 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& tmsType() { return _tmsType; }
         const optional<std::string>& tmsType() const { return _tmsType; }
 
-        optional<int>& tileSize() { return _tileSize; }
-        const optional<int>& tileSize() const { return _tileSize; }
-
         optional<std::string>& format() { return _format; }
         const optional<std::string>& format() const { return _format; }
 
     public:
-        TMSOptions() : TileSourceDriverOptions() { }
-
-        TMSOptions( const Config& conf ) : TileSourceDriverOptions(conf) {
-            _url = conf.value( "url" );
-            _tileSize = conf.value<int>( "tile_size", 256 );
-            _format = conf.value( "format" );
-            _tmsType = conf.value( "tms_type" );
+        TMSOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt )
+        {
+            driver() = "tms";
+            config().getIfSet( "url", _url );
+            config().getIfSet( "format", _format );
+            config().getIfSet( "tms_type", _tmsType );
         }
 
     protected:
-        Config createConfig() const {
-            Config conf = TileSourceDriverOptions::createConfig();
-            conf.attr("driver") = "tms";
-            conf.addIfSet("url", _url);
-            conf.addIfSet("tms_type", _tmsType);
-            conf.addIfSet("tile_size", _tileSize);
-            conf.addIfSet("format", _format);
+        Config toConfig() const {
+            Config conf = TileSourceOptions::toConfig();
+            conf.updateIfSet("url", _url);
+            conf.updateIfSet("tms_type", _tmsType);
+            conf.updateIfSet("format", _format);
             return conf;
         }
 
         optional<std::string> _url;
         optional<std::string> _tmsType;
-        optional<int>         _tileSize;
         optional<std::string> _format;
     };
 

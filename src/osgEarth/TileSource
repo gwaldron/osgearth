@@ -27,6 +27,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
 #include <osgEarth/Progress>
+#include <osgEarth/DriverOptions>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -48,6 +49,41 @@
 namespace osgEarth
 {   
     /**
+     * Configuration options for a tile source driver.
+     */
+    class OSGEARTH_EXPORT TileSourceOptions : public DriverOptions
+    {
+    public: //properties
+        
+        optional<int>& tileSize() { return _tileSize; }
+        const optional<int>& tileSize() const { return _tileSize; }
+
+        optional<float>& noDataValue() { return _noDataValue; }
+        const optional<float>& noDataValue() const { return _noDataValue; }
+
+        optional<float>& noDataMinValue() { return _noDataMinValue; }
+        const optional<float>& noDataMinValue() const { return _noDataMinValue; }
+
+        optional<float>& noDataMaxValue() { return _noDataMaxValue; }
+        const optional<float>& noDataMaxValue() const { return _noDataMaxValue; }
+
+        optional<Config>& profileConfig() { return _profileConf; }
+        const optional<Config>& profileConfig() const { return _profileConf; }
+
+    public:
+        TileSourceOptions( const PluginOptions* po =0L );
+        //TileSourceOptions( const Config& conf =Config());
+
+    protected:
+        virtual Config toConfig() const;
+
+        optional<int> _tileSize;
+        optional<float> _noDataValue, _noDataMinValue, _noDataMaxValue;
+        optional<Config> _profileConf;
+    };
+
+
+    /**
      * A TileSource is an object that can create image and/or heightfield tiles. Driver 
      * plugins are responsible for creating and returning a TileSource that the Map
      * will then use to create tiles for tile keys.
@@ -58,23 +94,21 @@ namespace osgEarth
         TileSource( const PluginOptions* options =NULL ); //const osgDB::ReaderWriter::Options* options =NULL );
 
         /**
-         * Gets the number of pixels per tile for this TileSource.  Defaults to 256
+         * Gets the number of pixels per tile for this TileSource.
          */
-        virtual int getPixelsPerTile() const { return 256; }
+        virtual int getPixelsPerTile() const;
 
 	    /**
     	 * Creates an image for the given TileKey
 		 */
 		virtual osg::Image* getImage( const TileKey* key,
-                                      ProgressCallback* progress = 0L
-                                    );
+                                      ProgressCallback* progress = 0L );
 
         /**
          * Creates a heightfield for the given TileKey
          */
         virtual osg::HeightField* getHeightField( const TileKey* key,
-                                                  ProgressCallback* progress = 0L
-                                                  );
+                                                  ProgressCallback* progress = 0L );
 
     public:
 
@@ -93,32 +127,35 @@ namespace osgEarth
 		/**
 		 * Gets the nodata elevation value
 		 */
-        virtual float getNoDataValue();
+        virtual float getNoDataValue() {
+            return _settings->noDataValue().value(); }
 
 		/**
 		 * Sets the nodata elevation value
 		 */
-        virtual void  setNoDataValue(float noDataValue);
+        //virtual void  setNoDataValue(float noDataValue);
 
 		/**
 		 * Gets the nodata min value
 		 */
-        virtual float getNoDataMinValue();
+        virtual float getNoDataMinValue() {
+            return _settings->noDataMinValue().value(); }
 
 		/**
 		 * Sets the nodata min value
 		 */
-        virtual void setNoDataMinValue(float noDataMinValue);
+        //virtual void setNoDataMinValue(float noDataMinValue);
 
 		/**
 		 * Gets the nodata max value
 		 */
-        virtual float getNoDataMaxValue();
+        virtual float getNoDataMaxValue() {
+            return _settings->noDataMaxValue().value(); }
 
 		/**
 		 * Sets the nodata max value
 		 */
-        virtual void  setNoDataMaxValue(float noDataMaxValue);     
+        //virtual void  setNoDataMaxValue(float noDataMaxValue);     
 
         /**
          * Gets the extent of available data accessible through this tile source.
@@ -171,10 +208,8 @@ namespace osgEarth
         virtual osg::HeightField* createHeightField( const TileKey* key, 
                                                      ProgressCallback* progress = 0);
 
-
-        virtual ~TileSource();
-
-        const PluginOptions* getOptions() const;
+        const TileSourceOptions* getOptions() const {
+            return _settings.get(); }
 
         // Called by a tile source implementation to set the data extent.
         void setDataExtent( const GeoExtent& extent );
@@ -189,18 +224,18 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<const PluginOptions> _options;
+        osg::ref_ptr<const TileSourceOptions> _settings;
 
         friend class Map;
         friend class MapEngine;
         friend class TileSourceFactory;
 
-        float _noDataValue;
-        float _noDataMinValue;
-        float _noDataMaxValue;
+        //float _noDataValue;
+        //float _noDataMinValue;
+        //float _noDataMaxValue;
 
-        GeoExtent    _data_extent;
-        unsigned int _max_data_level;
+        GeoExtent    _dataExtent;
+        unsigned int _maxDataLevel;
 
 		osg::ref_ptr<MemCache> _memCache;
     };

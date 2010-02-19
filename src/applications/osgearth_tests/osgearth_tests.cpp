@@ -27,12 +27,16 @@
 #include <osgEarth/MapLayer>
 #include <osgEarth/Registry>
 
+#include <osgEarthDrivers/gdal/GDALOptions>
+#include <osgEarthDrivers/arcgis/ArcGISOptions>
+#include <osgEarthDrivers/tms/TMSOptions>
 
 #include <iostream>
 
 using namespace osg;
 using namespace osgDB;
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 int main(int argc, char** argv)
 {
@@ -40,10 +44,9 @@ int main(int argc, char** argv)
 
   //One to one test.  Read a single 1 to 1 tile out of a MapLayer
   {
-	  //NOTE:  You must run this from the osgearth/tests directory for world.tif to be found at this path.
-      Config conf;
-      conf.add( "url", "../data/world.tif" );
-	  osg::ref_ptr<MapLayer> layer = new MapLayer("test_simple", MapLayer::TYPE_IMAGE, "gdal", conf );
+      GDALOptions* opt = new GDALOptions();
+      opt->url() = "../data/world.tif";
+      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_simple", opt );
 
 	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, layer->getProfile());
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
@@ -52,9 +55,9 @@ int main(int argc, char** argv)
 
   //Mosaic test.  Request a tile in the global geodetic profile from a layer with a geographic SRS but a different tiling scheme.
   {
-      Config conf;
-      conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer" );
-	  osg::ref_ptr<MapLayer> layer = new MapLayer("test_mosaic", MapLayer::TYPE_IMAGE, "arcgis", conf );
+      ArcGISOptions* opt = new ArcGISOptions();
+      opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
+      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mosaic", opt );
 
 	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
@@ -63,12 +66,13 @@ int main(int argc, char** argv)
 
   //Reprojection.  Request a UTM image from a global geodetic profile
   {
-      Config conf;
-      conf.add( "url", "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer" );
-	  osg::ref_ptr<MapLayer> layer = new MapLayer("test_reprojected_utm", MapLayer::TYPE_IMAGE, "arcgis", conf );
+      ArcGISOptions* opt = new ArcGISOptions();
+      opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
+      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_reprojected_utm", opt );
+
 	  //Tell the layer that if reprojection is necessary, the reprojected image should be the given tile size.
 	  //Otherwise, the optimal tile size will be computed.
-	  layer->setReprojectedTileSize( 512);
+	  layer->setReprojectedTileSize( 512 );
 
       osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, Profile::create("epsg:26917", 560725, 4385762, 573866, 4400705));
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
@@ -77,15 +81,15 @@ int main(int argc, char** argv)
 
   //Mercator.  Test Mercator fast path.
   {
-      Config conf;
-      conf.add( "url", "http://tile.openstreetmap.org/" );
-      conf.add( "format", "png" );
-      conf.add( "tile_size", "256" );
-      conf.add( "tms_type", "google" );
+      TMSOptions* opt = new TMSOptions();
+      opt->url() = "http://tile.openstreetmap.org";
+      opt->format() = "png";
+      opt->tileSize() = 256;
+      opt->tmsType() = "google";
+      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mercator", opt );
 
-	  osg::ref_ptr<MapLayer> layer = new MapLayer("test_mercator", MapLayer::TYPE_IMAGE, "tms", conf );
 	  layer->profileConfig() = ProfileConfig( "global-mercator" );
-	  layer->setUseMercatorFastPath( true );
+      layer->useMercatorFastPath() = true;
 
 	  //Request a mercator image using the mercator fast path, the default
 	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
@@ -99,14 +103,14 @@ int main(int argc, char** argv)
 
     //Mercator.  Request a geodetic reprojected image from a mercator source
   {
-      Config conf;
-      conf.add( "url", "http://tile.openstreetmap.org/" );
-      conf.add( "format", "png" );
-      conf.add( "tile_size", "256" );
-      conf.add( "tms_type", "google" );
+      TMSOptions* opt = new TMSOptions();
+      opt->url() = "http://tile.openstreetmap.org";
+      opt->format() = "png";
+      opt->tileSize() = 256;
+      opt->tmsType() = "google";
+      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mercator_reprojected", opt );
 
-	  osg::ref_ptr<MapLayer> layer = new MapLayer("test_mercator_reprojected", MapLayer::TYPE_IMAGE, "tms", conf );
-	  layer->setUseMercatorFastPath( false );
+	  layer->useMercatorFastPath() = false;
 	  layer->setReprojectedTileSize( 256 );
 	  layer->setExactCropping( true );
 	  layer->profileConfig() = ProfileConfig( "global-mercator" );
@@ -123,3 +127,4 @@ int main(int argc, char** argv)
 
   return 0;
 }
+

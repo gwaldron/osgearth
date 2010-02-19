@@ -36,6 +36,8 @@
 #include <gdalwarper.h>
 #include <ogr_spatialref.h>
 
+#include "GDALOptions"
+
 // From easyrgb.com
 float Hue_2_RGB( float v1, float v2, float vH )
 {
@@ -71,12 +73,13 @@ float Hue_2_RGB( float v1, float v2, float vH )
 
 using namespace std;
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
-#define PROPERTY_URL            "url"
-#define PROPERTY_TILE_SIZE      "tile_size"
-#define PROPERTY_EXTENTSIONS    "extensions"
-#define PROPERTY_INTERPOLATION  "interpolation"
-#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
+//#define PROPERTY_URL            "url"
+//#define PROPERTY_TILE_SIZE      "tile_size"
+//#define PROPERTY_EXTENTSIONS    "extensions"
+//#define PROPERTY_INTERPOLATION  "interpolation"
+//#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
 
 //static OpenThreads::ReentrantMutex s_mutex;
 
@@ -627,37 +630,40 @@ class GDALTileSource : public TileSource
 public:
     GDALTileSource(const PluginOptions* options) :
       TileSource( options ),
-      _tile_size(256),
       _srcDS(NULL),
       _warpedDS(NULL),
       _maxDataLevel(30)
     {
-        std::string interpOption;
+        _settings = dynamic_cast<const GDALOptions*>( options );
+        if ( !_settings )
+            _settings = new GDALOptions( options );
 
-        if ( options )
-        {
-            const Config& conf = options->config();
+        //std::string interpOption;
 
-            _url = conf.value( PROPERTY_URL );
-            _extensions = conf.value( PROPERTY_EXTENTSIONS );
+        //if ( options )
+        //{
+        //    const Config& conf = options->config();
 
-            if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
-                _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, 256 );
-            else
-                _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, 256 );
+        //    _url = conf.value( PROPERTY_URL );
+        //    _extensions = conf.value( PROPERTY_EXTENTSIONS );
 
-            interpOption = conf.value( PROPERTY_INTERPOLATION );
-        }
+        //    if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
+        //        _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, 256 );
+        //    else
+        //        _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, 256 );
 
-        if (interpOption.empty())
-        {
-            interpOption = "average";
-        }
+        //    interpOption = conf.value( PROPERTY_INTERPOLATION );
+        //}
 
-        if (interpOption == "nearest") _interpolation = NEAREST;
-        else if (interpOption == "average") _interpolation = AVERAGE;
-        else if (interpOption == "bilinear") _interpolation = BILINEAR;
-        else _interpolation = AVERAGE;
+        //if (interpOption.empty())
+        //{
+        //    interpOption = "average";
+        //}
+
+        //if (interpOption == "nearest") _interpolation = NEAREST;
+        //else if (interpOption == "average") _interpolation = AVERAGE;
+        //else if (interpOption == "bilinear") _interpolation = BILINEAR;
+        //else _interpolation = AVERAGE;
     }
 
 
@@ -679,13 +685,13 @@ public:
     {   
         GDAL_SCOPED_LOCK;
 
-        if (_url.empty())
+        if ( !_settings->url().isSet() || _settings->url()->empty() )
         {
             osg::notify(osg::WARN) << "[osgEarth::GDAL] No URL or directory specified " << std::endl;
             return;
         }
 
-        std::string path = _url;
+        std::string path = _settings->url().value();
 
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
@@ -702,7 +708,7 @@ public:
 
 
         std::vector<std::string> exts;
-        tokenize(_extensions, exts, ";");
+        tokenize( _settings->extensions().value(), exts, ";");
         for (unsigned int i = 0; i < exts.size(); ++i)
         {
             osg::notify(osg::INFO) << "[osgEarth::GDAL] Using Extension: " << exts[i] << std::endl;
@@ -869,7 +875,7 @@ public:
                 //_warpedDS->GetProjectionRef(),
                 _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
 
-            osg::notify(osg::INFO) << "[osgEarth::GDAL] " << _url << " is projected, SRS = " 
+            osg::notify(osg::INFO) << "[osgEarth::GDAL] " << path << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
                 //<< _warpedDS->GetProjectionRef() << std::endl;
         }
@@ -888,8 +894,8 @@ public:
             _maxDataLevel = i;
             double w, h;
             profile->getTileDimensions(i, w, h);
-            double resX = (w / (double)_tile_size);
-            double resY = (h / (double)_tile_size);
+            double resX = (w / (double)_settings->tileSize().value() );
+            double resY = (h / (double)_settings->tileSize().value() );
             
             if (resX < maxResolution || resY < maxResolution)
             {
@@ -947,6 +953,7 @@ public:
 
         GDAL_SCOPED_LOCK;
 
+        int tileSize = _settings->tileSize().value();
 
         osg::ref_ptr<osg::Image> image;
         if (intersects(key))
@@ -955,8 +962,8 @@ public:
             double xmin, ymin, xmax, ymax;
             key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
-            int target_width = _tile_size;
-            int target_height = _tile_size;
+            int target_width = tileSize;
+            int target_height = tileSize;
             int tile_offset_left = 0;
             int tile_offset_top = 0;
 
@@ -1042,7 +1049,7 @@ public:
                 }
 
                 image = new osg::Image;
-                image->allocateImage(_tile_size, _tile_size, 1, pixelFormat, GL_UNSIGNED_BYTE);
+                image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
                 for (int src_row = 0, dst_row = tile_offset_top;
@@ -1083,7 +1090,7 @@ public:
                 }
 
                 image = new osg::Image;
-                image->allocateImage(_tile_size, _tile_size, 1, pixelFormat, GL_UNSIGNED_BYTE);
+                image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
                 for (int src_row = 0, dst_row = tile_offset_top;
@@ -1114,7 +1121,7 @@ public:
 				bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
 
 				image = new osg::Image;
-				image->allocateImage(_tile_size, _tile_size, 1, pixelFormat, GL_UNSIGNED_BYTE);
+				image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
 				memset(image->data(), 0, image->getImageSizeInBytes());
 
 				for (int src_row = 0, dst_row = tile_offset_top;
@@ -1210,11 +1217,15 @@ public:
 
 				image->flipVertical();
 
-				delete []palette;
+				delete [] palette;
 			}
             else
             {
-                osg::notify(osg::NOTICE) << "Could not find red, green and blue bands or gray bands in " << _url << ".  Cannot create image. " << std::endl;
+                osg::notify(osg::NOTICE) 
+                    << "[osgEarth] GDAL: Could not find red, green and blue bands or gray bands in "
+                    << _settings->url().value()
+                    << ".  Cannot create image. " << std::endl;
+
                 return NULL;
             }
         }
@@ -1306,7 +1317,7 @@ public:
         if (c < 0 || r < 0 || c > _warpedDS->GetRasterXSize()-1 || r > _warpedDS->GetRasterYSize()-1)
             return NO_DATA_VALUE;
 
-        if (_interpolation == NEAREST)
+        if ( _settings->interpolation() == INTERP_NEAREST )
         {
             band->RasterIO(GF_Read, (int)c, (int)r, 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
         }
@@ -1338,7 +1349,7 @@ public:
                 return NO_DATA_VALUE;
             }
 
-            if (_interpolation == AVERAGE)
+            if ( _settings->interpolation() == INTERP_AVERAGE )
             {
                 double x_rem = c - (int)c;
                 double y_rem = r - (int)r;
@@ -1350,7 +1361,7 @@ public:
 
                 result = (float)(w00 + w01 + w10 + w11);
             }
-            else if (_interpolation == BILINEAR)
+            else if ( _settings->interpolation() == INTERP_BILINEAR )
             {
                 //Check for exact value
                 if ((colMax == colMin) && (rowMax == rowMin))
@@ -1398,9 +1409,11 @@ public:
 
         GDAL_SCOPED_LOCK;
 
+        int tileSize = _settings->tileSize().value();
+
         //Allocate the heightfield
         osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
-        hf->allocate(_tile_size, _tile_size);
+        hf->allocate(tileSize, tileSize);
 
         if (intersects(key))
         {
@@ -1411,13 +1424,13 @@ public:
             //Just read from the first band
             GDALRasterBand* band = _warpedDS->GetRasterBand(1);
 
-            double dx = (xmax - xmin) / (_tile_size-1);
-            double dy = (ymax - ymin) / (_tile_size-1);
+            double dx = (xmax - xmin) / (tileSize-1);
+            double dy = (ymax - ymin) / (tileSize-1);
 
-            for (int c = 0; c < _tile_size; ++c)
+            for (int c = 0; c < tileSize; ++c)
             {
                 double geoX = xmin + (dx * (double)c);
-                for (int r = 0; r < _tile_size; ++r)
+                for (int r = 0; r < tileSize; ++r)
                 {
                     double geoY = ymin + (dy * (double)r);
                     float h = getInterpolatedValue(band, geoX, geoY);
@@ -1434,7 +1447,7 @@ public:
 
     virtual int getPixelsPerTile() const
     {
-        return _tile_size;
+        return _settings->tileSize().value();
     }
 
     bool intersects(const TileKey* key)
@@ -1456,10 +1469,12 @@ private:
     osg::Vec2d _extentsMin;
     osg::Vec2d _extentsMax;
 
-    std::string     _url;
-    int             _tile_size;
-    std::string     _extensions;
-    ElevationInterpolation   _interpolation;
+    //std::string     _url;
+    //int             _tile_size;
+    //std::string     _extensions;
+    //ElevationInterpolation   _interpolation;
+
+    osg::ref_ptr<const GDALOptions> _settings;
 
     unsigned int _maxDataLevel;
 };

@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_FEATURE_OVERLAY_MODEL_OPTIONS
+#define OSGEARTH_DRIVER_FEATURE_OVERLAY_MODEL_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarthFeatures/FeatureModelSource>
+
+using namespace osgEarth;
+using namespace osgEarth::Features;
+
+namespace osgEarth { namespace Drivers
+{
+    class FeatureOverlayModelOptions : public FeatureModelSourceOptions // NO EXPORT; header only
+    {
+    public: // properties
+
+        optional<int>& textureUnit() { return _textureUnit; }
+        const optional<int>& textureUnit() const { return _textureUnit; }
+
+        optional<int>& textureSize() { return _textureSize; }
+        const optional<int>& textureSize() const { return _textureSize; }
+
+        optional<double>& baseHeight() { return _baseHeight; }
+        const optional<double>& baseHeight() const { return _baseHeight; }
+
+        optional<osgSim::OverlayNode::OverlayTechnique>& overlayTechnique() { return _tech; }
+        const optional<osgSim::OverlayNode::OverlayTechnique>& overlayTechnique() const { return _tech; }
+
+    public:
+        FeatureOverlayModelOptions( const PluginOptions* opt =0L ) : FeatureModelSourceOptions( opt ),
+        _textureUnit( 0 ),
+        _textureSize( 1024 ),
+        _baseHeight( 0.0 ),
+        _tech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
+        {
+            driver() = "model_feature_overlay";
+            config().getIfSet( "texture_unit", _textureUnit );
+            config().getIfSet( "texture_size", _textureSize );
+            config().getIfSet( "base_height",  _baseHeight );
+
+            std::string t = config().value( "overlay_technique" );
+            if ( t == "object_dependent_with_orthographic_overlay" )
+                _tech = osgSim::OverlayNode::OBJECT_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
+            else if ( t == "view_dependent_with_orthographic_overlay" )
+                _tech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
+            else if ( t == "view_dependent_with_perspective_overlay" )
+                _tech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
+        }
+
+    protected:
+        Config toConfig() const {
+            Config conf = ModelSourceOptions::toConfig();
+            conf.updateIfSet( "texture_unit", _textureUnit );
+            conf.updateIfSet( "texture_size", _textureSize );
+            conf.updateIfSet( "base_height",  _baseHeight );
+
+            if ( _tech.isSet() ) {
+                if ( _tech == osgSim::OverlayNode::OBJECT_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY )
+                    conf.update( "overlay_technique", "object_dependent_with_orthographic_overlay" );
+                else if ( _tech == osgSim::OverlayNode::VIEW_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY )
+                    conf.update( "overlay_technique", "view_dependent_with_orthographic_overlay" );
+                else if ( _tech == osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
+                    conf.update( "overlay_technique", "view_dependent_with_perspective_overlay" );
+            }
+                
+            return conf;
+        }
+
+        optional<int> _textureUnit, _textureSize;
+        optional<double> _baseHeight;
+        optional<osgSim::OverlayNode::OverlayTechnique> _tech;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_FEATURE_OVERLAY_MODEL_OPTIONS
+

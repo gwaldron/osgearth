@@ -31,7 +31,7 @@ namespace osgEarth { namespace Features
     /**
      * Defines how to grid and crop feature data when creating a model.
      */
-    class OSGEARTHFEATURES_EXPORT GriddingPolicy
+    class OSGEARTHFEATURES_EXPORT GriddingPolicy : public Configurable
     {
     public:
         enum CullingTechnique
@@ -45,10 +45,12 @@ namespace osgEarth { namespace Features
             CULL_BY_CENTROID
         };
 
-    public:
-        GriddingPolicy();
-        GriddingPolicy( const Config& conf );
-        Config toConfig() const;
+    public: 
+        GriddingPolicy( const Config& conf =Config() );
+
+    public: // Configurable
+        virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
 
     public: // properties
 
@@ -86,7 +88,7 @@ namespace osgEarth { namespace Features
         static bool isSupported();
 
     public:
-        FeatureGridder( const Bounds& bounds, const GriddingPolicy& policy ); //double cellWidth, double cellHeight );
+        FeatureGridder( const Bounds& bounds, const GriddingPolicy* policy ); //double cellWidth, double cellHeight );
 
         int getNumCells() const;
 
@@ -99,7 +101,8 @@ namespace osgEarth { namespace Features
 
     protected:
         Bounds _inputBounds;
-        GriddingPolicy _policy;
+        osg::ref_ptr<GriddingPolicy> _policy;
+        //GriddingPolicy _policy;
         //double _cellWidth, _cellHeight;
         int _cellsX, _cellsY;
         std::list<void*> _geosGeoms;

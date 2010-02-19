@@ -23,6 +23,7 @@
 #include <osgEarth/Export>
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
+#include <osgEarth/DriverOptions>
 
 namespace osgEarth
 {
@@ -33,9 +34,9 @@ namespace osgEarth
     class TileSourceFactory
     {   
 	public:
-		/**
-		 * Create a TileSource with the given driver and properties
-		 */
+        TileSource* create( const DriverOptions* driverOptions );
+
+        // deprecated.
 		TileSource* create(
             const std::string& driver,
             const Config&     driverConf,
@@ -44,3 +45,5 @@ namespace osgEarth
 }
 
 #endif // OSGEARTH_TILE_SOURCE_FACTORY
+
+

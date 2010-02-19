@@ -16,7 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "OSGTileSource"
+#include "OSGOptions"
+
 #include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
@@ -27,9 +28,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
-
-#define PROPERTY_URL "url"
-#define PROPERTY_LUMINANCE_TO_RGBA "luminance_to_rgba"
 
 static
 osg::Image* makeRGBA(osg::Image* image)
@@ -55,99 +53,96 @@ osg::Image* makeRGBA(osg::Image* image)
     return result;
 }
 
-/**
- * A TileSource that uses one of the stock OSG plugins to load an image file.
- */
-OSGTileSource::OSGTileSource( const PluginOptions* options ) :
-TileSource( options ), 
-_tileSize( 256 ),
-_convertLuminanceToRGBA( false ),
-_maxDataLevel( 21 )
+class OSGTileSource : public TileSource
 {
-    //nop
-}
-
-void
-OSGTileSource::initialize( const std::string& referenceURI, const Profile* overrideProfile)
-{
-    setProfile( overrideProfile );
-
-    if ( getOptions() && !getOptions()->config().empty() )
+public:
+    OSGTileSource::OSGTileSource( const PluginOptions* options ) :
+      TileSource( options ),
+      _maxDataLevel( 21 )
     {
-        const Config& conf = getOptions()->config();
-
-        _url = conf.value( PROPERTY_URL );
-
-        if ( conf.value( PROPERTY_LUMINANCE_TO_RGBA ) == "true" )
-            _convertLuminanceToRGBA = true;
+        _settings = dynamic_cast<const OSGOptions*>( options );
+        if ( !_settings.valid() )
+            _settings = new OSGOptions( options );
     }
 
-    if ( !_url.empty() )
+    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        if ( osgEarth::isRelativePath( _url ) )
-            _url = osgDB::concatPaths( osgDB::getFilePath(referenceURI), _url );
+        setProfile( overrideProfile );
 
-        HTTPClient::readImageFile( _url, _image, getOptions() );
-    }
-
-    if ( !_image.valid() )
-        osg::notify(osg::WARN) << "[osgEarth::OSG driver] Cannot load data from [" << _url << "]" << std::endl;
-
-    // calculate and store the maximum LOD for which to return data
-    if ( _image.valid() )
-    {
-        int minSpan = osg::minimum( _image->s(), _image->t() );
-        _maxDataLevel = LOG2((minSpan/_tileSize)+1);
-        osg::notify(osg::NOTICE) << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << _tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
-
-        if ( _convertLuminanceToRGBA && _image->getPixelFormat() == GL_LUMINANCE )
+        _url = _settings->url().value();
+        if ( !_url.empty() )
         {
-            _image = makeRGBA( _image.get() );
+            if ( osgEarth::isRelativePath( _url ) ) 
+                _url = osgDB::concatPaths( osgDB::getFilePath(referenceURI), _url );
+
+            HTTPClient::readImageFile( _url, _image, getOptions() );
+        }
+
+        if ( !_image.valid() )
+            osg::notify(osg::WARN) << "[osgEarth::OSG driver] Cannot load data from [" << _url << "]" << std::endl;
+
+        // calculate and store the maximum LOD for which to return data
+        if ( _image.valid() )
+        {
+            int minSpan = osg::minimum( _image->s(), _image->t() );
+            int tileSize = _settings->tileSize().value();
+            _maxDataLevel = LOG2((minSpan/tileSize)+1);
+            //osg::notify(osg::NOTICE) << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
+
+            if ( _settings->convertLuminanceToRGBA() == true && _image->getPixelFormat() == GL_LUMINANCE )
+            {
+                _image = makeRGBA( _image.get() );
+            }
         }
     }
-}
     
-unsigned int
-OSGTileSource::getMaxDataLevel() const 
-{
-    return _maxDataLevel;
-}
+    //override
+    unsigned int getMaxDataLevel() const 
+    {
+        return _maxDataLevel;
+    }
 
-osg::Image*
-OSGTileSource::createImage( const TileKey* key, ProgressCallback* progress )
-{
-    if ( !_image.valid() || !getProfile() || key->getLevelOfDetail() > getMaxDataLevel() )
-        return NULL;
+    osg::Image*
+    OSGTileSource::createImage( const TileKey* key, ProgressCallback* progress )
+    {
+        if ( !_image.valid() || !getProfile() || key->getLevelOfDetail() > getMaxDataLevel() )
+            return NULL;
 
-    const GeoExtent& imageEx = getProfile()->getExtent();
-    const GeoExtent& keyEx = key->getGeoExtent();
+        const GeoExtent& imageEx = getProfile()->getExtent();
+        const GeoExtent& keyEx = key->getGeoExtent();
 
-    double x0r = (keyEx.xMin()-imageEx.xMin())/imageEx.width();
-    double x1r = (keyEx.xMax()-imageEx.xMin())/imageEx.width();
-    double y0r = (keyEx.yMin()-imageEx.yMin())/imageEx.height();
-    double y1r = (keyEx.yMax()-imageEx.yMin())/imageEx.height();
+        double x0r = (keyEx.xMin()-imageEx.xMin())/imageEx.width();
+        double x1r = (keyEx.xMax()-imageEx.xMin())/imageEx.width();
+        double y0r = (keyEx.yMin()-imageEx.yMin())/imageEx.height();
+        double y1r = (keyEx.yMax()-imageEx.yMin())/imageEx.height();
 
-    // first crop out the image part we want:
-    int crop_x = (int)( x0r*(float)_image->s() );
-    int crop_y = (int)( y0r*(float)_image->t() );
-    int crop_s = (int)( (x1r-x0r)*(float)_image->s() );
-    int crop_t = (int)( (y1r-y0r)*(float)_image->t() );
+        // first crop out the image part we want:
+        int crop_x = (int)( x0r*(float)_image->s() );
+        int crop_y = (int)( y0r*(float)_image->t() );
+        int crop_s = (int)( (x1r-x0r)*(float)_image->s() );
+        int crop_t = (int)( (y1r-y0r)*(float)_image->t() );
 
-    osg::Image* newImage = new osg::Image();
-    newImage->setAllocationMode( osg::Image::USE_NEW_DELETE );
-    newImage->allocateImage( crop_s, crop_t, 1, _image->getPixelFormat(), _image->getDataType(), _image->getPacking() );
-    for( int row=crop_y; row<crop_y+crop_t; row++ )
-        memcpy( newImage->data(0, row-crop_y), _image->data(crop_x, row), crop_s * _image->getPixelSizeInBits() / 8 );
+        osg::Image* newImage = new osg::Image();
+        newImage->setAllocationMode( osg::Image::USE_NEW_DELETE );
+        newImage->allocateImage( crop_s, crop_t, 1, _image->getPixelFormat(), _image->getDataType(), _image->getPacking() );
+        for( int row=crop_y; row<crop_y+crop_t; row++ )
+            memcpy( newImage->data(0, row-crop_y), _image->data(crop_x, row), crop_s * _image->getPixelSizeInBits() / 8 );
 
-    return newImage;
-}
+        return newImage;
+    }
 
-std::string
-OSGTileSource::getExtension() const 
-{
-    return osgDB::getFileExtension( _url );
-}
+    std::string
+    OSGTileSource::getExtension() const 
+    {
+        return osgDB::getFileExtension( _url );
+    }
 
+private:
+    std::string _url;
+    int _maxDataLevel;
+    osg::ref_ptr<osg::Image> _image;
+    osg::ref_ptr<const OSGOptions> _settings;
+};
 
 
 /**
@@ -175,7 +170,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new osgEarth::Drivers::OSGTileSource(
+        return new OSGTileSource(
             static_cast<const PluginOptions*>(options) );
     }
 };

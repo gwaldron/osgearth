@@ -28,12 +28,14 @@ Zoom in to see the US interstates.
         
         <extrusion_distance>200000</extrusion_distance>
     
-        <style type="text/css">
-            interstates {
-                fill: #ffffff;
-                fill-opacity: 0.4;
-            }            
-        </style>
+        <styles>
+            <style type="text/css">
+                default {
+                    fill: #ffffff;
+                    fill-opacity: 0.4;
+                }            
+            </style>
+        </styles>
         
     </model>
     
@@ -50,14 +52,16 @@ Zoom in to see the US interstates.
         
         <extrusion_distance>20000</extrusion_distance>
     
-        <style type="text/css">
-            interstates {
-                stroke: #ffff00;
-                stroke-opacity: 0.6;
-                stroke-width: 0.009;
-                stroke-linecap: butt;
-            }            
-        </style>
+        <styles>
+            <style type="text/css">
+                default {
+                    stroke: #ffff00;
+                    stroke-opacity: 0.6;
+                    stroke-width: 0.009;
+                    stroke-linecap: butt;
+                }            
+            </style>
+        </styles>
         
     </model>
   

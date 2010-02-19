@@ -29,24 +29,22 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
+#include "TileCacheOptions"
+
 #include <sstream>
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
-#define PROPERTY_URL        "url"
-#define PROPERTY_LAYER      "layer"
-#define PROPERTY_FORMAT     "format"
 
 class TileCacheSource : public TileSource
 {
 public:
     TileCacheSource( const PluginOptions* options ) : TileSource( options )
     {
-        const Config& conf = options->config();
-
-        _url = conf.value( PROPERTY_URL );
-        _layer = conf.value( PROPERTY_LAYER );
-        _format = conf.value( PROPERTY_FORMAT );
+        _settings = dynamic_cast<const TileCacheOptions*>( options );
+        if ( !_settings.valid() )
+            _settings = new TileCacheOptions();
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
@@ -80,8 +78,8 @@ public:
 
         char buf[2048];
         sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
-            _url.c_str(),
-            _layer.c_str(),
+            _settings->url()->c_str(),
+            _settings->layer()->c_str(),
             level,
             (tile_x / 1000000),
             (tile_x / 1000) % 1000,
@@ -89,7 +87,7 @@ public:
             (tile_y / 1000000),
             (tile_y / 1000) % 1000,
             (tile_y % 1000),
-            _format.c_str());
+            _settings->format()->c_str() );
 
        
         std::string path = buf;
@@ -121,21 +119,19 @@ public:
 
     virtual std::string getExtension()  const 
     {
-        return _format;
+        return _settings->format().value();
     }
 
 private:
-    std::string _url;
-    std::string _layer;
-    std::string _format;
     std::string _configPath;
+    osg::ref_ptr<const TileCacheOptions> _settings;
 };
 
 // Reads tiles from a TileCache disk cache.
-class ReaderWriterTileCache : public osgDB::ReaderWriter
+class TileCacheSourceFactory : public osgDB::ReaderWriter
 {
     public:
-        ReaderWriterTileCache() {}
+        TileCacheSourceFactory() {}
 
         virtual const char* className()
         {
@@ -159,4 +155,5 @@ class ReaderWriterTileCache : public osgDB::ReaderWriter
         }
 };
 
-REGISTER_OSGPLUGIN(osgearth_tilecache, ReaderWriterTileCache)
+REGISTER_OSGPLUGIN(osgearth_tilecache, TileCacheSourceFactory)
+

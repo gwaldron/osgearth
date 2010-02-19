@@ -29,6 +29,7 @@
 #include <osgEarthFeatures/Styling>
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
+#include <osgEarth/DriverOptions>
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/Mutex>
 #include <list>
@@ -70,14 +71,32 @@ namespace osgEarth { namespace Features
     {
     public:
         GeometryFeatureCursor( Geometry* geom );
-        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, FeatureFilterList& filters );
+        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterList& filters );
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
     protected:
         osg::ref_ptr<Geometry> _geom;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        FeatureFilterList _filters;
+        const FeatureFilterList _filters;
         osg::ref_ptr<Feature> _lastFeature;
+    };
+
+    /**
+     * Configuration options for creating a FeatureSource.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureSourceOptions : public DriverOptions
+    {
+    public: // properties
+
+        FeatureFilterList& filters() { return _filters; }
+        const FeatureFilterList& filters() const { return _filters; }
+
+    public:
+        FeatureSourceOptions( const PluginOptions* po =0L );
+        virtual Config toConfig() const;
+
+    protected:
+        FeatureFilterList _filters;
     };
 
     /**
@@ -102,7 +121,8 @@ namespace osgEarth { namespace Features
         /**
          * Gets the options that were passed into this object's CTOR.
          */
-        const PluginOptions* getOptions() const;
+        const FeatureSourceOptions* getFeatureSourceOptions() const {
+            return _options.get(); }
 
         /**
          * Creates a cursor that iterates over all the features corresponding to the
@@ -129,7 +149,7 @@ namespace osgEarth { namespace Features
          * Accesses the list of feature filters that will transform features
          * before they are returned in a feature cursor.
          */
-        FeatureFilterList& getFilters();
+        const FeatureFilterList& getFilters() const;
 
     public: 
 
@@ -158,12 +178,13 @@ namespace osgEarth { namespace Features
         /**
          * DTOR is protected to prevent this object from being allocated on the stack.
          */
-        virtual ~FeatureSource();
+        virtual ~FeatureSource() { }
 
     private:
+        osg::ref_ptr<const FeatureSourceOptions> _options;
+
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        osg::ref_ptr<const PluginOptions>  _options;
-        FeatureFilterList _filters;
+        //FeatureFilterList _filters;
         OpenThreads::Mutex _createMutex;
 
         friend class Map;
@@ -177,9 +198,9 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceFactory
     {
 	public:
-		/**
-		 * Creates a FeatureSource with the given driver and properties.
-		 */
+        static FeatureSource* create( const DriverOptions* options );
+
+    public: // deprecated
 		static FeatureSource* create(
             const std::string& name,
             const std::string& driver,

@@ -31,9 +31,9 @@ namespace osgEarth
 
     enum OSGEARTH_EXPORT ElevationInterpolation
     {
-        AVERAGE,
-        NEAREST,
-        BILINEAR
+        INTERP_AVERAGE,
+        INTERP_NEAREST,
+        INTERP_BILINEAR
     };
 
     class OSGEARTH_EXPORT HeightFieldUtils
@@ -42,14 +42,14 @@ namespace osgEarth
         static float getHeightAtPixel(
             const osg::HeightField* hf, 
             double c, double r, 
-            ElevationInterpolation interpoltion = BILINEAR);
+            ElevationInterpolation interpoltion = INTERP_BILINEAR);
         
         static float getHeightAtLocation(
             const osg::HeightField* hf, 
             double x, double y, 
             double llx, double lly,
             double dx, double dy,
-            ElevationInterpolation interpolation = BILINEAR);
+            ElevationInterpolation interpolation = INTERP_BILINEAR);
 
 
 

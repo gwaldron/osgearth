@@ -156,6 +156,8 @@ parseLineCap( const std::string& value, optional<Stroke::LineCapStyle>& cap )
 bool
 SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 {
+    sc.name() = conf.key(); //.value("name");
+
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
         if ( p->first == CSS_STROKE ) {

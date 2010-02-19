@@ -82,12 +82,7 @@ int main(int argc, char** argv)
         {
             osg::ref_ptr<TMSOptions> tms = new TMSOptions();
             tms->url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
-            map->addMapLayer( tms->createImageLayer( "NASA" ) );
-           
-            //osgEarth::Config conf;
-            //conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
-            //osgEarth::MapLayer* layer = new osgEarth::MapLayer( "NASA", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf );
-            //map->addMapLayer( layer );
+            map->addMapLayer( new ImageMapLayer( "NASA", tms.get() ) );
         }
 
         // Add a heightfield layer to the map. You can add any number of heightfields and
@@ -95,12 +90,7 @@ int main(int argc, char** argv)
         {
             osg::ref_ptr<TMSOptions> tms = new TMSOptions();
             tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
-            map->addMapLayer( tms->createHeightFieldLayer( "SRTM" ) );
-
-            //osgEarth::Config conf;
-            //conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
-            //osgEarth::MapLayer* layer = new osgEarth::MapLayer( "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf );
-            //map->addMapLayer( layer );
+            map->addMapLayer( new HeightFieldMapLayer( "SRTM", tms.get() ) );
         }
 
         // The MapNode will render the Map object in the scene graph.

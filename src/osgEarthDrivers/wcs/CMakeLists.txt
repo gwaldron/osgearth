@@ -17,10 +17,18 @@ SET(TARGET_SRC
 
 SET(TARGET_H
     WCS11Source.h
+    WCSOptions
 )
 
 SET(TARGET_LIBRARIES_VARS)
 
 
 SETUP_PLUGIN(osgearth_wcs)
+
+# to install public driver includes:
+SET(LIB_NAME wcs)
+SET(LIB_PUBLIC_HEADERS WCSOptions)
+INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+
+
 

@@ -6,6 +6,13 @@ SET(TARGET_SRC
 	agg.cpp)
 	
 SET(TARGET_H
-	agg.h)
+	agg.h
+	AGGLiteOptions
+)
 
 SETUP_PLUGIN(osgearth_agglite)
+
+# to install public driver includes:
+SET(LIB_NAME agglite)
+SET(LIB_PUBLIC_HEADERS AGGLiteOptions)
+INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

@@ -29,6 +29,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
+#include "AGGLiteOptions"
 #include "agg.h"
 
 #include <sstream>
@@ -37,6 +38,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
 /********************************************************************/
@@ -47,7 +49,9 @@ class AGGLiteRasterizerTileSource : public FeatureTileSource
 public:
     AGGLiteRasterizerTileSource( const PluginOptions* options ) : FeatureTileSource( options )
     {
-        const Config& conf = options->config();
+        _settings = dynamic_cast<const AGGLiteOptions*>( options );
+        if ( !_settings.valid() )
+            _settings = new AGGLiteOptions( options );
     }
 
     struct BuildData : public osg::Referenced {
@@ -230,6 +234,7 @@ public:
     }
 
 private:
+    osg::ref_ptr<const AGGLiteOptions> _settings;
     std::string _configPath;
 };
 

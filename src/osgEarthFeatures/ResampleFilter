@@ -45,21 +45,20 @@ namespace osgEarth { namespace Features
 
     public:
 
-        double minLength() const { return _minLen; }
-        double& minLength() { return _minLen; }
+        optional<double>& minLength() { return _minLen; }
+        const optional<double>& minLength() const { return _minLen; }
 
-        double maxLength() const { return _maxLen; }
-        double& maxLength() { return _maxLen; }
+        optional<double>& maxLength() { return _maxLen; }
+        const optional<double>& maxLength() const { return _maxLen; }
 
-        double perturbationThreshold() const { return _perturbThresh; }
-        double& perturbationThreshold() { return _perturbThresh; }
+        optional<double>& perturbationThreshold() { return _perturbThresh; }
+        const optional<double>& perturbationThreshold() const { return _perturbThresh; }
 
     public:
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
     protected:
-        double _minLen, _maxLen;
-        double _perturbThresh;
+        optional<double> _minLen, _maxLen, _perturbThresh;
 
         bool push( Feature* input, const FilterContext& context );
     };

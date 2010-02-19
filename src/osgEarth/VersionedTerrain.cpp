@@ -1623,14 +1623,14 @@ VersionedTerrain::updateTaskServiceThreads()
     float elevationWeight = 0.0f;
     for (MapLayerList::const_iterator itr = _map->getHeightFieldMapLayers().begin(); itr != _map->getHeightFieldMapLayers().end(); ++itr)
     {
-        float w = itr->get()->getLoadWeight();
+        float w = itr->get()->loadingWeight().value();
         if (w > elevationWeight) elevationWeight = w;
     }
 
     float totalImageWeight = 0.0f;
     for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
     {
-        totalImageWeight += itr->get()->getLoadWeight();
+        totalImageWeight += itr->get()->loadingWeight().value();
     }
 
     float totalWeight = elevationWeight + totalImageWeight;
@@ -1645,7 +1645,7 @@ VersionedTerrain::updateTaskServiceThreads()
 
     for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
     {
-        int imageThreads = (int)osg::round((float)_numAsyncThreads * (itr->get()->getLoadWeight() / totalWeight ));
+        int imageThreads = (int)osg::round((float)_numAsyncThreads * (itr->get()->loadingWeight().value() / totalWeight ));
         osg::notify(osg::NOTICE) << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
     }

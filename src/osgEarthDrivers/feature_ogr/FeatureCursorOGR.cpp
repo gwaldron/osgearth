@@ -32,7 +32,7 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
                                    OGRLayerH layerHandle,
                                    const FeatureProfile* profile,
                                    const Query& query,
-                                   FeatureFilterList& filters ) :
+                                   const FeatureFilterList& filters ) :
 _dsHandle( dsHandle ),
 _layerHandle( layerHandle ),
 _resultSetHandle( 0L ),
@@ -197,7 +197,7 @@ FeatureCursorOGR::readChunk()
         FilterContext cx;
         cx.profile() = _profile.get();
 
-        for( FeatureFilterList::iterator i = _filters.begin(); i != _filters.end(); ++i )
+        for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
         {
             FeatureFilter* filter = i->get();
             cx = filter->push( preProcessList, cx );

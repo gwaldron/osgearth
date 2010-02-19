@@ -19,56 +19,12 @@
 #include <osgEarthFeatures/Styling>
 #include <osgEarthFeatures/CssUtils>
 #include <osgEarthFeatures/SLD>
+#include <osgEarth/HTTPClient>
 #include <stack>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-
-//void
-//StyleVisitor::apply( class Stroke& obj ) { 
-//    //nop
-//}
-//
-//void
-//StyleVisitor::apply( class Fill& obj ) {
-//    //nop
-//}
-//
-//void
-//StyleVisitor::apply( class LineSymbolizer& obj ) {
-//    obj.stroke().accept( *this );
-//}
-//
-//void
-//StyleVisitor::apply( class PolygonSymbolizer& obj ) {
-//    obj.fill().accept( *this );
-//}
-//
-//void
-//StyleVisitor::apply( class TextSymbolizer& obj ) {
-//    obj.fill().accept( *this );
-//    obj.halo().accept( *this );
-//}
-//
-//void
-//StyleVisitor::apply( class Style& obj ) {
-//    //obj.query().accept( *this );
-//    obj.lineSymbolizer().accept( *this );
-//    obj.polygonSymbolizer().accept( *this );
-//}
-//
-//void
-//StyleVisitor::apply( class StyledLayer& obj ) {
-//    for(StyleList::iterator i = obj.styles().begin(); i != obj.styles().end(); i++ )
-//        i->accept( *this );
-//}
-//
-//void
-//StyleVisitor::apply( class StyleCatalog& obj ) {
-//    for(StyledLayers::iterator i = obj.namedLayers().begin(); i != obj.namedLayers().end(); i++ )
-//        i->accept( *this );
-//}
 
 /**************************************************************************/
 
@@ -114,39 +70,39 @@ _font( "fonts/arial.ttf" )
     //nop
 }
 
-StyledLayer::StyledLayer()
+/************************************************************************/
+
+Style::Style( const Config& conf ) : StyleComponent()
 {
-    //nop
+    fromConfig( conf );
 }
 
-StyleCatalog::StyleCatalog()
+void
+Style::fromConfig( const Config& conf )
 {
-    //nop
-}
+    _name = conf.value( "name" );
+    conf.getIfSet( "url", _url );
+    _origType = conf.value( "type" );
 
-bool 
-StyleCatalog::getNamedLayer( const std::string& name, StyledLayer& out_layer ) const
-{
-    for( StyledLayers::const_iterator i = _namedLayers.begin(); i != _namedLayers.end(); i++ )
+    if ( conf.value( "type" ) == "text/css" )
     {
-        if ( i->name() == name ) {
-            out_layer = *i;
-            return true;
-        }
+        _origData = conf.value();
     }
-    return false;
 }
 
-
-/**************************************************************************/
-
-Style::Style() :
-_query( Query() ),
-_lineSymbolizer( LineSymbolizer() ),
-_polygonSymbolizer( PolygonSymbolizer() ),
-_textSymbolizer( TextSymbolizer() )
+Config
+Style::toConfig() const
 {
-    //nop
+    Config conf( "style" );
+    conf.attr("name") = _name;
+    conf.addIfSet( "url", _url );
+    if ( _origType == "text/css" )
+    {
+        conf.attr("type") = _origType;
+        conf.value() = _origData;
+            
+    }
+    return conf;
 }
 
 osg::Vec4f
@@ -157,156 +113,140 @@ Style::getColor( const Geometry::Type& geomType ) const
         lineSymbolizer()->stroke()->color();
 }
 
-/**************************************************************************/
+/************************************************************************/
 
-// reads inline style information into a style class (if the names match)
-bool
-StyleReader::readStyleFromCSS( const Config& conf, Style& out_sc, bool matchesOnly )
+StyleSelector::StyleSelector( const Config& conf )
 {
-    std::string css = conf.value();
+    fromConfig( conf );
+}
 
-    if ( !conf.attr("href").empty() )
-    {
-        //TODO: load css from href url
-    }
-    std::stringstream buf( conf.value() );
-    Config root = CssUtils::readConfig( buf );
+std::string
+StyleSelector::getSelectedStyleName() const 
+{
+    return _styleName.isSet() ? *_styleName : _name;
+}
 
-    for(ConfigSet::const_iterator i = root.children().begin(); i != root.children().end(); i++ )
-    {
-        const Config& subConf = *i;
-        if ( subConf.name() == out_sc.name() || !matchesOnly )
-        {
-            SLDReader::readStyleFromCSSParams( subConf, out_sc );
-        }
-    }
-    
-    return true;    
+void
+StyleSelector::fromConfig( const Config& conf )
+{
+    _name = conf.value( "name" );
+    conf.getIfSet( "style", _styleName );
+    conf.getObjIfSet( "query", _query );
+}
+
+Config
+StyleSelector::toConfig() const
+{
+    Config conf( "selector" );
+    conf.add( "name", _name );
+    conf.addIfSet( "style", _styleName );
+    conf.addObjIfSet( "query", _query );
+    return conf;
+}
+
+
+/************************************************************************/
+
+StyleCatalog::StyleCatalog( const Config& conf ) :
+Configurable()
+{
+    fromConfig( conf );
+}
+
+void
+StyleCatalog::addStyle( const Style& style )
+{
+    _styles[ style.name() ] = style;
+}
+
+void
+StyleCatalog::removeStyle( const std::string& name )
+{
+    _styles.erase( name );
 }
 
 bool
-StyleReader::readStyleListFromCSS( const Config& conf, StyleList& out_classes, bool createIfNecessary )
+StyleCatalog::getStyle( const std::string& name, Style& output ) const
 {
-    std::string css = conf.value();
-
-    if ( !conf.attr("href").empty() )
-    {
-        //TODO: load css from href url
+    StyleMap::const_iterator i = _styles.find( name );
+    if ( i != _styles.end() ) {
+        output = i->second;
+        return true;
     }
-    std::stringstream buf( css );
-    Config root = CssUtils::readConfig( buf );
-
-    for(ConfigSet::const_iterator i = root.children().begin(); i != root.children().end(); i++ )
-    {
-        const Config& subConf = *i;
-        if ( !subConf.name().empty() )
-        {
-            bool found = false;
-            for( StyleList::iterator k = out_classes.begin(); k != out_classes.end(); k++ )
-            {
-                if ( k->name() == subConf.name() )
-                {
-                    SLDReader::readStyleFromCSSParams( subConf, *k );
-                    found = true;
-                    break;
-                }
-            }
-
-            if ( !found && createIfNecessary )
-            {
-                Style sc;
-                sc.name() == subConf.name();
-                SLDReader::readStyleFromCSSParams( subConf, sc );
-                out_classes.push_back( sc );
-            }
-        }
-    }
-    
-    return true;
-}
-
-//bool
-//StyleReader::readStyleFromSLD( const ConfigSet& confSet, Style& out_class, bool matchesOnly )
-//{
-//    return false;
-//}
-//
-//bool
-//StyleReader::readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary )
-//{
-//    return false;
-//}
-
-bool
-StyleReader::readStyle( const Config& conf, Style& out_class, bool matchesOnly )
-{
-    if ( conf.attr("type") == "text/css" )
-    {
-        return readStyleFromCSS( conf, out_class, matchesOnly );
-    }
-    //else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
-    //          conf.attr("type") == "application/vnd.ogc.sld" )
-    //{
-    //    return readStyleFromSLD( conf.children(), out_class, matchesOnly );
-    //}
     else
         return false;
 }
 
-bool
-StyleReader::readStyleList( const Config& conf, StyleList& out_styles )
+const Style&
+StyleCatalog::getDefaultStyle() const
 {
-    if ( conf.attr("type") == "text/css" )
-    {
-        return readStyleListFromCSS( conf, out_styles, true );
-    }
-    //else if ( conf.attr("type") == "application/vnd.ogc.sld+xml" ||
-    //          conf.attr("type") == "application/vnd.ogc.sld" )
-    //{
-    //    return readStyleListFromSLD( conf.children(), out_styles, true );
-    //}
+    if ( _styles.size() == 1 )
+        return _styles.begin()->second;
+    else if ( _styles.find( "default" ) != _styles.end() )
+        return _styles.find( "default" )->second;
+    else if ( _styles.find( "" ) != _styles.end() )
+        return _styles.find( "" )->second;
     else
-        return false;
+        return _emptyStyle;
 }
 
-bool 
-StyleReader::readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_cat )
+Config
+StyleCatalog::toConfig() const
 {
-    StyledLayer layer;
-    layer.name() = layerName;    
-
-    bool readAtLeastOne = false;
-
-    // first read any style class definitions:
-    ConfigSet classes = conf.children( "class" );
-    for( ConfigSet::iterator i = classes.begin(); i != classes.end(); ++i )
+    Config conf;
+    for( StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
     {
-        const Config& classConf = *i;
-        Style style;
+        conf.add( "selector", i->toConfig() );
+    }
+    for( StyleMap::const_iterator i = _styles.begin(); i != _styles.end(); ++i )
+    {
+        conf.add( "style", i->second.toConfig() );
+    }
+    return conf;
+}
 
-        style.name() = classConf.value( "name" );
-        style.query() = Query( classConf.child( "query" ) );
-        if ( classConf.hasChild( "style" ) )
-        {
-            readStyle( classConf.child("style"), style, false );
-            readAtLeastOne = true;
-        }
-
-        layer.styles().push_back( style );
+void
+StyleCatalog::fromConfig( const Config& conf )
+{
+    // first read any style class definitions. either "class" or "selector" is allowed
+    ConfigSet selectors = conf.children( "selector" );
+    if ( selectors.empty() ) selectors = conf.children( "class" );
+    for( ConfigSet::iterator i = selectors.begin(); i != selectors.end(); ++i )
+    {
+        _selectors.push_back( StyleSelector( *i ) );
     }
 
-    // next, read any style data:
     ConfigSet styles = conf.children( "style" );
     for( ConfigSet::iterator i = styles.begin(); i != styles.end(); ++i )
     {
         const Config& styleConf = *i;
-        readStyleList( styleConf, layer.styles() );  
-        readAtLeastOne = true;
+
+        if ( styleConf.value("type") == "text/css" )
+        {
+            // read the inline data:
+            std::string cssString = styleConf.value();
+
+            // if there's a URL, read the CSS from the URL:
+            if ( styleConf.hasValue("url") )
+                HTTPClient::readString( styleConf.value("url"), cssString );
+
+            // a CSS style definition can actually contain multiple styles. Read them
+            // and create one style for each in the catalog.
+            std::stringstream buf( cssString );
+            Config css = CssUtils::readConfig( buf );
+            //osg::notify(osg::NOTICE) << css.toString() << std::endl;
+            for(ConfigSet::const_iterator j = css.children().begin(); j != css.children().end(); ++j )
+            {
+                Style style( styleConf );
+                if ( SLDReader::readStyleFromCSSParams( *j, style ) )
+                    _styles[ j->key() ] = style;
+            }            
+        }
+        else
+        {
+            Style style( styleConf );
+            _styles[ style.name() ] = style;
+        }
     }
-
-    // finally, add the new style layer.
-    if ( readAtLeastOne )
-        out_cat.namedLayers().push_back( layer );
-
-    return true;
 }
+

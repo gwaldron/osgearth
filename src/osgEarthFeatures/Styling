@@ -31,22 +31,7 @@ namespace osgEarth { namespace Features
 {
     class OSGEARTHFEATURES_EXPORT StyleComponent
     {
-    //public:
-    //    virtual void accept( class StyleVisitor& visitor ) =0;
     };
-
-    //class OSGEARTHFEATURES_EXPORT StyleVisitor
-    //{
-    //public:
-    //    virtual void apply( class Stroke& obj );
-    //    virtual void apply( class Fill& obj );
-    //    virtual void apply( class LineSymbolizer& obj );
-    //    virtual void apply( class PolygonSymbolizer& obj );
-    //    virtual void apply( class TextSymbolizer& obj );
-    //    virtual void apply( class Style& obj );
-    //    virtual void apply( class StyledLayer& obj );
-    //    virtual void apply( class StyleCatalog& obj );
-    //};
 
     class OSGEARTHFEATURES_EXPORT Stroke : public StyleComponent
     {
@@ -77,12 +62,6 @@ namespace osgEarth { namespace Features
         optional<float>& width() { return _width; }        
         const optional<float>& width() const { return _width; }
 
-        //optional<float>& dashOffset() { return _dashOffset; }
-        //const optional<float>& dashOffset() const { return _dashOffset; }
-
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
-
     protected:
         osg::Vec4f              _color;
         optional<LineCapStyle>  _lineCap;
@@ -97,9 +76,6 @@ namespace osgEarth { namespace Features
 
         osg::Vec4f& color() { return _color; }
         const osg::Vec4f& color() const { return _color; }
-
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
 
     protected:
         osg::Vec4f _color;
@@ -119,8 +95,6 @@ namespace osgEarth { namespace Features
         optional<Stroke>& stroke() { return _stroke; }
         const optional<Stroke>& stroke() const { return _stroke; }
 
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
     protected:
         optional<Stroke> _stroke;
     };
@@ -132,10 +106,6 @@ namespace osgEarth { namespace Features
 
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }
-
-
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
 
     protected:
         optional<Fill> _fill;
@@ -158,9 +128,6 @@ namespace osgEarth { namespace Features
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
 
-
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
     protected:
         optional<Fill>        _fill;
         optional<Stroke>      _halo;
@@ -168,18 +135,26 @@ namespace osgEarth { namespace Features
         optional<float>       _size;
     };
 
+    /**
+     * A Style defines the appearance of geometry or text.
+     */
     class OSGEARTHFEATURES_EXPORT Style : public StyleComponent
     {
     public:
-        Style();
+        Style( const Config& conf =Config() );
 
         /** Name of this style. */
         std::string& name() { return _name; }
         const std::string& name() const { return _name; }
 
-        /** Expression/spatial filter used to select items to which the style will apply */
-        optional<Query>& query() { return _query; }
-        const optional<Query>& query() const { return _query; }
+        /** URL from which to read style data. This is mutually exlusive of storing
+            style information from within the object. */
+        optional<std::string>& url() { return _url; }
+        const optional<std::string>& url() const { return _url; }
+
+        ///** Expression/spatial filter used to select items to which the style will apply */
+        //optional<Query>& query() { return _query; }
+        //const optional<Query>& query() const { return _query; }
 
         /** Style information for line elements. */
         optional<LineSymbolizer>& lineSymbolizer() { return _lineSymbolizer; }
@@ -192,81 +167,146 @@ namespace osgEarth { namespace Features
         /** Style information for text elements. */
         optional<TextSymbolizer>& textSymbolizer() { return _textSymbolizer; }
         const optional<TextSymbolizer>& textSymbolizer() const { return _textSymbolizer; }
-
-
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
         
         /** Convenience method to easily grab wither the line- or poly- color based
             on the geometry type. */
         osg::Vec4f getColor( const Geometry::Type& geomType ) const;
 
+    public:
+        virtual Config toConfig() const;
+
     protected:
-        std::string       _name;
-        optional<Query>             _query;
+        void fromConfig( const Config& conf );
+        void fromCSS( const std::string& css );
+
+    protected:
+        std::string                 _name;
+        optional<std::string>       _url;
         optional<LineSymbolizer>    _lineSymbolizer;
         optional<PolygonSymbolizer> _polygonSymbolizer;
         optional<TextSymbolizer>    _textSymbolizer;
+
+    private:
+        std::string _origType;
+        std::string _origData;
     };
 
     typedef std::list< Style > StyleList;
+    typedef std::map< std::string, Style > StyleMap;
 
-    class OSGEARTHFEATURES_EXPORT StyledLayer : public StyleComponent
+
+    /**
+     * A style selector lets you classify styles based on rules, such as a
+     * feature query. By default the selector selects the style with the
+     * same name as the selector, but you can override this by settings
+     * the styleName property.
+     */
+    class OSGEARTHFEATURES_EXPORT StyleSelector : public StyleComponent
     {
     public:
-        StyledLayer();
+        StyleSelector( const Config& conf =Config() );
 
-        /** Name of this styled layer. */
+    public: // properties
+
+        /** Name of this style class. */
         std::string& name() { return _name; }
         const std::string& name() const { return _name; }
-        
-        /** Collection of styles in this layer. */
-        StyleList& styles() { return _styles; }
-        const StyleList& styles() const { return _styles; }
 
-        /** Whether this styled layer definition is "empty" (undefined) */
-        bool empty() const {
-            return _name.empty() || _styles.empty(); }
+        /** Name of the style to select */
+        optional<std::string>& styleName() { return _styleName; }
+        const optional<std::string>& styleName() const { return _styleName; }
 
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
+        /** Expression/spatial filter used to select items to which the style will apply */
+        optional<Query>& query() { return _query; }
+        const optional<Query>& query() const { return _query; }
+
+    public: // methods
+
+        /** Returns the styleName() property, it set; otherwise returns the selector name. */
+        std::string getSelectedStyleName() const;
+
+    public: //Configurable
+
+        virtual void fromConfig( const Config& conf );
+        virtual Config toConfig() const;
 
     protected:
         std::string _name;
-        StyleList _styles;
+        optional<std::string> _styleName;
+        optional<Query> _query;
     };
 
-    typedef std::list< StyledLayer > StyledLayers;
+    typedef std::list<StyleSelector> StyleSelectorList;
 
-    class OSGEARTHFEATURES_EXPORT StyleCatalog : public StyleComponent
+
+    //class OSGEARTHFEATURES_EXPORT StyledLayer : public StyleComponent
+    //{
+    //public:
+    //    StyledLayer();
+
+    //    /** Name of this styled layer. */
+    //    std::string& name() { return _name; }
+    //    const std::string& name() const { return _name; }
+    //    
+    //    /** Collection of styles in this layer. */
+    //    StyleList& styles() { return _styles; }
+    //    const StyleList& styles() const { return _styles; }
+
+    //    /** Whether this styled layer definition is "empty" (undefined) */
+    //    bool empty() const {
+    //        return _name.empty() || _styles.empty(); }
+
+    //protected:
+    //    std::string _name;
+    //    StyleList _styles;
+    //};
+
+    //typedef std::list< StyledLayer > StyledLayers;
+
+
+    class OSGEARTHFEATURES_EXPORT StyleCatalog : public Configurable
     {
     public:
-        StyleCatalog();
+        StyleCatalog( const Config& conf =Config() );
 
-        StyledLayers& namedLayers() { return _namedLayers; }
-        const StyledLayers& namedLayers() const { return _namedLayers; }
+    public: // properties
 
-        bool getNamedLayer( const std::string& name, StyledLayer& out_layer ) const;
+        StyleSelectorList& selectors() { return _selectors; }
+        const StyleSelectorList& selectors() const { return _selectors; }
 
-        //virtual void accept( class StyleVisitor& visitor ) {
-        //    visitor.apply( *this ); }
+        void addStyle( const Style& style );
+        void removeStyle( const std::string& name );
+        bool getStyle( const std::string& name, Style& out ) const;
+        const Style& getDefaultStyle() const;
+
+        //StyledLayers& namedLayers() { return _namedLayers; }
+        //const StyledLayers& namedLayers() const { return _namedLayers; }
+
+        //bool getNamedLayer( const std::string& name, StyledLayer& out_layer ) const;
+
+    public:
+        virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
 
     protected:
-        StyledLayers _namedLayers;
+        StyleSelectorList _selectors;
+        StyleMap _styles;
+        //StyledLayers _namedLayers;
+
+    private:
+        Style _emptyStyle;
     };
 
 
-    class OSGEARTHFEATURES_EXPORT StyleReader
-    {
-    public:
-        static bool readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_catalog );
-        static bool readStyle( const Config& conf, Style& out_style, bool matchesOnly =true );
-        static bool readStyleFromCSS( const Config& conf, Style& out_style, bool matchesOnly =true);
-        //static bool readStyleFromSLD( const ConfigSet& confSet, Style& out_style, bool matchesOnly =true);
-        static bool readStyleList( const Config& conf, StyleList& out_classes );
-        static bool readStyleListFromCSS( const Config& conf, StyleList& out_classes, bool createIfNecessary =false);
-        //static bool readStyleListFromSLD( const ConfigSet& confSet, StyleList& out_classes, bool createIfNecessary =false);
-    };
+    //class OSGEARTHFEATURES_EXPORT StyleReader
+    //{
+    //public:
+    //    static bool readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_catalog );
+    //    static bool readStyle( const Config& conf, Style& out_style, bool matchesOnly =true );
+    //    static bool readStyleFromCSS( const Config& conf, Style& out_style, bool matchesOnly =true);
+    //    static bool readStyleList( const Config& conf, StyleList& out_classes );
+    //    static bool readStyleListFromCSS( const Config& conf, StyleList& out_classes, bool createIfNecessary =false);
+    //};
 
 } } // namespace osgEarth::Features
 

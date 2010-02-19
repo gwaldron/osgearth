@@ -12,34 +12,42 @@ rasterizing it into image tiles.
     </image>
     
     <image name="states" driver="agglite">
+    
         <features name="states" driver="ogr">
             <url>../data/usa.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
             <build_spatial_index>true</build_spatial_index>
         </features>
         
-        <style type="text/css">
-            states {
-                fill: #ffffff;
-                fill-opacity: 0.5;
-            }            
-        </style>        
+        <styles>            
+            <style type="text/css">
+                default {
+                    fill: #ffffff;
+                    fill-opacity: 0.5;
+                }            
+            </style>              
+        </styles>
+        
     </image>
     
-    <image name="roads" driver="agglite" min_level="2">
+    <image name="roads" driver="agglite" min_level="3">
+    
         <features name="roads" driver="ogr">
             <url>../data/istates_dissolve.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
             <build_spatial_index>true</build_spatial_index>
         </features>
         
-        <style type="text/css">
-            roads {
-                stroke: #ff6666;
-                stroke-width: 1.5;
-                stroke-opacity: 1.0;
-            }            
-        </style>
+        <styles>
+            <style type="text/css">
+                default {
+                    stroke: #ff6666;
+                    stroke-width: 1.5;
+                    stroke-opacity: 1.0;
+                }            
+            </style>
+        </styles>
+        
     </image>
   
     <lighting>false</lighting>

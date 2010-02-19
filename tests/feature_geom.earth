@@ -26,12 +26,14 @@ OSG geometry out of it.
         <height_offset>10000</height_offset>
         
         <!-- Appearance details -->
-        <style type="text/css">
-            states {
-               stroke: #ffff00;
-               stroke-width: 1.0;
-            }            
-        </style>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffff00;
+                   stroke-width: 1.0;
+                }                    
+            </style>
+        </styles>
         
     </model>
     

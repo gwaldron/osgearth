@@ -207,7 +207,16 @@ namespace osgEarth
          * Whether to explicity enable or disable GL lighting on the map node.
          */
         optional<bool>& enableLighting() { return _enableLighting; }
-        const optional<bool>& enableLighting() const { return _enableLighting; }
+        const optional<bool>& enableLighting() const { return _enableLighting; }      
+
+		/**
+		 * Whether to use a customer Locator for spherical mercator data.
+		 * Disable this on systems that don't support NPOT textures or if you
+		 * see texture "smearing" with mercator globes.
+		 */
+        //NOTE: moved this to MapLayer
+        //optional<bool>& useMercatorLocator() { return _useMercatorLocator; }
+        //const optional<bool>& useMercatorLocator() const { return _useMercatorLocator; }
 
     private:
             
@@ -223,6 +232,7 @@ namespace osgEarth
         optional<LayeringTechnique> _layeringTechnique;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
+        //optional<bool> _useMercatorLocator;
     };
 }
 

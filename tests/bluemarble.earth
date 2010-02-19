@@ -1,5 +1,5 @@
 <!--
-osgEarth Sample - NASA BlueMarble Imagery from JPL WMS
+osgEarth Sample - NASA BlueMarble NG Imagery from JPL WMS
 -->
 
 <map name="nasa bluemarble imagery" type="globe">
@@ -13,4 +13,5 @@ osgEarth Sample - NASA BlueMarble Imagery from JPL WMS
     <profile>global-geodetic</profile>
   </image>
   
+  <lighting>false</lighting>
 </map>

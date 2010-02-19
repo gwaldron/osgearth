@@ -37,7 +37,7 @@ const Config&
 Config::child( const std::string& childName ) const
 {
     for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
-        if ( i->name() == childName )
+        if ( i->key() == childName )
             return *i;
     }
     return emptyConfig;
@@ -48,7 +48,7 @@ Config::toString( int indent ) const
 {
     std::stringstream buf;
     for( int i=0; i<indent; i++ ) buf << "  ";
-    buf << "{ " << (_name.empty()? "anonymous" : _name) << ": ";
+    buf << "{ " << (_key.empty()? "anonymous" : _key) << ": ";
     if ( !_defaultValue.empty() ) buf << _defaultValue;
     if ( !_attrs.empty() ) {
         buf << std::endl;

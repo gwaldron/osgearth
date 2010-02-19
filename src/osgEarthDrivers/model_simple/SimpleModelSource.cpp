@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include "SimpleModelOptions"
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
@@ -25,17 +26,16 @@
 #include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
-using namespace OpenThreads;
-
-#define PROP_URL "url"
+using namespace osgEarth::Drivers;
 
 class SimpleModelSource : public ModelSource
 {
 public:
     SimpleModelSource( const PluginOptions* options ) : ModelSource( options )
     {
-        const Config& conf = options->config();
-        _url = conf.value( PROP_URL );
+        _settings = dynamic_cast<const SimpleModelOptions*>( options );
+        if ( !_settings.valid() )
+            _settings = new SimpleModelOptions( options );
     }
 
     //override
@@ -43,7 +43,7 @@ public:
     {
         ModelSource::initialize( referenceURI, map );
 
-        _url = osgEarth::getFullPath( referenceURI, _url );
+        _url = osgEarth::getFullPath( referenceURI, _settings->url().value() );
     }
 
     // override
@@ -63,6 +63,7 @@ public:
 
 private:
     std::string _url;
+    osg::ref_ptr<const SimpleModelOptions> _settings;
 };
 
 

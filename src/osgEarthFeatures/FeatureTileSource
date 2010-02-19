@@ -33,6 +33,32 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Features
 {
+    class OSGEARTHFEATURES_EXPORT FeatureTileSourceOptions : public TileSourceOptions
+    {
+    public: //properties
+
+        osg::ref_ptr<const FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const osg::ref_ptr<const FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+
+        optional<StyleCatalog>& styles() { return _styles; }
+        const optional<StyleCatalog>& styles() const { return _styles; }
+
+        optional<Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
+        const optional<Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+
+    public:
+        FeatureTileSourceOptions( const PluginOptions* opt =0L );
+
+    protected:
+        virtual Config toConfig() const;
+
+    private:
+        osg::ref_ptr<const FeatureSourceOptions> _featureOptions;
+        optional<StyleCatalog> _styles;
+        optional<Geometry::Type> _geomTypeOverride;
+    };
+
+
     /**
      * A TileSource that renders Feature data from a FeatureSource. An implementation of
      * this base class will render image or heightfield tiles from feature data.
@@ -52,17 +78,11 @@ namespace osgEarth { namespace Features
 
         //override
         virtual osg::Image* createImage( const TileKey* key, ProgressCallback* progress );
-        
-        //override 
-        virtual int getPixelsPerTile() const { return _tileSize; }
 
     public: // properties:
 
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
-
-        /** Access to the forced geometry type */
-        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
     protected:
 
@@ -122,17 +142,16 @@ namespace osgEarth { namespace Features
         virtual ~FeatureTileSource() { }
 
     protected:
-
-        StyleCatalog _styleCatalog;
         osg::ref_ptr<FeatureSource> _features;
-        int _tileSize;
-        optional<Geometry::Type> _geomTypeOverride;
 
     private:
+        osg::ref_ptr<const FeatureTileSourceOptions> _options;
+
         osg::ref_ptr<const osgEarth::Map> _map;
         
         bool queryAndRenderFeaturesForStyle(
             const Style& style,
+            const Query& query,
             osg::Referenced* data,
             const GeoExtent& imageExtent,
             osg::Image* out_image );

@@ -27,7 +27,7 @@ float
 HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double r, ElevationInterpolation interpolation)
 {
     float result = 0.0;
-    if (interpolation == NEAREST)
+    if (interpolation == INTERP_NEAREST)
     {
         //Nearest interpolation
         result = hf->getHeight((unsigned int)c, (unsigned int)r);
@@ -56,7 +56,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
         //osg::notify(osg::INFO) << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
 
-        if (interpolation == BILINEAR)
+        if (interpolation == INTERP_BILINEAR)
         {
             //Check for exact value
             if ((colMax == colMin) && (rowMax == rowMin))
@@ -88,7 +88,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
                 result = ((double)rowMax - r) * r1 + (r - (double)rowMin) * r2;
             }
         }
-        else if (interpolation == AVERAGE)
+        else if (interpolation == INTERP_AVERAGE)
         {
             double x_rem = c - (int)c;
             double y_rem = r - (int)r;

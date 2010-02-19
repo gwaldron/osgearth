@@ -72,6 +72,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Compositing.cpp
     Config.cpp
     Cube.cpp
+    DriverOptions.cpp
     EarthFile.cpp
     EarthTerrainTechnique.cpp
     FileUtils.cpp

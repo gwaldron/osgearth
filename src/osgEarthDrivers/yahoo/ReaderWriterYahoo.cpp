@@ -26,23 +26,21 @@
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
-
 #include <sstream>
 
-using namespace osgEarth;
+#include "YahooOptions"
 
-#define PROPERTY_DATASET    "dataset"
+using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 class YahooSource : public TileSource
 {
 public:
     YahooSource( const PluginOptions* options ) : TileSource( options )
     {
-        _dataset = options->config().value( PROPERTY_DATASET );
-
-        // validate dataset
-        if ( _dataset.empty() )
-            _dataset = "roads"; // default to the map view
+        _settings = dynamic_cast<const YahooOptions*>( options );
+        if ( !_settings.valid() )
+            _settings = new YahooOptions( options );
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
@@ -58,8 +56,11 @@ public:
         if ( !key->isMercator() ) return 0;
 
         std::stringstream buf;
+
+        std::string dataset = 
+            _settings->dataset().isSet() ? _settings->dataset().value() : "roads";
         
-        if ( _dataset == "roads" || _dataset == "map" )
+        if ( dataset == "roads" || dataset == "map" )
         {            
             // http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl?v=4.1&md=2&x=0&y=0&z=2&r=1
             unsigned int tile_x, tile_y;
@@ -74,7 +75,7 @@ public:
                 << "&y=" << ((int)size_y-1-(int)tile_y) - (int)size_y/2
                 << "&z=" << zoom + 2;
         }
-        else if ( _dataset == "aerial" || _dataset == "satellite" )
+        else if ( dataset == "aerial" || dataset == "satellite" )
         {
             unsigned int tile_x, tile_y;
             key->getTileXY( tile_x, tile_y );
@@ -119,7 +120,7 @@ public:
     }
 
 private:
-    std::string _dataset;
+    osg::ref_ptr<const YahooOptions> _settings;
 };
 
 

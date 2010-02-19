@@ -1,0 +1,124 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_WMS_DRIVEROPTIONS
+#define OSGEARTH_DRIVER_WMS_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/DriverOptions>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers
+{
+    class WMSOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public:
+        optional<std::string>& url() { return _url; }
+        const optional<std::string>& url() const { return _url; }
+
+        optional<std::string>& capabilitiesUrl() { return _capabilitiesUrl; }
+        const optional<std::string>& capabilitiesUrl() const { return _capabilitiesUrl; }
+
+        optional<std::string>& tileServiceUrl() { return _tileServiceUrl; }
+        const optional<std::string>& tileServiceUrl() const { return _tileServiceUrl; }
+
+        optional<std::string>& layers() { return _layers; }
+        const optional<std::string>& layers() const { return _layers; }
+
+        optional<std::string>& style() { return _style; }
+        const optional<std::string>& style() const { return _style; }
+
+        optional<std::string>& format() { return _format; }
+        const optional<std::string>& format() const { return _format; }
+
+        optional<std::string>& wmsFormat() { return _wmsFormat; }
+        const optional<std::string>& wmsFormat() const { return _wmsFormat; }
+
+        optional<std::string>& wmsVersion() { return _wmsVersion; }
+        const optional<std::string>& wmsVersion() const { return _wmsVersion; }
+
+        optional<std::string>& elevationUnit() { return _elevationUnit; }
+        const optional<std::string>& elevationUnit() const { return _elevationUnit; }
+
+        optional<std::string>& srs() { return _srs; }
+        const optional<std::string>& srs() const { return _srs; }
+
+        optional<bool>& transparent() { return _transparent; }
+        const optional<bool>& transparent() const { return _transparent; }
+
+        optional<std::string>& times() { return _times; }
+        const optional<std::string>& times() const { return _times; }
+
+    public:
+        WMSOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
+            _wmsVersion( "1.1.1" ),
+            _transparent( true ),
+            _elevationUnit( "m" )
+        {
+            driver() = "wms";
+            config().getIfSet("url", _url);
+            config().getIfSet("capabilities_url", _capabilitiesUrl);
+            config().getIfSet("tile_service_url", _tileServiceUrl);
+            config().getIfSet("layers", _layers);
+            config().getIfSet("style", _style);
+            config().getIfSet("format", _format);
+            config().getIfSet("wms_format", _wmsFormat);
+            config().getIfSet("wms_version", _wmsVersion);
+            config().getIfSet("elevation_unit", _elevationUnit);
+            config().getIfSet("srs", _srs);
+            config().getIfSet("transparent", _transparent);
+            config().getIfSet("times", _times);
+        }
+
+    protected:
+        Config toConfig() const {
+            Config conf = TileSourceOptions::toConfig();
+            conf.updateIfSet("url", _url);
+            conf.updateIfSet("capabilities_url", _capabilitiesUrl);
+            conf.updateIfSet("tile_service_url", _tileServiceUrl);
+            conf.updateIfSet("layers", _layers);
+            conf.updateIfSet("style", _style);
+            conf.updateIfSet("format", _format);
+            conf.updateIfSet("wms_format", _wmsFormat);
+            conf.updateIfSet("wms_version", _wmsVersion);
+            conf.updateIfSet("elevation_unit", _elevationUnit);
+            conf.updateIfSet("srs", _srs);
+            conf.updateIfSet("transparent", _transparent);
+            conf.updateIfSet("times", _times);
+            return conf;
+        }
+
+        optional<std::string> _url;
+        optional<std::string> _capabilitiesUrl;
+        optional<std::string> _tileServiceUrl;
+        optional<std::string> _layers;
+        optional<std::string> _style;
+        optional<std::string> _format;
+        optional<std::string> _wmsFormat;
+        optional<std::string> _wmsVersion;
+        optional<std::string> _elevationUnit;
+        optional<std::string> _srs;
+        optional<bool>        _transparent;
+        optional<std::string> _times;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_WMS_DRIVEROPTIONS
+

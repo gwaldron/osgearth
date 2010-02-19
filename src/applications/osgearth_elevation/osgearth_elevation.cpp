@@ -32,7 +32,10 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ElevationManager>
+#include <osgEarthDrivers/tms/TMSOptions>
 #include <sstream>
+
+using namespace osgEarth::Drivers;
 
 static
 osg::MatrixTransform* createFlag()
@@ -141,18 +144,16 @@ int main(int argc, char** argv)
 
     // Add some imagery
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
-        map->addMapLayer( new osgEarth::MapLayer(
-            "BLUEMARBLE", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf ) );
+        TMSOptions* tms = new TMSOptions();
+        tms->url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
+        map->addMapLayer( new osgEarth::ImageMapLayer( "BLUEMARBLE", tms ) );
     }
 
     // Add some elevation
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
-        map->addMapLayer( new osgEarth::MapLayer(
-            "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf ) );
+        TMSOptions* tms = new TMSOptions();
+        tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+        map->addMapLayer( new osgEarth::HeightFieldMapLayer( "SRTM", tms ) );
     }
 
     osg::Group* root = new osg::Group();

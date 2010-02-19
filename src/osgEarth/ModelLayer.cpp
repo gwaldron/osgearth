@@ -21,13 +21,24 @@
 
 using namespace osgEarth;
 
+// to be depcreated
 ModelLayer::ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf ) :
 osg::Referenced( true ),
 _name( name ),
 _driver( driver ),
 _driverConf( driverConf )
 {
-    //nop
+    _driverConf.attr("name") = name;
+    _driverConf.attr("driver") = driver;
+    _driverOptions = new DriverOptions( _driverConf );
+}
+
+ModelLayer::ModelLayer( const std::string& name, const DriverOptions* options ) :
+osg::Referenced( true ),
+_name( name ),
+_driverOptions( options )
+{
+    //NOP
 }
 
 ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
@@ -42,6 +53,11 @@ void
 ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 {
     _referenceURI = referenceURI;
+
+    if ( !_modelSource.valid() )
+    {
+        _modelSource = ModelSourceFactory::create( _driverOptions.get() );
+    }
 
     if ( !_modelSource.valid() )
     {
@@ -65,4 +81,16 @@ ModelLayer::createNode( ProgressCallback* progress )
     }
 
     return result;
+}
+
+Config
+ModelLayer::toConfig() const
+{
+    Config conf = 
+        _driverOptions.valid() ? _driverOptions->toConfig() : Config();
+
+    conf.key() = "model";
+    conf.attr("name") = _name;
+
+    return conf;
 }

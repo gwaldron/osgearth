@@ -81,18 +81,18 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
             osg::Vec3d seg = p1 - p0;
             double segLen = seg.length();
 
-            if ( segLen < _minLen && !lastSeg && plist.size() > 3 )
+            if ( segLen < _minLen.value() && !lastSeg && plist.size() > 3 )
             {
                 v1 = plist.erase( v1 );
                 increment = false;
             }
-            else if ( segLen > _maxLen )
+            else if ( segLen > _maxLen.value() )
             {
-                int numDivs = (1 + (int)(segLen/_maxLen));
+                int numDivs = (1 + (int)(segLen/_maxLen.value()));
                 double newSegLen = segLen/(double)numDivs;
                 seg.normalize();
                 osg::Vec3d newPt = p0 + seg * newSegLen;
-                if ( _perturbThresh > 0.0 && _perturbThresh < newSegLen )
+                if ( _perturbThresh.value() > 0.0 && _perturbThresh.value() < newSegLen )
                 {
                     float r = 0.5 - (float)::rand()/(float)RAND_MAX;
                     newPt.x() += r;

@@ -67,6 +67,7 @@ EarthFile::getMapEngineProperties() {
 #define ELEM_VERTICAL_SCALE           "vertical_scale"
 #define ELEM_MIN_TILE_RANGE           "min_tile_range_factor"
 #define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
+#define ELEM_USE_MERCATOR_FAST_PATH   "use_mercator_fast_path"
 #define ATTR_DRIVER                   "driver"
 #define ELEM_SKIRT_RATIO              "skirt_ratio"
 #define ELEM_SAMPLE_RATIO             "sample_ratio"
@@ -142,10 +143,12 @@ toColor( const osg::Vec4ub& c )
 static ModelLayer*
 readModelLayer( const Config& conf )
 {
-    ModelLayer* layer = new ModelLayer(
-        conf.attr( "name" ),
-        conf.attr( "driver" ),
-        conf );
+    //ModelLayer* layer = new ModelLayer(
+    //    conf.attr( "name" ),
+    //    conf.attr( "driver" ),
+    //    conf );
+
+    ModelLayer* layer = new ModelLayer( conf.value("name"), new DriverOptions(conf) );
 
     return layer;
 }
@@ -155,20 +158,25 @@ readMapLayer( const Config& conf, const Config& additional )
 {
     // divine layer type
     MapLayer::Type layerType =
-        conf.name() == ELEM_HEIGHTFIELD ? MapLayer::TYPE_HEIGHTFIELD :
+        conf.key() == ELEM_HEIGHTFIELD ? MapLayer::TYPE_HEIGHTFIELD :
         MapLayer::TYPE_IMAGE;
 
     // combine the layer conf children with the additional config to create the
     // driver-specific configuration.
-    Config driverConf;
-    driverConf.add( conf.children() );
+    //Config driverConf;
+    //driverConf.add( conf.children() );
+    //driverConf.add( additional.children() );
+
+    //MapLayer* layer = new MapLayer(
+    //    conf.attr( "name" ),
+    //    layerType,
+    //    conf.attr( "driver" ),
+    //    driverConf );
+
+    Config driverConf = conf;
     driverConf.add( additional.children() );
 
-    MapLayer* layer = new MapLayer(
-        conf.attr( "name" ),
-        layerType,
-        conf.attr( "driver" ),
-        driverConf );
+    MapLayer* layer = new MapLayer( conf.value("name"), layerType, new DriverOptions(driverConf) );
 
     int minLevel = conf.value<int>( ATTR_MIN_LEVEL, -1 );
     if ( minLevel >= 0 )
@@ -182,17 +190,29 @@ readMapLayer( const Config& conf, const Config& additional )
 	if ( !noDataImage.empty() )
 		layer->noDataImageFilename() = noDataImage;
 
-    layer->setCacheFormat( conf.value( ELEM_CACHE_FORMAT ) );
+    std::string use_merc_locator = conf.value( ELEM_USE_MERCATOR_LOCATOR );
+    if ( use_merc_locator.empty() )
+        use_merc_locator = conf.value( ELEM_USE_MERCATOR_FAST_PATH );
+    if (use_merc_locator == VALUE_TRUE )
+        layer->useMercatorFastPath() = true;
+    else if ( use_merc_locator == VALUE_FALSE )
+        layer->useMercatorFastPath() = false;
 
-    std::string cacheEnabled = conf.value( ELEM_CACHE_ENABLED );
-    if (cacheEnabled == VALUE_TRUE)
-    {
-        layer->setCacheEnabled( true );
-    }
-    else if ( cacheEnabled == VALUE_FALSE)
-    {
-        layer->setCacheEnabled( false );
-    }
+    
+    conf.getIfSet( ELEM_CACHE_FORMAT, layer->cacheFormat() );
+    //layer->setCacheFormat( conf.value( ELEM_CACHE_FORMAT ) );
+
+    conf.getIfSet( ELEM_CACHE_ENABLED, layer->cacheEnabled() );
+
+    //std::string cacheEnabled = conf.value( ELEM_CACHE_ENABLED );
+    //if (cacheEnabled == VALUE_TRUE)
+    //{
+    //    layer->setCacheEnabled( true );
+    //}
+    //else if ( cacheEnabled == VALUE_FALSE)
+    //{
+    //    layer->setCacheEnabled( false );
+    //}
 
     if ( !conf.value( ELEM_TRANSPARENT_COLOR ).empty() )
 		layer->transparentColor() = getColor( conf.value( ELEM_TRANSPARENT_COLOR ), osg::Vec4ub() );
@@ -201,8 +221,9 @@ readMapLayer( const Config& conf, const Config& additional )
     if ( conf.hasChild( ELEM_PROFILE ) )
         layer->profileConfig() = ProfileConfig( conf.child( ELEM_PROFILE ) );
         
-    if ( conf.hasValue( ATTR_LOADING_WEIGHT ) )
-        layer->setLoadWeight( conf.value<float>( ATTR_LOADING_WEIGHT, layer->getLoadWeight() ) );
+    conf.getIfSet( ATTR_LOADING_WEIGHT, layer->loadingWeight() );
+    //if ( conf.hasValue( ATTR_LOADING_WEIGHT ) )
+    //    layer->loadWeight() = ( conf.value<float>( ATTR_LOADING_WEIGHT, layer->getLoadWeight() ) );
 
     if ( conf.hasValue( ELEM_OPACITY ) )
         layer->setOpacity( conf.value<float>( ELEM_OPACITY, layer->getOpacity() ) );
@@ -214,56 +235,26 @@ readMapLayer( const Config& conf, const Config& additional )
     }
     else if (enabledString == VALUE_FALSE)
     {
-        layer->setEnabled( false);
+        layer->setEnabled( false );
     }
 
 
     return layer;
 }
 
-static Config
-writeLayer( MapLayer* layer, const std::string& typeName ="" )
-{
-    Config conf;
-
-    conf.name() =
-        !typeName.empty() ? typeName :
-        layer->getType() == MapLayer::TYPE_HEIGHTFIELD ? ELEM_HEIGHTFIELD :
-        ELEM_IMAGE;
-
-    conf.attr( ATTR_NAME ) = layer->getName();
-    conf.attr( ATTR_DRIVER ) = layer->getDriver();
-
-    //Add all the properties
-    conf.add( layer->getDriverConfig().children() );
-
-	if ( layer->profileConfig().isSet() )
-        conf.addChild( layer->profileConfig()->toConfig() );
-
-	if ( layer->noDataImageFilename().isSet() )
-        conf.addChild( ELEM_NODATA_IMAGE, layer->noDataImageFilename().get() );
-
-	if ( layer->transparentColor().isSet() )
-        conf.addChild( ELEM_TRANSPARENT_COLOR, toColor( layer->transparentColor().get() ) );
-
-    if ( !layer->getCacheFormat().empty() )
-        conf.addChild( ELEM_CACHE_FORMAT, layer->getCacheFormat() );
-
-    return conf;
-}
 
 static Config
 writeLayer( ModelLayer* layer, const std::string& typeName ="" )
 {
-    Config conf;
+    Config conf = layer->toConfig();
 
-    conf.name() = !typeName.empty() ? typeName : ELEM_MODEL;
+    conf.key() = !typeName.empty() ? typeName : ELEM_MODEL;
 
-    conf.attr( ATTR_NAME ) = layer->getName();
-    conf.attr( ATTR_DRIVER ) = layer->getDriver();
+    //conf.attr( ATTR_NAME ) = layer->getName();
+    //conf.attr( ATTR_DRIVER ) = layer->getDriver();
 
-    //Add all the properties
-    conf.add( layer->getDriverConfig().children() );
+    ////Add all the properties
+    //conf.add( layer->getDriverConfig().children() );
 
     return conf;
 }
@@ -290,12 +281,6 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     map->setReferenceURI( referenceURI );
 
     map->setName( conf.value( ATTR_NAME ) );
-
-    std::string use_merc_locator = conf.value( ELEM_USE_MERCATOR_LOCATOR );
-    if (use_merc_locator == VALUE_TRUE )
-        map->setUseMercatorLocator( true );
-    else if ( use_merc_locator == VALUE_FALSE )
-        map->setUseMercatorLocator( false );
 
     
     MapEngineProperties ep;
@@ -478,8 +463,6 @@ mapToConfig( Map* map, const MapEngineProperties& ep )
     }
     conf.attr( ATTR_CSTYPE ) = cs;
 
-    conf.add( ELEM_USE_MERCATOR_LOCATOR, toString<bool>(map->getUseMercatorLocator()) );
-
     if ( ep.normalizeEdges().isSet() )
         conf.add( ELEM_NORMALIZE_EDGES, toString<bool>(ep.normalizeEdges().value()) );
 
@@ -546,13 +529,15 @@ mapToConfig( Map* map, const MapEngineProperties& ep )
     //Write all the image sources
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-        conf.add( writeLayer( i->get() ) );
+        conf.add( i->get()->toConfig() );
+        //conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the heightfield sources
     for (MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
-        conf.add( writeLayer( i->get() ) );
+        conf.add( i->get()->toConfig() );
+        //conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the model layers
@@ -589,6 +574,11 @@ EarthFile::readXML( std::istream& input, const std::string& location )
     if ( doc.valid() )
     {
         Config conf = doc->toConfig().child( ELEM_MAP );
+
+        //osg::notify(osg::NOTICE)
+        //    << "[osgEarth] EARTH FILE: " << std::endl
+        //    << conf.toString() << std::endl;
+
         success = readMap( conf, location, this );
     }
     return success;

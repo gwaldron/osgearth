@@ -245,7 +245,7 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
         {
             if ( layer->isKeyValid( keys[j].get() ) )
             {
-                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->getCacheFormat() ) )
+                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->cacheFormat().value() ) )
                 {
                     return false;
                 }
@@ -275,7 +275,7 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
         {
             if ( layer->isKeyValid( keys[j].get() ) )
             {
-                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->getCacheFormat() ) )
+                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->cacheFormat().value() ) )
                 {
                     return false;
                 }
@@ -564,21 +564,30 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
 
     // Collect the image layers
     bool empty_map = imageMapLayers.size() == 0 && hfMapLayers.size() == 0;
+    
+    // Whether to use a special mercator locator instead of reprojecting data to spherical mercator
+    bool useMercatorLocator = true;
 
     // Create the images for the tile
     for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
     {
+        MapLayer* layer = i->get();
+
         osg::ref_ptr<GeoImage> image;
-        TileSource* source = i->get()->getTileSource();
+        TileSource* source = layer->getTileSource();
 		//Only create images if the key is valid
-        if ( i->get()->isKeyValid( key ) )
+        if ( layer->isKeyValid( key ) )
         {
             if ( _L2cache )
-                image = _L2cache->createImage( i->get(), key );
+                image = _L2cache->createImage( layer, key );
             else
-                image = i->get()->createImage( key );
+                image = layer->createImage( key );
         }
         image_tiles.push_back(image.get());
+
+        // if any one of the layers explicity disables the merc fast path, disable for the whole thing:
+        if ( layer->useMercatorFastPath().isSetTo( false ) )
+            useMercatorLocator = false;
     }
 
     bool hasElevation = false;
@@ -706,7 +715,9 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
             GeoImage* geo_image = image_tiles[i].get();
 
             // Use a special locator for mercator images (instead of reprojecting)
-            if ( map->getProfile()->getSRS()->isGeographic() && geo_image->getSRS()->isMercator() && map->getUseMercatorLocator() )
+            if (map->getProfile()->getSRS()->isGeographic() &&
+                geo_image->getSRS()->isMercator() && 
+                useMercatorLocator )
             {
                 GeoExtent geog_ext = image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
@@ -856,7 +867,9 @@ MapEngine::createImageLayer(Map* map,
         osg::ref_ptr<GeoLocator> imgLocator;
 
         // Use a special locator for mercator images (instead of reprojecting)
-        if ( map->getProfile()->getSRS()->isGeographic() && geoImage->getSRS()->isMercator() && map->getUseMercatorLocator() )
+        if (map->getProfile()->getSRS()->isGeographic() &&
+            geoImage->getSRS()->isMercator() &&
+            layer->useMercatorFastPath() == true )
         {
             GeoExtent gx = geoImage->getExtent().transform( geoImage->getExtent().getSRS()->getGeographicSRS() );
             imgLocator = key->getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax() );

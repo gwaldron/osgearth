@@ -17,7 +17,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
@@ -26,6 +25,10 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarthDrivers/tms/TMSOptions>
+
+using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 
 osgEarth::MapNode* createSimpleMap()
@@ -37,19 +40,17 @@ osgEarth::MapNode* createSimpleMap()
 
     // Add an image layer to the map.
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
-        osgEarth::MapLayer* layer = new osgEarth::MapLayer( "NASA", osgEarth::MapLayer::TYPE_IMAGE, "tms", conf );
-        map->addMapLayer( layer );
+        TMSOptions* tms = new TMSOptions();
+        tms->url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
+        map->addMapLayer( new ImageMapLayer( "NASA", tms ) );
     }
 
     // Add a heightfield layer to the map. You can add any number of heightfields and
     // osgEarth will composite them automatically.
     {
-        osgEarth::Config conf;
-        conf.add( "url", "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
-        osgEarth::MapLayer* layer = new osgEarth::MapLayer( "SRTM", osgEarth::MapLayer::TYPE_HEIGHTFIELD, "tms", conf );
-        map->addMapLayer( layer );
+        TMSOptions* tms = new TMSOptions();
+        tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+        map->addMapLayer( new HeightFieldMapLayer( "SRTM", tms ) );
     }
 
     // The MapNode will render the Map object in the scene graph.

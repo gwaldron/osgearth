@@ -65,7 +65,7 @@ XmlElement::XmlElement( const std::string& _name, const XmlAttributes& _attrs )
 
 XmlElement::XmlElement( const Config& conf )
 {
-    name = conf.name();
+    name = conf.key();
     for( Properties::const_iterator i = conf.attrs().begin(); i != conf.attrs().end(); i++ )
         attrs[i->first] = i->second;
     for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
@@ -76,7 +76,7 @@ XmlElement::XmlElement( const Config& conf )
         }
         else
         {
-            addSubElement(j->name(), j->value());
+            addSubElement(j->key(), j->attrs(), j->value());
         }
     }
 }
@@ -199,7 +199,17 @@ XmlElement::getSubElements( const std::string& name ) const
 void
 XmlElement::addSubElement(const std::string& tag, const std::string& text)
 {
-    XmlElement *ele = new XmlElement(tag);
+    XmlElement* ele = new XmlElement(tag);
+    ele->getChildren().push_back(new XmlText(text));
+    children.push_back(ele);
+}
+
+void
+XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const std::string& text)
+{
+    XmlElement* ele = new XmlElement(tag);
+    for( Properties::const_iterator i = attrs.begin(); i != attrs.end(); i++ )
+        ele->attrs[i->first] = i->second;
     ele->getChildren().push_back(new XmlText(text));
     children.push_back(ele);
 }
@@ -369,7 +379,11 @@ storeNode( const XmlNode* node, int depth, std::ostream& out )
     else if ( node->isText() )
     {
         XmlText* t = (XmlText*)node;
-        out << t->getValue() << std::endl;
+        const std::string& text = t->getValue();
+        if ( text.find_first_of( "<&" ) != std::string::npos )
+            out << "<![CDATA[" << text << "]]>" << std::endl;
+        else
+            out << text << std::endl;
     }
 }
 

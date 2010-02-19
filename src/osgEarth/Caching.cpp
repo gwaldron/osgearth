@@ -60,7 +60,7 @@ _runOffCacheOnly( false )
 
     for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); i++ )
         if ( !i->value().empty() )
-            _properties[ i->name() ] = i->value();
+            _properties[ i->key() ] = i->value();
 }
 
 Config

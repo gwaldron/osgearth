@@ -91,7 +91,7 @@ BufferFilter::push( Feature* input, const FilterContext& context )
 
         geom::Geometry* outGeom = buffer::BufferOp::bufferOp(
             inGeom,
-            _distance,
+            _distance.value(),
             geosQuadSegs,
             geosEndCap );
 

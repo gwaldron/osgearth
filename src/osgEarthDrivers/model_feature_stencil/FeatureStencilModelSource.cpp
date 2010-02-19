@@ -38,19 +38,15 @@
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 
+#include "FeatureStencilModelOptions"
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define PROP_EXTRUSION_DISTANCE     "extrusion_distance"
-#define PROP_DENSIFICATION_THRESH   "densification_threshold"
-#define PROP_INVERTED               "inverted"
-#define PROP_MASK_MODEL             "mask_model"
-
-#define DEFAULT_EXTRUSION_DISTANCE      300000.0
-#define DEFAULT_DENSIFICATION_THRESHOLD 1000000.0
-#define RENDER_BIN_START                100
-#define MAX_NUM_STYLES                  100
+#define RENDER_BIN_START 100
+#define MAX_NUM_STYLES   100
 
 #define OFF_PROTECTED osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED
 
@@ -96,41 +92,21 @@ osg::Node* createColorNode( const osg::Vec4f& color )
 class FeatureStencilModelSource : public FeatureModelSource
 {
 public:
-    FeatureStencilModelSource( const PluginOptions* options, int renderBinStart, int sourceId ) :
+    FeatureStencilModelSource( const PluginOptions* options, int renderBinStart ) :
         FeatureModelSource( options ),
-        _sourceId( sourceId ),
-        _renderBinStart( renderBinStart ),
-        _showVolumes( false ),
-        _extrusionDistance( DEFAULT_EXTRUSION_DISTANCE ),
-        _densificationThresh( DEFAULT_DENSIFICATION_THRESHOLD ),
-        _invertStencil( false ),
-        _maskOnly( false )
+        _renderBinStart( renderBinStart )
     {
+        _options = dynamic_cast<const FeatureStencilModelOptions*>( options );
+        if ( !_options )
+            _options = new FeatureStencilModelOptions( options );
+
+        // make sure we have stencil bits. Note, this only works before
+        // a viewer gets created. You may need to allocate stencil bits
+        // yourself if you make this object after realizing a viewer.
         if ( osg::DisplaySettings::instance()->getMinimumNumStencilBits() < 8 )
         {
             osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
         }
-
-        const Config& conf = getOptions()->config();
-
-        // overrides the default stencil volume extrusion size
-        conf.getOptional<double>( PROP_EXTRUSION_DISTANCE, _extrusionDistance );
-
-        // overrides the default segment densification threshold.
-        conf.getOptional<double>( PROP_DENSIFICATION_THRESH, _densificationThresh );
-
-        // inverts the stencil volume rendering.
-        conf.getOptional<bool>( PROP_INVERTED, _invertStencil );
-
-        // the mask-only flag (whether to include coloration). We actually check the
-        // name of the incoming Config to see if this was intended to be a mask.
-        if ( conf.name() == PROP_MASK_MODEL )
-            _maskOnly = true;
-
-        // debugging:
-        _showVolumes = conf.child( "debug" ).attr( "show_volumes" ) == "true";
-        if ( _showVolumes )
-            _lit = false;
     }
 
     //override
@@ -140,13 +116,16 @@ public:
 
         _map = map;
 
-        if ( !_extrusionDistance.isSet() )
+        if ( _options->extrusionDistance().isSet() )
         {
-            // figure out a "reasonable" default extrusion size
+            _extrusionDistance = _options->extrusionDistance().value();
+        }
+        else
+        {
             if ( _map->isGeocentric() )
                 _extrusionDistance = 300000.0; // meters geocentric
             else if ( _map->getProfile()->getSRS()->isGeographic() )
-                _extrusionDistance = 5.0; // degrees-as-distance
+                _extrusionDistance = 5.0; // degrees-as-meters
             else
                 _extrusionDistance = 12000.0; // meters
         }
@@ -227,7 +206,7 @@ public:
             // achieve a usable tesselation.
             ResampleFilter resample;
             resample.minLength() = 0.0;
-            resample.maxLength() = _densificationThresh.value();
+            resample.maxLength() = _options->densificationThreshold().value();
             resample.perturbationThreshold() = 0.1;
             context = resample.push( features, context );
         }
@@ -239,8 +218,8 @@ public:
         {
             osg::Node* volume = StencilVolumeFactory::createVolume(
                 i->get()->getGeometry(),
-                -_extrusionDistance.get(),
-                _extrusionDistance.get() * 2.0,
+                -_extrusionDistance,
+                _extrusionDistance * 2.0,
                 context );
 
             if ( volume )
@@ -264,14 +243,14 @@ public:
             }
 
             // Apply an LOD if required:
-            if ( minRange().isSet() || maxRange().isSet() )
+            if ( getOptions()->minRange().isSet() || getOptions()->maxRange().isSet() )
             {
                 osg::LOD* lod = new osg::LOD();
-                lod->addChild( volumes, minRange().value(), maxRange().value() );
+                lod->addChild( volumes, getOptions()->minRange().value(), getOptions()->maxRange().value() );
                 volumes = lod;
             }
 
-            if ( _showVolumes )
+            if ( _options->showVolumes() == true )
             {
                 result = volumes;
             }
@@ -280,8 +259,8 @@ public:
                 if ( !styleNodeAlreadyCreated )
                 {
                     osg::notify(osg::NOTICE) << "[osgEarth] Creating new style group for '" << style.name() << "'" << std::endl;
-                    styleNode = new StencilVolumeNode( _maskOnly.value(), _invertStencil.get() );
-                    if ( _maskOnly == false )
+                    styleNode = new StencilVolumeNode( _options->mask().value(), _options->inverted().value() );
+                    if ( _options->mask() == false )
                     {
                         osg::Vec4f maskColor = style.getColor( hasLines ? Geometry::TYPE_LINESTRING : Geometry::TYPE_POLYGON );
                         styleNode->addChild( createColorNode(maskColor) );
@@ -303,13 +282,9 @@ private:
     int _sourceId;
     int _renderBinStart;
     osg::ref_ptr<const Map> _map;
-
-    optional<double> _extrusionDistance;
-    optional<bool>   _invertStencil;
-    optional<double> _densificationThresh;
-    optional<bool>   _maskOnly;
-
-    bool _showVolumes;
+    double _extrusionDistance;
+    
+    osg::ref_ptr<const FeatureStencilModelOptions> _options;
 };
 
 
@@ -329,17 +304,10 @@ public:
 
     FeatureStencilModelSource* create( const PluginOptions* options )
     {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        FeatureStencilModelSource* obj = new FeatureStencilModelSource( options, _renderBinStart, _sourceId );
+        ScopedLock<Mutex> lock( _createMutex );
+        FeatureStencilModelSource* obj = new FeatureStencilModelSource( options, _renderBinStart );
         _renderBinStart += MAX_NUM_STYLES*4;
-        if ( obj ) _sourceMap[_sourceId++] = obj;
         return obj;
-    }
-
-    FeatureStencilModelSource* get( int sourceId )
-    {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        return _sourceMap[sourceId].get();
     }
 
     virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -351,26 +319,9 @@ public:
         return nonConstThis->create( static_cast<const PluginOptions*>(options) );
     }
 
-    // NOTE: this doesn't do anything, yet. it's a template for recursing into the
-    // plugin during pagedlod traversals. 
-    virtual ReadResult readNode(const std::string& fileName, const Options* options) const
-    {
-        if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( fileName )))
-            return ReadResult::FILE_NOT_HANDLED;
-    
-        std::string stripped = osgDB::getNameLessExtension( fileName );
-        int sourceId = 0;
-        sscanf( stripped.c_str(), "%d", &sourceId );
-
-        FeatureStencilModelSourceFactory* nonConstThis = const_cast<FeatureStencilModelSourceFactory*>(this);
-        return ReadResult( nonConstThis->get( sourceId ) );
-    }
-
 protected:
-    Mutex _sourceIdMutex;
+    Mutex _createMutex;
     int _renderBinStart;
-    int _sourceId;
-    std::map<int, osg::ref_ptr<FeatureStencilModelSource> > _sourceMap;
 };
 
 REGISTER_OSGPLUGIN(osgearth_model_feature_stencil, FeatureStencilModelSourceFactory)

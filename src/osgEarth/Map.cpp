@@ -28,7 +28,6 @@ Map::Map(const CoordinateSystemType& cstype) :
 osg::Referenced(true),
 _cstype( cstype ),
 _id(-1),
-_use_mercator_locator(true),
 _dataModelRevision(0),
 _cacheConf( CacheConfig() ),
 _profileConf( ProfileConfig() )
@@ -154,18 +153,6 @@ Map::getDataModelRevision() const {
     return _dataModelRevision;
 }
 
-void
-Map::setUseMercatorLocator(bool value)
-{
-    _use_mercator_locator = value;
-}
-
-bool
-Map::getUseMercatorLocator() const
-{
-    return _use_mercator_locator;
-}
-
 const Profile*
 Map::getProfile() const
 {
@@ -219,9 +206,9 @@ Map::addMapLayer( MapLayer* layer )
 		layer->setGlobalOptions( getGlobalOptions() );
 		if ( _cacheConf.isSet() && _cacheConf->runOffCacheOnly().isSet() && _cacheConf->runOffCacheOnly().get())
 		{
-			layer->setCacheOnly( true );
+			layer->cacheOnly() = true;
 		}
-		layer->setUseMercatorFastPath( getUseMercatorLocator() );
+		//layer->setUseMercatorFastPath( getUseMercatorLocator() );
 
 		//Set the Cache for the MapLayer to our cache.
 		layer->setCache( this->getCache() );
@@ -602,7 +589,7 @@ Map::createHeightField( const TileKey* key,
                 for (GeoHeightFieldList::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
                     float elevation = 0.0f;
-                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, BILINEAR, elevation))
+                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, elevation))
                     {
                         if (elevation != NO_DATA_VALUE)
                         {

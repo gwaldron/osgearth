@@ -48,9 +48,7 @@ public:
     {
         _settings = dynamic_cast<const ArcGISOptions*>( options );
         if ( !_settings.valid() )
-        {
-            _settings = new ArcGISOptions( options->config() );
-        }
+            _settings = new ArcGISOptions( options );
 
         //if ( options )
         //{

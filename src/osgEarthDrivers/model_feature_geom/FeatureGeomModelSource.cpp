@@ -30,8 +30,11 @@
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 
+#include "FeatureGeomModelOptions"
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
 #define PROP_HEIGHT_OFFSET "height_offset"
@@ -40,15 +43,12 @@ using namespace OpenThreads;
 class FeatureGeomModelSource : public FeatureModelSource
 {
 public:
-    FeatureGeomModelSource( const PluginOptions* options, int sourceId ) : 
-        FeatureModelSource( options ),
-        _sourceId( sourceId ),
-        _heightOffset( 0.0 )
+    FeatureGeomModelSource( const PluginOptions* options, int sourceId ) : FeatureModelSource( options ),
+        _sourceId( sourceId )
     {
-        const Config& conf = options->config();
-
-        // vertical offset.
-        _heightOffset = conf.value<double>( PROP_HEIGHT_OFFSET, _heightOffset );
+        _options = dynamic_cast<const FeatureGeomModelOptions*>( options );
+        if ( !_options )
+            _options = new FeatureGeomModelOptions( options );
     }
 
     //override
@@ -67,13 +67,13 @@ public:
 
         // Transform them into the map's SRS:
         TransformFilter xform( _map->getProfile()->getSRS(), _map->isGeocentric() );
-        xform.heightOffset() = _heightOffset;
+        xform.heightOffset() = _options->heightOffset().value();
         context = xform.push( features, context );
 
         // Build geometry:
         BuildGeometryFilter build; 
-        if ( geomTypeOverride().isSet() )
-            build.geomTypeOverride() = geomTypeOverride().get();
+        if ( _options->geometryTypeOverride().isSet() )
+            build.geomTypeOverride() = _options->geometryTypeOverride().value();
 
         // apply the style rule if we have one:
         osg::ref_ptr<osg::Node> result;
@@ -81,10 +81,10 @@ public:
         context = build.push( features, result, context );
         
         // Apply an LOD if required:
-        if ( minRange().isSet() || maxRange().isSet() )
+        if ( _options->minRange().isSet() || _options->maxRange().isSet() )
         {
             osg::LOD* lod = new osg::LOD();
-            lod->addChild( result.get(), minRange().value(), maxRange().value() );
+            lod->addChild( result.get(), _options->minRange().value(), _options->maxRange().value() );
             result = lod;
         }
 
@@ -93,9 +93,9 @@ public:
     }
 
 private:
+    osg::ref_ptr<const FeatureGeomModelOptions> _options;
     int _sourceId;
     osg::ref_ptr<const Map> _map;
-    double _heightOffset;
 };
 
 

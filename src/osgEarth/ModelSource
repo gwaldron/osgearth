@@ -23,11 +23,38 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/Progress>
+#include <osgEarth/DriverOptions>
 #include <osg/Referenced>
 
 namespace osgEarth
 {   
     class Map;
+    
+    /**
+     * Configuration options for a models source.
+     */
+    class OSGEARTH_EXPORT ModelSourceOptions : public DriverOptions
+    {
+    public:
+        ModelSourceOptions( const PluginOptions* rhs =0L );
+
+    public: // properties
+
+        optional<float>& minRange() { return _minRange; }
+        const optional<float>& minRange() const { return _minRange; }
+
+        optional<float>& maxRange() { return _maxRange; }
+        const optional<float>& maxRange() const { return _maxRange; }
+
+        optional<int>& renderOrder() { return _renderOrder; }
+        const optional<int>& renderOrder() const { return _renderOrder; }
+
+    protected:
+        virtual Config toConfig() const;
+
+        optional<float> _minRange, _maxRange;
+        optional<int> _renderOrder;
+    };
 
     /**
      * A ModelSource is a plugin object that generates OSG nodes.
@@ -42,16 +69,6 @@ namespace osgEarth
          */
         virtual osg::Node* createNode( ProgressCallback* progress =0L ) =0;
 
-    public: // properties
-
-        optional<double>& minRange() { return _minRange; }
-        const optional<double>& minRange() const { return _minRange; }
-
-        optional<double>& maxRange() { return _maxRange; }
-        const optional<double>& maxRange() const { return _maxRange; }
-
-        optional<int>& renderOrder() { return _renderOrder; }
-        const optional<int>& renderOrder() const { return _renderOrder; }
 
     public: // META_Object specialization
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
@@ -66,13 +83,14 @@ namespace osgEarth
             const std::string& referenceURI,
             const Map* map ) { }
 
+        const ModelSourceOptions* getOptions() const {
+            return _options.get(); }
+
     protected:
         virtual ~ModelSource() { }
 
-        const PluginOptions* getOptions() const;
-
     private:
-        osg::ref_ptr<const PluginOptions> _options;
+        osg::ref_ptr<const ModelSourceOptions> _options;
         optional<double> _minRange;
         optional<double> _maxRange;
         optional<int>    _renderOrder;
@@ -90,6 +108,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelSourceFactory
     {
     public:
+        static ModelSource* create( const DriverOptions* options );
+
+    public: // DEPRECATED
+
 		/** Create a model source with the given driver and properties */
 		static ModelSource* create(
             const std::string& name,

@@ -8,7 +8,6 @@ SET(TARGET_SRC
 SET(TARGET_H
     Extent.h
     MapService.h
-    ArcGISMapLayerFactory
     ArcGISOptions
 )
 

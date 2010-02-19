@@ -275,6 +275,11 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     }
     else
     {
+        //Account for small rounding errors along the edges of the extent
+        if (osg::equivalent(_xmin, local_x)) local_x = _xmin;
+        if (osg::equivalent(_xmax, local_x)) local_x = _xmax;
+        if (osg::equivalent(_ymin, local_y)) local_y = _ymin;
+        if (osg::equivalent(_ymax, local_y)) local_y = _ymax;
         return local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax;
     }
 }

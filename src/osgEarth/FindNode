@@ -53,6 +53,19 @@ namespace osgEarth
         if (!node) return 0;
 
         FindTopMostNodeOfTypeVisitor<T> fnotv;
+        fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN);
+        node->accept(fnotv);
+
+        return fnotv._foundNode;
+    }    
+
+    template<class T>
+    T* findFirstParentOfType(osg::Node* node)
+    {
+        if (!node) return 0;
+
+        FindTopMostNodeOfTypeVisitor<T> fnotv;
+        fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_PARENTS);
         node->accept(fnotv);
 
         return fnotv._foundNode;

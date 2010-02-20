@@ -183,6 +183,8 @@ MapNode::init()
 
     // make a group for terrains:
     _terrains = new osg::Group();
+    //Give the terrain a stateset to protect it from being optimized away by the REMOVE_REDUNDANT_NODES optimization
+    _terrains->getOrCreateStateSet();
     this->addChild( _terrains.get() );
 
     // handle an already-established map profile:

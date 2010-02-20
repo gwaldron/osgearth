@@ -22,6 +22,7 @@
 #include <osgEarth/EarthTerrainTechnique>
 #include <osgEarth/Map>
 #include <osgEarth/MapEngine>
+#include <osgEarth/FindNode>
 #include <OpenThreads/ScopedLock>
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
@@ -1140,20 +1141,6 @@ VersionedTile::releaseGLObjects(osg::State* state) const
 
 /****************************************************************************/
 
-// finds a camera in a node's parent hierarchy.
-static osg::Camera* findCam( osg::Node* n )
-{
-    osg::Camera* c = 0L;
-    while ( n && n->getNumParents() > 0 )
-    {
-        osg::Group* g = n->getParent(0);
-        c = dynamic_cast<osg::Camera*>(g);
-        if ( c ) return c;
-        n = g;
-    }
-    return 0L;
-}
-
 // a simple draw callback, to be installed on a Camera, that tells the
 // versionedterrain to release GL memory on any expired tiles.
 struct ReleaseGLCallback : public osg::Camera::DrawCallback
@@ -1431,7 +1418,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
 {
     if ( !_releaseCBInstalled )
     {
-        osg::Camera* cam = findCam( this );
+        osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
         if ( cam )
         {
             cam->setPostDrawCallback( new ReleaseGLCallback(this) );
@@ -1478,8 +1465,16 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             {
                 if ( i->get()->cancelRequests() )
                 {
-                    //osg::notify(osg::NOTICE) << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
-                    _tilesToRelease.push( i->get() );
+                    //Only add the tile to be released if we could actually install the callback.
+                    if (_releaseCBInstalled)
+                    {
+                        //osg::notify(osg::NOTICE) << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
+                        _tilesToRelease.push( i->get() );
+                    }
+                    else
+                    {
+                        osg::notify(osg::WARN) << "Warning:  Could not install ReleaseGLCallback" << std::endl;
+                    }
                     i = _tilesToShutDown.erase( i );
                 }
                 else
@@ -1651,4 +1646,3 @@ VersionedTerrain::updateTaskServiceThreads()
     }
 
 }
-

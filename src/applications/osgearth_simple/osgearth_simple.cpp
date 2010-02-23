@@ -27,6 +27,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Viewpoint>
+#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 using namespace osgEarth::Drivers;
@@ -57,7 +58,6 @@ struct FlyToViewpointHandler : public osgGA::GUIEventHandler
 
     osg::observer_ptr<osgEarthUtil::EarthManipulator> _manip;
 };
-
 
 
 int main(int argc, char** argv)
@@ -109,9 +109,12 @@ int main(int argc, char** argv)
             manip->setHomeViewpoint( 
                 osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 4e7 ),
                 1.0 );
+
+            // add a handler that will automatically calculate good clipping planes
+            // for a geocentric map:
+            viewer.addEventHandler( new osgEarthUtil::AutoClipPlaneHandler( mapNode ) );
         }
     }
-
 
     viewer.setSceneData( sceneData );
     viewer.setCameraManipulator( manip );
@@ -119,7 +122,6 @@ int main(int argc, char** argv)
     manip->getSettings()->bindMouseDoubleClick(
         osgEarthUtil::EarthManipulator::ACTION_GOTO,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
-
     // add our fly-to handler
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
 

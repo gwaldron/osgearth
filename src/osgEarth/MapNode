@@ -132,6 +132,8 @@ namespace osgEarth
             osgSim::OverlayNode* overlay,
             bool autoSetTextureUnit =true );
 
+        void uninstallOverlayNode( osgSim::OverlayNode* overlay );
+
         /**
          * Gets the ID for this MapNode
          */
@@ -164,7 +166,11 @@ namespace osgEarth
         
         void onModelLayerAdded( ModelLayer* layer );
 
+        void onModelLayerRemoved( ModelLayer* layer );
+
         void onTerrainMaskLayerAdded( ModelLayer* layer );
+
+        void onTerrainMaskLayerRemoved( ModelLayer* layer );
 
     protected:    
 
@@ -179,32 +185,32 @@ namespace osgEarth
     private:
 
         unsigned int _id;
-
-        TileSource* installTileSource( MapLayer* layer );
-
         osg::ref_ptr<MapEngine> _engine;
-
-        void updateStateSet();
-
         osg::ref_ptr<Map> _map;
-
+        osg::ref_ptr< osg::Group > _terrains;
+        osg::ref_ptr< osg::Group > _models;
         MapEngineProperties _engineProps;
 
-        ////Use observer_ptr so the Map does not prevent the main scene graph from being deleted
+        //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
         typedef std::vector< osg::observer_ptr<VersionedTerrain> > TerrainVec;
         TerrainVec _terrainVec;
+
+        // keep track of nodes created by model layers
+        typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
+        ModelLayerNodeMap _modelLayerNodes;
 
         static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
 
         osg::ref_ptr< osgSim::OverlayNode > _pendingOverlayNode;
         bool _pendingOverlayAutoSetTextureUnit;
-
         TerrainCallbackList _pendingTerrainCallbacks;
 
-        osg::ref_ptr< osg::Group > _terrains;
-        osg::ref_ptr< osg::Group > _models;
-
+    private:
+    
         void init();
+        
+        TileSource* installTileSource( MapLayer* layer );
+        void updateStateSet();
         
         void addImageLayer( MapLayer* layer );
         void addHeightFieldLayer( MapLayer* layer );

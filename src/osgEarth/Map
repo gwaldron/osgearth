@@ -47,7 +47,11 @@ namespace osgEarth
 
         virtual void onModelLayerAdded( ModelLayer* layer ) { }
 
+        virtual void onModelLayerRemoved( ModelLayer* layer ) { }
+
         virtual void onTerrainMaskLayerAdded( ModelLayer* layer ) { }
+
+        virtual void onTerrainMaskLayerRemoved( ModelLayer* layer ) { }
     };
 
     typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
@@ -149,12 +153,22 @@ namespace osgEarth
          * Adds a new model layer to the map.
          */
         void addModelLayer( ModelLayer* layer );
+
+        /**
+         * Removes a model layer from the map.
+         */
+        void removeModelLayer( ModelLayer* layer );
         
         /**
          * Set a layer to use as a terrain mask. The map engine will draw
          * this layer using the stencil buffer.
          */
         void setTerrainMaskLayer( ModelLayer* layer );
+
+        /**
+         * Removed a terrain mask layer that was set with setTerrainMaskLayer().
+         */
+        void removeTerrainMaskLayer();
 
     public:
         /**

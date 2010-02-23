@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
+#include <osg/Node>
 #include <list>
 
 namespace osgEarth

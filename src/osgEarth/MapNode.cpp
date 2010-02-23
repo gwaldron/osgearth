@@ -75,8 +75,14 @@ struct MapNodeMapCallbackProxy : public MapCallback
     void onModelLayerAdded( ModelLayer* layer ) {
         _node->onModelLayerAdded( layer );
     }
+    void onModelLayerRemoved( ModelLayer* layer ) {
+        _node->onModelLayerRemoved( layer );
+    }
     void onTerrainMaskLayerAdded( ModelLayer* layer ) {
         _node->onTerrainMaskLayerAdded( layer );
+    }
+    void onTerrainMaskLayerRemoved( ModelLayer* layer ) {
+        _node->onTerrainMaskLayerRemoved( layer );
     }
 };
 
@@ -350,6 +356,20 @@ MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUn
 }
 
 void
+MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
+{
+    if ( _terrainVec.empty() )
+    {
+        _pendingOverlayNode = 0L;
+    }
+    else
+    {
+        osg::ref_ptr<osg::Node> overlayChild = overlay->getChild( 0 );
+        this->replaceChild( overlay, overlayChild.get() );
+    }
+}
+
+void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     // set up the CSN values
@@ -429,23 +449,61 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
 
     if ( node )
     {
-        // treat overlay node as a special case
-        if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+        if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
         {
-            osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
-            bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
-            installOverlayNode( overlay, autoTextureUnit );
+            osg::notify(osg::WARN)
+                << "[osgEarth] Illegal: tried to add the name model layer more than once: " 
+                << layer->getName()
+                << std::endl;
         }
         else
         {
-           _models->addChild( node );
-        }
+            // treat overlay node as a special case
+            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            {
+                osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
+                bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
+                installOverlayNode( overlay, autoTextureUnit );
+            }
+            else
+            {
+               _models->addChild( node );
+            }
 
-        ModelSource* ms = layer->getModelSource();
-        if ( ms && ms->getOptions()->renderOrder().isSet() )
+            ModelSource* ms = layer->getModelSource();
+            if ( ms && ms->getOptions()->renderOrder().isSet() )
+            {
+                node->getOrCreateStateSet()->setRenderBinDetails(
+                    ms->getOptions()->renderOrder().value(), "RenderBin" );
+            }
+
+            _modelLayerNodes[ layer ] = node;
+        }
+    }
+}
+
+void
+MapNode::onModelLayerRemoved( ModelLayer* layer )
+{
+    if ( layer )
+    {
+        // look up the node associated with this model layer.
+        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
+        if ( i != _modelLayerNodes.end() )
         {
-            node->getOrCreateStateSet()->setRenderBinDetails(
-                ms->getOptions()->renderOrder().value(), "RenderBin" );
+            osg::Node* node = i->second;
+            
+            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            {
+                // handle the special-case overlay node
+                uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
+            }
+            else
+            {
+                _models->removeChild( node );
+            }
+            
+            _modelLayerNodes.erase( i );
         }
     }
 }
@@ -481,7 +539,22 @@ MapNode::onTerrainMaskLayerAdded( ModelLayer* layer )
         osg::notify(osg::NOTICE)<<"[osgEarth] Installed terrain mask ("
             <<count<< " mask nodes found)" << std::endl;
     }
-} 
+}
+
+void
+MapNode::onTerrainMaskLayerRemoved( ModelLayer* layer )
+{
+    if ( layer )
+    {
+        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
+        if ( i != _modelLayerNodes.end() )
+        {
+            osg::Group* maskNode = i->second->asGroup();
+            osg::ref_ptr<osg::Node> child = maskNode->getChild( 0 );
+            this->replaceChild( maskNode, child.get() );
+        }
+    }
+}
 
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )

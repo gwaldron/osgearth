@@ -21,6 +21,7 @@
 #define OSGEARTH_MAP_ENGINE_PROPERTIES_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Config>
 
 namespace osgEarth
 {
@@ -42,8 +43,12 @@ namespace osgEarth
         };
 
     public:
-        LoadingPolicy();
+        LoadingPolicy( const Config& conf =Config() );
         LoadingPolicy( const Mode& mode );
+
+    public: // Configrable
+        virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
 
     public:
         /**
@@ -91,7 +96,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ProxySettings
     {
     public:
-        ProxySettings();
+        ProxySettings( const Config& conf =Config() );
         ProxySettings( const std::string& host, int port );
 
         std::string& hostName() { return _hostName; }
@@ -99,6 +104,10 @@ namespace osgEarth
 
         int& port() { return _port; }
         const int& port() const { return _port; }
+
+    public:
+        virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
 
     protected:
         std::string _hostName;
@@ -109,7 +118,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapEngineProperties
     {
     public:
-        MapEngineProperties();
+        MapEngineProperties( const Config& conf =Config() );
        
         /**
          * Sets or gets the scale factor for height-field values.
@@ -217,6 +226,10 @@ namespace osgEarth
         //NOTE: moved this to MapLayer
         //optional<bool>& useMercatorLocator() { return _useMercatorLocator; }
         //const optional<bool>& useMercatorLocator() const { return _useMercatorLocator; }
+
+    public:
+        virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
 
     private:
             

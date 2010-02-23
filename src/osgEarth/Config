@@ -138,6 +138,12 @@ namespace osgEarth
             }
         }
 
+        template<typename X, typename Y>
+        void addIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
+            if ( target.isSetTo( targetValue ) )
+                add( key, val );
+        }
+
         void addChild( const std::string& key, const std::string& value ) {
             add( key, value );
         }
@@ -203,6 +209,14 @@ namespace osgEarth
                 Config conf = obj->toConfig();
                 conf.key() = key;
                 add( conf );
+            }
+        }
+
+        template<typename X, typename Y>
+        void updateIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) const {
+            if ( target.isSetTo( targetValue ) ) {
+                remove(key);
+                add( key, val );
             }
         }
 
@@ -296,6 +310,16 @@ namespace osgEarth
                 return true;
             }
             else
+                return false;
+        }
+
+        template<typename X, typename Y>
+        bool getIfSet( const std::string& key, const std::string& val, optional<X>& target, const Y& targetValue ) const {
+            if ( hasChild( key ) && value( key ) == val ) {
+                target = targetValue;
+                return true;
+            }
+            else 
                 return false;
         }
 

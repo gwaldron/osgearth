@@ -64,33 +64,33 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_CSTYPE                   "type"
 #define ELEM_IMAGE                    "image"
 #define ELEM_HEIGHTFIELD              "heightfield"
-#define ELEM_VERTICAL_SCALE           "vertical_scale"
-#define ELEM_MIN_TILE_RANGE           "min_tile_range_factor"
+//#define ELEM_VERTICAL_SCALE           "vertical_scale"
+//#define ELEM_MIN_TILE_RANGE           "min_tile_range_factor"
 #define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
 #define ELEM_USE_MERCATOR_FAST_PATH   "use_mercator_fast_path"
-#define ATTR_DRIVER                   "driver"
-#define ELEM_SKIRT_RATIO              "skirt_ratio"
-#define ELEM_SAMPLE_RATIO             "sample_ratio"
-#define ELEM_PROXY_HOST               "proxy_host"
-#define ELEM_PROXY_PORT               "proxy_port"
-#define ATTR_CACHE_ONLY               "cache_only"
-#define ELEM_NORMALIZE_EDGES          "normalize_edges"
-#define ELEM_COMBINE_LAYERS           "combine_layers"
-#define ELEM_PREEMPTIVE_LOD           "preemptive_lod"
+//#define ATTR_DRIVER                   "driver"
+//#define ELEM_SKIRT_RATIO              "skirt_ratio"
+//#define ELEM_SAMPLE_RATIO             "sample_ratio"
+//#define ELEM_PROXY_HOST               "proxy_host"
+//#define ELEM_PROXY_PORT               "proxy_port"
+//#define ATTR_CACHE_ONLY               "cache_only"
+//#define ELEM_NORMALIZE_EDGES          "normalize_edges"
+//#define ELEM_COMBINE_LAYERS           "combine_layers"
+//#define ELEM_PREEMPTIVE_LOD           "preemptive_lod"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
-#define ELEM_LAYERING_TECHNIQUE       "layering_technique"
-#define VALUE_MULTIPASS               "multipass"
-#define VALUE_MULTITEXTURE            "multitexture"
+//#define ELEM_LAYERING_TECHNIQUE       "layering_technique"
+//#define VALUE_MULTIPASS               "multipass"
+//#define VALUE_MULTITEXTURE            "multitexture"
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
 #define ELEM_CACHE_ENABLED            "cache_enabled"
 #define ELEM_MODEL                    "model"
-#define ELEM_MAX_LOD                  "max_lod"
-#define ELEM_LIGHTING                 "lighting"
+//#define ELEM_MAX_LOD                  "max_lod"
+//#define ELEM_LIGHTING                 "lighting"
 #define ELEM_MASK_MODEL               "mask_model"
 #define ELEM_OPACITY                  "opacity"
 #define ELEM_ENABLED                  "enabled"
@@ -106,12 +106,12 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_SRS                      "srs"
 
 #define ATTR_LOADING_WEIGHT           "loading_weight"
-#define ELEM_LOADING_POLICY           "loading_policy"
-#define ATTR_MODE                     "mode"
-#define ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR "loading_threads_per_logical_processor"
-#define ATTR_LOADING_THREADS_PER_CORE "loading_threads_per_core"
-#define ATTR_LOADING_THREADS          "loading_threads"
-#define ATTR_TILE_GEN_THREADS         "tile_generation_threads"
+//#define ELEM_LOADING_POLICY           "loading_policy"
+//#define ATTR_MODE                     "mode"
+//#define ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR "loading_threads_per_logical_processor"
+//#define ATTR_LOADING_THREADS_PER_CORE "loading_threads_per_core"
+//#define ATTR_LOADING_THREADS          "loading_threads"
+//#define ATTR_TILE_GEN_THREADS         "tile_generation_threads"
 
 
 static osg::Vec4ub
@@ -282,101 +282,12 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
     map->setName( conf.value( ATTR_NAME ) );
 
-    
-    MapEngineProperties ep;
+    MapEngineProperties engineProps;
 
-    std::string combine_layers = conf.value( ELEM_COMBINE_LAYERS );
-    if (combine_layers == VALUE_TRUE)
-        ep.combineLayers() = true;
-    else if (combine_layers == VALUE_FALSE)
-        ep.combineLayers() = false;
-
-    std::string normalizeEdges = conf.value( ELEM_NORMALIZE_EDGES );
-    if (normalizeEdges == VALUE_TRUE)
-        ep.normalizeEdges() = true;
-    else if (normalizeEdges == VALUE_FALSE)
-        ep.normalizeEdges() = false;
-        
-    // Read the loading policy
-    if ( conf.hasChild( ELEM_LOADING_POLICY ) )
-    {
-        LoadingPolicy lp;
-        Config lpConf = conf.child( ELEM_LOADING_POLICY );
-
-        if ( lpConf.attr( ATTR_MODE ) == "standard" )
-        {
-            lp.mode() = LoadingPolicy::MODE_STANDARD;
-        }
-        else if ( lpConf.attr( ATTR_MODE ) == "sequential" ) 
-        {            
-            lp.mode() = LoadingPolicy::MODE_SEQUENTIAL;
-        }
-        else if ( lpConf.attr( ATTR_MODE ) == "preemptive" )
-        {
-            lp.mode() = LoadingPolicy::MODE_PREEMPTIVE;
-        }
-
-        if ( lpConf.hasValue( ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR ) )
-        {
-            lp.numThreadsPerCore() = lpConf.value<int>( 
-                ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR, lp.numThreadsPerCore().defaultValue() );
-        }
-        if ( lpConf.hasValue( ATTR_LOADING_THREADS_PER_CORE ) )
-        {
-            lp.numThreadsPerCore() = lpConf.value<int>(
-                ATTR_LOADING_THREADS_PER_CORE, lp.numThreadsPerCore().defaultValue() );
-        }
-        if ( lpConf.hasValue( ATTR_LOADING_THREADS ) )
-        {
-            lp.numThreads() = lpConf.value<int>(
-                ATTR_LOADING_THREADS, lp.numThreads().defaultValue() );
-        }
-        if ( lpConf.hasValue( ATTR_TILE_GEN_THREADS ) )
-        {
-            lp.numTileGeneratorThreads() = lpConf.value<int>(
-                ATTR_TILE_GEN_THREADS, lp.numTileGeneratorThreads().defaultValue() );
-        }
-
-        ep.loadingPolicy() = lp;
-    }
-
-	std::string technique = conf.value( ELEM_LAYERING_TECHNIQUE );
-	if (technique == VALUE_MULTIPASS )
-        ep.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
-    else if ( technique == VALUE_MULTITEXTURE )
-        ep.layeringTechnique() = MapEngineProperties::LAYERING_MULTITEXTURE;
-
-    if ( conf.hasValue( ELEM_VERTICAL_SCALE ) )
-        ep.verticalScale() = conf.value<float>(
-            ELEM_VERTICAL_SCALE, ep.verticalScale().defaultValue() );
-
-    if ( conf.hasValue( ELEM_MIN_TILE_RANGE ) )
-        ep.minTileRangeFactor() = conf.value<float>(
-            ELEM_MIN_TILE_RANGE, ep.minTileRangeFactor().defaultValue() );
-
-    if ( conf.hasValue( ELEM_SKIRT_RATIO ) )
-        ep.heightFieldSkirtRatio() = conf.value<float>(
-            ELEM_SKIRT_RATIO, ep.heightFieldSkirtRatio().defaultValue() );
-
-    if ( conf.hasValue( ELEM_SAMPLE_RATIO ) )
-        ep.heightFieldSampleRatio() = conf.value<float>(
-            ELEM_SAMPLE_RATIO, ep.heightFieldSampleRatio().defaultValue() );
-
-    if ( conf.hasValue( ELEM_PROXY_HOST ) )
-        ep.proxySettings()->hostName() = conf.value( ELEM_PROXY_HOST );
-
-    if ( conf.hasValue( ELEM_PROXY_PORT ) )
-        ep.proxySettings()->port() = conf.value<int>(
-            ELEM_PROXY_PORT, ep.proxySettings()->port() );
-          
-    if ( conf.hasValue( ELEM_MAX_LOD ) )
-        ep.maxLOD() = conf.value<int>(
-            ELEM_MAX_LOD, ep.maxLOD().defaultValue() );
-
-    if ( conf.value( ELEM_LIGHTING ) == VALUE_TRUE )
-        ep.enableLighting() = true;
-    else if ( conf.value( ELEM_LIGHTING ) == VALUE_FALSE )
-        ep.enableLighting() = false;
+    if ( conf.hasChild( "engine_properties" ) )
+        engineProps = MapEngineProperties( conf.child("engine_properties") );
+    else
+        engineProps = MapEngineProperties( conf ); // old style, for backwards compatibility  
 
     //Read the profile definition
     if ( conf.hasChild( ELEM_PROFILE ) )
@@ -438,7 +349,7 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     }
 
     earth->setMap( map.get() );
-    earth->setMapEngineProperties( ep );
+    earth->setMapEngineProperties( engineProps );
 
     return success;
 }
@@ -448,8 +359,9 @@ static Config
 mapToConfig( Map* map, const MapEngineProperties& ep )
 {
     Config conf( ELEM_MAP );
-
     conf.attr( ATTR_NAME ) = map->getName();
+    
+    conf.add( "engine_properties", ep.toConfig() );
 
     //Write the coordinate system
     std::string cs;
@@ -462,69 +374,6 @@ mapToConfig( Map* map, const MapEngineProperties& ep )
         return Config();
     }
     conf.attr( ATTR_CSTYPE ) = cs;
-
-    if ( ep.normalizeEdges().isSet() )
-        conf.add( ELEM_NORMALIZE_EDGES, toString<bool>(ep.normalizeEdges().value()) );
-
-    if ( ep.combineLayers().isSet() )
-        conf.add( ELEM_COMBINE_LAYERS, toString<bool>(ep.combineLayers().value()) );
-
-    if ( ep.verticalScale().isSet() )
-        conf.add( ELEM_VERTICAL_SCALE, toString<float>( ep.verticalScale().value() ) );
-
-    if ( ep.minTileRangeFactor().isSet() )
-        conf.add( ELEM_MIN_TILE_RANGE, toString<float>( ep.minTileRangeFactor().value()) );
-
-    if ( ep.heightFieldSkirtRatio().isSet() )
-        conf.add( ELEM_SKIRT_RATIO, toString<float>( ep.heightFieldSkirtRatio().value() ) );
-
-    if ( ep.heightFieldSampleRatio().isSet() )
-        conf.add( ELEM_SAMPLE_RATIO, toString<float>( ep.heightFieldSampleRatio().value() ) );
-
-    if ( ep.maxLOD().isSet() )
-        conf.add( ELEM_MAX_LOD, toString<unsigned int>( ep.maxLOD().value()) );
-
-    if ( ep.proxySettings().isSet() )
-    {
-        conf.add( ELEM_PROXY_HOST, ep.proxySettings()->hostName() );
-        conf.add( ELEM_PROXY_PORT, toString<int>( ep.proxySettings()->port() ) );
-    }
-
-    // LOADING POLICY
-    if ( ep.loadingPolicy().isSet() )
-    {
-        const LoadingPolicy& lp = ep.loadingPolicy().value();
-
-        Config lpConf( ELEM_LOADING_POLICY );
-        if ( lp.mode() == LoadingPolicy::MODE_SEQUENTIAL )
-            lpConf.attr(ATTR_MODE) = "sequential";
-        else if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
-            lpConf.attr(ATTR_MODE) = "preemptive";
-        else if ( lp.mode() == LoadingPolicy::MODE_STANDARD )
-            lpConf.attr(ATTR_MODE) = "standard";
-
-        if ( lp.numThreads().isSet() )
-            lpConf.add( ATTR_LOADING_THREADS, toString<int>( lp.numThreads().value() ) );
-        if ( lp.numThreadsPerCore().isSet() )
-            lpConf.add( ATTR_LOADING_THREADS_PER_CORE, toString<int>( lp.numThreadsPerCore().value() ) );
-        if ( lp.numTileGeneratorThreads().isSet() )
-            lpConf.add( ATTR_TILE_GEN_THREADS, toString<int>( lp.numTileGeneratorThreads().value() ) );
-
-        conf.addChild( lpConf );
-    }
-
-    // LAYERING TECHNIQUE
-	if ( ep.layeringTechnique().isSet() )
-	{
-		if (ep.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS)
-		{
-            conf.add( ELEM_LAYERING_TECHNIQUE, VALUE_MULTIPASS );
-		}
-		else if (ep.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE)
-		{
-            conf.add( ELEM_LAYERING_TECHNIQUE, VALUE_MULTITEXTURE );
-		}
-	}
 
     //Write all the image sources
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )

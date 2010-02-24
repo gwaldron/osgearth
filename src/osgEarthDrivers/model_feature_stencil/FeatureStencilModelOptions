@@ -54,7 +54,7 @@ namespace osgEarth { namespace Drivers
             _mask( false ),
             _showVolumes( false )
         {
-            driver() = "model_stencil_overlay";
+            driver() = "feature_stencil";
 
             config().getIfSet( "extrusion_distance", _extrusionDistance );
             config().getIfSet( "densification_threshold", _densificationThreshold );

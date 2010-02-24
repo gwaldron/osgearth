@@ -50,7 +50,7 @@ namespace osgEarth { namespace Drivers
         _baseHeight( 0.0 ),
         _tech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
         {
-            driver() = "model_feature_overlay";
+            driver() = "feature_overlay";
             config().getIfSet( "texture_unit", _textureUnit );
             config().getIfSet( "texture_size", _textureSize );
             config().getIfSet( "base_height",  _baseHeight );

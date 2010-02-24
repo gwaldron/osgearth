@@ -34,7 +34,7 @@ namespace osgEarth { namespace Drivers
 
     public:
         SimpleModelOptions( const PluginOptions* opt =0L ) : ModelSourceOptions( opt ) {
-            driver() = "model_simple";
+            driver() = "simple";
             config().getIfSet<std::string>( "url", _url );
         }
 

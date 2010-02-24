@@ -40,7 +40,7 @@ namespace osgEarth { namespace Drivers
         FeatureGeomModelOptions( const PluginOptions* opt =0L ) : FeatureModelSourceOptions( opt ),
             _heightOffset( 0.0 )
         {
-            driver() = "model_feature_geom";
+            driver() = "feature_geom";
             config().getIfSet( "url", _url );
             config().getIfSet( "height_offset", _heightOffset );
         }

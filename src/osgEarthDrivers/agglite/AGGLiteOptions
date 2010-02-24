@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_AGGLITE_DRIVEROPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarthFeatures/DriverOptions>
+#include <osgEarthFeatures/FeatureTileSource>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -33,13 +33,12 @@ namespace osgEarth { namespace Drivers
 
     public: // ctors
         AGGLiteOptions( const PluginOptions* opt =0L ) : FeatureTileSourceOptions( opt ) {
-            //nop
+            driver() = "agglite";
         }
 
     protected:
         Config toConfig() const {
             Config conf = FeatureTileSourceOptions::toConfig();
-            conf.attr("driver") = "agglite";
             return conf;
         }
     };

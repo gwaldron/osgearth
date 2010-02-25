@@ -51,7 +51,8 @@ _maxLevel(99),
 _noDataImageFilename(""),
 _transparentColor(osg::Vec4ub(0,0,0,0))
 {
-    //nop
+    if ( options )
+        fromConfig( options->config() );
 }
 
 MapLayer::MapLayer( Type type, const Config& driverConf ) :
@@ -73,6 +74,7 @@ _noDataImageFilename(""),
 _transparentColor(osg::Vec4ub(0,0,0,0))
 {
     _driverOptions = new DriverOptions( driverConf );
+    fromConfig( driverConf );
     init();
 }
 
@@ -125,6 +127,8 @@ MapLayer::fromConfig( const Config& conf )
     conf.getIfSet( "loading_weight", _loadingWeight );
     conf.getIfSet( "use_mercator_locator", _useMercatorFastPath );
     conf.getIfSet( "use_mercator_fast_path", _useMercatorFastPath );
+    conf.getIfSet( "opacity", _opacity );
+    conf.getIfSet( "enabled", _enabled );
     conf.getObjIfSet( "profile", _profileConf );
 }
 
@@ -144,6 +148,8 @@ MapLayer::toConfig() const
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "use_mercator_locator", _useMercatorFastPath );
     conf.updateIfSet( "use_mercator_fast_path", _useMercatorFastPath );
+    conf.updateIfSet( "opacity", _opacity );
+    conf.updateIfSet( "enabled", _enabled );
     conf.updateObjIfSet( "profile", _profileConf );
 
     return conf;

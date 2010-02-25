@@ -75,22 +75,6 @@ namespace osgEarth
             Type type,
             TileSource* driver );
 
-    public: // deprecated ctors
-
-        // deprecated- for backwards compatibility only.
-        MapLayer(
-            const std::string& name,
-            Type type,
-            const std::string& driver,
-            const Config& driverConf = Config() );
-
-        // for backwards compatibility only. use the version above from now on.
-        MapLayer(
-            const std::string& name,
-            Type type,
-            const std::string& driver,
-            const Properties& props );
-
 
     public: // properties
 
@@ -108,16 +92,6 @@ namespace osgEarth
          * Gets the layer type of the map layer.
          */
         const Type& getType() const;
-
-        /**
-         * Gets the name of the driver to use to create this map layer's TileSource engine.
-         */
-        const std::string& getDriver() const;
-
-        /**
-         * Gets the name/value properties for configuration of the driver.
-         */
-        const Config& getDriverConfig() const;
 
         /**
          * Gets the driver options used to create this layer.
@@ -142,78 +116,62 @@ namespace osgEarth
          * try to automatically determine the Profile from the tile source. This property
          * sets it explicitly instead.
          */
-        optional<ProfileConfig>& profileConfig();
-        const optional<ProfileConfig>& profileConfig() const;
+        optional<ProfileConfig>& profileConfig() { return _profileConf; }
+        const optional<ProfileConfig>& profileConfig() const { return _profileConf; }
 
         /**
          * Gets or sets the minimum level of detail for which this layer should generate data.
          */
-        optional<int>& minLevel();
-        const optional<int>& minLevel() const;
+        optional<int>& minLevel() { return _minLevel; }
+        const optional<int>& minLevel() const { return _minLevel; }
 
         /**
-         * Gets or sets the maximum level of detail for which this layer should generate data.
+         * The maximum level of detail for which this layer should generate data.
          */
-        optional<int>& maxLevel();
-        const optional<int>& maxLevel() const;
+        optional<int>& maxLevel() { return _maxLevel; }
+        const optional<int>& maxLevel() const { return _maxLevel; }
 
 		/**
-		 * Gets the opacity of this MapLayer
+		 * The opacity of this layer's image tile
 		 */
-		float getOpacity() const;
-
-		/*
-		 * Sets the opacity of this MapLayer
-		 */
-		void setOpacity(float opacity);
+        optional<float>& opacity() { return _opacity; }
+        const optional<float>& opacity() const { return _opacity; }
 
 		/**
-		 * Gets whether this MapLayer is enabled or not
+		 * Whether to render this layer with the map.
 		 */
-		bool getEnabled() const;
-
-		/**
-		 * Sets whether this MapLayer is enabled or not.
-		 */
-		void setEnabled(bool enabled);
+        optional<bool>& enabled() { return _enabled; }
+        const optional<bool>& enabled() const { return _enabled; }
 
 		/**
 		 * Gets or sets the nodata image for this MapLayer
 		 */
-		optional<std::string>& noDataImageFilename();
-		const optional<std::string>& noDataImageFilename() const;
+        optional<std::string>& noDataImageFilename() { return _noDataImageFilename; }
+        const optional<std::string>& noDataImageFilename() const { return _noDataImageFilename; }
 
 		/**
 		 * Gets the transparent color of this TileSource
 		 */
-		const optional<osg::Vec4ub>& transparentColor() const;
-		optional<osg::Vec4ub>& transparentColor();
+		optional<osg::Vec4ub>& transparentColor() { return _transparentColor; }
+        const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
 
 		/**
-		 * Gets whether or not to allow the creation of Mercator images for Geographic scenes
+		 * Whether or not to allow the creation of Mercator images for Geographic scenes
 		 */
         optional<bool>& useMercatorFastPath() { return _useMercatorFastPath; }
         const optional<bool>& useMercatorFastPath() const { return _useMercatorFastPath; }
 
 		/**
-		 * Gets whether to use exact cropping if image cropping is necessary
+		 * Whether to use exact cropping if image cropping is necessary
 		 */
-		bool getExactCropping() const { return _exactCropping; } 
+        optional<bool>& exactCropping() { return _exactCropping; }
+        const optional<bool>& exactCropping() const { return _exactCropping; }
 
 		/**
-		 * Sets whether to use exact cropping if image cropping is necessary
+		 * The desired tile size to reproject imagery to if necessary.
 		 */
-		void setExactCropping( bool exactCropping ) { _exactCropping = exactCropping; }
-		/**
-		 * Gets the desired tile size to reproject imagery to if necessary.
-		 */
-		unsigned int getReprojectedTileSize() const { return _reprojected_tile_size; }
-
-		/**
-		 * Sets the desired tile size to reproject imagery to if it is necessary.
-		 * If set to 0, osgEarth will attempt to maintain a consistent resolution for the tiles.
-		 */
-		void setReprojectedTileSize( unsigned int tile_size) { _reprojected_tile_size = tile_size;}
+        optional<unsigned int> reprojectedTileSize() { return _reprojectedTileSize; }
+        const optional<unsigned int> reprojectedTileSize() const { return _reprojectedTileSize; }
 
 		/**
 		 * The format that this MapLayer should use when caching.
@@ -266,6 +224,7 @@ namespace osgEarth
 
         void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
 
+
 		/**
          * Gets the reference URI. See setReferenceURI for more info.
          */
@@ -317,44 +276,43 @@ namespace osgEarth
         unsigned int _id;
         std::string _name;
         Type        _type;
-        std::string _driver;
-        Config      _driverConf;
-        osg::ref_ptr<const DriverOptions> _driverOptions;
+        //std::string _driver;
+        //Config      _driverConf;
 
+        osg::ref_ptr<const DriverOptions> _driverOptions;
        
         optional<ProfileConfig> _profileConf;
         optional<int> _minLevel;
         optional<int> _maxLevel;
-	    optional<std::string> _nodata_image_filename;
+	    optional<std::string> _noDataImageFilename;
 		optional<osg::Vec4ub> _transparentColor;
         optional<bool> _useMercatorFastPath;
 		optional<std::string> _cacheFormat;
         optional<bool> _cacheEnabled;
 		optional<bool> _cacheOnly;
         optional<float> _loadingWeight;
+        optional<bool> _exactCropping;
+		optional<float> _opacity;
+		optional<bool> _enabled;
+		optional<unsigned int> _reprojectedTileSize;
 
-        bool _exactCropping;
-		bool _cacheOnlyEnv;
-		float _opacity;
-		bool _enabled;
+        bool _cacheOnlyEnv;
 
         
         osg::ref_ptr<TileSource> _tileSource;
 		osg::ref_ptr<Cache> _cache;
 	    osg::ref_ptr<osg::Image> _nodata_image;
 
-
 		std::string _referenceURI;
 
-		unsigned int _reprojected_tile_size;
-
 		osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
-
 		osg::ref_ptr< const Profile > _profile;
-
         osg::ref_ptr< const Profile > _cacheProfile;
 
         OpenThreads::Mutex _initMutex;
+
+        void init();
+        void fromConfig( const Config& conf );
     };
 
     /**
@@ -400,12 +358,12 @@ namespace osgEarth
 
 		float getOpacity() const
 		{
-			return _mapLayer->getOpacity();
+            return _mapLayer->opacity().value();
 		}
 
 		bool getEnabled() const
 		{
-			return _mapLayer->getEnabled();
+			return _mapLayer->enabled().value();
 		}
 
         int getLevelOfDetail() const

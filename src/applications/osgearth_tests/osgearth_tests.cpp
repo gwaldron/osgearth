@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 
 	  //Tell the layer that if reprojection is necessary, the reprojected image should be the given tile size.
 	  //Otherwise, the optimal tile size will be computed.
-	  layer->setReprojectedTileSize( 512 );
+	  layer->reprojectedTileSize() = 512;
 
       osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, Profile::create("epsg:26917", 560725, 4385762, 573866, 4400705));
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
@@ -111,8 +111,8 @@ int main(int argc, char** argv)
       osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mercator_reprojected", opt );
 
 	  layer->useMercatorFastPath() = false;
-	  layer->setReprojectedTileSize( 256 );
-	  layer->setExactCropping( true );
+	  layer->reprojectedTileSize() = 256;
+	  layer->exactCropping() = true;
 	  layer->profileConfig() = ProfileConfig( "global-mercator" );
 
 	  //Request an image from the mercator source.  Should be reprojected to geodetic

@@ -71,14 +71,14 @@ void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 					//If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
 					//Otherwise, we want the layers to go to 1.0
 					float goalOpacity = (i > activeLayer) ? 0.0f : 1.0f;
-					float currentOpacity = mapNode->getMap()->getImageMapLayers()[i]->getOpacity();
+					float currentOpacity = mapNode->getMap()->getImageMapLayers()[i]->opacity().value();
 
 					if (goalOpacity != currentOpacity)
 					{
 						float opacityDelta = delta;
 						if (currentOpacity > goalOpacity) opacityDelta = -opacityDelta;
 						float newOpacity = currentOpacity + opacityDelta;
-						mapNode->getMap()->getImageMapLayers()[i]->setOpacity(newOpacity);
+						mapNode->getMap()->getImageMapLayers()[i]->opacity() = newOpacity; //setOpacity(newOpacity);
 					}
 				}
 			}

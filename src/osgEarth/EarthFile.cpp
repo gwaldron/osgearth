@@ -143,11 +143,6 @@ toColor( const osg::Vec4ub& c )
 static ModelLayer*
 readModelLayer( const Config& conf )
 {
-    //ModelLayer* layer = new ModelLayer(
-    //    conf.attr( "name" ),
-    //    conf.attr( "driver" ),
-    //    conf );
-
     ModelLayer* layer = new ModelLayer( conf.value("name"), new DriverOptions(conf) );
 
     return layer;
@@ -161,83 +156,10 @@ readMapLayer( const Config& conf, const Config& additional )
         conf.key() == ELEM_HEIGHTFIELD ? MapLayer::TYPE_HEIGHTFIELD :
         MapLayer::TYPE_IMAGE;
 
-    // combine the layer conf children with the additional config to create the
-    // driver-specific configuration.
-    //Config driverConf;
-    //driverConf.add( conf.children() );
-    //driverConf.add( additional.children() );
-
-    //MapLayer* layer = new MapLayer(
-    //    conf.attr( "name" ),
-    //    layerType,
-    //    conf.attr( "driver" ),
-    //    driverConf );
-
     Config driverConf = conf;
     driverConf.add( additional.children() );
 
     MapLayer* layer = new MapLayer( conf.value("name"), layerType, new DriverOptions(driverConf) );
-
-    int minLevel = conf.value<int>( ATTR_MIN_LEVEL, -1 );
-    if ( minLevel >= 0 )
-        layer->minLevel() = minLevel;
-
-    int maxLevel = conf.value<int>( ATTR_MAX_LEVEL, -1 );
-    if ( maxLevel >= 0 )
-        layer->maxLevel() = maxLevel;
-
-    std::string noDataImage = conf.value( ELEM_NODATA_IMAGE );
-	if ( !noDataImage.empty() )
-		layer->noDataImageFilename() = noDataImage;
-
-    std::string use_merc_locator = conf.value( ELEM_USE_MERCATOR_LOCATOR );
-    if ( use_merc_locator.empty() )
-        use_merc_locator = conf.value( ELEM_USE_MERCATOR_FAST_PATH );
-    if (use_merc_locator == VALUE_TRUE )
-        layer->useMercatorFastPath() = true;
-    else if ( use_merc_locator == VALUE_FALSE )
-        layer->useMercatorFastPath() = false;
-
-    
-    conf.getIfSet( ELEM_CACHE_FORMAT, layer->cacheFormat() );
-    //layer->setCacheFormat( conf.value( ELEM_CACHE_FORMAT ) );
-
-    conf.getIfSet( ELEM_CACHE_ENABLED, layer->cacheEnabled() );
-
-    //std::string cacheEnabled = conf.value( ELEM_CACHE_ENABLED );
-    //if (cacheEnabled == VALUE_TRUE)
-    //{
-    //    layer->setCacheEnabled( true );
-    //}
-    //else if ( cacheEnabled == VALUE_FALSE)
-    //{
-    //    layer->setCacheEnabled( false );
-    //}
-
-    if ( !conf.value( ELEM_TRANSPARENT_COLOR ).empty() )
-		layer->transparentColor() = getColor( conf.value( ELEM_TRANSPARENT_COLOR ), osg::Vec4ub() );
-
-	// Check for an explicit profile override:
-    if ( conf.hasChild( ELEM_PROFILE ) )
-        layer->profileConfig() = ProfileConfig( conf.child( ELEM_PROFILE ) );
-        
-    conf.getIfSet( ATTR_LOADING_WEIGHT, layer->loadingWeight() );
-    //if ( conf.hasValue( ATTR_LOADING_WEIGHT ) )
-    //    layer->loadWeight() = ( conf.value<float>( ATTR_LOADING_WEIGHT, layer->getLoadWeight() ) );
-
-    if ( conf.hasValue( ELEM_OPACITY ) )
-        layer->setOpacity( conf.value<float>( ELEM_OPACITY, layer->getOpacity() ) );
-
-    std::string enabledString = conf.value( ELEM_ENABLED );
-    if (enabledString == VALUE_TRUE)
-    {
-        layer->setEnabled( true );
-    }
-    else if (enabledString == VALUE_FALSE)
-    {
-        layer->setEnabled( false );
-    }
-
 
     return layer;
 }
@@ -247,15 +169,7 @@ static Config
 writeLayer( ModelLayer* layer, const std::string& typeName ="" )
 {
     Config conf = layer->toConfig();
-
     conf.key() = !typeName.empty() ? typeName : ELEM_MODEL;
-
-    //conf.attr( ATTR_NAME ) = layer->getName();
-    //conf.attr( ATTR_DRIVER ) = layer->getDriver();
-
-    ////Add all the properties
-    //conf.add( layer->getDriverConfig().children() );
-
     return conf;
 }
 

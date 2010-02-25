@@ -150,7 +150,8 @@ struct ToggleVisiblityCallback: public osgWidget::Callback {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
             //_fadeLayerNode->setEnabled(_layerIndex, !_fadeLayerNode->getEnabled(_layerIndex));
-			_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setEnabled( !_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->getEnabled());
+			_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->enabled() =
+                _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->enabled() == false;
         }
         return true;
     }
@@ -171,7 +172,8 @@ struct OpacityCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setOpacity(_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->getOpacity() + _opacityDelta);
+            _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->opacity() =
+                _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->opacity().value() + _opacityDelta;
         }
         return true;
     }
@@ -536,8 +538,8 @@ int main(int argc, char** argv)
 
     for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
     {
-		mapNode->getMap()->getImageMapLayers()[i]->setOpacity(1.0f);
-		mapNode->getMap()->getImageMapLayers()[i]->setEnabled(true);
+		mapNode->getMap()->getImageMapLayers()[i]->opacity() = 1.0f;
+		mapNode->getMap()->getImageMapLayers()[i]->enabled() = true;
     }
 
     //Setup the osgWidget interface

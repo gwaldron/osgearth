@@ -91,10 +91,10 @@ int main(int argc, char** argv)
       for (unsigned int i = 1; i < numImageLayers; ++i)
       {
           //fadeLayerNode->setOpacity(i, 0.0f);
-		  mapNode->getMap()->getImageMapLayers()[i]->setOpacity(0.0f);
+		  mapNode->getMap()->getImageMapLayers()[i]->opacity() = 0.0f;
       }
       //fadeLayerNode->setOpacity(0, 1.0f);
-	  mapNode->getMap()->getImageMapLayers()[0]->setOpacity(1.0f);
+	  mapNode->getMap()->getImageMapLayers()[0]->opacity() = 1.0f;
 
 	  //Setup the ElevationFadeCallback
 	  ElevationFadeCallback* callback = new ElevationFadeCallback();

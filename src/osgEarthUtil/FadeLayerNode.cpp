@@ -239,8 +239,8 @@ void FadeLayerNode::updateStateSet()
 
 			if (i < _map->getImageMapLayers().size())
 			{
-			  opacity = _map->getImageMapLayers()[i]->getOpacity();
-			  enabled = _map->getImageMapLayers()[i]->getEnabled();
+			  opacity = _map->getImageMapLayers()[i]->opacity().value();
+			  enabled = _map->getImageMapLayers()[i]->enabled().value();
 			}
 
 			std::stringstream ss;

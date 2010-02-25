@@ -31,65 +31,6 @@ using namespace OpenThreads;
 
 static unsigned int s_mapLayerID = 0;
 
-MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Config& driverConf ) :
-osg::Referenced( true ),
-_name( name ),
-_type( type ),
-_driver( driver ),
-_driverConf( driverConf ),
-_opacity(1.0f),
-_enabled(true),
-_exactCropping(false),
-_useMercatorFastPath(true),
-_reprojected_tile_size(256),
-_cacheOnly( false ),
-_cacheOnlyEnv( false ),
-_cacheEnabled(true),
-_loadingWeight( 1.0f ),
-_profileConf( ProfileConfig() ),
-_minLevel(0),
-_maxLevel(99),
-_nodata_image_filename(""),
-_transparentColor(osg::Vec4ub(0,0,0,0))
-{
-	readEnvironmentalVariables();
-    _id = s_mapLayerID++;
-
-    _driverConf.update("driver", driver);
-    _driverOptions = new DriverOptions( _driverConf );
-}
-
-// this ctor is for backwards compat only
-MapLayer::MapLayer(const std::string& name, Type type, const std::string& driver, const Properties& driverProps ) :
-osg::Referenced( true ),
-_name( name ),
-_type( type ),
-_driver( driver ),
-_opacity(1.0f),
-_enabled(true),
-_exactCropping(false),
-_useMercatorFastPath(true),
-_reprojected_tile_size(256),
-_cacheOnly( false ),
-_cacheOnlyEnv( false ),
-_cacheEnabled(true),
-_loadingWeight( 1.0f ),
-_profileConf( ProfileConfig() ),
-_minLevel(0),
-_maxLevel(99),
-_nodata_image_filename(""),
-_transparentColor(osg::Vec4ub(0,0,0,0))
-{
-    for( Properties::const_iterator i = driverProps.begin(); i != driverProps.end(); i++ )
-        _driverConf.update( i->first, i->second );
-
-	readEnvironmentalVariables();
-    _id = s_mapLayerID++;
-    _cacheFormat = suggestCacheFormat();
-    
-    _driverConf.update( "driver", driver );
-    _driverOptions = new DriverOptions( _driverConf );
-}
 
 MapLayer::MapLayer(const std::string& name, Type type, const DriverOptions* options ) :
 osg::Referenced( true ),
@@ -100,14 +41,14 @@ _opacity(1.0f),
 _enabled(true),
 _exactCropping(false),
 _useMercatorFastPath(true),
-_reprojected_tile_size(256),
+_reprojectedTileSize(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _loadingWeight( 1.0f ),
 _profileConf( ProfileConfig() ),
 _minLevel(0),
 _maxLevel(99),
-_nodata_image_filename(""),
+_noDataImageFilename(""),
 _transparentColor(osg::Vec4ub(0,0,0,0))
 {
     //nop
@@ -117,24 +58,22 @@ MapLayer::MapLayer( Type type, const Config& driverConf ) :
 osg::Referenced( true ),
 _type( type ),
 _name( driverConf.value("name") ),
-_driver( driverConf.value("driver") ),
-_driverConf( driverConf ),
 _opacity(1.0f),
 _enabled(true),
 _exactCropping(false),
 _useMercatorFastPath(true),
-_reprojected_tile_size(256),
+_reprojectedTileSize(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _loadingWeight( 1.0f ),
 _profileConf( ProfileConfig() ),
 _minLevel(0),
 _maxLevel(99),
-_nodata_image_filename(""),
+_noDataImageFilename(""),
 _transparentColor(osg::Vec4ub(0,0,0,0))
 {
-    //nop
-    _driverOptions = new DriverOptions( _driverConf );
+    _driverOptions = new DriverOptions( driverConf );
+    init();
 }
 
 MapLayer::MapLayer(const std::string& name, Type type, TileSource* source ) :
@@ -146,25 +85,47 @@ _opacity(1.0f),
 _enabled(true),
 _exactCropping(false),
 _useMercatorFastPath(true),
-_reprojected_tile_size(256),
+_reprojectedTileSize(256),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _loadingWeight( 1.0f ),
 _profileConf( ProfileConfig() ),
 _minLevel(0),
 _maxLevel(99),
-_nodata_image_filename(""),
+_noDataImageFilename(""),
 _transparentColor(osg::Vec4ub(0,0,0,0))
 {
-	readEnvironmentalVariables();
-    _id = s_mapLayerID++;
-    _cacheFormat = suggestCacheFormat();
+    init();
 
     //Try to get the profile from the TileSource
     if (_tileSource)
     {
         _profile = _tileSource->getProfile();
     }
+}
+
+void
+MapLayer::init()
+{
+	readEnvironmentalVariables();
+    _id = s_mapLayerID++;
+    _cacheFormat = suggestCacheFormat();
+}
+
+void
+MapLayer::fromConfig( const Config& conf )
+{
+    _name = conf.value("name");
+    conf.getIfSet( "min_level", _minLevel );
+    conf.getIfSet( "max_level", _maxLevel );
+    conf.getIfSet( "cache_enabled", _cacheEnabled );
+    conf.getIfSet( "cache_only", _cacheOnly );
+    conf.getIfSet( "cache_format", _cacheFormat );
+    conf.getIfSet( "nodata_image", _noDataImageFilename );
+    conf.getIfSet( "loading_weight", _loadingWeight );
+    conf.getIfSet( "use_mercator_locator", _useMercatorFastPath );
+    conf.getIfSet( "use_mercator_fast_path", _useMercatorFastPath );
+    conf.getObjIfSet( "profile", _profileConf );
 }
 
 Config
@@ -179,29 +140,13 @@ MapLayer::toConfig() const
     conf.updateIfSet( "cache_enabled", _cacheEnabled );
     conf.updateIfSet( "cache_only", _cacheOnly );
     conf.updateIfSet( "cache_format", _cacheFormat );
-    conf.updateIfSet( "nodata_image", _nodata_image_filename );
+    conf.updateIfSet( "nodata_image", _noDataImageFilename );
     conf.updateIfSet( "loading_weight", _loadingWeight );
+    conf.updateIfSet( "use_mercator_locator", _useMercatorFastPath );
+    conf.updateIfSet( "use_mercator_fast_path", _useMercatorFastPath );
+    conf.updateObjIfSet( "profile", _profileConf );
 
     return conf;
-}
-
-
-optional<int>&
-MapLayer::minLevel() {
-    return _minLevel;
-}
-const optional<int>&
-MapLayer::minLevel() const {
-    return _minLevel;
-}
-
-optional<int>&
-MapLayer::maxLevel() {
-    return _maxLevel;
-}
-const optional<int>&
-MapLayer::maxLevel() const {
-    return _maxLevel;
 }
 
 const std::string&
@@ -218,36 +163,6 @@ unsigned int
 MapLayer::getId() const {
     return _id;
 }
-
-const std::string& 
-MapLayer::getDriver() const {
-    return _driver;
-}
-
-const Config&
-MapLayer::getDriverConfig() const {
-    return _driverConf;
-}
-
-//bool MapLayer::getCacheOnly() const
-//{
-//	return _cacheOnly || _cacheOnlyEnv;
-//}
-//
-//void MapLayer::setCacheOnly( bool cacheOnly )
-//{
-//	_cacheOnly = cacheOnly;
-//}
-//
-//bool MapLayer::getCacheEnabled() const
-//{
-//    return _cacheEnabled;
-//}
-//
-//void MapLayer::setCacheEnabled( bool cacheEnabled)
-//{
-//    _cacheEnabled = cacheEnabled;
-//}
 
 Cache*
 MapLayer::getCache() const
@@ -310,25 +225,25 @@ MapLayer::getProfile() const
 	return _profile.get();
 }
 
-optional<ProfileConfig>&
-MapLayer::profileConfig() {
-    return _profileConf;
-}
-const optional<ProfileConfig>&
-MapLayer::profileConfig() const {
-    return _profileConf;
-}
-
-optional<std::string>& 
-MapLayer::noDataImageFilename()
-{
-	return _nodata_image_filename;
-}
-const optional<std::string>&
-MapLayer::noDataImageFilename() const
-{
-	return _nodata_image_filename;
-}
+//optional<ProfileConfig>&
+//MapLayer::profileConfig() {
+//    return _profileConf;
+//}
+//const optional<ProfileConfig>&
+//MapLayer::profileConfig() const {
+//    return _profileConf;
+//}
+//
+//optional<std::string>& 
+//MapLayer::noDataImageFilename()
+//{
+//	return _nodata_image_filename;
+//}
+//const optional<std::string>&
+//MapLayer::noDataImageFilename() const
+//{
+//	return _nodata_image_filename;
+//}
 
 //const std::string&
 //MapLayer::getCacheFormat() const
@@ -390,13 +305,13 @@ MapLayer::initTileSource()
     {
         tileSource = tileSourceFactory.create( _driverOptions.get() );
     }
-    else
-    {
-	    tileSource = tileSourceFactory.create(
-            getDriver(),
-            getDriverConfig(),
-            getGlobalOptions() );
-    }
+    //else
+    //{
+	   // tileSource = tileSourceFactory.create(
+    //        getDriver(),
+    //        getDriverConfig(),
+    //        getGlobalOptions() );
+    //}
 
 	//Get the override profile if it is set.
 	osg::ref_ptr<const Profile> override_profile;
@@ -412,13 +327,13 @@ MapLayer::initTileSource()
 
 		if ( tileSource->isOK() )
 		{
-			if ( _nodata_image_filename.isSet() && _nodata_image_filename.get().length() > 0 )
+			if ( _noDataImageFilename.isSet() && _noDataImageFilename.get().length() > 0 )
 			{
-				osg::notify(osg::NOTICE) << "Setting nodata image to " << _nodata_image_filename.get() << std::endl;
-				_nodata_image = osgDB::readImageFile( _nodata_image_filename.get());
+				osg::notify(osg::NOTICE) << "Setting nodata image to " << _noDataImageFilename.get() << std::endl;
+				_nodata_image = osgDB::readImageFile( _noDataImageFilename.get());
 				if (!_nodata_image.valid())
 				{
-					osg::notify(osg::NOTICE) << "Warning:  Could not read nodata image from " << _nodata_image_filename.get() << std::endl;
+					osg::notify(osg::NOTICE) << "Warning:  Could not read nodata image from " << _noDataImageFilename.get() << std::endl;
 				}
 			}
 		}
@@ -441,42 +356,6 @@ MapLayer::initTileSource()
     }
 }
 
-float
-MapLayer::getOpacity() const
-{
-	return _opacity;
-}
-
-void
-MapLayer::setOpacity(float opacity)
-{
-	_opacity = osg::clampBetween(opacity, 0.0f, 1.0f);
-}
-
-bool
-MapLayer::getEnabled() const
-{
-	return _enabled;
-}
-
-void
-MapLayer::setEnabled(bool enabled)
-{
-	_enabled = enabled;
-}
-
-const optional<osg::Vec4ub>& 
-MapLayer::transparentColor() const
-{
-	return _transparentColor;
-}
-
-optional<osg::Vec4ub>&
-MapLayer::transparentColor()
-{
-	return _transparentColor;
-}
-
 const osgDB::ReaderWriter::Options*
 MapLayer::getGlobalOptions() const {
     return _globalOptions.get();
@@ -486,7 +365,6 @@ void
 MapLayer::setGlobalOptions( const osgDB::ReaderWriter::Options* options ) {
     _globalOptions = options;
 }
-
 
 bool
 MapLayer::isKeyValid(const TileKey* key) const
@@ -539,7 +417,7 @@ MapLayer::createImage( const TileKey* key,
 		osg::notify(osg::INFO) << "Layer " << _name << ": Map and Layer profiles are equivalent " << std::endl;
 	}
 	//If the map profile and layer profile are in the same SRS but with different tiling scemes and exact cropping is not required, cache in the layer profile.
-	else if (mapProfile->getSRS()->isEquivalentTo( layerProfile->getSRS()) && !_exactCropping)
+	else if (mapProfile->getSRS()->isEquivalentTo( layerProfile->getSRS()) && _exactCropping == false )
 	{
 		osg::notify(osg::INFO) << "Layer " << _name << ": Map and Layer profiles are in the same SRS and non-exact cropping is allowed, caching in layer profile." << std::endl;
 		cacheInMapProfile = false;
@@ -705,7 +583,7 @@ MapLayer::createImage( const TileKey* key,
 				osg::notify(osg::INFO) << "  Reprojecting image" << std::endl;
                 //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
-                result = mosaic->reproject( key->getProfile()->getSRS(), &key->getGeoExtent(), _reprojected_tile_size, _reprojected_tile_size);
+                result = mosaic->reproject( key->getProfile()->getSRS(), &key->getGeoExtent(), _reprojectedTileSize.value(), _reprojectedTileSize.value() );
             }
             else
             {
@@ -714,8 +592,8 @@ MapLayer::createImage( const TileKey* key,
                 GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key->getGeoExtent() );
                 if ( clampedMapExt.width() * clampedMapExt.height() > 0 )
 				{
-					int size = _exactCropping ? _reprojected_tile_size : 0;
-                    result = mosaic->crop(clampedMapExt, _exactCropping, size, size);
+					int size = _exactCropping == true ? _reprojectedTileSize.value() : 0;
+                    result = mosaic->crop(clampedMapExt, _exactCropping.value(), size, size);
 				}
                 else
                     result = NULL;

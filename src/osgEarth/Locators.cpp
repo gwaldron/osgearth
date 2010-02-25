@@ -114,7 +114,7 @@ GeoLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) cons
 
     bool ok = Locator::convertModelToLocal( world, local );
 
-    cropLocal( local );
+    //cropLocal( local );
 
     return ok;
 }

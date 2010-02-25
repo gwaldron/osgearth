@@ -93,11 +93,21 @@ ImageUtils::cropImage(const osg::Image* image,
                       double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy)
 {
     //Compute the desired cropping rectangle
-    int windowX       = osg::clampBetween( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0, image->s()-1);
-    int windowY       = osg::clampBetween( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0, image->t()-1);
-    int windowWidth   = osg::clampBetween( (int)ceil(  (dst_maxx - src_minx) / (src_maxx - src_minx) * (double)image->s()) - windowX, 0, image->s()-1);
-    int windowHeight   = osg::clampBetween( (int)ceil(  (dst_maxy - src_miny) / (src_maxy - src_miny) * (double)image->t()) - windowY, 0, image->t()-1);
+    int windowX        = osg::clampBetween( (int)floor( (dst_minx - src_minx) / (src_maxx - src_minx) * (double)image->s()), 0, image->s()-1);
+    int windowY        = osg::clampBetween( (int)floor( (dst_miny - src_miny) / (src_maxy - src_miny) * (double)image->t()), 0, image->t()-1);
+    int windowWidth    = osg::clampBetween( (int)ceil(  (dst_maxx - src_minx) / (src_maxx - src_minx) * (double)image->s()) - windowX, 0, image->s());
+    int windowHeight   = osg::clampBetween( (int)ceil(  (dst_maxy - src_miny) / (src_maxy - src_miny) * (double)image->t()) - windowY, 0, image->t());    
 
+    if (windowX + windowWidth > image->s())
+    {
+        windowWidth = image->s() - windowX;        
+    }
+
+    if (windowY + windowHeight > image->t())
+    {
+        windowHeight = image->t() - windowY;
+    }
+    
     if ((windowWidth * windowHeight) == 0)
     {
         return NULL;
@@ -121,6 +131,7 @@ ImageUtils::cropImage(const osg::Image* image,
     
     for (int src_row = windowY, dst_row=0; dst_row < windowHeight; src_row++, dst_row++)
     {
+        if (src_row > image->t()-1) osg::notify(osg::NOTICE) << "HeightBroke" << std::endl;
         const void* src_data = image->data(windowX, src_row, 0);
         void* dst_data = cropped->data(0, dst_row, 0);
         memcpy( dst_data, src_data, cropped->getRowSizeInBytes());

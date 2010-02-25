@@ -432,11 +432,15 @@ GeoImage* GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool
     unsigned startR = bottomBorder ? buffer : 0;
     ImageUtils::copyAsSubImage(_image.get(), newImage, startC, startR );
 
-    double upp = getUnitsPerPixel();
-    double xmin = leftBorder ? _extent.xMin() - buffer * upp : _extent.xMin();
-    double ymin = bottomBorder ? _extent.yMin() - buffer * upp : _extent.yMin();
-    double xmax = rightBorder ? _extent.xMax() + buffer * upp : _extent.xMax();
-    double ymax = topBorder ? _extent.yMax() + buffer * upp : _extent.yMax();
+    //double upp = getUnitsPerPixel();
+    double uppw = _extent.width() / (double)_image->s();
+	double upph = _extent.height() / (double)_image->t();
+
+    double xmin = leftBorder ? _extent.xMin() - buffer * uppw : _extent.xMin();
+    double ymin = bottomBorder ? _extent.yMin() - buffer * upph : _extent.yMin();
+    double xmax = rightBorder ? _extent.xMax() + buffer * uppw : _extent.xMax();
+    double ymax = topBorder ? _extent.yMax() + buffer * upph : _extent.yMax();
+
     return new GeoImage(newImage, GeoExtent(getSRS(), xmin, ymin, xmax, ymax));
 }
 

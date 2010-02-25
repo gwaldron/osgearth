@@ -447,26 +447,7 @@ MemCache::getImage(const osgEarth::TileKey *key,
 				   const std::string& layerName,
 				   const std::string& format)
 {
-	osg::Timer_t now = osg::Timer::instance()->tick();
-
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
-
-    //osg::notify(osg::NOTICE) << "List contains: " << _images.size() << std::endl;
-
-    std::string id = key->str();
-    //Find the image in the cache
-    //ImageCache::iterator itr = _images.find(id);
-    KeyToIteratorMap::iterator itr = _keyToIterMap.find(id);
-    if (itr != _keyToIterMap.end())
-    {
-        CachedImage entry = *itr->second;
-        _images.erase(itr->second);
-        _images.push_front(entry);
-        itr->second = _images.begin();
-        //osg::notify(osg::NOTICE)<<"Getting from memcache "<< key->str() <<std::endl;
-        return const_cast<osg::Image*>(itr->second->_image.get());
-    }
-    return 0;
+  return dynamic_cast<osg::Image*>( getObject( key, layerName, format ) );
 }
 
 void
@@ -475,23 +456,63 @@ MemCache::setImage(const osgEarth::TileKey *key,
 				   const std::string& format,
 				   osg::Image *image)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+  setObject( key, layerName, format, image );
+}
 
-    std::string id = key->str();
+osg::HeightField* MemCache::getHeightField( const TileKey* key,
+  const std::string& layerName,
+  const std::string& format) {
+  return dynamic_cast<osg::HeightField*>( getObject( key, layerName, format ) );
+}
 
-    CachedImage entry;
-    entry._image = const_cast<osg::Image*>(image);
-    entry._key = id;
-    _images.push_front(entry);
+void MemCache::setHeightField( const TileKey* key,
+  const std::string& layerName,
+  const std::string& format,
+  osg::HeightField* hf) {
+  setObject( key, layerName, format, hf );
+}
 
-    _keyToIterMap[id] = _images.begin();
+osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& layerName, const std::string& format) {
+  osg::Timer_t now = osg::Timer::instance()->tick();
 
-    if (_images.size() > _maxNumTilesInCache)
-    {
-        CachedImage toRemove = _images.back();
-        _images.pop_back();
-        _keyToIterMap.erase(toRemove._key);
-    }
+  OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+  //osg::notify(osg::NOTICE) << "List contains: " << _images.size() << std::endl;
+
+  std::string id = key->str();
+  //Find the image in the cache
+  //ImageCache::iterator itr = _images.find(id);
+  KeyToIteratorMap::iterator itr = _keyToIterMap.find(id);
+  if (itr != _keyToIterMap.end())
+  {
+    CachedObject entry = *itr->second;
+    _objects.erase(itr->second);
+    _objects.push_front(entry);
+    itr->second = _objects.begin();
+    //osg::notify(osg::NOTICE)<<"Getting from memcache "<< key->str() <<std::endl;
+    return itr->second->_object.get();
+  }
+  return 0;
+}
+
+void MemCache::setObject( const TileKey* key, const std::string& layerName, const std::string& format, osg::Referenced* referenced ) {
+  OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+  std::string id = key->str();
+
+  CachedObject entry;
+  entry._object = referenced;
+  entry._key = id;
+  _objects.push_front(entry);
+
+  _keyToIterMap[id] = _objects.begin();
+
+  if (_objects.size() > _maxNumTilesInCache)
+  {
+    CachedObject toRemove = _objects.back();
+    _objects.pop_back();
+    _keyToIterMap.erase(toRemove._key);
+  }
 }
 
 bool

@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 
             // add a handler that will automatically calculate good clipping planes
             // for a geocentric map:
-            viewer.addEventHandler( new osgEarthUtil::AutoClipPlaneHandler( mapNode ) );
+            //viewer.addEventHandler( new osgEarthUtil::AutoClipPlaneHandler( mapNode ) );
         }
     }
 

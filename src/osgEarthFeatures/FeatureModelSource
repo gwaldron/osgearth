@@ -45,8 +45,8 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<GriddingPolicy>& gridding() { return _gridding; }
         const osg::ref_ptr<GriddingPolicy>& gridding() const { return _gridding; }
 
-        osg::ref_ptr<StyleCatalog>& styles() { return _styles; }
-        const osg::ref_ptr<StyleCatalog>& styles() const { return _styles; }
+        optional<StyleCatalog>& styles() { return _styles; }
+        const optional<StyleCatalog>& styles() const { return _styles; }
 
         optional<Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -61,7 +61,7 @@ namespace osgEarth { namespace Features
 
     protected:
         osg::ref_ptr<FeatureSourceOptions> _featureOptions;
-        osg::ref_ptr<StyleCatalog> _styles;
+        optional<StyleCatalog> _styles;
         osg::ref_ptr<GriddingPolicy> _gridding;
         optional<Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;

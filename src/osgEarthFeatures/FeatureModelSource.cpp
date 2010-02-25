@@ -118,7 +118,8 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     osg::Group* group = new osg::Group();
 
-    const StyleCatalog* styles = _options->styles().get();
+    const optional<StyleCatalog>& styles = _options->styles();
+    //const StyleCatalog* styles = _options->styles().get();
     
     // figure out if and how to style the geometry.
     if ( _features->hasEmbeddedStyles() )
@@ -139,7 +140,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
             }
         }
     }
-    else if ( styles )
+    else if ( styles.isSet() )
     {
         if ( styles->selectors().size() > 0 )
         {

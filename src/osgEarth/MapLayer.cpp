@@ -34,7 +34,6 @@ static unsigned int s_mapLayerID = 0;
 
 MapLayer::MapLayer(const std::string& name, Type type, const DriverOptions* options ) :
 osg::Referenced( true ),
-_name( name ),
 _type( type ),
 _driverOptions( options ),
 _opacity(1.0f),
@@ -53,6 +52,9 @@ _transparentColor(osg::Vec4ub(0,0,0,0))
 {
     if ( options )
         fromConfig( options->config() );
+
+    // since fromConfig sets the name from the config(), override that here:
+    _name = name;
 }
 
 MapLayer::MapLayer( Type type, const Config& driverConf ) :

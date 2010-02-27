@@ -65,11 +65,15 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& times() { return _times; }
         const optional<std::string>& times() const { return _times; }
 
+        optional<double>& secondsPerFrame() { return _secondsPerFrame; }
+        const optional<double>& secondsPerFrame() const { return _secondsPerFrame; }
+
     public:
         WMSOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
             _wmsVersion( "1.1.1" ),
             _transparent( true ),
-            _elevationUnit( "m" )
+            _elevationUnit( "m" ),
+            _secondsPerFrame( 1.0 )
         {
             driver() = "wms";
             config().getIfSet("url", _url);
@@ -84,6 +88,7 @@ namespace osgEarth { namespace Drivers
             config().getIfSet("srs", _srs);
             config().getIfSet("transparent", _transparent);
             config().getIfSet("times", _times);
+            config().getIfSet("seconds_per_frame", _secondsPerFrame );
         }
 
     protected:
@@ -101,6 +106,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("srs", _srs);
             conf.updateIfSet("transparent", _transparent);
             conf.updateIfSet("times", _times);
+            conf.updateIfSet("seconds_per_frame", _secondsPerFrame );
             return conf;
         }
 
@@ -116,6 +122,7 @@ namespace osgEarth { namespace Drivers
         optional<std::string> _srs;
         optional<bool>        _transparent;
         optional<std::string> _times;
+        optional<double>      _secondsPerFrame;
     };
 
 } } // namespace osgEarth::Drivers

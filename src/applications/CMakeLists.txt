@@ -35,3 +35,5 @@ ADD_SUBDIRECTORY(osgearth_earthfile)
 ADD_SUBDIRECTORY(osgearth_features)
 
 
+
+

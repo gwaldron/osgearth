@@ -24,6 +24,21 @@
 
 namespace osgEarth
 {
+    static std::string&
+    replaceIn( std::string& s, const std::string& sub, const std::string& other)
+    {
+        if ( sub.empty() ) return s;
+        size_t b=0;
+        for( ; ; )
+        {
+            b = s.find( sub, b );
+            if ( b == s.npos ) break;
+            s.replace( b, sub.size(), other );
+            b += other.size();
+        }
+        return s;
+    }
+
     // by Rodrigo C F Dias
     // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
     static

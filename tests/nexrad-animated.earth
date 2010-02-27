@@ -1,0 +1,35 @@
+<!--
+osgEarth Sample
+
+US NEXRAD 45 minute radar returns overlaid on imagery.
+-->
+
+<map name="WMS Radar returns" type="geocentric">   
+     
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <image name="nexrad45min" driver="wms" loading_weight="10">
+        <url>http://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi</url>
+        <format>png</format>
+        <layers>nexrad-n0r-wmst</layers>
+        <tile_size>256</tile_size>
+        <srs>EPSG:4326</srs>
+        <transparent>true</transparent>
+        <times>
+            2005-08-29T13:00:00Z,
+            2005-08-29T14:00:00Z,
+            2005-08-29T15:00:00Z,
+            2005-08-29T16:00:00Z,
+            2005-08-29T17:00:00Z,
+            2005-08-29T18:00:00Z,
+            2005-08-29T19:00:00Z,
+            2005-08-29T20:00:00Z
+        </times>
+        <seconds_per_frame>0.25</seconds_per_frame>
+    </image>
+    
+    <loading_policy mode="preemptive" loading_threads="12"/>
+    <lighting>false</lighting>
+</map>

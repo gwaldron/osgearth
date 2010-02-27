@@ -44,6 +44,8 @@
 #include <sstream>
 #include <osg/Depth>
 
+#include <osg/ImageSequence>
+
 using namespace osgTerrain;
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -923,41 +925,19 @@ void EarthTerrainTechnique::applyColorLayers()
             //osg::Texture2D* texture2D = dynamic_cast<osg::Texture2D*>(layerToTextureMap[colorLayer]);
             if ( !texture ) // (!texture2D)
             {   
-                if ( image->r() < 2 )
-                {
-                    osg::Texture2D* t2d = new osg::Texture2D();
-                    t2d->setImage( image );
-                    texture = t2d;
-                }
-                else
-                {
-                    // NOTE: Texture2DArray is not supported in NVIDIA 7 series
-                    //
-                    //osg::Texture2DArray* tarray = new osg::Texture2DArray();
-                    //tarray->setTextureSize( image->s(), image->t(), image->r() );
-                    //for( int r=0; r<image->r(); ++r )
-                    //{
-                    //    osg::Image* rImage = new osg::Image();
-                    //    rImage->allocateImage( image->s(), image->t(), 1, image->getPixelFormat(), image->getDataType(), image->getPacking() );
-                    //    memcpy( rImage->data(), image->data(0,0,r), image->getImageSizeInBytes() );
-                    //    tarray->setImage( r, rImage );
-                    //}
+                osg::Texture2D* t2d = new osg::Texture2D();
+                t2d->setImage( image );
+                texture = t2d;
 
-                    osg::Texture3D* tarray = new osg::Texture3D();
-                    tarray->setTextureSize( image->s(), image->t(), image->r() );
-                    for( int r=0; r<image->r(); ++r )
-                    {
-                        osg::Image* rImage = new osg::Image();
-                        rImage->allocateImage( image->s(), image->t(), 1, image->getPixelFormat(), image->getDataType(), image->getPacking() );
-                        memcpy( rImage->data(), image->data(0,0,r), image->getImageSizeInBytes() );
-                        tarray->setImage( r, rImage );
-                    }
-
-                    texture = tarray;
+                // ImageSequence requires an update traversal, and the terrain tile will not 
+                // automatically get one when it's under a terrain technique. So we need to
+                // manually bump it here. (TBD: if the layer is removed we need to manually
+                // decremenet this.)
+                if ( dynamic_cast<osg::ImageSequence*>( image ) )
+                {
+                    static_cast<VersionedTile*>(_terrainTile)->adjustUpdateTraversalCount( 1 );
                 }
 
-                //osg::Texture2D* texture2D = new osg::Texture2D;
-                //texture2D->setImage(image);
                 texture->setMaxAnisotropy(16.0f);
                 texture->setResizeNonPowerOfTwoHint(false);
 
@@ -971,6 +951,7 @@ void EarthTerrainTechnique::applyColorLayers()
                 
                 texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
                 texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
+                texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
 
                 bool mipMapping = !(texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
                 bool s_NotPowerOfTwo = image->s()==0 || (image->s() & (image->s() - 1));
@@ -1098,7 +1079,7 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
         if (uv)
         {
             update(uv);
-            return;
+            //return;
         }        
         
     }

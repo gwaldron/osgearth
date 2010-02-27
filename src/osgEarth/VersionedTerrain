@@ -213,9 +213,11 @@ namespace osgEarth
         void installRequests( int stamp );
         bool readyForNewElevation();
         bool readyForNewImagery(osgEarth::MapLayer* layer, int currentLOD);
-        void adjustUpdateTraversalCount( int delta );
 
         float _verticalScale;
+
+    public:
+        void adjustUpdateTraversalCount( int delta );
     };
 
 

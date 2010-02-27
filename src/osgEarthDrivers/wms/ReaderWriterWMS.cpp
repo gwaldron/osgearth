@@ -26,6 +26,7 @@
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+#include <osg/ImageSequence>
 #include <sstream>
 #include <stdlib.h>
 #include <iomanip>
@@ -37,36 +38,18 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-//#define PROPERTY_URL              "url"
-//#define PROPERTY_CAPABILITIES_URL "capabilities_url"
-//#define PROPERTY_TILESERVICE_URL  "tileservice_url"
-//#define PROPERTY_LAYERS           "layers"
-//#define PROPERTY_STYLE            "style"
-//#define PROPERTY_FORMAT           "format"
-//#define PROPERTY_WMS_FORMAT       "wms_format"
-//#define PROPERTY_WMS_VERSION      "wms_version"
-//#define PROPERTY_TILE_SIZE        "tile_size"
-//#define PROPERTY_ELEVATION_UNIT   "elevation_unit"
-//#define PROPERTY_SRS              "srs"
-//#define PROPERTY_TRANSPARENT      "transparent"
-//#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
-//#define PROPERTY_TIME             "time"
-//#define PROPERTY_TIMES            "times"
+// All looping ImageSequences deriving from this class will by in sync due to
+// a shared reference time.
+class SyncImageSequence : public osg::ImageSequence {
+public:
+    SyncImageSequence() { }
 
-static std::string&
-replaceIn( std::string& s, const std::string& sub, const std::string& other)
-{
-    if ( sub.empty() ) return s;
-    size_t b=0;
-    for( ; ; )
-    {
-        b = s.find( sub, b );
-        if ( b == s.npos ) break;
-        s.replace( b, sub.size(), other );
-        b += other.size();
+    virtual void update(osg::NodeVisitor* nv) {
+        setReferenceTime( 0.0 );
+        osg::ImageSequence::update( nv );
     }
-    return s;
-}
+};
+
 
 class WMSSource : public TileSource
 {
@@ -76,35 +59,6 @@ public:
         _settings = dynamic_cast<const WMSOptions*>( options );
         if ( !_settings.valid() )
             _settings = new WMSOptions( options );
-
-        //const Config& conf = options->config();
-
-        //_prefix = conf.value( PROPERTY_URL );
-        //_layers = conf.value( PROPERTY_LAYERS );
-        //_style  = conf.value( PROPERTY_STYLE );
-        //_format = conf.value( PROPERTY_FORMAT );
-        //_transparent = conf.value( PROPERTY_TRANSPARENT );
-
-        //_wms_format = conf.value( PROPERTY_WMS_FORMAT );
-        //
-        //if ( conf.hasValue( PROPERTY_WMS_VERSION ) )
-        //{
-        //    _wms_version = conf.value( PROPERTY_WMS_VERSION );
-        //}
-
-        //_capabilitiesURL = conf.value( PROPERTY_CAPABILITIES_URL );
-        //_tileServiceURL = conf.value( PROPERTY_TILESERVICE_URL );
-        //_elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
-        //_srs = conf.value( PROPERTY_SRS );
-
-        ////Try to read the tile size
-        //if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
-        //    _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
-        //else
-        //    _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
-
-        //if ( _elevation_unit.empty())
-        //    _elevation_unit = "m";
 
         if ( _settings->times().isSet() )
         {
@@ -344,7 +298,7 @@ public:
 
         if ( _timesVec.size() > 1 )
         {
-            image = createImage3D( key, progress );
+            image = createImageSequence( key, progress );
         }
         else
         {
@@ -387,7 +341,7 @@ public:
                 }
                 else
                 {
-                    osg::Image* timeImage = readResult.getImage();
+                    osg::ref_ptr<osg::Image> timeImage = readResult.getImage();
 
                     if ( !image.valid() )
                     {
@@ -408,6 +362,62 @@ public:
         }
 
         return image.release();
+    }
+    
+    ///** creates a 3D image from timestamped data. */
+    //osg::Image* createImageSequence( const TileKey* key, ProgressCallback* progress )
+    //{
+    //    osg::ImageSequence* seq = new osg::ImageSequence();
+
+    //    for( int r=0; r<_timesVec.size(); ++r )
+    //    {
+    //        std::string extraAttrs = "TIME=" + _timesVec[r];
+
+    //        std::string uri = createURI(key);
+    //        std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
+    //        uri = uri + delim + extraAttrs;
+    //        uri = uri + "&." + _formatToUse;
+
+    //        seq->addImageFile( uri );
+    //    }
+
+    //    seq->play();
+    //    seq->setLength( (double)_timesVec.size() );
+    //    seq->setLoopingMode( osg::ImageStream::LOOPING );
+    //    
+    //    return seq;
+    //}
+
+    /** creates a 3D image from timestamped data. */
+    osg::Image* createImageSequence( const TileKey* key, ProgressCallback* progress )
+    {
+        osg::ImageSequence* seq = new SyncImageSequence(); //osg::ImageSequence();
+
+        seq->setLoopingMode( osg::ImageStream::LOOPING );
+        seq->setLength( _settings->secondsPerFrame().value() * (double)_timesVec.size() );
+        seq->play();
+
+        for( int r=0; r<_timesVec.size(); ++r )
+        {
+            std::string extraAttrs = "TIME=" + _timesVec[r];
+
+            HTTPResponse response;
+            osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
+            if ( reader )
+            {
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
+                if ( !readResult.error() )
+                {
+                    seq->addImage( readResult.getImage() );
+                }
+                else
+                {
+                    osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+                }
+            }
+        }
+
+        return seq;
     }
 
 
@@ -465,19 +475,6 @@ private:
     osg::ref_ptr<const WMSOptions> _settings;
     std::string _formatToUse;
     std::string _srsToUse;
-    //std::string _prefix;
- //   std::string _layers;
- //   std::string _style;
- //   std::string _format;
- //   std::string _wms_format;
- //   std::string _wms_version;
- //   std::string _srs;
- //   std::string _tileServiceURL;
- //   std::string _capabilitiesURL;
-	//int _tile_size;
- //   std::string _elevation_unit;
-    //std::string _transparent;
-    //std::vector<std::string> _times;
     osg::ref_ptr<TileService> _tileService;
     osg::ref_ptr<const Profile> _profile;
     std::string _prototype;

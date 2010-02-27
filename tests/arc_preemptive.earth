@@ -15,8 +15,10 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 
 	<!-- Set a "preemptive" loading policy, and set the number of
          loading threads to use. -->
-         
-	<loading_policy mode="preemptive" loading_threads_per_core="3"/>
+    <engine_properties>        
+	    <loading_policy mode="preemptive" loading_threads_per_core="3"/>
+        <lighting>false</lighting>
+    </engine_properties>
     
     <!-- loading_weight specifies the relative number of threads
          to use for this particular layer.  For heightfield layers,
@@ -35,4 +37,5 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
     <image name="arcgisonline transportation" driver="arcgis" loading_weight="5">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer</url>
     </image>
+    
 </map>

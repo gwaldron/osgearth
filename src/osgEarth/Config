@@ -315,7 +315,7 @@ namespace osgEarth
 
         template<typename X, typename Y>
         bool getIfSet( const std::string& key, const std::string& val, optional<X>& target, const Y& targetValue ) const {
-            if ( hasChild( key ) && value( key ) == val ) {
+            if ( hasValue( key ) && value( key ) == val ) {
                 target = targetValue;
                 return true;
             }

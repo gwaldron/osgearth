@@ -746,6 +746,8 @@ namespace osgEarthUtil
         double                  _set_viewpoint_duration_s;
         double                  _set_viewpoint_accel;
 
+        bool                    _after_first_frame;
+
         osg::Node::NodeMask     _traversalMask;
 
         osg::ref_ptr<Settings> _settings;		

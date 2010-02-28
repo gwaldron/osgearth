@@ -113,6 +113,8 @@ namespace osgEarth
          */
         osg::Group* getModelLayerGroup();
 
+        osg::Group* getTerrainsGroup();
+
         /**
          * Gets the engine properties associated with this node. The engine
          * properties dictate how the map engine will create scene graph elements.

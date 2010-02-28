@@ -369,6 +369,11 @@ MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
     }
 }
 
+osg::Group*
+MapNode::getTerrainsGroup() {
+    return _terrains.get();
+}
+
 void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {

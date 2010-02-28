@@ -1268,42 +1268,42 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
         //    << ", distnace=" << distance
         //    << std::endl;
 
-        osg::Vec3d ev = getUpVector(coordinateFrame);
-        osg::Vec3d ip;
-        if ( intersect( _center -ev * distance, _center + ev*distance, ip ) )
-        {
-            _center = ip;
-            hitFound = true;
-        }
-
-        //osg::Vec3d ip1;
-        //osg::Vec3d ip2;
-        //bool hit_ip1 = intersect(_center, _center + getUpVector(coordinateFrame) * distance, ip1);
-        //bool hit_ip2 = intersect(_center, _center - getUpVector(coordinateFrame) * distance, ip2);
-        //if (hit_ip1)
+        //osg::Vec3d ev = getUpVector(coordinateFrame);
+        //osg::Vec3d ip;
+        //if ( intersect( _center -ev * distance, _center + ev*distance, ip ) )
         //{
-        //    if (hit_ip2)
-        //    {
-        //        _center = (_center-ip1).length2() < (_center-ip2).length2() ? ip1 : ip2;
-        //        hitFound = true;
-        //    }
-        //    else
-        //    {
-        //        _center = ip1;
-        //        hitFound = true;
-        //    }
-        //}
-        //else if (hit_ip2)
-        //{
-        //    _center = ip2;
+        //    _center = ip;
         //    hitFound = true;
         //}
 
-        //if (!hitFound)
-        //{
-        //    // ??
-        //    osg::notify(osg::INFO)<<"EarthManipulator unable to intersect with terrain."<<std::endl;
-        //}
+        osg::Vec3d ip1;
+        osg::Vec3d ip2;
+        bool hit_ip1 = intersect(_center, _center + getUpVector(coordinateFrame) * distance, ip1);
+        bool hit_ip2 = intersect(_center, _center - getUpVector(coordinateFrame) * distance, ip2);
+        if (hit_ip1)
+        {
+            if (hit_ip2)
+            {
+                _center = (_center-ip1).length2() < (_center-ip2).length2() ? ip1 : ip2;
+                hitFound = true;
+            }
+            else
+            {
+                _center = ip1;
+                hitFound = true;
+            }
+        }
+        else if (hit_ip2)
+        {
+            _center = ip2;
+            hitFound = true;
+        }
+
+        if (!hitFound)
+        {
+            // ??
+            osg::notify(osg::INFO)<<"EarthManipulator unable to intersect with terrain."<<std::endl;
+        }
     }
 }
 

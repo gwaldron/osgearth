@@ -4,6 +4,7 @@ FOREACH( myfolder
         osgEarthFeatures
         osgEarthUtil
         osgEarthDrivers
+        osgEarthSymbology
         applications
     )
 

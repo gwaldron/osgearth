@@ -56,7 +56,7 @@ osg::Image* makeRGBA(osg::Image* image)
 class OSGTileSource : public TileSource
 {
 public:
-    OSGTileSource::OSGTileSource( const PluginOptions* options ) :
+    OSGTileSource( const PluginOptions* options ) :
       TileSource( options ),
       _maxDataLevel( 21 )
     {
@@ -103,7 +103,7 @@ public:
     }
 
     osg::Image*
-    OSGTileSource::createImage( const TileKey* key, ProgressCallback* progress )
+    createImage( const TileKey* key, ProgressCallback* progress )
     {
         if ( !_image.valid() || !getProfile() || key->getLevelOfDetail() > getMaxDataLevel() )
             return NULL;
@@ -132,7 +132,7 @@ public:
     }
 
     std::string
-    OSGTileSource::getExtension() const 
+    getExtension() const 
     {
         return osgDB::getFileExtension( _url );
     }

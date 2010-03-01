@@ -29,6 +29,7 @@
 #include <osg/ImageSequence>
 #include <sstream>
 #include <stdlib.h>
+#include <string.h>
 #include <iomanip>
 
 #include "Capabilities"

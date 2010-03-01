@@ -110,16 +110,6 @@ namespace osgEarth
             }
         }
         
-        // specialization for Config
-        template<> inline
-        void addIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
-            if ( opt.isSet() ) {
-                Config conf = opt.value();
-                conf.key() = key;
-                add( conf );
-            }
-        }
-
         template<typename T>
         void addObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
             if ( opt.valid() ) {
@@ -181,17 +171,6 @@ namespace osgEarth
             }
         }
         
-        // specialization for Config
-        template<> inline
-        void updateIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
-            if ( opt.isSet() ) {
-                remove(key);
-                Config conf = opt.value();
-                conf.key() = key;
-                add( conf );
-            }
-        }
-
         template<typename T>
         void updateObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
             if ( opt.valid() ) {
@@ -280,17 +259,6 @@ namespace osgEarth
                 return false;
         }
 
-        // specialization for Config.
-        template<> inline
-        bool getIfSet<Config>( const std::string& key, optional<Config>& output ) const {
-            if ( hasChild( key ) ) {
-                output = child(key);
-                return true;
-            }
-            else
-                return false;
-        }
-
         // for Configurable's
         template<typename T>
         bool getObjIfSet( const std::string& key, optional<T>& output ) const {
@@ -350,6 +318,40 @@ namespace osgEarth
     protected:
         Config _conf;
     };
+
+
+    // specialization for Config
+    template <> inline
+    void Config::addIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
+        if ( opt.isSet() ) {
+            Config conf = opt.value();
+            conf.key() = key;
+            add( conf );
+        }
+    }
+
+    // specialization for Config
+    template<> inline
+    void Config::updateIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
+        if ( opt.isSet() ) {
+            remove(key);
+            Config conf = opt.value();
+            conf.key() = key;
+            add( conf );
+        }
+    }
+
+    // specialization for Config.
+    template<> inline
+    bool Config::getIfSet<Config>( const std::string& key, optional<Config>& output ) const {
+        if ( hasChild( key ) ) {
+            output = child(key);
+            return true;
+        }
+        else
+            return false;
+    }
+
 
 
 }

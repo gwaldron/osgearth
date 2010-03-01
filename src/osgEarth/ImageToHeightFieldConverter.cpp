@@ -20,6 +20,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osg/Notify>
 #include <limits.h>
+#include <string.h>
 
 using namespace osgEarth;
 

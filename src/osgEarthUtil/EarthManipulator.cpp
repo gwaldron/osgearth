@@ -1278,8 +1278,9 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
 
         osg::Vec3d ip1;
         osg::Vec3d ip2;
-        bool hit_ip1 = intersect(_center, _center + getUpVector(coordinateFrame) * distance, ip1);
-        bool hit_ip2 = intersect(_center, _center - getUpVector(coordinateFrame) * distance, ip2);
+        // extend coordonate to fall on the edge of the boundingbox see http://www.osgearth.org/ticket/113
+        bool hit_ip1 = intersect(_center - getUpVector(coordinateFrame) * distance * 0.1, _center + getUpVector(coordinateFrame) * distance, ip1);
+        bool hit_ip2 = intersect(_center + getUpVector(coordinateFrame) * distance * 0.1, _center - getUpVector(coordinateFrame) * distance, ip2);
         if (hit_ip1)
         {
             if (hit_ip2)

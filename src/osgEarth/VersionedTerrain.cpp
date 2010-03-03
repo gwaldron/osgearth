@@ -1634,14 +1634,14 @@ VersionedTerrain::updateTaskServiceThreads()
     {
         //Determine how many threads each layer gets
         int numElevationThreads = (int)osg::round((float)_numAsyncThreads * (elevationWeight / totalWeight ));
-        OE_NOTICE << "HtFld Threads = " << numElevationThreads << std::endl;
+        OE_INFO << "HtFld Threads = " << numElevationThreads << std::endl;
         getElevationTaskService()->setNumThreads( numElevationThreads );
     }
 
     for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
     {
         int imageThreads = (int)osg::round((float)_numAsyncThreads * (itr->get()->loadingWeight().value() / totalWeight ));
-        OE_NOTICE << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
+        OE_INFO << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
     }
 

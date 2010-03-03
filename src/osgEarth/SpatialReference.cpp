@@ -574,7 +574,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        osg::notify(osg::DEBUG_INFO) << "[osgEarth::SpatialReference] using cached transform handle" << std::endl;
+        OE_DEBUG << "SpatialReference: using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
@@ -585,8 +585,8 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 
     if ( !xform_handle )
     {
-        osg::notify( osg::WARN )
-            << "[osgEarth::SRS] SRS xform not possible" << std::endl
+        OE_WARN
+            << "SpatialReference: SRS xform not possible" << std::endl
             << "    From => " << getName() << std::endl
             << "    To   => " << out_srs->getName() << std::endl;
         return false;
@@ -607,7 +607,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
     }
     else
     {
-        osg::notify( osg::WARN ) << "[osgEarth::SRS] Failed to xform a point from "
+        OE_WARN << "SRS: Failed to xform a point from "
             << getName() << " to " << out_srs->getName()
             << std::endl;
         result = false;
@@ -690,7 +690,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
         if (itr != _transformHandleCache.end())
         {
-            osg::notify(osg::DEBUG_INFO) << "[osgEarth::SRS] using cached transform handle" << std::endl;
+            OE_DEBUG << "SpatialRefernece: using cached transform handle" << std::endl;
             xform_handle = itr->second;
         }
         else
@@ -701,8 +701,8 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 
         if ( !xform_handle )
         {
-            osg::notify( osg::WARN )
-                << "[osgEarth::SRS] SRS xform not possible" << std::endl
+            OE_WARN
+                << "SpatialReference: SRS xform not possible" << std::endl
                 << "    From => " << getName() << std::endl
                 << "    To   => " << out_srs->getName() << std::endl;
             return false;
@@ -724,7 +724,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     }
     else
     {
-        osg::notify( osg::WARN ) << "[osgEarth::SRS] Failed to xform a point from "
+        OE_WARN << "SpatialReference: Failed to xform a point from "
             << getName() << " to " << out_srs->getName()
             << std::endl;
     }

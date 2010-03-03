@@ -340,17 +340,17 @@ MapLayer::initTileSource()
 		{
 			if ( _noDataImageFilename.isSet() && _noDataImageFilename.get().length() > 0 )
 			{
-				OE_NOTICE << "Setting nodata image to " << _noDataImageFilename.get() << std::endl;
+				OE_INFO << "Setting nodata image to " << _noDataImageFilename.get() << std::endl;
 				_nodata_image = osgDB::readImageFile( _noDataImageFilename.get());
 				if (!_nodata_image.valid())
 				{
-					OE_NOTICE << "Warning:  Could not read nodata image from " << _noDataImageFilename.get() << std::endl;
+					OE_NOTICE << "Warning: Could not read nodata image from " << _noDataImageFilename.get() << std::endl;
 				}
 			}
 		}
 		else
 		{
-	      OE_NOTICE << "[osgEarth::MapLayer]  Could not initialize TileSource for layer " << getName() << std::endl;
+	      OE_NOTICE << "Could not initialize TileSource for layer " << getName() << std::endl;
 		}
 	}
 	_tileSource = tileSource;
@@ -468,7 +468,7 @@ MapLayer::createImage( const TileKey* key,
 	//If the key profile and the source profile exactly match, simply request the image from the source
     if ( mapProfile->isEquivalentTo( layerProfile ) )
     {
-		OE_INFO << "  Key and source profiles are equivalent, requesting single tile" << std::endl;
+		OE_INFO << "Key and source profiles are equivalent, requesting single tile" << std::endl;
         osg::ref_ptr<osg::Image> image = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( image )
         {
@@ -478,7 +478,7 @@ MapLayer::createImage( const TileKey* key,
     // Otherwise, we need to process the tiles.
     else
     {
-		OE_INFO << "  Key and source profiles are different, creating mosaic" << std::endl;
+		OE_INFO << "Key and source profiles are different, creating mosaic" << std::endl;
 		osg::ref_ptr<GeoImage> mosaic;
 
 		// Determine the intersecting keys and create and extract an appropriate image from the tiles

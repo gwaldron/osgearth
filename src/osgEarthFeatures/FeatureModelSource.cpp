@@ -90,7 +90,7 @@ ModelSource( options )
     _features = FeatureSourceFactory::create( _options->featureOptions().get() );
     if ( !_features.valid() )
     {
-        osg::notify( osg::WARN ) << "FeatureModelSource - no valid feature source provided" << std::endl;
+        OE_WARN << "FeatureModelSource - no valid feature source provided" << std::endl;
     }
 }
 

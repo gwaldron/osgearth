@@ -76,7 +76,7 @@ TileSource( options )
     _features = FeatureSourceFactory::create( _options->featureOptions() );
     if ( !_features.valid() )
     {
-        osg::notify( osg::WARN ) << "FeatureTileSource - no valid feature source provided" << std::endl;
+        OE_WARN << "FeatureTileSource - no valid feature source provided" << std::endl;
     }
 }
 

@@ -116,7 +116,7 @@ ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height,
 {
     if ( !_mapNode.valid() || !_csn.valid() )
     {
-        osg::notify( osg::WARN ) << "osgEarthUtil::ObjectPlacer: terrain is missing either a Map or CSN node" << std::endl;             
+        OE_WARN << "ObjectPlacer: terrain is missing either a Map or CSN node" << std::endl;             
         return false;
     }
 

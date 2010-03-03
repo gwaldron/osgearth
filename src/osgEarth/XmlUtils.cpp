@@ -338,7 +338,7 @@ XmlDocument::load( std::istream& in )
         {
             if ( XML_Parse( parser, buf, bytes_read, in.eof() ) == XML_STATUS_ERROR )
             {
-                osg::notify( osg::WARN ) 
+                OE_WARN
                     << XML_ErrorString( XML_GetErrorCode( parser ) )
                     << ", "
                     << XML_GetCurrentLineNumber( parser ) 

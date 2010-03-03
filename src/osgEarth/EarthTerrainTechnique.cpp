@@ -256,8 +256,8 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
         }
     }
 
-    OE_INFO<<"[osgEarth::EarthTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
-    OE_INFO<<"[osgEarth::EarthTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
+//    OE_INFO<<"[osgEarth::EarthTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
+//    OE_INFO<<"[osgEarth::EarthTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
 
     buffer._transform = new osg::MatrixTransform;
 
@@ -339,7 +339,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
 
     bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-    OE_INFO<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+//    OE_INFO<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
@@ -959,7 +959,7 @@ void EarthTerrainTechnique::applyColorLayers()
 
                 if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
                 {
-                    OE_INFO<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+                    OE_DEBUG<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
                     texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
                 }
 

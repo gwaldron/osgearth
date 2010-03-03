@@ -22,16 +22,6 @@ using namespace osgEarth::Symbology;
 
 Symbolizer::Symbolizer()
 {
-    _root = new osg::Group();
-}
-
-void
-Symbolizer::traverse( osg::NodeVisitor& nv )
-{
-    // TODO:
-    // traverse into the scene graph that was compiled by the
-    // Symbolizer's "compile" method.
-
-    _root->accept( nv );
+    //nop
 }
 

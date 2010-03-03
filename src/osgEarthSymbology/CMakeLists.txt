@@ -11,6 +11,8 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Common
+    Feature
+    FeatureDataSet
     Geometry
     Style
     StyleSheet
@@ -22,6 +24,8 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
+    Feature.cpp
+    FeatureDataSet.cpp
     Geometry.cpp
     Style.cpp
     StyleSheet.cpp

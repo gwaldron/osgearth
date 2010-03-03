@@ -20,22 +20,39 @@
 
 using namespace osgEarth::Symbology;
 
-SymbolicNode::SymbolicNode()
+SymbolicNode::SymbolicNode() :
+_dataSetRevision( -1 )
 {
-    //nop
+    _symGroup = new osg::Group();
+    _symGroup->setDataVariance( osg::Object::DYNAMIC );
 }
 
 SymbolicNode::SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op ) :
-osg::Node( rhs, op )
+osg::Node( rhs, op ),
+_style( rhs._style ),
+_symbolizer( rhs._symbolizer ),
+_dataSet( rhs._dataSet ),
+_dataSetRevision( rhs._dataSetRevision ),
+_symGroup( rhs._symGroup )
 {
     //nop
 }
 
-void SymbolicNode::traverse( class osg::NodeVisitor& nv )
+void
+SymbolicNode::traverse( class osg::NodeVisitor& nv )
 {
-    //If we have a Sybmolizer, pass on responsbility for the traversal to it.
-    if (_symbolizer.valid())
+    if ( _dataSet.valid() && _symbolizer.valid() )
     {
-        _symbolizer->traverse(nv);
+        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+        {
+            // if our symbology is out of revision, update it!
+            if ( _dataSetRevision != _dataSet->getRevision() )
+            {
+                _symbolizer->update( _dataSet.get(), _style, _symGroup.get(), _context.get() );
+                _dataSetRevision = _dataSet->getRevision();
+            }
+        }
     }
+
+    _symGroup->traverse( nv );
 }

@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/Symbolizer>
+#include <osgEarthSymbology/FeatureDataSet>
 #include <osg/Node>
 #include <list>
 
@@ -47,11 +48,15 @@ namespace osgEarth { namespace Symbology
 
         void setSymbolizer( Symbolizer* sym ) { _symbolizer = sym; }
 
-        //void setDataSource( ... ) ;
+        void setDataSet( FeatureDataSet* dataSet ) { _dataSet = dataSet; }
         
     protected:
         Style _style;
         osg::ref_ptr<Symbolizer> _symbolizer;
+        osg::ref_ptr<FeatureDataSet> _dataSet;
+        osg::ref_ptr<SymbolizerContext> _context;
+        int _dataSetRevision;
+        osg::ref_ptr<osg::Group> _symGroup;
     };
 
 

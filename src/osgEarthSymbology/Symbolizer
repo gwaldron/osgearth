@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/FeatureDataSet>
 #include <osg/NodeVisitor>
 #include <osg/Group>
 
@@ -44,20 +45,18 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Symbolizer : public osg::Referenced
     {
     public:
-        virtual bool compile(
-            //const DataIterator* iter,
+        /**
+         * Creates or updates a subgraph representing the symbolized data.
+         * The Symbolizer can attach the subgraph to the attachPoint.
+         */
+        virtual bool update(
+            FeatureDataSet* dataSet,
             const Style& style,
             osg::Group* attachPoint,
             SymbolizerContext* context ) =0;
 
-    public:
-        virtual void traverse( osg::NodeVisitor& nv );
-
     protected:
         Symbolizer();
-
-    private:
-        osg::ref_ptr<osg::Group> _root;
     };
 
 } } // namespace osgEarth::Symbology

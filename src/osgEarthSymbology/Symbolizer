@@ -53,9 +53,8 @@ namespace osgEarth { namespace Symbology
             FeatureDataSet* dataSet,
             const Style& style,
             osg::Group* attachPoint,
-            SymbolizerContext* context ) =0;
+            SymbolizerContext* context ) = 0;
 
-    protected:
         Symbolizer();
     };
 

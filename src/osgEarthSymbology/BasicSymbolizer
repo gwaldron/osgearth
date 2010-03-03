@@ -17,27 +17,32 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_SYMBOL_H 1
+#ifndef OSGEARTHSYMBOLOGY_BASIC_SYMBOLIZER_H
+#define OSGEARTHSYMBOLOGY_BASIC_SYMBOLIZER_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osg/Referenced>
-#include <vector>
+#include <osgEarthSymbology/Symbolizer>
 
 namespace osgEarth { namespace Symbology
 {
-    /**
-     * Abstract base class for all Symbol types.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
+
+    class OSGEARTHSYMBOLOGY_EXPORT BasicSymbolizer : public Symbolizer
     {
     public:
-        Symbol();
+        /**
+         * Creates or updates a subgraph representing the symbolized data.
+         * The Symbolizer can attach the subgraph to the attachPoint.
+         */
+        virtual bool update(
+            FeatureDataSet* dataSet,
+            const Style& style,
+            osg::Group* attachPoint,
+            SymbolizerContext* context );
+
+    protected:
+        BasicSymbolizer();
     };
-
-    typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
-
 
 } } // namespace osgEarth::Symbology
 
-#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H
+#endif // OSGEARTHSYMBOLOGY_SYMBOLIZER_H

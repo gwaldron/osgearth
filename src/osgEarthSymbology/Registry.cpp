@@ -16,28 +16,30 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <osgEarthSymbology/Registry>
+#include <osgEarthSymbology/SymbolDisplayFunctor>
 
-#ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_SYMBOL_H 1
+using namespace osgEarth::Symbology;
 
-#include <osgEarthSymbology/Common>
-#include <osg/Referenced>
-#include <vector>
-
-namespace osgEarth { namespace Symbology
+Registry::Registry()
 {
-    /**
-     * Abstract base class for all Symbol types.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
+}
+
+Registry* Registry::instance(bool erase)
+{
+    static osg::ref_ptr<Registry> s_registry = new Registry;
+    if (erase)
     {
-    public:
-        Symbol();
-    };
+        s_registry = 0;
+    }
+    return s_registry.get(); // will return NULL on erase
+}
 
-    typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
-
-
-} } // namespace osgEarth::Symbology
-
-#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H
+SymbolDisplayFunctor* 
+Registry::getOrCreateDisplay(const std::string& symbol)
+{
+    if (_symbols.find(symbol) == _symbols.end()) {
+        _symbols[symbol] = new SymbolDisplayFunctor;
+    }
+    return _symbols[symbol].get();
+}

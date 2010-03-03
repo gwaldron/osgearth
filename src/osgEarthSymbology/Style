@@ -35,7 +35,7 @@ namespace osgEarth { namespace Symbology
     public:
         Style();
 
-        void addSymbol( const Symbol& symbol );
+        void addSymbol( Symbol* symbol ) { _symbols.push_back(symbol); }
 
     protected:
         SymbolList _symbols;

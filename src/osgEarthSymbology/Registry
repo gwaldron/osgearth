@@ -17,27 +17,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_SYMBOL_H 1
+
+#ifndef OSGEARTHSYMBOLOGY_REGISTRY_H
+#define OSGEARTHSYMBOLOGY_REGISTRY_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/SymbolDisplayFunctor>
 #include <osg/Referenced>
-#include <vector>
 
 namespace osgEarth { namespace Symbology
 {
+
     /**
-     * Abstract base class for all Symbol types.
+     * Interface for an object that compiles attributed geometry into
+     * OSG scene graph elements based on a Style and a SymbologyContext.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
+    class OSGEARTHSYMBOLOGY_EXPORT Registry : public osg::Referenced
     {
     public:
-        Symbol();
+
+        Registry();
+
+        static Registry* instance(bool erase = false);
+
+        SymbolDisplayFunctor* getOrCreateDisplay(const std::string& symbol);
+        typedef std::map<std::string, osg::ref_ptr<SymbolDisplayFunctor> > SymbolDisplayMap;
+
+    protected:
+        
+        SymbolDisplayMap _symbols;
     };
-
-    typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
-
 
 } } // namespace osgEarth::Symbology
 
-#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H
+#endif

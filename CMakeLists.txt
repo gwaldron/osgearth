@@ -127,7 +127,7 @@ ENDIF(WIN32)
 SET(OSG_DIR "" CACHE PATH "set to base osg install path")
 
 FIND_PACKAGE(EXPAT)
-SET(CMAKE_DEBUG_POSTFIX  "d")
+SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
 
 FIND_PACKAGE(OSG)
 #FIND_PACKAGE(GDAL)

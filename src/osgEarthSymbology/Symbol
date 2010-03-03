@@ -21,17 +21,21 @@
 #define OSGEARTHSYMBOLOGY_SYMBOL_H 1
 
 #include <osgEarthSymbology/Common>
+#include <list>
 
 namespace osgEarth { namespace Symbology
 {
     /**
-     * This class is here to prime the repo
+     * Abstract base class for all Symbol types.
      */
     class OSGEARTHSYMBOLOGY_EXPORT Symbol
     {
     public:
         Symbol();
     };
+
+    typedef std::list<Symbol> SymbolList;
+
 
 } } // namespace osgEarth::Symbology
 

@@ -11,13 +11,23 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Common
+    Geometry
+    Style
+    StyleSheet
     Symbol
+    SymbolicNode
+    Symbolizer
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
-#  .cpp files fo here
+#  .cpp files go here
+    Geometry.cpp
+    Style.cpp
+    StyleSheet.cpp
     Symbol.cpp
+    SymbolicNode.cpp
+    Symbolizer.cpp
 )
 
 IF (WIN32)

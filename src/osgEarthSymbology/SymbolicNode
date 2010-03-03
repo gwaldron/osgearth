@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_SYMBOLICNODE_H
+#define OSGEARTHSYMBOLOGY_SYMBOLICNODE_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/Symbolizer>
+#include <osg/Node>
+#include <list>
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * Abstract base class for all Symbol types.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SymbolicNode : public osg::Node
+    {
+    public:
+        SymbolicNode();
+
+        SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+
+        META_Node(osgEarth::Symbology, SymbolicNode);
+
+    public:
+        void setStyle( const Style& style ) { _style = style; }
+
+        void setSymbolizer( Symbolizer* sym ) { _symbolizer = sym; }
+
+        //void setDataSource( ... ) ;
+        
+    protected:
+        Style _style;
+        osg::ref_ptr<Symbolizer> _symbolizer;
+    };
+
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_SYMBOLICNODE_H

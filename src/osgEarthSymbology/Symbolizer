@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_SYMBOLIZER_H
+#define OSGEARTHSYMBOLOGY_SYMBOLIZER_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Style>
+#include <osg/NodeVisitor>
+#include <osg/Group>
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * A shared context that is available to each symbolizer when it compiles
+     * data. It may contain information about a terrain, srs, or other global
+     * information.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SymbolizerContext : public osg::Referenced
+    {
+        //todo
+    };
+
+    /**
+     * Interface for an object that compiles attributed geometry into
+     * OSG scene graph elements based on a Style and a SymbologyContext.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT Symbolizer : public osg::Referenced
+    {
+    public:
+        virtual bool compile(
+            //const DataIterator* iter,
+            const Style& style,
+            osg::Group* attachPoint,
+            SymbolizerContext* context ) =0;
+
+    public:
+        virtual void traverse( osg::NodeVisitor& nv );
+
+    protected:
+        Symbolizer();
+
+    private:
+        osg::ref_ptr<osg::Group> _root;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_SYMBOLIZER_H

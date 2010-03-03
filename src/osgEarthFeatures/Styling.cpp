@@ -44,7 +44,7 @@ _color( 1, 1, 1, 1 )
     //nop
 }
 
-Symbolizer::Symbolizer()
+StyleSymbolizer::StyleSymbolizer()
 {
     //nop
 }

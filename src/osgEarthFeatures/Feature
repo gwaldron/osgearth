@@ -50,7 +50,7 @@ namespace osgEarth { namespace Features
         GeoExtent _extent;
     };
 
-    typedef std::map<std::string, std::string> FeatureAttributes;
+    typedef std::map<std::string, std::string> AttributeTable;
 
     /**
      * Basic building block of vector feature data.
@@ -78,7 +78,7 @@ namespace osgEarth { namespace Features
         const Geometry* getGeometry() const {
             return _geom; }
 
-        const FeatureAttributes& getAttrs() const {
+        const AttributeTable& getAttrs() const {
             return _attrs; }
 
         void setAttr( const std::string& name, const std::string& value );
@@ -91,7 +91,7 @@ namespace osgEarth { namespace Features
     protected:
         long _fid;
         osg::ref_ptr<Geometry> _geom;
-        FeatureAttributes _attrs;
+        AttributeTable _attrs;
         optional<Style> _style;
     };
 

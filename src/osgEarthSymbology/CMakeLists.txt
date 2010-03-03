@@ -11,9 +11,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Common
-    Feature
     FeatureDataSet
-    Geometry
     Style
     StyleSheet
     Symbol
@@ -24,9 +22,7 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
-    Feature.cpp
     FeatureDataSet.cpp
-    Geometry.cpp
     Style.cpp
     StyleSheet.cpp
     Symbol.cpp
@@ -42,6 +38,7 @@ ENDIF(WIN32)
 
 LINK_INTERNAL(${LIB_NAME}
     osgEarth
+    osgEarthFeatures
 )
 
 LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OPENTHREADS_LIBRARY)

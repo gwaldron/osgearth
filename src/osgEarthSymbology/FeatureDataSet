@@ -20,25 +20,14 @@
 #define OSGEARTHSYMBOLOGY_FEATUREDATASET_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Feature>
+#include <osgEarthFeatures/FeatureSource>
+
+using namespace osgEarth::Features;
 
 namespace osgEarth { namespace Symbology 
 {
     /**
-     * Iterator for accessing a collection of features.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT FeatureIterator : public osg::Referenced
-    {
-    public:
-        virtual bool hasMore() const =0;
-        virtual Feature* nextFeature() const =0;
-
-    protected:
-        FeatureIterator() { }
-    };
-
-    /**
-     * A Style is a named collection of Symbols.
+     * Source for (possibly dynamic) feature data that is to be symbolized.
      */
     class OSGEARTHSYMBOLOGY_EXPORT FeatureDataSet : public osg::Referenced
     {
@@ -48,7 +37,7 @@ namespace osgEarth { namespace Symbology
          * each of the Features in this dataset. Caller is responsible for the
          * return object.
          */
-        virtual FeatureIterator* createIterator() =0;
+        virtual FeatureCursor* createCursor() =0;
 
         /**
          * Gets the revision number of the dataset. Caller can use this is detect

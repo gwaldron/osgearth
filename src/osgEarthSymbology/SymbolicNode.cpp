@@ -30,3 +30,12 @@ osg::Node( rhs, op )
 {
     //nop
 }
+
+void SymbolicNode::traverse( class osg::NodeVisitor& nv )
+{
+    //If we have a Sybmolizer, pass on responsbility for the traversal to it.
+    if (_symbolizer.valid())
+    {
+        _symbolizer->traverse(nv);
+    }
+}

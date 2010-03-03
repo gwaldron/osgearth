@@ -40,6 +40,8 @@ namespace osgEarth { namespace Symbology
 
         META_Node(osgEarth::Symbology, SymbolicNode);
 
+        virtual void traverse( osg::NodeVisitor& nv );
+
     public:
         void setStyle( const Style& style ) { _style = style; }
 

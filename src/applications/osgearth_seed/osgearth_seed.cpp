@@ -79,7 +79,7 @@ int main(int argc, char** argv)
     //Make sure the user specified a file
     if ( filename.empty() )
     {
-        osg::notify(osg::NOTICE) << "Please specify a .earth file to seed." << std::endl;
+        OE_NOTICE << "Please specify a .earth file to seed." << std::endl;
         return 1;
     }
 
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        osg::notify(osg::NOTICE) << "Could not load earth file from " << filename << std::endl;
+        OE_NOTICE << "Could not load earth file from " << filename << std::endl;
         return 1;
     }
 }

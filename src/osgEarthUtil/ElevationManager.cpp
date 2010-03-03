@@ -129,7 +129,7 @@ ElevationManager::getElevation(double x, double y,
     {
         if ( !srs->transform( x, y, _map->getProfile()->getSRS(), map_x, map_y ) )
         {
-            osg::notify(osg::WARN) << "[osgEarth] ElevationManager: coord transform failed" << std::endl;
+            OE_WARN << "ElevationManager: coord transform failed" << std::endl;
             return false;
         }
     }
@@ -142,7 +142,7 @@ ElevationManager::getElevation(double x, double y,
     key = _map->getProfile()->createTileKey( map_x, map_y, bestAvailLevel );
     if ( !key.valid() )
     {
-        osg::notify(osg::WARN) << "[osgEarth] ElevationManager: coords fall outside map" << std::endl;
+        OE_WARN << "ElevationManager: coords fall outside map" << std::endl;
         return false;
     }
 
@@ -185,7 +185,7 @@ ElevationManager::getElevation(double x, double y,
     // if we didn't find it (or it didn't have heightfield data), build it.
     if ( !tile.valid() )
     {
-        //osg::notify(osg::NOTICE) << "[osgEarth] ElevationManager: cache miss" << std::endl;
+        //OE_NOTICE << "ElevationManager: cache miss" << std::endl;
 
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
@@ -194,7 +194,7 @@ ElevationManager::getElevation(double x, double y,
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )
         {
-            osg::notify(osg::WARN) << "[osgEarth] ElevationManager: unable to create heightfield" << std::endl;
+            OE_WARN << "ElevationManager: unable to create heightfield" << std::endl;
             return false;
         }
 
@@ -288,7 +288,7 @@ ElevationManager::getElevation(double x, double y,
             return true;            
         }
 
-        osg::notify(osg::WARN) << "[osgEarth] ElevationManager: no intersections" << std::endl;
+        OE_WARN << "ElevationManager: no intersections" << std::endl;
         return false;
     }
 }
@@ -308,7 +308,7 @@ ElevationManager::getPlacementMatrix(double x, double y, double z,
     {
         if ( !srs->transform( x, y, _map->getProfile()->getSRS(), map_x, map_y ) )
         {
-            osg::notify(osg::WARN) << "[osgEarth] ElevationManager: coord transform failed" << std::endl;
+            OE_WARN << "ElevationManager: coord transform failed" << std::endl;
             return false;
         }
     }
@@ -316,7 +316,7 @@ ElevationManager::getPlacementMatrix(double x, double y, double z,
     // get the elevation under those coordinates:
     if ( !getElevation( map_x, map_y, resolution, _map->getProfile()->getSRS(), out_elevation, out_resolution ) )
     {
-        osg::notify(osg::WARN) << "[osgEarth] ElevationManager::getElevation() failed" << std::endl;
+        OE_WARN << "ElevationManager::getElevation() failed" << std::endl;
         return false;
     }
 

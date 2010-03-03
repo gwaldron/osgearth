@@ -55,11 +55,11 @@ void CacheSeed::seed( Map* map )
 
         if ( !src->supportsPersistentCaching() )
         {
-            osg::notify(osg::WARN) << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
+            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
         }
         else if ( !layer->getCache() )
         {
-            osg::notify(osg::NOTICE) << "Notice: Layer \"" << layer->getName() << "\" has no persistent cache defined; skipping." << std::endl;
+            OE_NOTICE << "Notice: Layer \"" << layer->getName() << "\" has no persistent cache defined; skipping." << std::endl;
         }
         else
         {
@@ -79,11 +79,11 @@ void CacheSeed::seed( Map* map )
 
         if ( !src->supportsPersistentCaching() )
         {
-            osg::notify(osg::WARN) << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
+            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
         }
         else if ( !layer->getCache() )
         {
-            osg::notify(osg::NOTICE) << "Notice: Layer \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
+            OE_NOTICE << "Notice: Layer \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
         }
         else
         {
@@ -98,7 +98,7 @@ void CacheSeed::seed( Map* map )
 
     if (!hasCaches)
     {
-        osg::notify(osg::NOTICE) << "There are either no caches defined in the map, or no sources to cache. Exiting." << std::endl;
+        OE_NOTICE << "There are either no caches defined in the map, or no sources to cache. Exiting." << std::endl;
         return;
     }
 
@@ -107,7 +107,7 @@ void CacheSeed::seed( Map* map )
         _maxLevel = src_max_level;
     }
 
-    osg::notify(osg::NOTICE) << "Maximum cache level will be " << _maxLevel << std::endl;
+    OE_NOTICE << "Maximum cache level will be " << _maxLevel << std::endl;
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
@@ -126,7 +126,7 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-        osg::notify(osg::NOTICE) << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
+        OE_NOTICE << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
         bool validData;
 		osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, validData );        
     }

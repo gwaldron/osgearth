@@ -368,7 +368,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
         //If we want an exact crop or they want to specify the output size of the image, use GDAL
         if (exact || width != 0 || height != 0 )
         {
-            osg::notify(osg::INFO) << "[osgEarth::GeoImage::crop] Performing exact crop" << std::endl;
+            OE_INFO << "[osgEarth::GeoImage::crop] Performing exact crop" << std::endl;
 
             //Suggest an output image size
             if (width == 0 || height == 0)
@@ -379,7 +379,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
                 width =  osg::maximum(1u, (unsigned int)((extent.xMax() - extent.xMin()) / xRes));
                 height = osg::maximum(1u, (unsigned int)((extent.yMax() - extent.yMin()) / yRes));
 
-                osg::notify(osg::INFO) << "[osgEarth::GeoImage::crop] Computed output image size " << width << "x" << height << std::endl;
+                OE_INFO << "[osgEarth::GeoImage::crop] Computed output image size " << width << "x" << height << std::endl;
             }
 
             //Note:  Passing in the current SRS simply forces GDAL to not do any warping
@@ -387,7 +387,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
         }
         else
         {
-            osg::notify(osg::INFO) << "[osgEarth::GeoImage::crop] Performing non-exact crop " << std::endl;
+            OE_INFO << "[osgEarth::GeoImage::crop] Performing non-exact crop " << std::endl;
             //If an exact crop is not desired, we can use the faster image cropping code that does no resampling.
             double destXMin = extent.xMin();
             double destYMin = extent.yMin();
@@ -408,7 +408,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
     else
     {
         //TODO: just reproject the image before cropping
-        osg::notify(osg::NOTICE) << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
+        OE_NOTICE << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
         return NULL;
     }
 }
@@ -468,7 +468,7 @@ createMemDS(int width, int height, double minX, double minY, double maxX, double
     GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
     if (!memDriver)
     {
-        osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Could not get MEM driver" << std::endl;
+        OE_NOTICE << "[osgEarth::GeoData] Could not get MEM driver" << std::endl;
     }
 
     //Create the in memory dataset.
@@ -515,7 +515,7 @@ createDataSetFromImage(const osg::Image* image, double minX, double minY, double
     }
     else if (image->getPixelFormat() == GL_RGB)
     {    
-        //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Reprojecting RGB " << std::endl;
+        //OE_NOTICE << "[osgEarth::GeoData] Reprojecting RGB " << std::endl;
         //Read the read, green and blue bands
         srcDS->RasterIO(GF_Write, 0, 0, clonedImage->s(), clonedImage->t(), (void*)clonedImage->data(), clonedImage->s(), clonedImage->t(), GDT_Byte, 3, NULL, 3, 3 * image->s(), 1);
 
@@ -538,14 +538,14 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
                const std::string destWKT, double destMinX, double destMinY, double destMaxX, double destMaxY,
                int width = 0, int height = 0)
 {
-    //osg::notify(osg::NOTICE) << "Reprojecting..." << std::endl;
+    //OE_NOTICE << "Reprojecting..." << std::endl;
     GDAL_SCOPED_LOCK;
 	osg::Timer_t start = osg::Timer::instance()->tick();
 
     //Create a dataset from the source image
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
 
-	osg::notify(osg::INFO) << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
+	OE_INFO << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
 
 
     if (width == 0 || height == 0)
@@ -562,7 +562,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
             0);
         GDALDestroyGenImgProjTransformer(transformer);
     }
-	osg::notify(osg::INFO) << "Creating warped output of " << width <<"x" << height << std::endl;
+	OE_INFO << "Creating warped output of " << width <<"x" << height << std::endl;
    
     GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
 
@@ -579,7 +579,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
 
 	osg::Timer_t end = osg::Timer::instance()->tick();
 
-	osg::notify(osg::INFO) << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
+	OE_INFO << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
 
     return result;
 }    
@@ -597,7 +597,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     }
 
 
-    //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Reprojecting image that is " << image->s() << " x " << image->t() << std::endl;
+    //OE_NOTICE << "[osgEarth::GeoData] Reprojecting image that is " << image->s() << " x " << image->t() << std::endl;
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -688,24 +688,24 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 /*if (px_i >= 0 && px_i < image->s() &&
                 py_i >= 0 && py_i < image->t())
                 {
-                //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
+                //OE_NOTICE << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
                 color = image->getColor(px_i, py_i);
                 }
                 else
                 {
-                osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
+                OE_NOTICE << "[osgEarth::GeoData] Pixel out of range " << px_i << "," << py_i << "  image is " << image->s() << "x" << image->t() << std::endl;
                 }*/
 
                 /*Bilinear interpolation*/
                 //Check for exact value
                 if ((colMax == colMin) && (rowMax == rowMin))
                 {
-                    //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Exact value" << std::endl;
+                    //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
                     color = image->getColor(px_i, py_i);
                 }
                 else if (colMax == colMin)
                 {
-                    //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Vertically" << std::endl;
+                    //OE_NOTICE << "[osgEarth::GeoData] Vertically" << std::endl;
                     //Linear interpolate vertically
                     for (unsigned int i = 0; i < 4; ++i)
                     {
@@ -714,7 +714,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 }
                 else if (rowMax == rowMin)
                 {
-                    //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Horizontally" << std::endl;
+                    //OE_NOTICE << "[osgEarth::GeoData] Horizontally" << std::endl;
                     //Linear interpolate horizontally
                     for (unsigned int i = 0; i < 4; ++i)
                     {
@@ -723,21 +723,21 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 }
                 else
                 {
-                    //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Bilinear" << std::endl;
+                    //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
                     //Bilinear interpolate
                     for (unsigned int i = 0; i < 4; ++i)
                     {
                         float r1 = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
                         float r2 = ((float)colMax - px) * ulColor[i] + (px - (float)colMin) * urColor[i];
 
-                        //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                        //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
                         color[i] = ((float)rowMax -py) * r1 + (py - (float)rowMin) * r2;
                     }
                 }
             }
             else
             {
-                //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Pixel out of range" << std::endl;
+                //OE_NOTICE << "[osgEarth::GeoData] Pixel out of range" << std::endl;
             }
 
             result->data(c, r)[0] = (unsigned char)(color.r() * 255);
@@ -778,12 +778,12 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
     osg::Image* resultImage = 0;
     if (to_cube)
     {
-        //osg::notify(osg::NOTICE) << "[osgEarth::GeoData] Doing cube reprojection" << std::endl;
+        //OE_NOTICE << "[osgEarth::GeoData] Doing cube reprojection" << std::endl;
         resultImage = manualReproject(getImage(), getExtent(), *to_extent, width, height);
     }
     else
     {
-        //osg::notify(osg::NOTICE) << "Doing GDAL reprojection" << std::endl;
+        //OE_NOTICE << "Doing GDAL reprojection" << std::endl;
         resultImage = reprojectImage(getImage(),
             getSRS()->getWKT(),
             getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),

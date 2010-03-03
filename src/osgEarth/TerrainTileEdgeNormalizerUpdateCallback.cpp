@@ -215,7 +215,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                   }
                   else
                   {
-                      osg::notify(osg::WARN) << "Invalid CardinalDirection passed to normalizeCorner " << direction << std::endl;
+                      OE_WARN << "Invalid CardinalDirection passed to normalizeCorner " << direction << std::endl;
                       return false;
                   }
 
@@ -264,8 +264,8 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
                   osgTerrain::TileID id2 = getNeighborTile(id1, direction);
 
-                  //osg::notify(osg::NOTICE) << "Tile is " << id1.level << " " << id1.x << " " << id1.y << std::endl;
-                  //osg::notify(osg::NOTICE) << "Neighbor tile is " << id2.level << " " << id2.x << " " << id2.y << std::endl;
+                  //OE_NOTICE << "Tile is " << id1.level << " " << id1.x << " " << id1.y << std::endl;
+                  //OE_NOTICE << "Neighbor tile is " << id2.level << " " << id2.x << " " << id2.y << std::endl;
 
                   if (tile->getTerrain())
                   {
@@ -274,7 +274,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
                       if (tile2)
                       {
-                          //osg::notify(osg::NOTICE) << "Found neighbor tile " << std::endl;
+                          //OE_NOTICE << "Found neighbor tile " << std::endl;
                           //This callback will only work if we have a HeightFieldLayer
                           osgTerrain::HeightFieldLayer *hfl1 = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
                           osgTerrain::HeightFieldLayer *hfl2 = static_cast<osgTerrain::HeightFieldLayer*>(tile2->getElevationLayer());
@@ -301,7 +301,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
           NormalizerStats* stats = getNormalizerStats();
           if (!stats->isTimeRemaining(nv->getFrameStamp()->getFrameNumber()))
           {
-              //osg::notify(osg::NOTICE) << "No time left, returning..." << std::endl;
+              //OE_NOTICE << "No time left, returning..." << std::endl;
               return;
           }
 
@@ -323,7 +323,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
           osg::Timer_t end = osg::Timer::instance()->tick();
 
           double frameTime = osg::Timer::instance()->delta_m(start, end);
-          //osg::notify(osg::NOTICE) << "TileTime: " << frameTime << std::endl;
+          //OE_NOTICE << "TileTime: " << frameTime << std::endl;
           stats->updateTime(nv->getFrameStamp()->getFrameNumber(), frameTime);
 
           if (_normalizedNorth && _normalizedSouth && _normalizedEast && _normalizedWest && 

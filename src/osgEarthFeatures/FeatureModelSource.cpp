@@ -90,7 +90,7 @@ ModelSource( options )
     _features = FeatureSourceFactory::create( _options->featureOptions().get() );
     if ( !_features.valid() )
     {
-        osg::notify( osg::WARN ) << "[osgEarth] FeatureModelSource - no valid feature source provided" << std::endl;
+        osg::notify( osg::WARN ) << "FeatureModelSource - no valid feature source provided" << std::endl;
     }
 }
 
@@ -172,7 +172,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     // run the SpatializeGroups optimization pass on the result
     if ( _options->gridding().valid() && _options->gridding()->spatializeGroups() == true )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] " << getName() << ": running spatial optimization" << std::endl;
+        OE_NOTICE << getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;
         optimizer.optimize( group, osgUtil::Optimizer::SPATIALIZE_GROUPS );
     }
@@ -188,7 +188,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     osg::Timer_t end = osg::Timer::instance()->tick();
 
-    osg::notify(osg::NOTICE) << "[osgEarth] layer " << getName() << ", time to compile = " << 
+    OE_NOTICE << "layer " << getName() << ", time to compile = " << 
         osg::Timer::instance()->delta_s( start, end ) << "s" << std::endl;
 
     return group;
@@ -214,8 +214,8 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
 
     if ( gridder.getNumCells() > 1 )
     {
-        osg::notify(osg::NOTICE)
-            << "[osgEarth] " << getName() << ": grid cells = " << gridder.getNumCells()
+        OE_NOTICE
+            << getName() << ": grid cells = " << gridder.getNumCells()
             << std::endl;
     }
 
@@ -318,8 +318,8 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
 
                         createdNode->setCullCallback( ccc );
 
-                        osg::notify(osg::NOTICE)
-                            << "[osgEarth] Cell: " << mapCellExtent.toString()
+                        OE_NOTICE
+                            << "Cell: " << mapCellExtent.toString()
                             << ": centroid = " << cx << "," << cy
                             << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()
                             << "; dev = " << minDotProduct

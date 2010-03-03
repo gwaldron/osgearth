@@ -34,14 +34,14 @@ TileSourceFactory::create( const DriverOptions* driverOptions )
         tileSource = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, driverOptions ) );
         if( !tileSource )
         {
-            osg::notify(osg::NOTICE)
-                << "[osgEarth] WARNING: Failed to load tile source driver for " << driverExt << std::endl;
+            OE_NOTICE
+                << "WARNING: Failed to load tile source driver for " << driverExt << std::endl;
         }
     }
     else
     {
-        osg::notify(osg::NOTICE)
-            << "[osgEarth] ERROR: null driver options to TileSourceFactory" << std::endl;
+        OE_NOTICE
+            << "ERROR: null driver options to TileSourceFactory" << std::endl;
     }
     return tileSource;
 }
@@ -60,8 +60,8 @@ TileSourceFactory::create( const std::string& driver,
     //Setup the plugin options for the source
     options->config() = driverConf;
 
-    osg::notify(osg::INFO)
-        << "[osgEarth] Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
+    OE_INFO
+        << "Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
 
 	//Load the source from the a plugin.  The "." prefix causes OSG to select the correct plugin.
     //For instance, the WMS plugin can be loaded by using ".osgearth_wms" as the filename
@@ -70,7 +70,7 @@ TileSourceFactory::create( const std::string& driver,
 
 	if (!tileSource.valid())
 	{
-		osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load TileSource for driver "  << driver << std::endl;
+		OE_NOTICE << "Warning: Could not load TileSource for driver "  << driver << std::endl;
 	}
 
 	return tileSource.release();

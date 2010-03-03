@@ -115,7 +115,7 @@ public:
 
         double lineWidth = (double)style.lineSymbolizer()->stroke()->width().value();
 
-        //osg::notify(osg::NOTICE) << "rendering " << features.size() << " features" << std::endl;
+        //OE_NOTICE << "rendering " << features.size() << " features" << std::endl;
 
         // render the features
         for(FeatureList::iterator i = features.begin(); i != features.end(); i++)

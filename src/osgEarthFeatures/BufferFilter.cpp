@@ -43,7 +43,7 @@ BufferFilter::isSupported()
 }
 
 #define ASSERT_SUPPORT() \
-    if ( !BufferFilter::isSupported() ) { osg::notify(osg::NOTICE) << "[osgEarth] BufferFilter NOT SUPPORTED" << std::endl; }
+    if ( !BufferFilter::isSupported() ) { OE_NOTICE << "BufferFilter NOT SUPPORTED" << std::endl; }
 
 BufferFilter::BufferFilter() :
 _distance( 1.0 ),
@@ -102,14 +102,14 @@ BufferFilter::push( Feature* input, const FilterContext& context )
         }
         else
         {
-            osg::notify(osg::NOTICE) << "[osgEarth] Buffer: no output geometry.." << std::endl;
+            OE_NOTICE << "Buffer: no output geometry.." << std::endl;
         }
 
         inGeom->getFactory()->destroyGeometry( inGeom );
     }
     else
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] Buffer: importGeom failed" << std::endl;
+        OE_NOTICE << "Buffer: importGeom failed" << std::endl;
     }
 
     if ( output.valid() )
@@ -131,11 +131,11 @@ BufferFilter::push( FeatureList& input, const FilterContext& context )
 {
     if ( !isSupported() )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] BufferFilter support not enabled" << std::endl;
+        OE_NOTICE << "BufferFilter support not enabled" << std::endl;
         return context;
     }
 
-    //osg::notify(osg::NOTICE) << "[osgEarth] Buffer: input = " << input.size() << " features" << std::endl;
+    //OE_NOTICE << "Buffer: input = " << input.size() << " features" << std::endl;
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
         if ( !push( i->get(), context ) )

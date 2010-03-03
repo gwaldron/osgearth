@@ -44,7 +44,7 @@ namespace osgEarth
 
         virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
         {
-            //osg::notify(osg::NOTICE)<<"fileLocation = "<<filename<<std::endl;
+            //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
 
             unsigned int face, lod, x, y, id;
             sscanf(filename.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
@@ -64,12 +64,12 @@ namespace osgEarth
                 {
                     if (!mapNode->getEngine()->isCached(mapNode->getMap(), keys[i]))
                     {
-                        osg::notify(osg::INFO) << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
+                        OE_INFO << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
                         return REMOTE_FILE;
                     }
                 }
 
-                osg::notify(osg::INFO) << "Returning LOCAL_FILE for " << mapKey->str() << std::endl;
+                OE_INFO << "Returning LOCAL_FILE for " << mapKey->str() << std::endl;
                 return LOCAL_FILE;
             }
 

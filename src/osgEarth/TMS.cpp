@@ -165,7 +165,7 @@ void TileMap::computeNumTiles()
             _numTilesHigh /= 2;
         }
 
-        osg::notify(osg::INFO) << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
+        OE_INFO << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
     }
 }
 
@@ -185,7 +185,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
 {
     if (!intersectsKey(tileKey))
     {
-        //osg::notify(osg::NOTICE) << "No key intersection for tile key " << tileKey->str() << std::endl;
+        //OE_NOTICE << "No key intersection for tile key " << tileKey->str() << std::endl;
         return "";
     }
 
@@ -204,7 +204,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
         y  = numRows - y - 1;
     }
 
-    //osg::notify(osg::NOTICE) << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
+    //OE_NOTICE << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
 
     //Select the correct TileSet
     if ( _tileSets.size() > 0 )
@@ -216,7 +216,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
                 std::stringstream ss;
                 std::string path = osgDB::getFilePath(_filename);
                 ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format.getExtension();
-                //osg::notify(osg::NOTICE) << "Returning URL " << ss.str() << std::endl;
+                //OE_NOTICE << "Returning URL " << ss.str() << std::endl;
                 std::string ssStr;
 				ssStr = ss.str();
 				return ssStr;
@@ -377,7 +377,7 @@ TileMapReaderWriter::read(std::istream &in)
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
     if (!doc.valid())
     {
-        osg::notify(osg::NOTICE) << "Failed to load TileMap " << std::endl;
+        OE_NOTICE << "Failed to load TileMap " << std::endl;
         return 0;
     }
    
@@ -385,7 +385,7 @@ TileMapReaderWriter::read(std::istream &in)
     osg::ref_ptr<XmlElement> e_tile_map = doc->getSubElement( ELEM_TILEMAP );
     if (!e_tile_map.valid())
     {
-        osg::notify(osg::NOTICE) << "Could not find root TileMap element " << std::endl;
+        OE_NOTICE << "Could not find root TileMap element " << std::endl;
         return 0;
     }
 
@@ -536,7 +536,7 @@ TileMapReaderWriter::write(const TileMap* tileMap, const std::string &location)
     std::string path = osgDB::getFilePath(location);
     if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
     {
-        osg::notify(osg::NOTICE) << "Couldn't create path " << std::endl;
+        OE_NOTICE << "Couldn't create path " << std::endl;
     }
     std::ofstream out(location.c_str());
     write(tileMap, out);

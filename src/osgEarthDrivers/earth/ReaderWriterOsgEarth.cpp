@@ -34,9 +34,9 @@ using namespace osgEarth;
 
 //struct TestCB : public TerrainCallback {
 //    void onTerrainTilesUpdated( const TerrainTileList& tiles ) {
-//        osg::notify(osg::NOTICE) << "" << tiles.size() << " tiles updated" << std::endl;
+//        OE_NOTICE << "" << tiles.size() << " tiles updated" << std::endl;
 //        for( TerrainTileList::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
-//            osg::notify(osg::NOTICE) << "   (" 
+//            OE_NOTICE << "   (" 
 //                << i->get()->getTileID().level << ","
 //                << i->get()->getTileID().x << ","
 //                << i->get()->getTileID().y << ")"
@@ -130,7 +130,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             else if (ext == "earth_tile")
             {
                 std::string tileDef = osgDB::getNameLessExtension(file_name);
-                //osg::notify(osg::NOTICE) << "Reading Tile " << tileDef << std::endl;
+                //OE_NOTICE << "Reading Tile " << tileDef << std::endl;
 
                 //The tile definition is formatted FACE_LOD_X_Y.MAPENGINE_ID
 
@@ -161,7 +161,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 }
                 else
                 {
-                    osg::notify(osg::NOTICE) << "Error:  Could not find Map with id=" << id << std::endl;
+                    OE_NOTICE << "Error:  Could not find Map with id=" << id << std::endl;
                 }
             }
 

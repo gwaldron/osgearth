@@ -113,8 +113,8 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
 
         Geometry::Type renderType = _geomTypeOverride.isSet() ? _geomTypeOverride.get() : part->getType();
 
-        //osg::notify(osg::NOTICE)
-        //    << "[osgEarth] BuildGeomFilter: part type = "
+        //OE_NOTICE
+        //    << "BuildGeomFilter: part type = "
         //    << Geometry::toString( part->getType() ) << ", renderType = "
         //    << Geometry::toString( renderType ) << std::endl;
 

@@ -96,7 +96,7 @@ int main(int argc, char** argv)
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
 	  if (!image->getSRS()->isMercator())
 	  {
-		  osg::notify(osg::NOTICE) << "Error:  Should be using mercator fast path but returned SRS is " << image->getSRS()->getWKT() << std::endl;
+		  OE_NOTICE << "Error:  Should be using mercator fast path but returned SRS is " << image->getSRS()->getWKT() << std::endl;
 	  }
 	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key->str() + std::string(".png"));
   }
@@ -120,7 +120,7 @@ int main(int argc, char** argv)
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
 	  if (!image->getSRS()->isGeographic())
 	  {
-		  osg::notify(osg::NOTICE) << "Error:  Should have reprojected image to geodetic but returned SRS is  " << image->getSRS()->getWKT() << std::endl;
+		  OE_NOTICE << "Error:  Should have reprojected image to geodetic but returned SRS is  " << image->getSRS()->getWKT() << std::endl;
 	  }
 	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key->str() + std::string(".png"));
   }

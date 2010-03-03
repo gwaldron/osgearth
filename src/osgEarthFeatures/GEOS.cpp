@@ -156,7 +156,7 @@ import( const Geometry* input, const geom::GeometryFactory* f )
             //if ( seq )
             //    delete seq;
 
-            osg::notify(osg::NOTICE) << "[osgEarth] GEOS::import: Removed degenerate geometry" << std::endl;
+            OE_NOTICE << "GEOS::import: Removed degenerate geometry" << std::endl;
         }
     }
 
@@ -221,7 +221,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     //valid::IsValidOp validator( input );
     //if ( !validator.isValid() )
     //{
-    //    osg::notify(osg::NOTICE) << "[osgEarth] GEOS: discarding invalid geometry" << std::endl;
+    //    OE_NOTICE << "GEOS: discarding invalid geometry" << std::endl;
     //    return 0L;
     //}
 
@@ -229,7 +229,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
 
     if ( dynamic_cast<const geom::Point*>( input ) )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] GEOS 'Point' NYI" << std::endl;        
+        OE_NOTICE << "GEOS 'Point' NYI" << std::endl;        
     }
     else if ( dynamic_cast<const geom::MultiPoint*>( input ) )
     {
@@ -270,7 +270,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     }
     else if ( dynamic_cast<const geom::MultiPolygon*>( input ) )
     {
-        //osg::notify(osg::NOTICE) << "Multipolygon" << std::endl;
+        //OE_NOTICE << "Multipolygon" << std::endl;
         const geom::MultiPolygon* mpoly = static_cast<const geom::MultiPolygon*>( input );
         for( int i=0; i<mpoly->getNumGeometries(); i++ )
         {

@@ -93,7 +93,7 @@ public:
 		std::string base;
 		base = buf.str();
 
-        osg::notify(osg::INFO) << key->str() << "=" << base << std::endl;
+        OE_INFO << key->str() << "=" << base << std::endl;
         
         osg::ref_ptr<osg::Image> image;
         HTTPClient::readImageFile( base, image, getOptions(), progress );
@@ -104,7 +104,7 @@ public:
                                          ProgressCallback* progress)
     {
         //NI
-        osg::notify(osg::WARN) << "[osgEarth] [Yahoo] Driver does not support heightfields" << std::endl;
+        OE_WARN << "[Yahoo] Driver does not support heightfields" << std::endl;
         return NULL;
     }
 

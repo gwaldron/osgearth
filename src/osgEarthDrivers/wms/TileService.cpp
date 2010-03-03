@@ -276,7 +276,7 @@ TileServiceReader::read(std::istream &in)
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
     if (!doc.valid())
     {
-        osg::notify(osg::INFO) << "Failed to load TileService " << std::endl;
+        OE_INFO << "Failed to load TileService " << std::endl;
         return 0;
     }
     
@@ -284,7 +284,7 @@ TileServiceReader::read(std::istream &in)
     osg::ref_ptr<XmlElement> e_root = doc->getSubElement( ELEM_WMS_TILE_SERVICE );
     if (!e_root.valid())
     {
-        osg::notify(osg::INFO) << "Could not find root TileService element " << std::endl;
+        OE_INFO << "Could not find root TileService element " << std::endl;
         return 0;
     }
 
@@ -294,7 +294,7 @@ TileServiceReader::read(std::istream &in)
     osg::ref_ptr<XmlElement> e_service = e_root->getSubElement( ELEM_SERVICE );
     if (!e_service.valid())
     {
-        osg::notify(osg::INFO) << "Could not find Service element " << std::endl;
+        OE_INFO << "Could not find Service element " << std::endl;
         return 0;
     }
 
@@ -307,7 +307,7 @@ TileServiceReader::read(std::istream &in)
     osg::ref_ptr<XmlElement> e_tiledPatterns = e_root->getSubElement( ELEM_TILEDPATTERNS );
     if (!e_tiledPatterns.valid())
     {
-        osg::notify(osg::INFO) << "Could not find TiledPatterns element" << std::endl;
+        OE_INFO << "Could not find TiledPatterns element" << std::endl;
         return 0;
     }
 
@@ -323,6 +323,6 @@ TileServiceReader::read(std::istream &in)
 
     addTilePatterns(e_tiledPatterns.get(), tileService.get());
 
-    osg::notify(osg::INFO) << "Returning TileService with " << tileService->getPatterns().size() << " patterns " << std::endl;
+    OE_INFO << "Returning TileService with " << tileService->getPatterns().size() << " patterns " << std::endl;
     return tileService.release();
 }

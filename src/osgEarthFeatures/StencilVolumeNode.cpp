@@ -180,11 +180,11 @@ StencilVolumeNode::init()
     // the eye location (you only need zFail if you camera is inside the volume).
     bool zFail = true;
 
-    osg::notify(osg::INFO) << "[osgEarth] Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
+    OE_INFO << "Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
 
     if ( s_EXT_stencil_two_side )
     {
-        osg::notify(osg::INFO) << "[osgEarth] Two-sided stenciling" << std::endl;
+        OE_INFO << "Two-sided stenciling" << std::endl;
 
         osg::StencilTwoSided::Operation incrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::INCR_WRAP : osg::StencilTwoSided::INCR;
         osg::StencilTwoSided::Operation decrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::DECR_WRAP : osg::StencilTwoSided::DECR;
@@ -221,7 +221,7 @@ StencilVolumeNode::init()
     }
     else
     {
-        osg::notify(osg::INFO) << "[osgEarth] One-sided stenciling" << std::endl;
+        OE_INFO << "One-sided stenciling" << std::endl;
 
         if ( !zFail )  // Z-Pass
         {
@@ -411,7 +411,7 @@ StencilVolumeFactory::createVolume(Geometry*            geom,
                 if ( (prevVec ^ vec).length() < PARALLEL_EPSILON )
                 {
                     j = part->erase( j );
-                    //osg::notify(osg::NOTICE) << "[osgEarth] removed colinear segment" << std::endl;
+                    //OE_NOTICE << "removed colinear segment" << std::endl;
                 }
                 else
                 {

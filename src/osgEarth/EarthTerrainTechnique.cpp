@@ -122,11 +122,11 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
     // we cannot run this method is there is a swap currently pending!
     if ( _swapPending )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] illegal; cannot init() with a pending swap!" << std::endl;
+        OE_NOTICE << "illegal; cannot init() with a pending swap!" << std::endl;
         return;
     }
 
-    //osg::notify(osg::INFO)<<"Doing GeometryTechnique::init()"<<std::endl;
+    //OE_INFO<<"Doing GeometryTechnique::init()"<<std::endl;
     
     if (!_terrainTile) return;
 
@@ -195,7 +195,7 @@ Locator* EarthTerrainTechnique::computeMasterLocator()
     Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
     if (!masterLocator)
     {
-        osg::notify(osg::NOTICE)<<"[osgEarth::EarthTerrainTechnique] Problem, no locator found in any of the terrain layers"<<std::endl;
+        OE_NOTICE<<"[osgEarth::EarthTerrainTechnique] Problem, no locator found in any of the terrain layers"<<std::endl;
         return 0;
     }
     
@@ -256,8 +256,8 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
         }
     }
 
-    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
-    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
+    OE_INFO<<"[osgEarth::EarthTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
+    OE_INFO<<"[osgEarth::EarthTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
 
     buffer._transform = new osg::MatrixTransform;
 
@@ -339,7 +339,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
 
     bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+    OE_INFO<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
@@ -450,7 +450,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
             {
                 float value = 0.0f;
                 validValue = elevationLayer->getValidValue(i_equiv,j_equiv, value);
-                // osg::notify(osg::INFO)<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
+                // OE_INFO<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
                 ndc.z() = value*scaleHeight;
             }
             
@@ -502,7 +502,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     }
     //osg::Timer_t populateAfter = osg::Timer::instance()->tick();
 
-    //osg::notify(osg::NOTICE) << "  PopulateTime " << osg::Timer::instance()->delta_m(populateBefore, populateAfter) << std::endl;
+    //OE_NOTICE << "  PopulateTime " << osg::Timer::instance()->delta_m(populateBefore, populateAfter) << std::endl;
     
     // populate primitive sets
 //    bool optimizeOrientations = elevations!=0;
@@ -516,7 +516,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     geometry->addPrimitiveSet(elements.get());
 
     //osg::Timer_t genPrimAfter = osg::Timer::instance()->tick();
-    //osg::notify(osg::NOTICE) << "  genPrimTime " << osg::Timer::instance()->delta_m(genPrimBefore, genPrimAfter) << std::endl;
+    //OE_NOTICE << "  genPrimTime " << osg::Timer::instance()->delta_m(genPrimBefore, genPrimAfter) << std::endl;
     
     osg::ref_ptr<osg::Vec3Array> skirtVectors = new osg::Vec3Array((*normals));
     
@@ -842,7 +842,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     }
 
     //osg::Timer_t skirtAfter = osg::Timer::instance()->tick();
-    //osg::notify(osg::NOTICE) << "  skirtTime " << osg::Timer::instance()->delta_m(skirtBefore, skirtAfter) << std::endl;
+    //OE_NOTICE << "  skirtTime " << osg::Timer::instance()->delta_m(skirtBefore, skirtAfter) << std::endl;
 
 
     //geometry->setUseDisplayList(false);
@@ -853,11 +853,11 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            
         //osg::Timer_t before = osg::Timer::instance()->tick();
-        //osg::notify(osg::NOTICE)<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
+        //OE_NOTICE<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         buffer._geode->accept(*builder);
         //osg::Timer_t after = osg::Timer::instance()->tick();
-        //osg::notify(osg::NOTICE)<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
+        //OE_NOTICE<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 
     
@@ -959,19 +959,19 @@ void EarthTerrainTechnique::applyColorLayers()
 
                 if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
                 {
-                    osg::notify(osg::INFO)<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+                    OE_INFO<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
                     texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
                 }
 
                 layerToTextureMap[colorLayer] = texture;
                 //texture = texture2D;
 
-                // osg::notify(osg::NOTICE)<<"Creating new ImageLayer texture "<<layerNum<<" image->s()="<<image->s()<<"  image->t()="<<image->t()<<std::endl;
+                // OE_NOTICE<<"Creating new ImageLayer texture "<<layerNum<<" image->s()="<<image->s()<<"  image->t()="<<image->t()<<std::endl;
 
             }
             else
             {
-                // osg::notify(osg::NOTICE)<<"Reusing ImageLayer texture "<<layerNum<<std::endl;
+                // OE_NOTICE<<"Reusing ImageLayer texture "<<layerNum<<std::endl;
             }
 
             //stateset->setTextureAttributeAndModes(layerNum, texture2D, osg::StateAttribute::ON);
@@ -1042,7 +1042,7 @@ void EarthTerrainTechnique::smoothGeometry()
 
     //osg::Timer_t after = osg::Timer::instance()->tick();
 
-    //osg::notify(osg::NOTICE) << "Smooth time " << osg::Timer::instance()->delta_m(before, after) << std::endl;
+    //OE_NOTICE << "Smooth time " << osg::Timer::instance()->delta_m(before, after) << std::endl;
 }
 
 void EarthTerrainTechnique::update(osgUtil::UpdateVisitor* uv)
@@ -1096,7 +1096,7 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
     // the code from here on accounts for user traversals (intersections, etc)
     if (_terrainTile->getDirty()) 
     {
-        //osg::notify(osg::INFO)<<"******* Doing init ***********"<<std::endl;
+        //OE_INFO<<"******* Doing init ***********"<<std::endl;
         _terrainTile->init();
     }
 

@@ -258,7 +258,7 @@ public:
             {
                 if ( !styleNodeAlreadyCreated )
                 {
-                    osg::notify(osg::NOTICE) << "[osgEarth] Creating new style group for '" << style.name() << "'" << std::endl;
+                    OE_NOTICE << "Creating new style group for '" << style.name() << "'" << std::endl;
                     styleNode = new StencilVolumeNode( _options->mask().value(), _options->inverted().value() );
                     if ( _options->mask() == false )
                     {

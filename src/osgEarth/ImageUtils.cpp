@@ -122,7 +122,7 @@ ImageUtils::cropImage(const osg::Image* image,
     dst_maxx = dst_minx + (double)windowWidth * res_s;
     dst_maxy = dst_miny + (double)windowHeight * res_t;
 
-    //osg::notify(osg::NOTICE) << "Copying from " << windowX << ", " << windowY << ", " << windowWidth << ", " << windowHeight << std::endl;
+    //OE_NOTICE << "Copying from " << windowX << ", " << windowY << ", " << windowWidth << ", " << windowHeight << std::endl;
 
     //Allocate the croppped image
     osg::Image* cropped = new osg::Image;
@@ -131,7 +131,7 @@ ImageUtils::cropImage(const osg::Image* image,
     
     for (int src_row = windowY, dst_row=0; dst_row < windowHeight; src_row++, dst_row++)
     {
-        if (src_row > image->t()-1) osg::notify(osg::NOTICE) << "HeightBroke" << std::endl;
+        if (src_row > image->t()-1) OE_NOTICE << "HeightBroke" << std::endl;
         const void* src_data = image->data(windowX, src_row, 0);
         void* dst_data = cropped->data(0, dst_row, 0);
         memcpy( dst_data, src_data, cropped->getRowSizeInBytes());
@@ -219,7 +219,7 @@ ImageUtils::convertToRGB(const osg::Image *image)
 		else
 		{
 			//TODO:  Handle other cases
-			osg::notify(osg::NOTICE) << "[osgEarth::ImageUtils::convertToRGB] pixelFormat " << image->getPixelFormat() << " not yet supported " << std::endl;
+			OE_NOTICE << "[osgEarth::ImageUtils::convertToRGB] pixelFormat " << image->getPixelFormat() << " not yet supported " << std::endl;
 		}
 	}
 

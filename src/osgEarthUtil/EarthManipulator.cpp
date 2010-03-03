@@ -500,7 +500,7 @@ EarthManipulator::getRotation(const osg::Vec3d& point) const
     {
         //We are looking nearly straight down the up vector, so use the Y vector for world up instead
         worldUp = osg::Vec3d(0, 1, 0);
-        //osg::notify(osg::NOTICE) << "using y vector victor" << std::endl;
+        //OE_NOTICE << "using y vector victor" << std::endl;
     }
 
     side = lookVector ^ worldUp;
@@ -561,7 +561,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         _time_s_set_viewpoint = osg::Timer::instance()->time_s();
         _set_viewpoint_duration_s = duration_s;
 
-//        osg::notify(osg::NOTICE)
+//        OE_NOTICE
 ////            << "dfpx=" << _delta_focal_point.x()
 ////            << ", dfpy=" << _delta_focal_point.y()
 ////            << ", dfpl=" << _delta_focal_point.length()
@@ -640,8 +640,8 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
 		_rotation = osg::Matrixd::inverse(new_rot).getRotate();
 
-		//osg::notify(osg::NOTICE) << "Pitch old=" << _local_pitch << " new=" << new_pitch << std::endl;
-		//osg::notify(osg::NOTICE) << "Azim old=" << _local_azim << " new=" << new_azim << std::endl;
+		//OE_NOTICE << "Pitch old=" << _local_pitch << " new=" << new_pitch << std::endl;
+		//OE_NOTICE << "Azim old=" << _local_azim << " new=" << new_azim << std::endl;
 
         _local_pitch = new_pitch;
         _local_azim  = new_azim;
@@ -693,7 +693,7 @@ EarthManipulator::updateSetViewpoint()
         _start_viewpoint.getRange() + _delta_range * tp + (sin(osg::PI*tp)*_range_plus),
         _start_viewpoint.getSRS() );
 
-    //osg::notify(osg::NOTICE)
+    //OE_NOTICE
     //    << "t=" << t 
     //    << ", tp=" << tp
     //    << ", tsv=" << _time_s_set_viewpoint
@@ -835,7 +835,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         // this factor adjusts for the variation of frame rate relative to 60fps
         _t_factor = _delta_t / 0.01666666666;
 
-        //osg::notify(osg::NOTICE)
+        //OE_NOTICE
         //    << "center=(" << _center.x() << "," << _center.y() << "," << _center.z() << ")"
         //    << ", dist=" << _distance
         //    << ", p=" << _local_pitch
@@ -1262,7 +1262,7 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
         // need to reintersect with the terrain
         double distance = _node->getBound().radius()*0.25f;
 
-        //osg::notify(osg::NOTICE)
+        //OE_NOTICE
         //    << std::fixed
         //    << "ISECT: center=(" << _center.x() << "," << _center.y() << "," << _center.y() << ")"
         //    << ", distnace=" << distance
@@ -1303,7 +1303,7 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
         if (!hitFound)
         {
             // ??
-            osg::notify(osg::INFO)<<"EarthManipulator unable to intersect with terrain."<<std::endl;
+            OE_INFO<<"EarthManipulator unable to intersect with terrain."<<std::endl;
         }
     }
 }
@@ -1312,7 +1312,7 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
 void
 EarthManipulator::pan( double dx, double dy )
 {
-	//osg::notify(osg::NOTICE) << "pan " << dx << "," << dy <<  std::endl;
+	//OE_NOTICE << "pan " << dx << "," << dy <<  std::endl;
 	if (!_tether_node.valid())
 	{
 		double scale = -0.3f*_distance;
@@ -1364,14 +1364,14 @@ EarthManipulator::pan( double dx, double dy )
 			}
 			else
 			{
-				osg::notify(osg::INFO)<<"New up orientation nearly inline - no need to rotate"<<std::endl;
+				OE_INFO<<"New up orientation nearly inline - no need to rotate"<<std::endl;
 			}
 
 			if ( _settings->getLockAzimuthWhilePanning() )
 			{
 				double new_azim = getAzimuth();
 				double delta_azim = new_azim - old_azim;
-				//osg::notify(osg::NOTICE) << "DeltaAzim" << delta_azim << std::endl;
+				//OE_NOTICE << "DeltaAzim" << delta_azim << std::endl;
 
 				osg::Quat q;
 				q.makeRotate( delta_azim, new_localUp );
@@ -1401,7 +1401,7 @@ EarthManipulator::pan( double dx, double dy )
 void
 EarthManipulator::rotate( double dx, double dy )
 {
-	//osg::notify(osg::NOTICE) << "rotate " << dx <<", " << dy << std::endl;
+	//OE_NOTICE << "rotate " << dx <<", " << dy << std::endl;
     // clamp the local pitch delta; never allow the pitch to hit -90.
     double minp = osg::DegreesToRadians( osg::clampAbove( _settings->getMinPitch(), -89.9 ) );
     double maxp = osg::DegreesToRadians( _settings->getMaxPitch() );
@@ -1659,7 +1659,7 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
 {
     bool handled = true;
 
-    //osg::notify(osg::NOTICE) << "action=" << action << ", dx=" << dx << ", dy=" << dy << std::endl;
+    //OE_NOTICE << "action=" << action << ", dx=" << dx << ", dy=" << dy << std::endl;
 
     switch( action._type )
     {
@@ -1722,7 +1722,7 @@ EarthManipulator::recalculateRoll()
 
     if (sideVector.length()<0.1)
     {
-        //osg::notify(osg::INFO)<<"Side vector short "<<sideVector.length()<<std::endl;
+        //OE_INFO<<"Side vector short "<<sideVector.length()<<std::endl;
 
         sideVector = upVector^localUp;
         sideVector.normalize();
@@ -1770,7 +1770,7 @@ EarthManipulator::recalculateLocalPitchAndAzimuth()
 	double r;
 	getHPRFromQuat( _rotation, _local_azim, _local_pitch, r);
 	_local_pitch -= osg::PI_2;
-	//osg::notify(osg::NOTICE) << "Azim=" << osg::RadiansToDegrees(_local_azim) << " Pitch=" << osg::RadiansToDegrees(_local_pitch) << std::endl;
+	//OE_NOTICE << "Azim=" << osg::RadiansToDegrees(_local_azim) << " Pitch=" << osg::RadiansToDegrees(_local_pitch) << std::endl;
 }
 
 void

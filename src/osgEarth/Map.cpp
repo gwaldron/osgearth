@@ -441,7 +441,7 @@ Map::calculateProfile()
             }
             else
             {
-                osg::notify(osg::WARN) << "[osgEarth::Map] Map is geocentric, but the configured profile does not "
+                OE_WARN << "[osgEarth::Map] Map is geocentric, but the configured profile does not "
                     << "have a geographic SRS. Falling back on default.."
                     << std::endl;
             }
@@ -494,7 +494,7 @@ Map::calculateProfile()
     // finally, fire an event if the profile has been set.
     if ( _profile.valid() )
     {
-        osg::notify(osg::INFO) << "[osgEarth::Map] Map profile is: " << _profile->toString() << std::endl;
+        OE_INFO << "[osgEarth::Map] Map profile is: " << _profile->toString() << std::endl;
 
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
@@ -504,7 +504,7 @@ Map::calculateProfile()
 
     else
     {
-        osg::notify(osg::WARN) << "[osgEarth::Map] Warning, not yet able to establish a map profile!" << std::endl;
+        OE_WARN << "[osgEarth::Map] Warning, not yet able to establish a map profile!" << std::endl;
     }
 }
 
@@ -515,7 +515,7 @@ Map::createHeightField( const TileKey* key,
                         SamplePolicy samplePolicy,
                         ProgressCallback* progress)
 {
-	//osg::notify(osg::INFO) << "[osgEarth::Map::createHeightField]" << std::endl;\
+	//OE_INFO << "[osgEarth::Map::createHeightField]" << std::endl;\
        //Note:  Assumes that the map data mutex is locked before calling.  Avoids reentrantcy issue on Linux.
 //     OpenThreads::ScopedReadLock lock( _mapDataMutex );
 

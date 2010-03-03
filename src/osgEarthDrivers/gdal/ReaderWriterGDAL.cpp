@@ -454,11 +454,11 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                                             psDatasetProperties[i].nBlockYSize);
         }
         isProxy = true;
-        osg::notify(osg::INFO) << "Using GDALProxyPoolDatasetH" << std::endl;
+        OE_INFO << "Using GDALProxyPoolDatasetH" << std::endl;
 
 #else // !GDAL_VERSION_1_6_OR_NEWER
 
-        osg::notify(osg::INFO) << "Using GDALDataset, no proxy support enabled" << std::endl;
+        OE_INFO << "Using GDALDataset, no proxy support enabled" << std::endl;
         //Just open the dataset
         GDALDatasetH hDS = (GDALDatasetH)GDALOpen(dsFileName, GA_ReadOnly);
         isProxy = false;
@@ -687,7 +687,7 @@ public:
 
         if ( !_settings->url().isSet() || _settings->url()->empty() )
         {
-            osg::notify(osg::WARN) << "[osgEarth::GDAL] No URL or directory specified " << std::endl;
+            OE_WARN << "[osgEarth::GDAL] No URL or directory specified " << std::endl;
             return;
         }
 
@@ -711,20 +711,20 @@ public:
         tokenize( _settings->extensions().value(), exts, ";");
         for (unsigned int i = 0; i < exts.size(); ++i)
         {
-            osg::notify(osg::INFO) << "[osgEarth::GDAL] Using Extension: " << exts[i] << std::endl;
+            OE_INFO << "[osgEarth::GDAL] Using Extension: " << exts[i] << std::endl;
         }
         std::vector<std::string> files;
         getFiles(path, exts, files);
 
-        osg::notify(osg::NOTICE) << "[osgEarth::GDAL] GDAL Driver found " << files.size() << " files " << std::endl;
+        OE_NOTICE << "[osgEarth::GDAL] GDAL Driver found " << files.size() << " files " << std::endl;
         for (unsigned int i = 0; i < files.size(); ++i)
         {
-            osg::notify(osg::NOTICE) <<"  " << files[i] << std::endl;
+            OE_NOTICE <<"  " << files[i] << std::endl;
         }
 
         if (files.empty())
         {
-            osg::notify(osg::NOTICE) << "[osgEarth::GDAL] Could not find any valid files " << std::endl;
+            OE_NOTICE << "[osgEarth::GDAL] Could not find any valid files " << std::endl;
             return;
         }
 
@@ -734,7 +734,7 @@ public:
             _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
             if (!_srcDS)
             {
-                osg::notify(osg::WARN) << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
+                OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;
                 return;
             }
         }
@@ -745,7 +745,7 @@ public:
             _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
             if ( !_srcDS )
             {
-                osg::notify(osg::WARN) << "[osgEarth::GDAL] Failed to open dataset " << files[0] << std::endl;
+                OE_WARN << "[osgEarth::GDAL] Failed to open dataset " << files[0] << std::endl;
                 return;
             }
         }
@@ -766,7 +766,7 @@ public:
 
             if ( !src_srs.valid() )
             {
-                osg::notify(osg::WARN) << "[osgEarth::GDAL] Dataset has no spatial reference information: " << path << std::endl;
+                OE_WARN << "[osgEarth::GDAL] Dataset has no spatial reference information: " << path << std::endl;
                 return;
             }
         }
@@ -866,7 +866,7 @@ public:
             pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, _extentsMax.x(), _extentsMax.y());
         }
 
-        osg::notify(osg::INFO) << "[osgEarth::GDAL] Geo extents: " << _extentsMin.x() << ", " << _extentsMin.y() << " => " << _extentsMax.x() << ", " << _extentsMax.y() << std::endl;
+        OE_INFO << "[osgEarth::GDAL] Geo extents: " << _extentsMin.x() << ", " << _extentsMin.y() << " => " << _extentsMax.x() << ", " << _extentsMax.y() << std::endl;
 
         if ( !profile )
         {
@@ -875,7 +875,7 @@ public:
                 //_warpedDS->GetProjectionRef(),
                 _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
 
-            osg::notify(osg::INFO) << "[osgEarth::GDAL] " << path << " is projected, SRS = " 
+            OE_INFO << "[osgEarth::GDAL] " << path << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
                 //<< _warpedDS->GetProjectionRef() << std::endl;
         }
@@ -886,7 +886,7 @@ public:
 
 		double maxResolution = osg::minimum(resolutionX, resolutionY);
 
-        osg::notify(osg::INFO) << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+        OE_INFO << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
         unsigned int max_level = 30;
         for (unsigned int i = 0; i < max_level; ++i)
@@ -903,7 +903,7 @@ public:
             }
         }
 
-        osg::notify(osg::INFO) << "[osgEarth::GDAL] Max Data Level: " << _maxDataLevel << std::endl;
+        OE_INFO << "[osgEarth::GDAL] Max Data Level: " << _maxDataLevel << std::endl;
 
         // record the data extent in profile space:
         GeoExtent local_extent(
@@ -912,7 +912,7 @@ public:
         GeoExtent profile_extent = local_extent.transform( profile->getSRS() );
         setDataExtent( profile_extent );
         
-        osg::notify(osg::INFO) << "[osgEarth::GDAL] Data Extents: " << profile_extent.toString() << std::endl;
+        OE_INFO << "[osgEarth::GDAL] Data Extents: " << profile_extent.toString() << std::endl;
 
         // record the maximum resolution in profile space:
         setMaxDataLevel( _maxDataLevel );
@@ -947,7 +947,7 @@ public:
     {
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
-            osg::notify(osg::INFO) << getName() << ": Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+            OE_INFO << getName() << ": Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
 
@@ -1005,7 +1005,7 @@ public:
                 off_y = 0;
             }
 
-            osg::notify(osg::INFO) << "ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
+            OE_INFO << "ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
 
             //Return if parameters are out of range.
             if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0)
@@ -1139,7 +1139,7 @@ public:
 						{
 							//FIXME: What to do here?
 
-							//osg::notify(osg::INFO) << "NO COLOR ENTRY FOR COLOR " << rawImageData[i] << std::endl;
+							//OE_INFO << "NO COLOR ENTRY FOR COLOR " << rawImageData[i] << std::endl;
 							r = 255;
 							g = 0;
 							b = 0;
@@ -1221,8 +1221,8 @@ public:
 			}
             else
             {
-                osg::notify(osg::NOTICE) 
-                    << "[osgEarth] GDAL: Could not find red, green and blue bands or gray bands in "
+                OE_NOTICE 
+                    << "GDAL: Could not find red, green and blue bands or gray bands in "
                     << _settings->url().value()
                     << ".  Cannot create image. " << std::endl;
 
@@ -1366,29 +1366,29 @@ public:
                 //Check for exact value
                 if ((colMax == colMin) && (rowMax == rowMin))
                 {
-                    //osg::notify(osg::NOTICE) << "Exact value" << std::endl;
+                    //OE_NOTICE << "Exact value" << std::endl;
                     result = llHeight;
                 }
                 else if (colMax == colMin)
                 {
-                    //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
+                    //OE_NOTICE << "Vertically" << std::endl;
                     //Linear interpolate vertically
                     result = ((float)rowMax - r) * llHeight + (r - (float)rowMin) * ulHeight;
                 }
                 else if (rowMax == rowMin)
                 {
-                    //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
+                    //OE_NOTICE << "Horizontally" << std::endl;
                     //Linear interpolate horizontally
                     result = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
                 }
                 else
                 {
-                    //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
+                    //OE_NOTICE << "Bilinear" << std::endl;
                     //Bilinear interpolate
                     float r1 = ((float)colMax - c) * llHeight + (c - (float)colMin) * lrHeight;
                     float r2 = ((float)colMax - c) * ulHeight + (c - (float)colMin) * urHeight;
 
-                    //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                    //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
                     result = ((float)rowMax - r) * r1 + (r - (float)rowMin) * r2;
                 }
             }
@@ -1403,7 +1403,7 @@ public:
     {
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
-            //osg::notify(osg::NOTICE) << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+            //OE_NOTICE << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
 

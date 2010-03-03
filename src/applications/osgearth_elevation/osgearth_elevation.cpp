@@ -105,7 +105,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             }
             else
             {
-                osg::notify(osg::NOTICE)
+                OE_NOTICE
                     << "getElevation FAILED! at (" << lat_deg << ", " << lon_deg << ")" << std::endl;
             }
 

@@ -45,6 +45,6 @@ bool
 ConsoleProgressCallback::reportProgress(double current, double total)
 {
     double percentComplete = (current / total) * 100.0;
-    osg::notify(osg::NOTICE) << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
+    OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
     return false;
 }

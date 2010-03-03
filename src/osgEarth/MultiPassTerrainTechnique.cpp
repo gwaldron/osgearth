@@ -110,7 +110,7 @@ void MultiPassTerrainTechnique::setFilterMatrixAs(FilterType filterType)
 
 void MultiPassTerrainTechnique::init()
 {
-    osg::notify(osg::INFO)<<"Doing MultiPassTerrainTechnique::init()"<<std::endl;
+    OE_INFO<<"Doing MultiPassTerrainTechnique::init()"<<std::endl;
     
     if (!_terrainTile) return;
    
@@ -134,7 +134,7 @@ Locator* MultiPassTerrainTechnique::computeMasterLocator()
     Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
     if (!masterLocator)
     {
-        osg::notify(osg::NOTICE)<<"Problem, no locator found in any of the terrain layers"<<std::endl;
+        OE_NOTICE<<"Problem, no locator found in any of the terrain layers"<<std::endl;
         return 0;
     }
     
@@ -187,8 +187,8 @@ osg::Vec3d MultiPassTerrainTechnique::computeCenterModel(Locator* masterLocator)
         }
     }
 
-    osg::notify(osg::INFO)<<"bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
-    osg::notify(osg::INFO)<<"topRightNDC = "<<topRightNDC<<std::endl;
+    OE_INFO<<"bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
+    OE_INFO<<"topRightNDC = "<<topRightNDC<<std::endl;
 
     _transform = new osg::MatrixTransform;
 
@@ -221,7 +221,7 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(Locator* maste
     double i_sampleFactor = 1.0;
     double j_sampleFactor = 1.0;
 
-    // osg::notify(osg::NOTICE)<<"Sample ratio="<<sampleRatio<<std::endl;
+    // OE_NOTICE<<"Sample ratio="<<sampleRatio<<std::endl;
 
     if (sampleRatio!=1.0f)
     {
@@ -239,7 +239,7 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(Locator* maste
     
 
     bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-    osg::notify(osg::INFO)<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+    OE_INFO<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
@@ -300,7 +300,7 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(Locator* maste
             {
                 float value = 0.0f;
                 validValue = elevationLayer->getValidValue(i_equiv,j_equiv, value);
-                // osg::notify(osg::INFO)<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
+                // OE_INFO<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
                 ndc.z() = value*scaleHeight;
             }
             
@@ -565,7 +565,7 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(Locator* maste
 
 osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry)
 {
-	osg::notify(osg::INFO) << "osgEarth::MultiPassTerrainTechnique createPass " << layerNum << std::endl;
+	OE_INFO << "osgEarth::MultiPassTerrainTechnique createPass " << layerNum << std::endl;
     unsigned int binNumber = 1000;
     binNumber += layerNum;
    
@@ -595,7 +595,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
     double i_sampleFactor = 1.0;
     double j_sampleFactor = 1.0;
 
-    // osg::notify(osg::NOTICE)<<"Sample ratio="<<sampleRatio<<std::endl;
+    // OE_NOTICE<<"Sample ratio="<<sampleRatio<<std::endl;
 
     if (sampleRatio!=1.0f)
     {
@@ -611,7 +611,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
     }
 
     bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-    osg::notify(osg::INFO)<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+    OE_INFO<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
@@ -684,7 +684,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
             {
                 float value = 0.0f;
                 validValue = elevationLayer->getValidValue(i_equiv,j_equiv, value);
-                // osg::notify(osg::INFO)<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
+                // OE_INFO<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
                 ndc.z() = value*scaleHeight;
             }
             
@@ -776,12 +776,12 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
         osgDB::Registry::instance()->getKdTreeBuilder())
     {    
         //osg::Timer_t before = osg::Timer::instance()->tick();
-        //osg::notify(osg::NOTICE)<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
+        //OE_NOTICE<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         //buffer._geode->accept(*builder);
         geode->accept(*builder);
         //osg::Timer_t after = osg::Timer::instance()->tick();
-        //osg::notify(osg::NOTICE)<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
+        //OE_NOTICE<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 
 
@@ -925,7 +925,7 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
 
     if (_terrainTile->getDirty() && !_terrainTileInitialized) 
     {
-        osg::notify(osg::INFO)<<"******* Doing init ***********"<<std::endl;
+        OE_INFO<<"******* Doing init ***********"<<std::endl;
         _terrainTile->init();
         _terrainTileInitialized = true;
     }

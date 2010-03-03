@@ -128,7 +128,7 @@ MapEngine::getTransformFromExtents(double minX, double minY, double maxX, double
 osg::Node*
 MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers )
 {
-    //osg::notify(osg::NOTICE) << "createSubTiles" << std::endl;
+    //OE_NOTICE << "createSubTiles" << std::endl;
     osg::ref_ptr<TileKey> k0 = key->createSubkey(0);
     osg::ref_ptr<TileKey> k1 = key->createSubkey(1);
     osg::ref_ptr<TileKey> k2 = key->createSubkey(2);
@@ -158,7 +158,7 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
         return tile_parent;
     }
 
-    osg::notify(osg::INFO) << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+    OE_INFO << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
     return NULL;
 }
 
@@ -313,7 +313,7 @@ MapEngine::addPlaceholderImageLayers(VersionedTile* tile,
 {
     if ( !ancestorTile )
     {
-        //osg::notify(osg::NOTICE) << "No ancestorTile for key " << key->str() << std::endl;
+        //OE_NOTICE << "No ancestorTile for key " << key->str() << std::endl;
         return;
     }        
 
@@ -426,11 +426,11 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     }
     if ( !ancestorTile.valid() )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] cannot find ancestor tile for (" << key->str() << ")" <<std::endl;
+        OE_NOTICE << "cannot find ancestor tile for (" << key->str() << ")" <<std::endl;
         return 0L;
     }
 
-    osg::notify(osg::INFO) << "Creating placeholder for " << key->str() << std::endl;
+    OE_INFO << "Creating placeholder for " << key->str() << std::endl;
     ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
@@ -481,7 +481,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
     if (!hfLayer)
     {
-        osg::notify(osg::NOTICE) << "Warning:  Couldn't get hfLayer for " << key->str() << std::endl;
+        OE_NOTICE << "Warning:  Couldn't get hfLayer for " << key->str() << std::endl;
     }
     hfLayer->getHeightField()->setSkirtHeight(radius * _engineProps.heightFieldSkirtRatio().get() );
                 
@@ -611,7 +611,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
-        osg::notify(osg::INFO) << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        OE_INFO << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         validData = false;
     }
     else

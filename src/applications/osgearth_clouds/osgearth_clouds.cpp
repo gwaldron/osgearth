@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#include <osgEarth/Notify>
 
 #include <osgUtil/Optimizer>
 #include <osgDB/ReadFile>
@@ -73,7 +74,7 @@ osg::Node* createClouds(double maxRange)
   osg::ref_ptr<osg::Image> image = osgDB::readImageFile("http://worldwind25.arc.nasa.gov/GlobalClouds/GlobalClouds.aspx?.jpg");
   if (image.valid())
   {
-    osg::notify(osg::NOTICE) << "Read clouds from WorldWind server" << std::endl;
+    OE_NOTICE << "Read clouds from WorldWind server" << std::endl;
   }
   else
   {
@@ -85,7 +86,7 @@ osg::Node* createClouds(double maxRange)
 
   if (!image.valid())
   {
-    osg::notify(osg::NOTICE) << "Could not read clouds image " << std::endl;
+    OE_NOTICE << "Could not read clouds image " << std::endl;
     return NULL;
   }
 

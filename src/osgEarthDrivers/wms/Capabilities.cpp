@@ -118,7 +118,7 @@ std::string Capabilities::suggestExtension()
             if (rw)
             {
                 ext = format;
-                osg::notify(osg::INFO) << "suggestExtension found ReaderWriter for " << ext << std::endl;
+                OE_INFO << "suggestExtension found ReaderWriter for " << ext << std::endl;
                 break;
             }
         }
@@ -257,7 +257,7 @@ CapabilitiesReader::read(std::istream &in)
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
     if (!doc.valid() || doc->getChildren().empty())
     {
-        osg::notify(osg::NOTICE) << "Failed to load Capabilities " << std::endl;
+        OE_NOTICE << "Failed to load Capabilities " << std::endl;
         return 0;
     }
 
@@ -268,7 +268,7 @@ CapabilitiesReader::read(std::istream &in)
     osg::ref_ptr<XmlElement> e_capability = e_root->getSubElement( ELEM_CAPABILITY );
     if (!e_capability.valid())
     {
-        osg::notify(osg::NOTICE) << "Could not find Capability element" << std::endl;
+        OE_NOTICE << "Could not find Capability element" << std::endl;
         return 0;
     }
 

@@ -34,7 +34,9 @@ using namespace osgEarth;
 ProfileConfig::ProfileConfig() :
 _namedProfile( "" ),
 _srs( "" ),
-_bounds( Bounds() )
+_bounds( Bounds() ),
+_numTilesWideAtLod0( 1 ),
+_numTilesHighAtLod0( 1 )
 {
     //NOP
 }
@@ -42,7 +44,9 @@ _bounds( Bounds() )
 ProfileConfig::ProfileConfig( const std::string& namedProfile ) :
 _namedProfile( namedProfile, namedProfile ),
 _srs( "" ),
-_bounds( Bounds() )
+_bounds( Bounds() ),
+_numTilesWideAtLod0( 1 ),
+_numTilesHighAtLod0( 1 )
 {
     //nop
 }
@@ -50,7 +54,9 @@ _bounds( Bounds() )
 ProfileConfig::ProfileConfig( const Config& conf ) :
 _namedProfile( "" ),
 _srs( "" ),
-_bounds( Bounds() )
+_bounds( Bounds() ),
+_numTilesWideAtLod0( 1 ),
+_numTilesHighAtLod0( 1 )
 {
     if ( !conf.value().empty() )
         _namedProfile = conf.value();
@@ -92,11 +98,8 @@ ProfileConfig::toConfig( const std::string& name ) const
             conf.add( "ymax", toString(_bounds->yMax()) );
         }
 
-        if ( _numTilesWideAtLod0.isSet() )
-            conf.add( "num_tiles_wide_at_lod_0", toString(_numTilesWideAtLod0.value()) );
-
-        if ( _numTilesHighAtLod0.isSet() )
-            conf.add( "num_tiles_high_at_lod_0", toString(_numTilesHighAtLod0.value()) );
+        conf.addIfSet( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+        conf.addIfSet( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
     }
     return conf;
 }
@@ -468,7 +471,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         currLOD++;
         double w, h;
         getTileDimensions(currLOD, w,h);
-        //osg::notify(osg::INFO) << std::fixed << "  " << currLOD << "(" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+        //OE_INFO << std::fixed << "  " << currLOD << "(" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
         double a = w * h;
         if (a < keyArea) break;
         destLOD = currLOD;
@@ -476,8 +479,8 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         destTileHeight = h;
     }
 
-    //osg::notify(osg::INFO) << std::fixed << "  Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
-    //osg::notify(osg::INFO) << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+    //OE_INFO << std::fixed << "  Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+    //OE_INFO << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
     int tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
     int tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
@@ -493,7 +496,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
     tileMinY = osg::clampBetween(tileMinY, 0, (int)numHigh-1);
     tileMaxY = osg::clampBetween(tileMaxY, 0, (int)numHigh-1);
 
-    //osg::notify(osg::INFO) << std::fixed << "  Dest Tiles: " << tileMinX << "," << tileMinY << " => " << tileMaxX << "," << tileMaxY << std::endl;
+    //OE_INFO << std::fixed << "  Dest Tiles: " << tileMinX << "," << tileMinY << " => " << tileMaxX << "," << tileMaxY << std::endl;
 
     for (int i = tileMinX; i <= tileMaxX; ++i)
     {
@@ -504,14 +507,14 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         }
     }
 
-    //osg::notify(osg::NOTICE) << "Found " << intersectingKeys.size() << " keys " << std::endl;
+    //OE_NOTICE << "Found " << intersectingKeys.size() << " keys " << std::endl;
 }
 
 
 void
 Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
 {
-    osg::notify(osg::INFO) << "GET ISECTING TILES for key " << key->str() << std::endl;
+    OE_INFO << "GET ISECTING TILES for key " << key->str() << std::endl;
 
     //Clear the incoming list
     out_intersectingKeys.clear();
@@ -526,7 +529,7 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
     //TODO: put this back in???
     //if ( !isCompatibleWith( key->getProfile() ) )
     //{
-    //    osg::notify(osg::NOTICE) << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
+    //    OE_NOTICE << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
     //}
 
     GeoExtent key_ext = key->getGeoExtent();

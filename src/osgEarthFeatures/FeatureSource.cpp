@@ -190,14 +190,14 @@ FeatureSourceFactory::create( const DriverOptions* driverOptions )
         }
         else
         {
-            osg::notify(osg::NOTICE)
-                << "[osgEarth] WARNING: Failed to load feature driver for " << driverExt << std::endl;
+            OE_NOTICE
+                << "WARNING: Failed to load feature driver for " << driverExt << std::endl;
         }
     }
     else
     {
-        osg::notify(osg::NOTICE)
-            << "[osgEarth] ERROR: null driver options to FeatureSourceFactory" << std::endl;
+        OE_NOTICE
+            << "ERROR: null driver options to FeatureSourceFactory" << std::endl;
     }
 
     return featureSource;
@@ -217,8 +217,8 @@ FeatureSourceFactory::create(const std::string& name,
     //Setup the plugin options for the source
     options->config() = driverConf;
 
-    osg::notify(osg::INFO)
-        << "[osgEarth] Feature Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
+    OE_INFO
+        << "Feature Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
 
 	// Load the source from a plugin.
     osg::ref_ptr<FeatureSource> source = dynamic_cast<FeatureSource*>(
@@ -230,7 +230,7 @@ FeatureSourceFactory::create(const std::string& name,
     }
     else
 	{
-		osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load Feature Source for driver "  << driver << std::endl;
+		OE_NOTICE << "Warning: Could not load Feature Source for driver "  << driver << std::endl;
 	}
 
 	return source.release();

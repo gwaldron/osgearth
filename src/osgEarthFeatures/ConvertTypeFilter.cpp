@@ -80,7 +80,7 @@ ConvertTypeFilter::push( FeatureList& input, const FilterContext& context )
 {
     if ( !isSupported() )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] ConvertTypeFilter support not enabled" << std::endl;
+        OE_NOTICE << "ConvertTypeFilter support not enabled" << std::endl;
         return context;
     }
 

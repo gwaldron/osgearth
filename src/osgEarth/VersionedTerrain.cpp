@@ -224,7 +224,7 @@ _verticalScale(1.0f)
 
 VersionedTile::~VersionedTile()
 {
-    //osg::notify(osg::NOTICE) << "Destroying VersionedTile " << this->getKey()->str() << std::endl;
+    //OE_NOTICE << "Destroying VersionedTile " << this->getKey()->str() << std::endl;
 }
 
 void
@@ -238,7 +238,7 @@ VersionedTile::adjustUpdateTraversalCount( int delta )
     }
     else
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] WARNING, tile (" 
+        OE_NOTICE << "WARNING, tile (" 
             << _key->str() << ") tried to set a negative NCRUT"
             << std::endl;
     }
@@ -405,7 +405,7 @@ osg::BoundingSphere
 VersionedTile::computeBound() const
 {
     //Overriden computeBound that takes into account the vertical scale.
-    //osg::notify(osg::NOTICE) << "VersionedTile::computeBound verticalScale = " << _verticalScale << std::endl;
+    //OE_NOTICE << "VersionedTile::computeBound verticalScale = " << _verticalScale << std::endl;
 
     osg::BoundingSphere bs;
 
@@ -488,14 +488,14 @@ VersionedTile::readyForNewElevation()
     }
 
 #ifdef PREEMPTIVE_DEBUG
-    osg::notify(osg::NOTICE)
+    OE_NOTICE
         << "Tile (" << _key->str() << ") at (" << _elevationLOD << "), parent at ("
         << _family[PARENT].elevLOD << "), sibs at (";
     if ( _family[WEST].expected ) osg::notify( osg::NOTICE ) << "W=" << _family[WEST].elevLOD << " ";
     if ( _family[NORTH].expected ) osg::notify( osg::NOTICE ) << "N=" << _family[NORTH].elevLOD << " ";
     if ( _family[EAST].expected ) osg::notify( osg::NOTICE ) << "E=" << _family[EAST].elevLOD << " ";
     if ( _family[SOUTH].expected ) osg::notify( osg::NOTICE ) << "S=" << _family[SOUTH].elevLOD << " ";
-    osg::notify(osg::NOTICE) << "), ready = " << (ready? "YES" : "no") << std::endl;
+    OE_NOTICE << "), ready = " << (ready? "YES" : "no") << std::endl;
 #endif
 
     return ready;
@@ -625,7 +625,7 @@ VersionedTile::updateImagery(unsigned int layerId, Map* map, MapEngine* engine)
 
     if (!mapLayer)
     {
-        osg::notify(osg::NOTICE) << "updateImagery could not find MapLayer with id=" << layerId << std::endl;
+        OE_NOTICE << "updateImagery could not find MapLayer with id=" << layerId << std::endl;
         return;
     }
 
@@ -691,7 +691,7 @@ VersionedTile::servicePendingImageRequests( int stamp )
         //and it was either deemed out of date or was cancelled, so we need to add it again.
         if ( r->isIdle() )
         {
-            //osg::notify(osg::NOTICE) << "Queuing IR (" << _key->str() << ")" << std::endl;
+            //OE_NOTICE << "Queuing IR (" << _key->str() << ")" << std::endl;
             r->setStamp( stamp );
             getVersionedTerrain()->getImageryTaskService(r->_layerId)->add( r );
         }
@@ -729,7 +729,7 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
         if ( !_elevRequest->isIdle() )
         {
 #ifdef PREEMPTIVE_DEBUG
-            osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") .. ER not idle" << std::endl;
+            OE_NOTICE << "Tile (" << _key->str() << ") .. ER not idle" << std::endl;
 #endif
             
             if ( !_elevRequest->isCompleted() )
@@ -742,7 +742,7 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
         else if ( !_elevPlaceholderRequest->isIdle() )
         {
 #ifdef PREEMPTIVE_DEBUG
-            osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") .. PR not idle" << std::endl;
+            OE_NOTICE << "Tile (" << _key->str() << ") .. PR not idle" << std::endl;
 #endif
             if ( !_elevPlaceholderRequest->isCompleted() )
             {
@@ -759,7 +759,7 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
                 _elevRequest->setProgressCallback( new ProgressCallback() );
                 terrain->getElevationTaskService()->add( _elevRequest.get() );
 #ifdef PREEMPTIVE_DEBUG
-                osg::notify(osg::NOTICE) << "..queued FE req for (" << _key->str() << ")" << std::endl;
+                OE_NOTICE << "..queued FE req for (" << _key->str() << ")" << std::endl;
 #endif
             }
             
@@ -782,14 +782,14 @@ VersionedTile::servicePendingElevationRequests( int stamp, bool tileTableLocked 
                     er->setNextLOD( _family[PARENT].elevLOD );
                     terrain->getElevationTaskService()->add( er );
 #ifdef PREEMPTIVE_DEBUG
-                    osg::notify(osg::NOTICE) << "..queued PH req for (" << _key->str() << ")" << std::endl;
+                    OE_NOTICE << "..queued PH req for (" << _key->str() << ")" << std::endl;
 #endif
                 }
 
                 else 
                 {
 #ifdef PREEMPTIVE_DEBUG
-                    osg::notify(osg::NOTICE) << "...tile (" << _key->str() << ") ready, but nothing to do." << std::endl;
+                    OE_NOTICE << "...tile (" << _key->str() << ") ready, but nothing to do." << std::endl;
 #endif
                 }
             }
@@ -943,7 +943,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                             //The maplayer was probably deleted
                             if (index < 0)
                             {
-                                osg::notify(osg::INFO) << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
+                                OE_INFO << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
                                 itr = _requests.erase(itr);
                                 increment = false;
                             }
@@ -960,7 +960,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
 
                                     markTileForRegeneration();
 
-                                    //osg::notify(osg::NOTICE) << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
+                                    //OE_NOTICE << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
 
                                     // remove from the list (don't reference "r" after this!)
                                     itr = _requests.erase( itr );
@@ -968,7 +968,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                                 }
                                 else
                                 {  
-                                    osg::notify(osg::INFO) << "[osgEarth] IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
+                                    OE_INFO << "IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
 
                                     //The color layer request failed, probably due to a server error. Reset it.
                                     r->setState( TaskRequest::STATE_IDLE );
@@ -1027,7 +1027,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                     _elevationLOD = _key->getLevelOfDetail();
 
     #ifdef PREEMPTIVE_DEBUG
-                    osg::notify(osg::NOTICE) << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
+                    OE_NOTICE << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
     #endif
                     // this was the final elev request, so mark elevation as DONE.
                     _elevationLayerUpToDate = true;
@@ -1077,7 +1077,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                     //setElevationLOD( r->_nextLOD );
 
     #ifdef PREEMPTIVE_DEBUG
-                    osg::notify(osg::NOTICE) << "..tile (" << _key->str() << ") is now at (" << _elevationLOD << ")" << std::endl;
+                    OE_NOTICE << "..tile (" << _key->str() << ") is now at (" << _elevationLOD << ")" << std::endl;
     #endif
                 }
                 _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
@@ -1090,7 +1090,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
     if ( _tileGenNeeded && !_tileGenRequest.valid())
     {
         _tileGenRequest = new TileGenRequest(this);
-        //osg::notify(osg::NOTICE) << "tile (" << _key->str() << ") queuing new tile gen" << std::endl;
+        //OE_NOTICE << "tile (" << _key->str() << ") queuing new tile gen" << std::endl;
         getVersionedTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
         _tileGenNeeded = false;
     }
@@ -1131,11 +1131,11 @@ VersionedTile::releaseGLObjects(osg::State* state) const
     {
         //NOTE: crashes sometimes if OSG_RELEASE_DELAY is set -gw
         _terrainTechnique->releaseGLObjects( state );
-        //osg::notify(osg::NOTICE) << "[osgEarth] VT releasing GL objects" << std::endl;
+        //OE_NOTICE << "VT releasing GL objects" << std::endl;
     }
     else
     {
-        //osg::notify(osg::NOTICE) << "[osgEarth] Tried but failed to VT releasing GL objects" << std::endl;
+        //OE_NOTICE << "Tried but failed to VT releasing GL objects" << std::endl;
     }
 }
 
@@ -1161,7 +1161,7 @@ VersionedTerrain::releaseGLObjectsForTiles(osg::State* state)
 
     while( _tilesToRelease.size() > 0 )
     {
-        //osg::notify(osg::NOTICE) << "("<<_tilesToRelease.front()->getKey()->str()<<") release GL " << std::endl;
+        //OE_NOTICE << "("<<_tilesToRelease.front()->getKey()->str()<<") release GL " << std::endl;
         _tilesToRelease.front()->releaseGLObjects( state );
         _tilesToRelease.pop();
     }
@@ -1201,7 +1201,7 @@ _releaseCBInstalled( false )
             _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * 2;
         }
 
-        osg::notify(osg::INFO) << "[osgEarth] VT: using " << _numAsyncThreads << " loading threads " << std::endl;
+        OE_INFO << "VT: using " << _numAsyncThreads << " loading threads " << std::endl;
     }
 }
 
@@ -1410,7 +1410,7 @@ VersionedTerrain::registerTile( VersionedTile* newTile )
     //Register the new tile immediately, but also add it to the queue so that
     _tiles[ newTile->getTileID() ] = newTile;
     _tilesToAdd.push( newTile );
-    //osg::notify(osg::NOTICE) << "Registered " << newTile->getKey()->str() << " Count=" << _tiles.size() << std::endl;
+    //OE_NOTICE << "Registered " << newTile->getKey()->str() << " Count=" << _tiles.size() << std::endl;
 }
 
 void
@@ -1423,7 +1423,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
         {
             cam->setPostDrawCallback( new ReleaseGLCallback(this) );
             _releaseCBInstalled = true;
-            //osg::notify(osg::NOTICE) << "release cb installed." << std::endl;
+            //OE_NOTICE << "release cb installed." << std::endl;
         }
     }
 
@@ -1446,7 +1446,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             {
                 if ( i->second.valid() && i->second->referenceCount() == 1 && i->second->getHasBeenTraversed() )
                 {
-                    //osg::notify(osg::NOTICE) << "Tile (" << i->second->getKey()->str() << ") expired..." << std::endl;
+                    //OE_NOTICE << "Tile (" << i->second->getKey()->str() << ") expired..." << std::endl;
 
                     _tilesToShutDown.push_back( i->second.get() );
                     TileTable::iterator j = i;
@@ -1459,7 +1459,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 }
             }
             
-            //osg::notify(osg::NOTICE) << "Shutting down " << _tilesToShutDown.size() << " tiles." << std::endl;
+            //OE_NOTICE << "Shutting down " << _tilesToShutDown.size() << " tiles." << std::endl;
 
             for( TileList::iterator i = _tilesToShutDown.begin(); i != _tilesToShutDown.end(); )
             {
@@ -1468,12 +1468,12 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                     //Only add the tile to be released if we could actually install the callback.
                     if (_releaseCBInstalled)
                     {
-                        //osg::notify(osg::NOTICE) << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
+                        //OE_NOTICE << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
                         _tilesToRelease.push( i->get() );
                     }
                     else
                     {
-                        osg::notify(osg::WARN) << "Warning:  Could not install ReleaseGLCallback" << std::endl;
+                        OE_WARN << "Warning:  Could not install ReleaseGLCallback" << std::endl;
                     }
                     i = _tilesToShutDown.erase( i );
                 }
@@ -1493,7 +1493,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
 
             //if ( _tiles.size() != oldSize )
             //{
-            //    osg::notify(osg::NOTICE) << "Tiles registered = " << _tiles.size() << std::endl;
+            //    OE_NOTICE << "Tiles registered = " << _tiles.size() << std::endl;
             //}
         }
 
@@ -1634,14 +1634,14 @@ VersionedTerrain::updateTaskServiceThreads()
     {
         //Determine how many threads each layer gets
         int numElevationThreads = (int)osg::round((float)_numAsyncThreads * (elevationWeight / totalWeight ));
-        osg::notify(osg::NOTICE) << "HtFld Threads = " << numElevationThreads << std::endl;
+        OE_NOTICE << "HtFld Threads = " << numElevationThreads << std::endl;
         getElevationTaskService()->setNumThreads( numElevationThreads );
     }
 
     for (MapLayerList::const_iterator itr = _map->getImageMapLayers().begin(); itr != _map->getImageMapLayers().end(); ++itr)
     {
         int imageThreads = (int)osg::round((float)_numAsyncThreads * (itr->get()->loadingWeight().value() / totalWeight ));
-        osg::notify(osg::NOTICE) << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
+        OE_NOTICE << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
     }
 

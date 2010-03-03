@@ -110,7 +110,7 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
 
         //if ( partSize0 != part->size() )
         //{
-        //    osg::notify(osg::NOTICE) << "Resampled part from " << partSize0 << " to " << part->size() << " points" << std::endl;
+        //    OE_NOTICE << "Resampled part from " << partSize0 << " to " << part->size() << " points" << std::endl;
         //}
     }
     return success;
@@ -122,7 +122,7 @@ ResampleFilter::push( FeatureList& input, const FilterContext& context )
 {
     if ( !isSupported() )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth] ResampleFilter support not enabled" << std::endl;
+        OE_NOTICE << "ResampleFilter support not enabled" << std::endl;
         return context;
     }
 

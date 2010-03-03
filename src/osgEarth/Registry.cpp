@@ -84,7 +84,7 @@ OpenThreads::ReentrantMutex&
 Registry::getGDALMutex()
 {
     //_numGdalMutexGets++;
-    //osg::notify(osg::NOTICE) << "GDAL = " << _numGdalMutexGets << std::endl;
+    //OE_NOTICE << "GDAL = " << _numGdalMutexGets << std::endl;
     return _gdal_mutex;
 }
 

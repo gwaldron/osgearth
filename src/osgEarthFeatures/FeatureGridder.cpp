@@ -115,8 +115,8 @@ _policy( policy ? new GriddingPolicy( *policy ) : new GriddingPolicy() )
 
     if ( _policy.valid() && _policy->cullingTechnique().isSet() && _policy->cullingTechnique() == GriddingPolicy::CULL_BY_CROPPING )
     {
-        osg::notify(osg::WARN) 
-            << "[osgEarth] Warning: Gridding policy 'cull by cropping' requires GEOS. Falling back on 'cull by centroid'." 
+        OE_WARN 
+            << "Warning: Gridding policy 'cull by cropping' requires GEOS. Falling back on 'cull by centroid'." 
             << std::endl;
 
         _policy->cullingTechnique() = GriddingPolicy::CULL_BY_CENTROID;
@@ -223,7 +223,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
                         }
                         catch( ... ) {
                             outGeom = 0L;
-                            osg::notify(osg::NOTICE) << "[osgEarth] Feature gridder, GEOS overlay op exception, skipping feature" << std::endl;
+                            OE_NOTICE << "Feature gridder, GEOS overlay op exception, skipping feature" << std::endl;
                         }
                             
                         if ( outGeom )
@@ -254,8 +254,8 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
 
     }
 
-    osg::notify(osg::INFO)
-            << "[osgEarth] Grid cell " << i << ": bounds="
+    OE_INFO
+            << "Grid cell " << i << ": bounds="
             << b.xMin() << "," << b.yMin() << " => " << b.xMax() << "," << b.yMax()
             << "; in=" << inCount << "; out=" << features.size()
             << std::endl;
@@ -313,7 +313,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
 //                }
 //                catch( ... ) {
 //                    outGeom = 0L;
-//                    osg::notify(osg::NOTICE) << "[osgEarth] Feature gridder, GEOS overlay op exception, skipping feature" << std::endl;
+//                    OE_NOTICE << "Feature gridder, GEOS overlay op exception, skipping feature" << std::endl;
 //                }
 //                    
 //                if ( outGeom )
@@ -335,8 +335,8 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
 //        f->destroyGeometry( cropGeom );
 //        delete f;
 //
-//        osg::notify(osg::NOTICE)
-//            << "[osgEarth] Grid cell " << i << ": " << count << " features; bounds="
+//        OE_NOTICE
+//            << "Grid cell " << i << ": " << count << " features; bounds="
 //            << xmin << "," << ymin << " => " << xmax << "," << ymax
 //            << std::endl;
 //    }

@@ -169,7 +169,7 @@ Cache::getHeightField( const TileKey* key,
 	osg::ref_ptr<osg::Image> image = getImage( key, layerName, format );
 	if (image.valid())
 	{
-		osg::notify(osg::INFO) << "[osgEarth::Cache] Read cached heightfield " << std::endl;
+		OE_INFO << "[osgEarth::Cache] Read cached heightfield " << std::endl;
 		ImageToHeightFieldConverter conv;
 		hf = conv.convert(image.get());
 	}
@@ -304,7 +304,7 @@ DiskCache::setImage( const TileKey* key,
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))
     {
-        osg::notify(osg::WARN) << "[osgEarth::Cache] Couldn't create path " << path << std::endl;
+        OE_WARN << "[osgEarth::Cache] Couldn't create path " << path << std::endl;
     }
 
     std::string ext = osgDB::getFileExtension(filename);
@@ -382,7 +382,7 @@ void DiskCache::storeLayerProperties( const std::string& layerName,
 {
 	osg::ref_ptr<TileMap> tileMap = TileMap::create("", profile, format, tile_size, tile_size);
 	std::string path = getTMSPath( layerName );
-    osg::notify(osg::INFO) << "[osgEarth::DiskCache] Writing TMS file to  " << path << std::endl;
+    OE_INFO << "[osgEarth::DiskCache] Writing TMS file to  " << path << std::endl;
 	TileMapReaderWriter::write( tileMap.get(), path );
 }
 
@@ -402,7 +402,7 @@ const Profile* DiskCache::loadLayerProperties( const std::string& layerName,
 	osg::ref_ptr<TileMap> tileMap;
 
 	std::string path = getTMSPath( layerName );
-	osg::notify(osg::NOTICE) << "[osgEarth::DiskCache] TileMap file is " << path << std::endl;
+	OE_NOTICE << "[osgEarth::DiskCache] TileMap file is " << path << std::endl;
 
 	if (osgDB::fileExists( path ) )
 	{
@@ -477,7 +477,7 @@ osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& lay
 
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
-  //osg::notify(osg::NOTICE) << "List contains: " << _images.size() << std::endl;
+  //OE_NOTICE << "List contains: " << _images.size() << std::endl;
 
   std::string id = key->str();
   //Find the image in the cache
@@ -489,7 +489,7 @@ osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& lay
     _objects.erase(itr->second);
     _objects.push_front(entry);
     itr->second = _objects.begin();
-    //osg::notify(osg::NOTICE)<<"Getting from memcache "<< key->str() <<std::endl;
+    //OE_NOTICE<<"Getting from memcache "<< key->str() <<std::endl;
     return itr->second->_object.get();
   }
   return 0;
@@ -582,7 +582,7 @@ Cache* CacheFactory::create(const CacheConfig &cacheConfig)
 
         if ((!getProp(cacheConfig.getProperties(), "path", path)) || (path.empty()))
         {
-            osg::notify(osg::NOTICE) << "[osgEarth::Cache] No path specified for " << type << " cache " << std::endl;
+            OE_NOTICE << "[osgEarth::Cache] No path specified for " << type << " cache " << std::endl;
             return 0;
         }      
 
@@ -594,16 +594,16 @@ Cache* CacheFactory::create(const CacheConfig &cacheConfig)
             getProp(cacheConfig.getProperties(), "tms_type", tms_type);
             if (tms_type == "google")
             {
-                osg::notify(osg::INFO) << "[osgEarth::Cache] Inverting Y in TMS cache " << std::endl;
+                OE_INFO << "[osgEarth::Cache] Inverting Y in TMS cache " << std::endl;
                 tms_cache->setInvertY(true);
             }
-            osg::notify(osg::INFO) << "[osgEarth::Cache] Returning TMS cache " << std::endl;
+            OE_INFO << "[osgEarth::Cache] Returning TMS cache " << std::endl;
             cache = tms_cache;
         }
 
         if (type == CacheConfig::TYPE_TILECACHE ) //"tilecache")
         {
-            osg::notify(osg::INFO) << "[osgEarth::Cache] Returning disk cache " << std::endl;
+            OE_INFO << "[osgEarth::Cache] Returning disk cache " << std::endl;
             cache = new DiskCache(path);
         }
 
@@ -624,7 +624,7 @@ Cache* CacheFactory::create(const CacheConfig &cacheConfig)
     }
     else
     {
-        osg::notify(osg::NOTICE) << "[osgEarth::Cache] Unknown cache type " << type << std::endl;
+        OE_NOTICE << "[osgEarth::Cache] Unknown cache type " << type << std::endl;
     }
     return 0;
 }

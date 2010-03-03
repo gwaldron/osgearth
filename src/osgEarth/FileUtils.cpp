@@ -49,7 +49,7 @@ std::string osgEarth::getFullPath(const std::string& relativeTo, const std::stri
 {
 	if (!isRelativePath(relativePath) || relativeTo.empty())
     {
-        //osg::notify(osg::NOTICE) << relativePath << " is not a relative path " << std::endl;
+        //OE_NOTICE << relativePath << " is not a relative path " << std::endl;
         return relativePath;
     }
 
@@ -98,7 +98,7 @@ std::string osgEarth::getFullPath(const std::string& relativeTo, const std::stri
 
     path += filename.substr(start, std::string::npos);
 
-    //osg::notify(osg::NOTICE) << "FullPath " << path << std::endl;
+    //OE_NOTICE << "FullPath " << path << std::endl;
     return path;
 }
 

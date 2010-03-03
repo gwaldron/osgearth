@@ -165,8 +165,8 @@ public:
                     // assuming we successfully opened the layer, build a spatial index if requested.
                     if ( _options->buildSpatialIndex() == true )
                     {
-                        osg::notify(osg::NOTICE) <<
-                            "[osgEarth] Building spatial index for " << getName() << " ..." << std::flush;
+                        OE_NOTICE <<
+                            "Building spatial index for " << getName() << " ..." << std::flush;
 
                         std::stringstream buf;
                         const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
@@ -175,15 +175,15 @@ public:
 					    bufStr = buf.str();
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
 
-                        osg::notify(osg::NOTICE) <<  "done." << std::endl;
+                        OE_NOTICE <<  "done." << std::endl;
                     }
                 }
 	        }
         }
         else
         {
-            osg::notify(osg::NOTICE) 
-                << "[osgEarth] OGR Feature Source: no valid source data available" << std::endl;
+            OE_NOTICE 
+                << "OGR Feature Source: no valid source data available" << std::endl;
         }
 
         return result;

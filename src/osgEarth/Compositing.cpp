@@ -68,14 +68,14 @@ MultiImage::createImage()
 {
     if (_images.size() == 0)
     {
-        osg::notify(osg::NOTICE) << "MultiImage has no images..." << std::endl;
+        OE_NOTICE << "MultiImage has no images..." << std::endl;
         return 0;
     }
 
     unsigned int tileWidth = _images[0]._image->s();
     unsigned int tileHeight = _images[0]._image->t();
 
-    //osg::notify(osg::NOTICE) << "TileDim " << tileWidth << ", " << tileHeight << std::endl;
+    //OE_NOTICE << "TileDim " << tileWidth << ", " << tileHeight << std::endl;
 
     unsigned int minTileX = _images[0]._tileX;
     unsigned int minTileY = _images[0]._tileY;

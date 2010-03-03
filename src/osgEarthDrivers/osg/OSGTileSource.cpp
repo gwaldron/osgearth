@@ -79,7 +79,7 @@ public:
         }
 
         if ( !_image.valid() )
-            osg::notify(osg::WARN) << "[osgEarth::OSG driver] Cannot load data from [" << _url << "]" << std::endl;
+            OE_WARN << "[osgEarth::OSG driver] Cannot load data from [" << _url << "]" << std::endl;
 
         // calculate and store the maximum LOD for which to return data
         if ( _image.valid() )
@@ -87,7 +87,7 @@ public:
             int minSpan = osg::minimum( _image->s(), _image->t() );
             int tileSize = _settings->tileSize().value();
             _maxDataLevel = LOG2((minSpan/tileSize)+1);
-            //osg::notify(osg::NOTICE) << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
+            //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
 
             if ( _settings->convertLuminanceToRGBA() == true && _image->getPixelFormat() == GL_LUMINANCE )
             {

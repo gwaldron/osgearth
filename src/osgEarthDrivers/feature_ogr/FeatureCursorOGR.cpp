@@ -207,7 +207,7 @@ FeatureCursorOGR::readChunk()
     // read one more for "more" detection:
     _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
 
-    //osg::notify(osg::NOTICE) << "read " << _queue.size() << " features ... " << std::endl;
+    //OE_NOTICE << "read " << _queue.size() << " features ... " << std::endl;
 }
 
 // NOTE: ASSUMES that OGR_SCOPED_LOCK is already in effect upon entry!

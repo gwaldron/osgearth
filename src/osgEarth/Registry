@@ -31,10 +31,10 @@
 
 /*#define GDAL_SCOPED_LOCK \
     osg::Timer_t gdal_start = osg::Timer::instance()->tick();\
-    osg::notify(osg::NOTICE) << "Waiting for lock..." << std::endl; \
+    OE_NOTICE << "Waiting for lock..." << std::endl; \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() );\
     osg::Timer_t gdal_end = osg::Timer::instance()->tick();\
-    osg::notify(osg::NOTICE) << "Got lock in " << osg::Timer::instance()->delta_m(gdal_start,gdal_end) << "ms" << std::endl; \
+    OE_NOTICE << "Got lock in " << osg::Timer::instance()->delta_m(gdal_start,gdal_end) << "ms" << std::endl; \
 */
 
 #define GDAL_SCOPED_LOCK \

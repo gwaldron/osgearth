@@ -84,7 +84,7 @@ public:
 		//Take the override profile if one is given
 		if (overrideProfile)
 		{
-		    osg::notify(osg::NOTICE) << "[osgEarth::TMS] Using override profile " << overrideProfile->toString() << std::endl;				
+		    OE_NOTICE << "[osgEarth::TMS] Using override profile " << overrideProfile->toString() << std::endl;				
 			result = overrideProfile;
 			_tileMap = TileMap::create( 
                 _settings->url().value(), 
@@ -101,7 +101,7 @@ public:
 			}
 			else
 			{
-		      osg::notify(osg::WARN) << "[osgEarth::TMS] Error reading TileMap and no overrides set" << std::endl;		
+		      OE_WARN << "[osgEarth::TMS] Error reading TileMap and no overrides set" << std::endl;		
 			  return;
 			}
 		}
@@ -109,7 +109,7 @@ public:
         //Automatically set the min and max level of the TileMap
         if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
         {
-          osg::notify(osg::INFO) << "[osgEarth::TMS] TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
+          OE_INFO << "[osgEarth::TMS] TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
           //TODO:  Replace this with a concept of the "data" having a min/max level, not the min-max visible level
           //setMinLevel(_tileMap->getMinLevel());
           //setMaxLevel(_tileMap->getMaxLevel());
@@ -128,7 +128,7 @@ public:
         {
             std::string image_url = _tileMap->getURL( key, _invertY );
                 
-            //osg::notify(osg::NOTICE) << "TMSSource: Key=" << key->str() << ", URL=" << image_url << std::endl;
+            //OE_NOTICE << "TMSSource: Key=" << key->str() << ", URL=" << image_url << std::endl;
 
             
             osg::ref_ptr<osg::Image> image;
@@ -146,7 +146,7 @@ public:
                     //of the tilemap and create a transparent image.
                     if (key->getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
-                        osg::notify(osg::NOTICE) << "Returning empty image " << std::endl;
+                        OE_NOTICE << "Returning empty image " << std::endl;
                         return ImageUtils::getEmptyImage();
                     }
                 }

@@ -49,6 +49,7 @@ SET(LIB_PUBLIC_HEADERS
     ModelLayer
     ModelSource
 	MultiPassTerrainTechnique
+	Notify
     Profile
 	Progress
     Registry
@@ -93,6 +94,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	ModelLayer.cpp
 	ModelSource.cpp
 	MultiPassTerrainTechnique.cpp
+	Notify.cpp
     Profile.cpp
 	Progress.cpp
     Registry.cpp

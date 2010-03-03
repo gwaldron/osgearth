@@ -234,7 +234,7 @@ StyleCatalog::fromConfig( const Config& conf )
             // and create one style for each in the catalog.
             std::stringstream buf( cssString );
             Config css = CssUtils::readConfig( buf );
-            //osg::notify(osg::NOTICE) << css.toString() << std::endl;
+            //OE_NOTICE << css.toString() << std::endl;
             for(ConfigSet::const_iterator j = css.children().begin(); j != css.children().end(); ++j )
             {
                 Style style( styleConf );

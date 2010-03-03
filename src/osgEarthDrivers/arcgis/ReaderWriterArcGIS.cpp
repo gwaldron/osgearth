@@ -75,7 +75,7 @@ public:
         // read metadata from the server
         if ( !_map_service.init( _settings->url().value(), getOptions()) )
         {
-            osg::notify(osg::WARN) << "[osgearth] [ArcGIS] map service initialization failed: "
+            OE_WARN << "[osgearth] [ArcGIS] map service initialization failed: "
                 << _map_service.getError() << std::endl;
         }
     }
@@ -173,7 +173,7 @@ public:
                 << "&" << "." << f;
         }
 
-        //osg::notify(osg::NOTICE) << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
+        //OE_NOTICE << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
         //return osgDB::readImageFile( buf.str(), getOptions() );
         //return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
         

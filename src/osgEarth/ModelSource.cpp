@@ -75,14 +75,14 @@ ModelSourceFactory::create( const DriverOptions* driverOptions )
         }
         else
         {
-            osg::notify(osg::NOTICE)
-                << "[osgEarth] WARNING: Failed to load model source driver for " << driverExt << std::endl;
+            OE_NOTICE
+                << "WARNING: Failed to load model source driver for " << driverExt << std::endl;
         }
     }
     else
     {
-        osg::notify(osg::NOTICE)
-            << "[osgEarth] ERROR: null driver options to ModelSourceFactory" << std::endl;
+        OE_NOTICE
+            << "ERROR: null driver options to ModelSourceFactory" << std::endl;
     }
 
     return modelSource;
@@ -103,8 +103,8 @@ ModelSourceFactory::create(const std::string& name,
     //Setup the plugin options for the source
     options->config() = driverConf;
 
-    osg::notify(osg::INFO)
-        << "[osgEarth] Model Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
+    OE_INFO
+        << "Model Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
 
 	// Load the source from a plugin.
     osg::ref_ptr<ModelSource> source = dynamic_cast<ModelSource*>(
@@ -116,7 +116,7 @@ ModelSourceFactory::create(const std::string& name,
     }
     else
 	{
-		osg::notify(osg::NOTICE) << "[osgEarth] Warning: Could not load Model driver "  << driver << std::endl;
+		OE_NOTICE << "Warning: Could not load Model driver "  << driver << std::endl;
 	}
 
 	return source.release();

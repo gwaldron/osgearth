@@ -52,11 +52,11 @@ public:
         osg::ref_ptr<osg::Node> output;
         if ( HTTPClient::readNodeFile( _url, output, getOptions(), progress ) == HTTPClient::RESULT_OK )
         {
-            osg::notify(osg::NOTICE) << "[osgEarth] Loaded OK: " << _url << std::endl;
+            OE_NOTICE << "Loaded OK: " << _url << std::endl;
         }
         else
         {
-            osg::notify(osg::NOTICE) << "[osgEarth] FAILED to load " << _url << std::endl;
+            OE_NOTICE << "FAILED to load " << _url << std::endl;
         }
         return output.release();
     }

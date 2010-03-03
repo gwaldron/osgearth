@@ -67,7 +67,7 @@ AutoClipPlaneHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAction
 
                 cam->setProjectionMatrixAsPerspective( fovy, ar, znear, zfar );
 
-                //osg::notify(osg::NOTICE) << fixed
+                //OE_NOTICE << fixed
                 //    << "near=" << znear << ", far=" << zfar << std::endl;
             }
         }

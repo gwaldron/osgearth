@@ -91,7 +91,7 @@ TaskRequestQueue::add( TaskRequest* request )
         {
             _requests.insert( i, request );
             inserted = true;
-            //osg::notify(osg::NOTICE) << "TaskRequestQueue size=" << _requests.size() << std::endl;
+            //OE_NOTICE << "TaskRequestQueue size=" << _requests.size() << std::endl;
             break;
         }
     }
@@ -284,7 +284,7 @@ TaskService::adjustThreadCount()
     int diff = _numThreads - numActiveThreads;
     if (diff > 0)
     {
-        osg::notify(osg::INFO) << "Adding " << diff << " threads to TaskService " << std::endl;
+        OE_INFO << "Adding " << diff << " threads to TaskService " << std::endl;
         //We need to add some threads
         for (unsigned int i = 0; i < diff; ++i)
         {
@@ -296,7 +296,7 @@ TaskService::adjustThreadCount()
     else if (diff < 0)
     {
         diff = osg::absolute( diff );
-        osg::notify(osg::INFO) << "Removing " << diff << " threads from TaskService " << std::endl;
+        OE_INFO << "Removing " << diff << " threads from TaskService " << std::endl;
         int numRemoved = 0;
         //We need to remove some threads
         for( TaskThreads::iterator i = _threads.begin(); i != _threads.end(); i++ )
@@ -331,7 +331,7 @@ TaskService::removeFinishedThreads()
     }
     if (numRemoved > 0)
     {
-        osg::notify(osg::INFO) << "Removed " << numRemoved << " finished threads " << std::endl;
+        OE_INFO << "Removed " << numRemoved << " finished threads " << std::endl;
     }
 }
 

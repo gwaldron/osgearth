@@ -76,7 +76,7 @@ TileSource( options )
     _features = FeatureSourceFactory::create( _options->featureOptions() );
     if ( !_features.valid() )
     {
-        osg::notify( osg::WARN ) << "[osgEarth] FeatureTileSource - no valid feature source provided" << std::endl;
+        osg::notify( osg::WARN ) << "FeatureTileSource - no valid feature source provided" << std::endl;
     }
 }
 
@@ -217,8 +217,8 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style& style,
             }
         }
 
-        //osg::notify(osg::NOTICE)
-        //    << "[osgEarth] Rendering "
+        //OE_NOTICE
+        //    << "Rendering "
         //    << cellFeatures.size()
         //    << " features in ("
         //    << queryExtent.toString() << ")"

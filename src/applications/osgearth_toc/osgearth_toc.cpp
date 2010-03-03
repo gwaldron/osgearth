@@ -586,7 +586,7 @@ int main(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-    osg::notify(osg::NOTICE) << "osgearth_toc requires at least OpenSceneGraph 2.8.0 due to changes in osgWidget." << std::endl;
+    OE_NOTICE << "osgearth_toc requires at least OpenSceneGraph 2.8.0 due to changes in osgWidget." << std::endl;
     return 0;
 }
 

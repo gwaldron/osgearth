@@ -170,8 +170,8 @@ struct GeometryUtils
                 }
                 else
                 {
-                    osg::notify(osg::NOTICE)
-                        << "[osgEarth] OGR Feature Source: malformed WKT geometry" << std::endl;
+                    OE_NOTICE
+                        << "OGR Feature Source: malformed WKT geometry" << std::endl;
                 }
             }
         }

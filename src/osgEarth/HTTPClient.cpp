@@ -308,7 +308,7 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
     line = tempbuf;
     if ( line != bstr )
     {
-        osg::notify(osg::WARN)
+        OE_WARN
             << "[osgEarth::HTTPClient] HTTPClient.decodeMultipartStream: protocol violation; "
             << "expecting boundary; instead got: \"" 
             << line
@@ -437,11 +437,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 		bufStr = buf.str();
         proxy_addr = bufStr;
     
-        osg::notify(osg::INFO) << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
+        OE_INFO << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 
-    osg::notify(osg::INFO) << "[osgEarth::HTTPClient] GET " << request.getURL() << std::endl;
+    OE_INFO << "HTTP GET: " << request.getURL() << std::endl;
+    //OE_INFO << "[osgEarth::HTTPClient] GET " << request.getURL() << std::endl;
 
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );
@@ -469,7 +470,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     else
         curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &code );     
 
-    osg::notify(osg::INFO) << "[HTTPClient] got response, code = " << code << std::endl;
+    OE_INFO << "[HTTPClient] got response, code = " << code << std::endl;
 
     HTTPResponse response( code );
    
@@ -480,7 +481,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
         if ( content_type_cp == NULL )
         {
-            osg::notify(osg::NOTICE) 
+            OE_NOTICE 
                 << "[osgEarth::HTTPClient] NULL Content-Type (protocol violation) " 
                 << "URL=" << request.getURL() << std::endl;
             return NULL;
@@ -491,17 +492,17 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         //   content type ...
 
         std::string content_type( content_type_cp );
-        //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] content-type = \"" << content_type << "\"" << std::endl;
+        //OE_NOTICE << "[osgEarth.HTTPClient] content-type = \"" << content_type << "\"" << std::endl;
         if ( content_type.length() > 9 && ::strstr( content_type.c_str(), "multipart" ) == content_type.c_str() )
         //if ( content_type == "multipart/mixed; boundary=wcs" ) //todo: parse this.
         {
-            //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] detected multipart data; decoding..." << std::endl;
+            //OE_NOTICE << "[osgEarth.HTTPClient] detected multipart data; decoding..." << std::endl;
             //TODO: parse out the "wcs" -- this is WCS-specific
             decodeMultipartStream( "wcs", part.get(), response._parts );
         }
         else
         {
-            //osg::notify(osg::NOTICE) << "[osgEarth.HTTPClient] detected single part data" << std::endl;
+            //OE_NOTICE << "[osgEarth.HTTPClient] detected single part data" << std::endl;
             response._parts.push_back( part.get() );
         }
     }
@@ -524,7 +525,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         //    }
         //}
         //else {
-        //    osg::notify(osg::NOTICE) << "[osgEarth] [HTTP] error, code = " << code << std::endl;
+        //    OE_NOTICE << "[osgEarth] [HTTP] error, code = " << code << std::endl;
         //}
     }
 
@@ -573,7 +574,7 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
     }
     else
     {
-        osg::notify(osg::WARN) << "[osgEarth::HTTPClient] Error downloading file " << filename << std::endl;
+        OE_WARN << "[osgEarth::HTTPClient] Error downloading file " << filename << std::endl;
         return false;
     } 
 }
@@ -597,13 +598,13 @@ HTTPClient::doReadImageFile(const std::string& filename,
             std::string ext = osgDB::getFileExtension( filename );
             osgDB::ReaderWriter *reader =
                 osgDB::Registry::instance()->getReaderWriterForExtension( ext );
-            //osg::notify(osg::NOTICE) << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
+            //OE_NOTICE << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
 
             //If we didn't get a reader by extension, try to get it via mime type
             if (!reader)
             {
                 std::string mimeType = response.getMimeType();
-                osg::notify(osg::INFO) << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+                OE_INFO << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
                 if ( mimeType.length() > 0 )
                 {
                     reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
@@ -612,7 +613,7 @@ HTTPClient::doReadImageFile(const std::string& filename,
 
             if (!reader)
             {
-                osg::notify(osg::NOTICE)<<"Error: No ReaderWriter for file "<<filename<<std::endl;
+                OE_NOTICE<<"Error: No ReaderWriter for file "<<filename<<std::endl;
                 result = RESULT_NO_READER;
             }
 
@@ -627,7 +628,7 @@ HTTPClient::doReadImageFile(const std::string& filename,
                 {
                     if (rr.error()) 
                     {
-                        osg::notify(osg::WARN) << "[osgEarth] HTTP Reader Error: " << rr.message() << std::endl;
+                        OE_WARN << "HTTP Reader Error: " << rr.message() << std::endl;
                     }
                     result = RESULT_READER_ERROR;
                 }
@@ -642,12 +643,12 @@ HTTPClient::doReadImageFile(const std::string& filename,
                 RESULT_UNKNOWN_ERROR;
 
             //if ( response.isCancelled() )
-            //    osg::notify(osg::NOTICE) << "[osgEarth] HTTP cancel: " << filename << std::endl;
+            //    OE_NOTICE << "HTTP cancel: " << filename << std::endl;
             //else
-            //    osg::notify(osg::NOTICE) << "[osgEarth] HTTP ERROR " << response.getCode() << ": " << filename << std::endl;
+            //    OE_NOTICE << "HTTP ERROR " << response.getCode() << ": " << filename << std::endl;
 
             /*if (response.isCancelled())
-                osg::notify(osg::NOTICE) << "Request for " << filename << " was cancelled " << std::endl;*/
+                OE_NOTICE << "Request for " << filename << " was cancelled " << std::endl;*/
         }
     }
     else
@@ -683,7 +684,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
             if (!reader)
             {
                 std::string mimeType = response.getMimeType();
-                osg::notify(osg::INFO) << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+                OE_INFO << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
                 if ( mimeType.length() > 0 )
                 {
                     reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
@@ -693,7 +694,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
             // if we still didn't get it, bad news
             if (!reader)
             {
-                osg::notify(osg::NOTICE)<<"Error: No ReaderWriter for file "<<filename<<std::endl;
+                OE_NOTICE<<"Error: No ReaderWriter for file "<<filename<<std::endl;
                 result = RESULT_NO_READER;
             }
 
@@ -708,7 +709,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
                 {
                     if ( rr.error() )
                     {
-                        osg::notify(osg::WARN) << "[osgEarth] HTTP Reader Error: " << rr.message() << std::endl;
+                        OE_WARN << "HTTP Reader Error: " << rr.message() << std::endl;
                     }
                     result = RESULT_READER_ERROR;
                 }
@@ -723,7 +724,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
                 RESULT_UNKNOWN_ERROR;
                
             /*if (response.isCancelled())
-                osg::notify(osg::NOTICE) << "Request for " << filename << " was cancelled " << std::endl;*/
+                OE_NOTICE << "Request for " << filename << " was cancelled " << std::endl;*/
         }
     }
     else

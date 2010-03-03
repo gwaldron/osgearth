@@ -82,7 +82,7 @@ int main(int argc, char** argv)
     {
         if (frameNum % 500 == 0)
         {
-            osg::notify(osg::NOTICE) << "Loading new map..." << std::endl;
+            OE_NOTICE << "Loading new map..." << std::endl;
 
             //Remove the current map from the scene graph
             root->removeChildren( 0, root->getNumChildren() );

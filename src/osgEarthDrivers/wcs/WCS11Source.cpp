@@ -112,7 +112,7 @@ WCS11Source::createImage( const TileKey* key,
 {
     HTTPRequest request = createRequest( key );
 
-    osg::notify(osg::INFO) << "[osgEarth::WCS1.1] Key=" << key->str() << " URL = " << request.getURL() << std::endl;
+    OE_INFO << "[osgEarth::WCS1.1] Key=" << key->str() << " URL = " << request.getURL() << std::endl;
 
     double lon0,lat0,lon1,lat1;
     key->getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
@@ -121,7 +121,7 @@ WCS11Source::createImage( const TileKey* key,
     HTTPResponse response = HTTPClient::get( request, getOptions(), progress );
     if ( !response.isOK() )
     {
-        osg::notify(osg::WARN) << "[osgEarth::WCS1.1] WARNING: HTTP request failed" << std::endl;
+        OE_WARN << "[osgEarth::WCS1.1] WARNING: HTTP request failed" << std::endl;
         return NULL;
     }
 
@@ -134,19 +134,19 @@ WCS11Source::createImage( const TileKey* key,
 
     if ( !reader )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth::WCS1.1] WARNING: no reader for \"tiff\"" << std::endl;
+        OE_NOTICE << "[osgEarth::WCS1.1] WARNING: no reader for \"tiff\"" << std::endl;
         return NULL;
     }
 
     osgDB::ReaderWriter::ReadResult result = reader->readImage( input_stream, getOptions() );
     if ( !result.success() )
     {
-        osg::notify(osg::NOTICE) << "[osgEarth::WCS1.1] WARNING: readImage() failed for Reader " << reader->getName() << std::endl;
+        OE_NOTICE << "[osgEarth::WCS1.1] WARNING: readImage() failed for Reader " << reader->getName() << std::endl;
         return NULL;
     }
 
     osg::Image* image = result.getImage();
-    //osg::notify(osg::NOTICE) << "Returned grid is " << image->s() << "x" << image->t() << std::endl;
+    //OE_NOTICE << "Returned grid is " << image->s() << "x" << image->t() << std::endl;
     if ( image ) image->ref();
     return image;
 }

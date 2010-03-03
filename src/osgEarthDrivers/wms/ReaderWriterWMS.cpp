@@ -93,18 +93,18 @@ public:
         osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read( capUrl, getOptions() );
         if ( !capabilities.valid() )
         {
-            osg::notify(osg::WARN) << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
+            OE_WARN << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
             //return;
         }
         else
         {
-            osg::notify(osg::INFO) << "[osgEarth::WMS] Got capabilities from " << capUrl << std::endl;
+            OE_INFO << "[osgEarth::WMS] Got capabilities from " << capUrl << std::endl;
         }
 
         if ( _formatToUse.empty() && capabilities.valid() )
         {
             _formatToUse = capabilities->suggestExtension();
-            osg::notify(osg::NOTICE) << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _formatToUse << std::endl;
+            OE_NOTICE << "[osgEarth::WMS] No format specified, capabilities suggested extension " << _formatToUse << std::endl;
         }
 
         if ( _formatToUse.empty() )
@@ -201,11 +201,11 @@ public:
             tsUrl = _settings->url().value() + sep + std::string("request=GetTileService");
         }
 
-        osg::notify(osg::INFO) << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl << std::endl;
+        OE_INFO << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl << std::endl;
         _tileService = TileServiceReader::read(tsUrl, getOptions());
         if (_tileService.valid())
         {
-            osg::notify(osg::INFO) << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
+            OE_INFO << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
             _tileService->getMatchingPatterns(
                 _settings->layers().value(),
@@ -224,7 +224,7 @@ public:
         }
         else
         {
-            osg::notify(osg::INFO) << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
+            OE_INFO << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
         }
 
         //TODO: won't need this for OSG 2.9+, b/c of mime-type support
@@ -252,7 +252,7 @@ public:
             uri = uri + delim + extraAttrs;
         }
 
-        //osg::notify(osg::NOTICE) << "[osgEarth] WMS: URL = " << uri << std::endl;
+        //OE_NOTICE << "WMS: URL = " << uri << std::endl;
 
         out_response = HTTPClient::get( uri, getOptions(), progress );
 
@@ -268,14 +268,14 @@ public:
                 {
                     Config ex = se.child("serviceexceptionreport").child("serviceexception");
                     if ( !ex.empty() ) {
-                        osg::notify(osg::NOTICE) << "[osgEarth] WMS Service Exception: " << ex.value() << std::endl;
+                        OE_NOTICE << "WMS Service Exception: " << ex.value() << std::endl;
                     }
                     else {
-                        osg::notify(osg::NOTICE) << "[osgEarth] WMS Response: " << se.toString() << std::endl;
+                        OE_NOTICE << "WMS Response: " << se.toString() << std::endl;
                     }
                 }
                 else {
-                    osg::notify(osg::NOTICE) << "[osgEarth] WMS: unknown error." << std::endl;
+                    OE_NOTICE << "WMS: unknown error." << std::endl;
                 }
             }
             else
@@ -284,7 +284,7 @@ public:
                 std::string typeExt = mt.substr( mt.find_last_of("/")+1 );
                 result = osgDB::Registry::instance()->getReaderWriterForExtension( typeExt );
                 if ( !result ) {
-                    osg::notify(osg::NOTICE) << "[osgEarth] WMS: no reader registered; URI=" << createURI(key) << std::endl;
+                    OE_NOTICE << "WMS: no reader registered; URI=" << createURI(key) << std::endl;
                 }
             }
         }
@@ -313,7 +313,7 @@ public:
             {
                 osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
                 if ( readResult.error() ) {
-                    osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+                    OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
                 }
                 else {
                     image = readResult.getImage();
@@ -338,7 +338,7 @@ public:
             {
                 osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
                 if ( readResult.error() ) {
-                    osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+                    OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
                 }
                 else
                 {
@@ -413,7 +413,7 @@ public:
                 }
                 else
                 {
-                    osg::notify(osg::WARN) << "[osgEarth] WMS: image read failed for " << createURI(key) << std::endl;
+                    OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
                 }
             }
         }
@@ -429,7 +429,7 @@ public:
         osg::Image* image = createImage(key, progress);
         if (!image)
         {
-            osg::notify(osg::INFO) << "[osgEarth::WMS] Failed to read heightfield from " << createURI(key) << std::endl;
+            OE_INFO << "[osgEarth::WMS] Failed to read heightfield from " << createURI(key) << std::endl;
         }
 
         float scaleFactor = 1;

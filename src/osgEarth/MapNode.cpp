@@ -92,7 +92,7 @@ MapNode::registerMapNode(MapNode* mapNode)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
     getMapNodeCache()[mapNode->_id] = mapNode;
-    osg::notify(osg::INFO) << "[osgEarth::MapNode] Registered " << mapNode->_id << std::endl;
+    OE_INFO << "[osgEarth::MapNode] Registered " << mapNode->_id << std::endl;
 }
 
 void
@@ -103,7 +103,7 @@ MapNode::unregisterMapNode(unsigned int id)
     if (k != getMapNodeCache().end())
     {
         getMapNodeCache().erase(k);
-        osg::notify(osg::INFO) << "[osgEarth::MapNode] Unregistered " << id << std::endl;
+        OE_INFO << "[osgEarth::MapNode] Unregistered " << id << std::endl;
     }
 }
 
@@ -177,8 +177,8 @@ MapNode::init()
         local_options->setOptionString( bufStr );
     }
 
-    osg::notify(osg::INFO) 
-        << "[osgEarth] Map: options string = " 
+    OE_INFO 
+        << "Map: options string = " 
         << (local_options.valid()? local_options->getOptionString() : "<empty>")
         << std::endl;
 
@@ -432,7 +432,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
             }
             else
             {
-                osg::notify(osg::NOTICE) << "[osgEarth::MapNode] Couldn't get tile for " << keys[i]->str() << std::endl;
+                OE_NOTICE << "[osgEarth::MapNode] Couldn't get tile for " << keys[i]->str() << std::endl;
             }
         }
         if ( numAdded == keys.size() )
@@ -456,8 +456,8 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
     {
         if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
         {
-            osg::notify(osg::WARN)
-                << "[osgEarth] Illegal: tried to add the name model layer more than once: " 
+            OE_WARN
+                << "Illegal: tried to add the name model layer more than once: " 
                 << layer->getName()
                 << std::endl;
         }
@@ -541,7 +541,7 @@ MapNode::onTerrainMaskLayerAdded( ModelLayer* layer )
         }
         this->replaceChild( _terrains.get(), node );
         
-        osg::notify(osg::NOTICE)<<"[osgEarth] Installed terrain mask ("
+        OE_NOTICE<<"Installed terrain mask ("
             <<count<< " mask nodes found)" << std::endl;
     }
 }
@@ -600,7 +600,7 @@ MapNode::addImageLayer( MapLayer* layer )
         VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
-        osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+        OE_INFO << "Found " << tiles.size() << std::endl;
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
@@ -679,7 +679,7 @@ MapNode::addImageLayer( MapLayer* layer )
             }
             else
             {
-                osg::notify(osg::NOTICE) << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
+                OE_NOTICE << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
             }
 
             
@@ -765,7 +765,7 @@ MapNode::updateElevation(VersionedTile* tile)
 void
 MapNode::addHeightFieldLayer( MapLayer* layer )
 {
-    osg::notify(osg::INFO) << "[osgEarth::MapEngine::addHeightFieldLayer] Begin " << std::endl;
+    OE_INFO << "[osgEarth::MapEngine::addHeightFieldLayer] Begin " << std::endl;
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     for (unsigned int i = 0; i < _terrainVec.size(); ++i)
@@ -773,7 +773,7 @@ MapNode::addHeightFieldLayer( MapLayer* layer )
         VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
-        osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+        OE_INFO << "Found " << tiles.size() << std::endl;
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
@@ -849,7 +849,7 @@ MapNode::removeImageLayer( unsigned int index )
 
     updateStateSet();
 
-    osg::notify(osg::INFO) << "[osgEarth::Map::removeImageSource] end " << std::endl;  
+    OE_INFO << "[osgEarth::Map::removeImageSource] end " << std::endl;  
 }
 
 void
@@ -862,7 +862,7 @@ MapNode::removeHeightFieldLayer( unsigned int index )
         VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
-        //osg::notify(osg::NOTICE) << "Found " << tiles.size() << std::endl;
+        //OE_NOTICE << "Found " << tiles.size() << std::endl;
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
@@ -898,7 +898,7 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
         VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
-        osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+        OE_INFO << "Found " << tiles.size() << std::endl;
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {
@@ -943,7 +943,7 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
         VersionedTerrain* terrain = _terrainVec[i].get();
         TerrainTileList tiles;
         terrain->getTerrainTiles( tiles );
-        osg::notify(osg::INFO) << "Found " << tiles.size() << std::endl;
+        OE_INFO << "Found " << tiles.size() << std::endl;
 
         for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
         {

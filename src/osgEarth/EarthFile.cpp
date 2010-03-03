@@ -177,7 +177,7 @@ writeLayer( ModelLayer* layer, const std::string& typeName ="" )
 static bool
 readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 {
-//    osg::notify(osg::NOTICE) << conf.toString() << std::endl;
+//    OE_NOTICE << conf.toString() << std::endl;
 
     bool success = true;
 
@@ -219,7 +219,7 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
 	if ( osgEarth::Registry::instance()->getCacheOverride() )
 	{
-		osg::notify(osg::NOTICE) << "Overriding map cache with global cache override" << std::endl;
+		OE_NOTICE << "Overriding map cache with global cache override" << std::endl;
 		map->setCache( osgEarth::Registry::instance()->getCacheOverride() );
 	}
 
@@ -284,7 +284,7 @@ mapToConfig( Map* map, const MapEngineProperties& ep )
     else if ( map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE) cs = "cube";
     else
     {
-        osg::notify(osg::NOTICE) << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
+        OE_NOTICE << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
         return Config();
     }
     conf.attr( ATTR_CSTYPE ) = cs;
@@ -338,7 +338,7 @@ EarthFile::readXML( std::istream& input, const std::string& location )
     {
         Config conf = doc->toConfig().child( ELEM_MAP );
 
-        //osg::notify(osg::NOTICE)
+        //OE_NOTICE
         //    << "[osgEarth] EARTH FILE: " << std::endl
         //    << conf.toString() << std::endl;
 

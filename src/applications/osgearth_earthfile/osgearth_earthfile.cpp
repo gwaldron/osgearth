@@ -33,7 +33,7 @@ using namespace osgEarth;
 int main(int argc, char** argv)
 {
     if ( argc != 3 ) {
-        osg::notify(osg::NOTICE) << "Usage: osgearth_earthfile <inputfile> <outputfile>" << std::endl;
+        OE_NOTICE << "Usage: osgearth_earthfile <inputfile> <outputfile>" << std::endl;
         return -1;
     }
 
@@ -53,14 +53,14 @@ int main(int argc, char** argv)
         earthWriter.setMapEngineProperties( engineProps );
 
         if ( !earthWriter.writeXML( outfile ) ) {
-            osg::notify(osg::NOTICE) 
+            OE_NOTICE 
                 << "ERROR: unable to write earth file to " << outfile << std::endl;
             return -1;
         }
     }
     else
     {
-        osg::notify(osg::NOTICE)
+        OE_NOTICE
             << "ERROR: unable to read earth file from " << infile << std::endl;
         return -1;
     }

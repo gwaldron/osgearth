@@ -68,7 +68,7 @@ public:
         osgTerrain::TerrainTile* terrainTile = dynamic_cast<osgTerrain::TerrainTile*>(&group);
         if (terrainTile)
         {
-            osg::notify(osg::INFO)<<"Found terrain tile TileID("<<
+            OE_INFO<<"Found terrain tile TileID("<<
 				TileKey::getLOD(terrainTile->getTileID())<<", "<<
                 terrainTile->getTileID().x<<", "<<
                 terrainTile->getTileID().y<<")"<<std::endl;
@@ -191,14 +191,14 @@ public:
                     _baseNameToUse = osgDB::getStrippedName(_url);
                 _extension = osgDB::getFileExtension(_url);
                 
-                osg::notify(osg::INFO)<<"VPBasebase constructor: Loaded root "<<_url<<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
+                OE_INFO<<"VPBasebase constructor: Loaded root "<<_url<<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
                 
                 std::string srs = _profile->getSRS()->getInitString(); //.srs();
                 
                 osg::CoordinateSystemNode* csn = dynamic_cast<osg::CoordinateSystemNode*>(_rootNode.get());
                 if (csn)
                 {
-                    osg::notify(osg::INFO)<<"CordinateSystemNode found, coordinate system is : "<<csn->getCoordinateSystem()<<std::endl;
+                    OE_INFO<<"CordinateSystemNode found, coordinate system is : "<<csn->getCoordinateSystem()<<std::endl;
                     
                     srs = csn->getCoordinateSystem();
                 }
@@ -213,7 +213,7 @@ public:
                     double min_x, max_x, min_y, max_y;
                     ct.getRange(min_x, min_y, max_x, max_y);
 
-                    osg::notify(osg::INFO)<<"range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<<std::endl;
+                    OE_INFO<<"range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<<std::endl;
 
                     srs = locator->getCoordinateSystem();
                 
@@ -234,7 +234,7 @@ public:
 
                     double aspectRatio = (max_x-min_x)/(max_y-min_y);
                     
-                    osg::notify(osg::INFO)<<"aspectRatio = "<<aspectRatio<<std::endl;
+                    OE_INFO<<"aspectRatio = "<<aspectRatio<<std::endl;
 
                     if (aspectRatio>1.0)
                     {
@@ -247,8 +247,8 @@ public:
                         numTilesHighAtLod0 = static_cast<unsigned int>(floor(1.0/aspectRatio+0.499999));
                     }
                     
-                    osg::notify(osg::INFO)<<"computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    osg::notify(osg::INFO)<<"computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    OE_INFO<<"computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    OE_INFO<<"computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                     
                     if ( _options.valid() )
                     {
@@ -265,8 +265,8 @@ public:
                         //    numTilesHighAtLod0 = atoi( (const char*)options->getPluginData( PROPERTY_NUM_TILES_HIGH_AT_LOD0 ) );
                     }
 
-                    osg::notify(osg::INFO)<<"final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    osg::notify(osg::INFO)<<"final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    OE_INFO<<"final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    OE_INFO<<"final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                    
                     _profile = osgEarth::Profile::create( 
                         srs,
@@ -281,13 +281,13 @@ public:
             }
             else
             {
-                osg::notify(osg::NOTICE)<<"Unable to read file "<<_url<<std::endl;
+                OE_NOTICE<<"Unable to read file "<<_url<<std::endl;
                 _url = "";
             }
         }
         else 
         {
-            osg::notify(osg::NOTICE)<<"No data referenced "<<std::endl;
+            OE_NOTICE<<"No data referenced "<<std::endl;
         }
 
     }
@@ -351,7 +351,7 @@ public:
         
 		std::string bufStr;
 		bufStr = buf.str();
-        osg::notify(osg::INFO)<<"VPBDatabase::createTileName(), buf.str()=="<< bufStr <<std::endl;
+        OE_INFO<<"VPBDatabase::createTileName(), buf.str()=="<< bufStr <<std::endl;
         
 		return bufStr;
     }
@@ -372,13 +372,13 @@ public:
         osg::ref_ptr<osgTerrain::TerrainTile> tile = findTile(tileID, false);
         if (tile.valid()) return tile.get();
         
-        //osg::notify(osg::INFO)<<"Max_x = "<<max_x<<std::endl;
-        //osg::notify(osg::INFO)<<"Max_y = "<<max_y<<std::endl;
+        //OE_INFO<<"Max_x = "<<max_x<<std::endl;
+        //OE_INFO<<"Max_y = "<<max_y<<std::endl;
 
-        //osg::notify(osg::INFO)<<"base_name = "<<base_name<<" psl="<<primary_split_level<<" ssl="<<secondary_split_level<<std::endl;
-        //osg::notify(osg::INFO)<<"level = "<<level<<", x = "<<tile_x<<", tile_y = "<<tile_y<<std::endl;
-        //osg::notify(osg::INFO)<<"tile_name "<<createTileName(level, tile_x, tile_y)<<std::endl;
-        //osg::notify(osg::INFO)<<"thread "<<OpenThreads::Thread::CurrentThread()<<std::endl;
+        //OE_INFO<<"base_name = "<<base_name<<" psl="<<primary_split_level<<" ssl="<<secondary_split_level<<std::endl;
+        //OE_INFO<<"level = "<<level<<", x = "<<tile_x<<", tile_y = "<<tile_y<<std::endl;
+        //OE_INFO<<"tile_name "<<createTileName(level, tile_x, tile_y)<<std::endl;
+        //OE_INFO<<"thread "<<OpenThreads::Thread::CurrentThread()<<std::endl;
 
         std::string filename = createTileName(level, tile_x, tile_y);
         
@@ -386,7 +386,7 @@ public:
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
             if (_blacklistedFilenames.count(filename)==1)
             {
-                osg::notify(osg::INFO)<<"file has been found in black list : "<<filename<<std::endl;
+                OE_INFO<<"file has been found in black list : "<<filename<<std::endl;
                 insertTile(tileID, 0);
                 return 0;
             }
@@ -402,7 +402,7 @@ public:
         HTTPClient::ResultCode result = HTTPClient::readNodeFile( filename, node, localOptions.get(), progress );
         if ( result == HTTPClient::RESULT_OK && node.valid() )
         {
-            //osg::notify(osg::INFO)<<"Loaded model "<<filename<<std::endl;
+            //OE_INFO<<"Loaded model "<<filename<<std::endl;
             CollectTiles ct;
             node->accept(ct);
 
@@ -440,14 +440,14 @@ public:
             // in the case of an "unrecoverable" error, black-list the URL for this tile.
             if ( ! HTTPClient::isRecoverable( result ) )
             {
-                //osg::notify(osg::NOTICE)<<"Black listing : "<< filename<< " (" << result << ")" << std::endl;
+                //OE_NOTICE<<"Black listing : "<< filename<< " (" << result << ")" << std::endl;
                 OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
                 _blacklistedFilenames.insert(filename);
             }
 
             //if ( progress && !progress->isCanceled() && !progress->message().empty() )
             //{
-            //    osg::notify(osg::NOTICE) << "[osgEarth] [vpb] error '" << progress->message() << "' on " << filename << 
+            //    OE_NOTICE << "[vpb] error '" << progress->message() << "' on " << filename << 
             //        std::endl;
             //}
         }
@@ -471,16 +471,16 @@ public:
                 _tileFIFO.pop_front();
                 _tileMap.erase(tileToRemove);
 
-			    osg::notify(osg::INFO)<<"Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+			    OE_INFO<<"Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
             }
 
-            osg::notify(osg::INFO)<<"insertTile ("
+            OE_INFO<<"insertTile ("
                 << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
                 << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
         }
         else
         {
-            osg::notify(osg::INFO)<<"insertTile ("
+            OE_INFO<<"insertTile ("
                 << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
                 << " ...already in cache!"<<std::endl;
         }
@@ -636,7 +636,7 @@ class VPBSourceFactory : public osgDB::ReaderWriter
                 settings = new VPBOptions( pluginOpts );
             }
 
-            //osg::notify(osg::NOTICE) << pluginOpts->config().toString() << std::endl;
+            //OE_NOTICE << pluginOpts->config().toString() << std::endl;
 
             std::string url = settings->url().value();
             if ( !url.empty() )

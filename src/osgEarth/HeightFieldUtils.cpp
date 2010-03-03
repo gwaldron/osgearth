@@ -34,7 +34,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
     }
     else
     {
-        //osg::notify(osg::INFO) << "getHeightAtPixel: (" << c << ", " << r << ")" << std::endl;
+        //OE_INFO << "getHeightAtPixel: (" << c << ", " << r << ")" << std::endl;
         int rowMin = osg::maximum((int)floor(r), 0);
         int rowMax = osg::maximum(osg::minimum((int)ceil(r), (int)(hf->getNumRows()-1)), 0);
         int colMin = osg::maximum((int)floor(c), 0);
@@ -54,36 +54,36 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
             return NO_DATA_VALUE;
         }
 
-        //osg::notify(osg::INFO) << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
+        //OE_INFO << "Heights (ll, lr, ul, ur) ( " << llHeight << ", " << urHeight << ", " << ulHeight << ", " << urHeight << std::endl;
 
         if (interpolation == INTERP_BILINEAR)
         {
             //Check for exact value
             if ((colMax == colMin) && (rowMax == rowMin))
             {
-                //osg::notify(osg::NOTICE) << "Exact value" << std::endl;
+                //OE_NOTICE << "Exact value" << std::endl;
                 result = hf->getHeight((int)c, (int)r);
             }
             else if (colMax == colMin)
             {
-                //osg::notify(osg::NOTICE) << "Vertically" << std::endl;
+                //OE_NOTICE << "Vertically" << std::endl;
                 //Linear interpolate vertically
                 result = ((double)rowMax - r) * llHeight + (r - (double)rowMin) * ulHeight;
             }
             else if (rowMax == rowMin)
             {
-                //osg::notify(osg::NOTICE) << "Horizontally" << std::endl;
+                //OE_NOTICE << "Horizontally" << std::endl;
                 //Linear interpolate horizontally
                 result = ((double)colMax - c) * llHeight + (c - (double)colMin) * lrHeight;
             }
             else
             {
-                //osg::notify(osg::NOTICE) << "Bilinear" << std::endl;
+                //OE_NOTICE << "Bilinear" << std::endl;
                 //Bilinear interpolate
                 float r1 = ((double)colMax - c) * llHeight + (c - (double)colMin) * lrHeight;
                 float r2 = ((double)colMax - c) * ulHeight + (c - (double)colMin) * urHeight;
 
-                //osg::notify(osg::INFO) << "r1, r2 = " << r1 << " , " << r2 << std::endl;
+                //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
 
                 result = ((double)rowMax - r) * r1 + (r - (double)rowMin) * r2;
             }
@@ -131,7 +131,7 @@ HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
     }
     else
     {
-        osg::notify(osg::WARN) << "[osgEarth::HeightFieldUtils] scaleHeightFieldToDegrees heightfield is NULL" << std::endl;
+        OE_WARN << "[osgEarth::HeightFieldUtils] scaleHeightFieldToDegrees heightfield is NULL" << std::endl;
     }
 }
 

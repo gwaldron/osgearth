@@ -119,7 +119,7 @@ int main(int argc, char** argv)
   }
   else
   {
-      osg::notify(osg::NOTICE) << "Please load an osgEarth file" << std::endl;
+      OE_NOTICE << "Please load an osgEarth file" << std::endl;
       return 1;
   }
   

@@ -27,7 +27,7 @@ BasicSymbolizer::BasicSymbolizer()
 
 bool 
 BasicSymbolizer::update(FeatureDataSet* dataSet,
-                        const Style& style,
+                        const osgEarth::Symbology::Style& style,
                         osg::Group* attachPoint,
                         SymbolizerContext* context )
 {
@@ -48,4 +48,5 @@ BasicSymbolizer::update(FeatureDataSet* dataSet,
     if (newSymbolized->getNumChildren())
         attachPoint->addChild(newSymbolized);
 #endif
+    return false;
 }

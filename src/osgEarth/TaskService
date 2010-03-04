@@ -91,11 +91,10 @@ namespace osgEarth
 
         void setDone();
 
-        //void block() { _block->block(); }
-        //void release() { _block->release(); }
-
         void setStamp( int value ) { _stamp = value; }
         int getStamp() const { return _stamp; }
+
+        unsigned int getNumRequests() const;
 
     private:
         TaskRequestList _requests;
@@ -133,6 +132,11 @@ namespace osgEarth
 
         int getNumThreads() const;
         void setNumThreads( int numThreads );
+
+        /**
+         *Gets the number of requets left in the queue
+         */
+        unsigned int getNumRequests() const;
 
     private:
         void adjustThreadCount();

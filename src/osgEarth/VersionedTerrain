@@ -257,6 +257,11 @@ namespace osgEarth
         TaskService* getElevationTaskService();
         TaskService* getTileGenerationTaskSerivce();
 
+        /**
+         * Gets the total number of tasks remaining in all of the TaskServices this VersionedTerrain is managing
+         */
+        unsigned int getNumTasksRemaining() const;
+
         virtual void traverse( osg::NodeVisitor &nv );
 
         void updateTaskServiceThreads();

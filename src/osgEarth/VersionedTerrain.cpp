@@ -1413,6 +1413,18 @@ VersionedTerrain::registerTile( VersionedTile* newTile )
     //OE_NOTICE << "Registered " << newTile->getKey()->str() << " Count=" << _tiles.size() << std::endl;
 }
 
+unsigned int
+VersionedTerrain::getNumTasksRemaining() const
+{
+    ScopedLock<Mutex> lock(const_cast<VersionedTerrain*>(this)->_taskServiceMutex );
+    unsigned int total = 0;
+    for (TaskServiceMap::const_iterator itr = _taskServices.begin(); itr != _taskServices.end(); ++itr)
+    {
+        total += itr->second->getNumRequests();
+    }
+    return total;
+}
+
 void
 VersionedTerrain::traverse( osg::NodeVisitor &nv )
 {

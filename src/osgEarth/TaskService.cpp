@@ -72,6 +72,13 @@ TaskRequestQueue::clear()
     _requests.clear();
 }
 
+unsigned int
+TaskRequestQueue::getNumRequests() const
+{
+    ScopedLock<Mutex> lock(const_cast<TaskRequestQueue*>(this)->_mutex);
+    return _requests.size();
+}
+
 void 
 TaskRequestQueue::add( TaskRequest* request )
 {
@@ -215,6 +222,12 @@ _lastRemoveFinishedThreadsStamp(0)
 {
     _queue = new TaskRequestQueue();
     setNumThreads( numThreads );
+}
+
+unsigned int
+TaskService::getNumRequests() const
+{
+    return _queue->getNumRequests();
 }
 
 void

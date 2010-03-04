@@ -56,6 +56,7 @@ _transparentColor(osg::Vec4ub(0,0,0,0))
 
     // since fromConfig sets the name from the config(), override that here:
     _name = name;
+    init();
 }
 
 MapLayer::MapLayer( Type type, const Config& driverConf ) :

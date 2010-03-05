@@ -17,7 +17,8 @@ SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
 SET(TARGET_COMMON_LIBRARIES
     osgEarth
     osgEarthFeatures
-	osgEarthUtil
+    osgEarthUtil
+    osgEarthSymbology
 )
 
 SET(TARGET_DEFAULT_PREFIX "application_")

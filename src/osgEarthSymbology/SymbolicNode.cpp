@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/SymbolicNode>
+#include <osg/NodeVisitor>
 
 using namespace osgEarth::Symbology;
 
@@ -39,11 +40,12 @@ _symGroup( rhs._symGroup )
 }
 
 void
-SymbolicNode::traverse( class osg::NodeVisitor& nv )
+SymbolicNode::traverse( osg::NodeVisitor& nv )
 {
     if ( _dataSet.valid() && _symbolizer.valid() )
     {
-        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+        osg::NodeVisitor::VisitorType type = nv.getVisitorType();
+        if ( type == osg::NodeVisitor::UPDATE_VISITOR || type == osg::NodeVisitor::NODE_VISITOR)
         {
             // if our symbology is out of revision, update it!
             if ( _dataSetRevision != _dataSet->getRevision() )

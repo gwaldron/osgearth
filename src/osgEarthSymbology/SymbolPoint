@@ -34,6 +34,8 @@ namespace osgEarth { namespace Symbology
     public:
         SymbolPoint() {}
 
+        virtual Type getType() const { return POINT; }
+
         void setColor(const osg::Vec4& color) { _color = color; }
         const osg::Vec4& getColor() const { return _color; }
 

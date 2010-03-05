@@ -23,7 +23,6 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/FeatureDataSet>
-#include <osg/NodeVisitor>
 #include <osg/Group>
 
 namespace osgEarth { namespace Symbology
@@ -50,7 +49,7 @@ namespace osgEarth { namespace Symbology
          * The Symbolizer can attach the subgraph to the attachPoint.
          */
         virtual bool update(
-            FeatureDataSet* dataSet,
+            FeatureDataSet* dataset,
             const Style& style,
             osg::Group* attachPoint,
             SymbolizerContext* context ) = 0;

@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/Geometry>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -25,4 +26,30 @@ using namespace osgEarth::Symbology;
 Style::Style()
 {
     //NOP
+}
+
+void Style::setSymbol( Symbol* symbol )
+{
+    if (symbol)
+        _symbols[symbol->getType()] = symbol;
+}
+
+Symbol* Style::getSymbol(Features::Geometry::Type type) const
+{
+    switch (type)
+    {
+    case Features::Geometry::TYPE_POINTSET:
+        if (_symbols.find(Symbol::POINT) != _symbols.end())
+            return _symbols.find(Symbol::POINT)->second.get();
+    case Features::Geometry::TYPE_LINESTRING:
+        if (_symbols.find(Symbol::LINESTRING) != _symbols.end())
+            return _symbols.find(Symbol::LINESTRING)->second.get();
+    case Features::Geometry::TYPE_RING:
+        if (_symbols.find(Symbol::RING) != _symbols.end())
+            return _symbols.find(Symbol::RING)->second.get();
+    case Features::Geometry::TYPE_POLYGON:
+        if (_symbols.find(Symbol::POLYGON) != _symbols.end())
+            return _symbols.find(Symbol::POLYGON)->second.get();
+    }
+    return 0;
 }

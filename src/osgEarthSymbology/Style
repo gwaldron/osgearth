@@ -21,9 +21,8 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
+#include <osgEarthFeatures/Geometry>
 #include <vector>
-
-using namespace osgEarth;
 
 namespace osgEarth { namespace Symbology 
 {
@@ -35,10 +34,11 @@ namespace osgEarth { namespace Symbology
     public:
         Style();
 
-        void addSymbol( Symbol* symbol ) { _symbols.push_back(symbol); }
+        void setSymbol( Symbol* symbol );
+        Symbol* getSymbol(osgEarth::Features::Geometry::Type type) const;
 
     protected:
-        SymbolList _symbols;
+        std::map<Symbol::Type, osg::ref_ptr<Symbol> > _symbols;
     };
 
 } } // namespace osgEarth::Symbology

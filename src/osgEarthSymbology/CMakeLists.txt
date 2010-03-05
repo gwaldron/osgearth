@@ -10,9 +10,10 @@ SET(LIB_NAME osgEarthSymbology)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
-    BasicSymbolizer
+    GeometrySymbolizer
     Common
     FeatureDataSet
+    FeatureDataSetAdapter
     Registry
     Style
     StyleSheet
@@ -25,8 +26,9 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
-    BasicSymbolizer.cpp
+    GeometrySymbolizer.cpp
     FeatureDataSet.cpp
+    FeatureDataSetAdapter.cpp
     Registry.cpp
     Style.cpp
     StyleSheet.cpp

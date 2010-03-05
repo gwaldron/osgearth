@@ -16,34 +16,24 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_SYMBOL_H 1
-
 #include <osgEarthSymbology/Common>
-#include <osg/Object>
-#include <vector>
+#include <osgEarthSymbology/FeatureDataSetAdapter>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/Query>
 
-namespace osgEarth { namespace Symbology
+using namespace osgEarth::Symbology;
+
+
+FeatureDataSetAdapter::FeatureDataSetAdapter(osgEarth::Features::FeatureSource* source) : _features(source)
 {
-    /**
-     * Abstract base class for all Symbol types.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
-    {
-    public:
-        Symbol();
-        enum Type {
-            POINT,
-            LINESTRING,
-            RING,
-            POLYGON
-        };
+    _features->initialize("");
 
-        virtual Type getType() const = 0;
-    };
+}
 
+int FeatureDataSetAdapter::getRevision() const { return 0; }
 
-} } // namespace osgEarth::Symbology
+osgEarth::Features::FeatureCursor* FeatureDataSetAdapter::createCursor()
+{
+    return _features->createFeatureCursor(osgEarth::Features::Query());
+}
 
-#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

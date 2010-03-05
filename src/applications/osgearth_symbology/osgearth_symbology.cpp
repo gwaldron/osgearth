@@ -24,11 +24,42 @@
 #include <osgGA/TrackballManipulator>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgEarthSymbology/GeometrySymbolizer>
+#include <osgEarthSymbology/FeatureDataSetAdapter>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/SymbolPoint>
+#include <osgEarthSymbology/SymbolicNode>
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
+using namespace osgEarth::Symbology;
 
-osg::Group* createSymbologyScene()
+osg::Group* createSymbologyScene(const std::string url)
 {
     osg::Group* grp = new osg::Group;
+
+    osg::ref_ptr<osgEarth::Drivers::OGRFeatureOptions> featureOpt = new osgEarth::Drivers::OGRFeatureOptions();
+    featureOpt->url() = url;
+    osg::ref_ptr<osgEarth::Features::FeatureSource> features = FeatureSourceFactory::create( featureOpt );
+    features->initialize("");
+
+    osg::ref_ptr<FeatureDataSetAdapter> dataset = new FeatureDataSetAdapter(features.get());
+
+
+    osgEarth::Symbology::Style style;
+    osg::ref_ptr<SymbolPoint> point = new SymbolPoint;
+    point->setColor(osg::Vec4(1,0,1,1));
+    point->setGeometry("test.osg");
+
+    style.setSymbol(point.get());
+
+    osg::ref_ptr<GeometrySymbolizer> symbolizer = new GeometrySymbolizer;
+    osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
+    node->setSymbolizer(symbolizer.get());
+    node->setStyle(style);
+    node->setDataSet(dataset.get());
+
+    grp->addChild(node.get());
+
     return grp;
 }
 
@@ -45,8 +76,9 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
-
-    viewer.setSceneData(createSymbologyScene());
+    const std::string url = "../data/world.shp";
+    osg::Node* node = createSymbologyScene(url);
+    viewer.setSceneData(node);
 
     return viewer.run();
 }

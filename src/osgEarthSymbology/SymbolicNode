@@ -43,7 +43,6 @@ namespace osgEarth { namespace Symbology
 
         virtual void traverse( osg::NodeVisitor& nv );
 
-    public:
         void setStyle( const Style& style ) { _style = style; }
 
         void setSymbolizer( Symbolizer* sym ) { _symbolizer = sym; }

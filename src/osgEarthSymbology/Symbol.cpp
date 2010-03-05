@@ -24,6 +24,3 @@ Symbol::Symbol()
 {
     //NOP
 }
-
-
-

@@ -22,6 +22,7 @@
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgGA/TrackballManipulator>
+#include <osgDB/FileNameUtils>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarthSymbology/GeometrySymbolizer>
@@ -78,8 +79,9 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
-    const std::string url = "/home/mornifle/dev/osgEarth-trunk/data/world.shp";
-    osg::Node* node = createSymbologyScene(url);
+    const std::string url = "../data/world.shp";
+    std::string real = osgDB::getRealPath(url);
+    osg::Node* node = createSymbologyScene(real);
     viewer.setSceneData(node);
 
     return viewer.run();

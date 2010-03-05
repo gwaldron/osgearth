@@ -36,16 +36,15 @@ _dataSet( rhs._dataSet ),
 _dataSetRevision( rhs._dataSetRevision ),
 _symGroup( rhs._symGroup )
 {
-    //nop
 }
 
 void
 SymbolicNode::traverse( osg::NodeVisitor& nv )
 {
+    setNumChildrenRequiringUpdateTraversal(1);
     if ( _dataSet.valid() && _symbolizer.valid() )
     {
-        osg::NodeVisitor::VisitorType type = nv.getVisitorType();
-        if ( type == osg::NodeVisitor::UPDATE_VISITOR || type == osg::NodeVisitor::NODE_VISITOR)
+        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
         {
             // if our symbology is out of revision, update it!
             if ( _dataSetRevision != _dataSet->getRevision() )

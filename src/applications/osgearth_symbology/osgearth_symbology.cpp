@@ -27,7 +27,6 @@
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/FeatureDataSetAdapter>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/SymbolPoint>
 #include <osgEarthSymbology/SymbolicNode>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 
@@ -46,11 +45,7 @@ osg::Group* createSymbologyScene(const std::string url)
 
 
     osgEarth::Symbology::Style style;
-    osg::ref_ptr<SymbolPoint> point = new SymbolPoint;
-    point->setColor(osg::Vec4(1,0,1,1));
-    point->setGeometry("test.osg");
-
-    style.setSymbol(point.get());
+    style.getPoint().fill()->color() = osg::Vec4(1,0,0,1);
 
     osg::ref_ptr<GeometrySymbolizer> symbolizer = new GeometrySymbolizer;
     osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
@@ -76,7 +71,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
-    const std::string url = "../data/world.shp";
+    const std::string url = "/home/mornifle/dev/osgEarth-trunk/data/world.shp";
     osg::Node* node = createSymbologyScene(url);
     viewer.setSceneData(node);
 

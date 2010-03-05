@@ -17,10 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/SymbolPoint>
+#include <osgEarthSymbology/Symbol>
 #include <osgEarthFeatures/Feature>
 #include <osgUtil/Tessellator>
 #include <osg/Geometry>
+#include <osg/Point>
+#include <osg/LineWidth>
 #include <osg/Material>
 #include <osg/Geode>
 
@@ -63,34 +65,45 @@ GeometrySymbolizer::update(FeatureDataSet* dataSet,
 
         osg::Vec4 color = osg::Vec4(1.0, 0.0, 1.0, 1.);
 
-        const Symbol* symbol = style.getSymbol(geometry->getType());
-        switch( symbol->getType())
+        switch( geometry->getType())
         {
-        case Symbol::POINT:
-        {
+        case Geometry::TYPE_POINTSET:
             primMode = osg::PrimitiveSet::POINTS;
-            const SymbolPoint* sp = dynamic_cast<const SymbolPoint*>(symbol);
-            color = sp->getColor();
-        }
+            color = style.getPoint().fill()->color();
+            {
+                float size = style.getPoint().size().value();
+                osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
+            }
         break;
 
-        case Symbol::LINESTRING:
+        case Geometry::TYPE_LINESTRING:
             primMode = osg::PrimitiveSet::LINE_STRIP;
+            color = style.getLine().stroke()->color();
+            {
+                float size = style.getLine().stroke()->width().value();
+                osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
+            }
             break;
 
-        case Symbol::RING:
+        case Geometry::TYPE_RING:
             primMode = osg::PrimitiveSet::LINE_LOOP;
+            color = style.getLine().stroke()->color();
+            {
+                float size = style.getLine().stroke()->width().value();
+                osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
+            }
             break;
 
-        case Symbol::POLYGON:
+        case Geometry::TYPE_POLYGON:
             primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
+            color = style.getPolygon().fill()->color();
             break;
         }
 
         osg::Material* material = new osg::Material;
         material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
 
-        if ( symbol->getType() == Symbol::POLYGON && geometry->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(geometry)->getHoles().size() > 0 )
+        if ( geometry->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(geometry)->getHoles().size() > 0 )
         {
             Polygon* poly = static_cast<Polygon*>(geometry);
             int totalPoints = poly->getTotalPointCount();
@@ -115,7 +128,7 @@ GeometrySymbolizer::update(FeatureDataSet* dataSet,
         // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
         // using TESS_TYPE_DRAWABLE.
 
-        if ( symbol->getType() == Symbol::POLYGON)
+        if ( geometry->getType() == Geometry::TYPE_POLYGON)
         {
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

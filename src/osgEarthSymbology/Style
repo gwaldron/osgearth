@@ -21,6 +21,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
+#include <osg/Object>
 #include <vector>
 
 namespace osgEarth { namespace Symbology 
@@ -28,30 +29,36 @@ namespace osgEarth { namespace Symbology
     /**
      * A Style is a named collection of Symbols.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Style
+    class OSGEARTHSYMBOLOGY_EXPORT Style : public osg::Object
     {
     public:
         Style();
+        Style(const Style&, const osg::CopyOp&);
+        META_Object(osgEarthSymbology, Style);
 
-        PointSymbol& getPoint() { return _point; }
-        const PointSymbol& getPoint() const { return _point; }
+        PointSymbol* getPoint() { return _point.get(); }
+        const PointSymbol* getPoint() const { return _point.get(); }
+        void setPoint(PointSymbol* symbol) { _point = symbol; }
 
-        LineSymbol& getLine() { return _line; }
-        const LineSymbol& getLine() const { return _line; }
+        LineSymbol* getLine() { return _line.get(); }
+        const LineSymbol* getLine() const { return _line.get(); }
+        void setLine(LineSymbol* symbol) { _line = symbol; }
 
         /** Style information for polygon elements. */
-        PolygonSymbol& getPolygon() { return _polygon; }
-        const PolygonSymbol& getPolygon() const { return _polygon; }
+        PolygonSymbol* getPolygon() { return _polygon.get(); }
+        const PolygonSymbol* getPolygon() const { return _polygon.get(); }
+        void setPolygon(PolygonSymbol* symbol) { _polygon = symbol; }
 
         /** Style information for text elements. */
-        TextSymbol& getText() { return _text; }
-        const TextSymbol& getText() const { return _text; }
+        TextSymbol* getText() { return _text.get(); }
+        const TextSymbol* getText() const { return _text.get(); }
+        void setText(TextSymbol* symbol) { _text = symbol; }
 
     protected:
-        PolygonSymbol _polygon;
-        TextSymbol    _text;
-        PointSymbol   _point;
-        LineSymbol    _line;
+        osg::ref_ptr<PolygonSymbol> _polygon;
+        osg::ref_ptr<TextSymbol>    _text;
+        osg::ref_ptr<PointSymbol>   _point;
+        osg::ref_ptr<LineSymbol>    _line;
     };
 
 } } // namespace osgEarth::Symbology

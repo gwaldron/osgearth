@@ -43,14 +43,14 @@ namespace osgEarth { namespace Symbology
 
         virtual void traverse( osg::NodeVisitor& nv );
 
-        void setStyle( const Style& style ) { _style = style; }
+        void setStyle( Style* style ) { _style = style; }
 
         void setSymbolizer( Symbolizer* sym ) { _symbolizer = sym; }
 
         void setDataSet( FeatureDataSet* dataSet ) { _dataSet = dataSet; }
         
     protected:
-        Style _style;
+        osg::ref_ptr<Style> _style;
         osg::ref_ptr<Symbolizer> _symbolizer;
         osg::ref_ptr<FeatureDataSet> _dataSet;
         osg::ref_ptr<SymbolizerContext> _context;

@@ -22,7 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Common>
-#include <osg/Object>
+#include <osg/Referenced>
 #include <vector>
 
 namespace osgEarth { namespace Symbology
@@ -30,7 +30,7 @@ namespace osgEarth { namespace Symbology
     /**
      * Abstract base class for all Symbol types.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Symbol
+    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
     {
     public:
         Symbol();

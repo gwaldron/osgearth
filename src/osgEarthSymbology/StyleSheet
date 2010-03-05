@@ -21,7 +21,8 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Style>
-#include <vector>
+#include <osg/ref_ptr>
+#include <map>
 
 using namespace osgEarth;
 
@@ -38,7 +39,7 @@ namespace osgEarth { namespace Symbology
         void addStyle( const Style& style );
 
     protected:
-        typedef std::map<std::string,Style> NameStyleMap;
+        typedef std::map<std::string,osg::ref_ptr<Style> > NameStyleMap;
         NameStyleMap _styles;
     };
 

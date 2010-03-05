@@ -27,3 +27,8 @@ Style::Style()
 {
     //NOP
 }
+
+Style::Style(const Style&, const osg::CopyOp&)
+{
+    // NOP
+}

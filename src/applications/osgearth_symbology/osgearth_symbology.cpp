@@ -44,13 +44,20 @@ osg::Group* createSymbologyScene(const std::string url)
     osg::ref_ptr<FeatureDataSetAdapter> dataset = new FeatureDataSetAdapter(features.get());
 
 
-    osgEarth::Symbology::Style style;
-    style.getPoint().fill()->color() = osg::Vec4(1,0,0,1);
+    osg::ref_ptr<osgEarth::Symbology::Style> style = new osgEarth::Symbology::Style;
+
+    osg::ref_ptr<PointSymbol> pointSymbol = new PointSymbol;
+    pointSymbol->fill()->color() = osg::Vec4(1,0,0,1);
+    style->setPoint(pointSymbol.get());
+
+    osg::ref_ptr<PolygonSymbol> polySymbol = new PolygonSymbol;
+    polySymbol->fill()->color() = osg::Vec4(0,1,1,1);
+    style->setPolygon(polySymbol.get());
 
     osg::ref_ptr<GeometrySymbolizer> symbolizer = new GeometrySymbolizer;
     osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
     node->setSymbolizer(symbolizer.get());
-    node->setStyle(style);
+    node->setStyle(style.get());
     node->setDataSet(dataset.get());
 
     grp->addChild(node.get());

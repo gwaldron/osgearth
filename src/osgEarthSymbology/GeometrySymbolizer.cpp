@@ -36,11 +36,11 @@ GeometrySymbolizer::GeometrySymbolizer()
 
 bool 
 GeometrySymbolizer::update(FeatureDataSet* dataSet,
-                           const osgEarth::Symbology::Style& style,
+                           const osgEarth::Symbology::Style* style,
                            osg::Group* attachPoint,
                            SymbolizerContext* context )
 {
-    if (!dataSet || !attachPoint)
+    if (!dataSet || !attachPoint || !style)
         return false;
 
     osg::ref_ptr<osgEarth::Features::FeatureCursor> cursor = dataSet->createCursor();
@@ -69,34 +69,41 @@ GeometrySymbolizer::update(FeatureDataSet* dataSet,
         {
         case Geometry::TYPE_POINTSET:
             primMode = osg::PrimitiveSet::POINTS;
-            color = style.getPoint().fill()->color();
+            if (style->getPoint()) 
             {
-                float size = style.getPoint().size().value();
+                color = style->getPoint()->fill()->color();
+
+                float size = style->getPoint()->size().value();
                 osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
             }
         break;
 
         case Geometry::TYPE_LINESTRING:
             primMode = osg::PrimitiveSet::LINE_STRIP;
-            color = style.getLine().stroke()->color();
+            if (style->getLine()) 
             {
-                float size = style.getLine().stroke()->width().value();
+                color = style->getLine()->stroke()->color();
+                float size = style->getLine()->stroke()->width().value();
                 osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
             }
             break;
 
         case Geometry::TYPE_RING:
             primMode = osg::PrimitiveSet::LINE_LOOP;
-            color = style.getLine().stroke()->color();
+            if (style->getLine())
             {
-                float size = style.getLine().stroke()->width().value();
+                color = style->getLine()->stroke()->color();
+                float size = style->getLine()->stroke()->width().value();
                 osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
             }
             break;
 
         case Geometry::TYPE_POLYGON:
             primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-            color = style.getPolygon().fill()->color();
+            if (style->getPolygon())
+            {
+                color = style->getPolygon()->fill()->color();
+            }
             break;
         }
 

@@ -191,7 +191,6 @@ struct GeometryVolumeSymbolizer : public GeometrySymbolizer
         int numRings = 0;
 
         // start by offsetting the input data.
-        if ( offset != 0.0 )
         {
             GeometryIterator i( geom );
             i.traverseMultiGeometry() = true;
@@ -199,23 +198,26 @@ struct GeometryVolumeSymbolizer : public GeometrySymbolizer
             while( i.hasMore() )
             {
                 Geometry* part = i.next();
-                for( osg::Vec3dArray::iterator j = part->begin(); j != part->end(); j++ )
+                if (offset != 0.0)
                 {
+                    for( osg::Vec3dArray::iterator j = part->begin(); j != part->end(); j++ )
+                    {
 #if 0
-                    // not context yet
-                    if ( context.isGeocentric() )
-                    {
-                        osg::Vec3d world = context.toWorld( *j );
-                        // TODO: get the proper up vector; this is spherical.. or does it really matter for
-                        // stencil volumes?
-                        osg::Vec3d offset_vec = world;
-                        offset_vec.normalize();
-                        *j = context.toLocal( world + offset_vec * offset ); //(*j) += offset_vec * offset;
-                    }
-                    else
+                        // not context yet
+                        if ( context.isGeocentric() )
+                        {
+                            osg::Vec3d world = context.toWorld( *j );
+                            // TODO: get the proper up vector; this is spherical.. or does it really matter for
+                            // stencil volumes?
+                            osg::Vec3d offset_vec = world;
+                            offset_vec.normalize();
+                            *j = context.toLocal( world + offset_vec * offset ); //(*j) += offset_vec * offset;
+                        }
+                        else
 #endif
-                    {
-                        (*j).z() += offset;
+                        {
+                            (*j).z() += offset;
+                        }
                     }
                 }
 

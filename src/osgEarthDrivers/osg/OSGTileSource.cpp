@@ -72,9 +72,7 @@ public:
         _url = _settings->url().value();
         if ( !_url.empty() )
         {
-            if ( osgEarth::isRelativePath( _url ) ) 
-                _url = osgDB::concatPaths( osgDB::getFilePath(referenceURI), _url );
-
+            _url = osgEarth::getFullPath( osgDB::getFilePath(referenceURI), _url );
             HTTPClient::readImageFile( _url, _image, getOptions() );
         }
 

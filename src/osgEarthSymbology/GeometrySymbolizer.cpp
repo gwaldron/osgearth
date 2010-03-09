@@ -55,96 +55,106 @@ GeometrySymbolizer::update(FeatureDataSet* dataSet,
     while( cursor->hasMore() ) 
     {
         feature = cursor->nextFeature();
-        if (!feature)
+        if (!feature || !feature->getGeometry())
             continue;
 
         Geometry* geometry = feature->getGeometry();
 
-        osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry;
-        osg::PrimitiveSet::Mode primMode = osg::PrimitiveSet::POINTS;
+        GeometryIterator geomIterator( geometry );
+        geomIterator.traverseMultiGeometry() = true;
+        geomIterator.traversePolygonHoles() = true;
 
-        osg::Vec4 color = osg::Vec4(1.0, 0.0, 1.0, 1.);
-
-        switch( geometry->getType())
+        while( geomIterator.hasMore() )
         {
-        case Geometry::TYPE_POINTSET:
-            primMode = osg::PrimitiveSet::POINTS;
-            if (style->getPoint()) 
-            {
-                color = style->getPoint()->fill()->color();
+            Geometry* part = geomIterator.next();
+            if (!part)
+                continue;
 
-                float size = style->getPoint()->size().value();
-                osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
-            }
-        break;
+            osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry;
+            osg::PrimitiveSet::Mode primMode = osg::PrimitiveSet::POINTS;
 
-        case Geometry::TYPE_LINESTRING:
-            primMode = osg::PrimitiveSet::LINE_STRIP;
-            if (style->getLine()) 
-            {
-                color = style->getLine()->stroke()->color();
-                float size = style->getLine()->stroke()->width().value();
-                osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
-            }
-            break;
+            osg::Vec4 color = osg::Vec4(1.0, 0.0, 1.0, 1.);
 
-        case Geometry::TYPE_RING:
-            primMode = osg::PrimitiveSet::LINE_LOOP;
-            if (style->getLine())
+            switch( part->getType())
             {
-                color = style->getLine()->stroke()->color();
-                float size = style->getLine()->stroke()->width().value();
-                osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
-            }
-            break;
+            case Geometry::TYPE_POINTSET:
+                primMode = osg::PrimitiveSet::POINTS;
+                if (style->getPoint()) 
+                {
+                    color = style->getPoint()->fill()->color();
 
-        case Geometry::TYPE_POLYGON:
-            primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-            if (style->getPolygon())
-            {
-                color = style->getPolygon()->fill()->color();
+                    float size = style->getPoint()->size().value();
+                    osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
+                }
+                break;
+
+            case Geometry::TYPE_LINESTRING:
+                primMode = osg::PrimitiveSet::LINE_STRIP;
+                if (style->getLine()) 
+                {
+                    color = style->getLine()->stroke()->color();
+                    float size = style->getLine()->stroke()->width().value();
+                    osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
+                }
+                break;
+
+            case Geometry::TYPE_RING:
+                primMode = osg::PrimitiveSet::LINE_LOOP;
+                if (style->getLine())
+                {
+                    color = style->getLine()->stroke()->color();
+                    float size = style->getLine()->stroke()->width().value();
+                    osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
+                }
+                break;
+
+            case Geometry::TYPE_POLYGON:
+                primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
+                if (style->getPolygon())
+                {
+                    color = style->getPolygon()->fill()->color();
+                }
+                break;
             }
-            break;
+
+            osg::Material* material = new osg::Material;
+            material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
+
+            if ( part->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(part)->getHoles().size() > 0 )
+            {
+                Polygon* poly = static_cast<Polygon*>(geometry);
+                int totalPoints = poly->getTotalPointCount();
+                osg::Vec3Array* allPoints = new osg::Vec3Array( totalPoints );
+                int offset = 0;
+                for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
+                {
+                    Geometry* hole = h->get();
+                    std::copy( hole->begin(), hole->end(), allPoints->begin() + offset );
+                    osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, offset, hole->size() ) );
+                    offset += hole->size();
+                }
+                osgGeom->setVertexArray( allPoints );
+            }
+            else
+            {
+                osgGeom->setVertexArray( part->toVec3Array() );
+                osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
+            }
+
+            // tessellate all polygon geometries. Tessellating each geometry separately
+            // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
+            // using TESS_TYPE_DRAWABLE.
+
+            if ( part->getType() == Geometry::TYPE_POLYGON)
+            {
+                osgUtil::Tessellator tess;
+                tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+                tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+                tess.retessellatePolygons( *osgGeom );
+            }
+            osgGeom->getOrCreateStateSet()->setAttributeAndModes(material);
+            geode->addDrawable(osgGeom);
         }
-
-        osg::Material* material = new osg::Material;
-        material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
-
-        if ( geometry->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(geometry)->getHoles().size() > 0 )
-        {
-            Polygon* poly = static_cast<Polygon*>(geometry);
-            int totalPoints = poly->getTotalPointCount();
-            osg::Vec3Array* allPoints = new osg::Vec3Array( totalPoints );
-            int offset = 0;
-            for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
-            {
-                Geometry* hole = h->get();
-                std::copy( hole->begin(), hole->end(), allPoints->begin() + offset );
-                osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, offset, hole->size() ) );
-                offset += hole->size();
-            }
-            osgGeom->setVertexArray( allPoints );
-        }
-        else
-        {
-            osgGeom->setVertexArray( geometry->toVec3Array() );
-            osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, geometry->size() ) );
-        }
-
-        // tessellate all polygon geometries. Tessellating each geometry separately
-        // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
-        // using TESS_TYPE_DRAWABLE.
-
-        if ( geometry->getType() == Geometry::TYPE_POLYGON)
-        {
-            osgUtil::Tessellator tess;
-            tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-            tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-            tess.retessellatePolygons( *osgGeom );
-        }
-        osgGeom->getOrCreateStateSet()->setAttributeAndModes(material);
-        geode->addDrawable(osgGeom);
-
     }
 
     if (geode->getNumDrawables()) 

@@ -26,7 +26,9 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
+    ExtrudedSymbol.cpp
     GeometrySymbolizer.cpp
+    GeometryExtrudeSymbolizer.cpp
     FeatureDataSet.cpp
     FeatureDataSetAdapter.cpp
     Registry.cpp

@@ -52,7 +52,7 @@ GeometrySymbolizer::update(FeatureDataSet* dataSet,
     newSymbolized->addChild(geode.get());
 
     osgEarth::Features::Feature* feature = 0;
-    while( cursor->hasMore() ) 
+    while( cursor->hasMore() )
     {
         feature = cursor->nextFeature();
         if (!feature || !feature->getGeometry())
@@ -157,8 +157,9 @@ GeometrySymbolizer::update(FeatureDataSet* dataSet,
         }
     }
 
-    if (geode->getNumDrawables()) 
+    if (geode->getNumDrawables())
     {
+        attachPoint->removeChildren(0, attachPoint->getNumChildren());
         attachPoint->addChild(newSymbolized.get());
         return true;
     }

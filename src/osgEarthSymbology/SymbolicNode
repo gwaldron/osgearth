@@ -55,6 +55,7 @@ namespace osgEarth { namespace Symbology
         osg::ref_ptr<FeatureDataSet> _dataSet;
         osg::ref_ptr<SymbolizerContext> _context;
         int _dataSetRevision;
+        int _styleRevision;
         osg::ref_ptr<osg::Group> _symGroup;
     };
 

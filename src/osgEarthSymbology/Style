@@ -54,11 +54,15 @@ namespace osgEarth { namespace Symbology
         const TextSymbol* getText() const { return _text.get(); }
         void setText(TextSymbol* symbol) { _text = symbol; }
 
+        int getRevision() const { return _revision; }
+        void setRevision(int rev) { _revision = rev; }
+
     protected:
         osg::ref_ptr<PolygonSymbol> _polygon;
         osg::ref_ptr<TextSymbol>    _text;
         osg::ref_ptr<PointSymbol>   _point;
         osg::ref_ptr<LineSymbol>    _line;
+        int                         _revision;
     };
 
 } } // namespace osgEarth::Symbology

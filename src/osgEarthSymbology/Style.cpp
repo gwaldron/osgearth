@@ -23,7 +23,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-Style::Style()
+Style::Style() : _revision(0)
 {
     //NOP
 }

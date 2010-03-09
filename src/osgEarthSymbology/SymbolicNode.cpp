@@ -22,7 +22,8 @@
 using namespace osgEarth::Symbology;
 
 SymbolicNode::SymbolicNode() :
-_dataSetRevision( -1 )
+    _dataSetRevision( -1 ),
+    _styleRevision( -1 )
 {
     _symGroup = new osg::Group();
     _symGroup->setDataVariance( osg::Object::DYNAMIC );
@@ -34,6 +35,7 @@ _style( rhs._style ),
 _symbolizer( rhs._symbolizer ),
 _dataSet( rhs._dataSet ),
 _dataSetRevision( rhs._dataSetRevision ),
+_styleRevision( rhs._styleRevision ),
 _symGroup( rhs._symGroup )
 {
 }
@@ -47,10 +49,11 @@ SymbolicNode::traverse( osg::NodeVisitor& nv )
         if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
         {
             // if our symbology is out of revision, update it!
-            if ( _dataSetRevision != _dataSet->getRevision() )
+            if ( _dataSetRevision != _dataSet->getRevision() || _styleRevision != _style->getRevision())
             {
                 _symbolizer->update( _dataSet.get(), _style, _symGroup.get(), _context.get() );
                 _dataSetRevision = _dataSet->getRevision();
+                _styleRevision = _style->getRevision();
             }
         }
     }

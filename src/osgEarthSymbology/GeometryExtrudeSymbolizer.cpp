@@ -44,7 +44,6 @@ void GeometryExtrudeSymbolizer::tessellate( osg::Geometry* geom )
     tess.retessellatePolygons( *geom );
 }
 
-
 bool 
 GeometryExtrudeSymbolizer::update(FeatureDataSet* dataSet,
                                   const osgEarth::Symbology::Style* style,
@@ -59,34 +58,81 @@ GeometryExtrudeSymbolizer::update(FeatureDataSet* dataSet,
         return false;
 
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    newSymbolized->addChild(geode.get());
 
     osgEarth::Features::Feature* feature = 0;
-    while( cursor->hasMore() )
+    while( cursor->hasMore() ) 
     {
         feature = cursor->nextFeature();
-        if (!feature)
+        if (!feature || !feature->getGeometry())
             continue;
 
         Geometry* geometry = feature->getGeometry();
-        if (geometry) 
+        GeometryIterator geomIterator( geometry );
+        geomIterator.traverseMultiGeometry() = true;
+        geomIterator.traversePolygonHoles() = true;
+        while( geomIterator.hasMore() )
         {
-            geode = extrude(geometry, 0, 10, context);
-            if (geode)
+            Geometry* part = geomIterator.next();
+            if (!part)
+                continue;
+
+            osg::Vec4 color = osg::Vec4(1.0, 0.0, 1.0, 1.);
+            float height = 1.0;
+            float offset = 1.0;
+
+            switch( part->getType())
+            {
+            case Geometry::TYPE_LINESTRING:
+            case Geometry::TYPE_RING:
+                if (style->getLine())
+                {
+                    const ExtrudedLineSymbol* line = dynamic_cast<const ExtrudedLineSymbol*>(style->getLine());
+                    if (!line)
+                        continue;
+
+                    color = style->getLine()->stroke()->color();
+                    height = line->extrude()->height();
+                    offset = line->extrude()->offset();
+                }
+                break;
+
+            case Geometry::TYPE_POLYGON:
+                if (style->getPolygon())
+                {
+                    const ExtrudedPolygonSymbol* polygon = dynamic_cast<const ExtrudedPolygonSymbol*>(style->getPolygon());
+                    if (!polygon)
+                        continue;
+                
+                    color = style->getPolygon()->fill()->color();
+                    height = polygon->extrude()->height();
+                    offset = polygon->extrude()->offset();
+                }
+                break;
+            default:
+                continue;
+                break;
+            }
+
+            osg::Geode* geode = extrude(part, offset, height, context );
+            if (geode && geode->getNumDrawables()) 
+            {
+                osg::Material* material = new osg::Material;
+                material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
+                geode->getOrCreateStateSet()->setAttributeAndModes(material);
                 newSymbolized->addChild(geode);
+            }
         }
     }
 
     if (newSymbolized->getNumChildren())
     {
+        attachPoint->removeChildren(0, attachPoint->getNumChildren());
         attachPoint->addChild(newSymbolized.get());
         return true;
     }
 
     return false;
 }
-
 
 osg::Geode* GeometryExtrudeSymbolizer::extrude(Geometry* geom, double offset, double height, SymbolizerContext* context )
 {

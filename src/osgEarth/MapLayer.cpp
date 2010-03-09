@@ -117,7 +117,8 @@ MapLayer::init()
 {
 	readEnvironmentalVariables();
     _id = s_mapLayerID++;
-    _cacheFormat = suggestCacheFormat();
+    if ( !_cacheFormat.isSet() || _cacheFormat->empty() )
+      _cacheFormat = suggestCacheFormat();
 }
 
 void

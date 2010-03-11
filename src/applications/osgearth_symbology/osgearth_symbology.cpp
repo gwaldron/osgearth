@@ -233,29 +233,13 @@ public:
                 return true;
             } else if (ea.getKey() == 'x') {
                 osgEarth::Symbology::Style* style = _styles[3].get();
-                MarkerSymbol* p = dynamic_cast<MarkerSymbol*>( style->getPoint());
-                if (p)
-                {
-                    if (p->marker().value().find("tree") != std::string::npos) {
-                        p->marker() = "../data/cow.osg";
-                    } else {
-                        p->marker() = "../data/tree.ive";
-                    }
-                }
-
                 MarkerLineSymbol* l = dynamic_cast<MarkerLineSymbol*>( style->getLine());
                 if (l)
                 {
-                    if (l->marker().value().find("tree") != std::string::npos) {
-                        l->marker() = "../data/cow.osg";
-                    } else {
-                        l->marker() = "../data/tree.ive";
-                    }
-
-                    if (l->interval().value() < 5)
-                        l->interval() = 10;
+                    if (l->interval().value() < 7000)
+                        l->interval() = 10000;
                     else
-                        l->interval() = 2;
+                        l->interval() = 4000;
                 }
                 style->setRevision(style->getRevision()+1);
                 return true;

@@ -39,6 +39,44 @@ namespace osgEarth { namespace Symbology
     };
 
 
+    class OSGEARTHSYMBOLOGY_EXPORT MarkerLineSymbol : public LineSymbol
+    {
+    public:
+        MarkerLineSymbol();
+
+        optional<std::string>& marker() { return _marker; }
+        const optional<std::string>& marker() const { return _marker; }
+
+        optional<float>& interval() { return _interval; }
+        const optional<float>& interval() const { return _interval; }
+
+    protected:
+        optional<std::string> _marker;
+        optional<float> _interval;
+    };
+
+
+    class OSGEARTHSYMBOLOGY_EXPORT MarkerPolygonSymbol : public PolygonSymbol
+    {
+    public:
+        MarkerPolygonSymbol();
+
+        optional<std::string>& marker() { return _marker; }
+        const optional<std::string>& marker() const { return _marker; }
+
+        optional<float>& interval() { return _interval; }
+        const optional<float>& interval() const { return _interval; }
+
+        optional<float>& randomRatio() { return _randomRatio; }
+        const optional<float>& randomRatio() const { return _randomRatio; }
+
+    protected:
+        optional<std::string> _marker;
+        optional<float> _randomRatio; // use a random from distance to avoid regularity
+        optional<float> _interval;
+    };
+
+
 
 } } // namespace osgEarth::Symbology
 

@@ -30,6 +30,8 @@
 #include <osgEarthSymbology/FeatureDataSetAdapter>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/SymbolicNode>
+#include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/ExtrudedSymbol>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osg/MatrixTransform>
@@ -79,11 +81,10 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
         while( cursor->hasMore() ) 
         {
             feature = cursor->nextFeature();
-            if (!feature)
+            if (!feature || !feature->getGeometry())
                 continue;
 
             Geometry* geometry = feature->getGeometry();
-
             osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry;
             osg::PrimitiveSet::Mode primMode = osg::PrimitiveSet::POINTS;
 
@@ -235,11 +236,26 @@ public:
                 MarkerSymbol* p = dynamic_cast<MarkerSymbol*>( style->getPoint());
                 if (p)
                 {
-                    if (p->maker().value().find("tree") != std::string::npos) {
-                        p->maker() = "";
+                    if (p->marker().value().find("tree") != std::string::npos) {
+                        p->marker() = "../data/cow.osg";
                     } else {
-
+                        p->marker() = "../data/tree.ive";
                     }
+                }
+
+                MarkerLineSymbol* l = dynamic_cast<MarkerLineSymbol*>( style->getLine());
+                if (l)
+                {
+                    if (l->marker().value().find("tree") != std::string::npos) {
+                        l->marker() = "../data/cow.osg";
+                    } else {
+                        l->marker() = "../data/tree.ive";
+                    }
+
+                    if (l->interval().value() < 5)
+                        l->interval() = 10;
+                    else
+                        l->interval() = 2;
                 }
                 style->setRevision(style->getRevision()+1);
                 return true;
@@ -312,8 +328,14 @@ osg::Group* createSymbologyScene(const std::string url)
         osg::ref_ptr<osgEarth::Symbology::Style> style = new osgEarth::Symbology::Style;
         style->setName("Marker");
         osg::ref_ptr<MarkerSymbol> pointSymbol = new MarkerSymbol;
-        MarkerSymbol->maker() = "../data/tree.ive";
+        pointSymbol->marker() = "../data/tree.ive";
         style->setPoint(pointSymbol.get());
+
+        osg::ref_ptr<MarkerLineSymbol> lineSymbol = new MarkerLineSymbol;
+        lineSymbol->marker() = "../data/tree.ive";
+        lineSymbol->interval() = 10000;
+        style->setLine(lineSymbol.get());
+
         styles.push_back(style.get());
     }
 
@@ -369,7 +391,7 @@ osg::Group* createSymbologyScene(const std::string url)
         node->setDataSet(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->addChild(node.get());
-        tr->setMatrix(osg::Matrix::translate(0, -400 , 0));
+        tr->setMatrix(osg::Matrix::translate(0, 0 , 0));
         grp->addChild(tr);
     }
 
@@ -391,8 +413,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
-    const std::string url = "../data/world.shp";
+    
+    std::string url = "../data/istates_dissolve.shp";
     std::string real = osgDB::getRealPath(url);
     osg::Node* node = createSymbologyScene(real);
     viewer.setSceneData(node);

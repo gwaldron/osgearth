@@ -97,13 +97,73 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
                 break;
 
             case Geometry::TYPE_LINESTRING:
-                break;
-
             case Geometry::TYPE_RING:
+                if (style->getLine())
+                {
+                    const MarkerLineSymbol* line = dynamic_cast<const MarkerLineSymbol*>(style->getLine());
+                    if (line && part->size() && !line->marker().value().empty())
+                    {
+                        osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
+                        options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+                        osg::Node* node = osgDB::readNodeFile(line->marker().value(), options.get());
+                        if (!node) {
+                            osg::notify(osg::WARN) << "can't load Marker Node " << line->marker().value() << std::endl;
+                            continue;
+                        }
+                        float interval = line->interval().value();
+                        if (!interval)
+                            interval = 1.0;
+
+                        float globalDist = 0;
+                        float currentDist = 0;
+                        osg::Group* group = new osg::Group;
+                        for ( int i = 0; i < part->size(); ++i)
+                        {
+                            osg::Vec3d start = (*part)[i];
+                            osg::Vec3d end;
+                            if (i < (part->size() - 1)) {
+                                end = (*part)[part->size() - 1];
+                            } else {
+                                if (part->getType() == Geometry::TYPE_RING) {
+                                    end = (*part)[0];
+                                } else {
+                                    end = start;
+                                }
+                            }
+                            osg::Vec3d direction = end - start;
+                            float segmentSize = direction.length();
+                            direction.normalize();
+
+                            float previousDist = currentDist;
+                            currentDist += segmentSize;
+                            if (currentDist < interval)
+                                continue;
+                                
+                            float offset = interval - previousDist;
+                                
+                            float rate = currentDist / interval;
+                            int nbItems = static_cast<int>(floorf(rate));
+                            rate -= (float)nbItems;
+                            float remaining = rate * interval;
+                            currentDist = remaining;
+
+                            osg::Vec3d startOnTheLine = start + direction * offset;
+                            for (int j = 0; j < nbItems; ++j)
+                            {
+                                osg::MatrixTransform* tr = new osg::MatrixTransform;
+                                tr->setMatrix(osg::Matrix::translate(startOnTheLine + direction*j*interval));
+                                tr->addChild(node);
+                                group->addChild(tr);
+                            }
+                        }
+                        newSymbolized->addChild(group);
+                    }
+                }
                 break;
 
             case Geometry::TYPE_POLYGON:
                 break;
+
             }
         }
     }

@@ -111,7 +111,6 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<Fill> _fill;
         optional<float>  _size;
-        
     };
 
     class OSGEARTHSYMBOLOGY_EXPORT PolygonSymbol : public Symbol

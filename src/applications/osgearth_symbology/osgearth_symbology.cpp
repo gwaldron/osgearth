@@ -230,7 +230,21 @@ public:
                 }
                 style->setRevision(style->getRevision()+1);
                 return true;
+            } else if (ea.getKey() == 'x') {
+                osgEarth::Symbology::Style* style = _styles[3].get();
+                MarkerSymbol* p = dynamic_cast<MarkerSymbol*>( style->getPoint());
+                if (p)
+                {
+                    if (p->maker().value().find("tree") != std::string::npos) {
+                        p->maker() = "";
+                    } else {
+
+                    }
+                }
+                style->setRevision(style->getRevision()+1);
+                return true;
             }
+
         }
         break;
         }
@@ -273,6 +287,8 @@ osg::Group* createSymbologyScene(const std::string url)
         styles.push_back(style.get());
     }
 
+
+    // style for extruded
     {
         osg::ref_ptr<osgEarth::Symbology::Style> style = new osgEarth::Symbology::Style;
         style->setName("Extrude-Polygon&Line-height&color");
@@ -290,6 +306,21 @@ osg::Group* createSymbologyScene(const std::string url)
         styles.push_back(style.get());
     }
 
+
+    // style for marker
+    {
+        osg::ref_ptr<osgEarth::Symbology::Style> style = new osgEarth::Symbology::Style;
+        style->setName("Marker");
+        osg::ref_ptr<MarkerSymbol> pointSymbol = new MarkerSymbol;
+        MarkerSymbol->maker() = "../data/tree.ive";
+        style->setPoint(pointSymbol.get());
+        styles.push_back(style.get());
+    }
+
+
+
+
+    /// associate the style / symbolizer to the symbolic node
 
     {
         osg::ref_ptr<GeometrySymbolizer> symbolizer = new GeometrySymbolizer;
@@ -326,6 +357,19 @@ osg::Group* createSymbologyScene(const std::string url)
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->addChild(node.get());
         tr->setMatrix(osg::Matrix::translate(0, -200 , 0));
+        grp->addChild(tr);
+    }
+
+
+    {
+        osg::ref_ptr<MarkerSymbolizer> symbolizer = new MarkerSymbolizer();
+        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
+        node->setSymbolizer(symbolizer.get());
+        node->setStyle(styles[3].get());
+        node->setDataSet(dataset.get());
+        osg::MatrixTransform* tr = new osg::MatrixTransform;
+        tr->addChild(node.get());
+        tr->setMatrix(osg::Matrix::translate(0, -400 , 0));
         grp->addChild(tr);
     }
 

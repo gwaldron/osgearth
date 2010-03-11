@@ -14,6 +14,8 @@ SET(LIB_PUBLIC_HEADERS
     Common
     FeatureDataSet
     FeatureDataSetAdapter
+    MarkerSymbolizer
+    MarkerSymbol
     Registry
     Style
     StyleSheet
@@ -31,6 +33,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryExtrudeSymbolizer.cpp
     FeatureDataSet.cpp
     FeatureDataSetAdapter.cpp
+    MarkerSymbolizer.cpp
+    MarkerSymbol.cpp
     Registry.cpp
     Style.cpp
     StyleSheet.cpp

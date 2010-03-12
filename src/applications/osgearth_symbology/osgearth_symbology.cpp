@@ -45,6 +45,112 @@ typedef std::vector<osg::ref_ptr<osgEarth::Symbology::Style> > StyleList;
 
 using namespace osgEarth::Symbology;
 
+Geometry* createLineGeometry(const osg::Vec3d& start)
+{
+    osg::ref_ptr<osg::Vec3dArray> array = new osg::Vec3dArray;
+    array->push_back(start + osg::Vec3d(-100,-100,0));
+    array->push_back(start + osg::Vec3d(100,-100,0));
+    array->push_back(start + osg::Vec3d(100,100,0));
+    array->push_back(start + osg::Vec3d(-100,100,0));
+    return osgEarth::Features::Geometry::create(osgEarth::Features::Geometry::TYPE_LINESTRING, array);
+}
+
+Geometry* createRingGeometry(const osg::Vec3d& start)
+{
+    osg::ref_ptr<osg::Vec3dArray> array = new osg::Vec3dArray;
+    array->push_back(start + osg::Vec3d(-100,-100,0));
+    array->push_back(start + osg::Vec3d(100,-100,0));
+    array->push_back(start + osg::Vec3d(100,100,0));
+    array->push_back(start + osg::Vec3d(-100,100,0));
+    return osgEarth::Features::Geometry::create(osgEarth::Features::Geometry::TYPE_RING, array);
+}
+
+
+Geometry* createPolygonGeometry(const osg::Vec3d& start)
+{
+    osg::ref_ptr<osg::Vec3dArray> array = new osg::Vec3dArray;
+    array->push_back(start + osg::Vec3d(-100,-100,0));
+    array->push_back(start + osg::Vec3d(100,-100,0));
+    array->push_back(start + osg::Vec3d(100,100,0));
+    array->push_back(start + osg::Vec3d(-100,100,0));
+    return osgEarth::Features::Geometry::create(osgEarth::Features::Geometry::TYPE_POLYGON, array);
+}
+
+
+Geometry* createPointsGeometry(const osg::Vec3d& start)
+{
+    osg::ref_ptr<osg::Vec3dArray> array = new osg::Vec3dArray;
+    array->push_back(start + osg::Vec3d(-100,-100,0));
+    array->push_back(start + osg::Vec3d(100,-100,0));
+    array->push_back(start + osg::Vec3d(100,100,0));
+    array->push_back(start + osg::Vec3d(-100,100,0));
+    return osgEarth::Features::Geometry::create(osgEarth::Features::Geometry::TYPE_POINTSET, array);
+}
+
+struct SampleFeatureSourceCursor : public osgEarth::Features::FeatureCursor
+{
+    SampleFeatureSourceCursor(const std::vector<osg::ref_ptr<Feature> > list) : _list(list), _current(-1) {}
+
+    bool hasMore() const
+    {
+        int size = _list.size();
+        return (_current < (size-1) );
+    }
+    Feature* nextFeature()
+    {
+        if (!hasMore())
+            return 0;
+        ++_current;
+        return _list[_current].get();
+    }
+    std::vector<osg::ref_ptr<Feature> > _list;
+    int _current;
+};
+
+struct SampleFeatureSource : public FeatureDataSet
+{
+    SampleFeatureSource()
+    {
+        // points
+        {
+        Feature* f = new Feature;
+        f->setGeometry(createPointsGeometry(osg::Vec3d(-250,0,0)));
+        _list.push_back(f);
+        }
+
+        // ring
+        {
+        Feature* f = new Feature;
+        f->setGeometry(createRingGeometry(osg::Vec3d(0,0,0)));
+        _list.push_back(f);
+        }
+
+        // line
+        {
+        Feature* f = new Feature;
+        f->setGeometry(createLineGeometry(osg::Vec3d(250,0,0)));
+        _list.push_back(f);
+        }
+
+        // polygon
+        {
+        Feature* f = new Feature;
+        f->setGeometry(createPolygonGeometry(osg::Vec3d(500,0,0)));
+        _list.push_back(f);
+        }
+    }
+
+    int getRevision() const { return 0; }
+    virtual FeatureCursor* createCursor()
+    {
+        return new SampleFeatureSourceCursor(_list);
+    }
+    std::vector<osg::ref_ptr<Feature> > _list;
+
+};
+
+
+
 struct PolygonPointSizeSymbol : public PolygonSymbol
 {
     PolygonPointSizeSymbol() : _size (1.0)
@@ -216,8 +322,7 @@ public:
                     color[0] = fmod(color[0]+0.5, 1.0);
                     color[2] = fmod(1 + color[0]-0.3, 1.0);
                     l->stroke()->color() = color;
-                    l->extrude()->height() = l->extrude()->height() + 5;
-                    l->extrude()->offset() = l->extrude()->offset() + 5;
+                    l->extrude()->height() = l->extrude()->height() + 200;
                 }
                 ExtrudedPolygonSymbol* p = dynamic_cast<ExtrudedPolygonSymbol*>( style->getPolygon());
                 if (p)
@@ -226,8 +331,7 @@ public:
                     color[0] = fmod(color[0]+0.5, 1.0);
                     color[2] = fmod(1 + color[0]-0.3, 1.0);
                     p->fill()->color() = color;
-                    p->extrude()->height() = p->extrude()->height() + 5;
-                    p->extrude()->offset() = p->extrude()->offset() + 5;
+                    p->extrude()->height() = p->extrude()->height() + 50;
                 }
                 style->setRevision(style->getRevision()+1);
                 return true;
@@ -236,10 +340,10 @@ public:
                 MarkerLineSymbol* l = dynamic_cast<MarkerLineSymbol*>( style->getLine());
                 if (l)
                 {
-                    if (l->interval().value() < 7000)
-                        l->interval() = 10000;
+                    if (l->interval().value() < 200)
+                        l->interval() = 400;
                     else
-                        l->interval() = 4000;
+                        l->interval() = 100;
                 }
                 style->setRevision(style->getRevision()+1);
                 return true;
@@ -265,7 +369,8 @@ osg::Group* createSymbologyScene(const std::string url)
     osg::ref_ptr<osgEarth::Features::FeatureSource> features = FeatureSourceFactory::create( featureOpt );
     features->initialize("");
 
-    osg::ref_ptr<FeatureDataSetAdapter> dataset = new FeatureDataSetAdapter(features.get());
+//    osg::ref_ptr<FeatureDataSetAdapter> dataset = new FeatureDataSetAdapter(features.get());
+    osg::ref_ptr<FeatureDataSet> dataset = new SampleFeatureSource;
     ::StyleList styles;
 
     {
@@ -294,14 +399,14 @@ osg::Group* createSymbologyScene(const std::string url)
         style->setName("Extrude-Polygon&Line-height&color");
         osg::ref_ptr<ExtrudedPolygonSymbol> polySymbol = new ExtrudedPolygonSymbol;
         polySymbol->fill()->color() = osg::Vec4(1,0,0,1);
-        polySymbol->extrude()->height() = 10;
-        polySymbol->extrude()->offset() = 1;
+        polySymbol->extrude()->height() = 100;
+        polySymbol->extrude()->offset() = 10;
         style->setPolygon(polySymbol.get());
 
         osg::ref_ptr<ExtrudedLineSymbol> lineSymbol = new ExtrudedLineSymbol;
         lineSymbol->stroke()->color() = osg::Vec4(0,0,1,1);
-        lineSymbol->extrude()->height() = 15;
-        lineSymbol->extrude()->offset() = 1;
+        lineSymbol->extrude()->height() = 150;
+        lineSymbol->extrude()->offset() = 10;
         style->setLine(lineSymbol.get());
         styles.push_back(style.get());
     }
@@ -317,7 +422,7 @@ osg::Group* createSymbologyScene(const std::string url)
 
         osg::ref_ptr<MarkerLineSymbol> lineSymbol = new MarkerLineSymbol;
         lineSymbol->marker() = "../data/tree.ive";
-        lineSymbol->interval() = 10000;
+        lineSymbol->interval() = 13;
         style->setLine(lineSymbol.get());
 
         styles.push_back(style.get());
@@ -327,7 +432,6 @@ osg::Group* createSymbologyScene(const std::string url)
 
 
     /// associate the style / symbolizer to the symbolic node
-
     {
         osg::ref_ptr<GeometrySymbolizer> symbolizer = new GeometrySymbolizer;
         osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
@@ -335,7 +439,7 @@ osg::Group* createSymbologyScene(const std::string url)
         node->setStyle(styles[0].get());
         node->setDataSet(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
-        tr->setMatrix(osg::Matrix::translate(0, 0 , 0));
+        tr->setMatrix(osg::Matrix::translate(0, -250 , 0));
         tr->addChild(node.get());
         grp->addChild(tr);
     }
@@ -349,7 +453,7 @@ osg::Group* createSymbologyScene(const std::string url)
         node->setDataSet(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->addChild(node.get());
-        tr->setMatrix(osg::Matrix::translate(0, 0 , 1));
+        tr->setMatrix(osg::Matrix::translate(0, 0 , 0));
         grp->addChild(tr);
     }
 
@@ -362,7 +466,7 @@ osg::Group* createSymbologyScene(const std::string url)
         node->setDataSet(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->addChild(node.get());
-        tr->setMatrix(osg::Matrix::translate(0, -200 , 0));
+        tr->setMatrix(osg::Matrix::translate(0, 250 , 0));
         grp->addChild(tr);
     }
 
@@ -375,7 +479,7 @@ osg::Group* createSymbologyScene(const std::string url)
         node->setDataSet(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->addChild(node.get());
-        tr->setMatrix(osg::Matrix::translate(0, 0 , 0));
+        tr->setMatrix(osg::Matrix::translate(0, 500 , 0));
         grp->addChild(tr);
     }
 

@@ -20,13 +20,36 @@
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthFeatures/Feature>
 #include <osgDB/ReadFile>
+#include <osgDB/ReaderWriter>
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 #include <osg/Material>
 #include <osg/Geode>
+#include <osg/Version>
+
+#ifndef OSG_VERSION_GREATER_THAN
+#define OSG_VERSION_GREATER_THAN(MAJOR, MINOR, PATCH) ((OPENSCENEGRAPH_MAJOR_VERSION>MAJOR) || (OPENSCENEGRAPH_MAJOR_VERSION==MAJOR && (OPENSCENEGRAPH_MINOR_VERSION>MINOR || (OPENSCENEGRAPH_MINOR_VERSION==MINOR && OPENSCENEGRAPH_PATCH_VERSION>PATCH))))
+#endif
 
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
+
+
+static osg::Node* getNode(const std::string& str)
+{
+    if (OSG_VERSION_GREATER_THAN(2,8,2)) {
+        osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
+        options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+        osg::Node* node = osgDB::readNodeFile(str, options.get());
+        return node;
+    } else {
+        osg::ref_ptr<osgDB::ReaderWriter::Options> options = new osgDB::Options;
+        options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+        osg::Node* node = osgDB::readNodeFile(str, options.get());
+        return node;
+    }
+    return 0;
+}
 
 MarkerSymbolizer::MarkerSymbolizer()
 {
@@ -75,9 +98,7 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
                     const MarkerSymbol* point = dynamic_cast<const MarkerSymbol*>(style->getPoint());
                     if (point && part->size() && !point->marker().value().empty())
                     {
-                        osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
-                        options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-                        osg::Node* node = osgDB::readNodeFile(point->marker().value(), options.get());
+                        osg::Node* node = getNode(point->marker().value());
                         if (!node) {
                             osg::notify(osg::WARN) << "can't load Marker Node " << point->marker().value() << std::endl;
                             continue;
@@ -103,9 +124,7 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
                     const MarkerLineSymbol* line = dynamic_cast<const MarkerLineSymbol*>(style->getLine());
                     if (line && part->size() && !line->marker().value().empty())
                     {
-                        osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
-                        options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-                        osg::Node* node = osgDB::readNodeFile(line->marker().value(), options.get());
+                        osg::Node* node = getNode(line->marker().value());
                         if (!node) {
                             osg::notify(osg::WARN) << "can't load Marker Node " << line->marker().value() << std::endl;
                             continue;
@@ -114,15 +133,25 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
                         if (!interval)
                             interval = 1.0;
 
+
+                        osg::Group* group = new osg::Group;
                         float globalDist = 0;
                         float currentDist = 0;
-                        osg::Group* group = new osg::Group;
+
+                        // start to put one first node
+                        {
+                        osg::MatrixTransform* tr = new osg::MatrixTransform;
+                        tr->setMatrix(osg::Matrix::translate(*part->begin()));
+                        tr->addChild(node);
+                        group->addChild(tr);
+                        }
+
                         for ( int i = 0; i < part->size(); ++i)
                         {
                             osg::Vec3d start = (*part)[i];
                             osg::Vec3d end;
                             if (i < (part->size() - 1)) {
-                                end = (*part)[part->size() - 1];
+                                end = (*part)[i+1];
                             } else {
                                 if (part->getType() == Geometry::TYPE_RING) {
                                     end = (*part)[0];

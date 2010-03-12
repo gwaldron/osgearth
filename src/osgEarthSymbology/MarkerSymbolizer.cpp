@@ -35,7 +35,7 @@ using namespace osgEarth::Features;
 static osg::Node* getNode(const std::string& str)
 {
 #if OSG_VERSION_LESS_THAN(2,9,0)
-    osg::ref_ptr<osgDB::ReaderWriter::Options> options = new osgDB::Options;
+    osg::ref_ptr<osgDB::ReaderWriter::Options> options = new osgDB::ReaderWriter::Options;
     options->setObjectCacheHint(osgDB::ReaderWriter::Options::CACHE_ALL);
     osg::Node* node = osgDB::readNodeFile(str, options.get());
     return node;

@@ -27,9 +27,6 @@
 #include <osg/Geode>
 #include <osg/Version>
 
-#ifndef OSG_VERSION_GREATER_THAN
-#define OSG_VERSION_GREATER_THAN(MAJOR, MINOR, PATCH) ((OPENSCENEGRAPH_MAJOR_VERSION>MAJOR) || (OPENSCENEGRAPH_MAJOR_VERSION==MAJOR && (OPENSCENEGRAPH_MINOR_VERSION>MINOR || (OPENSCENEGRAPH_MINOR_VERSION==MINOR && OPENSCENEGRAPH_PATCH_VERSION>PATCH))))
-#endif
 
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
@@ -37,18 +34,17 @@ using namespace osgEarth::Features;
 
 static osg::Node* getNode(const std::string& str)
 {
-    if (OSG_VERSION_GREATER_THAN(2,8,2)) {
-        osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
-        options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-        osg::Node* node = osgDB::readNodeFile(str, options.get());
-        return node;
-    } else {
-        osg::ref_ptr<osgDB::ReaderWriter::Options> options = new osgDB::Options;
-        options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-        osg::Node* node = osgDB::readNodeFile(str, options.get());
-        return node;
-    }
-    return 0;
+#if OSG_VERSION_LESS_THAN(2,9,0)
+    osg::ref_ptr<osgDB::ReaderWriter::Options> options = new osgDB::Options;
+    options->setObjectCacheHint(osgDB::ReaderWriter::Options::CACHE_ALL);
+    osg::Node* node = osgDB::readNodeFile(str, options.get());
+    return node;
+#else
+    osg::ref_ptr<osgDB::Options> options = new osgDB::Options;
+    options->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+    osg::Node* node = osgDB::readNodeFile(str, options.get());
+    return node;
+#endif
 }
 
 MarkerSymbolizer::MarkerSymbolizer()

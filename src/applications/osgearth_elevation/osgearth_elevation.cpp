@@ -50,6 +50,7 @@ osg::MatrixTransform* createFlag()
     text->setText( "00000000000000" );
     text->setAutoRotateToScreen( true );
     text->setPosition( osg::Vec3d( 0, 0, 125 ) );
+    text->setDataVariance( osg::Object::DYNAMIC );
     g->addDrawable( text );
     osg::AutoTransform* at = new osg::AutoTransform();
     at->setAutoScaleToScreen( true );
@@ -57,6 +58,7 @@ osg::MatrixTransform* createFlag()
     at->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
     osg::MatrixTransform* xf = new osg::MatrixTransform();
     xf->addChild( at );
+    xf->setDataVariance( osg::Object::DYNAMIC );
     return xf;
 }
 
@@ -96,10 +98,14 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             double lat_deg = osg::RadiansToDegrees( lat_rad );
             double lon_deg = osg::RadiansToDegrees( lon_rad );
             osg::Matrixd out_mat;
+            double query_resolution = 0.1; // 1/10th of a degree
             double out_elevation = 0.0;
             double out_resolution = 0.0;
 
-            if ( _elevMan->getPlacementMatrix( lon_deg, lat_deg, 0, 0, NULL, out_mat, out_elevation, out_resolution ) )
+            if ( _elevMan->getPlacementMatrix(
+                lon_deg, lat_deg, 0,
+                query_resolution, NULL,
+                out_mat, out_elevation, out_resolution ) )
             {
                 updateFlag( _flag.get(), out_mat, out_elevation );
             }
@@ -172,6 +178,7 @@ int main(int argc, char** argv)
 
     // AN elevation manager that is tied to the map node:
     osgEarthUtil::ElevationManager* elevMan = new osgEarthUtil::ElevationManager( mapNode->getMap() );
+    elevMan->setTechnique( osgEarthUtil::ElevationManager::TECHNIQUE_PARAMETRIC );
     elevMan->setMaxTilesToCache( 10 );
 
     // An event handler that will respond to mouse clicks:

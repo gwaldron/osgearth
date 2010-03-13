@@ -38,29 +38,32 @@ _dataSetRevision( rhs._dataSetRevision ),
 _styleRevision( rhs._styleRevision ),
 _symGroup( rhs._symGroup )
 {
-    setNumChildrenRequiringUpdateTraversal(1);
 }
 
 void
 SymbolicNode::traverse( osg::NodeVisitor& nv )
 {
+    setNumChildrenRequiringUpdateTraversal(1);
     if ( _dataSet.valid() && _symbolizer.valid() )
     {
         if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
         {
-            bool dataSetDirty = _dataSet.valid() && _dataSetRevision != _dataSet->getRevision();
-            bool styleDirty = _style.valid() || _styleRevision != _style->getRevision();
-
             // if our symbology is out of revision, update it!
-            if ( dataSetDirty || styleDirty )
+            if ( _dataSetRevision != _dataSet->getRevision() || _styleRevision != _style->getRevision())
             {
                 _symbolizer->update( _dataSet.get(), _style, _symGroup.get(), _context.get() );
                 _dataSetRevision = _dataSet->getRevision();
-                if ( _style.valid() )
-                    _styleRevision = _style->getRevision();
+                _styleRevision = _style->getRevision();
+                this->dirtyBound();
             }
         }
     }
 
     _symGroup->traverse( nv );
+}
+
+osg::BoundingSphere
+SymbolicNode::computeBound() const
+{
+    return _symGroup->computeBound();
 }

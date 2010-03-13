@@ -56,6 +56,7 @@ namespace osgEarth { namespace Symbology
 
         int getRevision() const { return _revision; }
         void setRevision(int rev) { _revision = rev; }
+        void dirty() { _revision++; }
 
     protected:
         osg::ref_ptr<PolygonSymbol> _polygon;

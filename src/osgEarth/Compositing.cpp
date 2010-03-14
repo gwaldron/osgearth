@@ -100,6 +100,7 @@ MultiImage::createImage()
 
     osg::ref_ptr<osg::Image> image = new osg::Image;
     image->allocateImage(pixelsWide, pixelsHigh, 1, _images[0]._image->getPixelFormat(), _images[0]._image->getDataType());
+    image->setInternalTextureFormat(_images[0]._image->getInternalTextureFormat()); 
 
     //Composite the incoming images into the master image
     for (TileImageList::iterator i = _images.begin(); i != _images.end(); ++i)

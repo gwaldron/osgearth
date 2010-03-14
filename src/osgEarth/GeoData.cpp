@@ -427,6 +427,7 @@ GeoImage* GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool
 
     osg::Image* newImage = new osg::Image;
     newImage->allocateImage(newS, newT, _image->r(), _image->getPixelFormat(), _image->getDataType());
+    newImage->setInternalTextureFormat(_image->getInternalTextureFormat());
     memset(newImage->data(), 0, newImage->getImageSizeInBytes());
     unsigned startC = leftBorder ? buffer : 0;
     unsigned startR = bottomBorder ? buffer : 0;

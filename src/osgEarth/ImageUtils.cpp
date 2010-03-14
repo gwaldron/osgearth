@@ -61,6 +61,7 @@ ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned i
 
         output = new osg::Image();
         output->allocateImage( new_s, new_t, 1, pf, input->getDataType(), input->getPacking() );
+        output->setInternalTextureFormat( input->getInternalTextureFormat() );
 
         unsigned int pixel_size_bytes = input->getRowSizeInBytes() / input->s();
 
@@ -127,6 +128,7 @@ ImageUtils::cropImage(const osg::Image* image,
     //Allocate the croppped image
     osg::Image* cropped = new osg::Image;
     cropped->allocateImage(windowWidth, windowHeight, 1, image->getPixelFormat(), image->getDataType());
+    cropped->setInternalTextureFormat( image->getInternalTextureFormat() );
     
     
     for (int src_row = windowY, dst_row=0; dst_row < windowHeight; src_row++, dst_row++)

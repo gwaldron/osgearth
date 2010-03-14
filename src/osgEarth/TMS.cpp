@@ -28,6 +28,7 @@
 #include <osgEarth/TMS>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>
+#include <osgEarth/Registry>
 
 #include <limits.h>
 #include <iomanip>
@@ -172,6 +173,18 @@ void TileMap::computeNumTiles()
 const Profile*
 TileMap::createProfile()
 {
+    //If the profile is reported to be global mercator or global geodetic, use the predefined profile definitions
+    //This helps to avoid slight differences in the reported extents of a TMS source vs what osgEarth's internal
+    //extents for a global profile are considered to be.
+    if (_profile_type == Profile::TYPE_MERCATOR)
+    {
+        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+    }
+    else if (_profile_type == Profile::TYPE_GEODETIC)
+    {
+        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    }
+
     return Profile::create(
         _srs,
         _minX, _minY, _maxX, _maxY,

@@ -36,6 +36,7 @@ namespace osgEarth { namespace Symbology
             osg::Group* attachPoint,
             SymbolizerContext* context );
 
+        bool pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* polygon);
         MarkerSymbolizer();
     };
 

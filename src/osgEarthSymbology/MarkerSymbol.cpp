@@ -22,3 +22,4 @@ using namespace osgEarth::Symbology;
 
 MarkerSymbol::MarkerSymbol() {}
 MarkerLineSymbol::MarkerLineSymbol() {}
+MarkerPolygonSymbol::MarkerPolygonSymbol() {}

@@ -70,6 +70,7 @@ Geometry* createPolygonGeometry(const osg::Vec3d& start)
 {
     osg::ref_ptr<osg::Vec3dArray> array = new osg::Vec3dArray;
     array->push_back(start + osg::Vec3d(-100,-100,0));
+    array->push_back(start + osg::Vec3d(-10,-10,0));
     array->push_back(start + osg::Vec3d(100,-100,0));
     array->push_back(start + osg::Vec3d(100,100,0));
     array->push_back(start + osg::Vec3d(-100,100,0));
@@ -340,10 +341,22 @@ public:
                 MarkerLineSymbol* l = dynamic_cast<MarkerLineSymbol*>( style->getLine());
                 if (l)
                 {
-                    if (l->interval().value() < 200)
-                        l->interval() = 400;
+                    if (l->interval().value() < 10)
+                        l->interval() = 15;
                     else
-                        l->interval() = 100;
+                        l->interval() = 5;
+                }
+
+                MarkerPolygonSymbol* p = dynamic_cast<MarkerPolygonSymbol*>( style->getPolygon());
+                if (p)
+                {
+                    if (p->interval().value() < 10) {
+                        p->interval() = 15;
+                        p->randomRatio() = 0.1;
+                    } else {
+                        p->interval() = 5;
+                        p->randomRatio() = 3.0;
+                    }
                 }
                 style->setRevision(style->getRevision()+1);
                 return true;
@@ -422,8 +435,14 @@ osg::Group* createSymbologyScene(const std::string url)
 
         osg::ref_ptr<MarkerLineSymbol> lineSymbol = new MarkerLineSymbol;
         lineSymbol->marker() = "../data/tree.ive";
-        lineSymbol->interval() = 13;
+        lineSymbol->interval() = 5;
         style->setLine(lineSymbol.get());
+
+        osg::ref_ptr<MarkerPolygonSymbol> polySymbol = new MarkerPolygonSymbol;
+        polySymbol->marker() = "../data/tree.ive";
+        polySymbol->interval() = 5;
+        polySymbol->randomRatio() = 0.5;
+        style->setPolygon(polySymbol.get());
 
         styles.push_back(style.get());
     }

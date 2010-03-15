@@ -51,6 +51,24 @@ MarkerSymbolizer::MarkerSymbolizer()
 {
 }
 
+bool MarkerSymbolizer::pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* pointList)
+{
+    if (!pointList)
+        return false;
+
+    bool result = false;
+    const osg::Vec3dArray& polygon = *pointList;
+    for( unsigned int i=0, j=polygon.size()-1; i<polygon.size(); j = i++ )
+    {
+        if ((((polygon[i].y() <= point.y()) && (point.y() < polygon[j].y())) ||
+             ((polygon[j].y() <= point.y()) && (point.y() < polygon[i].y()))) &&
+            (point.x() < (polygon[j].x()-polygon[i].x()) * (point.y()-polygon[i].y())/(polygon[j].y()-polygon[i].y())+polygon[i].x()))
+        {
+            result = !result;
+        }
+    }
+    return result;
+}
 
 bool 
 MarkerSymbolizer::update(FeatureDataSet* dataSet,
@@ -187,6 +205,57 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
                 break;
 
             case Geometry::TYPE_POLYGON:
+                if (style->getPolygon())
+                {
+                    const MarkerPolygonSymbol* poly = dynamic_cast<const MarkerPolygonSymbol*>(style->getPolygon());
+                    if (poly && part->size() && !poly->marker().value().empty())
+                    {
+                        osg::Node* node = getNode(poly->marker().value());
+                        if (!node) {
+                            osg::notify(osg::WARN) << "can't load Marker Node " << poly->marker().value() << std::endl;
+                            continue;
+                        }
+                        float interval = poly->interval().value();
+                        if (!interval)
+                            interval = 1.0;
+
+                        float randomRatio = poly->randomRatio().value();
+
+                        osg::Group* group = new osg::Group;
+                        osg::BoundingBox bb;
+                        for (osg::Vec3dArray::iterator it = part->begin(); it != part->end(); ++it) 
+                        {
+                            bb.expandBy(*it);
+                        }
+                        // use a grid on x and y
+                        osg::Vec3d startOnGrid = bb.corner(0);
+                        float sizex = bb.xMax() - bb.xMin();
+                        float sizey = bb.yMax() - bb.yMin();
+                        int numX = static_cast<int>(floorf(sizex / interval));
+                        int numY = static_cast<int>(floorf(sizey / interval));
+                        for (int x = 0; x < numX; ++x)
+                        {
+                            for (int y = 0; y < numY; ++y)
+                            {
+
+
+                                // get two random number in interval
+                                osg::Vec3d randOffset(0, 0, 0);
+                                osg::Vec3d point = startOnGrid + randOffset + osg::Vec3d(y*interval, x*interval, 0);
+
+                                if (pointInPolygon(point, part))
+                                {
+
+                                    osg::MatrixTransform* tr = new osg::MatrixTransform;
+                                    tr->setMatrix(osg::Matrix::translate(startOnGrid + osg::Vec3d(y*interval, x*interval, 0)));
+                                    tr->addChild(node);
+                                    group->addChild(tr);
+                                }
+                            }
+                        }
+                        newSymbolized->addChild(group);
+                    }
+                }
                 break;
 
             }

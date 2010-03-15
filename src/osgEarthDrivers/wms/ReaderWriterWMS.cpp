@@ -352,6 +352,7 @@ public:
                             timeImage->getPixelFormat(),
                             timeImage->getDataType(),
                             timeImage->getPacking() );
+                        image->setInternalTextureFormat( timeImage->getInternalTextureFormat() );
                     }
 
                     memcpy( 

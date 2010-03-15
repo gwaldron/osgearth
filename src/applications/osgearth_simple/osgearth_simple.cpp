@@ -107,8 +107,7 @@ int main(int argc, char** argv)
         if ( mapNode->getMap()->isGeocentric() )
         {
             manip->setHomeViewpoint( 
-                osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 4e7 ),
-                1.0 );
+                osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
 
             // add a handler that will automatically calculate good clipping planes
             // for a geocentric map:

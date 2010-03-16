@@ -39,7 +39,84 @@ using namespace OpenThreads;
 
 #define PROP_HEIGHT_OFFSET "height_offset"
 
+//#define USE_SYMBOLOGY
+#ifdef USE_SYMBOLOGY
+#include <osgEarthSymbology/GeometrySymbolizer>
+#include <osgEarthSymbology/GeometryInput>
+#include <osgEarthSymbology/GeometryStyle>
+#include <osgEarthSymbology/SymbolicNode>
 
+class FeatureGeomModelSource : public FeatureModelSource
+{
+public:
+    FeatureGeomModelSource( const PluginOptions* options, int sourceId ) : FeatureModelSource( options ),
+        _sourceId( sourceId )
+    {
+        _options = dynamic_cast<const FeatureGeomModelOptions*>( options );
+        if ( !_options )
+            _options = new FeatureGeomModelOptions( options );
+    }
+
+    //override
+    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
+    {
+        FeatureModelSource::initialize( referenceURI, map );
+        _map = map;
+        _symbolic = new osgEarth::Symbology::SymbolicNode;
+        osgEarth::Symbology::GeometryStyle* geomStyle = new osgEarth::Symbology::GeometryStyle;
+        geomStyle->setPoint(new osgEarth::Symbology::PointSymbol);
+        geomStyle->setLine(new osgEarth::Symbology::LineSymbol);
+        geomStyle->setPolygon(new osgEarth::Symbology::PolygonSymbol);
+        _symbolic->setStyle(geomStyle);
+        _symbolic->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
+
+        osgEarth::Symbology::GeometryInput* geoms = new osgEarth::Symbology::GeometryInput;
+        _symbolic->setDataSet(geoms);
+    }
+
+    //override
+    osg::Node* renderFeaturesForStyle( const Style& style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
+    {
+        // A processing context to use with the filters:
+        FilterContext context;
+        context.profile() = getFeatureSource()->getFeatureProfile();
+
+        // Transform them into the map's SRS:
+        TransformFilter xform( _map->getProfile()->getSRS(), _map->isGeocentric() );
+        xform.heightOffset() = _options->heightOffset().value();
+        context = xform.push( features, context );
+
+        osgEarth::Symbology::GeometryInput* geoms = dynamic_cast<osgEarth::Symbology::GeometryInput*>(_symbolic->getDataSet());
+        if (!geoms)
+            geoms = new osgEarth::Symbology::GeometryInput;
+        else
+            geoms->getGeometryList().clear();
+
+        for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
+        {
+            Feature* feature = *it;
+            if (!feature)
+                continue;
+            Geometry* geometry = feature->getGeometry();
+            if (!geometry)
+                continue;
+            geoms->getGeometryList().push_back(osgEarth::Symbology::Geometry::create(osgEarth::Symbology::Geometry::Type((int)(geometry->getType())), geometry));
+        }
+        geoms->dirty();
+        _symbolic->setDataSet(geoms);
+
+        return _symbolic.get();
+    }
+
+protected:
+    osg::ref_ptr<const FeatureGeomModelOptions> _options;
+    osg::ref_ptr<osgEarth::Symbology::SymbolicNode> _symbolic;
+    int _sourceId;
+    osg::ref_ptr<const Map> _map;
+};
+
+
+#else
 class FeatureGeomModelSource : public FeatureModelSource
 {
 public:
@@ -98,6 +175,7 @@ private:
     osg::ref_ptr<const Map> _map;
 };
 
+#endif
 
 class FeatureGeomModelSourceFactory : public osgDB::ReaderWriter
 {

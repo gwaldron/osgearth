@@ -48,6 +48,7 @@ namespace osgEarth { namespace Symbology
         void setSymbolizer( Symbolizer* sym ) { _symbolizer = sym; }
 
         void setDataSet( SymbolizerInput* dataSet ) { _dataSet = dataSet; }
+        SymbolizerInput* getDataSet() { return _dataSet.get(); }
         
     protected:
         osg::ref_ptr<Style> _style;

@@ -137,6 +137,12 @@ namespace osgEarth
         optional<float>& opacity() { return _opacity; }
         const optional<float>& opacity() const { return _opacity; }
 
+        /**
+         * The gamma value for this layer's image tiles
+         */
+        optional<double>& gamma() { return _gamma; }
+        const optional<double>& gamma() const { return _gamma; }
+
 		/**
 		 * Whether to render this layer with the map.
 		 */
@@ -276,8 +282,6 @@ namespace osgEarth
         unsigned int _id;
         std::string _name;
         Type        _type;
-        //std::string _driver;
-        //Config      _driverConf;
 
         osg::ref_ptr<const DriverOptions> _driverOptions;
        
@@ -293,6 +297,7 @@ namespace osgEarth
         optional<float> _loadingWeight;
         optional<bool> _exactCropping;
 		optional<float> _opacity;
+        optional<double> _gamma;
 		optional<bool> _enabled;
 		optional<unsigned int> _reprojectedTileSize;
 
@@ -310,9 +315,13 @@ namespace osgEarth
         osg::ref_ptr< const Profile > _cacheProfile;
 
         OpenThreads::Mutex _initMutex;
+        
+        unsigned char _gammaLUT[256];
+        double _prevGamma;
 
         void init();
         void fromConfig( const Config& conf );
+        GeoImage* postProcess( GeoImage* img );
     };
 
     /**

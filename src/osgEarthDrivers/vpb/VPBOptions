@@ -69,7 +69,7 @@ namespace osgEarth { namespace Drivers
             _layer( 0 ),
             _widthLod0( 1 ),
             _heightLod0( 1 ),
-            _dirStruct( DS_FLAT )
+            _dirStruct( DS_NESTED )
         {
             driver() = "vpb";
 

@@ -26,6 +26,7 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osg/Notify>
+#include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
@@ -62,16 +63,6 @@ public:
     {
         FeatureModelSource::initialize( referenceURI, map );
         _map = map;
-        _symbolic = new osgEarth::Symbology::SymbolicNode;
-        osgEarth::Symbology::GeometryStyle* geomStyle = new osgEarth::Symbology::GeometryStyle;
-        geomStyle->setPoint(new osgEarth::Symbology::PointSymbol);
-        geomStyle->setLine(new osgEarth::Symbology::LineSymbol);
-        geomStyle->setPolygon(new osgEarth::Symbology::PolygonSymbol);
-        _symbolic->setStyle(geomStyle);
-        _symbolic->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
-
-        osgEarth::Symbology::GeometryInput* geoms = new osgEarth::Symbology::GeometryInput;
-        _symbolic->setDataSet(geoms);
     }
 
     //override
@@ -86,26 +77,54 @@ public:
         xform.heightOffset() = _options->heightOffset().value();
         context = xform.push( features, context );
 
-        osgEarth::Symbology::GeometryInput* geoms = dynamic_cast<osgEarth::Symbology::GeometryInput*>(_symbolic->getDataSet());
-        if (!geoms)
-            geoms = new osgEarth::Symbology::GeometryInput;
-        else
-            geoms->getGeometryList().clear();
+        // Make the symbolic node:
+        osgEarth::Symbology::SymbolicNode* symNode = new osgEarth::Symbology::SymbolicNode;
+
+        osgEarth::Symbology::GeometryStyle* geomStyle = new osgEarth::Symbology::GeometryStyle;
+        geomStyle->setPoint(new osgEarth::Symbology::PointSymbol);
+        geomStyle->setLine(new osgEarth::Symbology::LineSymbol);
+        geomStyle->setPolygon(new osgEarth::Symbology::PolygonSymbol);
+
+        symNode->setStyle(geomStyle);
+        symNode->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
+
+        osgEarth::Symbology::GeometryInput* geoms = new osgEarth::Symbology::GeometryInput;
+        symNode->setDataSet(geoms);
 
         for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
         {
-            Feature* feature = *it;
-            if (!feature)
-                continue;
-            Geometry* geometry = feature->getGeometry();
-            if (!geometry)
-                continue;
-            geoms->getGeometryList().push_back(osgEarth::Symbology::Geometry::create(osgEarth::Symbology::Geometry::Type((int)(geometry->getType())), geometry));
+            Feature* feature = it->get();
+            if ( feature )
+            {
+                Geometry* geometry = feature->getGeometry();
+                if ( geometry )
+                {
+                    // this is temporary until we finish migrating Geometry to ::Symbology
+                    geoms->getGeometryList().push_back( 
+                        osgEarth::Symbology::Geometry::create(
+                            osgEarth::Symbology::Geometry::Type((int)(feature->getGeometry()->getType())), geometry));
+                }
+            }
         }
-        geoms->dirty();
-        _symbolic->setDataSet(geoms);
 
-        return _symbolic.get();
+        osg::Node* result = symNode;
+
+        // If the context specifies a reference frame, apply it to the resulting model.
+        // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?
+        // ...probably the latter.
+        if ( context.hasReferenceFrame() )
+        {
+            osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
+                context.inverseReferenceFrame() );
+            delocalizer->addChild( result );
+            result = delocalizer;
+        }
+
+        // set the output node if necessary:
+        if ( out_newNode )
+            *out_newNode = result;
+
+        return result;
     }
 
 protected:

@@ -17,9 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/GeometryExtrudeSymbolizer>
+#include <osgEarthSymbology/GeometryStyle>
 #include <osgEarthSymbology/ExtrudedSymbol>
-#include <osgEarthFeatures/Feature>
 #include <osgUtil/Tessellator>
 #include <osg/Geometry>
 #include <osg/Point>
@@ -28,7 +29,6 @@
 #include <osg/Geode>
 
 using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
 
 GeometryExtrudeSymbolizer::GeometryExtrudeSymbolizer()
 {
@@ -45,28 +45,31 @@ void GeometryExtrudeSymbolizer::tessellate( osg::Geometry* geom )
 }
 
 bool 
-GeometryExtrudeSymbolizer::update(FeatureDataSet* dataSet,
-                                  const osgEarth::Symbology::Style* style,
+GeometryExtrudeSymbolizer::update(SymbolizerInput* dataSet,
+                                  const Style* style,
                                   osg::Group* attachPoint,
                                   SymbolizerContext* context )
 {
     if (!dataSet || !attachPoint || !style)
         return false;
 
-    osg::ref_ptr<osgEarth::Features::FeatureCursor> cursor = dataSet->createCursor();
-    if (!cursor)
+    GeometryInput* geometryInput = dynamic_cast<GeometryInput*>(dataSet);
+    if (!geometryInput)
+        return false;
+
+    const GeometryStyle* geometryStyle = dynamic_cast<const GeometryStyle*>(style);
+    if (!geometryStyle)
         return false;
 
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
 
-    osgEarth::Features::Feature* feature = 0;
-    while( cursor->hasMore() ) 
+    const GeometryList& geometryList = geometryInput->getGeometryList();
+    for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
     {
-        feature = cursor->nextFeature();
-        if (!feature || !feature->getGeometry())
+        Geometry* geometry = *it;
+        if (!geometry)
             continue;
 
-        Geometry* geometry = feature->getGeometry();
         GeometryIterator geomIterator( geometry );
         geomIterator.traverseMultiGeometry() = true;
         geomIterator.traversePolygonHoles() = true;
@@ -84,26 +87,26 @@ GeometryExtrudeSymbolizer::update(FeatureDataSet* dataSet,
             {
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                if (style->getLine())
+                if (geometryStyle->getLine())
                 {
-                    const ExtrudedLineSymbol* line = dynamic_cast<const ExtrudedLineSymbol*>(style->getLine());
+                    const ExtrudedLineSymbol* line = dynamic_cast<const ExtrudedLineSymbol*>(geometryStyle->getLine());
                     if (!line)
                         continue;
 
-                    color = style->getLine()->stroke()->color();
+                    color = geometryStyle->getLine()->stroke()->color();
                     height = line->extrude()->height();
                     offset = line->extrude()->offset();
                 }
                 break;
 
             case Geometry::TYPE_POLYGON:
-                if (style->getPolygon())
+                if (geometryStyle->getPolygon())
                 {
-                    const ExtrudedPolygonSymbol* polygon = dynamic_cast<const ExtrudedPolygonSymbol*>(style->getPolygon());
+                    const ExtrudedPolygonSymbol* polygon = dynamic_cast<const ExtrudedPolygonSymbol*>(geometryStyle->getPolygon());
                     if (!polygon)
                         continue;
                 
-                    color = style->getPolygon()->fill()->color();
+                    color = geometryStyle->getPolygon()->fill()->color();
                     height = polygon->extrude()->height();
                     offset = polygon->extrude()->offset();
                 }

@@ -22,7 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbolizer>
-#include <osgEarthFeatures/Geometry>
+#include <osgEarthSymbology/Geometry>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Symbology
@@ -32,12 +32,12 @@ namespace osgEarth { namespace Symbology
     {
     public:
         bool update(
-            FeatureDataSet* dataset,
+            SymbolizerInput* dataset,
             const Style* style,
             osg::Group* attachPoint,
             SymbolizerContext* context );
 
-        osg::Geode* extrude(osgEarth::Features::Geometry* geom, 
+        osg::Geode* extrude(Geometry* geom, 
                             double offset, 
                             double height, 
                             SymbolizerContext* context );

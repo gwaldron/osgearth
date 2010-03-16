@@ -1,0 +1,156 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_SYMBOL_H 1
+
+#include <osgEarth/Common>
+#include <osgEarthSymbology/Common>
+#include <osg/Referenced>
+#include <vector>
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * Abstract base class for all Symbol types.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
+    {
+    public:
+        Symbol();
+    };
+
+
+    class OSGEARTHSYMBOLOGY_EXPORT Stroke
+    {
+    public:
+        enum LineCapStyle {
+            LINECAP_DEFAULT,
+            LINECAP_BUTT,
+            LINECAP_SQUARE,
+            LINECAP_ROUND
+        };
+
+        enum LineJoinStyle {
+            LINEJOIN_DEFAULT
+        };
+
+    public:
+        Stroke();
+
+        osg::Vec4f& color() { return _color; }
+        const osg::Vec4f& color() const { return _color; }
+
+        optional<LineCapStyle>& lineCap() { return _lineCap; }
+        const optional<LineCapStyle>& lineCap() const { return _lineCap; }
+
+        optional<LineJoinStyle>& lineJoin() { return _lineJoin; }
+        const optional<LineJoinStyle>& lineJoin() const { return _lineJoin; }
+
+        optional<float>& width() { return _width; }        
+        const optional<float>& width() const { return _width; }
+
+    protected:
+        osg::Vec4f              _color;
+        optional<LineCapStyle>  _lineCap;
+        optional<LineJoinStyle> _lineJoin;
+        optional<float>         _width;
+    };
+
+    class OSGEARTHSYMBOLOGY_EXPORT Fill
+    {
+    public:
+        Fill();
+
+        osg::Vec4f& color() { return _color; }
+        const osg::Vec4f& color() const { return _color; }
+
+    protected:
+        osg::Vec4f _color;
+    };
+
+    class OSGEARTHSYMBOLOGY_EXPORT LineSymbol : public Symbol
+    {
+    public:
+        LineSymbol();
+
+        optional<Stroke>& stroke() { return _stroke; }
+        const optional<Stroke>& stroke() const { return _stroke; }
+
+    protected:
+        optional<Stroke> _stroke;
+    };
+
+    class OSGEARTHSYMBOLOGY_EXPORT PointSymbol : public Symbol
+    {
+    public:
+        PointSymbol();
+
+        optional<Fill>& fill() { return _fill; }
+        const optional<Fill>& fill() const { return _fill; }
+
+        optional<float>& size() { return _size; }
+        const optional<float>& size() const { return _size; }
+
+    protected:
+        optional<Fill> _fill;
+        optional<float>  _size;
+    };
+
+    class OSGEARTHSYMBOLOGY_EXPORT PolygonSymbol : public Symbol
+    {
+    public:
+        PolygonSymbol();
+
+        optional<Fill>& fill() { return _fill; }
+        const optional<Fill>& fill() const { return _fill; }
+
+    protected:
+        optional<Fill> _fill;
+    };
+
+
+    class OSGEARTHSYMBOLOGY_EXPORT TextSymbol : public Symbol
+    {
+    public:
+        TextSymbol();
+
+        optional<Fill>& fill() { return _fill; }
+        const optional<Fill>& fill() const { return _fill; }
+
+        optional<Stroke>& halo() { return _halo; }
+        const optional<Stroke>& halo() const { return _halo; }
+
+        optional<std::string>& font() { return _font; }
+        const optional<std::string> font() const { return _font; }
+
+        optional<float>& size() { return _size; }
+        const optional<float>& size() const { return _size; }
+
+    protected:
+        optional<Fill>        _fill;
+        optional<Stroke>      _halo;
+        optional<std::string> _font;
+        optional<float>       _size;
+    };
+
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

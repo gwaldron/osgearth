@@ -25,3 +25,4 @@ Symbolizer::Symbolizer()
     //nop
 }
 
+SymbolizerInput::SymbolizerInput() : _revision(0) {}

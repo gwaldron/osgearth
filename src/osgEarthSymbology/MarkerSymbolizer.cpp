@@ -16,9 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/MarkerSymbol>
-#include <osgEarthFeatures/Feature>
+#include <osgEarthSymbology/GeometryStyle>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
 #include <osg/Geometry>
@@ -29,8 +30,6 @@
 
 
 using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
-
 
 static osg::Node* getNode(const std::string& str)
 {
@@ -76,28 +75,30 @@ bool MarkerSymbolizer::pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* 
 }
 
 bool 
-MarkerSymbolizer::update(FeatureDataSet* dataSet,
-                         const osgEarth::Symbology::Style* style,
+MarkerSymbolizer::update(SymbolizerInput* dataSet,
+                         const Style* style,
                          osg::Group* attachPoint,
                          SymbolizerContext* context )
 {
     if (!dataSet || !attachPoint || !style)
         return false;
 
-    osg::ref_ptr<osgEarth::Features::FeatureCursor> cursor = dataSet->createCursor();
-    if (!cursor)
+    GeometryInput* geometryInput = dynamic_cast<GeometryInput*>(dataSet);
+    if (!geometryInput)
+        return false;
+
+    const GeometryStyle* geometryStyle = dynamic_cast<const GeometryStyle*>(style);
+    if (!geometryStyle)
         return false;
 
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
 
-    osgEarth::Features::Feature* feature = 0;
-    while( cursor->hasMore() )
+    const GeometryList& geometryList = geometryInput->getGeometryList();
+    for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
     {
-        feature = cursor->nextFeature();
-        if (!feature || !feature->getGeometry())
+        Geometry* geometry = *it;
+        if (!geometry)
             continue;
-
-        Geometry* geometry = feature->getGeometry();
 
         GeometryIterator geomIterator( geometry );
         geomIterator.traverseMultiGeometry() = true;
@@ -112,9 +113,9 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
             switch( part->getType())
             {
             case Geometry::TYPE_POINTSET:
-                if (style->getPoint())
+                if (geometryStyle->getPoint())
                 {
-                    const MarkerSymbol* point = dynamic_cast<const MarkerSymbol*>(style->getPoint());
+                    const MarkerSymbol* point = dynamic_cast<const MarkerSymbol*>(geometryStyle->getPoint());
                     if (point && part->size() && !point->marker().value().empty())
                     {
                         osg::Node* node = getNode(point->marker().value());
@@ -138,9 +139,9 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
 
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                if (style->getLine())
+                if (geometryStyle->getLine())
                 {
-                    const MarkerLineSymbol* line = dynamic_cast<const MarkerLineSymbol*>(style->getLine());
+                    const MarkerLineSymbol* line = dynamic_cast<const MarkerLineSymbol*>(geometryStyle->getLine());
                     if (line && part->size() && !line->marker().value().empty())
                     {
                         osg::Node* node = getNode(line->marker().value());
@@ -210,9 +211,9 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
                 break;
 
             case Geometry::TYPE_POLYGON:
-                if (style->getPolygon())
+                if (geometryStyle->getPolygon())
                 {
-                    const MarkerPolygonSymbol* poly = dynamic_cast<const MarkerPolygonSymbol*>(style->getPolygon());
+                    const MarkerPolygonSymbol* poly = dynamic_cast<const MarkerPolygonSymbol*>(geometryStyle->getPolygon());
                     if (poly && part->size() && !poly->marker().value().empty())
                     {
                         osg::Node* node = getNode(poly->marker().value());

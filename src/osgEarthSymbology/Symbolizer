@@ -22,7 +22,6 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/FeatureDataSet>
 #include <osg/Group>
 
 namespace osgEarth { namespace Symbology
@@ -34,7 +33,21 @@ namespace osgEarth { namespace Symbology
      */
     class OSGEARTHSYMBOLOGY_EXPORT SymbolizerContext : public osg::Referenced
     {
+    public:
         //todo
+    };
+
+
+    class OSGEARTHSYMBOLOGY_EXPORT SymbolizerInput : public virtual osg::Referenced
+    {
+    public:
+        SymbolizerInput();
+        int getRevision() { return _revision; }
+        void setRevision(int rev) { _revision = rev; }
+        void dirty() { _revision++; }
+
+    protected:
+        int _revision;
     };
 
     /**
@@ -49,7 +62,7 @@ namespace osgEarth { namespace Symbology
          * The Symbolizer can attach the subgraph to the attachPoint.
          */
         virtual bool update(
-            FeatureDataSet* dataset,
+            SymbolizerInput* dataInput,
             const Style* style,
             osg::Group* attachPoint,
             SymbolizerContext* context ) = 0;

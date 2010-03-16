@@ -10,35 +10,38 @@ SET(LIB_NAME osgEarthSymbology)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
-    GeometrySymbolizer
     Common
-    FeatureDataSet
-    FeatureDataSetAdapter
+    ExtrudedSymbol
+    Geometry
+    GeometryExtrudeSymbolizer
+    GeometryInput
+    GeometrySymbolizer
+    GeometryStyle
+    GeometrySymbol
     MarkerSymbolizer
     MarkerSymbol
     Registry
     Style
     StyleSheet
-    Symbol
     SymbolicNode
     Symbolizer
-    SymbolDisplayFunctor
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
     ExtrudedSymbol.cpp
-    GeometrySymbolizer.cpp
+    Geometry.cpp
     GeometryExtrudeSymbolizer.cpp
-    FeatureDataSet.cpp
-    FeatureDataSetAdapter.cpp
+    GeometryInput.cpp
+    GeometrySymbolizer.cpp
+    GeometryStyle.cpp
+    GeometrySymbol.cpp
     MarkerSymbolizer.cpp
     MarkerSymbol.cpp
     Registry.cpp
     Style.cpp
     StyleSheet.cpp
-    Symbol.cpp
     SymbolicNode.cpp
     Symbolizer.cpp
 )

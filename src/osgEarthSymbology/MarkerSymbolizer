@@ -31,7 +31,7 @@ namespace osgEarth { namespace Symbology
     public:
 
         virtual bool update(
-            FeatureDataSet* dataset,
+            SymbolizerInput* dataset,
             const Style* style,
             osg::Group* attachPoint,
             SymbolizerContext* context );

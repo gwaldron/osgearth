@@ -16,32 +16,54 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <osgEarthSymbology/Symbol>
 
-#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOLIZER_H
-#define OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOLIZER_H 1
+using namespace osgEarth::Symbology;
 
-#include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Symbolizer>
-
-namespace osgEarth { namespace Symbology
+Symbol::Symbol()
 {
+    //NOP
+}
 
-    class OSGEARTHSYMBOLOGY_EXPORT GeometrySymbolizer : public Symbolizer
-    {
-    public:
-        /**
-         * Creates or updates a subgraph representing the symbolized data.
-         * The Symbolizer can attach the subgraph to the attachPoint.
-         */
-        virtual bool update(
-            SymbolizerInput* dataset,
-            const Style* style,
-            osg::Group* attachPoint,
-            SymbolizerContext* context );
+Stroke::Stroke() :
+_color( 1, 1, 1, 1 ),
+_width( 1.0f ),
+_lineJoin( LINEJOIN_DEFAULT ),
+_lineCap( LINECAP_DEFAULT )
+{
+    //nop
+}
 
-        GeometrySymbolizer();
-    };
+Fill::Fill() :
+_color( 1, 1, 1, 1 )
+{
+    //nop
+}
 
-} } // namespace osgEarth::Symbology
+LineSymbol::LineSymbol() :
+_stroke( Stroke() )
+{
+    //nop
+}
 
-#endif
+
+PolygonSymbol::PolygonSymbol() :
+_fill( Fill() )
+{
+    //nop
+}
+
+PointSymbol::PointSymbol() :
+    _fill( Fill() ), _size(1.0)
+{
+    //nop
+}
+
+TextSymbol::TextSymbol() :
+_fill( Fill() ),
+_halo( Stroke() ),
+_size( 16.0f ),
+_font( "fonts/arial.ttf" )
+{
+    //nop
+}

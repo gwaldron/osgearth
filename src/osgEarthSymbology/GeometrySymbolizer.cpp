@@ -16,9 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <osgEarthSymbology/GeometryInput>
+#include <osgEarthSymbology/GeometryStyle>
 #include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/Symbol>
-#include <osgEarthFeatures/Feature>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osgUtil/Tessellator>
 #include <osg/Geometry>
 #include <osg/Point>
@@ -27,7 +28,6 @@
 #include <osg/Geode>
 
 using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
 
 GeometrySymbolizer::GeometrySymbolizer()
 {
@@ -35,30 +35,32 @@ GeometrySymbolizer::GeometrySymbolizer()
 
 
 bool 
-GeometrySymbolizer::update(FeatureDataSet* dataSet,
-                           const osgEarth::Symbology::Style* style,
+GeometrySymbolizer::update(SymbolizerInput* dataSet,
+                           const Style* style,
                            osg::Group* attachPoint,
                            SymbolizerContext* context )
 {
     if (!dataSet || !attachPoint || !style)
         return false;
 
-    osg::ref_ptr<osgEarth::Features::FeatureCursor> cursor = dataSet->createCursor();
-    if (!cursor)
+    GeometryInput* geometryInput = dynamic_cast<GeometryInput*>(dataSet);
+    if (!geometryInput)
         return false;
 
+    const GeometryStyle* geometryStyle = dynamic_cast<const GeometryStyle*>(style);
+    if (!geometryStyle)
+        return false;
+    
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
     newSymbolized->addChild(geode.get());
 
-    osgEarth::Features::Feature* feature = 0;
-    while( cursor->hasMore() )
+    const GeometryList& geometryList = geometryInput->getGeometryList();
+    for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
     {
-        feature = cursor->nextFeature();
-        if (!feature || !feature->getGeometry())
+        Geometry* geometry = *it;
+        if (!geometry)
             continue;
-
-        Geometry* geometry = feature->getGeometry();
 
         GeometryIterator geomIterator( geometry );
         geomIterator.traverseMultiGeometry() = true;
@@ -79,40 +81,40 @@ GeometrySymbolizer::update(FeatureDataSet* dataSet,
             {
             case Geometry::TYPE_POINTSET:
                 primMode = osg::PrimitiveSet::POINTS;
-                if (style->getPoint()) 
+                if (geometryStyle->getPoint()) 
                 {
-                    color = style->getPoint()->fill()->color();
+                    color = geometryStyle->getPoint()->fill()->color();
 
-                    float size = style->getPoint()->size().value();
+                    float size = geometryStyle->getPoint()->size().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
                 }
                 break;
 
             case Geometry::TYPE_LINESTRING:
                 primMode = osg::PrimitiveSet::LINE_STRIP;
-                if (style->getLine()) 
+                if (geometryStyle->getLine()) 
                 {
-                    color = style->getLine()->stroke()->color();
-                    float size = style->getLine()->stroke()->width().value();
+                    color = geometryStyle->getLine()->stroke()->color();
+                    float size = geometryStyle->getLine()->stroke()->width().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
                 }
                 break;
 
             case Geometry::TYPE_RING:
                 primMode = osg::PrimitiveSet::LINE_LOOP;
-                if (style->getLine())
+                if (geometryStyle->getLine())
                 {
-                    color = style->getLine()->stroke()->color();
-                    float size = style->getLine()->stroke()->width().value();
+                    color = geometryStyle->getLine()->stroke()->color();
+                    float size = geometryStyle->getLine()->stroke()->width().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
                 }
                 break;
 
             case Geometry::TYPE_POLYGON:
                 primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-                if (style->getPolygon())
+                if (geometryStyle->getPolygon())
                 {
-                    color = style->getPolygon()->fill()->color();
+                    color = geometryStyle->getPolygon()->fill()->color();
                 }
                 break;
             }

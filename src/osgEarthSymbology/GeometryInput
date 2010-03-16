@@ -1,4 +1,4 @@
-/* -*-c++-*- */
+/* --*-c++-*-- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2009 Pelican Ventures, Inc.
  * http://osgearth.org
@@ -17,31 +17,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOLIZER_H
-#define OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOLIZER_H 1
+#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_INPUT_H
+#define OSGEARTHSYMBOLOGY_GEOMETRY_INPUT_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Symbolizer>
+
 
 namespace osgEarth { namespace Symbology
 {
 
-    class OSGEARTHSYMBOLOGY_EXPORT GeometrySymbolizer : public Symbolizer
+    class OSGEARTHSYMBOLOGY_EXPORT GeometryInput :  public SymbolizerInput
     {
     public:
-        /**
-         * Creates or updates a subgraph representing the symbolized data.
-         * The Symbolizer can attach the subgraph to the attachPoint.
-         */
-        virtual bool update(
-            SymbolizerInput* dataset,
-            const Style* style,
-            osg::Group* attachPoint,
-            SymbolizerContext* context );
 
-        GeometrySymbolizer();
+        GeometryInput();
+
+        const GeometryList& getGeometryList() const { return _geometryList; }
+        GeometryList& getGeometryList() { return _geometryList; }
+
+    protected:
+        GeometryList _geometryList;
     };
 
-} } // namespace osgEarth::Symbology
-
+}}
 #endif

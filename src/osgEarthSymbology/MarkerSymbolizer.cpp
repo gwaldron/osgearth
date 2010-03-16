@@ -47,6 +47,11 @@ static osg::Node* getNode(const std::string& str)
 #endif
 }
 
+static double getRandomValueInRange(double value)
+{
+    return (-value/2) + ((rand() * value)/(RAND_MAX-1));
+}
+
 MarkerSymbolizer::MarkerSymbolizer()
 {
 }
@@ -227,27 +232,33 @@ MarkerSymbolizer::update(FeatureDataSet* dataSet,
                         {
                             bb.expandBy(*it);
                         }
+
                         // use a grid on x and y
                         osg::Vec3d startOnGrid = bb.corner(0);
                         float sizex = bb.xMax() - bb.xMin();
                         float sizey = bb.yMax() - bb.yMin();
                         int numX = static_cast<int>(floorf(sizex / interval));
                         int numY = static_cast<int>(floorf(sizey / interval));
-                        for (int x = 0; x < numX; ++x)
+                        for (int y = 0; y < numY; ++y)
                         {
-                            for (int y = 0; y < numY; ++y)
+                            for (int x = 0; x < numX; ++x)
                             {
 
 
                                 // get two random number in interval
                                 osg::Vec3d randOffset(0, 0, 0);
-                                osg::Vec3d point = startOnGrid + randOffset + osg::Vec3d(y*interval, x*interval, 0);
+                                randOffset = osg::Vec3d(getRandomValueInRange(1.0), getRandomValueInRange(1.0), 0);
+                                if (randOffset.length2() > 0.0)
+                                    randOffset.normalize();
+                                randOffset *= ( getRandomValueInRange( interval) ) * randomRatio;
+
+                                osg::Vec3d point = startOnGrid + randOffset + osg::Vec3d(x*interval, y*interval, 0);
 
                                 if (pointInPolygon(point, part))
                                 {
 
                                     osg::MatrixTransform* tr = new osg::MatrixTransform;
-                                    tr->setMatrix(osg::Matrix::translate(startOnGrid + osg::Vec3d(y*interval, x*interval, 0)));
+                                    tr->setMatrix(osg::Matrix::translate(point));
                                     tr->addChild(node);
                                     group->addChild(tr);
                                 }

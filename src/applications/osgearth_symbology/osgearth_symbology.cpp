@@ -355,7 +355,7 @@ public:
                         p->randomRatio() = 0.1;
                     } else {
                         p->interval() = 5;
-                        p->randomRatio() = 3.0;
+                        p->randomRatio() = 0.9;
                     }
                 }
                 style->setRevision(style->getRevision()+1);
@@ -440,8 +440,8 @@ osg::Group* createSymbologyScene(const std::string url)
 
         osg::ref_ptr<MarkerPolygonSymbol> polySymbol = new MarkerPolygonSymbol;
         polySymbol->marker() = "../data/tree.ive";
-        polySymbol->interval() = 5;
-        polySymbol->randomRatio() = 0.5;
+        polySymbol->interval() = 20;
+        polySymbol->randomRatio() = 1.0;
         style->setPolygon(polySymbol.get());
 
         styles.push_back(style.get());

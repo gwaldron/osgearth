@@ -21,7 +21,7 @@
 #define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
 
 #include <osgEarth/Common>
-#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/GeometrySymbol>
 
 namespace osgEarth { namespace Symbology
 {

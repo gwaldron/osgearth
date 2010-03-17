@@ -19,7 +19,6 @@
 
 #include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/GeometryExtrudeSymbolizer>
-#include <osgEarthSymbology/GeometryStyle>
 #include <osgEarthSymbology/ExtrudedSymbol>
 #include <osgUtil/Tessellator>
 #include <osg/Geometry>
@@ -57,10 +56,6 @@ GeometryExtrudeSymbolizer::update(SymbolizerInput* dataSet,
     if (!geometryInput)
         return false;
 
-    const GeometryStyle* geometryStyle = dynamic_cast<const GeometryStyle*>(style);
-    if (!geometryStyle)
-        return false;
-
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
 
     const GeometryList& geometryList = geometryInput->getGeometryList();
@@ -87,30 +82,28 @@ GeometryExtrudeSymbolizer::update(SymbolizerInput* dataSet,
             {
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                if (geometryStyle->getLine())
+            {
+                const ExtrudedLineSymbol* line = style->getSymbol<ExtrudedLineSymbol>();
+                if (line) 
                 {
-                    const ExtrudedLineSymbol* line = dynamic_cast<const ExtrudedLineSymbol*>(geometryStyle->getLine());
-                    if (!line)
-                        continue;
-
-                    color = geometryStyle->getLine()->stroke()->color();
+                    color = line->stroke()->color();
                     height = line->extrude()->height();
                     offset = line->extrude()->offset();
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_POLYGON:
-                if (geometryStyle->getPolygon())
+            {
+                const ExtrudedPolygonSymbol* polygon = style->getSymbol<ExtrudedPolygonSymbol>();
+                if (polygon)
                 {
-                    const ExtrudedPolygonSymbol* polygon = dynamic_cast<const ExtrudedPolygonSymbol*>(geometryStyle->getPolygon());
-                    if (!polygon)
-                        continue;
-                
-                    color = geometryStyle->getPolygon()->fill()->color();
+                    color  = polygon->fill()->color();
                     height = polygon->extrude()->height();
                     offset = polygon->extrude()->offset();
                 }
-                break;
+            }
+            break;
             default:
                 continue;
                 break;

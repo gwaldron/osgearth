@@ -16,15 +16,14 @@ SET(LIB_PUBLIC_HEADERS
     GeometryExtrudeSymbolizer
     GeometryInput
     GeometrySymbolizer
-    GeometryStyle
     GeometrySymbol
     MarkerSymbolizer
     MarkerSymbol
-    ModelStyle
     ModelSymbolizer
     Registry
     Style
     StyleSheet
+    Symbol
     SymbolicNode
     Symbolizer
 )
@@ -37,15 +36,14 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryExtrudeSymbolizer.cpp
     GeometryInput.cpp
     GeometrySymbolizer.cpp
-    GeometryStyle.cpp
     GeometrySymbol.cpp
     MarkerSymbolizer.cpp
     MarkerSymbol.cpp
-    ModelStyle.cpp
     ModelSymbolizer.cpp
     Registry.cpp
     Style.cpp
     StyleSheet.cpp
+    Symbol.cpp
     SymbolicNode.cpp
     Symbolizer.cpp
 )

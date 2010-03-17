@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/ModelStyle>
 #include <osgEarthSymbology/ModelSymbolizer>
+#include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarth/HTTPClient>
 #include <osg/Geode>
 #include <osg/Version>
@@ -62,15 +62,16 @@ ModelSymbolizer::update(SymbolizerInput* dataSet,
     if (!attachPoint || !style)
         return false;
 
-    const ModelStyle* modelStyle = dynamic_cast<const ModelStyle*>(style);
-    if (!modelStyle)
+    const MarkerSymbol* symbol = style->getSymbol<MarkerSymbol>();
+    if (!symbol)
         return false;
-    
-    if (modelStyle->getModel().empty())
+
+    std::string model = symbol->marker().value();
+    if (model.empty())
         return false;
 
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
-    osg::Node* node = getNode(modelStyle->getModel());
+    osg::Node* node = getNode(model);
     if (!node)
         return false;
 

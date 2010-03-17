@@ -42,9 +42,10 @@ using namespace OpenThreads;
 
 //#define USE_SYMBOLOGY
 #ifdef USE_SYMBOLOGY
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/GeometryInput>
-#include <osgEarthSymbology/GeometryStyle>
 #include <osgEarthSymbology/SymbolicNode>
 
 class FeatureGeomModelSource : public FeatureModelSource
@@ -80,12 +81,12 @@ public:
         // Make the symbolic node:
         osgEarth::Symbology::SymbolicNode* symNode = new osgEarth::Symbology::SymbolicNode;
 
-        osgEarth::Symbology::GeometryStyle* geomStyle = new osgEarth::Symbology::GeometryStyle;
-        geomStyle->setPoint(new osgEarth::Symbology::PointSymbol);
-        geomStyle->setLine(new osgEarth::Symbology::LineSymbol);
-        geomStyle->setPolygon(new osgEarth::Symbology::PolygonSymbol);
+        osgEarth::Symbology::Style* sstyle = new osgEarth::Symbology::Style;
+        sstyle->addSymbol(new osgEarth::Symbology::PointSymbol);
+        sstyle->addSymbol(new osgEarth::Symbology::LineSymbol);
+        sstyle->addSymbol(new osgEarth::Symbology::PolygonSymbol);
 
-        symNode->setStyle(geomStyle);
+        symNode->setStyle(sstyle);
         symNode->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
 
         osgEarth::Symbology::GeometryInput* geoms = new osgEarth::Symbology::GeometryInput;

@@ -22,7 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osg/Referenced>
 #include <vector>
 

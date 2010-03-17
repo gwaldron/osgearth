@@ -31,7 +31,8 @@ using namespace osgEarth::Drivers;
 //#define USE_SYMBOLOGY
 #ifdef USE_SYMBOLOGY
 #include <osgEarthSymbology/ModelSymbolizer>
-#include <osgEarthSymbology/ModelStyle>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthSymbology/SymbolicNode>
 
 class SimpleModelSource : public ModelSource
@@ -55,8 +56,10 @@ public:
     // override
     osg::Node* createNode( ProgressCallback* progress )
     {
-        osgEarth::Symbology::ModelStyle* style = new osgEarth::Symbology::ModelStyle;
-        style->setModel(_url);
+        osgEarth::Symbology::Style* style = new osgEarth::Symbology::Style;
+        osgEarth::Symbology::MarkerSymbol* symbol = new osgEarth::Symbology::MarkerSymbol;
+        symbol->marker() = _url;
+        style->addSymbol(symbol);
         osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
         symb->setDataSet(new osgEarth::Symbology::SymbolizerInput);
         symb->setStyle(style);

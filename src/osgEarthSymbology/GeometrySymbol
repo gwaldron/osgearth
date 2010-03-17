@@ -17,26 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_SYMBOL_H 1
+#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H 1
 
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Symbol>
 #include <osg/Referenced>
 #include <vector>
 
 namespace osgEarth { namespace Symbology
 {
-    /**
-     * Abstract base class for all Symbol types.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
-    {
-    public:
-        Symbol();
-    };
-
-
     class OSGEARTHSYMBOLOGY_EXPORT Stroke
     {
     public:

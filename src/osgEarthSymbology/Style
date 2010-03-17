@@ -32,6 +32,8 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Style : public osg::Object
     {
     public:
+        typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
+
         Style();
         Style(const Style&, const osg::CopyOp&);
         META_Object(osgEarthSymbology, Style);
@@ -40,8 +42,32 @@ namespace osgEarth { namespace Symbology
         void setRevision(int rev) { _revision = rev; }
         void dirty() { _revision++; }
 
+        void addSymbol(Symbol* symbol);
+        template<class T> T* getSymbol()
+        {
+            for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
+            {
+                Symbol* symbol = *it;
+                T* s = dynamic_cast<T*>(symbol);
+                if (s)
+                    return s;
+            }
+        }
+
+        template<class T> const T* getSymbol() const
+        {
+            for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
+            {
+                Symbol* symbol = *it;
+                const T* s = dynamic_cast<const T*>(symbol);
+                if (s)
+                    return s;
+            }
+        }
+
     protected:
         int                         _revision;
+        SymbolList                  _symbols;
     };
 
 } } // namespace osgEarth::Symbology

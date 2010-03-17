@@ -28,12 +28,11 @@
 #include <osgEarthSymbology/GeometryExtrudeSymbolizer>
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/GeometryInput>
-#include <osgEarthSymbology/GeometryStyle>
+#include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/SymbolicNode>
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/ExtrudedSymbol>
-#include <osgEarthSymbology/ModelStyle>
 #include <osgEarthSymbology/ModelSymbolizer>
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
@@ -145,7 +144,7 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
         if (!geometryInput)
             return false;
 
-        const GeometryStyle* geometryStyle = dynamic_cast<const GeometryStyle*>(style);
+        const Style* geometryStyle = dynamic_cast<const Style*>(style);
         if (!geometryStyle)
             return false;
 
@@ -168,53 +167,61 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
             switch( geometry->getType())
             {
             case Geometry::TYPE_POINTSET:
+            {
                 primMode = osg::PrimitiveSet::POINTS;
-                if (geometryStyle->getPoint()) 
+                const PointSymbol* point = style->getSymbol<PointSymbol>();
+                if (point)
                 {
-                    color = geometryStyle->getPoint()->fill()->color();
+                    color = point->fill()->color();
 
-                    float size = geometryStyle->getPoint()->size().value();
+                    float size = point->size().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_LINESTRING:
+            {
                 primMode = osg::PrimitiveSet::LINE_STRIP;
-                if (geometryStyle->getLine()) 
+                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                if (line) 
                 {
-                    color = geometryStyle->getLine()->stroke()->color();
-                    float size = geometryStyle->getLine()->stroke()->width().value();
+                    color = line->stroke()->color();
+                    float size = line->stroke()->width().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_RING:
+            {
                 primMode = osg::PrimitiveSet::LINE_LOOP;
-                if (geometryStyle->getLine())
+                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                if (line)
                 {
-                    color = geometryStyle->getLine()->stroke()->color();
-                    float size = geometryStyle->getLine()->stroke()->width().value();
+                    color = line->stroke()->color();
+                    float size = line->stroke()->width().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_POLYGON:
+            {
                 // use polygon as point for this specific symbolizer
                 // it would be simpler to use the symbol style->getPoint but here
                 // we want to dmonstrate how to customize Symbol and Symbolizer
                 primMode = osg::PrimitiveSet::POINTS;
-                if (geometryStyle->getPolygon())
+                const PolygonPointSizeSymbol* poly = style->getSymbol<PolygonPointSizeSymbol>();
+                if (poly)
                 {
-                    const PolygonPointSizeSymbol* poly = dynamic_cast<const PolygonPointSizeSymbol*>(geometryStyle->getPolygon());
-                    if (poly) 
-                    {
-                        color = geometryStyle->getPolygon()->fill()->color();
+                    color = poly->fill()->color();
 
-                        float size = poly->size();
-                        osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
-                    }
+                    float size = poly->size();
+                    osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
                 }
-                break;
+            }
+            break;
             }
 
             osg::Material* material = new osg::Material;
@@ -258,8 +265,8 @@ public:
         case(osgGA::GUIEventAdapter::KEYUP):
         {
             if (ea.getKey() == 'q') {
-                osgEarth::Symbology::GeometryStyle* style = dynamic_cast<GeometryStyle*>(_styles[0].get());
-                PolygonSymbol* p = dynamic_cast<PolygonSymbol*>( style->getPolygon());
+                osgEarth::Symbology::Style* style = _styles[0].get();
+                PolygonSymbol* p = style->getSymbol<PolygonSymbol>();
                 if (p)
                 {
                     osg::Vec4 color = p->fill()->color();
@@ -270,8 +277,8 @@ public:
                 }
                 return true;
             } else if (ea.getKey() == 'a') {
-                GeometryStyle* style = dynamic_cast<GeometryStyle*>(_styles[1].get());
-                PolygonPointSizeSymbol* p = dynamic_cast<PolygonPointSizeSymbol*>( style->getPolygon());
+                Style* style = _styles[1].get();
+                PolygonPointSizeSymbol* p = style->getSymbol<PolygonPointSizeSymbol>();
                 if (p)
                 {
                     osg::Vec4 color = p->fill()->color();
@@ -283,8 +290,8 @@ public:
                 }
                 return true;
             } else if (ea.getKey() == 'z') {
-                GeometryStyle* style = dynamic_cast<GeometryStyle*>(_styles[2].get());
-                ExtrudedLineSymbol* l = dynamic_cast<ExtrudedLineSymbol*>( style->getLine());
+                Style* style = _styles[2].get();
+                ExtrudedLineSymbol* l = style->getSymbol<ExtrudedLineSymbol>();
                 if (l)
                 {
                     osg::Vec4 color = l->stroke()->color();
@@ -293,7 +300,7 @@ public:
                     l->stroke()->color() = color;
                     l->extrude()->height() = l->extrude()->height() + 200;
                 }
-                ExtrudedPolygonSymbol* p = dynamic_cast<ExtrudedPolygonSymbol*>( style->getPolygon());
+                ExtrudedPolygonSymbol* p = style->getSymbol<ExtrudedPolygonSymbol>();
                 if (p)
                 {
                     osg::Vec4 color = p->fill()->color();
@@ -305,8 +312,8 @@ public:
                 style->setRevision(style->getRevision()+1);
                 return true;
             } else if (ea.getKey() == 'x') {
-                GeometryStyle* style = dynamic_cast<GeometryStyle*>(_styles[3].get());
-                MarkerLineSymbol* l = dynamic_cast<MarkerLineSymbol*>( style->getLine());
+                Style* style = _styles[3].get();
+                MarkerLineSymbol* l = style->getSymbol<MarkerLineSymbol>();
                 if (l)
                 {
                     if (l->interval().value() < 10)
@@ -315,7 +322,7 @@ public:
                         l->interval() = 5;
                 }
 
-                MarkerPolygonSymbol* p = dynamic_cast<MarkerPolygonSymbol*>( style->getPolygon());
+                MarkerPolygonSymbol* p = style->getSymbol<MarkerPolygonSymbol>();
                 if (p)
                 {
                     if (p->interval().value() < 10) {
@@ -349,62 +356,62 @@ osg::Group* createSymbologyScene(const std::string url)
     StyleList styles;
 
     {
-        osg::ref_ptr<GeometryStyle> style = new GeometryStyle;
+        osg::ref_ptr<Style> style = new Style;
         style->setName("PolygonSymbol-color");
         osg::ref_ptr<PolygonSymbol> polySymbol = new PolygonSymbol;
         polySymbol->fill()->color() = osg::Vec4(0,1,1,1);
-        style->setPolygon(polySymbol.get());
+        style->addSymbol(polySymbol.get());
         styles.push_back(style.get());
     }
 
     {
-        osg::ref_ptr<GeometryStyle> style = new GeometryStyle;
+        osg::ref_ptr<Style> style = new Style;
         style->setName("Custom-PolygonPointSizeSymbol-size&color");
         osg::ref_ptr<PolygonPointSizeSymbol> polySymbol = new PolygonPointSizeSymbol;
         polySymbol->fill()->color() = osg::Vec4(1,0,0,1);
         polySymbol->size() = 2.0;
-        style->setPolygon(polySymbol.get());
+        style->addSymbol(polySymbol.get());
         styles.push_back(style.get());
     }
 
 
     // style for extruded
     {
-        osg::ref_ptr<GeometryStyle> style = new GeometryStyle;
+        osg::ref_ptr<Style> style = new Style;
         style->setName("Extrude-Polygon&Line-height&color");
         osg::ref_ptr<ExtrudedPolygonSymbol> polySymbol = new ExtrudedPolygonSymbol;
         polySymbol->fill()->color() = osg::Vec4(1,0,0,1);
         polySymbol->extrude()->height() = 100;
         polySymbol->extrude()->offset() = 10;
-        style->setPolygon(polySymbol.get());
+        style->addSymbol(polySymbol.get());
 
         osg::ref_ptr<ExtrudedLineSymbol> lineSymbol = new ExtrudedLineSymbol;
         lineSymbol->stroke()->color() = osg::Vec4(0,0,1,1);
         lineSymbol->extrude()->height() = 150;
         lineSymbol->extrude()->offset() = 10;
-        style->setLine(lineSymbol.get());
+        style->addSymbol(lineSymbol.get());
         styles.push_back(style.get());
     }
 
 
     // style for marker
     {
-        osg::ref_ptr<GeometryStyle> style = new GeometryStyle;
+        osg::ref_ptr<Style> style = new Style;
         style->setName("Marker");
         osg::ref_ptr<MarkerSymbol> pointSymbol = new MarkerSymbol;
         pointSymbol->marker() = "../data/tree.ive";
-        style->setPoint(pointSymbol.get());
+        style->addSymbol(pointSymbol.get());
 
         osg::ref_ptr<MarkerLineSymbol> lineSymbol = new MarkerLineSymbol;
         lineSymbol->marker() = "../data/tree.ive";
         lineSymbol->interval() = 5;
-        style->setLine(lineSymbol.get());
+        style->addSymbol(lineSymbol.get());
 
         osg::ref_ptr<MarkerPolygonSymbol> polySymbol = new MarkerPolygonSymbol;
         polySymbol->marker() = "../data/tree.ive";
         polySymbol->interval() = 20;
         polySymbol->randomRatio() = 1.0;
-        style->setPolygon(polySymbol.get());
+        style->addSymbol(polySymbol.get());
 
         styles.push_back(style.get());
     }
@@ -471,9 +478,11 @@ osg::Group* createSymbologyScene(const std::string url)
         osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
         node->setSymbolizer(symbolizer.get());
         node->setDataSet(new SymbolizerInput);
-        ModelStyle* style = new ModelStyle;
+        Style* style = new Style;
         std::string real = osgDB::getRealPath("../data/tree.ive");
-        style->setModel(real);
+        MarkerSymbol* marker = new MarkerSymbol;
+        marker->marker() = real;
+        style->addSymbol(marker);
         node->setStyle(style);
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->addChild(node.get());

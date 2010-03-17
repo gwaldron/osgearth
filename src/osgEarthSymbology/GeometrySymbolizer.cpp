@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/GeometryInput>
-#include <osgEarthSymbology/GeometryStyle>
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgUtil/Tessellator>
@@ -47,10 +46,6 @@ GeometrySymbolizer::update(SymbolizerInput* dataSet,
     if (!geometryInput)
         return false;
 
-    const GeometryStyle* geometryStyle = dynamic_cast<const GeometryStyle*>(style);
-    if (!geometryStyle)
-        return false;
-    
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
     newSymbolized->addChild(geode.get());
@@ -80,43 +75,55 @@ GeometrySymbolizer::update(SymbolizerInput* dataSet,
             switch( part->getType())
             {
             case Geometry::TYPE_POINTSET:
+            {
                 primMode = osg::PrimitiveSet::POINTS;
-                if (geometryStyle->getPoint()) 
+                const PointSymbol* point = style->getSymbol<PointSymbol>();
+                if (point)
                 {
-                    color = geometryStyle->getPoint()->fill()->color();
+                    color = point->fill()->color();
 
-                    float size = geometryStyle->getPoint()->size().value();
+                    float size = point->size().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::Point(size) );
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_LINESTRING:
+            {
                 primMode = osg::PrimitiveSet::LINE_STRIP;
-                if (geometryStyle->getLine()) 
+                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                if (line) 
                 {
-                    color = geometryStyle->getLine()->stroke()->color();
-                    float size = geometryStyle->getLine()->stroke()->width().value();
+                    color = line->stroke()->color();
+                    float size = line->stroke()->width().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_RING:
+            {
                 primMode = osg::PrimitiveSet::LINE_LOOP;
-                if (geometryStyle->getLine())
+                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                if (line) 
                 {
-                    color = geometryStyle->getLine()->stroke()->color();
-                    float size = geometryStyle->getLine()->stroke()->width().value();
+                    color = line->stroke()->color();
+                    float size = line->stroke()->width().value();
                     osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::LineWidth(size));
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_POLYGON:
+            {
                 primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-                if (geometryStyle->getPolygon())
+                const PolygonSymbol* poly = style->getSymbol<PolygonSymbol>();
+                if (poly)
                 {
-                    color = geometryStyle->getPolygon()->fill()->color();
+                    color = poly->fill()->color();
                 }
-                break;
+            }
+            break;
             }
 
             osg::Material* material = new osg::Material;

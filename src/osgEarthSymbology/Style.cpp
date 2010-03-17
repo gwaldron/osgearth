@@ -32,3 +32,8 @@ Style::Style(const Style&, const osg::CopyOp&)
 {
     // NOP
 }
+
+void Style::addSymbol(Symbol* symbol)
+{
+    _symbols.push_back(symbol);
+}

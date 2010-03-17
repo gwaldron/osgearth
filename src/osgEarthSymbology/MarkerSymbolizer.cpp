@@ -19,7 +19,6 @@
 #include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/MarkerSymbol>
-#include <osgEarthSymbology/GeometryStyle>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
 #include <osg/Geometry>
@@ -87,12 +86,7 @@ MarkerSymbolizer::update(SymbolizerInput* dataSet,
     if (!geometryInput)
         return false;
 
-    const GeometryStyle* geometryStyle = dynamic_cast<const GeometryStyle*>(style);
-    if (!geometryStyle)
-        return false;
-
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
-
     const GeometryList& geometryList = geometryInput->getGeometryList();
     for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
     {
@@ -113,9 +107,10 @@ MarkerSymbolizer::update(SymbolizerInput* dataSet,
             switch( part->getType())
             {
             case Geometry::TYPE_POINTSET:
-                if (geometryStyle->getPoint())
+            {
+                const MarkerSymbol* point = style->getSymbol<MarkerSymbol>();
+                if (point)
                 {
-                    const MarkerSymbol* point = dynamic_cast<const MarkerSymbol*>(geometryStyle->getPoint());
                     if (point && part->size() && !point->marker().value().empty())
                     {
                         osg::Node* node = getNode(point->marker().value());
@@ -135,13 +130,15 @@ MarkerSymbolizer::update(SymbolizerInput* dataSet,
                         newSymbolized->addChild(group);
                     }
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                if (geometryStyle->getLine())
+            {
+                const MarkerLineSymbol* line = style->getSymbol<MarkerLineSymbol>();
+                if (line)
                 {
-                    const MarkerLineSymbol* line = dynamic_cast<const MarkerLineSymbol*>(geometryStyle->getLine());
                     if (line && part->size() && !line->marker().value().empty())
                     {
                         osg::Node* node = getNode(line->marker().value());
@@ -160,10 +157,10 @@ MarkerSymbolizer::update(SymbolizerInput* dataSet,
 
                         // start to put one first node
                         {
-                        osg::MatrixTransform* tr = new osg::MatrixTransform;
-                        tr->setMatrix(osg::Matrix::translate(*part->begin()));
-                        tr->addChild(node);
-                        group->addChild(tr);
+                            osg::MatrixTransform* tr = new osg::MatrixTransform;
+                            tr->setMatrix(osg::Matrix::translate(*part->begin()));
+                            tr->addChild(node);
+                            group->addChild(tr);
                         }
 
                         for ( int i = 0; i < part->size(); ++i)
@@ -208,12 +205,14 @@ MarkerSymbolizer::update(SymbolizerInput* dataSet,
                         newSymbolized->addChild(group);
                     }
                 }
-                break;
+            }
+            break;
 
             case Geometry::TYPE_POLYGON:
-                if (geometryStyle->getPolygon())
+            {
+                const MarkerPolygonSymbol* poly = style->getSymbol<MarkerPolygonSymbol>();
+                if (poly)
                 {
-                    const MarkerPolygonSymbol* poly = dynamic_cast<const MarkerPolygonSymbol*>(geometryStyle->getPolygon());
                     if (poly && part->size() && !poly->marker().value().empty())
                     {
                         osg::Node* node = getNode(poly->marker().value());
@@ -268,7 +267,8 @@ MarkerSymbolizer::update(SymbolizerInput* dataSet,
                         newSymbolized->addChild(group);
                     }
                 }
-                break;
+            }
+            break;
 
             }
         }

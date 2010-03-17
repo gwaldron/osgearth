@@ -171,19 +171,26 @@ void TileMap::computeNumTiles()
 }
 
 const Profile*
-TileMap::createProfile()
+TileMap::createProfile() const
 {
-    //If the profile is reported to be global mercator or global geodetic, use the predefined profile definitions
-    //This helps to avoid slight differences in the reported extents of a TMS source vs what osgEarth's internal
-    //extents for a global profile are considered to be.
-    if (_profile_type == Profile::TYPE_MERCATOR)
+    osg::ref_ptr< SpatialReference > spatialReference =  osgEarth::SpatialReference::create(_srs);
+    if (spatialReference->isMercator())
     {
-        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        //HACK:  Some TMS sources, most notably TileCache, use a global mercator extent that is very slightly different than
+        //       the automatically computed mercator bounds which can cause rendering issues due to the some texture coordinates
+        //       crossing the dateline.  If the incoming bounds are nearly the same as our definion of global mercator, just use our definition.
+        double eps = 0.01;
+        osg::ref_ptr< const Profile > merc = osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        if (_numTilesWide == 1 && _numTilesHigh == 1 &&
+            osg::equivalent(merc->getExtent().xMin(), _minX, eps) && 
+            osg::equivalent(merc->getExtent().yMin(), _minY, eps) &&
+            osg::equivalent(merc->getExtent().xMax(), _maxX, eps) &&
+            osg::equivalent(merc->getExtent().yMax(), _maxY, eps))
+        {            
+            return osgEarth::Registry::instance()->getGlobalMercatorProfile();
+        }
     }
-    else if (_profile_type == Profile::TYPE_GEODETIC)
-    {
-        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-    }
+
 
     return Profile::create(
         _srs,
@@ -294,6 +301,22 @@ TileMap::generateTileSets(unsigned int numLevels)
     }
 }
 
+std::string getSRSString(const osgEarth::SpatialReference* srs)
+{
+    if (srs->isMercator())
+    {
+        return "EPSG:900913";
+    }
+    else if (srs->isGeographic())
+    {
+        return "EPSG:4326";
+    }
+    else
+    {
+        return srs->getInitString(); //srs();
+    }	
+}
+
 
 TileMap*
 TileMap::create(const std::string& url,
@@ -311,7 +334,7 @@ TileMap::create(const std::string& url,
     tileMap->setExtents(ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax());
     tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
-	tileMap->_srs = profile->getSRS()->getInitString(); //srs();
+    tileMap->_srs = getSRSString(profile->getSRS());
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
     tileMap->_format.setExtension( format );
@@ -332,7 +355,7 @@ TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
 
     const GeoExtent& ex = profile->getExtent();
     
-    tileMap->_srs = profile->getSRS()->getInitString(); //srs();
+    tileMap->_srs = getSRSString(profile->getSRS()); //srs();
     tileMap->_originX = ex.xMin();
     tileMap->_originY = ex.yMin();
     tileMap->_minX = ex.xMin();
@@ -513,17 +536,19 @@ tileMapToXmlDocument(const TileMap* tileMap)
     e_tile_format->getAttrs()[ ATTR_HEIGHT ] = toString<unsigned int>(tileMap->getFormat().getHeight());
     doc->getChildren().push_back(e_tile_format.get());
 
+    osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
+
     osg::ref_ptr<XmlElement> e_tile_sets = new XmlElement ( ELEM_TILESETS );
     std::string profileString = "none";
-    if (tileMap->getProfileType() == Profile::TYPE_GEODETIC)
+    if (profile->isEquivalentTo(osgEarth::Registry::instance()->getGlobalGeodeticProfile()))
     {
         profileString = "global-geodetic";
     }
-    else if (tileMap->getProfileType() == Profile::TYPE_MERCATOR)
+    else if (profile->isEquivalentTo(osgEarth::Registry::instance()->getGlobalMercatorProfile()))
     {
         profileString = "global-mercator";
     }
-    else if (tileMap->getProfileType() == Profile::TYPE_LOCAL)
+    else
     {
         profileString = "local";
     }

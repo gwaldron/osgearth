@@ -309,7 +309,7 @@ namespace osgEarth
         osgEarth::Profile::ProfileType getProfileType() const {return _profile_type;}
         void setProfileType( osgEarth::Profile::ProfileType type ) {_profile_type = type;}
 
-        const Profile* createProfile();
+        const Profile* createProfile() const;
 
         /** Gets the TileFormat for this TileMap */
         TileFormat& getFormat() {return _format;}

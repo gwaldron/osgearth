@@ -52,6 +52,7 @@ namespace osgEarth { namespace Symbology
                 if (s)
                     return s;
             }
+            return 0L;
         }
 
         template<class T> const T* getSymbol() const
@@ -63,6 +64,7 @@ namespace osgEarth { namespace Symbology
                 if (s)
                     return s;
             }
+            return 0L;
         }
 
     protected:

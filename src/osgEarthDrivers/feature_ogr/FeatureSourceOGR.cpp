@@ -59,14 +59,6 @@ public:
             _options->geometry().valid() ? _options->geometry().get() :
             _options->geometryConfig().isSet() ? parseGeometry( _options->geometryConfig().value() ) :
             0L;
-
-        //const Config& conf = getOptions()->config();
-        //_url = conf.value( PROP_URL );
-        //_ogrDriver = conf.value( PROP_OGR_DRIVER );
-        //_buildSpatialIndex = conf.value( PROP_OGR_BUILD_SPATIAL_INDEX ) == "true";
-        //_geometry = parseGeometry( conf.value( PROP_GEOMETRY ) );
-        //if ( conf.hasChild( PROP_PROFILE ) )
-        //    _geometryProfileConf = ProfileConfig( conf.child( PROP_PROFILE ) );
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -92,8 +84,7 @@ public:
     {
         if ( _options->url().isSet() )
         {
-            _absUrl = osgEarth::getFullPath( 
-                osgDB::getFilePath(referenceURI), _options->url().value() );
+            _absUrl = osgEarth::getFullPath( referenceURI, _options->url().value() );
         }
     }
 
@@ -166,7 +157,7 @@ public:
                     if ( _options->buildSpatialIndex() == true )
                     {
                         OE_NOTICE <<
-                            "Building spatial index for " << getName() << " ..." << std::flush;
+                            "OGR: Building spatial index for " << getName() << " ..." << std::flush;
 
                         std::stringstream buf;
                         const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
@@ -175,15 +166,19 @@ public:
 					    bufStr = buf.str();
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
 
-                        OE_NOTICE <<  "done." << std::endl;
+                        OE_NOTICE <<  "OGR: ...done." << std::endl;
                     }
                 }
 	        }
+            else
+            {
+                OE_WARN << "OGR: failed to open dataset at " << _absUrl << std::endl;
+            }
         }
         else
         {
-            OE_NOTICE 
-                << "OGR Feature Source: no valid source data available" << std::endl;
+            OE_WARN 
+                << "OGR: Feature Source: no valid source data available" << std::endl;
         }
 
         return result;

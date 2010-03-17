@@ -72,7 +72,6 @@ namespace osgEarth
 
     public:
         TileSourceOptions( const PluginOptions* po =0L );
-        //TileSourceOptions( const Config& conf =Config());
 
     protected:
         virtual Config toConfig() const;

@@ -413,8 +413,8 @@ MapLayer::postProcess( GeoImage* input )
         if ( g != _prevGamma )
         {
             double gc = g > 0.0 ? 1.0/g : 1.0/5.0;
-            unsigned i;
-            for(i = 0; i < 256; i++)
+            OE_INFO << "Building gamma LUT, gamma = " << g << std::endl;
+            for(unsigned int i = 0; i < 256; i++)
             {
                 _gammaLUT[i] = (unsigned char)(pow(double(i) / 255.0, gc) * 255.0);
             }            
@@ -450,13 +450,15 @@ GeoImage*
 MapLayer::createImage( const TileKey* key,
                        ProgressCallback* progress)
 {
+    //OE_NOTICE << "[MapLayer] createImage for " << key->str() << std::endl;
+
     osg::ref_ptr<GeoImage> result = NULL;
     const Profile* mapProfile = key->getProfile();
 	const Profile* layerProfile = getProfile();
 
 	if (!layerProfile)
 	{
-		OE_NOTICE << "Could not get a valid profile for Layer " << _name << std::endl;
+		OE_WARN << "Could not get a valid profile for Layer " << _name << std::endl;
 		return NULL;
 	}
 
@@ -465,7 +467,7 @@ MapLayer::createImage( const TileKey* key,
 	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key->str() << std::endl;
 	if (!getTileSource() && _cacheOnly == false )
 	{
-		OE_NOTICE << "Error:  MapLayer does not have a valid TileSource, cannot create image " << std::endl;
+		OE_WARN << "Error:  MapLayer does not have a valid TileSource, cannot create image " << std::endl;
 		return NULL;
 	}
 

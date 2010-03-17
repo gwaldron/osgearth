@@ -28,14 +28,6 @@
 
 using namespace osgEarth;
 
-#define PROPERTY_URL            "url"
-#define PROPERTY_IDENTIFIER     "identifier"
-#define PROPERTY_FORMAT         "format"
-#define PROPERTY_ELEVATION_UNIT "elevation_unit"
-#define PROPERTY_TILE_SIZE      "tile_size"
-#define PROPERTY_SRS            "srs"
-#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
-#define PROPERTY_RANGE_SUBSET   "range_subset"
 
 WCS11Source::WCS11Source( const PluginOptions* options ) :
 TileSource( options )
@@ -43,38 +35,6 @@ TileSource( options )
     _settings = dynamic_cast<const WCSOptions*>( options );
     if ( !_settings.valid() )
         _settings = new WCSOptions( options );
-
-    //const Config& conf = options->config();
-
-    //_url = conf.value( PROPERTY_URL );
-    //_identifier = conf.value( PROPERTY_IDENTIFIER );
-    //_cov_format = conf.value( PROPERTY_FORMAT );
-    //_elevation_unit = conf.value( PROPERTY_ELEVATION_UNIT );
-
-    //// Try to read the tile size
-    //if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
-    //    _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, _tile_size );
-    //else
-    //    _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, _tile_size );
-
-    //_srs = conf.value( PROPERTY_SRS );
-    //_range_subset = conf.value( PROPERTY_RANGE_SUBSET );
-
-    //TODO: Read GetCapabilities and determine everything from that..
-
-
-    //std::string host = "192.168.0.101";
-    //if ( ::getenv( "OSGEARTH_HOST" ) )
-    //    host = std::string( ::getenv( "OSGEARTH_HOST" ) );
-
-    //std::stringstream buf;
-    //buf << "http://" << host << "/cgi-bin/mapserv";
-    //prefix     = buf.str();
-
-    //map_file   = "/var/www/maps/srtm.map";
-    //coverage   = "srtm";
-    //cov_format = "GEOTIFFINT16";
-    //osg_format = "tif";
 
     _covFormat = _settings->format().value();
     

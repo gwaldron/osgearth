@@ -46,6 +46,12 @@ _noDataMaxValue( FLT_MAX )
     config().getIfSet( "nodata_value", _noDataValue );
     config().getIfSet( "nodata_min", _noDataMinValue );
     config().getIfSet( "nodata_max", _noDataMaxValue );
+    
+    // special handling of default tile size:
+    if ( !tileSize().isSet() )
+        config().getIfSet( "default_tile_size", _tileSize );
+    // remove it now so it does not get serialized
+    config().remove( "default_tile_size" );
 }
 
 Config

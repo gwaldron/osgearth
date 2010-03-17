@@ -792,7 +792,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
 
-    if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD && key->getLevelOfDetail() > 1 )
     {
         tile->setUseLayerRequests( true );
         tile->setHasElevationHint( hasElevation );
@@ -826,7 +826,9 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setDatabaseOptions( options );
 #endif
         result = plod;
-        result->addCullCallback( new TileImageBackfillCallback() );
+
+        if ( tile->getUseLayerRequests() )
+            result->addCullCallback( new TileImageBackfillCallback() );
     }
     else
     {

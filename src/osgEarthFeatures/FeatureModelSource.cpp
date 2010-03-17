@@ -188,7 +188,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     osg::Timer_t end = osg::Timer::instance()->tick();
 
-    OE_NOTICE << "layer " << getName() << ", time to compile = " << 
+    OE_INFO << "Layer " << getName() << ", time to compile styles = " << 
         osg::Timer::instance()->delta_s( start, end ) << "s" << std::endl;
 
     return group;

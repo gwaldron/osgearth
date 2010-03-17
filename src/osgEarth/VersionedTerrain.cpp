@@ -1528,15 +1528,19 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
 
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
-                if ( i->second.valid() && i->second->getUseLayerRequests() )
+                if ( i->second.valid() )
                 {
                     refreshFamily( i->first, i->second->getFamily(), true );
-                    i->second->servicePendingElevationRequests( stamp, true );
 
-                    bool tileModified = i->second->serviceCompletedRequests( true );
-                    if ( tileModified && _terrainCallbacks.size() > 0 )
-                    {
-                        _updatedTiles.push_back( i->second.get() );
+                    if ( i->second->getUseLayerRequests() )
+                    {                        
+                        i->second->servicePendingElevationRequests( stamp, true );
+
+                        bool tileModified = i->second->serviceCompletedRequests( true );
+                        if ( tileModified && _terrainCallbacks.size() > 0 )
+                        {
+                            _updatedTiles.push_back( i->second.get() );
+                        }
                     }
                 }
             }

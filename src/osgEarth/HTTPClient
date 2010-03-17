@@ -142,6 +142,19 @@ namespace osgEarth
                 code == RESULT_CANCELED;
         }
 
+        static std::string getResultCodeString( ResultCode code )
+        {
+            return
+                code == RESULT_OK ? "OK" :
+                code == RESULT_CANCELED ? "Read canceled" :
+                code == RESULT_NOT_FOUND ? "Target not found" :
+                code == RESULT_SERVER_ERROR ? "Server error" :
+                code == RESULT_TIMEOUT ? "Read timed out" :
+                code == RESULT_NO_READER ? "No suitable ReaderWriter found" :
+                code == RESULT_READER_ERROR ? "ReaderWriter error" :
+                "Unknown error";
+        }
+
     public:
         static ResultCode readImageFile(
             const std::string& uri,

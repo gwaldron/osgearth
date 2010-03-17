@@ -1002,6 +1002,7 @@ EarthManipulator::updateTether()
     osg::ref_ptr<osg::Node> temp = _tether_node.get();
     if ( temp.valid() )
     {
+        //OE_NOTICE << "updateTether" << std::endl;
 		//Get the bounding sphere of the Node
         const osg::BoundingSphere& bs = temp->getBound();
 		_center = bs._center;

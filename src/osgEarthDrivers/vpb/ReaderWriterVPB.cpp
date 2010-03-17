@@ -68,7 +68,7 @@ public:
         osgTerrain::TerrainTile* terrainTile = dynamic_cast<osgTerrain::TerrainTile*>(&group);
         if (terrainTile)
         {
-            OE_INFO<<"Found terrain tile TileID("<<
+            OE_DEBUG<<"VPB: Found terrain tile TileID("<<
 				TileKey::getLOD(terrainTile->getTileID())<<", "<<
                 terrainTile->getTileID().x<<", "<<
                 terrainTile->getTileID().y<<")"<<std::endl;
@@ -139,14 +139,6 @@ public:
 class VPBDatabase : public osg::Referenced
 {
 public:
-
-    //enum DirectoryStructure
-    //{
-    //    FLAT,
-    //    FLAT_TASK_DIRECTORIES,
-    //    NESTED_TASK_DIRECTORIES
-    //};
-
     VPBDatabase( const VPBOptions* in_options ) :
         _options( in_options ),
         //_directory_structure( FLAT_TASK_DIRECTORIES ),
@@ -155,22 +147,6 @@ public:
     {
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
         _profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
-        
-        //if ( _options.valid() )
-        //{
-        //    const Config& conf = options->config();
-
-        //    url = conf.value( PROPERTY_URL );
-        //    primary_split_level = conf.value<int>( PROPERTY_PRIMARY_SPLIT_LEVEL, -1 );
-        //    secondary_split_level = conf.value<int>( PROPERTY_SECONDARY_SPLIT_LEVEL, -1 );
-
-        //    std::string dir_string = conf.value( PROPERTY_DIRECTORY_STRUCTURE );
-        //    if (dir_string=="nested" || dir_string=="nested_task_directories" ) directory_structure = NESTED_TASK_DIRECTORIES;
-        //    if (dir_string=="task" || dir_string=="flat_task_directories") directory_structure = FLAT_TASK_DIRECTORIES;
-        //    if (dir_string=="flat") directory_structure = FLAT;
-        //    
-        //    base_name = conf.value( PROPERTY_BASE_NAME );
-        //}
 
         // validate dataset
         _url = _options->url().value();
@@ -179,10 +155,11 @@ public:
         {
             osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
-            _rootNode = osgDB::readNodeFile( _url, localOptions.get() );
+            //_rootNode = osgDB::readNodeFile( _url, localOptions.get() );
 
+            HTTPClient::ResultCode rc = HTTPClient::readNodeFile( _url, _rootNode, localOptions.get() );
 
-            if ( _rootNode.valid() )
+            if ( rc == HTTPClient::RESULT_OK && _rootNode.valid() )
             {
                 _baseNameToUse = _options->baseName().value();
 
@@ -191,14 +168,14 @@ public:
                     _baseNameToUse = osgDB::getStrippedName(_url);
                 _extension = osgDB::getFileExtension(_url);
                 
-                OE_INFO<<"VPBasebase constructor: Loaded root "<<_url<<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
+                OE_INFO<<"VPB: Loaded root "<<_url<<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
                 
                 std::string srs = _profile->getSRS()->getInitString(); //.srs();
                 
                 osg::CoordinateSystemNode* csn = dynamic_cast<osg::CoordinateSystemNode*>(_rootNode.get());
                 if (csn)
                 {
-                    OE_INFO<<"CordinateSystemNode found, coordinate system is : "<<csn->getCoordinateSystem()<<std::endl;
+                    OE_INFO<<"VPB: CordinateSystemNode found, coordinate system is : "<<csn->getCoordinateSystem()<<std::endl;
                     
                     srs = csn->getCoordinateSystem();
                 }
@@ -213,28 +190,13 @@ public:
                     double min_x, max_x, min_y, max_y;
                     ct.getRange(min_x, min_y, max_x, max_y);
 
-                    OE_INFO<<"range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<<std::endl;
+                    OE_DEBUG<<"VPB: range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<<std::endl;
 
                     srs = locator->getCoordinateSystem();
-                
-                    //osgEarth::Profile::ProfileType ptype = osgEarth::Profile::TYPE_UNKNOWN;
-
-                    //switch(locator->getCoordinateSystemType())
-                    //{
-                    //    case(osgTerrain::Locator::GEOCENTRIC):
-                    //        ptype = Profile::TYPE_GEODETIC; //profile.setProfileType(osgEarth::Profile::GLOBAL_GEODETIC);
-                    //        break;
-                    //    case(osgTerrain::Locator::GEOGRAPHIC):
-                    //        ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
-                    //        break;
-                    //    case(osgTerrain::Locator::PROJECTED):
-                    //        ptype = Profile::TYPE_LOCAL; //profile.setProfileType(osgEarth::Profile::PROJECTED);
-                    //        break;
-                    //}
 
                     double aspectRatio = (max_x-min_x)/(max_y-min_y);
                     
-                    OE_INFO<<"aspectRatio = "<<aspectRatio<<std::endl;
+                    OE_DEBUG<<"VPB: aspectRatio = "<<aspectRatio<<std::endl;
 
                     if (aspectRatio>1.0)
                     {
@@ -247,8 +209,8 @@ public:
                         numTilesHighAtLod0 = static_cast<unsigned int>(floor(1.0/aspectRatio+0.499999));
                     }
                     
-                    OE_INFO<<"computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_INFO<<"computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    OE_DEBUG<<"VPB: computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    OE_DEBUG<<"VPB: computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                     
                     if ( _options.valid() )
                     {
@@ -257,16 +219,10 @@ public:
 
                         if ( _options->numTilesHighAtLod0().isSet() )
                             numTilesHighAtLod0 = _options->numTilesHighAtLod0().value();
-
-                        //if ( options->getPluginData( PROPERTY_NUM_TILES_WIDE_AT_LOD0 ) )
-                        //    numTilesWideAtLod0 = atoi( (const char*)options->getPluginData( PROPERTY_NUM_TILES_WIDE_AT_LOD0 ) );
-
-                        //if ( options->getPluginData( PROPERTY_NUM_TILES_HIGH_AT_LOD0 ) )
-                        //    numTilesHighAtLod0 = atoi( (const char*)options->getPluginData( PROPERTY_NUM_TILES_HIGH_AT_LOD0 ) );
                     }
 
-                    OE_INFO<<"final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_INFO<<"final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    OE_DEBUG<<"VPB: final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    OE_DEBUG<<"VPB: final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                    
                     _profile = osgEarth::Profile::create( 
                         srs,
@@ -281,13 +237,13 @@ public:
             }
             else
             {
-                OE_NOTICE<<"Unable to read file "<<_url<<std::endl;
+                OE_WARN << "VPB: " << HTTPClient::getResultCodeString(rc) << ": " << _url << std::endl;
                 _url = "";
             }
         }
         else 
         {
-            OE_NOTICE<<"No data referenced "<<std::endl;
+            OE_WARN<<"VPB: No data referenced "<<std::endl;
         }
 
     }
@@ -351,7 +307,7 @@ public:
         
 		std::string bufStr;
 		bufStr = buf.str();
-        OE_INFO<<"VPBDatabase::createTileName(), buf.str()=="<< bufStr <<std::endl;
+        OE_DEBUG<<"VPB: VPBDatabase::createTileName(), buf.str()=="<< bufStr <<std::endl;
         
 		return bufStr;
     }
@@ -386,7 +342,7 @@ public:
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
             if (_blacklistedFilenames.count(filename)==1)
             {
-                OE_INFO<<"file has been found in black list : "<<filename<<std::endl;
+                OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
                 insertTile(tileID, 0);
                 return 0;
             }
@@ -440,16 +396,10 @@ public:
             // in the case of an "unrecoverable" error, black-list the URL for this tile.
             if ( ! HTTPClient::isRecoverable( result ) )
             {
-                //OE_NOTICE<<"Black listing : "<< filename<< " (" << result << ")" << std::endl;
+                //OE_INFO<<"Black listing : "<< filename<< " (" << result << ")" << std::endl;
                 OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
                 _blacklistedFilenames.insert(filename);
             }
-
-            //if ( progress && !progress->isCanceled() && !progress->message().empty() )
-            //{
-            //    OE_NOTICE << "[vpb] error '" << progress->message() << "' on " << filename << 
-            //        std::endl;
-            //}
         }
         
         return findTile(tileID, false);
@@ -471,16 +421,16 @@ public:
                 _tileFIFO.pop_front();
                 _tileMap.erase(tileToRemove);
 
-			    OE_INFO<<"Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+                OE_DEBUG<<"VPB: Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
             }
 
-            OE_INFO<<"insertTile ("
+            OE_DEBUG<<"VPB: insertTile ("
                 << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
                 << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
         }
         else
         {
-            OE_INFO<<"insertTile ("
+            OE_DEBUG<<"VPB: insertTile ("
                 << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
                 << " ...already in cache!"<<std::endl;
         }
@@ -502,11 +452,7 @@ public:
     osg::ref_ptr<const VPBOptions> _options;
     std::string _url;
     std::string _path;
-    //std::string base_name;
     std::string _extension;
-    //int primary_split_level;
-    //int secondary_split_level;
-    //DirectoryStructure directory_structure;
 
     std::string _baseNameToUse;
 
@@ -536,10 +482,6 @@ public:
         _vpbDatabase(vpbDatabase)
     {
         _options = in_options;
-        //if ( in_options )
-        //{
-        //    layerNum = in_options->config().value<int>( PROPERTY_LAYER_NUM, layerNum );
-        //}
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
@@ -569,7 +511,6 @@ public:
                 osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(layer);
                 if (imageLayer)
                 {
-                    //return imageLayer->getImage();
                     return new osg::Image( *imageLayer->getImage() );
                 }
             }

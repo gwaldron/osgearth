@@ -43,17 +43,12 @@ namespace osgEarth { namespace Drivers
     public: // ctors
 
         GDALOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
-            _defaultTileSize(256),
             _interpolation( INTERP_AVERAGE )
         {
             driver() = "gdal";
 
             config().getIfSet( "url", _url );
             config().getIfSet( "extensions", _extensions );
-
-            // special handling of default tile size:
-            if ( !tileSize().isSet() )
-                config().getIfSet( "default_tile_size", _tileSize );
 
             std::string in = config().value( "interpolation" );
             if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
@@ -80,7 +75,6 @@ namespace osgEarth { namespace Drivers
         optional<std::string> _url;
         optional<std::string> _extensions;
         optional<ElevationInterpolation> _interpolation;
-        optional<int> _defaultTileSize;
     };
 
 } } // namespace osgEarth::Drivers

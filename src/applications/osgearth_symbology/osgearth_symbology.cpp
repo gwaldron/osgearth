@@ -33,6 +33,8 @@
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/ExtrudedSymbol>
+#include <osgEarthSymbology/ModelStyle>
+#include <osgEarthSymbology/ModelSymbolizer>
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
 #include <osgUtil/Tessellator>
@@ -461,6 +463,24 @@ osg::Group* createSymbologyScene(const std::string url)
         tr->setMatrix(osg::Matrix::translate(0, 500 , 0));
         grp->addChild(tr);
     }
+
+
+
+    {
+        osg::ref_ptr<ModelSymbolizer> symbolizer = new ModelSymbolizer();
+        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
+        node->setSymbolizer(symbolizer.get());
+        node->setDataSet(new SymbolizerInput);
+        ModelStyle* style = new ModelStyle;
+        std::string real = osgDB::getRealPath("../data/tree.ive");
+        style->setModel(real);
+        node->setStyle(style);
+        osg::MatrixTransform* tr = new osg::MatrixTransform;
+        tr->addChild(node.get());
+        tr->setMatrix(osg::Matrix::scale(10,10,10) * osg::Matrix::translate(0, 750 , 0));
+        grp->addChild(tr);
+    }
+    
 
     grp->addEventCallback(new StyleEditor(styles));
     return grp;

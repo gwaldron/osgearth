@@ -28,6 +28,49 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
+//#define USE_SYMBOLOGY
+#ifdef USE_SYMBOLOGY
+#include <osgEarthSymbology/ModelSymbolizer>
+#include <osgEarthSymbology/ModelStyle>
+#include <osgEarthSymbology/SymbolicNode>
+
+class SimpleModelSource : public ModelSource
+{
+public:
+    SimpleModelSource( const PluginOptions* options ) : ModelSource( options )
+    {
+        _settings = dynamic_cast<const SimpleModelOptions*>( options );
+        if ( !_settings.valid() )
+            _settings = new SimpleModelOptions( options );
+    }
+
+    //override
+    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
+    {
+        ModelSource::initialize( referenceURI, map );
+
+        _url = osgEarth::getFullPath( referenceURI, _settings->url().value() );
+    }
+
+    // override
+    osg::Node* createNode( ProgressCallback* progress )
+    {
+        osgEarth::Symbology::ModelStyle* style = new osgEarth::Symbology::ModelStyle;
+        style->setModel(_url);
+        osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
+        symb->setDataSet(new osgEarth::Symbology::SymbolizerInput);
+        symb->setStyle(style);
+        symb->setSymbolizer(new osgEarth::Symbology::ModelSymbolizer);
+        return symb;
+    }
+
+protected:
+    std::string _url;
+    osg::ref_ptr<const SimpleModelOptions> _settings;
+};
+
+#else
+
 class SimpleModelSource : public ModelSource
 {
 public:
@@ -65,7 +108,7 @@ private:
     std::string _url;
     osg::ref_ptr<const SimpleModelOptions> _settings;
 };
-
+#endif
 
 class SimpleModelSourceFactory : public osgDB::ReaderWriter
 {

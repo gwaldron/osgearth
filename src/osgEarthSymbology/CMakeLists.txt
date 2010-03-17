@@ -20,6 +20,8 @@ SET(LIB_PUBLIC_HEADERS
     GeometrySymbol
     MarkerSymbolizer
     MarkerSymbol
+    ModelStyle
+    ModelSymbolizer
     Registry
     Style
     StyleSheet
@@ -39,6 +41,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometrySymbol.cpp
     MarkerSymbolizer.cpp
     MarkerSymbol.cpp
+    ModelStyle.cpp
+    ModelSymbolizer.cpp
     Registry.cpp
     Style.cpp
     StyleSheet.cpp

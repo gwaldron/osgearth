@@ -27,10 +27,11 @@ SymbolicNode::SymbolicNode() :
 {
     _symGroup = new osg::Group();
     _symGroup->setDataVariance( osg::Object::DYNAMIC );
+    this->addChild( _symGroup.get() );
 }
 
 SymbolicNode::SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op ) :
-osg::Node( rhs, op ),
+osg::Group( rhs, op ),
 _style( rhs._style ),
 _symbolizer( rhs._symbolizer ),
 _dataSet( rhs._dataSet ),
@@ -59,11 +60,6 @@ SymbolicNode::traverse( osg::NodeVisitor& nv )
         }
     }
 
-    _symGroup->traverse( nv );
+    osg::Group::traverse( nv );
 }
 
-osg::BoundingSphere
-SymbolicNode::computeBound() const
-{
-    return _symGroup->computeBound();
-}

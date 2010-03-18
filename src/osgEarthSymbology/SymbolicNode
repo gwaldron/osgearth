@@ -30,7 +30,7 @@ namespace osgEarth { namespace Symbology
     /**
      * Abstract base class for all Symbol types.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT SymbolicNode : public osg::Node
+    class OSGEARTHSYMBOLOGY_EXPORT SymbolicNode : public osg::Group
     {
     public:
         SymbolicNode();
@@ -40,8 +40,6 @@ namespace osgEarth { namespace Symbology
         META_Node(osgEarth::Symbology, SymbolicNode);
 
         virtual void traverse( osg::NodeVisitor& nv );
-
-        virtual osg::BoundingSphere computeBound() const;
 
         void setStyle( Style* style ) { _style = style; }
 

@@ -1,0 +1,23 @@
+<!--
+osgEarth Sample
+
+WorldWind Elevation example
+
+This example shows how to use the NASA WorldWind elevation reader mixed with ArcGIS imagery
+-->
+
+<map name="WorldWind Elevation" type="geocentric">
+   
+    <image name="arcgisonline esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </image>
+       
+    <heightfield name="WorldWind bil" driver="worldwind">
+	  <!-- Specify where to download SRTM zip files to and store the resuling .bil files -->
+      <worldwind_cache>worldwind_SRTM</worldwind_cache>
+    </heightfield>
+		
+    <vertical_scale>2</vertical_scale>
+    <sample_ratio>0.25</sample_ratio>    
+</map> 

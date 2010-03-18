@@ -89,7 +89,6 @@ public:
         symNode->setStyle(sstyle);
         symNode->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
 
-        osgEarth::Symbology::GeometryInput* geoms = new osgEarth::Symbology::GeometryInput;
         symNode->setDataSet(geoms);
 
         for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)

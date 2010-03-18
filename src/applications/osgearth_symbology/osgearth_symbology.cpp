@@ -477,7 +477,6 @@ osg::Group* createSymbologyScene(const std::string url)
         osg::ref_ptr<ModelSymbolizer> symbolizer = new ModelSymbolizer();
         osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
         node->setSymbolizer(symbolizer.get());
-        node->setDataSet(new SymbolizerInput);
         Style* style = new Style;
         std::string real = osgDB::getRealPath("../data/tree.ive");
         MarkerSymbol* marker = new MarkerSymbol;

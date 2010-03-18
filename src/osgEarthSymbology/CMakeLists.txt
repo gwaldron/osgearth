@@ -21,6 +21,7 @@ SET(LIB_PUBLIC_HEADERS
     MarkerSymbol
     ModelSymbolizer
     Registry
+    StencilVolumeNode
     Style
     StyleSheet
     Symbol
@@ -41,6 +42,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MarkerSymbol.cpp
     ModelSymbolizer.cpp
     Registry.cpp
+    StencilVolumeNode.cpp
     Style.cpp
     StyleSheet.cpp
     Symbol.cpp

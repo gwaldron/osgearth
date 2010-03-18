@@ -28,6 +28,7 @@ SymbolicNode::SymbolicNode() :
     _symGroup = new osg::Group();
     _symGroup->setDataVariance( osg::Object::DYNAMIC );
     this->addChild( _symGroup.get() );
+    setNumChildrenRequiringUpdateTraversal(1);
 }
 
 SymbolicNode::SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op ) :
@@ -45,15 +46,18 @@ void
 SymbolicNode::traverse( osg::NodeVisitor& nv )
 {
     setNumChildrenRequiringUpdateTraversal(1);
-    if ( _dataSet.valid() && _symbolizer.valid() )
+    if ( _symbolizer.valid() )
     {
         if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
         {
             // if our symbology is out of revision, update it!
-            if ( _dataSetRevision != _dataSet->getRevision() || _styleRevision != _style->getRevision())
+            if (_dataSet.valid() && (_dataSetRevision != _dataSet->getRevision()) ||
+                _styleRevision != _style->getRevision())
             {
                 _symbolizer->update( _dataSet.get(), _style, _symGroup.get(), _context.get() );
-                _dataSetRevision = _dataSet->getRevision();
+                if (_dataSet.valid())
+                    _dataSetRevision = _dataSet->getRevision();
+
                 _styleRevision = _style->getRevision();
                 this->dirtyBound();
             }

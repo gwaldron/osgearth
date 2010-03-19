@@ -258,7 +258,7 @@ public:
       }
 
      
-#if OSG_VERSION_GREATER_OR_EQUAL(2,9,6)
+#if OSG_MIN_VERSION_REQUIRED(2,9,6)
       virtual bool mousePush(double, double, const osgWidget::WindowManager*) {
 #else
       virtual bool mousePush(double, double, osgWidget::WindowManager*) {

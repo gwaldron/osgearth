@@ -26,6 +26,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/EarthFile>
+#include <osgEarth/Registry>
 
 #include <iostream>
 #include <sstream>
@@ -44,6 +45,8 @@ int main(int argc, char** argv)
     args.getApplicationUsage()->addCommandLineOption("--max-level level","The maximum level to seed down to.");
     args.getApplicationUsage()->addCommandLineOption("--bounds minx miny maxx maxy","The geospatial extents to seed.");
     args.getApplicationUsage()->addCommandLineOption("-b","Shorthand for --bounds.");
+    args.getApplicationUsage()->addCommandLineOption("--cache-path","Use a different cache path than the one defined in the earth file");
+    args.getApplicationUsage()->addCommandLineOption("--cache-type","Override the cache type if you override the cache path (tms or disk).");
 
     // if user request help write it out to cout.
     if (args.read("-h") || args.read("--help") || args.argc() <= 1)
@@ -66,6 +69,14 @@ int main(int argc, char** argv)
     while (args.read("--bounds", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
     while (args.read("-b", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
 
+    //Read the cache override directory
+    std::string cachePath;
+    while (args.read("--cache-path", cachePath));
+
+    //Read the cache type
+    std::string cacheType;
+    while (args.read("--cache-type", cacheType));
+
     std::string filename;
     //Find the input filename
     for(int pos=1;pos<args.argc();++pos)
@@ -83,6 +94,24 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    // Register the Cache Override
+    if (!cachePath.empty())
+    {
+        osg::ref_ptr< Cache > cache;
+        if (cacheType == "disk")
+        {
+            OE_NOTICE << "Creating DiskCache" << std::endl;
+            cache = new DiskCache( cachePath );
+        }
+        else
+        {
+            OE_NOTICE << "Creating TMSCache" << std::endl;
+            cache = new TMSCache( cachePath );
+        }
+
+        OE_NOTICE <<"Override Cache Path: "<<cachePath<<std::endl;
+        Registry::instance()->setCacheOverride(cache.get());
+    }
 
     //Load the map file
     EarthFile earthFile;

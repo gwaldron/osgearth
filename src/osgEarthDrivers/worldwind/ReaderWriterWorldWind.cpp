@@ -238,8 +238,8 @@ public:
                     remove(tempname.c_str());
                 }               
             }
-            return hf;
         }
+        return hf;
     }
 
     std::string createCachePath( const TileKey* key ) const

@@ -66,6 +66,7 @@ ENDIF(WIN32)
 
 LINK_INTERNAL(${LIB_NAME}
 osgEarth
+osgEarthSymbology
 )
 
 IF(GEOS_FOUND)

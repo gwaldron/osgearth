@@ -24,7 +24,7 @@
 #include <osgEarthFeatures2/Feature>
 #include <osgEarthFeatures2/Annotation>
 #include <osgEarthSymbology/Geometry>
-#include <osgEarthFeatures2/Query>
+#include <osgEarthSymbology/Query>
 #include <osgEarthFeatures2/Filter>
 #include <osgEarthFeatures2/Styling>
 #include <osgEarth/Profile>

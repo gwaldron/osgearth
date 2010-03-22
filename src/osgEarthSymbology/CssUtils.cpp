@@ -16,14 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures2/CssUtils>
+#include <osgEarthSymbology/CssUtils>
 #include <osgEarth/StringUtils>
 #include <iostream>
 #include <sstream>
 #include <iterator>
 
 using namespace osgEarth;
-using namespace osgEarth::Features2;
+using namespace osgEarth::Symbology;
 
 Config
 CssUtils::readConfig( std::istream& in )

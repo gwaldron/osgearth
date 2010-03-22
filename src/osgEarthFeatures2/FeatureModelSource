@@ -21,9 +21,9 @@
 #define OSGEARTHFEATURES_FEATURE_MODEL_SOURCE_H 1
 
 #include <osgEarthFeatures2/Common>
-#include <osgEarthFeatures2/Styling>
 #include <osgEarthFeatures2/FeatureSource>
 #include <osgEarthFeatures2/FeatureGridder>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
 #include <osg/Node>
@@ -44,8 +44,8 @@ namespace osgEarth { namespace Features2
         osg::ref_ptr<GriddingPolicy>& gridding() { return _gridding; }
         const osg::ref_ptr<GriddingPolicy>& gridding() const { return _gridding; }
 
-        optional<StyleCatalog>& styles() { return _styles; }
-        const optional<StyleCatalog>& styles() const { return _styles; }
+        optional<Symbology::StyleCatalog>& styles() { return _styles; }
+        const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
 
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -60,7 +60,7 @@ namespace osgEarth { namespace Features2
 
     protected:
         osg::ref_ptr<FeatureSourceOptions> _featureOptions;
-        optional<StyleCatalog> _styles;
+        optional<Symbology::StyleCatalog> _styles;
         osg::ref_ptr<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
@@ -128,8 +128,8 @@ namespace osgEarth { namespace Features2
          *
          * @return Node to add to the scene graph.
          */
-        virtual osg::Node* renderFeatures2ForStyle(
-            const Style& style,
+        virtual osg::Node* renderFeaturesForStyle(
+            const Symbology::Style& style,
             FeatureList& features,
             osg::Referenced* buildData,
             osg::Node** out_newNode =0L ) { return 0L; }
@@ -140,9 +140,9 @@ namespace osgEarth { namespace Features2
             source calls this once for each style class associated with this model source. This
             method will also grid the input features into cells if necessary, calling
             renderStyleCell() for each cell. */
-        osg::Group* gridAndRenderFeatures2ForStyle(
-            const Style& style,
-            const Query& query,
+        osg::Group* gridAndRenderFeaturesForStyle(
+            const Symbology::Style& style,
+            const Symbology::Query& query,
             osg::Referenced* buildData );
 
     public: 

@@ -2,7 +2,7 @@
 FOREACH( myfolder
         osgEarth
         osgEarthFeatures
-#        osgEarthFeatures2
+        osgEarthFeatures2
         osgEarthUtil
         osgEarthDrivers
         osgEarthSymbology

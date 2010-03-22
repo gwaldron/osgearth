@@ -135,7 +135,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
                 FeatureList list;
                 list.push_back( feature );
                 // gridding is not supported for embedded styles.
-                osg::Node* node = renderFeatures2ForStyle( feature->style().get(), list, buildData.get() );
+                osg::Node* node = renderFeaturesForStyle( *(feature->style().get()), list, buildData.get() );
                 if ( node )
                     group->addChild( node );
             }
@@ -148,24 +148,24 @@ FeatureModelSource::createNode( ProgressCallback* progress )
             for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
             {
                 const StyleSelector& sel = *i;
-                Style style;
+                Style* style;
                 styles->getStyle( sel.getSelectedStyleName(), style );
-                osg::Node* node = gridAndRenderFeatures2ForStyle( style, sel.query().value(), buildData.get() );
+                osg::Node* node = gridAndRenderFeaturesForStyle( *style, sel.query().value(), buildData.get() );
                 if ( node )
                     group->addChild( node );
             }
         }
         else
         {
-            Style style = styles->getDefaultStyle();
-            osg::Node* node = gridAndRenderFeatures2ForStyle( style, Query(), buildData.get() );
+            const Style* style = styles->getDefaultStyle();
+            osg::Node* node = gridAndRenderFeaturesForStyle( *style, Query(), buildData.get() );
             if ( node )
                 group->addChild( node );
         }
     }
     else
     {
-        osg::Node* node = gridAndRenderFeatures2ForStyle( Style(), Query(), buildData.get() );
+        osg::Node* node = gridAndRenderFeaturesForStyle( Style(), Query(), buildData.get() );
         if ( node )
             group->addChild( node );
     }
@@ -197,7 +197,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
 
 osg::Group*
-FeatureModelSource::gridAndRenderFeatures2ForStyle(const Style& style,
+FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
                                                   const Query& query,
                                                   osg::Referenced* data )
 {
@@ -272,7 +272,7 @@ FeatureModelSource::gridAndRenderFeatures2ForStyle(const Style& style,
                 // Some implementations might return a group node on the first pass and add children
                 // to it on subsequent passes.
                 osg::Node* createdNode = 0L;
-                osg::Node* nodeToAdd = renderFeatures2ForStyle( style, cellFeatures2, data, &createdNode );
+                osg::Node* nodeToAdd = renderFeaturesForStyle( style, cellFeatures2, data, &createdNode );
                 if ( nodeToAdd )
                 {
                     if ( !styleGroup )

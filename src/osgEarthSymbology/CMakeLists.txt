@@ -11,6 +11,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Common
+    CssUtils
     ExtrudedSymbol
     Geometry
     GeometryExtrudeSymbolizer
@@ -20,9 +21,11 @@ SET(LIB_PUBLIC_HEADERS
     MarkerSymbolizer
     MarkerSymbol
     ModelSymbolizer
+    Query
     Registry
     StencilVolumeNode
     Style
+    SLD
     StyleSheet
     Symbol
     SymbolicNode
@@ -32,6 +35,7 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
+    CssUtils.cpp
     ExtrudedSymbol.cpp
     Geometry.cpp
     GeometryExtrudeSymbolizer.cpp
@@ -41,9 +45,11 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MarkerSymbolizer.cpp
     MarkerSymbol.cpp
     ModelSymbolizer.cpp
+    Query.cpp
     Registry.cpp
     StencilVolumeNode.cpp
     Style.cpp
+    SLD.cpp
     StyleSheet.cpp
     Symbol.cpp
     SymbolicNode.cpp

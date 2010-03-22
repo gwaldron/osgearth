@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures2/BuildGeometryFilter>
-
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -35,7 +34,7 @@ using namespace osgEarth::Symbology;
 
 
 BuildGeometryFilter::BuildGeometryFilter() :
-_style( Style() ),
+_style( new Style() ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN )
 {
     reset();
@@ -72,12 +71,13 @@ BuildGeometryFilter::pushTextAnnotation( TextAnnotation* anno, const FilterConte
     osg::Vec4f textColor(1,1,1,1);
     osg::Vec4f haloColor(0,0,0,1);
 
-    if ( _style->textSymbolizer().isSet() )
+    TextSymbol* textSymbolizer = getStyle()->getSymbol<TextSymbol>();
+    if ( textSymbolizer )
     {
-        textColor = _style->textSymbolizer()->fill()->color();
-        if ( _style->textSymbolizer()->halo().isSet() )
+        textColor = textSymbolizer->fill()->color();
+        if ( textSymbolizer->halo().isSet() )
         {
-            haloColor = _style->textSymbolizer()->halo()->color();
+            haloColor = textSymbolizer->halo()->color();
         }
     }
 
@@ -141,15 +141,9 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             break;
         }
 
-        osg::Vec4f color = _style->getColor( renderType );
-        //if ( renderType == Geometry::TYPE_POLYGON )
-        //{
-        //    color = _style->polygonSymbolizer()->fill()->color();
-        //}
-        //else
-        //{
-        //    color = _style->lineSymbolizer()->stroke()->color().value();
-        //}
+        // Cedric Pinson : how we should fix that ????
+        //osg::Vec4f color = _style->getColor( renderType );
+        osg::Vec4f color = osg::Vec4(1,0,1,1);
     
         osg::Geometry* osgGeom = new osg::Geometry();
 
@@ -219,10 +213,13 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
 
     if ( ok )
     {
-        if ( _style.isSet() && _geode.valid() )
+        if ( _style.valid() && _geode.valid() )
         {
             // could optimize this to only happen is lines or points were created ..
-            float size = _style->lineSymbolizer()->stroke()->width().value();
+            LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+            float size = 1.0;
+            if (lineSymbol)
+                size = lineSymbol->stroke()->width().value();
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
             _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(size), osg::StateAttribute::ON );
         }

@@ -16,26 +16,21 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_STYLING_SLD_H
-#define OSGEARTHFEATURES_STYLING_SLD_H 1
 
-#include <osgEarthFeatures2/Common>
-#include <osgEarthFeatures2/Styling>
+#ifndef OSGEARTHSYMBOLOGY_CSSUTILS_H
+#define OSGEARTHSYMBOLOGY_CSSUTILS_H 1
+
+#include <osgEarthSymbology/Common>
 #include <osgEarth/Config>
-#include <iostream>
 
-namespace osgEarth { namespace Features2
+namespace osgEarth { namespace Symbology
 {
-    class OSGEARTHFEATURES_EXPORT SLDReader
+    class OSGEARTHSYMBOLOGY_EXPORT CssUtils
     {
     public:
-        //static bool readConfig( const Config& conf, StyleCatalog& out_sld );
-
-        //static bool readXML( std::istream& input, StyleCatalog& out_sld );
-
-        static bool readStyleFromCSSParams( const Config& conf, Style& out_style );
+        static Config readConfig( std::istream& in );
     };
 
 } } // namespace osgEarth::Features2
 
-#endif // OSGEARTHFEATURES_STYLING_SLD_H
+#endif // OSGEARTHFEATURES_CSSUTILS_H

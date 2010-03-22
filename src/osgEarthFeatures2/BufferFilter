@@ -65,8 +65,8 @@ namespace osgEarth { namespace Features2
         int& numQuadrantSegments() { return _numQuadSegs; }
 
         // tessellation style of buffered corners and line ends
-        Stroke::LineCapStyle capStyle() const { return _capStyle; }
-        Stroke::LineCapStyle& capStyle() { return _capStyle; }
+        Symbology::Stroke::LineCapStyle capStyle() const { return _capStyle; }
+        Symbology::Stroke::LineCapStyle& capStyle() { return _capStyle; }
 
     public:
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Features2
     protected:
         optional<double> _distance;
         int _numQuadSegs;
-        Stroke::LineCapStyle _capStyle;
+        Symbology::Stroke::LineCapStyle _capStyle;
 
         bool push( Feature* input, const FilterContext& context );
     };

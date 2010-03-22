@@ -27,50 +27,6 @@ using namespace osgEarth::Features2;
 using namespace osgEarth::Symbology;
 
 
-/**************************************************************************/
-
-
-Stroke::Stroke() :
-_color( 1, 1, 1, 1 ),
-_width( 1.0f ),
-_lineJoin( LINEJOIN_DEFAULT ),
-_lineCap( LINECAP_DEFAULT )
-{
-    //nop
-}
-
-Fill::Fill() :
-_color( 1, 1, 1, 1 )
-{
-    //nop
-}
-
-StyleSymbolizer::StyleSymbolizer()
-{
-    //nop
-}
-
-LineSymbolizer::LineSymbolizer() :
-_stroke( Stroke() )
-{
-    //nop
-}
-
-PolygonSymbolizer::PolygonSymbolizer() :
-_fill( Fill() )
-{
-    //nop
-}
-
-TextSymbolizer::TextSymbolizer() :
-_fill( Fill() ),
-_halo( Stroke() ),
-_size( 16.0f ),
-_font( "fonts/arial.ttf" )
-{
-    //nop
-}
-
 /************************************************************************/
 
 Style::Style( const Config& conf ) : StyleComponent()

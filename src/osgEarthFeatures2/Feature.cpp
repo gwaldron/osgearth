@@ -16,11 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures2/Feature>
 #include <algorithm>
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
+using namespace osgEarth::Features2;
+using namespace osgEarth::Symbology;
 
 static
 std::string EMPTY_STRING;
@@ -36,7 +37,7 @@ _extent( extent )
 
 Feature::Feature( long fid ) :
 _fid( fid ),
-_style( Style() )
+_style( new Style() )
 {
     //NOP
 }

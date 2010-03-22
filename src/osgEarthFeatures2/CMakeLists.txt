@@ -17,7 +17,6 @@ SET(LIB_PUBLIC_HEADERS
     BuildGeometryFilter  
     Common
     ConvertTypeFilter
-    CssUtils
     Feature
     FeatureGridder
     FeatureModelSource
@@ -25,11 +24,10 @@ SET(LIB_PUBLIC_HEADERS
     FeatureTileSource
     Filter
     GEOS
-    Query
+#    Query
     ResampleFilter
     ScaleFilter
-    SLD
-    Styling
+#    Styling
     TransformFilter
 )
 
@@ -39,7 +37,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     BufferFilter.cpp
     BuildGeometryFilter.cpp
     ConvertTypeFilter.cpp
-    CssUtils.cpp
     Feature.cpp
     FeatureGridder.cpp
     FeatureModelSource.cpp
@@ -47,11 +44,10 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureTileSource.cpp
     Filter.cpp
     GEOS.cpp
-    Query.cpp
+#    Query.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
-    SLD.cpp
-    Styling.cpp
+#    Styling.cpp
     TransformFilter.cpp
 )
 

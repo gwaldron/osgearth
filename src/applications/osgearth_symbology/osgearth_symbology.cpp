@@ -41,8 +41,6 @@
 #include <osg/Point>
 #include <osg/Material>
 
-typedef std::vector<osg::ref_ptr<osgEarth::Symbology::Style> > StyleList;
-
 using namespace osgEarth::Symbology;
 
 Geometry* createLineGeometry(const osg::Vec3d& start)

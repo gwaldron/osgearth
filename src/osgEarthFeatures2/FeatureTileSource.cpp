@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures2/FeatureTileSource>
-#include <osgEarthFeatures2/Styling>
 #include <osgEarth/Registry>
 #include <osg/Notify>
 
@@ -129,9 +128,9 @@ FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
             {
                 FeatureList list;
                 list.push_back( feature );
-                renderFeatures2ForStyle( 
-					feature->style().get(), list, buildData.get(),
-					key->getGeoExtent(), image.get() );
+                renderFeaturesForStyle( 
+                    *(feature->style().get()), list, buildData.get(),
+                    key->getGeoExtent(), image.get() );
             }
         }
     }
@@ -142,20 +141,20 @@ FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
             for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
             {
                 const StyleSelector& sel = *i;
-                Style style;
+                Style* style;
                 styles->getStyle( sel.getSelectedStyleName(), style );
-                queryAndRenderFeatures2ForStyle( style, sel.query().value(), buildData.get(), key->getGeoExtent(), image.get() );
+                queryAndRenderFeaturesForStyle( *style, sel.query().value(), buildData.get(), key->getGeoExtent(), image.get() );
             }
         }
         else
         {
-            Style style = styles->getDefaultStyle();
-            queryAndRenderFeatures2ForStyle( style, Query(), buildData.get(), key->getGeoExtent(), image.get() );
+            const Style* style = styles->getDefaultStyle();
+            queryAndRenderFeaturesForStyle( *style, Query(), buildData.get(), key->getGeoExtent(), image.get() );
         }
     }
     else
     {
-		queryAndRenderFeatures2ForStyle( Style(), Query(), buildData.get(), key->getGeoExtent(), image.get() );
+		queryAndRenderFeaturesForStyle( Style(), Query(), buildData.get(), key->getGeoExtent(), image.get() );
     }
 
     // final tile processing after all styles are done
@@ -166,7 +165,7 @@ FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
 
 
 bool
-FeatureTileSource::queryAndRenderFeatures2ForStyle(const Style& style,
+FeatureTileSource::queryAndRenderFeaturesForStyle(const Style& style,
                                                   const Query& query,
 												  osg::Referenced* data,
 												  const GeoExtent& imageExtent,
@@ -225,7 +224,7 @@ FeatureTileSource::queryAndRenderFeatures2ForStyle(const Style& style,
         //    << queryExtent.toString() << ")"
         //    << std::endl;
 
-	    return renderFeatures2ForStyle( style, cellFeatures2, data, imageExtent, out_image );
+	    return renderFeaturesForStyle( style, cellFeatures2, data, imageExtent, out_image );
     }
     else
     {

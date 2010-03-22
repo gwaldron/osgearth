@@ -21,6 +21,8 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/Query>
+#include <osgEarth/Config>
 #include <osg/Object>
 #include <vector>
 
@@ -35,6 +37,7 @@ namespace osgEarth { namespace Symbology
         typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
 
         Style();
+        Style(const Config&);
         Style(const Style&, const osg::CopyOp&);
         META_Object(osgEarthSymbology, Style);
 
@@ -67,9 +70,92 @@ namespace osgEarth { namespace Symbology
             return 0L;
         }
 
+
+        virtual Config toConfig() const;
+
+        void fromConfig( const Config& conf );
+        void fromCSS( const std::string& css );
+
     protected:
         int                         _revision;
         SymbolList                  _symbols;
+
+        std::string                 _origType;
+        std::string                 _origData;
+        optional<std::string>       _url;
+
+    };
+
+    typedef std::vector< osg::ref_ptr<Style> > StyleList;
+    typedef std::map< std::string, osg::ref_ptr<Style> > StyleMap;
+
+
+    class OSGEARTHSYMBOLOGY_EXPORT StyleComponent
+    {
+    };
+
+    /**
+     * A style selector lets you classify styles based on rules, such as a
+     * feature query. By default the selector selects the style with the
+     * same name as the selector, but you can override this by settings
+     * the styleName property.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSelector : public StyleComponent
+    {
+    public:
+        StyleSelector( const Config& conf =Config() );
+
+    public: // properties
+
+        /** Name of this style class. */
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
+
+        /** Name of the style to select */
+        optional<std::string>& styleName() { return _styleName; }
+        const optional<std::string>& styleName() const { return _styleName; }
+
+        /** Expression/spatial filter used to select items to which the style will apply */
+        optional<Query>& query() { return _query; }
+        const optional<Query>& query() const { return _query; }
+
+        /** Returns the styleName() property, it set; otherwise returns the selector name. */
+        std::string getSelectedStyleName() const;
+
+        //Configurable
+        virtual void fromConfig( const Config& conf );
+        virtual Config toConfig() const;
+
+    protected:
+        std::string _name;
+        optional<std::string> _styleName;
+        optional<Query> _query;
+    };
+
+    typedef std::list<StyleSelector> StyleSelectorList;
+
+
+
+    class OSGEARTHSYMBOLOGY_EXPORT StyleCatalog : public Configurable
+    {
+    public:
+        StyleCatalog( const Config& conf =Config() );
+
+        StyleSelectorList& selectors() { return _selectors; }
+        const StyleSelectorList& selectors() const { return _selectors; }
+
+        void addStyle( Style* style );
+        void removeStyle( const std::string& name );
+        bool getStyle( const std::string& name, Style*& out ) const;
+        const Style* getDefaultStyle() const;
+
+        virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
+
+    protected:
+        StyleSelectorList _selectors;
+        StyleMap _styles;
+        osg::ref_ptr<Style> _emptyStyle;
     };
 
 } } // namespace osgEarth::Symbology

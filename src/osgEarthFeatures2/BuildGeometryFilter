@@ -39,7 +39,8 @@ namespace osgEarth { namespace Features2
     public:
         BuildGeometryFilter();
 
-        optional<Style>& style() { return _style; }
+        Symbology::Style* getStyle() { return _style.get(); }
+        void setStyle(Symbology::Style* s) { _style = s; }
 
         optional<Symbology::Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
@@ -47,7 +48,7 @@ namespace osgEarth { namespace Features2
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
-        optional<Style> _style;
+        osg::ref_ptr<Symbology::Style> _style;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         bool _hasPoints;
         bool _hasLines;

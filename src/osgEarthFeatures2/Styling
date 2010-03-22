@@ -16,12 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #ifndef OSGEARTHFEATURES_STYLING_H
 #define OSGEARTHFEATURES_STYLING_H 1
 
 #include <osgEarthFeatures2/Common>
 #include <osgEarthFeatures2/Query>
 #include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarth/Config>
 #include <osg/Vec4>
 #include <osg/Notify>
@@ -33,108 +35,7 @@ namespace osgEarth { namespace Features2
     {
     };
 
-    class OSGEARTHFEATURES_EXPORT Stroke : public StyleComponent
-    {
-    public:
-        enum LineCapStyle {
-            LINECAP_DEFAULT,
-            LINECAP_BUTT,
-            LINECAP_SQUARE,
-            LINECAP_ROUND
-        };
-
-        enum LineJoinStyle {
-            LINEJOIN_DEFAULT
-        };
-
-    public:
-        Stroke();
-
-        osg::Vec4f& color() { return _color; }
-        const osg::Vec4f& color() const { return _color; }
-
-        optional<LineCapStyle>& lineCap() { return _lineCap; }
-        const optional<LineCapStyle>& lineCap() const { return _lineCap; }
-
-        optional<LineJoinStyle>& lineJoin() { return _lineJoin; }
-        const optional<LineJoinStyle>& lineJoin() const { return _lineJoin; }
-
-        optional<float>& width() { return _width; }        
-        const optional<float>& width() const { return _width; }
-
-    protected:
-        osg::Vec4f              _color;
-        optional<LineCapStyle>  _lineCap;
-        optional<LineJoinStyle> _lineJoin;
-        optional<float>         _width;
-    };
-
-    class OSGEARTHFEATURES_EXPORT Fill : public StyleComponent
-    {
-    public:
-        Fill();
-
-        osg::Vec4f& color() { return _color; }
-        const osg::Vec4f& color() const { return _color; }
-
-    protected:
-        osg::Vec4f _color;
-    };
-
-    class OSGEARTHFEATURES_EXPORT StyleSymbolizer : public StyleComponent
-    {
-    protected:
-        StyleSymbolizer();
-    };
-
-    class OSGEARTHFEATURES_EXPORT LineSymbolizer : public StyleSymbolizer
-    {
-    public:
-        LineSymbolizer();
-
-        optional<Stroke>& stroke() { return _stroke; }
-        const optional<Stroke>& stroke() const { return _stroke; }
-
-    protected:
-        optional<Stroke> _stroke;
-    };
-
-    class OSGEARTHFEATURES_EXPORT PolygonSymbolizer : public StyleSymbolizer
-    {
-    public:
-        PolygonSymbolizer();
-
-        optional<Fill>& fill() { return _fill; }
-        const optional<Fill>& fill() const { return _fill; }
-
-    protected:
-        optional<Fill> _fill;
-    };
-
-    class OSGEARTHFEATURES_EXPORT TextSymbolizer : public StyleSymbolizer
-    {
-    public:
-        TextSymbolizer();
-
-        optional<Fill>& fill() { return _fill; }
-        const optional<Fill>& fill() const { return _fill; }
-
-        optional<Stroke>& halo() { return _halo; }
-        const optional<Stroke>& halo() const { return _halo; }
-
-        optional<std::string>& font() { return _font; }
-        const optional<std::string> font() const { return _font; }
-
-        optional<float>& size() { return _size; }
-        const optional<float>& size() const { return _size; }
-
-    protected:
-        optional<Fill>        _fill;
-        optional<Stroke>      _halo;
-        optional<std::string> _font;
-        optional<float>       _size;
-    };
-
+#if 0
     /**
      * A Style defines the appearance of geometry or text.
      */
@@ -152,21 +53,18 @@ namespace osgEarth { namespace Features2
         optional<std::string>& url() { return _url; }
         const optional<std::string>& url() const { return _url; }
 
-        ///** Expression/spatial filter used to select items to which the style will apply */
-        //optional<Query>& query() { return _query; }
-        //const optional<Query>& query() const { return _query; }
 
         /** Style information for line elements. */
-        optional<LineSymbolizer>& lineSymbolizer() { return _lineSymbolizer; }
-        const optional<LineSymbolizer>& lineSymbolizer() const { return _lineSymbolizer; }
+        optional<Symbology::LineSymbol>& lineSymbolizer() { return _lineSymbolizer; }
+        const optional<Symbology::LineSymbol>& lineSymbolizer() const { return _lineSymbolizer; }
 
         /** Style information for polygon elements. */
-        optional<PolygonSymbolizer>& polygonSymbolizer() { return _polygonSymbolizer; }
-        const optional<PolygonSymbolizer>& polygonSymbolizer() const { return _polygonSymbolizer; }
+        optional<Symbology::PolygonSymbol>& polygonSymbolizer() { return _polygonSymbolizer; }
+        const optional<Symbology::PolygonSymbol>& polygonSymbolizer() const { return _polygonSymbolizer; }
 
         /** Style information for text elements. */
-        optional<TextSymbolizer>& textSymbolizer() { return _textSymbolizer; }
-        const optional<TextSymbolizer>& textSymbolizer() const { return _textSymbolizer; }
+        optional<Symbology::TextSymbol>& textSymbolizer() { return _textSymbolizer; }
+        const optional<Symbology::TextSymbol>& textSymbolizer() const { return _textSymbolizer; }
         
         /** Convenience method to easily grab wither the line- or poly- color based
             on the geometry type. */
@@ -182,9 +80,9 @@ namespace osgEarth { namespace Features2
     protected:
         std::string                 _name;
         optional<std::string>       _url;
-        optional<LineSymbolizer>    _lineSymbolizer;
-        optional<PolygonSymbolizer> _polygonSymbolizer;
-        optional<TextSymbolizer>    _textSymbolizer;
+        optional<Symbology::LineSymbol>    _lineSymbolizer;
+        optional<Symbology::PolygonSymbol> _polygonSymbolizer;
+        optional<Symbology::TextSymbol>    _textSymbolizer;
 
     private:
         std::string _origType;
@@ -194,6 +92,7 @@ namespace osgEarth { namespace Features2
     typedef std::list< Style > StyleList;
     typedef std::map< std::string, Style > StyleMap;
 
+#endif
 
     /**
      * A style selector lets you classify styles based on rules, such as a
@@ -239,30 +138,6 @@ namespace osgEarth { namespace Features2
     typedef std::list<StyleSelector> StyleSelectorList;
 
 
-    //class OSGEARTHFEATURES_EXPORT StyledLayer : public StyleComponent
-    //{
-    //public:
-    //    StyledLayer();
-
-    //    /** Name of this styled layer. */
-    //    std::string& name() { return _name; }
-    //    const std::string& name() const { return _name; }
-    //    
-    //    /** Collection of styles in this layer. */
-    //    StyleList& styles() { return _styles; }
-    //    const StyleList& styles() const { return _styles; }
-
-    //    /** Whether this styled layer definition is "empty" (undefined) */
-    //    bool empty() const {
-    //        return _name.empty() || _styles.empty(); }
-
-    //protected:
-    //    std::string _name;
-    //    StyleList _styles;
-    //};
-
-    //typedef std::list< StyledLayer > StyledLayers;
-
 
     class OSGEARTHFEATURES_EXPORT StyleCatalog : public Configurable
     {
@@ -279,11 +154,6 @@ namespace osgEarth { namespace Features2
         bool getStyle( const std::string& name, Style& out ) const;
         const Style& getDefaultStyle() const;
 
-        //StyledLayers& namedLayers() { return _namedLayers; }
-        //const StyledLayers& namedLayers() const { return _namedLayers; }
-
-        //bool getNamedLayer( const std::string& name, StyledLayer& out_layer ) const;
-
     public:
         virtual Config toConfig() const;
         virtual void fromConfig( const Config& conf );
@@ -298,16 +168,7 @@ namespace osgEarth { namespace Features2
     };
 
 
-    //class OSGEARTHFEATURES_EXPORT StyleReader
-    //{
-    //public:
-    //    static bool readLayerStyles( const std::string& layerName, const Config& conf, StyleCatalog& out_catalog );
-    //    static bool readStyle( const Config& conf, Style& out_style, bool matchesOnly =true );
-    //    static bool readStyleFromCSS( const Config& conf, Style& out_style, bool matchesOnly =true);
-    //    static bool readStyleList( const Config& conf, StyleList& out_classes );
-    //    static bool readStyleListFromCSS( const Config& conf, StyleList& out_classes, bool createIfNecessary =false);
-    //};
-
 } } // namespace osgEarth::Features2
 
 #endif // OSGEARTHFEATURES_STYLING_H
+#endif

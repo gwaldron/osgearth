@@ -26,6 +26,7 @@
 #include <osgEarthFeatures2/Feature>
 #include <osgEarthFeatures2/Filter>
 #include <osgEarthFeatures2/Styling>
+#include <osgEarthSymbology/Geometry>
 #include <osg/Vec3>
 #include <geos/geom/Geometry.h>
 
@@ -37,10 +38,10 @@ namespace osgEarth { namespace Features2
     {
     public:
 
-        static Geometry* exportGeometry( const geos::geom::Geometry* input );
+        static Symbology::Geometry* exportGeometry( const geos::geom::Geometry* input );
 
 
-        static geos::geom::Geometry* importGeometry( const Geometry* input );
+        static geos::geom::Geometry* importGeometry( const Symbology::Geometry* input );
 
     };
 

@@ -21,8 +21,8 @@
 #define OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H 1
 
 #include <osgEarthFeatures2/Common>
-#include <osgEarthFeatures2/Styling>
 #include <osgEarthFeatures2/FeatureSource>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/TileSource>
 #include <osgEarth/Map>
 #include <osg/Node>
@@ -40,8 +40,8 @@ namespace osgEarth { namespace Features2
         osg::ref_ptr<const FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const osg::ref_ptr<const FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        optional<StyleCatalog>& styles() { return _styles; }
-        const optional<StyleCatalog>& styles() const { return _styles; }
+        optional<Symbology::StyleCatalog>& styles() { return _styles; }
+        const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
 
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -54,7 +54,7 @@ namespace osgEarth { namespace Features2
 
     private:
         osg::ref_ptr<const FeatureSourceOptions> _featureOptions;
-        optional<StyleCatalog> _styles;
+        optional<Symbology::StyleCatalog> _styles;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
     };
 
@@ -104,8 +104,8 @@ namespace osgEarth { namespace Features2
          *
          * @return true if the rendering succeeded, false if the out_image did not change.
          */
-        virtual bool renderFeatures2ForStyle(
-            const Style& style,
+        virtual bool renderFeaturesForStyle(
+            const Symbology::Style& style,
             FeatureList& features,
             osg::Referenced* buildData,
             const GeoExtent& imageExtent,
@@ -113,7 +113,7 @@ namespace osgEarth { namespace Features2
             
         /**
          * Optional implementation hook to pre-process an image tile before any calls to 
-         * renderFeatures2ForStyle().
+         * renderFeaturesForStyle().
          */
         virtual bool preProcess(
             osg::Image* image,
@@ -121,7 +121,7 @@ namespace osgEarth { namespace Features2
             
         /**
          * Optional implementation hook to post-process an image tile after all calls to 
-         * renderFeatures2ForStyle() are complete.
+         * renderFeaturesForStyle() are complete.
          */
         virtual bool postProcess(
             osg::Image* image,
@@ -149,9 +149,9 @@ namespace osgEarth { namespace Features2
 
         osg::ref_ptr<const osgEarth::Map> _map;
         
-        bool queryAndRenderFeatures2ForStyle(
-            const Style& style,
-            const Query& query,
+        bool queryAndRenderFeaturesForStyle(
+            const Symbology::Style& style,
+            const Symbology::Query& query,
             osg::Referenced* data,
             const GeoExtent& imageExtent,
             osg::Image* out_image );

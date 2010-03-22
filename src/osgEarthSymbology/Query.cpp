@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures2/Query>
+#include <osgEarthSymbology/Query>
 
-using namespace osgEarth::Features2;
+using namespace osgEarth::Symbology;
 
 Query::Query( const Config& conf )
 {

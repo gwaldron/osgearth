@@ -196,7 +196,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
             geom::GeometryFactory* f = new geom::GeometryFactory();
 
             // create the intersection polygon:
-            osg::ref_ptr<Polygon> poly = new Polygon( 4 );
+            osg::ref_ptr<Symbology::Polygon> poly = new Symbology::Polygon( 4 );
             poly->push_back( osg::Vec3d( b.xMin(), b.yMin(), 0 ));
             poly->push_back( osg::Vec3d( b.xMax(), b.yMin(), 0 ));
             poly->push_back( osg::Vec3d( b.xMax(), b.yMax(), 0 ));
@@ -209,7 +209,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
                 bool keepFeature = false;
 
                 Feature* feature = f_i->get();
-                Geometry* featureGeom = feature->getGeometry();
+                Symbology::Geometry* featureGeom = feature->getGeometry();
                 if ( featureGeom )
                 {
                     geom::Geometry* inGeom = GEOSUtils::importGeometry( featureGeom );

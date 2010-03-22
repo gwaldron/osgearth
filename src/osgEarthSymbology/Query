@@ -17,19 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_QUERY_H
-#define OSGEARTHFEATURES_QUERY_H 1
+#ifndef OSGEARTHSYMBOLOGY_QUERY_H
+#define OSGEARTHSYMBOLOGY_QUERY_H 1
 
-#include <osgEarthFeatures2/Common>
+#include <osgEarthSymbology/Common>
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>
 
-namespace osgEarth { namespace Features2
+namespace osgEarth { namespace Symbology
 {
     /**
-     * A query filter that you can use to limit a set of features to process.
+     * A query filter that you can use to limit a set of symbology to process.
      */
-    class OSGEARTHFEATURES_EXPORT Query : public Configurable
+    class OSGEARTHSYMBOLOGY_EXPORT Query : public Configurable
     {
     public:
         Query( const Config& conf =Config() );
@@ -54,6 +54,6 @@ namespace osgEarth { namespace Features2
         optional<std::string> _expression;
     };
 
-} } // namespace osgEarth::Features2
+} } // namespace osgEarth::Symbology
 
-#endif // OSGEARTHFEATURES_QUERY_H
+#endif // OSGEARTHSYMBOLOGY_QUERY_H

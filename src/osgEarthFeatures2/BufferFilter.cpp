@@ -29,6 +29,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features2;
+using namespace osgEarth::Symbology;
 
 bool
 BufferFilter::isSupported()

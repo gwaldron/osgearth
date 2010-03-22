@@ -28,6 +28,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/Graticle>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 using namespace osgEarth::Drivers;
@@ -59,19 +60,40 @@ struct FlyToViewpointHandler : public osgGA::GUIEventHandler
     osg::observer_ptr<osgEarthUtil::EarthManipulator> _manip;
 };
 
+// a simple handler that toggles a node mask on/off
+struct NodeToggleHandler : public osgGA::GUIEventHandler 
+{
+    NodeToggleHandler( osg::Node* node, char key ) : _node(node), _key(key) { }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key )
+        {
+            _node->setNodeMask( _node->getNodeMask() == 0 ? ~0 : 0 );
+        }
+        return false;
+    }
+
+    osg::observer_ptr<osg::Node> _node;
+    char _key;
+
+};
+
 
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-
+       
+    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
     osgViewer::Viewer viewer(arguments);
 
     // install the programmable manipulator.
     osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
 
-    osg::Node* sceneData = osgDB::readNodeFiles( arguments );
+    osg::Group* root = new osg::Group();
+    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
 
-    if (!sceneData)
+    if (!earthNode)
     {
         // Create a "Map" dynamically if no nodes were loaded
         // The "Map" is the data model object that we will be visualizing. It will be
@@ -96,11 +118,14 @@ int main(int argc, char** argv)
         // The MapNode will render the Map object in the scene graph.
         osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );
 
-        sceneData = mapNode;
-    }
+        earthNode = mapNode;
+    }    
+
+    root->addChild( earthNode );
     
-    // Set a home viewpoint
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( sceneData );
+    osgEarthUtil::Graticle* graticle = 0L;
+
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
     {
         manip->setNode( mapNode );
@@ -113,16 +138,26 @@ int main(int argc, char** argv)
             // for a geocentric map:
             //viewer.addEventHandler( new osgEarthUtil::AutoClipPlaneHandler( mapNode ) );
         }
+
+        // create a graticle, and start it in the OFF position
+        graticle = new osgEarthUtil::Graticle( mapNode->getMap() );
+        graticle->setNodeMask(0);
+        root->addChild( graticle );
     }
 
-    viewer.setSceneData( sceneData );
+    viewer.setSceneData( root );
     viewer.setCameraManipulator( manip );
 
     manip->getSettings()->bindMouseDoubleClick(
         osgEarthUtil::EarthManipulator::ACTION_GOTO,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
+
     // add our fly-to handler
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
+
+    // add a handler to toggle the graticle
+    if ( graticle )
+        viewer.addEventHandler(new NodeToggleHandler( graticle, 'g' ));
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

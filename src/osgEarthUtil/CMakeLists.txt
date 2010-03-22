@@ -15,6 +15,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationManager
     Export
 	FadeLayerNode
+	Graticle
 	ObjectPlacer
 	Viewpoint
 )
@@ -26,6 +27,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ElevationFadeCallback.cpp
     ElevationManager.cpp
 	FadeLayerNode.cpp
+	Graticle.cpp
 	ObjectPlacer.cpp
 	Viewpoint.cpp
 )
@@ -40,6 +42,8 @@ ENDIF(WIN32)
 
 LINK_INTERNAL(${LIB_NAME}
 osgEarth
+osgEarthFeatures
+osgEarthSymbology
 )
 
 LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OPENTHREADS_LIBRARY)

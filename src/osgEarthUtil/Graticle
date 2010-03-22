@@ -1,0 +1,89 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_GRATICLE
+#define OSGEARTHUTIL_GRATICLE
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Map>
+#include <vector>
+
+using namespace osgEarth;
+
+namespace osgEarthUtil
+{
+    /**
+     * Implements a map graticle. 
+     * 
+     * NOTE: So far, this only works for geocentric maps.
+     * TODO: Add projected support; add text label support
+     */
+    class OSGEARTHUTIL_EXPORT Graticle : public osg::Group
+    {
+    public:
+
+        /**
+         * Constructs a new graticle for use with the specified map. The graticle
+         * is created with several default levels. If you call addLevel(), the 
+         * default levels are deleted.
+         *
+         * @param map
+         *      Map with which you will use this graticle
+         */
+        Graticle( const Map* map );
+
+        /**
+         * Adds a new level to the profile. Levels are sorted by maxRange. Calling this method
+         * deletes any automatically created default levels.
+         *
+         * @param maxRange
+         *      Maximum camera range for this level.
+         * @param cellsX, cellsY
+         *      Number of grid cells in each direction at this level.
+         * @param lineWidth
+         *      Width of the grid lines, in map units, at this level.
+         */
+        void addLevel( float maxRange, unsigned int cellsX, unsigned int cellsY, double lineWidth );
+
+
+    private:
+        struct Level {
+            float _maxRange;
+            unsigned int _cellsX, _cellsY;
+            double _lineWidth;
+        };
+
+        unsigned int getID() const { return _id; }
+
+        bool getLevel( unsigned int level, Graticle::Level& out_level ) const;
+
+        unsigned int getNumLevels() const { return _levels.size(); }
+
+        unsigned int _id;
+        bool _autoLevels;
+        osg::observer_ptr<const Map> _map;
+        std::vector<Level> _levels;
+
+        osg::Node* createGridLevel( unsigned int levelNum ) const;
+        osg::Node* createTextLevel( unsigned int levelNum ) const;
+
+        friend class GraticleFactory;
+    };
+}
+
+#endif // OSGEARTHUTIL_GRATICLE

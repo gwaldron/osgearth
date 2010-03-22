@@ -28,24 +28,24 @@ using namespace osgEarth;
 namespace osgEarthUtil
 {
     /**
-     * Implements a map graticle. 
+     * Implements a map graticule. 
      * 
      * NOTE: So far, this only works for geocentric maps.
      * TODO: Add projected support; add text label support
      */
-    class OSGEARTHUTIL_EXPORT Graticle : public osg::Group
+    class OSGEARTHUTIL_EXPORT Graticule : public osg::Group
     {
     public:
 
         /**
-         * Constructs a new graticle for use with the specified map. The graticle
+         * Constructs a new graticule for use with the specified map. The graticule
          * is created with several default levels. If you call addLevel(), the 
          * default levels are deleted.
          *
          * @param map
-         *      Map with which you will use this graticle
+         *      Map with which you will use this graticule
          */
-        Graticle( const Map* map );
+        Graticule( const Map* map );
 
         /**
          * Adds a new level to the profile. Levels are sorted by maxRange. Calling this method
@@ -70,7 +70,7 @@ namespace osgEarthUtil
 
         unsigned int getID() const { return _id; }
 
-        bool getLevel( unsigned int level, Graticle::Level& out_level ) const;
+        bool getLevel( unsigned int level, Graticule::Level& out_level ) const;
 
         unsigned int getNumLevels() const { return _levels.size(); }
 
@@ -82,7 +82,7 @@ namespace osgEarthUtil
         osg::Node* createGridLevel( unsigned int levelNum ) const;
         osg::Node* createTextLevel( unsigned int levelNum ) const;
 
-        friend class GraticleFactory;
+        friend class GraticuleFactory;
     };
 }
 

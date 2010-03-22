@@ -123,7 +123,7 @@ int main(int argc, char** argv)
 
     root->addChild( earthNode );
     
-    osgEarthUtil::Graticle* graticle = 0L;
+    osgEarthUtil::Graticule* graticule = 0L;
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -140,9 +140,9 @@ int main(int argc, char** argv)
         }
 
         // create a graticle, and start it in the OFF position
-        graticle = new osgEarthUtil::Graticle( mapNode->getMap() );
-        graticle->setNodeMask(0);
-        root->addChild( graticle );
+        graticule = new osgEarthUtil::Graticule( mapNode->getMap() );
+        graticule->setNodeMask(0);
+        root->addChild( graticule );
     }
 
     viewer.setSceneData( root );
@@ -156,8 +156,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
 
     // add a handler to toggle the graticle
-    if ( graticle )
-        viewer.addEventHandler(new NodeToggleHandler( graticle, 'g' ));
+    if ( graticule )
+        viewer.addEventHandler(new NodeToggleHandler( graticule, 'g' ));
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

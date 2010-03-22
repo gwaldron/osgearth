@@ -39,26 +39,26 @@ using namespace osgEarthUtil;
 using namespace osgEarth::Features;
 using namespace OpenThreads;
 
-static Mutex s_graticleMutex;
-static unsigned int s_graticleIdGen = 0;
-typedef std::map<unsigned int, osg::ref_ptr<Graticle> > GraticleRegistry;
-static GraticleRegistry s_graticleRegistry;
+static Mutex s_graticuleMutex;
+static unsigned int s_graticuleIdGen = 0;
+typedef std::map<unsigned int, osg::ref_ptr<Graticule> > GraticuleRegistry;
+static GraticuleRegistry s_graticuleRegistry;
 
-#define GRATICLE_EXTENSION "osgearthutil_graticle"
+#define GRATICLE_EXTENSION "osgearthutil_graticule"
 #define TEXT_MARKER "t"
 #define GRID_MARKER "g"
 
 /**************************************************************************/
 
-Graticle::Graticle( const Map* map ) :
+Graticule::Graticule( const Map* map ) :
 _map( map ),
 _autoLevels( true )
 {
-    // safely generate a unique ID for this graticle:
+    // safely generate a unique ID for this graticule:
     {
-        ScopedLock<Mutex> lock( s_graticleMutex );
-        _id = s_graticleIdGen++;
-        s_graticleRegistry[_id] = this;
+        ScopedLock<Mutex> lock( s_graticuleMutex );
+        _id = s_graticuleIdGen++;
+        s_graticuleRegistry[_id] = this;
     }
 
     if ( _map->isGeocentric() )
@@ -119,7 +119,7 @@ _autoLevels( true )
 }
 
 void
-Graticle::addLevel( float maxRange, unsigned int cellsX, unsigned int cellsY, double lineWidth )
+Graticule::addLevel( float maxRange, unsigned int cellsX, unsigned int cellsY, double lineWidth )
 {
     if ( _autoLevels )
     {
@@ -145,7 +145,7 @@ Graticle::addLevel( float maxRange, unsigned int cellsX, unsigned int cellsY, do
 }
 
 bool
-Graticle::getLevel( unsigned int level, Graticle::Level& out_level ) const
+Graticule::getLevel( unsigned int level, Graticule::Level& out_level ) const
 {
     if ( level < _levels.size() )
     {
@@ -238,19 +238,19 @@ struct CullPlaneCallback : public osg::NodeCallback
 };
 
 osg::Node*
-Graticle::createGridLevel( unsigned int levelNum ) const
+Graticule::createGridLevel( unsigned int levelNum ) const
 {
     if ( !_map->isGeocentric() )
     {
-        OE_WARN << "Graticle: only supports geocentric maps" << std::endl;
+        OE_WARN << "Graticule: only supports geocentric maps" << std::endl;
         return 0L;
     }
 
-    Graticle::Level level;
+    Graticule::Level level;
     if ( !getLevel( levelNum, level ) )
         return 0L;
 
-    OE_INFO << "Graticle: creating grid level " << levelNum << std::endl;
+    OE_INFO << "Graticule: creating grid level " << levelNum << std::endl;
 
     osg::Group* group = new osg::Group();
 
@@ -334,7 +334,7 @@ Graticle::createGridLevel( unsigned int levelNum ) const
 
     if ( levelNum+1 < getNumLevels() )
     {
-        Graticle::Level nextLevel;
+        Graticule::Level nextLevel;
         if ( getLevel( levelNum+1, nextLevel ) )
         {
             osg::PagedLOD* plod = new osg::PagedLOD();
@@ -406,19 +406,19 @@ createTextTransform( double x, double y, double value, const osg::EllipsoidModel
 }
 
 osg::Node*
-Graticle::createTextLevel( unsigned int levelNum ) const
+Graticule::createTextLevel( unsigned int levelNum ) const
 {
     if ( !_map->isGeocentric() )
     {
-        OE_WARN << "Graticle: only supports geocentric maps" << std::endl;
+        OE_WARN << "Graticule: only supports geocentric maps" << std::endl;
         return 0L;
     }
 
-    Graticle::Level level;
+    Graticule::Level level;
     if ( !getLevel( levelNum, level ) )
         return 0L;
 
-    OE_INFO << "Graticle: creating text level " << levelNum << std::endl;
+    OE_INFO << "Graticule: creating text level " << levelNum << std::endl;
 
     osg::Group* group = new osg::Group();
 
@@ -473,7 +473,7 @@ Graticle::createTextLevel( unsigned int levelNum ) const
 
     if ( levelNum+1 < getNumLevels() )
     {
-        Graticle::Level nextLevel;
+        Graticule::Level nextLevel;
         if ( getLevel( levelNum+1, nextLevel ) )
         {
             osg::PagedLOD* plod = new osg::PagedLOD();
@@ -493,14 +493,14 @@ Graticle::createTextLevel( unsigned int levelNum ) const
 
 namespace osgEarthUtil
 {
-    // OSG Plugin for loading subsequent graticle levels
-    class GraticleFactory : public osgDB::ReaderWriter
+    // OSG Plugin for loading subsequent graticule levels
+    class GraticuleFactory : public osgDB::ReaderWriter
     {
     public:
         virtual const char* className()
         {
-            supportsExtension( GRATICLE_EXTENSION, "osgEarth graticle" );
-            return "osgEarth graticle LOD loader";
+            supportsExtension( GRATICLE_EXTENSION, "osgEarth graticule" );
+            return "osgEarth graticule LOD loader";
         }
 
         virtual bool acceptsExtension(const std::string& extension) const
@@ -514,7 +514,7 @@ namespace osgEarthUtil
             if ( !acceptsExtension( ext ) )
                 return ReadResult::FILE_NOT_HANDLED;
 
-            // the graticle definition is formatted: LEVEL_ID.MARKER.EXTENSION
+            // the graticule definition is formatted: LEVEL_ID.MARKER.EXTENSION
             std::string def = osgDB::getNameLessExtension( uri );
             
             std::string marker = osgDB::getFileExtension( def );
@@ -523,23 +523,23 @@ namespace osgEarthUtil
             int levelNum, id;
             sscanf( def.c_str(), "%d_%d", &levelNum, &id );
 
-            // look up the graticle referenced in the location name:
-            Graticle* graticle = 0L;
+            // look up the graticule referenced in the location name:
+            Graticule* graticule = 0L;
             {
-                ScopedLock<Mutex> lock( s_graticleMutex );
-                GraticleRegistry::iterator i = s_graticleRegistry.find(id);
-                if ( i != s_graticleRegistry.end() )
-                    graticle = i->second.get();
+                ScopedLock<Mutex> lock( s_graticuleMutex );
+                GraticuleRegistry::iterator i = s_graticuleRegistry.find(id);
+                if ( i != s_graticuleRegistry.end() )
+                    graticule = i->second.get();
             }
 
             if ( marker == GRID_MARKER )
             {
-                osg::Node* result = graticle->createGridLevel( levelNum );
+                osg::Node* result = graticule->createGridLevel( levelNum );
                 return result ? ReadResult( result ) : ReadResult::ERROR_IN_READING_FILE;
             }
             else if ( marker == TEXT_MARKER )
             {
-                osg::Node* result = graticle->createTextLevel( levelNum );
+                osg::Node* result = graticule->createTextLevel( levelNum );
                 return result ? ReadResult( result ) : ReadResult::ERROR_IN_READING_FILE;
             }
             else
@@ -549,6 +549,6 @@ namespace osgEarthUtil
             }
         }
     };
-    REGISTER_OSGPLUGIN(osgearthutil_graticle, GraticleFactory)
+    REGISTER_OSGPLUGIN(osgearthutil_graticule, GraticuleFactory)
 }
 

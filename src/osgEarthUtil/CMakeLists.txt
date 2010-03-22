@@ -15,7 +15,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationManager
     Export
 	FadeLayerNode
-	Graticle
+	Graticule
 	ObjectPlacer
 	Viewpoint
 )
@@ -27,7 +27,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ElevationFadeCallback.cpp
     ElevationManager.cpp
 	FadeLayerNode.cpp
-	Graticle.cpp
+	Graticule.cpp
 	ObjectPlacer.cpp
 	Viewpoint.cpp
 )

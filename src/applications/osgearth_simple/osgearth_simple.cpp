@@ -28,7 +28,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Graticle>
+#include <osgEarthUtil/Graticule>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 using namespace osgEarth::Drivers;

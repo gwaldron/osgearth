@@ -47,10 +47,14 @@ namespace osgEarth { namespace Symbology
             bool preRenderChildrenToDepthBuffer =false,
             bool inverted =false );
 
+        /**
+         * Copy constructor
+         */
         StencilVolumeNode( const StencilVolumeNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
         META_Node(osgEarth::Symbology,StencilVolumeNode);
         
+        //override
         virtual void traverse( osg::NodeVisitor& nv );
 
     public: // props
@@ -60,9 +64,15 @@ namespace osgEarth { namespace Symbology
 
         // adds stenciling volume geometry
         void addVolumes( osg::Node* node );
+   
+    public: // utilties
 
-        // adds the node to draw once the stencil is in place.
-        //void setChild( osg::Node* node );
+        /**
+         * Generates a full screen quad that you can use to colorize 
+         * stencil volumes
+         */
+        static osg::Node* createFullScreenQuad( const osg::Vec4f& color );
+
 
     public: //osg::Group overrides
 

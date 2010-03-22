@@ -37,6 +37,49 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+/***************************************************************************/
+
+#define OFF_PROTECTED osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED
+
+osg::Node*
+StencilVolumeNode::createFullScreenQuad( const osg::Vec4f& color )
+{
+    // make a full screen quad:
+    osg::Geometry* quad = new osg::Geometry();
+    osg::Vec3Array* verts = new osg::Vec3Array(4);
+    (*verts)[0].set( 0, 1, 0 );
+    (*verts)[1].set( 0, 0, 0 );
+    (*verts)[2].set( 1, 0, 0 );
+    (*verts)[3].set( 1, 1, 0 );
+    quad->setVertexArray( verts );
+    quad->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::QUADS, 0, 4 ) );
+    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    (*colors)[0] = color;
+    quad->setColorArray( colors );
+    quad->setColorBinding( osg::Geometry::BIND_OVERALL );
+    osg::Geode* quad_geode = new osg::Geode();
+    quad_geode->addDrawable( quad );
+
+    osg::StateSet* quad_ss = quad->getOrCreateStateSet();
+    quad_ss->setMode( GL_CULL_FACE, OFF_PROTECTED );
+    quad_ss->setMode( GL_DEPTH_TEST, OFF_PROTECTED );
+    quad_ss->setMode( GL_LIGHTING, OFF_PROTECTED );
+    osg::MatrixTransform* abs = new osg::MatrixTransform();
+    abs->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+    abs->setMatrix( osg::Matrix::identity() );
+    abs->addChild( quad_geode );
+
+    osg::Projection* proj = new osg::Projection();
+    proj->setMatrix( osg::Matrix::ortho(0, 1, 0, 1, 0, -1) );
+    proj->addChild( abs );
+
+    proj->getOrCreateStateSet()->setMode( GL_BLEND, 1 );    
+
+    return proj;
+}
+
+
+/***************************************************************************/
 
 StencilVolumeNode::StencilVolumeNode( bool preRenderChildrenToDepthBuffer, bool inverted ) :
 osgEarth::MaskNode(),

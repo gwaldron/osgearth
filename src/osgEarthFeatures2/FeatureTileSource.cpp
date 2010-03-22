@@ -154,7 +154,7 @@ FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
     }
     else
     {
-		queryAndRenderFeaturesForStyle( Style(), Query(), buildData.get(), key->getGeoExtent(), image.get() );
+        queryAndRenderFeaturesForStyle( Style(), Query(), buildData.get(), key->getGeoExtent(), image.get() );
     }
 
     // final tile processing after all styles are done

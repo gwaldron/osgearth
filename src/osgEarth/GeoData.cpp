@@ -317,6 +317,24 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
     return b.width() > 0 && b.height() > 0 ? GeoExtent( getSRS(), b ) : GeoExtent::INVALID;
 }
 
+void
+GeoExtent::scale(double x_scale, double y_scale)
+{
+    double orig_width = width();
+    double orig_height = height();
+
+    double new_width  = orig_width  * x_scale;
+    double new_height = orig_height * y_scale;
+
+    double halfXDiff = (new_width - orig_width) / 2.0;
+    double halfYDiff = (new_height - orig_height) /2.0;
+
+    _xmin -= halfXDiff;
+    _xmax += halfXDiff;
+    _ymin -= halfYDiff;
+    _ymax += halfYDiff;
+}
+
 std::string
 GeoExtent::toString() const
 {

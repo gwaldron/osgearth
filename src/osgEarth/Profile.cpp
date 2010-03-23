@@ -514,17 +514,22 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
 void
 Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
 {
-    OE_INFO << "GET ISECTING TILES for key " << key->str() << std::endl;
-
-    //Clear the incoming list
-    out_intersectingKeys.clear();
-
     //If the profiles are exactly equal, just add the given tile key.
     if ( isEquivalentTo( key->getProfile() ) )
     {
+        //Clear the incoming list
+        out_intersectingKeys.clear();
+
         out_intersectingKeys.push_back(key);
         return;
     }
+    return getIntersectingTiles(key->getGeoExtent(), out_intersectingKeys);
+}
+
+void
+Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
+{
+    //OE_INFO << "GET ISECTING TILES for key " << key->str() << std::endl;
 
     //TODO: put this back in???
     //if ( !isCompatibleWith( key->getProfile() ) )
@@ -532,21 +537,20 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
     //    OE_NOTICE << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
     //}
 
-    GeoExtent key_ext = key->getGeoExtent();
-
+    GeoExtent ext = extent;
     // reproject into the profile's SRS if necessary:
-    if ( ! getSRS()->isEquivalentTo( key_ext.getSRS() ) )
+    if ( ! getSRS()->isEquivalentTo( extent.getSRS() ) )
     {
         // localize the extents and clamp them to legal values
-        key_ext = clampAndTransformExtent( key_ext );
-        if ( !key_ext.isValid() )
+        ext = clampAndTransformExtent( extent );
+        if ( !ext.isValid() )
             return;
     }
 
-    if ( key_ext.crossesDateLine() )
+    if ( ext.crossesDateLine() )
     {
         GeoExtent first, second;
-        if (key_ext.splitAcrossDateLine( first, second ))
+        if (ext.splitAcrossDateLine( first, second ))
         {
             addIntersectingTiles( first, out_intersectingKeys );
             addIntersectingTiles( second, out_intersectingKeys );
@@ -554,6 +558,6 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
     }
     else
     {
-        addIntersectingTiles( key_ext, out_intersectingKeys );
+        addIntersectingTiles( ext, out_intersectingKeys );
     }
 }

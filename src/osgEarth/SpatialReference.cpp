@@ -777,9 +777,36 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
                                   double& in_out_ymax) const
 {
     int oks = 0;
-    oks += transform( in_out_xmin, in_out_ymin, to_srs, in_out_xmin, in_out_ymin ) == true;
-    oks += transform( in_out_xmax, in_out_ymax, to_srs, in_out_xmax, in_out_ymax ) == true;
-    return oks == 2;
+
+
+    //Transform all points and take the maximum bounding rectangle the resulting points
+    double llx, lly;
+    double ulx, uly;
+    double urx, ury;
+    double lrx, lry;
+
+    //Lower Left
+    oks += transform( in_out_xmin, in_out_ymin, to_srs, llx, lly ) == true;
+
+    //Upper Left
+    oks += transform( in_out_xmin, in_out_ymax, to_srs, ulx, uly ) == true;
+
+    //Upper Right
+    oks += transform( in_out_xmax, in_out_ymax, to_srs, urx, ury ) == true;
+
+    //Lower Right
+    oks += transform( in_out_xmax, in_out_ymin, to_srs, lrx, lry ) == true;
+
+
+    if (oks == 4)
+    {
+        in_out_xmin = osg::minimum(llx, ulx);
+        in_out_xmax = osg::maximum(lrx, urx);
+        in_out_ymin = osg::minimum(lly, lry);
+        in_out_ymax = osg::maximum(uly, ury);
+        return true;
+    }
+    return false;
 
     //double x[2] = { in_out_xmin, in_out_xmax };
     //double y[2] = { in_out_ymin, in_out_ymax };

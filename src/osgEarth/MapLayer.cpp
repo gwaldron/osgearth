@@ -140,6 +140,7 @@ MapLayer::fromConfig( const Config& conf )
     conf.getIfSet( "opacity", _opacity );
     conf.getIfSet( "gamma", _gamma );
     conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profileConf );
 }
 
@@ -162,6 +163,7 @@ MapLayer::toConfig() const
     conf.updateIfSet( "opacity", _opacity );
     conf.updateIfSet( "gamma", _gamma );
     conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet("edge_buffer_ratio", _edgeBufferRatio);
     conf.updateObjIfSet( "profile", _profileConf );
 
     return conf;
@@ -534,7 +536,17 @@ MapLayer::createImage( const TileKey* key,
 
 		// Determine the intersecting keys and create and extract an appropriate image from the tiles
 		std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
-		layerProfile->getIntersectingTiles(key, intersectingTiles);
+
+        //Scale the extent if necessary
+        GeoExtent ext = key->getGeoExtent();
+        if (_edgeBufferRatio.isSet())
+        {
+            double ratio = _edgeBufferRatio.get();
+            ext.scale(ratio, ratio);
+        }
+
+		//layerProfile->getIntersectingTiles(key, intersectingTiles);
+        layerProfile->getIntersectingTiles(ext, intersectingTiles);
 
 		if (intersectingTiles.size() > 0)
 		{

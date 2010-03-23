@@ -203,6 +203,15 @@ namespace osgEarth
         optional<float> loadingWeight() { return _loadingWeight; }
         const optional<float>& loadingWeight() const { return _loadingWeight; }
 
+        /**
+         *The ratio used to expand the extent of a tile when the layer
+         *needs to be mosaiced to projected.  This can be used to increase the
+         *number of tiles grabbed to ensure that enough data is grabbed to
+         *overlap the incoming tile.
+         */
+        optional<double> edgeBufferRatio() { return _edgeBufferRatio;}
+        const optional<double> edgeBufferRatio() const { return _edgeBufferRatio;}
+
     public: // methods
 
 		/**
@@ -300,6 +309,7 @@ namespace osgEarth
         optional<double> _gamma;
 		optional<bool> _enabled;
 		optional<unsigned int> _reprojectedTileSize;
+        optional<double> _edgeBufferRatio;
 
         bool _cacheOnlyEnv;
 

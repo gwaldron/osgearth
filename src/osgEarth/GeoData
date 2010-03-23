@@ -150,6 +150,11 @@ namespace osgEarth
          */
         std::string toString() const;
 
+        /**
+         *Inflates this GeoExtent by the given ratios
+         */
+        void scale(double x_scale, double y_scale);
+
     public:
         static GeoExtent INVALID;
 

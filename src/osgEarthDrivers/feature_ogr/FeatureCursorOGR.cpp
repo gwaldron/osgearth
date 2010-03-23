@@ -225,8 +225,20 @@ FeatureCursorOGR::createFeature( OGRFeatureH handle )
         feature->setGeometry( geom );
 	}
 
-    //loadAttributes();
-
+    //Load the attributes    
+    int numAttrs = OGR_F_GetFieldCount(handle);
+    for (int i = 0; i < numAttrs; ++i)
+    {
+         void* field_handle_ref = OGR_F_GetFieldDefnRef( handle, i );
+         const char* field_name = OGR_Fld_GetNameRef( field_handle_ref );
+         const char* field_value= OGR_F_GetFieldAsString(handle, i);
+         std::string name = std::string( field_name );
+         std::string value = std::string( field_value);
+         //Make the name lower case
+         std::transform( name.begin(), name.end(), name.begin(), ::tolower );
+         feature->setAttr(name, value);
+    }
+     
     return feature;
 }
 

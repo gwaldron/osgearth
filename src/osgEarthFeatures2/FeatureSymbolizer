@@ -28,11 +28,11 @@
 namespace osgEarth { namespace Features2
 {
 
-    class OSGEARTHFEATURES_EXPORT FeatureSymbolizerModelSource : public FeatureModelSource
-    {
-    public:
-        osg::Node* createNode( ProgressCallback* progress );
-    };
+    //class OSGEARTHFEATURES_EXPORT FeatureSymbolizerModelSource : public FeatureModelSource
+    //{
+    //public:
+    //    osg::Node* createNode( ProgressCallback* progress );
+    //};
 
 
     class OSGEARTHFEATURES_EXPORT FeatureSymbolizerContext : public Symbology::SymbolizerContext

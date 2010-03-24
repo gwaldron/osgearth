@@ -130,7 +130,7 @@ protected:
 
 struct GeometryPointSymbolizer : public GeometrySymbolizer
 {
-    bool update(SymbolizerInput* dataSet,
+    bool update(const SymbolizerInput* dataSet,
                 const Style* style,
                 osg::Group* attachPoint,
                 SymbolizerContext* context )
@@ -138,7 +138,7 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
         if (!dataSet || !attachPoint || !style)
             return false;
 
-        GeometryInput* geometryInput = dynamic_cast<GeometryInput*>(dataSet);
+        const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
         if (!geometryInput)
             return false;
 

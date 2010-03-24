@@ -74,7 +74,7 @@ bool MarkerSymbolizer::pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* 
 }
 
 bool 
-MarkerSymbolizer::update(SymbolizerInput* dataSet,
+MarkerSymbolizer::update(const SymbolizerInput* dataSet,
                          const Style* style,
                          osg::Group* attachPoint,
                          SymbolizerContext* context )
@@ -82,7 +82,7 @@ MarkerSymbolizer::update(SymbolizerInput* dataSet,
     if (!dataSet || !attachPoint || !style)
         return false;
 
-    GeometryInput* geometryInput = dynamic_cast<GeometryInput*>(dataSet);
+    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
     if (!geometryInput)
         return false;
 

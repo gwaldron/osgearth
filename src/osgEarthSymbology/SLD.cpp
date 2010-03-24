@@ -62,7 +62,7 @@ parseLineCap( const std::string& value, optional<Stroke::LineCapStyle>& cap )
 bool
 SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 {
-    sc.setName( conf.key() ); //.value("name");
+    sc.setName( conf.key() );
 
     LineSymbol* line = 0;
     PolygonSymbol* polygon = 0;

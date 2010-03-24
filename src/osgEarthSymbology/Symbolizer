@@ -62,7 +62,7 @@ namespace osgEarth { namespace Symbology
          * The Symbolizer can attach the subgraph to the attachPoint.
          */
         virtual bool update(
-            SymbolizerInput* dataInput,
+            const SymbolizerInput* dataInput,
             const Style* style,
             osg::Group* attachPoint,
             SymbolizerContext* context ) = 0;

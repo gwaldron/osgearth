@@ -34,7 +34,7 @@ GeometrySymbolizer::GeometrySymbolizer()
 
 
 bool 
-GeometrySymbolizer::update(SymbolizerInput* dataSet,
+GeometrySymbolizer::update(const SymbolizerInput* dataSet,
                            const Style* style,
                            osg::Group* attachPoint,
                            SymbolizerContext* context )
@@ -42,7 +42,7 @@ GeometrySymbolizer::update(SymbolizerInput* dataSet,
     if (!dataSet || !attachPoint || !style)
         return false;
 
-    GeometryInput* geometryInput = dynamic_cast<GeometryInput*>(dataSet);
+    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
     if (!geometryInput)
         return false;
 

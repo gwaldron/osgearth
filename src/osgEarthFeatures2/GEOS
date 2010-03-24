@@ -25,7 +25,7 @@
 #include <osgEarthFeatures2/Common>
 #include <osgEarthFeatures2/Feature>
 #include <osgEarthFeatures2/Filter>
-#include <osgEarthFeatures2/Styling>
+#include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/Geometry>
 #include <osg/Vec3>
 #include <geos/geom/Geometry.h>

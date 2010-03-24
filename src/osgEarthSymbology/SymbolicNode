@@ -41,7 +41,7 @@ namespace osgEarth { namespace Symbology
 
         virtual void traverse( osg::NodeVisitor& nv );
 
-        void setStyle( Style* style ) { _style = style; }
+        void setStyle(const Style* style ) { _style = style; }
         void setContext( SymbolizerContext* context ) { _context = context; }
 
         void setSymbolizer( Symbolizer* sym ) { _symbolizer = sym; }
@@ -50,7 +50,7 @@ namespace osgEarth { namespace Symbology
         SymbolizerInput* getDataSet() { return _dataSet.get(); }
         
     protected:
-        osg::ref_ptr<Style> _style;
+        osg::ref_ptr<const Style> _style;
         osg::ref_ptr<Symbolizer> _symbolizer;
         osg::ref_ptr<SymbolizerInput> _dataSet;
         osg::ref_ptr<SymbolizerContext> _context;

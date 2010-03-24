@@ -26,7 +26,7 @@
 #include <osgEarthFeatures2/ResampleFilter>
 #include <osgEarthFeatures2/ConvertTypeFilter>
 #include <osgEarthFeatures2/FeatureGridder>
-#include <osgEarthFeatures2/Styling>
+#include <osgEarthFeatures2/FeatureSymbolizer>
 #include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>
@@ -319,8 +319,6 @@ createVolume(osgEarth::Symbology::Geometry* geom,
     return geode;
 }
 
-
-// implementation-specific data to pass to buildNodeForStyle:
 struct BuildData : public osg::Referenced
 {
     BuildData( int renderBinStart ) : _renderBin( renderBinStart ) { }
@@ -341,102 +339,52 @@ struct BuildData : public osg::Referenced
     }
 };
 
-class VolumeSymbol : public osgEarth::Symbology::Symbol
+template <class T> 
+class StencilVolumeSymbolizer : public T
 {
 public:
+    StencilVolumeSymbolizer() {}
+    StencilVolumeSymbolizer(const Query& q) : T(q) {}
 
-    VolumeSymbol() :_extrusionDistance( 300000 ),
-                    _densificationThreshold( 1000000 ){}
-
-    optional<double>& densificationThreshold() { return _densificationThreshold; }
-    const optional<double>& densificationThreshold() const { return _densificationThreshold; }
-
-    optional<double>& extrusionDistance() { return _extrusionDistance; }
-    const optional<double>& extrusionDistance() const { return _extrusionDistance; }
-
-    optional<float>& minRange() { return _minRange; }
-    const optional<float>& minRange() const { return _minRange; }
-
-    optional<float>& maxRange() { return _maxRange; }
-    const optional<float>& maxRange() const { return _maxRange; }
-
-    optional<bool>& showVolumes() { return _showVolume; }
-    const optional<bool>& showVolumes() const { return _showVolume; }
-
-    optional<bool>& mask() { return _mask; }
-    const optional<bool>& mask() const { return _mask; }
-
-    optional<bool>& inverted() { return _inverted; }
-    const optional<bool>& inverted() const { return _inverted; }
-    
-protected:
-    optional<double> _extrusionDistance;
-    optional<double> _offset;
-    optional<double> _densificationThreshold;
-    optional<bool> _inverted;
-    optional<bool> _mask;
-    optional<bool> _showVolume;
-    optional<float> _minRange, _maxRange;
-};
-
-
-class VolumeSymbolizerContext : public osgEarth::Symbology::SymbolizerContext
-{
-public:
-    VolumeSymbolizerContext(const Map* map, const FeatureProfile* p) : _map(map), _featureProfile(p) {}
-    const FeatureProfile* getFeatureProfile() const { return _featureProfile.get(); }
-    const Map* getMap() const { return _map.get(); }
-protected:
-    osg::ref_ptr<const FeatureProfile> _featureProfile;
-    osg::ref_ptr<const Map> _map;
-};
-
-
-class FeatureInput : public osgEarth::Symbology::SymbolizerInput
-{
-public:
-    FeatureInput(const FeatureList& f) : _features(f) {}
-    FeatureList& getFeatures() { return _features; }
-    const FeatureList& getFeatures() const { return _features; }
-protected:
-    FeatureList _features;
-};
-
-class VolumeSymbolizer : public osgEarth::Symbology::Symbolizer
-{
-public:
-    VolumeSymbolizer(BuildData* bd) : _buildData(bd) {}
-
-    bool update(
-        osgEarth::Symbology::SymbolizerInput* dataInput,
-        const osgEarth::Symbology::Style* style,
-        osg::Group* attachPoint,
-        osgEarth::Symbology::SymbolizerContext* symbolizerContext )
+    virtual osg::Node* createNodeForStyle(
+        const Symbology::Style* style,
+        const FeatureList& features,
+        FeatureSymbolizerContext* symbolizerContext,
+        osg::Node** out_createdNode)
     {
 
-        if (!dataInput || !symbolizerContext)
-            return false;
-
-        VolumeSymbolizerContext* volumeContext = dynamic_cast<VolumeSymbolizerContext*>(symbolizerContext);
+        FeatureSymbolizerContext* context = dynamic_cast<FeatureSymbolizerContext*>(symbolizerContext);
 
 
-        FeatureInput* featureInput = dynamic_cast<FeatureInput*>(dataInput);
-        if (!featureInput)
-            return false;
+        FeatureList featureList;
+        for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
+            featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
+
+        const FeatureStencilModelOptions* options = dynamic_cast<const FeatureStencilModelOptions*>(context->getModelSource()->getFeatureModelOptions());
 
         double extrusionDistance = 1;
-        double densificationThreshold = 0.0;
-        const VolumeSymbol* vsym = style->getSymbol<VolumeSymbol>();
-        if (vsym)
+        double densificationThreshold = 1.0;
+        if ( options->extrusionDistance().isSet() )
         {
-            densificationThreshold = vsym->densificationThreshold().value();
-            extrusionDistance = vsym->extrusionDistance().value();
+            extrusionDistance = options->extrusionDistance().value();
         }
+        else
+        {
+            if ( context->getModelSource()->getMap()->isGeocentric() )
+                extrusionDistance = 300000.0; // meters geocentric
+            else if ( context->getModelSource()->getMap()->getProfile()->getSRS()->isGeographic() )
+                extrusionDistance = 5.0; // degrees-as-meters
+            else
+                extrusionDistance = 12000.0; // meters
+        }
+
+        densificationThreshold = options->densificationThreshold().value();
+
+        BuildData* buildData = dynamic_cast<BuildData*>(context->getBuildData());
 
         // Scan the geometry to see if it includes line data, since that will require 
         // buffering:
-        FeatureList& featureList = featureInput->getFeatures();
         bool hasLines = false;
         for( FeatureList::const_iterator i = featureList.begin(); i != featureList.end(); ++i )
         {
@@ -450,11 +398,11 @@ public:
             }
         }
 
-        bool isGeocentric = volumeContext->getMap()->isGeocentric();
+        bool isGeocentric = context->getModelSource()->getMap()->isGeocentric();
 
         // A processing context to use with the filters:
-        FilterContext context;
-        context.profile() = volumeContext->getFeatureProfile();
+        FilterContext filterContext;
+        filterContext.profile() = context->getModelSource()->getFeatureSource()->getFeatureProfile();
 
         // If the geometry is lines, we need to buffer them before they will work with stenciling
         if ( hasLines )
@@ -464,13 +412,13 @@ public:
                 BufferFilter buffer;
                 buffer.distance() = 0.5 * line->stroke()->width().value();
                 buffer.capStyle() = line->stroke()->lineCap().value();
-                context = buffer.push( featureList, context );
+                filterContext = buffer.push( featureList, filterContext );
             }
         }
 
         // Transform them into the map's SRS, localizing the verts along the way:
-        TransformFilter xform( volumeContext->getMap()->getProfile()->getSRS(), isGeocentric );
-        context = xform.push( featureList, context );
+        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS(), isGeocentric );
+        filterContext = xform.push( featureList, filterContext );
 
         if ( isGeocentric )
         {
@@ -482,7 +430,7 @@ public:
             resample.maxLength() = densificationThreshold;
             resample.minLength() = 0.0;
             resample.perturbationThreshold() = 0.1;
-            context = resample.push( featureList, context );
+            filterContext = resample.push( featureList, filterContext );
         }
 
         // Extrude and cap the geometry in both directions to build a stencil volume:
@@ -491,14 +439,12 @@ public:
         for( FeatureList::iterator i = featureList.begin(); i != featureList.end(); ++i )
         {
             Feature* feature = *i;
-            // later will be a native osgEarth::Symbology::Geometry
             Geometry* geom = feature->getGeometry();
-            osg::ref_ptr<osgEarth::Symbology::Geometry> symGeom = osgEarth::Symbology::Geometry::create((osgEarth::Symbology::Geometry::Type)(geom->getType()), geom);
             osg::Node* volume = createVolume(
-                symGeom,
+                geom,
                 -extrusionDistance,
                 extrusionDistance * 2.0,
-                context );
+                filterContext );
 
             if ( volume )
             {
@@ -513,59 +459,58 @@ public:
         if ( volumes )
         {
             // Resolve the localizing reference frame if necessary:
-            if ( context.hasReferenceFrame() )
+            if ( filterContext.hasReferenceFrame() )
             {
-                osg::MatrixTransform* xform = new osg::MatrixTransform( context.inverseReferenceFrame() );
+                osg::MatrixTransform* xform = new osg::MatrixTransform( filterContext.inverseReferenceFrame() );
                 xform->addChild( volumes );
                 volumes = xform;
             }
 
             // Apply an LOD if required:
-            const VolumeSymbol* vsym = style->getSymbol<VolumeSymbol>();
-            if (vsym)
+            if ( options->minRange().isSet() || options->maxRange().isSet() )
             {
-                if ( vsym->minRange().isSet() || vsym->maxRange().isSet() )
-                {
-                    osg::LOD* lod = new osg::LOD();
-                    lod->addChild( volumes, vsym->minRange().value(), vsym->maxRange().value() );
-                    volumes = lod;
-                }
+                osg::LOD* lod = new osg::LOD();
+                lod->addChild( volumes, options->minRange().value(), options->maxRange().value() );
+                volumes = lod;
+            }
 
-                osgEarth::Symbology::StencilVolumeNode* styleNode = 0L;
-                bool styleNodeAlreadyCreated = _buildData->getStyleNode(style->getName(), styleNode);
-                if ( vsym->showVolumes() == true )
+            osgEarth::Symbology::StencilVolumeNode* styleNode = 0L;
+            bool styleNodeAlreadyCreated = buildData->getStyleNode(style->getName(), styleNode);
+            if ( options->showVolumes() == true )
+            {
+                result = volumes;
+            }
+            else
+            {
+                if ( !styleNodeAlreadyCreated )
                 {
-                    result = volumes;
-                }
-                else
-                {
-                    if ( !styleNodeAlreadyCreated )
+                    OE_NOTICE << "Creating new style group for '" << style->getName() << "'" << std::endl;
+                    styleNode = new osgEarth::Symbology::StencilVolumeNode( options->mask().value(), options->inverted().value() );
+                    if ( options->mask() == false )
                     {
-                        OE_NOTICE << "Creating new style group for '" << style->getName() << "'" << std::endl;
-                        styleNode = new osgEarth::Symbology::StencilVolumeNode( vsym->mask().value(), vsym->inverted().value() );
-                        if ( vsym->mask() == false )
-                        {
-                            osg::Vec4f maskColor = osg::Vec4(1,1,0,1); //style.getColor( hasLines ? osgEarth::Symbology::Geometry::TYPE_LINESTRING : osgEarth::Symbology::Geometry::TYPE_POLYGON );
-                            styleNode->addChild( createColorNode(maskColor) );
+                        osg::Vec4f maskColor = osg::Vec4(1,1,0,1);
+                        if (hasLines && style->getSymbol<LineSymbol>()) {
+                            const LineSymbol* line = style->getSymbol<LineSymbol>();
+                            maskColor = line->stroke()->color();
+                        } else {
+                            const PolygonSymbol* poly = style->getSymbol<PolygonSymbol>();
+                            if (poly)
+                                maskColor = poly->fill()->color();
                         }
-                        _buildData->_renderBin = styleNode->setBaseRenderBin( _buildData->_renderBin );
-                        _buildData->_styleGroups.push_back( BuildData::StyleGroup( style->getName(), styleNode ) );
+                        styleNode->addChild( createColorNode(maskColor) );
                     }
-            
-                    styleNode->addVolumes( volumes );
-                    result = styleNodeAlreadyCreated ? 0L : styleNode;
+                    buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
+                    buildData->_styleGroups.push_back( BuildData::StyleGroup( style->getName(), styleNode ) );
                 }
-
-                attachPoint->removeChildren(0, attachPoint->getNumChildren());
-                if (result)
-                    attachPoint->addChild(result);
+            
+                styleNode->addVolumes( volumes );
+                result = styleNodeAlreadyCreated ? 0L : styleNode;
+                if ( out_createdNode ) *out_createdNode = volumes;
             }
         }
 
-        return (attachPoint->getNumChildren() > 0 );
+        return result;
     }
-
-    osg::ref_ptr<BuildData> _buildData;
 };
 
 
@@ -576,9 +521,10 @@ public:
         FeatureModelSource( options ),
         _renderBinStart( renderBinStart )
     {
-        _options = dynamic_cast<const FeatureStencilModelOptions*>( options );
-        if ( !_options )
-            _options = new FeatureStencilModelOptions( options );
+        const FeatureStencilModelOptions* opt = dynamic_cast<const FeatureStencilModelOptions*>( options );
+        if ( !opt )
+            opt = new FeatureStencilModelOptions( options );
+        _options = opt;
 
         // make sure we have stencil bits. Note, this only works before
         // a viewer gets created. You may need to allocate stencil bits
@@ -593,22 +539,7 @@ public:
     void initialize( const std::string& referenceURI, const Map* map )
     {
         FeatureModelSource::initialize( referenceURI, map );
-
         _map = map;
-
-        if ( _options->extrusionDistance().isSet() )
-        {
-            _extrusionDistance = _options->extrusionDistance().value();
-        }
-        else
-        {
-            if ( _map->isGeocentric() )
-                _extrusionDistance = 300000.0; // meters geocentric
-            else if ( _map->getProfile()->getSRS()->isGeographic() )
-                _extrusionDistance = 5.0; // degrees-as-meters
-            else
-                _extrusionDistance = 12000.0; // meters
-        }
     }
 
     //override
@@ -616,40 +547,117 @@ public:
     {
         return new BuildData( _renderBinStart );
     }
-    
-    //override
-    osg::Node* renderFeaturesForStyle(const Style& style, FeatureList& features, osg::Referenced* data, osg::Node** out_createdNode )
+
+    osg::Node* createNode( ProgressCallback* progress )
     {
-        BuildData* buildData = static_cast<BuildData*>(data);
+        if ( !_features.valid() || !_features->getFeatureProfile() )
+            return 0L;
 
-        FeatureInput* input = new FeatureInput(features);
-        VolumeSymbolizer* symbolizer = new VolumeSymbolizer(buildData);
-        VolumeSymbolizerContext* ctx = new VolumeSymbolizerContext(_map.get(), getFeatureSource()->getFeatureProfile());
-        osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
-        osgEarth::Symbology::Style* vstyle = new osgEarth::Symbology::Style;
-        vstyle->setName(style.getName());
-        vstyle->addSymbol(new osgEarth::Symbology::LineSymbol);
-        VolumeSymbol* symbol = new VolumeSymbol;
-        vstyle->addSymbol(symbol);
+        osg::Timer_t start = osg::Timer::instance()->tick();
 
-        symb->setDataSet(input);
-        symb->setContext(ctx);
-        symb->setSymbolizer(symbolizer);
-        symb->setStyle(vstyle);
-        // if (out_createdNode)
-        //     *out_createdNode = symb;
-        return symb;
+        const FeatureStencilModelOptions* options = dynamic_cast<const FeatureStencilModelOptions*>( _options.get() );
+
+        // implementation-specific data
+        osg::ref_ptr<osg::Referenced> buildData = createBuildData();
+        FeatureSymbolizerContext* context = new FeatureSymbolizerContext(this, buildData);
+
+        osg::Group* group = new osg::Group();
+
+        const optional<StyleCatalog>& styles = options->styles();
+        //const StyleCatalog* styles = _options->styles().get();
+    
+        // figure out if and how to style the geometry.
+        if ( _features->hasEmbeddedStyles() )
+        {
+            // Each feature has its own embedded style data, so use that:
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
+            while( cursor->hasMore() )
+            {
+                Feature* feature = cursor->nextFeature();
+                if ( feature )
+                {
+                    FeatureList list;
+                    list.push_back( feature );
+                    // gridding is not supported for embedded styles.
+                    osg::Node* node = createSymbolizerNode(feature->style().get(), list, context);
+                    if ( node )
+                        group->addChild( node );
+                }
+            }
+        }
+        else if ( styles.isSet() )
+        {
+            if ( styles->selectors().size() > 0 )
+            {
+                for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
+                {
+                    const StyleSelector& sel = *i;
+                    Style* style;
+                    styles->getStyle( sel.getSelectedStyleName(), style );
+                    osg::Node* node = createGridSymbolizerNode( style, sel.query().value(), context);
+                    if ( node )
+                        group->addChild( node );
+                }
+            }
+            else
+            {
+                const Style* style = styles->getDefaultStyle();
+                osg::Node* node = createGridSymbolizerNode(style, Query(), context);
+                if ( node )
+                    group->addChild( node );
+            }
+        }
+        else
+        {
+            osg::Node* node = createGridSymbolizerNode( new Style, Query(), context);
+            if ( node )
+                group->addChild( node );
+        }
+
+        // apply explicit lighting if necessary:
+        if ( options->enableLighting().isSet() )
+        {
+            osg::StateSet* ss = group->getOrCreateStateSet();
+            ss->setMode( GL_LIGHTING, options->enableLighting() == true?
+                         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+                         osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        }
+
+        osg::Timer_t end = osg::Timer::instance()->tick();
+
+        OE_INFO << "Layer " << getName() << ", time to compile styles = " << 
+            osg::Timer::instance()->delta_s( start, end ) << "s" << std::endl;
+
+        return group;
+    }
+    
+
+    osg::Node* createSymbolizerNode(const Style* style, const FeatureList& features, FeatureSymbolizerContext* ctx )
+    {
+        SymbolicNode* node = new SymbolicNode;
+        Symbolizer* symbolizer = new StencilVolumeSymbolizer<FeatureSymbolizer>;
+        FeatureSymbolizerInput* input = new FeatureSymbolizerInput(features);
+
+        node->setDataSet(input);
+        node->setContext(ctx);
+        node->setSymbolizer(symbolizer);
+        node->setStyle(style);
+        return node;
+    }
+
+    osg::Node* createGridSymbolizerNode(const Style* style, const Query& query, FeatureSymbolizerContext* ctx )
+    {
+        SymbolicNode* node = new SymbolicNode;
+        Symbolizer* symbolizer = new StencilVolumeSymbolizer<GridFeatureSymbolizer>(query);
+        node->setContext(ctx);
+        node->setSymbolizer(symbolizer);
+        node->setStyle(style);
+        return node;
     }
 
 protected:
-    int _sourceId;
     int _renderBinStart;
-    osg::ref_ptr<const Map> _map;
-    double _extrusionDistance;
-    
-    osg::ref_ptr<const FeatureStencilModelOptions> _options;
 };
-
 
 
 class FeatureStencilModelSourceFactory : public osgDB::ReaderWriter

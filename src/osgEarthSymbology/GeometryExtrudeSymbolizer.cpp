@@ -44,7 +44,7 @@ void GeometryExtrudeSymbolizer::tessellate( osg::Geometry* geom )
 }
 
 bool 
-GeometryExtrudeSymbolizer::update(SymbolizerInput* dataSet,
+GeometryExtrudeSymbolizer::update(const SymbolizerInput* dataSet,
                                   const Style* style,
                                   osg::Group* attachPoint,
                                   SymbolizerContext* context )
@@ -52,7 +52,7 @@ GeometryExtrudeSymbolizer::update(SymbolizerInput* dataSet,
     if (!dataSet || !attachPoint || !style)
         return false;
 
-    GeometryInput* geometryInput = dynamic_cast<GeometryInput*>(dataSet);
+    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
     if (!geometryInput)
         return false;
 

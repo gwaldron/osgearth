@@ -18,7 +18,6 @@
  */
 #include <osgEarthFeatures2/FeatureModelSource>
 #include <osgEarthFeatures2/FeatureGridder>
-#include <osgEarthFeatures2/Styling>
 #include <osgEarth/SpatialReference>
 #include <osg/Notify>
 #include <osg/Timer>
@@ -135,7 +134,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
                 FeatureList list;
                 list.push_back( feature );
                 // gridding is not supported for embedded styles.
-                osg::Node* node = renderFeaturesForStyle( *(feature->style().get()), list, buildData.get() );
+                osg::Node* node = renderFeaturesForStyle( feature->style().get(), list, buildData.get() );
                 if ( node )
                     group->addChild( node );
             }
@@ -150,7 +149,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
                 const StyleSelector& sel = *i;
                 Style* style;
                 styles->getStyle( sel.getSelectedStyleName(), style );
-                osg::Node* node = gridAndRenderFeaturesForStyle( *style, sel.query().value(), buildData.get() );
+                osg::Node* node = gridAndRenderFeaturesForStyle( style, sel.query().value(), buildData.get() );
                 if ( node )
                     group->addChild( node );
             }
@@ -158,14 +157,14 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         else
         {
             const Style* style = styles->getDefaultStyle();
-            osg::Node* node = gridAndRenderFeaturesForStyle( *style, Query(), buildData.get() );
+            osg::Node* node = gridAndRenderFeaturesForStyle( style, Query(), buildData.get() );
             if ( node )
                 group->addChild( node );
         }
     }
     else
     {
-        osg::Node* node = gridAndRenderFeaturesForStyle( Style(), Query(), buildData.get() );
+        osg::Node* node = gridAndRenderFeaturesForStyle( new Style, Query(), buildData.get() );
         if ( node )
             group->addChild( node );
     }
@@ -197,7 +196,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
 
 osg::Group*
-FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
+FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
                                                   const Query& query,
                                                   osg::Referenced* data )
 {

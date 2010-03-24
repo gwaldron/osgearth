@@ -20,25 +20,31 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
-#include <osgEarthFeatures/FeatureModelSource>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/Styling>
-#include <osgEarthFeatures/TransformFilter>
-#include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures2/FeatureModelSource>
+#include <osgEarthFeatures2/FeatureSource>
+#include <osgEarthFeatures2/TransformFilter>
+#include <osgEarthFeatures2/BuildGeometryFilter>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/GeometrySymbolizer>
+#include <osgEarthSymbology/GeometryInput>
+#include <osgEarthSymbology/SymbolicNode>
 
 #include "FeatureGeomModelOptions"
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
+using namespace osgEarth::Features2;
+using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
 #define PROP_HEIGHT_OFFSET "height_offset"
+
 
 class FeatureGeomModelSource : public FeatureModelSource
 {
@@ -59,7 +65,7 @@ public:
     }
 
     //override
-    osg::Node* renderFeaturesForStyle( const Style& style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
+    osg::Node* renderFeaturesForStyle( const Style* style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
     {
         // A processing context to use with the filters:
         FilterContext context;
@@ -70,33 +76,58 @@ public:
         xform.heightOffset() = _options->heightOffset().value();
         context = xform.push( features, context );
 
-        // Build geometry:
-        BuildGeometryFilter build; 
-        if ( _options->geometryTypeOverride().isSet() )
-            build.geomTypeOverride() = _options->geometryTypeOverride().value();
+        // Make the symbolic node:
+        osgEarth::Symbology::SymbolicNode* symNode = new osgEarth::Symbology::SymbolicNode;
 
-        // apply the style rule if we have one:
-        osg::ref_ptr<osg::Node> result;
-        build.style() = style;
-        context = build.push( features, result, context );
-        
-        // Apply an LOD if required:
-        if ( _options->minRange().isSet() || _options->maxRange().isSet() )
+        symNode->setStyle(style);
+        symNode->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
+
+        GeometryInput* geoms = new GeometryInput;
+        symNode->setDataSet(geoms);
+
+        for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
         {
-            osg::LOD* lod = new osg::LOD();
-            lod->addChild( result.get(), _options->minRange().value(), _options->maxRange().value() );
-            result = lod;
+            Feature* feature = it->get();
+            if ( feature )
+            {
+                Geometry* geometry = feature->getGeometry();
+                if ( geometry )
+                {
+                    // this is temporary until we finish migrating Geometry to ::Symbology
+                    geoms->getGeometryList().push_back( 
+                        osgEarth::Symbology::Geometry::create(
+                            osgEarth::Symbology::Geometry::Type((int)(feature->getGeometry()->getType())), geometry));
+                }
+            }
         }
 
-        if ( out_newNode ) *out_newNode = result.get();
-        return result.release();
+        osg::Node* result = symNode;
+
+        // If the context specifies a reference frame, apply it to the resulting model.
+        // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?
+        // ...probably the latter.
+        if ( context.hasReferenceFrame() )
+        {
+            osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
+                context.inverseReferenceFrame() );
+            delocalizer->addChild( result );
+            result = delocalizer;
+        }
+
+        // set the output node if necessary:
+        if ( out_newNode )
+            *out_newNode = result;
+
+        return result;
     }
 
-private:
+protected:
     osg::ref_ptr<const FeatureGeomModelOptions> _options;
+    osg::ref_ptr<osgEarth::Symbology::SymbolicNode> _symbolic;
     int _sourceId;
     osg::ref_ptr<const Map> _map;
 };
+
 
 
 class FeatureGeomModelSourceFactory : public osgDB::ReaderWriter
@@ -104,7 +135,7 @@ class FeatureGeomModelSourceFactory : public osgDB::ReaderWriter
 public:
     FeatureGeomModelSourceFactory()
     {
-        supportsExtension( "osgearth_model_feature_geom", "osgEarth feature geom plugin" );
+        supportsExtension( "osgearth_model_feature_geom2", "osgEarth feature geom plugin" );
     }
 
     virtual const char* className()
@@ -156,4 +187,4 @@ protected:
     std::map<int, osg::ref_ptr<FeatureGeomModelSource> > _sourceMap;
 };
 
-REGISTER_OSGPLUGIN(osgearth_model_feature_geom, FeatureGeomModelSourceFactory) 
+REGISTER_OSGPLUGIN(osgearth_model_feature_geom2, FeatureGeomModelSourceFactory) 

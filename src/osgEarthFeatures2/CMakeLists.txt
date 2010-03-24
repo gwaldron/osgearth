@@ -21,13 +21,12 @@ SET(LIB_PUBLIC_HEADERS
     FeatureGridder
     FeatureModelSource
     FeatureSource
+    FeatureSymbolizer
     FeatureTileSource
     Filter
     GEOS
-#    Query
     ResampleFilter
     ScaleFilter
-#    Styling
     TransformFilter
 )
 
@@ -41,13 +40,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureGridder.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp
+    FeatureSymbolizer.cpp
     FeatureTileSource.cpp
     Filter.cpp
     GEOS.cpp
-#    Query.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
-#    Styling.cpp
     TransformFilter.cpp
 )
 

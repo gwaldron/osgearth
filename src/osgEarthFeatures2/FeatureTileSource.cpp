@@ -129,7 +129,7 @@ FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
                 FeatureList list;
                 list.push_back( feature );
                 renderFeaturesForStyle( 
-                    *(feature->style().get()), list, buildData.get(),
+                    feature->style().get(), list, buildData.get(),
                     key->getGeoExtent(), image.get() );
             }
         }
@@ -143,18 +143,18 @@ FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
                 const StyleSelector& sel = *i;
                 Style* style;
                 styles->getStyle( sel.getSelectedStyleName(), style );
-                queryAndRenderFeaturesForStyle( *style, sel.query().value(), buildData.get(), key->getGeoExtent(), image.get() );
+                queryAndRenderFeaturesForStyle( style, sel.query().value(), buildData.get(), key->getGeoExtent(), image.get() );
             }
         }
         else
         {
             const Style* style = styles->getDefaultStyle();
-            queryAndRenderFeaturesForStyle( *style, Query(), buildData.get(), key->getGeoExtent(), image.get() );
+            queryAndRenderFeaturesForStyle( style, Query(), buildData.get(), key->getGeoExtent(), image.get() );
         }
     }
     else
     {
-        queryAndRenderFeaturesForStyle( Style(), Query(), buildData.get(), key->getGeoExtent(), image.get() );
+        queryAndRenderFeaturesForStyle( new Style, Query(), buildData.get(), key->getGeoExtent(), image.get() );
     }
 
     // final tile processing after all styles are done
@@ -165,11 +165,11 @@ FeatureTileSource::createImage( const TileKey* key, ProgressCallback* progress )
 
 
 bool
-FeatureTileSource::queryAndRenderFeaturesForStyle(const Style& style,
+FeatureTileSource::queryAndRenderFeaturesForStyle(const Style* style,
                                                   const Query& query,
-												  osg::Referenced* data,
-												  const GeoExtent& imageExtent,
-												  osg::Image* out_image)
+                                                  osg::Referenced* data,
+                                                  const GeoExtent& imageExtent,
+                                                  osg::Image* out_image)
 {
     osg::Group* styleGroup = 0L;
 

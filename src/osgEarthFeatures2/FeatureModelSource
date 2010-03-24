@@ -90,19 +90,10 @@ namespace osgEarth { namespace Features2
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
-        ///** Access to the forced geometry type */
-        //optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
-
-        ///** Now to grid up the data and crop features to grid cells. */
-        //optional<GriddingPolicy>& gridding() { return _gridding; }
-        //const optional<GriddingPolicy>& gridding() const { return _gridding; }
-
-        ///** Whether to enable or disable lighting */
-        //optional<bool>& enableLighting() { return _lit; }
-        //const optional<bool>& enableLighting() const { return _lit; }
-
         const FeatureModelSourceOptions* getFeatureModelOptions() const {
             return _options.get(); }
+
+        const osgEarth::Map* getMap() const { return _map.get(); }
 
     protected:
 
@@ -129,10 +120,11 @@ namespace osgEarth { namespace Features2
          * @return Node to add to the scene graph.
          */
         virtual osg::Node* renderFeaturesForStyle(
-            const Symbology::Style& style,
+            const Symbology::Style* style,
             FeatureList& features,
             osg::Referenced* buildData,
             osg::Node** out_newNode =0L ) { return 0L; }
+
 
     private:   
         
@@ -141,9 +133,10 @@ namespace osgEarth { namespace Features2
             method will also grid the input features into cells if necessary, calling
             renderStyleCell() for each cell. */
         osg::Group* gridAndRenderFeaturesForStyle(
-            const Symbology::Style& style,
+            const Symbology::Style* style,
             const Symbology::Query& query,
             osg::Referenced* buildData );
+
 
     public: 
 
@@ -161,12 +154,6 @@ namespace osgEarth { namespace Features2
 
         //StyleCatalog _styleCatalog;
         osg::ref_ptr<FeatureSource> _features;
-
-        //optional<Geometry::Type> _geomTypeOverride;
-        //optional<bool> _lit;
-        //optional<GriddingPolicy> _gridding;
-
-    private:
         osg::ref_ptr<const osgEarth::Map> _map;
         osg::ref_ptr<const FeatureModelSourceOptions> _options;
 

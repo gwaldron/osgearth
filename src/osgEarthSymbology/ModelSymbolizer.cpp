@@ -54,7 +54,7 @@ static osg::Node* getNode(const std::string& str)
 
 
 bool 
-ModelSymbolizer::update(SymbolizerInput* dataSet,
+ModelSymbolizer::update(const SymbolizerInput* dataSet,
                         const Style* style,
                         osg::Group* attachPoint,
                         SymbolizerContext* context )

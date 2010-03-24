@@ -514,6 +514,47 @@ public:
 };
 
 
+class StencilFeatureNodeSelector : public FeatureNodeSelector
+{
+public:
+    StencilFeatureNodeSelector(FeatureModelSource* model) : FeatureNodeSelector(model) {}
+
+    osg::Node* createSymbolizerNode(const Style* style, const FeatureList& features, FeatureSymbolizerContext* ctx )
+    {
+        SymbolicNode* node = new SymbolicNode;
+        Symbolizer* symbolizer = new StencilVolumeSymbolizer<FeatureSymbolizer>;
+        FeatureSymbolizerInput* input = new FeatureSymbolizerInput(features);
+
+        node->setDataSet(input);
+        node->setContext(ctx);
+        node->setSymbolizer(symbolizer);
+        node->setStyle(style);
+
+        const FeatureStencilModelOptions* options = dynamic_cast<const FeatureStencilModelOptions*>(ctx->getModelSource()->getFeatureModelOptions());
+        // apply explicit lighting if necessary:
+        if ( options && options->enableLighting().isSet() )
+        {
+            osg::StateSet* ss = node->getOrCreateStateSet();
+            ss->setMode( GL_LIGHTING, options->enableLighting() == true?
+                         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+                         osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+        }
+
+        return node;
+    }
+
+    osg::Node* createGridSymbolizerNode(const Style* style, const Query& query, FeatureSymbolizerContext* ctx )
+    {
+        SymbolicNode* node = new SymbolicNode;
+        Symbolizer* symbolizer = new StencilVolumeSymbolizer<GridFeatureSymbolizer>(query);
+        node->setContext(ctx);
+        node->setSymbolizer(symbolizer);
+        node->setStyle(style);
+        return node;
+    }
+};
+
+
 class FeatureStencilModelSource : public FeatureModelSource
 {
 public:
@@ -553,106 +594,7 @@ public:
         if ( !_features.valid() || !_features->getFeatureProfile() )
             return 0L;
 
-        osg::Timer_t start = osg::Timer::instance()->tick();
-
-        const FeatureStencilModelOptions* options = dynamic_cast<const FeatureStencilModelOptions*>( _options.get() );
-
-        // implementation-specific data
-        osg::ref_ptr<osg::Referenced> buildData = createBuildData();
-        FeatureSymbolizerContext* context = new FeatureSymbolizerContext(this, buildData);
-
-        osg::Group* group = new osg::Group();
-
-        const optional<StyleCatalog>& styles = options->styles();
-        //const StyleCatalog* styles = _options->styles().get();
-    
-        // figure out if and how to style the geometry.
-        if ( _features->hasEmbeddedStyles() )
-        {
-            // Each feature has its own embedded style data, so use that:
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
-            while( cursor->hasMore() )
-            {
-                Feature* feature = cursor->nextFeature();
-                if ( feature )
-                {
-                    FeatureList list;
-                    list.push_back( feature );
-                    // gridding is not supported for embedded styles.
-                    osg::Node* node = createSymbolizerNode(feature->style().get(), list, context);
-                    if ( node )
-                        group->addChild( node );
-                }
-            }
-        }
-        else if ( styles.isSet() )
-        {
-            if ( styles->selectors().size() > 0 )
-            {
-                for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
-                {
-                    const StyleSelector& sel = *i;
-                    Style* style;
-                    styles->getStyle( sel.getSelectedStyleName(), style );
-                    osg::Node* node = createGridSymbolizerNode( style, sel.query().value(), context);
-                    if ( node )
-                        group->addChild( node );
-                }
-            }
-            else
-            {
-                const Style* style = styles->getDefaultStyle();
-                osg::Node* node = createGridSymbolizerNode(style, Query(), context);
-                if ( node )
-                    group->addChild( node );
-            }
-        }
-        else
-        {
-            osg::Node* node = createGridSymbolizerNode( new Style, Query(), context);
-            if ( node )
-                group->addChild( node );
-        }
-
-        // apply explicit lighting if necessary:
-        if ( options->enableLighting().isSet() )
-        {
-            osg::StateSet* ss = group->getOrCreateStateSet();
-            ss->setMode( GL_LIGHTING, options->enableLighting() == true?
-                         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-                         osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-        }
-
-        osg::Timer_t end = osg::Timer::instance()->tick();
-
-        OE_INFO << "Layer " << getName() << ", time to compile styles = " << 
-            osg::Timer::instance()->delta_s( start, end ) << "s" << std::endl;
-
-        return group;
-    }
-    
-
-    osg::Node* createSymbolizerNode(const Style* style, const FeatureList& features, FeatureSymbolizerContext* ctx )
-    {
-        SymbolicNode* node = new SymbolicNode;
-        Symbolizer* symbolizer = new StencilVolumeSymbolizer<FeatureSymbolizer>;
-        FeatureSymbolizerInput* input = new FeatureSymbolizerInput(features);
-
-        node->setDataSet(input);
-        node->setContext(ctx);
-        node->setSymbolizer(symbolizer);
-        node->setStyle(style);
-        return node;
-    }
-
-    osg::Node* createGridSymbolizerNode(const Style* style, const Query& query, FeatureSymbolizerContext* ctx )
-    {
-        SymbolicNode* node = new SymbolicNode;
-        Symbolizer* symbolizer = new StencilVolumeSymbolizer<GridFeatureSymbolizer>(query);
-        node->setContext(ctx);
-        node->setSymbolizer(symbolizer);
-        node->setStyle(style);
-        return node;
+        return new StencilFeatureNodeSelector(this);
     }
 
 protected:

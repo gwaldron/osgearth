@@ -19,11 +19,84 @@
 
 #include <osgEarthFeatures2/FeatureSymbolizer>
 #include <osgEarthFeatures2/Feature>
+#include <osg/NodeVisitor>
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth;
 using namespace osgEarth::Features2;
 using namespace osgEarth::Symbology;
+
+
+void FeatureNodeSelector::traverse(osg::NodeVisitor& nv)
+{
+    setNumChildrenRequiringUpdateTraversal(1);
+    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) 
+    {
+        if (_dirtySelection && _model.valid() && _model->getFeatureSource() && _model->getFeatureSource()->getFeatureProfile() )
+        {
+            removeChildren(0, getNumChildren());
+
+            osg::Timer_t start = osg::Timer::instance()->tick();
+
+            // implementation-specific data
+            osg::ref_ptr<osg::Referenced> buildData = _model->createBuildData();
+            FeatureSymbolizerContext* context = new FeatureSymbolizerContext(_model.get(), buildData);
+
+            const optional<StyleCatalog>& styles = _model->getFeatureModelOptions()->styles();
+    
+            // figure out if and how to style the geometry.
+            if ( _model->getFeatureSource()->hasEmbeddedStyles() )
+            {
+                // Each feature has its own embedded style data, so use that:
+                osg::ref_ptr<FeatureCursor> cursor = _model->getFeatureSource()->createFeatureCursor( Query() );
+                while( cursor->hasMore() )
+                {
+                    Feature* feature = cursor->nextFeature();
+                    if ( feature )
+                    {
+                        FeatureList list;
+                        list.push_back( feature );
+                        // gridding is not supported for embedded styles.
+                        osg::Node* node = createSymbolizerNode(feature->style().get().get(), list, context);
+                        if ( node )
+                            addChild( node );
+                    }
+                }
+            }
+            else if ( styles.isSet() )
+            {
+                if ( styles->selectors().size() > 0 )
+                {
+                    for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
+                    {
+                        const StyleSelector& sel = *i;
+                        Style* style;
+                        styles->getStyle( sel.getSelectedStyleName(), style );
+                        osg::Node* node = createGridSymbolizerNode( style, sel.query().value(), context);
+                        if ( node )
+                            addChild( node );
+                    }
+                }
+                else
+                {
+                    const Style* style = styles->getDefaultStyle();
+                    osg::Node* node = createGridSymbolizerNode(style, Query(), context);
+                    if ( node )
+                        addChild( node );
+                }
+            }
+            else
+            {
+                osg::Node* node = createGridSymbolizerNode( new Style, Query(), context);
+                if ( node )
+                    addChild( node );
+            }
+        }
+        _dirtySelection = false;
+    }
+    osg::Group::traverse(nv);
+}
+
 
 bool FeatureSymbolizer::update(
     const SymbolizerInput* dataInput,
@@ -230,3 +303,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
 
     return styleGroup;
 }
+
+
+
+

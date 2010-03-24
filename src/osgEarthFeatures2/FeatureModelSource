@@ -85,6 +85,7 @@ namespace osgEarth { namespace Features2
         // override
         virtual osg::Node* createNode( ProgressCallback* progress );
 
+
     public: // properties:
 
         /** The underlying feature source. */
@@ -95,11 +96,12 @@ namespace osgEarth { namespace Features2
 
         const osgEarth::Map* getMap() const { return _map.get(); }
 
-    protected:
-
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
         virtual osg::Referenced* createBuildData() {
             return NULL; }     
+
+    protected:
+
 
         /**
          * Creates OSG graph(s) representing the specified feature list.

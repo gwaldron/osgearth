@@ -28,6 +28,12 @@
 namespace osgEarth { namespace Features2
 {
 
+    class OSGEARTHFEATURES_EXPORT FeatureSymbolizerModelSource : public FeatureModelSource
+    {
+    public:
+        osg::Node* createNode( ProgressCallback* progress );
+    };
+
 
     class OSGEARTHFEATURES_EXPORT FeatureSymbolizerContext : public Symbology::SymbolizerContext
     {
@@ -96,6 +102,31 @@ namespace osgEarth { namespace Features2
     protected:
         Symbology::Query _query;
     };
+
+
+    class OSGEARTHFEATURES_EXPORT FeatureNodeSelector : public osg::Group
+    {
+    public:
+        FeatureNodeSelector(FeatureModelSource* model) : _model(model), _dirtySelection(true) {}
+        virtual void traverse(osg::NodeVisitor& nv);
+        void dirtySelection() { _dirtySelection = true;}
+
+        virtual osg::Node* createGridSymbolizerNode(
+            const Symbology::Style* style,
+            const Symbology::Query& query,
+            FeatureSymbolizerContext* context) = 0;
+
+        virtual osg::Node* createSymbolizerNode(
+            const Symbology::Style* style, 
+            const FeatureList& features, 
+            FeatureSymbolizerContext* ctx ) = 0;
+
+    protected:
+        bool _dirtySelection;
+        osg::ref_ptr<FeatureModelSource> _model;
+    };
+
+
 
 }}
 

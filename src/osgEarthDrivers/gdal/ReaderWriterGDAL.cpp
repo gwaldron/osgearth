@@ -888,22 +888,30 @@ public:
 
         OE_INFO << "GDAL: Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
-        unsigned int max_level = 30;
-        for (unsigned int i = 0; i < max_level; ++i)
+        if (_settings->maxDataLevel().isSet())
         {
-            _maxDataLevel = i;
-            double w, h;
-            profile->getTileDimensions(i, w, h);
-            double resX = (w / (double)_settings->tileSize().value() );
-            double resY = (h / (double)_settings->tileSize().value() );
-            
-            if (resX < maxResolution || resY < maxResolution)
-            {
-                break;
-            }
+            _maxDataLevel = _settings->maxDataLevel().value();
+            OE_INFO << "Using override max data level " << _maxDataLevel << std::endl;
         }
+        else
+        {
+            unsigned int max_level = 30;
+            for (unsigned int i = 0; i < max_level; ++i)
+            {
+                _maxDataLevel = i;
+                double w, h;
+                profile->getTileDimensions(i, w, h);
+                double resX = (w / (double)_settings->tileSize().value() );
+                double resY = (h / (double)_settings->tileSize().value() );
 
-        OE_INFO << "GDAL: Max Data Level: " << _maxDataLevel << std::endl;
+                if (resX < maxResolution || resY < maxResolution)
+                {
+                    break;
+                }
+            }
+
+            OE_INFO << "GDAL: Max Data Level: " << _maxDataLevel << std::endl;
+        }
 
         // record the data extent in profile space:
         GeoExtent local_extent(

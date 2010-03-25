@@ -40,6 +40,9 @@ namespace osgEarth { namespace Drivers
         optional<ElevationInterpolation>& interpolation() { return _interpolation; }
         const optional<ElevationInterpolation>& interpolation() const { return _interpolation; }
 
+        optional<unsigned int>& maxDataLevel() { return _maxDataLevel;}
+        const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel;}
+
     public: // ctors
 
         GDALOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
@@ -54,6 +57,8 @@ namespace osgEarth { namespace Drivers
             if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
             else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
             else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
+
+            config().getIfSet( "max_data_level", _maxDataLevel);
         }
 
     protected:
@@ -69,12 +74,15 @@ namespace osgEarth { namespace Drivers
                 else if ( _interpolation.value() == osgEarth::INTERP_AVERAGE ) conf.update( "interpolation", "average" );
                 else if ( _interpolation.value() == osgEarth::INTERP_BILINEAR ) conf.update( "interpolation", "bilinear" );
             }
+
+            conf.updateIfSet( "max_data_level", _maxDataLevel);
             return conf;
         }
 
         optional<std::string> _url;
         optional<std::string> _extensions;
         optional<ElevationInterpolation> _interpolation;
+        optional<unsigned int> _maxDataLevel;
     };
 
 } } // namespace osgEarth::Drivers

@@ -19,6 +19,7 @@
 
 #include <osgEarthFeatures2/FeatureSymbolizer>
 #include <osgEarthFeatures2/Feature>
+#include <osgEarthSymbology/SymbolicNode>
 #include <osg/NodeVisitor>
 #include <osgUtil/Optimizer>
 
@@ -26,7 +27,109 @@ using namespace osgEarth;
 using namespace osgEarth::Features2;
 using namespace osgEarth::Symbology;
 
+void FeatureSymbolizerGraph::traverse(osg::NodeVisitor& nv)
+{
+    setNumChildrenRequiringUpdateTraversal(1);
+    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) 
+    {
+        if (_dirty && _factory.valid())
+        {
+            removeChildren(0, getNumChildren());
 
+            osg::Timer_t start = osg::Timer::instance()->tick();
+
+            FeatureModelSource* model = _factory->getFeatureModelSource();
+            // implementation-specific data
+            osg::ref_ptr<osg::Referenced> buildData = model->createBuildData();
+            FeatureSymbolizerContext* context = new FeatureSymbolizerContext(model, buildData);
+
+            const optional<StyleCatalog>& styles = model->getFeatureModelOptions()->styles();
+    
+            // figure out if and how to style the geometry.
+            if ( model->getFeatureSource()->hasEmbeddedStyles() )
+            {
+                // Each feature has its own embedded style data, so use that:
+                osg::ref_ptr<FeatureCursor> cursor = model->getFeatureSource()->createFeatureCursor( Query() );
+                while( cursor->hasMore() )
+                {
+                    Feature* feature = cursor->nextFeature();
+                    if ( feature )
+                    {
+                        FeatureList list;
+                        list.push_back( feature );
+                        // gridding is not supported for embedded styles.
+                        osg::Node* node = createSymbolizerNode(feature->style().get().get(), list, context);
+                        if ( node )
+                            addChild( node );
+                    }
+                }
+            }
+            else if ( styles.isSet() )
+            {
+                if ( styles->selectors().size() > 0 )
+                {
+                    for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
+                    {
+                        const StyleSelector& sel = *i;
+                        Style* style;
+                        styles->getStyle( sel.getSelectedStyleName(), style );
+                        osg::Node* node = createGridSymbolizerNode( style, sel.query().value(), context);
+                        if ( node )
+                            addChild( node );
+                    }
+                }
+                else
+                {
+                    const Style* style = styles->getDefaultStyle();
+                    osg::Node* node = createGridSymbolizerNode(style, Query(), context);
+                    if ( node )
+                        addChild( node );
+                }
+            }
+            else
+            {
+                osg::Node* node = createGridSymbolizerNode( new Style, Query(), context);
+                if ( node )
+                    addChild( node );
+            }
+        }
+        _dirty = false;
+    }
+    osg::Group::traverse(nv);
+}
+
+osg::Node* FeatureSymbolizerGraph::createGridSymbolizerNode(
+    const Symbology::Style* style,
+    const Symbology::Query& query,
+    FeatureSymbolizerContext* context)
+{
+    SymbolicNode* node = new SymbolicNode;
+    Symbolizer* symbolizer = new GridFeatureSymbolizer(_factory.get(), query);
+    node->setContext(context);
+    node->setSymbolizer(symbolizer);
+    node->setStyle(style);
+    return node;
+}
+
+osg::Node* FeatureSymbolizerGraph::createSymbolizerNode(
+    const Symbology::Style* style, 
+    const FeatureList& features, 
+    FeatureSymbolizerContext* ctx )
+{
+    SymbolicNode* node = new SymbolicNode;
+    Symbolizer* symbolizer = new FeatureSymbolizer(_factory.get());
+    FeatureSymbolizerInput* input = new FeatureSymbolizerInput(features);
+
+    node->setDataSet(input);
+    node->setContext(ctx);
+    node->setSymbolizer(symbolizer);
+    node->setStyle(style);
+    return node;
+}
+
+
+
+#if 0
 void FeatureNodeSelector::traverse(osg::NodeVisitor& nv)
 {
     setNumChildrenRequiringUpdateTraversal(1);
@@ -96,7 +199,7 @@ void FeatureNodeSelector::traverse(osg::NodeVisitor& nv)
     }
     osg::Group::traverse(nv);
 }
-
+#endif
 
 bool FeatureSymbolizer::update(
     const SymbolizerInput* dataInput,
@@ -112,10 +215,10 @@ bool FeatureSymbolizer::update(
         return false;
 
     FeatureSymbolizerContext* ctx = dynamic_cast<FeatureSymbolizerContext*>(context);
-    if (!ctx)
+    if (!ctx || !_factory.valid())
         return false;
     
-    osg::Node* result = createNodeForStyle(style, dataSrc->getFeatures(), ctx);
+    osg::Node* result = _factory->createNodeForStyle(style, dataSrc->getFeatures(), ctx);
     if (result) {
         attachPoint->removeChildren(0, attachPoint->getNumChildren());
         attachPoint->addChild(result);
@@ -123,16 +226,6 @@ bool FeatureSymbolizer::update(
     }
     return false;
 }
-
-osg::Node* FeatureSymbolizer::createNodeForStyle(
-    const Symbology::Style* style,
-    const FeatureList& features,
-    FeatureSymbolizerContext* context,
-    osg::Node** out_newNode)
-{
-    return 0;
-}
-
 
 
 bool GridFeatureSymbolizer::update(
@@ -232,7 +325,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
                 // Some implementations might return a group node on the first pass and add children
                 // to it on subsequent passes.
                 osg::Node* createdNode = 0L;
-                osg::Node* nodeToAdd = createNodeForStyle( style, cellFeatures2, context, &createdNode );
+                osg::Node* nodeToAdd = _factory->createNodeForStyle( style, cellFeatures2, context, &createdNode );
                 if ( nodeToAdd )
                 {
                     if ( !styleGroup )
@@ -299,7 +392,6 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
         osgUtil::Optimizer optimizer;
         optimizer.optimize( styleGroup, osgUtil::Optimizer::SPATIALIZE_GROUPS );
     }
-
 
     return styleGroup;
 }

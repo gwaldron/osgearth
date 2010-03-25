@@ -28,13 +28,6 @@
 namespace osgEarth { namespace Features2
 {
 
-    //class OSGEARTHFEATURES_EXPORT FeatureSymbolizerModelSource : public FeatureModelSource
-    //{
-    //public:
-    //    osg::Node* createNode( ProgressCallback* progress );
-    //};
-
-
     class OSGEARTHFEATURES_EXPORT FeatureSymbolizerContext : public Symbology::SymbolizerContext
     {
     public:
@@ -63,9 +56,11 @@ namespace osgEarth { namespace Features2
     /**
      * A FeatureSymbolizer.
      */
+    class SymbolizerFactory;
     class OSGEARTHFEATURES_EXPORT FeatureSymbolizer : public Symbology::Symbolizer
     {
     public:
+        FeatureSymbolizer(SymbolizerFactory* factory) : _factory(factory) {}
 
         virtual bool update(
             const Symbology::SymbolizerInput* dataInput,
@@ -73,11 +68,11 @@ namespace osgEarth { namespace Features2
             osg::Group* attachPoint,
             Symbology::SymbolizerContext* context );
 
-        virtual osg::Node* createNodeForStyle(
-            const Symbology::Style* style,
-            const FeatureList& features,
-            FeatureSymbolizerContext* context,
-            osg::Node** out_newNode =0L );
+        SymbolizerFactory* getSymbolizerFactory() { return _factory.get(); }
+
+    protected:
+
+        osg::ref_ptr<SymbolizerFactory> _factory;
     };
 
     /**
@@ -86,7 +81,7 @@ namespace osgEarth { namespace Features2
     class OSGEARTHFEATURES_EXPORT GridFeatureSymbolizer : public FeatureSymbolizer
     {
     public:
-        GridFeatureSymbolizer(const Symbology::Query& query) : FeatureSymbolizer(), _query(query) {}
+        GridFeatureSymbolizer(SymbolizerFactory* factory, const Symbology::Query& query) : FeatureSymbolizer(factory), _query(query) {}
 
         virtual bool update(
             const Symbology::SymbolizerInput* dataInput,
@@ -104,6 +99,7 @@ namespace osgEarth { namespace Features2
     };
 
 
+#if 0
     class OSGEARTHFEATURES_EXPORT FeatureNodeSelector : public osg::Group
     {
     public:
@@ -124,6 +120,42 @@ namespace osgEarth { namespace Features2
     protected:
         bool _dirtySelection;
         osg::ref_ptr<FeatureModelSource> _model;
+    };
+#endif
+
+    class OSGEARTHFEATURES_EXPORT SymbolizerFactory : public osg::Referenced
+    {
+    public:
+        virtual osg::Node* createNodeForStyle(
+            const Symbology::Style* style,
+            const FeatureList& features,
+            FeatureSymbolizerContext* context,
+            osg::Node** out_newNode = 0L ) = 0;
+
+        virtual FeatureModelSource* getFeatureModelSource() = 0;
+    };
+
+
+    class OSGEARTHFEATURES_EXPORT FeatureSymbolizerGraph : public osg::Group
+    {
+    public:
+        FeatureSymbolizerGraph(SymbolizerFactory* factory) : _factory(factory), _dirty(true) {}
+        virtual void traverse(osg::NodeVisitor& nv);
+        void dirty() { _dirty = true;}
+
+        virtual osg::Node* createGridSymbolizerNode(
+            const Symbology::Style* style,
+            const Symbology::Query& query,
+            FeatureSymbolizerContext* context);
+
+        virtual osg::Node* createSymbolizerNode(
+            const Symbology::Style* style, 
+            const FeatureList& features, 
+            FeatureSymbolizerContext* ctx );
+
+    protected:
+        osg::ref_ptr<SymbolizerFactory> _factory;
+        bool _dirty;
     };
 
 

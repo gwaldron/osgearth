@@ -339,12 +339,15 @@ struct BuildData : public osg::Referenced
     }
 };
 
-template <class T> 
-class StencilVolumeSymbolizer : public T
+class StencilVolumeSymbolizerFactory : public SymbolizerFactory
 {
+protected:
+    osg::ref_ptr<FeatureModelSource> _model;
+
 public:
-    StencilVolumeSymbolizer() {}
-    StencilVolumeSymbolizer(const Query& q) : T(q) {}
+    StencilVolumeSymbolizerFactory(FeatureModelSource* model) : _model(model) {}
+    FeatureModelSource* getFeatureModelSource() { return _model.get(); }
+
 
     virtual osg::Node* createNodeForStyle(
         const Symbology::Style* style,
@@ -509,51 +512,18 @@ public:
             }
         }
 
-        return result;
-    }
-};
-
-
-class StencilFeatureNodeSelector : public FeatureNodeSelector
-{
-public:
-    StencilFeatureNodeSelector(FeatureModelSource* model) : FeatureNodeSelector(model) {}
-
-    osg::Node* createSymbolizerNode(const Style* style, const FeatureList& features, FeatureSymbolizerContext* ctx )
-    {
-        SymbolicNode* node = new SymbolicNode;
-        Symbolizer* symbolizer = new StencilVolumeSymbolizer<FeatureSymbolizer>;
-        FeatureSymbolizerInput* input = new FeatureSymbolizerInput(features);
-
-        node->setDataSet(input);
-        node->setContext(ctx);
-        node->setSymbolizer(symbolizer);
-        node->setStyle(style);
-
-        const FeatureStencilModelOptions* options = dynamic_cast<const FeatureStencilModelOptions*>(ctx->getModelSource()->getFeatureModelOptions());
         // apply explicit lighting if necessary:
-        if ( options && options->enableLighting().isSet() )
+        if ( result && options && options->enableLighting().isSet() )
         {
-            osg::StateSet* ss = node->getOrCreateStateSet();
+            osg::StateSet* ss = result->getOrCreateStateSet();
             ss->setMode( GL_LIGHTING, options->enableLighting() == true?
                          osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
                          osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
         }
 
-        return node;
-    }
-
-    osg::Node* createGridSymbolizerNode(const Style* style, const Query& query, FeatureSymbolizerContext* ctx )
-    {
-        SymbolicNode* node = new SymbolicNode;
-        Symbolizer* symbolizer = new StencilVolumeSymbolizer<GridFeatureSymbolizer>(query);
-        node->setContext(ctx);
-        node->setSymbolizer(symbolizer);
-        node->setStyle(style);
-        return node;
+        return result;
     }
 };
-
 
 class FeatureStencilModelSource : public FeatureModelSource
 {
@@ -594,7 +564,7 @@ public:
         if ( !_features.valid() || !_features->getFeatureProfile() )
             return 0L;
 
-        return new StencilFeatureNodeSelector(this);
+        return new FeatureSymbolizerGraph(new StencilVolumeSymbolizerFactory(this));
     }
 
 protected:

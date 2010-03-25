@@ -20,6 +20,7 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarthFeatures2/FeatureSymbolizer>
 #include <osgEarthFeatures2/FeatureModelSource>
 #include <osgEarthFeatures2/FeatureSource>
 #include <osgEarthFeatures2/TransformFilter>
@@ -46,9 +47,14 @@ using namespace OpenThreads;
 #define PROP_HEIGHT_OFFSET "height_offset"
 
 
-class GeomSymbolizer : public FeatureSymbolizer
+class FactoryGeomSymbolizer : public SymbolizerFactory
 {
+protected:
+    osg::ref_ptr<FeatureModelSource> _model;
+
 public:
+    FactoryGeomSymbolizer(FeatureModelSource* model) : _model(model) {}
+    FeatureModelSource* getFeatureModelSource() { return _model.get(); }
     //override
     virtual osg::Node* createNodeForStyle(
         const Symbology::Style* style,
@@ -62,10 +68,14 @@ public:
 
         // Transform them into the map's SRS:
         TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS(), context->getModelSource()->getMap()->isGeocentric() );
-        const FeatureGeomModelOptions* options = dynamic<const FeatureGeomModelOptions*>(context->getModelSource()->getFeatureModelOptions());
+        const FeatureGeomModelOptions* options = dynamic_cast<const FeatureGeomModelOptions*>(context->getModelSource()->getFeatureModelOptions());
+
+        FeatureList featureList;
+        for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
+            featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
         xform.heightOffset() = options->heightOffset().value();
-        contextFilter = xform.push( features, context );
+        contextFilter = xform.push( featureList, contextFilter );
 
         // Make the symbolic node:
         osgEarth::Symbology::SymbolicNode* symNode = new osgEarth::Symbology::SymbolicNode;
@@ -76,19 +86,14 @@ public:
         GeometryInput* geoms = new GeometryInput;
         symNode->setDataSet(geoms);
 
-        for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
+        for (FeatureList::iterator it = featureList.begin(); it != featureList.end(); ++it)
         {
             Feature* feature = it->get();
             if ( feature )
             {
                 Geometry* geometry = feature->getGeometry();
                 if ( geometry )
-                {
-                    // this is temporary until we finish migrating Geometry to ::Symbology
-                    geoms->getGeometryList().push_back( 
-                        osgEarth::Symbology::Geometry::create(
-                            osgEarth::Symbology::Geometry::Type((int)(feature->getGeometry()->getType())), geometry));
-                }
+                    geoms->getGeometryList().push_back(geometry);
             }
         }
 
@@ -97,10 +102,10 @@ public:
         // If the context specifies a reference frame, apply it to the resulting model.
         // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?
         // ...probably the latter.
-        if ( context.hasReferenceFrame() )
+        if ( contextFilter.hasReferenceFrame() )
         {
             osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
-                context.inverseReferenceFrame() );
+                contextFilter.inverseReferenceFrame() );
             delocalizer->addChild( result );
             result = delocalizer;
         }
@@ -110,75 +115,6 @@ public:
             *out_newNode = result;
 
         return result;
-    }
-
-    osg::Node* renderFeaturesForStyle( const Style* style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
-    {
-        // A processing context to use with the filters:
-        FilterContext context;
-        context.profile() = getFeatureSource()->getFeatureProfile();
-
-        // Transform them into the map's SRS:
-        TransformFilter xform( _map->getProfile()->getSRS(), _map->isGeocentric() );
-        xform.heightOffset() = _options->heightOffset().value();
-        context = xform.push( features, context );
-
-        // Make the symbolic node:
-        osgEarth::Symbology::SymbolicNode* symNode = new osgEarth::Symbology::SymbolicNode;
-
-        symNode->setStyle(style);
-        symNode->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
-
-        GeometryInput* geoms = new GeometryInput;
-        symNode->setDataSet(geoms);
-
-        for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
-        {
-            Feature* feature = it->get();
-            if ( feature )
-            {
-                Geometry* geometry = feature->getGeometry();
-                if ( geometry )
-                {
-                    // this is temporary until we finish migrating Geometry to ::Symbology
-                    geoms->getGeometryList().push_back( 
-                        osgEarth::Symbology::Geometry::create(
-                            osgEarth::Symbology::Geometry::Type((int)(feature->getGeometry()->getType())), geometry));
-                }
-            }
-        }
-
-        osg::Node* result = symNode;
-
-        // If the context specifies a reference frame, apply it to the resulting model.
-        // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?
-        // ...probably the latter.
-        if ( context.hasReferenceFrame() )
-        {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
-                context.inverseReferenceFrame() );
-            delocalizer->addChild( result );
-            result = delocalizer;
-        }
-
-        // set the output node if necessary:
-        if ( out_newNode )
-            *out_newNode = result;
-
-        return result;
-    }
-
-
-class GeomFeatureNodeSelector : public FeatureNodeSelector
-{
-public:
-    virtual osg::Node* createSymbolizerNode(
-            const Symbology::Style* style, 
-            const FeatureList& features, 
-            FeatureSymbolizerContext* ctx )
-    {
-
-
     }
 };
 
@@ -198,71 +134,16 @@ public:
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         FeatureModelSource::initialize( referenceURI, map );
-        _map = map;
     }
 
-    //override
-    osg::Node* renderFeaturesForStyle( const Style* style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
+    osg::Node* createNode( ProgressCallback* progress )
     {
-        // A processing context to use with the filters:
-        FilterContext context;
-        context.profile() = getFeatureSource()->getFeatureProfile();
-
-        // Transform them into the map's SRS:
-        TransformFilter xform( _map->getProfile()->getSRS(), _map->isGeocentric() );
-        xform.heightOffset() = _options->heightOffset().value();
-        context = xform.push( features, context );
-
-        // Make the symbolic node:
-        osgEarth::Symbology::SymbolicNode* symNode = new osgEarth::Symbology::SymbolicNode;
-
-        symNode->setStyle(style);
-        symNode->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
-
-        GeometryInput* geoms = new GeometryInput;
-        symNode->setDataSet(geoms);
-
-        for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
-        {
-            Feature* feature = it->get();
-            if ( feature )
-            {
-                Geometry* geometry = feature->getGeometry();
-                if ( geometry )
-                {
-                    // this is temporary until we finish migrating Geometry to ::Symbology
-                    geoms->getGeometryList().push_back( 
-                        osgEarth::Symbology::Geometry::create(
-                            osgEarth::Symbology::Geometry::Type((int)(feature->getGeometry()->getType())), geometry));
-                }
-            }
-        }
-
-        osg::Node* result = symNode;
-
-        // If the context specifies a reference frame, apply it to the resulting model.
-        // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?
-        // ...probably the latter.
-        if ( context.hasReferenceFrame() )
-        {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
-                context.inverseReferenceFrame() );
-            delocalizer->addChild( result );
-            result = delocalizer;
-        }
-
-        // set the output node if necessary:
-        if ( out_newNode )
-            *out_newNode = result;
-
-        return result;
+        return new FeatureSymbolizerGraph(new FactoryGeomSymbolizer(this));
     }
+
 
 protected:
-    osg::ref_ptr<const FeatureGeomModelOptions> _options;
-    osg::ref_ptr<osgEarth::Symbology::SymbolicNode> _symbolic;
     int _sourceId;
-    osg::ref_ptr<const Map> _map;
 };
 
 

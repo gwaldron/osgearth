@@ -30,7 +30,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
     if (interpolation == INTERP_NEAREST)
     {
         //Nearest interpolation
-        result = hf->getHeight((unsigned int)c, (unsigned int)r);
+        result = hf->getHeight((unsigned int)osg::round(c), (unsigned int)osg::round(r));
     }
     else
     {

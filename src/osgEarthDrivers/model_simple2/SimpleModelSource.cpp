@@ -59,7 +59,6 @@ public:
         symbol->marker() = _url;
         style->addSymbol(symbol);
         osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
-        symb->setDataSet(new osgEarth::Symbology::SymbolizerInput);
         symb->setStyle(style);
         symb->setSymbolizer(new osgEarth::Symbology::ModelSymbolizer);
         return symb;

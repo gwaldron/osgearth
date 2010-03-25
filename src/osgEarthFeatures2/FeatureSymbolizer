@@ -114,7 +114,7 @@ namespace osgEarth { namespace Features2
         virtual osg::Node* createGridSymbolizerNode(
             const Symbology::Style* style,
             const Symbology::Query& query,
-            FeatureSymbolizerContext* context) = 0;
+            FeatureSymbolizerContext* context) { return 0; }
 
         virtual osg::Node* createSymbolizerNode(
             const Symbology::Style* style, 

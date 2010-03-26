@@ -28,29 +28,12 @@
 
 using namespace osgEarth::Symbology;
 
-GeometrySymbolizer::GeometrySymbolizer()
+
+osg::Node* GeometrySymbolizer::GeometrySymbolizerOperator::operator()(const GeometryList& geometryList,
+                                                                      const Style* style,
+                                                                      SymbolizerContext* context)
 {
-}
-
-
-bool 
-GeometrySymbolizer::update(const SymbolizerInput* dataSet,
-                           const Style* style,
-                           osg::Group* attachPoint,
-                           SymbolizerContext* context )
-{
-    if (!dataSet || !attachPoint || !style)
-        return false;
-
-    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
-    if (!geometryInput)
-        return false;
-
-    osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
-    newSymbolized->addChild(geode.get());
-
-    const GeometryList& geometryList = geometryInput->getGeometryList();
     for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
     {
         Geometry* geometry = *it;
@@ -167,9 +150,37 @@ GeometrySymbolizer::update(const SymbolizerInput* dataSet,
     }
 
     if (geode->getNumDrawables())
+        return geode.release();
+    return 0;
+}
+
+
+GeometrySymbolizer::GeometrySymbolizer()
+{
+}
+
+
+bool
+GeometrySymbolizer::update(const SymbolizerInput* dataSet,
+                           const Style* style,
+                           osg::Group* attachPoint,
+                           SymbolizerContext* context )
+{
+    if (!dataSet || !attachPoint || !style)
+        return false;
+
+    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
+    if (!geometryInput)
+        return false;
+
+    const GeometryList& geometryList = geometryInput->getGeometryList();
+
+    GeometrySymbolizerOperator functor;
+    osg::Node* node = (functor)(geometryList, style, context);
+    if (node)
     {
         attachPoint->removeChildren(0, attachPoint->getNumChildren());
-        attachPoint->addChild(newSymbolized.get());
+        attachPoint->addChild(node);
         return true;
     }
 

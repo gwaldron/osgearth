@@ -40,6 +40,15 @@ namespace osgEarth { namespace Symbology
             SymbolizerContext* context );
 
         GeometrySymbolizer();
+
+
+        class OSGEARTHSYMBOLOGY_EXPORT GeometrySymbolizerOperator
+        {
+        public:
+            osg::Node* operator()(const GeometryList& geoms, 
+                                  const Style* style,
+                                  SymbolizerContext* context);
+        };
     };
 
 } } // namespace osgEarth::Symbology

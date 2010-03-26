@@ -56,6 +56,7 @@ public:
     FactoryGeomSymbolizer(FeatureModelSource* model) : _model(model) {}
     FeatureModelSource* getFeatureModelSource() { return _model.get(); }
     //override
+
     virtual osg::Node* createNodeForStyle(
         const Symbology::Style* style,
         const FeatureList& features,
@@ -77,15 +78,7 @@ public:
         xform.heightOffset() = options->heightOffset().value();
         contextFilter = xform.push( featureList, contextFilter );
 
-        // Make the symbolic node:
-        osgEarth::Symbology::SymbolicNode* symNode = new osgEarth::Symbology::SymbolicNode;
-
-        symNode->setStyle(style);
-        symNode->setSymbolizer(new osgEarth::Symbology::GeometrySymbolizer);
-
-        GeometryInput* geoms = new GeometryInput;
-        symNode->setDataSet(geoms);
-
+        GeometryList geometryList;
         for (FeatureList::iterator it = featureList.begin(); it != featureList.end(); ++it)
         {
             Feature* feature = it->get();
@@ -93,11 +86,11 @@ public:
             {
                 Geometry* geometry = feature->getGeometry();
                 if ( geometry )
-                    geoms->getGeometryList().push_back(geometry);
+                    geometryList.push_back(geometry);
             }
         }
-
-        osg::Node* result = symNode;
+        GeometrySymbolizer::GeometrySymbolizerOperator geometryOperator;
+        osg::Node* result = geometryOperator(geometryList, style, context);
 
         // If the context specifies a reference frame, apply it to the resulting model.
         // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?

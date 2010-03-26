@@ -876,8 +876,11 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
         buf << "imglod" << std::endl;
     for (unsigned int i = 0; i < _terrainTile->getNumColorLayers(); ++i)
     {
-        TransparentLayer* tl = static_cast<TransparentLayer*>( _terrainTile->getColorLayer(i) );
-        buf << tl->getId() << "=" << tl->getLevelOfDetail() << std::endl;
+        TransparentLayer* tl = dynamic_cast<TransparentLayer*>( _terrainTile->getColorLayer(i) );
+        if (tl)
+        {
+            buf << tl->getId() << "=" << tl->getLevelOfDetail() << std::endl;
+        }
     }
 
 	std::string bufStr;

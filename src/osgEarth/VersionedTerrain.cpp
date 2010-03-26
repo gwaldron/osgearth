@@ -854,50 +854,53 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
         //if (imageMapLayers[i]->isKeyValid(_key.get()) && (i < getNumColorLayers()))
         if (i < getNumColorLayers())
         {
-            TransparentLayer* layer = static_cast<TransparentLayer*>(getColorLayer( i ));
-            if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
+            TransparentLayer* layer = dynamic_cast<TransparentLayer*>(getColorLayer( i ));
+            if (layer)
             {
-                // in preemptive mode, always check for the final imagery - there are no intermediate
-                // placeholders.
-                checkForFinalImagery = true;
-            }
-            else if ( lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && layer && readyForNewImagery(imageMapLayers[i].get(), layer->getLevelOfDetail()) )
-            {
-                // in sequential mode, we have to incrementally increase imagery resolution by
-                // creating placeholders based of parent tiles, one LOD at a time.
-                if ( layer->getLevelOfDetail()+1 < _key->getLevelOfDetail() )
+                if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
                 {
-                    if ( _family[PARENT].getImageLOD(layer->getId()) > layer->getLevelOfDetail() )
-                    {
-                        osg::ref_ptr<VersionedTile> parentTile;
-                        getVersionedTerrain()->getVersionedTile( _family[PARENT].tileID, parentTile, !tileTableLocked );
-
-                        //Get the parent color layer
-                        osg::ref_ptr<osgTerrain::Layer> parentColorLayer;
-                        {
-                            ScopedReadLock l2( parentTile->getTileLayersMutex() );
-                            if (i < parentTile->getNumColorLayers())
-                            {
-                                parentColorLayer = parentTile->getColorLayer(i);
-                            }
-                        }
-
-                        //Set the parent color layer
-                        {
-                            ScopedWriteLock lock( getTileLayersMutex() );
-                            if (parentColorLayer.valid())
-                            {
-                                setColorLayer(i, parentColorLayer.get());
-                            }
-                        }
-                        markTileForRegeneration();
-                    }
-                }
-                else
-                {
-                    // we've gone as far as we can with placeholders; time to check for the
-                    // final imagery tile.
+                    // in preemptive mode, always check for the final imagery - there are no intermediate
+                    // placeholders.
                     checkForFinalImagery = true;
+                }
+                else if ( lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && layer && readyForNewImagery(imageMapLayers[i].get(), layer->getLevelOfDetail()) )
+                {
+                    // in sequential mode, we have to incrementally increase imagery resolution by
+                    // creating placeholders based of parent tiles, one LOD at a time.
+                    if ( layer->getLevelOfDetail()+1 < _key->getLevelOfDetail() )
+                    {
+                        if ( _family[PARENT].getImageLOD(layer->getId()) > layer->getLevelOfDetail() )
+                        {
+                            osg::ref_ptr<VersionedTile> parentTile;
+                            getVersionedTerrain()->getVersionedTile( _family[PARENT].tileID, parentTile, !tileTableLocked );
+
+                            //Get the parent color layer
+                            osg::ref_ptr<osgTerrain::Layer> parentColorLayer;
+                            {
+                                ScopedReadLock l2( parentTile->getTileLayersMutex() );
+                                if (i < parentTile->getNumColorLayers())
+                                {
+                                    parentColorLayer = parentTile->getColorLayer(i);
+                                }
+                            }
+
+                            //Set the parent color layer
+                            {
+                                ScopedWriteLock lock( getTileLayersMutex() );
+                                if (parentColorLayer.valid())
+                                {
+                                    setColorLayer(i, parentColorLayer.get());
+                                }
+                            }
+                            markTileForRegeneration();
+                        }
+                    }
+                    else
+                    {
+                        // we've gone as far as we can with placeholders; time to check for the
+                        // final imagery tile.
+                        checkForFinalImagery = true;
+                    }
                 }
             }
         }
@@ -1285,7 +1288,7 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             family[PARENT].elevLOD = parent->getElevationLOD();
             for (unsigned int i = 0; i < parent->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = static_cast<TransparentLayer*>(parent->getColorLayer(i));
+                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(parent->getColorLayer(i));
                 if (layer)
                 {
                     family[PARENT].imageLODs[layer->getId()] = layer->getLevelOfDetail();
@@ -1308,7 +1311,7 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             //family[WEST].imageryLOD = west->getImageryLOD();
             for (unsigned int i = 0; i < west->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = static_cast<TransparentLayer*>(west->getColorLayer(i));
+                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(west->getColorLayer(i));
                 if (layer)
                 {
                     family[WEST].imageLODs[layer->getId()] = layer->getLevelOfDetail();
@@ -1331,7 +1334,7 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             //family[NORTH].imageryLOD = north->getImageryLOD();
             for (unsigned int i = 0; i < north->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = static_cast<TransparentLayer*>(north->getColorLayer(i));
+                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(north->getColorLayer(i));
                 if (layer)
                 {
                     family[NORTH].imageLODs[layer->getId()] = layer->getLevelOfDetail();
@@ -1354,7 +1357,7 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             //family[EAST].imageryLOD = east->getImageryLOD();
             for (unsigned int i = 0; i < east->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = static_cast<TransparentLayer*>(east->getColorLayer(i));
+                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(east->getColorLayer(i));
                 if (layer)
                 {
                     family[EAST].imageLODs[layer->getId()] = layer->getLevelOfDetail();
@@ -1377,7 +1380,7 @@ VersionedTerrain::refreshFamily(const osgTerrain::TileID& tileId,
             //family[SOUTH].imageryLOD = south->getImageryLOD();
             for (unsigned int i = 0; i < south->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = static_cast<TransparentLayer*>(south->getColorLayer(i));
+                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(south->getColorLayer(i));
                 if (layer)
                 {
                     family[SOUTH].imageLODs[layer->getId()] = layer->getLevelOfDetail();

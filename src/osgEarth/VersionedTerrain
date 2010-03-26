@@ -87,6 +87,10 @@ namespace osgEarth
     public:
         VersionedTile( const TileKey* key, GeoLocator* keyLocator );
 
+        virtual const char* libraryName() const { return "osgEarth"; }
+        virtual const char* className() const { return "VersionedTile"; }
+
+
         /** Gets the tilekey associated with this tile. */
         const TileKey* getKey() const;
 
@@ -235,6 +239,7 @@ namespace osgEarth
     public:
         VersionedTerrain( Map* map, MapEngine* engine );
 
+        virtual const char* libraryName() const { return "osgEarth"; }
         virtual const char* className() const { return "VersionedTerrain"; }
 
     public:

@@ -73,6 +73,9 @@ namespace osgEarth
 
     public:
 
+        virtual const char* libraryName() const { return "osgEarth"; }
+        virtual const char* className() const { return "MapNode"; }
+
         /**
          * Gets the Map that this MapNode is rendering.
          */

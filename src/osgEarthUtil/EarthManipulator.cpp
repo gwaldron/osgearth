@@ -386,18 +386,19 @@ void EarthManipulator::setNode(osg::Node* node)
 {
     if ( node )
     {
-        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( node );
-        if ( mapNode )
+        osg::CoordinateSystemNode* csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( node );      
+        if ( csn )
         {
-            _node = mapNode;
+            _node = csn;
 
             if ( !_homeViewpoint.isSet() )
             {
-                if ( mapNode && mapNode->isGeocentric() )
+                //If we have a CoordinateSystemNode and it has an ellipsoid model
+                if ( csn && csn->getEllipsoidModel() )
                 {
                     setHomeViewpoint( 
                         Viewpoint(osg::Vec3d(-90,0,0), 0, -89,
-                        mapNode->getEllipsoidModel()->getRadiusEquator()*3.0 ) );
+                        csn->getEllipsoidModel()->getRadiusEquator()*3.0 ) );
                 }
                 else
                 {
@@ -407,7 +408,6 @@ void EarthManipulator::setNode(osg::Node* node)
                         _node->getBound().radius()*2.0) );
                 }
             }
-
             setViewpoint( _homeViewpoint.get(), 0.0 );
         }
 

@@ -35,7 +35,7 @@
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/SymbolicNode>
-#include <osgEarthFeatures/TextSymbolizer>
+#include <osgEarthFeatures/BuildTextOperator>
 
 #include "FeatureGeomModelOptions"
 

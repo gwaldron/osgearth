@@ -18,7 +18,6 @@
  */
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureGridder>
-#include <osgEarthFeatures/Styling>
 #include <osgEarth/SpatialReference>
 #include <osg/Notify>
 #include <osg/Timer>
@@ -28,6 +27,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 
 /****************************************************************/
 
@@ -147,7 +147,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
             for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
             {
                 const StyleSelector& sel = *i;
-                Style style;
+                Style* style;
                 styles->getStyle( sel.getSelectedStyleName(), style );
                 osg::Node* node = gridAndRenderFeaturesForStyle( style, sel.query().value(), buildData.get() );
                 if ( node )
@@ -156,7 +156,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         }
         else
         {
-            Style style = styles->getDefaultStyle();
+            const Style* style = styles->getDefaultStyle();
             osg::Node* node = gridAndRenderFeaturesForStyle( style, Query(), buildData.get() );
             if ( node )
                 group->addChild( node );
@@ -164,7 +164,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     }
     else
     {
-        osg::Node* node = gridAndRenderFeaturesForStyle( Style(), Query(), buildData.get() );
+        osg::Node* node = gridAndRenderFeaturesForStyle( new Style, Query(), buildData.get() );
         if ( node )
             group->addChild( node );
     }
@@ -196,7 +196,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
 
 osg::Group*
-FeatureModelSource::gridAndRenderFeaturesForStyle(const Style& style,
+FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
                                                   const Query& query,
                                                   osg::Referenced* data )
 {

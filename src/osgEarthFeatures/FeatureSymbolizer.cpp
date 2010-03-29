@@ -17,14 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthFeatures2/FeatureSymbolizer>
-#include <osgEarthFeatures2/Feature>
+#include <osgEarthFeatures/FeatureSymbolizer>
+#include <osgEarthFeatures/Feature>
 #include <osgEarthSymbology/SymbolicNode>
 #include <osg/NodeVisitor>
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth;
-using namespace osgEarth::Features2;
+using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 void FeatureSymbolizerGraph::traverse(osg::NodeVisitor& nv)
@@ -290,7 +290,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
 
             // now copy the resulting feature set into a list, converting the data
             // types along the way if a geometry override is in place:
-            FeatureList cellFeatures2;
+            FeatureList cellFeatures;
             while( cursor->hasMore() )
             {
                 Feature* feature = cursor->nextFeature();
@@ -307,7 +307,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
                 }
                 if ( geom )
                 {
-                    cellFeatures2.push_back( feature );
+                    cellFeatures.push_back( feature );
                 }
             }
 
@@ -315,17 +315,17 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
             // do this is gridding is enabled.
             if ( gridder.getNumCells() > 1 )
             {
-                gridder.cullFeatureListToCell( cell, cellFeatures2 );
+                gridder.cullFeatureListToCell( cell, cellFeatures );
             }
 
-            if ( cellFeatures2.size() > 0 )
+            if ( cellFeatures.size() > 0 )
             {
                 // next ask the implementation to construct OSG geometry for the cell features.
                 // note: just b/c render* returns NULL does not mean it didn't generate anything.
                 // Some implementations might return a group node on the first pass and add children
                 // to it on subsequent passes.
                 osg::Node* createdNode = 0L;
-                osg::Node* nodeToAdd = _factory->createNodeForStyle( style, cellFeatures2, context, &createdNode );
+                osg::Node* nodeToAdd = _factory->createNodeForStyle( style, cellFeatures, context, &createdNode );
                 if ( nodeToAdd )
                 {
                     if ( !styleGroup )

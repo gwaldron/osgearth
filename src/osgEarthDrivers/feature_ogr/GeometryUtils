@@ -19,7 +19,7 @@
 #ifndef OSGEARTHFEATURES_FEATURE_OGR_GEOM_UTILS
 #define OSGEARTHFEATURES_FEATURE_OGR_GEOM_UTILS 1
 
-#include <osgEarthFeatures/Geometry>
+#include <osgEarthSymbology/Geometry>
 #include <osgEarth/StringUtils>
 #include <osg/Notify>
 #include <ogr_api.h>
@@ -30,7 +30,7 @@ using namespace osgEarth::Features;
 struct GeometryUtils
 {
     static void
-    populate( OGRGeometryH geomHandle, Geometry* target, int numPoints )
+    populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )
     {
         for( int v = numPoints-1; v >= 0; v-- ) // reverse winding.. we like ccw
         {
@@ -42,35 +42,35 @@ struct GeometryUtils
         }
     }
 
-    static Polygon*
+    static Symbology::Polygon*
     createPolygon( OGRGeometryH geomHandle )
     {
-        Polygon* output = 0L;
+        Symbology::Polygon* output = 0L;
 
         int numParts = OGR_G_GetGeometryCount( geomHandle );
         if ( numParts == 0 )
         {
             int numPoints = OGR_G_GetPointCount( geomHandle );
-            output = new Polygon( numPoints );
+            output = new Symbology::Polygon( numPoints );
             populate( geomHandle, output, numPoints );
             output->open();
         }
         else if ( numParts > 0 )
         {
-            Polygon* poly = 0L;
+            Symbology::Polygon* poly = 0L;
             for( int p = 0; p < numParts; p++ )
             {
                 OGRGeometryH partRef = OGR_G_GetGeometryRef( geomHandle, p );
                 int numPoints = OGR_G_GetPointCount( partRef );
                 if ( p == 0 )
                 {
-                    output = new Polygon( numPoints );
+                    output = new Symbology::Polygon( numPoints );
                     populate( partRef, output, numPoints );
                     output->open();
                 }
                 else
                 {
-                    Ring* hole = new Ring( numPoints );
+                    Symbology::Ring* hole = new Symbology::Ring( numPoints );
                     populate( partRef, hole, numPoints );
                     hole->open();
                     output->getHoles().push_back( hole );
@@ -80,10 +80,10 @@ struct GeometryUtils
         return output;
     }
 
-    static Geometry*
+    static Symbology::Geometry*
     createGeometry( OGRGeometryH geomHandle )
     {
-        Geometry* output = 0L;
+        Symbology::Geometry* output = 0L;
 
         OGRwkbGeometryType wkbType = OGR_G_GetGeometryType( geomHandle );        
         
@@ -98,14 +98,14 @@ struct GeometryUtils
             wkbType == wkbLineString25D )
         {
             int numPoints = OGR_G_GetPointCount( geomHandle );
-            output = new LineString( numPoints );
+            output = new Symbology::LineString( numPoints );
             populate( geomHandle, output, numPoints );
         }
         else if (
             wkbType == wkbLinearRing )
         {
             int numPoints = OGR_G_GetPointCount( geomHandle );
-            output = new Ring( numPoints );
+            output = new Symbology::Ring( numPoints );
             populate( geomHandle, output, numPoints );
         }
         else if ( 
@@ -124,7 +124,7 @@ struct GeometryUtils
             wkbType == wkbMultiPolygon ||
             wkbType == wkbMultiPolygon25D )
         {
-            MultiGeometry* multi = new MultiGeometry();
+            Symbology::MultiGeometry* multi = new Symbology::MultiGeometry();
 
             int numGeoms = OGR_G_GetGeometryCount( geomHandle );
             for( int n=0; n<numGeoms; n++ )
@@ -132,7 +132,7 @@ struct GeometryUtils
                 OGRGeometryH subGeomRef = OGR_G_GetGeometryRef( geomHandle, n );
                 if ( subGeomRef )
                 {
-                    Geometry* geom = createGeometry( subGeomRef );
+                    Symbology::Geometry* geom = createGeometry( subGeomRef );
                     if ( geom ) multi->getComponents().push_back( geom );
                 }
             } 
@@ -143,7 +143,7 @@ struct GeometryUtils
         return output;
     }
 
-    static Geometry*
+    static Symbology::Geometry*
     createGeometryFromWKT( const std::string& wkt )
     {       
         OGRwkbGeometryType type = 
@@ -156,7 +156,7 @@ struct GeometryUtils
             startsWith( wkt, "GEOMETRYCOLLECTION" ) ? wkbGeometryCollection :
             wkbNone;
             
-        Geometry* output = 0L;
+        Symbology::Geometry* output = 0L;
         if ( type != wkbNone )
         {
             OGRGeometryH geom = OGR_G_CreateGeometry( type );

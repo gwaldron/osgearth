@@ -19,6 +19,7 @@
 
 #include <osgEarthFeatures/FeatureTileSource>
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 
@@ -38,6 +39,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
@@ -77,7 +79,7 @@ public:
 
     //override
     bool renderFeaturesForStyle(
-        const Style& style,
+        const Symbology::Style* style,
         FeatureList& features,
         osg::Referenced* buildData,
         const GeoExtent& imageExtent,
@@ -113,7 +115,10 @@ public:
         double xf = (double)image->s() / imageExtent.width();
         double yf = (double)image->t() / imageExtent.height();
 
-        double lineWidth = (double)style.lineSymbolizer()->stroke()->width().value();
+        const LineSymbol* line = style->getSymbol<LineSymbol>();
+        double lineWidth = 1.0;
+        if (line)
+            lineWidth = (double)line->stroke()->width().value();
 
         //OE_NOTICE << "rendering " << features.size() << " features" << std::endl;
 
@@ -126,8 +131,17 @@ public:
             while( gi.hasMore() )
             {
                 Geometry* g = gi.next();
+                osg::Vec4f c = osg::Vec4(1, 1, 1, 1);
+                if (g->getType() == Geometry::TYPE_POLYGON) {
+                    const PolygonSymbol* symbol = style->getSymbol<PolygonSymbol>();
+                    if (symbol)
+                        c = symbol->fill()->color();
+                } else if (g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_LINESTRING) {
+                    const LineSymbol* symbol = style->getSymbol<LineSymbol>();
+                    if (symbol)
+                        c = symbol->stroke()->color();
+                }
 
-                osg::Vec4f c = style.getColor( g->getType() );
                 unsigned int a = 127+(c.a()*255)/2; // scale alpha up
                 agg::rgba8 fgColor( c.r()*255, c.g()*255, c.b()*255, a );
 

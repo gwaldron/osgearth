@@ -21,8 +21,8 @@
 #define OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Styling>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/TileSource>
 #include <osgEarth/Map>
 #include <osg/Node>
@@ -40,22 +40,20 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const osg::ref_ptr<const FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        optional<StyleCatalog>& styles() { return _styles; }
-        const optional<StyleCatalog>& styles() const { return _styles; }
+        optional<Symbology::StyleCatalog>& styles() { return _styles; }
+        const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
 
-        optional<Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
-        const optional<Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+        optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
+        const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
 
-    public:
         FeatureTileSourceOptions( const PluginOptions* opt =0L );
 
     protected:
         virtual Config toConfig() const;
 
-    private:
         osg::ref_ptr<const FeatureSourceOptions> _featureOptions;
-        optional<StyleCatalog> _styles;
-        optional<Geometry::Type> _geomTypeOverride;
+        optional<Symbology::StyleCatalog> _styles;
+        optional<Symbology::Geometry::Type> _geomTypeOverride;
     };
 
 
@@ -71,17 +69,15 @@ namespace osgEarth { namespace Features
          */
         FeatureTileSource( const PluginOptions* options =NULL );
 
-
-    public:
         //override
-		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL);
+        virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL);
 
         //override
         virtual osg::Image* createImage( const TileKey* key, ProgressCallback* progress );
 
     public: // properties:
 
-        /** The underlying feature source. */
+            /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
     protected:
@@ -105,7 +101,7 @@ namespace osgEarth { namespace Features
          * @return true if the rendering succeeded, false if the out_image did not change.
          */
         virtual bool renderFeaturesForStyle(
-            const Style& style,
+            const Symbology::Style* style,
             FeatureList& features,
             osg::Referenced* buildData,
             const GeoExtent& imageExtent,
@@ -127,7 +123,7 @@ namespace osgEarth { namespace Features
             osg::Image* image,
             osg::Referenced* buildData ) { return true; }
 
-    public: 
+    public:
 
         // META_Object specialization:
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
@@ -141,23 +137,19 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureTileSource() { }
 
-    protected:
         osg::ref_ptr<FeatureSource> _features;
-
-    private:
         osg::ref_ptr<const FeatureTileSourceOptions> _options;
-
         osg::ref_ptr<const osgEarth::Map> _map;
         
         bool queryAndRenderFeaturesForStyle(
-            const Style& style,
-            const Query& query,
+            const Symbology::Style* style,
+            const Symbology::Query& query,
             osg::Referenced* data,
             const GeoExtent& imageExtent,
             osg::Image* out_image );
     };
 
-} } // namespace osgEarth::Features
+    } } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_FEATURE_TILE_SOURCE_H
 

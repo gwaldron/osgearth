@@ -40,20 +40,20 @@ namespace osgEarth { namespace Features
 
     public:
         ConvertTypeFilter();
-        ConvertTypeFilter( const Geometry::Type& toType );
+        ConvertTypeFilter( const Symbology::Geometry::Type& toType );
         ConvertTypeFilter( const ConvertTypeFilter& rhs );
 
     public:
-        Geometry::Type& toType() {
+        Symbology::Geometry::Type& toType() {
             return _toType; }
-        const Geometry::Type& toType() const {
+        const Symbology::Geometry::Type& toType() const {
             return _toType; }
 
     public:
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
     protected:
-        Geometry::Type _toType;
+        Symbology::Geometry::Type _toType;
 
         bool push( Feature* input, const FilterContext& context );
     };

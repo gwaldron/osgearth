@@ -21,6 +21,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 
 static
 std::string EMPTY_STRING;
@@ -36,7 +37,7 @@ _extent( extent )
 
 Feature::Feature( long fid ) :
 _fid( fid ),
-_style( Style() )
+_style( new Style() )
 {
     //NOP
 }

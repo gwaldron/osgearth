@@ -21,6 +21,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 
 ScaleFilter::ScaleFilter() :
 _scale( 0.0 )

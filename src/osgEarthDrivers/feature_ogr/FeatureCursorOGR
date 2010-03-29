@@ -22,7 +22,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/Query>
+#include <osgEarthSymbology/Query>
 #include <ogr_api.h>
 #include <queue>
 
@@ -48,7 +48,7 @@ public:
         OGRLayerH dsHandle,
         OGRLayerH layerHandle,
         const FeatureProfile* profile,
-        const Query& query,
+        const Symbology::Query& query,
         const FeatureFilterList& filters );
 
 public: // FeatureCursor
@@ -64,7 +64,7 @@ private:
     OGRLayerH _layerHandle;
     OGRLayerH _resultSetHandle;
     OGRGeometryH _spatialFilter;
-    Query _query;
+    Symbology::Query _query;
     int _chunkSize;
     OGRFeatureH _nextHandleToQueue;
     osg::ref_ptr<const FeatureProfile> _profile;

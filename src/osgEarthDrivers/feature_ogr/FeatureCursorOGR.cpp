@@ -31,7 +31,7 @@ using namespace osgEarth::Features;
 FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
                                    OGRLayerH layerHandle,
                                    const FeatureProfile* profile,
-                                   const Query& query,
+                                   const Symbology::Query& query,
                                    const FeatureFilterList& filters ) :
 _dsHandle( dsHandle ),
 _layerHandle( layerHandle ),
@@ -221,24 +221,12 @@ FeatureCursorOGR::createFeature( OGRFeatureH handle )
     OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
 	if ( geomRef )
 	{
-        Geometry* geom = GeometryUtils::createGeometry( geomRef );
+        Symbology::Geometry* geom = GeometryUtils::createGeometry( geomRef );
         feature->setGeometry( geom );
 	}
 
-    //Load the attributes    
-    int numAttrs = OGR_F_GetFieldCount(handle);
-    for (int i = 0; i < numAttrs; ++i)
-    {
-         void* field_handle_ref = OGR_F_GetFieldDefnRef( handle, i );
-         const char* field_name = OGR_Fld_GetNameRef( field_handle_ref );
-         const char* field_value= OGR_F_GetFieldAsString(handle, i);
-         std::string name = std::string( field_name );
-         std::string value = std::string( field_value);
-         //Make the name lower case
-         std::transform( name.begin(), name.end(), name.begin(), ::tolower );
-         feature->setAttr(name, value);
-    }
-     
+    //loadAttributes();
+
     return feature;
 }
 

@@ -29,6 +29,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 
 bool
 BufferFilter::isSupported()
@@ -69,7 +70,7 @@ BufferFilter::push( Feature* input, const FilterContext& context )
     if ( !input || !input->getGeometry() )
         return true;
 
-    osg::ref_ptr<Geometry> output;
+    osg::ref_ptr<Symbology::Geometry> output;
 
 #ifdef OSGEARTH_HAVE_GEOS   
 

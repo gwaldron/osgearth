@@ -27,6 +27,8 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
+#include <osgEarthSymbology/Style>
+
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
@@ -34,6 +36,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
+using namespace osgEarth::Symbology;
 using namespace osgEarthUtil;
 
 //
@@ -61,9 +64,12 @@ int main(int argc, char** argv)
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
-    Style style;
-    style.lineSymbolizer()->stroke()->color() = osg::Vec4f( 1,1,0,1 );
-    style.lineSymbolizer()->stroke()->width() = 1.5f;
+    Style* style = new Style;
+
+    LineSymbol* ls = new LineSymbol;
+    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 );
+    ls->stroke()->width() = 1.5f;
+    style->addSymbol(ls);
 
     // Now we'll choose the AGG-Lite driver to render the features. By the way, the
     // feature data is actually polygons, so we override that to treat it as lines.

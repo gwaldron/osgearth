@@ -19,10 +19,11 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
-#include <osgEarthFeatures/Styling>
+#include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthFeatures/FeatureSymbolizer>
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -32,7 +33,55 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
+
+
+class FactoryLayerSymbolizer : public SymbolizerFactory
+{
+protected:
+    osg::ref_ptr<FeatureModelSource> _model;
+
+public:
+    FactoryLayerSymbolizer(FeatureModelSource* model) : _model(model) {}
+    FeatureModelSource* getFeatureModelSource() { return _model.get(); }
+    //override
+
+    virtual osg::Node* createNodeForStyle(
+        const Symbology::Style* style,
+        const FeatureList& features,
+        FeatureSymbolizerContext* context,
+        osg::Node** out_newNode)
+    {
+        // A processing context to use with the filters:
+        FilterContext contextFilter;
+        contextFilter.profile() = context->getModelSource()->getFeatureSource()->getFeatureProfile();
+        const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>(context->getModelSource()->getFeatureModelOptions());
+
+        FeatureList featureList;
+        for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
+            featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
+
+        // Transform them into the map's SRS:
+        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS(), context->getModelSource()->getMap()->isGeocentric() );
+
+        contextFilter = xform.push( featureList, contextFilter );
+
+        // Build geometry:
+        BuildGeometryFilter build;    
+        if ( options->geometryTypeOverride().isSet() )
+            build.geomTypeOverride() = options->geometryTypeOverride().value();
+
+        // apply the style rule if we have one:
+        osg::ref_ptr<osg::Node> result;
+        build.setStyle(style);
+        contextFilter = build.push( featureList, result, contextFilter );
+
+        if ( out_newNode ) *out_newNode = result.get();
+        return result.release();
+    }
+};
+
 
 class FeatureOverlayModelSource : public FeatureModelSource
 {
@@ -47,10 +96,9 @@ public:
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         FeatureModelSource::initialize( referenceURI, map );
-        _mapSRS = map->getProfile()->getSRS();
-        _mapIsGeocentric = map->isGeocentric();
     }
 
+#if 0
     //override
     osg::Node* renderFeaturesForStyle( const Style& style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
     {
@@ -93,12 +141,25 @@ public:
 
         return overlayNode;
     }
+#endif
 
-private:
-    osg::ref_ptr<const FeatureOverlayModelOptions> _options;
+    osg::Node* createNode( ProgressCallback* progress )
+    {
+        osg::Node* node = new FeatureSymbolizerGraph(new FactoryLayerSymbolizer(this));
+        const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>( _options.get() );
+        
+        // build an overlay node around the geometry
+        osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
+        overlayNode->setName( this->getName() );
+        overlayNode->setOverlayTechnique( options->overlayTechnique().value() );
+        overlayNode->setOverlayBaseHeight( options->baseHeight().value() );
+        overlayNode->setOverlayTextureSizeHint( options->textureSize().value() );
+        overlayNode->setOverlayTextureUnit( options->textureUnit().value() );
+        overlayNode->setContinuousUpdate( false );
+        overlayNode->setOverlaySubgraph( node );
+        return overlayNode;
+    }
 
-    osg::ref_ptr<const SpatialReference> _mapSRS;
-    bool _mapIsGeocentric;
 };
 
 

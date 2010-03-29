@@ -24,6 +24,7 @@
 #include <OpenThreads/ScopedLock>
 
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 

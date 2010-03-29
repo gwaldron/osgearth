@@ -23,10 +23,10 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Annotation>
-#include <osgEarthFeatures/Geometry>
-#include <osgEarthFeatures/Query>
+#include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/Query>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/Styling>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
 #include <osgEarth/DriverOptions>
@@ -70,12 +70,12 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT GeometryFeatureCursor : public FeatureCursor
     {
     public:
-        GeometryFeatureCursor( Geometry* geom );
-        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterList& filters );
+        GeometryFeatureCursor( Symbology::Geometry* geom );
+        GeometryFeatureCursor( Symbology::Geometry* geom, const FeatureProfile* fp, const FeatureFilterList& filters );
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
     protected:
-        osg::ref_ptr<Geometry> _geom;
+        osg::ref_ptr<Symbology::Geometry> _geom;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         const FeatureFilterList _filters;
         osg::ref_ptr<Feature> _lastFeature;
@@ -130,7 +130,7 @@ namespace osgEarth { namespace Features
          *
          * Caller takes ownership of the returned object.
          */
-        virtual FeatureCursor* createFeatureCursor( const Query& query ) =0;
+        virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query ) =0;
 
 
     public: // Styling

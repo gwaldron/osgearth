@@ -186,7 +186,7 @@ public:
 
 
     //override
-    FeatureCursor* createFeatureCursor( const Query& query )
+    FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
         if ( _geometry.valid() )
         {
@@ -245,7 +245,7 @@ protected:
     }
 
     // parses an explicit WKT geometry string into a Geometry.
-    Geometry* parseGeometry( const Config& geomConf )
+    Symbology::Geometry* parseGeometry( const Config& geomConf )
     {
         return GeometryUtils::createGeometryFromWKT( geomConf.value() );
     }
@@ -259,7 +259,7 @@ private:
     //bool _supportsRandomRead;
     //bool _ready;
     //bool _buildSpatialIndex;
-    osg::ref_ptr<Geometry> _geometry; // explicit geometry.
+    osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
     //optional<ProfileConfig> _geometryProfileConf;
     osg::ref_ptr<const OGRFeatureOptions> _options;
 };
@@ -287,5 +287,5 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_feature_ogr, OGRFeatureSourceFactory)
+REGISTER_OSGPLUGIN(osgearth_feature_ogr2, OGRFeatureSourceFactory)
 

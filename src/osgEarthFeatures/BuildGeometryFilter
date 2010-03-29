@@ -24,7 +24,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Annotation>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/Styling>
+#include <osgEarthSymbology/Style>
 #include <osg/Geode>
 
 using namespace osgEarth;
@@ -39,16 +39,17 @@ namespace osgEarth { namespace Features
     public:
         BuildGeometryFilter();
 
-        optional<Style>& style() { return _style; }
+        const Symbology::Style* getStyle() { return _style.get(); }
+        void setStyle(const Symbology::Style* s) { _style = s; }
 
-        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
+        optional<Symbology::Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
         FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
-        optional<Style> _style;
-        optional<Geometry::Type> _geomTypeOverride;
+        osg::ref_ptr<const Symbology::Style> _style;
+        optional<Symbology::Geometry::Type> _geomTypeOverride;
         bool _hasPoints;
         bool _hasLines;
         void reset();
@@ -57,6 +58,13 @@ namespace osgEarth { namespace Features
         bool pushRegularFeature( Feature* input, const FilterContext& context );
         bool pushTextAnnotation( TextAnnotation* input, const FilterContext& context );
     };
+
+
+    osg::Geode*
+    createVolume(Symbology::Geometry*            geom,
+                 double               offset,
+                 double               height,
+                 const FilterContext& context );
 
 } } // namespace osgEarth::Features
 

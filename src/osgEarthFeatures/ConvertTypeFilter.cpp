@@ -22,6 +22,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 
 
 ConvertTypeFilter::ConvertTypeFilter() :

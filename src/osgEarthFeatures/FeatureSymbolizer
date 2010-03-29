@@ -20,12 +20,12 @@
 #ifndef OSGEARTHFEATURES_FEATURE_SYMBOLIZER_H
 #define OSGEARTHFEATURES_FEATURE_SYMBOLIZER_H 1
 
-#include <osgEarthFeatures2/Common>
-#include <osgEarthFeatures2/FeatureModelSource>
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthSymbology/Symbolizer>
 #include <osg/Node>
 
-namespace osgEarth { namespace Features2
+namespace osgEarth { namespace Features
 {
 
     class OSGEARTHFEATURES_EXPORT FeatureSymbolizerContext : public Symbology::SymbolizerContext

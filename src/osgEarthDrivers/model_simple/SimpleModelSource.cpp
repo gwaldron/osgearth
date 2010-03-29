@@ -28,8 +28,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-//#define USE_SYMBOLOGY
-#ifdef USE_SYMBOLOGY
 #include <osgEarthSymbology/ModelSymbolizer>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/MarkerSymbol>
@@ -61,7 +59,6 @@ public:
         symbol->marker() = _url;
         style->addSymbol(symbol);
         osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
-        symb->setDataSet(new osgEarth::Symbology::SymbolizerInput);
         symb->setStyle(style);
         symb->setSymbolizer(new osgEarth::Symbology::ModelSymbolizer);
         return symb;
@@ -72,46 +69,6 @@ protected:
     osg::ref_ptr<const SimpleModelOptions> _settings;
 };
 
-#else
-
-class SimpleModelSource : public ModelSource
-{
-public:
-    SimpleModelSource( const PluginOptions* options ) : ModelSource( options )
-    {
-        _settings = dynamic_cast<const SimpleModelOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new SimpleModelOptions( options );
-    }
-
-    //override
-    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
-    {
-        ModelSource::initialize( referenceURI, map );
-
-        _url = osgEarth::getFullPath( referenceURI, _settings->url().value() );
-    }
-
-    // override
-    osg::Node* createNode( ProgressCallback* progress )
-    {
-        osg::ref_ptr<osg::Node> output;
-        if ( HTTPClient::readNodeFile( _url, output, getOptions(), progress ) == HTTPClient::RESULT_OK )
-        {
-            OE_NOTICE << "Loaded OK: " << _url << std::endl;
-        }
-        else
-        {
-            OE_NOTICE << "FAILED to load " << _url << std::endl;
-        }
-        return output.release();
-    }
-
-private:
-    std::string _url;
-    osg::ref_ptr<const SimpleModelOptions> _settings;
-};
-#endif
 
 class SimpleModelSourceFactory : public osgDB::ReaderWriter
 {

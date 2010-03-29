@@ -17,22 +17,16 @@ SET(LIB_PUBLIC_HEADERS
     BuildGeometryFilter  
     Common
     ConvertTypeFilter
-    CssUtils
-    DriverOptions
     Feature
     FeatureGridder
     FeatureModelSource
     FeatureSource
+    FeatureSymbolizer
     FeatureTileSource
     Filter
-    Geometry
     GEOS
-	Query
     ResampleFilter
-	ScaleFilter
-    SLD
-    StencilVolumeNode
-    Styling
+    ScaleFilter
     TransformFilter
 )
 
@@ -42,22 +36,16 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     BufferFilter.cpp
     BuildGeometryFilter.cpp
     ConvertTypeFilter.cpp
-    CssUtils.cpp
-    DriverOptions.cpp
     Feature.cpp
     FeatureGridder.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp
+    FeatureSymbolizer.cpp
     FeatureTileSource.cpp
     Filter.cpp
     GEOS.cpp
-    Geometry.cpp
-	Query.cpp
     ResampleFilter.cpp
-	ScaleFilter.cpp
-    SLD.cpp
-    StencilVolumeNode.cpp
-    Styling.cpp
+    ScaleFilter.cpp
     TransformFilter.cpp
 )
 
@@ -76,6 +64,7 @@ ENDIF(WIN32)
 
 LINK_INTERNAL(${LIB_NAME}
 osgEarth
+osgEarthSymbology
 )
 
 IF(GEOS_FOUND)

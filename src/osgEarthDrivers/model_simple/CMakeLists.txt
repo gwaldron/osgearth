@@ -8,4 +8,3 @@ SETUP_PLUGIN(osgearth_model_simple)
 SET(LIB_NAME model_simple)
 SET(LIB_PUBLIC_HEADERS SimpleModelOptions)
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
-

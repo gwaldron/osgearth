@@ -45,8 +45,8 @@ namespace osgEarth { namespace Drivers
         optional<Config>& geometryProfileConfig() { return _geometryProfileConf; }
         const optional<Config>& geometryProfileConfig() const { return _geometryProfileConf; }
 
-        osg::ref_ptr<Geometry>& geometry() { return _geometry; }
-        const osg::ref_ptr<Geometry>& geometry() const { return _geometry; }
+        osg::ref_ptr<Symbology::Geometry>& geometry() { return _geometry; }
+        const osg::ref_ptr<Symbology::Geometry>& geometry() const { return _geometry; }
 
     public:
         OGRFeatureOptions( const PluginOptions* opt =0L ) : FeatureSourceOptions( opt ) {
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Drivers
         optional<bool> _buildSpatialIndex;
         optional<Config> _geometryConf;
         optional<Config> _geometryProfileConf;
-        osg::ref_ptr<Geometry> _geometry;
+        osg::ref_ptr<Symbology::Geometry> _geometry;
     };
 
 } } // namespace osgEarth::Drivers

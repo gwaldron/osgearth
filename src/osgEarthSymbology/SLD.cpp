@@ -52,6 +52,11 @@ htmlColorToVec4f( const std::string& html )
 
 #define CSS_POINT_SIZE     "point-size"
 
+#define CSS_TEXT_FONT      "text-font"
+#define CSS_TEXT_SIZE      "text-size"
+#define CSS_TEXT_HALO      "text-halo"
+#define CSS_TEXT_ATTRIBUTE "text-attribute"
+
 
 static void
 parseLineCap( const std::string& value, optional<Stroke::LineCapStyle>& cap )
@@ -69,6 +74,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
     LineSymbol* line = 0;
     PolygonSymbol* polygon = 0;
     PointSymbol* point = 0;
+    TextSymbol* text = 0;
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
         if ( p->first == CSS_STROKE ) {
@@ -95,8 +101,13 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 
             if (!point)
                 point = new PointSymbol;
+
+            if (!text)
+                text = new TextSymbol;
+
             polygon->fill()->color() = htmlColorToVec4f( p->second );
             point->fill()->color() = htmlColorToVec4f( p->second );
+            text->fill()->color() = htmlColorToVec4f( p->second );
         }
         else if ( p->first == CSS_FILL_OPACITY ) {
             if (!polygon)
@@ -108,6 +119,26 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
                 point = new PointSymbol;
             point->size() = as<float>(p->second, 1.0f);
         }
+        else if (p->first == CSS_TEXT_SIZE) {
+            if (!text)
+                text = new TextSymbol;
+            text->size() = as<float>(p->second, 32.0f);
+        }
+        else if (p->first == CSS_TEXT_FONT) {
+            if (!text)
+                text = new TextSymbol;
+            text->font() = p->second;
+        }
+        else if (p->first == CSS_TEXT_HALO) {
+            if (!text)
+                text = new TextSymbol;
+            text->halo()->color() = htmlColorToVec4f( p->second );
+        }
+        else if (p->first == CSS_TEXT_ATTRIBUTE) {
+            if (!text)
+                text = new TextSymbol;
+            text->attribute() = p->second;
+        }
     }
     if (line)
         sc.addSymbol(line);
@@ -115,6 +146,8 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         sc.addSymbol(polygon);
     if (point)
         sc.addSymbol(point);
+    if (text)
+        sc.addSymbol(text);
     return true;
 }
 

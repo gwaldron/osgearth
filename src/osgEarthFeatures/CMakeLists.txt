@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     GEOS
     ResampleFilter
     ScaleFilter
+	BuildTextOperator
     TransformFilter
 )
 
@@ -46,6 +47,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GEOS.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
+	BuildTextOperator.cpp
     TransformFilter.cpp
 )
 

@@ -1,0 +1,52 @@
+<!--
+osgEarth Sample
+
+This shows how to label point features with an attribute
+-->
+
+<map name="Feature Geometry Demo" type="geocentric">
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="cities" driver="feature_geom">
+
+        <!-- Configure the OGR feature driver to read the shapefile -->
+        <features name="cities" driver="ogr">
+            <url>../data/ci10nv09.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+        </features>
+
+        
+        <!-- Render the geometry at a height offset to prevent Z fighting -->
+        <height_offset>10000</height_offset>
+        
+        <!-- Appearance details -->
+        <styles>
+
+
+            <style type="text/css">              
+                wv {
+                   fill: #ffff00;
+                   text-halo: #0000ff;
+                   point-size: 6.0;
+                   text-attribute: name;
+                }     
+
+            </style>
+            
+            <selector name="wv">
+                <query>
+                    <expr><![CDATA[ ST LIKE "WV" ]]></expr>
+                </query>
+            </selector>
+
+
+        </styles>
+        
+    </model>
+    
+    <lighting>false</lighting>
+  
+</map>

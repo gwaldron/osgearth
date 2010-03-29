@@ -131,6 +131,9 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& font() { return _font; }
         const optional<std::string> font() const { return _font; }
 
+        optional<std::string>& attribute() { return _attribute; }
+        const optional<std::string> attribute() const { return _attribute; }
+
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
 
@@ -139,6 +142,7 @@ namespace osgEarth { namespace Symbology
         optional<Stroke>      _halo;
         optional<std::string> _font;
         optional<float>       _size;
+        optional<std::string> _attribute;
     };
 
 

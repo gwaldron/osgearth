@@ -35,6 +35,7 @@
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/SymbolicNode>
+#include <osgEarthFeatures/TextSymbolizer>
 
 #include "FeatureGeomModelOptions"
 
@@ -92,6 +93,19 @@ public:
         GeometrySymbolizer::GeometrySymbolizerOperator geometryOperator;
         osg::Node* result = geometryOperator(geometryList, style, context);
 
+
+        //If we have a text symbol, make some labels
+        const TextSymbol *textSymbol = style->getSymbol<TextSymbol>();
+        osg::Node* labels = NULL;
+        if (textSymbol)
+        {
+            BuildTextOperator textOperator;
+            labels = textOperator(featureList, textSymbol, contextFilter);
+        }
+
+
+        osg::Group* root = new osg::Group;
+
         // If the context specifies a reference frame, apply it to the resulting model.
         // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?
         // ...probably the latter.
@@ -100,14 +114,21 @@ public:
             osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
                 contextFilter.inverseReferenceFrame() );
             delocalizer->addChild( result );
+            if (labels) delocalizer->addChild( labels );
             result = delocalizer;
         }
+        else
+        {
+            if (labels) root->addChild( labels );
+        }
+
+        root->addChild( result );
 
         // set the output node if necessary:
         if ( out_newNode )
-            *out_newNode = result;
+            *out_newNode = root;
 
-        return result;
+        return root;
     }
 };
 

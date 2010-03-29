@@ -35,6 +35,18 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 
+struct CullPlaneCallback : public osg::Drawable::CullCallback
+{
+    osg::Vec3d _n;
+
+    CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
+        _n.normalize();
+    }
+
+    bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const {
+        return nv && nv->getEyePoint() * _n <= 0;
+    }
+};
 
 
 using namespace osgEarth::Symbology;
@@ -100,20 +112,11 @@ osg::Node* BuildTextOperator::operator()(const FeatureList& features,
         t->setBackdropColor( haloColor );
         t->setBackdropType( osgText::Text::OUTLINE );
 
-        //TODO:  Make cluster culling work correctly
-        /*if ( context.isGeocentric() )
+        if ( context.isGeocentric() )
         {
-            // install a cluster culler: note that the CCC control point and normal must be
-            // in world coordinates
-            const osg::EllipsoidModel* ellip = context.profile()->getSRS()->getEllipsoid();
-            osg::Vec3d cp = centroid * context.inverseReferenceFrame();
-            //double lat, lon, height;
-            //ellip->convertXYZToLatLongHeight(cp.x(), cp.y(), cp.z(), lat, lon, height);
-            //OE_NOTICE << text << " inverse " << cp << ": " << osg::RadiansToDegrees(lat) << "," << osg::RadiansToDegrees(lon) << "," << height << std::endl;
-            osg::Vec3d normal = ellip->computeLocalUpVector( cp.x(), cp.y(), cp.z() );
-            osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback( cp, normal, 0.0f );
-            t->setCullCallback( ccc );
-        }*/
+            // install a cluster culler
+            t->setCullCallback( new CullPlaneCallback( centroid * context.inverseReferenceFrame() ) );
+        }
 
         result->addDrawable( t );
     }

@@ -60,7 +60,7 @@ namespace osgEarth { namespace Features
     };
 
 
-    osg::Geode*
+    OSGEARTHFEATURES_EXPORT osg::Geode*
     createVolume(Symbology::Geometry*            geom,
                  double               offset,
                  double               height,

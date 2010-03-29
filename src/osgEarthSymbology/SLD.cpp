@@ -50,6 +50,8 @@ htmlColorToVec4f( const std::string& html )
 #define CSS_FILL           "fill"
 #define CSS_FILL_OPACITY   "fill-opacity"
 
+#define CSS_POINT_SIZE     "point-size"
+
 
 static void
 parseLineCap( const std::string& value, optional<Stroke::LineCapStyle>& cap )
@@ -66,6 +68,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 
     LineSymbol* line = 0;
     PolygonSymbol* polygon = 0;
+    PointSymbol* point = 0;
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
         if ( p->first == CSS_STROKE ) {
@@ -89,18 +92,29 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if ( p->first == CSS_FILL ) {
             if (!polygon)
                 polygon = new PolygonSymbol;
+
+            if (!point)
+                point = new PointSymbol;
             polygon->fill()->color() = htmlColorToVec4f( p->second );
+            point->fill()->color() = htmlColorToVec4f( p->second );
         }
         else if ( p->first == CSS_FILL_OPACITY ) {
             if (!polygon)
                 polygon = new PolygonSymbol;
             polygon->fill()->color().a() = as<float>( p->second, 1.0f );
         }
+        else if (p->first == CSS_POINT_SIZE) {
+            if (!point)
+                point = new PointSymbol;
+            point->size() = as<float>(p->second, 1.0f);
+        }
     }
     if (line)
         sc.addSymbol(line);
     if (polygon)
         sc.addSymbol(polygon);
+    if (point)
+        sc.addSymbol(point);
     return true;
 }
 

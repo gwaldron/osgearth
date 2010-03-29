@@ -112,7 +112,9 @@ struct GeometryUtils
             wkbType == wkbPoint ||
             wkbType == wkbPoint25D )
         {
-            //todo
+            int numPoints = OGR_G_GetPointCount( geomHandle );
+            output = new Symbology::PointSet( numPoints );
+            populate( geomHandle, output, numPoints );
         }
         else if (
             wkbType == wkbGeometryCollection ||

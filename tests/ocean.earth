@@ -1,0 +1,17 @@
+<!--
+osgEarth Sample
+Tests the use of an oceanmask, use with the osgearth_ocean example
+-->
+
+<map name="Ocean" type="geocentric">
+    
+    <image name="arcgisonline esri imagery" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
+        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+    </image>
+
+    <image name = "mask" driver="gdal">
+      <url>../data/ocean_mask.tif</url>
+    </image>   
+
+</map>

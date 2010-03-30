@@ -205,7 +205,8 @@ bool FeatureSymbolizer::update(
     const SymbolizerInput* dataInput,
     const Style* style,
     osg::Group* attachPoint,
-    SymbolizerContext* context )
+    SymbolizerContext* context,
+    Symbolizer::State* state )
 {
     if (!dataInput || !context || !attachPoint || !style)
         return false;
@@ -232,7 +233,8 @@ bool GridFeatureSymbolizer::update(
     const SymbolizerInput* dataInput,
     const Style* style,
     osg::Group* attachPoint,
-    SymbolizerContext* context )
+    SymbolizerContext* context,
+    Symbolizer::State* state )
 {
     if (!context || !attachPoint || !style)
         return false;

@@ -31,10 +31,8 @@ namespace osgEarth { namespace Symbology
      * data. It may contain information about a terrain, srs, or other global
      * information.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT SymbolizerContext : public osg::Referenced
+    class SymbolizerContext : public osg::Referenced // header-only, no OSGEARTHSYMBOLOGY_EXPORT
     {
-    public:
-        //todo
     };
 
 
@@ -42,7 +40,8 @@ namespace osgEarth { namespace Symbology
     {
     public:
         SymbolizerInput();
-        int getRevision() { return _revision; }
+
+        int getRevision() const { return _revision; }
         void setRevision(int rev) { _revision = rev; }
         void dirty() { _revision++; }
 
@@ -57,16 +56,35 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Symbolizer : public osg::Referenced
     {
     public:
+        class OSGEARTHSYMBOLOGY_EXPORT State : public osg::Referenced
+        {
+        public:
+            State();
+            bool isDirty( const Style* style ) const;
+            bool isDirty( const SymbolizerInput* dataSet ) const;
+        protected:
+            int _styleRevision;
+            int _dataSetRevision;
+            friend class SymbolicNode;
+        };
+
+    public:
         /**
          * Creates or updates a subgraph representing the symbolized data.
          * The Symbolizer can attach the subgraph to the attachPoint.
          */
         virtual bool update(
             const SymbolizerInput* dataInput,
-            const Style* style,
-            osg::Group* attachPoint,
-            SymbolizerContext* context ) = 0;
+            const Style*           style,
+            osg::Group*            attachPoint,
+            SymbolizerContext*     context,
+            Symbolizer::State*     state ) = 0;
 
+        virtual State* createState() const {
+            return new State();
+        }
+
+    protected:
         Symbolizer();
     };
 

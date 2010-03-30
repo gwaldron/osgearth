@@ -29,15 +29,18 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbolizer : public Symbolizer
     {
     public:
+        MarkerSymbolizer();
 
+    public:
         virtual bool update(
             const SymbolizerInput* dataset,
             const Style* style,
             osg::Group* attachPoint,
-            SymbolizerContext* context );
+            SymbolizerContext* context,
+            Symbolizer::State* state );
 
+    protected:
         bool pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* polygon);
-        MarkerSymbolizer();
     };
 
 } } // namespace osgEarth::Symbology

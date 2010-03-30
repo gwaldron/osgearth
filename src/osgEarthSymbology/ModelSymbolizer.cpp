@@ -57,7 +57,8 @@ bool
 ModelSymbolizer::update(const SymbolizerInput* dataSet,
                         const Style* style,
                         osg::Group* attachPoint,
-                        SymbolizerContext* context )
+                        SymbolizerContext* context,
+                        Symbolizer::State* state )
 {
     if (!attachPoint || !style)
         return false;

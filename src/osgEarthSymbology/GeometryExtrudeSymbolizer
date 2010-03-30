@@ -35,7 +35,8 @@ namespace osgEarth { namespace Symbology
             const SymbolizerInput* dataset,
             const Style* style,
             osg::Group* attachPoint,
-            SymbolizerContext* context );
+            SymbolizerContext* context,
+            Symbolizer::State* state );
 
         osg::Geode* extrude(Geometry* geom, 
                             double offset, 

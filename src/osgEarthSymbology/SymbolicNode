@@ -42,20 +42,23 @@ namespace osgEarth { namespace Symbology
         virtual void traverse( osg::NodeVisitor& nv );
 
         void setStyle(const Style* style ) { _style = style; }
+
         void setContext( SymbolizerContext* context ) { _context = context; }
 
-        void setSymbolizer( Symbolizer* sym ) { _symbolizer = sym; }
+        void setSymbolizer( Symbolizer* sym ); // { _symbolizer = sym; }
 
         void setDataSet( SymbolizerInput* dataSet ) { _dataSet = dataSet; }
+
         SymbolizerInput* getDataSet() { return _dataSet.get(); }
         
     protected:
         osg::ref_ptr<const Style> _style;
-        osg::ref_ptr<Symbolizer> _symbolizer;
         osg::ref_ptr<SymbolizerInput> _dataSet;
         osg::ref_ptr<SymbolizerContext> _context;
-        int _dataSetRevision;
-        int _styleRevision;
+        osg::ref_ptr<Symbolizer> _symbolizer;
+        osg::ref_ptr<Symbolizer::State> _state;
+        //int _dataSetRevision;
+        //int _styleRevision;
         osg::ref_ptr<osg::Group> _symGroup;
     };
 

@@ -21,9 +21,7 @@
 
 using namespace osgEarth::Symbology;
 
-SymbolicNode::SymbolicNode() :
-    _dataSetRevision( -1 ),
-    _styleRevision( -1 )
+SymbolicNode::SymbolicNode()
 {
     _symGroup = new osg::Group();
     _symGroup->setDataVariance( osg::Object::DYNAMIC );
@@ -36,10 +34,18 @@ osg::Group( rhs, op ),
 _style( rhs._style ),
 _symbolizer( rhs._symbolizer ),
 _dataSet( rhs._dataSet ),
-_dataSetRevision( rhs._dataSetRevision ),
-_styleRevision( rhs._styleRevision ),
+//_dataSetRevision( rhs._dataSetRevision ),
+//_styleRevision( rhs._styleRevision ),
 _symGroup( rhs._symGroup )
 {
+    _state = _symbolizer ? _symbolizer->createState() : 0L;
+}
+
+void
+SymbolicNode::setSymbolizer( Symbolizer* sym )
+{
+    _symbolizer = sym;
+    _state = _symbolizer ? _symbolizer->createState() : 0L;
 }
 
 void
@@ -48,19 +54,37 @@ SymbolicNode::traverse( osg::NodeVisitor& nv )
     setNumChildrenRequiringUpdateTraversal(1);
     if ( _symbolizer.valid() )
     {
-        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-        {
-            // if our symbology is out of revision, update it!
-            if (_dataSet.valid() && (_dataSetRevision != _dataSet->getRevision()) ||
-                _styleRevision != _style->getRevision())
+        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+        {   
+            if ( _state.valid() && _state->isDirty( _dataSet ) || _state->isDirty( _style ) )
             {
-                _symbolizer->update( _dataSet.get(), _style, _symGroup.get(), _context.get() );
-                if (_dataSet.valid())
-                    _dataSetRevision = _dataSet->getRevision();
+                _symbolizer->update(
+                    _dataSet.get(),
+                    _style.get(),
+                    _symGroup.get(),
+                    _context.get(),
+                    _state.get() );
 
-                _styleRevision = _style->getRevision();
+                if ( _dataSet.valid() )
+                    _state->_dataSetRevision = _dataSet->getRevision();
+
+                if ( _style.valid() )
+                    _state->_styleRevision = _style->getRevision();
+
                 this->dirtyBound();
             }
+
+            //// if our symbology is out of revision, update it!
+            //if (_dataSet.valid() && (_dataSetRevision != _dataSet->getRevision()) ||
+            //    _styleRevision != _style->getRevision())
+            //{
+            //    _symbolizer->update( _dataSet.get(), _style, _symGroup.get(), _context.get() );
+            //    if (_dataSet.valid())
+            //        _dataSetRevision = _dataSet->getRevision();
+
+            //    _styleRevision = _style->getRevision();
+            //    this->dirtyBound();
+            //}
         }
     }
 

@@ -1454,10 +1454,10 @@ public:
         return hf.release();
     }
 
-    virtual int getPixelsPerTile() const
-    {
-        return _settings->tileSize().value();
-    }
+    //virtual int getPixelsPerTile() const
+    //{
+    //    return _settings->tileSize().value();
+    //}
 
     bool intersects(const TileKey* key)
     {

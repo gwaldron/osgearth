@@ -35,9 +35,10 @@ namespace osgEarth { namespace Symbology
          */
         virtual bool update(
             const SymbolizerInput* dataset,
-            const Style* style,
-            osg::Group* attachPoint,
-            SymbolizerContext* context );
+            const Style*           style,
+            osg::Group*            attachPoint,
+            SymbolizerContext*     context,
+            Symbolizer::State*     state);
 
         ModelSymbolizer();
     };

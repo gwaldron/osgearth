@@ -25,4 +25,30 @@ Symbolizer::Symbolizer()
     //nop
 }
 
-SymbolizerInput::SymbolizerInput() : _revision(0) {}
+/*************************************************************************/
+
+Symbolizer::State::State() :
+_styleRevision( -1 ),
+_dataSetRevision( -1 )
+{
+    //nop
+}
+
+bool
+Symbolizer::State::isDirty( const Style* style ) const
+{
+    return style && _styleRevision < style->getRevision();
+}
+
+bool
+Symbolizer::State::isDirty( const SymbolizerInput* dataSet ) const
+{
+    return dataSet && _dataSetRevision < dataSet->getRevision();
+}
+
+/*************************************************************************/
+
+SymbolizerInput::SymbolizerInput() : 
+_revision(0)
+{
+}

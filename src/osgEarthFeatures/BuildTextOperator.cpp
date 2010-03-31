@@ -58,6 +58,10 @@ osg::Node* BuildTextOperator::operator()(const FeatureList& features,
 {
     if (!symbol) return 0;
 
+    std::set< std::string > labelNames;
+
+    bool removeDuplicateLabels = symbol->removeDuplicateLabels().isSet() ? symbol->removeDuplicateLabels().get() : false;
+
     osg::Geode* result = new osg::Geode;
     for (FeatureList::const_iterator itr = features.begin(); itr != features.end(); ++itr)
     {
@@ -80,8 +84,58 @@ osg::Node* BuildTextOperator::operator()(const FeatureList& features,
 
         if (text.empty()) continue;
 
+        //See if there is a duplicate name
+        if (removeDuplicateLabels && labelNames.find(text) != labelNames.end()) continue;
+
+        bool rotateToScreen = symbol->rotateToScreen().isSet() ? symbol->rotateToScreen().value() : false;
+
         // find the centroid
-        osg::Vec3d centroid = feature->getGeometry()->getBounds().center();
+        osg::Vec3d position;
+        osg::Quat orientation;
+
+        TextSymbol::LinePlacement linePlacement = symbol->linePlacement().isSet() ? symbol->linePlacement().get() : TextSymbol::LINEPLACEMENT_ALONG_LINE;
+        if (feature->getGeometry()->getType() == Symbology::Geometry::TYPE_LINESTRING && linePlacement == TextSymbol::LINEPLACEMENT_ALONG_LINE)
+        {
+            //Compute the "middle" of the line string
+            LineString* lineString = static_cast<LineString*>(feature->getGeometry());
+            double length = lineString->getLength();
+            double center = length / 2.0;
+            osg::Vec3d start, end;
+            if (lineString->getSegment(center, start, end))
+            {
+                TextSymbol::LineOrientation lineOrientation = symbol->lineOrientation().isSet() ? symbol->lineOrientation().get() : TextSymbol::LINEORIENTATION_HORIZONTAL;
+
+                position = (end + start) / 2.0;
+                //We don't want to orient the text at all if we are rotating to the screen
+                if (!rotateToScreen || lineOrientation != TextSymbol::LINEORIENTATION_HORIZONTAL)
+                {
+                    osg::Vec3d dir = (end-start);
+                    dir.normalize();
+
+                    if (lineOrientation == TextSymbol::LINEORIENTATION_PERPENDICULAR)
+                    {
+                        osg::Vec3d up(0,0,1);
+                        const SpatialReference* srs = context.profile()->getSRS();
+                        if (srs && context.isGeocentric() && srs->getEllipsoid())
+                        {
+                            osg::Vec3d w = context.toWorld( position );
+                            up = srs->getEllipsoid()->computeLocalUpVector(w.x(), w.y(), w.z());
+                        }
+                        dir = up ^ dir;
+                    }
+                    orientation.makeRotate(osg::Vec3d(1,0,0), dir);
+                }                
+            }
+            else
+            {
+                //Fall back on using the center
+                position = lineString->getBounds().center();
+            }
+        }
+        else
+        {
+          position = feature->getGeometry()->getBounds().center();
+        }
         
         osgText::Text* t = new osgText::Text();
         t->setText( text );
@@ -93,13 +147,21 @@ osg::Node* BuildTextOperator::operator()(const FeatureList& features,
         }
 
         t->setFont( font );
-        t->setAutoRotateToScreen( true );
-        t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
+        t->setAutoRotateToScreen( rotateToScreen );
+        
+        TextSymbol::SizeMode sizeMode = symbol->sizeMode().isSet() ? symbol->sizeMode().get() : TextSymbol::SIZEMODE_SCREEN;
+        if (sizeMode == TextSymbol::SIZEMODE_SCREEN) {
+            t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
+        }
+        else if (sizeMode == TextSymbol::SIZEMODE_OBJECT) {
+            t->setCharacterSizeMode( osgText::TextBase::OBJECT_COORDS );
+        }
         float size = symbol->size().isSet() ? symbol->size().get() : 32.0f;
         t->setCharacterSize( size );
         //t->setCharacterSizeMode( osgText::TextBase::OBJECT_COORDS_WITH_MAXIMUM_SCREEN_SIZE_CAPPED_BY_FONT_HEIGHT );
         //t->setCharacterSize( 300000.0f );
-        t->setPosition( centroid );
+        t->setPosition( position );
+        t->setRotation( orientation);
         t->setAlignment( osgText::TextBase::CENTER_CENTER );
         t->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
         t->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin" );
@@ -115,10 +177,12 @@ osg::Node* BuildTextOperator::operator()(const FeatureList& features,
         if ( context.isGeocentric() )
         {
             // install a cluster culler
-            t->setCullCallback( new CullPlaneCallback( centroid * context.inverseReferenceFrame() ) );
+            t->setCullCallback( new CullPlaneCallback( position * context.inverseReferenceFrame() ) );
         }
 
         result->addDrawable( t );
+
+        if (removeDuplicateLabels) labelNames.insert(text);
     }
     return result;
 }

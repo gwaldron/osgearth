@@ -123,6 +123,14 @@ public:
         }
 
         root->addChild( result );
+        
+        // Apply an LOD if required:
+        if ( options->minRange().isSet() || options->maxRange().isSet() )
+        {
+            osg::LOD* lod = new osg::LOD();
+            lod->addChild( root, options->minRange().value(), options->maxRange().value() );
+            root = lod;
+        }
 
         // set the output node if necessary:
         if ( out_newNode )

@@ -68,12 +68,24 @@ namespace osgEarthUtil
          */
         void setOffset(double offset);
 
+        /**
+         *Sets the intersection mask to use when clamping
+         */
+        void setIntersectionMask(unsigned int intersectionMask);
+
+        /**
+         *Gets the intersection mask to use when clamping
+         */
+        unsigned int getIntersectionMask() const;
+
 		virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
 	private:
 
         bool clamp(const osg::Vec3d& pos, osg::Vec3d& out) const;
         bool clampGeometry(osg::Geometry* geom, const osg::Matrixd& localToWorld, const osg::Matrixd& worldToLocal) const;
+
+        unsigned int _intersectionMask;
 
      	osg::observer_ptr<osg::CoordinateSystemNode> _csn;
 

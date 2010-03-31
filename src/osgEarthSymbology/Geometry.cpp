@@ -122,6 +122,38 @@ Geometry( data )
     //nop
 }
 
+double
+LineString::getLength() const
+{
+    double length = 0;
+    for (unsigned int i = 0; i < size()-1; ++i)
+    {
+        osg::Vec3d current = (*this)[i];
+        osg::Vec3d next    = (*this)[i+1];
+        length += (next - current).length();
+    }
+    return length;
+}
+
+bool
+LineString::getSegment(double length, osg::Vec3d& start, osg::Vec3d& end)
+{
+    double pos = 0;
+    for (unsigned int i = 0; i < size()-1; ++i)
+    {
+        osg::Vec3d current = (*this)[i];
+        osg::Vec3d next    = (*this)[i+1];
+        pos += (next - current).length();
+        if (pos > length)
+        {
+            start = current;
+            end = next;
+            return true;
+        }
+    }
+    return false;
+}
+
 //----------------------------------------------------------------------------
 
 Ring::Ring( const Ring& rhs, const osg::CopyOp& op ) :

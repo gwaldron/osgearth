@@ -37,6 +37,7 @@ ClampCallback::ClampCallback(osg::Node* terrainNode)
     _offset = 0;
     _lastCulledFrame = 0;
     setTerrainNode( terrainNode );
+    _intersectionMask = 0xffffffff;
 }
 
 bool ClampCallback::clamp(const osg::Vec3d& pos, osg::Vec3d& out) const
@@ -56,6 +57,7 @@ bool ClampCallback::clamp(const osg::Vec3d& pos, osg::Vec3d& out) const
     osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
     
     osgUtil::IntersectionVisitor iv;
+    iv.setTraversalMask(_intersectionMask);
     iv.setIntersector( i );
     _terrainNode->accept( iv );
 

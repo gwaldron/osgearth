@@ -52,10 +52,15 @@ htmlColorToVec4f( const std::string& html )
 
 #define CSS_POINT_SIZE     "point-size"
 
-#define CSS_TEXT_FONT      "text-font"
-#define CSS_TEXT_SIZE      "text-size"
-#define CSS_TEXT_HALO      "text-halo"
-#define CSS_TEXT_ATTRIBUTE "text-attribute"
+#define CSS_TEXT_FONT             "text-font"
+#define CSS_TEXT_SIZE             "text-size"
+#define CSS_TEXT_HALO             "text-halo"
+#define CSS_TEXT_ATTRIBUTE        "text-attribute"
+#define CSS_TEXT_ROTATE_TO_SCREEN "text-rotate-to-screen"
+#define CSS_TEXT_SIZE_MODE        "text-size-mode"
+#define CSS_TEXT_REMOVE_DUPLICATE_LABELS "text-remove-duplicate-labels"
+#define CSS_TEXT_LINE_ORIENTATION "text-line-orientation"
+#define CSS_TEXT_LINE_PLACEMENT   "text-line-placement"
 
 
 static void
@@ -138,6 +143,37 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text)
                 text = new TextSymbol;
             text->attribute() = p->second;
+        }
+        else if (p->first == CSS_TEXT_ROTATE_TO_SCREEN) {
+            if (!text)
+                text = new TextSymbol;
+            if (p->second == "true") text->rotateToScreen() = true;
+            else if (p->second == "false") text->rotateToScreen() = false;
+        }
+        else if (p->first == CSS_TEXT_SIZE_MODE) {
+            if (!text)
+                text = new TextSymbol;
+            if (p->second == "screen") text->sizeMode() = TextSymbol::SIZEMODE_SCREEN;
+            else if (p->second == "object") text->sizeMode() = TextSymbol::SIZEMODE_OBJECT;
+        }
+        else if (p->first == CSS_TEXT_REMOVE_DUPLICATE_LABELS) {
+            if (!text)
+                text = new TextSymbol;
+            if (p->second == "true") text->removeDuplicateLabels() = true;
+            else if (p->second == "false") text->removeDuplicateLabels() = false;
+        } 
+        else if (p->first == CSS_TEXT_LINE_ORIENTATION) {
+            if (!text)
+                text = new TextSymbol;
+            if (p->second == "parallel") text->lineOrientation() = TextSymbol::LINEORIENTATION_PARALLEL;
+            else if (p->second == "horizontal") text->lineOrientation() = TextSymbol::LINEORIENTATION_HORIZONTAL;
+            else if (p->second == "perpendicular") text->lineOrientation() = TextSymbol::LINEORIENTATION_PERPENDICULAR;
+        }
+        else if (p->first == CSS_TEXT_LINE_PLACEMENT) {
+            if (!text)
+                text = new TextSymbol;
+            if (p->second == "centroid") text->linePlacement() = TextSymbol::LINEPLACEMENT_CENTROID;
+            else if (p->second == "along-line") text->linePlacement() = TextSymbol::LINEPLACEMENT_ALONG_LINE;
         }
     }
     if (line)

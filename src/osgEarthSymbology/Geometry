@@ -121,6 +121,9 @@ namespace osgEarth { namespace Symbology
 
         META_Object( osgEarthSymbology, LineString );
 
+        double getLength() const;
+        bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
+
     public:
         virtual Type getType() const { return Geometry::TYPE_LINESTRING; }
         virtual bool isValid() const { return size() >= 2; }

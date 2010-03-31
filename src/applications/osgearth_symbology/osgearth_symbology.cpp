@@ -272,7 +272,7 @@ public:
                     color[0] = fmod(color[0]+0.5, 1.0);
                     color[2] = fmod(1 + color[0]-0.3, 1.0);
                     p->fill()->color() = color;
-                    style->setRevision(style->getRevision()+1);
+                    style->dirty();
                 }
                 return true;
             } else if (ea.getKey() == 'a') {
@@ -285,7 +285,7 @@ public:
                     color[2] = fmod(1 + color[0]-0.3, 1.0);
                     p->fill()->color() = color;
                     p->size() = 0.1 + color[2] * 10;
-                    style->setRevision(style->getRevision()+1);
+                    style->dirty();
                 }
                 return true;
             } else if (ea.getKey() == 'z') {
@@ -308,8 +308,9 @@ public:
                     p->fill()->color() = color;
                     p->extrude()->height() = p->extrude()->height() + 50;
                 }
-                style->setRevision(style->getRevision()+1);
+                style->dirty();
                 return true;
+
             } else if (ea.getKey() == 'x') {
                 Style* style = _styles[3].get();
                 MarkerLineSymbol* l = style->getSymbol<MarkerLineSymbol>();
@@ -332,7 +333,7 @@ public:
                         p->randomRatio() = 0.9;
                     }
                 }
-                style->setRevision(style->getRevision()+1);
+                style->dirty();
                 return true;
             }
 

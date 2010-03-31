@@ -36,6 +36,7 @@ namespace osgEarth { namespace Symbology
         Symbol();
     };
 
+    typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
 
 } } // namespace osgEarth::Symbology
 

@@ -41,7 +41,7 @@ void FeatureSymbolizerGraph::traverse(osg::NodeVisitor& nv)
             FeatureModelSource* model = _factory->getFeatureModelSource();
             // implementation-specific data
             osg::ref_ptr<osg::Referenced> buildData = model->createBuildData();
-            FeatureSymbolizerContext* context = new FeatureSymbolizerContext(model, buildData);
+            osg::ref_ptr<FeatureSymbolizerContext> context = new FeatureSymbolizerContext(model, buildData);
 
             const optional<StyleCatalog>& styles = model->getFeatureModelOptions()->styles();
     
@@ -58,7 +58,7 @@ void FeatureSymbolizerGraph::traverse(osg::NodeVisitor& nv)
                         FeatureList list;
                         list.push_back( feature );
                         // gridding is not supported for embedded styles.
-                        osg::Node* node = createSymbolizerNode(feature->style().get().get(), list, context);
+                        osg::Node* node = createSymbolizerNode(feature->style().get().get(), list, context.get());
                         if ( node )
                             addChild( node );
                     }
@@ -73,7 +73,7 @@ void FeatureSymbolizerGraph::traverse(osg::NodeVisitor& nv)
                         const StyleSelector& sel = *i;
                         Style* style;
                         styles->getStyle( sel.getSelectedStyleName(), style );
-                        osg::Node* node = createGridSymbolizerNode( style, sel.query().value(), context);
+                        osg::Node* node = createGridSymbolizerNode( style, sel.query().value(), context.get());
                         if ( node )
                             addChild( node );
                     }
@@ -81,14 +81,14 @@ void FeatureSymbolizerGraph::traverse(osg::NodeVisitor& nv)
                 else
                 {
                     const Style* style = styles->getDefaultStyle();
-                    osg::Node* node = createGridSymbolizerNode(style, Query(), context);
+                    osg::Node* node = createGridSymbolizerNode(style, Query(), context.get());
                     if ( node )
                         addChild( node );
                 }
             }
             else
             {
-                osg::Node* node = createGridSymbolizerNode( new Style, Query(), context);
+                osg::Node* node = createGridSymbolizerNode( new Style, Query(), context.get());
                 if ( node )
                     addChild( node );
             }

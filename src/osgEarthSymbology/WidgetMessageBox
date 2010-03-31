@@ -20,6 +20,7 @@
 #ifndef OSGEARTHSYMBOLOGY_POPUP_H
 #define OSGEARTHSYMBOLOGY_POPUP_H 1
 
+#include <osgEarthSymbology/Common>
 #include <osgWidget/Frame>
 #include <osgWidget/Window>
 #include <osgWidget/Label>
@@ -27,7 +28,7 @@
 namespace osgEarth { namespace Symbology
 {
 
-    class WidgetMessageBox
+    class OSGEARTHSYMBOLOGY_EXPORT WidgetMessageBox
     {
     public:
         

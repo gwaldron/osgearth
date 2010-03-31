@@ -108,6 +108,9 @@ osg::Node* FeatureSymbolizerGraph::createGridSymbolizerNode(
     node->setContext(context);
     node->setSymbolizer(symbolizer);
     node->setStyle(style);
+
+    SymbolizerInput* input = new SymbolizerInput();
+    node->setDataSet(input);
     return node;
 }
 

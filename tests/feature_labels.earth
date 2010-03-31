@@ -10,7 +10,7 @@ This shows how to label point features with an attribute
         <url>../data/world.tif</url>
     </image>
     
-    <model name="cities" driver="feature_geom">
+    <model name="cities" driver="feature_label">
 
         <!-- Configure the OGR feature driver to read the shapefile -->
         <features name="cities" driver="ogr">
@@ -30,7 +30,7 @@ This shows how to label point features with an attribute
                 wv {
                    fill: #ffff00;
                    text-halo: #0000ff;
-                   point-size: 6.0;
+				   text-rotate-to-screen: true;
                    text-attribute: name;
                 }     
 

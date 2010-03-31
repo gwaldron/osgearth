@@ -107,7 +107,7 @@ osg::Node* BuildTextOperator::operator()(const FeatureList& features,
 
                 position = (end + start) / 2.0;
                 //We don't want to orient the text at all if we are rotating to the screen
-                if (!rotateToScreen || lineOrientation != TextSymbol::LINEORIENTATION_HORIZONTAL)
+                if (!rotateToScreen && lineOrientation != TextSymbol::LINEORIENTATION_HORIZONTAL)
                 {
                     osg::Vec3d dir = (end-start);
                     dir.normalize();

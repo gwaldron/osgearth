@@ -115,6 +115,15 @@ public:
         double xf = (double)image->s() / imageExtent.width();
         double yf = (double)image->t() / imageExtent.height();
 
+        GeoExtent cropExtent = GeoExtent(imageExtent);
+        cropExtent.scale(1.1, 1.1);
+
+        osg::ref_ptr<Symbology::Polygon> cropPoly = new Symbology::Polygon( 4 );
+        cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMin(), 0 ));
+        cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMin(), 0 ));
+        cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMax(), 0 ));
+        cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
+
         const LineSymbol* line = style->getSymbol<LineSymbol>();
         double lineWidth = 1.0;
         if (line)
@@ -127,7 +136,10 @@ public:
         {
             bool first = bd->_pass == 0 && i == features.begin();
 
-            GeometryIterator gi( i->get()->getGeometry() );
+            osg::ref_ptr< Geometry > croppedGeometry = Feature::cropGeometry(cropPoly.get(), i->get()->getGeometry());
+            if (!croppedGeometry.valid()) continue;
+
+            GeometryIterator gi( croppedGeometry.get() );
             while( gi.hasMore() )
             {
                 Geometry* g = gi.next();

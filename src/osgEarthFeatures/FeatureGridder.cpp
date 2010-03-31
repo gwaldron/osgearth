@@ -193,16 +193,12 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
 
 #ifdef OSGEARTH_HAVE_GEOS
 
-            geom::GeometryFactory* f = new geom::GeometryFactory();
-
             // create the intersection polygon:
             osg::ref_ptr<Symbology::Polygon> poly = new Symbology::Polygon( 4 );
             poly->push_back( osg::Vec3d( b.xMin(), b.yMin(), 0 ));
             poly->push_back( osg::Vec3d( b.xMax(), b.yMin(), 0 ));
             poly->push_back( osg::Vec3d( b.xMax(), b.yMax(), 0 ));
             poly->push_back( osg::Vec3d( b.xMin(), b.yMax(), 0 ));
-            geom::Geometry* cropGeom = GEOSUtils::importGeometry( poly.get() );
-
 
             for( FeatureList::iterator f_i = features.begin(); f_i != features.end();  )
             {
@@ -212,31 +208,12 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
                 Symbology::Geometry* featureGeom = feature->getGeometry();
                 if ( featureGeom )
                 {
-                    geom::Geometry* inGeom = GEOSUtils::importGeometry( featureGeom );
-                    if ( inGeom )
-                    {    
-                        geom::Geometry* outGeom = 0L;
-                        try {
-                            outGeom = overlay::OverlayOp::overlayOp(
-                                inGeom, cropGeom,
-                                overlay::OverlayOp::opINTERSECTION );
-                        }
-                        catch( ... ) {
-                            outGeom = 0L;
-                            OE_NOTICE << "Feature gridder, GEOS overlay op exception, skipping feature" << std::endl;
-                        }
-                            
-                        if ( outGeom )
-                        {
-                            featureGeom = GEOSUtils::exportGeometry( outGeom );
-                            f->destroyGeometry( outGeom );
-                            if ( featureGeom && featureGeom->isValid() )
-                            {
-                                feature->setGeometry( featureGeom );
-                                keepFeature = true;
-                            }
-                        }
-                    }
+                    Symbology::Geometry* croppedGeometry = Feature::cropGeometry(poly.get(), featureGeom );
+                    if (croppedGeometry)
+                    {
+                        feature->setGeometry( croppedGeometry );
+                        keepFeature = true;
+                    }                   
                 }
 
                 if ( keepFeature )
@@ -244,10 +221,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
                 else
                     f_i = features.erase( f_i );
             }  
-            // clean up
-            f->destroyGeometry( cropGeom );
-            delete f;
-        
+
 #endif // OSGEARTH_HAVE_GEOS
 
         }

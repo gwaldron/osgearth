@@ -88,6 +88,18 @@ namespace osgEarth { namespace Features
         optional<osg::ref_ptr<Symbology::Style> > style() { return _style; }
         const optional<osg::ref_ptr<Symbology::Style> > style() const { return _style; }
 
+        /**
+         *Crops the given geometry against the crop Polygon.
+         *Note:  This operation requires GEOS.  If osgEarth is not built against GEOS, the input geometry will be returned.
+         *@param cropPolygon
+         *       The polygon to crop against
+         *@param geometry
+         *       The geometry to crop
+         *@returns
+         *       geometry cropped against the cropPolygon.
+         */
+        static Symbology::Geometry* cropGeometry(const Symbology::Polygon* cropPolygon, const Symbology::Geometry* geometry);
+
     protected:
         long _fid;
         osg::ref_ptr<Symbology::Geometry> _geom;

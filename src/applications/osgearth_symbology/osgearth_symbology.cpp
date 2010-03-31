@@ -25,6 +25,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+#include <osgDB/ReadFile>
 #include <osgEarthSymbology/GeometryExtrudeSymbolizer>
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/GeometryInput>
@@ -34,6 +35,8 @@
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/ExtrudedSymbol>
 #include <osgEarthSymbology/ModelSymbolizer>
+#include <osgEarthSymbology/WindowManager>
+#include <osgEarthSymbology/WidgetMessageBox>
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
 #include <osgUtil/Tessellator>
@@ -42,6 +45,7 @@
 #include <osg/Material>
 
 using namespace osgEarth::Symbology;
+
 
 Geometry* createLineGeometry(const osg::Vec3d& start)
 {
@@ -513,6 +517,19 @@ int main(int argc, char** argv)
     std::string real = osgDB::getRealPath(url);
     osg::Node* node = createSymbologyScene(real);
     viewer.setSceneData(node);
+    viewer.realize();
 
+    WindowManager* wm = new WindowManager(viewer);
+    std::string text = "This is a first example with osgWidget to display\n" \
+        "popup and a lot of variety informations.\n"\
+        "Currently there is only 2 text zones, title and text content";
+
+    WidgetMessageBox msg = WidgetMessageBox::popUp(osgDB::readImageFile("../data/popup-theme.png"),
+                                                   "PopUp",
+                                                   text,
+                                                   "",
+                                                   osgText::readFontFile("arial.ttf"),
+                                                   14);
+    wm->popUp(msg);
     return viewer.run();
 }

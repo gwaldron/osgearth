@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthSymbology/Query>
 #include <osgEarth/Config>
+#include <osgEarth/Revisioning>
 #include <osg/Object>
 #include <vector>
 
@@ -31,7 +32,7 @@ namespace osgEarth { namespace Symbology
     /**
      * A Style is an unordered collection of Symbols.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Style : public osg::Object
+    class OSGEARTHSYMBOLOGY_EXPORT Style : public osgEarth::Revisioned<osg::Object>
     {
     public:
 

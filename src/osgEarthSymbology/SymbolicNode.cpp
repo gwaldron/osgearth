@@ -52,39 +52,24 @@ void
 SymbolicNode::traverse( osg::NodeVisitor& nv )
 {
     setNumChildrenRequiringUpdateTraversal(1);
-    if ( _symbolizer.valid() )
-    {
-        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-        {   
-            if ( _state.valid() && _state->isDirty( _dataSet ) || _state->isDirty( _style ) )
-            {
-                _symbolizer->update(
-                    _dataSet.get(),
-                    _style.get(),
-                    _symGroup.get(),
-                    _context.get(),
-                    _state.get() );
+    if ( _symbolizer.valid() && _state.valid() && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {   
+        if ( _dataSet->outOfSync( _state->_dataSetRevision ) || _style->outOfSync( _state->_styleRevision ) )
+        {
+            _symbolizer->update(
+                _dataSet.get(),
+                _style.get(),
+                _symGroup.get(),
+                _context.get(),
+                _state.get() );
 
-                if ( _dataSet.valid() )
-                    _state->_dataSetRevision = _dataSet->getRevision();
+            if ( _dataSet.valid() )
+                _dataSet->sync( _state->_dataSetRevision );
 
-                if ( _style.valid() )
-                    _state->_styleRevision = _style->getRevision();
+            if ( _style.valid() )
+                _style->sync( _state->_styleRevision );
 
-                this->dirtyBound();
-            }
-
-            //// if our symbology is out of revision, update it!
-            //if (_dataSet.valid() && (_dataSetRevision != _dataSet->getRevision()) ||
-            //    _styleRevision != _style->getRevision())
-            //{
-            //    _symbolizer->update( _dataSet.get(), _style, _symGroup.get(), _context.get() );
-            //    if (_dataSet.valid())
-            //        _dataSetRevision = _dataSet->getRevision();
-
-            //    _styleRevision = _style->getRevision();
-            //    this->dirtyBound();
-            //}
+            this->dirtyBound();
         }
     }
 

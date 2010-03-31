@@ -35,20 +35,48 @@ _dataSetRevision( -1 )
 }
 
 bool
-Symbolizer::State::isDirty( const Style* style ) const
+Symbolizer::State::outOfSync( const Style* style ) const
 {
-    return style && _styleRevision < style->getRevision();
+    return style && style->outOfSync( _styleRevision );
 }
 
 bool
-Symbolizer::State::isDirty( const SymbolizerInput* dataSet ) const
+Symbolizer::State::outOfSync( const SymbolizerInput* dataSet ) const
 {
-    return dataSet && _dataSetRevision < dataSet->getRevision();
+    return dataSet && dataSet->outOfSync( _dataSetRevision );
 }
 
 /*************************************************************************/
 
-SymbolizerInput::SymbolizerInput() : 
-_revision(0)
-{
-}
+//SymbolizerInput::SymbolizerInput()
+//{
+//}
+
+//int
+//SymbolizerInput::getRevision() const {
+//    int rev = _revision;
+//    if ( _alwaysDirty ) dirty();
+//    return rev;
+//}
+
+//void
+//SymbolizerInput::dirty() {
+//    _revision++;
+//}
+
+//void 
+//SymbolizerInput::inSyncWith( int otherRevision ) {
+//    return revision == _revision;
+//}
+
+//void
+//Symbolizer::sync( int& revision ) {
+//    if ( !_alwaysDirty )
+//        revision = _revision;
+//}
+//
+//void SymbolizerInput::setAlwaysDirty( bool value ) {
+//    _alwaysDirty = value;
+//    if ( value ) dirty();
+//}
+

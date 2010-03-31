@@ -53,6 +53,7 @@ SET(LIB_PUBLIC_HEADERS
     Profile
 	Progress
     Registry
+    Revisioning
     SpatialReference
     StringUtils
     TaskService

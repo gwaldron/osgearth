@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/Revisioning>
 #include <osg/Group>
 
 namespace osgEarth { namespace Symbology
@@ -31,22 +32,14 @@ namespace osgEarth { namespace Symbology
      * data. It may contain information about a terrain, srs, or other global
      * information.
      */
-    class SymbolizerContext : public osg::Referenced // header-only, no OSGEARTHSYMBOLOGY_EXPORT
+    // NOTE: header-only; no export macro
+    class SymbolizerContext : public osg::Referenced
     {
     };
 
-
-    class OSGEARTHSYMBOLOGY_EXPORT SymbolizerInput : public virtual osg::Referenced
+    // NOTE: header-only; to export macro
+    class SymbolizerInput : public virtual osgEarth::Revisioned<osg::Referenced>
     {
-    public:
-        SymbolizerInput();
-
-        int getRevision() const { return _revision; }
-        //void setRevision(int rev) { _revision = rev; }
-        void dirty() { _revision++; }
-
-    protected:
-        int _revision;
     };
 
     /**
@@ -67,8 +60,8 @@ namespace osgEarth { namespace Symbology
         {
         public:
             State();
-            bool isDirty( const Style* style ) const;
-            bool isDirty( const SymbolizerInput* dataSet ) const;
+            bool outOfSync( const Style* style ) const;
+            bool outOfSync( const SymbolizerInput* dataSet ) const;
         protected:
             int _styleRevision;
             int _dataSetRevision;

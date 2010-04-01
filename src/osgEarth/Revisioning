@@ -38,14 +38,14 @@ namespace osgEarth
             externalRevision = _revision;
         }
 
-        /** Returns true if the external object is at the same revision as this object. */
-        bool inSync( int externalRevision ) const {
-            return _alwaysDirty ? false : _revision == externalRevision;
-        }
-
         /** Returns true if the external object is at a different revision that this object. */
         bool outOfSync( int externalRevision) const {
             return !inSync( externalRevision );
+        }
+
+        /** Returns true if the external object is at the same revision as this object. */
+        virtual bool inSync( int externalRevision ) const {
+            return _alwaysDirty ? false : _revision == externalRevision;
         }
 
     protected:

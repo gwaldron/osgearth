@@ -186,9 +186,9 @@ bool WidgetMessageBox::create(osg::Image* themeMessage,
 
     osgWidget::Box*   box   = new osgWidget::Box("VBOX", osgWidget::Box::VERTICAL);
 
-    labelTitle->setPadBottom(30.0f);
-    labelText->setPadBottom(30.0f);
-    labelText->getText()->setMaximumWidth(500);
+    labelTitle->setPadBottom(10.0f);
+    labelText->setPadBottom(0.0f);
+//    labelText->getText()->setMaximumWidth(500);
     labelText->setLabel(messageText);
 
     labelText->setWidth(labelText->getTextSize()[0]);

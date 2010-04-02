@@ -18,6 +18,7 @@
 */
 
 
+#include <sstream>
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
@@ -117,20 +118,147 @@ struct SampleGeometryInput : public GeometryInput
 };
 
 
+// update the 2d position of the popup
+struct PopUpUpdateCallback : public osg::NodeCallback
+{
+    PopUpUpdateCallback(WindowManager* windowmanager, osg::Camera* camera, osgWidget::Window* reference) : _wm(windowmanager), _camera(camera), _window(reference) {}
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+
+        if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
+            osg::MatrixList ml = node->getWorldMatrices();
+            if (!ml.empty()) {
+                osg::Matrix matrix = ml[0];
+                
+                // compute 2d on screen
+                matrix = matrix * _camera->getViewMatrix() * _camera->getProjectionMatrix();
+                osg::Vec3 point = matrix.getTrans();
+                point *= 1.0/matrix(3,3); // w
+                float x = _camera->getViewport()->width()/2 * (1.0 + point[0]);
+                float y = _camera->getViewport()->height()/2 * (1.0 + point[1]);
+
+                _window->setPosition(osgWidget::Point(osg::round(x), osg::round(y), _window->getPosition()[2] ));
+                _wm->getWindowManager()->resizeAllWindows();
+            }
+        }
+        traverse(node,nv);
+    }
+    osg::ref_ptr<WindowManager> _wm;
+    osg::ref_ptr<osg::Camera> _camera;
+    osg::ref_ptr<osgWidget::Window> _window;
+};
+
+struct PopUpSymbolizerContext : public SymbolizerContext
+{
+    PopUpSymbolizerContext(WindowManager* windowmanager, osg::Camera* camera)  : _wm(windowmanager), _camera(camera) {}
+    osg::ref_ptr<WindowManager> _wm;
+    osg::ref_ptr<osg::Camera> _camera;
+};
+
+
+
+struct PopUpSymbolizer : public GeometrySymbolizer
+{
+    static int PopUpIndex;
+    bool update(const SymbolizerInput* dataSet,
+                const Style* style,
+                osg::Group* attachPoint,
+                SymbolizerContext* context,
+                Symbolizer::State* state )
+    {
+        if (!dataSet || !attachPoint || !style)
+            return false;
+
+        const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
+        if (!geometryInput)
+            return false;
+
+        const Style* geometryStyle = dynamic_cast<const Style*>(style);
+        if (!geometryStyle)
+            return false;
+
+        PopUpSymbolizerContext* ctx = dynamic_cast<PopUpSymbolizerContext*>(context);
+        if (!ctx)
+            return false;
+
+        osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
+
+        const GeometryList& geometryList = geometryInput->getGeometryList();
+        for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
+        {
+            Geometry* geometry = *it;
+            if (!geometry)
+                continue;
+
+            osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry;
+            switch( geometry->getType())
+            {
+            case Geometry::TYPE_POINTSET:
+            case Geometry::TYPE_LINESTRING:
+            case Geometry::TYPE_RING:
+            case Geometry::TYPE_POLYGON:
+            {
+                const TextSymbol* symbol = style->getSymbol<TextSymbol>();
+                if (symbol)
+                {
+                    osg::Image* image = 0;
+                    if (!symbol->theme()->empty())
+                        image = osgDB::readImageFile(symbol->theme().value());
+                    osgText::Font* font = 0;
+                    if (!symbol->font()->empty())
+                        font = osgText::readFontFile(symbol->font().value());
+                    float size = symbol->size().value();
+                    osg::Vec4 color = symbol->fill()->color();
+                    
+                    for ( osg::Vec3dArray::iterator it = geometry->begin(); it != geometry->end(); ++it)
+                    {
+                        osg::MatrixTransform* transform = new osg::MatrixTransform;
+                        transform->setMatrix(osg::Matrix::translate(*it));
+                        std::stringstream ss;
+                        ss << "Sacre bleu" << std::endl;
+                        ss << "I am at position " << *it << " miles" << std::endl;
+                        std::string text = ss.str();
+                        std::string title = "Hello popup";
+                        WidgetMessageBox popup = WidgetMessageBox::popUp(image,
+                                                                         title,
+                                                                         text,
+                                                                         "",
+                                                                         font,
+                                                                         size);
+                        ctx->_wm->getWindowManager()->addChild(popup.getWindow());
+                        popup.getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                        PopUpIndex++;
+                        transform->addUpdateCallback(new PopUpUpdateCallback(ctx->_wm.get(), ctx->_camera.get(), popup.getWindow()));
+                        newSymbolized->addChild(transform);
+                        transform->addChild(osgDB::readNodeFile("../data/tree.ive"));
+                    }
+                }
+            }
+            break;
+            }
+        }
+
+        if (newSymbolized->getNumChildren()) 
+        {
+            attachPoint->removeChildren(0, attachPoint->getNumChildren());
+            attachPoint->addChild(newSymbolized.get());
+            return true;
+        }
+
+        return false;
+    }
+};
+int PopUpSymbolizer::PopUpIndex = 0;
 
 struct PolygonPointSizeSymbol : public PolygonSymbol
 {
-    PolygonPointSizeSymbol() : _size (1.0)
-    {
-    }
-
+    PolygonPointSizeSymbol() : _size (1.0) {}
     float& size() { return _size; }
     const float& size() const { return _size; }
 
 protected:
     float _size;
 };
-
 
 struct GeometryPointSymbolizer : public GeometrySymbolizer
 {
@@ -352,7 +480,7 @@ public:
 
 
 
-osg::Group* createSymbologyScene(const std::string url)
+osg::Group* createSymbologyScene(WindowManager* wm, osg::Camera* camera)
 {
     osg::Group* grp = new osg::Group;
 
@@ -421,6 +549,17 @@ osg::Group* createSymbologyScene(const std::string url)
     }
 
 
+    // style for popup
+    {
+        osg::ref_ptr<Style> style = new Style;
+        style->setName("Popup");
+        osg::ref_ptr<TextSymbol> symbol = new TextSymbol;
+        symbol->theme() = "../data/popup-theme.png";
+        symbol->font() = "arial.ttf";
+        symbol->size() = 14;
+        style->addSymbol(symbol.get());
+        styles.push_back(style.get());
+    }
 
 
     /// associate the style / symbolizer to the symbolic node
@@ -485,11 +624,29 @@ osg::Group* createSymbologyScene(const std::string url)
         std::string real = osgDB::getRealPath("../data/tree.ive");
         MarkerSymbol* marker = new MarkerSymbol;
         marker->marker() = real;
+        node->setDataSet(dataset.get());
         style->addSymbol(marker);
         node->setStyle(style);
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->addChild(node.get());
         tr->setMatrix(osg::Matrix::scale(10,10,10) * osg::Matrix::translate(0, 750 , 0));
+        grp->addChild(tr);
+    }
+
+
+    {
+        PopUpSymbolizer::PopUpIndex = 0;
+        PopUpSymbolizerContext* ctx = new PopUpSymbolizerContext(wm, camera);
+        osg::ref_ptr<PopUpSymbolizer> symbolizer = new PopUpSymbolizer();
+        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
+        osg::ref_ptr<SampleGeometryInput> dataset = new SampleGeometryInput;
+        node->setSymbolizer(symbolizer.get());
+        node->setDataSet(dataset.get());
+        node->setStyle(styles[4]);
+        node->setContext(ctx);
+        osg::MatrixTransform* tr = new osg::MatrixTransform;
+        tr->addChild(node.get());
+        tr->setMatrix(osg::Matrix::translate(0, 1000 , 0));
         grp->addChild(tr);
     }
     
@@ -513,23 +670,12 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
     
-    std::string url = "../data/istates_dissolve.shp";
-    std::string real = osgDB::getRealPath(url);
-    osg::Node* node = createSymbologyScene(real);
-    viewer.setSceneData(node);
+    osg::Group* root = new osg::Group;
+    viewer.setSceneData(root);
     viewer.realize();
 
     WindowManager* wm = new WindowManager(viewer);
-    std::string text = "This is a first example with osgWidget to display\n" \
-        "popup and a lot of variety informations.\n"\
-        "Currently there is only 2 text zones, title and text content";
-
-    WidgetMessageBox msg = WidgetMessageBox::popUp(osgDB::readImageFile("../data/popup-theme.png"),
-                                                   "PopUp",
-                                                   text,
-                                                   "",
-                                                   osgText::readFontFile("arial.ttf"),
-                                                   14);
-    wm->popUp(msg);
+    osg::Node* node = createSymbologyScene(wm, viewer.getCamera());
+    root->addChild(node);
     return viewer.run();
 }

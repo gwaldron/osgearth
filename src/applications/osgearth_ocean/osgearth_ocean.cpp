@@ -203,6 +203,46 @@ char frag_source[] = "\n"
 "}\n"
 "\n";
 
+// An event handler that will print out the elevation at the clicked point
+struct MyEventHandler : public osgGA::GUIEventHandler 
+{
+	MyEventHandler( osg::Uniform* waveHeightUniform )
+        :_waveHeightUniform(waveHeightUniform) { }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+	{
+		if ( ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN )
+		{
+			switch (ea.getKey())
+			{
+			case 'h':
+				{
+					float h;
+					_waveHeightUniform->get(h);
+
+					h *= 1.1;
+					_waveHeightUniform->set(h);
+				}
+				break;
+			case 'H':
+				{
+					float h;
+					_waveHeightUniform->get(h);
+
+					h *= 0.9;
+					_waveHeightUniform->set(h);
+				}
+				break;
+			}
+		}
+		return false;
+    }
+
+	osg::ref_ptr< osg::Uniform > _waveHeightUniform;
+};
+
+
+
 
 int main(int argc, char** argv)
 {
@@ -259,10 +299,13 @@ int main(int argc, char** argv)
 
         osg::Uniform* oceanHeightUniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT);
         oceanHeightUniform->set( 1000.0f);
+		oceanHeightUniform->setDataVariance( osg::Object::DYNAMIC);
+
+		viewer.addEventHandler(new MyEventHandler(oceanHeightUniform));
 
 
 		//program->addBindAttribLocation("osgEarth_LatLon", 13);
-        program->addShader( vert_shader );
+        program->addShader( vert_shader );;
         program->addShader( frag_shader);
         loadedModel.get()->getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
         group->addChild(loadedModel.get());

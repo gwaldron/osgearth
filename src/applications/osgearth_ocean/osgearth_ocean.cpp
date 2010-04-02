@@ -59,6 +59,31 @@ using namespace osg;
 using namespace osgDB;
 using namespace osgTerrain;
 
+
+
+char xyz_to_lat_lon_source[] =
+"vec2 xyz_to_lat_lon(in vec3 xyz)\n"
+"{\n"
+"  float X = xyz.x;\n"
+"  float Y = xyz.y;\n"
+"  float Z = xyz.z;\n"
+"  float _radiusEquator = 6378137.0;\n"
+"  float _radiusPolar   = 6356752.3142;\n"
+"  float flattening = (_radiusEquator-_radiusPolar)/_radiusEquator;\n"
+"  float _eccentricitySquared = 2*flattening - flattening*flattening;\n"
+"  float p = sqrt(X*X + Y*Y);\n"
+"  float theta = atan(Z*_radiusEquator , (p*_radiusPolar));\n"
+"  float eDashSquared = (_radiusEquator*_radiusEquator - _radiusPolar*_radiusPolar)/(_radiusPolar*_radiusPolar);\n"
+"  float sin_theta = sin(theta);\n"
+"  float cos_theta = cos(theta);\n"
+"\n"
+"   float latitude = atan( (Z + eDashSquared*_radiusPolar*sin_theta*sin_theta*sin_theta), (p - _eccentricitySquared*_radiusEquator*cos_theta*cos_theta*cos_theta) );\n"
+"   float longitude = atan(Y,X);\n"
+"   return vec2(longitude, latitude);\n"
+"}\n";
+
+
+
 char fnormal_source[] = 
 "vec3 fnormal(void)\n"
 "{\n"
@@ -116,7 +141,7 @@ char vert_source[] =
 " \n"
 "    vec3 normal = fnormal(); \n"
 " \n"
-"    directionalLight(0, normal, ambient, diffuse, specular); \n"
+"     directionalLight(0, normal, ambient, diffuse, specular); \n"
 "     vec4 color = gl_FrontLightModelProduct.sceneColor + \n"
 "                  ambient  * gl_FrontMaterial.ambient + \n"
 "                  diffuse  * gl_FrontMaterial.diffuse + \n"
@@ -128,9 +153,16 @@ char vert_source[] =
 "   vec4 color = texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoord1.st); \n"
 "   if (color.a < 0.1)\n"
 "   {\n"
-"     vec4 vert = osg_ViewMatrixInverse * gl_ModelViewMatrix  * gl_Vertex;\n"                    
+"     float PI_2 = 3.14158 * 2.0;\n"
+"     float period = PI_2/2048;\n"
+"     mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix;\n"
+"     vec4 vert = modelMatrix  * gl_Vertex;\n"           
+"     vec2 latlon = xyz_to_lat_lon(vec3(vert.x, vert.y, vert.z));\n"
 "     vec3 n = normalize(vec3(vert.x, vert.y, vert.z));\n"
-"     float scale = sin(vert.x + osg_SimulationTime * 3.0) * osgEarth_oceanHeight;\n"
+"     float theta = (mod(latlon.x, period) / period) * PI_2;\n"  
+"     float phase = osg_SimulationTime;\n"
+"     float scale = sin(theta + phase) * osgEarth_oceanHeight;\n"
+"     //if (scale < 0) scale = 0.0;\n"
 "     n = n * scale;\n"
 "     vert += vec4(n.x, n.y,n.z,0);\n"
 "     vert = osg_ViewMatrix * vert;\n"
@@ -158,6 +190,7 @@ char frag_source[] = "\n"
 "    vec4 color = tex0;\n"
 //"    if (ocean_mask.a <= 0.1) color = oceanColor;\n"
 "    gl_FragColor = gl_Color * color;\n"
+//"    gl_FragColor = color;\n"
 "}\n"
 "\n";
 
@@ -169,36 +202,7 @@ int main(int argc, char** argv)
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
 
-    osg::Group* group = new osg::Group;
-
-    osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
-
-    if (loadedModel.valid())
-    {
-        std::string shaderSource = std::string(fnormal_source) + std::string(directionalLight_source) + std::string(vert_source);
-        osg::Shader* vert_shader = new osg::Shader( osg::Shader::VERTEX, shaderSource );
-        osg::Shader* frag_shader = new osg::Shader( osg::Shader::FRAGMENT, frag_source );
-        osg::Program* program = new osg::Program();
-
-        osg::Uniform* unit0Uniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT);
-        unit0Uniform->set( 0 );
-
-        osg::Uniform* unit1Uniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanMaskUnit", osg::Uniform::INT);
-        unit1Uniform->set( 1 );
-
-        osg::Uniform* oceanHeightUniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT);
-        oceanHeightUniform->set( 250.0f );
-
-
-        program->addShader( vert_shader );
-        program->addShader( frag_shader);
-        loadedModel.get()->getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
-        group->addChild(loadedModel.get());
-    }
-
-    loadedModel->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
-
-    {
+	    {
         osg::ref_ptr<osgGA::KeySwitchMatrixManipulator> keyswitchManipulator = new osgGA::KeySwitchMatrixManipulator;
 
         keyswitchManipulator->addMatrixManipulator( '1', "Trackball", new osgGA::TrackballManipulator() );
@@ -224,11 +228,47 @@ int main(int argc, char** argv)
         viewer.setCameraManipulator( keyswitchManipulator.get() );
     }
 
+    osg::Group* group = new osg::Group;
+
+    osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
+
+    if (loadedModel.valid())
+    {
+        std::string shaderSource = std::string(fnormal_source) + 
+			                       std::string(directionalLight_source) + 
+								   std::string(xyz_to_lat_lon_source) +
+								   std::string(vert_source);
+        osg::Shader* vert_shader = new osg::Shader( osg::Shader::VERTEX, shaderSource );
+        osg::Shader* frag_shader = new osg::Shader( osg::Shader::FRAGMENT, frag_source );
+        osg::Program* program = new osg::Program();
+
+        osg::Uniform* unit0Uniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT);
+        unit0Uniform->set( 0 );
+
+        osg::Uniform* unit1Uniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanMaskUnit", osg::Uniform::INT);
+        unit1Uniform->set( 1 );
+
+        osg::Uniform* oceanHeightUniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT);
+        //oceanHeightUniform->set( 2000000.0f);
+		oceanHeightUniform->set( 300.0f);
+
+
+        program->addShader( vert_shader );
+        program->addShader( frag_shader);
+        loadedModel.get()->getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
+        group->addChild(loadedModel.get());
+    }
+
+    loadedModel->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
+
     // add the state manipulator
     viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
 
         // add the stats handler
     viewer.addEventHandler(new osgViewer::StatsHandler);
+
+	// add the record camera path handler
+    viewer.addEventHandler(new osgViewer::RecordCameraPathHandler);
 
 
     // set the scene to render

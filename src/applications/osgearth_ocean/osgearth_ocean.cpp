@@ -123,6 +123,7 @@ char directionalLight_source[] =
 
 
 char vert_source[] =
+//"in vec3 osgEarth_LatLon;\n"
 "varying vec2 texCoord0;\n"
 "uniform float osg_SimulationTime; \n"
 "uniform mat4 osg_ViewMatrixInverse;\n"
@@ -153,20 +154,28 @@ char vert_source[] =
 "   vec4 color = texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoord1.st); \n"
 "   if (color.a < 0.1)\n"
 "   {\n"
-"     float PI_2 = 3.14158 * 2.0;\n"
-"     float period = PI_2/2048;\n"
+"     const float PI_2 = 3.14158 * 2.0;\n"
+"     const float period = PI_2/1024.0;\n"
+"     const float half_period = period / 2.0;\n"
 "     mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix;\n"
 "     vec4 vert = modelMatrix  * gl_Vertex;\n"           
+"     vec3 vert3 = vec3(vert.x, vert.y, vert.z);\n"
 "     vec2 latlon = xyz_to_lat_lon(vec3(vert.x, vert.y, vert.z));\n"
-"     vec3 n = normalize(vec3(vert.x, vert.y, vert.z));\n"
+//"     vec3 latlon = osgEarth_LatLon;\n"
+"     vec3 n = normalize(vert3);\n"
 "     float theta = (mod(latlon.x, period) / period) * PI_2;\n"  
-"     float phase = osg_SimulationTime;\n"
-"     float scale = sin(theta + phase) * osgEarth_oceanHeight;\n"
+"     float phi = (mod(latlon.y, half_period) / half_period) * PI_2;\n"
+"     float phase1 = osg_SimulationTime * 2.0;\n"
+"     float phase2 = osg_SimulationTime * 4.0;\n"
+"     float scale1 = sin(theta + phase1) * osgEarth_oceanHeight;\n"
+"     float scale2 = cos(phi + phase2) * osgEarth_oceanHeight;\n"
+"     float scale3 = sin(theta + phase2) * cos(phi + phase1) * osgEarth_oceanHeight *1.6;\n"
+"     float scale = (scale1 + scale2 + scale3)/3.0;\n"
 "     //if (scale < 0) scale = 0.0;\n"
 "     n = n * scale;\n"
 "     vert += vec4(n.x, n.y,n.z,0);\n"
 "     vert = osg_ViewMatrix * vert;\n"
-"     gl_Position = gl_ProjectionMatrix * vec4(vert.x, vert.y, vert.z, 1.0);\n"
+"     gl_Position = gl_ProjectionMatrix * vert;\n"
 "   }\n"
 "   else\n"
 "   {\n"
@@ -186,7 +195,7 @@ char frag_source[] = "\n"
 "{\n"
 "    vec4 tex0 = texture2D(osgEarth_Layer0_unit, texCoord0);\n"
 "    vec4 ocean_mask = texture2D(osgEarth_oceanMaskUnit, oceanMaskTexCoord);\n"
-//"    vec4 oceanColor = vec4(0,0,1,1);\n"
+"    vec4 oceanColor = vec4(0,0,1,0.7);\n"
 "    vec4 color = tex0;\n"
 //"    if (ocean_mask.a <= 0.1) color = oceanColor;\n"
 "    gl_FragColor = gl_Color * color;\n"
@@ -249,10 +258,10 @@ int main(int argc, char** argv)
         unit1Uniform->set( 1 );
 
         osg::Uniform* oceanHeightUniform = loadedModel->getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT);
-        //oceanHeightUniform->set( 2000000.0f);
-		oceanHeightUniform->set( 300.0f);
+        oceanHeightUniform->set( 1000.0f);
 
 
+		//program->addBindAttribLocation("osgEarth_LatLon", 13);
         program->addShader( vert_shader );
         program->addShader( frag_shader);
         loadedModel.get()->getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);

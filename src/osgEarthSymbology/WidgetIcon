@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_POPUP_H
-#define OSGEARTHSYMBOLOGY_POPUP_H 1
+#ifndef OSGEARTHSYMBOLOGY_WIDGET_ICON_H
+#define OSGEARTHSYMBOLOGY_WIDGET_ICON 1
 
 #include <osgEarthSymbology/Common>
 #include <osgWidget/Frame>
@@ -28,26 +28,20 @@
 namespace osgEarth { namespace Symbology
 {
 
-    class OSGEARTHSYMBOLOGY_EXPORT WidgetMessageBox
+    class OSGEARTHSYMBOLOGY_EXPORT WidgetIcon
     {
     public:
         
-        osgWidget::Frame* getButton();
         osgWidget::Frame* getWindow();
 
-        bool create(osg::Image* themeMessage, 
-                    const std::string& titleText,
-                    const std::string& messageText,
-                    const std::string& buttonText,
-                    osgText::Font* font,
-                    int fontSize);
+        bool createWithBorder(osg::Image* themeBorder,
+                              osg::Image* icon);
+
+        bool create(osg::Image* icon);
 
     protected:
 
-        osgWidget::Label* createLabel(const std::string& string, osgText::Font* font, int size, const osgWidget::Color& color,const osgWidget::Color& widgetColor = osgWidget::Color(0,0,0,0));
-        
         osg::ref_ptr<osgWidget::Frame> _window;
-        osg::ref_ptr<osgWidget::Frame> _button;
 
     };
 

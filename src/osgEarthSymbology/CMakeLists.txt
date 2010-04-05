@@ -31,6 +31,7 @@ SET(LIB_PUBLIC_HEADERS
     SymbolicNode
     Symbolizer
     WindowManager
+    WidgetIcon
     WidgetMessageBox
 )
 
@@ -57,6 +58,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     SymbolicNode.cpp
     Symbolizer.cpp
     WindowManager.cpp
+    WidgetIcon.cpp
     WidgetMessageBox.cpp
 )
 

@@ -38,6 +38,7 @@
 #include <osgEarthSymbology/ModelSymbolizer>
 #include <osgEarthSymbology/WindowManager>
 #include <osgEarthSymbology/WidgetMessageBox>
+#include <osgEarthSymbology/WidgetIcon>
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
 #include <osgUtil/Tessellator>
@@ -120,7 +121,7 @@ struct SampleGeometryInput : public GeometryInput
 struct NodePopup : public osg::Node
 {
     
-    NodePopup() { setDataVariance(osg::Object::DYNAMIC);  setCullingActive(false);}
+    NodePopup() { setDataVariance(osg::Object::DYNAMIC);  setCullingActive(false); _hide = true;}
 
     void setWindowManager(WindowManager* windowmanager) { _wm = windowmanager; }
     void setMessageBox(const WidgetMessageBox& popup) { _popup = popup; }
@@ -135,16 +136,36 @@ struct NodePopup : public osg::Node
         if (nv.validNodeMask(*this)) 
         {
             if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
-                _popup.getWindow()->setPosition(osgWidget::Point(osg::round(_positionOnScreen[0]), osg::round(_positionOnScreen[1]), _popup.getWindow()->getPosition()[2] ));
+                osg::Vec2 size = osg::Vec2(_popup.getWindow()->getWidth(), _popup.getWindow()->getHeight());
+                osg::Vec2 positionCenteredAnchor = _positionOnScreen - size/2;
+                _popup.getWindow()->setX(osg::round(positionCenteredAnchor[0]));
+                _popup.getWindow()->setY(osg::round(positionCenteredAnchor[1]));
+                if (_hide)
+                    _wm->getWindowManager()->removeChild(_popup.getWindow());
+                else {
+                    if (!_wm->getWindowManager()->containsNode(_popup.getWindow()))
+                        _wm->getWindowManager()->addChild(_popup.getWindow());
+                }
 
             } else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR) {
                 osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
                 if (cull) {
+                    
+                    std::vector<osg::Vec3> vertices;
+                    vertices.push_back(osg::Vec3(0,0,0));
+                    if (cull->isCulled(vertices)) {
+                        _hide = true;
+                        return;
+                    } else {
+                        _hide = false;
+                    }
 
                     // compute 2d on screen
                     osg::Matrix matrix = *(cull->getModelViewMatrix());
                     matrix *= *(cull->getProjectionMatrix());
                     osg::Vec3 point = matrix.getTrans();
+
+                        
 
                     point *= 1.0/matrix(3,3); // w
                     float x = cull->getViewport()->width()/2 * (1.0 + point[0]);
@@ -159,6 +180,75 @@ struct NodePopup : public osg::Node
 protected:
     osg::ref_ptr<WindowManager> _wm;
     WidgetMessageBox _popup;
+    osg::Vec2 _positionOnScreen;
+    bool _hide;
+
+};
+
+
+
+struct NodePopup2 : public osg::Node
+{
+    
+    NodePopup2() { setDataVariance(osg::Object::DYNAMIC);  setCullingActive(false); _hide = true;}
+
+    void setWindowManager(WindowManager* windowmanager) { _wm = windowmanager; }
+
+    const WidgetIcon& getIcon() const { return _icon; }
+    WidgetIcon& getIcon() { return _icon; }
+
+    WindowManager* getWindowManager() { return _wm.get(); }
+
+    void accept(osg::NodeVisitor& nv)
+    {
+        setNumChildrenRequiringUpdateTraversal(1);
+        if (nv.validNodeMask(*this)) 
+        {
+            if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
+                osg::Vec2 size = osg::Vec2(_icon.getWindow()->getWidth(), _icon.getWindow()->getHeight());
+                osg::Vec2 positionCenteredAnchor = _positionOnScreen - size/2;
+                _icon.getWindow()->setX(osg::round(positionCenteredAnchor[0]));
+                _icon.getWindow()->setY(osg::round(positionCenteredAnchor[1]));
+                if (_hide)
+                    _wm->getWindowManager()->removeChild(_icon.getWindow());
+                else {
+                    if (!_wm->getWindowManager()->containsNode(_icon.getWindow()))
+                        _wm->getWindowManager()->addChild(_icon.getWindow());
+                }
+
+            } else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR) {
+                osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
+                if (cull) {
+                    
+                    std::vector<osg::Vec3> vertices;
+                    vertices.push_back(osg::Vec3(0,0,0));
+                    if (cull->isCulled(vertices)) {
+                        _hide = true;
+                        return;
+                    } else {
+                        _hide = false;
+                    }
+
+                    // compute 2d on screen
+                    osg::Matrix matrix = *(cull->getModelViewMatrix());
+                    matrix *= *(cull->getProjectionMatrix());
+                    osg::Vec3 point = matrix.getTrans();
+
+                        
+
+                    point *= 1.0/matrix(3,3); // w
+                    float x = cull->getViewport()->width()/2 * (1.0 + point[0]);
+                    float y = cull->getViewport()->height()/2 * (1.0 + point[1]);
+
+                    _positionOnScreen = osg::Vec2(x, y);
+                }
+            }
+        }
+    };
+
+protected:
+    osg::ref_ptr<WindowManager> _wm;
+    WidgetIcon _icon;
     osg::Vec2 _positionOnScreen;
     bool _hide;
 
@@ -231,27 +321,41 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                     {
                         osg::MatrixTransform* transform = new osg::MatrixTransform;
                         transform->setMatrix(osg::Matrix::translate(*it));
-                        NodePopup* popupNode = new NodePopup;
-                        transform->addChild(popupNode);
-                        std::stringstream ss;
-                        ss << "Sacre bleu" << std::endl;
-                        ss << "I am at position " << *it << " miles" << std::endl;
-                        std::string text = ss.str();
-                        std::string title = "Hello popup";
-                        WidgetMessageBox popup = WidgetMessageBox::popUp(image,
-                                                                         title,
-                                                                         text,
-                                                                         "",
-                                                                         font,
-                                                                         size);
-                        ctx->_wm->getWindowManager()->addChild(popup.getWindow());
 
-                        popup.getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
-                        popupNode->setWindowManager(ctx->_wm.get());
-                        popupNode->setMessageBox(popup);
+                        if (PopUpIndex % 2) {
+                            NodePopup* popupNode = new NodePopup;
+                            transform->addChild(popupNode);
+                            std::stringstream ss;
+                            ss << "Sacre bleu" << std::endl;
+                            ss << "I am at position " << *it << " miles" << std::endl;
+                            std::string text = ss.str();
+                            std::string title = "Hello popup";
+                            popupNode->getMessageBox().create(image,
+                                                              title,
+                                                              text,
+                                                              "",
+                                                              font,
+                                                              size);
+                            popupNode->getMessageBox().getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                            popupNode->setWindowManager(ctx->_wm.get());
+
+                        } else {
+                            osg::Image* icon = osgDB::readImageFile("../data/icon.png");
+                            if (!icon)
+                                osg::notify(osg::WARN) << "can't load ../data/icon.png" << std::endl;
+
+                            NodePopup2* popupNode = new NodePopup2;
+                            transform->addChild(popupNode);
+                            if (PopUpIndex %3)
+                                popupNode->getIcon().create(icon);
+                            else
+                                popupNode->getIcon().createWithBorder(image, icon);
+
+                            popupNode->getIcon().getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                            popupNode->setWindowManager(ctx->_wm.get());
+                        }
 
                         PopUpIndex++;
-
                         newSymbolized->addChild(transform);
                         transform->addChild(osgDB::readNodeFile("../data/tree.ive"));
                     }

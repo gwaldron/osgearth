@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthSymbology/WidgetMessageBox>
+#include <osgEarthSymbology/WidgetIcon>
 #include <osgWidget/Box>
 #include <osgDB/ReadFile>
 #include <osgAnimation/EaseMotion>
@@ -76,7 +76,7 @@ struct ColorSetterVisitor : public osg::NodeVisitor
             }
             {
                 //win->getBackground()->setColor(osgWidget::Color(0,0,0,0));
-                if (win->getName().find("PopUp") == std::string::npos)
+                if (win->getName().find("FrameIcon") == std::string::npos)
                     win->getBackground()->setColor(_color);
             }
         }
@@ -118,14 +118,12 @@ struct EventOK : public osgWidget::Callback, osg::NodeCallback
             _width = _frame->getWidth();
             _height = _frame->getHeight();
             _motionOver.reset();
-            //std::cout << "enter" << std::endl;
             return true;
         }
         else if (ev.type == osgWidget::EVENT_MOUSE_LEAVE) 
         {
             _over = false;
             _motionLeave.reset();
-            //std::cout << "leave" << std::endl;
             return true;
         }
         return false;
@@ -162,87 +160,93 @@ struct EventOK : public osgWidget::Callback, osg::NodeCallback
     }
 };
 
-
-bool WidgetMessageBox::create(osg::Image* themeMessage,
-                              const std::string& titleText,
-                              const std::string& messageText,
-                              const std::string& buttonText,
-                              osgText::Font* font,
-                              int fontSize)
+bool WidgetIcon::create(osg::Image* icon)
 {
+    return createWithBorder(0, icon);
+}
 
-    osg::ref_ptr<osgWidget::Frame> frame = osgWidget::Frame::createSimpleFrameFromTheme(
-        "PopUp",
-        themeMessage,
-        300.0f,
-        50.0f,
-        osgWidget::Frame::FRAME_ALL
-        );
-    frame->getBackground()->setColor(0.0f, 0.0f, 0.0f, 0.0f);
-    osgWidget::Color adjustAlpha = frame->getEmbeddedWindow()->getColor();
+bool WidgetIcon::createWithBorder(osg::Image* themeMessage,
+                                  osg::Image* icon)
+{
+    
+    osg::ref_ptr<osgWidget::Widget> iconWidget;
+    iconWidget = new osgWidget::Widget("Icon",48, 48);
+    iconWidget->setImage(icon, true, true);
+    iconWidget->setEventMask(osgWidget::EVENT_NONE);
 
-    osgWidget::Label* labelText = createLabel(messageText, font, fontSize, osgWidget::Color(0,0,0,1), adjustAlpha);
-    osgWidget::Label* labelTitle = createLabel(titleText, font, fontSize+5, osgWidget::Color(0.4,0,0,1), adjustAlpha);
-
-    osgWidget::Box*   box   = new osgWidget::Box("VBOX", osgWidget::Box::VERTICAL);
-
-    labelTitle->setPadBottom(10.0f);
-    labelText->setPadBottom(0.0f);
-//    labelText->getText()->setMaximumWidth(500);
-    labelText->setLabel(messageText);
-
-    labelText->setWidth(labelText->getTextSize()[0]);
-    labelText->setHeight(labelText->getTextSize()[1]);
-
-    box->addWidget(labelText);
-    box->addWidget(labelTitle);
-
-    labelText->setEventMask(osgWidget::EVENT_NONE);
-    labelTitle->setEventMask(osgWidget::EVENT_NONE);
-    box->setEventMask(osgWidget::EVENT_NONE);
-
-    frame->getCorner(osgWidget::Frame::CORNER_LOWER_LEFT)->setEventMask(osgWidget::EVENT_NONE);    
-    frame->getCorner(osgWidget::Frame::CORNER_LOWER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
-    frame->getCorner(osgWidget::Frame::CORNER_UPPER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
-    frame->getCorner(osgWidget::Frame::CORNER_UPPER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
-    frame->getBorder(osgWidget::Frame::BORDER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
-    frame->getBorder(osgWidget::Frame::BORDER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
-    frame->getBorder(osgWidget::Frame::BORDER_TOP)->setEventMask(osgWidget::EVENT_NONE);
-    frame->getBorder(osgWidget::Frame::BORDER_BOTTOM)->setEventMask(osgWidget::EVENT_NONE);
-
-    osgWidget::Color colorBack = frame->getEmbeddedWindow()->getColor();
-    box->getBackground()->setColor(colorBack);
-
-    frame->setWindow(box);
-
+    osg::ref_ptr<osgWidget::Box> box = new osgWidget::Box("BoxIcon");
+    box->addWidget(iconWidget.get());
     box->resize();
-    frame->resizeFrame(box->getWidth(), box->getHeight());
 
-    _window = frame;
+    osg::ref_ptr<osgWidget::Frame> window;
 
+    if (themeMessage)
+    {
+        box->setEventMask(osgWidget::EVENT_NONE);
+        osgWidget::Frame* frame = osgWidget::Frame::createSimpleFrameFromTheme(
+            "FrameIcon",
+            themeMessage,
+            300.0f,
+            50.0f,
+            osgWidget::Frame::FRAME_ALL
+            );
+
+        osgWidget::Color colorBack = frame->getEmbeddedWindow()->getColor();
+        box->getBackground()->setColor(colorBack);
+        frame->getBackground()->setColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+        frame->getCorner(osgWidget::Frame::CORNER_LOWER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getCorner(osgWidget::Frame::CORNER_LOWER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getCorner(osgWidget::Frame::CORNER_UPPER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getCorner(osgWidget::Frame::CORNER_UPPER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_TOP)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_BOTTOM)->setEventMask(osgWidget::EVENT_NONE);
+
+        frame->setWindow(box.get());
+        window = frame;
+        frame->resizeFrame(box->getWidth(), box->getHeight());
+
+    } else {
+        osgWidget::Frame* frame = osgWidget::Frame::createSimpleFrame(
+            "FrameIcon",
+            0.0f,
+            0.0f,
+            icon->s(),
+            icon->t(),
+            osgWidget::Frame::FRAME_RESIZE
+            );
+
+        frame->getBackground()->setColor(0.0f, 0.0f, 0.0f, 0.0f);
+        osgWidget::Color adjustAlpha = frame->getEmbeddedWindow()->getColor();
+        frame->getEmbeddedWindow()->setColor(osgWidget::Color(0,0,0,0.0));
+
+        frame->getCorner(osgWidget::Frame::CORNER_LOWER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getCorner(osgWidget::Frame::CORNER_LOWER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getCorner(osgWidget::Frame::CORNER_UPPER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getCorner(osgWidget::Frame::CORNER_UPPER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_LEFT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_RIGHT)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_TOP)->setEventMask(osgWidget::EVENT_NONE);
+        frame->getBorder(osgWidget::Frame::BORDER_BOTTOM)->setEventMask(osgWidget::EVENT_NONE);
+
+        box->getBackground()->setColor(0,0,0,0);
+
+        frame->setWindow(box.get());
+        window = frame;
+        frame->resizeFrame(box->getWidth(), box->getHeight());
+    }
+    _window = window;
 
     AlphaSetterVisitor alpha(.7f);
     getWindow()->accept(alpha);
 
-    EventOK* event = new EventOK(getWindow());
-    getWindow()->setUpdateCallback(event);
-    getWindow()->addCallback(event);
+    // EventOK* event = new EventOK(getWindow());
+    // getWindow()->setUpdateCallback(event);
+    // getWindow()->addCallback(event);
 
     return true;
 }
 
-osgWidget::Label* WidgetMessageBox::createLabel(const std::string& string, osgText::Font* font, int size, const osgWidget::Color& color, const osgWidget::Color& widgetColor)
-{
-    osgWidget::Label* label = new osgWidget::Label("label", "");
-    label->getText()->setFont(font);
-    label->setFontSize(size);
-    label->setFontColor(color);
-    label->setColor(widgetColor);
-    label->setLabel(string);
-    label->setCanFill(true);
-    label->setDataVariance(osg::Object::DYNAMIC);
-    return label;
-}
-
-osgWidget::Frame* WidgetMessageBox::getButton() { return _button.get(); }
-osgWidget::Frame* WidgetMessageBox::getWindow() { return _window.get(); }
+osgWidget::Frame* WidgetIcon::getWindow() { return _window.get(); }

@@ -24,6 +24,19 @@
 
 using namespace osgEarth::Symbology;
 
+struct UpdatePositionItems : public osg::NodeCallback
+{
+    UpdatePositionItems() {}
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+        if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
+            osgWidget::WindowManager* wm = dynamic_cast<osgWidget::WindowManager*>(node);
+            if (wm)
+                wm->resizeAllWindows();
+        }
+        traverse(node,nv);
+    }
+};
+
 WindowManager::WindowManager(osgViewer::Viewer& viewer)
 {
     const unsigned int MASK_2D = 0xF0000000;
@@ -40,8 +53,8 @@ WindowManager::WindowManager(osgViewer::Viewer& viewer)
     viewer.addEventHandler(new osgWidget::KeyboardHandler(wm));
     viewer.addEventHandler(new osgWidget::ResizeHandler(wm, camera));
     viewer.addEventHandler(new osgWidget::CameraSwitchHandler(wm, camera));
-    wm->resizeAllWindows();
     _windowManager = wm;
+    _windowManager->addUpdateCallback(new UpdatePositionItems);
 }
 
 
@@ -56,5 +69,5 @@ void WindowManager::popUp(WidgetMessageBox& msg)
     osgWidget::point_type ox = (w - ww) / 2;
     osgWidget::point_type oy = (h - hw) / 2;
     msg.getWindow()->setPosition(osgWidget::Point(osg::round(ox), osg::round(oy), msg.getWindow()->getPosition()[2] ));
-    _windowManager->resizeAllWindows();
 }
+

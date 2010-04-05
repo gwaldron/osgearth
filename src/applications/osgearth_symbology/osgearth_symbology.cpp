@@ -117,36 +117,53 @@ struct SampleGeometryInput : public GeometryInput
     }
 };
 
-
-// update the 2d position of the popup
-struct PopUpUpdateCallback : public osg::NodeCallback
+struct NodePopup : public osg::Node
 {
-    PopUpUpdateCallback(WindowManager* windowmanager, osg::Camera* camera, osgWidget::Window* reference) : _wm(windowmanager), _camera(camera), _window(reference) {}
-    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    
+    NodePopup() { setDataVariance(osg::Object::DYNAMIC);  setCullingActive(false);}
+
+    void setWindowManager(WindowManager* windowmanager) { _wm = windowmanager; }
+    void setMessageBox(const WidgetMessageBox& popup) { _popup = popup; }
+
+    const WidgetMessageBox& getMessageBox() const { return _popup; }
+    WidgetMessageBox& getMessageBox() { return _popup; }
+    WindowManager* getWindowManager() { return _wm.get(); }
+
+    void accept(osg::NodeVisitor& nv)
     {
+        setNumChildrenRequiringUpdateTraversal(1);
+        if (nv.validNodeMask(*this)) 
+        {
+            if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
+                _popup.getWindow()->setPosition(osgWidget::Point(osg::round(_positionOnScreen[0]), osg::round(_positionOnScreen[1]), _popup.getWindow()->getPosition()[2] ));
 
-        if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
-            osg::MatrixList ml = node->getWorldMatrices();
-            if (!ml.empty()) {
-                osg::Matrix matrix = ml[0];
-                
-                // compute 2d on screen
-                matrix = matrix * _camera->getViewMatrix() * _camera->getProjectionMatrix();
-                osg::Vec3 point = matrix.getTrans();
-                point *= 1.0/matrix(3,3); // w
-                float x = _camera->getViewport()->width()/2 * (1.0 + point[0]);
-                float y = _camera->getViewport()->height()/2 * (1.0 + point[1]);
+            } else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR) {
+                osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
+                if (cull) {
 
-                _window->setPosition(osgWidget::Point(osg::round(x), osg::round(y), _window->getPosition()[2] ));
-                _wm->getWindowManager()->resizeAllWindows();
+                    // compute 2d on screen
+                    osg::Matrix matrix = *(cull->getModelViewMatrix());
+                    matrix *= *(cull->getProjectionMatrix());
+                    osg::Vec3 point = matrix.getTrans();
+
+                    point *= 1.0/matrix(3,3); // w
+                    float x = cull->getViewport()->width()/2 * (1.0 + point[0]);
+                    float y = cull->getViewport()->height()/2 * (1.0 + point[1]);
+
+                    _positionOnScreen = osg::Vec2(x, y);
+                }
             }
         }
-        traverse(node,nv);
-    }
+    };
+
+protected:
     osg::ref_ptr<WindowManager> _wm;
-    osg::ref_ptr<osg::Camera> _camera;
-    osg::ref_ptr<osgWidget::Window> _window;
+    WidgetMessageBox _popup;
+    osg::Vec2 _positionOnScreen;
+    bool _hide;
+
 };
+
 
 struct PopUpSymbolizerContext : public SymbolizerContext
 {
@@ -214,6 +231,8 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                     {
                         osg::MatrixTransform* transform = new osg::MatrixTransform;
                         transform->setMatrix(osg::Matrix::translate(*it));
+                        NodePopup* popupNode = new NodePopup;
+                        transform->addChild(popupNode);
                         std::stringstream ss;
                         ss << "Sacre bleu" << std::endl;
                         ss << "I am at position " << *it << " miles" << std::endl;
@@ -226,9 +245,13 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                                                                          font,
                                                                          size);
                         ctx->_wm->getWindowManager()->addChild(popup.getWindow());
+
                         popup.getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                        popupNode->setWindowManager(ctx->_wm.get());
+                        popupNode->setMessageBox(popup);
+
                         PopUpIndex++;
-                        transform->addUpdateCallback(new PopUpUpdateCallback(ctx->_wm.get(), ctx->_camera.get(), popup.getWindow()));
+
                         newSymbolized->addChild(transform);
                         transform->addChild(osgDB::readNodeFile("../data/tree.ive"));
                     }

@@ -198,8 +198,8 @@ char frag_source[] = "\n"
 "    vec4 oceanColor = vec4(0,0,1,0.7);\n"
 "    vec4 color = tex0;\n"
 //"    if (ocean_mask.a <= 0.1) color = oceanColor;\n"
-"    gl_FragColor = gl_Color * color;\n"
-//"    gl_FragColor = color;\n"
+//"    gl_FragColor = gl_Color * color;\n"
+"    gl_FragColor = color;\n"
 "}\n"
 "\n";
 

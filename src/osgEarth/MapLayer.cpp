@@ -360,6 +360,7 @@ MapLayer::initTileSource()
 		else
 		{
 	      OE_NOTICE << "Could not initialize TileSource for layer " << getName() << std::endl;
+          tileSource = NULL;
 		}
 	}
 	_tileSource = tileSource;
@@ -373,6 +374,11 @@ MapLayer::initTileSource()
     if (_tileSource.valid())
     {
       _profile = _tileSource->getProfile();
+    }
+    else if (_cache.valid())
+    {
+        OE_NOTICE << "Could not initialize TileSource " << _name << " but cache is valid.  Setting layer to cache_only." << std::endl;
+        _cacheOnly = true;
     }
 }
 

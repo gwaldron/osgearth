@@ -392,7 +392,7 @@ OceanSurfaceNode::rebuildShaders()
         std::string toreplace = std::string("OCEAN_MASK_UNIT");
         std::size_t start = str.find(toreplace);
         std::stringstream ss;
-        ss << _oceanMaskTextureUnit;
+        ss << unit;
         str.replace(start, toreplace.size(), ss.str());
         vertShaderSource = str;
         OE_INFO << "Shader " << str << std::endl;

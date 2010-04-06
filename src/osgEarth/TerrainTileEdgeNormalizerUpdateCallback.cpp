@@ -171,12 +171,12 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
       {
       }
 
-      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeCorner(osgTerrain::TerrainTile *tile, CardinalDirection direction)
+      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeCorner(VersionedTile *tile, CardinalDirection direction)
       {
           if (tile && tile->getTerrain())
           {
               //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
-              osgEarth::EarthTerrain* et = static_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
+              osgEarth::VersionedTerrain* et = static_cast<osgEarth::VersionedTerrain*>(tile->getTerrain());
               if (et)
               {
                   //Determine the TileID's of the 4 tiles that need to take place in this normalization
@@ -220,12 +220,13 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                   }
 
                   //Get the terrain tiles
-                  osgTerrain::TerrainTile *ll_tile = et->getTileOverride(ll_id);
-                  osgTerrain::TerrainTile *lr_tile = et->getTileOverride(lr_id);
-                  osgTerrain::TerrainTile *ul_tile = et->getTileOverride(ul_id);
-                  osgTerrain::TerrainTile *ur_tile = et->getTileOverride(ur_id);
+                  osg::ref_ptr<VersionedTile> ll_tile, lr_tile, ul_tile, ur_tile;
+                  et->getVersionedTile(ll_id, ll_tile);
+                  et->getVersionedTile(lr_id, lr_tile);
+                  et->getVersionedTile(ul_id, ul_tile);
+                  et->getVersionedTile(ur_id, ur_tile);
 
-                  if (ll_tile && lr_tile && ul_tile && ur_tile)
+                  if (ll_tile.valid() && lr_tile.valid() && ul_tile.valid() && ur_tile.valid())
                   {
                       osgTerrain::HeightFieldLayer *ll_hfl = static_cast<osgTerrain::HeightFieldLayer*>(ll_tile->getElevationLayer());
                       osgTerrain::HeightFieldLayer *lr_hfl = static_cast<osgTerrain::HeightFieldLayer*>(lr_tile->getElevationLayer());
@@ -237,10 +238,25 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                           bool normalized = ::normalizeCorner(ll_hfl->getHeightField(), lr_hfl->getHeightField(), ul_hfl->getHeightField(), ur_hfl->getHeightField());
                           if (normalized)
                           {
-                              ll_tile->setDirty(true);
-                              lr_tile->setDirty(true);
-                              ul_tile->setDirty(true);
-                              ur_tile->setDirty(true);
+                              if (ll_tile->getUseLayerRequests())
+                                  ll_tile->markTileForRegeneration();
+                              else
+                                  ll_tile->setDirty(true);
+
+                              if (lr_tile->getUseLayerRequests())
+                                  lr_tile->markTileForRegeneration();
+                              else
+                                  lr_tile->setDirty(true);
+
+                              if (ul_tile->getUseLayerRequests())
+                                  ul_tile->markTileForRegeneration();
+                              else
+                                  ul_tile->setDirty(true);
+
+                              if (ur_tile->getUseLayerRequests())
+                                  ur_tile->markTileForRegeneration();
+                              else
+                                  ur_tile->setDirty(true);
                           }
                           return normalized;
                       }
@@ -251,12 +267,12 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
       }
 
 
-      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeEdge(osgTerrain::TerrainTile *tile, CardinalDirection direction)
+      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeEdge(VersionedTile *tile, CardinalDirection direction)
       {
           if (tile && tile->getTerrain())
           {
               //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
-              osgEarth::EarthTerrain* et = static_cast<osgEarth::EarthTerrain*>(tile->getTerrain());
+              osgEarth::VersionedTerrain* et = static_cast<osgEarth::VersionedTerrain*>(tile->getTerrain());
               if (et)
               {
 
@@ -269,23 +285,30 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
                   if (tile->getTerrain())
                   {
-                      //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
-                      osgTerrain::TerrainTile* tile2 = et->getTileOverride(id2);//tile->getTerrain()->getTile(id2);
+                      osg::ref_ptr<VersionedTile> tile2;
+                      et->getVersionedTile(id2, tile2);
 
                       if (tile2)
                       {
                           //OE_NOTICE << "Found neighbor tile " << std::endl;
                           //This callback will only work if we have a HeightFieldLayer
-                          osgTerrain::HeightFieldLayer *hfl1 = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
-                          osgTerrain::HeightFieldLayer *hfl2 = static_cast<osgTerrain::HeightFieldLayer*>(tile2->getElevationLayer());
+                          osg::ref_ptr<osgTerrain::HeightFieldLayer> hfl1 = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
+                          osg::ref_ptr<osgTerrain::HeightFieldLayer> hfl2 = static_cast<osgTerrain::HeightFieldLayer*>(tile2->getElevationLayer());
 
-                          if (hfl1 && hfl2)
+                          if (hfl1.valid() && hfl2.valid())
                           {
                               bool normalized = ::normalizeEdge(hfl1->getHeightField(), hfl2->getHeightField(), direction);
                               if (normalized)
                               {
-                                  tile->setDirty(true);
-                                  tile2->setDirty(true);
+                                  if (tile->getUseLayerRequests())
+                                      tile->markTileForRegeneration();
+                                  else
+                                      tile->setDirty(true);
+
+                                  if (tile2->getUseLayerRequests())
+                                      tile2->markTileForRegeneration();
+                                  else
+                                      tile2->setDirty(true);
                               }
                               return normalized;
                           }
@@ -307,7 +330,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
           osg::Timer_t start = osg::Timer::instance()->tick();
           //TODO:  Look at heightDelta's to assist with normal generation.
-          osgTerrain::TerrainTile* tt = static_cast<osgTerrain::TerrainTile*>(node);
+          VersionedTile* tt = static_cast<VersionedTile*>(node);
 
           if (!_normalizedNorth) _normalizedNorth = normalizeEdge(tt, NORTH);
           if (!_normalizedSouth) _normalizedSouth = normalizeEdge(tt, SOUTH);

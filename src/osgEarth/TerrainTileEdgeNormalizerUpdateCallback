@@ -24,6 +24,7 @@
 #include <osgTerrain/TerrainTile>
 
 #include <osgEarth/Common>
+#include <osgEarth/VersionedTerrain>
 
 
 namespace osgEarth
@@ -52,8 +53,8 @@ namespace osgEarth
 
     protected:
 
-        bool normalizeCorner(osgTerrain::TerrainTile *tile, CardinalDirection direction);
-        bool normalizeEdge(osgTerrain::TerrainTile *tile, CardinalDirection direction);
+        bool normalizeCorner(VersionedTile *tile, CardinalDirection direction);
+        bool normalizeEdge(VersionedTile *tile, CardinalDirection direction);
         osgTerrain::TileID getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const;
 
         bool _normalizedWest;

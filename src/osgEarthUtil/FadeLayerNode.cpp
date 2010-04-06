@@ -266,7 +266,7 @@ void FadeLayerNode::updateStateSet()
 }
 
 typedef std::list<const osg::StateSet*> StateSetStack;
-osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
+static osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
 {
     osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
     for(StateSetStack::const_iterator itr = statesetStack.begin();

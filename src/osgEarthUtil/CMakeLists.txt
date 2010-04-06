@@ -18,6 +18,7 @@ SET(LIB_PUBLIC_HEADERS
 	FadeLayerNode
 	Graticule
 	ObjectPlacer
+	OceanSurfaceNode
 	Viewpoint
 )
 
@@ -31,6 +32,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	FadeLayerNode.cpp
 	Graticule.cpp
 	ObjectPlacer.cpp
+	OceanSurfaceNode.cpp
 	Viewpoint.cpp
 )
 

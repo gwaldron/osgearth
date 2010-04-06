@@ -17,35 +17,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_WIDGET_ICON_H
-#define OSGEARTHSYMBOLOGY_WIDGET_ICON_H 1
+#ifndef OSGEARTHSYMBOLOGY_WIDGET_NODE_H
+#define OSGEARTHSYMBOLOGY_WIDGET_NODE_H 1
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Widget>
-#include <osgWidget/Frame>
-#include <osgWidget/Window>
-#include <osgWidget/Label>
+#include <osgEarthSymbology/WindowManager>
+#include <osg/Node>
+#include <osg/NodeVisitor>
 
 namespace osgEarth { namespace Symbology
 {
 
-    class OSGEARTHSYMBOLOGY_EXPORT WidgetIcon : public Widget
+    class OSGEARTHSYMBOLOGY_EXPORT WidgetNode : public osg::Node
     {
+
     public:
-        
-        osgWidget::Frame* getWindow();
+        WidgetNode();
 
-        bool createWithBorder(osg::Image* themeBorder,
-                              osg::Image* icon);
+        void setWindowManager(WindowManager* windowmanager);
+        void setWidget(Widget* widget);
 
-        bool create(osg::Image* icon);
+        const Widget* getWidget() const;
+        Widget* getWidget();
+        WindowManager* getWindowManager();
+
+        void accept(osg::NodeVisitor& nv);
 
     protected:
-
-        osg::ref_ptr<osgWidget::Frame> _window;
+        osg::ref_ptr<WindowManager> _wm;
+        osg::ref_ptr<Widget> _widget;
+        osg::Vec2 _positionOnScreen;
+        bool _hide;
 
     };
-
 
 }}
 

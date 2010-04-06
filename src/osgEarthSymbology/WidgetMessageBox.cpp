@@ -75,7 +75,6 @@ struct ColorSetterVisitor : public osg::NodeVisitor
                 }
             }
             {
-                //win->getBackground()->setColor(osgWidget::Color(0,0,0,0));
                 if (win->getName().find("PopUp") == std::string::npos)
                     win->getBackground()->setColor(_color);
             }
@@ -85,83 +84,96 @@ struct ColorSetterVisitor : public osg::NodeVisitor
 };
 
 
-struct EventOK : public osgWidget::Callback, osg::NodeCallback
+WidgetMessageBox::ColorAnimation::ColorAnimation(osgWidget::Frame* frame) : osgWidget::Callback(osgWidget::EVENT_ALL), _frame(frame)
 {
-    typedef osgAnimation::OutCubicMotion WidgetMotion;
-    WidgetMotion _motionOver;
-    WidgetMotion _motionLeave;
-    
-    double _lastUpdate;
-    osgWidget::Color _defaultColor;
-    osgWidget::Color _overColor;
-    bool _over;
-    osg::ref_ptr<osgWidget::Frame> _frame;
-    float _width;
-    float _height;
-    EventOK(osgWidget::Frame* frame) : osgWidget::Callback(osgWidget::EVENT_ALL), _frame(frame) 
+    _motionOver = WidgetMotion(0.0, 0.4);
+    _motionLeave = WidgetMotion(0.0, 0.5);
+    _defaultColor = _frame->getEmbeddedWindow()->getColor();
+    _overColor = osgWidget::Color(229.0/255.0,
+                                  103.0/255.0,
+                                  17.0/255,
+                                  _defaultColor[3]);
+    _over  = false;
+}
+void WidgetMessageBox::ColorAnimation::setSrcColor(const osg::Vec4& color) { _defaultColor = color; }
+void WidgetMessageBox::ColorAnimation::setDstColor(const osg::Vec4& color) { _overColor = color; }
+
+bool WidgetMessageBox::ColorAnimation::operator()(osgWidget::Event& ev)
+{
+    if (ev.type == osgWidget::EVENT_MOUSE_ENTER)
     {
-        _motionOver = WidgetMotion(0.0, 0.4);
-        _motionLeave = WidgetMotion(0.0, 0.5);
-        _defaultColor = _frame->getEmbeddedWindow()->getColor();
-        _overColor = osgWidget::Color(229.0/255.0,
-                                      103.0/255.0,
-                                      17.0/255,
-                                      _defaultColor[3]);
-        _over  = false;
+        _over = true;
+        _width = _frame->getWidth();
+        _height = _frame->getHeight();
+        _motionOver.reset();
+        //std::cout << "enter" << std::endl;
+        return true;
     }
-
-    bool operator()(osgWidget::Event& ev)
+    else if (ev.type == osgWidget::EVENT_MOUSE_LEAVE) 
     {
-        if (ev.type == osgWidget::EVENT_MOUSE_ENTER)
-        {
-            _over = true;
-            _width = _frame->getWidth();
-            _height = _frame->getHeight();
-            _motionOver.reset();
-            //std::cout << "enter" << std::endl;
-            return true;
-        }
-        else if (ev.type == osgWidget::EVENT_MOUSE_LEAVE) 
-        {
-            _over = false;
-            _motionLeave.reset();
-            //std::cout << "leave" << std::endl;
-            return true;
-        }
-        return false;
+        _over = false;
+        _motionLeave.reset();
+        //std::cout << "leave" << std::endl;
+        return true;
     }
+    return false;
+}
 
-    void operator()(osg::Node* node, osg::NodeVisitor* nv)
+void WidgetMessageBox::ColorAnimation::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
     {
-        if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-        {
-            const osg::FrameStamp* fs = nv->getFrameStamp();
-            double dt = fs->getSimulationTime() - _lastUpdate;
-            _lastUpdate = fs->getSimulationTime();
+        const osg::FrameStamp* fs = nv->getFrameStamp();
+        double dt = fs->getSimulationTime() - _lastUpdate;
+        _lastUpdate = fs->getSimulationTime();
 
-            if (_frame.valid())
+        if (_frame.valid())
+        {
+            float value;
+            if (_over)
             {
-                float value;
-                if (_over)
-                {
-                    _motionOver.update(dt);
-                    value = _motionOver.getValue();
-                }
-                else
-                {
-                    _motionLeave.update(dt);
-                    value = 1.0 - _motionLeave.getValue();
-                }
-
-                osgWidget::Color c = _defaultColor + ((_overColor - _defaultColor) * value);
-                ColorSetterVisitor colorSetter(c);
-                _frame->accept(colorSetter);
+                _motionOver.update(dt);
+                value = _motionOver.getValue();
             }
-        }
-        node->traverse(*nv);
-    }
-};
+            else
+            {
+                _motionLeave.update(dt);
+                value = 1.0 - _motionLeave.getValue();
+            }
 
+            osgWidget::Color c = _defaultColor + ((_overColor - _defaultColor) * value);
+            ColorSetterVisitor colorSetter(c);
+            _frame->accept(colorSetter);
+        }
+    }
+    node->traverse(*nv);
+}
+
+
+
+void WidgetMessageBox::setColor(const osg::Vec4& color)
+{
+    if (_colorAnimation)
+        _colorAnimation->setSrcColor(color);
+}
+
+void WidgetMessageBox::setFocusColor(const osg::Vec4& color)
+{
+    if (_colorAnimation)
+        _colorAnimation->setDstColor(color);
+}
+
+void WidgetMessageBox::setTitleText(const std::string& text)
+{
+    if (_labelTitle.valid())
+        _labelTitle->setLabel(text);
+}
+
+void WidgetMessageBox::setMessageText(const std::string& text)
+{
+    if (_labelText.valid())
+        _labelText->setLabel(text);
+}
 
 bool WidgetMessageBox::create(osg::Image* themeMessage,
                               const std::string& titleText,
@@ -181,24 +193,24 @@ bool WidgetMessageBox::create(osg::Image* themeMessage,
     frame->getBackground()->setColor(0.0f, 0.0f, 0.0f, 0.0f);
     osgWidget::Color adjustAlpha = frame->getEmbeddedWindow()->getColor();
 
-    osgWidget::Label* labelText = createLabel(messageText, font, fontSize, osgWidget::Color(0,0,0,1), adjustAlpha);
-    osgWidget::Label* labelTitle = createLabel(titleText, font, fontSize+5, osgWidget::Color(0.4,0,0,1), adjustAlpha);
+    _labelText = createLabel(messageText, font, fontSize, osgWidget::Color(0,0,0,1), adjustAlpha);
+    _labelTitle = createLabel(titleText, font, fontSize+5, osgWidget::Color(0.4,0,0,1), adjustAlpha);
 
     osgWidget::Box*   box   = new osgWidget::Box("VBOX", osgWidget::Box::VERTICAL);
 
-    labelTitle->setPadBottom(10.0f);
-    labelText->setPadBottom(0.0f);
+    _labelTitle->setPadBottom(10.0f);
+    _labelText->setPadBottom(0.0f);
 //    labelText->getText()->setMaximumWidth(500);
-    labelText->setLabel(messageText);
+    _labelText->setLabel(messageText);
 
-    labelText->setWidth(labelText->getTextSize()[0]);
-    labelText->setHeight(labelText->getTextSize()[1]);
+    _labelText->setWidth(_labelText->getTextSize()[0]);
+    _labelText->setHeight(_labelText->getTextSize()[1]);
 
-    box->addWidget(labelText);
-    box->addWidget(labelTitle);
+    box->addWidget(_labelText.get());
+    box->addWidget(_labelTitle.get());
 
-    labelText->setEventMask(osgWidget::EVENT_NONE);
-    labelTitle->setEventMask(osgWidget::EVENT_NONE);
+    _labelText->setEventMask(osgWidget::EVENT_NONE);
+    _labelTitle->setEventMask(osgWidget::EVENT_NONE);
     box->setEventMask(osgWidget::EVENT_NONE);
 
     frame->getCorner(osgWidget::Frame::CORNER_LOWER_LEFT)->setEventMask(osgWidget::EVENT_NONE);    
@@ -221,12 +233,12 @@ bool WidgetMessageBox::create(osg::Image* themeMessage,
     _window = frame;
 
 
-    AlphaSetterVisitor alpha(.7f);
+    AlphaSetterVisitor alpha(.8f);
     getWindow()->accept(alpha);
 
-    EventOK* event = new EventOK(getWindow());
-    getWindow()->setUpdateCallback(event);
-    getWindow()->addCallback(event);
+    _colorAnimation = new ColorAnimation(getWindow());
+    getWindow()->setUpdateCallback(_colorAnimation);
+    getWindow()->addCallback(_colorAnimation);
 
     return true;
 }
@@ -246,3 +258,4 @@ osgWidget::Label* WidgetMessageBox::createLabel(const std::string& string, osgTe
 
 osgWidget::Frame* WidgetMessageBox::getButton() { return _button.get(); }
 osgWidget::Frame* WidgetMessageBox::getWindow() { return _window.get(); }
+WidgetMessageBox::WidgetMessageBox() : _colorAnimation(0) {}

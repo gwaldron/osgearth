@@ -39,6 +39,7 @@
 #include <osgEarthSymbology/WindowManager>
 #include <osgEarthSymbology/WidgetMessageBox>
 #include <osgEarthSymbology/WidgetIcon>
+#include <osgEarthSymbology/WidgetNode>
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
 #include <osgUtil/Tessellator>
@@ -48,6 +49,10 @@
 
 using namespace osgEarth::Symbology;
 
+static double getRandomValueInOne()
+{
+    return ((rand() * 1.0)/(RAND_MAX-1));
+}
 
 Geometry* createLineGeometry(const osg::Vec3d& start)
 {
@@ -118,148 +123,11 @@ struct SampleGeometryInput : public GeometryInput
     }
 };
 
-struct NodePopup : public osg::Node
-{
-    
-    NodePopup() { setDataVariance(osg::Object::DYNAMIC);  setCullingActive(false); _hide = true;}
-
-    void setWindowManager(WindowManager* windowmanager) { _wm = windowmanager; }
-    void setMessageBox(const WidgetMessageBox& popup) { _popup = popup; }
-
-    const WidgetMessageBox& getMessageBox() const { return _popup; }
-    WidgetMessageBox& getMessageBox() { return _popup; }
-    WindowManager* getWindowManager() { return _wm.get(); }
-
-    void accept(osg::NodeVisitor& nv)
-    {
-        setNumChildrenRequiringUpdateTraversal(1);
-        if (nv.validNodeMask(*this)) 
-        {
-            if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
-                osg::Vec2 size = osg::Vec2(_popup.getWindow()->getWidth(), _popup.getWindow()->getHeight());
-                osg::Vec2 positionCenteredAnchor = _positionOnScreen - size/2;
-                _popup.getWindow()->setX(osg::round(positionCenteredAnchor[0]));
-                _popup.getWindow()->setY(osg::round(positionCenteredAnchor[1]));
-                if (_hide)
-                    _wm->getWindowManager()->removeChild(_popup.getWindow());
-                else {
-                    if (!_wm->getWindowManager()->containsNode(_popup.getWindow()))
-                        _wm->getWindowManager()->addChild(_popup.getWindow());
-                }
-
-            } else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR) {
-                osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
-                if (cull) {
-                    
-                    std::vector<osg::Vec3> vertices;
-                    vertices.push_back(osg::Vec3(0,0,0));
-                    if (cull->isCulled(vertices)) {
-                        _hide = true;
-                        return;
-                    } else {
-                        _hide = false;
-                    }
-
-                    // compute 2d on screen
-                    osg::Matrix matrix = *(cull->getModelViewMatrix());
-                    matrix *= *(cull->getProjectionMatrix());
-                    osg::Vec3 point = matrix.getTrans();
-
-                        
-
-                    point *= 1.0/matrix(3,3); // w
-                    float x = cull->getViewport()->width()/2 * (1.0 + point[0]);
-                    float y = cull->getViewport()->height()/2 * (1.0 + point[1]);
-
-                    _positionOnScreen = osg::Vec2(x, y);
-                }
-            }
-        }
-    };
-
-protected:
-    osg::ref_ptr<WindowManager> _wm;
-    WidgetMessageBox _popup;
-    osg::Vec2 _positionOnScreen;
-    bool _hide;
-
-};
-
-
-
-struct NodePopup2 : public osg::Node
-{
-    
-    NodePopup2() { setDataVariance(osg::Object::DYNAMIC);  setCullingActive(false); _hide = true;}
-
-    void setWindowManager(WindowManager* windowmanager) { _wm = windowmanager; }
-
-    const WidgetIcon& getIcon() const { return _icon; }
-    WidgetIcon& getIcon() { return _icon; }
-
-    WindowManager* getWindowManager() { return _wm.get(); }
-
-    void accept(osg::NodeVisitor& nv)
-    {
-        setNumChildrenRequiringUpdateTraversal(1);
-        if (nv.validNodeMask(*this)) 
-        {
-            if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
-                osg::Vec2 size = osg::Vec2(_icon.getWindow()->getWidth(), _icon.getWindow()->getHeight());
-                osg::Vec2 positionCenteredAnchor = _positionOnScreen - size/2;
-                _icon.getWindow()->setX(osg::round(positionCenteredAnchor[0]));
-                _icon.getWindow()->setY(osg::round(positionCenteredAnchor[1]));
-                if (_hide)
-                    _wm->getWindowManager()->removeChild(_icon.getWindow());
-                else {
-                    if (!_wm->getWindowManager()->containsNode(_icon.getWindow()))
-                        _wm->getWindowManager()->addChild(_icon.getWindow());
-                }
-
-            } else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR) {
-                osg::CullStack* cull = dynamic_cast<osg::CullStack*>(&nv);
-                if (cull) {
-                    
-                    std::vector<osg::Vec3> vertices;
-                    vertices.push_back(osg::Vec3(0,0,0));
-                    if (cull->isCulled(vertices)) {
-                        _hide = true;
-                        return;
-                    } else {
-                        _hide = false;
-                    }
-
-                    // compute 2d on screen
-                    osg::Matrix matrix = *(cull->getModelViewMatrix());
-                    matrix *= *(cull->getProjectionMatrix());
-                    osg::Vec3 point = matrix.getTrans();
-
-                        
-
-                    point *= 1.0/matrix(3,3); // w
-                    float x = cull->getViewport()->width()/2 * (1.0 + point[0]);
-                    float y = cull->getViewport()->height()/2 * (1.0 + point[1]);
-
-                    _positionOnScreen = osg::Vec2(x, y);
-                }
-            }
-        }
-    };
-
-protected:
-    osg::ref_ptr<WindowManager> _wm;
-    WidgetIcon _icon;
-    osg::Vec2 _positionOnScreen;
-    bool _hide;
-
-};
-
 
 struct PopUpSymbolizerContext : public SymbolizerContext
 {
-    PopUpSymbolizerContext(WindowManager* windowmanager, osg::Camera* camera)  : _wm(windowmanager), _camera(camera) {}
+    PopUpSymbolizerContext(WindowManager* windowmanager)  : _wm(windowmanager) {}
     osg::ref_ptr<WindowManager> _wm;
-    osg::ref_ptr<osg::Camera> _camera;
 };
 
 
@@ -323,35 +191,40 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                         transform->setMatrix(osg::Matrix::translate(*it));
 
                         if (PopUpIndex % 2) {
-                            NodePopup* popupNode = new NodePopup;
+                            WidgetNode* popupNode = new WidgetNode;
                             transform->addChild(popupNode);
                             std::stringstream ss;
                             ss << "Sacre bleu" << std::endl;
                             ss << "I am at position " << *it << " miles" << std::endl;
                             std::string text = ss.str();
                             std::string title = "Hello popup";
-                            popupNode->getMessageBox().create(image,
-                                                              title,
-                                                              text,
-                                                              "",
-                                                              font,
-                                                              size);
-                            popupNode->getMessageBox().getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                            WidgetMessageBox* wmb = new WidgetMessageBox;
+                            wmb->create(image,
+                                        title,
+                                        text,
+                                        "",
+                                        font,
+                                        size);
+                            wmb->setColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 0.1 + getRandomValueInOne()));
+                            wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 0.1 + getRandomValueInOne()));
+                            wmb->getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                            popupNode->setWidget(wmb);
                             popupNode->setWindowManager(ctx->_wm.get());
 
                         } else {
+                            osg::ref_ptr<WidgetIcon> wi = new WidgetIcon;
                             osg::Image* icon = osgDB::readImageFile("../data/icon.png");
                             if (!icon)
                                 osg::notify(osg::WARN) << "can't load ../data/icon.png" << std::endl;
 
-                            NodePopup2* popupNode = new NodePopup2;
+                            WidgetNode* popupNode = new WidgetNode;
                             transform->addChild(popupNode);
                             if (PopUpIndex %3)
-                                popupNode->getIcon().create(icon);
+                                wi->create(icon);
                             else
-                                popupNode->getIcon().createWithBorder(image, icon);
-
-                            popupNode->getIcon().getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                                wi->createWithBorder(image, icon);
+                            wi->getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
+                            popupNode->setWidget(wi.get());
                             popupNode->setWindowManager(ctx->_wm.get());
                         }
 
@@ -607,7 +480,7 @@ public:
 
 
 
-osg::Group* createSymbologyScene(WindowManager* wm, osg::Camera* camera)
+osg::Group* createSymbologyScene(WindowManager* wm)
 {
     osg::Group* grp = new osg::Group;
 
@@ -763,7 +636,7 @@ osg::Group* createSymbologyScene(WindowManager* wm, osg::Camera* camera)
 
     {
         PopUpSymbolizer::PopUpIndex = 0;
-        PopUpSymbolizerContext* ctx = new PopUpSymbolizerContext(wm, camera);
+        PopUpSymbolizerContext* ctx = new PopUpSymbolizerContext(wm);
         osg::ref_ptr<PopUpSymbolizer> symbolizer = new PopUpSymbolizer();
         osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
         osg::ref_ptr<SampleGeometryInput> dataset = new SampleGeometryInput;
@@ -802,7 +675,7 @@ int main(int argc, char** argv)
     viewer.realize();
 
     WindowManager* wm = new WindowManager(viewer);
-    osg::Node* node = createSymbologyScene(wm, viewer.getCamera());
+    osg::Node* node = createSymbologyScene(wm);
     root->addChild(node);
     return viewer.run();
 }

@@ -17,32 +17,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_WIDGET_ICON_H
-#define OSGEARTHSYMBOLOGY_WIDGET_ICON_H 1
+#ifndef OSGEARTHSYMBOLOGY_WIDGET_H
+#define OSGEARTHSYMBOLOGY_WIDGET_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Widget>
 #include <osgWidget/Frame>
-#include <osgWidget/Window>
-#include <osgWidget/Label>
 
 namespace osgEarth { namespace Symbology
 {
 
-    class OSGEARTHSYMBOLOGY_EXPORT WidgetIcon : public Widget
+    class OSGEARTHSYMBOLOGY_EXPORT Widget : public osg::Referenced
     {
     public:
         
-        osgWidget::Frame* getWindow();
-
-        bool createWithBorder(osg::Image* themeBorder,
-                              osg::Image* icon);
-
-        bool create(osg::Image* icon);
-
-    protected:
-
-        osg::ref_ptr<osgWidget::Frame> _window;
+        virtual osgWidget::Frame* getWindow() = 0;
 
     };
 

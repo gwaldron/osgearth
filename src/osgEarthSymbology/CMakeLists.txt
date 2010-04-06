@@ -31,8 +31,10 @@ SET(LIB_PUBLIC_HEADERS
     SymbolicNode
     Symbolizer
     WindowManager
+    Widget
     WidgetIcon
     WidgetMessageBox
+    WidgetNode
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
@@ -60,6 +62,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     WindowManager.cpp
     WidgetIcon.cpp
     WidgetMessageBox.cpp
+    WidgetNode.cpp
 )
 
 IF (WIN32)

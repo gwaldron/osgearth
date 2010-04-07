@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/WidgetMessageBox>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osgWidget/WindowManager>
 #include <osgViewer/Viewer>
 
@@ -32,10 +33,13 @@ namespace osgEarth { namespace Symbology
     {
     public:
         WindowManager(osgViewer::Viewer&);
-        void popUp(WidgetMessageBox& msg);
         osgWidget::WindowManager* getWindowManager() { return _windowManager.get(); }
+
+        WidgetMessageBox* createWidgetMessageBox(const std::string& title, const std::string& content, const TextSymbol* symbol);
+
     protected:
         osg::ref_ptr<osgWidget::WindowManager> _windowManager;
+        unsigned int _widgetNumInstance;
     };
 
 }}

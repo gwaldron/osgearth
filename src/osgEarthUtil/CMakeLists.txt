@@ -10,30 +10,40 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS    
     AutoClipPlaneHandler
     Common
-	ClampCallback
+    ClampCallback
     EarthManipulator
     ElevationFadeCallback
     ElevationManager
     Export
-	FadeLayerNode
-	Graticule
-	ObjectPlacer
-	OceanSurfaceNode
-	Viewpoint
+    FadeLayerNode
+    Graticule
+    ObjectPlacer
+    OceanSurfaceNode
+    Viewpoint
+    WindowManager
+    Widget
+    WidgetIcon
+    WidgetMessageBox
+    WidgetNode
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}  
     AutoClipPlaneHandler.cpp
-	ClampCallback.cpp
+    ClampCallback.cpp
     EarthManipulator.cpp	
     ElevationFadeCallback.cpp
     ElevationManager.cpp
-	FadeLayerNode.cpp
-	Graticule.cpp
-	ObjectPlacer.cpp
-	OceanSurfaceNode.cpp
-	Viewpoint.cpp
+    FadeLayerNode.cpp
+    Graticule.cpp
+    ObjectPlacer.cpp
+    OceanSurfaceNode.cpp
+    Viewpoint.cpp
+    WindowManager.cpp
+    Widget.cpp
+    WidgetIcon.cpp
+    WidgetMessageBox.cpp
+    WidgetNode.cpp
 )
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})

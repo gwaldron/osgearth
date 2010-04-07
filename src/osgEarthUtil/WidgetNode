@@ -35,17 +35,14 @@ namespace osgEarth { namespace Symbology
     public:
         WidgetNode();
 
-        void setWindowManager(WindowManager* windowmanager);
         void setWidget(Widget* widget);
 
         const Widget* getWidget() const;
         Widget* getWidget();
-        WindowManager* getWindowManager();
 
         void accept(osg::NodeVisitor& nv);
 
     protected:
-        osg::ref_ptr<WindowManager> _wm;
         osg::ref_ptr<Widget> _widget;
         osg::Vec2 _positionOnScreen;
         bool _hide;

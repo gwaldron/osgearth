@@ -28,12 +28,10 @@ WidgetNode::WidgetNode()
     _hide = true;
 }
 
-void WidgetNode::setWindowManager(WindowManager* windowmanager) { _wm = windowmanager; }
 void WidgetNode::setWidget(Widget* widget) { _widget = widget; }
 
 const Widget* WidgetNode::getWidget() const { return _widget; }
 Widget* WidgetNode::getWidget() { return _widget; }
-WindowManager* WidgetNode::getWindowManager() { return _wm.get(); }
 
 void WidgetNode::accept(osg::NodeVisitor& nv)
 {
@@ -46,10 +44,10 @@ void WidgetNode::accept(osg::NodeVisitor& nv)
             _widget->getWindow()->setX(osg::round(positionCenteredAnchor[0]));
             _widget->getWindow()->setY(osg::round(positionCenteredAnchor[1]));
             if (_hide)
-                _wm->getWindowManager()->removeChild(_widget->getWindow());
+                _widget->getWindowManager()->removeChild(_widget->getWindow());
             else {
-                if (!_wm->getWindowManager()->containsNode(_widget->getWindow()))
-                    _wm->getWindowManager()->addChild(_widget->getWindow());
+                if (!_widget->getWindowManager()->containsNode(_widget->getWindow()))
+                    _widget->getWindowManager()->addChild(_widget->getWindow());
             }
 
         } else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR) {

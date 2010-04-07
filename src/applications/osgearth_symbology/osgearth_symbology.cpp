@@ -49,11 +49,6 @@
 
 using namespace osgEarth::Symbology;
 
-static double getRandomValueInOne()
-{
-    return ((rand() * 1.0)/(RAND_MAX-1));
-}
-
 Geometry* createLineGeometry(const osg::Vec3d& start)
 {
     osg::ref_ptr<osg::Vec3dArray> array = new osg::Vec3dArray;
@@ -191,44 +186,27 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                         transform->setMatrix(osg::Matrix::translate(*it));
 
                         if (PopUpIndex % 2) {
-                            WidgetNode* popupNode = new WidgetNode;
-                            transform->addChild(popupNode);
+
                             std::stringstream ss;
                             ss << "Sacre bleu" << std::endl;
                             ss << "I am at position " << *it << " miles" << std::endl;
                             std::string text = ss.str();
                             std::string title = "Hello popup";
-                            WidgetMessageBox* wmb = new WidgetMessageBox;
-                            wmb->create(image,
-                                        title,
-                                        text,
-                                        "",
-                                        font,
-                                        size);
-                            wmb->setColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 0.1 + getRandomValueInOne()));
-                            wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 0.1 + getRandomValueInOne()));
-                            wmb->getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
-                            popupNode->setWidget(wmb);
-                            popupNode->setWindowManager(ctx->_wm.get());
+
+                            WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
+                            wmb->attach(transform);
 
                         } else {
-                            osg::ref_ptr<WidgetIcon> wi = new WidgetIcon;
-                            osg::Image* icon = osgDB::readImageFile("../data/icon.png");
-                            if (!icon)
-                                osg::notify(osg::WARN) << "can't load ../data/icon.png" << std::endl;
+                            std::stringstream ss;
+                            ss << "osgEarth" << std::endl;
+                            ss << "rocks at " << *it << " miles" << std::endl;
+                            std::string text = ss.str();
+                            std::string title = "osgEarthUtil";
 
-                            WidgetNode* popupNode = new WidgetNode;
-                            transform->addChild(popupNode);
-                            if (PopUpIndex %3)
-                                wi->create(icon);
-                            else
-                                wi->createWithBorder(image, icon);
-                            wi->getWindow()->setPosition(osgWidget::Point(0,0, -PopUpIndex));
-                            popupNode->setWidget(wi.get());
-                            popupNode->setWindowManager(ctx->_wm.get());
+                            WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
+                            wmb->attach(transform);
                         }
 
-                        PopUpIndex++;
                         newSymbolized->addChild(transform);
                         transform->addChild(osgDB::readNodeFile("../data/tree.ive"));
                     }

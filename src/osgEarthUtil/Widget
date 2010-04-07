@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgWidget/Frame>
+#include <osgWidget/WindowManager>
 
 namespace osgEarth { namespace Symbology
 {
@@ -31,7 +32,13 @@ namespace osgEarth { namespace Symbology
     public:
         
         virtual osgWidget::Frame* getWindow() = 0;
+        virtual void attach(osg::Group* node);
+        void setWindowManager(osgWidget::WindowManager* wm) { _wm = wm; }
+        osgWidget::WindowManager* getWindowManager() { return _wm.get(); }
 
+    protected:
+
+        osg::ref_ptr<osgWidget::WindowManager> _wm;
     };
 
 

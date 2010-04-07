@@ -21,6 +21,7 @@
 #include <osgEarthSymbology/WidgetMessageBox>
 #include <osgWidget/ViewerEventHandlers>
 #include <osgViewer/Viewer>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth::Symbology;
 
@@ -37,7 +38,7 @@ struct UpdatePositionItems : public osg::NodeCallback
     }
 };
 
-WindowManager::WindowManager(osgViewer::Viewer& viewer)
+WindowManager::WindowManager(osgViewer::Viewer& viewer) : _widgetNumInstance(0)
 {
     const unsigned int MASK_2D = 0xF0000000;
     osgWidget::WindowManager* wm = new osgWidget::WindowManager(
@@ -58,16 +59,45 @@ WindowManager::WindowManager(osgViewer::Viewer& viewer)
 }
 
 
-void WindowManager::popUp(WidgetMessageBox& msg)
+static double getRandomValueInOne()
 {
-    _windowManager->addChild(msg.getWindow());
+    return ((rand() * 1.0)/(RAND_MAX-1));
+}
+
+WidgetMessageBox* WindowManager::createWidgetMessageBox(const std::string& title, const std::string& content, const TextSymbol* symbol)
+{
+    if (!symbol)
+        return 0;
+    osg::Image* image = 0;
+    if (!symbol->theme()->empty())
+        image = osgDB::readImageFile(symbol->theme().value());
+
+    osgText::Font* font = 0;
+    if (!symbol->font()->empty())
+        font = osgText::readFontFile(symbol->font().value());
+
+    float size = symbol->size().value();
+    osg::Vec4 color = symbol->fill()->color();
+
+    WidgetMessageBox* wmb = new WidgetMessageBox;
+    wmb->create(image,
+                title,
+                content,
+                "",
+                font,
+                size);
+    wmb->setColor(color);
+    wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
+    wmb->setWindowManager(getWindowManager());
 
     osgWidget::point_type w = _windowManager->getWidth();
     osgWidget::point_type h = _windowManager->getHeight();
-    osgWidget::point_type ww = msg.getWindow()->getWidth();
-    osgWidget::point_type hw = msg.getWindow()->getHeight();
+    osgWidget::point_type ww = wmb->getWindow()->getWidth();
+    osgWidget::point_type hw = wmb->getWindow()->getHeight();
     osgWidget::point_type ox = (w - ww) / 2;
     osgWidget::point_type oy = (h - hw) / 2;
-    msg.getWindow()->setPosition(osgWidget::Point(osg::round(ox), osg::round(oy), msg.getWindow()->getPosition()[2] ));
+    
+    wmb->getWindow()->setPosition(osgWidget::Point(osg::round(ox), osg::round(oy), -(float)(_widgetNumInstance+1)) );
+    _widgetNumInstance++;
+    return wmb;
 }
-

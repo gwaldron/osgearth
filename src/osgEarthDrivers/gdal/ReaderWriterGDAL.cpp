@@ -1278,8 +1278,6 @@ public:
 
     float getInterpolatedValue(GDALRasterBand *band, double x, double y)
     {
-        GDAL_SCOPED_LOCK;
-
         double offsetTransform[6];
         memcpy(offsetTransform, _geotransform, 6 * sizeof(double));
 

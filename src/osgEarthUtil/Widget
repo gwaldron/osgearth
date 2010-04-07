@@ -17,17 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_WIDGET_H
-#define OSGEARTHSYMBOLOGY_WIDGET_H 1
+#ifndef OSGEARTHUTIL_WIDGET_H
+#define OSGEARTHUTIL_WIDGET_H 1
 
-#include <osgEarthSymbology/Common>
+#include <osgEarthUtil/Common>
 #include <osgWidget/Frame>
 #include <osgWidget/WindowManager>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarthUtil
 {
 
-    class OSGEARTHSYMBOLOGY_EXPORT Widget : public osg::Referenced
+    class OSGEARTHUTIL_EXPORT Widget : public osg::Referenced
     {
     public:
         
@@ -42,6 +42,6 @@ namespace osgEarth { namespace Symbology
     };
 
 
-}}
+}
 
 #endif

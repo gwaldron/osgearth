@@ -17,13 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthSymbology/WindowManager>
-#include <osgEarthSymbology/WidgetMessageBox>
+#include <osgEarthUtil/WindowManager>
+#include <osgEarthUtil/WidgetMessageBox>
 #include <osgWidget/ViewerEventHandlers>
 #include <osgViewer/Viewer>
 #include <osgDB/ReadFile>
 
-using namespace osgEarth::Symbology;
+using namespace osgEarthUtil;
 
 struct UpdatePositionItems : public osg::NodeCallback
 {
@@ -59,12 +59,7 @@ WindowManager::WindowManager(osgViewer::Viewer& viewer) : _widgetNumInstance(0)
 }
 
 
-static double getRandomValueInOne()
-{
-    return ((rand() * 1.0)/(RAND_MAX-1));
-}
-
-WidgetMessageBox* WindowManager::createWidgetMessageBox(const std::string& title, const std::string& content, const TextSymbol* symbol)
+WidgetMessageBox* WindowManager::createWidgetMessageBox(const std::string& title, const std::string& content, const osgEarth::Symbology::TextSymbol* symbol)
 {
     if (!symbol)
         return 0;
@@ -87,7 +82,8 @@ WidgetMessageBox* WindowManager::createWidgetMessageBox(const std::string& title
                 font,
                 size);
     wmb->setColor(color);
-    wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
+    color[3] = 1.0;
+    wmb->setFocusColor(color);
     wmb->setWindowManager(getWindowManager());
 
     osgWidget::point_type w = _windowManager->getWidth();

@@ -17,13 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthSymbology/WidgetIcon>
+#include <osgEarthUtil/WidgetIcon>
 #include <osgWidget/Box>
 #include <osgDB/ReadFile>
 #include <osgAnimation/EaseMotion>
 #include <osg/NodeVisitor>
 
-using namespace osgEarth::Symbology;
+using namespace osgEarthUtil;
 
 struct AlphaSetterVisitor : public osg::NodeVisitor
 {

@@ -17,19 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_WIDGET_ICON_H
-#define OSGEARTHSYMBOLOGY_WIDGET_ICON_H 1
+#ifndef OSGEARTHUTIL_WIDGET_ICON_H
+#define OSGEARTHUTIL_WIDGET_ICON_H 1
 
-#include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Widget>
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/Widget>
 #include <osgWidget/Frame>
 #include <osgWidget/Window>
 #include <osgWidget/Label>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarthUtil
 {
 
-    class OSGEARTHSYMBOLOGY_EXPORT WidgetIcon : public Widget
+    class OSGEARTHUTIL_EXPORT WidgetIcon : public Widget
     {
     public:
         
@@ -47,6 +47,6 @@ namespace osgEarth { namespace Symbology
     };
 
 
-}}
+}
 
 #endif

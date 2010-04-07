@@ -18,10 +18,10 @@
  */
 
 
-#include <osgEarthSymbology/Widget>
-#include <osgEarthSymbology/WidgetNode>
+#include <osgEarthUtil/Widget>
+#include <osgEarthUtil/WidgetNode>
 
-using namespace osgEarth::Symbology;
+using namespace osgEarthUtil;
 
 void Widget::attach(osg::Group* node)
 {

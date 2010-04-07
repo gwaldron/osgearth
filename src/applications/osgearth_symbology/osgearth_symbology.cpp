@@ -36,10 +36,10 @@
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/ExtrudedSymbol>
 #include <osgEarthSymbology/ModelSymbolizer>
-#include <osgEarthSymbology/WindowManager>
-#include <osgEarthSymbology/WidgetMessageBox>
-#include <osgEarthSymbology/WidgetIcon>
-#include <osgEarthSymbology/WidgetNode>
+#include <osgEarthUtil/WindowManager>
+#include <osgEarthUtil/WidgetMessageBox>
+#include <osgEarthUtil/WidgetIcon>
+#include <osgEarthUtil/WidgetNode>
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
 #include <osgUtil/Tessellator>
@@ -48,6 +48,13 @@
 #include <osg/Material>
 
 using namespace osgEarth::Symbology;
+using namespace osgEarthUtil;
+
+static double getRandomValueInOne()
+{
+    return ((rand() * 1.0)/(RAND_MAX-1));
+}
+
 
 Geometry* createLineGeometry(const osg::Vec3d& start)
 {
@@ -194,6 +201,7 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                             std::string title = "Hello popup";
 
                             WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
+                            wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
                             wmb->attach(transform);
 
                         } else {
@@ -204,8 +212,10 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                             std::string title = "osgEarthUtil";
 
                             WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
+                            wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
                             wmb->attach(transform);
                         }
+                        
 
                         newSymbolized->addChild(transform);
                         transform->addChild(osgDB::readNodeFile("../data/tree.ive"));
@@ -535,6 +545,7 @@ osg::Group* createSymbologyScene(WindowManager* wm)
         symbol->theme() = "../data/popup-theme.png";
         symbol->font() = "arial.ttf";
         symbol->size() = 14;
+        symbol->fill()->color() = osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 0.7);
         style->addSymbol(symbol.get());
         styles.push_back(style.get());
     }
@@ -613,7 +624,6 @@ osg::Group* createSymbologyScene(WindowManager* wm)
 
 
     {
-        PopUpSymbolizer::PopUpIndex = 0;
         PopUpSymbolizerContext* ctx = new PopUpSymbolizerContext(wm);
         osg::ref_ptr<PopUpSymbolizer> symbolizer = new PopUpSymbolizer();
         osg::ref_ptr<SymbolicNode> node = new SymbolicNode;

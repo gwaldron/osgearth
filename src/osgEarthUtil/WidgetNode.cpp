@@ -17,9 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthSymbology/WidgetNode>
+#include <osgEarthUtil/WidgetNode>
 
-using namespace osgEarth::Symbology;
+using namespace osgEarthUtil;
 
 WidgetNode::WidgetNode()
 {

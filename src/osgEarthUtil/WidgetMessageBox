@@ -17,21 +17,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_WIDGET_MESSAGE_BOX_H
-#define OSGEARTHSYMBOLOGY_WIDGET_MESSAGE_BOX_H 1
+#ifndef OSGEARTHUTIL_WIDGET_MESSAGE_BOX_H
+#define OSGEARTHUTIL_WIDGET_MESSAGE_BOX_H 1
 
-#include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/Widget>
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/Widget>
 #include <osgWidget/Frame>
 #include <osgWidget/Window>
 #include <osgWidget/Label>
 #include <osgAnimation/EaseMotion>
 #include <osg/NodeVisitor>
 
-namespace osgEarth { namespace Symbology
+namespace osgEarthUtil
 {
 
-    class OSGEARTHSYMBOLOGY_EXPORT WidgetMessageBox : public Widget
+    class OSGEARTHUTIL_EXPORT WidgetMessageBox : public Widget
     {
     public:
         WidgetMessageBox();
@@ -56,7 +56,7 @@ namespace osgEarth { namespace Symbology
         void setFocusColor(const osg::Vec4& color);
 
 
-        class OSGEARTHSYMBOLOGY_EXPORT ColorAnimation : public osgWidget::Callback , public osg::NodeCallback
+        class OSGEARTHUTIL_EXPORT ColorAnimation : public osgWidget::Callback , public osg::NodeCallback
         {
         public:
             ColorAnimation(osgWidget::Frame* frame);
@@ -97,8 +97,6 @@ namespace osgEarth { namespace Symbology
         osg::Vec4 _color;
         osg::Vec4 _focusColor;
     };
-
-
-}}
+}
 
 #endif

@@ -32,6 +32,12 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#  undef EXPLICIT_RELEASE_GL_OBJECTS
+#else
+#  define EXPLICIT_RELEASE_GL_OBJECTS
+#endif
+
 //#define PREEMPTIVE_DEBUG 1
 
 // this progress callback checks to see whether the request being serviced is 
@@ -1130,6 +1136,7 @@ VersionedTile::releaseGLObjects(osg::State* state) const
 {
     Group::releaseGLObjects(state);
 
+#ifdef EXPLICIT_RELEASE_GL_OBJECTS
     if (_terrainTechnique.valid())
     {
         //NOTE: crashes sometimes if OSG_RELEASE_DELAY is set -gw
@@ -1140,6 +1147,7 @@ VersionedTile::releaseGLObjects(osg::State* state) const
     {
         //OE_NOTICE << "Tried but failed to VT releasing GL objects" << std::endl;
     }
+#endif
 }
 
 /****************************************************************************/
@@ -1431,16 +1439,19 @@ VersionedTerrain::getNumTasksRemaining() const
 void
 VersionedTerrain::traverse( osg::NodeVisitor &nv )
 {
+#ifdef EXPLICIT_RELEASE_GL_OBJECTS
     if ( !_releaseCBInstalled )
     {
         osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
         if ( cam )
         {
+            OE_NOTICE << "Explicit releaseGLObjects() enabled" << std::endl;
             cam->setPostDrawCallback( new ReleaseGLCallback(this) );
             _releaseCBInstalled = true;
             //OE_NOTICE << "release cb installed." << std::endl;
         }
     }
+#endif // EXPLICIT_RELEASE_GL_OBJECTS
 
     if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
@@ -1480,6 +1491,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
             {
                 if ( i->get()->cancelRequests() )
                 {
+#ifdef EXPLICIT_RELEASE_GL_OBJECTS
                     //Only add the tile to be released if we could actually install the callback.
                     if (_releaseCBInstalled)
                     {
@@ -1490,6 +1502,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                     {
                         OE_WARN << "Warning:  Could not install ReleaseGLCallback" << std::endl;
                     }
+#endif // EXPLICIT_RELEASE_GL_OBJECTS
                     i = _tilesToShutDown.erase( i );
                 }
                 else

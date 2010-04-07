@@ -51,7 +51,7 @@ LoadingPolicy::toConfig() const
     conf.addIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.addIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
     conf.addIfSet( "loading_threads", _numThreads );
-    conf.addIfSet( "loading_threads_per_logical_processor", _numThreadsPerCore );
+    //conf.addIfSet( "loading_threads_per_logical_processor", _numThreadsPerCore );
     conf.addIfSet( "loading_threads_per_core", _numThreadsPerCore );
     conf.addIfSet( "tile_generation_threads", _numTileGenThreads );
     return conf;

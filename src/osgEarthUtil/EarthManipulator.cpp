@@ -28,7 +28,8 @@ using namespace osgEarth;
 
 /****************************************************************************/
 
-void getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
+static void
+getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
 {
     osg::Matrixd rot(q);
     p = asin(rot(1,2));
@@ -44,6 +45,8 @@ void getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
     }
 }
 
+
+/****************************************************************************/
 
 EarthManipulator::Action::Action( ActionType type, const ActionOptions& options ) :
 _type( type ),
@@ -107,10 +110,8 @@ EarthManipulator::Action::getDoubleOption( int option, double defaultValue ) con
     return defaultValue;
 }
 
-
 /****************************************************************************/
 
-//EarthManipulator::Action EarthManipulator::NullAction( EarthManipulator::ACTION_NULL, 1, 1 );
 EarthManipulator::Action EarthManipulator::NullAction( EarthManipulator::ACTION_NULL );
 
 
@@ -345,6 +346,30 @@ _after_first_frame(false)
 
     _settings->setThrowingEnabled( false );
     _settings->setLockAzimuthWhilePanning( true );
+}
+
+EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
+_distance( rhs._distance ),
+_offset_x( rhs._offset_x ),
+_offset_y( rhs._offset_y ),
+_thrown( rhs._thrown ),
+_continuous( rhs._continuous ),
+_settings( new Settings( *rhs._settings.get() ) ),
+_task( new Task() ),
+_last_action( rhs._last_action ),
+_srs_lookup_failed( rhs._srs_lookup_failed ),
+_setting_viewpoint( rhs._setting_viewpoint ),
+_delta_t( rhs._delta_t ),
+_traversalMask( rhs._traversalMask ),
+_t_factor( rhs._t_factor ),
+_time_s_last_frame( rhs._time_s_last_frame  ),
+_local_azim( rhs._local_azim ),
+_local_pitch( rhs._local_pitch  ),
+_has_pending_viewpoint( rhs._has_pending_viewpoint ),
+_homeViewpoint( rhs._homeViewpoint.get() ),
+_homeViewpointDuration( rhs._homeViewpointDuration ),
+_after_first_frame( rhs._after_first_frame )
+{
 }
 
 

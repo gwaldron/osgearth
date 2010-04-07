@@ -464,6 +464,7 @@ namespace osgEarthUtil
 
     public:
         EarthManipulator();
+        EarthManipulator( const EarthManipulator& rhs );
 
         /**
          * Applies a new settings object to the manipulator, which takes effect immediately.

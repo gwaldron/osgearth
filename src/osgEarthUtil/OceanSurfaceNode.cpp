@@ -103,6 +103,7 @@ char vert_shader_source[] =
 "uniform sampler2D osgEarth_oceanMaskUnit;\n"
 "uniform bool osgEarth_oceanMaskUnitValid;\n"
 "uniform bool osgEarth_oceanEnabled;\n"
+"uniform bool osgEarth_oceanInvertMask;\n"
 "varying vec2 oceanMaskTexCoord;\n"
 "\n"
 "//Lighting\n"
@@ -150,6 +151,7 @@ char vert_shader_source[] =
 "\n"
 "   float alpha = 0.0;\n"
 "   if (osgEarth_oceanMaskUnitValid) alpha = texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoordOCEAN_MASK_UNIT.st).a;\n"
+"   if (osgEarth_oceanInvertMask) alpha = 1.0 - alpha;\n"
 "   if (osgEarth_oceanEnabled && alpha < 0.1)\n"
 "   {\n"
 "     const float PI_2 = 3.14158 * 2.0;\n"
@@ -214,7 +216,8 @@ _waveHeight(100),
 _currentElevation(0),
 _maxRange(250000),
 _period(1024),
-_enabled(true)
+_enabled(true),
+_invertMask(false)
 {
     _program = new osg::Program;
     _vertShader = new osg::Shader(osg::Shader::VERTEX);
@@ -231,10 +234,9 @@ _enabled(true)
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer1_unit", osg::Uniform::INT)->set(1);
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer2_unit", osg::Uniform::INT)->set(2);
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer3_unit", osg::Uniform::INT)->set(3);
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(false);     
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period);     
-    
-    
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(_enabled);     
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period);   
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask);       
 
     osg::Uniform* oceanHeightUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT);
     oceanHeightUniform->set( _waveHeight);
@@ -312,6 +314,23 @@ OceanSurfaceNode::setEnabled(bool enabled)
 {
     _enabled = enabled;
 }
+
+bool
+OceanSurfaceNode::getInvertMask() const
+{
+    return _invertMask;
+}
+
+void
+OceanSurfaceNode::setInvertMask(bool invertMask)
+{
+    if (_invertMask != invertMask)
+    {
+        _invertMask = invertMask;
+        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask);       
+    }
+}
+
 
 void 
 OceanSurfaceNode::traverse(osg::NodeVisitor& nv)

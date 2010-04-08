@@ -103,6 +103,10 @@ struct MyEventHandler : public osgGA::GUIEventHandler
                 {
                     _ocean->setEnabled( !_ocean->getEnabled() );
                 }
+            case 'i':
+                {
+                    _ocean->setInvertMask( !_ocean->getInvertMask() );
+                }
                 break;
             }
         }

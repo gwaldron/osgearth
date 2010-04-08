@@ -91,6 +91,17 @@ namespace osgEarthUtil
          */
         void setEnabled(bool enabled);
 
+        /**
+         *Gets whether to invert the mask ocean mask.
+         */
+        bool getInvertMask() const;
+        
+        /**
+         *Sets whether to invert the mask ocean mask.
+         *Normally, transparant areas are considered ocean.  When inverted, transparent areas are considered land.
+         */
+        void setInvertMask(bool invertMask);
+
 
         virtual void traverse(osg::NodeVisitor& nv);
     private:
@@ -106,6 +117,7 @@ namespace osgEarthUtil
         float _waveHeight;
         float _period;
         bool _enabled;
+        bool _invertMask;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
     };
 }

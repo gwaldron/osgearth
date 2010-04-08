@@ -124,7 +124,7 @@ namespace osgEarth
 
     protected:
 
-        virtual ~MapEngine();
+        //virtual ~MapEngine();
 
 
         osg::Node* createPlaceholderTile(
@@ -161,6 +161,8 @@ namespace osgEarth
         //    osg::HeightField* source,
         //    const TileKey* sourceKey,
         //    const TileKey* destKey );
+
+        void init();
 
     protected:
 

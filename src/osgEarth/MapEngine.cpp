@@ -77,21 +77,29 @@ struct TileImageBackfillCallback : public osg::NodeCallback
 MapEngine::MapEngine() :
 osg::Referenced( true )
 {
-    const char* useL2 = ::getenv("OSGEARTH_L2_CACHE");
-    _L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
+    init();
 }
 
 MapEngine::MapEngine( const MapEngineProperties& props ) :
 osg::Referenced( true ),
 _engineProps( props )
 {
-    const char* useL2 = ::getenv("OSGEARTH_L2_CACHE");
-    _L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
+    init();
 }
 
-MapEngine::~MapEngine()
+void
+MapEngine::init()
 {
-    //nop
+    const char* useL2 = ::getenv("OSGEARTH_L2_CACHE");
+    _L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
+
+    LoadingPolicy::Mode mode = _engineProps.loadingPolicy()->mode().value();
+    OE_INFO << "MapEngine: loading policy mode = " <<
+        ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "preemptive" :
+          mode == LoadingPolicy::MODE_SEQUENTIAL ? "sequential" :
+          "standard" )
+          << ", threads per core = " << _engineProps.loadingPolicy()->numThreadsPerCore().value()
+        << std::endl;
 }
 
 const MapEngineProperties& 
@@ -158,7 +166,7 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
         return tile_parent;
     }
 
-    OE_INFO << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+    OE_DEBUG << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
     return NULL;
 }
 
@@ -430,7 +438,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
         return 0L;
     }
 
-    OE_INFO << "Creating placeholder for " << key->str() << std::endl;
+    OE_DEBUG << "Creating placeholder for " << key->str() << std::endl;
     ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
@@ -611,7 +619,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
-        OE_INFO << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        OE_DEBUG << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         validData = false;
     }
     else

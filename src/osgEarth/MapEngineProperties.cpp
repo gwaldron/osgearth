@@ -19,14 +19,15 @@
 
 #include <osgEarth/MapEngineProperties>
 #include <osg/Notify>
+#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 
 LoadingPolicy::LoadingPolicy( const Config& conf ) :
 _mode( MODE_STANDARD ),
 _numThreads( 2 ),
-_numThreadsPerCore( 2 ),
-_numTileGenThreads( 4 )
+_numThreadsPerCore( 4 ),
+_numTileGenThreads( OpenThreads::GetNumberOfProcessors() )
 {
     fromConfig( conf );
 }

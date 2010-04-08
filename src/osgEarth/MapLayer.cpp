@@ -315,7 +315,7 @@ MapLayer::readEnvironmentalVariables()
 void
 MapLayer::initTileSource()
 {	
-	OE_INFO << "[osgEarth::MapLayer::initTileSource()]" << std::endl;
+	OE_DEBUG << "[osgEarth::MapLayer::initTileSource()]" << std::endl;
 	//Create the TileSource
 	TileSourceFactory tileSourceFactory;
 
@@ -353,7 +353,7 @@ MapLayer::initTileSource()
 				_nodata_image = osgDB::readImageFile( _noDataImageFilename.get());
 				if (!_nodata_image.valid())
 				{
-					OE_NOTICE << "Warning: Could not read nodata image from " << _noDataImageFilename.get() << std::endl;
+					OE_WARN << "Warning: Could not read nodata image from " << _noDataImageFilename.get() << std::endl;
 				}
 			}
 		}
@@ -421,7 +421,7 @@ MapLayer::postProcess( GeoImage* input )
         if ( g != _prevGamma )
         {
             double gc = g > 0.0 ? 1.0/g : 1.0/5.0;
-            OE_INFO << "Building gamma LUT, gamma = " << g << std::endl;
+            OE_INFO << "Layer " << getName() << ": Building gamma LUT, gamma = " << g << std::endl;
             for(unsigned int i = 0; i < 256; i++)
             {
                 _gammaLUT[i] = (unsigned char)(pow(double(i) / 255.0, gc) * 255.0);
@@ -448,7 +448,7 @@ MapLayer::postProcess( GeoImage* input )
         }
         else
         {
-            OE_INFO << "Gamma not applied (image not RGB or RGBA)" << std::endl;
+            OE_DEBUG << "Gamma not applied (image not RGB or RGBA)" << std::endl;
         }
     }
     return input;
@@ -484,18 +484,18 @@ MapLayer::createImage( const TileKey* key,
 	bool cacheInMapProfile = true;
 	if (mapProfile->isEquivalentTo( layerProfile) )
 	{
-		OE_INFO << "Layer " << _name << ": Map and Layer profiles are equivalent " << std::endl;
+		OE_DEBUG << "Layer " << _name << ": Map and Layer profiles are equivalent " << std::endl;
 	}
 	//If the map profile and layer profile are in the same SRS but with different tiling scemes and exact cropping is not required, cache in the layer profile.
 	else if (mapProfile->getSRS()->isEquivalentTo( layerProfile->getSRS()) && _exactCropping == false )
 	{
-		OE_INFO << "Layer " << _name << ": Map and Layer profiles are in the same SRS and non-exact cropping is allowed, caching in layer profile." << std::endl;
+		OE_DEBUG << "Layer " << _name << ": Map and Layer profiles are in the same SRS and non-exact cropping is allowed, caching in layer profile." << std::endl;
 		cacheInMapProfile = false;
 	}
 	//If the map profile is geographic and the layer is mercator and we are allowed to use the mercator fast path, cache in the layer profile.
 	else if (mapProfile->getSRS()->isGeographic() && layerProfile->getSRS()->isMercator() && _useMercatorFastPath == true)
 	{
-		OE_INFO << "Layer " << _name << ": Map profile is geographic and Layer profile is mercator and mercator fast path is allowed, caching in layer profile" << std::endl;
+		OE_DEBUG << "Layer " << _name << ": Map profile is geographic and Layer profile is mercator and mercator fast path is allowed, caching in layer profile" << std::endl;
 		cacheInMapProfile = false;
 	}
 
@@ -510,7 +510,7 @@ MapLayer::createImage( const TileKey* key,
 
 	if (cacheInMapProfile)
 	{
-		OE_INFO << "Layer " << _name << " caching in Map profile " << std::endl;
+		OE_DEBUG << "Layer " << _name << " caching in Map profile " << std::endl;
 	}
 
 	//If we are caching in the map profile, try to get the image immediately.
@@ -519,7 +519,7 @@ MapLayer::createImage( const TileKey* key,
         osg::ref_ptr<osg::Image> image = _cache->getImage( key, _name, _cacheFormat.value() );
 		if (image)
 		{
-			OE_INFO << "Layer " << _name << " got tile " << key->str() << " from map cache " << std::endl;
+			OE_DEBUG << "Layer " << _name << " got tile " << key->str() << " from map cache " << std::endl;
 			return postProcess( new GeoImage( image.get(), key->getGeoExtent() ) );
 		}
 	}
@@ -527,7 +527,7 @@ MapLayer::createImage( const TileKey* key,
 	//If the key profile and the source profile exactly match, simply request the image from the source
     if ( mapProfile->isEquivalentTo( layerProfile ) )
     {
-		OE_INFO << "Key and source profiles are equivalent, requesting single tile" << std::endl;
+		OE_DEBUG << "Key and source profiles are equivalent, requesting single tile" << std::endl;
         osg::ref_ptr<osg::Image> image = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( image )
         {
@@ -537,7 +537,7 @@ MapLayer::createImage( const TileKey* key,
     // Otherwise, we need to process the tiles.
     else
     {
-		OE_INFO << "Key and source profiles are different, creating mosaic" << std::endl;
+		OE_DEBUG << "Key and source profiles are different, creating mosaic" << std::endl;
 		osg::ref_ptr<GeoImage> mosaic;
 
 		// Determine the intersecting keys and create and extract an appropriate image from the tiles
@@ -566,7 +566,7 @@ MapLayer::createImage( const TileKey* key,
 				double minX, minY, maxX, maxY;
 				intersectingTiles[j]->getGeoExtent().getBounds(minX, minY, maxX, maxY);
 
-				OE_INFO << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
+				OE_DEBUG << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
 				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j].get(), cacheInLayerProfile, progress);
 				if (img.valid())
@@ -576,7 +576,7 @@ MapLayer::createImage( const TileKey* key,
 				else
 				{
 					//If we couldn't create an image that is needed to composite, return NULL
-					OE_INFO << "Couldn't create image for MultiImage " << std::endl;
+					OE_DEBUG << "Couldn't create image for MultiImage " << std::endl;
 					return 0;
 				}
 			}
@@ -660,14 +660,14 @@ MapLayer::createImage( const TileKey* key,
 
             if ( needsReprojection )
             {
-				OE_INFO << "  Reprojecting image" << std::endl;
+				OE_DEBUG << "  Reprojecting image" << std::endl;
                 //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
                 result = mosaic->reproject( key->getProfile()->getSRS(), &key->getGeoExtent(), _reprojectedTileSize.value(), _reprojectedTileSize.value() );
             }
             else
             {
-				OE_INFO << "  Cropping image" << std::endl;
+				OE_DEBUG << "  Cropping image" << std::endl;
                 // crop to fit the map key extents
                 GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key->getGeoExtent() );
                 if ( clampedMapExt.width() * clampedMapExt.height() > 0 )
@@ -690,7 +690,7 @@ MapLayer::createImage( const TileKey* key,
 	//If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
 	if (result && _cache.valid() && _cacheEnabled == true && cacheInMapProfile)
 	{
-		OE_INFO << "Layer " << _name << " writing tile " << key->str() << " to cache " << std::endl;
+		OE_DEBUG << "Layer " << _name << " writing tile " << key->str() << " to cache " << std::endl;
 		_cache->setImage( key, _name, _cacheFormat.value(), result->getImage());
 	}
 
@@ -711,7 +711,7 @@ MapLayer::createImageWrapper( const TileKey* key,
 
 	if (image.valid())
 	{
-		OE_INFO << " Layer " << _name << " got " << key->str() << " from cache " << std::endl;
+		OE_DEBUG << " Layer " << _name << " got " << key->str() << " from cache " << std::endl;
 	}
 
 	if (source && !image.valid() && _cacheOnly == false )
@@ -723,7 +723,7 @@ MapLayer::createImageWrapper( const TileKey* key,
 		{
 			if (ImageUtils::areEquivalent(image.get(), _nodata_image.get()))
 			{
-				OE_INFO << "[osgEarth::MapLayer::createImage] Found nodata for " << key->str() << std::endl;
+				OE_DEBUG << "[osgEarth::MapLayer::createImage] Found nodata for " << key->str() << std::endl;
 				image = 0;
 			}
 		}
@@ -804,7 +804,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 		result = _cache->getHeightField( key, _name, _cacheFormat.value() );
 		if (result.valid())
 		{
-			OE_INFO << "MapLayer::createHeightField got tile " << key->str() << " from layer " << _name << " from cache " << std::endl;
+			OE_DEBUG << "MapLayer::createHeightField got tile " << key->str() << " from layer " << _name << " from cache " << std::endl;
 		}
 	}
 
@@ -967,15 +967,15 @@ L2Cache::TileCache::get( const L2Cache::TileTag& tag )
     else
         _misses++;
     if ( result.valid() )
-        OE_NOTICE << "hit, ratio = " << (float)_hits/((float)_hits+(float)_misses) << "%, cache size=" << _map.size() << std::endl;
+        OE_DEBUG << "hit, ratio = " << (float)_hits/((float)_hits+(float)_misses) << "%, cache size=" << _map.size() << std::endl;
     else
-        OE_NOTICE << "miss, ratio = " << (float)_hits/((float)_hits+(float)_misses) << "%, cache size=" << _map.size() << std::endl;
+        OE_DEBUG << "miss, ratio = " << (float)_hits/((float)_hits+(float)_misses) << "%, cache size=" << _map.size() << std::endl;
     return result.release();
 }
 
 L2Cache::L2Cache()
 {
-    _service = new TaskService(16);
+    _service = new TaskService("L2 cache", 16);
 }
 
 void

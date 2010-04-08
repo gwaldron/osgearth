@@ -977,7 +977,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                                 }
                                 else
                                 {  
-                                    OE_INFO << "IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
+                                    OE_DEBUG << "IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
 
                                     //The color layer request failed, probably due to a server error. Reset it.
                                     r->setState( TaskRequest::STATE_IDLE );
@@ -1113,19 +1113,26 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
     bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
     bool isUpdate = nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
 
-    if ( !_hasBeenTraversed && getVersionedTerrain() && (isCull || isUpdate) ) 
+    // double-check pattern for simultaneous cull traversals
+    if ( !_hasBeenTraversed )
     {
-        // register this tile with its terrain if we've not already done it.
-        // we want to be sure that the tile is already in the scene graph at the
-        // time of registration (otherwise VersionedTerrain will see its refcount
-        // at 1 and schedule it for removal as soon as it's added. Therefore, we
-        // make sure this is either a CULL or UPDATE traversal.
-        getVersionedTerrain()->registerTile( this );
-        _hasBeenTraversed = true;
+        ScopedWriteLock lock( this->_tileLayersMutex );
+        {
+            if ( !_hasBeenTraversed && getVersionedTerrain() && (isCull || isUpdate) ) 
+            {
+                // register this tile with its terrain if we've not already done it.
+                // we want to be sure that the tile is already in the scene graph at the
+                // time of registration (otherwise VersionedTerrain will see its refcount
+                // at 1 and schedule it for removal as soon as it's added. Therefore, we
+                // make sure this is either a CULL or UPDATE traversal.
+                getVersionedTerrain()->registerTile( this );
+                _hasBeenTraversed = true;
 
-        // we constructed this tile with an update traversal count of 1 so it would get
-        // here and we could register the tile. Now we can decrement it back to normal.
-        adjustUpdateTraversalCount( -1 );
+                // we constructed this tile with an update traversal count of 1 so it would get
+                // here and we could register the tile. Now we can decrement it back to normal.
+                adjustUpdateTraversalCount( -1 );
+            }
+        }
     }
 
     osgTerrain::TerrainTile::traverse( nv );
@@ -1203,13 +1210,8 @@ _releaseCBInstalled( false )
             _numAsyncThreads = _loadingPolicy.numThreads().get();
         }
         else
-        if ( _loadingPolicy.numThreadsPerCore().isSet() )
         {
             _numAsyncThreads = _loadingPolicy.numThreadsPerCore().get() * OpenThreads::GetNumberOfProcessors();
-        }
-        else
-        {
-            _numAsyncThreads = OpenThreads::GetNumberOfProcessors() * 2;
         }
 
         OE_INFO << "VT: using " << _numAsyncThreads << " loading threads " << std::endl;
@@ -1576,10 +1578,10 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
 }
 
 TaskService*
-VersionedTerrain::createTaskService( int id, int numThreads )
+VersionedTerrain::createTaskService( const std::string& name, int id, int numThreads )
 {
     ScopedLock<Mutex> lock( _taskServiceMutex );
-    TaskService* service =  new TaskService( numThreads );
+    TaskService* service =  new TaskService( name, numThreads );
     _taskServices[id] = service;
     return service;
 }
@@ -1598,7 +1600,6 @@ VersionedTerrain::getTaskService(int id)
 
 #define ELEVATION_TASK_SERVICE_ID 9999
 #define TILE_GENERATION_TASK_SERVICE_ID 10000
-#define NUM_TILE_GENERATION_THREADS 4
 
 TaskService*
 VersionedTerrain::getElevationTaskService()
@@ -1606,7 +1607,7 @@ VersionedTerrain::getElevationTaskService()
     TaskService* service = getTaskService( ELEVATION_TASK_SERVICE_ID );
     if (!service)
     {
-        service = createTaskService( ELEVATION_TASK_SERVICE_ID, 1 );
+        service = createTaskService( "elevation", ELEVATION_TASK_SERVICE_ID, 1 );
     }
     return service;
 }
@@ -1618,7 +1619,10 @@ VersionedTerrain::getImageryTaskService(int layerId)
     TaskService* service = getTaskService( layerId );
     if (!service)
     {
-        service = createTaskService( layerId, 1 );
+        std::stringstream buf;
+        buf << "layer " << layerId;
+        std::string bufStr = buf.str();
+        service = createTaskService( bufStr, layerId, 1 );
     }
     return service;
 }
@@ -1629,14 +1633,12 @@ VersionedTerrain::getTileGenerationTaskSerivce()
     TaskService* service = getTaskService( TILE_GENERATION_TASK_SERVICE_ID );
     if (!service)
     {
-        int numThreads = _loadingPolicy.numTileGeneratorThreads().isSet() ?
-            _loadingPolicy.numTileGeneratorThreads().get() :
-            NUM_TILE_GENERATION_THREADS;
+        int numThreads = _loadingPolicy.numTileGeneratorThreads().value();
 
         if ( numThreads < 1 )
             numThreads = 1;
 
-        service = createTaskService( TILE_GENERATION_TASK_SERVICE_ID, numThreads );
+        service = createTaskService( "tilegen", TILE_GENERATION_TASK_SERVICE_ID, numThreads );
     }
     return service;
 }

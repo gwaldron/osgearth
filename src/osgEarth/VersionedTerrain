@@ -303,7 +303,7 @@ namespace osgEarth
 
     private:
 
-        TaskService* createTaskService( int id, int numThreads );
+        TaskService* createTaskService( const std::string& name, int id, int numThreads );
         TaskService* getTaskService( int id );
 
         void refreshFamily( const osgTerrain::TileID& tileId, Relative* family, bool tileTableLocked );

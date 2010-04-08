@@ -123,7 +123,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TaskService : public osg::Referenced
     {
     public:
-        TaskService( int numThreads =4 );
+        TaskService( const std::string& name ="", int numThreads =4 );
 
         void add( TaskRequest* request );
 
@@ -148,6 +148,7 @@ namespace osgEarth
         osg::ref_ptr<TaskRequestQueue> _queue;
         int _numThreads;
         int _lastRemoveFinishedThreadsStamp;
+        std::string _name;
         virtual ~TaskService();
     };
 }

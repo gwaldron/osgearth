@@ -437,11 +437,11 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 		bufStr = buf.str();
         proxy_addr = bufStr;
     
-        OE_INFO << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
+        OE_DEBUG << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 
-    OE_INFO << "HTTP GET: " << request.getURL() << std::endl;
+    OE_DEBUG << "HTTP GET: " << request.getURL() << std::endl;
     //OE_INFO << "[osgEarth::HTTPClient] GET " << request.getURL() << std::endl;
 
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
@@ -470,7 +470,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     else
         curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &code );     
 
-    OE_INFO << "[HTTPClient] got response, code = " << code << std::endl;
+    OE_DEBUG << "[HTTPClient] got response, code = " << code << std::endl;
 
     HTTPResponse response( code );
    
@@ -604,7 +604,7 @@ HTTPClient::doReadImageFile(const std::string& filename,
             if (!reader)
             {
                 std::string mimeType = response.getMimeType();
-                OE_INFO << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+                OE_DEBUG << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
                 if ( mimeType.length() > 0 )
                 {
                     reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
@@ -684,7 +684,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
             if (!reader)
             {
                 std::string mimeType = response.getMimeType();
-                OE_INFO << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+                OE_DEBUG << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
                 if ( mimeType.length() > 0 )
                 {
                     reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);

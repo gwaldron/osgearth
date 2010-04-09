@@ -36,6 +36,7 @@
 #include <osg/Math>
 #include <osg/Timer>
 #include <osg/Depth>
+#include <osg/Version>
 
 using namespace osgEarth;
 using namespace osgTerrain;
@@ -898,7 +899,11 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
     {
         if ((_terrainTile->getDirty()))
         {
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)
             _terrainTile->init(~0x0, true);
+#else
+            _terrainTile->init();
+#endif
             _terrainTileInitialized = true;
         }
 
@@ -926,7 +931,11 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
     if (_terrainTile->getDirty() && !_terrainTileInitialized) 
     {
         OE_INFO<<"******* Doing init ***********"<<std::endl;
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)
         _terrainTile->init(~0x0, true);
+#else
+        _terrainTile->init();
+#endif
         _terrainTileInitialized = true;
     }
 

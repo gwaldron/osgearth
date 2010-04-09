@@ -24,6 +24,7 @@
 #include <osgEarth/Locators>
 #include <osgEarth/Profile>
 #include <osgEarth/MapEngineProperties>
+#include <osgEarth/Map>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <OpenThreads/ReadWriteMutex>
@@ -31,11 +32,10 @@
 
 namespace osgEarth
 {
-    class Map;
     class MapEngine;
-    class VersionedTerrain;
-    class VersionedTile;
-    class MapLayer;
+    class OSGEARTH_EXPORT VersionedTerrain;
+    class OSGEARTH_EXPORT VersionedTile;
+    class OSGEARTH_EXPORT MapLayer;
 
 
     typedef std::list< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;

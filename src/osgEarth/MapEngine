@@ -38,6 +38,8 @@
 namespace osgEarth
 {
     class OSGEARTH_EXPORT Map;
+    class OSGEARTH_EXPORT VersionedTerrain;
+    class OSGEARTH_EXPORT VersionedTile;
 
     /**
      * MapEngine is the main workhorse in osgEarth. It generates osg Nodes for TileKeys.

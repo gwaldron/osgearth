@@ -122,7 +122,7 @@ Feature::cropGeometry(const Symbology::Polygon* cropPolygon, const Symbology::Ge
     delete f;
     return result.release();
 #else
-    return geometry;
+    return osg::clone(geometry);
 #endif
 }
 

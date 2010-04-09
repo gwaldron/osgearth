@@ -784,7 +784,8 @@ osg::HeightField*
 MapLayer::createHeightField(const osgEarth::TileKey *key,
                             ProgressCallback* progress)
 {
-    const Profile* mapProfile = getProfile();
+    const Profile* layerProfile  =  getProfile();
+    const Profile* mapProfile    =  key->getProfile();
 
 	osg::ref_ptr<osg::HeightField> result;
 
@@ -811,7 +812,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	if (!result.valid() && getTileSource() && getTileSource()->isOK() )
 	{
 		//If the profiles are equivalent, get the HF from the TileSource.
-		if (key->getProfile()->isEquivalentTo( mapProfile ))
+		if (key->getProfile()->isEquivalentTo( layerProfile ))
 		{
 			if (isKeyValid( key ) )
 			{
@@ -830,7 +831,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 
 			//Determine the intersecting keys
 			std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
-			getProfile()->getIntersectingTiles(key, intersectingTiles);
+			layerProfile->getIntersectingTiles(key, intersectingTiles);
 			if (intersectingTiles.size() > 0)
 			{
 				for (unsigned int i = 0; i < intersectingTiles.size(); ++i)

@@ -23,6 +23,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/Version>
 
 #include <osgTerrain/TerrainTechnique>
 #include <osgTerrain/Locator>
@@ -43,8 +44,11 @@ namespace osgEarth {
         MultiPassTerrainTechnique(const MultiPassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
         
         META_Object(osgEarth, MultiPassTerrainTechnique);
-        
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)        
+        virtual void init(int dirtyMask, bool assumeMultiThreaded);
+#else
         virtual void init();
+#endif
         
         virtual Locator* computeMasterLocator();
         

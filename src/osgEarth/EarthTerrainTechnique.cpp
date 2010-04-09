@@ -108,7 +108,11 @@ void EarthTerrainTechnique::swapBuffers()
 }
 
 void
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)
+EarthTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
+#else
 EarthTerrainTechnique::init()
+#endif
 {
     init( true, 0L );
 }

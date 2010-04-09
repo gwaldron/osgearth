@@ -23,6 +23,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/Version>
 #include <OpenThreads/ReadWriteMutex>
 
 #include <osgTerrain/TerrainTechnique>
@@ -44,7 +45,11 @@ namespace osgEarth
         META_Object(osgEarth, EarthTerrainTechnique);
 
     public: /* overrides */
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)        
+        virtual void init(int dirtyMask, bool assumeMultiThreaded);
+#else
         virtual void init();
+#endif
 
         virtual void init( bool swapNow, ProgressCallback* progress );
 

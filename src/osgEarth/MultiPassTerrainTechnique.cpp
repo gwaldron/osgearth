@@ -109,7 +109,12 @@ void MultiPassTerrainTechnique::setFilterMatrixAs(FilterType filterType)
     };
 }
 
-void MultiPassTerrainTechnique::init()
+void
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)
+MultiPassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
+#else
+MultiPassTerrainTechnique::init()
+#endif
 {
     OE_INFO<<"Doing MultiPassTerrainTechnique::init()"<<std::endl;
     

@@ -33,7 +33,7 @@ struct AlphaSetterVisitor : public osg::NodeVisitor
     void apply(osg::MatrixTransform& node)
     {
         osgWidget::Window* win = dynamic_cast<osgWidget::Window*>(&node);
-
+        #if 0
         if (win) {
 
             for (osgWidget::Window::Iterator it = win->begin(); it != win->end(); it++)
@@ -53,6 +53,7 @@ struct AlphaSetterVisitor : public osg::NodeVisitor
                 win->getBackground()->setColor(color);
             }
         }
+#endif
         traverse(node);
     }
 };

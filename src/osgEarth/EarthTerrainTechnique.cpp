@@ -1076,7 +1076,7 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
     // if app traversal update the frame count.
     if (nv.getVisitorType()==osg::NodeVisitor::UPDATE_VISITOR)
     {
-        if (_terrainTile->getDirty()) _terrainTile->init();
+        if (_terrainTile->getDirty()) _terrainTile->init(~0x0,true);
 
         osgUtil::UpdateVisitor* uv = dynamic_cast<osgUtil::UpdateVisitor*>(&nv);
         if (uv)
@@ -1100,7 +1100,7 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
     if (_terrainTile->getDirty()) 
     {
         //OE_INFO<<"******* Doing init ***********"<<std::endl;
-        _terrainTile->init();
+        _terrainTile->init(~0x0, true);
     }
 
     BufferData& buffer = getReadOnlyBuffer();

@@ -898,7 +898,7 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
     {
         if ((_terrainTile->getDirty()))
         {
-            _terrainTile->init();
+            _terrainTile->init(~0x0, true);
             _terrainTileInitialized = true;
         }
 
@@ -926,7 +926,7 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
     if (_terrainTile->getDirty() && !_terrainTileInitialized) 
     {
         OE_INFO<<"******* Doing init ***********"<<std::endl;
-        _terrainTile->init();
+        _terrainTile->init(~0x0, true);
         _terrainTileInitialized = true;
     }
 

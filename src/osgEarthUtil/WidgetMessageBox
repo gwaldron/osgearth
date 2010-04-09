@@ -36,13 +36,11 @@ namespace osgEarthUtil
     public:
         WidgetMessageBox();
 
-        osgWidget::Frame* getButton();
         osgWidget::Frame* getWindow();
 
         bool create(osg::Image* themeMessage,
                     const std::string& titleText,
                     const std::string& messageText,
-                    const std::string& buttonText,
                     osgText::Font* font,
                     int fontSize);
 
@@ -55,6 +53,8 @@ namespace osgEarthUtil
         const osg::Vec4& getFocusColor() const;
         void setFocusColor(const osg::Vec4& color);
 
+        void setAppear();
+        void setDisappear();
 
         class OSGEARTHUTIL_EXPORT ColorAnimation : public osgWidget::Callback , public osg::NodeCallback
         {
@@ -63,9 +63,13 @@ namespace osgEarthUtil
 
             void setSrcColor(const osg::Vec4& color);
             void setDstColor(const osg::Vec4& color);
+            void setTextColor(const osg::Vec4& color);
+            void setTitleColor(const osg::Vec4& color);
 
             bool operator()(osgWidget::Event& ev);
             void operator()(osg::Node* node, osg::NodeVisitor* nv);
+            void ref() const { osgWidget::Callback::ref(); }
+            void unref() const { osgWidget::Callback::unref(); }
 
         protected:
 
@@ -76,11 +80,39 @@ namespace osgEarthUtil
             double _lastUpdate;
             osgWidget::Color _defaultColor;
             osgWidget::Color _overColor;
+            osgWidget::Color _titleColor;
+            osgWidget::Color _textColor;
             bool _over;
             osg::ref_ptr<osgWidget::Frame> _frame;
             float _width;
             float _height;
         };
+
+
+        class ColorAnimationFadeInFadeOut : public osg::NodeCallback
+        {
+        public:
+            ColorAnimationFadeInFadeOut(osgWidget::Frame* cb);
+            void setSrcAlpha(float alpha);
+            void setDstAlpha(float alpha);
+            void operator()(osg::Node* node, osg::NodeVisitor* nv);
+            void setAppear();
+            void setDisappear();
+
+        protected:
+
+            typedef osgAnimation::OutCubicMotion WidgetMotion;
+            WidgetMotion _motionOver;
+            WidgetMotion _motionLeave;
+    
+            double _lastUpdate;
+            float  _srcAlpha;
+            float  _dstAlpha;
+            bool _appear;
+            bool _initialized;
+            osg::ref_ptr<osgWidget::Frame> _frame;
+        };
+
 
     protected:
 
@@ -88,14 +120,17 @@ namespace osgEarthUtil
         osgWidget::Label* createLabel(const std::string& string, osgText::Font* font, int size, const osgWidget::Color& color,const osgWidget::Color& widgetColor = osgWidget::Color(0,0,0,0));
         
         osg::ref_ptr<osgWidget::Frame> _window;
-        osg::ref_ptr<osgWidget::Frame> _button;
 
         osg::ref_ptr<osgWidget::Label> _labelText;
         osg::ref_ptr<osgWidget::Label> _labelTitle;
 
         ColorAnimation* _colorAnimation;
+        osg::ref_ptr<ColorAnimationFadeInFadeOut> _appearAnimation;
         osg::Vec4 _color;
         osg::Vec4 _focusColor;
+        osg::Vec4 _textColor;
+        osg::Vec4 _titleColor;
+
     };
 }
 

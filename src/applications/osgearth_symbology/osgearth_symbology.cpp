@@ -128,8 +128,11 @@ struct SampleGeometryInput : public GeometryInput
 
 struct PopUpSymbolizerContext : public SymbolizerContext
 {
+    typedef std::vector<osg::ref_ptr<WidgetMessageBox> > WidgetMessageBoxList;
+
     PopUpSymbolizerContext(WindowManager* windowmanager)  : _wm(windowmanager) {}
     osg::ref_ptr<WindowManager> _wm;
+    WidgetMessageBoxList _widgetList;
 };
 
 
@@ -191,18 +194,17 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                     {
                         osg::MatrixTransform* transform = new osg::MatrixTransform;
                         transform->setMatrix(osg::Matrix::translate(*it));
-
-                        if (PopUpIndex % 2) {
-
+                        if (!PopUpIndex) {
                             std::stringstream ss;
-                            ss << "Sacre bleu" << std::endl;
-                            ss << "I am at position " << *it << " miles" << std::endl;
+                            ss << "Hit i Key to see more popup" << std::endl;
+                            ss << "And hit a second time to hide them" << std::endl;
                             std::string text = ss.str();
-                            std::string title = "Hello popup";
+                            std::string title = "Info";
 
                             WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
                             wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
                             wmb->attach(transform);
+                            wmb->setAppear();
 
                         } else {
                             std::stringstream ss;
@@ -210,13 +212,12 @@ struct PopUpSymbolizer : public GeometrySymbolizer
                             ss << "rocks at " << *it << " miles" << std::endl;
                             std::string text = ss.str();
                             std::string title = "osgEarthUtil";
-
                             WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
                             wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
                             wmb->attach(transform);
+                            ctx->_widgetList.push_back(wmb);
                         }
-                        
-
+                        PopUpIndex++;
                         newSymbolized->addChild(transform);
                         transform->addChild(osgDB::readNodeFile("../data/tree.ive"));
                     }
@@ -371,11 +372,15 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
 class StyleEditor : public osgGA::GUIEventHandler
 {
 public:
-    
+    osg::ref_ptr<PopUpSymbolizerContext> _popupContext;
+    int _state;
+
     StyleEditor(const ::StyleList& styles) : _styles(styles)
     {
+        _state = 0;
     }
 
+    void setPopupContext(PopUpSymbolizerContext* context) { _popupContext = context; }
     
     virtual bool handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter&)
     {
@@ -383,7 +388,22 @@ public:
         {
         case(osgGA::GUIEventAdapter::KEYUP):
         {
-            if (ea.getKey() == 'q') {
+            if (ea.getKey() == 'i') {
+                if (_popupContext.valid()) {
+                    for (int i = 0; i < _popupContext->_widgetList.size(); ++i) {
+                        if (_state) {
+                            _popupContext->_widgetList[i]->setDisappear();
+                        } else { 
+                            _popupContext->_widgetList[i]->setAppear();
+                        }
+                    }
+                    if (_state)
+                        _state = 0;
+                    else 
+                        _state = 1;
+                }
+                return true;
+            } else if (ea.getKey() == 'q') {
                 osgEarth::Symbology::Style* style = _styles[0].get();
                 PolygonSymbol* p = style->getSymbol<PolygonSymbol>();
                 if (p)
@@ -456,7 +476,6 @@ public:
                 style->dirty();
                 return true;
             }
-
         }
         break;
         }
@@ -622,9 +641,11 @@ osg::Group* createSymbologyScene(WindowManager* wm)
         grp->addChild(tr);
     }
 
-
+    StyleEditor* styleEditor = new StyleEditor(styles);
     {
         PopUpSymbolizerContext* ctx = new PopUpSymbolizerContext(wm);
+        styleEditor->setPopupContext(ctx);
+
         osg::ref_ptr<PopUpSymbolizer> symbolizer = new PopUpSymbolizer();
         osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
         osg::ref_ptr<SampleGeometryInput> dataset = new SampleGeometryInput;
@@ -638,8 +659,7 @@ osg::Group* createSymbologyScene(WindowManager* wm)
         grp->addChild(tr);
     }
     
-
-    grp->addEventCallback(new StyleEditor(styles));
+    grp->addEventCallback(styleEditor);
     return grp;
 }
 

@@ -78,7 +78,6 @@ WidgetMessageBox* WindowManager::createWidgetMessageBox(const std::string& title
     wmb->create(image,
                 title,
                 content,
-                "",
                 font,
                 size);
     wmb->setColor(color);

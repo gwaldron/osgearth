@@ -25,10 +25,25 @@
 
 using namespace osgEarthUtil;
 
-struct AlphaSetterVisitor : public osg::NodeVisitor
+struct SetDataVariance : public osg::NodeVisitor
 {
+    SetDataVariance() : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN) {}
+    void apply(osg::Node& node) { 
+        node.setDataVariance(osg::Object::DYNAMIC); 
+        traverse(node);
+    }
+};
+
+class AlphaSetterVisitor : public osg::NodeVisitor
+{
+protected:
     float _alpha;
-    AlphaSetterVisitor( float alpha = 1.0):osg::NodeVisitor(TRAVERSE_ALL_CHILDREN) { _alpha = alpha;}
+    bool _applyToText;
+
+    ~AlphaSetterVisitor() {}
+
+public:
+    AlphaSetterVisitor( float alpha = 1.0, bool applyToText = false) : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN), osg::Referenced(true) { _alpha = alpha; _applyToText = applyToText;}
 
     void apply(osg::MatrixTransform& node)
     {
@@ -45,6 +60,12 @@ struct AlphaSetterVisitor : public osg::NodeVisitor
                 } else {
                     color[3] = 0.0;
                     it->get()->setColor(color);
+                    if (_applyToText) {
+                        osgWidget::Label* label = dynamic_cast<osgWidget::Label*>((*it).get());
+                        osg::Vec4 c = label->getText()->getColor();
+                        c[3] *= _alpha;
+                        label->setFontColor(c);
+                    }
                 }
             }
             {
@@ -57,10 +78,19 @@ struct AlphaSetterVisitor : public osg::NodeVisitor
     }
 };
 
+
+
+
+
 struct ColorSetterVisitor : public osg::NodeVisitor
 {
     osgWidget::Color _color;
-    ColorSetterVisitor( const osgWidget::Color& color):osg::NodeVisitor(TRAVERSE_ALL_CHILDREN) { _color = color;}
+    osgWidget::Color _titleColor;
+    osgWidget::Color _textColor;
+    ColorSetterVisitor( const osgWidget::Color& color,
+                        const osgWidget::Color& titleColor,
+                        const osgWidget::Color& textColor): _color(color), _titleColor(titleColor), _textColor(textColor),
+        osg::NodeVisitor(TRAVERSE_ALL_CHILDREN) {;}
 
     void apply(osg::MatrixTransform& node)
     {
@@ -72,6 +102,12 @@ struct ColorSetterVisitor : public osg::NodeVisitor
                 osgWidget::Color color = _color;
                 if (! dynamic_cast<osgWidget::Label*>((*it).get())) {
                     it->get()->setColor(_color);
+                } else {
+                    osgWidget::Label* label = dynamic_cast<osgWidget::Label*>((*it).get());
+                    if (label && label->getName() == std::string("LabelText"))
+                        label->setFontColor(_textColor);
+                    else if (label && label->getName() == std::string("LabelTitle"))
+                        label->setFontColor(_titleColor);
                 }
             }
             {
@@ -84,17 +120,18 @@ struct ColorSetterVisitor : public osg::NodeVisitor
 };
 
 
+
+
 WidgetMessageBox::ColorAnimation::ColorAnimation(osgWidget::Frame* frame) : osgWidget::Callback(osgWidget::EVENT_ALL), _frame(frame)
 {
     _motionOver = WidgetMotion(0.0, 0.4);
     _motionLeave = WidgetMotion(0.0, 0.5);
     _defaultColor = _frame->getEmbeddedWindow()->getColor();
-    _overColor = osgWidget::Color(229.0/255.0,
-                                  103.0/255.0,
-                                  17.0/255,
-                                  _defaultColor[3]);
+    _overColor = osgWidget::Color(1.0, 1.0, 1.0, 1.0);
     _over  = false;
 }
+void WidgetMessageBox::ColorAnimation::setTitleColor(const osg::Vec4& color) { _titleColor = color; }
+void WidgetMessageBox::ColorAnimation::setTextColor(const osg::Vec4& color) { _textColor = color; }
 void WidgetMessageBox::ColorAnimation::setSrcColor(const osg::Vec4& color) { _defaultColor = color; }
 void WidgetMessageBox::ColorAnimation::setDstColor(const osg::Vec4& color) { _overColor = color; }
 
@@ -106,14 +143,12 @@ bool WidgetMessageBox::ColorAnimation::operator()(osgWidget::Event& ev)
         _width = _frame->getWidth();
         _height = _frame->getHeight();
         _motionOver.reset();
-        //std::cout << "enter" << std::endl;
         return true;
     }
     else if (ev.type == osgWidget::EVENT_MOUSE_LEAVE) 
     {
         _over = false;
         _motionLeave.reset();
-        //std::cout << "leave" << std::endl;
         return true;
     }
     return false;
@@ -142,25 +177,68 @@ void WidgetMessageBox::ColorAnimation::operator()(osg::Node* node, osg::NodeVisi
             }
 
             osgWidget::Color c = _defaultColor + ((_overColor - _defaultColor) * value);
-            ColorSetterVisitor colorSetter(c);
+            ColorSetterVisitor colorSetter(c, _titleColor, _textColor);
             _frame->accept(colorSetter);
         }
     }
-    node->traverse(*nv);
+    traverse(node, nv);
 }
 
 
+class AlphaSetterVisitor2 : public osg::NodeVisitor
+{
+protected:
+    float _alpha;
+    bool _applyToText;
+
+    ~AlphaSetterVisitor2() {}
+
+public:
+    AlphaSetterVisitor2( float alpha = 1.0, bool applyToText = false) : osg::NodeVisitor(TRAVERSE_ALL_CHILDREN), osg::Referenced(true) { _alpha = alpha; _applyToText = applyToText;}
+
+    void apply(osg::MatrixTransform& node)
+    {
+        osgWidget::Window* win = dynamic_cast<osgWidget::Window*>(&node);
+
+        if (win) {
+
+            for (osgWidget::Window::Iterator it = win->begin(); it != win->end(); it++)
+            {
+                osgWidget::Color color = it->get()->getColor();
+                if (! dynamic_cast<osgWidget::Label*>((*it).get())) {
+                    color[3] = color[3] *_alpha;
+                    it->get()->setColor(color);
+                } else {
+                    color[3] = 0.0;
+                    it->get()->setColor(color);
+                    if (_applyToText) {
+                        osgWidget::Label* label = dynamic_cast<osgWidget::Label*>((*it).get());
+                        osg::Vec4 c = label->getText()->getColor();
+                        c[3] *= _alpha;
+                        label->setFontColor(c);
+                    }
+                }
+            }
+            {
+                osgWidget::Color color = win->getBackground()->getColor();
+                color[3] = color[3] *_alpha;
+                win->getBackground()->setColor(color);
+            }
+        }
+        traverse(node);
+    }
+};
 
 void WidgetMessageBox::setColor(const osg::Vec4& color)
 {
-    if (_colorAnimation)
-        _colorAnimation->setSrcColor(color);
+    _color = color;
+    _colorAnimation->setSrcColor(_color);
 }
 
 void WidgetMessageBox::setFocusColor(const osg::Vec4& color)
 {
-    if (_colorAnimation)
-        _colorAnimation->setDstColor(color);
+    _focusColor = color;
+    _colorAnimation->setDstColor(_focusColor);
 }
 
 void WidgetMessageBox::setTitleText(const std::string& text)
@@ -178,7 +256,6 @@ void WidgetMessageBox::setMessageText(const std::string& text)
 bool WidgetMessageBox::create(osg::Image* themeMessage,
                               const std::string& titleText,
                               const std::string& messageText,
-                              const std::string& buttonText,
                               osgText::Font* font,
                               int fontSize)
 {
@@ -191,16 +268,23 @@ bool WidgetMessageBox::create(osg::Image* themeMessage,
         osgWidget::Frame::FRAME_ALL
         );
     frame->getBackground()->setColor(0.0f, 0.0f, 0.0f, 0.0f);
+    frame->setDataVariance(osg::Object::DYNAMIC);
+
     osgWidget::Color adjustAlpha = frame->getEmbeddedWindow()->getColor();
 
-    _labelText = createLabel(messageText, font, fontSize, osgWidget::Color(0,0,0,1), adjustAlpha);
-    _labelTitle = createLabel(titleText, font, fontSize+5, osgWidget::Color(0.4,0,0,1), adjustAlpha);
+    _titleColor = osgWidget::Color(0.4,0,0,1);
+    _textColor = osgWidget::Color(0,0,0,1);
+
+    _labelText = createLabel(messageText, font, fontSize, _textColor, adjustAlpha);
+    _labelText->setName("LabelText");
+
+    _labelTitle = createLabel(titleText, font, fontSize+5, _titleColor, adjustAlpha);
+    _labelTitle->setName("LabelTitle");
 
     osgWidget::Box*   box   = new osgWidget::Box("VBOX", osgWidget::Box::VERTICAL);
 
     _labelTitle->setPadBottom(10.0f);
     _labelText->setPadBottom(0.0f);
-//    labelText->getText()->setMaximumWidth(500);
     _labelText->setLabel(messageText);
 
     _labelText->setWidth(_labelText->getTextSize()[0]);
@@ -231,14 +315,26 @@ bool WidgetMessageBox::create(osg::Image* themeMessage,
     frame->resizeFrame(box->getWidth(), box->getHeight());
 
     _window = frame;
+    SetDataVariance setToDynamic;
+    _window->accept(setToDynamic);
 
-
-    AlphaSetterVisitor alpha(.8f);
-    getWindow()->accept(alpha);
+    float alpha = 0.8;
+    _color = osg::Vec4(0.4, 0.8, 0.8, alpha);
 
     _colorAnimation = new ColorAnimation(getWindow());
-    getWindow()->setUpdateCallback(_colorAnimation);
+    _appearAnimation = new ColorAnimationFadeInFadeOut(getWindow());
+
+    _colorAnimation->setTitleColor(_titleColor);
+    _colorAnimation->setTextColor(_textColor);
+    getWindow()->addUpdateCallback(_colorAnimation);
+    getWindow()->addUpdateCallback(_appearAnimation);
     getWindow()->addCallback(_colorAnimation);
+
+
+    osg::ref_ptr<AlphaSetterVisitor2> alphaSetter = new AlphaSetterVisitor2(0, true);
+    getWindow()->accept(*alphaSetter);
+    alphaSetter = 0;
+//    setAppear();
 
     return true;
 }
@@ -256,6 +352,68 @@ osgWidget::Label* WidgetMessageBox::createLabel(const std::string& string, osgTe
     return label;
 }
 
-osgWidget::Frame* WidgetMessageBox::getButton() { return _button.get(); }
 osgWidget::Frame* WidgetMessageBox::getWindow() { return _window.get(); }
 WidgetMessageBox::WidgetMessageBox() : _colorAnimation(0) {}
+
+
+WidgetMessageBox::ColorAnimationFadeInFadeOut::ColorAnimationFadeInFadeOut(osgWidget::Frame* frame) : _frame(frame)
+{
+    _motionOver = WidgetMotion(0.0, 0.4);
+    _motionLeave = WidgetMotion(0.0, 0.5);
+    _initialized = false;
+    _srcAlpha = 0.0;
+    _dstAlpha = 1.0;
+    _lastUpdate = -1.0;
+    _appear = true;
+}
+
+void WidgetMessageBox::ColorAnimationFadeInFadeOut::setSrcAlpha(float alpha) { _srcAlpha = alpha; }
+void WidgetMessageBox::ColorAnimationFadeInFadeOut::setDstAlpha(float alpha) { _dstAlpha = alpha; }
+
+void WidgetMessageBox::ColorAnimationFadeInFadeOut::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    {
+        const osg::FrameStamp* fs = nv->getFrameStamp();
+        float alpha = 0;
+        if (_initialized)
+        {
+            if (_lastUpdate < 0)
+                _lastUpdate = fs->getSimulationTime();
+
+            double dt = fs->getSimulationTime() - _lastUpdate;
+            _lastUpdate = fs->getSimulationTime();
+
+            float value;
+            if (_appear)
+            {
+                _motionOver.update(dt);
+                value = _motionOver.getValue();
+            }
+            else
+            {
+                _motionLeave.update(dt);
+                value = 1.0 - _motionLeave.getValue();
+            }
+
+            alpha = _srcAlpha + ((_dstAlpha - _srcAlpha) * value);
+        }
+        osg::ref_ptr<AlphaSetterVisitor2> alphaSetter = new AlphaSetterVisitor2(alpha, true);
+        _frame->accept(*alphaSetter);
+    }
+    traverse(node, nv);
+}
+
+void WidgetMessageBox::ColorAnimationFadeInFadeOut::setAppear() { _appear = true; _motionLeave.reset(); _motionOver.reset(); _initialized = true;}
+void WidgetMessageBox::ColorAnimationFadeInFadeOut::setDisappear() { _appear = false;  _motionLeave.reset(); _motionOver.reset();  _initialized = true;}
+
+void WidgetMessageBox::setAppear() 
+{
+    if (_appearAnimation.valid())
+        _appearAnimation->setAppear();
+}
+void WidgetMessageBox::setDisappear()
+{
+    if (_appearAnimation.valid())
+        _appearAnimation->setDisappear();
+}

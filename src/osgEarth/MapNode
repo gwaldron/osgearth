@@ -21,6 +21,7 @@
 #define OSGEARTH_MAPNODE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/EarthFile>
 #include <osgEarth/Map>
 #include <osgEarth/MapLayer>
 #include <osgEarth/MapEngine>

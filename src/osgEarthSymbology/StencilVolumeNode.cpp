@@ -223,11 +223,11 @@ StencilVolumeNode::init()
     // the eye location (you only need zFail if you camera is inside the volume).
     bool zFail = true;
 
-    OE_INFO << "Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
+    OE_DEBUG << "Stencil buffer wrap = " << s_EXT_stencil_wrap << std::endl;
 
     if ( s_EXT_stencil_two_side )
     {
-        OE_INFO << "Two-sided stenciling" << std::endl;
+        OE_DEBUG << "Two-sided stenciling" << std::endl;
 
         osg::StencilTwoSided::Operation incrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::INCR_WRAP : osg::StencilTwoSided::INCR;
         osg::StencilTwoSided::Operation decrOp = s_EXT_stencil_wrap ? osg::StencilTwoSided::DECR_WRAP : osg::StencilTwoSided::DECR;

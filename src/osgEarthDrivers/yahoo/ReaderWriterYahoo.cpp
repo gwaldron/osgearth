@@ -93,7 +93,7 @@ public:
 		std::string base;
 		base = buf.str();
 
-        OE_INFO << key->str() << "=" << base << std::endl;
+        OE_DEBUG << key->str() << "=" << base << std::endl;
         
         osg::ref_ptr<osg::Image> image;
         HTTPClient::readImageFile( base, image, getOptions(), progress );

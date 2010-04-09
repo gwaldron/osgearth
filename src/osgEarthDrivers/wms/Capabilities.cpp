@@ -118,7 +118,7 @@ std::string Capabilities::suggestExtension()
             if (rw)
             {
                 ext = format;
-                OE_INFO << "suggestExtension found ReaderWriter for " << ext << std::endl;
+                OE_DEBUG << "suggestExtension found ReaderWriter for " << ext << std::endl;
                 break;
             }
         }

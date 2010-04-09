@@ -253,7 +253,7 @@ Graticule::createGridLevel( unsigned int levelNum ) const
     if ( !getLevel( levelNum, level ) )
         return 0L;
 
-    OE_INFO << "Graticule: creating grid level " << levelNum << std::endl;
+    OE_DEBUG << "Graticule: creating grid level " << levelNum << std::endl;
 
     osg::Group* group = new osg::Group();
 
@@ -421,7 +421,7 @@ Graticule::createTextLevel( unsigned int levelNum ) const
     if ( !getLevel( levelNum, level ) )
         return 0L;
 
-    OE_INFO << "Graticule: creating text level " << levelNum << std::endl;
+    OE_DEBUG << "Graticule: creating text level " << levelNum << std::endl;
 
     osg::Group* group = new osg::Group();
 

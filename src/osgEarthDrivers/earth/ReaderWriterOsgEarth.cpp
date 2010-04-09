@@ -32,20 +32,6 @@ using namespace osgEarth;
 
 #define TO_LOWER( S ) std::transform( S.begin(), S.end(), S.begin(), ::tolower )
 
-//struct TestCB : public TerrainCallback {
-//    void onTerrainTilesUpdated( const TerrainTileList& tiles ) {
-//        OE_NOTICE << "" << tiles.size() << " tiles updated" << std::endl;
-//        for( TerrainTileList::const_iterator i = tiles.begin(); i != tiles.end(); ++i ) {
-//            OE_NOTICE << "   (" 
-//                << i->get()->getTileID().level << ","
-//                << i->get()->getTileID().x << ","
-//                << i->get()->getTileID().y << ")"
-//                << std::endl;
-//
-//        }
-//    }
-//};
-
 class ReaderWriterEarth : public osgDB::ReaderWriter
 {
     public:
@@ -114,9 +100,6 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 {
                     osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), earthFile.getMapEngineProperties() );
 
-                    // TESTING
-                    //mapNode->addTerrainCallback( new TestCB() );
- 
                     //Create the root node for the scene
                     node = mapNode.release();
                 }

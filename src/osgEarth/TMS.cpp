@@ -166,7 +166,7 @@ void TileMap::computeNumTiles()
             _numTilesHigh /= 2;
         }
 
-        OE_INFO << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
+        OE_DEBUG << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
     }
 }
 

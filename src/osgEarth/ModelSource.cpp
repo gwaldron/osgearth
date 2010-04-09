@@ -103,7 +103,7 @@ ModelSourceFactory::create(const std::string& name,
     //Setup the plugin options for the source
     options->config() = driverConf;
 
-    OE_INFO
+    OE_DEBUG
         << "Model Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
 
 	// Load the source from a plugin.

@@ -169,7 +169,7 @@ Cache::getHeightField( const TileKey* key,
 	osg::ref_ptr<osg::Image> image = getImage( key, layerName, format );
 	if (image.valid())
 	{
-		OE_INFO << "[osgEarth::Cache] Read cached heightfield " << std::endl;
+		OE_DEBUG << "[osgEarth::Cache] Read cached heightfield " << std::endl;
 		ImageToHeightFieldConverter conv;
 		hf = conv.convert(image.get());
 	}
@@ -382,7 +382,7 @@ void DiskCache::storeLayerProperties( const std::string& layerName,
 {
 	osg::ref_ptr<TileMap> tileMap = TileMap::create("", profile, format, tile_size, tile_size);
 	std::string path = getTMSPath( layerName );
-    OE_INFO << "[osgEarth::DiskCache] Writing TMS file to  " << path << std::endl;
+    OE_DEBUG << "[osgEarth::DiskCache] Writing TMS file to  " << path << std::endl;
 	TileMapReaderWriter::write( tileMap.get(), path );
 }
 
@@ -594,16 +594,16 @@ Cache* CacheFactory::create(const CacheConfig &cacheConfig)
             getProp(cacheConfig.getProperties(), "tms_type", tms_type);
             if (tms_type == "google")
             {
-                OE_INFO << "[osgEarth::Cache] Inverting Y in TMS cache " << std::endl;
+                OE_DEBUG << "[osgEarth::Cache] Inverting Y in TMS cache " << std::endl;
                 tms_cache->setInvertY(true);
             }
-            OE_INFO << "[osgEarth::Cache] Returning TMS cache " << std::endl;
+            OE_DEBUG << "[osgEarth::Cache] Returning TMS cache " << std::endl;
             cache = tms_cache;
         }
 
         if (type == CacheConfig::TYPE_TILECACHE ) //"tilecache")
         {
-            OE_INFO << "[osgEarth::Cache] Returning disk cache " << std::endl;
+            OE_DEBUG << "[osgEarth::Cache] Returning disk cache " << std::endl;
             cache = new DiskCache(path);
         }
 
@@ -624,7 +624,7 @@ Cache* CacheFactory::create(const CacheConfig &cacheConfig)
     }
     else
     {
-        OE_NOTICE << "[osgEarth::Cache] Unknown cache type " << type << std::endl;
+        OE_WARN << "[osgEarth::Cache] Unknown cache type " << type << std::endl;
     }
     return 0;
 }

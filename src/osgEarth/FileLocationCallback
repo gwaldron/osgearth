@@ -64,12 +64,12 @@ namespace osgEarth
                 {
                     if (!mapNode->getEngine()->isCached(mapNode->getMap(), keys[i]))
                     {
-                        OE_INFO << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
+                        OE_DEBUG << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
                         return REMOTE_FILE;
                     }
                 }
 
-                OE_INFO << "Returning LOCAL_FILE for " << mapKey->str() << std::endl;
+                OE_DEBUG << "Returning LOCAL_FILE for " << mapKey->str() << std::endl;
                 return LOCAL_FILE;
             }
 

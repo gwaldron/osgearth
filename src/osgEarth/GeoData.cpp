@@ -386,7 +386,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
         //If we want an exact crop or they want to specify the output size of the image, use GDAL
         if (exact || width != 0 || height != 0 )
         {
-            OE_INFO << "[osgEarth::GeoImage::crop] Performing exact crop" << std::endl;
+            OE_DEBUG << "[osgEarth::GeoImage::crop] Performing exact crop" << std::endl;
 
             //Suggest an output image size
             if (width == 0 || height == 0)
@@ -397,7 +397,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
                 width =  osg::maximum(1u, (unsigned int)((extent.xMax() - extent.xMin()) / xRes));
                 height = osg::maximum(1u, (unsigned int)((extent.yMax() - extent.yMin()) / yRes));
 
-                OE_INFO << "[osgEarth::GeoImage::crop] Computed output image size " << width << "x" << height << std::endl;
+                OE_DEBUG << "[osgEarth::GeoImage::crop] Computed output image size " << width << "x" << height << std::endl;
             }
 
             //Note:  Passing in the current SRS simply forces GDAL to not do any warping
@@ -405,7 +405,7 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
         }
         else
         {
-            OE_INFO << "[osgEarth::GeoImage::crop] Performing non-exact crop " << std::endl;
+            OE_DEBUG << "[osgEarth::GeoImage::crop] Performing non-exact crop " << std::endl;
             //If an exact crop is not desired, we can use the faster image cropping code that does no resampling.
             double destXMin = extent.xMin();
             double destYMin = extent.yMin();
@@ -564,7 +564,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
     //Create a dataset from the source image
     GDALDataset* srcDS = createDataSetFromImage(srcImage, srcMinX, srcMinY, srcMaxX, srcMaxY, srcWKT);
 
-	OE_INFO << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
+	OE_DEBUG << "Source image is " << srcImage->s() << "x" << srcImage->t() << std::endl;
 
 
     if (width == 0 || height == 0)
@@ -581,7 +581,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
             0);
         GDALDestroyGenImgProjTransformer(transformer);
     }
-	OE_INFO << "Creating warped output of " << width <<"x" << height << std::endl;
+	OE_DEBUG << "Creating warped output of " << width <<"x" << height << std::endl;
    
     GDALDataset* destDS = createMemDS(width, height, destMinX, destMinY, destMaxX, destMaxY, destWKT);
 
@@ -598,7 +598,7 @@ reprojectImage(osg::Image* srcImage, const std::string srcWKT, double srcMinX, d
 
 	osg::Timer_t end = osg::Timer::instance()->tick();
 
-	OE_INFO << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
+	OE_DEBUG << "Reprojected image in " << osg::Timer::instance()->delta_m(start,end) << std::endl;
 
     return result;
 }    

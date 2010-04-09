@@ -40,7 +40,10 @@ namespace osgEarth
         void setMapEngineProperties( const MapEngineProperties& props );
 
         Map* getMap();
+        const Map* getMap() const;
+
         MapEngineProperties& getMapEngineProperties();
+        const MapEngineProperties& getMapEngineProperties() const;
 
         bool readXML( const std::string& location );
         bool readXML( std::istream& input, const std::string& referencePath );

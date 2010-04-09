@@ -49,9 +49,19 @@ EarthFile::setMapEngineProperties( const MapEngineProperties& props ) {
     _engineProps = props;
 }
 
+const Map*
+EarthFile::getMap() const {
+    return _map.get();
+}
+
 Map*
 EarthFile::getMap() {
     return _map.get();
+}
+
+const MapEngineProperties& 
+EarthFile::getMapEngineProperties() const {
+    return _engineProps;
 }
 
 MapEngineProperties& 

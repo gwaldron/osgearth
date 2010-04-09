@@ -399,7 +399,7 @@ OceanSurfaceNode::traverse(osg::NodeVisitor& nv)
 void
 OceanSurfaceNode::rebuildShaders()
 {
-    OE_INFO << "Rebuilding shaders..." << std::endl;
+    OE_DEBUG << "Rebuilding shaders..." << std::endl;
     std::string vertShaderSource = std::string(fnormal_source) + 
         std::string(directionalLight_source) + 
         std::string(xyz_to_lat_lon_source) +
@@ -414,7 +414,7 @@ OceanSurfaceNode::rebuildShaders()
         ss << unit;
         str.replace(start, toreplace.size(), ss.str());
         vertShaderSource = str;
-        OE_INFO << "Shader " << str << std::endl;
+        OE_DEBUG << "Shader " << str << std::endl;
     }
 
     _vertShader->setShaderSource( vertShaderSource );

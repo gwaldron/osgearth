@@ -952,7 +952,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
                             //The maplayer was probably deleted
                             if (index < 0)
                             {
-                                OE_INFO << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
+                                OE_DEBUG << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
                                 itr = _requests.erase(itr);
                                 increment = false;
                             }

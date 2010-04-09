@@ -692,6 +692,13 @@ namespace osgEarthUtil
         
         void applyOptionsToDeltas( const Action& action, double& dx, double& dy );
 
+        void configureDefaultSettings();
+
+        void reinitialize();
+
+        bool established();
+
+        osg::CoordinateFrame getMyCoordinateFrame( const osg::Vec3d& position ) const;
 
     private:
         // makeshift "stack" of the last 2 incoming events.
@@ -701,6 +708,8 @@ namespace osgEarthUtil
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
 
         osg::ref_ptr<osg::Node> _node;
+        osg::observer_ptr<osg::CoordinateSystemNode> _csn;
+        osg::ObserverNodePath _csnPath;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;
         bool _is_geocentric;

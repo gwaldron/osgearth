@@ -45,6 +45,7 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include <osgEarth/FindNode>
+#include <osgEarth/MapNode>
 
 #include <osgEarthUtil/OceanSurfaceNode>
 
@@ -157,9 +158,13 @@ int main(int argc, char** argv)
     osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);   
 
     OceanSurfaceNode* ocean = new OceanSurfaceNode();
-    ocean->addChild( loadedModel.get() );
     ocean->setOceanMaskTextureUnit( 1 );
-    group->addChild( ocean );
+    group->addChild( loadedModel );
+
+    //Find the MapNode and add the ocean decorator to the terrain group
+    osgEarth::MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());
+    mapNode->addTerrainDecorator( ocean );
+
 
     viewer.addEventHandler(new MyEventHandler(ocean));
 

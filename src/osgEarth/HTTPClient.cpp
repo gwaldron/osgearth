@@ -423,6 +423,10 @@ HTTPClient::readString(const std::string& filename,
 HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
 {
+    const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
+            options->getAuthenticationMap() :
+            osgDB::Registry::instance()->getAuthenticationMap();
+
     std::string proxy_host;
     std::string proxy_port = "8080";
     readOptions( options, proxy_host, proxy_port );
@@ -439,6 +443,46 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     
         OE_DEBUG << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
+    }
+
+    const osgDB::AuthenticationDetails* details = authenticationMap ?
+        authenticationMap->getAuthenticationDetails(request.getURL()) :
+        0;
+
+        if (details)
+        {
+            const std::string colon(":");
+            std::string password(details->username + colon + details->password);
+            curl_easy_setopt(_curl_handle, CURLOPT_USERPWD, password.c_str());
+            const_cast<HTTPClient*>(this)->_previousPassword = password;
+
+            // use for https.
+            // curl_easy_setopt(_curl, CURLOPT_KEYPASSWD, password.c_str());
+
+#if LIBCURL_VERSION_NUM >= 0x070a07
+            if (details->httpAuthentication != _previousHttpAuthentication)
+            { 
+                curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, details->httpAuthentication); 
+                const_cast<HTTPClient*>(this)->_previousHttpAuthentication = details->httpAuthentication;
+            }
+#endif
+    }
+    else
+    {
+        if (!_previousPassword.empty())
+        {
+            curl_easy_setopt(_curl_handle, CURLOPT_USERPWD, 0);
+            const_cast<HTTPClient*>(this)->_previousPassword.clear();
+        }
+
+#if LIBCURL_VERSION_NUM >= 0x070a07
+        // need to reset if previously set.
+        if (_previousHttpAuthentication!=0)
+        {
+            curl_easy_setopt(_curl_handle, CURLOPT_HTTPAUTH, 0); 
+            const_cast<HTTPClient*>(this)->_previousHttpAuthentication = 0;
+        }
+#endif
     }
 
     OE_DEBUG << "HTTP GET: " << request.getURL() << std::endl;

@@ -225,6 +225,10 @@ namespace osgEarth
 
     private:
         void *_curl_handle;
+        std::string _previousPassword;
+        long        _previousHttpAuthentication;
+
+
         static HTTPClient& getClient();
 
     private:

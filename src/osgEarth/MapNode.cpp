@@ -376,6 +376,13 @@ MapNode::getTerrainsGroup() {
 }
 
 void
+MapNode::addTerrainDecorator(osg::Group* decorator)
+{
+    decorator->addChild( _terrains );
+    replaceChild( _terrains.get(), decorator );   
+}
+
+void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     // set up the CSN values

@@ -342,7 +342,8 @@ OceanSurfaceNode::traverse(osg::NodeVisitor& nv)
 
         if (!_csn.valid())
         {
-            _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>(this);
+            //Try to find a coordiante system node above this node
+            _csn = findFirstParentOfType<osg::CoordinateSystemNode>(this);
         }
         if (_csn.valid())
         {

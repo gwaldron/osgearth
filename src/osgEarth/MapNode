@@ -120,6 +120,11 @@ namespace osgEarth
         osg::Group* getTerrainsGroup();
 
         /**
+         *Adds a node that decorates the terrain groups
+         */
+        void addTerrainDecorator( osg::Group* decorator );
+
+        /**
          * Gets the engine properties associated with this node. The engine
          * properties dictate how the map engine will create scene graph elements.
          */

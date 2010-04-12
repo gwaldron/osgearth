@@ -432,11 +432,12 @@ EarthManipulator::established()
 
         if ( csn.valid() )
         {
-            osg::NodePathList paths = csn->getParentalNodePaths();
-            _csnPath.setNodePath( paths[0] );
-
             _csn = csn.get();
             _node = csn;
+
+            osg::NodePathList paths = csn->getParentalNodePaths();
+            _csnPath = paths[0];
+            //_csnPath.setNodePath( paths[0] );
 
             if ( !_homeViewpoint.isSet() )
             {
@@ -473,21 +474,24 @@ EarthManipulator::established()
     return _csn.valid() && _node.valid();
 }
 
+// This is code taken from osgViewer::View and placed here so that we can control the
+// caching of the CSNPath ourselves without relying on View. This helps when switching
+// out the Manipulator's Node.
 osg::CoordinateFrame
 EarthManipulator::getMyCoordinateFrame( const osg::Vec3d& position ) const
 {
     osg::CoordinateFrame coordinateFrame;
 
-    osg::NodePath csnPath;
-    bool hasPath = _csnPath.getNodePath( csnPath );
+    //osg::NodePath csnPath;
+    //bool hasPath = _csnPath.getNodePath( csnPath );
     osg::ref_ptr<osg::CoordinateSystemNode> csn = _csn.get();
 
-    if ( hasPath && _csn.valid() )
+    if ( _csn.valid() )
     {
-        osg::Vec3 local_position = position * osg::computeWorldToLocal( csnPath );
+        osg::Vec3 local_position = position * osg::computeWorldToLocal( _csnPath );
 
         // get the coordinate frame in world coords.
-        coordinateFrame = csn->computeLocalCoordinateFrame( local_position ) * osg::computeLocalToWorld( csnPath );
+        coordinateFrame = csn->computeLocalCoordinateFrame( local_position ) * osg::computeLocalToWorld( _csnPath );
 
         // keep the position of the coordinate frame to reapply after rescale.
         osg::Vec3d pos = coordinateFrame.getTrans();
@@ -506,7 +510,7 @@ EarthManipulator::getMyCoordinateFrame( const osg::Vec3d& position ) const
     }
     else
     {
-        coordinateFrame = osg::computeLocalToWorld( csnPath );
+        coordinateFrame = osg::computeLocalToWorld( _csnPath );
     }
 
     return coordinateFrame;
@@ -568,7 +572,7 @@ void EarthManipulator::setNode(osg::Node* node)
 {
     _node = node;
     _csn = 0L;
-    _csnPath.clearNodePath();
+    _csnPath.clear();
     reinitialize();
 
     // this might be unnecessary..
@@ -1391,7 +1395,7 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
             !hitFound && i<2;
             ++i, endPoint = farPosition)
         {
-            // compute the intersection with the scene.
+            // compute the intersection with the scene.s
             
             osg::Vec3d ip;
             if (intersect(eye, endPoint, ip))

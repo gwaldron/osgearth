@@ -134,6 +134,8 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
     
     if (!_terrainTile) return;
 
+    OpenThreads::ScopedLock<OpenThreads::Mutex> wbLock(_writeBufferMutex);
+
     BufferData& buffer = getWriteBuffer();
     
     Locator* masterLocator = computeMasterLocator();

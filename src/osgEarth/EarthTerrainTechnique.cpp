@@ -322,15 +322,16 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     buffer._geode = new osg::Geode;
     buffer._geode->setThreadSafeRefUnref(true);
     if(buffer._transform.valid())
+    {
         buffer._transform->addChild(buffer._geode.get());
+        buffer._transform->setThreadSafeRefUnref(true);
+    }
     
     buffer._geometry = new osg::Geometry;
     buffer._geode->addDrawable(buffer._geometry.get());
         
     osg::Geometry* geometry = buffer._geometry.get();
     geometry->setThreadSafeRefUnref(true);
-
-    buffer._transform->setThreadSafeRefUnref(true);
 
     int numRows = 20;
     int numColumns = 20;

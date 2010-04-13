@@ -217,7 +217,8 @@ _currentElevation(0),
 _maxRange(250000),
 _period(1024),
 _enabled(true),
-_invertMask(false)
+_invertMask(false),
+_oceanColor(osg::Vec4f(0,0,1,0))
 {
     _program = new osg::Program;
     _vertShader = new osg::Shader(osg::Shader::VERTEX);
@@ -327,10 +328,26 @@ OceanSurfaceNode::setInvertMask(bool invertMask)
     if (_invertMask != invertMask)
     {
         _invertMask = invertMask;
-        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask);       
+        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask);   
+        rebuildShaders();
     }
 }
 
+void
+OceanSurfaceNode::setModulationColor( const osg::Vec4f& color )
+{
+    if ( !_oceanColor.isSetTo( color ) )
+    {
+        _oceanColor = color;
+        rebuildShaders();
+    }
+}
+
+osg::Vec4f
+OceanSurfaceNode::getModulationColor() const
+{
+    return _oceanColor.value();
+}
 
 void 
 OceanSurfaceNode::traverse(osg::NodeVisitor& nv)
@@ -424,23 +441,47 @@ OceanSurfaceNode::rebuildShaders()
     std::stringstream ss;
     for (unsigned int i = 0; i < numUnits; ++i)
     {
-        if (i != _oceanMaskTextureUnit)
+        //if (i != _oceanMaskTextureUnit)
         {
             ss << "varying vec2 texCoord" << i << ";" << std::endl;
             ss << "uniform sampler2D osgEarth_Layer" << i << "_unit;" << std::endl;
         }
     }
 
+    if ( _oceanColor.isSet() )
+    {
+        ss << "uniform bool osgEarth_oceanInvertMask;\n";
+    }
+
     ss << "void main ( void ) " << std::endl
         << "{" << std::endl;
 
-
-    for (unsigned int i = 0; i < numUnits; ++i)
+    if ( _oceanColor.isSet() )
     {
-        ss << "vec4 tex" << i << " = vec4(0.0,0.0,0.0,0.0);\n";
-        if (i != _oceanMaskTextureUnit)
+        for(unsigned int i=0; i < numUnits; ++i)
         {
-            ss << "tex" << i << " = texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");" << std::endl;
+            ss << "vec4 tex" << i << ";\n";
+            ss << "tex" << i << " =  texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");\n";
+
+            if ( i == _oceanMaskTextureUnit )
+            {
+                ss << "float maskAlpha = (1.0 - tex" << i << ".a)*" << _oceanColor->a() << ";\n";
+                ss << "if(osgEarth_oceanInvertMask) maskAlpha = 1.0-maskAlpha;\n";
+                ss << "tex" << i << " = vec4("
+                    << _oceanColor->r() << "," << _oceanColor->g() << ","
+                    << _oceanColor->b() << ",maskAlpha);\n";
+            }
+        }
+    }
+    else
+    {
+        for (unsigned int i = 0; i < numUnits; ++i)
+        {
+            ss << "vec4 tex" << i << " = vec4(0.0,0.0,0.0,0.0);\n";
+            if (i != _oceanMaskTextureUnit)
+            {
+                ss << "tex" << i << " = texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");" << std::endl;
+            }
         }
     }
 

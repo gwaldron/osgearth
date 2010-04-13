@@ -20,6 +20,7 @@
 #ifndef OSGEARTHUTIL_COMMON_H
 #define OSGEARTHUTIL_COMMON_H 1
 
+#include <osgEarth/Common>
 #include <osgEarthUtil/Export>
 #include <osg/NodeVisitor>
 

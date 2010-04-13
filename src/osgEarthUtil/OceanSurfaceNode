@@ -26,6 +26,8 @@
 
 #include <osgEarthUtil/Common>
 
+using namespace osgEarth;
+
 namespace osgEarthUtil 
 {
     /**
@@ -102,6 +104,14 @@ namespace osgEarthUtil
          */
         void setInvertMask(bool invertMask);
 
+        /**
+         * Sets an optional ocean color. The ocean will take on this color based on the 
+         * alpha values in the masking texture.
+         */
+        void setModulationColor( const osg::Vec4f& color );
+
+        osg::Vec4f getModulationColor() const;
+
 
         virtual void traverse(osg::NodeVisitor& nv);
     private:
@@ -119,6 +129,7 @@ namespace osgEarthUtil
         bool _enabled;
         bool _invertMask;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
+        optional<osg::Vec4f> _oceanColor;
     };
 }
 

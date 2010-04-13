@@ -109,6 +109,20 @@ struct MyEventHandler : public osgGA::GUIEventHandler
                     _ocean->setInvertMask( !_ocean->getInvertMask() );
                 }
                 break;
+            case 'C':
+                {
+                    osg::Vec4f color = _ocean->getModulationColor();
+                    color.a() = osg::clampBelow( color.a() + 0.1f, 1.0f );
+                    _ocean->setModulationColor( color );                        
+                }
+                break;
+            case 'c':
+                {
+                    osg::Vec4f color = _ocean->getModulationColor();
+                    color.a() = osg::clampAbove( color.a() - 0.1f, 0.0f );
+                    _ocean->setModulationColor( color );                        
+                }
+                break;
             }
         }
         return false;
@@ -159,6 +173,7 @@ int main(int argc, char** argv)
 
     OceanSurfaceNode* ocean = new OceanSurfaceNode();
     ocean->setOceanMaskTextureUnit( 1 );
+
     group->addChild( loadedModel );
 
     //Find the MapNode and add the ocean decorator to the terrain group

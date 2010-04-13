@@ -424,7 +424,8 @@ HTTPClient::readString(const std::string& filename,
 HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
 {
-    OE_NOTICE << "doGet " << request.getURL() << std::endl;
+    OE_DEBUG << "[HTTPClient] doGet " << request.getURL() << std::endl;
+
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
             options->getAuthenticationMap() :
             osgDB::Registry::instance()->getAuthenticationMap();
@@ -486,9 +487,6 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         }
 #endif
     }
-
-    OE_DEBUG << "HTTP GET: " << request.getURL() << std::endl;
-    //OE_INFO << "[osgEarth::HTTPClient] GET " << request.getURL() << std::endl;
 
     osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
     StreamObject sp( &part->_stream );

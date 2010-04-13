@@ -45,6 +45,20 @@ _is_valid( true )
 {
     //NOP
 }
+Viewpoint::Viewpoint(double x, double y, double z,
+                     double heading_deg,
+                     double pitch_deg, 
+                     double range,
+                     const osgEarth::SpatialReference* srs ) :
+_focal_point( x, y, z ),
+_heading_deg( heading_deg ),
+_pitch_deg( pitch_deg ),
+_range( range ),
+_srs( srs ),
+_is_valid( true )
+{
+    //NOP
+}
 
 Viewpoint::Viewpoint(const std::string& name,
                      const osg::Vec3d& focal_point,
@@ -54,6 +68,23 @@ Viewpoint::Viewpoint(const std::string& name,
                      const osgEarth::SpatialReference* srs ) :
 _name( name ),
 _focal_point( focal_point ),
+_heading_deg( heading_deg ),
+_pitch_deg( pitch_deg ),
+_range( range ),
+_srs( srs ),
+_is_valid( true )
+{
+    //NOP
+}
+
+Viewpoint::Viewpoint(const std::string& name,
+                     double x, double y, double z,
+                     double heading_deg,
+                     double pitch_deg, 
+                     double range,
+                     const osgEarth::SpatialReference* srs ) :
+_name( name ),
+_focal_point( x, y, z ),
 _heading_deg( heading_deg ),
 _pitch_deg( pitch_deg ),
 _range( range ),

@@ -465,11 +465,11 @@ OceanSurfaceNode::rebuildShaders()
 
             if ( i == _oceanMaskTextureUnit )
             {
-                ss << "float maskAlpha = (1.0 - tex" << i << ".a)*" << _oceanColor->a() << ";\n";
-                ss << "if(osgEarth_oceanInvertMask) maskAlpha = 1.0-maskAlpha;\n";
+                ss << "float maskAlpha = 1.0-tex" << i << ".a;\n";
+                ss << "if(osgEarth_oceanInvertMask) maskAlpha = 1.0-maskAlpha;\n";                
                 ss << "tex" << i << " = vec4("
                     << _oceanColor->r() << "," << _oceanColor->g() << ","
-                    << _oceanColor->b() << ",maskAlpha);\n";
+                    << _oceanColor->b() << ",maskAlpha*" << _oceanColor->a() << ");\n";
             }
         }
     }

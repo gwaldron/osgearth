@@ -170,6 +170,7 @@ struct MyEventHandler : public osgGA::GUIEventHandler
                 { 
                     _ocean->setOceanAnimationPeriod(_ocean->getOceanAnimationPeriod() - 0.25);
                 }
+                break;
             case 'J':
                 {
                     _ocean->setOceanSurfaceImageSizeRadians( _ocean->getOceanSurfaceImageSizeRadians() * 1.5f);

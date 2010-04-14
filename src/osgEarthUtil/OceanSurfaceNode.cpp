@@ -167,7 +167,6 @@ char vert_shader_source[] =
 "   if (osgEarth_oceanInvertMask) osgEarth_oceanAlpha = 1.0 - osgEarth_oceanAlpha;\n"
 "   if (osgEarth_oceanMaxRange >= osgEarth_cameraElevation)\n"
 "   {\n"
-"     //Fade in over the first 50%\n"
 "     //Invert so it's between 0 and 1\n"
 "     float s = mix(1.0, 0.0, osgEarth_cameraElevation / osgEarth_oceanMaxRange);\n"
 "     osgEarth_oceanAlpha *= s;\n"

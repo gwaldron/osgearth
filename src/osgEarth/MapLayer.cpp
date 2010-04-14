@@ -810,7 +810,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	}
 
 	if (!result.valid() && getTileSource() && getTileSource()->isOK() )
-	{
+    {
 		//If the profiles are equivalent, get the HF from the TileSource.
 		if (key->getProfile()->isEquivalentTo( layerProfile ))
 		{
@@ -892,7 +892,13 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 				}
 			}
 		}
-	}
+    
+        //Write the result to the cache.
+        if (result.valid() && _cache.valid() && _cacheEnabled == true )
+        {
+            _cache->setHeightField( key, _name, _cacheFormat.value(), result.get() );
+        }
+    }
 
 	//Initialize the HF values for osgTerrain
 	if (result.valid())
@@ -908,12 +914,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 		result->setBorderWidth( 0 );
 	}
 
-	//Write the result to the cache.
-	if (result.valid() && _cache.valid() && _cacheEnabled == true )
-	{
-		_cache->setHeightField( key, _name, _cacheFormat.value(), result.get() );
-	}
-
+	
 	return result.release();
 }
 

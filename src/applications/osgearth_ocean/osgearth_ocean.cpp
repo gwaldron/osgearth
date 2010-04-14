@@ -138,6 +138,10 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
+    int maskUnit = -1;
+    while(arguments.read("--mask-unit",maskUnit));    
+
+
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
 
@@ -172,7 +176,7 @@ int main(int argc, char** argv)
     osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);   
 
     OceanSurfaceNode* ocean = new OceanSurfaceNode();
-    ocean->setOceanMaskTextureUnit( 1 );
+    ocean->setOceanMaskTextureUnit( maskUnit );
 
     group->addChild( loadedModel );
 

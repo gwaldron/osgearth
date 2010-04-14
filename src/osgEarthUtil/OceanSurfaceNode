@@ -23,6 +23,7 @@
 #include <osg/observer_ptr>
 #include <osg/CoordinateSystemNode>
 #include <osg/Program>
+#include <osg/Texture3D>
 
 #include <osgEarthUtil/Common>
 
@@ -54,6 +55,17 @@ namespace osgEarthUtil
         void setOceanMaskTextureUnit(int unit);
 
         /**
+         *Gets the texture unit to use for the ocean surface detail
+         */
+        int getOceanSurfaceTextureUnit() const;
+
+        /**
+         *Sets the texture unit to use for the ocean surface detail
+         *Setting this to -1 disables the effect
+         */
+        void setOceanSurfaceTextureUnit( int unit);
+
+        /**
          *Gets the wave height
          */
         float getWaveHeight() const;
@@ -66,12 +78,12 @@ namespace osgEarthUtil
         /**
          *Gets the range at which the effect starts to show.
          */
-        double getMaxRange() const;
+        float getMaxRange() const;
 
         /**
          *Sets the max range at which the effect starts to show
          */
-        void setMaxRange(double maxRange);
+        void setMaxRange(float maxRange);
 
         /**
          *Gets the period of the wave
@@ -112,6 +124,38 @@ namespace osgEarthUtil
 
         osg::Vec4f getModulationColor() const;
 
+        /**
+         * Gets the period of the ocean animation effect in seconds
+         */
+        float getOceanAnimationPeriod() const;
+
+        /**
+         * Sets the period of the ocean animation effect in seconds
+         */
+        void setOceanAnimationPeriod(float oceanAnimationPeriod);
+
+        /**
+         *Gets the ocean surface image to the given 3D image.
+         */
+        osg::Image* getOceanSurfaceImage() const;
+        
+        /**
+         *Sets the ocean surface image to the given 3D image.
+         */
+        void setOceanSurfaceImage( osg::Image* image);
+
+        /**
+         *Gets the size of the ocean surface image in radians
+         */
+        float getOceanSurfaceImageSizeRadians() const;
+
+        /**
+         *Sets the size of the ocean surface image in radians
+         */
+        void setOceanSurfaceImageSizeRadians( float size );
+
+
+
 
         virtual void traverse(osg::NodeVisitor& nv);
     private:
@@ -121,15 +165,20 @@ namespace osgEarthUtil
         osg::ref_ptr< osg::Shader > _vertShader;
         osg::ref_ptr< osg::Shader > _fragShader;
 
-        double _currentElevation;
-        double _maxRange;
+        float _currentElevation;
+        float _maxRange;
         int _oceanMaskTextureUnit;
+        int _oceanSurfaceTextureUnit;
         float _waveHeight;
         float _period;
         bool _enabled;
         bool _invertMask;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
         optional<osg::Vec4f> _oceanColor;
+        float _oceanAnimationPeriod;
+        float _oceanSurfaceImageSizeRadians;
+        osg::ref_ptr< osg::Image > _oceanSurfaceImage;
+        osg::ref_ptr< osg::Texture3D > _oceanSurfaceTexture;
     };
 }
 

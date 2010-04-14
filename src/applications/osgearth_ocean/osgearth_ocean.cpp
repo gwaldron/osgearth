@@ -31,6 +31,8 @@
 #include <osg/Geometry>
 #include <osg/Image>
 #include <osg/CullFace>
+#include <osg/Texture3D>
+#include <osg/Texture2D>
 
 #include <osgGA/TrackballManipulator>
 #include <osgGA/FlightManipulator>
@@ -66,6 +68,42 @@ using namespace osgDB;
 using namespace osgTerrain;
 using namespace osgEarth;
 using namespace osgEarthUtil;
+
+class MyGraphicsContext {
+    public:
+        MyGraphicsContext()
+        {
+            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
+            traits->x = 0;
+            traits->y = 0;
+            traits->width = 1;
+            traits->height = 1;
+            traits->windowDecoration = false;
+            traits->doubleBuffer = false;
+            traits->sharedContext = 0;
+            traits->pbuffer = true;
+
+            _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+
+            if (!_gc)
+            {
+                traits->pbuffer = false;
+                _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+            }
+
+            if (_gc.valid()) 
+            {
+                _gc->realize();
+                _gc->makeCurrent();
+            }
+        }
+        
+        bool valid() const { return _gc.valid() && _gc->isRealized(); }
+        
+    private:
+        osg::ref_ptr<osg::GraphicsContext> _gc;
+};
+
 
 
 // An event handler that will print out the elevation at the clicked point
@@ -123,6 +161,25 @@ struct MyEventHandler : public osgGA::GUIEventHandler
                     _ocean->setModulationColor( color );                        
                 }
                 break;
+            case 'A':
+                { 
+                    _ocean->setOceanAnimationPeriod(_ocean->getOceanAnimationPeriod() + 0.25);
+                }
+                break;
+            case 'a':
+                { 
+                    _ocean->setOceanAnimationPeriod(_ocean->getOceanAnimationPeriod() - 0.25);
+                }
+            case 'J':
+                {
+                    _ocean->setOceanSurfaceImageSizeRadians( _ocean->getOceanSurfaceImageSizeRadians() * 1.5f);
+                }
+                break;
+            case 'j':
+                {
+                    _ocean->setOceanSurfaceImageSizeRadians( _ocean->getOceanSurfaceImageSizeRadians() * 0.5f);
+                }
+                break;
             }
         }
         return false;
@@ -130,6 +187,30 @@ struct MyEventHandler : public osgGA::GUIEventHandler
 
     osg::ref_ptr< OceanSurfaceNode > _ocean;
 };
+
+typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
+
+osg::Image* make3DImage(const ImageList& images)
+{
+    MyGraphicsContext gc;
+    osg::notify(osg::NOTICE) << "Made graphic context " << std::endl;
+    /*for (unsigned int i = 0; i < images.size(); ++i)
+    {
+        images[i]->scaleImage(256, 256, 1);
+        osg::notify(osg::NOTICE) << "Scaled image " << i << std::endl;
+    }*/
+
+    osg::Image* image3D = new osg::Image;
+    image3D->allocateImage(images[0]->s(), images[0]->t(), images.size(),
+                           images[0]->getPixelFormat(), images[0]->getDataType());
+    
+    for (unsigned int i = 0; i < images.size(); ++i)
+    {
+        image3D->copySubImage(0, 0, i, images[i].get());
+    }
+    image3D->setInternalTextureFormat(images[0]->getInternalTextureFormat());
+    return image3D;
+}
 
 
 
@@ -177,6 +258,16 @@ int main(int argc, char** argv)
 
     OceanSurfaceNode* ocean = new OceanSurfaceNode();
     ocean->setOceanMaskTextureUnit( maskUnit );
+
+    ImageList waterImages;
+    waterImages.push_back( osgDB::readImageFile("../data/watersurface1.png") );
+    waterImages.push_back( osgDB::readImageFile("../data/watersurface2.png") );
+    waterImages.push_back( osgDB::readImageFile("../data/watersurface3.png") );
+    waterImages.push_back( osgDB::readImageFile("../data/watersurface4.png") );
+
+    osg::ref_ptr<osg::Image> waterImage = make3DImage(waterImages);
+    
+    ocean->setOceanSurfaceImage( waterImage.get() );
 
     group->addChild( loadedModel );
 

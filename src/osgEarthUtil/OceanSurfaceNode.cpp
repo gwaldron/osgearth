@@ -20,6 +20,9 @@
 #include <osgEarthUtil/OceanSurfaceNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/Notify>
+
+#include <osgDB/ReadFile>
+
 #include <osgUtil/CullVisitor>
 
 #include <list>
@@ -93,7 +96,7 @@ char vert_shader_source[] =
 //"in vec3 osgEarth_LatLon;\n"
 "varying vec2 texCoord0;\n"
 "varying vec2 texCoord1;\n"
-"varying vec2 texCoord2;\n"
+"varying vec3 texCoord2;\n"
 "varying vec2 texCoord3;\n"
 "uniform float osg_SimulationTime; \n"
 "uniform mat4 osg_ViewMatrixInverse;\n"
@@ -104,7 +107,13 @@ char vert_shader_source[] =
 "uniform bool osgEarth_oceanMaskUnitValid;\n"
 "uniform bool osgEarth_oceanEnabled;\n"
 "uniform bool osgEarth_oceanInvertMask;\n"
+"uniform float osgEarth_oceanAnimationPeriod;\n"
+"uniform float osgEarth_oceanMaxRange;\n"
+"uniform float osgEarth_cameraElevation;\n"
+
 "varying vec2 oceanMaskTexCoord;\n"
+"varying float osgEarth_oceanAlpha;\n"
+"\n"
 "\n"
 "//Lighting\n"
 "uniform bool osgEarth_lightingEnabled; \n"
@@ -149,25 +158,36 @@ char vert_shader_source[] =
 "  }\n"
 " \n"
 "\n"
-"   float alpha = 0.0;\n"
-"   if (osgEarth_oceanMaskUnitValid) alpha = texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoordOCEAN_MASK_UNIT.st).a;\n"
-"   if (osgEarth_oceanInvertMask) alpha = 1.0 - alpha;\n"
-"   if (osgEarth_oceanEnabled && alpha < 0.1)\n"
+"   mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix;\n"
+"   vec4 vert = modelMatrix  * gl_Vertex;\n"           
+"   vec3 vert3 = vec3(vert.x, vert.y, vert.z);\n"
+"   vec2 latlon = xyz_to_lat_lon(vert3);\n"
+
+"   if (osgEarth_oceanMaskUnitValid) osgEarth_oceanAlpha = 1.0 - texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoordOCEAN_MASK_UNIT.st).a;\n"
+"   if (osgEarth_oceanInvertMask) osgEarth_oceanAlpha = 1.0 - osgEarth_oceanAlpha;\n"
+"   if (osgEarth_oceanMaxRange >= osgEarth_cameraElevation)\n"
+"   {\n"
+"     //Fade in over the first 50%\n"
+"     //Invert so it's between 0 and 1\n"
+"     float s = mix(1.0, 0.0, osgEarth_cameraElevation / osgEarth_oceanMaxRange);\n"
+"     osgEarth_oceanAlpha *= s;\n"
+"   }\n"
+"   else {\n"
+"      osgEarth_oceanAlpha = 0.0;\n"
+"   }\n"
+
+"   if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0.0)\n"
 "   {\n"
 "     const float PI_2 = 3.14158 * 2.0;\n"
 "     const float period = PI_2/osgEarth_oceanPeriod;\n"
 "     const float half_period = period / 2.0;\n"
-"     mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix;\n"
-"     vec4 vert = modelMatrix  * gl_Vertex;\n"           
-"     vec3 vert3 = vec3(vert.x, vert.y, vert.z);\n"
-"     vec2 latlon = xyz_to_lat_lon(vec3(vert.x, vert.y, vert.z));\n"
 //"     vec3 latlon = osgEarth_LatLon;\n"
 "     vec3 n = normalize(vert3);\n"
 "     float theta = (mod(latlon.x, period) / period) * PI_2;\n"  
 "     float phi = (mod(latlon.y, half_period) / half_period) * PI_2;\n"
 "     float phase1 = osg_SimulationTime * 2.0;\n"
 "     float phase2 = osg_SimulationTime * 4.0;\n"
-"     float waveHeight = (1.0-alpha) * osgEarth_oceanHeight;\n"
+"     float waveHeight = (osgEarth_oceanAlpha) * osgEarth_oceanHeight;\n"
 "     float scale1 = sin(theta + phase1) * waveHeight;\n"
 "     float scale2 = cos(phi + phase2) * waveHeight;\n"
 "     float scale3 = sin(theta + phase2) * cos(phi + phase1) * waveHeight *1.6;\n"
@@ -183,10 +203,19 @@ char vert_shader_source[] =
 "     gl_Position = ftransform();\n"
 "   }\n"
 "\n"
+"   const float PI = 3.14158;\n"
+"   float textureSize = OCEAN_TEXTURE_SIZE;\n"
 "	texCoord0 = gl_MultiTexCoord0.st;\n"
 "	texCoord1 = gl_MultiTexCoord1.st;\n"
-"	texCoord2 = gl_MultiTexCoord2.st;\n"
+"	texCoord2.xy = gl_MultiTexCoord1.st;\n"
 "	texCoord3 = gl_MultiTexCoord3.st;\n"
+"   #if OCEAN_SURFACE_UNIT >= 0\n"
+"   //Alter the z (r) coordinate based on the animation period\n"
+"   texCoordOCEAN_SURFACE_UNIT.x =  latlon.x / textureSize;\n"
+"   texCoordOCEAN_SURFACE_UNIT.y =  latlon.y / textureSize;\n"
+"   texCoordOCEAN_SURFACE_UNIT.z = fract(osg_SimulationTime/osgEarth_oceanAnimationPeriod);\n"
+"   #endif\n"
+
 "}\n";
 
 
@@ -211,14 +240,19 @@ static osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& states
     return base_val;
 }
 
+typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
+
 OceanSurfaceNode::OceanSurfaceNode():
 _oceanMaskTextureUnit(-1),
+_oceanSurfaceTextureUnit(2),
 _waveHeight(100),
-_currentElevation(0),
-_maxRange(250000),
+_currentElevation(FLT_MAX),
+_maxRange(800000),
 _period(1024),
 _enabled(true),
 _invertMask(false),
+_oceanAnimationPeriod(6.0),
+_oceanSurfaceImageSizeRadians(osg::PI/500.0),
 _oceanColor(osg::Vec4f(0,0,1,0))
 {
     _program = new osg::Program;
@@ -238,11 +272,22 @@ _oceanColor(osg::Vec4f(0,0,1,0))
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer3_unit", osg::Uniform::INT)->set(3);
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(_enabled);     
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period);   
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask);       
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask); 
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanAnimationPeriod", osg::Uniform::FLOAT)->set(_oceanAnimationPeriod); 
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_cameraElevation", osg::Uniform::FLOAT)->set(_currentElevation);
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanMaxRange", osg::Uniform::FLOAT)->set(_maxRange);
 
     osg::Uniform* oceanHeightUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT);
     oceanHeightUniform->set( _waveHeight);
     oceanHeightUniform->setDataVariance( osg::Object::DYNAMIC);
+
+    //Initialize the ocean surface texture
+    _oceanSurfaceTexture = new osg::Texture3D();
+    _oceanSurfaceTexture->setWrap(osg::Texture::WRAP_S,osg::Texture::REPEAT);
+    _oceanSurfaceTexture->setWrap(osg::Texture::WRAP_T,osg::Texture::REPEAT);
+    _oceanSurfaceTexture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
+    _oceanSurfaceTexture->setFilter(osg::Texture3D::MIN_FILTER,osg::Texture3D::LINEAR);
+    _oceanSurfaceTexture->setFilter(osg::Texture3D::MAG_FILTER,osg::Texture3D::LINEAR);
 }
 
 int
@@ -258,6 +303,52 @@ OceanSurfaceNode::setOceanMaskTextureUnit(int unit)
     {
         _oceanMaskTextureUnit = unit;
         rebuildShaders();
+    }
+}
+
+int
+OceanSurfaceNode::getOceanSurfaceTextureUnit() const
+{
+    return _oceanSurfaceTextureUnit;
+}
+
+void
+OceanSurfaceNode::setOceanSurfaceTextureUnit(int unit)
+{
+    if (_oceanSurfaceTextureUnit != unit)
+    {
+        //Remove the previous texture
+        if (_oceanSurfaceTextureUnit >= 0)
+        {
+            getOrCreateStateSet()->setTextureAttributeAndModes(_oceanSurfaceTextureUnit, NULL, osg::StateAttribute::OFF);
+        }
+
+        //Set the new unit
+        _oceanSurfaceTextureUnit = unit;
+
+        //Set the texture on the new unit
+        if (_oceanSurfaceTextureUnit >= 0 && _oceanSurfaceImage.valid())
+        {
+            getOrCreateStateSet()->setTextureAttributeAndModes(_oceanSurfaceTextureUnit, _oceanSurfaceTexture, osg::StateAttribute::ON);
+        }
+        rebuildShaders();
+    }
+}
+
+osg::Image*
+OceanSurfaceNode::getOceanSurfaceImage() const
+{
+    return _oceanSurfaceImage.get();
+}
+
+void
+OceanSurfaceNode::setOceanSurfaceImage(osg::Image* image)
+{
+    if (_oceanSurfaceImage.get() != image)
+    {
+        _oceanSurfaceImage = image;
+        _oceanSurfaceTexture->setImage( _oceanSurfaceImage.get() );
+        getOrCreateStateSet()->setTextureAttributeAndModes(_oceanSurfaceTextureUnit, _oceanSurfaceTexture.get(), osg::StateAttribute::ON);
     }
 }
 
@@ -277,16 +368,20 @@ OceanSurfaceNode::setWaveHeight(float waveHeight)
     }
 }
 
-double
+float
 OceanSurfaceNode::getMaxRange() const
 {
     return _maxRange;
 }
 
 void
-OceanSurfaceNode::setMaxRange(double maxRange)
+OceanSurfaceNode::setMaxRange(float maxRange)
 {
-    _maxRange = maxRange;
+    if (_maxRange != maxRange)
+    {
+        _maxRange = maxRange;
+        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanMaxRange", osg::Uniform::FLOAT)->set(_maxRange);
+    }
 }
 
 float
@@ -314,7 +409,11 @@ OceanSurfaceNode::getEnabled() const
 void
 OceanSurfaceNode::setEnabled(bool enabled)
 {
-    _enabled = enabled;
+    if (_enabled != enabled)
+    {
+        _enabled = enabled;
+        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(_enabled);
+    }
 }
 
 bool
@@ -350,6 +449,39 @@ OceanSurfaceNode::getModulationColor() const
     return _oceanColor.value();
 }
 
+float
+OceanSurfaceNode::getOceanAnimationPeriod() const
+{
+    return _oceanAnimationPeriod;
+}
+
+void
+OceanSurfaceNode::setOceanAnimationPeriod(float oceanAnimationPeriod)
+{
+    if (_oceanAnimationPeriod != oceanAnimationPeriod)
+    {
+        _oceanAnimationPeriod = oceanAnimationPeriod;
+        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanAnimationPeriod", osg::Uniform::FLOAT)->set(oceanAnimationPeriod); 
+    }
+}
+
+float
+OceanSurfaceNode::getOceanSurfaceImageSizeRadians() const
+{
+    return _oceanSurfaceImageSizeRadians;
+}
+
+void
+OceanSurfaceNode::setOceanSurfaceImageSizeRadians(float size)
+{
+    if (_oceanSurfaceImageSizeRadians != size)
+    {
+        _oceanSurfaceImageSizeRadians = size;
+        rebuildShaders();
+    }
+}
+
+
 void 
 OceanSurfaceNode::traverse(osg::NodeVisitor& nv)
 {
@@ -371,14 +503,14 @@ OceanSurfaceNode::traverse(osg::NodeVisitor& nv)
                 double x = nv.getViewPoint().x();
                 double y = nv.getViewPoint().y();
                 double z = nv.getViewPoint().z();
-                double latitude, longitude;
-                em->convertXYZToLatLongHeight(x, y, z, latitude, longitude, _currentElevation);
+                double latitude, longitude, elevation;
+                em->convertXYZToLatLongHeight(x, y, z, latitude, longitude, elevation);
+                _currentElevation = (float)elevation;
             }
         }
 
-        bool enableEffect = _currentElevation < _maxRange;
-        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(enableEffect & _enabled);
-        //OE_NOTICE << "Current elevation " << _currentElevation << ":  Enabled=" << enableEffect << std::endl;
+        //bool enableEffect = _currentElevation < _maxRange;
+        getOrCreateStateSet()->getOrCreateUniform("osgEarth_cameraElevation", osg::Uniform::FLOAT)->set(_currentElevation);
 
         osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
         if (cv)
@@ -414,6 +546,20 @@ OceanSurfaceNode::traverse(osg::NodeVisitor& nv)
     osg::Group::traverse(nv);
 }
 
+static std::string replaceAll(const std::string &input, const std::string &toreplace, const std::string &replacewith)
+{
+    std::string str = input;
+    std::size_t start = 0;
+    while (true)
+    {
+        start = str.find(toreplace, start);
+        if (start == str.npos) break;
+        str.replace(start, toreplace.size(), replacewith);
+        start += replacewith.size();
+    }
+    return str;
+}
+
 
 void
 OceanSurfaceNode::rebuildShaders()
@@ -425,15 +571,21 @@ OceanSurfaceNode::rebuildShaders()
         std::string(vert_shader_source);
 
     {
-        unsigned int unit = _oceanMaskTextureUnit >= 0 ? _oceanMaskTextureUnit : 0;        
-        std::string str = vertShaderSource;
-        std::string toreplace = std::string("OCEAN_MASK_UNIT");
-        std::size_t start = str.find(toreplace);
+        unsigned int maskUnit = _oceanMaskTextureUnit >= 0 ? _oceanMaskTextureUnit : 0;        
         std::stringstream ss;
-        ss << unit;
-        str.replace(start, toreplace.size(), ss.str());
-        vertShaderSource = str;
-        OE_DEBUG << "Shader " << str << std::endl;
+        ss << maskUnit;
+        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_MASK_UNIT", ss.str());
+        
+        int surfaceUnit = _oceanSurfaceTextureUnit >= 0 ? _oceanSurfaceTextureUnit : 0;        
+        ss.str("");
+        ss << surfaceUnit;
+        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_SURFACE_UNIT", ss.str());
+
+        ss.str("");
+        ss << _oceanSurfaceImageSizeRadians;
+        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_TEXTURE_SIZE", ss.str());
+        
+        OE_DEBUG << "Shader " << vertShaderSource << std::endl;
     }
 
     _vertShader->setShaderSource( vertShaderSource );
@@ -443,9 +595,15 @@ OceanSurfaceNode::rebuildShaders()
     for (unsigned int i = 0; i < numUnits; ++i)
     {
         //if (i != _oceanMaskTextureUnit)
+        if (i != _oceanSurfaceTextureUnit)
         {
             ss << "varying vec2 texCoord" << i << ";" << std::endl;
             ss << "uniform sampler2D osgEarth_Layer" << i << "_unit;" << std::endl;
+        }
+        else
+        {
+            ss << "varying vec3 texCoord" << i << ";" << std::endl;
+            ss << "uniform sampler3D osgEarth_Layer" << i << "_unit;" << std::endl;
         }
     }
 
@@ -453,6 +611,9 @@ OceanSurfaceNode::rebuildShaders()
     {
         ss << "uniform bool osgEarth_oceanInvertMask;\n";
     }
+
+    ss << "uniform bool osgEarth_oceanEnabled;\n";
+    ss << "varying float osgEarth_oceanAlpha;\n";
 
     ss << "void main ( void ) " << std::endl
         << "{" << std::endl;
@@ -462,11 +623,22 @@ OceanSurfaceNode::rebuildShaders()
         for(unsigned int i=0; i < numUnits; ++i)
         {
             ss << "vec4 tex" << i << ";\n";
-            ss << "tex" << i << " =  texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");\n";
+            if (i == _oceanSurfaceTextureUnit)
+            {
+              ss << "tex" << i << " =  texture3D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");\n";
+              ss << "if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0) { " << std::endl
+                     << "  tex" << i << ".a *= osgEarth_oceanAlpha;" << std::endl
+                 << "}" << std::endl
+                 << " else { tex" << i << ".a = 0.0; }" << std::endl;
+            }
+            else
+            {
+              ss << "tex" << i << " =  texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");\n";
+            }
 
             if ( i == _oceanMaskTextureUnit )
             {
-                ss << "float maskAlpha = 1.0-tex" << i << ".a;\n";
+                ss << "float maskAlpha = 1.0 - tex" << i << ".a;\n";
                 ss << "if(osgEarth_oceanInvertMask) maskAlpha = 1.0-maskAlpha;\n";                
                 ss << "tex" << i << " = vec4("
                     << _oceanColor->r() << "," << _oceanColor->g() << ","
@@ -481,14 +653,27 @@ OceanSurfaceNode::rebuildShaders()
             ss << "vec4 tex" << i << " = vec4(0.0,0.0,0.0,0.0);\n";
             if (i != _oceanMaskTextureUnit)
             {
-                ss << "tex" << i << " = texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");" << std::endl;
+                if (i == _oceanSurfaceTextureUnit)
+                {
+                  ss << "tex" << i << " = texture3D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");" << std::endl;
+                  ss << "if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0) { " << std::endl
+                     << "  tex" << i << ".a *= osgEarth_oceanAlpha;" << std::endl
+                     << "}" << std::endl
+                     << " else { tex" << i << ".a = 0.0; }" << std::endl;
+                }
+                else
+                {
+                  ss << "tex" << i << " = texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");" << std::endl;
+                }
             }
         }
     }
 
     ss << "//Interpolate the color between the first layer and second" << std::endl
         << "vec3 c = mix(tex0.rgb, tex1.rgb, tex1.a);" << std::endl
+        //<< "if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0){ " << std::endl
         << "c = mix(c, tex2.rgb, tex2.a);" << std::endl
+        //<< "}" << std::endl
         << "c = mix(c, tex3.rgb, tex3.a);" << std::endl
         << "float a = tex0.a;" << std::endl
         << "if (a < tex1.a) a = tex1.a;" << std::endl

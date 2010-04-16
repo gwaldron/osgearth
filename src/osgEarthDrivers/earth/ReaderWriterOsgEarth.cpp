@@ -98,7 +98,23 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if ( success )
                 {
-                    osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), earthFile.getMapEngineProperties() );
+                    MapEngineProperties props = earthFile.getMapEngineProperties();
+
+                    if ( options )
+                    {
+                        // check is an engine properties object was supplied in the Options structure. If so,
+                        // merge it in. Note that the properties will override those in the earth file.
+
+                        const MapEngineProperties* userProps = static_cast<const MapEngineProperties*>(
+                            options->getPluginData( MapEngineProperties::OPTIONS_TAG ) );
+
+                        if ( userProps )
+                        {
+                            props.merge( *userProps );
+                        }
+                    }
+
+                    osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), props );
 
                     //Create the root node for the scene
                     node = mapNode.release();

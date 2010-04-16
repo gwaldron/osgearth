@@ -404,10 +404,12 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
         {
 			terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
+            OE_INFO << "[MapNode] Layering technique = MULTIPASS" << std::endl;
         }
         else // LAYERING_MULTITEXTURE (default)
         {
 			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
+            OE_INFO << "[MapNode] Layering technique = MULTITEXTURE" << std::endl;
         }
 
         // apply any pending callbacks:

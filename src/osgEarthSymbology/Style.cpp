@@ -38,6 +38,7 @@ Style::Style(const Style&, const osg::CopyOp&)
 void Style::addSymbol(Symbol* symbol)
 {
     _symbols.push_back(symbol);
+    dirty();
 }
 
 
@@ -57,6 +58,7 @@ Style::fromConfig( const Config& conf )
     {
         _origData = conf.value();
     }
+    dirty();
 }
 
 Config

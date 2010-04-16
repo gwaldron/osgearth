@@ -20,7 +20,6 @@
 #ifndef OSGEARTHSYMBOLOGY_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_SYMBOL_H 1
 
-#include <osgEarth/Common>
 #include <osgEarthSymbology/Common>
 #include <osg/Referenced>
 #include <vector>

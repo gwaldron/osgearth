@@ -144,6 +144,7 @@ namespace osgEarth
         osg::ref_ptr<osgTerrain::Locator> _masterLocator;
 
         bool _swapPending;
+        int _initCount;
     };
 
 }

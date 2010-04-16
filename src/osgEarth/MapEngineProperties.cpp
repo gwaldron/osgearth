@@ -23,6 +23,9 @@
 
 using namespace osgEarth;
 
+std::string MapEngineProperties::OPTIONS_TAG = "__osgEarth::MapEngineProperties";
+
+
 LoadingPolicy::LoadingPolicy( const Config& conf ) :
 _mode( MODE_STANDARD ),
 _numThreads( 2 ),
@@ -147,5 +150,11 @@ MapEngineProperties::fromConfig( const Config& conf )
 
     conf.getIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
     conf.getIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
+}
+
+void
+MapEngineProperties::merge( const MapEngineProperties& rhs )
+{
+    fromConfig( rhs.toConfig() );
 }
 

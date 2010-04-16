@@ -34,17 +34,17 @@ namespace osgEarth
 
         /** Synchronizes the external revision number with this revision, effectively
             bringing the external object up to date. */
-        void sync( int& externalRevision ) const {
+        virtual void sync( int& externalRevision ) const {
             externalRevision = _revision;
         }
 
         /** Returns true if the external object is at a different revision that this object. */
-        bool outOfSync( int externalRevision) const {
-            return !inSync( externalRevision );
+        bool outOfSyncWith( int externalRevision) const {
+            return !inSyncWith( externalRevision );
         }
 
         /** Returns true if the external object is at the same revision as this object. */
-        virtual bool inSync( int externalRevision ) const {
+        virtual bool inSyncWith( int externalRevision ) const {
             return _alwaysDirty ? false : _revision == externalRevision;
         }
 

@@ -38,18 +38,19 @@ namespace osgEarthUtil
     {
     public:
         /**
-         * Constructs a new handler. You must provide the map node so that
-         * the handler knows the spatial characteristics of the map.
+         * Constructs a new clip plane handler.
          */
-        AutoClipPlaneHandler( osgEarth::MapNode* mapNode );
+        AutoClipPlaneHandler();
 
+        
     public: // EventHandler
 
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
     private:
 
-        osg::observer_ptr<MapNode> _node;
+        osg::observer_ptr<MapNode> _mapNode;
+        bool _geocentric;
         int _frame;
         double _nfrAtRadius, _nfrAtDoubleRadius, _rp;
     };

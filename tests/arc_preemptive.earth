@@ -13,10 +13,10 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 
 <map name="ESRI Imagery and Roads" type="geocentric">        
 
-	<!-- Set a "preemptive" loading policy, and set the number of
+    <!-- Set a "preemptive" loading policy, and set the number of
          loading threads to use. -->
     <engine_properties>        
-	    <loading_policy mode="preemptive" loading_threads_per_core="3"/>
+        <loading_policy mode="preemptive" loading_threads_per_core="3"/>
         <lighting>false</lighting>
     </engine_properties>
     

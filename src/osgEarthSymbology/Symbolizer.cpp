@@ -35,15 +35,15 @@ _dataSetRevision( -1 )
 }
 
 bool
-Symbolizer::State::outOfSync( const Style* style ) const
+Symbolizer::State::outOfSyncWith( const Style* style ) const
 {
-    return style && style->outOfSync( _styleRevision );
+    return style && style->outOfSyncWith( _styleRevision );
 }
 
 bool
-Symbolizer::State::outOfSync( const SymbolizerInput* dataSet ) const
+Symbolizer::State::outOfSyncWith( const SymbolizerInput* dataSet ) const
 {
-    return dataSet && dataSet->outOfSync( _dataSetRevision );
+    return dataSet && dataSet->outOfSyncWith( _dataSetRevision );
 }
 
 /*************************************************************************/

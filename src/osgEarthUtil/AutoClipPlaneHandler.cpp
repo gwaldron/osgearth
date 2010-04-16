@@ -17,12 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarth/FindNode>
 
 using namespace osgEarthUtil;
 using namespace osgEarth;
 
-AutoClipPlaneHandler::AutoClipPlaneHandler( MapNode* node ) :
-_node(node),
+AutoClipPlaneHandler::AutoClipPlaneHandler() :
+_geocentric(false),
 _frame(0),
 _nfrAtRadius( 0.00001 ),
 _nfrAtDoubleRadius( 0.0049 ),
@@ -36,17 +37,25 @@ AutoClipPlaneHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAction
 {
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME && _frame++ > 1 )
     {
-        if ( _node.valid() )
+        osg::Camera* cam = aa.asView()->getCamera();
+
+        if ( !_mapNode.valid() )
         {
-            if ( _node->getMap()->getProfile() )
+            osg::ref_ptr<MapNode> tempNode = osgEarth::findTopMostNodeOfType<MapNode>( cam );
+            if ( tempNode.valid() && tempNode->getMap()->getProfile() )
             {
-                _rp = _node->getMap()->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
-                _node = 0L;
+                _geocentric = tempNode->getMap()->isGeocentric();
+                if ( _geocentric )
+                    _rp = tempNode->getMap()->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
+                else
+                    OE_INFO << "[AutoClipPlaneHandler] disabled for non-geocentric map" << std::endl;
+
+                _mapNode = tempNode.get();
             }
         }
-        else
+
+        if ( _mapNode.valid() && _geocentric )
         {
-            osg::Camera* cam = aa.asView()->getCamera();
             cam->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
 
             osg::Vec3d eye, center, up;

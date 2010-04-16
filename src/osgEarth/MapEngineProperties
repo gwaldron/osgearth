@@ -222,6 +222,11 @@ namespace osgEarth
         virtual Config toConfig() const;
         virtual void fromConfig( const Config& conf );
 
+        /** Incorporate property settings form another object. */
+        void merge( const MapEngineProperties& other );
+
+        static std::string OPTIONS_TAG;
+
     private:
             
         optional<float> _verticalScale;

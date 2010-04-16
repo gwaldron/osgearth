@@ -50,8 +50,26 @@ using namespace osgTerrain;
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define NEW_COORD_CODE
+// OSG 2.9.5 introduced new texture buffer code..
+#if OSG_VERSION_GREATER_OR_EQUAL(2,9,5)
+#   define USE_NEW_OSG_TEXTURE_BUFFERS 1
+#endif
 
+// OSG 2.9.8 changed the osgTerrain API...
+#if OSG_VERSION_GREATER_OR_EQUAL(2,9,8)
+#   define USE_NEW_OSGTERRAIN_298_API 1 
+#endif
+
+
+#ifndef USE_NEW_OSG_TEXTURE_BUFFERS
+#   define EXPLICITY_REPLEASE_GL_OBJECTS 1
+#endif
+
+//#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+//#  undef EXPLICIT_RELEASE_GL_OBJECTS
+//#else
+//#  define EXPLICIT_RELEASE_GL_OBJECTS
+//#endif
 
 EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
 TerrainTechnique(),
@@ -59,7 +77,8 @@ _masterLocator( masterLocator ),
 _currentReadOnlyBuffer(1),
 _currentWriteBuffer(0),
 _verticalScaleOverride(1.0f),
-_swapPending( false )
+_swapPending( false ),
+_initCount(0)
 {
     this->setThreadSafeRefUnref(true);
 }
@@ -71,7 +90,8 @@ _lastCenterModel( gt._lastCenterModel ),
 _currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),
 _currentWriteBuffer( gt._currentWriteBuffer ),
 _verticalScaleOverride( gt._verticalScaleOverride ),
-_swapPending( gt._swapPending )
+_swapPending( gt._swapPending ),
+_initCount( gt._initCount )
 {
     _bufferData[0] = gt._bufferData[0];
     _bufferData[1] = gt._bufferData[1];
@@ -108,7 +128,7 @@ void EarthTerrainTechnique::swapBuffers()
 }
 
 void
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
+#ifdef USE_NEW_OSGTERRAIN_298_API
 EarthTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
 #else
 EarthTerrainTechnique::init()
@@ -123,10 +143,20 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
     // lock changes to the layers while we're rendering them
     ScopedReadLock lock( getMutex() );
 
+    _initCount++;
+    //if ( _initCount > 1 ) 
+    //{
+    //    OE_INFO << "tile init = " << _initCount << std::endl;
+    //}
+
     // we cannot run this method is there is a swap currently pending!
     if ( _swapPending )
     {
-        OE_NOTICE << "illegal; cannot init() with a pending swap!" << std::endl;
+        //TODO: figure out WHY this is happening in sequential mode after
+        // the osgTerrain edge-normal calculation update.
+        // http://www.osgearth.org/ticket/140
+
+        OE_INFO << "illegal; cannot init() with a pending swap!" << std::endl;
         return;
     }
 
@@ -169,6 +199,12 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
         swapBuffers();
 
     _swapPending = !swapNow;
+    
+#ifdef USE_NEW_OSGTERRAIN_298_API
+    // In the updated API, the technique is now responsible for clearing the dirty flag.
+    // It used to be the tile that cleared it.
+    _terrainTile->setDirtyMask(0);
+#endif
 }
 
 bool
@@ -945,6 +981,7 @@ void EarthTerrainTechnique::applyColorLayers()
                 // decremenet this.)
                 if ( dynamic_cast<osg::ImageSequence*>( image ) )
                 {
+                    //TODO: this is a totally un-threasd-safe hack!! fix it!!
                     static_cast<VersionedTile*>(_terrainTile)->adjustUpdateTraversalCount( 1 );
                 }
 
@@ -1105,6 +1142,10 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
             cull(cv);
             return;
         }
+        else
+        {
+            OE_WARN << "[ETT] CULL_VISITOR not a osgUtil::CullVisitor" << std::endl;
+        }
     }
 
     // the code from here on accounts for user traversals (intersections, etc)
@@ -1130,6 +1171,7 @@ void EarthTerrainTechnique::cleanSceneGraph()
 void
 EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
+#ifdef EXPLICIT_RELEASE_GL_OBJECTS
     EarthTerrainTechnique* ncThis = const_cast<EarthTerrainTechnique*>(this);
 
     ScopedWriteLock lock( ncThis->getMutex() );
@@ -1142,6 +1184,9 @@ EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
     {
         _bufferData[1]._transform->releaseGLObjects(state);   
     }
+#else
+    TerrainTechnique::releaseGLObjects( state );
+#endif
 }
 
 //void

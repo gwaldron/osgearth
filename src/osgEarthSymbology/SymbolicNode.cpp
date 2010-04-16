@@ -54,7 +54,8 @@ SymbolicNode::traverse( osg::NodeVisitor& nv )
     setNumChildrenRequiringUpdateTraversal(1);
     if ( _symbolizer.valid() && _state.valid() && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {   
-        if ( _dataSet->outOfSync( _state->_dataSetRevision ) || _style->outOfSync( _state->_styleRevision ) )
+        if ((_dataSet.valid() && _dataSet->outOfSyncWith( _state->_dataSetRevision )) ||
+            (_style.valid() && _style->outOfSyncWith( _state->_styleRevision )) )
         {
             _symbolizer->update(
                 _dataSet.get(),

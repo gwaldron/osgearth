@@ -1110,15 +1110,12 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
 void
 VersionedTile::traverse( osg::NodeVisitor& nv )
 {
-    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
     bool isUpdate = nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
-
-    // double-check pattern for simultaneous cull traversals
-    if ( !_hasBeenTraversed )
+    if ( !_hasBeenTraversed && isUpdate )
     {
         ScopedWriteLock lock( this->_tileLayersMutex );
         {
-            if ( !_hasBeenTraversed && getVersionedTerrain() && (isCull || isUpdate) ) 
+            if ( !_hasBeenTraversed && getVersionedTerrain() )
             {
                 // register this tile with its terrain if we've not already done it.
                 // we want to be sure that the tile is already in the scene graph at the
@@ -1130,12 +1127,39 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
 
                 // we constructed this tile with an update traversal count of 1 so it would get
                 // here and we could register the tile. Now we can decrement it back to normal.
-                adjustUpdateTraversalCount( -1 );
+                // this MUST be called from the UPDATE traversal.
+                adjustUpdateTraversalCount( -1 );                
             }
         }
     }
-
     osgTerrain::TerrainTile::traverse( nv );
+
+    //bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
+    //bool isUpdate = nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
+
+    //// double-check pattern for simultaneous cull traversals
+    //if ( !_hasBeenTraversed )
+    //{
+    //    ScopedWriteLock lock( this->_tileLayersMutex );
+    //    {
+    //        if ( !_hasBeenTraversed && getVersionedTerrain() && (isCull || isUpdate) ) 
+    //        {
+    //            // register this tile with its terrain if we've not already done it.
+    //            // we want to be sure that the tile is already in the scene graph at the
+    //            // time of registration (otherwise VersionedTerrain will see its refcount
+    //            // at 1 and schedule it for removal as soon as it's added. Therefore, we
+    //            // make sure this is either a CULL or UPDATE traversal.
+    //            getVersionedTerrain()->registerTile( this );
+    //            _hasBeenTraversed = true;
+
+    //            // we constructed this tile with an update traversal count of 1 so it would get
+    //            // here and we could register the tile. Now we can decrement it back to normal.
+    //            adjustUpdateTraversalCount( -1 );
+    //        }
+    //    }
+    //}
+
+    //osgTerrain::TerrainTile::traverse( nv );
 }
 
 void
@@ -1215,6 +1239,11 @@ _releaseCBInstalled( false )
         }
 
         OE_INFO << "VT: using " << _numAsyncThreads << " loading threads " << std::endl;
+    }
+    else
+    {
+        // osgTerrain 2.9.8 explicity sets NCURT=1 .. negate that here in standard mode
+        setNumChildrenRequiringUpdateTraversal( 0 );
     }
 }
 

@@ -459,6 +459,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 
     // The empty tile:
     VersionedTile* tile = new VersionedTile( key, locator.get() );
+    tile->setTerrainTechnique( osg::clone(terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
     tile->setVerticalScale( _engineProps.verticalScale().value() );
     tile->setRequiresNormals( true );
     tile->setDataVariance( osg::Object::DYNAMIC );
@@ -689,6 +690,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     hf_layer->setHeightField( hf.get() );
 
     VersionedTile* tile = new VersionedTile( key, locator.get() );
+    tile->setTerrainTechnique( osg::clone(terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
     tile->setVerticalScale( _engineProps.verticalScale().value() );
     tile->setLocator( locator.get() );
     tile->setElevationLayer( hf_layer );

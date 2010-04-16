@@ -60,8 +60,8 @@ namespace osgEarth { namespace Symbology
         {
         public:
             State();
-            bool outOfSync( const Style* style ) const;
-            bool outOfSync( const SymbolizerInput* dataSet ) const;
+            bool outOfSyncWith( const Style* style ) const;
+            bool outOfSyncWith( const SymbolizerInput* dataSet ) const;
         protected:
             int _styleRevision;
             int _dataSetRevision;

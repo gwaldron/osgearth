@@ -47,12 +47,6 @@ namespace osgEarth { namespace Symbology
 
         META_Object(osgEarthSymbology, Style);
 
-        /** Gets the current revision # of this object. */
-        int getRevision() const { return _revision; }
-
-        /** Bumps the revision number of this object. */
-        void dirty() { _revision++; }
-
         /** Adds a symbol to the collection. */
         void addSymbol(Symbol* symbol);
 

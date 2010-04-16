@@ -834,6 +834,8 @@ public:
 
         //Get the _geotransform
         _warpedDS->GetGeoTransform(_geotransform);
+        GDALInvGeoTransform(_geotransform, _invtransform);
+
 
         //Compute the extents
         // polar needs a special case when combined with geographic
@@ -1278,13 +1280,8 @@ public:
 
     float getInterpolatedValue(GDALRasterBand *band, double x, double y)
     {
-        double offsetTransform[6];
-        memcpy(offsetTransform, _geotransform, 6 * sizeof(double));
-
-        double invTransform[6];
-        GDALInvGeoTransform(offsetTransform, invTransform);
         double r, c;
-        GDALApplyGeoTransform(invTransform, x, y, &c, &r);
+        GDALApplyGeoTransform(_invtransform, x, y, &c, &r);
 
         //Account for slight rounding errors.  If we are right on the edge of the dataset, clamp to the edge
         double eps = 0.0001;
@@ -1472,6 +1469,7 @@ private:
     GDALDataset* _srcDS;
     GDALDataset* _warpedDS;
     double       _geotransform[6];
+    double       _invtransform[6];
 
     osg::Vec2d _extentsMin;
     osg::Vec2d _extentsMax;

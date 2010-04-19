@@ -1324,6 +1324,10 @@ public:
         if ( _settings->interpolation() == INTERP_NEAREST )
         {
             band->RasterIO(GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
+            if (!isValidValue( result, band))
+            {
+                return NO_DATA_VALUE;
+            }
         }
         else
         {

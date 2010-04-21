@@ -637,27 +637,28 @@ HTTPClient::doReadImageFile(const std::string& filename,
 
         if (response.isOK())
         {
-            // Try to find a reader by file extension. If this fails, we will fetch the file
-            // anyway and try to get a reader via mime-type.
-            std::string ext = osgDB::getFileExtension( filename );
-            osgDB::ReaderWriter *reader =
-                osgDB::Registry::instance()->getReaderWriterForExtension( ext );
-            //OE_NOTICE << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
+            osgDB::ReaderWriter* reader = 0L;
 
-            //If we didn't get a reader by extension, try to get it via mime type
-            if (!reader)
+            // try to look up a reader by mime-type first:
+            std::string mimeType = response.getMimeType();
+            OE_DEBUG << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+            if ( !mimeType.empty() )
             {
-                std::string mimeType = response.getMimeType();
-                OE_DEBUG << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
-                if ( mimeType.length() > 0 )
-                {
-                    reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
-                }
+                reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            }
+
+            if ( !reader )
+            {
+                // Try to find a reader by file extension. If this fails, we will fetch the file
+                // anyway and try to get a reader via mime-type.
+                std::string ext = osgDB::getFileExtension( filename );
+                reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
+                //OE_NOTICE << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
             }
 
             if (!reader)
             {
-                OE_NOTICE<<"Error: No ReaderWriter for file "<<filename<<std::endl;
+                OE_WARN << "HTTPClient: Can't find an OSG plugin to read "<<filename<<std::endl;
                 result = RESULT_NO_READER;
             }
 
@@ -670,10 +671,11 @@ HTTPClient::doReadImageFile(const std::string& filename,
                 }
                 else 
                 {
-                    if (rr.error()) 
+                    if ( !rr.message().empty() )
                     {
-                        OE_WARN << "HTTP Reader Error: " << rr.message() << std::endl;
+                        OE_WARN << "HTTPClient: HTTP error: " << rr.message() << std::endl;
                     }
+                    OE_WARN << "HTTPClient: " << reader->className() << " failed to read image from " << filename << std::endl;
                     result = RESULT_READER_ERROR;
                 }
             }

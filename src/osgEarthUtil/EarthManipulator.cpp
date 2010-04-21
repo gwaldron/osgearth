@@ -989,6 +989,10 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
     if ( !_viewCamera.valid() )
     {
+        // installs a camera update callback. Camera updates get called AFTER the scene
+        // gets its update traversal. So, if you have tethering enabled (or some other
+        // feature that tracks scene graph nodes), this will update the camera after
+        // the scene graph.
         _viewCamera = aa.asView()->getCamera();
         _viewCamera->addUpdateCallback( new CameraPostUpdateCallback(this) );
     }
@@ -1017,12 +1021,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         if ( _setting_viewpoint )
         {
             updateSetViewpoint();
-        }
-
-        // check for _center update due to tethering:
-        if ( _tether_node.valid() )
-        {
-            //updateTether();
         }
 
         if ( _thrown || _continuous )

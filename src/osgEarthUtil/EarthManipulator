@@ -758,6 +758,16 @@ namespace osgEarthUtil
         double _homeViewpointDuration;
 
         Action _last_action;
+
+        // to support updating the camera after the update traversal (e.g., for tethering)
+        osg::observer_ptr<osg::Camera> _viewCamera;
+        struct CameraPostUpdateCallback : public osg::NodeCallback {
+            CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }
+            virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { _m->postUpdate(); traverse(node,nv); }
+            EarthManipulator* _m;
+        };
+        void postUpdate();
+        friend struct CameraUpdateCallback;
     };
 }
 

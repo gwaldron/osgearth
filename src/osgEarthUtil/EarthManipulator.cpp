@@ -22,6 +22,7 @@
 #include <osg/Notify>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
+#include <iomanip>
 
 using namespace osgEarthUtil;
 using namespace osgEarth;
@@ -986,6 +987,12 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( !established() )
         return false;
 
+    if ( !_viewCamera.valid() )
+    {
+        _viewCamera = aa.asView()->getCamera();
+        _viewCamera->addUpdateCallback( new CameraPostUpdateCallback(this) );
+    }
+
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
         _time_s_last_frame = _time_s_now;
@@ -1015,7 +1022,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         // check for _center update due to tethering:
         if ( _tether_node.valid() )
         {
-            updateTether();
+            //updateTether();
         }
 
         if ( _thrown || _continuous )
@@ -1155,16 +1162,29 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 }
 
 void
+EarthManipulator::postUpdate()
+{
+    updateTether();
+}
+
+void
 EarthManipulator::updateTether()
 {
     // capture a temporary ref since _tether_node is just an observer:
     osg::ref_ptr<osg::Node> temp = _tether_node.get();
     if ( temp.valid() )
     {
+        _center = temp->getBound().center();
+
+        //OE_NOTICE
+        //    << std::fixed << std::setprecision(3)
+        //    << "Tether center: (" << _center.x() << "," << _center.y() << "," << _center.z()
+        //    << "); bbox center: (" << bs.center().x() << "," << bs.center().y() << "," << bs.center().z() << ")"
+        //    << std::endl;
+        
         //OE_NOTICE << "updateTether" << std::endl;
-		//Get the bounding sphere of the Node
-        const osg::BoundingSphere& bs = temp->getBound();
-		_center = bs._center;
+  //      const osg::BoundingSphere& bs = temp->getBound();
+		//_center = bs._center;
 		osg::CoordinateFrame local_frame = getMyCoordinateFrame( _center ); //getCoordinateFrame( _center );
 	    _previousUp = getUpVector( local_frame );
 

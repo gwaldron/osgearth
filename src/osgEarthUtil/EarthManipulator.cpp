@@ -304,7 +304,6 @@ _last_action( rhs._last_action ),
 _srs_lookup_failed( rhs._srs_lookup_failed ),
 _setting_viewpoint( rhs._setting_viewpoint ),
 _delta_t( rhs._delta_t ),
-_traversalMask( rhs._traversalMask ),
 _t_factor( rhs._t_factor ),
 _time_s_last_frame( rhs._time_s_last_frame  ),
 _local_azim( rhs._local_azim ),
@@ -583,16 +582,6 @@ osg::Node*
 EarthManipulator::getNode()
 {
     return _node.get();
-}
-
-void
-EarthManipulator::setTraversalMask( const osg::Node::NodeMask& mask ) {
-    _traversalMask = mask;
-}
-
-const osg::Node::NodeMask&
-EarthManipulator::getTraversalMask() const {
-    return _traversalMask;
 }
 
 const osgEarth::SpatialReference*
@@ -1641,7 +1630,7 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
     osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(cf, local_x, local_y);
 
     osgUtil::IntersectionVisitor iv(picker.get());
-    iv.setTraversalMask(_traversalMask);
+    iv.setTraversalMask(_intersectTraversalMask);
 
     const_cast<osg::Camera*>(camera)->accept(iv);
 

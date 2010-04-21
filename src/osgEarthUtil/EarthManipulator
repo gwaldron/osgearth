@@ -527,14 +527,7 @@ namespace osgEarthUtil
          * Zoom the camera using deltas (dy only)
          */
         virtual void zoom( double dx, double dy );
-
-        /**
-         * Sets a traversal mask for any operation that involves traversing the scene
-         * graph, like intersection testing.
-         */
-        void setTraversalMask( const osg::Node::NodeMask& mask );
-        const osg::Node::NodeMask& getTraversalMask() const;
-
+        
         /**
          * Converts screen coordinates (relative to the view's viewpoint) to world
          * coordinates. Note, this method will use the mask set by setTraversalMask().
@@ -758,8 +751,6 @@ namespace osgEarthUtil
         double                  _set_viewpoint_accel;
 
         bool                    _after_first_frame;
-
-        osg::Node::NodeMask     _traversalMask;
 
         osg::ref_ptr<Settings> _settings;		
 

@@ -232,7 +232,7 @@ ElevationManager::getElevation(double x, double y,
 
 
     // finally it's time to get a height value:
-    if ( _technique = TECHNIQUE_PARAMETRIC )
+    if ( _technique == TECHNIQUE_PARAMETRIC )
     {
         const GeoExtent& extent = key->getGeoExtent();
         double xInterval = extent.width()  / (double)(hf->getNumColumns()-1);

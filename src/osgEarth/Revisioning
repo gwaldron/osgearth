@@ -24,17 +24,27 @@
 
 namespace osgEarth
 {
+    struct Revision // header-only; no export
+    {
+        Revision() : _value(-1) { }
+        Revision(int init) : _value(init) { }
+        operator int() const { return _value; }
+        void operator ++() { _value++; }
+    private:
+        int _value;
+    };
+
     template<typename T> class Revisioned : public T // header-only; no export
     {
     public:
         /** Marks this object as dirty */
         void dirty() {
-            _revision++;
+            ++_revision;
         }
 
         /** Synchronizes the external revision number with this revision, effectively
             bringing the external object up to date. */
-        virtual void sync( int& externalRevision ) const {
+        virtual void sync( Revision& externalRevision ) const {
             externalRevision = _revision;
         }
 
@@ -57,7 +67,7 @@ namespace osgEarth
         }
 
     private:
-        int _revision;
+        Revision _revision;
         bool _alwaysDirty;
     };
 }

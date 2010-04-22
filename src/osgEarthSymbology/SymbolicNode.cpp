@@ -21,12 +21,21 @@
 
 using namespace osgEarth::Symbology;
 
+struct SymUpdateCallback : public osg::NodeCallback
+{
+    virtual void operator ()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+        static_cast<SymbolicNode*>(node)->updateSymbology();
+    }
+};
+
 SymbolicNode::SymbolicNode()
 {
     _symGroup = new osg::Group();
     _symGroup->setDataVariance( osg::Object::DYNAMIC );
     this->addChild( _symGroup.get() );
-    setNumChildrenRequiringUpdateTraversal(1);
+
+    this->addUpdateCallback( new SymUpdateCallback() );
 }
 
 SymbolicNode::SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op ) :
@@ -34,8 +43,6 @@ osg::Group( rhs, op ),
 _style( rhs._style ),
 _symbolizer( rhs._symbolizer ),
 _dataSet( rhs._dataSet ),
-//_dataSetRevision( rhs._dataSetRevision ),
-//_styleRevision( rhs._styleRevision ),
 _symGroup( rhs._symGroup )
 {
     _state = _symbolizer ? _symbolizer->createState() : 0L;
@@ -49,10 +56,9 @@ SymbolicNode::setSymbolizer( Symbolizer* sym )
 }
 
 void
-SymbolicNode::traverse( osg::NodeVisitor& nv )
+SymbolicNode::updateSymbology()
 {
-    setNumChildrenRequiringUpdateTraversal(1);
-    if ( _symbolizer.valid() && _state.valid() && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    if ( _symbolizer.valid() && _state.valid() )
     {   
         if ((_dataSet.valid() && _dataSet->outOfSyncWith( _state->_dataSetRevision )) ||
             (_style.valid() && _style->outOfSyncWith( _state->_styleRevision )) )
@@ -68,12 +74,11 @@ SymbolicNode::traverse( osg::NodeVisitor& nv )
                 _dataSet->sync( _state->_dataSetRevision );
 
             if ( _style.valid() )
+            {
                 _style->sync( _state->_styleRevision );
+            }
 
             this->dirtyBound();
         }
     }
-
-    osg::Group::traverse( nv );
 }
-

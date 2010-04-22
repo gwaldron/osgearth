@@ -63,8 +63,8 @@ namespace osgEarth { namespace Symbology
             bool outOfSyncWith( const Style* style ) const;
             bool outOfSyncWith( const SymbolizerInput* dataSet ) const;
         protected:
-            int _styleRevision;
-            int _dataSetRevision;
+            Revision _styleRevision;
+            Revision _dataSetRevision;
             friend class SymbolicNode;
         };
 

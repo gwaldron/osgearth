@@ -76,7 +76,6 @@ Style::toConfig() const
     return conf;
 }
 
-
 /************************************************************************/
 
 StyleSelector::StyleSelector( const Config& conf )

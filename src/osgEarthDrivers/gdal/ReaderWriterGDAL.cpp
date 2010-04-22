@@ -957,7 +957,7 @@ public:
     {
         if (key->getLevelOfDetail() > _maxDataLevel)
         {
-            OE_INFO << "GDAL: " << getName() << ": Reached maximum data resolution key=" 
+            OE_DEBUG << "GDAL: " << getName() << ": Reached maximum data resolution key=" 
                 << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
@@ -1016,7 +1016,7 @@ public:
                 off_y = 0;
             }
 
-            OE_INFO << "GDAL: ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
+            OE_DEBUG << "GDAL: ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
 
             //Return if parameters are out of range.
             if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0)

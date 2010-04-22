@@ -39,17 +39,24 @@ namespace osgEarth { namespace Symbology
 
         META_Node(osgEarth::Symbology, SymbolicNode);
 
-        virtual void traverse( osg::NodeVisitor& nv );
+        //virtual void traverse( osg::NodeVisitor& nv );
 
         void setStyle(const Style* style ) { _style = style; }
 
         void setContext( SymbolizerContext* context ) { _context = context; }
 
-        void setSymbolizer( Symbolizer* sym ); // { _symbolizer = sym; }
+        void setSymbolizer( Symbolizer* sym );
 
         void setDataSet( SymbolizerInput* dataSet ) { _dataSet = dataSet; }
 
         SymbolizerInput* getDataSet() { return _dataSet.get(); }
+
+    public:
+        /** Updates the symbology if a change is detected in the input dataset or the style.
+         *  You usually do not need to call this function directly; it gets called during 
+         *  the update traversal.
+         */
+        void updateSymbology();
         
     protected:
         osg::ref_ptr<const Style> _style;
@@ -57,8 +64,6 @@ namespace osgEarth { namespace Symbology
         osg::ref_ptr<SymbolizerContext> _context;
         osg::ref_ptr<Symbolizer> _symbolizer;
         osg::ref_ptr<Symbolizer::State> _state;
-        //int _dataSetRevision;
-        //int _styleRevision;
         osg::ref_ptr<osg::Group> _symGroup;
     };
 

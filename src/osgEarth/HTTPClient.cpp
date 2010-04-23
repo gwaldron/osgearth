@@ -476,6 +476,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         proxy_addr = bufStr;
     
         OE_DEBUG << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
+		curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
     }
 

@@ -163,19 +163,10 @@ MapNode::init()
         new osgDB::ReaderWriter::Options( *global_options ) :
         NULL;
 
-    // transcribe proxy settings:
-    if ( !_engineProps.proxySettings().isSet() )
+    //Set the global proxy settings
+    if ( _engineProps.proxySettings().isSet() )
     {
-        if ( !local_options.valid() )
-            local_options = new osgDB::ReaderWriter::Options();
-
-        std::stringstream buf;
-        buf << local_options->getOptionString() << " "
-            << "OSG_CURL_PROXY=" << _engineProps.proxySettings()->hostName() << " "
-            << "OSG_CURL_PROXYPORT=" << _engineProps.proxySettings()->port();
-		std::string bufStr;
-		bufStr = buf.str();
-        local_options->setOptionString( bufStr );
+		HTTPClient::setProxySettings( _engineProps.proxySettings().get() );
     }
 
     OE_INFO 
@@ -319,7 +310,7 @@ MapNode::addTerrainCallback( TerrainCallback* cb )
 {
     if ( _terrainVec.size() > 0 )
     {
-        for( int i=0; i < _terrainVec.size(); i++ )
+        for( unsigned int i=0; i < _terrainVec.size(); i++ )
         {
             _terrainVec[i]->addTerrainCallback( cb );
         }

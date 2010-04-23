@@ -325,13 +325,6 @@ MapLayer::initTileSource()
     {
         tileSource = tileSourceFactory.create( _driverOptions.get() );
     }
-    //else
-    //{
-	   // tileSource = tileSourceFactory.create(
-    //        getDriver(),
-    //        getDriverConfig(),
-    //        getGlobalOptions() );
-    //}
 
 	//Get the override profile if it is set.
 	osg::ref_ptr<const Profile> override_profile;
@@ -382,15 +375,6 @@ MapLayer::initTileSource()
     }
 }
 
-const osgDB::ReaderWriter::Options*
-MapLayer::getGlobalOptions() const {
-    return _globalOptions.get();
-}
-
-void
-MapLayer::setGlobalOptions( const osgDB::ReaderWriter::Options* options ) {
-    _globalOptions = options;
-}
 
 bool
 MapLayer::isKeyValid(const TileKey* key) const

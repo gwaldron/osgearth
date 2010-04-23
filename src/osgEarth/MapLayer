@@ -232,13 +232,6 @@ namespace osgEarth
         osg::HeightField* createHeightField( const TileKey* key,
                                              ProgressCallback* progress = 0);
 
-		 /**
-         * Gets the user-provided options structure stored in this map.
-         */
-        const osgDB::ReaderWriter::Options* getGlobalOptions() const;
-
-        void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
-
 
 		/**
          * Gets the reference URI. See setReferenceURI for more info.
@@ -320,7 +313,6 @@ namespace osgEarth
 
 		std::string _referenceURI;
 
-		osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
 		osg::ref_ptr< const Profile > _profile;
         osg::ref_ptr< const Profile > _cacheProfile;
 

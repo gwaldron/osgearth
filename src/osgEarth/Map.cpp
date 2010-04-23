@@ -68,17 +68,6 @@ Map::getGlobalOptions() const {
 void
 Map::setGlobalOptions( const osgDB::ReaderWriter::Options* options ) {
     _globalOptions = options;
-
-    //Set the global options for all of the existing map layers as well
-    for (MapLayerList::iterator i = _imageMapLayers.begin(); i < _imageMapLayers.end(); ++i)
-    {
-        i->get()->setGlobalOptions( _globalOptions.get() );
-    }
-
-    for (MapLayerList::iterator i = _heightFieldMapLayers.begin(); i < _heightFieldMapLayers.end(); ++i)
-    {
-        i->get()->setGlobalOptions( _globalOptions.get() );
-    }
 }
 
 const std::string&
@@ -203,7 +192,6 @@ Map::addMapLayer( MapLayer* layer )
     {
 	    //Set options for the map from the layer
 		layer->setReferenceURI( getReferenceURI() );
-		layer->setGlobalOptions( getGlobalOptions() );
 		if ( _cacheConf.isSet() && _cacheConf->runOffCacheOnly().isSet() && _cacheConf->runOffCacheOnly().get())
 		{
 			layer->cacheOnly() = true;

@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Progress>
+#include <osgEarth/MapEngineProperties>
 #include <OpenThreads/Thread>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
@@ -154,6 +155,8 @@ namespace osgEarth
                 code == RESULT_READER_ERROR ? "ReaderWriter error" :
                 "Unknown error";
         }
+
+		static void setProxySettings( const ProxySettings &proxySettings );
 
     public:
         static ResultCode readImageFile(

@@ -210,6 +210,7 @@ HTTPResponse::getMimeType() const {
 typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClientMap;        
 static OpenThreads::Mutex          _threadClientMapMutex;
 static ThreadClientMap             _threadClientMap;
+static optional<ProxySettings>     _proxySettings;
 
 HTTPClient& HTTPClient::getClient()
 {
@@ -242,6 +243,12 @@ HTTPClient::~HTTPClient()
 {
     if (_curl_handle) curl_easy_cleanup( _curl_handle );
     _curl_handle = 0;
+}
+
+void
+HTTPClient::setProxySettings( const ProxySettings &proxySettings )
+{
+	_proxySettings = proxySettings;
 }
 
 void
@@ -432,7 +439,31 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 
     std::string proxy_host;
     std::string proxy_port = "8080";
+
+	//Try to get the proxy settings from the global settings
+	if (_proxySettings.isSet())
+	{
+		proxy_host = _proxySettings.get().hostName();
+		std::stringstream buf;
+		buf << _proxySettings.get().port();
+		proxy_port = buf.str();
+	}
+
+	//Try to get the proxy settings from the local options that are passed in.
     readOptions( options, proxy_host, proxy_port );
+
+	//Try to get the proxy settings from the environment variable
+    const char* proxyEnvAddress = getenv("OSG_CURL_PROXY");
+    if (proxyEnvAddress) //Env Proxy Settings
+    {
+		proxy_host = std::string(proxyEnvAddress);
+
+        const char* proxyEnvPort = getenv("OSG_CURL_PROXYPORT"); //Searching Proxy Port on Env
+		if (proxyEnvPort)
+		{
+			proxy_port = std::string( proxyEnvPort );
+		}
+    }
 
     // Set up proxy server:
     std::string proxy_addr;

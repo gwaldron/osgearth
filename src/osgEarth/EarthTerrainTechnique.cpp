@@ -512,7 +512,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
                 {
                     osg::Vec2Array* texcoords = itr->second.first.get();
                     Locator* colorLocator = itr->second.second;
-                    if (colorLocator != masterTextureLocator)
+                    if (colorLocator != masterLocator)
                     {
                         osg::Vec3d color_ndc;
                         Locator::convertLocalCoordBetween(*masterTextureLocator.get(), ndc, *colorLocator, color_ndc);

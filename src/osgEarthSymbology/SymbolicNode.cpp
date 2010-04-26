@@ -60,7 +60,8 @@ SymbolicNode::updateSymbology()
 {
     if ( _symbolizer.valid() && _state.valid() )
     {   
-        if ((_dataSet.valid() && _dataSet->outOfSyncWith( _state->_dataSetRevision )) ||
+        if ( _symbolizer->getAlwaysUpdate() ||
+            (_dataSet.valid() && _dataSet->outOfSyncWith( _state->_dataSetRevision )) ||
             (_style.valid() && _style->outOfSyncWith( _state->_styleRevision )) )
         {
             _symbolizer->update(

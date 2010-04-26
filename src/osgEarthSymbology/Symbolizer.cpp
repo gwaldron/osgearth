@@ -20,7 +20,8 @@
 
 using namespace osgEarth::Symbology;
 
-Symbolizer::Symbolizer()
+Symbolizer::Symbolizer() :
+_alwaysUpdate( false )
 {
     //nop
 }

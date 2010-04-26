@@ -39,8 +39,6 @@ namespace osgEarth { namespace Symbology
 
         META_Node(osgEarth::Symbology, SymbolicNode);
 
-        //virtual void traverse( osg::NodeVisitor& nv );
-
         void setStyle(const Style* style ) { _style = style; }
 
         void setContext( SymbolizerContext* context ) { _context = context; }

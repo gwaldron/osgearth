@@ -22,6 +22,7 @@
 #include <osgTerrain/Terrain>
 #include <osgEarth/VersionedTerrain>
 #include <osgEarth/MapLayer>
+#include <osgEarth/Cube>
 
 #include <osgEarth/EarthTerrainTechnique>
 
@@ -342,9 +343,11 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     osg::ref_ptr< Locator > masterTextureLocator = masterLocator;
     GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(masterLocator);
 
+	bool isCube = dynamic_cast<CubeFaceLocator*>(masterLocator) != NULL;
+
     //If we have a geocentric locator, get a geographic version of it to avoid converting
     //to/from geocentric when computing texture coordinats
-    if (geoMasterLocator && masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
+    if (!isCube && geoMasterLocator && masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
     {
         masterTextureLocator = geoMasterLocator->getGeographicFromGeocentric();
     }
@@ -438,7 +441,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
 				TexCoordLocatorPair& tclp = layerToTexCoordMap[colorLayer];
                 tclp.first = new osg::Vec2Array;
                 tclp.first->reserve(numVertices);
-                if (locator && locator->getCoordinateSystemType() == Locator::GEOCENTRIC)
+                if (!isCube && locator && locator->getCoordinateSystemType() == Locator::GEOCENTRIC)
                 {
                     GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
                     if (geo)

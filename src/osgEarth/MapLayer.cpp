@@ -124,6 +124,32 @@ MapLayer::init()
       _cacheFormat = suggestCacheFormat();
 }
 
+static osg::Vec4ub
+getColor(const std::string& str, osg::Vec4ub default_value)
+{
+    osg::Vec4ub color = default_value;
+    std::istringstream strin(str);
+    int r, g, b, a;
+    if (strin >> r && strin >> g && strin >> b && strin >> a)
+    {
+        color.r() = (unsigned char)r;
+        color.g() = (unsigned char)g;
+        color.b() = (unsigned char)b;
+        color.a() = (unsigned char)a;
+    }
+    return color;
+}
+
+static std::string
+colorToString( const osg::Vec4ub& c )
+{
+    std::stringstream ss;
+    ss << c.r() << " " << c.g() << " " << c.b() << " " << c.a();
+    std::string ssStr;
+	ssStr = ss.str();
+	return ssStr;
+}
+
 void
 MapLayer::fromConfig( const Config& conf )
 {
@@ -142,6 +168,11 @@ MapLayer::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profileConf );
+	std::string transparent_color = conf.value<std::string>("transparent_color", "");
+	if (!transparent_color.empty())
+	{
+		_transparentColor = getColor( transparent_color, osg::Vec4ub(0,0,0,0));
+	}
 }
 
 Config
@@ -165,6 +196,10 @@ MapLayer::toConfig() const
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet("edge_buffer_ratio", _edgeBufferRatio);
     conf.updateObjIfSet( "profile", _profileConf );
+	if (_transparentColor.isSet())
+	{
+		conf.update("transparent_color", colorToString( _transparentColor.value()));
+	}
 
     return conf;
 }
@@ -727,7 +762,6 @@ MapLayer::createImageWrapper( const TileKey* key,
 						g == _transparentColor->g() &&
 						b == _transparentColor->b())
 					{
-						//OE_NOTICE << "Transparent..." << std::endl;
 						image->data(col,row)[3] = 0;
 					}
 				}

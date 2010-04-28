@@ -124,32 +124,6 @@ EarthFile::getMapEngineProperties() {
 //#define ATTR_TILE_GEN_THREADS         "tile_generation_threads"
 
 
-static osg::Vec4ub
-getColor(const std::string& str, osg::Vec4ub default_value)
-{
-    osg::Vec4ub color = default_value;
-    std::istringstream strin(str);
-    int r, g, b, a;
-    if (strin >> r && strin >> g && strin >> b && strin >> a)
-    {
-        color.r() = (unsigned char)r;
-        color.g() = (unsigned char)g;
-        color.b() = (unsigned char)b;
-        color.a() = (unsigned char)a;
-    }
-    return color;
-}
-
-static std::string
-toColor( const osg::Vec4ub& c )
-{
-    std::stringstream ss;
-    ss << c.r() << " " << c.g() << " " << c.b() << " " << c.a();
-    std::string ssStr;
-	ssStr = ss.str();
-	return ssStr;
-}
-
 static ModelLayer*
 readModelLayer( const Config& conf )
 {

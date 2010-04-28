@@ -44,12 +44,43 @@ FIND_LIBRARY(GEOS_LIBRARY
     PATH_SUFFIXES lib64 lib
 )
 
+FIND_LIBRARY(GEOS_LIBRARY
+  NAMES geos
+  PATHS
+    ~/Library/Frameworks
+    /Library/Frameworks
+    /usr/local
+    /usr
+    /sw
+    /opt/local
+    /opt/csw
+    /opt
+    /usr/freeware    
+  PATH_SUFFIXES lib64 lib
+)
+
+
 FIND_LIBRARY(GEOS_LIBRARY_DEBUG
   NAMES geod_d geos_i_d geosd
   PATHS
     $ENV{GEOS_DIR}
     NO_DEFAULT_PATH
     PATH_SUFFIXES lib64 lib
+)
+
+FIND_LIBRARY(GEOS_LIBRARY_DEBUG
+  NAMES geod_d geos_i_d geosd
+  PATHS
+    ~/Library/Frameworks
+    /Library/Frameworks
+    /usr/local
+    /usr
+    /sw
+    /opt/local
+    /opt/csw
+    /opt
+    /usr/freeware    
+  PATH_SUFFIXES lib64 lib
 )
 
 SET(GEOS_FOUND "NO")

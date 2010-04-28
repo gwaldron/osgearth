@@ -78,7 +78,7 @@ _port(port)
 void
 ProxySettings::fromConfig( const Config& conf )
 {
-    _hostName = conf.value( "host" );
+    _hostName = conf.value<std::string>( "host", "" );
     _port = conf.value<int>( "port", 8080 );
 }
 

@@ -61,17 +61,6 @@ using namespace OpenThreads;
 #   define USE_NEW_OSGTERRAIN_298_API 1 
 #endif
 
-
-#ifndef USE_NEW_OSG_TEXTURE_BUFFERS
-#   define EXPLICITY_REPLEASE_GL_OBJECTS 1
-#endif
-
-//#if OSG_MIN_VERSION_REQUIRED(2,9,5)
-//#  undef EXPLICIT_RELEASE_GL_OBJECTS
-//#else
-//#  define EXPLICIT_RELEASE_GL_OBJECTS
-//#endif
-
 EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
 TerrainTechnique(),
 _masterLocator( masterLocator ),
@@ -1174,7 +1163,6 @@ void EarthTerrainTechnique::cleanSceneGraph()
 void
 EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
-#ifdef EXPLICIT_RELEASE_GL_OBJECTS
     EarthTerrainTechnique* ncThis = const_cast<EarthTerrainTechnique*>(this);
 
     ScopedWriteLock lock( ncThis->getMutex() );
@@ -1187,9 +1175,6 @@ EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
     {
         _bufferData[1]._transform->releaseGLObjects(state);   
     }
-#else
-    TerrainTechnique::releaseGLObjects( state );
-#endif
 }
 
 //void

@@ -60,13 +60,23 @@
 #include <osgEarthDrivers/tms/TMSOptions>
 
 #include <osgGA/StateSetManipulator>
+#include <osgGA/TrackballManipulator>
+#include <osgGA/FlightManipulator>
+#include <osgGA/DriveManipulator>
+#include <osgGA/KeySwitchMatrixManipulator>
+#include <osgGA/StateSetManipulator>
 #include <osgGA/AnimationPathManipulator>
+#include <osgGA/TerrainManipulator>
+#include <osgGA/SphericalManipulator>
+
 
 #include <osgWidget/Util>
 #include <osgWidget/WindowManager>
 #include <osgWidget/Box>
 #include <osgWidget/Label>
 #include <osgWidget/ViewerEventHandlers>
+
+
 
 #include <osgViewer/ViewerEventHandlers>
 
@@ -88,7 +98,9 @@ const unsigned int MASK_2D = 0xF0000000;
 
 struct BlankTileSource : public osgEarth::TileSource 
 {
-    BlankTileSource(const PluginOptions* options =0L) : osgEarth::TileSource( options ) { }
+    BlankTileSource(const PluginOptions* options =0L) : osgEarth::TileSource( options )
+	{
+	}
 
 	virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile =0)
 	{
@@ -114,6 +126,7 @@ struct BlankTileSource : public osgEarth::TileSource
         }
         return image;
     }
+
 };
 
 //Simple hot tracking callback that changes the color of labels when the mouse enters and leaves
@@ -195,7 +208,7 @@ struct RemoveLayerCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            _view->getDatabasePager()->clear();
+            //_view->getDatabasePager()->clear();
             _map->removeMapLayer( _map->getImageMapLayers()[_layerIndex] );
             //_mapNode->removeImageSource( _layerIndex );
             hudDirty = true;
@@ -221,7 +234,7 @@ struct MoveLayerCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            _view->getDatabasePager()->clear();
+            //_view->getDatabasePager()->clear();
             int dir = _up ? 1 : -1;
             unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)_map->getImageMapLayers().size()-1u);
             //_map->moveImageSource( _layerIndex, newPosition );
@@ -263,7 +276,7 @@ public:
 #else
       virtual bool mousePush(double, double, osgWidget::WindowManager*) {
 #endif
-         _view->getDatabasePager()->clear();
+         //_view->getDatabasePager()->clear();
          _map->addMapLayer( _layer );
          //_mapNode->addImageSource( _sourceConfig );
           hudDirty = true;
@@ -528,7 +541,32 @@ int main(int argc, char** argv)
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
 
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
+	{
+        osg::ref_ptr<osgGA::KeySwitchMatrixManipulator> keyswitchManipulator = new osgGA::KeySwitchMatrixManipulator;
+
+        keyswitchManipulator->addMatrixManipulator( '1', "EarthManipulator", new osgEarthUtil::EarthManipulator() );
+        keyswitchManipulator->addMatrixManipulator( '2', "Flight", new osgGA::FlightManipulator() );
+        keyswitchManipulator->addMatrixManipulator( '3', "Drive", new osgGA::DriveManipulator() );
+        keyswitchManipulator->addMatrixManipulator( '4', "Terrain", new osgGA::TerrainManipulator() );
+        keyswitchManipulator->addMatrixManipulator( '5', "Spherical", new osgGA::SphericalManipulator() );
+
+        std::string pathfile;
+        char keyForAnimationPath = '6';
+        while (arguments.read("-p",pathfile))
+        {
+            osgGA::AnimationPathManipulator* apm = new osgGA::AnimationPathManipulator(pathfile);
+            if (apm || !apm->valid()) 
+            {
+                unsigned int num = keyswitchManipulator->getNumMatrixManipulators();
+                keyswitchManipulator->addMatrixManipulator( keyForAnimationPath, "Path", apm );
+                keyswitchManipulator->selectMatrixManipulator(num);
+                ++keyForAnimationPath;
+            }
+        }
+
+        viewer.setCameraManipulator( keyswitchManipulator.get() );
+    }
+
 
     osg::Group* group = new osg::Group;
 

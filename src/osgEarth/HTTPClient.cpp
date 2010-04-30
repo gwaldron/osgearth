@@ -440,6 +440,8 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     std::string proxy_host;
     std::string proxy_port = "8080";
 
+	std::string proxy_auth;
+
 	//Try to get the proxy settings from the global settings
 	if (_proxySettings.isSet())
 	{
@@ -447,6 +449,10 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 		std::stringstream buf;
 		buf << _proxySettings.get().port();
 		proxy_port = buf.str();
+
+		std::string proxy_username = _proxySettings.get().userName();
+		std::string proxy_password = _proxySettings.get().password();
+		proxy_auth = proxy_username + ":" + proxy_password;
 	}
 
 	//Try to get the proxy settings from the local options that are passed in.
@@ -465,6 +471,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 		}
     }
 
+	const char* proxyEnvAuth = getenv("OSGEARTH_CURL_PROXYAUTH");	
+	if (proxyEnvAuth)
+	{
+		proxy_auth = std::string(proxyEnvAuth);
+	}
+
     // Set up proxy server:
     std::string proxy_addr;
     if ( !proxy_host.empty() )
@@ -478,6 +490,13 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         OE_DEBUG << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
 		curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
+
+		//Setup the proxy authentication if setup
+		if (!proxy_auth.empty())
+		{
+			OE_DEBUG << "[osgEarth::HTTPClient] Setting up proxy authentication " << proxy_auth << std::endl;
+			curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
+		}
     }
 
     const osgDB::AuthenticationDetails* details = authenticationMap ?

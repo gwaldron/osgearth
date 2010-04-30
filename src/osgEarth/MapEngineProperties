@@ -105,6 +105,14 @@ namespace osgEarth
         int& port() { return _port; }
         const int& port() const { return _port; }
 
+		std::string& userName() { return _userName; }
+        const std::string& userName() const { return _userName; }
+
+		std::string& password() { return _password; }
+        const std::string& password() const { return _password; }
+
+
+
     public:
         virtual Config toConfig() const;
         virtual void fromConfig( const Config& conf );
@@ -112,6 +120,8 @@ namespace osgEarth
     protected:
         std::string _hostName;
         int _port;
+		std::string _userName;
+		std::string _password;
     };
 
 

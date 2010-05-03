@@ -120,8 +120,6 @@ MapLayer::init()
 {
 	readEnvironmentalVariables();
     _id = s_mapLayerID++;
-    if ( !_cacheFormat.isSet() || _cacheFormat->empty() )
-      _cacheFormat = suggestCacheFormat();
 }
 
 static osg::Vec4ub

@@ -438,7 +438,7 @@ namespace osgEarthUtil
             // to matching binding.
             const Action& getAction( int event_type, int input_mask, int modkey_mask ) const;
 
-            void expandSpec( const InputSpec& input, InputSpecs& output );
+            void expandSpec( const InputSpec& input, InputSpecs& output ) const;
             void bind( const InputSpec& spec, const Action& action );
 
         private:

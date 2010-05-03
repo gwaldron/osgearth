@@ -156,7 +156,7 @@ _tether_mode( rhs._tether_mode )
 
 // expands one input spec into many if necessary, to deal with modifier key combos.
 void
-EarthManipulator::Settings::expandSpec( const InputSpec& input, InputSpecs& output )
+EarthManipulator::Settings::expandSpec( const InputSpec& input, InputSpecs& output ) const
 {
     int e = input._event_type;
     int i = input._input_mask;
@@ -187,10 +187,9 @@ EarthManipulator::Settings::expandSpec( const InputSpec& input, InputSpecs& outp
         expandSpec( InputSpec( e, i, m & ~osgGA::GUIEventAdapter::MODKEY_LEFT_HYPER ), output );
         expandSpec( InputSpec( e, i, m & ~osgGA::GUIEventAdapter::MODKEY_RIGHT_HYPER ), output );
     }
-    else
-    {
-        output.push_back( input );
-    }
+
+    //Always add the input so if we are dealing with a windowing system like QT that just sends MODKEY_CTRL it will still work.
+    output.push_back( input );
 }
 
 void

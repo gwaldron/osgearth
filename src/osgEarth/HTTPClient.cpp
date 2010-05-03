@@ -491,7 +491,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         proxy_addr = bufStr;
     
         OE_DEBUG << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
-		curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
+		//curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
 
 		//Setup the proxy authentication if setup
@@ -562,17 +562,21 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
 
-    long code = 0L;
-    if ( !proxy_addr.empty() )
-        curl_easy_getinfo( _curl_handle, CURLINFO_HTTP_CONNECTCODE, &code );
-    else
-        curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &code );     
+    long response_code = 0L;
+	if (!proxy_addr.empty())
+	{
+		long connect_code = 0L;
+        curl_easy_getinfo( _curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code );
+		OE_DEBUG << "[HTTPClient] proxy connect code " << connect_code << std::endl;
+	}
+	
+    curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );     
 
-    OE_DEBUG << "[HTTPClient] got response, code = " << code << std::endl;
+	OE_DEBUG << "[HTTPClient] got response, code = " << response_code << std::endl;
 
-    HTTPResponse response( code );
+    HTTPResponse response( response_code );
    
-    if ( code == 200L && res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT ) //res == 0 )
+    if ( response_code == 200L && res != CURLE_ABORTED_BY_CALLBACK && res != CURLE_OPERATION_TIMEDOUT ) //res == 0 )
     {
         // check for multipart content:
         char* content_type_cp;

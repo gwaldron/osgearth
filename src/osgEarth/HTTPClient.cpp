@@ -452,7 +452,10 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 
 		std::string proxy_username = _proxySettings.get().userName();
 		std::string proxy_password = _proxySettings.get().password();
-		proxy_auth = proxy_username + ":" + proxy_password;
+		if (!proxy_username.empty() && !proxy_password.empty())
+		{
+			proxy_auth = proxy_username + ":" + proxy_password;
+		}
 	}
 
 	//Try to get the proxy settings from the local options that are passed in.

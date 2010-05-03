@@ -58,7 +58,7 @@ namespace osgEarth
 
                 //Split the key into it's 4 children and check to see if all 4 are cached.
                 std::vector< osg::ref_ptr< osgEarth::TileKey > > keys;
-                for (unsigned int i = 0; i < 4; ++i) keys.push_back(mapKey->getSubkey(i));
+                for (unsigned int i = 0; i < 4; ++i) keys.push_back(mapKey->createSubkey(i));
 
                 for (unsigned int i = 0; i < keys.size(); ++i)
                 {

@@ -27,6 +27,7 @@
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/EarthTerrainTechnique>
 #include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
+#include <osgEarth/FileLocationCallback>
 
 #include <osg/Image>
 #include <osg/Notify>

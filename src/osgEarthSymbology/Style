@@ -20,8 +20,8 @@
 #define OSGEARTHSYMBOLOGY_STYLE_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthSymbology/Query>
+#include <osgEarthSymbology/Symbol>
 #include <osgEarth/Config>
 #include <osgEarth/Revisioning>
 #include <osg/Object>

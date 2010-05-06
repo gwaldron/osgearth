@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/FeatureTileSource>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 

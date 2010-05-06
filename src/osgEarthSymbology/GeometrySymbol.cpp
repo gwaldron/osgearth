@@ -49,16 +49,8 @@ _fill( Fill() )
 }
 
 PointSymbol::PointSymbol() :
-    _fill( Fill() ), _size(1.0)
+_fill( Fill() ), _size(1.0)
 {
     //nop
 }
 
-TextSymbol::TextSymbol() :
-_fill( Fill() ),
-_halo( Stroke() ),
-_size( 16.0f ),
-_font( "fonts/arial.ttf" )
-{
-    //nop
-}

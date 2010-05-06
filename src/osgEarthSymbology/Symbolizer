@@ -94,7 +94,7 @@ namespace osgEarth { namespace Symbology
     protected:
         Symbolizer();
 
-        void setAlwaysUpdate( bool value ) { _alwaysUpdate = true; }
+        void setAlwaysUpdate( bool value ) { _alwaysUpdate = value; }
 
     private:
         bool _alwaysUpdate;

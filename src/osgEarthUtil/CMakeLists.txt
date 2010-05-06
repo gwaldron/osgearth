@@ -17,6 +17,7 @@ SET(LIB_PUBLIC_HEADERS
     Export
     FadeLayerNode
     Graticule
+    Labeling
     ObjectPlacer
     OceanSurfaceNode
     Viewpoint
@@ -36,6 +37,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ElevationManager.cpp
     FadeLayerNode.cpp
     Graticule.cpp
+    Labeling.cpp
     ObjectPlacer.cpp
     OceanSurfaceNode.cpp
     Viewpoint.cpp

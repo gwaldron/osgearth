@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthSymbology/Text>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>

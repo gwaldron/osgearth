@@ -52,8 +52,8 @@ struct CullPlaneCallback : public osg::Drawable::CullCallback
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
 
-osg::Node* BuildTextOperator::operator()(const FeatureList& features, 
-                                         const TextSymbol *symbol,
+osg::Node* BuildTextOperator::operator()(const FeatureList&   features, 
+                                         const TextSymbol*    symbol,
                                          const FilterContext& context)
 {
     if (!symbol) return 0;

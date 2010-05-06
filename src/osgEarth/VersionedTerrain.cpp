@@ -32,11 +32,13 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#if OSG_MIN_VERSION_REQUIRED(2,9,5)
-#  undef EXPLICIT_RELEASE_GL_OBJECTS
-#else
-#  define EXPLICIT_RELEASE_GL_OBJECTS
-#endif
+#define EXPLICIT_RELEASE_GL_OBJECTS 1
+
+//#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+//#  undef EXPLICIT_RELEASE_GL_OBJECTS
+//#else
+//#  define EXPLICIT_RELEASE_GL_OBJECTS
+//#endif
 
 //#define PREEMPTIVE_DEBUG 1
 

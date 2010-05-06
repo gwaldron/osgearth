@@ -52,14 +52,19 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 // OSG 2.9.5 introduced new texture buffer code..
-#if OSG_VERSION_GREATER_OR_EQUAL(2,9,5)
-#   define USE_NEW_OSG_TEXTURE_BUFFERS 1
-#endif
+//#if OSG_VERSION_GREATER_OR_EQUAL(2,9,5)
+//#   define USE_NEW_OSG_TEXTURE_BUFFERS 1
+//#endif
+//#ifndef USE_NEW_OSG_TEXTURE_BUFFERS
+//#   define EXPLICIT_RELEASE_GL_OBJECTS 1
+//#endif
+#define EXPLICIT_RELEASE_GL_OBJECTS 1
 
 // OSG 2.9.8 changed the osgTerrain API...
 #if OSG_VERSION_GREATER_OR_EQUAL(2,9,8)
 #   define USE_NEW_OSGTERRAIN_298_API 1 
 #endif
+
 
 EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
 TerrainTechnique(),

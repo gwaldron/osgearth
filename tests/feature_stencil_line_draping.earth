@@ -3,6 +3,9 @@ osgEarth Sample
 
 This one demonstrates how to "drape" line data on the map using a
 stenciling technique.
+
+NOTE: Draping lines with the feature_stencil driver requires that you
+build osgEarth with GEOS support.
 -->
 
 <map name="Feature Stencil Demo" type="round">

@@ -30,6 +30,7 @@ SET(LIB_PUBLIC_HEADERS
     Symbol
     SymbolicNode
     Symbolizer
+    Text
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
@@ -54,6 +55,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Symbol.cpp
     SymbolicNode.cpp
     Symbolizer.cpp
+    Text.cpp
 )
 
 IF (WIN32)

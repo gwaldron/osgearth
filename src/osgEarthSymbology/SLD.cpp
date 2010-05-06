@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/SLD>
 #include <osgEarthSymbology/CssUtils>
+#include <osgEarthSymbology/Text>
 #include <osgEarth/XmlUtils>
 #include <stack>
 #include <algorithm>

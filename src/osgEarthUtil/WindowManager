@@ -22,20 +22,28 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/WidgetMessageBox>
-#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/Text>
 #include <osgWidget/WindowManager>
 #include <osgViewer/Viewer>
 
+using namespace osgEarth::Symbology;
+
 namespace osgEarthUtil
 {
-
+    /**
+     * Manages popups associated with a Viewer.
+     */
     class OSGEARTHUTIL_EXPORT WindowManager : public osg::Referenced
     {
     public:
-        WindowManager(osgViewer::Viewer&);
+        WindowManager( osgViewer::Viewer& viewer );
+
         osgWidget::WindowManager* getWindowManager() { return _windowManager.get(); }
 
-        WidgetMessageBox* createWidgetMessageBox(const std::string& title, const std::string& content, const osgEarth::Symbology::TextSymbol* symbol);
+        WidgetMessageBox* createWidgetMessageBox(
+            const std::string& title,
+            const std::string& content,
+            const TextSymbol* symbol);
 
     protected:
         osg::ref_ptr<osgWidget::WindowManager> _windowManager;

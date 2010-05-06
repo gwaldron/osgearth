@@ -24,9 +24,11 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osg/Geode>
 
 using namespace osgEarth;
+using namespace osgEarth::Symbology;
 
 namespace osgEarth { namespace Features
 {
@@ -65,8 +67,8 @@ namespace osgEarth { namespace Features
         int& numQuadrantSegments() { return _numQuadSegs; }
 
         // tessellation style of buffered corners and line ends
-        Symbology::Stroke::LineCapStyle capStyle() const { return _capStyle; }
-        Symbology::Stroke::LineCapStyle& capStyle() { return _capStyle; }
+        const Stroke::LineCapStyle& capStyle() const { return _capStyle; }
+        Stroke::LineCapStyle& capStyle() { return _capStyle; }
 
     public:
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
@@ -74,11 +76,11 @@ namespace osgEarth { namespace Features
     protected:
         optional<double> _distance;
         int _numQuadSegs;
-        Symbology::Stroke::LineCapStyle _capStyle;
+        Stroke::LineCapStyle _capStyle;
 
         bool push( Feature* input, const FilterContext& context );
     };
 
 } } // namespace osgEarth::Features
 
-#endif // 
+#endif // OSGEARTHFEATURES_BUFFER_FILTER_H

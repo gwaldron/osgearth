@@ -26,6 +26,7 @@ struct SymUpdateCallback : public osg::NodeCallback
     virtual void operator ()(osg::Node* node, osg::NodeVisitor* nv)
     {
         static_cast<SymbolicNode*>(node)->updateSymbology();
+        traverse( node, nv );
     }
 };
 

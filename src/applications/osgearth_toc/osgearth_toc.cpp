@@ -67,7 +67,6 @@
 #include <osgGA/StateSetManipulator>
 #include <osgGA/AnimationPathManipulator>
 #include <osgGA/TerrainManipulator>
-#include <osgGA/SphericalManipulator>
 
 
 #include <osgWidget/Util>
@@ -548,7 +547,6 @@ int main(int argc, char** argv)
         keyswitchManipulator->addMatrixManipulator( '2', "Flight", new osgGA::FlightManipulator() );
         keyswitchManipulator->addMatrixManipulator( '3', "Drive", new osgGA::DriveManipulator() );
         keyswitchManipulator->addMatrixManipulator( '4', "Terrain", new osgGA::TerrainManipulator() );
-        keyswitchManipulator->addMatrixManipulator( '5', "Spherical", new osgGA::SphericalManipulator() );
 
         std::string pathfile;
         char keyForAnimationPath = '6';

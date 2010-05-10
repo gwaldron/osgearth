@@ -23,9 +23,9 @@ using namespace osgEarth::Symbology;
 TextSymbol::TextSymbol() :
 _fill( Fill() ),
 _halo( Stroke() ),
-_size( 16.0f ),
-_sizeMode( SIZEMODE_SCREEN ),
-_font( "fonts/arial.ttf" )
+_size( 32.0f ),
+_sizeMode( SIZEMODE_SCREEN )
 {
-    //nop
+    _fill->color().set( 1, 1, 1, 1 );
+    _halo->color().set( 0, 0, 0, 1 );
 }

@@ -23,7 +23,7 @@
 using namespace osgEarthUtil;
 using namespace osgEarth::Symbology;
 
-static TextSymbol* s_defaultSymbol = new TextSymbol();
+static const TextSymbol* s_defaultSymbol = new TextSymbol();
 
 
 LabelMaker::LabelMaker( const TextSymbol* defaultSymbol ) :
@@ -40,13 +40,9 @@ LabelMaker::create2dLabel( const std::string& text, const osg::Vec3d& pos, const
     osgText::Text* t = new osgText::Text();
     t->setText( text );
 
-    std::string font = "fonts/arial.ttf";
-    if (symbol->font().isSet() && !symbol->font().get().empty())
-    {
-        font = symbol->font().value();
-    }
+    if ( symbol->font().isSet() )
+        t->setFont( symbol->font().value() );
 
-    t->setFont( symbol->font().value() );
     t->setAutoRotateToScreen( symbol->rotateToScreen().value() );
 
     t->setCharacterSizeMode( 
@@ -59,9 +55,14 @@ LabelMaker::create2dLabel( const std::string& text, const osg::Vec3d& pos, const
     t->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
     t->getOrCreateStateSet()->setRenderBinDetails( ~0, "RenderBin" );
 
-    t->setColor( symbol->fill()->color() );
-    t->setBackdropColor( symbol->halo()->color() );
-    t->setBackdropType( osgText::Text::OUTLINE );
+    if ( symbol->fill().isSet() )
+        t->setColor( symbol->fill()->color() );
+
+    if ( symbol->halo().isSet() )
+    {
+        t->setBackdropColor( symbol->halo()->color() );
+        t->setBackdropType( osgText::Text::OUTLINE );
+    }
 
     return t;
 }

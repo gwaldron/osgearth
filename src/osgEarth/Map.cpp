@@ -32,6 +32,14 @@ _dataModelRevision(0),
 _cacheConf( CacheConfig() ),
 _profileConf( ProfileConfig() )
 {
+    // see if a cache if configured via env-var(s).
+    if ( getenv( "OSGEARTH_CACHE_PATH" ) )
+    {
+        std::string cachePath = getenv( "OSGEARTH_CACHE_PATH" );
+        _cacheConf->setType( CacheConfig::TYPE_DEFAULT );
+        _cacheConf->getProperties()[ "path" ] = cachePath;
+        OE_NOTICE << "Enabling map cache at " << cachePath << std::endl;
+    }
 }
 
 void
@@ -153,6 +161,14 @@ Map::getProfile() const
 Cache*
 Map::getCache() const
 {
+    if ( !_cache.valid() && _cacheConf.isSet() )
+    {
+        CacheFactory factory;
+        Cache* cache = factory.create( _cacheConf.value() );
+        if ( cache ) {
+            const_cast<Map*>(this)->setCache( cache );
+        }
+    }
 	return _cache.get();
 }
 

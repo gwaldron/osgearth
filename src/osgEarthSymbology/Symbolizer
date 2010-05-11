@@ -62,6 +62,10 @@ namespace osgEarth { namespace Symbology
             State();
             bool outOfSyncWith( const Style* style ) const;
             bool outOfSyncWith( const SymbolizerInput* dataSet ) const;
+
+            /** marks this state as being out of sync with both the style and the dataset. */
+            void dirty();
+
         protected:
             Revision _styleRevision;
             Revision _dataSetRevision;

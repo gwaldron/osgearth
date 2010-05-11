@@ -1478,10 +1478,9 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
         osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
         if ( cam )
         {
-            OE_NOTICE << "Explicit releaseGLObjects() enabled" << std::endl;
+            OE_INFO << "Explicit releaseGLObjects() enabled" << std::endl;
             cam->setPostDrawCallback( new ReleaseGLCallback(this) );
             _releaseCBInstalled = true;
-            //OE_NOTICE << "release cb installed." << std::endl;
         }
     }
 #endif // EXPLICIT_RELEASE_GL_OBJECTS

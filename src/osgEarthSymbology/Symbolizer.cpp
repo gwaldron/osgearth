@@ -47,6 +47,13 @@ Symbolizer::State::outOfSyncWith( const SymbolizerInput* dataSet ) const
     return dataSet && dataSet->outOfSyncWith( _dataSetRevision );
 }
 
+void
+Symbolizer::State::dirty()
+{
+    ++_styleRevision;
+    ++_dataSetRevision;
+}
+
 /*************************************************************************/
 
 //SymbolizerInput::SymbolizerInput()

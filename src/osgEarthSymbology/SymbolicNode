@@ -33,21 +33,29 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT SymbolicNode : public osg::Group
     {
     public:
+        /** Constructs a new symbolic node. */
         SymbolicNode();
 
+        /** Copy constructor. */
         SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
         META_Node(osgEarth::Symbology, SymbolicNode);
 
-        void setStyle(const Style* style ) { _style = style; }
-
-        void setContext( SymbolizerContext* context ) { _context = context; }
-
+        /** The symbolizer that will render the geometry under this node. */
         void setSymbolizer( Symbolizer* sym );
+        Symbolizer* getSymbolizer() { return _symbolizer.get(); }
 
+        /** The style object that the symbolizer will use. */
+        void setStyle(const Style* style ) { _style = style; }
+        const Style* getStyle() { return _style.get(); }
+
+        /** Data that the symbolizer will render. */
         void setDataSet( SymbolizerInput* dataSet ) { _dataSet = dataSet; }
-
         SymbolizerInput* getDataSet() { return _dataSet.get(); }
+
+        /** The context object that the symbolizer will use. */
+        void setContext( SymbolizerContext* context ) { _context = context; }
+        SymbolizerContext* getContext() { return _context.get(); }
 
     public:
         /** Updates the symbology if a change is detected in the input dataset or the style.

@@ -53,7 +53,8 @@ LabelMaker::create2dLabel( const std::string& text, const osg::Vec3d& pos, const
     t->setPosition( pos );
     t->setAlignment( osgText::TextBase::CENTER_CENTER );
     t->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
-    t->getOrCreateStateSet()->setRenderBinDetails( ~0, "RenderBin" );
+    t->getOrCreateStateSet()->setMode( GL_DEPTH_TEST, 0 );
+    t->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin" );
 
     if ( symbol->fill().isSet() )
         t->setColor( symbol->fill()->color() );

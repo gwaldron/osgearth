@@ -154,6 +154,16 @@ namespace osgEarthUtil
          */
         void setOceanSurfaceImageSizeRadians( float size );
 
+		/**
+		 *Sets whether or not to adjust the height of the ocean to always be at MSL 0 and ignore the current vert height
+		 */
+		void setAdjustToMSL( bool adjustToMSL);
+		
+		/**
+		 *Gets whether or not to adjust the height of the ocean to always be at MSL 0 and ignore the current vert height
+		 */
+		bool getAdjustToMSL() const;
+
 
 
 
@@ -173,6 +183,7 @@ namespace osgEarthUtil
         float _period;
         bool _enabled;
         bool _invertMask;
+		bool _adjustToMSL;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
         optional<osg::Vec4f> _oceanColor;
         float _oceanAnimationPeriod;

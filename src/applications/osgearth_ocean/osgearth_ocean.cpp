@@ -180,6 +180,11 @@ struct MyEventHandler : public osgGA::GUIEventHandler
                     _ocean->setOceanSurfaceImageSizeRadians( _ocean->getOceanSurfaceImageSizeRadians() * 0.5f);
                 }
                 break;
+			case 'm':
+				{
+					_ocean->setAdjustToMSL( !_ocean->getAdjustToMSL());
+				}
+				break;
             }
         }
         return false;

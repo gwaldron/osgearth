@@ -31,8 +31,8 @@
 using namespace osgEarth;
 using namespace osgEarthUtil;
 
-char xyz_to_lat_lon_source[] =
-"vec2 xyz_to_lat_lon(in vec3 xyz)\n"
+char xyz_to_lat_lon_height_source[] =
+"vec3 xyz_to_lat_lon_height(in vec3 xyz)\n"
 "{\n"
 "  float X = xyz.x;\n"
 "  float Y = xyz.y;\n"
@@ -49,7 +49,10 @@ char xyz_to_lat_lon_source[] =
 "\n"
 "   float latitude = atan( (Z + eDashSquared*_radiusPolar*sin_theta*sin_theta*sin_theta), (p - _eccentricitySquared*_radiusEquator*cos_theta*cos_theta*cos_theta) );\n"
 "   float longitude = atan(Y,X);\n"
-"   return vec2(longitude, latitude);\n"
+"   float sin_latitude = sin(latitude);\n"
+"   float N = _radiusEquator / sqrt( 1.0 - _eccentricitySquared*sin_latitude*sin_latitude);\n"
+"   float height = p/cos(latitude) - N;\n"
+"   return vec3(longitude, latitude, height);\n"
 "}\n";
 
 
@@ -161,8 +164,8 @@ char vert_shader_source[] =
 "   mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix;\n"
 "   vec4 vert = modelMatrix  * gl_Vertex;\n"           
 "   vec3 vert3 = vec3(vert.x, vert.y, vert.z);\n"
-"   vec2 latlon = xyz_to_lat_lon(vert3);\n"
-
+"   vec3 latlon = xyz_to_lat_lon_height(vert3);\n"
+"   osgEarth_oceanAlpha = 1.0;\n"
 "   if (osgEarth_oceanMaskUnitValid) osgEarth_oceanAlpha = 1.0 - texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoordOCEAN_MASK_UNIT.st).a;\n"
 "   if (osgEarth_oceanInvertMask) osgEarth_oceanAlpha = 1.0 - osgEarth_oceanAlpha;\n"
 "   if (osgEarth_oceanMaxRange >= osgEarth_cameraElevation)\n"
@@ -192,6 +195,12 @@ char vert_shader_source[] =
 "     float scale3 = sin(theta + phase2) * cos(phi + phase1) * waveHeight *1.6;\n"
 "     float scale = (scale1 + scale2 + scale3)/3.0;\n"
 "     //if (scale < 0) scale = 0.0;\n"
+"   #if OCEAN_ADJUST_TO_MSL \n"
+"     //Adjust the vert to 0 MSL\n"
+"     vec3 offset = n * -latlon.z;\n"
+"     vert += vec4(offset.x, offset.y, offset.z, 0);\n"
+"   #endif\n"
+"     //Apply the wave scale\n"
 "     n = n * scale;\n"
 "     vert += vec4(n.x, n.y,n.z,0);\n"
 "     vert = osg_ViewMatrix * vert;\n"
@@ -250,6 +259,7 @@ _maxRange(800000),
 _period(1024),
 _enabled(true),
 _invertMask(false),
+_adjustToMSL(true),
 _oceanAnimationPeriod(6.0),
 _oceanSurfaceImageSizeRadians(osg::PI/500.0),
 _oceanColor(osg::Vec4f(0,0,1,0))
@@ -332,6 +342,22 @@ OceanSurfaceNode::setOceanSurfaceTextureUnit(int unit)
         }
         rebuildShaders();
     }
+}
+
+bool
+OceanSurfaceNode::getAdjustToMSL() const
+{
+	return _adjustToMSL;
+}
+
+void
+OceanSurfaceNode::setAdjustToMSL(bool adjustToMSL)
+{
+	if (_adjustToMSL != adjustToMSL)
+	{
+		_adjustToMSL = adjustToMSL;
+		rebuildShaders();
+	}
 }
 
 osg::Image*
@@ -566,7 +592,7 @@ OceanSurfaceNode::rebuildShaders()
     OE_DEBUG << "Rebuilding shaders..." << std::endl;
     std::string vertShaderSource = std::string(fnormal_source) + 
         std::string(directionalLight_source) + 
-        std::string(xyz_to_lat_lon_source) +
+        std::string(xyz_to_lat_lon_height_source) +
         std::string(vert_shader_source);
 
     {
@@ -583,8 +609,12 @@ OceanSurfaceNode::rebuildShaders()
         ss.str("");
         ss << _oceanSurfaceImageSizeRadians;
         vertShaderSource = replaceAll(vertShaderSource, "OCEAN_TEXTURE_SIZE", ss.str());
+
+		ss.str("");
+        ss << _adjustToMSL;
+        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_ADJUST_TO_MSL", ss.str());
         
-        OE_DEBUG << "Shader " << vertShaderSource << std::endl;
+        OE_NOTICE << "Shader " << vertShaderSource << std::endl;
     }
 
     _vertShader->setShaderSource( vertShaderSource );

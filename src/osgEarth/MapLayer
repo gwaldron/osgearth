@@ -387,6 +387,11 @@ namespace osgEarth
             _lod = lod;
         }
 
+		MapLayer* getMapLayer() const
+		{
+			return _mapLayer.get();
+		}
+
 		osg::ref_ptr<MapLayer> _mapLayer;
         int _lod;
 	};

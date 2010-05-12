@@ -110,7 +110,10 @@ struct TileColorLayerRequest : public TileLayerRequest
             if ( image.get() )
                 _result = _engine->createImageLayer( _map.get(), _key.get(), image.get() );*/
             _result = _engine->createImageLayer(_map.get(), mapLayer, _key.get(), progress);
-			_numTries++;
+			if (!wasCanceled())
+			{
+			  _numTries++;
+			}
         }
     }
     unsigned int _layerId;
@@ -1001,7 +1004,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
 											//static_cast<osgEarth::TransparentLayer*>(this->getColorLayer(index))->setLevelOfDetail( _key->getLevelOfDetail());										
 											itr = _requests.erase( itr );
 											increment = false;
-											OE_DEBUG << "Tried (" << _key->str() << ") (layer " << r->_layerId << "), too many times, moving on...." << std::endl;
+											OE_NOTICE << "Tried (" << _key->str() << ") (layer " << r->_layerId << "), too many times, moving on...." << std::endl;
 										}
 									}
 									else

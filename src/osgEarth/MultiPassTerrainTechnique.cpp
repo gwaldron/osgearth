@@ -808,7 +808,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
                 texture2D->setImage(image);
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
-                //texture2D->setInternalFormatMode(osg::Texture::USE_S3TC_DXT3_COMPRESSION);
+
 
                 texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
                 texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
@@ -816,6 +816,16 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, Locator
                 texture2D->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
                 texture2D->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
                 stateset->setTextureAttributeAndModes(0, texture2D, osg::StateAttribute::ON);           
+
+				bool mipMapping = !(texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
+				bool s_NotPowerOfTwo = image->s()==0 || (image->s() & (image->s() - 1));
+				bool t_NotPowerOfTwo = image->t()==0 || (image->t() & (image->t() - 1));
+
+				if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
+				{
+					OE_DEBUG<<"[osgEarth::MultiPassTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+					texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+				}
             }
             else if (contourLayer)
             {

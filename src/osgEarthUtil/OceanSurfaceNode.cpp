@@ -614,7 +614,7 @@ OceanSurfaceNode::rebuildShaders()
         ss << _adjustToMSL;
         vertShaderSource = replaceAll(vertShaderSource, "OCEAN_ADJUST_TO_MSL", ss.str());
         
-        OE_NOTICE << "Shader " << vertShaderSource << std::endl;
+        OE_DEBUG << "Shader " << vertShaderSource << std::endl;
     }
 
     _vertShader->setShaderSource( vertShaderSource );

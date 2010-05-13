@@ -109,6 +109,16 @@ namespace osgEarth
          */
         TileSource* getTileSource() const;
 
+		/**
+		 *Gets the tile size of the this MapLayer
+		 */
+		unsigned int getTileSize() const;
+
+		/**
+		 *Gets the maximum data level of this MapLayer
+		 */
+		unsigned int getMaxDataLevel() const;
+
     public: // properties
 
         /**
@@ -305,6 +315,8 @@ namespace osgEarth
         optional<double> _edgeBufferRatio;
 
         bool _cacheOnlyEnv;
+
+		unsigned int _tileSize;
 
         
         osg::ref_ptr<TileSource> _tileSource;

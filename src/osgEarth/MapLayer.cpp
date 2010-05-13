@@ -77,6 +77,7 @@ _loadingWeight( 1.0f ),
 _profileConf( ProfileConfig() ),
 _minLevel(0),
 _maxLevel(99),
+_tileSize(256),
 _noDataImageFilename(""),
 _transparentColor(osg::Vec4ub(0,0,0,0))
 {
@@ -104,6 +105,7 @@ _profileConf( ProfileConfig() ),
 _minLevel(0),
 _maxLevel(99),
 _noDataImageFilename(""),
+_tileSize(256),
 _transparentColor(osg::Vec4ub(0,0,0,0))
 {
     init();
@@ -234,8 +236,7 @@ MapLayer::setCache(Cache* cache)
         if (_cache.valid() && _cacheEnabled == true )
         {
             std::string format;
-            unsigned int tile_size;
-            osg::ref_ptr< const Profile > profile = _cache->loadLayerProperties(_name, format, tile_size);
+            osg::ref_ptr< const Profile > profile = _cache->loadLayerProperties(_name, format, _tileSize);
 
             //Set the profile if it hasn't already been set
             if (!_profile.valid() && profile.valid())
@@ -276,6 +277,23 @@ MapLayer::getProfile() const
 		getTileSource();
 	}
 	return _profile.get();
+}
+
+unsigned int
+MapLayer::getTileSize() const
+{
+	return _tileSize;
+}
+
+unsigned int
+MapLayer::getMaxDataLevel() const
+{
+	TileSource* ts = getTileSource();
+	if (ts)
+	{
+		return ts->getMaxDataLevel();
+	}
+	return 20;
 }
 
 //optional<ProfileConfig>&
@@ -342,6 +360,7 @@ MapLayer::readEnvironmentalVariables()
 	if (getenv("OSGEARTH_CACHE_ONLY") != 0)
 	{
 		_cacheOnlyEnv = true;
+		_cacheOnly = true;
 	}
 }
 
@@ -382,6 +401,7 @@ MapLayer::initTileSource()
 					OE_WARN << "Warning: Could not read nodata image from " << _noDataImageFilename.get() << std::endl;
 				}
 			}
+			_tileSize = tileSource->getPixelsPerTile();
 		}
 		else
 		{

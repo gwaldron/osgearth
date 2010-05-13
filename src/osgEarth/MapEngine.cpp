@@ -241,7 +241,7 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 
         std::vector< osg::ref_ptr< const TileKey > > keys;
 
-        if ( map->getProfile()->isEquivalentTo( layer->getTileSource()->getProfile() ) )
+        if ( map->getProfile()->isEquivalentTo( layer->getProfile() ) )
         {
             keys.push_back( key );
         }
@@ -271,7 +271,7 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 
         std::vector< osg::ref_ptr< const TileKey > > keys;
 
-        if ( map->getProfile()->isEquivalentTo( layer->getTileSource()->getProfile() ) )
+        if ( map->getProfile()->isEquivalentTo( layer->getProfile() ) )
         {
             keys.push_back( key );
         }

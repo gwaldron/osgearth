@@ -55,12 +55,12 @@ ElevationManager::checkForMapUpdates()
         for( MapLayerList::const_iterator i = hflayers.begin(); i != hflayers.end(); i++ )
         {
             // we need the maximum tile size
-            int layerTileSize = i->get()->getTileSource()->getPixelsPerTile();
+            int layerTileSize = i->get()->getTileSize();
             if ( layerTileSize > _tileSize )
                 _tileSize = layerTileSize;
 
             // we also need the maximum available data level.
-            unsigned int layerMaxDataLevel = i->get()->getTileSource()->getMaxDataLevel();
+            unsigned int layerMaxDataLevel = i->get()->getMaxDataLevel();
             if ( layerMaxDataLevel > _maxDataLevel )
                 _maxDataLevel = layerMaxDataLevel;
         }

@@ -30,6 +30,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/MapNode>
+#include <osgEarth/FindNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ElevationManager>
 #include <osgEarthDrivers/tms/TMSOptions>
@@ -145,27 +146,37 @@ int main(int argc, char** argv)
     osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
     viewer.setCameraManipulator( manip );
 
-    // load up a map with an elevation layer:
-    osgEarth::Map* map = new osgEarth::Map();
+	osgEarth::MapNode* mapNode = NULL;
 
-    // Add some imagery
-    {
-        TMSOptions* tms = new TMSOptions();
-        tms->url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
-        map->addMapLayer( new osgEarth::ImageMapLayer( "BLUEMARBLE", tms ) );
-    }
+	osg::Node* loadedNode = osgDB::readNodeFiles( arguments );
+	if (!loadedNode)
+	{
+		// load up a map with an elevation layer:
+		osgEarth::Map *map = new osgEarth::Map();
 
-    // Add some elevation
-    {
-        TMSOptions* tms = new TMSOptions();
-        tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
-        map->addMapLayer( new osgEarth::HeightFieldMapLayer( "SRTM", tms ) );
-    }
+		// Add some imagery
+		{
+			TMSOptions* tms = new TMSOptions();
+			tms->url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
+			map->addMapLayer( new osgEarth::ImageMapLayer( "BLUEMARBLE", tms ) );
+		}
+
+		// Add some elevation
+		{
+			TMSOptions* tms = new TMSOptions();
+			tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+			map->addMapLayer( new osgEarth::HeightFieldMapLayer( "SRTM", tms ) );
+		}
+		mapNode = new osgEarth::MapNode( map );
+	}
+	else
+	{
+		mapNode = findTopMostNodeOfType<osgEarth::MapNode>( loadedNode );
+	}
 
     osg::Group* root = new osg::Group();
 
     // The MapNode will render the Map object in the scene graph.
-    osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );
     mapNode->setNodeMask( 0x01 );
     root->addChild( mapNode );
 

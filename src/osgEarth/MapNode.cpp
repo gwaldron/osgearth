@@ -368,9 +368,10 @@ MapNode::getTerrainsGroup() {
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
-{
+{    
     decorator->addChild( _terrains );
-    replaceChild( _terrains.get(), decorator );   
+    _terrains->getParent(0)->replaceChild( _terrains.get(), decorator );
+    //replaceChild( _terrains.get(), decorator );   
 }
 
 void

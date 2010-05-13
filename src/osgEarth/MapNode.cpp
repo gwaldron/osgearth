@@ -375,6 +375,20 @@ MapNode::addTerrainDecorator(osg::Group* decorator)
 }
 
 void
+MapNode::removeTerrainDecorator(osg::Group* decorator)
+{
+    osg::Node* child = _terrains.get();
+    for( osg::Group* g = child->getParent(0); g != this; child = g, g = g->getParent(0) )
+    {
+        if ( g == decorator )
+        {
+            g->getParent(0)->replaceChild( g, child );
+            break;
+        }
+    }
+}
+
+void
 MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     // set up the CSN values

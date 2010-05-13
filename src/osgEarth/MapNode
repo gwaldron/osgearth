@@ -124,6 +124,9 @@ namespace osgEarth
          */
         void addTerrainDecorator( osg::Group* decorator );
 
+        /** Removes a node previously added via addTerrainDecorator */
+        void removeTerrainDecorator( osg::Group* decorator );
+
         /**
          * Gets the engine properties associated with this node. The engine
          * properties dictate how the map engine will create scene graph elements.

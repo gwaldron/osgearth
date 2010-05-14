@@ -20,6 +20,8 @@
 #ifndef OSGEARTH_MAP_ENGINE_PROPERTIES_H
 #define OSGEARTH_MAP_ENGINE_PROPERTIES_H 1
 
+#include <osg/Texture>
+
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 
@@ -228,6 +230,24 @@ namespace osgEarth
         optional<bool>& enableLighting() { return _enableLighting; }
         const optional<bool>& enableLighting() const { return _enableLighting; }  
 
+    /** @name Contour related properties
+      *       Default settings:
+      *        - magnification filter: linear;
+      *        - minifying filter: linear.
+      * @{ */
+
+      /// Returns the magnification filter mode
+      optional<osg::Texture::FilterMode>& getMagFilterMode(void) {return _magFilterMode;}
+      /// Returns the magnification filter mode
+      optional<osg::Texture::FilterMode> const& getMagFilterMode(void) const {return _magFilterMode;}
+
+      /// Returns the minifying filter mode
+      optional<osg::Texture::FilterMode>& getMinFilterMode(void) {return _minFilterMode;}
+      /// Returns the minifying filter mode
+      optional<osg::Texture::FilterMode> const& getMinFilterMode(void) const {return _minFilterMode;}
+
+    /** @} */
+    
     public:
         virtual Config toConfig() const;
         virtual void fromConfig( const Config& conf );
@@ -251,6 +271,9 @@ namespace osgEarth
         optional<LayeringTechnique> _layeringTechnique;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
+        //optional<bool> _useMercatorLocator;
+        optional<osg::Texture::FilterMode> _magFilterMode;
+        optional<osg::Texture::FilterMode> _minFilterMode;
     };
 }
 

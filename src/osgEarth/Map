@@ -28,6 +28,7 @@
 #include <osgEarth/MapEngine>
 #include <osgEarth/MapEngineProperties>
 #include <osgDB/ReaderWriter>
+#include <osg/TransferFunction>
 #include <OpenThreads/ReadWriteMutex>
 
 namespace osgEarth
@@ -172,6 +173,31 @@ namespace osgEarth
 
     public:
         /**
+         * Gets the transfer function that is used to automatically determine the elevation based contour texture.
+         */
+        osg::TransferFunction1D* getContourTransferFunction(void) const;
+        
+        /// Sets the transfer function that is used to automatically determine the elevation based contour texture.
+        /**
+         * If a transfer function exists the class osgEarth::EarthTerrainTechnique creates for each tile a contour layer. A contour layer
+         * visualizes the elevation of a terrain by giving the elevation a dedicated color.
+         *
+         * The color is determined by using the transfer function. The transfer function stores for certain elevations a color. The more cells
+         * it has the smoother the color interpolation is. The color is determined by the elevation value only and is not influenced by an
+         * eventually set elevation (vertical) scaling by the map engine.
+         *
+         * Parameters for contour generation can be set in the map engine property class.
+         *
+         * @note The transfer function has to be set before the map is assigned to a map node.
+         *
+         * @remark The contour layer is created before any existing image layer.
+         *
+         * @sa osg::TransferFunction1D, osgEarth::MapEngineProperties, osgTerrain::ContourLayer
+         */
+        void setContourTransferFunction(osg::TransferFunction1D* transferFunction);
+
+    public:
+        /**
          * Gets the user-provided options structure stored in this map.
          */
         const osgDB::ReaderWriter::Options* getGlobalOptions() const;
@@ -292,6 +318,8 @@ namespace osgEarth
         
         optional<CacheConfig> _cacheConf;
         optional<ProfileConfig> _profileConf;
+
+        osg::ref_ptr<osg::TransferFunction1D> _contourTransferFunction; ///< Storing the colour data for elevation levels
 
     private:
         void calculateProfile();

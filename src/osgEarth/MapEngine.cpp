@@ -714,6 +714,17 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
 	double min_units_per_pixel = DBL_MAX;
 
     int layer = 0;
+   // create contour layer:
+    if (map->getContourTransferFunction() != NULL)
+    {
+      osgTerrain::ContourLayer* contourLayer(new osgTerrain::ContourLayer(map->getContourTransferFunction()));
+
+      contourLayer->setMagFilter(_engineProps.getMagFilterMode().value());
+      contourLayer->setMinFilter(_engineProps.getMinFilterMode().value());
+      tile->setColorLayer(layer,contourLayer);
+      ++layer;
+    }
+
     for (unsigned int i = 0; i < image_tiles.size(); ++i)
     {
         if (image_tiles[i].valid())

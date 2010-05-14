@@ -378,7 +378,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     double i_sampleFactor, j_sampleFactor;
     calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
 
-    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
+//    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
 //    OE_INFO<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
@@ -507,17 +507,48 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
                     itr != layerToTexCoordMap.end();
                     ++itr)
                 {
-                    osg::Vec2Array* texcoords = itr->second.first.get();
-                    Locator* colorLocator = itr->second.second;
-                    if (colorLocator != masterLocator)
+                    osg::Vec2Array*         texcoords (itr->second.first.get());
+                    osgTerrain::ImageLayer* imageLayer(dynamic_cast<osgTerrain::ImageLayer*>(itr->first));
+
+                    if (imageLayer != NULL)
                     {
-                        osg::Vec3d color_ndc;
-                        Locator::convertLocalCoordBetween(*masterTextureLocator.get(), ndc, *colorLocator, color_ndc);
-                        (*texcoords).push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
+                      osgTerrain::Locator* colorLocator(itr->second.second);
+
+                      if (colorLocator != masterLocator)
+                      {
+                          osg::Vec3d color_ndc;
+
+                          Locator::convertLocalCoordBetween(*masterTextureLocator.get(), ndc, *colorLocator, color_ndc);
+                          (*texcoords).push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
+                      }
+                      else
+                          (*texcoords).push_back(osg::Vec2(ndc.x(), ndc.y()));
                     }
                     else
                     {
-                        (*texcoords).push_back(osg::Vec2(ndc.x(), ndc.y()));
+                      osgTerrain::ContourLayer* contourLayer(dynamic_cast<osgTerrain::ContourLayer*>(itr->first));
+
+                      if (contourLayer != NULL)
+                      {
+                        osg::TransferFunction1D const*const transferFunction = contourLayer->getTransferFunction();
+                        osg::Vec3d                          color_ndc;
+                        osgTerrain::Locator*                colorLocator(itr->second.second);
+                        
+                        if (colorLocator != masterTextureLocator)
+                          Locator::convertLocalCoordBetween(*masterTextureLocator.get(),ndc,*colorLocator,color_ndc);
+                        else
+                          color_ndc = ndc;
+                        color_ndc[2] /= scaleHeight;
+                        if (transferFunction != NULL)
+                        {
+                          float const difference = transferFunction->getMaximum()-transferFunction->getMinimum();
+                          
+                          if (difference != 0)
+                            (*texcoords).push_back(osg::Vec2((color_ndc[2]-transferFunction->getMinimum())/difference,0.0f));
+                          else
+                            (*texcoords).push_back(osg::Vec2(0.0f,0.0f));
+                        }
+                      }
                     }
                 }
 

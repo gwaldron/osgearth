@@ -411,6 +411,15 @@ Map::removeTerrainMaskLayer()
     }
 }
 
+osg::TransferFunction1D* Map::getContourTransferFunction(void) const
+{
+  return _contourTransferFunction;
+}
+        
+void Map::setContourTransferFunction(osg::TransferFunction1D* transferFunction)
+{
+  _contourTransferFunction = transferFunction;
+}
 
 //static const Profile*
 //getSuitableMapProfileFor( const Profile* candidate )
@@ -637,8 +646,6 @@ Map::createHeightField( const TileKey* key,
             for (unsigned r = 0; r < height; ++r)
             {
                 double geoY = miny + (dy * (double)r);
-
-                bool hasValidData = false;
 
                 //Collect elevations from all of the layers
                 std::vector<float> elevations;

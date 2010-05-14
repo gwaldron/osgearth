@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_VPB_DRIVEROPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarth/DriverOptions>
+#include <osgEarth/TileSource>
 
 using namespace osgEarth;
 

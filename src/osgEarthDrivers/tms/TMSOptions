@@ -20,7 +20,7 @@
 #define OSGEARTH_DRIVER_TMS_MAPLAYERFACTORY 1
 
 #include <osgEarth/Common>
-#include <osgEarth/DriverOptions>
+#include <osgEarth/TileSource>
 
 using namespace osgEarth;
 

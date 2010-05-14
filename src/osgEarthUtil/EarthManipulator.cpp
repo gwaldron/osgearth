@@ -20,6 +20,7 @@
 #include <osgEarth/FindNode>
 #include <osg/Quat>
 #include <osg/Notify>
+#include <osg/MatrixTransform>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
 #include <iomanip>
@@ -1171,53 +1172,62 @@ EarthManipulator::updateTether()
     osg::ref_ptr<osg::Node> temp = _tether_node.get();
     if ( temp.valid() )
     {
-        _center = temp->getBound().center();
 
-        //OE_NOTICE
+		osg::NodePathList nodePaths = temp->getParentalNodePaths();
+        if ( nodePaths.empty() )
+            return;
+        osg::NodePath path = nodePaths[0];
+
+        osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
+        _center = osg::Vec3d(0,0,0) * localToWorld;
+
+        // if the tether node is a MT, we are set. If it's not, we need to get the
+        // local bound and add its translation to the localToWorld. We cannot just use
+        // the bounds directly because they are single precision (unless you built OSG
+        // with double-precision bounding spheres, which you probably did not :)
+        if ( !dynamic_cast<osg::MatrixTransform*>( temp.get() ) )
+        {
+            const osg::BoundingSphere& bs = temp->getBound();
+            _center += bs.center();
+        }
+
+        //OE_INFO
         //    << std::fixed << std::setprecision(3)
         //    << "Tether center: (" << _center.x() << "," << _center.y() << "," << _center.z()
         //    << "); bbox center: (" << bs.center().x() << "," << bs.center().y() << "," << bs.center().z() << ")"
         //    << std::endl;
-        
-        //OE_NOTICE << "updateTether" << std::endl;
-  //      const osg::BoundingSphere& bs = temp->getBound();
-		//_center = bs._center;
+
 		osg::CoordinateFrame local_frame = getMyCoordinateFrame( _center ); //getCoordinateFrame( _center );
 	    _previousUp = getUpVector( local_frame );
 
-		osg::NodePathList nodePaths = temp->getParentalNodePaths();
-		if (!nodePaths.empty())
+//			osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
+		double sx = 1.0/sqrt(localToWorld(0,0)*localToWorld(0,0) + localToWorld(1,0)*localToWorld(1,0) + localToWorld(2,0)*localToWorld(2,0));
+		double sy = 1.0/sqrt(localToWorld(0,1)*localToWorld(0,1) + localToWorld(1,1)*localToWorld(1,1) + localToWorld(2,1)*localToWorld(2,1));
+		double sz = 1.0/sqrt(localToWorld(0,2)*localToWorld(0,2) + localToWorld(1,2)*localToWorld(1,2) + localToWorld(2,2)*localToWorld(2,2));
+		localToWorld = localToWorld*osg::Matrixd::scale(sx,sy,sz);
+
+        // didn't we just call this a few lines ago?
+	    //osg::CoordinateFrame coordinateFrame = getMyCoordinateFrame( _center ); //getCoordinateFrame(_center);
+
+		//Just track the center
+		if (_settings->getTetherMode() == TETHER_CENTER)
 		{
-			osg::NodePath path = nodePaths[0];
-			osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
-			double sx = 1.0/sqrt(localToWorld(0,0)*localToWorld(0,0) + localToWorld(1,0)*localToWorld(1,0) + localToWorld(2,0)*localToWorld(2,0));
-			double sy = 1.0/sqrt(localToWorld(0,1)*localToWorld(0,1) + localToWorld(1,1)*localToWorld(1,1) + localToWorld(2,1)*localToWorld(2,1));
-			double sz = 1.0/sqrt(localToWorld(0,2)*localToWorld(0,2) + localToWorld(1,2)*localToWorld(1,2) + localToWorld(2,2)*localToWorld(2,2));
-			localToWorld = localToWorld*osg::Matrixd::scale(sx,sy,sz);
-
-            // didn't we just call this a few lines ago?
-		    //osg::CoordinateFrame coordinateFrame = getMyCoordinateFrame( _center ); //getCoordinateFrame(_center);
-
-			//Just track the center
-			if (_settings->getTetherMode() == TETHER_CENTER)
-			{
-				_centerRotation = local_frame.getRotate(); //coordinateFrame.getRotate();
-			}
-			//Track all rotations
-			else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
-			{
-			  _centerRotation = localToWorld.getRotate();
-			}
-			else if (_settings->getTetherMode() == TETHER_CENTER_AND_HEADING)
-			{
-				//Track just the heading
-				osg::Matrixd localToFrame(localToWorld*osg::Matrixd::inverse( local_frame )); //coordinateFrame));
-				double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
-				osg::Quat nodeRotationRelToFrame, rotationOfFrame;
-				nodeRotationRelToFrame.makeRotate(-azim,0.0,0.0,1.0);
-				rotationOfFrame = local_frame.getRotate(); //coordinateFrame.getRotate();
-				_centerRotation = nodeRotationRelToFrame*rotationOfFrame;
-			}
+			_centerRotation = local_frame.getRotate(); //coordinateFrame.getRotate();
+		}
+		//Track all rotations
+		else if (_settings->getTetherMode() == TETHER_CENTER_AND_ROTATION)
+		{
+		  _centerRotation = localToWorld.getRotate();
+		}
+		else if (_settings->getTetherMode() == TETHER_CENTER_AND_HEADING)
+		{
+			//Track just the heading
+			osg::Matrixd localToFrame(localToWorld*osg::Matrixd::inverse( local_frame )); //coordinateFrame));
+			double azim = atan2(-localToFrame(0,1),localToFrame(0,0));
+			osg::Quat nodeRotationRelToFrame, rotationOfFrame;
+			nodeRotationRelToFrame.makeRotate(-azim,0.0,0.0,1.0);
+			rotationOfFrame = local_frame.getRotate(); //coordinateFrame.getRotate();
+			_centerRotation = nodeRotationRelToFrame*rotationOfFrame;
 		}
     }
 }

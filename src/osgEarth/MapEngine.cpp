@@ -277,7 +277,7 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
         }
         else
         {
-            layer->getTileSource()->getProfile()->getIntersectingTiles( key, keys );
+            layer->getProfile()->getIntersectingTiles( key, keys );
         }
 
         for (unsigned int j = 0; j < keys.size(); ++j)
@@ -634,7 +634,6 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     {
         if (!image_tiles[i].valid())
         {
-            TileSource* source = imageMapLayers[i]->getTileSource();
 			GeoImage* image = NULL;
             if (imageMapLayers[i]->isKeyValid(key))
             {

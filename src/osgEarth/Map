@@ -118,6 +118,13 @@ namespace osgEarth
          */
         const MapLayerList& getHeightFieldMapLayers() const;
 
+        /**
+         * Copies references of the heightfield layers into the output list.
+         * This method is thread safe. It returns the map revision that was
+         * in effect when the data was copied.
+         */
+        int getHeightFieldMapLayers( MapLayerList& out_list ) const;
+
         /** 
          * Gets the unordered list of model layer in this map. Be sure to use
          * getMapDataMutex() when iterating the list.

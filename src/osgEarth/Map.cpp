@@ -124,6 +124,14 @@ Map::getHeightFieldMapLayers() const {
     return _heightFieldMapLayers;
 }
 
+int
+Map::getHeightFieldMapLayers( MapLayerList& out_list ) const {
+    ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    for( MapLayerList::const_iterator i = _heightFieldMapLayers.begin(); i != _heightFieldMapLayers.end(); ++i )
+        out_list.push_back( i->get() );
+    return _dataModelRevision;
+}
+
 const ModelLayerList&
 Map::getModelLayers() const {
     return _modelLayers;

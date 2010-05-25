@@ -53,38 +53,3 @@ Symbolizer::State::dirty()
     ++_styleRevision;
     ++_dataSetRevision;
 }
-
-/*************************************************************************/
-
-//SymbolizerInput::SymbolizerInput()
-//{
-//}
-
-//int
-//SymbolizerInput::getRevision() const {
-//    int rev = _revision;
-//    if ( _alwaysDirty ) dirty();
-//    return rev;
-//}
-
-//void
-//SymbolizerInput::dirty() {
-//    _revision++;
-//}
-
-//void 
-//SymbolizerInput::inSyncWith( int otherRevision ) {
-//    return revision == _revision;
-//}
-
-//void
-//Symbolizer::sync( int& revision ) {
-//    if ( !_alwaysDirty )
-//        revision = _revision;
-//}
-//
-//void SymbolizerInput::setAlwaysDirty( bool value ) {
-//    _alwaysDirty = value;
-//    if ( value ) dirty();
-//}
-

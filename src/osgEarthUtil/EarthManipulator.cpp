@@ -441,6 +441,15 @@ EarthManipulator::established()
 
             if ( !_homeViewpoint.isSet() )
             {
+                if ( _has_pending_viewpoint )
+                {
+                    setHomeViewpoint(
+                        _pending_viewpoint,
+                        _pending_viewpoint_duration_s );
+
+                    _has_pending_viewpoint = false;
+                }
+
                 //If we have a CoordinateSystemNode and it has an ellipsoid model
                 if ( csn->getEllipsoidModel() )
                 {
@@ -456,7 +465,13 @@ EarthManipulator::established()
                         _node->getBound().radius()*2.0) );
                 }
             }
-            setViewpoint( _homeViewpoint.get(), 0.0 );
+
+            if ( !_has_pending_viewpoint )
+                setViewpoint( _homeViewpoint.get(), _homeViewpointDuration );
+            else
+                setViewpoint( _pending_viewpoint, _pending_viewpoint_duration_s );
+
+            _has_pending_viewpoint = false;
         }
 
         //if (getAutoComputeHomePosition()) computeHomePosition();

@@ -62,7 +62,7 @@
 class DRoamNode : public osg::CoordinateSystemNode
 {
 public:
-    DRoamNode();
+    DRoamNode( Map* map =0L );
     DRoamNode( const DRoamNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Node(osgEarth,DRoamNode);
 

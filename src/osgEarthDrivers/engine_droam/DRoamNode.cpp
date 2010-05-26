@@ -17,22 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "DRoamNode"
+#include <osgEarth/EarthFile>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 using namespace osgEarth::Drivers;
 
 
-DRoamNode::DRoamNode()
+DRoamNode::DRoamNode( Map* map ) :
+_map( map )
 {
-    // Initialize the Map. Hard-coded for now. Will be a parameter later.
-    _map = new Map();
-
-    //GDALOptions* driver = new GDALOptions();
-    //driver->url() = "E:/devel/osgearth/repo/data/world.tif"; 
-    TMSOptions* driver = new TMSOptions();
-    driver->url() = "http://live.pelicanmapping.com/readymap/tiles/1.0.0/7/";
-    _map->addMapLayer( new ImageMapLayer( "Pelican", driver ) );
-    
     this->setCullCallback( new MyCullCallback );
     this->setUpdateCallback( new MyUpdateCallback );
 

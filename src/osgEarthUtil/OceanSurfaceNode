@@ -27,8 +27,6 @@
 
 #include <osgEarthUtil/Common>
 
-using namespace osgEarth;
-
 namespace osgEarthUtil 
 {
     /**
@@ -185,7 +183,7 @@ namespace osgEarthUtil
         bool _invertMask;
 		bool _adjustToMSL;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-        optional<osg::Vec4f> _oceanColor;
+        osgEarth::optional<osg::Vec4f> _oceanColor;
         float _oceanAnimationPeriod;
         float _oceanSurfaceImageSizeRadians;
         osg::ref_ptr< osg::Image > _oceanSurfaceImage;

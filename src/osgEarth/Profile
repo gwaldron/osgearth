@@ -134,6 +134,9 @@ namespace osgEarth
         static const Profile* createCube(
             const SpatialReference* geog_srs);
 
+        static const Profile* createCube2(
+            const SpatialReference* geog_srs);
+
         static const Profile* create(
             const ProfileConfig& conf );
 

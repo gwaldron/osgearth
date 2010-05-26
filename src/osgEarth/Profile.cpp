@@ -187,6 +187,22 @@ Profile::createCube(const SpatialReference* geog_srs)
     return result;
 }
 
+const Profile*
+Profile::createCube2(const SpatialReference* geog_srs)
+{
+    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0, 1, 1 );
+
+    result->_face_profiles.push_back( new Profile( geog_srs, -180.0, -45.0, -90.0, 45.0, 1, 1 ) );
+    result->_face_profiles.push_back( new Profile( geog_srs,  -90.0, -45.0,   0.0, 45.0, 1, 1 ) );
+    result->_face_profiles.push_back( new Profile( geog_srs,    0.0, -45.0,  90.0, 45.0, 1, 1 ) );
+    result->_face_profiles.push_back( new Profile( geog_srs,   90.0, -45.0, 180.0, 45.0, 1, 1 ) );
+
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube4"), 0, 0, 1, 1, 1, 1) );
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube5"), 0, 0, 1, 1, 1, 1) );
+
+    return result;
+}
+
 
 
 const Profile*

@@ -56,4 +56,5 @@ IF(GDAL_FOUND)
   ADD_SUBDIRECTORY(model_feature_label)
 ENDIF(GDAL_FOUND)
 
-    
+ADD_SUBDIRECTORY(engine_droam)
+

@@ -1,0 +1,51 @@
+#ifndef OSGEARTH_DROAM_ENGINE_CUBE_MANIFOLD_H
+#define OSGEARTH_DROAM_ENGINE_CUBE_MANIFOLD_H 1
+
+#include "Manifold"
+#include "MeshManager"
+#include "Diamond"
+#include <osg/CoordinateSystemNode>
+#include <osgEarth/Profile>
+
+/** The top-level diamond layout for a round earth */
+class CubeManifold : public Manifold
+{
+public:
+    CubeManifold( const Profile* profile );
+
+public:
+    /** generate children up to the specified level */
+    void seed( Level maxLevel );
+
+    /** apply culling to the manifold. */
+    void cull( osgUtil::CullVisitor* cv );
+
+public: // Manifold overrides
+
+    /** builds the base manifold mesh. */
+    void initialize( MeshManager* mesh ); // override
+
+    /** projects a map coordinate into vertex space */
+    osg::Vec3d project( const osg::Vec3d& mapCoord ); //override
+
+    /** calculates the midpoint between two map coodinates */
+    osg::Vec3d midpoint( const osg::Vec3d& mapCoord0, const osg::Vec3d& mapCoord1 );
+
+    /** calculates the culling normal for a map coordinate. */
+    osg::Vec3d normal( const osg::Vec3d& mapCoord );
+
+    /** calculates the initial bound for the manifold. */
+    osg::BoundingSphere initialBound();
+
+public:
+    osg::BoundingSphere _bs;
+    osg::ref_ptr<const Profile> _profile;
+    osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
+    osg::ref_ptr<Diamond> _vd[8]; // vertex diamonds
+    osg::ref_ptr<Diamond> _fd[6]; // face diamonds
+    osg::ref_ptr<Diamond> _ed[12]; // edge diamonds
+
+    osg::Vec3d p(double x, double y, double z);
+};
+
+#endif // OSGEARTH_DROAM_ENGINE_CUBE_MANIFOLD_H

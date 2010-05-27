@@ -153,6 +153,9 @@ _engineProps( engineProps )
 void
 MapNode::init()
 {
+	//Protect the MapNode from the Optimizer
+	setDataVariance(osg::Object::DYNAMIC);
+
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
     _id = s_mapNodeID++;
 
@@ -684,6 +687,8 @@ MapNode::addImageLayer( MapLayer* layer )
 				TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
                 img_layer->setLevelOfDetail(imageLOD);
                 img_layer->setLocator( img_locator.get());
+				img_layer->setMinFilter( layer->getMinFilter().value());
+				img_layer->setMagFilter( layer->getMagFilter().value());
 
                 unsigned int newLayer = _map->getImageMapLayers().size() - 1;
                 tile->setColorLayer( newLayer, img_layer );
@@ -1053,5 +1058,4 @@ void MapNode::updateStateSet()
         }
     }
 }
-
 

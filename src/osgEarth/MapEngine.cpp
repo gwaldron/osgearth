@@ -718,8 +718,8 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     {
       osgTerrain::ContourLayer* contourLayer(new osgTerrain::ContourLayer(map->getContourTransferFunction()));
 
-      contourLayer->setMagFilter(_engineProps.getMagFilterMode().value());
-      contourLayer->setMinFilter(_engineProps.getMinFilterMode().value());
+      contourLayer->setMagFilter(_engineProps.getContourMagFilter().value());
+      contourLayer->setMinFilter(_engineProps.getContourMinFilter().value());
       tile->setColorLayer(layer,contourLayer);
       ++layer;
     }
@@ -760,6 +760,8 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
             img_layer->setLevelOfDetail( key->getLevelOfDetail() );
             img_layer->setName( imageMapLayers[i]->getName() );
             img_layer->setLocator( img_locator.get());
+			img_layer->setMinFilter( imageMapLayers[i]->getMinFilter().value());
+			img_layer->setMagFilter( imageMapLayers[i]->getMagFilter().value());
 
 			double upp = geo_image->getUnitsPerPixel();
 
@@ -911,6 +913,8 @@ MapEngine::createImageLayer(Map* map,
         TransparentLayer* imgLayer = new TransparentLayer(geoImage->getImage(), layer);
         imgLayer->setLocator( imgLocator.get() );
         imgLayer->setLevelOfDetail( key->getLevelOfDetail() );
+		imgLayer->setMinFilter( layer->getMinFilter().value());
+		imgLayer->setMagFilter( layer->getMagFilter().value());
         return imgLayer;
     }
     return NULL;

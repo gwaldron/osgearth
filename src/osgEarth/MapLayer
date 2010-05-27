@@ -222,6 +222,18 @@ namespace osgEarth
         optional<double> edgeBufferRatio() { return _edgeBufferRatio;}
         const optional<double> edgeBufferRatio() const { return _edgeBufferRatio;}
 
+		/// Returns the magnification filter mode
+		optional<osg::Texture::FilterMode>& getMagFilter(void) {return _magFilter;}
+		/// Returns the magnification filter mode
+		optional<osg::Texture::FilterMode> const& getMagFilter(void) const {return _magFilter;}
+
+		/// Returns the minifying filter mode
+		optional<osg::Texture::FilterMode>& getMinFilter(void) {return _minFilter;}
+		/// Returns the minifying filter mode
+		optional<osg::Texture::FilterMode> const& getMinFilter(void) const {return _minFilter;}
+
+
+
     public: // methods
 
 		/**
@@ -313,6 +325,8 @@ namespace osgEarth
 		optional<bool> _enabled;
 		optional<unsigned int> _reprojectedTileSize;
         optional<double> _edgeBufferRatio;
+		optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::FilterMode> _minFilter;
 
         bool _cacheOnlyEnv;
 

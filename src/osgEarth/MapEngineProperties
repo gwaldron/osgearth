@@ -237,14 +237,14 @@ namespace osgEarth
       * @{ */
 
       /// Returns the magnification filter mode
-      optional<osg::Texture::FilterMode>& getMagFilterMode(void) {return _magFilterMode;}
+      optional<osg::Texture::FilterMode>& getContourMagFilter(void) {return _contourMagFilter;}
       /// Returns the magnification filter mode
-      optional<osg::Texture::FilterMode> const& getMagFilterMode(void) const {return _magFilterMode;}
+      optional<osg::Texture::FilterMode> const& getContourMagFilter(void) const {return _contourMagFilter;}
 
       /// Returns the minifying filter mode
-      optional<osg::Texture::FilterMode>& getMinFilterMode(void) {return _minFilterMode;}
+      optional<osg::Texture::FilterMode>& getContourMinFilter(void) {return _contourMinFilter;}
       /// Returns the minifying filter mode
-      optional<osg::Texture::FilterMode> const& getMinFilterMode(void) const {return _minFilterMode;}
+      optional<osg::Texture::FilterMode> const& getContourMinFilter(void) const {return _contourMinFilter;}
 
     /** @} */
     
@@ -272,8 +272,8 @@ namespace osgEarth
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
         //optional<bool> _useMercatorLocator;
-        optional<osg::Texture::FilterMode> _magFilterMode;
-        optional<osg::Texture::FilterMode> _minFilterMode;
+        optional<osg::Texture::FilterMode> _contourMagFilter;
+        optional<osg::Texture::FilterMode> _contourMinFilter;
     };
 }
 

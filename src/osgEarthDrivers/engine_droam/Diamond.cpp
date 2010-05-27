@@ -719,8 +719,8 @@ Diamond::getOrCreateChild( ChildIndex c )
     }
 
     // assign the child's parent pointers
-    child->_a[PARENT_R] = (c == 0 || c == 2) ? d : d0;
-    child->_a[PARENT_L] = (c == 0 || c == 2) ? d0 : d;
+    child->_a[PARENT_R] = (c == 0 || c == 2) ? d : d0.get();
+    child->_a[PARENT_L] = (c == 0 || c == 2) ? d0.get() : d;
 
     // how that we know the QUADTREE & GDPARENT ancestors, create the diamond vertex.
     osg::Vec3d newCoord = _mesh->_manifold->midpoint( child->_a[QUADTREE]->_coord, child->_a[GDPARENT]->_coord );

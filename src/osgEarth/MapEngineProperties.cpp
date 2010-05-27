@@ -21,8 +21,6 @@
 #include <osg/Notify>
 #include <OpenThreads/Thread>
 
-#include <osgEarth/LeakDetector>
-
 using namespace osgEarth;
 
 std::string MapEngineProperties::OPTIONS_TAG = "__osgEarth::MapEngineProperties";

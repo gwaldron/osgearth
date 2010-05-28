@@ -211,6 +211,7 @@ typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClie
 static OpenThreads::Mutex          _threadClientMapMutex;
 static ThreadClientMap             _threadClientMap;
 static optional<ProxySettings>     _proxySettings;
+static std::string                 _userAgent = "osgearth/1.4";
 
 HTTPClient& HTTPClient::getClient()
 {
@@ -230,7 +231,22 @@ HTTPClient::HTTPClient()
 {
     _previousHttpAuthentication = 0;
     _curl_handle = curl_easy_init();
-    curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0" );
+
+
+	//Get the user agent
+	std::string userAgent = _userAgent;
+	const char* userAgentEnv = getenv("OSGEARTH_USERAGENT");
+    if (userAgentEnv)
+    {
+		userAgent = std::string(userAgentEnv);        
+    }
+
+	OE_INFO << "HTTPClient setting userAgent=" << userAgent << std::endl;
+
+	
+
+
+    curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, userAgent.c_str() );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
     curl_easy_setopt( _curl_handle, CURLOPT_FOLLOWLOCATION, (void*)1 );
     curl_easy_setopt( _curl_handle, CURLOPT_MAXREDIRS, (void*)5 );
@@ -249,6 +265,16 @@ void
 HTTPClient::setProxySettings( const ProxySettings &proxySettings )
 {
 	_proxySettings = proxySettings;
+}
+
+const std::string& HTTPClient::getUserAgent()
+{
+	return _userAgent;
+}
+
+void  HTTPClient::setUserAgent(const std::string& userAgent)
+{
+	_userAgent = userAgent;
 }
 
 void

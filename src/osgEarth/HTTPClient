@@ -156,7 +156,10 @@ namespace osgEarth
                 "Unknown error";
         }
 
+		static const std::string& getUserAgent();
+		static void setUserAgent(const std::string& userAgent);
 		static void setProxySettings( const ProxySettings &proxySettings );
+
 
     public:
         static ResultCode readImageFile(

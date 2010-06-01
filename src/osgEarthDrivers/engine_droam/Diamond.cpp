@@ -37,7 +37,8 @@ static osg::Image* createDebugImage()
 static int s_numDiamonds = 0;
 
 Diamond::Diamond( MeshManager* mesh, osgEarth::TileKey* key, Level level, const std::string& name ) :
-osg::Referenced( true ),
+osg::Referenced(true),
+//osgEarth::Revisioned<osg::Referenced>(),
 _mesh( mesh ),
 _key( key ),
 _level( level ),
@@ -54,9 +55,13 @@ _bsComputed( false ),
 _isSplit( false ),
 _hasGeometry( level % 2 == 1 ),
 _stateSet( 0L ),
-_stateSetAncestor( 0L ),
+//_stateSetLevel( 0 ),
+_currentStateSetOwner( 0L ),
+_targetStateSetOwner( 0L ),
+_targetStateSetRevision( -1 ),
 _hasFinalImage( false )
 {
+    this->setThreadSafeRefUnref(true);
     //osg::setNotifyLevel( osg::INFO );
 
     // only ODD-numbered levels have actual geometry.
@@ -91,8 +96,11 @@ _hasFinalImage( false )
         // it safe to change the geometry in the UPDATE traversal:
         _geom->setDataVariance( osg::Object::DYNAMIC );
 
-        // create a stateset that will hold the textures for the quadtree starting at this diamond
-        _stateSet = new osg::StateSet();
+        // create a stateset that will hold the textures for the quadtree starting at this diamond.
+        // this is revisioned so that in activate() we can pre-populate the stateset with "placeholder"
+        // lower-res textures if they are available (while loading the correct-res textures).
+        _stateSet = new RevisionedStateSet();
+        //_stateSetLevel = _level;
     }
 
     s_numDiamonds++;
@@ -123,6 +131,7 @@ Diamond::activate()
 
     if ( _hasGeometry )
     {
+        // this settings directs a Diamond to use a stateset from N levels back.
         int tsl = TEX_SUBRANGE_LEVELS;
 
         // for some unknown reason the polar faces come in much lower res. hack:
@@ -134,18 +143,37 @@ Diamond::activate()
         if ( stateSetLevel < (int)_mesh->_minActiveLevel )
             stateSetLevel = _mesh->_minActiveLevel;
 
-        _stateSetAncestor = this;
-        while( _stateSetAncestor->_level > stateSetLevel )
-            _stateSetAncestor = _stateSetAncestor->_a[QUADTREE].get();
+        // obtain a pointer to the Diamond that owns the StateSet we wish to use:
+        _targetStateSetOwner = this;
+        while( _targetStateSetOwner->_level > stateSetLevel )
+            _targetStateSetOwner = _targetStateSetOwner->_a[QUADTREE].get();
 
-        _geom->setStateSet( _stateSetAncestor->_stateSet.get() );
+        // since that StateSet might not be populated yet, backtrack from there to find the
+        // first available populated StateSet. This will serve as a temporary "placeholder"
+        // until our target stateset is ready (i.e. the textures etc are loaded).
+        _currentStateSetOwner = _targetStateSetOwner;
+        while( !_currentStateSetOwner->_hasFinalImage && _currentStateSetOwner->_level > _mesh->_minActiveLevel )
+        {
+            _currentStateSetOwner = _currentStateSetOwner->_a[QUADTREE].get();
+        }
+
+        // assign the stateset to this Diamond's geometry.
+        _geom->setStateSet( _currentStateSetOwner->_stateSet.get() );
+
+        // synchronize with the target state set. By doing this, we will detect when the target stateset
+        // does finally get populated, and at that point we can replace the placeholder stateset with
+        // the final stateset. (This check occurs in Diamond::cull.)
+        _targetStateSetOwner->_stateSet->sync( _targetStateSetRevision );
 
 #ifdef USE_TEXTURES
-        //_mesh->queueForImage( this, 1.0f );
-        if ( !_stateSetAncestor->_hasFinalImage )
-            _mesh->queueForImage( _stateSetAncestor, 1.0f );
-#endif  
-    
+
+        // finally, queue up a request to populate the stateset if necessary.
+        if ( !_targetStateSetOwner->_hasFinalImage )
+        {
+            _mesh->queueForImage( _targetStateSetOwner, 1.0f );
+        }    
+
+#endif
     }
 }
 
@@ -330,6 +358,17 @@ Diamond::cull( osgUtil::CullVisitor* cv )
 
 
     // at this point, culling is now complete for this diamond.
+
+#ifdef USE_TEXTURES
+
+    // check to see whether the target stateset is "dirty".
+    if ( _hasGeometry && _targetStateSetOwner->_stateSet->outOfSyncWith( _targetStateSetRevision ) )
+    {
+        // flags the primitive set for regeneration
+        this->dirty();
+    }
+
+#endif
 
     // traverse the diamond's children.
     unsigned short numChildren = 0;
@@ -520,17 +559,28 @@ Diamond::refreshPrimitiveSet()
     osg::Vec2f offset( 0.0, 0.0 );
     double span = 1.0;
 
-    //if ( _level > _mesh->_minActiveLevel )
+    const TileKey* ssaKey = _currentStateSetOwner->_key.get();
+    if ( _level > _currentStateSetOwner->_level ) //_currentStateSetOwner != _targetStateSetOwner )
     {
-        const TileKey* ssaKey = _stateSetAncestor->_key.get();
-        if ( _level > _stateSetAncestor->_level )
-        {
-            span = 1.0/(double)(1 << ((_level-_stateSetAncestor->_level)/2));
-            offset.x() = (_key->getGeoExtent().xMin()-ssaKey->getGeoExtent().xMin())/ssaKey->getGeoExtent().width();
-            offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
-            //OE_NOTICE << "level=" << _level << ", sslevel=" << _stateSetAncestor->_level << ", offset=" << offset.x() << "," << offset.y() << std::endl;
-        }
+        span = 1.0/(double)(1 << ((_level-_currentStateSetOwner->_level)/2));
+        offset.x() = (_key->getGeoExtent().xMin()-ssaKey->getGeoExtent().xMin())/ssaKey->getGeoExtent().width();
+        offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
     }
+
+    //if ( _level > _stateSetLevel )
+    //{
+    //    span = 1.0/(double)(1 << ((_level-_stateSetLevel)/2));
+    //    offset.x() = (_key->getGeoExtent().xMin()-ssaKey->getGeoExtent().xMin())/ssaKey->getGeoExtent().width();
+    //    offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
+    //}
+
+    //if ( _level > _targetStateSetOwner->_level )
+    //{
+    //    span = 1.0/(double)(1 << ((_level-_targetStateSetOwner->_level)/2));
+    //    offset.x() = (_key->getGeoExtent().xMin()-ssaKey->getGeoExtent().xMin())/ssaKey->getGeoExtent().width();
+    //    offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
+    //    //OE_NOTICE << "level=" << _level << ", sslevel=" << _stateSetAncestor->_level << ", offset=" << offset.x() << "," << offset.y() << std::endl;
+    //}
 
     // clear it out so we can build new triangles.
     osg::DrawElementsUInt* p = _primSet;

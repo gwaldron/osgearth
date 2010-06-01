@@ -20,6 +20,7 @@
 #define OSGEARTH_DROAM_ENGINE_DIAMOND_H 1
 
 #include "Common"
+#include <osgEarth/Revisioning>
 #include <osgEarth/TileKey>
 #include <osgEarth/TaskService>
 #include <osg/Geometry>
@@ -42,13 +43,17 @@ enum DiamondStatus {
 // diamond's orientation. 0 is "up".
 typedef unsigned short Orientation;
 
+struct RevisionedStateSet : public osgEarth::Revisioned<osg::StateSet>
+{
+};
+
 /** 
 * A diamond is the basic unit object for the terrain mesh. There are two types of
 * diamonds: Geometry diamonds reside at odd levels and contain actual geometry.
 * Intermediate diamonds reside at even levels and serve to connect the continuous mesh
 * between geometry levels, but contain no visible geometry themselves.
 */
-struct Diamond : public osg::Referenced
+struct Diamond : osg::Referenced
 {
     Diamond( MeshManager* mesh, osgEarth::TileKey* key, Level level, const std::string& name ="" );
     ~Diamond();
@@ -78,8 +83,12 @@ struct Diamond : public osg::Referenced
     osg::BoundingSphere _bs;            // this diamond's bounds
     bool _bsComputed;                   // whether _bs has been computed yet
     bool _imageRequested;               // whether the texture image has been submitted to the task service
-    osg::ref_ptr<osg::StateSet> _stateSet;
-    Diamond* _stateSetAncestor;
+    //osg::ref_ptr<osg::StateSet> _stateSet; // stateset associated with the quadtree diamond at this level
+    osg::ref_ptr<RevisionedStateSet> _stateSet;
+    //Level _stateSetLevel;               // level represented by _stateSet (could be placeholder(<level) or _level)
+    Diamond* _targetStateSetOwner;      // Diamond that owns the stateset we ultimately want to use
+    Diamond* _currentStateSetOwner;     // Diamond that owns the stateset we are currently using
+    osgEarth::Revision _targetStateSetRevision;   // Revision of the stateset we are rendering with
     bool _hasFinalImage;                // whether the final texture has been loaded into the stateset.
 
     osg::ref_ptr<osgEarth::TaskRequest> _imageRequest;

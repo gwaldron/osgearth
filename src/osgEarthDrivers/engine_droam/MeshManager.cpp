@@ -177,9 +177,11 @@ MeshManager::queueForImage( Diamond* d, float priority )
 void
 MeshManager::update()
 {
+    int j;
+
     // process the split queue. these are diamonds that have requested to be split into
     // all four children.
-    for( int i=0; i<_maxJobsPerFrame && !_splitQueue.empty(); ++i )
+    for( j=0; j<_maxJobsPerFrame && !_splitQueue.empty(); ++j )
     //if( !_splitQueue.empty() )
     {
         Diamond* d = _splitQueue.top()._d.get();
@@ -208,7 +210,7 @@ MeshManager::update()
     // children be removed.
     // FUTURE: process jobs until we reach some sort of time quota?
 
-    for( int i=0; i<_maxJobsPerFrame && !_mergeQueue.empty(); ++i )
+    for( j=0; j<_maxJobsPerFrame && !_mergeQueue.empty(); ++j )
     {
         Diamond* d = _mergeQueue.top()._d.get();
         if ( d->_status == ACTIVE && d->referenceCount() > 1 )
@@ -235,18 +237,14 @@ MeshManager::update()
     }
 
     // process the texture image request queue.
-    
-    int k=0;
-    for( DiamondJobList::iterator i = _imageQueue.begin(); i != _imageQueue.end() && k < _maxJobsPerFrame; ++k )
+    j=0;
+    for( DiamondJobList::iterator i = _imageQueue.begin(); i != _imageQueue.end() && j < _maxJobsPerFrame; ++j )
     //if( _imageQueue.size() > 0 )
     {
         bool increment = true;
         bool remove = true;
 
         Diamond* d = i->_d.get();
-        //Diamond* d = _imageQueue.top()._d.get();
-
-        //OE_NOTICE << "REQ: " << d->_key->str() << " checking..." << std::endl;
 
         if ( d->_status == ACTIVE && d->referenceCount() > 1 && d->_imageRequest.valid() )
         {
@@ -278,6 +276,7 @@ MeshManager::update()
                     tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
                     tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
                     d->_stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
+                    d->_stateSet->dirty(); // bump revision number so that users of this stateset can detect the change
                     d->_hasFinalImage = true;
                 }
 
@@ -304,18 +303,31 @@ MeshManager::update()
     }
 
 #ifdef USE_DIRTY_QUEUE
+
     // process the dirty diamond queue. these are diamonds that have been changed and
     // need a new primitive set.
+    // NOTE: we need to process the entire dirty queue each frame.
     while( _dirtyQueue.size() > 0 )
     {
         Diamond* d = _dirtyQueue.front().get();
-        //OE_NOTICE << "DIRTY Q: refreshing " << d->_name << std::endl;
+
         if ( d->_status == ACTIVE && d->referenceCount() > 1 )
         {
+            // first, check to see whether the diamond's target stateset is ready. if so,
+            // install it and mark it up to date.
+            if ( d->_targetStateSetOwner->_stateSet->outOfSyncWith( d->_targetStateSetRevision ) )
+            {            
+                d->_geom->setStateSet( d->_targetStateSetOwner->_stateSet.get() );
+                d->_currentStateSetOwner = d->_targetStateSetOwner;
+                d->_targetStateSetOwner->_stateSet->sync( d->_targetStateSetRevision );
+            }
+
+            // rebuild the primitives now.
             d->refreshPrimitiveSet();
         }
         _dirtyQueue.pop();
     }
+
 #endif
 
     //OE_NOTICE << "dq size = " << _dirtyQueue.size() << "; splits = " << _splitQueue.size() << "; merges = " << _mergeQueue.size() << std::endl;

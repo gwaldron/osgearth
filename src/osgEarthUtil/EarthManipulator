@@ -22,11 +22,19 @@
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarth/MapNode>
-#include <osgGA/MatrixManipulator>
 #include <osg/Timer>
 #include <map>
 #include <list>
 #include <utility>
+
+#if OSG_MIN_VERSION_REQUIRED(2,9,7)
+#include <osgGA/CameraManipulator>
+namespace osgGA {
+    typedef CameraManipulator MatrixManipulator;
+};
+#else
+#include <osgGA/MatrixManipulator>
+#endif
 
 namespace osgEarthUtil
 {

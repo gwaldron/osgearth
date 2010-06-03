@@ -183,7 +183,7 @@ Map::getCache() const
 void
 Map::setCache( Cache* cache)
 {
-    if (_cache != cache)
+    if (_cache.get() != cache)
     {
         _cache = cache;
         _cache->setMapConfigFilename( _referenceURI );

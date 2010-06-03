@@ -38,18 +38,18 @@
 
 namespace osgEarth
 {   
+
   /**
   * Defines the properties for a cache.
   */
   class OSGEARTH_EXPORT CacheConfig
   {
   public:
-    enum CacheType
-    {
-      TYPE_DEFAULT,   // use the default caching type
-      TYPE_TMS,       // cache to a OSGeo Tile Map Service structure
-      TYPE_TILECACHE  // cache to a MetaCarta Labs TileCache structure
-    };
+      typedef std::string CacheType;
+
+      static const CacheType TYPE_DEFAULT;   // = "";
+      static const CacheType TYPE_TMS;       // = "tms";
+      static const CacheType TYPE_TILECACHE; // = "tilecache";
 
   public:
     /**
@@ -102,7 +102,7 @@ namespace osgEarth
   /**
   * Cache for storing image tiles
   */
-  class OSGEARTH_EXPORT Cache : public osg::Referenced
+  class OSGEARTH_EXPORT Cache : public osg::Object
   {
   public:
 
@@ -171,6 +171,7 @@ namespace osgEarth
   protected:
 
     Cache();
+    Cache(const Cache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL);
 
     std::string _mapConfigFilename;
   };
@@ -179,6 +180,8 @@ namespace osgEarth
   {
   public:
     MemCache();
+    MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+    META_Object(osgEarth,MemCache);
 
     /**
     * Gets the maximum number of tiles to keep in the cache
@@ -268,6 +271,10 @@ namespace osgEarth
 
     DiskCache(const std::string& path);
 
+    DiskCache( const DiskCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+
+    META_Object(osgEarth,DiskCache);
+
     /**
     * Gets the path of this DiskCache
     */
@@ -352,7 +359,13 @@ namespace osgEarth
   class OSGEARTH_EXPORT TMSCache : public DiskCache
   {
   public:
+    TMSCache() { }
+
     TMSCache(const std::string &path );
+
+    TMSCache(const TMSCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL);
+
+    META_Object(osgEarth,TMSCache);
 
     /**
     * Gets whether or not to invert the y tile index

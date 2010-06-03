@@ -589,7 +589,7 @@ MapLayer::createImage( const TileKey* key,
 	if (cacheInMapProfile && _cache.valid() && _cacheEnabled == true )
 	{
         osg::ref_ptr<osg::Image> image = _cache->getImage( key, _name, _cacheFormat.value() );
-		if (image)
+		if (image.valid())
 		{
 			OE_DEBUG << "Layer " << _name << " got tile " << key->str() << " from map cache " << std::endl;
 			return postProcess( new GeoImage( image.get(), key->getGeoExtent() ) );

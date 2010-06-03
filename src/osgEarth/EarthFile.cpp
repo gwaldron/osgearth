@@ -198,7 +198,9 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
 		//Create and set the Cache for the Map
 		CacheFactory factory;
-		map->setCache( factory.create( map->cacheConfig().get()) );
+        Cache* cache = factory.create( map->cacheConfig().value() );
+        if ( cache )
+		    map->setCache( cache );
     }
 
 	if ( osgEarth::Registry::instance()->getCacheOverride() )

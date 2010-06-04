@@ -40,6 +40,16 @@ _profileConf( ProfileConfig() )
         _cacheConf->getProperties()[ "path" ] = cachePath;
         OE_INFO << "Enabling map cache at " << cachePath << std::endl;
     }
+
+    if ( getenv( "OSGEARTH_CACHE_TYPE" ) )
+    {
+        std::string cacheType = getenv( "OSGEARTH_CACHE_TYPE" );
+        if ( !cacheType.empty() )
+        {
+            _cacheConf->setType( cacheType );
+            OE_INFO << "Setting map cache type to: " << cacheType << std::endl;
+        }
+    }
 }
 
 void

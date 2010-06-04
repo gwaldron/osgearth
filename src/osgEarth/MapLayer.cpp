@@ -396,6 +396,7 @@ MapLayer::readEnvironmentalVariables()
 	{
 		_cacheOnlyEnv = true;
 		_cacheOnly = true;
+        OE_INFO << "CACHE-ONLY mode enabled!!" << std::endl;
 	}
 }
 

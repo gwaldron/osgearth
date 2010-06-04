@@ -27,7 +27,7 @@
 
 // for the compressor stuff
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)
-#  define USE_COMPRESSOR
+#  define USE_SERIALIZERS
 #  include <osgDB/Serializer>
 #endif
 
@@ -139,6 +139,7 @@ struct MetadataTable
         }
         else
         {
+            OE_INFO << "Stored metadata record for \"" << rec._layerName << "\"" << std::endl;
             success = true;
         }
 
@@ -272,7 +273,7 @@ struct LayerTable : public osg::Referenced
 
         // serialize the image:
         std::stringstream outStream;
-        _rw->writeImage( *rec._image.get(), outStream );
+        _rw->writeImage( *rec._image.get(), outStream, _rwOptions.get() );
         std::string outBuf = outStream.str();
         sqlite3_bind_blob( insert, 4, outBuf.c_str(), outBuf.length(), SQLITE_STATIC );
 
@@ -339,7 +340,7 @@ struct LayerTable : public osg::Referenced
         // TODO: decompression
         std::string imageString( imageBuf, imageBufLen );
         std::stringstream imageBufStream( imageString );
-        osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream );
+        osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream ); //, _rwOptions.get() );
 
         if ( rr.error() )
         {
@@ -392,9 +393,26 @@ struct LayerTable : public osg::Referenced
         int rc = sqlite3_exec( _db, sql.c_str(), 0L, 0L, &errMsg );
         if ( rc != SQLITE_OK )
         {
-            OE_WARN << LC << "Creating layer: " << errMsg << std::endl;
+            OE_WARN << LC << "Creating layer \"" << _meta._layerName << "\": " << errMsg << std::endl;
             sqlite3_free( errMsg );
             return false;
+        }
+
+        // create an index on the time-last-accessed column
+        buf.str("");
+        buf << "CREATE INDEX IF NOT EXISTS \"" 
+            << _meta._layerName << "_lruindex\" "
+            << "ON \"" << _meta._layerName << "\" (accessed)";
+        sql = buf.str();
+
+        OE_INFO << LC << "SQL = " << sql << std::endl;
+
+        rc = sqlite3_exec( _db, sql.c_str(), 0L, 0L, &errMsg );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Creating index for layer \"" << _meta._layerName << "\": " << errMsg << std::endl;
+            sqlite3_free( errMsg );
+            //return false;
         }
 
         // next load the appropriate ReaderWriter:
@@ -408,19 +426,8 @@ struct LayerTable : public osg::Referenced
             return false;
         }
 
-        // next load the compressor if applicable:
-#ifdef USE_COMPRESSOR
         if ( !_meta._compressor.empty() )
-        {
-            _comp = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor( _meta._compressor );
-            if ( !_comp )
-            {
-                OE_WARN << LC << "Layer \"" << _meta._layerName << "\": unable to find compressor \""
-                    << _meta._compressor << "\"" << std::endl;
-                return false;
-            }
-        }
-#endif
+            _rwOptions = new osgDB::Options( "Compressor=" + _meta._compressor );
 
         return true;
     }
@@ -429,8 +436,9 @@ struct LayerTable : public osg::Referenced
     std::string _selectSQL;
     std::string _insertSQL;
     MetadataRecord _meta;
+
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
-    osg::ref_ptr<osgDB::BaseCompressor> _comp;
+    osg::ref_ptr<osgDB::Options> _rwOptions;
 };
 
 // --------------------------------------------------------------------------
@@ -495,10 +503,16 @@ public: // Cache interface
         OE_INFO << "Storing metadata for layer \"" << layerName << "\"" << std::endl;
 
         MetadataRecord rec;
-        rec._format = format;
         rec._layerName = layerName;
         rec._profile = profile;
         rec._tileSize = tileSize;
+
+#ifdef USE_SERIALIZERS
+        rec._format = "osgb";
+        rec._compressor = "zlib";
+#else
+        rec._format = format;
+#endif
 
         _metadata.store( rec );
     }

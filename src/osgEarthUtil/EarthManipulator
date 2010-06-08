@@ -547,7 +547,7 @@ namespace osgEarthUtil
          * @param out_coords
          *      Output world coordinates (only valid if the method returns true)
          */
-        bool screenToWorld(float x, float y, osg::View* view, osg::Vec3d& out_coords );
+        bool screenToWorld(float x, float y, osg::View* view, osg::Vec3d& out_coords ) const;
 
 		/**
 		 * Gets the distance from the focal point in world coordiantes

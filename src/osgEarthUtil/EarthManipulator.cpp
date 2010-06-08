@@ -1655,7 +1655,7 @@ EarthManipulator::zoom( double dx, double dy )
 }
 
 bool
-EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d& out_coords )
+EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d& out_coords ) const
 {
     osgViewer::View* view = dynamic_cast<osgViewer::View*>( theView );
     if ( !view || !view->getCamera() )

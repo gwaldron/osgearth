@@ -1216,17 +1216,60 @@ VersionedTile::releaseGLObjects(osg::State* state) const
 
 /****************************************************************************/
 
-// a simple draw callback, to be installed on a Camera, that tells the
-// versionedterrain to release GL memory on any expired tiles.
+// a simple draw callback, to be installed on a Camera, that tells all VersionedTerrains to
+// release GL memory on any expired tiles.
 struct ReleaseGLCallback : public osg::Camera::DrawCallback
 {
-    ReleaseGLCallback(VersionedTerrain* terrain) : _terrain(terrain) { }
+	typedef std::vector< osg::observer_ptr< VersionedTerrain > > ObserverTerrainList;
+
+    ReleaseGLCallback()
+	{
+	}
+
     void operator()( osg::RenderInfo& renderInfo ) const {
-        _terrain->releaseGLObjectsForTiles(renderInfo.getState());
+		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(const_cast<ReleaseGLCallback*>(this)->_terrainMutex);
+		for (ObserverTerrainList::const_iterator itr = _terrains.begin(); itr != _terrains.end(); ++itr)
+		{ 
+			osg::ref_ptr< VersionedTerrain > vt = itr->get();
+			if (vt.valid())
+			{
+				(*itr)->releaseGLObjectsForTiles(renderInfo.getState());
+			}
+		}
     }
-    osg::ref_ptr< VersionedTerrain >  _terrain;
+
+	void registerTerrain(VersionedTerrain *terrain)
+	{
+		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_terrainMutex);
+		ObserverTerrainList::iterator itr = find(_terrains.begin(), _terrains.end(), terrain);
+		//Avoid double registration
+		if (itr == _terrains.end())
+		{
+			//OE_NOTICE << "ReleaseGLCallback::registerTerrain " << std::endl;
+			_terrains.push_back( terrain );
+		}
+	}
+
+	void unregisterTerrain(VersionedTerrain* terrain)
+	{
+		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_terrainMutex);
+		ObserverTerrainList::iterator itr = find(_terrains.begin(), _terrains.end(), terrain);
+		if (itr != _terrains.end())
+		{
+			//OE_NOTICE << "ReleaseGLCallback::unregisterTerrain " << std::endl;
+			_terrains.erase(itr);
+		}
+	}
+
+	OpenThreads::Mutex _terrainMutex;
+	ObserverTerrainList _terrains;    
 };
 
+static bool s_releaseCBInstalled = false;
+static osg::ref_ptr< ReleaseGLCallback > s_releaseCB = new ReleaseGLCallback();
+
+
+//TODO:  Register with the callback when we are first created...
 // immediately release GL memory for any expired tiles.
 // called from the DRAW thread
 void
@@ -1247,7 +1290,7 @@ _map( map ),
 _engine( engine ),
 _revision(0),
 _numAsyncThreads( 0 ),
-_releaseCBInstalled( false )
+_registeredWithReleaseGLCallback( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -1278,6 +1321,14 @@ _releaseCBInstalled( false )
         // osgTerrain 2.9.8 explicity sets NCURT=1 .. negate that here in standard mode
         setNumChildrenRequiringUpdateTraversal( 0 );
     }
+}
+
+VersionedTerrain::~VersionedTerrain()
+{
+	if (s_releaseCBInstalled)
+	{
+		s_releaseCB->unregisterTerrain(this);
+	}
 }
 
 void
@@ -1504,16 +1555,22 @@ void
 VersionedTerrain::traverse( osg::NodeVisitor &nv )
 {
 #ifdef EXPLICIT_RELEASE_GL_OBJECTS
-    if ( !_releaseCBInstalled )
+    if ( !s_releaseCBInstalled )
     {
         osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
         if ( cam )
         {
             OE_INFO << "Explicit releaseGLObjects() enabled" << std::endl;
-            cam->setPostDrawCallback( new ReleaseGLCallback(this) );
-            _releaseCBInstalled = true;
+			cam->setPostDrawCallback( s_releaseCB.get() );
+            s_releaseCBInstalled = true;
         }
     }
+
+	if (s_releaseCBInstalled && !_registeredWithReleaseGLCallback) 
+	{
+		s_releaseCB->registerTerrain(this);
+		_registeredWithReleaseGLCallback = true;
+	}
 #endif // EXPLICIT_RELEASE_GL_OBJECTS
 
     if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
@@ -1556,7 +1613,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
                 {
 #ifdef EXPLICIT_RELEASE_GL_OBJECTS
                     //Only add the tile to be released if we could actually install the callback.
-                    if (_releaseCBInstalled)
+                    if (s_releaseCBInstalled)
                     {
                         //OE_NOTICE << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
                         _tilesToRelease.push( i->get() );

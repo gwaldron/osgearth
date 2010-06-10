@@ -277,6 +277,8 @@ namespace osgEarth
 
     protected:
 
+		~VersionedTerrain();
+
         typedef std::map< osgTerrain::TileID, osg::ref_ptr<VersionedTile> > TileTable;
         typedef std::queue< osg::ref_ptr<VersionedTile> > TileQueue;
         typedef std::list< osg::ref_ptr<VersionedTile> > TileList;
@@ -321,7 +323,7 @@ namespace osgEarth
 
         int _numAsyncThreads;
 
-        bool _releaseCBInstalled;
+		bool _registeredWithReleaseGLCallback;
         TerrainCallbackList _terrainCallbacks;
 
         LoadingPolicy _loadingPolicy;

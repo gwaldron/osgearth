@@ -289,7 +289,7 @@ void
 DiskCache::setImage( const TileKey* key,
 					 const std::string& layerName,
 					 const std::string& format,
-					 osg::Image* image )
+					 osg::Image* image)
 {
 	std::string filename = getFilename( key, layerName, format );
     std::string path = osgDB::getFilePath(filename);
@@ -483,20 +483,35 @@ osg::HeightField* MemCache::getHeightField( const TileKey* key,
 }
 
 void MemCache::setHeightField( const TileKey* key,
-  const std::string& layerName,
-  const std::string& format,
-  osg::HeightField* hf) {
-  setObject( key, layerName, format, hf );
+                              const std::string& layerName,
+                              const std::string& format,
+                              osg::HeightField* hf)
+{
+    setObject( key, layerName, format, hf );
 }
 
-osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& layerName, const std::string& format) {
+bool
+MemCache::purge( const std::string& layerName, int olderThan, bool async )
+{
+    // MemCache does not support timestamps or async, so just clear it out altogether.
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
+
+    // MemCache does not support layerName...
+    _keyToIterMap.clear();
+    _objects.clear();
+
+    return true;
+}
+
+osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& layerName, const std::string& format)
+{
   osg::Timer_t now = osg::Timer::instance()->tick();
 
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
   //OE_NOTICE << "List contains: " << _images.size() << std::endl;
 
-  std::string id = key->str();
+  std::string id = key->str() + layerName;
   //Find the image in the cache
   //ImageCache::iterator itr = _images.find(id);
   KeyToIteratorMap::iterator itr = _keyToIterMap.find(id);
@@ -515,7 +530,7 @@ osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& lay
 void MemCache::setObject( const TileKey* key, const std::string& layerName, const std::string& format, osg::Referenced* referenced ) {
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
-  std::string id = key->str();
+  std::string id = key->str() + layerName;
 
   CachedObject entry;
   entry._object = referenced;

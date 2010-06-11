@@ -362,7 +362,8 @@ CubeFaceSpatialReference::postTransform(double &x, double &y) const
     //Make sure the face is the same as the computed face
     if (_face != face)
     {
-        OE_WARN << "[osgEarth::CubeFaceSpatialReference] lat lon " << y << ", " << x << " outside bounds for Cube face " << _face << std::endl;
+        OE_WARN << "[osgEarth::CubeFaceSpatialReference] lat lon " << y << ", " << x << " outside bounds for Cube face " << _face
+            << " (it's in face " << face << ")" << std::endl;
         return false;
     }
     

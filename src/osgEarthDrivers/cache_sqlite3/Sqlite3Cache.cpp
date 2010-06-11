@@ -19,6 +19,7 @@
 #include "Sqlite3CacheOptions"
 
 #include <osgEarth/FileUtils>
+#include <osgEarth/TaskService>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/Mutex>
@@ -38,6 +39,49 @@ using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
 #define LC "[Sqlite3Cache] "
+
+#define USE_TRANSACTIONS
+#define USE_L2_CACHE
+//#define MONITOR_THREAD_HEALTH
+
+// --------------------------------------------------------------------------
+
+// opens a database connection with default settings.
+static
+sqlite3* openDatabase( const std::string& path, bool serialized )
+{
+    sqlite3* db = 0L;
+
+    // not sure if SHAREDCACHE is necessary or wise 
+    int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_SHAREDCACHE;
+    flags |= serialized ? SQLITE_OPEN_FULLMUTEX : SQLITE_OPEN_NOMUTEX;
+
+    int rc = sqlite3_open_v2( path.c_str(), &db, flags, 0L );
+
+    if ( rc != 0 )
+    {
+        OE_WARN << LC << "Failed to open cache \"" << path << "\": " << sqlite3_errmsg(db) << std::endl;
+        return 0L;
+    }
+
+    // make sure that writes actually finish
+    sqlite3_busy_timeout( db, 10000 );
+
+    return db;
+}
+
+// --------------------------------------------------------------------------
+
+// a slightly customized Cache class that will support asynchronous writes
+struct AsyncCache : public Cache
+{
+public:
+    virtual void setImageSync(
+        const TileKey* key,
+        const std::string& layerName,
+        const std::string& format,
+        osg::Image* image ) =0;
+};
 
 // --------------------------------------------------------------------------
 
@@ -59,8 +103,6 @@ struct MetadataTable
 
     bool initialize( sqlite3* db )
     {
-        _db = db;
-
         std::string sql =
             "CREATE TABLE IF NOT EXISTS metadata ("
             "layer varchar(255) PRIMARY KEY UNIQUE, "
@@ -78,7 +120,7 @@ struct MetadataTable
         OE_INFO << LC << "SQL = " << sql << std::endl;
 
         char* errMsg = 0L;
-        int err = sqlite3_exec( _db, sql.c_str(), 0L, 0L, &errMsg );
+        int err = sqlite3_exec( db, sql.c_str(), 0L, 0L, &errMsg );
         if ( err != SQLITE_OK )
         {
             OE_WARN << LC << "[Sqlite3Cache] Creating metadata: " << errMsg << std::endl;
@@ -99,15 +141,15 @@ struct MetadataTable
         return true;
     }
 
-    bool store( const MetadataRecord& rec )
+    bool store( const MetadataRecord& rec, sqlite3* db )
     {
         sqlite3_stmt* insert = 0;
-        int rc = sqlite3_prepare_v2( _db, _insertSQL.c_str(), _insertSQL.length(), &insert, 0L );
+        int rc = sqlite3_prepare_v2( db, _insertSQL.c_str(), _insertSQL.length(), &insert, 0L );
         if ( rc != SQLITE_OK )
         {
             OE_WARN 
                 << LC << "Error preparing SQL: " 
-                << sqlite3_errmsg( _db )
+                << sqlite3_errmsg( db )
                 << "(SQL: " << _insertSQL << ")"
                 << std::endl;
             return false;
@@ -132,14 +174,14 @@ struct MetadataTable
         rc = sqlite3_step(insert);
         if ( rc != SQLITE_DONE )
         {
-            OE_WARN << LC << "SQL INSERT failed: " << sqlite3_errmsg( _db )
+            OE_WARN << LC << "SQL INSERT failed: " << sqlite3_errmsg( db )
                 << "; SQL = " << _insertSQL
                 << std::endl;
             success = false;
         }
         else
         {
-            OE_INFO << "Stored metadata record for \"" << rec._layerName << "\"" << std::endl;
+            OE_INFO << LC << "Stored metadata record for \"" << rec._layerName << "\"" << std::endl;
             success = true;
         }
 
@@ -147,17 +189,17 @@ struct MetadataTable
         return success;
     }
 
-    bool load( const std::string& key, MetadataRecord& output )
+    bool load( const std::string& key, sqlite3* db, MetadataRecord& output )
     {
         bool success = true;
 
         sqlite3_stmt* select = 0L;
-        int rc = sqlite3_prepare_v2( _db, _selectSQL.c_str(), _selectSQL.length(), &select, 0L );
+        int rc = sqlite3_prepare_v2( db, _selectSQL.c_str(), _selectSQL.length(), &select, 0L );
         if ( rc != SQLITE_OK )
         {
             OE_WARN 
                 << LC << "Error preparing SQL: " 
-                << sqlite3_errmsg( _db )
+                << sqlite3_errmsg( db )
                 << "(SQL: " << _insertSQL << ")"
                 << std::endl;
             return false;
@@ -202,7 +244,6 @@ struct MetadataTable
         return false;
     }
 
-    sqlite3* _db;
     std::string _insertSQL;
     std::string _selectSQL;
 };
@@ -224,12 +265,11 @@ struct ImageRecord
 struct LayerTable : public osg::Referenced
 {
     LayerTable( const MetadataRecord& meta, sqlite3* db )
-        : _meta(meta), _db(db)
+        : _meta(meta)
     {
         // create the table and load the processors.
-        if ( ! initialize() )
+        if ( ! initialize( db ) )
         {
-            _db = 0L;
             return;
         }
 
@@ -237,37 +277,73 @@ struct LayerTable : public osg::Referenced
         std::stringstream buf;
         buf << "SELECT created,accessed,data FROM \"" << _meta._layerName << "\" WHERE key = ?";
         _selectSQL = buf.str();
+
+        // initialize the UPDATE statement for updating the timestamp of an accessed record
+        buf.str("");
+        buf << "UPDATE \"" << _meta._layerName << "\" SET accessed = ? "
+            << "WHERE key = ?";
+        _updateTimeSQL = buf.str();
         
         // initialize the INSERT statement for writing records.
         buf.str("");
         buf << "INSERT OR REPLACE INTO \"" << _meta._layerName << "\" "
             << "(key,created,accessed,data) VALUES (?,?,?,?)";
         _insertSQL = buf.str();
+
+        // initialize the DELETE statements for purging old records.
+        buf.str("");
+        buf << "DELETE FROM \"" << _meta._layerName << "\" "
+            << "INDEXED BY \"" << _meta._layerName << "_lruindex\" "
+            << "WHERE accessed < ?";
+        _purgeSQL = buf.str();
+
+        buf << " LIMIT ?";
+        _purgeLimitSQL = buf.str();          
     }
 
-    ~LayerTable()
+#ifdef USE_TRANSACTIONS
+
+    void begin( sqlite3* db )
     {
-        _db = 0L;
+        sqlite3_exec( db, "BEGIN IMMEDIATE", 0L, 0L, 0L );
     }
 
-    bool store( const ImageRecord& rec )
+    void commit( sqlite3* db )
     {
-        if ( !_db ) return false;
+        sqlite3_exec( db, "COMMIT", 0L, 0L, 0L );
+    }
 
+    void rollback( sqlite3* db )
+    {
+        sqlite3_exec( db, "ROLLBACK", 0L, 0L, 0L );
+    }
+
+#else // USE_TRANSACTIONS
+
+    void begin( sqlite3* db ) { }
+    void commit( sqlite3* db ) { }
+    void rollback( sqlite3* db ) { }
+
+#endif // USE_TRANSACTIONS
+
+
+    bool store( const ImageRecord& rec, sqlite3* db )
+    {
         sqlite3_stmt* insert = 0L;    
-        int rc = sqlite3_prepare_v2( _db, _insertSQL.c_str(), _insertSQL.length(), &insert, 0L );
+        int rc = sqlite3_prepare_v2( db, _insertSQL.c_str(), _insertSQL.length(), &insert, 0L );
         if ( rc != SQLITE_OK )
         {
             OE_WARN 
                 << LC << "Error preparing SQL: " 
-                << sqlite3_errmsg( _db )
+                << sqlite3_errmsg( db )
                 << "(SQL: " << _insertSQL << ")"
                 << std::endl;
             return false;
         }
 
         // bind the key string:
-        sqlite3_bind_text( insert, 1, rec._key->str().c_str(), -1, SQLITE_TRANSIENT );
+        std::string keyStr = rec._key->str();
+        sqlite3_bind_text( insert, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
         sqlite3_bind_int(  insert, 2, rec._created );
         sqlite3_bind_int(  insert, 3, rec._accessed );
 
@@ -279,10 +355,12 @@ struct LayerTable : public osg::Referenced
 
         // write to the database:
         rc = sqlite3_step( insert );
+
         if ( rc != SQLITE_DONE )
         {
             OE_WARN << LC << "SQL INSERT failed for key " << rec._key->str() << ": " 
-                << sqlite3_errmsg( _db ) << std::endl;
+                << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
+                << ", rc = " << rc << std::endl;
             sqlite3_finalize( insert );
             return false;
         }
@@ -294,32 +372,49 @@ struct LayerTable : public osg::Referenced
         }
     }
 
-    bool updateLastAccessTime( const std::string& key, int newTimestamp )
+    bool updateAccessTime( const TileKey* key, int newTimestamp, sqlite3* db )
     {
-        if ( !_db ) return false;
-        //TODO
-        return false;
-    }
-
-    bool load( const TileKey* key, ImageRecord& output )
-    {
-        if ( !_db ) return false;
-
-        char* imageBuf = 0L;
-        int imageBufLen = 0;
-        
-        sqlite3_stmt* select = 0L;
-        int rc = sqlite3_prepare_v2( _db, _selectSQL.c_str(), _selectSQL.length(), &select, 0L );
+        sqlite3_stmt* update = 0L;
+        int rc = sqlite3_prepare_v2( db, _updateTimeSQL.c_str(), _updateTimeSQL.length(), &update, 0L );
         if ( rc != SQLITE_OK )
         {
-            OE_WARN << LC << "Failed to prepare SQL: " << _selectSQL << "; " << sqlite3_errmsg(_db) << std::endl;
+            OE_WARN << LC << "Failed to prepare SQL " << _updateTimeSQL << "; " << sqlite3_errmsg(db) << std::endl;
             return false;
         }
 
-        sqlite3_bind_text( select, 1, key->str().c_str(), key->str().length(), SQLITE_TRANSIENT );
+        bool success = true;
+        sqlite3_bind_int( update, 1, newTimestamp );
+        std::string keyStr = key->str();
+        sqlite3_bind_text( update, 2, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
+        rc = sqlite3_step( update );
+        if ( rc != SQLITE_DONE )
+        {
+            OE_WARN << LC << "Failed to update timestamp for " << key->str() << " on layer " <<
+                _meta._layerName << std::endl;
+            success = false;
+        }
+
+        sqlite3_finalize( update );
+        return success;
+    }
+
+    bool load( const TileKey* key, ImageRecord& output, sqlite3* db )
+    {
+        int imageBufLen = 0;
+        
+        sqlite3_stmt* select = 0L;
+        int rc = sqlite3_prepare_v2( db, _selectSQL.c_str(), _selectSQL.length(), &select, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Failed to prepare SQL: " << _selectSQL << "; " << sqlite3_errmsg(db) << std::endl;
+            return false;
+        }
+
+        std::string keyStr = key->str();
+        sqlite3_bind_text( select, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
 
         rc = sqlite3_step( select );
-        if ( rc == SQLITE_DONE ) // SQLITE_DONE means "no more rows"
+        if ( rc != SQLITE_ROW ) // == SQLITE_DONE ) // SQLITE_DONE means "no more rows"
         {
             // cache miss
             OE_DEBUG << LC << "Cache MISS on tile " << key->str() << std::endl;
@@ -331,16 +426,14 @@ struct LayerTable : public osg::Referenced
         output._created  = sqlite3_column_int( select, 0 );
         output._accessed = sqlite3_column_int( select, 1 );
 
-        // copy the blob data into a temporary buffer:
+        // the pointer returned from _blob gets freed internally by sqlite, supposedly
+        const char* data = (const char*)sqlite3_column_blob( select, 2 );
         imageBufLen = sqlite3_column_bytes( select, 2 );
-        imageBuf = new char[imageBufLen];
-        memcpy( imageBuf, (const char*)sqlite3_column_blob( select, 2 ), imageBufLen );          
 
         // deserialize the image from the buffer:
-        // TODO: decompression
-        std::string imageString( imageBuf, imageBufLen );
+        std::string imageString( data, imageBufLen );
         std::stringstream imageBufStream( imageString );
-        osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream ); //, _rwOptions.get() );
+        osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream );
 
         if ( rr.error() )
         {
@@ -353,30 +446,61 @@ struct LayerTable : public osg::Referenced
             OE_DEBUG << LC << "Cache HIT on tile " << key->str() << std::endl;
         }
 
-        delete [] imageBuf;
         sqlite3_finalize(select);
 
         return output._image.valid();
     }
 
-    bool remove( const std::string& key )
+    bool remove( const std::string& key, sqlite3* db )
     {
-        if ( !_db ) return false;
         //TODO
         return false;
     }
 
-    bool removeOlderThan( int timestamp )
+    bool purge( int utcTimeStamp, int maxToRemove, sqlite3* db )
     {
-        if ( !_db ) return false;
-        //TODO
-        return false;
+        sqlite3_stmt* purge = 0L;
+        
+        int rc;
+        if ( maxToRemove <= 0 )
+        {
+            rc = sqlite3_prepare_v2( db, _purgeSQL.c_str(), _purgeSQL.length(), &purge, 0L );
+            if ( rc != SQLITE_OK )
+            {
+                OE_WARN << LC << "Failed to prepare SQL: " << _purgeSQL << "; " << sqlite3_errmsg(db) << std::endl;
+                return false;
+            }
+        }
+        else
+        {
+            rc = sqlite3_prepare_v2( db, _purgeLimitSQL.c_str(), _purgeLimitSQL.length(), &purge, 0L );
+            if ( rc != SQLITE_OK )
+            {
+                OE_WARN << LC << "Failed to prepare SQL: " << _purgeLimitSQL << "; " << sqlite3_errmsg(db) << std::endl;
+                return false;
+            }
+            sqlite3_bind_int( purge, 2, maxToRemove );
+        }
+
+        sqlite3_bind_int( purge, 1, utcTimeStamp );
+
+        rc = sqlite3_step( purge );
+        if ( rc != SQLITE_DONE )
+        {
+            // cache miss
+            OE_DEBUG << LC << "Error purging records from \"" << _meta._layerName << "\"; " << sqlite3_errmsg(db) << std::endl;
+            sqlite3_finalize(purge);
+            return false;
+        }
+
+        sqlite3_finalize(purge);
+        return true;
     }
 
     /** Initializes the layer by creating the layer's table (if necessary), loading the
         appropriate reader-writer for the image data, and initializing the compressor
         if necessary. */
-    bool initialize()
+    bool initialize( sqlite3* db )
     {
         // first create the table if it does not already exist:
         std::stringstream buf;
@@ -390,7 +514,7 @@ struct LayerTable : public osg::Referenced
         OE_INFO << LC << "SQL = " << sql << std::endl;
 
         char* errMsg = 0L;
-        int rc = sqlite3_exec( _db, sql.c_str(), 0L, 0L, &errMsg );
+        int rc = sqlite3_exec( db, sql.c_str(), 0L, 0L, &errMsg );
         if ( rc != SQLITE_OK )
         {
             OE_WARN << LC << "Creating layer \"" << _meta._layerName << "\": " << errMsg << std::endl;
@@ -407,7 +531,7 @@ struct LayerTable : public osg::Referenced
 
         OE_INFO << LC << "SQL = " << sql << std::endl;
 
-        rc = sqlite3_exec( _db, sql.c_str(), 0L, 0L, &errMsg );
+        rc = sqlite3_exec( db, sql.c_str(), 0L, 0L, &errMsg );
         if ( rc != SQLITE_OK )
         {
             OE_WARN << LC << "Creating index for layer \"" << _meta._layerName << "\": " << errMsg << std::endl;
@@ -432,9 +556,11 @@ struct LayerTable : public osg::Referenced
         return true;
     }
 
-    sqlite3* _db;
     std::string _selectSQL;
     std::string _insertSQL;
+    std::string _updateTimeSQL;
+    std::string _purgeSQL;
+    std::string _purgeLimitSQL;
     MetadataRecord _meta;
 
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
@@ -447,11 +573,52 @@ typedef std::map<std::string,osg::ref_ptr<LayerTable> > LayerTablesByName;
 
 // --------------------------------------------------------------------------
 
-class Sqlite3Cache : public Cache
+//TODO: might want to move this up out of this plugin at some point.
+
+struct AsyncPurge : public TaskRequest {
+    AsyncPurge( const std::string& layerName, int olderThanUTC, Cache* cache )
+        : _layerName(layerName), _olderThanUTC(olderThanUTC), _cache(cache) { }
+
+    void operator()( ProgressCallback* progress ) { 
+        osg::ref_ptr<Cache> cache = _cache.get();
+        if ( cache.valid() )
+            cache->purge( _layerName, _olderThanUTC, false );
+    }
+
+    std::string _layerName;
+    int _olderThanUTC;
+    osg::observer_ptr<Cache> _cache;
+};
+
+struct AsyncInsert : public TaskRequest {
+    AsyncInsert( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image, AsyncCache* cache )
+        : _key(key), _layerName(layerName), _format(format), _image(image), _cache(cache) { }
+
+    void operator()( ProgressCallback* progress ) {
+        osg::ref_ptr<AsyncCache> cache = _cache.get();
+        if ( cache.valid() )
+            cache->setImageSync( _key.get(), _layerName, _format, _image.get() );
+    }
+
+    std::string _layerName, _format;
+    osg::ref_ptr<const TileKey> _key;
+    osg::ref_ptr<osg::Image> _image;
+    osg::observer_ptr<AsyncCache> _cache;
+};
+
+// --------------------------------------------------------------------------
+
+struct ThreadTable {
+    ThreadTable(LayerTable* table, sqlite3* db) : _table(table), _db(db) { }
+    LayerTable* _table;
+    sqlite3* _db;
+};
+
+class Sqlite3Cache : public AsyncCache
 {
 public:
 
-    Sqlite3Cache( const PluginOptions* options ) : Cache(), _db(0L)
+    Sqlite3Cache( const PluginOptions* options ) : AsyncCache(), _db(0L)
     {
         _settings = dynamic_cast<const Sqlite3CacheOptions*>( options );
         if ( !_settings.valid() )
@@ -459,14 +626,32 @@ public:
 
         OE_INFO << LC << "settings: " << options->config().toString() << std::endl;
 
-        if ( sqlite3_open( _settings->path()->c_str(), &_db ) != 0 )
+        if ( sqlite3_threadsafe() == 0 )
         {
-            OE_WARN << LC << "failed to open or create database at " << _settings->path() << std::endl;
+            OE_WARN << LC << "SQLITE3 IS NOT COMPILED IN THREAD-SAFE MODE" << std::endl;
+            // TODO: something in this unlikely condition
         }
+
+        // enabled shared cache mode.
+        sqlite3_enable_shared_cache( 1 );
+
+#ifdef USE_L2_CACHE
+        _L2cache = new MemCache();
+        _L2cache->setMaxNumTilesInCache( 64 );
+        OE_INFO << LC << "Using L2 memory cache" << std::endl;
+#endif
+
+        _db = openDatabase( _settings->path().value(), _settings->serialized().value() );
 
         if ( _db )
         {
-            _metadata.initialize( _db );
+            if ( ! _metadata.initialize( _db ) )
+                _db = 0L;
+        }
+
+        if ( _db && _settings->asyncWrites() == true )
+        {
+            _writeService = new osgEarth::TaskService( "Sqlite3Cache Write Service", 1 );
         }
     }
 
@@ -482,9 +667,11 @@ public: // Cache interface
      */
     bool isCached( const TileKey* key, const std::string& layerName, const std::string& format ) const
     {
-        //TODO- do something better
-        osg::ref_ptr<osg::Image> image = const_cast<Sqlite3Cache*>(this)->getImage( key, layerName, format );
-        return image.valid();
+        // this looks ineffecient, but usually when isCached() is called, getImage() will be
+        // called soon thereafter. And this call will load it into the L2 cache so the subsequent
+        // getImage call will not hit the DB again.
+        osg::ref_ptr<osg::Image> temp = const_cast<Sqlite3Cache*>(this)->getImage( key, layerName, format );
+        return temp.valid();
     }
 
     /**
@@ -494,13 +681,21 @@ public: // Cache interface
         const std::string& layerName, const Profile* profile,
         const std::string& format, unsigned int tileSize)
     {
+        if ( !_db ) return;
+
         if ( layerName.empty() || profile == 0L || format.empty() )
         {
             OE_WARN << "ILLEGAL: cannot cache a layer without a layer name" << std::endl;
             return;
         }
 
-        OE_INFO << "Storing metadata for layer \"" << layerName << "\"" << std::endl;
+        ScopedLock<Mutex> lock( _tableListMutex ); // b/c we're using the base db handle
+
+        sqlite3* db = getOrCreateDbForThread();
+        if ( !db )
+            return;
+
+        //OE_INFO << "Storing metadata for layer \"" << layerName << "\"" << std::endl;
 
         MetadataRecord rec;
         rec._layerName = layerName;
@@ -514,7 +709,7 @@ public: // Cache interface
         rec._format = format;
 #endif
 
-        _metadata.store( rec );
+        _metadata.store( rec, db );
     }
 
     /**
@@ -525,10 +720,18 @@ public: // Cache interface
         std::string& out_format,
         unsigned int& out_tileSize )
     {
-        OE_INFO << "Loading metadata for layer \"" << layerName << "\"" << std::endl;
+        if ( !_db ) return 0L;
+
+        ScopedLock<Mutex> lock( _tableListMutex ); // b/c we're using the base db handle
+
+        sqlite3* db = getOrCreateDbForThread();
+        if ( !db )
+            return 0L;
+
+        OE_INFO << LC << "Loading metadata for layer \"" << layerName << "\"" << std::endl;
 
         MetadataRecord rec;
-        if ( _metadata.load( layerName, rec ) )
+        if ( _metadata.load( layerName, db, rec ) )
         {
             out_format = rec._format;
             out_tileSize = rec._tileSize;
@@ -542,12 +745,56 @@ public: // Cache interface
      */
     osg::Image* getImage( const TileKey* key,  const std::string& layerName, const std::string& format )
     {
-        LayerTable* table = getTable(layerName);
-        if ( table )
+        if ( !_db ) return 0L;
+
+        // first try the L2 cache.
+        if ( _L2cache.valid() )
+        {
+            osg::Image* result = _L2cache->getImage( key, layerName, format );
+            if ( result )
+                return result;
+        }
+
+        // next check the deferred-write queue.
+        if ( _settings->asyncWrites() == true )
+        {
+            ScopedLock<Mutex> lock( _pendingWritesMutex );
+            std::string name = key->str() + layerName;
+            std::map<std::string,osg::ref_ptr<AsyncInsert> >::iterator i = _pendingWrites.find(name);
+            if ( i != _pendingWrites.end() )
+            {
+                // todo: update the access time, or let it slide?
+                OE_DEBUG << LC << "Got key that is write-queued: " << key->str() << std::endl;
+                return i->second->_image.get();
+            }
+        }
+
+        // finally, try to query the database.
+        ThreadTable tt = getTable(layerName);
+        if ( tt._table )
         {
             ImageRecord rec;
-            if ( table->load( key, rec ) )
-                return rec._image.release();
+            tt._table->load( key, rec, tt._db );
+
+            // load it into the L2 cache
+            osg::Image* result = rec._image.release();
+
+            if ( result && _L2cache.valid() )
+                _L2cache->setImage( key, layerName, format, result );
+
+#ifdef UPDATE_ACCESS_TIMES
+
+            // update the last-access time
+            int t = (int)::time(0L);
+            _writeService->add( new AsyncUpdateAccessTime( table, key, t ) );
+
+#endif // UPDATE_ACCESS_TIMES
+
+            return result;
+        }
+        else
+        {
+            OE_WARN << LC << "What, no layer table?" << std::endl;
         }
         return 0L;
     }
@@ -556,53 +803,166 @@ public: // Cache interface
      * Sets the cached image for the given TileKey
      */
     void setImage( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image )
-    {
-        LayerTable* table = getTable(layerName);
-        if ( table )
+    {        
+        if ( !_db ) return;
+
+        if ( _settings->asyncWrites() == true )
         {
-            ::time_t t = ::time(NULL);
+            // the "pending writes" table is here so that we don't try to write data to
+            // the cache more than once when using an asynchronous write service.
+            ScopedLock<Mutex> lock( _pendingWritesMutex );
+            std::string name = key->str() + layerName;
+            if ( _pendingWrites.find(name) == _pendingWrites.end() )
+            {
+                AsyncInsert* req = new AsyncInsert(key, layerName, format, image, this);
+                _pendingWrites[name] = req;
+                _writeService->add( req );
+            }
+            else
+            {
+                //NOTE: this should probably never happen.
+                OE_WARN << LC << "Tried to setImage; already in queue: " << key->str() << std::endl;
+            }
+        }
+        else
+        {
+            setImageSync( key, layerName, format, image );
+        }
+    }
+
+    /**
+     * Purges records from the database.
+     */
+    bool purge( const std::string& layerName, int olderThanUTC, bool async )
+    {
+        if ( !_db ) false;
+
+        // purge the L2 cache first:
+        if ( _L2cache.valid() )
+            _L2cache->purge( layerName, olderThanUTC, async );
+
+        if ( async == true && _settings->asyncWrites() == true )
+        {
+            _writeService->add( new AsyncPurge(layerName, olderThanUTC, this) );
+        }
+        else
+        {
+            ThreadTable tt = getTable( layerName );
+            if ( tt._table )
+            {
+                tt._table->purge( olderThanUTC, 0, tt._db );
+            }
+        }
+        return true;
+    }
+
+private:
+
+    void setImageSync( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image )
+    {
+        ThreadTable tt = getTable(layerName);
+        if ( tt._table )
+        {
+            ::time_t t = ::time(0L);
             ImageRecord rec;
             rec._key = key;
             rec._created = (int)t;
             rec._accessed = (int)t;
             rec._image = image;
 
-            table->store( rec );
+            tt._table->store( rec, tt._db );
         }
+
+        if ( _settings->asyncWrites() == true )
+        {
+            ScopedLock<Mutex> lock( _pendingWritesMutex );
+            std::string name = key->str() + layerName;
+            _pendingWrites.erase( name );
+
+            if ( _writeService->getNumRequests() == 0 )
+            {
+                //OE_DEBUG << "Write service queue is empty." << std::endl;
+            }
+            OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
+        }            
     }
 
-private:
+    sqlite3* getOrCreateDbForThread()
+    {
+        sqlite3* db = 0L;
+
+        // this method assumes the thread already holds a lock on _tableListMutex, which
+        // doubles to protect _dbPerThread
+
+        Thread* thread = Thread::CurrentThread();
+        std::map<Thread*,sqlite3*>::const_iterator k = _dbPerThread.find(thread);
+        if ( k == _dbPerThread.end() )
+        {
+            db = openDatabase( _settings->path().value(), _settings->serialized().value() );
+            if ( db )
+            {
+                _dbPerThread[thread] = db;
+                OE_INFO << LC << "Created DB handle " << std::hex << db << " for thread " << thread << std::endl;
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to open DB on thread " << thread << std::endl;
+            }
+        }
+        else
+        {
+            db = k->second;
+        }
+
+        return db;
+    }
 
     // gets the layer table for the specified layer name, creating it if it does
     // not already exist...
-    LayerTable* getTable( const std::string& layerName )
+    ThreadTable getTable( const std::string& layerName )
     {
         ScopedLock<Mutex> lock( _tableListMutex );
+
+        sqlite3* db = getOrCreateDbForThread();
+        if ( !db )
+            return ThreadTable( 0L, 0L );
 
         LayerTablesByName::iterator i = _tables.find(layerName);
         if ( i == _tables.end() )
         {
             MetadataRecord meta;
-            if ( !_metadata.load( layerName, meta ) )
+            if ( !_metadata.load( layerName, db, meta ) )
             {
                 OE_WARN << LC << "Cannot operate on \"" << layerName << "\" because metadata does not exist."
                     << std::endl;
-                return 0L;
+                return ThreadTable( 0L, 0L );
             }
 
-            _tables[layerName] = new LayerTable( meta, _db );
+            _tables[layerName] = new LayerTable( meta, db );
+            OE_INFO << LC << "New LayerTable for " << layerName << std::endl;
         }
-        return _tables[layerName].get();
+        return ThreadTable( _tables[layerName].get(), db );
     }
 
 private:
 
     osg::ref_ptr<const Sqlite3CacheOptions> _settings;
     osg::ref_ptr<osgDB::ReaderWriter> _defaultRW;
-    sqlite3*        _db;
     Mutex             _tableListMutex;
     MetadataTable     _metadata;
     LayerTablesByName _tables;
+
+    bool _useAsyncWrites;
+    osg::ref_ptr<TaskService> _writeService;
+    Mutex _pendingWritesMutex;
+    std::map<std::string, osg::ref_ptr<AsyncInsert> > _pendingWrites;
+
+    sqlite3* _db;
+    std::map<Thread*,sqlite3*> _dbPerThread;
+
+    osg::ref_ptr<MemCache> _L2cache;
+
+    int _count;
 };
 
 

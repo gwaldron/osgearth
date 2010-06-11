@@ -134,7 +134,7 @@ namespace osgEarth
     virtual void setHeightField( const TileKey* key,
       const std::string& layerName,
       const std::string& format,
-      osg::HeightField* hf);
+      osg::HeightField* hf );
 
     /**
     * Gets the current MapConfig filename.  This is used for getting relative paths to the MapConfig.
@@ -167,6 +167,29 @@ namespace osgEarth
     virtual const Profile* loadLayerProperties( const std::string& layerName,
       std::string& format,
       unsigned int &tile_size );
+
+    /**
+     * Compact the cache, if supported by the underlying implementation.
+     * You can optionally specify that the compaction operation run in 
+     * a background thread if supported.
+     *
+     * This method will return false if the implementation does not support
+     * compaction.
+     */
+    virtual bool compact( bool async =true ) { return false; }
+
+    /**
+     * Delete old entries from the cache. The timestamp is UTC, second since epoch.
+     * You can optionally control whether the purge operation should run in the
+     * background (async=true) if supported.
+     *
+     * This method will return false if the implementation does not support 
+     * the operation.
+     */
+    virtual bool purge(
+        const std::string& layerName,
+        int olderThanTimeStamp =0L,
+        bool async =true ) { return false; }
 
   protected:
 
@@ -213,7 +236,7 @@ namespace osgEarth
     virtual void setImage( const TileKey* key,
       const std::string& layerName,
       const std::string& format,
-      osg::Image* image );
+      osg::Image* image);
 
     /**
     * Gets the cached heightfield for the given TileKey
@@ -230,6 +253,11 @@ namespace osgEarth
       const std::string& format,
       osg::HeightField* hf);
 
+    /** Delete entries from the cache. */
+    virtual bool purge(
+        const std::string& layerName,
+        int olderThan,
+        bool async );
 
   protected:
     /**
@@ -322,7 +350,7 @@ namespace osgEarth
     virtual void setImage( const TileKey* key,
       const std::string& layerName,
       const std::string& format,
-      osg::Image* image );
+      osg::Image* image);
 
     /**
     * Store the TileMap for the given profile.

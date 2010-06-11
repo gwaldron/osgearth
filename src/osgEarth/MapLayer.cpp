@@ -455,7 +455,11 @@ MapLayer::initTileSource()
 
     if (_tileSource.valid())
     {
-      _profile = _tileSource->getProfile();
+        // check this, because it's possible the profile was already set in setCache()
+        if ( !_profile.valid() )
+        {
+            _profile = _tileSource->getProfile();
+        }
     }
     else if (_cache.valid())
     {
@@ -534,16 +538,14 @@ MapLayer::createImage( const TileKey* key,
     //OE_NOTICE << "[MapLayer] createImage for " << key->str() << std::endl;
 
     osg::ref_ptr<GeoImage> result = NULL;
+    const Profile* layerProfile = getProfile();
     const Profile* mapProfile = key->getProfile();
-	const Profile* layerProfile = getProfile();
 
-	if (!layerProfile)
+	if ( !getProfile() )
 	{
 		OE_WARN << "Could not get a valid profile for Layer " << _name << std::endl;
 		return NULL;
 	}
-
-
 
 	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key->str() << std::endl;
 	if (!getTileSource() && _cacheOnly == false )
@@ -555,7 +557,7 @@ MapLayer::createImage( const TileKey* key,
 	//Determine whether we should cache in the Map profile or the Layer profile.
 	
 	bool cacheInMapProfile = true;
-	if (mapProfile->isEquivalentTo( layerProfile) )
+	if (mapProfile->isEquivalentTo( layerProfile ))
 	{
 		OE_DEBUG << "Layer " << _name << ": Map and Layer profiles are equivalent " << std::endl;
 	}
@@ -856,8 +858,7 @@ osg::HeightField*
 MapLayer::createHeightField(const osgEarth::TileKey *key,
                             ProgressCallback* progress)
 {
-    const Profile* layerProfile  =  getProfile();
-    const Profile* mapProfile    =  key->getProfile();
+    const Profile* mapProfile = key->getProfile();
 
 	osg::ref_ptr<osg::HeightField> result;
 
@@ -884,7 +885,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	if (!result.valid() && getTileSource() && getTileSource()->isOK() )
     {
 		//If the profiles are equivalent, get the HF from the TileSource.
-		if (key->getProfile()->isEquivalentTo( layerProfile ))
+		if (key->getProfile()->isEquivalentTo( getProfile() ))
 		{
 			if (isKeyValid( key ) )
 			{
@@ -903,7 +904,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 
 			//Determine the intersecting keys
 			std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
-			layerProfile->getIntersectingTiles(key, intersectingTiles);
+			getProfile()->getIntersectingTiles(key, intersectingTiles);
 			if (intersectingTiles.size() > 0)
 			{
 				for (unsigned int i = 0; i < intersectingTiles.size(); ++i)

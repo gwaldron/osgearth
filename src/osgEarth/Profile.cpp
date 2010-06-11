@@ -463,7 +463,10 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
 {
     // assume a non-crossing extent here.
     if ( key_ext.crossesDateLine() )
+    {
+        OE_WARN << "Profile::addIntersectingTiles cannot process date-line cross" << std::endl;
         return;
+    }
 
     double keyWidth = key_ext.width();
     double keyHeight = key_ext.height();
@@ -495,8 +498,8 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         destTileHeight = h;
     }
 
-    //OE_INFO << std::fixed << "  Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
-    //OE_INFO << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
+    //OE_DEBUG << std::fixed << "  Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+    OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
     int tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
     int tileMaxX = (int)((key_ext.xMax() - _extent.xMin()) / destTileWidth);
@@ -512,7 +515,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
     tileMinY = osg::clampBetween(tileMinY, 0, (int)numHigh-1);
     tileMaxY = osg::clampBetween(tileMaxY, 0, (int)numHigh-1);
 
-    //OE_INFO << std::fixed << "  Dest Tiles: " << tileMinX << "," << tileMinY << " => " << tileMaxX << "," << tileMaxY << std::endl;
+    OE_DEBUG << std::fixed << "  Dest Tiles: " << tileMinX << "," << tileMinY << " => " << tileMaxX << "," << tileMaxY << std::endl;
 
     for (int i = tileMinX; i <= tileMaxX; ++i)
     {
@@ -523,13 +526,15 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         }
     }
 
-    //OE_NOTICE << "Found " << intersectingKeys.size() << " keys " << std::endl;
+    OE_DEBUG << "    Found " << out_intersectingKeys.size() << " keys " << std::endl;
 }
 
 
 void
 Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
 {
+    OE_DEBUG << "GET ISECTING TILES for key " << key->str() << " -----------------" << std::endl;
+
     //If the profiles are exactly equal, just add the given tile key.
     if ( isEquivalentTo( key->getProfile() ) )
     {
@@ -545,35 +550,43 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
 void
 Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
 {
-    //OE_INFO << "GET ISECTING TILES for key " << key->str() << std::endl;
-
-    //TODO: put this back in???
-    //if ( !isCompatibleWith( key->getProfile() ) )
-    //{
-    //    OE_NOTICE << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
-    //}
-
-    GeoExtent ext = extent;
-    // reproject into the profile's SRS if necessary:
-    if ( ! getSRS()->isEquivalentTo( extent.getSRS() ) )
+    if ( _face_profiles.size() > 0 )
     {
-        // localize the extents and clamp them to legal values
-        ext = clampAndTransformExtent( extent );
-        if ( !ext.isValid() )
-            return;
-    }
-
-    if ( ext.crossesDateLine() )
-    {
-        GeoExtent first, second;
-        if (ext.splitAcrossDateLine( first, second ))
+        for(std::vector<osg::ref_ptr<Profile> >::const_iterator i = _face_profiles.begin(); i != _face_profiles.end(); ++i )
         {
-            addIntersectingTiles( first, out_intersectingKeys );
-            addIntersectingTiles( second, out_intersectingKeys );
+            i->get()->getIntersectingTiles( extent, out_intersectingKeys );
         }
     }
     else
     {
-        addIntersectingTiles( ext, out_intersectingKeys );
+        //TODO: put this back in???
+        //if ( !isCompatibleWith( key->getProfile() ) )
+        //{
+        //    OE_NOTICE << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
+        //}
+
+        GeoExtent ext = extent;
+        // reproject into the profile's SRS if necessary:
+        if ( ! getSRS()->isEquivalentTo( extent.getSRS() ) )
+        {
+            // localize the extents and clamp them to legal values
+            ext = clampAndTransformExtent( extent );
+            if ( !ext.isValid() )
+                return;
+        }
+
+        if ( ext.crossesDateLine() )
+        {
+            GeoExtent first, second;
+            if (ext.splitAcrossDateLine( first, second ))
+            {
+                addIntersectingTiles( first, out_intersectingKeys );
+                addIntersectingTiles( second, out_intersectingKeys );
+            }
+        }
+        else
+        {
+            addIntersectingTiles( ext, out_intersectingKeys );
+        }
     }
 }

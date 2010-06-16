@@ -55,7 +55,7 @@ sqlite3* openDatabase( const std::string& path, bool serialized )
     sqlite3* db = 0L;
 
     // not sure if SHAREDCACHE is necessary or wise 
-    int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_SHAREDCACHE;
+    int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
     flags |= serialized ? SQLITE_OPEN_FULLMUTEX : SQLITE_OPEN_NOMUTEX;
 
     int rc = sqlite3_open_v2( path.c_str(), &db, flags, 0L );
@@ -382,7 +382,7 @@ struct LayerTable : public osg::Referenced
     {
         int maxSize = MAX_SIZE_TABLE * 1024 * 1024; // 40Mb for this table
         int size = getTableSize(db);
-        if (size < 0 || size < maxSize)
+        if (size < 0 || size < 1.2 * maxSize)
             return;
             
         ::time_t t = ::time(0L);
@@ -717,7 +717,7 @@ public:
         }
 
         // enabled shared cache mode.
-        sqlite3_enable_shared_cache( 1 );
+        //sqlite3_enable_shared_cache( 1 );
 
 #ifdef USE_L2_CACHE
         _L2cache = new MemCache();

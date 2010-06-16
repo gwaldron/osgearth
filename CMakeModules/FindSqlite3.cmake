@@ -4,13 +4,13 @@
 # SQLITE3_FOUND, if false, do not try to link to expat
 # SQLITE3_INCLUDE_DIR, where to find the headers
 
-FIND_PATH(SQLITE3_INCLUDE_DIR sqlite/sqlite3.h
-    ${SQLITE3_DIR}/include
-    $ENV{SQLITE3_DIR}/include
-	$ENV{SQLITE3_DIR}/Source/lib #Windows Binary Installer
-    $ENV{SQLITE3_DIR}
-    ~/Library/Frameworks
-    /Library/Frameworks
+FIND_PATH(SQLITE3_INCLUDE_DIR sqlite3.h
+    ${SQLITE3_DIR}/include/sqlite
+    $ENV{SQLITE3_DIR}/include/sqlite
+    $ENV{SQLITE3_DIR}/Source/lib/sqlite #Windows Binary Installer
+    $ENV{SQLITE3_DIR}/sqlite
+    ~/Library/Frameworks/sqlite
+    /Library/Frameworks/sqlite
     /usr/local/include
     /usr/include
     /sw/include # Fink
@@ -26,7 +26,7 @@ FIND_LIBRARY(SQLITE3_LIBRARY
     PATHS
     ${SQLITE3_DIR}/lib
     $ENV{SQLITE3_DIR}/lib
-	$ENV{SQLITE3_DIR}/bin #Windows Binary Installer
+    $ENV{SQLITE3_DIR}/bin #Windows Binary Installer
     $ENV{SQLITE3_DIR}
     ~/Library/Frameworks
     /Library/Frameworks

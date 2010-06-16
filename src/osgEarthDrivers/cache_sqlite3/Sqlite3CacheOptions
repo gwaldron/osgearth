@@ -24,6 +24,9 @@
 
 using namespace osgEarth;
 
+// there is leak using the cache if compressed. It's resolved in
+// rev 11609 of osg svn
+
 namespace osgEarth { namespace Drivers
 {
     class Sqlite3CacheOptions : public DriverOptions // NO EXPORT; header only

@@ -32,7 +32,7 @@
 #  include <osgDB/Serializer>
 #endif
 
-#include <sqlite/sqlite3.h>
+#include <sqlite3.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -40,8 +40,10 @@ using namespace OpenThreads;
 
 #define LC "[Sqlite3Cache] "
 
+#define MAX_SIZE_TABLE 40 // in MB
 #define USE_TRANSACTIONS
 #define USE_L2_CACHE
+//#define UPDATE_ACCESS_TIMES
 //#define MONITOR_THREAD_HEALTH
 
 // --------------------------------------------------------------------------
@@ -296,8 +298,9 @@ struct LayerTable : public osg::Referenced
             << "INDEXED BY \"" << _meta._layerName << "_lruindex\" "
             << "WHERE accessed < ?";
         _purgeSQL = buf.str();
-
-        buf << " LIMIT ?";
+        
+        buf.str("");
+        buf << "DELETE FROM \""  << _meta._layerName << "\" WHERE key in (SELECT key FROM \"" << _meta._layerName << "\" WHERE \"accessed\" < ? limit ?)";
         _purgeLimitSQL = buf.str();          
     }
 
@@ -326,10 +329,77 @@ struct LayerTable : public osg::Referenced
 
 #endif // USE_TRANSACTIONS
 
+    int getTableSize(sqlite3* db) 
+    {
+        std::string query = "select sum(length(data)) from \"" + _meta._layerName + "\";";
+        sqlite3_stmt* select = 0L;
+        int rc = sqlite3_prepare_v2( db, query.c_str(), query.length(), &select, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(db) << std::endl;
+            return -1;
+        }
+
+        rc = sqlite3_step( select );
+        if ( rc != SQLITE_ROW)
+        {
+            OE_WARN << LC << "SQL QUERY failed for " << query << ": " 
+                << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
+                << ", rc = " << rc << std::endl;
+            sqlite3_finalize( select );
+            return -1;
+        }
+        int size = sqlite3_column_int(select, 0);
+        sqlite3_finalize( select );
+        return size;
+    }
+
+    int getNbEntry(sqlite3* db) {
+        std::string query = "select count(*) from \"" + _meta._layerName + "\";";
+        sqlite3_stmt* select = 0L;
+        int rc = sqlite3_prepare_v2( db, query.c_str(), query.length(), &select, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(db) << std::endl;
+            return -1;
+        }
+
+        rc = sqlite3_step( select );
+        if ( rc != SQLITE_ROW)
+        {
+            OE_WARN << LC << "SQL QUERY failed for " << query << ": " 
+                << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
+                << ", rc = " << rc << std::endl;
+            sqlite3_finalize( select );
+            return -1;
+        }
+        int nbItems = sqlite3_column_int(select, 0);
+        sqlite3_finalize( select );
+        return nbItems;
+    }
+
+    void checkAndPurgeIfNeeded(sqlite3* db )
+    {
+        int maxSize = MAX_SIZE_TABLE * 1024 * 1024; // 40Mb for this table
+        int size = getTableSize(db);
+        if (size < 0 || size < maxSize)
+            return;
+            
+        ::time_t t = ::time(0L);
+        int nbElements = getNbEntry(db);
+        float averageSize = size * 1.0 / nbElements;
+        float diffSize = size - maxSize;
+        int maxElementToRemove = static_cast<int>(ceil(diffSize/averageSize));
+        OE_WARN << _meta._layerName <<  " : "  << size/1024/1024 << " MB " << " try to remove " << maxElementToRemove << " / " <<  nbElements << " from  " << _meta._layerName << std::endl;
+        purge(t, maxElementToRemove, db);
+    }
 
     bool store( const ImageRecord& rec, sqlite3* db )
     {
-        sqlite3_stmt* insert = 0L;    
+        checkAndPurgeIfNeeded(db);
+        //OE_WARN << "write to " << _meta._layerName << rec._key->str() << std::endl;
+
+        sqlite3_stmt* insert = 0L;
         int rc = sqlite3_prepare_v2( db, _insertSQL.c_str(), _insertSQL.length(), &insert, 0L );
         if ( rc != SQLITE_OK )
         {
@@ -373,7 +443,7 @@ struct LayerTable : public osg::Referenced
     }
 
     bool updateAccessTime( const TileKey* key, int newTimestamp, sqlite3* db )
-    {
+    { 
         sqlite3_stmt* update = 0L;
         int rc = sqlite3_prepare_v2( db, _updateTimeSQL.c_str(), _updateTimeSQL.length(), &update, 0L );
         if ( rc != SQLITE_OK )
@@ -389,8 +459,7 @@ struct LayerTable : public osg::Referenced
         rc = sqlite3_step( update );
         if ( rc != SQLITE_DONE )
         {
-            OE_WARN << LC << "Failed to update timestamp for " << key->str() << " on layer " <<
-                _meta._layerName << std::endl;
+            OE_WARN << LC << "Failed to update timestamp for " << key->str() << " on layer " << _meta._layerName << " rc = " << rc << std::endl;
             success = false;
         }
 
@@ -447,6 +516,10 @@ struct LayerTable : public osg::Referenced
         }
 
         sqlite3_finalize(select);
+
+        // update access time
+        ::time_t t = ::time(0L);
+        updateAccessTime(key, t, db );
 
         return output._image.valid();
     }
@@ -604,6 +677,17 @@ struct AsyncInsert : public TaskRequest {
     osg::ref_ptr<const TileKey> _key;
     osg::ref_ptr<osg::Image> _image;
     osg::observer_ptr<AsyncCache> _cache;
+};
+
+class Sqlite3Cache;
+struct AsyncUpdateAccessTime : public TaskRequest {
+    AsyncUpdateAccessTime( const TileKey* key, const std::string& layerName, int timeStamp, Sqlite3Cache* cache );
+    void operator()( ProgressCallback* progress );
+
+    osg::ref_ptr<const TileKey> _key;
+    std::string _layerName;
+    int _timeStamp;
+    osg::observer_ptr<Sqlite3Cache> _cache;
 };
 
 // --------------------------------------------------------------------------
@@ -783,10 +867,9 @@ public: // Cache interface
                 _L2cache->setImage( key, layerName, format, result );
 
 #ifdef UPDATE_ACCESS_TIMES
-
             // update the last-access time
             int t = (int)::time(0L);
-            _writeService->add( new AsyncUpdateAccessTime( table, key, t ) );
+            _writeService->add( new AsyncUpdateAccessTime(  key, layerName, t, this ) );
 
 #endif // UPDATE_ACCESS_TIMES
 
@@ -852,6 +935,23 @@ public: // Cache interface
             {
                 tt._table->purge( olderThanUTC, 0, tt._db );
             }
+        }
+        return true;
+    }
+
+
+    /**
+     * updateAccessTime records on the database.
+     */
+    bool updateAccessTimeSync( const std::string& layerName, const TileKey* key, int newTimestamp )
+    {
+        if ( !_db ) false;
+
+        ThreadTable tt = getTable(layerName);
+        if ( tt._table )
+        {
+            ::time_t t = ::time(0L);
+            tt._table->updateAccessTime( key, newTimestamp, tt._db );
         }
         return true;
     }
@@ -964,6 +1064,17 @@ private:
 
     int _count;
 };
+
+
+
+AsyncUpdateAccessTime::AsyncUpdateAccessTime( const TileKey* key, const std::string& layerName, int timeStamp, Sqlite3Cache* cache ) : _key(key), _layerName(layerName), _timeStamp(timeStamp), _cache(cache) { }
+
+void AsyncUpdateAccessTime::operator()( ProgressCallback* progress ) 
+{ 
+    osg::ref_ptr<Sqlite3Cache> cache = _cache.get();
+    if ( cache.valid() )
+        cache->updateAccessTimeSync( _layerName, _key.get() , _timeStamp );
+}
 
 
 /**

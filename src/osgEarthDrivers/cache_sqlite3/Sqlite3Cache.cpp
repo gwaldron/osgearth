@@ -67,7 +67,7 @@ sqlite3* openDatabase( const std::string& path, bool serialized )
     }
 
     // make sure that writes actually finish
-    sqlite3_busy_timeout( db, 10000 );
+    sqlite3_busy_timeout( db, 60000 );
 
     return db;
 }
@@ -84,6 +84,7 @@ public:
         const std::string& format,
         osg::Image* image ) =0;
 };
+
 
 // --------------------------------------------------------------------------
 
@@ -140,6 +141,8 @@ struct MetadataTable
             "SELECT layer,format,compressor,tilesize,srs,xmin,ymin,xmax,ymax,tw,th "
             "FROM metadata WHERE layer = ?";
 
+        _statsLoaded = 0;
+        _statsStored = 0;
         return true;
     }
 
@@ -188,6 +191,8 @@ struct MetadataTable
         }
 
         sqlite3_finalize( insert );
+        if (success)
+            _statsStored++;
         return success;
     }
 
@@ -237,6 +242,8 @@ struct MetadataTable
         }
 
         sqlite3_finalize( select );
+        if (success)
+            _statsLoaded++;
         return success;
     }
 
@@ -248,7 +255,9 @@ struct MetadataTable
 
     std::string _insertSQL;
     std::string _selectSQL;
-};
+    int _statsLoaded;
+    int _statsStored;
+ };
 
 // --------------------------------------------------------------------------
 
@@ -302,6 +311,9 @@ struct LayerTable : public osg::Referenced
         buf.str("");
         buf << "DELETE FROM \""  << _meta._layerName << "\" WHERE key in (SELECT key FROM \"" << _meta._layerName << "\" WHERE \"accessed\" < ? limit ?)";
         _purgeLimitSQL = buf.str();          
+
+        _statsLoaded = 0;
+        _statsStored = 0;
     }
 
 #ifdef USE_TRANSACTIONS
@@ -396,6 +408,7 @@ struct LayerTable : public osg::Referenced
 
     bool store( const ImageRecord& rec, sqlite3* db )
     {
+        displayStats();
         checkAndPurgeIfNeeded(db);
         //OE_WARN << "write to " << _meta._layerName << rec._key->str() << std::endl;
 
@@ -438,6 +451,7 @@ struct LayerTable : public osg::Referenced
         {
             OE_DEBUG << LC << "cache INSERT tile " << rec._key->str() << std::endl;
             sqlite3_finalize( insert );
+            _statsStored++;
             return true;
         }
     }
@@ -469,6 +483,7 @@ struct LayerTable : public osg::Referenced
 
     bool load( const TileKey* key, ImageRecord& output, sqlite3* db )
     {
+        displayStats();
         int imageBufLen = 0;
         
         sqlite3_stmt* select = 0L;
@@ -521,7 +536,19 @@ struct LayerTable : public osg::Referenced
         ::time_t t = ::time(0L);
         updateAccessTime(key, t, db );
 
+        _statsLoaded++;
         return output._image.valid();
+    }
+
+    void displayStats()
+    {
+        osg::Timer_t t = osg::Timer::instance()->tick();
+        if (osg::Timer::instance()->delta_s( _statsLastCheck, t) > 10.0) {
+            double d = osg::Timer::instance()->delta_s(_statsStartTimer, t);
+            OE_WARN << _meta._layerName << " time " << d << " stored " << _statsStored << " rate " << _statsStored * 1.0 / d << std::endl;
+            OE_WARN << _meta._layerName << " time " << d << " loaded " << _statsLoaded << " rate " << _statsLoaded * 1.0 / d << std::endl;
+            _statsLastCheck = t;
+        }
     }
 
     bool remove( const std::string& key, sqlite3* db )
@@ -626,6 +653,7 @@ struct LayerTable : public osg::Referenced
         if ( !_meta._compressor.empty() )
             _rwOptions = new osgDB::Options( "Compressor=" + _meta._compressor );
 
+        _statsLastCheck = _statsStartTimer = osg::Timer::instance()->tick();
         return true;
     }
 
@@ -638,6 +666,12 @@ struct LayerTable : public osg::Referenced
 
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
     osg::ref_ptr<osgDB::Options> _rwOptions;
+
+    osg::Timer_t _statsStartTimer;
+    osg::Timer_t _statsLastCheck;
+    int _statsLoaded;
+    int _statsStored;
+
 };
 
 // --------------------------------------------------------------------------

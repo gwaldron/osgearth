@@ -495,19 +495,19 @@ Diamond::dirty()
 }
 
 //#define ADD_TRI( P, T, A, C, D, G, H, J ) { \
-//    (P)->addElement(A); (P)->addElement(D); (P)->addElement(H); \
+//    (P)->push_back(A); (P)->push_back(D); (P)->push_back(H); \
 //    (*T)[A] = C; (*T)[D] = G; (*T)[H] = J; }
 
 #ifdef USE_TEXTURES
 
 #   define ADD_TRI( P, T, A, C, D, G, H, J, O, S ) { \
-        (P)->addElement(A); (P)->addElement(D); (P)->addElement(H); \
+        (P)->push_back(A); (P)->push_back(D); (P)->push_back(H); \
         (*T)[A] = O+(C*S); (*T)[D] = O+(G*S); (*T)[H] = O+(J*S); }
 
 #else
 
 #   define ADD_TRI( P, T, A, C, D, G, H, J, O, S ) { \
-        (P)->addElement(A); (P)->addElement(D); (P)->addElement(H); }
+        (P)->push_back(A); (P)->push_back(D); (P)->push_back(H); }
 
 #endif
 

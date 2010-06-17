@@ -22,6 +22,9 @@
 #include <osgEarth/TaskService>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#  include <osgDB/Options>
+#endif
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 #include <cstring>
@@ -640,8 +643,11 @@ struct LayerTable : public osg::Referenced
         }
 
         // next load the appropriate ReaderWriter:
+
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
         _rw = osgDB::Registry::instance()->getReaderWriterForMimeType( _meta._format );
         if ( !_rw.valid() )
+#endif
             _rw = osgDB::Registry::instance()->getReaderWriterForExtension( _meta._format );
         if ( !_rw.valid() )
         {
@@ -651,7 +657,7 @@ struct LayerTable : public osg::Referenced
         }
 
         if ( !_meta._compressor.empty() )
-            _rwOptions = new osgDB::Options( "Compressor=" + _meta._compressor );
+            _rwOptions = new osgDB::ReaderWriter::Options( "Compressor=" + _meta._compressor );
 
         _statsLastCheck = _statsStartTimer = osg::Timer::instance()->tick();
         return true;
@@ -665,7 +671,7 @@ struct LayerTable : public osg::Referenced
     MetadataRecord _meta;
 
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
-    osg::ref_ptr<osgDB::Options> _rwOptions;
+    osg::ref_ptr<osgDB::ReaderWriter::Options> _rwOptions;
 
     osg::Timer_t _statsStartTimer;
     osg::Timer_t _statsLastCheck;

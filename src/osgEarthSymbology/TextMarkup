@@ -16,40 +16,30 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/Symbolizer>
+#ifndef OSGEARTHSYMBOLOGY_TEXT_MARKUP_H
+#define OSGEARTHSYMBOLOGY_TEXT_MARKUP_H 1
 
-using namespace osgEarth::Symbology;
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Text>
 
-//Symbolizer::Symbolizer() :
-//_alwaysUpdate( false )
-//{
-//    //nop
-//}
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * A symbolizer that generates text geometry with multiple styles. You can use
+     * this to create markup text blocks. Create a stylesheet with 
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT CompositeTextSymbolizer : public Symbolizer< State<TextContent> >
+    {
+    public:
+        CompositeTextSymbolizer();
 
-/*************************************************************************/
+    public: // Symbolizer
 
-//State::State() :
-//_styleRevision( -1 ),
-//_contentRevision( -1 )
-//{
-//    //nop
-//}
-//
-//bool
-//State::outOfSyncWith( const Style* style ) const
-//{
-//    return style && style->outOfSyncWith( _styleRevision );
-//}
-//
-//bool
-//State::outOfSyncWith( const Content* content ) const
-//{
-//    return content && content->outOfSyncWith( _contentRevision );
-//}
-//
-//void
-//State::dirty()
-//{
-//    ++_styleRevision;
-//    ++_contentRevision;
-//}
+        virtual bool compile(
+            State<TextContent>* state,
+            osg::Group*         attachPoint);
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_TEXT_MARKUP_H

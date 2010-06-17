@@ -54,16 +54,13 @@ static osg::Node* getNode(const std::string& str)
 
 
 bool 
-ModelSymbolizer::update(const SymbolizerInput* dataSet,
-                        const Style* style,
-                        osg::Group* attachPoint,
-                        SymbolizerContext* context,
-                        Symbolizer::State* state )
+ModelSymbolizer::compile(State<GeometryContent>* state,
+                         osg::Group* attachPoint)
 {
-    if (!attachPoint || !style)
+    if ( !state || !attachPoint || !state->getContent() || !state->getStyle() )
         return false;
 
-    const MarkerSymbol* symbol = style->getSymbol<MarkerSymbol>();
+    const MarkerSymbol* symbol = state->getStyle()->getSymbol<MarkerSymbol>();
     if (!symbol)
         return false;
 

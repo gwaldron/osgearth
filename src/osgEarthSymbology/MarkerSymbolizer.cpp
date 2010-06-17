@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osgDB/ReadFile>
@@ -74,21 +73,14 @@ bool MarkerSymbolizer::pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* 
 }
 
 bool 
-MarkerSymbolizer::update(const SymbolizerInput* dataSet,
-                         const Style* style,
-                         osg::Group* attachPoint,
-                         SymbolizerContext* context,
-                         Symbolizer::State* state )
+MarkerSymbolizer::compile(MarkerSymbolizerState* state,
+                          osg::Group* attachPoint)
 {
-    if (!dataSet || !attachPoint || !style)
-        return false;
-
-    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
-    if (!geometryInput)
+    if ( !state || !attachPoint || !state->getContent() || !state->getStyle() )
         return false;
 
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
-    const GeometryList& geometryList = geometryInput->getGeometryList();
+    const GeometryList& geometryList = state->getContent()->getGeometryList();
     for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
     {
         Geometry* geometry = *it;
@@ -109,7 +101,7 @@ MarkerSymbolizer::update(const SymbolizerInput* dataSet,
             {
             case Geometry::TYPE_POINTSET:
             {
-                const MarkerSymbol* point = style->getSymbol<MarkerSymbol>();
+                const MarkerSymbol* point = state->getStyle()->getSymbol<MarkerSymbol>();
                 if (point)
                 {
                     if (point && part->size() && !point->marker().value().empty())
@@ -137,7 +129,7 @@ MarkerSymbolizer::update(const SymbolizerInput* dataSet,
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
             {
-                const MarkerLineSymbol* line = style->getSymbol<MarkerLineSymbol>();
+                const MarkerLineSymbol* line = state->getStyle()->getSymbol<MarkerLineSymbol>();
                 if (line)
                 {
                     if (line && part->size() && !line->marker().value().empty())
@@ -211,7 +203,7 @@ MarkerSymbolizer::update(const SymbolizerInput* dataSet,
 
             case Geometry::TYPE_POLYGON:
             {
-                const MarkerPolygonSymbol* poly = style->getSymbol<MarkerPolygonSymbol>();
+                const MarkerPolygonSymbol* poly = state->getStyle()->getSymbol<MarkerPolygonSymbol>();
                 if (poly)
                 {
                     if (poly && part->size() && !poly->marker().value().empty())

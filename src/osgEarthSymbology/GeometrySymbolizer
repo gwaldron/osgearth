@@ -25,8 +25,9 @@
 
 namespace osgEarth { namespace Symbology
 {
+    typedef State<GeometryContent> GeometrySymbolizerState;
 
-    class OSGEARTHSYMBOLOGY_EXPORT GeometrySymbolizer : public Symbolizer
+    class OSGEARTHSYMBOLOGY_EXPORT GeometrySymbolizer : public Symbolizer<GeometrySymbolizerState>
     {
     public:
         GeometrySymbolizer();
@@ -36,20 +37,16 @@ namespace osgEarth { namespace Symbology
          * Creates or updates a subgraph representing the symbolized data.
          * The Symbolizer can attach the subgraph to the attachPoint.
          */
-        virtual bool update(
-            const SymbolizerInput* dataset,
-            const Style*           style,
-            osg::Group*            attachPoint,
-            SymbolizerContext*     context,
-            Symbolizer::State*     state );
+        virtual bool compile(
+            GeometrySymbolizerState* state,
+            osg::Group*              attachPoint);
 
 
         class OSGEARTHSYMBOLOGY_EXPORT GeometrySymbolizerOperator
         {
         public:
             osg::Node* operator()(const GeometryList& geoms, 
-                                  const Style* style,
-                                  SymbolizerContext* context);
+                                  const Style* style);
         };
     };
 

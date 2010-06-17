@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/GeometryExtrudeSymbolizer>
 #include <osgEarthSymbology/ExtrudedSymbol>
 #include <osgUtil/Tessellator>
@@ -44,22 +43,15 @@ void GeometryExtrudeSymbolizer::tessellate( osg::Geometry* geom )
 }
 
 bool 
-GeometryExtrudeSymbolizer::update(const SymbolizerInput* dataSet,
-                                  const Style* style,
-                                  osg::Group* attachPoint,
-                                  SymbolizerContext* context,
-                                  Symbolizer::State* state )
+GeometryExtrudeSymbolizer::compile(State<GeometryContent>* state,
+                                   osg::Group* attachPoint)
 {
-    if (!dataSet || !attachPoint || !style)
-        return false;
-
-    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
-    if (!geometryInput)
+    if ( !state || !attachPoint || !state->getContent() || !state->getStyle() )
         return false;
 
     osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
 
-    const GeometryList& geometryList = geometryInput->getGeometryList();
+    const GeometryList& geometryList = state->getContent()->getGeometryList();
     for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
     {
         Geometry* geometry = *it;
@@ -84,7 +76,7 @@ GeometryExtrudeSymbolizer::update(const SymbolizerInput* dataSet,
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
             {
-                const ExtrudedLineSymbol* line = style->getSymbol<ExtrudedLineSymbol>();
+                const ExtrudedLineSymbol* line = state->getStyle()->getSymbol<ExtrudedLineSymbol>();
                 if (line) 
                 {
                     color = line->stroke()->color();
@@ -96,7 +88,7 @@ GeometryExtrudeSymbolizer::update(const SymbolizerInput* dataSet,
 
             case Geometry::TYPE_POLYGON:
             {
-                const ExtrudedPolygonSymbol* polygon = style->getSymbol<ExtrudedPolygonSymbol>();
+                const ExtrudedPolygonSymbol* polygon = state->getStyle()->getSymbol<ExtrudedPolygonSymbol>();
                 if (polygon)
                 {
                     color  = polygon->fill()->color();
@@ -110,7 +102,7 @@ GeometryExtrudeSymbolizer::update(const SymbolizerInput* dataSet,
                 break;
             }
 
-            osg::Geode* geode = extrude(part, offset, height, context );
+            osg::Geode* geode = extrude(part, offset, height, state->getContext() );
             if (geode && geode->getNumDrawables()) 
             {
                 osg::Material* material = new osg::Material;

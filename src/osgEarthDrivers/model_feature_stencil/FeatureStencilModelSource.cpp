@@ -31,7 +31,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthSymbology/StencilVolumeNode>
-#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/SymbolicNode>
 #include <osg/Notify>
 #include <osg/MatrixTransform>

@@ -22,12 +22,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-GeometryInput::GeometryInput()
+GeometryContent::GeometryContent()
 {
     //NOP
 }
-
-// GeometryInput::GeometryInput(const GeometryInput&, const osg::CopyOp&)
-// {
-//     // NOP
-// }

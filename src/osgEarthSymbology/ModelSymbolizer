@@ -25,20 +25,16 @@
 
 namespace osgEarth { namespace Symbology
 {
-
-    class OSGEARTHSYMBOLOGY_EXPORT ModelSymbolizer : public Symbolizer
+    class OSGEARTHSYMBOLOGY_EXPORT ModelSymbolizer : public Symbolizer< State<GeometryContent> >
     {
-    public:
+    public: // Symbolizer
         /**
          * Creates or updates a subgraph representing the symbolized data.
          * The Symbolizer can attach the subgraph to the attachPoint.
          */
-        virtual bool update(
-            const SymbolizerInput* dataset,
-            const Style*           style,
-            osg::Group*            attachPoint,
-            SymbolizerContext*     context,
-            Symbolizer::State*     state);
+        virtual bool compile(
+            State<GeometryContent>* state,
+            osg::Group* attachPoint);
 
         ModelSymbolizer();
     };

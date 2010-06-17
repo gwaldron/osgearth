@@ -16,40 +16,18 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/Symbolizer>
+#include <osgEarthSymbology/TextMarkup>
 
 using namespace osgEarth::Symbology;
 
-//Symbolizer::Symbolizer() :
-//_alwaysUpdate( false )
-//{
-//    //nop
-//}
+CompositeTextSymbolizer::CompositeTextSymbolizer()
+{
+    //nop
+}
 
-/*************************************************************************/
-
-//State::State() :
-//_styleRevision( -1 ),
-//_contentRevision( -1 )
-//{
-//    //nop
-//}
-//
-//bool
-//State::outOfSyncWith( const Style* style ) const
-//{
-//    return style && style->outOfSyncWith( _styleRevision );
-//}
-//
-//bool
-//State::outOfSyncWith( const Content* content ) const
-//{
-//    return content && content->outOfSyncWith( _contentRevision );
-//}
-//
-//void
-//State::dirty()
-//{
-//    ++_styleRevision;
-//    ++_contentRevision;
-//}
+bool
+CompositeTextSymbolizer::compile(State<TextContent>* state,
+                                 osg::Group*         attachPoint)
+{
+    return true;
+}

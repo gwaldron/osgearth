@@ -48,9 +48,34 @@ Style::Style( const Config& conf )
 }
 
 void
+Style::addSubStyle( Style* style )
+{
+    _subStyles[style->getName()] = style;
+}
+
+const Style*
+Style::getSubStyle( const std::string& name ) const
+{
+    StylesByName::const_iterator i = _subStyles.find( name );
+    return i != _subStyles.end() ? i->second.get() : 0L;
+}
+
+Style*
+Style::getSubStyle( const std::string& name )
+{
+    StylesByName::iterator i = _subStyles.find( name );
+    return i != _subStyles.end() ? i->second.get() : 0L;
+}
+
+void
 Style::fromConfig( const Config& conf )
 {
     _name = conf.value( "name" );
+
+    // if there's no explicit name, use the KEY as the name.
+    if ( _name.empty() )
+        _name = conf.key();
+
     conf.getIfSet( "url", _url );
     _origType = conf.value( "type" );
 
@@ -58,6 +83,13 @@ Style::fromConfig( const Config& conf )
     {
         _origData = conf.value();
     }
+
+    const ConfigSet& children = conf.children( "style" );
+    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+    {
+        addSubStyle( new Style( *i ) );
+    }
+
     dirty();
 }
 
@@ -70,8 +102,7 @@ Style::toConfig() const
     if ( _origType == "text/css" )
     {
         conf.attr("type") = _origType;
-        conf.value() = _origData;
-            
+        conf.value() = _origData;            
     }
     return conf;
 }

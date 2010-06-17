@@ -27,50 +27,132 @@
 
 namespace osgEarth { namespace Symbology
 {
+    struct SymbolicNodeBase : public osg::Group
+    {
+        virtual void updateSymbology() =0;
+        SymbolicNodeBase() { }
+        SymbolicNodeBase( const SymbolicNodeBase& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) 
+            : osg::Group(rhs, op) { }
+    };
+
+    struct SymUpdateCallback : public osg::NodeCallback
+    {
+        virtual void operator ()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            static_cast<SymbolicNodeBase*>(node)->updateSymbology();
+            traverse( node, nv );
+        }
+    };
+
     /**
      * Abstract base class for all Symbol types.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT SymbolicNode : public osg::Group
+    template<typename STATE_TYPE>
+    class SymbolicNode : public SymbolicNodeBase // header-only class.
     {
     public:
         /** Constructs a new symbolic node. */
-        SymbolicNode();
+        SymbolicNode()
+        {
+            _prototypeState = new STATE_TYPE();
+
+            _symGroup = new osg::Group();
+            _symGroup->setDataVariance( osg::Object::DYNAMIC );
+            this->addChild( _symGroup.get() );
+
+            // install an update callback for managing content and style changes.
+            this->addUpdateCallback( new SymUpdateCallback() );
+        }
 
         /** Copy constructor. */
-        SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+        SymbolicNode( const SymbolicNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) :
+            SymbolicNodeBase( rhs, op ),
+            _symGroup( rhs._symGroup )
+        {
+            if ( rhs._prototypeState.valid() )
+            {
+                _prototypeState = osg::clone( rhs._prototypeState.get(), op );
+            }
+
+            // this will cause a new state to form and correctly copy the state values
+            setSymbolizer( rhs._symbolizer.get() );
+        }
 
         META_Node(osgEarth::Symbology, SymbolicNode);
 
         /** The symbolizer that will render the geometry under this node. */
-        void setSymbolizer( Symbolizer* sym );
-        Symbolizer* getSymbolizer() { return _symbolizer.get(); }
+        void setSymbolizer( Symbolizer<STATE_TYPE>* sym )
+        {
+            // copy the old state over to the new state.
+            osg::ref_ptr<STATE_TYPE> oldState = _state.get();
 
-        /** The style object that the symbolizer will use. */
-        void setStyle(const Style* style ) { _style = style; }
-        const Style* getStyle() { return _style.get(); }
+            _symbolizer = sym;
+            _state = 0L;
 
-        /** Data that the symbolizer will render. */
-        void setDataSet( SymbolizerInput* dataSet ) { _dataSet = dataSet; }
-        SymbolizerInput* getDataSet() { return _dataSet.get(); }
+            if ( _symbolizer.valid() )
+            {
+                _state = getOrCreateState();
+                if ( oldState.valid() )
+                {
+                    _state->setContent( oldState->getContent() );
+                    _state->setStyle( oldState->getStyle() );
+                    _state->setContext( oldState->getContext() );
+                }
+                else
+                {
+                    _state->setContent( _prototypeState->getContent() );
+                    _state->setStyle( _prototypeState->getStyle() );
+                    _prototypeState = new STATE_TYPE(); // reinitialize.
+                }
+            }
+        }
 
-        /** The context object that the symbolizer will use. */
-        void setContext( SymbolizerContext* context ) { _context = context; }
-        SymbolizerContext* getContext() { return _context.get(); }
+        Symbolizer<STATE_TYPE>* getSymbolizer() { 
+            return _symbolizer.get(); }
 
+        STATE_TYPE* getState() {
+            return getOrCreateState(); }
     public:
-        /** Updates the symbology if a change is detected in the input dataset or the style.
-         *  You usually do not need to call this function directly; it gets called during 
-         *  the update traversal.
+        /** 
+         * Updates the symbology if a change is detected in the input dataset or the style.
+         * You usually do not need to call this function directly; it gets called during 
+         * the update traversal.
          */
-        void updateSymbology();
-        
+        void updateSymbology()
+        {
+            if ( _symbolizer.valid() && _state.valid() )
+            {   
+                if ( _symbolizer->getAlwaysCompile() || _state->contentDirty() || _state->styleDirty() )
+                {
+                    _symbolizer->compile( _state.get(), _symGroup.get() );
+
+                    if ( _state->getContent() )
+                        _state->getContent()->sync( _state->_contentRevision );
+
+                    if ( _state->getStyle() )
+                        _state->getStyle()->sync( _state->_styleRevision );
+
+                    this->dirtyBound();
+                }
+            }
+        }
+
     protected:
-        osg::ref_ptr<const Style> _style;
-        osg::ref_ptr<SymbolizerInput> _dataSet;
-        osg::ref_ptr<SymbolizerContext> _context;
-        osg::ref_ptr<Symbolizer> _symbolizer;
-        osg::ref_ptr<Symbolizer::State> _state;
-        osg::ref_ptr<osg::Group> _symGroup;
+        osg::ref_ptr<Symbolizer<STATE_TYPE> >  _symbolizer;
+        osg::ref_ptr<STATE_TYPE>               _state;
+        osg::ref_ptr<osg::Group>               _symGroup;
+        osg::ref_ptr<STATE_TYPE>               _prototypeState;
+        //osg::ref_ptr<SymbolizerContext>        _context;
+
+        STATE_TYPE* getOrCreateState()
+        {
+            if ( !_state.valid() && _symbolizer.valid() )
+            {
+                _state = new STATE_TYPE();
+            }
+
+            return _state.get();
+        }
     };
 
 

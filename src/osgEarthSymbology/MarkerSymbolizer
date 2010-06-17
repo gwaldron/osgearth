@@ -24,20 +24,19 @@
 #include <osgEarthSymbology/Symbolizer>
 
 namespace osgEarth { namespace Symbology
-{
+{    
+    typedef State<GeometryContent> MarkerSymbolizerState;
 
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbolizer : public Symbolizer
+    class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbolizer : public Symbolizer<MarkerSymbolizerState>
     {
     public:
         MarkerSymbolizer();
 
-    public:
-        virtual bool update(
-            const SymbolizerInput* dataset,
-            const Style* style,
-            osg::Group* attachPoint,
-            SymbolizerContext* context,
-            Symbolizer::State* state );
+    public: // Symbolizer
+
+        virtual bool compile(
+            MarkerSymbolizerState* state,
+            osg::Group* attachPoint);
 
     protected:
         bool pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* polygon);

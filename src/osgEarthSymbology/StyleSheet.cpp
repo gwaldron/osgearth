@@ -26,3 +26,23 @@ StyleSheet::StyleSheet()
 {
     //NOP
 }
+
+void 
+StyleSheet::addStyle( const std::string& name, Style* style )
+{
+    _styles[name] = style;
+}
+
+Style* 
+StyleSheet::getStyle( const std::string& name )
+{
+    NameStyleMap::iterator i = _styles.find( name );
+    return i != _styles.end() ? i->second.get() : 0L;
+}
+
+const Style* 
+StyleSheet::getStyle( const std::string& name ) const
+{
+    NameStyleMap::const_iterator i = _styles.find( name );
+    return i != _styles.end() ? i->second.get() : 0L;
+}

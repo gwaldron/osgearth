@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/GeometrySymbolizer>
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgUtil/Tessellator>
@@ -30,8 +29,7 @@ using namespace osgEarth::Symbology;
 
 
 osg::Node* GeometrySymbolizer::GeometrySymbolizerOperator::operator()(const GeometryList& geometryList,
-                                                                      const Style* style,
-                                                                      SymbolizerContext* context)
+                                                                      const Style* style)
 {
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
     for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
@@ -157,27 +155,24 @@ osg::Node* GeometrySymbolizer::GeometrySymbolizerOperator::operator()(const Geom
 
 GeometrySymbolizer::GeometrySymbolizer()
 {
+    //nop
 }
 
-
 bool
-GeometrySymbolizer::update(const SymbolizerInput* dataSet,
-                           const Style* style,
-                           osg::Group* attachPoint,
-                           SymbolizerContext* context,
-                           Symbolizer::State* state)
+GeometrySymbolizer::compile(GeometrySymbolizerState* state,
+                            osg::Group* attachPoint)
 {
-    if (!dataSet || !attachPoint || !style)
+    if ( !state || !state->getContent() || !attachPoint || !state->getStyle() )
         return false;
 
-    const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
-    if (!geometryInput)
-        return false;
+    //const GeometryContent* geometryInput = dynamic_cast<const GeometryContent*>(dataSet);
+    //if (!geometryInput)
+    //    return false;
 
-    const GeometryList& geometryList = geometryInput->getGeometryList();
+    const GeometryList& geometryList = state->getContent()->getGeometryList();
 
     GeometrySymbolizerOperator functor;
-    osg::Node* node = (functor)(geometryList, style, context);
+    osg::Node* node = (functor)(geometryList, state->getStyle());
     if (node)
     {
         attachPoint->removeChildren(0, attachPoint->getNumChildren());

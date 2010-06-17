@@ -35,7 +35,6 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Style : public osgEarth::Revisioned<osg::Object>
     {
     public:
-
         /** Constructs a new, empty style. */
         Style();
 
@@ -92,6 +91,11 @@ namespace osgEarth { namespace Symbology
             return sym;
         }
 
+        /** Access sub-styles. */
+        Style* getSubStyle( const std::string& name );
+        const Style* getSubStyle( const std::string& name ) const;
+        void addSubStyle( Style* style );
+
         /** Serializes this object into a Config. */
         virtual Config toConfig() const;
 
@@ -106,6 +110,8 @@ namespace osgEarth { namespace Symbology
         std::string                 _origData;
         optional<std::string>       _url;
 
+        typedef std::map<std::string,osg::ref_ptr<Style> > StylesByName;
+        StylesByName _subStyles;
     };
 
     typedef std::vector< osg::ref_ptr<Style> > StyleList;

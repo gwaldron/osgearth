@@ -29,7 +29,6 @@
 #include <osgDB/ReadFile>
 #include <osgEarthSymbology/GeometryExtrudeSymbolizer>
 #include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/SymbolicNode>
 #include <osgEarthSymbology/MarkerSymbol>
@@ -99,7 +98,7 @@ Geometry* createPointsGeometry(const osg::Vec3d& start)
     return Geometry::create(Geometry::TYPE_POINTSET, array);
 }
 
-struct SampleGeometryInput : public GeometryInput
+struct SampleGeometryInput : public GeometryContent
 {
     SampleGeometryInput()
     {
@@ -137,33 +136,23 @@ struct PopUpSymbolizerContext : public SymbolizerContext
 
 
 
-struct PopUpSymbolizer : public GeometrySymbolizer
+struct PopUpSymbolizer : public Symbolizer< State<GeometryContent> >
 {
     static int PopUpIndex;
-    bool update(const SymbolizerInput* dataSet,
-                const Style* style,
-                osg::Group* attachPoint,
-                SymbolizerContext* context,
-                Symbolizer::State* state )
+
+    bool compile(State<GeometryContent>* state,
+                 osg::Group* attachPoint)
     {
-        if (!dataSet || !attachPoint || !style)
+        if ( !state || !attachPoint || !state->getContent() || !state->getStyle() )
             return false;
 
-        const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
-        if (!geometryInput)
-            return false;
-
-        const Style* geometryStyle = dynamic_cast<const Style*>(style);
-        if (!geometryStyle)
-            return false;
-
-        PopUpSymbolizerContext* ctx = dynamic_cast<PopUpSymbolizerContext*>(context);
+        PopUpSymbolizerContext* ctx = dynamic_cast<PopUpSymbolizerContext*>( state->getContext() );
         if (!ctx)
             return false;
 
         osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
 
-        const GeometryList& geometryList = geometryInput->getGeometryList();
+        const GeometryList& geometryList = state->getContent()->getGeometryList();
         for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
         {
             Geometry* geometry = *it;
@@ -178,7 +167,7 @@ struct PopUpSymbolizer : public GeometrySymbolizer
             case Geometry::TYPE_RING:
             case Geometry::TYPE_POLYGON:
             {
-                const TextSymbol* symbol = style->getSymbol<TextSymbol>();
+                const TextSymbol* symbol = state->getStyle()->getSymbol<TextSymbol>();
                 if (symbol)
                 {
                     osg::Image* image = 0;
@@ -251,28 +240,18 @@ protected:
 
 struct GeometryPointSymbolizer : public GeometrySymbolizer
 {
-    bool update(const SymbolizerInput* dataSet,
-                const Style* style,
+    bool update(State<GeometryContent>* state,
                 osg::Group* attachPoint,
-                SymbolizerContext* context,
-                Symbolizer::State* state )
+                SymbolizerContext* context )
     {
-        if (!dataSet || !attachPoint || !style)
-            return false;
-
-        const GeometryInput* geometryInput = dynamic_cast<const GeometryInput*>(dataSet);
-        if (!geometryInput)
-            return false;
-
-        const Style* geometryStyle = dynamic_cast<const Style*>(style);
-        if (!geometryStyle)
+        if ( !state || !attachPoint || !state->getContent() || !state->getStyle() )
             return false;
 
         osg::ref_ptr<osg::Group> newSymbolized = new osg::Group;
         osg::ref_ptr<osg::Geode> geode = new osg::Geode;
         newSymbolized->addChild(geode.get());
 
-        const GeometryList& geometryList = geometryInput->getGeometryList();
+        const GeometryList& geometryList = state->getContent()->getGeometryList();
         for (GeometryList::const_iterator it = geometryList.begin(); it != geometryList.end(); ++it)
         {
             Geometry* geometry = *it;
@@ -289,7 +268,7 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
             case Geometry::TYPE_POINTSET:
             {
                 primMode = osg::PrimitiveSet::POINTS;
-                const PointSymbol* point = style->getSymbol<PointSymbol>();
+                const PointSymbol* point = state->getStyle()->getSymbol<PointSymbol>();
                 if (point)
                 {
                     color = point->fill()->color();
@@ -303,7 +282,7 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
             case Geometry::TYPE_LINESTRING:
             {
                 primMode = osg::PrimitiveSet::LINE_STRIP;
-                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                const LineSymbol* line = state->getStyle()->getSymbol<LineSymbol>();
                 if (line) 
                 {
                     color = line->stroke()->color();
@@ -316,7 +295,7 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
             case Geometry::TYPE_RING:
             {
                 primMode = osg::PrimitiveSet::LINE_LOOP;
-                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                const LineSymbol* line = state->getStyle()->getSymbol<LineSymbol>();
                 if (line)
                 {
                     color = line->stroke()->color();
@@ -332,7 +311,7 @@ struct GeometryPointSymbolizer : public GeometrySymbolizer
                 // it would be simpler to use the symbol style->getPoint but here
                 // we want to dmonstrate how to customize Symbol and Symbolizer
                 primMode = osg::PrimitiveSet::POINTS;
-                const PolygonPointSizeSymbol* poly = style->getSymbol<PolygonPointSizeSymbol>();
+                const PolygonPointSizeSymbol* poly = state->getStyle()->getSymbol<PolygonPointSizeSymbol>();
                 if (poly)
                 {
                     color = poly->fill()->color();
@@ -486,6 +465,8 @@ public:
 };
 
 
+typedef SymbolicNode< State<GeometryContent> > GeometrySymbolicNode;
+
 
 osg::Group* createSymbologyScene(WindowManager* wm)
 {
@@ -572,89 +553,85 @@ osg::Group* createSymbologyScene(WindowManager* wm)
 
     /// associate the style / symbolizer to the symbolic node
     {
-        osg::ref_ptr<GeometrySymbolizer> symbolizer = new GeometrySymbolizer;
-        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
-        node->setSymbolizer(symbolizer.get());
-        node->setStyle(styles[0].get());
-        node->setDataSet(dataset.get());
+        GeometrySymbolicNode* node = new GeometrySymbolicNode();
+        node->setSymbolizer( new GeometrySymbolizer() );
+
+        node->getState()->setStyle( styles[0].get() );
+        node->getState()->setContent( dataset.get() );
+
         osg::MatrixTransform* tr = new osg::MatrixTransform;
         tr->setMatrix(osg::Matrix::translate(0, -250 , 0));
-        tr->addChild(node.get());
+        tr->addChild(node);
         grp->addChild(tr);
     }
 
 
     {
-        osg::ref_ptr<GeometrySymbolizer> symbolizer = new GeometryPointSymbolizer;
-        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
-        node->setSymbolizer(symbolizer.get());
-        node->setStyle(styles[1].get());
-        node->setDataSet(dataset.get());
+        GeometrySymbolicNode* node = new GeometrySymbolicNode();
+        node->setSymbolizer( new GeometryPointSymbolizer() );
+        node->getState()->setStyle(styles[1].get());
+        node->getState()->setContent(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
-        tr->addChild(node.get());
+        tr->addChild(node);
         tr->setMatrix(osg::Matrix::translate(0, 0 , 0));
         grp->addChild(tr);
     }
 
 
     {
-        osg::ref_ptr<GeometryExtrudeSymbolizer> symbolizer = new GeometryExtrudeSymbolizer();
-        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
-        node->setSymbolizer(symbolizer.get());
-        node->setStyle(styles[2].get());
-        node->setDataSet(dataset.get());
+        GeometrySymbolicNode* node = new GeometrySymbolicNode();
+        node->setSymbolizer( new GeometryExtrudeSymbolizer() );
+        node->getState()->setStyle(styles[2].get());
+        node->getState()->setContent(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
-        tr->addChild(node.get());
+        tr->addChild(node);
         tr->setMatrix(osg::Matrix::translate(0, 250 , 0));
         grp->addChild(tr);
     }
 
 
     {
-        osg::ref_ptr<MarkerSymbolizer> symbolizer = new MarkerSymbolizer();
-        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
-        node->setSymbolizer(symbolizer.get());
-        node->setStyle(styles[3].get());
-        node->setDataSet(dataset.get());
+        GeometrySymbolicNode* node = new GeometrySymbolicNode();
+        node->setSymbolizer( new MarkerSymbolizer() );
+        node->getState()->setStyle(styles[3].get());
+        node->getState()->setContent(dataset.get());
         osg::MatrixTransform* tr = new osg::MatrixTransform;
-        tr->addChild(node.get());
+        tr->addChild(node);
         tr->setMatrix(osg::Matrix::translate(0, 500 , 0));
         grp->addChild(tr);
     }
 
 
 
-    {
-        osg::ref_ptr<ModelSymbolizer> symbolizer = new ModelSymbolizer();
-        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
-        node->setSymbolizer(symbolizer.get());
-        Style* style = new Style;
-        std::string real = osgDB::getRealPath("../data/tree.ive");
-        MarkerSymbol* marker = new MarkerSymbol;
-        marker->marker() = real;
-        node->setDataSet(dataset.get());
-        style->addSymbol(marker);
-        node->setStyle(style);
-        osg::MatrixTransform* tr = new osg::MatrixTransform;
-        tr->addChild(node.get());
-        tr->setMatrix(osg::Matrix::scale(10,10,10) * osg::Matrix::translate(0, 750 , 0));
-        grp->addChild(tr);
-    }
+    //{
+    //    osg::ref_ptr<ModelSymbolizer> symbolizer = new ModelSymbolizer();
+    //    osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
+    //    node->setSymbolizer(symbolizer.get());
+    //    Style* style = new Style;
+    //    std::string real = osgDB::getRealPath("../data/tree.ive");
+    //    MarkerSymbol* marker = new MarkerSymbol;
+    //    marker->marker() = real;
+    //    node->setDataSet(dataset.get());
+    //    style->addSymbol(marker);
+    //    node->setStyle(style);
+    //    osg::MatrixTransform* tr = new osg::MatrixTransform;
+    //    tr->addChild(node);
+    //    tr->setMatrix(osg::Matrix::scale(10,10,10) * osg::Matrix::translate(0, 750 , 0));
+    //    grp->addChild(tr);
+    //}
 
     StyleEditor* styleEditor = new StyleEditor(styles);
     {
         PopUpSymbolizerContext* ctx = new PopUpSymbolizerContext(wm);
         styleEditor->setPopupContext(ctx);
 
-        osg::ref_ptr<PopUpSymbolizer> symbolizer = new PopUpSymbolizer();
-        osg::ref_ptr<SymbolicNode> node = new SymbolicNode;
-        osg::ref_ptr<SampleGeometryInput> dataset = new SampleGeometryInput;
-        node->setSymbolizer(symbolizer.get());
-        node->setDataSet(dataset.get());
-        node->setStyle(styles[4]);
-        node->setContext(ctx);
+        SymbolicNode< State<GeometryContent> >* node = new SymbolicNode< State<GeometryContent> >();
+        node->setSymbolizer( new PopUpSymbolizer() );
+        node->getState()->setStyle(styles[4]);
+        node->getState()->setContent(dataset.get());
+        node->getState()->setContext(ctx);
         osg::MatrixTransform* tr = new osg::MatrixTransform;
-        tr->addChild(node.get());
+        tr->addChild(node);
         tr->setMatrix(osg::Matrix::translate(0, 1000 , 0));
         grp->addChild(tr);
     }

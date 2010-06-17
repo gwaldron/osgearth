@@ -33,7 +33,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/SymbolicNode>
 #include <osgEarthFeatures/BuildTextOperator>
 

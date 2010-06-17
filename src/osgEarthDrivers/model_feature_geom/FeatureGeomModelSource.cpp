@@ -33,7 +33,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/GeometryInput>
 #include <osgEarthSymbology/SymbolicNode>
 
 #include "FeatureGeomModelOptions"
@@ -90,7 +89,7 @@ public:
             }
         }
         GeometrySymbolizer::GeometrySymbolizerOperator geometryOperator;
-        osg::Node* result = geometryOperator(geometryList, style, context);        
+        osg::Node* result = geometryOperator(geometryList, style);        
 
 
         osg::Group* root = new osg::Group;

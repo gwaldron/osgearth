@@ -22,29 +22,29 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbolizer>
-#include <osgEarthSymbology/Geometry>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Symbology
 {
-
-    class OSGEARTHSYMBOLOGY_EXPORT GeometryExtrudeSymbolizer : public Symbolizer
+    class OSGEARTHSYMBOLOGY_EXPORT GeometryExtrudeSymbolizer : public Symbolizer< State<GeometryContent> >
     {
     public:
-        bool update(
-            const SymbolizerInput* dataset,
-            const Style* style,
-            osg::Group* attachPoint,
-            SymbolizerContext* context,
-            Symbolizer::State* state );
+        
+        GeometryExtrudeSymbolizer();
 
         osg::Geode* extrude(Geometry* geom, 
                             double offset, 
                             double height, 
                             SymbolizerContext* context );
+
         void tessellate( osg::Geometry* geom );
 
-        GeometryExtrudeSymbolizer();
+    public: // Symbolizer
+
+        bool compile(
+            State<GeometryContent>* state,
+            osg::Group*           attachPoint);
+
     };
 
 } }

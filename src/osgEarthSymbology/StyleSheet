@@ -36,7 +36,10 @@ namespace osgEarth { namespace Symbology
     public:
         StyleSheet();
         
-        void addStyle( const Style& style );
+        void addStyle( const std::string& name, Style* style );
+
+        Style* getStyle( const std::string& name );
+        const Style* getStyle( const std::string& name ) const;
 
     protected:
         typedef std::map<std::string,osg::ref_ptr<Style> > NameStyleMap;

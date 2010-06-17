@@ -28,10 +28,11 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-#include <osgEarthSymbology/ModelSymbolizer>
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/MarkerSymbol>
-#include <osgEarthSymbology/SymbolicNode>
+#include <osgEarth/HTTPClient>
+//#include <osgEarthSymbology/ModelSymbolizer>
+//#include <osgEarthSymbology/Style>
+//#include <osgEarthSymbology/MarkerSymbol>
+//#include <osgEarthSymbology/SymbolicNode>
 
 class SimpleModelSource : public ModelSource
 {
@@ -54,14 +55,18 @@ public:
     // override
     osg::Node* createNode( ProgressCallback* progress )
     {
-        osgEarth::Symbology::Style* style = new osgEarth::Symbology::Style;
-        osgEarth::Symbology::MarkerSymbol* symbol = new osgEarth::Symbology::MarkerSymbol;
-        symbol->marker() = _url;
-        style->addSymbol(symbol);
-        osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
-        symb->setStyle(style);
-        symb->setSymbolizer(new osgEarth::Symbology::ModelSymbolizer);
-        return symb;
+        osg::ref_ptr<osg::Node> result;
+        HTTPClient::readNodeFile( _url, result, _settings.get(), progress );
+        return result.release();
+
+        //osgEarth::Symbology::Style* style = new osgEarth::Symbology::Style;
+        //osgEarth::Symbology::MarkerSymbol* symbol = new osgEarth::Symbology::MarkerSymbol;
+        //symbol->marker() = _url;
+        //style->addSymbol(symbol);
+        //osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
+        //symb->setStyle(style);
+        //symb->setSymbolizer(new osgEarth::Symbology::ModelSymbolizer);
+        //return symb;
     }
 
 protected:

@@ -19,13 +19,10 @@ SET(LIB_PUBLIC_HEADERS
     Graticule
     Labeling
     ObjectPlacer
+    ObjectLocator
     OceanSurfaceNode
+    Popups
     Viewpoint
-    WindowManager
-    Widget
-    WidgetIcon
-    WidgetMessageBox
-    WidgetNode
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
@@ -39,13 +36,10 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Graticule.cpp
     Labeling.cpp
     ObjectPlacer.cpp
+    ObjectLocator.cpp
     OceanSurfaceNode.cpp
+    Popups.cpp
     Viewpoint.cpp
-    WindowManager.cpp
-    Widget.cpp
-    WidgetIcon.cpp
-    WidgetMessageBox.cpp
-    WidgetNode.cpp
 )
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})

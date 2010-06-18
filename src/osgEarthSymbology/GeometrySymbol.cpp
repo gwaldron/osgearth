@@ -29,6 +29,21 @@ _lineCap( LINECAP_DEFAULT )
     //nop
 }
 
+Stroke::Stroke( float r, float g, float b, float a ) :
+_color( r, g, b, a ),
+_width( 1.0f ),
+_lineJoin( LINEJOIN_DEFAULT ),
+_lineCap( LINECAP_DEFAULT )
+{
+    //nop
+}
+
+Fill::Fill( float r, float g, float b, float a ) :
+_color( r, g, b, a )
+{
+    //nop
+}
+
 Fill::Fill() :
 _color( 1, 1, 1, 1 )
 {

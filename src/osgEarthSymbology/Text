@@ -83,9 +83,6 @@ namespace osgEarth { namespace Symbology
         optional<LinePlacement>& linePlacement() { return _linePlacement; }
         const optional<LinePlacement>& linePlacement() const { return _linePlacement; }
 
-        optional<std::string>& theme() { return _theme; }
-        const optional<std::string>& theme() const { return _theme; }
-
     protected:
         optional<Fill>            _fill;
         optional<Stroke>          _halo;

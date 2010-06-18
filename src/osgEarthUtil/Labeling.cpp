@@ -17,9 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/Labeling>
+#include <osgEarth/HTTPClient>
 #include <osgText/Text>
 #include <osg/Depth>
+#include <osgDB/ReadFile>
+#include <osgWidget/ViewerEventHandlers>
 
+using namespace osgEarth;
 using namespace osgEarthUtil;
 using namespace osgEarth::Symbology;
 
@@ -67,3 +71,4 @@ LabelMaker::create2dLabel( const std::string& text, const osg::Vec3d& pos, const
 
     return t;
 }
+

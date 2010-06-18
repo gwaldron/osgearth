@@ -21,11 +21,11 @@
 using namespace osgEarth::Symbology;
 
 TextSymbol::TextSymbol() :
-_fill( Fill() ),
-_halo( Stroke() ),
-_size( 32.0f ),
+_fill( Fill( 1, 1, 1, 1 ) ),
+_halo( Stroke( 0.3, 0.3, 0.3, 1) ),
+_size( 16.0f ),
 _sizeMode( SIZEMODE_SCREEN )
+//_font( "fonts/arial.ttf" )
 {
-    _fill->color().set( 1, 1, 1, 1 );
-    _halo->color().set( 0, 0, 0, 1 );
+    //nop
 }

@@ -1,0 +1,131 @@
+#ifndef OSGEARTH_UTIL_OBJECT_LOCATOR_H
+#define OSGEARTH_UTIL_OBJECT_LOCATOR_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Revisioning>
+#include <osgEarth/SpatialReference>
+#include <osg/MatrixTransform>
+
+namespace osgEarthUtil
+{
+    /**
+     * ObjectLocator - a revisioned object that generates a positional matrix for a node.
+     */
+    class OSGEARTHUTIL_EXPORT ObjectLocator : public osgEarth::Revisioned<osg::Referenced>
+    {
+    public:
+
+        /** Flags that represent separable location components. */
+        enum Components {
+            COMP_NONE           = 0x00,
+            COMP_POSITION       = 0x01,
+            COMP_HEADING        = 0x02,
+            COMP_PITCH          = 0x04,
+            COMP_ROLL           = 0x08,
+            COMP_ORIENTATION    = COMP_HEADING | COMP_PITCH | COMP_ROLL,
+            COMP_ALL            = COMP_POSITION | COMP_ORIENTATION
+        };
+
+    public:
+
+        /**
+         * Constructs a new locator that will generate positional matricies based on
+         * the specified SRS.
+         */
+        ObjectLocator(const osgEarth::SpatialReference* mapSRS );
+
+        /**
+         * Constucts a new relative locator that inherits the mask of specified
+         * components from a parent locator.
+         */
+        ObjectLocator(ObjectLocator* parent, unsigned int compsToInherit =COMP_ALL );
+
+        /**
+         * Sets the absolute OR relative positioning of this locator (depending on whether
+         * this locator has a parent). Units conform to this Locator's SRS.
+         */
+        void setPosition( const osg::Vec3d& pos );
+        const osg::Vec3d& getPosition() const { return _xyz; }
+
+        /**
+         * Sets the absolute OR relative orientation of this locator (depending on whether
+         * this locator has a parent). Units are Euler angle degrees.
+         */
+        void setOrientation( const osg::Vec3d& hpr_deg );
+        const osg::Vec3d& getOrientation() const { return _hpr; }
+
+        /**
+         * The optional parent locator. If a Locator has a parent, it inherits position and
+         * orientation from that parent as prescribed by the Components flags. Otherwise,
+         * the Locator is absolute.
+         */
+        void setParent( ObjectLocator* parent, unsigned int componentsToInherit =COMP_ALL );
+        ObjectLocator* getParent() { return _parentLoc.get(); }
+        const ObjectLocator* getParent() const { return _parentLoc.get(); }
+
+        /** Policy for inheriting parent locator's components */
+        void setComponentsToInherit( unsigned int compMask );
+        unsigned int getComponentsToInherit() const { return _componentsToInherit; }
+
+        /** Gets the SRS associated with this locator. */
+        const osgEarth::SpatialReference* getSRS() const { return _mapSRS.get(); }
+
+        /** Whether the locator contains a valid position/orientation. */
+        bool isEmpty() const;
+
+    public:
+        /**
+         * Creates a position/orientation matrix for this locator. You can specifiy location
+         * components if you wish to only use part of the locator information in the matrix.
+         * This matrix is suitable for use in an osg::MatrixTransform.
+         */
+        virtual bool getWorldMatrix( osg::Matrixd& out_matrix, unsigned int comps =COMP_ALL ) const;
+
+    public:
+        //override
+        /** Override Revisioned::inSync to track with the parent locator's revision. */
+        virtual bool inSyncWith( int exRev ) const {
+            return _parentLoc.valid() ? _parentLoc->inSyncWith( exRev ) :
+                osgEarth::Revisioned<osg::Referenced>::inSyncWith( exRev ); }
+
+    private:
+        osg::ref_ptr<const osgEarth::SpatialReference> _mapSRS;
+        osg::ref_ptr<ObjectLocator> _parentLoc;
+        unsigned int _componentsToInherit; // Locator::Components mask
+        osg::Vec3d _xyz;
+        osg::Vec3d _hpr;
+        bool _isEmpty;
+    };
+
+
+    /**
+     * A transform node that tracks the position/orientation information in an ObjectLocator.
+     */
+    class OSGEARTHUTIL_EXPORT ObjectLocatorNode : public osg::MatrixTransform
+    {
+    public:
+        ObjectLocatorNode();
+        ObjectLocatorNode( ObjectLocator* locator );
+        ObjectLocatorNode( const ObjectLocatorNode& rhs, const osg::CopyOp& =osg::CopyOp::SHALLOW_COPY );
+        META_Node(osgEarthUtil, ObjectLocatorNode);
+
+    public:
+        /** 
+         * The locator creates the positioning matrix for the component.
+         */
+        void setLocator( ObjectLocator* locator );
+        ObjectLocator* getLocator() { return _locator; }
+        const ObjectLocator* getLocator() const { return _locator; }
+
+    public:
+        /** Synchronizes the transform matrix with the locator. */
+        void update();
+
+    private:
+        osg::ref_ptr<ObjectLocator> _locator;
+        osgEarth::Revision _matrixRevision;
+    };
+}
+
+#endif // OSGEARTH_UTIL_OBJECT_LOCATOR_H
+

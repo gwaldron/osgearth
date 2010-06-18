@@ -22,8 +22,12 @@
 #include <osgEarthUtil/Common>
 #include <osgEarthSymbology/Text>
 #include <osg/Drawable>
+#include <osg/Vec3d>
+#include <osgViewer/View>
+#include <osgAnimation/EaseMotion>
+#include <osgWidget/Frame>
+#include <osgWidget/WindowManager>
 
-using namespace osgEarth::Symbology;
 
 namespace osgEarthUtil
 {
@@ -33,7 +37,7 @@ namespace osgEarthUtil
     class OSGEARTHUTIL_EXPORT LabelMaker
     {
     public:
-        LabelMaker( const TextSymbol* defaultSymbol =0L );
+        LabelMaker( const osgEarth::Symbology::TextSymbol* defaultSymbol =0L );
 
         /**
          * Creates a text label.
@@ -41,10 +45,10 @@ namespace osgEarthUtil
         osg::Drawable* create2dLabel(
             const std::string& text,
             const osg::Vec3d&  position =osg::Vec3d(0,0,0),
-            const TextSymbol*  symbol   =0L );
+            const osgEarth::Symbology::TextSymbol*  symbol   =0L );
 
     protected:
-        osg::ref_ptr<const TextSymbol> _defaultSymbol;
+        osg::ref_ptr<const osgEarth::Symbology::TextSymbol> _defaultSymbol;
     };
 
 } // namespace osgEarthUtil

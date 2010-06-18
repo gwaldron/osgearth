@@ -35,10 +35,11 @@
 #include <osgEarthSymbology/MarkerSymbolizer>
 #include <osgEarthSymbology/ExtrudedSymbol>
 #include <osgEarthSymbology/ModelSymbolizer>
-#include <osgEarthUtil/WindowManager>
-#include <osgEarthUtil/WidgetMessageBox>
-#include <osgEarthUtil/WidgetIcon>
-#include <osgEarthUtil/WidgetNode>
+#include <osgEarthUtil/Popups>
+//#include <osgEarthUtil/PopupManager>
+//#include <osgEarthUtil/TextPopup>
+//#include <osgEarthUtil/WidgetIcon>
+//#include <osgEarthUtil/WidgetNode>
 #include <osg/MatrixTransform>
 #include <osg/Geometry>
 #include <osgUtil/Tessellator>
@@ -127,11 +128,11 @@ struct SampleGeometryInput : public GeometryContent
 
 struct PopUpSymbolizerContext : public SymbolizerContext
 {
-    typedef std::vector<osg::ref_ptr<WidgetMessageBox> > WidgetMessageBoxList;
+    typedef std::vector<osg::ref_ptr<TextPopup> > TextPopupList;
 
-    PopUpSymbolizerContext(WindowManager* windowmanager)  : _wm(windowmanager) {}
-    osg::ref_ptr<WindowManager> _wm;
-    WidgetMessageBoxList _widgetList;
+    PopUpSymbolizerContext(PopupManager* windowmanager)  : _wm(windowmanager) {}
+    osg::ref_ptr<PopupManager> _wm;
+    TextPopupList _widgetList;
 };
 
 
@@ -167,17 +168,17 @@ struct PopUpSymbolizer : public Symbolizer< State<GeometryContent> >
             case Geometry::TYPE_RING:
             case Geometry::TYPE_POLYGON:
             {
-                const TextSymbol* symbol = state->getStyle()->getSymbol<TextSymbol>();
+                const PopupSymbol* symbol = state->getStyle()->getSymbol<PopupSymbol>();
                 if (symbol)
                 {
-                    osg::Image* image = 0;
-                    if (!symbol->theme()->empty())
-                        image = osgDB::readImageFile(symbol->theme().value());
-                    osgText::Font* font = 0;
-                    if (!symbol->font()->empty())
-                        font = osgText::readFontFile(symbol->font().value());
-                    float size = symbol->size().value();
-                    osg::Vec4 color = symbol->fill()->color();
+                    //osg::Image* image = 0;
+                    //if (!symbol->theme()->empty())
+                    //    image = osgDB::readImageFile(symbol->theme().value());
+                    //osgText::Font* font = 0;
+                    //if (!symbol->font()->empty())
+                    //    font = osgText::readFontFile(symbol->font().value());
+                    //float size = symbol->size().value();
+                    //osg::Vec4 color = symbol->fill()->color();
                     
                     for ( osg::Vec3dArray::iterator it = geometry->begin(); it != geometry->end(); ++it)
                     {
@@ -190,10 +191,10 @@ struct PopUpSymbolizer : public Symbolizer< State<GeometryContent> >
                             std::string text = ss.str();
                             std::string title = "Info";
 
-                            WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
-                            wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
-                            wmb->attach(transform);
-                            wmb->setAppear();
+                            TextPopup* popup = ctx->_wm->createTextPopup(title, text, symbol);
+                            //popup->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
+                            popup->attach(transform);
+                            popup->setAppear();
 
                         } else {
                             std::stringstream ss;
@@ -201,10 +202,10 @@ struct PopUpSymbolizer : public Symbolizer< State<GeometryContent> >
                             ss << "rocks at " << *it << " miles" << std::endl;
                             std::string text = ss.str();
                             std::string title = "osgEarthUtil";
-                            WidgetMessageBox* wmb = ctx->_wm->createWidgetMessageBox(title, text, symbol);
-                            wmb->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
-                            wmb->attach(transform);
-                            ctx->_widgetList.push_back(wmb);
+                            TextPopup* popup = ctx->_wm->createTextPopup(title, text, symbol);
+                            //popup->setFocusColor(osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 1.0));
+                            popup->attach(transform);
+                            ctx->_widgetList.push_back(popup);
                         }
                         PopUpIndex++;
                         newSymbolized->addChild(transform);
@@ -468,7 +469,7 @@ public:
 typedef SymbolicNode< State<GeometryContent> > GeometrySymbolicNode;
 
 
-osg::Group* createSymbologyScene(WindowManager* wm)
+osg::Group* createSymbologyScene(PopupManager* wm)
 {
     osg::Group* grp = new osg::Group;
 
@@ -542,7 +543,7 @@ osg::Group* createSymbologyScene(WindowManager* wm)
         osg::ref_ptr<Style> style = new Style;
         style->setName("Popup");
         osg::ref_ptr<TextSymbol> symbol = new TextSymbol;
-        symbol->theme() = "../data/popup-theme.png";
+        //symbol->theme() = "../data/popup-theme.png";
         symbol->font() = "arial.ttf";
         symbol->size() = 14;
         symbol->fill()->color() = osg::Vec4(getRandomValueInOne(), getRandomValueInOne() , getRandomValueInOne(), 0.7);
@@ -659,7 +660,7 @@ int main(int argc, char** argv)
     viewer.setSceneData(root);
     viewer.realize();
 
-    WindowManager* wm = new WindowManager(viewer);
+    PopupManager* wm = new PopupManager(&viewer);
     osg::Node* node = createSymbologyScene(wm);
     root->addChild(node);
     return viewer.run();

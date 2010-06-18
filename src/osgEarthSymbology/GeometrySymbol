@@ -44,6 +44,7 @@ namespace osgEarth { namespace Symbology
 
     public:
         Stroke();
+        Stroke( float r, float g, float b, float a );
 
         osg::Vec4f& color() { return _color; }
         const osg::Vec4f& color() const { return _color; }
@@ -68,6 +69,7 @@ namespace osgEarth { namespace Symbology
     {
     public:
         Fill();
+        Fill( float r, float g, float b, float a );
 
         osg::Vec4f& color() { return _color; }
         const osg::Vec4f& color() const { return _color; }

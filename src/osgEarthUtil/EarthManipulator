@@ -139,7 +139,9 @@ namespace osgEarthUtil
                 : _event_type(rhs._event_type), _input_mask(rhs._input_mask), _modkey_mask(rhs._modkey_mask) { }
 
             bool operator == ( const InputSpec& rhs ) const {
-                return _event_type == rhs._event_type && _input_mask == rhs._input_mask && _modkey_mask == rhs._modkey_mask;
+                return _event_type == rhs._event_type && 
+                       _input_mask == rhs._input_mask && 
+                       (_modkey_mask|osgGA::GUIEventAdapter::MODKEY_NUM_LOCK == rhs._modkey_mask|osgGA::GUIEventAdapter::MODKEY_NUM_LOCK);
             }
 
             int _event_type;

@@ -28,6 +28,7 @@
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 #include <cstring>
+#include <fstream>
 
 // for the compressor stuff
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)
@@ -46,6 +47,8 @@ using namespace OpenThreads;
 #define MAX_SIZE_TABLE 40 // in MB
 #define USE_TRANSACTIONS
 #define USE_L2_CACHE
+
+//#define SPLIT_DB_FILE
 //#define UPDATE_ACCESS_TIMES
 //#define MONITOR_THREAD_HEALTH
 
@@ -289,7 +292,11 @@ struct LayerTable : public osg::Referenced
 
         // initialize the SELECT statement for fetching records
         std::stringstream buf;
+#ifdef SPLIT_DB_FILE
+        buf << "SELECT created,accessed,size FROM \"" << _meta._layerName << "\" WHERE key = ?";
+#else
         buf << "SELECT created,accessed,data FROM \"" << _meta._layerName << "\" WHERE key = ?";
+#endif
         _selectSQL = buf.str();
 
         // initialize the UPDATE statement for updating the timestamp of an accessed record
@@ -301,7 +308,11 @@ struct LayerTable : public osg::Referenced
         // initialize the INSERT statement for writing records.
         buf.str("");
         buf << "INSERT OR REPLACE INTO \"" << _meta._layerName << "\" "
+#ifdef SPLIT_DB_FILE
+            << "(key,created,accessed,size) VALUES (?,?,?,?)";
+#else
             << "(key,created,accessed,data) VALUES (?,?,?,?)";
+#endif
         _insertSQL = buf.str();
 
         // initialize the DELETE statements for purging old records.
@@ -314,6 +325,10 @@ struct LayerTable : public osg::Referenced
         buf.str("");
         buf << "DELETE FROM \""  << _meta._layerName << "\" WHERE key in (SELECT key FROM \"" << _meta._layerName << "\" WHERE \"accessed\" < ? limit ?)";
         _purgeLimitSQL = buf.str();          
+
+        buf.str("");
+        buf << "SELECT key FROM \"" << _meta._layerName << "\" WHERE \"accessed\" < ? limit ?";
+        _purgeSelect = buf.str();
 
         _statsLoaded = 0;
         _statsStored = 0;
@@ -346,7 +361,11 @@ struct LayerTable : public osg::Referenced
 
     int getTableSize(sqlite3* db) 
     {
+#ifdef SPLIT_DB_FILE
+        std::string query = "select sum(size) from \"" + _meta._layerName + "\";";
+#else
         std::string query = "select sum(length(data)) from \"" + _meta._layerName + "\";";
+#endif
         sqlite3_stmt* select = 0L;
         int rc = sqlite3_prepare_v2( db, query.c_str(), query.length(), &select, 0L );
         if ( rc != SQLITE_OK )
@@ -434,10 +453,22 @@ struct LayerTable : public osg::Referenced
         sqlite3_bind_int(  insert, 3, rec._accessed );
 
         // serialize the image:
+#ifdef SPLIT_DB_FILE
+        std::stringstream outStream;
+        _rw->writeImage( *rec._image.get(), outStream, _rwOptions.get() );
+        std::string outBuf = outStream.str();
+        std::string fname = _meta._layerName + "_" + keyStr+".osgb";
+        std::ofstream file(fname.c_str(), std::ios::out | std::ios::binary);
+        if (file.is_open()) {
+            file.write(outBuf.c_str(), outBuf.length());
+        }
+        sqlite3_bind_int( insert, 4, outBuf.length() );
+#else
         std::stringstream outStream;
         _rw->writeImage( *rec._image.get(), outStream, _rwOptions.get() );
         std::string outBuf = outStream.str();
         sqlite3_bind_blob( insert, 4, outBuf.c_str(), outBuf.length(), SQLITE_STATIC );
+#endif
 
         // write to the database:
         rc = sqlite3_step( insert );
@@ -513,15 +544,19 @@ struct LayerTable : public osg::Referenced
         output._created  = sqlite3_column_int( select, 0 );
         output._accessed = sqlite3_column_int( select, 1 );
 
+#ifdef SPLIT_DB_FILE
+        std::string fname(keyStr);
+        osgDB::ReaderWriter::ReadResult rr = _rw->readImage( _meta._layerName + "_" +fname+".osgb" );
+#else
         // the pointer returned from _blob gets freed internally by sqlite, supposedly
-        const char* data = (const char*)sqlite3_column_blob( select, 2 );
+        intconst char* data = (const char*)sqlite3_column_blob( select, 2 );
         imageBufLen = sqlite3_column_bytes( select, 2 );
 
         // deserialize the image from the buffer:
         std::string imageString( data, imageBufLen );
         std::stringstream imageBufStream( imageString );
         osgDB::ReaderWriter::ReadResult rr = _rw->readImage( imageBufStream );
-
+#endif
         if ( rr.error() )
         {
             OE_WARN << LC << "Failed to read image from database: " << rr.message() << std::endl;
@@ -562,10 +597,14 @@ struct LayerTable : public osg::Referenced
 
     bool purge( int utcTimeStamp, int maxToRemove, sqlite3* db )
     {
+        if ( maxToRemove < 0 )
+            return false;
+
         sqlite3_stmt* purge = 0L;
         
         int rc;
-        if ( maxToRemove <= 0 )
+#if 0
+        if ( maxToRemove < 0 )
         {
             rc = sqlite3_prepare_v2( db, _purgeSQL.c_str(), _purgeSQL.length(), &purge, 0L );
             if ( rc != SQLITE_OK )
@@ -575,7 +614,53 @@ struct LayerTable : public osg::Referenced
             }
         }
         else
+#endif
         {
+#ifdef SPLIT_DB_FILE
+            {
+                std::vector<std::string> deleteFiles;
+                sqlite3_stmt* selectPurge = 0L;
+                rc = sqlite3_prepare_v2( db, _purgeSelect.c_str(), _purgeSelect.length(), &selectPurge, 0L);
+                if ( rc != SQLITE_OK )
+                {
+                    OE_WARN << LC << "Failed to prepare SQL: " << _purgeSelect << "; " << sqlite3_errmsg(db) << std::endl;
+                    return false;
+                }
+                sqlite3_bind_int( selectPurge, 2, maxToRemove );
+                sqlite3_bind_int( selectPurge, 1, utcTimeStamp );
+
+                rc = sqlite3_step( selectPurge );
+                if ( rc != SQLITE_ROW)
+                {
+                    OE_WARN << LC << "SQL QUERY failed for " << _purgeSelect << ": " 
+                            << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
+                            << ", rc = " << rc << std::endl;
+                    sqlite3_finalize( selectPurge );
+                    return false;
+                }
+                while (rc == SQLITE_ROW) {
+                    std::string f((const char*)sqlite3_column_text( selectPurge, 0 ));
+                    deleteFiles.push_back(f);
+                    rc = sqlite3_step( selectPurge );
+                }
+                if (rc != SQLITE_DONE) {
+                    OE_WARN << LC << "SQL QUERY failed for " << _purgeSelect << ": " 
+                            << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
+                            << ", rc = " << rc << std::endl;
+                    sqlite3_finalize( selectPurge );
+                    return false;
+                }
+                sqlite3_finalize( selectPurge );
+                while (!deleteFiles.empty()) {
+                    std::string fname = _meta._layerName + "_" + deleteFiles.back() +".osgb";
+                    int run = unlink(fname.c_str());
+                    if (run) {
+                        OE_WARN << "Error while removing file " << fname << std::endl;
+                    }
+                    deleteFiles.pop_back();
+                }
+            }
+#endif
             rc = sqlite3_prepare_v2( db, _purgeLimitSQL.c_str(), _purgeLimitSQL.length(), &purge, 0L );
             if ( rc != SQLITE_OK )
             {
@@ -611,7 +696,11 @@ struct LayerTable : public osg::Referenced
             << "key char(64) PRIMARY KEY UNIQUE, "
             << "created int, "
             << "accessed int, "
+#ifdef SPLIT_DB_FILE
+            << "size int )";
+#else
             << "data blob )";
+#endif
         std::string sql = buf.str();
 
         OE_INFO << LC << "SQL = " << sql << std::endl;
@@ -666,6 +755,8 @@ struct LayerTable : public osg::Referenced
     std::string _selectSQL;
     std::string _insertSQL;
     std::string _updateTimeSQL;
+ 
+    std::string _purgeSelect;
     std::string _purgeSQL;
     std::string _purgeLimitSQL;
     MetadataRecord _meta;

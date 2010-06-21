@@ -549,7 +549,7 @@ struct LayerTable : public osg::Referenced
         osgDB::ReaderWriter::ReadResult rr = _rw->readImage( _meta._layerName + "_" +fname+".osgb" );
 #else
         // the pointer returned from _blob gets freed internally by sqlite, supposedly
-        intconst char* data = (const char*)sqlite3_column_blob( select, 2 );
+        const char* data = (const char*)sqlite3_column_blob( select, 2 );
         imageBufLen = sqlite3_column_bytes( select, 2 );
 
         // deserialize the image from the buffer:

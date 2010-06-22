@@ -48,7 +48,8 @@ using namespace OpenThreads;
 #define USE_TRANSACTIONS
 #define USE_L2_CACHE
 
-//#define SPLIT_DB_FILE
+#define SPLIT_DB_FILE
+//#define SPLIT_LAYER_DB
 //#define UPDATE_ACCESS_TIMES
 //#define MONITOR_THREAD_HEALTH
 
@@ -905,8 +906,11 @@ public: // Cache interface
         }
 
         ScopedLock<Mutex> lock( _tableListMutex ); // b/c we're using the base db handle
-
+#ifdef SPLIT_LAYER_DB
+        sqlite3* db = getOrCreateMetaDbForThread();
+#else
         sqlite3* db = getOrCreateDbForThread();
+#endif
         if ( !db )
             return;
 
@@ -939,7 +943,11 @@ public: // Cache interface
 
         ScopedLock<Mutex> lock( _tableListMutex ); // b/c we're using the base db handle
 
+#ifdef SPLIT_LAYER_DB
+        sqlite3* db = getOrCreateMetaDbForThread();
+#else
         sqlite3* db = getOrCreateDbForThread();
+#endif
         if ( !db )
             return 0L;
 
@@ -1118,6 +1126,69 @@ private:
         }            
     }
 
+#ifdef SPLIT_LAYER_DB
+    sqlite3* getOrCreateDbForThread(const std::string& layer)
+    {
+        sqlite3* db = 0L;
+
+        // this method assumes the thread already holds a lock on _tableListMutex, which
+        // doubles to protect _dbPerThread
+
+        Thread* thread = Thread::CurrentThread();
+        std::map<Thread*,sqlite3*>::const_iterator k = _dbPerThreadLayers[layer].find(thread);
+        if ( k == _dbPerThreadLayers[layer].end() )
+        {
+            db = openDatabase( layer + _settings->path().value(), _settings->serialized().value() );
+            if ( db )
+            {
+                _dbPerThreadLayers[layer][thread] = db;
+                OE_INFO << LC << "Created DB handle " << std::hex << db << " for thread " << thread << std::endl;
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to open DB on thread " << thread << std::endl;
+            }
+        }
+        else
+        {
+            db = k->second;
+        }
+
+        return db;
+    }
+
+
+    sqlite3* getOrCreateMetaDbForThread()
+    {
+        sqlite3* db = 0L;
+
+        // this method assumes the thread already holds a lock on _tableListMutex, which
+        // doubles to protect _dbPerThread
+
+        Thread* thread = Thread::CurrentThread();
+        std::map<Thread*,sqlite3*>::const_iterator k = _dbPerThreadMeta.find(thread);
+        if ( k == _dbPerThreadMeta.end() )
+        {
+            db = openDatabase( _settings->path().value(), _settings->serialized().value() );
+            if ( db )
+            {
+                _dbPerThreadMeta[thread] = db;
+                OE_INFO << LC << "Created DB handle " << std::hex << db << " for thread " << thread << std::endl;
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to open DB on thread " << thread << std::endl;
+            }
+        }
+        else
+        {
+            db = k->second;
+        }
+
+        return db;
+    }
+
+#else
     sqlite3* getOrCreateDbForThread()
     {
         sqlite3* db = 0L;
@@ -1147,6 +1218,7 @@ private:
 
         return db;
     }
+#endif
 
     // gets the layer table for the specified layer name, creating it if it does
     // not already exist...
@@ -1154,7 +1226,11 @@ private:
     {
         ScopedLock<Mutex> lock( _tableListMutex );
 
+#ifdef SPLIT_LAYER_DB
+        sqlite3* db = getOrCreateDbForThread(layerName);
+#else
         sqlite3* db = getOrCreateDbForThread();
+#endif
         if ( !db )
             return ThreadTable( 0L, 0L );
 
@@ -1162,7 +1238,12 @@ private:
         if ( i == _tables.end() )
         {
             MetadataRecord meta;
+#ifdef SPLIT_LAYER_DB
+            sqlite3* metadb = getOrCreateMetaDbForThread();
+            if ( !_metadata.load( layerName, metadb, meta ) )
+#else
             if ( !_metadata.load( layerName, db, meta ) )
+#endif
             {
                 OE_WARN << LC << "Cannot operate on \"" << layerName << "\" because metadata does not exist."
                     << std::endl;
@@ -1190,6 +1271,9 @@ private:
 
     sqlite3* _db;
     std::map<Thread*,sqlite3*> _dbPerThread;
+
+    std::map<std::string, std::map<Thread*,sqlite3*> > _dbPerThreadLayers;
+    std::map<Thread*,sqlite3*> _dbPerThreadMeta;
 
     osg::ref_ptr<MemCache> _L2cache;
 

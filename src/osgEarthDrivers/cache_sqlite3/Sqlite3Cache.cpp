@@ -49,8 +49,8 @@ using namespace OpenThreads;
 #define USE_L2_CACHE
 
 #define SPLIT_DB_FILE
-//#define SPLIT_LAYER_DB
-//#define UPDATE_ACCESS_TIMES
+#define SPLIT_LAYER_DB
+#define UPDATE_ACCESS_TIMES
 //#define MONITOR_THREAD_HEALTH
 
 // --------------------------------------------------------------------------
@@ -335,6 +335,7 @@ struct LayerTable : public osg::Referenced
         _statsStored = 0;
     }
 
+
 #ifdef USE_TRANSACTIONS
 
     void begin( sqlite3* db )
@@ -359,6 +360,7 @@ struct LayerTable : public osg::Referenced
     void rollback( sqlite3* db ) { }
 
 #endif // USE_TRANSACTIONS
+
 
     int getTableSize(sqlite3* db) 
     {
@@ -432,7 +434,7 @@ struct LayerTable : public osg::Referenced
     bool store( const ImageRecord& rec, sqlite3* db )
     {
         displayStats();
-        checkAndPurgeIfNeeded(db);
+        //checkAndPurgeIfNeeded(db);
         //OE_WARN << "write to " << _meta._layerName << rec._key->str() << std::endl;
 
         sqlite3_stmt* insert = 0L;
@@ -459,9 +461,11 @@ struct LayerTable : public osg::Referenced
         _rw->writeImage( *rec._image.get(), outStream, _rwOptions.get() );
         std::string outBuf = outStream.str();
         std::string fname = _meta._layerName + "_" + keyStr+".osgb";
+        {
         std::ofstream file(fname.c_str(), std::ios::out | std::ios::binary);
         if (file.is_open()) {
             file.write(outBuf.c_str(), outBuf.length());
+        }
         }
         sqlite3_bind_int( insert, 4, outBuf.length() );
 #else
@@ -572,8 +576,8 @@ struct LayerTable : public osg::Referenced
         sqlite3_finalize(select);
 
         // update access time
-        ::time_t t = ::time(0L);
-        updateAccessTime(key, t, db );
+        //::time_t t = ::time(0L);
+        //updateAccessTime(key, t, db );
 
         _statsLoaded++;
         return output._image.valid();
@@ -631,7 +635,7 @@ struct LayerTable : public osg::Referenced
                 sqlite3_bind_int( selectPurge, 1, utcTimeStamp );
 
                 rc = sqlite3_step( selectPurge );
-                if ( rc != SQLITE_ROW)
+                if ( rc != SQLITE_ROW && rc != SQLITE_DONE)
                 {
                     OE_WARN << LC << "SQL QUERY failed for " << _purgeSelect << ": " 
                             << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
@@ -836,6 +840,7 @@ public:
 
     Sqlite3Cache( const PluginOptions* options ) : AsyncCache(), _db(0L)
     {
+        _nbRequest = 0;
         _settings = dynamic_cast<const Sqlite3CacheOptions*>( options );
         if ( !_settings.valid() )
             _settings = new Sqlite3CacheOptions( options );
@@ -970,6 +975,7 @@ public: // Cache interface
     {
         if ( !_db ) return 0L;
 
+
         // first try the L2 cache.
         if ( _L2cache.valid() )
         {
@@ -977,6 +983,13 @@ public: // Cache interface
             if ( result )
                 return result;
         }
+
+        if (_nbRequest > 100) {
+            int t = (int)::time(0L);
+            purge(layerName, t, _settings->asyncWrites().value() );
+            _nbRequest = 0;
+        }
+        _nbRequest++;
 
         // next check the deferred-write queue.
         if ( _settings->asyncWrites() == true )
@@ -1072,12 +1085,11 @@ public: // Cache interface
             ThreadTable tt = getTable( layerName );
             if ( tt._table )
             {
-                tt._table->purge( olderThanUTC, 0, tt._db );
+                tt._table->checkAndPurgeIfNeeded(tt._db );
             }
         }
         return true;
     }
-
 
     /**
      * updateAccessTime records on the database.
@@ -1278,6 +1290,7 @@ private:
     osg::ref_ptr<MemCache> _L2cache;
 
     int _count;
+    int _nbRequest;
 };
 
 

@@ -48,7 +48,7 @@ int main(int argc, char** argv)
       opt->url() = "../data/world.tif";
       osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_simple", opt );
 
-	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, layer->getProfile());
+	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, layer->getProfile());
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
 	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key->str() + std::string(".png"));
   }
@@ -59,7 +59,7 @@ int main(int argc, char** argv)
       opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
       osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mosaic", opt );
 
-	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
 	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key->str() + std::string(".png"));
   }
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
 	  //Otherwise, the optimal tile size will be computed.
 	  layer->reprojectedTileSize() = 512;
 
-      osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, Profile::create("epsg:26917", 560725, 4385762, 573866, 4400705));
+      osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, Profile::create("epsg:26917", 560725, 4385762, 573866, 4400705));
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
 	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key->str() + std::string(".png"));
   }
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
       layer->useMercatorFastPath() = true;
 
 	  //Request a mercator image using the mercator fast path, the default
-	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
 	  if (!image->getSRS()->isMercator())
 	  {
@@ -116,7 +116,7 @@ int main(int argc, char** argv)
 	  layer->profileConfig() = ProfileConfig( "global-mercator" );
 
 	  //Request an image from the mercator source.  Should be reprojected to geodetic
-	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+	  osg::ref_ptr<TileKey> key = new TileKey(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
 	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
 	  if (!image->getSRS()->isGeographic())
 	  {

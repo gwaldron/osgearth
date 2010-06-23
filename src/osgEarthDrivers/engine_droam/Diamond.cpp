@@ -18,6 +18,7 @@
  */
 #include "Diamond"
 #include "MeshManager"
+#include <osgEarth/Cube>
 
 #ifdef USE_DEBUG_TEXTURES
 
@@ -135,7 +136,7 @@ Diamond::activate()
         int tsl = TEX_SUBRANGE_LEVELS;
 
         // for some unknown reason the polar faces come in much lower res. hack:
-        if ( _key->getFace() >= 4 )
+        if ( osgEarth::UnifiedCubeProfileUtils::getFace( _key.get() ) >= 4 )
             tsl--;
 
         // assign this diamond the stateset of the appropriate quadtree ancestor:

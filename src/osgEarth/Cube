@@ -21,6 +21,7 @@
 #define OSGEARTH_CUBE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Profile>
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
 
@@ -40,6 +41,20 @@ namespace osgEarth
         static bool faceCoordsToLatLon(
             double x, double y, int face,
             double& out_lat_deg, double& out_lon_deg );
+
+        static int getFace( const TileKey* key );
+    };
+
+    /**
+     * Utilities specifically for dealing with the Unified Cube Profile. This
+     * profile represents the 6 cube faces as a single 6x1 tile block.
+     */
+    class OSGEARTH_EXPORT UnifiedCubeProfileUtils
+    {
+    public:
+        static const Profile* createProfile();
+
+        static int getFace( const TileKey* key );
     };
 
     /**
@@ -62,35 +77,6 @@ namespace osgEarth
     private:
         unsigned int _face;
     };
-    
-
-    //class CubeFaceSpatialReference : public SpatialReference
-    //{
-    //public:
-    //    CubeFaceSpatialReference(void* handle, unsigned int face);
-
-    //    virtual GeoLocator* createLocator(
-    //        double xmin, double ymin, double xmax, double ymax,
-    //        bool plate_carre =false ) const;
-
-    //    unsigned int getFace() const { return _face; }
-
-    //    virtual bool isGeographic() const { return false; }
-    //    virtual bool isProjected() const { return true; }
-
-    //    virtual bool preTransform(double &x, double &y) const;
-    //    virtual bool postTransform(double &x, double &y) const;
-
-    //    virtual bool transformExtent(const SpatialReference* to_srs,
-    //                                      double& in_out_xmin,
-    //                                      double& in_out_ymin,
-    //                                      double& in_out_xmax,
-    //                                      double& in_out_ymax) const;
-
-    //protected:
-    //    unsigned int _face;
-    //};
-
 
     /**
      * The "Cube" SRS represents a 6-face cube, each face being in unit coordinates (0,0=>1,1).
@@ -99,14 +85,6 @@ namespace osgEarth
      */
     class CubeSpatialReference : public SpatialReference
     {
-    public:
-        struct FaceCoord 
-        {
-            FaceCoord( double x, double y, int face ) : _x(x), _y(y), _face(face) { }
-            double _x, _y;
-            int _face;
-        };
-
     public:
         CubeSpatialReference(void* handle);
 

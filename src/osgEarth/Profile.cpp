@@ -143,6 +143,21 @@ Profile::create(const SpatialReference* srs,
 }
 
 const Profile*
+Profile::create(const SpatialReference* srs,
+                double xmin, double ymin, double xmax, double ymax,
+                double geoxmin, double geoymin, double geoxmax, double geoymax,
+                unsigned int numTilesWideAtLod0,
+                unsigned int numTilesHighAtLod0)
+{
+    return new Profile(
+        srs,
+        xmin, ymin, xmax, ymax,
+        geoxmin, geoymin, geoxmax, geoymax,
+        numTilesWideAtLod0,
+        numTilesHighAtLod0 );
+}
+
+const Profile*
 Profile::create(const std::string& init_string,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
@@ -171,19 +186,6 @@ Profile::create(const std::string& init_string,
 
     return NULL;
 }
-
-const Profile*
-Profile::createUnifiedCube()
-{
-    Profile* result = new Profile(
-        SpatialReference::create( "unified-cube" ), 
-        0.0, 0.0, 6.0, 1.0,
-        -180.0, -90.0, 180.0, 90.0, 
-        6, 1 );
-
-    return result;
-}
-
 
 const Profile*
 Profile::create( const ProfileConfig& conf )
@@ -525,7 +527,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         for (int j = tileMinY; j <= tileMaxY; ++j)
         {
             //TODO: does not support multi-face destination keys.
-            out_intersectingKeys.push_back( new TileKey(0, destLOD, i, j, this) );
+            out_intersectingKeys.push_back( new TileKey(destLOD, i, j, this) );
         }
     }
 

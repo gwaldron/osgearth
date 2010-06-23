@@ -19,6 +19,7 @@
 
 
 #include <osgEarth/Registry>
+#include <osgEarth/Cube>
 #include <osg/Notify>
 #include <gdal_priv.h>
 #include <ogr_api.h>
@@ -138,7 +139,7 @@ Registry::getCubeProfile() const
 
         if ( !_cube_profile.valid() ) // double-check pattern
         {
-            const_cast<Registry*>(this)->_cube_profile = Profile::createUnifiedCube();
+            const_cast<Registry*>(this)->_cube_profile = UnifiedCubeProfileUtils::createProfile();
         }
     }
     return _cube_profile.get();

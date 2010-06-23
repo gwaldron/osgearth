@@ -18,6 +18,7 @@
  */
 #include "DRoamNode"
 #include <osgEarth/EarthFile>
+#include <osgEarth/Cube>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 using namespace osgEarth::Drivers;
@@ -34,7 +35,7 @@ _map( map )
     this->setFormat( "WKT" );
     this->setEllipsoidModel( new osg::EllipsoidModel );
 
-    const Profile* profile = Profile::createUnifiedCube(); 
+    const Profile* profile = UnifiedCubeProfileUtils::createProfile();
     //Profile::createCube2( SpatialReference::create( "epsg:4326" ) );
 
     _manifold = new CubeManifold( profile );

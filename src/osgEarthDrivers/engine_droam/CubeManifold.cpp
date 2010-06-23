@@ -87,7 +87,7 @@ CubeManifold::initialize( MeshManager* mesh )
 
     // The first 3 share vd0 as a common PARENT_L ancestor:
 
-    _fd[NEG_Y] = new Diamond(mesh, new TileKey(0,0,1,0,_profile.get()), 1, "fd -y"); // -Y face (-90=>0 long)
+    _fd[NEG_Y] = new Diamond(mesh, new TileKey(0,1,0,_profile.get()), 1, "fd -y"); // -Y face (-90=>0 long)
     _fd[NEG_Y]->setCoord( p(0, -1, 0) );
     _fd[NEG_Y]->_a[PARENT_R] = _vd[2];
     _fd[NEG_Y]->_a[PARENT_L] = _vd[0];
@@ -95,7 +95,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[NEG_Y]->_a[GDPARENT] = _vd[6];
     _fd[NEG_Y]->_orientation = 6;
 
-    _fd[POS_X] = new Diamond(mesh, new TileKey(0,0,2,0,_profile.get()), 1, "fd +x"); // +X face (0=>90 long)
+    _fd[POS_X] = new Diamond(mesh, new TileKey(0,2,0,_profile.get()), 1, "fd +x"); // +X face (0=>90 long)
     _fd[POS_X]->setCoord( p(1, 0, 0) );
     _fd[POS_X]->_a[PARENT_R] = _vd[3];
     _fd[POS_X]->_a[PARENT_L] = _vd[0];
@@ -103,7 +103,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[POS_X]->_a[GDPARENT] = _vd[4];
     _fd[POS_X]->_orientation = 0;
 
-    _fd[POS_Z] = new Diamond(mesh, new TileKey(0,0,4,0,_profile.get()), 1, "fd +z"); // +Z face (north polar)
+    _fd[POS_Z] = new Diamond(mesh, new TileKey(0,4,0,_profile.get()), 1, "fd +z"); // +Z face (north polar)
     _fd[POS_Z]->setCoord( p(0, 0, 1) );
     _fd[POS_Z]->_a[PARENT_R] = _vd[1];
     _fd[POS_Z]->_a[PARENT_L] = _vd[0];
@@ -113,7 +113,7 @@ CubeManifold::initialize( MeshManager* mesh )
 
     // The next 3 share vd7 as a common QUADTREE ancestor:
 
-    _fd[POS_Y] = new Diamond(mesh, new TileKey(0,0,3,0,_profile.get()), 1, "fd +y"); // +Y face (90=>180 long)
+    _fd[POS_Y] = new Diamond(mesh, new TileKey(0,3,0,_profile.get()), 1, "fd +y"); // +Y face (90=>180 long)
     _fd[POS_Y]->setCoord( p(0, 1, 0) );
     _fd[POS_Y]->_a[PARENT_R] = _vd[1];
     _fd[POS_Y]->_a[PARENT_L] = _vd[3];
@@ -121,7 +121,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[POS_Y]->_a[GDPARENT] = _vd[4];
     _fd[POS_Y]->_orientation = 2;
 
-    _fd[NEG_X] = new Diamond(mesh, new TileKey(0,0,0,0,_profile.get()), 1, "fd -x"); // -X face (-180=>-90 long)
+    _fd[NEG_X] = new Diamond(mesh, new TileKey(0,0,0,_profile.get()), 1, "fd -x"); // -X face (-180=>-90 long)
     _fd[NEG_X]->setCoord( p(-1, 0, 0) );
     _fd[NEG_X]->_a[PARENT_R] = _vd[2];
     _fd[NEG_X]->_a[PARENT_L] = _vd[1];
@@ -129,7 +129,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[NEG_X]->_a[GDPARENT] = _vd[5];
     _fd[NEG_X]->_orientation = 0;
 
-    _fd[NEG_Z] = new Diamond(mesh, new TileKey(0,0,5,0,_profile.get()), 1, "fd -z"); // -Z face (south polar)
+    _fd[NEG_Z] = new Diamond(mesh, new TileKey(0,5,0,_profile.get()), 1, "fd -z"); // -Z face (south polar)
     _fd[NEG_Z]->setCoord( p(0, 0, -1) );
     _fd[NEG_Z]->_a[PARENT_R] = _vd[3];
     _fd[NEG_Z]->_a[PARENT_L] = _vd[2];

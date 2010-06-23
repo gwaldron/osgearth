@@ -57,12 +57,12 @@ namespace osgEarth
             const Profile* profile );
         
         /** DEPRECATED (face no longer used.) This method will be REMOVED in future versions */
-        TileKey(
-            unsigned int face,
-            unsigned int lod,
-            unsigned int tile_x,
-            unsigned int tile_y,
-            const Profile* profile );
+        //TileKey(
+        //    unsigned int face,
+        //    unsigned int lod,
+        //    unsigned int tile_x,
+        //    unsigned int tile_y,
+        //    const Profile* profile );
 
         /**
          * Gets the string representation of the key, formatted like:
@@ -109,7 +109,7 @@ namespace osgEarth
          * Gets the face index of the tile represented by this key.
          * DEPRECATED
          */
-        unsigned int getFace() const { return 0; }
+        //unsigned int getFace() const { return 0; }
 
         /**
          * Gets the level of detail of the tile represented by this key.
@@ -137,6 +137,9 @@ namespace osgEarth
         void getTileXY(
             unsigned int& out_tile_x,
             unsigned int& out_tile_y) const;
+
+        unsigned int getTileX() const { return _x; }
+        unsigned int getTileY() const { return _y; }
 
         /** Whether or not the profile for this TileKey is Projected */
         bool isProjected() const;

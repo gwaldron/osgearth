@@ -164,24 +164,24 @@ TileKey::getGeoExtent() const
 }
 
 // DEPRECATED CONSTRUCTOR - REMOVE for NEXT STABLE RELEASE
-TileKey::TileKey( unsigned int face, unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
-{
-    _x = tile_x;
-    _y = tile_y;
-    _lod = lod;
-    _profile = profile;
-
-    //_extent = _profile->calculateExtent( _lod, _x, _y );
-    double width, height;
-    _profile->getTileDimensions(lod, width, height);
-
-    double xmin = _profile->getExtent().xMin() + (width * (double)_x);
-    double ymax = _profile->getExtent().yMax() - (height * (double)_y);
-    double xmax = xmin + width;
-    double ymin = ymax - height;
-
-    _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
-}
+//TileKey::TileKey( unsigned int face, unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
+//{
+//    _x = tile_x;
+//    _y = tile_y;
+//    _lod = lod;
+//    _profile = profile;
+//
+//    //_extent = _profile->calculateExtent( _lod, _x, _y );
+//    double width, height;
+//    _profile->getTileDimensions(lod, width, height);
+//
+//    double xmin = _profile->getExtent().xMin() + (width * (double)_x);
+//    double ymax = _profile->getExtent().yMax() - (height * (double)_y);
+//    double xmax = xmin + width;
+//    double ymin = ymax - height;
+//
+//    _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
+//}
 
 TileKey::TileKey( unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
 {

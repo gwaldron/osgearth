@@ -230,6 +230,24 @@ CubeUtils::faceCoordsToLatLon( double x, double y, int face, double& out_lat_deg
 
 // --------------------------------------------------------------------------
 
+const Profile*
+UnifiedCubeProfileUtils::createProfile()
+{
+    return Profile::create(
+        SpatialReference::create( "unified-cube" ), 
+        0.0, 0.0, 6.0, 1.0,
+        -180.0, -90.0, 180.0, 90.0, 
+        6, 1 );
+}
+
+int
+UnifiedCubeProfileUtils::getFace( const TileKey* key )
+{
+    return key->getTileX() >> key->getLevelOfDetail();
+}
+
+// --------------------------------------------------------------------------
+
 CubeFaceLocator::CubeFaceLocator(unsigned int face):
 _face(face)
 {

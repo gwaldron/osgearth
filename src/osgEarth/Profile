@@ -114,6 +114,13 @@ namespace osgEarth
         static const Profile* create(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
+            double geoxmin, double geoymin, double geoxmax, double geoymax,
+            unsigned int numTilesWideAtLod0 =0,
+            unsigned int numTilesHighAtLod0 =0 );
+
+        static const Profile* create(
+            const SpatialReference* srs,
+            double xmin, double ymin, double xmax, double ymax,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
@@ -121,8 +128,6 @@ namespace osgEarth
             const std::string& srs_string,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
-
-        static const Profile* createUnifiedCube();
 
         static const Profile* create(
             const ProfileConfig& conf );

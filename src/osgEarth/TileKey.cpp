@@ -29,7 +29,7 @@ osg::Referenced( true )
 
 TileKey::TileKey( const TileKey& rhs ) :
 osg::Referenced( rhs ),
-_face(rhs._face),
+//_face(rhs._face),
 _lod(rhs._lod),
 _x(rhs._x),
 _y(rhs._y),
@@ -45,7 +45,21 @@ TileKey::str() const
     if ( _key.empty() )
     {
         std::stringstream ss;
-        ss << _face << "_" << _lod << "_" << _x << "_" << _y;
+        ss << _lod << "_" << _x << "_" << _y;
+		std::string ssStr;
+		ssStr = ss.str();
+        const_cast<TileKey*>(this)->_key = ssStr;
+    }
+    return _key;
+}
+
+std::string
+TileKey::str_v1() const
+{
+    if ( _key.empty() )
+    {
+        std::stringstream ss;
+        ss << "0_" << _lod << "_" << _x << "_" << _y;
 		std::string ssStr;
 		ssStr = ss.str();
         const_cast<TileKey*>(this)->_key = ssStr;
@@ -73,12 +87,6 @@ TileKey::getTileId() const
     //TODO: will this be an issue with multi-face? perhaps not since each face will
     // exist within its own scene graph.. ?
     return osgTerrain::TileID(_lod, _x, _y);
-}
-
-unsigned int
-TileKey::getFace() const
-{
-    return _face;
 }
 
 unsigned int
@@ -120,7 +128,7 @@ TileKey::createSubkey( unsigned int quadrant ) const
         x+=1;
         y+=1;
     }
-    return new TileKey( _face, lod, x, y, _profile.get());
+    return new TileKey( lod, x, y, _profile.get());
 }
 
 
@@ -132,7 +140,7 @@ TileKey::createParentKey() const
     unsigned int lod = _lod - 1;
     unsigned int x = _x / 2;
     unsigned int y = _y / 2;
-    return new TileKey( _face, lod, x, y, _profile.get());
+    return new TileKey( lod, x, y, _profile.get());
 }
 
 TileKey*
@@ -146,7 +154,7 @@ TileKey::createAncestorKey( int ancestorLod ) const
         x /= 2;
         y /= 2;
     }
-    return new TileKey( _face, ancestorLod, x, y, _profile.get() );
+    return new TileKey( ancestorLod, x, y, _profile.get() );
 }
 
 const GeoExtent&
@@ -155,9 +163,28 @@ TileKey::getGeoExtent() const
     return _extent;
 }
 
+// DEPRECATED CONSTRUCTOR - REMOVE for NEXT STABLE RELEASE
 TileKey::TileKey( unsigned int face, unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
 {
-    _face = face;
+    _x = tile_x;
+    _y = tile_y;
+    _lod = lod;
+    _profile = profile;
+
+    //_extent = _profile->calculateExtent( _lod, _x, _y );
+    double width, height;
+    _profile->getTileDimensions(lod, width, height);
+
+    double xmin = _profile->getExtent().xMin() + (width * (double)_x);
+    double ymax = _profile->getExtent().yMax() - (height * (double)_y);
+    double xmax = xmin + width;
+    double ymin = ymax - height;
+
+    _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
+}
+
+TileKey::TileKey( unsigned int lod, unsigned int tile_x, unsigned int tile_y, const Profile* profile)
+{
     _x = tile_x;
     _y = tile_y;
     _lod = lod;

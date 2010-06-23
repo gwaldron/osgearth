@@ -39,19 +39,24 @@ namespace osgEarth
     {
     public:        
         /**
-         *Creates a new TileKey with the given tile xy at the specified level of detail
+         * Creates a new TileKey with the given tile xy at the specified level of detail
          * 
-         *@param face
-         *       Face index of the tile
-         *@param lod
+         * @param lod
          *       The level of detail (subdivision recursion level) of the tile
-         *@param tile_x
+         * @param tile_x
          *       The x index of the tile
-         *@param tile_y
+         * @param tile_y
          *       The y index of the tile
-         *@param profile
+         * @param profile
          *       The profile for the tile
          */
+        TileKey(
+            unsigned int lod,
+            unsigned int tile_x,
+            unsigned int tile_y,
+            const Profile* profile );
+        
+        /** DEPRECATED (face no longer used.) This method will be REMOVED in future versions */
         TileKey(
             unsigned int face,
             unsigned int lod,
@@ -60,9 +65,16 @@ namespace osgEarth
             const Profile* profile );
 
         /**
-         * Gets the string representation of the key.
+         * Gets the string representation of the key, formatted like:
+         * "lod_x_y"
          */
         std::string str() const;
+
+        /**
+         * Gets the old-style string (with the face # prepended). For backwards-compatibility
+         * only. Format: "face_lod_x_y"
+         */
+        std::string str_v1() const;
 
         /**
          * Gets a TileID corresponding to this key.
@@ -95,8 +107,9 @@ namespace osgEarth
 
         /**
          * Gets the face index of the tile represented by this key.
+         * DEPRECATED
          */
-        unsigned int getFace() const;
+        unsigned int getFace() const { return 0; }
 
         /**
          * Gets the level of detail of the tile represented by this key.
@@ -153,7 +166,7 @@ namespace osgEarth
     protected:
         std::string _key;
 
-        unsigned int _face;
+        //unsigned int _face;
         unsigned int _lod;
         unsigned int _x;
         unsigned int _y;

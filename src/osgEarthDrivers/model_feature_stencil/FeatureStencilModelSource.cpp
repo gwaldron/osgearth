@@ -51,6 +51,8 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
+#define LC "[osgEarth::FeatureStencilModelSource] "
+
 #define RENDER_BIN_START 100
 #define MAX_NUM_STYLES   100
 
@@ -486,7 +488,7 @@ public:
             {
                 if ( !styleNodeAlreadyCreated )
                 {
-                    OE_NOTICE << "Creating new style group for '" << style->getName() << "'" << std::endl;
+                    OE_INFO << LC << "Creating new style group for '" << style->getName() << "'" << std::endl;
                     styleNode = new osgEarth::Symbology::StencilVolumeNode( options->mask().value(), options->inverted().value() );
                     if ( options->mask() == false )
                     {

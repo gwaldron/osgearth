@@ -103,28 +103,29 @@ namespace osgEarth
         MapEngine* getEngine() const;
 
         /**
-         * Gets the number of terrains that this MapNode is managing
-         */
-        unsigned int getNumTerrains() const;
-
-        /**
          * Gets one of the terrains in this map node.
          */
-        VersionedTerrain* getTerrain( unsigned int i ) const;
+        VersionedTerrain* getTerrain() const;
 
         /**
          * Accesses the group node that contains all the ModelLayers.
          */
         osg::Group* getModelLayerGroup();
 
-        osg::Group* getTerrainsGroup();
+        /**
+         * Accesses the group that holds the terrain node(s). This is useful as a
+         * CameraManipulator node. 
+         */
+        osg::Group* getTerrainContainer();
 
         /**
-         *Adds a node that decorates the terrain groups
+         * Adds a node that decorates the terrain groups
          */
         void addTerrainDecorator( osg::Group* decorator );
 
-        /** Removes a node previously added via addTerrainDecorator */
+        /**
+         * Removes a node previously added via addTerrainDecorator.
+         */
         void removeTerrainDecorator( osg::Group* decorator );
 
         /**
@@ -146,10 +147,13 @@ namespace osgEarth
             osgSim::OverlayNode* overlay,
             bool autoSetTextureUnit =true );
 
+        /** 
+         * Removes an overlay previously added via installOverlayNode.
+         */
         void uninstallOverlayNode( osgSim::OverlayNode* overlay );
 
         /**
-         * Gets the ID for this MapNode
+         * Gets the unique ID for this MapNode
          */
         unsigned int getId() const;
 
@@ -164,7 +168,9 @@ namespace osgEarth
          */
         void addTerrainCallback( TerrainCallback* callback );
 
-        //override osg::Node
+
+    public: //override osg::Node
+
         virtual osg::BoundingSphere computeBound() const;
 
 
@@ -201,13 +207,9 @@ namespace osgEarth
         unsigned int _id;
         osg::ref_ptr<MapEngine> _engine;
         osg::ref_ptr<Map> _map;
-        osg::ref_ptr< osg::Group > _terrains;
+        osg::ref_ptr< osg::Group > _terrainContainer;
         osg::ref_ptr< osg::Group > _models;
         MapEngineProperties _engineProps;
-
-        //Use observer_ptr so the Map does not prevent the main scene graph from being deleted
-        typedef std::vector< osg::observer_ptr<VersionedTerrain> > TerrainVec;
-        TerrainVec _terrainVec;
 
         // keep track of nodes created by model layers
         typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;

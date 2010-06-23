@@ -173,74 +173,6 @@ Profile::create(const std::string& init_string,
 }
 
 const Profile*
-Profile::createCube(const SpatialReference* geog_srs)
-{
-    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0, 1, 1 );
-
-    result->_face_profiles.push_back( new Profile( geog_srs, -180.0, -45.0, -90.0, 45.0 ) );
-    result->_face_profiles.push_back( new Profile( geog_srs,  -90.0, -45.0,   0.0, 45.0 ) );
-    result->_face_profiles.push_back( new Profile( geog_srs,    0.0, -45.0,  90.0, 45.0 ) );
-    result->_face_profiles.push_back( new Profile( geog_srs,   90.0, -45.0, 180.0, 45.0 ) );
-
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube4"), 0, 0, 1, 1, 1, 1) );
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube5"), 0, 0, 1, 1, 1, 1) );
-
-    return result;
-}
-
-const Profile*
-Profile::createCube2(const SpatialReference* geog_srs)
-{
-    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0, 1, 1 );
-
-    result->_face_profiles.push_back( new Profile( geog_srs, -180.0, -45.0, -90.0, 45.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( geog_srs,  -90.0, -45.0,   0.0, 45.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( geog_srs,    0.0, -45.0,  90.0, 45.0, 1, 1 ) );
-    result->_face_profiles.push_back( new Profile( geog_srs,   90.0, -45.0, 180.0, 45.0, 1, 1 ) );
-
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube4"), 0, 0, 1, 1, 1, 1) );
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube5"), 0, 0, 1, 1, 1, 1) );
-
-    return result;
-}
-
-const Profile*
-Profile::createCube3(const SpatialReference* geog_srs)
-{
-    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0, 1, 1 );
-
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube0"), 0, 0, 1, 1, 1, 1) );
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube1"), 0, 0, 1, 1, 1, 1) );
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube2"), 0, 0, 1, 1, 1, 1) );
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube3"), 0, 0, 1, 1, 1, 1) );
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube4"), 0, 0, 1, 1, 1, 1) );
-    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube5"), 0, 0, 1, 1, 1, 1) );
-
-    return result;
-}
-
-//class UnifiedCubeProfile : public Profile
-//{
-//public:
-//    UnifiedCubeProfile() :
-//      Profile( SpatialReference::create( "unified-cube" ), 0.0, 0.0, 12.0, 1.0, 6, 1 ) { }
-//
-//    GeoExtent calculateExtent( unsigned int lod, unsigned int tileX, unsigned int tileY )
-//    {
-//        double width, height;
-//        getTileDimensions(lod, width, height);
-//
-//        double xmin = getExtent().xMin() + (width * (double)tileX);
-//        double ymax = getExtent().yMax() - (height * (double)tileY);
-//        double xmax = xmin + width;
-//        double ymin = ymax - height;
-//
-//        return GeoExtent( getSRS(), xmin, ymin, xmax, ymax );
-//        
-//    }
-//};
-
-const Profile*
 Profile::createUnifiedCube()
 {
     Profile* result = new Profile(
@@ -249,9 +181,6 @@ Profile::createUnifiedCube()
         -180.0, -90.0, 180.0, 90.0, 
         6, 1 );
 
-
-    //Profile* result = new Profile( SpatialReference::create( "unified-cube" ), 0.0, 0.0, 12.0, 1.0, 6, 1 );
-    //return new UnifiedCubeProfile();
     return result;
 }
 
@@ -381,22 +310,8 @@ Profile::toString() const
 	return bufStr;
 }
 
-int
-Profile::getNumFaces() const
-{
-    return _face_profiles.size() > 0? _face_profiles.size() : 1;
-}
-
-const Profile*
-Profile::getFaceProfile( int face ) const
-{
-    return (int)_face_profiles.size() > 0 && face < (int)_face_profiles.size() ?
-        _face_profiles[face].get() :
-        this;
-}
-
 void
-Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, int face) const
+Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys ) const
 {
     out_keys.clear();
 
@@ -405,7 +320,7 @@ Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, i
         for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
         {
             //TODO: upgrade to support multi-face profile:
-            out_keys.push_back( new TileKey(face, 0, c, r, this) ); // face, lod, x, y, profile
+            out_keys.push_back( new TileKey(0, c, r, this) ); // face, lod, x, y, profile
         }
     }
 }
@@ -489,7 +404,7 @@ Profile::getLevelOfDetailForHorizResolution( double resolution, int tileSize ) c
 }
 
 TileKey*
-Profile::createTileKey( double x, double y, unsigned int level, unsigned int face ) const
+Profile::createTileKey( double x, double y, unsigned int level ) const
 {
     if ( _extent.contains( x, y ) )
     {
@@ -501,7 +416,7 @@ Profile::createTileKey( double x, double y, unsigned int level, unsigned int fac
         double ry = (y - _extent.yMin()) / _extent.height();
         int tileY = osg::clampBelow( (int)((1.0-ry) * (double)tilesY), tilesY-1 );
 
-        return new TileKey( face, level, tileX, tileY, this );
+        return new TileKey( level, tileX, tileY, this );
     }
     else
     {
@@ -638,48 +553,28 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
 void
 Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
 {
-    if ( _face_profiles.size() > 0 )
+    GeoExtent ext = extent;
+
+    // reproject into the profile's SRS if necessary:
+    if ( ! getSRS()->isEquivalentTo( extent.getSRS() ) )
     {
-        OE_INFO << LC << "GIT, extent = " << extent.toString() << std::endl;
+        // localize the extents and clamp them to legal values
+        ext = clampAndTransformExtent( extent );
+        if ( !ext.isValid() )
+            return;
+    }
 
-    	for(std::vector<osg::ref_ptr<Profile> >::const_iterator i = _face_profiles.begin(); i != _face_profiles.end(); ++i )
+    if ( ext.crossesDateLine() )
+    {
+        GeoExtent first, second;
+        if (ext.splitAcrossDateLine( first, second ))
         {
-            OE_INFO << LC << "  Face " << (int)(i-_face_profiles.begin()) << ": "
-                << toString() << std::endl;
-
-            i->get()->getIntersectingTiles( extent, out_intersectingKeys );
+            addIntersectingTiles( first, out_intersectingKeys );
+            addIntersectingTiles( second, out_intersectingKeys );
         }
     }
     else
     {
-        //TODO: put this back in???
-        //if ( !isCompatibleWith( key->getProfile() ) )
-        //{
-        //    OE_NOTICE << "Cannot compute intersecting tiles, profiles are incompatible" << std::endl;
-        //}
-
-        GeoExtent ext = extent;
-        // reproject into the profile's SRS if necessary:
-        if ( ! getSRS()->isEquivalentTo( extent.getSRS() ) )
-        {
-            // localize the extents and clamp them to legal values
-            ext = clampAndTransformExtent( extent );
-            if ( !ext.isValid() )
-                return;
-        }
-
-        if ( ext.crossesDateLine() )
-        {
-            GeoExtent first, second;
-            if (ext.splitAcrossDateLine( first, second ))
-            {
-                addIntersectingTiles( first, out_intersectingKeys );
-                addIntersectingTiles( second, out_intersectingKeys );
-            }
-        }
-        else
-        {
-            addIntersectingTiles( ext, out_intersectingKeys );
-        }
+        addIntersectingTiles( ext, out_intersectingKeys );
     }
 }

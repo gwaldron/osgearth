@@ -38,6 +38,8 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
+#define LC "[osgEarth::MapNode] "
+
 //static
 OpenThreads::ReentrantMutex MapNode::s_mapNodeCacheMutex;
 static unsigned int s_mapNodeID = 0;
@@ -180,13 +182,14 @@ MapNode::init()
     _map->setGlobalOptions( local_options.get() );
 
     // create the map engine that wil geneate tiles for this node:
-    _engine = new MapEngine( _engineProps ); //_map->createMapEngine( _engineProps );
+    _engine = new MapEngine( _engineProps );
 
-    // make a group for terrains:
-    _terrains = new osg::Group();
+    // make a group for terrain nodes:
+    _terrainContainer = new osg::Group();
+
     //Give the terrain a stateset to protect it from being optimized away by the REMOVE_REDUNDANT_NODES optimization
-    _terrains->getOrCreateStateSet();
-    this->addChild( _terrains.get() );
+    _terrainContainer->getOrCreateStateSet();
+    this->addChild( _terrainContainer.get() );
 
     // handle an already-established map profile:
     if ( _map->getProfile() )
@@ -290,16 +293,13 @@ MapNode::isGeocentric() const
     return _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
 }
 
-unsigned int
-MapNode::getNumTerrains() const
-{
-    return _terrainVec.size();
-}
-
 osgEarth::VersionedTerrain*
-MapNode::getTerrain( unsigned int i ) const
+MapNode::getTerrain() const
 {
-    return _terrainVec[i].get();
+    if ( _terrainContainer->getNumChildren() > 0 )
+        return static_cast<osgEarth::VersionedTerrain*>( _terrainContainer->getChild(0) );
+    else
+        return 0L;
 }
 
 osg::Group*
@@ -311,23 +311,16 @@ MapNode::getModelLayerGroup()
 void
 MapNode::addTerrainCallback( TerrainCallback* cb )
 {
-    if ( _terrainVec.size() > 0 )
-    {
-        for( unsigned int i=0; i < _terrainVec.size(); i++ )
-        {
-            _terrainVec[i]->addTerrainCallback( cb );
-        }
-    }
+    if ( getTerrain() )
+        getTerrain()->addTerrainCallback( cb );
     else
-    {
         _pendingTerrainCallbacks.push_back( cb );
-    }
 }
 
 void
 MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUnit )
 {
-    if ( _terrainVec.empty() )
+    if ( !getTerrain() )
     {
         _pendingOverlayNode = overlay;
         _pendingOverlayAutoSetTextureUnit = autoSetTextureUnit;
@@ -353,7 +346,7 @@ MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUn
 void
 MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
 {
-    if ( _terrainVec.empty() )
+    if ( !getTerrain() )
     {
         _pendingOverlayNode = 0L;
     }
@@ -365,22 +358,22 @@ MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
 }
 
 osg::Group*
-MapNode::getTerrainsGroup() {
-    return _terrains.get();
+MapNode::getTerrainContainer()
+{
+    return _terrainContainer.get();
 }
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
 {    
-    decorator->addChild( _terrains );
-    _terrains->getParent(0)->replaceChild( _terrains.get(), decorator );
-    //replaceChild( _terrains.get(), decorator );   
+    decorator->addChild( _terrainContainer.get() );
+    _terrainContainer->getParent(0)->replaceChild( _terrainContainer.get(), decorator );
 }
 
 void
 MapNode::removeTerrainDecorator(osg::Group* decorator)
 {
-    osg::Node* child = _terrains.get();
+    osg::Node* child = _terrainContainer.get();
     for( osg::Group* g = child->getParent(0); g != this; child = g, g = g->getParent(0) )
     {
         if ( g == decorator )
@@ -401,62 +394,52 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
         this->setEllipsoidModel( NULL );
 
-
     // go through and build the root nodesets.
-    int faces_ok = 0;
-    for( int face = 0; face < _map->getProfile()->getNumFaces(); face++ )
+    VersionedTerrain* terrain = new VersionedTerrain( _map.get(), _engine.get() );
+
+    // install the proper layering technique:
+
+    if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
     {
-        VersionedTerrain* terrain = new VersionedTerrain( _map.get(), _engine.get() );
+		terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
+        OE_INFO << "[MapNode] Layering technique = MULTIPASS" << std::endl;
+    }
+    else // LAYERING_MULTITEXTURE (default)
+    {
+		terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
+        OE_INFO << "[MapNode] Layering technique = MULTITEXTURE" << std::endl;
+    }
 
-        // install the proper layering technique:
+    // apply any pending callbacks:
+    for( TerrainCallbackList::iterator c = _pendingTerrainCallbacks.begin(); c != _pendingTerrainCallbacks.end(); ++c )
+    {
+        terrain->addTerrainCallback( c->get() );
+    }
+    _pendingTerrainCallbacks.clear();
 
-        if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
+    terrain->setVerticalScale( _engineProps.verticalScale().value() );
+    terrain->setSampleRatio( _engineProps.heightFieldSampleRatio().value() );
+    
+    // put the terrain in its container. TODO: later, this may be the attach point for terrain engine plugins.
+    _terrainContainer->addChild( terrain );
+
+    // collect the tile keys comprising the root tiles of the terrain.
+    std::vector< osg::ref_ptr<TileKey> > keys;
+    _map->getProfile()->getRootKeys( keys );
+
+    for (unsigned int i = 0; i < keys.size(); ++i)
+    {
+        // always load the root tiles completely; no deferring. -gw
+        bool loadNow = true; //!_engineProps.getPreemptiveLOD();
+
+        osg::Node* node = _engine->createSubTiles( _map.get(), terrain, keys[i].get(), loadNow );
+        if (node)
         {
-			terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
-            OE_INFO << "[MapNode] Layering technique = MULTIPASS" << std::endl;
+            terrain->addChild(node);
         }
-        else // LAYERING_MULTITEXTURE (default)
+        else
         {
-			terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
-            OE_INFO << "[MapNode] Layering technique = MULTITEXTURE" << std::endl;
-        }
-
-        // apply any pending callbacks:
-        for( TerrainCallbackList::iterator c = _pendingTerrainCallbacks.begin(); c != _pendingTerrainCallbacks.end(); ++c )
-        {
-            terrain->addTerrainCallback( c->get() );
-        }
-        _pendingTerrainCallbacks.clear();
-
-
-        terrain->setVerticalScale( _engineProps.verticalScale().value() );
-        terrain->setSampleRatio( _engineProps.heightFieldSampleRatio().value() );
-        _terrains->addChild( terrain );
-        _terrainVec.push_back( terrain );
-
-        std::vector< osg::ref_ptr<TileKey> > keys;
-        _map->getProfile()->getFaceProfile( face )->getRootKeys( keys, face );
-
-        int numAdded = 0;
-        for (unsigned int i = 0; i < keys.size(); ++i)
-        {
-            // always load the root tiles completely; no deferring. -gw
-            bool loadNow = true; //!_engineProps.getPreemptiveLOD();
-
-            osg::Node* node = _engine->createSubTiles( _map.get(), terrain, keys[i].get(), loadNow );
-            if (node)
-            {
-                terrain->addChild(node);
-                numAdded++;
-            }
-            else
-            {
-                OE_NOTICE << "[osgEarth::MapNode] Couldn't get tile for " << keys[i]->str() << std::endl;
-            }
-        }
-        if ( numAdded == keys.size() )
-        {
-            faces_ok++;
+            OE_NOTICE << "[osgEarth::MapNode] Couldn't get tile for " << keys[i]->str() << std::endl;
         }
     }
 
@@ -555,10 +538,10 @@ MapNode::onTerrainMaskLayerAdded( ModelLayer* layer )
         node->accept( f );
         for( std::list<osg::Group*>::iterator i = f._groups.begin(); i != f._groups.end(); ++i )
         {
-            (*i)->addChild( _terrains.get() );
+            (*i)->addChild( _terrainContainer.get() );
             count++;
         }
-        this->replaceChild( _terrains.get(), node );
+        this->replaceChild( _terrainContainer.get(), node );
         
         OE_NOTICE<<"Installed terrain mask ("
             <<count<< " mask nodes found)" << std::endl;
@@ -587,11 +570,8 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
     {
         if ( layer && layer->getTileSource() )
         {
-            for( unsigned int i=0; i<_terrainVec.size(); i++ )
-            {
-                _terrainVec[i]->incrementRevision();
-                _terrainVec[i]->updateTaskServiceThreads();
-            }
+            getTerrain()->incrementRevision();
+            getTerrain()->updateTaskServiceThreads();
         }
         updateStateSet();
     }
@@ -614,102 +594,102 @@ MapNode::addImageLayer( MapLayer* layer )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for( unsigned int i=0; i<_terrainVec.size(); i++ )
-    {            
-        VersionedTerrain* terrain = _terrainVec[i].get();
-        TerrainTileList tiles;
-        terrain->getTerrainTiles( tiles );
-        OE_DEBUG << "Found " << tiles.size() << std::endl;
+    //VersionedTerrain* terrain = getTerrain();
 
-        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    TerrainTileList tiles;
+    getTerrain()->getTerrainTiles( tiles );
+
+    OE_DEBUG << LC << "Found " << tiles.size() << std::endl;
+
+    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+        OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+
+        //Create a TileKey from the TileID
+        osgTerrain::TileID tileId = tile->getTileID();
+	    osg::ref_ptr< TileKey > key = new TileKey( TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile() );
+
+        osg::ref_ptr< GeoImage > geoImage;
+
+        bool needToUpdateImagery = false;
+        int imageLOD = -1;
+
+        //If we are in preemptiveLOD mode, just add an empty placeholder image for the new layer.  Otherwise, go ahead and get the image
+        if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
+           ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
         {
-            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+            geoImage = _engine->createValidGeoImage( layer, key.get() );
+            imageLOD = key->getLevelOfDetail();
+        }
+        else
+        {
+            geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
+            needToUpdateImagery = true;
+        }
 
-            //Create a TileKey from the TileID
-            osgTerrain::TileID tileId = tile->getTileID();
-		    osg::ref_ptr< TileKey > key = new TileKey( i, TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile()->getFaceProfile( i ) );
+        if (geoImage.valid())
+        {
+            double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
-            osg::ref_ptr< GeoImage > geoImage;
-
-            bool needToUpdateImagery = false;
-            int imageLOD = -1;
-
-            //If we are in preemptiveLOD mode, just add an empty placeholder image for the new layer.  Otherwise, go ahead and get the image
-            if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
-               ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
-            {
-                geoImage = _engine->createValidGeoImage( layer, key.get() );
-                imageLOD = key->getLevelOfDetail();
-            }
-            else
-            {
-                geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
-                needToUpdateImagery = true;
-            }
-
-            if (geoImage.valid())
-            {
-                double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
-
-                //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-                osg::ref_ptr<GeoLocator> img_locator; // = key->getProfile()->getSRS()->createLocator();
-
-                
-                // Use a special locator for mercator images (instead of reprojecting).
-                // We do this under 2 conditions when we have mercator tiles:
-                // a) The map is geocentric; or
-                // b) The map is projected but is also "geographic" (i.e., plate carre)
-                bool isGeocentric = _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
-                bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
-                bool canUseMercatorLocator = geoImage->getSRS()->isMercator() && (isGeocentric || isGeographic);
-
-                if ( canUseMercatorLocator && layer->useMercatorFastPath() == true )
-                {
-                    GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
-                    geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                    img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
-                    img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
-                }
-                else
-                {
-                    geoImage->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                    img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
-                }
-
-                //Set the CS to geocentric is we are dealing with a geocentric map
-                if ( _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC || _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE)
-                {
-                    img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-                }
-
-                //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
-				TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
-                img_layer->setLevelOfDetail(imageLOD);
-                img_layer->setLocator( img_locator.get());
-				img_layer->setMinFilter( layer->getMinFilter().value());
-				img_layer->setMagFilter( layer->getMagFilter().value());
-
-                unsigned int newLayer = _map->getImageMapLayers().size() - 1;
-                tile->setColorLayer( newLayer, img_layer );
-
-                if (needToUpdateImagery)
-                {
-                    tile->updateImagery( layer->getId(), _map.get(), _engine.get());
-                }
-            }
-            else
-            {
-                OE_NOTICE << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
-            }
+            //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
+            osg::ref_ptr<GeoLocator> img_locator; // = key->getProfile()->getSRS()->createLocator();
 
             
-            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-                tile->setDirty(true);
+            // Use a special locator for mercator images (instead of reprojecting).
+            // We do this under 2 conditions when we have mercator tiles:
+            // a) The map is geocentric; or
+            // b) The map is projected but is also "geographic" (i.e., plate carre)
+            bool isGeocentric = _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
+            bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
+            bool canUseMercatorLocator = geoImage->getSRS()->isMercator() && (isGeocentric || isGeographic);
+
+            if ( canUseMercatorLocator && layer->useMercatorFastPath() == true )
+            {
+                GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
+                geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
+                img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
+            }
             else
-                tile->markTileForRegeneration();
+            {
+                geoImage->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
+            }
+
+            //Set the CS to geocentric is we are dealing with a geocentric map
+            if ( _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC || _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE)
+            {
+                img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+            }
+
+            //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
+			TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
+            img_layer->setLevelOfDetail(imageLOD);
+            img_layer->setLocator( img_locator.get());
+			img_layer->setMinFilter( layer->getMinFilter().value());
+			img_layer->setMagFilter( layer->getMagFilter().value());
+
+            unsigned int newLayer = _map->getImageMapLayers().size() - 1;
+            tile->setColorLayer( newLayer, img_layer );
+
+            if (needToUpdateImagery)
+            {
+                tile->updateImagery( layer->getId(), _map.get(), _engine.get());
+            }
         }
+        else
+        {
+            OE_NOTICE << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
+        }
+
+        
+        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+            tile->setDirty(true);
+        else
+            tile->markTileForRegeneration();
     }
+
     updateStateSet();       
 }
 
@@ -786,21 +766,17 @@ MapNode::updateElevation(VersionedTile* tile)
 void
 MapNode::addHeightFieldLayer( MapLayer* layer )
 {
-    OE_DEBUG << "[osgEarth::MapEngine::addHeightFieldLayer] Begin " << std::endl;
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
-    {            
-        VersionedTerrain* terrain = _terrainVec[i].get();
-        TerrainTileList tiles;
-        terrain->getTerrainTiles( tiles );
-        OE_DEBUG << "Found " << tiles.size() << std::endl;
+    TerrainTileList tiles;
+    getTerrain()->getTerrainTiles( tiles );
 
-        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
-        {
-            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            updateElevation(tile);
-        }
+    OE_DEBUG << LC << "Found " << tiles.size() << std::endl;
+
+    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+        updateElevation(tile);
     }
 }
 
@@ -825,47 +801,43 @@ MapNode::removeImageLayer( unsigned int index )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
-    {            
-        VersionedTerrain* terrain = _terrainVec[i].get();
-        TerrainTileList tiles;
-        terrain->getTerrainTiles( tiles );
+    TerrainTileList tiles;
+    getTerrain()->getTerrainTiles( tiles );
 
-        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
-        {
-            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+        OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
-            //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
-            //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
-            std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
-            for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
-            {   
-                //Skip the layer that is being removed
-                if (i != index)
-                {
-                    osgTerrain::Layer* imageLayer = itr->get()->getColorLayer(i);
-                    if (imageLayer)
-                    {
-                        layers.push_back(imageLayer);
-                    }
-                }
-                //Set the current value to NULL
-                itr->get()->setColorLayer( i, NULL);
-            }
-
-            //Reset the color layers to the correct order
-            for (unsigned int i = 0; i < layers.size(); ++i)
+        //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
+        //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
+        std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
+        for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
+        {   
+            //Skip the layer that is being removed
+            if (i != index)
             {
-                itr->get()->setColorLayer( i, layers[i].get() );
+                osgTerrain::Layer* imageLayer = itr->get()->getColorLayer(i);
+                if (imageLayer)
+                {
+                    layers.push_back(imageLayer);
+                }
             }
-
-            
-            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-                tile->setDirty( true );
-            else
-                tile->markTileForRegeneration();
+            //Set the current value to NULL
+            itr->get()->setColorLayer( i, NULL);
         }
+
+        //Reset the color layers to the correct order
+        for (unsigned int i = 0; i < layers.size(); ++i)
+        {
+            itr->get()->setColorLayer( i, layers[i].get() );
+        }
+
+        
+        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+            tile->setDirty( true );
+        else
+            tile->markTileForRegeneration();
     }
 
     updateStateSet();
@@ -878,18 +850,13 @@ MapNode::removeHeightFieldLayer( unsigned int index )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
-    {            
-        VersionedTerrain* terrain = _terrainVec[i].get();
-        TerrainTileList tiles;
-        terrain->getTerrainTiles( tiles );
-        //OE_NOTICE << "Found " << tiles.size() << std::endl;
+    TerrainTileList tiles;
+    getTerrain()->getTerrainTiles( tiles );
 
-        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
-        {
-            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            updateElevation( tile );
-        }
+    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+        updateElevation( tile );
     }
 }
 
@@ -914,42 +881,37 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
-    {            
-        VersionedTerrain* terrain = _terrainVec[i].get();
-        TerrainTileList tiles;
-        terrain->getTerrainTiles( tiles );
-        OE_DEBUG << "Found " << tiles.size() << std::endl;
+    TerrainTileList tiles;
+    getTerrain()->getTerrainTiles( tiles );
 
-        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
-        {
-            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+        OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
-            //Collect the current color layers
-            std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
+        //Collect the current color layers
+        std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
 
-            for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
-            {              
-                layers.push_back(itr->get()->getColorLayer(i));
-            }
-
-            //Swap the original position
-            osg::ref_ptr< osgTerrain::Layer > layer = layers[oldIndex];
-            layers.erase(layers.begin() + oldIndex);
-            layers.insert(layers.begin() + newIndex, layer.get());
-
-            for (unsigned int i = 0; i < layers.size(); ++i)
-            {
-                itr->get()->setColorLayer( i, layers[i].get() );
-            }
-
-            if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-                tile->setDirty( true );
-            else
-                tile->markTileForRegeneration();
+        for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
+        {              
+            layers.push_back(itr->get()->getColorLayer(i));
         }
-    } 
+
+        //Swap the original position
+        osg::ref_ptr< osgTerrain::Layer > layer = layers[oldIndex];
+        layers.erase(layers.begin() + oldIndex);
+        layers.insert(layers.begin() + newIndex, layer.get());
+
+        for (unsigned int i = 0; i < layers.size(); ++i)
+        {
+            itr->get()->setColorLayer( i, layers[i].get() );
+        }
+
+        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+            tile->setDirty( true );
+        else
+            tile->markTileForRegeneration();
+    }     
 
     updateStateSet();
 }
@@ -959,18 +921,14 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 {
     OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
-    for (unsigned int i = 0; i < _terrainVec.size(); ++i)
-    {            
-        VersionedTerrain* terrain = _terrainVec[i].get();
-        TerrainTileList tiles;
-        terrain->getTerrainTiles( tiles );
-        OE_DEBUG << "Found " << tiles.size() << std::endl;
+    TerrainTileList tiles;
+    getTerrain()->getTerrainTiles( tiles );
+    OE_DEBUG << "Found " << tiles.size() << std::endl;
 
-        for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
-        {
-            VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-            updateElevation(tile);
-        }
+    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
+        updateElevation(tile);
     }
 }
 

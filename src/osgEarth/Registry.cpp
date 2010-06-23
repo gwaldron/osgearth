@@ -138,8 +138,6 @@ Registry::getCubeProfile() const
 
         if ( !_cube_profile.valid() ) // double-check pattern
         {
-            //const SpatialReference* srs = SpatialReference::create( "epsg:4326" );
-            //const_cast<Registry*>(this)->_cube_profile = Profile::createCube( srs );
             const_cast<Registry*>(this)->_cube_profile = Profile::createUnifiedCube();
         }
     }

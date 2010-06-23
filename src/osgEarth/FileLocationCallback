@@ -53,8 +53,8 @@ namespace osgEarth
 
             if ( mapNode.valid() )
             {
-                const osgEarth::Profile* face_profile = mapNode->getMap()->getProfile()->getFaceProfile( face );
-                osg::ref_ptr<osgEarth::TileKey> mapKey = new osgEarth::TileKey( face, lod, x, y, face_profile );
+                const osgEarth::Profile* profile = mapNode->getMap()->getProfile();
+                osg::ref_ptr<osgEarth::TileKey> mapKey = new osgEarth::TileKey( lod, x, y, profile );
 
                 //Split the key into it's 4 children and check to see if all 4 are cached.
                 std::vector< osg::ref_ptr< osgEarth::TileKey > > keys;

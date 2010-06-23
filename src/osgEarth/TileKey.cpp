@@ -163,9 +163,9 @@ TileKey::TileKey( unsigned int face, unsigned int lod, unsigned int tile_x, unsi
     _lod = lod;
     _profile = profile;
 
-    //Compute the extent
+    //_extent = _profile->calculateExtent( _lod, _x, _y );
     double width, height;
-    _profile->getTileDimensions(_lod, width, height);
+    _profile->getTileDimensions(lod, width, height);
 
     double xmin = _profile->getExtent().xMin() + (width * (double)_x);
     double ymax = _profile->getExtent().yMax() - (height * (double)_y);

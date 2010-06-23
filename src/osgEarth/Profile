@@ -137,6 +137,11 @@ namespace osgEarth
         static const Profile* createCube2(
             const SpatialReference* geog_srs);
 
+        static const Profile* createCube3(
+            const SpatialReference* geog_srs);
+            
+        static const Profile* createUnifiedCube();
+
         static const Profile* create(
             const ProfileConfig& conf );
 
@@ -186,6 +191,11 @@ namespace osgEarth
          * profile.
          */
         void getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, int face =0) const;
+
+        /** 
+         * Calculates an extent given a tile location in this profile.
+         */
+        virtual GeoExtent calculateExtent( unsigned int lod, unsigned int tileX, unsigned int tileY );
 
         /**
          * Deduces a profile type given an SRS string.
@@ -241,6 +251,13 @@ namespace osgEarth
         Profile(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
+            unsigned int x_tiles_at_lod0 =0,
+            unsigned int y_tiles_at_lod0 =0 );      
+
+        Profile(
+            const SpatialReference* srs,
+            double xmin, double ymin, double xmax, double ymax,
+            double geoxmin, double geoymin, double geoxmax, double geoymax,
             unsigned int x_tiles_at_lod0 =0,
             unsigned int y_tiles_at_lod0 =0 );
         

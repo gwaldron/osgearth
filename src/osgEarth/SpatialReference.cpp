@@ -78,8 +78,9 @@ SpatialReference::createFromPROJ4( const std::string& init, const std::string& i
 }
 
 SpatialReference*
-SpatialReference::createCube(unsigned int face)
+SpatialReference::createCube()
 {
+    // root the cube srs with a WGS84 intermediate ellipsoid.
     std::string init = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
 
     SpatialReference* result = NULL;
@@ -87,15 +88,16 @@ SpatialReference::createCube(unsigned int face)
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
 	{
-        result = new CubeFaceSpatialReference( handle, face );
+        result = new CubeSpatialReference( handle );
 	}
 	else 
 	{
-		OE_WARN << "[osgEarth::SRS] Unable to create spatial reference from PROJ4: " << init << std::endl;
+        OE_WARN << "[osgEarth::SRS] Unable to create SRS: " << init << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result;
 }
+
 
 SpatialReference*
 SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
@@ -164,12 +166,18 @@ SpatialReference::create( const std::string& init )
             "WGS84" );
     }
 
-    // custom square polar projection for cube rendering:
-    else if ( ( low.size() == 11 ) && (low.substr(0,10) == "world-cube") )
+    //// custom square polar projection for cube rendering:
+    //else if ( ( low.size() == 11 ) && (low.substr(0,10) == "world-cube") )
+    //{
+    //    //Try to extract a face from the string.
+    //    unsigned int face = atoi(&low[10]);
+    //    srs = createCubeFace( face );
+    //}
+
+    // custom srs for the unified cube
+    else if ( low == "unified-cube" )
     {
-        //Try to extract a face from the string.
-        unsigned int face = atoi(&low[10]);
-        srs = createCube( face );
+        srs = createCube();
     }
 
     else if ( low.find( "+" ) == 0 )
@@ -390,20 +398,11 @@ SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
     if ( this == rhs )
         return true;
 
-    const CubeFaceSpatialReference* cube_lhs = dynamic_cast< const CubeFaceSpatialReference*>(this);
-    const CubeFaceSpatialReference* cube_rhs = dynamic_cast< const CubeFaceSpatialReference*>(rhs);
-
-    if (cube_lhs && !cube_rhs) return false;
-    if (cube_rhs && !cube_lhs) return false;
-    if (cube_lhs && cube_rhs)
-    {
-        return cube_lhs->getFace() == cube_rhs->getFace();
-    }
-
     if (isGeographic() != rhs->isGeographic() ||
         isMercator()   != rhs->isMercator()   ||
         isNorthPolar() != rhs->isNorthPolar() ||
-        isSouthPolar() != rhs->isSouthPolar() )
+        isSouthPolar() != rhs->isSouthPolar() ||
+        isCube()       != rhs->isCube() )
     {
         return false;
     }
@@ -476,6 +475,22 @@ SpatialReference::isSouthPolar() const
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
     return _is_south_polar;
+}
+
+bool
+SpatialReference::isContiguous() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _is_contiguous;
+}
+
+bool
+SpatialReference::isCube() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _is_cube;
 }
 
 osg::CoordinateSystemNode*
@@ -556,7 +571,10 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
 }
 
 bool
-SpatialReference::transform( double x, double y, const SpatialReference* out_srs, double& out_x, double& out_y ) const
+SpatialReference::transform(double x, double y, 
+                            const SpatialReference* out_srs, 
+                            double& out_x, double& out_y,
+                            void* context ) const
 {        
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs))
@@ -568,7 +586,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
 
     GDAL_SCOPED_LOCK;
 
-    preTransform(x, y);
+    preTransform(x, y, context);
 
     void* xform_handle = NULL;
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
@@ -603,7 +621,7 @@ SpatialReference::transform( double x, double y, const SpatialReference* out_srs
         out_x = temp_x;
         out_y = temp_y;
 
-        out_srs->postTransform(out_x, out_y);
+        out_srs->postTransform(out_x, out_y, context);
     }
     else
     {
@@ -656,6 +674,7 @@ bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
                                   double* x, double* y,
                                   unsigned int numPoints,
+                                  void* context,
                                   bool ignore_errors ) const
 {
     //Check for equivalence and return if the coordinate systems are the same.
@@ -663,7 +682,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 
     for (unsigned int i = 0; i < numPoints; ++i)
     {
-        preTransform(x[i], y[i]);
+        preTransform(x[i], y[i], context);
     }
     
     bool success = false;
@@ -719,7 +738,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     {
         for (unsigned int i = 0; i < numPoints; ++i)
         {
-            out_srs->postTransform(x[i], y[i]);
+            out_srs->postTransform(x[i], y[i], context);
         }
     }
     else
@@ -736,6 +755,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
                                   osg::Vec3dArray* points,
+                                  void* context,
                                   bool ignore_errors ) const
 {
     //Check for equivalence and return if the coordinate systems are the same.
@@ -751,7 +771,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         y[i] = (*points)[i].y();
     }
 
-    bool success = transformPoints( out_srs, x, y, numPoints, ignore_errors );
+    bool success = transformPoints( out_srs, x, y, numPoints, context, ignore_errors );
 
     if ( success )
     {
@@ -774,7 +794,8 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
                                   double& in_out_xmin,
                                   double& in_out_ymin,
                                   double& in_out_xmax,
-                                  double& in_out_ymax) const
+                                  double& in_out_ymax,
+                                  void* context ) const
 {
     int oks = 0;
 
@@ -786,16 +807,16 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
     double lrx, lry;
 
     //Lower Left
-    oks += transform( in_out_xmin, in_out_ymin, to_srs, llx, lly ) == true;
+    oks += transform( in_out_xmin, in_out_ymin, to_srs, llx, lly, context ) == true;
 
     //Upper Left
-    oks += transform( in_out_xmin, in_out_ymax, to_srs, ulx, uly ) == true;
+    oks += transform( in_out_xmin, in_out_ymax, to_srs, ulx, uly, context ) == true;
 
     //Upper Right
-    oks += transform( in_out_xmax, in_out_ymax, to_srs, urx, ury ) == true;
+    oks += transform( in_out_xmax, in_out_ymax, to_srs, urx, ury, context ) == true;
 
     //Lower Right
-    oks += transform( in_out_xmax, in_out_ymin, to_srs, lrx, lry ) == true;
+    oks += transform( in_out_xmax, in_out_ymin, to_srs, lrx, lry, context ) == true;
 
 
     if (oks == 4)
@@ -859,6 +880,17 @@ SpatialReference::init()
 		_is_north_polar = false;
 		_is_south_polar = false;
 	}
+
+    if ( _init_str == "cube" )
+    {
+        _is_cube = true;
+        _is_contiguous = false;
+    }
+    else
+    {
+        _is_cube = false;
+        _is_contiguous = true;
+    }
 
     if ( _name == "unnamed" )
     {

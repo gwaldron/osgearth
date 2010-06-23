@@ -26,6 +26,7 @@
 #define NEG_Z 4
 #define POS_Z 5
 
+#define LC "[osgEarth::CubeManifold] "
 
 CubeManifold::CubeManifold( const Profile* profile ) :
 _profile( profile ),
@@ -86,7 +87,7 @@ CubeManifold::initialize( MeshManager* mesh )
 
     // The first 3 share vd0 as a common PARENT_L ancestor:
 
-    _fd[NEG_Y] = new Diamond(mesh, new TileKey(1,0,0,0,_profile->getFaceProfile(1)), 1, "fd -y"); // -Y face (-90=>0 long)
+    _fd[NEG_Y] = new Diamond(mesh, new TileKey(0,0,1,0,_profile.get()), 1, "fd -y"); // -Y face (-90=>0 long)
     _fd[NEG_Y]->setCoord( p(0, -1, 0) );
     _fd[NEG_Y]->_a[PARENT_R] = _vd[2];
     _fd[NEG_Y]->_a[PARENT_L] = _vd[0];
@@ -94,7 +95,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[NEG_Y]->_a[GDPARENT] = _vd[6];
     _fd[NEG_Y]->_orientation = 6;
 
-    _fd[POS_X] = new Diamond(mesh, new TileKey(2,0,0,0,_profile->getFaceProfile(2)), 1, "fd +x"); // +X face (0=>90 long)
+    _fd[POS_X] = new Diamond(mesh, new TileKey(0,0,2,0,_profile.get()), 1, "fd +x"); // +X face (0=>90 long)
     _fd[POS_X]->setCoord( p(1, 0, 0) );
     _fd[POS_X]->_a[PARENT_R] = _vd[3];
     _fd[POS_X]->_a[PARENT_L] = _vd[0];
@@ -102,7 +103,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[POS_X]->_a[GDPARENT] = _vd[4];
     _fd[POS_X]->_orientation = 0;
 
-    _fd[POS_Z] = new Diamond(mesh, new TileKey(4,0,0,0,_profile->getFaceProfile(4)), 1, "fd +z"); // +Z face (north polar)
+    _fd[POS_Z] = new Diamond(mesh, new TileKey(0,0,4,0,_profile.get()), 1, "fd +z"); // +Z face (north polar)
     _fd[POS_Z]->setCoord( p(0, 0, 1) );
     _fd[POS_Z]->_a[PARENT_R] = _vd[1];
     _fd[POS_Z]->_a[PARENT_L] = _vd[0];
@@ -112,7 +113,7 @@ CubeManifold::initialize( MeshManager* mesh )
 
     // The next 3 share vd7 as a common QUADTREE ancestor:
 
-    _fd[POS_Y] = new Diamond(mesh, new TileKey(3,0,0,0,_profile->getFaceProfile(3)), 1, "fd +y"); // +Y face (90=>180 long)
+    _fd[POS_Y] = new Diamond(mesh, new TileKey(0,0,3,0,_profile.get()), 1, "fd +y"); // +Y face (90=>180 long)
     _fd[POS_Y]->setCoord( p(0, 1, 0) );
     _fd[POS_Y]->_a[PARENT_R] = _vd[1];
     _fd[POS_Y]->_a[PARENT_L] = _vd[3];
@@ -120,7 +121,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[POS_Y]->_a[GDPARENT] = _vd[4];
     _fd[POS_Y]->_orientation = 2;
 
-    _fd[NEG_X] = new Diamond(mesh, new TileKey(0,0,0,0,_profile->getFaceProfile(0)), 1, "fd -x"); // -X face (-180=>-90 long)
+    _fd[NEG_X] = new Diamond(mesh, new TileKey(0,0,0,0,_profile.get()), 1, "fd -x"); // -X face (-180=>-90 long)
     _fd[NEG_X]->setCoord( p(-1, 0, 0) );
     _fd[NEG_X]->_a[PARENT_R] = _vd[2];
     _fd[NEG_X]->_a[PARENT_L] = _vd[1];
@@ -128,7 +129,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[NEG_X]->_a[GDPARENT] = _vd[5];
     _fd[NEG_X]->_orientation = 0;
 
-    _fd[NEG_Z] = new Diamond(mesh, new TileKey(5,0,0,0,_profile->getFaceProfile(5)), 1, "fd -z"); // -Z face (south polar)
+    _fd[NEG_Z] = new Diamond(mesh, new TileKey(0,0,5,0,_profile.get()), 1, "fd -z"); // -Z face (south polar)
     _fd[NEG_Z]->setCoord( p(0, 0, -1) );
     _fd[NEG_Z]->_a[PARENT_R] = _vd[3];
     _fd[NEG_Z]->_a[PARENT_L] = _vd[2];
@@ -318,37 +319,42 @@ CubeManifold::project( const osg::Vec3d& coord )
 
     if ( coord.x() == 1.0 ) // positive X ( 0 <= lon <= 90, -45 <= lat <= 45 )
     {
-        lon = 0 + 90.0*y;
-        lat = -45 + 90.0*z;
+        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( y, z, 2, lat, lon ) )
+            OE_WARN << LC << "+X: fc2ll failed" << std::endl;
+
+        //lon = 0 + 90.0*y;
+        //lat = -45 + 90.0*z;
     }
     else if ( coord.x() == -1.0 ) // negative X ( -180 <= lon <= -90, -45 <= lat <= 45 )
     {
-        lon = -180 + 90.0*(1.0-y);
-        lat = -45 + 90.0*z;
+        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-y, z, 0, lat, lon ) )
+            OE_WARN << LC << "-X: fc2ll failed" << std::endl;
+        //lon = -180 + 90.0*(1.0-y);
+        //lat = -45 + 90.0*z;
     }
     else if ( coord.y() == 1.0 ) // positive Y ( 90 <= lon <= 180, -45 <= lat <= 45 )
     {
-        lon = 90 + 90.0*(1.0-x);
-        lat = -45 + 90.0*z;
+        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-x, z, 3, lat, lon ) )
+            OE_WARN << LC << "+Y: fc2ll failed" << std::endl;
+        //lon = 90 + 90.0*(1.0-x);
+        //lat = -45 + 90.0*z;
     }
     else if ( coord.y() == -1.0 ) // negative Y ( -90 <= lon <= 0, -45 <= lat <= 45 )
     {
-        lon = -90 + 90.0*x;
-        lat = -45 + 90.0*z;
+        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( x, z, 1, lat, lon ) )
+            OE_WARN << LC << "-Y: fc2ll failed" << std::endl;
+        //lon = -90 + 90.0*x;
+        //lat = -45 + 90.0*z;
     }
     else if ( coord.z() == 1.0 ) // positive Z ( -180 <= lon < 180, 45 <= lat <= 90 )
     {
-        osg::Vec2d latlon;
-        osgEarth::CubeGridUtils::FaceCoordToLatLon( osg::Vec2d((1.0-y),x), 4, latlon );
-        lat = latlon.x();
-        lon = latlon.y();
+        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-y, x, 4, lat, lon ) )
+            OE_WARN << LC << "+Z: fc2ll failed" << std::endl;
     }
     else //if ( coord.z() == -1.0 ) // negative Z ( -180 <= lon < 180, -90 <= lat <= -45 )
     {
-        osg::Vec2d latlon;
-        osgEarth::CubeGridUtils::FaceCoordToLatLon( osg::Vec2d(x,(1.0-y)), 5, latlon );
-        lat = latlon.x();
-        lon = latlon.y();
+        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( x, 1.0-y, 5, lat, lon ) )
+            OE_WARN << LC << "-Z: fc2ll failed" << std::endl;
     }
 
     // finally, convert from lat/long into geocentric:
@@ -357,6 +363,10 @@ CubeManifold::project( const osg::Vec3d& coord )
         osg::DegreesToRadians(lat),
         osg::DegreesToRadians(lon), 0, 
         out.x(), out.y(), out.z() );
+
+    OE_INFO << LC
+        << "project: (" << coord.x() << "," << coord.y() << "," << coord.z() << ") => (" << lat << "," << lon << ")"
+        << std::endl;
 
     return out;
 }

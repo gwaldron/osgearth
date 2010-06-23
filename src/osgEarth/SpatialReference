@@ -64,7 +64,8 @@ namespace osgEarth
         virtual bool transform(
             double x, double y,
             const SpatialReference* to_srs,
-            double& out_x, double& out_y ) const;
+            double& out_x, double& out_y,
+            void* context =0L ) const;
 
         /**
          * Transforms an array of 2D points from this SRS to another SRS.
@@ -73,6 +74,7 @@ namespace osgEarth
             const SpatialReference* to_srs, 
             double* x, double *y,
             unsigned int numPoints,
+            void* context =0L,
             bool ignore_errors =false) const;
 
         /**
@@ -81,6 +83,7 @@ namespace osgEarth
         virtual bool transformPoints(
             const SpatialReference* to_srs,
             osg::Vec3dArray* points,
+            void* context =0L,
             bool ignore_errors =false) const;
 
         /**
@@ -93,7 +96,8 @@ namespace osgEarth
         virtual bool transformExtent(
             const SpatialReference* to_srs,
             double& in_out_xmin, double& in_out_ymin,
-            double& in_out_xmax, double& in_out_ymax ) const;
+            double& in_out_xmax, double& in_out_ymax,
+            void* context =0L ) const;
 
         /** True is this is a geographic SRS (i.e. unprojected lat/long) */
         virtual bool isGeographic() const;
@@ -107,6 +111,13 @@ namespace osgEarth
         /** Tests whether this SRS represents a polar sterographic projection. */
         bool isNorthPolar() const;
         bool isSouthPolar() const;
+
+        /** Reveals whether data in this SRS is contiguous. Non-contiguous raster
+            data usually requires manual reprojection. */
+        virtual bool isContiguous() const;
+
+        /** Tests whether this SRS is a Unified Cube projection (osgEarth-internal) */
+        virtual bool isCube() const;
 
         /** Gets the readable name of this SRS. */
         const std::string& getName() const;
@@ -149,6 +160,8 @@ namespace osgEarth
             double xmin, double ymin, double xmax, double ymax,
             bool plate_carre =false ) const;
 
+
+
     protected:
         virtual ~SpatialReference();
 
@@ -163,6 +176,8 @@ namespace osgEarth
         bool _is_geographic;
         bool _is_mercator;
         bool _is_north_polar, _is_south_polar;
+        bool _is_cube;
+        bool _is_contiguous;
         std::string _name;
         std::string _wkt;
         std::string _proj4;
@@ -175,8 +190,8 @@ namespace osgEarth
         typedef std::map<std::string,void*> TransformHandleCache;
         TransformHandleCache _transformHandleCache;
 
-        virtual bool preTransform(double &x, double &y) const {return true;}
-        virtual bool postTransform(double &x, double &y) const { return true;}
+        virtual bool preTransform(double& x, double& y, void* context) const { return true; }
+        virtual bool postTransform(double& x, double& y, void* context) const { return true;}
         
     private:
 
@@ -189,7 +204,7 @@ namespace osgEarth
         static SpatialReference* createFromPROJ4(
             const std::string& proj4, const std::string& alias, const std::string& name ="" );
 
-        static SpatialReference* createCube(unsigned int face);
+        static SpatialReference* createCube();
 
         SpatialReference* validate();
     };

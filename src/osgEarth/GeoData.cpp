@@ -339,7 +339,10 @@ std::string
 GeoExtent::toString() const
 {
     std::stringstream buf;
-    buf << "MIN=" << _xmin << "," << _ymin << " MAX=" << _xmax << "," << _ymax;
+    if ( !isValid() )
+        buf << "INVALID";
+    else
+        buf << "MIN=" << _xmin << "," << _ymin << " MAX=" << _xmax << "," << _ymax;
 	std::string bufStr;
 	bufStr = buf.str();
     return bufStr;
@@ -653,7 +656,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     // NOTE: some of the points may be out of range (for Mercator esp.) so we are setting 
     // "ignore errors" to true to suppress any error messages from the transform. This is OK
     // b/c it will discard those out-of-bounds points anyway.
-    dest_extent.getSRS()->transformPoints( src_extent.getSRS(), srcPointsX, srcPointsY, numPixels, true );
+    dest_extent.getSRS()->transformPoints( src_extent.getSRS(), srcPointsX, srcPointsY, numPixels, 0L, true );
 
     pixel = 0;
     for (unsigned int c = 0; c < width; ++c)
@@ -792,12 +795,15 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
          destExtent = getExtent().transform(to_srs);    
     }
 
-    const CubeFaceSpatialReference* to_cube = dynamic_cast<const CubeFaceSpatialReference*>(to_srs);
+    ////TODO: deprecate
+    //const CubeFaceSpatialReference* to_cube = dynamic_cast<const CubeFaceSpatialReference*>(to_srs);
 
-    osg::Image* resultImage = 0;
-    if (to_cube)
+    osg::Image* resultImage = 0L;
+    //if (to_cube)
+
+    if ( !getSRS()->isContiguous() || !to_srs->isContiguous() )
     {
-        //OE_NOTICE << "[osgEarth::GeoData] Doing cube reprojection" << std::endl;
+        //OE_NOTICE << "[osgEarth::GeoData] Doing manual reprojection" << std::endl;
         resultImage = manualReproject(getImage(), getExtent(), *to_extent, width, height);
     }
     else

@@ -28,6 +28,7 @@
 
 using namespace osgEarth;
 
+#define LC "[osgEarth::Profile] "
 
 /***********************************************************************/
 
@@ -203,6 +204,56 @@ Profile::createCube2(const SpatialReference* geog_srs)
     return result;
 }
 
+const Profile*
+Profile::createCube3(const SpatialReference* geog_srs)
+{
+    Profile* result = new Profile( geog_srs, -180.0, -90.0, 180.0, 90.0, 1, 1 );
+
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube0"), 0, 0, 1, 1, 1, 1) );
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube1"), 0, 0, 1, 1, 1, 1) );
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube2"), 0, 0, 1, 1, 1, 1) );
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube3"), 0, 0, 1, 1, 1, 1) );
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube4"), 0, 0, 1, 1, 1, 1) );
+    result->_face_profiles.push_back( new Profile( SpatialReference::create("world-cube5"), 0, 0, 1, 1, 1, 1) );
+
+    return result;
+}
+
+//class UnifiedCubeProfile : public Profile
+//{
+//public:
+//    UnifiedCubeProfile() :
+//      Profile( SpatialReference::create( "unified-cube" ), 0.0, 0.0, 12.0, 1.0, 6, 1 ) { }
+//
+//    GeoExtent calculateExtent( unsigned int lod, unsigned int tileX, unsigned int tileY )
+//    {
+//        double width, height;
+//        getTileDimensions(lod, width, height);
+//
+//        double xmin = getExtent().xMin() + (width * (double)tileX);
+//        double ymax = getExtent().yMax() - (height * (double)tileY);
+//        double xmax = xmin + width;
+//        double ymin = ymax - height;
+//
+//        return GeoExtent( getSRS(), xmin, ymin, xmax, ymax );
+//        
+//    }
+//};
+
+const Profile*
+Profile::createUnifiedCube()
+{
+    Profile* result = new Profile(
+        SpatialReference::create( "unified-cube" ), 
+        0.0, 0.0, 6.0, 1.0,
+        -180.0, -90.0, 180.0, 90.0, 
+        6, 1 );
+
+
+    //Profile* result = new Profile( SpatialReference::create( "unified-cube" ), 0.0, 0.0, 12.0, 1.0, 6, 1 );
+    //return new UnifiedCubeProfile();
+    return result;
+}
 
 
 const Profile*
@@ -268,6 +319,23 @@ osg::Referenced( true )
     _latlong_extent = srs->isGeographic()?
         _extent :
         _extent.transform( _extent.getSRS()->getGeographicSRS() );
+}
+
+Profile::Profile(const SpatialReference* srs,
+                 double xmin, double ymin, double xmax, double ymax,
+                 double geo_xmin, double geo_ymin, double geo_xmax, double geo_ymax,
+                 unsigned int numTilesWideAtLod0,
+                 unsigned int numTilesHighAtLod0 ) :
+osg::Referenced( true )
+{
+    _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
+
+    _numTilesWideAtLod0 = numTilesWideAtLod0 != 0? numTilesWideAtLod0 : srs->isGeographic()? 2 : 1;
+    _numTilesHighAtLod0 = numTilesHighAtLod0 != 0? numTilesHighAtLod0 : 1;
+
+    _latlong_extent = GeoExtent( 
+        srs->getGeographicSRS(),
+        geo_xmin, geo_ymin, geo_xmax, geo_ymax );
 }
 
 Profile::ProfileType
@@ -340,6 +408,20 @@ Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys, i
             out_keys.push_back( new TileKey(face, 0, c, r, this) ); // face, lod, x, y, profile
         }
     }
+}
+
+GeoExtent
+Profile::calculateExtent( unsigned int lod, unsigned int tileX, unsigned int tileY )
+{
+    double width, height;
+    getTileDimensions(lod, width, height);
+
+    double xmin = getExtent().xMin() + (width * (double)tileX);
+    double ymax = getExtent().yMax() - (height * (double)tileY);
+    double xmax = xmin + width;
+    double ymin = ymax - height;
+
+    return GeoExtent( getSRS(), xmin, ymin, xmax, ymax );
 }
 
 //TODO: DEPRECATE THIS and replace by examining the SRS itself.
@@ -451,10 +533,16 @@ Profile::clampAndTransformExtent( const GeoExtent& input ) const
         osg::clampBetween( gcs_input.yMax(), _latlong_extent.yMin(), _latlong_extent.yMax() ) );
 
     // finally, transform the clamped extent into this profile's SRS and return it.
-    return
+    GeoExtent result =
         clamped_gcs_input.getSRS()->isEquivalentTo( this->getSRS() )?
         clamped_gcs_input :
         clamped_gcs_input.transform( this->getSRS() );
+
+    OE_INFO << LC
+        << "  Clamp/Xform. input=" << input.toString() << ", output=" << result.toString()
+        << std::endl;
+
+    return result;
 }
 
 
@@ -552,8 +640,13 @@ Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<osg::ref_ptr<
 {
     if ( _face_profiles.size() > 0 )
     {
-        for(std::vector<osg::ref_ptr<Profile> >::const_iterator i = _face_profiles.begin(); i != _face_profiles.end(); ++i )
+        OE_INFO << LC << "GIT, extent = " << extent.toString() << std::endl;
+
+    	for(std::vector<osg::ref_ptr<Profile> >::const_iterator i = _face_profiles.begin(); i != _face_profiles.end(); ++i )
         {
+            OE_INFO << LC << "  Face " << (int)(i-_face_profiles.begin()) << ": "
+                << toString() << std::endl;
+
             i->get()->getIntersectingTiles( extent, out_intersectingKeys );
         }
     }

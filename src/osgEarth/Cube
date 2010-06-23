@@ -26,16 +26,26 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT CubeGridUtils
+    /**
+     * Utilities for converting cube-face coordinates.
+     */
+    class OSGEARTH_EXPORT CubeUtils
     {
     public:
-        static bool LatLonToFaceCoord(const osg::Vec2d& LatLon, osg::Vec2d& Coord, int& Face);
-        static bool FaceCoordToLatLon(const osg::Vec2d& Coord, const int Face, osg::Vec2d& LatLon);
-    protected:
-        CubeGridUtils();
+        static bool latLonToFaceCoords(
+            double lat_deg, double lon_deg,
+            double& out_x, double& out_y, int& out_face,
+            int faceHint = -1 );
+
+        static bool faceCoordsToLatLon(
+            double x, double y, int face,
+            double& out_lat_deg, double& out_lon_deg );
     };
 
-
+    /**
+     * osgTerrain locator for positioning data on the terrain using a cube-face
+     * coordinate system.
+     */
     class CubeFaceLocator : public GeoLocator
     {
     public:
@@ -54,31 +64,77 @@ namespace osgEarth
     };
     
 
-    class CubeFaceSpatialReference : public SpatialReference
+    //class CubeFaceSpatialReference : public SpatialReference
+    //{
+    //public:
+    //    CubeFaceSpatialReference(void* handle, unsigned int face);
+
+    //    virtual GeoLocator* createLocator(
+    //        double xmin, double ymin, double xmax, double ymax,
+    //        bool plate_carre =false ) const;
+
+    //    unsigned int getFace() const { return _face; }
+
+    //    virtual bool isGeographic() const { return false; }
+    //    virtual bool isProjected() const { return true; }
+
+    //    virtual bool preTransform(double &x, double &y) const;
+    //    virtual bool postTransform(double &x, double &y) const;
+
+    //    virtual bool transformExtent(const SpatialReference* to_srs,
+    //                                      double& in_out_xmin,
+    //                                      double& in_out_ymin,
+    //                                      double& in_out_xmax,
+    //                                      double& in_out_ymax) const;
+
+    //protected:
+    //    unsigned int _face;
+    //};
+
+
+    /**
+     * The "Cube" SRS represents a 6-face cube, each face being in unit coordinates (0,0=>1,1).
+     * the cube as whole lays out all six faces side by side, resulting in a space 
+     * measuring (0,0=>6,1). The face number corresponds to the x-axis ordinal.
+     */
+    class CubeSpatialReference : public SpatialReference
     {
     public:
-        CubeFaceSpatialReference(void* handle, unsigned int face);
+        struct FaceCoord 
+        {
+            FaceCoord( double x, double y, int face ) : _x(x), _y(y), _face(face) { }
+            double _x, _y;
+            int _face;
+        };
+
+    public:
+        CubeSpatialReference(void* handle);
 
         virtual GeoLocator* createLocator(
             double xmin, double ymin, double xmax, double ymax,
-            bool plate_carre =false ) const;
+            bool plate_carre =false) const;
 
-        unsigned int getFace() const { return _face; }
-
+        // CUBE is a projected coordinate system.
         virtual bool isGeographic() const { return false; }
         virtual bool isProjected() const { return true; }
 
-        virtual bool preTransform(double &x, double &y) const;
-        virtual bool postTransform(double &x, double &y) const;
+        // This SRS uses a WGS84 lat/long SRS under the hood for reprojection. So we need the
+        // pre/post transforms to move from cube to latlong and back.
+        virtual bool preTransform(double& x, double& y, void* context) const;
+        virtual bool postTransform(double& x, double& y, void* context) const;
 
-        virtual bool transformExtent(const SpatialReference* to_srs,
-                                          double& in_out_xmin,
-                                          double& in_out_ymin,
-                                          double& in_out_xmax,
-                                          double& in_out_ymax) const;
+        virtual bool transformExtent(
+            const SpatialReference* to_srs,
+            double& in_out_xmin,
+            double& in_out_ymin,
+            double& in_out_xmax,
+            double& in_out_ymax,
+            void* context) const;
 
     protected:
-        unsigned int _face;
+        bool toFace( double& in_out_x, double& in_out_y, int& out_face ) const;
+        bool toFace( double& in_out_xmin, double& in_out_ymin, double& in_out_xmax, double& in_out_ymax, int& out_face ) const;
+        bool fromFace( double& in_out_x, double& in_out_y, int face ) const;
     };
 
 }

@@ -364,7 +364,7 @@ CubeManifold::project( const osg::Vec3d& coord )
         osg::DegreesToRadians(lon), 0, 
         out.x(), out.y(), out.z() );
 
-    OE_INFO << LC
+    OE_DEBUG << LC
         << "project: (" << coord.x() << "," << coord.y() << "," << coord.z() << ") => (" << lat << "," << lon << ")"
         << std::endl;
 

@@ -136,8 +136,8 @@ Diamond::activate()
         int tsl = TEX_SUBRANGE_LEVELS;
 
         // for some unknown reason the polar faces come in much lower res. hack:
-        if ( osgEarth::UnifiedCubeProfile::getFace( _key.get() ) >= 4 )
-            tsl--;
+        //if ( osgEarth::UnifiedCubeProfile::getFace( _key.get() ) >= 4 )
+        //    tsl--;
 
         // assign this diamond the stateset of the appropriate quadtree ancestor:
         int stateSetLevel = (int)_level - (tsl*2);

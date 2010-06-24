@@ -21,7 +21,42 @@
 #include <osg/Notify>
 #include <string.h>
 
+#define LC "[osgEarth::ImageUtils] "
+
 using namespace osgEarth;
+
+static const float r10= 1.0f/1023.0f;
+static const float r8 = 1.0f/255.0f;
+static const float r6 = 1.0f/63.0f;
+static const float r5 = 1.0f/31.0f;
+static const float r4 = 1.0f/15.0f;
+static const float r3 = 1.0f/7.0f;
+static const float r2 = 1.0f/3.0f;
+
+
+// todo: add support for other data types as needed.
+osg::Vec4
+ImageUtils::getColor(const osg::Image* image, int s, int t, int r)
+{
+    switch( image->getDataType() )
+    {
+    case( GL_UNSIGNED_SHORT_5_5_5_1 ):
+        {
+            unsigned short p = *(unsigned short*)image->data( s, t, r );
+            //internal format GL_RGB5_A1 is implied
+            return osg::Vec4( r5*(float)(p>>11), r5*(float)((p&0x7c0)>>6), r5*((p&0x3e)>>1), (float)(p&0x1) );
+        }         
+    case( GL_UNSIGNED_BYTE_3_3_2 ):
+        {
+            unsigned char p = *(unsigned char*)image->data( s, t, r );
+            // internal format GL_R3_G3_B2 is implied
+            return osg::Vec4( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
+        }
+    }
+
+    // default: let osg::Image handle the usual types
+    return image->getColor( s, t, r );
+}
 
 bool
 ImageUtils::copyAsSubImage( const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
@@ -53,8 +88,13 @@ ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned i
 
     GLenum pf = input->getPixelFormat();
 
-    if ( input && new_s > 0 && new_t > 0 && 
-        (pf == GL_RGBA || pf == GL_RGB || pf == GL_LUMINANCE || pf == GL_LUMINANCE_ALPHA) )
+    if ( pf != GL_RGBA && pf != GL_RGB && pf != GL_LUMINANCE && pf != GL_LUMINANCE_ALPHA )
+    {
+        OE_WARN << LC << "resizeImage: unsupported pixel format " << std::hex << pf << std::endl;
+        return 0L;
+    }
+
+    if ( new_s > 0 && new_t > 0 )
     {
         float s_ratio = (float)input->s()/(float)new_s;
         float t_ratio = (float)input->t()/(float)new_t;
@@ -199,9 +239,12 @@ ImageUtils::convertToRGB(const osg::Image *image)
 	if (image)
 	{
 		//If the image is already RGB, clone it and return
-		if (image->getPixelFormat() == GL_RGB) return new osg::Image(*image);
+		if (image->getPixelFormat() == GL_RGB)
+        {
+            return new osg::Image(*image);
+        }
 
-		if (image->getPixelFormat() == GL_RGBA)
+		else if (image->getPixelFormat() == GL_RGBA)
 		{
 			osg::Image* result = new osg::Image();
 			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
@@ -221,7 +264,7 @@ ImageUtils::convertToRGB(const osg::Image *image)
 		else
 		{
 			//TODO:  Handle other cases
-			OE_NOTICE << "[osgEarth::ImageUtils::convertToRGB] pixelFormat " << image->getPixelFormat() << " not yet supported " << std::endl;
+            OE_WARN << LC << "convertToRGB: pixelFormat " << std::hex << image->getPixelFormat() << " not yet supported " << std::endl;
 		}
 	}
 

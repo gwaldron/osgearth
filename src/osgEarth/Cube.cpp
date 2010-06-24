@@ -70,8 +70,11 @@ CubeUtils::latLonToFaceCoords(double lat_deg, double lon_deg,
         else
             out_face = face_y < 1 ? 5 : 4;
 
-        if ( osg::equivalent( lat_deg, -45 ) )
-            out_face = 5;
+        //GW: not sure why this was here; but I think this issue is the cause of cracks when
+        //    projecting CUBE source imagery onto a WGS84 globe.
+        //
+        //if ( osg::equivalent( lat_deg, -45 ) )
+        //    out_face = 5;
     }
 
     out_x = 4 * nlon - face_x;
@@ -228,6 +231,66 @@ CubeUtils::faceCoordsToLatLon( double x, double y, int face, double& out_lat_deg
     return true;
 }
 
+bool
+CubeUtils::cubeToFace( double& in_out_x, double& in_out_y, int& out_face )
+{
+    // convert from unicube space (0,0=>6,1) to face space (0,0=>1,1 + face#)
+    // too tired to compute a formula right now
+    out_face = 
+        in_out_x <= 1.0 ? 0 :
+        in_out_x <= 2.0 ? 1 :
+        in_out_x <= 3.0 ? 2 :
+        in_out_x <= 4.0 ? 3 :
+        in_out_x <= 5.0 ? 4 : 5;
+
+    in_out_x = in_out_x - (double)out_face;
+    // y unchanged
+    return true;
+}
+
+bool
+CubeUtils::cubeToFace(double& in_out_xmin, double& in_out_ymin,
+                      double& in_out_xmax, double& in_out_ymax,
+                      int& out_face)
+{
+    int min_face = 
+        in_out_xmin < 1.0 ? 0 :
+        in_out_xmin < 2.0 ? 1 :
+        in_out_xmin < 3.0 ? 2 :
+        in_out_xmin < 4.0 ? 3 :
+        in_out_xmin < 5.0 ? 4 : 5;
+
+    int max_face =
+        in_out_xmax <= 1.0 ? 0 :
+        in_out_xmax <= 2.0 ? 1 :
+        in_out_xmax <= 3.0 ? 2 :
+        in_out_xmax <= 4.0 ? 3 :
+        in_out_xmax <= 5.0 ? 4 : 5;
+
+    if ( min_face != max_face )
+    {
+        OE_WARN << LC << "Min face <> Max face!" << std::endl;
+        return false;
+    }
+
+    out_face = min_face;
+
+    in_out_xmin -= (double)out_face;
+    in_out_xmax -= (double)out_face;
+
+    // y values are unchanged
+    return true;
+}
+
+bool
+CubeUtils::faceToCube( double& in_out_x, double& in_out_y, int face )
+{
+    // convert from face space (0,0=>1,1 + face#) to unicube space (0,0=>6,1)
+    in_out_x = (double)face + in_out_x;
+    // y unchanged
+    return true;
+}
+
 // --------------------------------------------------------------------------
 
 CubeFaceLocator::CubeFaceLocator(unsigned int face):
@@ -335,7 +398,7 @@ CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, doubl
                                     bool plate_carre) const
 {
     int face;
-    toFace( xmin, ymin, xmax, ymax, face );
+    CubeUtils::cubeToFace( xmin, ymin, xmax, ymax, face );
 
     GeoLocator* result = new CubeFaceLocator( face );
 
@@ -355,7 +418,7 @@ CubeSpatialReference::preTransform(double& x, double& y, void* context) const
 {
     // Convert the incoming points from cube => face => lat/long.
     int face;
-    if ( !toFace( x, y, face ) )
+    if ( !CubeUtils::cubeToFace( x, y, face ) )
     {
         OE_WARN << LC << "Failed to convert (" << x << "," << y << ") into face coordinates." << std::endl;
         return false;
@@ -390,7 +453,7 @@ CubeSpatialReference::postTransform(double& x, double& y, void* context) const
 
     //TODO: what to do about boundary points?
 
-    if ( !fromFace( out_x, out_y, face ) )
+    if ( !CubeUtils::faceToCube( out_x, out_y, face ) )
     {
         OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
         return false;
@@ -399,66 +462,6 @@ CubeSpatialReference::postTransform(double& x, double& y, void* context) const
     x = out_x;
     y = out_y;
 
-    return true;
-}
-
-bool
-CubeSpatialReference::toFace( double& in_out_x, double& in_out_y, int& out_face ) const
-{
-    // convert from unicube space (0,0=>6,1) to face space (0,0=>1,1 + face#)
-    // too tired to compute a formula right now
-    out_face = 
-        in_out_x <= 1.0 ? 0 :
-        in_out_x <= 2.0 ? 1 :
-        in_out_x <= 3.0 ? 2 :
-        in_out_x <= 4.0 ? 3 :
-        in_out_x <= 5.0 ? 4 : 5;
-
-    in_out_x = in_out_x - (double)out_face;
-    // y unchanged
-    return true;
-}
-
-bool
-CubeSpatialReference::toFace(double& in_out_xmin, double& in_out_ymin,
-                             double& in_out_xmax, double& in_out_ymax,
-                             int& out_face) const
-{
-    int min_face = 
-        in_out_xmin < 1.0 ? 0 :
-        in_out_xmin < 2.0 ? 1 :
-        in_out_xmin < 3.0 ? 2 :
-        in_out_xmin < 4.0 ? 3 :
-        in_out_xmin < 5.0 ? 4 : 5;
-
-    int max_face =
-        in_out_xmax <= 1.0 ? 0 :
-        in_out_xmax <= 2.0 ? 1 :
-        in_out_xmax <= 3.0 ? 2 :
-        in_out_xmax <= 4.0 ? 3 :
-        in_out_xmax <= 5.0 ? 4 : 5;
-
-    if ( min_face != max_face )
-    {
-        OE_WARN << LC << "Min face <> Max face!" << std::endl;
-        return false;
-    }
-
-    out_face = min_face;
-
-    in_out_xmin -= (double)out_face;
-    in_out_xmax -= (double)out_face;
-
-    // y values are unchanged
-    return true;
-}
-
-bool
-CubeSpatialReference::fromFace( double& in_out_x, double& in_out_y, int face ) const
-{
-    // convert from face space (0,0=>1,1 + face#) to unicube space (0,0=>6,1)
-    in_out_x = (double)face + in_out_x;
-    // y unchanged
     return true;
 }
 
@@ -486,7 +489,7 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
     double face_xmax = in_out_xmax, face_ymax = in_out_ymax;
 
     int face;
-    toFace( face_xmin, face_ymin, face_xmax, face_ymax, face );
+    CubeUtils::cubeToFace( face_xmin, face_ymin, face_xmax, face_ymax, face );
 
     // for equatorial faces, the normal transformation process will suffice (since it will call into
     // pre/postTransform).
@@ -584,6 +587,48 @@ UnifiedCubeProfile::getFace( const TileKey* key )
     return key->getTileX() >> key->getLevelOfDetail();
 }
 
+GeoExtent
+UnifiedCubeProfile::transformGcsExtentOnFace( const GeoExtent& gcsExtent, int face ) const
+{
+    if ( face < 4 )
+    {
+        const GeoExtent& fex = _faceExtent_gcs[face];
+
+        return GeoExtent(
+            getSRS(),
+            (double)face + (gcsExtent.xMin()-fex.xMin()) / fex.width(),
+            (gcsExtent.yMin()-fex.yMin()) / fex.height(),
+            (double)face + (gcsExtent.xMax()-fex.xMin()) / fex.width(),
+            (gcsExtent.yMax()-fex.yMin()) / fex.height() );
+    }
+    else
+    {
+        // transform all 4 corners; then do the min/max for x/y.
+        double lon[4] = { gcsExtent.xMin(), gcsExtent.xMax(), gcsExtent.xMax(), gcsExtent.xMin() };
+        double lat[4] = { gcsExtent.yMin(), gcsExtent.yMin(), gcsExtent.yMax(), gcsExtent.yMax() };
+        double x[4], y[4];
+
+        for( int i=0; i<4; ++i )
+        {
+            int dummy;
+            if ( ! CubeUtils::latLonToFaceCoords( lat[i], lon[i], x[i], y[i], dummy, face ) )
+            {
+                OE_WARN << LC << "transformGcsExtentOnFace, ll2fc failed" << std::endl;
+            }
+        }
+
+        double xmin = SMALLEST( x[0], x[1], x[2], x[3] );
+        double xmax = LARGEST( x[0], x[1], x[2], x[3] );
+        double ymin = SMALLEST( y[0], y[1], y[2], y[3] );
+        double ymax = LARGEST( y[0], y[1], y[2], y[3] );
+
+        CubeUtils::faceToCube( xmin, ymin, face );
+        CubeUtils::faceToCube( xmax, ymax, face );
+
+        return GeoExtent( getSRS(), xmin, ymin, xmax, ymax );
+    }
+}
+
 void
 UnifiedCubeProfile::getIntersectingTiles(
     const GeoExtent& remoteExtent,
@@ -610,9 +655,7 @@ UnifiedCubeProfile::getIntersectingTiles(
             GeoExtent partExtent_gcs = _faceExtent_gcs[face].intersectionSameSRS( remoteExtent_gcs );
             if ( partExtent_gcs.isValid() )
             {
-                GeoExtent partExtent = partExtent_gcs.transform( getSRS() );
-                //addIntersectingTiles( part, out_intersectingKeys );
-
+                GeoExtent partExtent = transformGcsExtentOnFace( partExtent_gcs, face );
                 addIntersectingTiles( partExtent, out_intersectingKeys );
             }
         }

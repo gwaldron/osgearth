@@ -302,6 +302,7 @@ _owns_handle( true ),
 _name( name ),
 _initialized( false )
 {
+    init();
     //setThreadSafeReferenceCounting(true); // in Registry.cpp
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
@@ -846,8 +847,19 @@ void
 SpatialReference::init()
 {
     GDAL_SCOPED_LOCK;
-    
-    _is_geographic = OSRIsGeographic( _handle ) != 0;
+
+    if ( _init_str == "cube" )
+    {
+        _is_cube = true;
+        _is_contiguous = false;
+        _is_geographic = false;
+    }
+    else
+    {
+        _is_cube = false;
+        _is_contiguous = true;    
+        _is_geographic = OSRIsGeographic( _handle ) != 0;
+    }
     
     int err;
     double semi_major_axis = OSRGetSemiMajor( _handle, &err );
@@ -881,17 +893,6 @@ SpatialReference::init()
 		_is_south_polar = false;
 	}
 
-    if ( _init_str == "cube" )
-    {
-        _is_cube = true;
-        _is_contiguous = false;
-    }
-    else
-    {
-        _is_cube = false;
-        _is_contiguous = true;
-    }
-
     if ( _name == "unnamed" )
     {
         _name =
@@ -899,7 +900,6 @@ SpatialReference::init()
             _is_mercator? "Mercator CS" :
             ( !proj.empty()? proj : "Projected CS" );
     }
-
 
     char* wktbuf;
     if ( OSRExportToWkt( _handle, &wktbuf ) == OGRERR_NONE )

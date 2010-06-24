@@ -521,7 +521,9 @@ MapLayer::postProcess( GeoImage* input )
         else if ( im->getPixelFormat() == GL_RGB )
         {
             for(unsigned int i=0; i<p; ++i, ++d)
+            {
                 *d = _gammaLUT[*d];
+            }
         }
         else
         {

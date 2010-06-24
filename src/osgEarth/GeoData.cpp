@@ -31,6 +31,8 @@
 
 #include <sstream>
 
+#define LC "[osgEarth::GeoData] "
+
 using namespace osgEarth;
 
 
@@ -550,6 +552,10 @@ createDataSetFromImage(const osg::Image* image, double minX, double minY, double
 
         delete[] alpha;
     }
+    else
+    {
+        OE_WARN << LC << "createDataSetFromImage: unsupported pixel format " << std::hex << image->getPixelFormat() << std::endl;
+    }
     srcDS->FlushCache();
 
     return srcDS;
@@ -685,10 +691,10 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 if (rowMin > rowMax) rowMin = rowMax;
                 if (colMin > colMax) colMin = colMax;
 
-                osg::Vec4 urColor = image->getColor(colMax, rowMax);
-                osg::Vec4 llColor = image->getColor(colMin, rowMin);
-                osg::Vec4 ulColor = image->getColor(colMin, rowMax);
-                osg::Vec4 lrColor = image->getColor(colMax, rowMin);
+                osg::Vec4 urColor = ImageUtils::getColor(image, colMax, rowMax);
+                osg::Vec4 llColor = ImageUtils::getColor(image, colMin, rowMin);
+                osg::Vec4 ulColor = ImageUtils::getColor(image, colMin, rowMax);
+                osg::Vec4 lrColor = ImageUtils::getColor(image, colMax, rowMin);
 
                 /*Average Interpolation*/
                 /*double x_rem = px - (int)px;
@@ -711,7 +717,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 py_i >= 0 && py_i < image->t())
                 {
                 //OE_NOTICE << "[osgEarth::GeoData] Sampling pixel " << px << "," << py << std::endl;
-                color = image->getColor(px_i, py_i);
+                color = ImageUtils::getColor(image, px_i, py_i);
                 }
                 else
                 {
@@ -723,7 +729,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 if ((colMax == colMin) && (rowMax == rowMin))
                 {
                     //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
-                    color = image->getColor(px_i, py_i);
+                    color = ImageUtils::getColor(image, px_i, py_i);
                 }
                 else if (colMax == colMin)
                 {

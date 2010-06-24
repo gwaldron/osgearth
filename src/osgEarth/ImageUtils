@@ -97,7 +97,13 @@ namespace osgEarth
 		 *Compares the image data of two images and determines if they are equivalent
 		 */
 		static bool areEquivalent(const osg::Image *lhs, const osg::Image *rhs);
-			
+
+        /**
+         * Gets the color of an image at the specified pixel. Works for packed pixel
+         * formats as well as standard formats (osg::Image::getColor only works for
+         * standard formats)
+         */
+        static osg::Vec4 getColor(const osg::Image* image, int s, int t, int r =0);			
     };
 }
 

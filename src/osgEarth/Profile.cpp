@@ -455,9 +455,7 @@ Profile::clampAndTransformExtent( const GeoExtent& input ) const
         clamped_gcs_input :
         clamped_gcs_input.transform( this->getSRS() );
 
-    OE_INFO << LC
-        << "  Clamp/Xform. input=" << input.toString() << ", output=" << result.toString()
-        << std::endl;
+    OE_DEBUG << LC << "clamp&xform: input=" << input.toString() << ", output=" << result.toString() << std::endl;
 
     return result;
 }

@@ -439,7 +439,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         }
         else
         {
-            OE_NOTICE << "[osgEarth::MapNode] Couldn't get tile for " << keys[i]->str() << std::endl;
+            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i]->str() << std::endl;
         }
     }
 

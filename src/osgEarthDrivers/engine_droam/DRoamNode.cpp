@@ -35,7 +35,7 @@ _map( map )
     this->setFormat( "WKT" );
     this->setEllipsoidModel( new osg::EllipsoidModel );
 
-    const Profile* profile = UnifiedCubeProfileUtils::createProfile();
+    const Profile* profile = new osgEarth::UnifiedCubeProfile();
     //Profile::createCube2( SpatialReference::create( "epsg:4326" ) );
 
     _manifold = new CubeManifold( profile );

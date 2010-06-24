@@ -60,7 +60,7 @@ CubeUtils::latLonToFaceCoords(double lat_deg, double lon_deg,
     }
     else
     {
-        int face_x = (int)(4 * nlon);
+        face_x = (int)(4 * nlon);
         if ( face_x == 4 )
             face_x = 3;
 
@@ -226,24 +226,6 @@ CubeUtils::faceCoordsToLatLon( double x, double y, int face, double& out_lat_deg
     out_lat_deg = s.y() * 180 - 90;
 
     return true;
-}
-
-// --------------------------------------------------------------------------
-
-const Profile*
-UnifiedCubeProfileUtils::createProfile()
-{
-    return Profile::create(
-        SpatialReference::create( "unified-cube" ), 
-        0.0, 0.0, 6.0, 1.0,
-        -180.0, -90.0, 180.0, 90.0, 
-        6, 1 );
-}
-
-int
-UnifiedCubeProfileUtils::getFace( const TileKey* key )
-{
-    return key->getTileX() >> key->getLevelOfDetail();
 }
 
 // --------------------------------------------------------------------------
@@ -495,57 +477,144 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
                                       double& in_out_ymax,
                                       void* context ) const
 {
+    // note: this method only works when the extent is isolated to one face of the cube. If you
+    // want to transform an artibrary extent, you need to break it up into separate extents for
+    // each cube face.
     bool ok = true;
 
-    // figure out which face we are in (find the face of the center point):
-    double tempX = 0.5*(in_out_xmin+in_out_xmax);
-    double tempY = 0.5*(in_out_ymin+in_out_ymax);
+    double face_xmin = in_out_xmin, face_ymin = in_out_ymin;
+    double face_xmax = in_out_xmax, face_ymax = in_out_ymax;
+
     int face;
-    toFace( tempX, tempY, face );
+    toFace( face_xmin, face_ymin, face_xmax, face_ymax, face );
 
     // for equatorial faces, the normal transformation process will suffice (since it will call into
     // pre/postTransform).
     if ( face < 4 )
     {
-        return SpatialReference::transformExtent( to_srs, in_out_xmin, in_out_ymin, in_out_xmax, in_out_ymax );
-    }
-
-    double x[4] = { in_out_xmin, in_out_xmax, in_out_xmax, in_out_xmin };
-    double y[4] = { in_out_ymin, in_out_ymin, in_out_ymax, in_out_ymax };
-
-    bool north = face == 4; // else south
-    bool crosses_pole = x[LL] < 0.5 && x[UR] > 0.5 && y[LL] < 0.5 && y[UR] > 0.5;
-    bool crosses_date_line = x[UL]+(1-y[UL]) < 1.0 && (1-x[LR])+y[LR] < 1.0 && x[LL]+y[LL] < 1.0;
-
-
-    if ( crosses_pole ) // full x extent.
-    {
-        to_srs->getGeographicSRS()->transform( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
-        to_srs->getGeographicSRS()->transform( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
-    }
-
-    else if ( transformPoints( to_srs, x, y, 4 ) )
-    {
-        in_out_ymin = SMALLEST( y[0], y[1], y[2], y[3] );
-        in_out_ymax = LARGEST( y[0], y[1], y[2], y[3] );
-
-        // check to see whether the extent crosses the date line boundary. If so,
-        // make the UL corner the southwest and the LR corner the east.
-        if ( crosses_date_line )
-        {
-            in_out_xmin = x[UL];
-            in_out_xmax = x[LR];
-        }
-        else
-        {
-            in_out_xmin = SMALLEST( x[0], x[1], x[2], x[3] );
-            in_out_xmax = LARGEST( x[0], x[1], x[2], x[3] );
-        }
+        ok = SpatialReference::transformExtent( to_srs, in_out_xmin, in_out_ymin, in_out_xmax, in_out_ymax );
     }
     else
     {
-        // point xform failed
-        ok = false;
+        // otherwise we are on one of the polar faces (4 or 5):    
+
+        // four corners in face space:
+        double fx[4] = { face_xmin, face_xmax, face_xmax, face_xmin };
+        double fy[4] = { face_ymin, face_ymin, face_ymax, face_ymax };
+
+        bool crosses_pole = fx[LL] < 0.5 && fx[UR] > 0.5 && fy[LL] < 0.5 && fy[UR] > 0.5;
+
+        if ( crosses_pole ) // full x extent.
+        {
+            bool north = face == 4; // else south
+            to_srs->getGeographicSRS()->transform( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
+            to_srs->getGeographicSRS()->transform( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
+        }
+
+        else
+        {
+            double lat_deg[4];
+            double lon_deg[4];
+            double latmin, latmax, lonmin, lonmax;
+
+            for( int i=0; i<4; ++i )
+            {
+                CubeUtils::faceCoordsToLatLon( fx[i], fy[i], face, lat_deg[i], lon_deg[i] );
+            }
+
+            latmin = SMALLEST( lat_deg[0], lat_deg[1], lat_deg[2], lat_deg[3] );
+            latmax = LARGEST( lat_deg[0], lat_deg[1], lat_deg[2], lat_deg[3] );
+
+            // check to see whether the extent crosses the date line boundary. If so,
+            // make the UL corner the southwest and the LR corner the east.
+            bool crosses_date_line = fx[UL]+(1-fy[UL]) < 1.0 && (1-fx[LR])+fy[LR] < 1.0 && fx[LL]+fy[LL] < 1.0;
+            if ( crosses_date_line )
+            {
+                lonmin = lon_deg[UL];
+                lonmax = lon_deg[LR];
+            }
+            else
+            {
+                lonmin = SMALLEST( lon_deg[0], lon_deg[1], lon_deg[2], lon_deg[3] );
+                lonmax = LARGEST( lon_deg[0], lon_deg[1], lon_deg[2], lon_deg[3] );
+            }
+
+            if ( to_srs->isGeographic() )
+            {
+                in_out_xmin = lonmin;
+                in_out_xmax = lonmax;
+                in_out_ymin = latmin;
+                in_out_ymax = latmax;
+            }
+            else
+            {
+                bool ok1 = transform( lonmin, latmin, to_srs, in_out_xmin, in_out_ymin, context );
+                bool ok2 = transform( lonmax, latmax, to_srs, in_out_xmax, in_out_ymax, context );
+                ok = ok1 && ok2;
+            }
+        }
     }
+
     return ok;
+}
+
+// --------------------------------------------------------------------------
+
+UnifiedCubeProfile::UnifiedCubeProfile() :
+Profile(SpatialReference::create( "unified-cube" ),
+        0.0, 0.0, 6.0, 1.0,
+        -180.0, -90.0, 180.0, 90.0,
+        6, 1 )
+
+{
+    const SpatialReference* srs = getSRS()->getGeographicSRS();
+
+    // set up some constant extents
+    _faceExtent_gcs[0] = GeoExtent( srs, -180, -45, -90,  45 );
+    _faceExtent_gcs[1] = GeoExtent( srs,  -90, -45,   0,  45 );
+    _faceExtent_gcs[2] = GeoExtent( srs,    0, -45,  90,  45 );
+    _faceExtent_gcs[3] = GeoExtent( srs,   90, -45, 180,  45 );
+    _faceExtent_gcs[4] = GeoExtent( srs, -180,  45, 180,  90 ); // north polar
+    _faceExtent_gcs[5] = GeoExtent( srs, -180, -90, 180, -45 ); // south polar
+}
+
+int
+UnifiedCubeProfile::getFace( const TileKey* key )
+{
+    return key->getTileX() >> key->getLevelOfDetail();
+}
+
+void
+UnifiedCubeProfile::getIntersectingTiles(
+    const GeoExtent& remoteExtent,
+    std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys ) const
+{
+    if ( getSRS()->isEquivalentTo( remoteExtent.getSRS() ) )
+    {
+        addIntersectingTiles( remoteExtent, out_intersectingKeys );
+    }
+    else
+    {
+        // the cube profile is non-contiguous. so there may be multiple local extents required
+        // to fully intersect the remote extent.
+
+        // first transform the remote extent to lat/long.
+        GeoExtent remoteExtent_gcs = remoteExtent.getSRS()->isGeographic()
+            ? remoteExtent
+            : remoteExtent.transform( remoteExtent.getSRS()->getGeographicSRS() );
+
+        // Chop the input extent into three separate extents: for the equatorial, north polar,
+        // and south polar tile regions.
+        for( int face=0; face<6; ++face )
+        {
+            GeoExtent partExtent_gcs = _faceExtent_gcs[face].intersectionSameSRS( remoteExtent_gcs );
+            if ( partExtent_gcs.isValid() )
+            {
+                GeoExtent partExtent = partExtent_gcs.transform( getSRS() );
+                //addIntersectingTiles( part, out_intersectingKeys );
+
+                addIntersectingTiles( partExtent, out_intersectingKeys );
+            }
+        }
+    }
 }

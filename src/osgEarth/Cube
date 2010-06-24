@@ -45,17 +45,17 @@ namespace osgEarth
         static int getFace( const TileKey* key );
     };
 
-    /**
-     * Utilities specifically for dealing with the Unified Cube Profile. This
-     * profile represents the 6 cube faces as a single 6x1 tile block.
-     */
-    class OSGEARTH_EXPORT UnifiedCubeProfileUtils
-    {
-    public:
-        static const Profile* createProfile();
+    ///**
+    // * Utilities specifically for dealing with the Unified Cube Profile. This
+    // * profile represents the 6 cube faces as a single 6x1 tile block.
+    // */
+    //class OSGEARTH_EXPORT UnifiedCubeProfileUtils
+    //{
+    //public:
+    //    static const Profile* createProfile();
 
-        static int getFace( const TileKey* key );
-    };
+    //    static int getFace( const TileKey* key );
+    //};
 
     /**
      * osgTerrain locator for positioning data on the terrain using a cube-face
@@ -115,6 +115,32 @@ namespace osgEarth
         bool fromFace( double& in_out_x, double& in_out_y, int face ) const;
     };
 
+    /**
+     * Custom profile for the unified cube tile layout.
+     * TODO: describe here
+     */
+    class OSGEARTH_EXPORT UnifiedCubeProfile : public Profile
+    {
+    public:
+        UnifiedCubeProfile();
+
+    public: // utilities
+
+        /**
+         * Gets the cube face associated with a tile key (in cube srs).
+         */
+        static int getFace( const TileKey* key );
+
+    public: // Profile
+
+        virtual void getIntersectingTiles(
+            const GeoExtent& extent,
+            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys ) const;
+
+    private:
+
+        GeoExtent _faceExtent_gcs[6];
+    };
 }
 
 #endif // OSGEARTH_CUBE_H

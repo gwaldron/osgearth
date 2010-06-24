@@ -197,12 +197,16 @@ namespace osgEarth
         /**
          *Gets the intersecting tiles of this Profile with the given TileKey.
          */
-        void getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+        void getIntersectingTiles(
+            const TileKey* key,
+            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
 
         /**
          *Gets the intersecting tiles of this Profile with the given extents
          */
-        void getIntersectingTiles(const GeoExtent& extent, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+        virtual void getIntersectingTiles(
+            const GeoExtent& extent,
+            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys ) const;
 
         /** 
          * Clamps the incoming extents to the extents of this profile, and then converts the 
@@ -223,7 +227,7 @@ namespace osgEarth
          */
         std::string toString() const;
 
-    private:       
+    protected:       
 
         Profile(
             const SpatialReference* srs,
@@ -239,7 +243,7 @@ namespace osgEarth
             unsigned int y_tiles_at_lod0 =0 );
         
 
-        void addIntersectingTiles(
+        virtual void addIntersectingTiles(
             const GeoExtent& key_ext,
             std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
 

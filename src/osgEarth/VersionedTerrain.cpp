@@ -1004,7 +1004,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
 											//static_cast<osgEarth::TransparentLayer*>(this->getColorLayer(index))->setLevelOfDetail( _key->getLevelOfDetail());										
 											itr = _requests.erase( itr );
 											increment = false;
-											OE_NOTICE << "Tried (" << _key->str() << ") (layer " << r->_layerId << "), too many times, moving on...." << std::endl;
+											OE_INFO << "Tried (" << _key->str() << ") (layer " << r->_layerId << "), too many times, moving on...." << std::endl;
 										}
 									}
 									else

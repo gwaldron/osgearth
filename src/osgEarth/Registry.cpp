@@ -139,7 +139,7 @@ Registry::getCubeProfile() const
 
         if ( !_cube_profile.valid() ) // double-check pattern
         {
-            const_cast<Registry*>(this)->_cube_profile = UnifiedCubeProfileUtils::createProfile();
+            const_cast<Registry*>(this)->_cube_profile = new UnifiedCubeProfile(); // UnifiedCubeProfileUtils::createProfile();
         }
     }
     return _cube_profile.get();

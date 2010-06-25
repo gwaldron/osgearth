@@ -149,8 +149,6 @@ struct MetadataTable
             "SELECT layer,format,compressor,tilesize,srs,xmin,ymin,xmax,ymax,tw,th "
             "FROM metadata WHERE layer = ?";
 
-        _statsLoaded = 0;
-        _statsStored = 0;
         return true;
     }
 
@@ -199,8 +197,6 @@ struct MetadataTable
         }
 
         sqlite3_finalize( insert );
-        if (success)
-            _statsStored++;
         return success;
     }
 
@@ -250,8 +246,6 @@ struct MetadataTable
         }
 
         sqlite3_finalize( select );
-        if (success)
-            _statsLoaded++;
         return success;
     }
 
@@ -263,8 +257,6 @@ struct MetadataTable
 
     std::string _insertSQL;
     std::string _selectSQL;
-    int _statsLoaded;
-    int _statsStored;
  };
 
 // --------------------------------------------------------------------------
@@ -1053,12 +1045,6 @@ public: // Cache interface
                     pool->addEntry(key, t);
                     _pendingUpdates[layerName] = pool.get();
                 }
-                if (pool.valid()) {
-                    if (pool->getNbEntry() > 100) {
-                        _writeService->add(pool.get());
-                        _pendingUpdates.erase(layerName);
-                    }
-                }
             }
 #else
             // update the last-access time
@@ -1163,9 +1149,8 @@ public: // Cache interface
         }
 
         {
-            //ScopedLock<Mutex> lock( _pendingUpdateMutex );
-            //std::string name = layerName;
-            //_pendingUpdates.erase( name );
+            ScopedLock<Mutex> lock( _pendingUpdateMutex );
+            _pendingUpdates.erase( layerName );
         }
         return true;
     }
@@ -1196,9 +1181,9 @@ private:
             if ( _writeService->getNumRequests() == 0 )
             {
                 //OE_DEBUG << "Write service queue is empty." << std::endl;
-            }
-            OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
-        }            
+            } else
+                OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
+        }
     }
 
 #ifdef SPLIT_LAYER_DB

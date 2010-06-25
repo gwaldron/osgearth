@@ -30,6 +30,7 @@
 #include <ogr_spatialref.h>
 
 #include <sstream>
+#include <iomanip>
 
 #define LC "[osgEarth::GeoData] "
 
@@ -624,28 +625,34 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
         height = osg::minimum(image->s(), image->t());        
     }
 
-
-    //OE_NOTICE << "[osgEarth::GeoData] Reprojecting image that is " << image->s() << " x " << image->t() << std::endl;
+    // need to know this in order to choose the right interpolation algorithm
+    bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
-    double dx = (dest_extent.xMax() - dest_extent.xMin()) / (double)width;
-    double dy = (dest_extent.yMax() - dest_extent.yMin()) / (double)height;
+    double dx = dest_extent.width() / (double)width;
+    double dy = dest_extent.height() / (double)height;
+
+    // offset the sample points by 1/2 a pixel so we are sampling "pixel center".
+    // (This is especially useful in the UnifiedCubeProfile since it nullifes the chances for
+    // edge ambiguity.)
+    double xoff = 0.5 * dx;
+    double yoff = 0.5 * dy;
 
     unsigned int numPixels = width * height;
-    
+
+    // Start by creating a sample grid over the destination extent:    
     double *destPointsX = new double[numPixels];
     double *destPointsY = new double[numPixels];
 
-    //Compute the destination sample points.
     unsigned int pixel = 0;
     for (unsigned int c = 0; c < width; ++c)
     {
-        double dest_x = dest_extent.xMin() + (double)c * dx;
+        double dest_x = dest_extent.xMin() + xoff + (double)c * dx;
         for (unsigned int r = 0; r < height; ++r)
         {
-            double dest_y = dest_extent.yMin() + (double)r * dy;
+            double dest_y = dest_extent.yMin() + yoff + (double)r * dy;
 
             destPointsX[pixel] = dest_x;
             destPointsY[pixel] = dest_y;
@@ -653,17 +660,16 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
         }
     }
 
-    //Reproject the destination points to the source coordinate system
+    // Next, reproject the sample grid into the source coordinate system:
     double* srcPointsX = new double[numPixels];
     double* srcPointsY = new double[numPixels];
     memcpy(srcPointsX, destPointsX, sizeof(double) * numPixels);
     memcpy(srcPointsY, destPointsY, sizeof(double) * numPixels);
 
-    // NOTE: some of the points may be out of range (for Mercator esp.) so we are setting 
-    // "ignore errors" to true to suppress any error messages from the transform. This is OK
-    // b/c it will discard those out-of-bounds points anyway.
     dest_extent.getSRS()->transformPoints( src_extent.getSRS(), srcPointsX, srcPointsY, numPixels, 0L, true );
 
+    // Next, go through the source-SRS sample grid, read the color at each point from the source image,
+    // and write it to the corresponding pixel in the destination image.
     pixel = 0;
     for (unsigned int c = 0; c < width; ++c)
     {
@@ -672,16 +678,25 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
             double src_x = srcPointsX[pixel];
             double src_y = srcPointsY[pixel];
 
-            //Find the pixel in the source image that would correspond to that location
-            double px = (((src_x - src_extent.xMin()) / (src_extent.xMax() - src_extent.xMin())) * (double)(image->s()-1));
-            double py = (((src_y - src_extent.yMin()) / (src_extent.yMax() - src_extent.yMin())) * (double)(image->t()-1));
+            //if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
+            //{
+            //    OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
+            //}
 
-            int px_i = (int)px;
-            int py_i = (int)py;
+            double px = ((src_x - src_extent.xMin()) / src_extent.width()) * (double)(image->s()-1);
+            double py = ((src_y - src_extent.yMin()) / src_extent.height()) * (double)(image->t()-1);
+
+            int px_i = osg::clampBetween( (int)osg::round(px), 0, image->s()-1 );
+            int py_i = osg::clampBetween( (int)osg::round(py), 0, image->t()-1 );
 
             osg::Vec4 color(0,0,0,0);
 
-            if (px_i >= 0 && py_i >= 0 && px_i < image->s() && py_i < image->t())
+            if ( ! isSrcContiguous ) // non-contiguous space- use nearest neighbot
+            {
+                color = ImageUtils::getColor(image, px_i, py_i);
+            }
+
+            else // contiguous space - use bilinear sampling
             {
                 int rowMin = osg::maximum((int)floor(py), 0);
                 int rowMax = osg::maximum(osg::minimum((int)ceil(py), (int)(image->t()-1)), 0);
@@ -763,15 +778,13 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                     }
                 }
             }
-            else
-            {
-                //OE_NOTICE << "[osgEarth::GeoData] Pixel out of range" << std::endl;
-            }
+               
+            unsigned char* rgba = result->data(c,r);
 
-            result->data(c, r)[0] = (unsigned char)(color.r() * 255);
-            result->data(c, r)[1] = (unsigned char)(color.g() * 255);
-            result->data(c, r)[2] = (unsigned char)(color.b() * 255);
-            result->data(c, r)[3] = (unsigned char)(color.a() * 255);
+            rgba[0] = (unsigned char)(color.r() * 255);
+            rgba[1] = (unsigned char)(color.g() * 255);
+            rgba[2] = (unsigned char)(color.b() * 255);
+            rgba[3] = (unsigned char)(color.a() * 255);
 
             pixel++;            
         }
@@ -801,20 +814,17 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
          destExtent = getExtent().transform(to_srs);    
     }
 
-    ////TODO: deprecate
-    //const CubeFaceSpatialReference* to_cube = dynamic_cast<const CubeFaceSpatialReference*>(to_srs);
-
     osg::Image* resultImage = 0L;
-    //if (to_cube)
 
-    if ( !getSRS()->isContiguous() || !to_srs->isContiguous() )
+    if ( !getSRS()->isUserDefined() || !to_srs->isUserDefined() )
     {
-        //OE_NOTICE << "[osgEarth::GeoData] Doing manual reprojection" << std::endl;
+        // if either of the SRS is a custom projection, we have to do a manual reprojection since
+        // GDAL will not recognize the SRS.
         resultImage = manualReproject(getImage(), getExtent(), *to_extent, width, height);
     }
     else
     {
-        //OE_NOTICE << "Doing GDAL reprojection" << std::endl;
+        // otherwise use GDAL.
         resultImage = reprojectImage(getImage(),
             getSRS()->getWKT(),
             getExtent().xMin(), getExtent().yMin(), getExtent().xMax(), getExtent().yMax(),

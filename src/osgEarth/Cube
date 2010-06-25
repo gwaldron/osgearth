@@ -136,7 +136,10 @@ namespace osgEarth
             double& in_out_ymax,
             void* context) const;
 
-    protected:
+    protected: // SpatialReference overrides
+
+        void _init();
+
     };
 
     /**

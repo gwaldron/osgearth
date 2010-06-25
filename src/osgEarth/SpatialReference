@@ -112,8 +112,13 @@ namespace osgEarth
         bool isNorthPolar() const;
         bool isSouthPolar() const;
 
-        /** Reveals whether data in this SRS is contiguous. Non-contiguous raster
-            data usually requires manual reprojection. */
+        /** Tests whether this SRS is user-defined; i.e. whether it is other than a
+            well-known SRS. (i.e. whether the SRS is unsupported by GDAL) */
+        virtual bool isUserDefined() const;
+
+        /** Tests whether coordinates in this SRS form a contiguous space. A non-contiguous
+            SRS is one in which adjacent coordinates may not necessarily represent 
+            adjacent map locations. */
         virtual bool isContiguous() const;
 
         /** Tests whether this SRS is a Unified Cube projection (osgEarth-internal) */
@@ -178,6 +183,7 @@ namespace osgEarth
         bool _is_north_polar, _is_south_polar;
         bool _is_cube;
         bool _is_contiguous;
+        bool _is_user_defined;
         std::string _name;
         std::string _wkt;
         std::string _proj4;
@@ -189,6 +195,11 @@ namespace osgEarth
 
         typedef std::map<std::string,void*> TransformHandleCache;
         TransformHandleCache _transformHandleCache;
+
+        // user can override these methods in a subclass to perform custom functionality; must
+        // call the superclass version.
+        virtual void _init();
+        virtual bool _isEquivalentTo( const SpatialReference* srs ) const;
 
         virtual bool preTransform(double& x, double& y, void* context) const { return true; }
         virtual bool postTransform(double& x, double& y, void* context) const { return true;}

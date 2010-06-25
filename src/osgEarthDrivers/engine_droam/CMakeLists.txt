@@ -22,6 +22,6 @@ SETUP_PLUGIN(osgearth_engine_droam)
 
 # to install public driver includes:
 SET(LIB_NAME engine_droam)
-#SET(LIB_PUBLIC_HEADERS ${TARGET_H})
+SET(LIB_PUBLIC_HEADERS ${TARGET_H})
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

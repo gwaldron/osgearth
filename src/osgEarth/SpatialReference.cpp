@@ -166,14 +166,6 @@ SpatialReference::create( const std::string& init )
             "WGS84" );
     }
 
-    //// custom square polar projection for cube rendering:
-    //else if ( ( low.size() == 11 ) && (low.substr(0,10) == "world-cube") )
-    //{
-    //    //Try to extract a face from the string.
-    //    unsigned int face = atoi(&low[10]);
-    //    srs = createCubeFace( face );
-    //}
-
     // custom srs for the unified cube
     else if ( low == "unified-cube" )
     {
@@ -302,8 +294,6 @@ _owns_handle( true ),
 _name( name ),
 _initialized( false )
 {
-    init();
-    //setThreadSafeReferenceCounting(true); // in Registry.cpp
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
 }
@@ -314,10 +304,7 @@ _handle( handle ),
 _owns_handle( ownsHandle ),
 _initialized( false )
 {
-    //setThreadSafeReferenceCounting(true);
-    init();
-    _init_type = "WKT";
-    _init_str = getWKT();
+    //nop
 }
 
 SpatialReference::~SpatialReference()
@@ -378,12 +365,16 @@ SpatialReference::getWKT() const
 const std::string&
 SpatialReference::getInitString() const
 {
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
     return _init_str;
 }
 
 const std::string&
 SpatialReference::getInitType() const
 {
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
     return _init_type;
 }
 
@@ -393,17 +384,25 @@ SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
 
+    return _isEquivalentTo( rhs );
+}
+
+bool
+SpatialReference::_isEquivalentTo( const SpatialReference* rhs ) const
+{
     if ( !rhs )
         return false;
 
     if ( this == rhs )
         return true;
 
-    if (isGeographic() != rhs->isGeographic() ||
-        isMercator()   != rhs->isMercator()   ||
-        isNorthPolar() != rhs->isNorthPolar() ||
-        isSouthPolar() != rhs->isSouthPolar() ||
-        isCube()       != rhs->isCube() )
+    if (isGeographic()  != rhs->isGeographic()  ||
+        isMercator()    != rhs->isMercator()    ||
+        isNorthPolar()  != rhs->isNorthPolar()  ||
+        isSouthPolar()  != rhs->isSouthPolar()  ||
+        isContiguous()  != rhs->isContiguous()  ||
+        isUserDefined() != rhs->isUserDefined() ||
+        isCube()        != rhs->isCube() )
     {
         return false;
     }
@@ -487,6 +486,14 @@ SpatialReference::isContiguous() const
 }
 
 bool
+SpatialReference::isUserDefined() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _is_user_defined;
+}
+
+bool
 SpatialReference::isCube() const
 {
     if ( !_initialized )
@@ -497,6 +504,9 @@ SpatialReference::isCube() const
 osg::CoordinateSystemNode*
 SpatialReference::createCoordinateSystemNode() const
 {
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
     osg::CoordinateSystemNode* csn = new osg::CoordinateSystemNode();
     populateCoordinateSystemNode( csn );
     return csn;
@@ -551,6 +561,9 @@ GeoLocator*
 SpatialReference::createLocator(double xmin, double ymin, double xmax, double ymax,
                                 bool plate_carre ) const
 {
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
     GeoLocator* locator = new GeoLocator( GeoExtent(this, xmin, ymin, xmax, ymax) );
     locator->setEllipsoidModel( (osg::EllipsoidModel*)getEllipsoid() );
     locator->setCoordinateSystemType( isGeographic()? osgTerrain::Locator::GEOGRAPHIC : osgTerrain::Locator::PROJECTED );
@@ -577,6 +590,9 @@ SpatialReference::transform(double x, double y,
                             double& out_x, double& out_y,
                             void* context ) const
 {        
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs))
     {
@@ -678,6 +694,9 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
                                   void* context,
                                   bool ignore_errors ) const
 {
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs)) return true;
 
@@ -759,6 +778,9 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
                                   void* context,
                                   bool ignore_errors ) const
 {
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs)) return true;
 
@@ -798,6 +820,9 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
                                   double& in_out_ymax,
                                   void* context ) const
 {
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
     int oks = 0;
 
 
@@ -829,18 +854,6 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
         return true;
     }
     return false;
-
-    //double x[2] = { in_out_xmin, in_out_xmax };
-    //double y[2] = { in_out_ymin, in_out_ymax };
-    //bool ok = transformPoints( to_srs, x, y, 2 );
-    //if ( ok )
-    //{
-    //    in_out_xmin = x[0];
-    //    in_out_ymin = y[0];
-    //    in_out_xmax = x[1];
-    //    in_out_ymax = y[1];
-    //}
-    //return ok;
 }
 
 void
@@ -848,39 +861,39 @@ SpatialReference::init()
 {
     GDAL_SCOPED_LOCK;
 
-    if ( _init_str == "cube" )
-    {
-        _is_cube = true;
-        _is_contiguous = false;
-        _is_geographic = false;
-    }
-    else
-    {
-        _is_cube = false;
-        _is_contiguous = true;    
-        _is_geographic = OSRIsGeographic( _handle ) != 0;
-    }
-    
+    // calls the internal version, which can be overriden by the developer.
+    // therefore do not call init() from the constructor!
+    _init();
+}
+
+void
+SpatialReference::_init()
+{
+    // set defaults:
+    _is_user_defined = false; 
+    _is_contiguous = true;   
+    _is_cube = false;
+    _is_geographic = OSRIsGeographic( _handle ) != 0;
+
+    // extract the ellipsoid parameters:
     int err;
     double semi_major_axis = OSRGetSemiMajor( _handle, &err );
     double semi_minor_axis = OSRGetSemiMinor( _handle, &err );
-    // there's a problem in one or more of the OSG manipulators that causes intersection errors
-    // if the ellipsoid model is a perfect sphere. This "fudge factor" works around that for now
-    // without affecting the math too much.
-    //double fudge_factor = semi_major_axis == semi_minor_axis? 0.0001 : 0.0;
-    //_ellipsoid = new osg::EllipsoidModel( semi_major_axis + fudge_factor, semi_minor_axis );
     _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
 
+    // extract the projection:
     if ( _name.empty() || _name == "unnamed" )
     {
         _name = _is_geographic? 
             getOGRAttrValue( _handle, "GEOGCS", 0 ) : 
             getOGRAttrValue( _handle, "PROJCS", 0 );
     }
-
     std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0, true );
+
+    // check for the Mercator projection:
     _is_mercator = !proj.empty() && proj.find("mercator")==0;
 
+    // check for the Polar projection:
     if ( !proj.empty() && proj.find("polar_stereographic") != std::string::npos )
     {
         double lat = as<double>( getOGRAttrValue( _handle, "latitude_of_origin", 0, true ), -90.0 );
@@ -893,7 +906,8 @@ SpatialReference::init()
 		_is_south_polar = false;
 	}
 
-    if ( _name == "unnamed" )
+    // Give the SRS a name if it doesn't have one:
+    if ( _name == "unnamed" || _name.empty() )
     {
         _name =
             _is_geographic? "Geographic CS" :
@@ -901,13 +915,22 @@ SpatialReference::init()
             ( !proj.empty()? proj : "Projected CS" );
     }
 
+    // Try to extract the OGC well-known-text (WKT) string:
     char* wktbuf;
     if ( OSRExportToWkt( _handle, &wktbuf ) == OGRERR_NONE )
     {
         _wkt = wktbuf;
         OGRFree( wktbuf );
     }
+
+    // If the user did not specify and initialization string, use the WKT.
+    if ( _init_str.empty() )
+    {
+        _init_str = _wkt;
+        _init_type = "WKT";
+    }
     
+    // Try to extract the PROJ4 initialization string:
     char* proj4buf;
     if ( OSRExportToProj4( _handle, &proj4buf ) == OGRERR_NONE )
     {

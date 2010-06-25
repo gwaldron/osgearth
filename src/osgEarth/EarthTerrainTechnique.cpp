@@ -65,6 +65,7 @@ using namespace OpenThreads;
 #   define USE_NEW_OSGTERRAIN_298_API 1 
 #endif
 
+//#define DEBUG_SHOW_TILEKEY_LABELS
 
 EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
 TerrainTechnique(),
@@ -949,7 +950,8 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     
 
     //DEBUGGING
-#if 0
+#ifdef DEBUG_SHOW_TILEKEY_LABELS
+
     static osgText::Font* s_font = osgText::readFontFile( "arialbd.ttf" );
     osgText::Text* text = new osgText::Text();
     text->setThreadSafeRefUnref( true );

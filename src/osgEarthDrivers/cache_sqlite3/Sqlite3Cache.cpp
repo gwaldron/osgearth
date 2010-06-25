@@ -51,6 +51,7 @@ using namespace OpenThreads;
 #define SPLIT_DB_FILE
 #define SPLIT_LAYER_DB
 #define UPDATE_ACCESS_TIMES
+#define UPDATE_ACCESS_TIMES_POOL
 //#define MONITOR_THREAD_HEALTH
 
 // --------------------------------------------------------------------------
@@ -305,6 +306,11 @@ struct LayerTable : public osg::Referenced
         buf << "UPDATE \"" << _meta._layerName << "\" SET accessed = ? "
             << "WHERE key = ?";
         _updateTimeSQL = buf.str();
+
+        buf.str("");
+        buf << "UPDATE \"" << _meta._layerName << "\" SET accessed = ? "
+            << "WHERE key in ( ? )";
+        _updateTimePoolSQL = buf.str();
         
         // initialize the INSERT statement for writing records.
         buf.str("");
@@ -334,32 +340,6 @@ struct LayerTable : public osg::Referenced
         _statsLoaded = 0;
         _statsStored = 0;
     }
-
-
-#ifdef USE_TRANSACTIONS
-
-    void begin( sqlite3* db )
-    {
-        sqlite3_exec( db, "BEGIN IMMEDIATE", 0L, 0L, 0L );
-    }
-
-    void commit( sqlite3* db )
-    {
-        sqlite3_exec( db, "COMMIT", 0L, 0L, 0L );
-    }
-
-    void rollback( sqlite3* db )
-    {
-        sqlite3_exec( db, "ROLLBACK", 0L, 0L, 0L );
-    }
-
-#else // USE_TRANSACTIONS
-
-    void begin( sqlite3* db ) { }
-    void commit( sqlite3* db ) { }
-    void rollback( sqlite3* db ) { }
-
-#endif // USE_TRANSACTIONS
 
 
     int getTableSize(sqlite3* db) 
@@ -434,8 +414,6 @@ struct LayerTable : public osg::Referenced
     bool store( const ImageRecord& rec, sqlite3* db )
     {
         displayStats();
-        //checkAndPurgeIfNeeded(db);
-        //OE_WARN << "write to " << _meta._layerName << rec._key->str() << std::endl;
 
         sqlite3_stmt* insert = 0L;
         int rc = sqlite3_prepare_v2( db, _insertSQL.c_str(), _insertSQL.length(), &insert, 0L );
@@ -462,10 +440,10 @@ struct LayerTable : public osg::Referenced
         std::string outBuf = outStream.str();
         std::string fname = _meta._layerName + "_" + keyStr+".osgb";
         {
-        std::ofstream file(fname.c_str(), std::ios::out | std::ios::binary);
-        if (file.is_open()) {
-            file.write(outBuf.c_str(), outBuf.length());
-        }
+            std::ofstream file(fname.c_str(), std::ios::out | std::ios::binary);
+            if (file.is_open()) {
+                file.write(outBuf.c_str(), outBuf.length());
+            }
         }
         sqlite3_bind_int( insert, 4, outBuf.length() );
 #else
@@ -513,6 +491,31 @@ struct LayerTable : public osg::Referenced
         if ( rc != SQLITE_DONE )
         {
             OE_WARN << LC << "Failed to update timestamp for " << key->str() << " on layer " << _meta._layerName << " rc = " << rc << std::endl;
+            success = false;
+        }
+
+        sqlite3_finalize( update );
+        return success;
+    }
+
+    bool updateAccessTimePool( const std::string&  keyStr, int newTimestamp, sqlite3* db )
+    {
+        //OE_WARN << LC << "update access times " << _meta._layerName << " " << keyStr << std::endl;
+        sqlite3_stmt* update = 0L;
+        int rc = sqlite3_prepare_v2( db, _updateTimePoolSQL.c_str(), _updateTimePoolSQL.length(), &update, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN << LC << "Failed to prepare SQL " << _updateTimePoolSQL << "; " << sqlite3_errmsg(db) << std::endl;
+            return false;
+        }
+
+        bool success = true;
+        sqlite3_bind_int( update, 1, newTimestamp );
+        sqlite3_bind_text( update, 2, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
+        rc = sqlite3_step( update );
+        if ( rc != SQLITE_DONE )
+        {
+            OE_WARN << LC << "Failed to update timestamp for " << keyStr << " on layer " << _meta._layerName << " rc = " << rc << std::endl;
             success = false;
         }
 
@@ -574,10 +577,6 @@ struct LayerTable : public osg::Referenced
         }
 
         sqlite3_finalize(select);
-
-        // update access time
-        //::time_t t = ::time(0L);
-        //updateAccessTime(key, t, db );
 
         _statsLoaded++;
         return output._image.valid();
@@ -760,6 +759,7 @@ struct LayerTable : public osg::Referenced
     std::string _selectSQL;
     std::string _insertSQL;
     std::string _updateTimeSQL;
+    std::string _updateTimePoolSQL;
  
     std::string _purgeSelect;
     std::string _purgeSQL;
@@ -822,6 +822,21 @@ struct AsyncUpdateAccessTime : public TaskRequest {
 
     osg::ref_ptr<const TileKey> _key;
     std::string _layerName;
+    int _timeStamp;
+    osg::observer_ptr<Sqlite3Cache> _cache;
+};
+
+
+
+struct AsyncUpdateAccessTimePool : public TaskRequest {
+    AsyncUpdateAccessTimePool( const std::string& layerName, Sqlite3Cache* cache );
+    void addEntry(const TileKey* key, int timeStamp);
+    void operator()( ProgressCallback* progress );
+    const std::string& getLayerName() { return _layerName; }
+    int getNbEntry() const { return _keys.size(); }
+    std::map<std::string, int> _keys;
+    std::string _layerName;
+    std::string _keyStr;
     int _timeStamp;
     osg::observer_ptr<Sqlite3Cache> _cache;
 };
@@ -1010,7 +1025,8 @@ public: // Cache interface
         if ( tt._table )
         {
             ImageRecord rec;
-            tt._table->load( key, rec, tt._db );
+            if (!tt._table->load( key, rec, tt._db ))
+                return 0;
 
             // load it into the L2 cache
             osg::Image* result = rec._image.release();
@@ -1019,9 +1035,36 @@ public: // Cache interface
                 _L2cache->setImage( key, layerName, format, result );
 
 #ifdef UPDATE_ACCESS_TIMES
+
+#ifdef UPDATE_ACCESS_TIMES_POOL
+            // update the last-access time
+            int t = (int)::time(0L);
+            {
+                ScopedLock<Mutex> lock( _pendingUpdateMutex );
+                osg::ref_ptr<AsyncUpdateAccessTimePool> pool;
+                std::map<std::string,osg::ref_ptr<AsyncUpdateAccessTimePool> >::iterator i = _pendingUpdates.find(layerName);
+                if ( i != _pendingUpdates.end() )
+                {
+                    i->second->addEntry(key, t);
+                    pool = i->second;
+                    OE_DEBUG << LC << "Add key " << key << " to existing layer batch " << layerName << std::endl;
+                } else {
+                    pool = new AsyncUpdateAccessTimePool(layerName, this);
+                    pool->addEntry(key, t);
+                    _pendingUpdates[layerName] = pool.get();
+                }
+                if (pool.valid()) {
+                    if (pool->getNbEntry() > 100) {
+                        _writeService->add(pool.get());
+                        _pendingUpdates.erase(layerName);
+                    }
+                }
+            }
+#else
             // update the last-access time
             int t = (int)::time(0L);
             _writeService->add( new AsyncUpdateAccessTime(  key, layerName, t, this ) );
+#endif
 
 #endif // UPDATE_ACCESS_TIMES
 
@@ -1101,8 +1144,28 @@ public: // Cache interface
         ThreadTable tt = getTable(layerName);
         if ( tt._table )
         {
-            ::time_t t = ::time(0L);
             tt._table->updateAccessTime( key, newTimestamp, tt._db );
+        }
+        return true;
+    }
+
+    /**
+     * updateAccessTime records on the database.
+     */
+    bool updateAccessTimeSyncPool( const std::string& layerName, const std::string& keys, int newTimestamp )
+    {
+        if ( !_db ) false;
+
+        ThreadTable tt = getTable(layerName);
+        if ( tt._table )
+        {
+            tt._table->updateAccessTimePool( keys, newTimestamp, tt._db );
+        }
+
+        {
+            //ScopedLock<Mutex> lock( _pendingUpdateMutex );
+            //std::string name = layerName;
+            //_pendingUpdates.erase( name );
         }
         return true;
     }
@@ -1279,7 +1342,11 @@ private:
     bool _useAsyncWrites;
     osg::ref_ptr<TaskService> _writeService;
     Mutex _pendingWritesMutex;
+
     std::map<std::string, osg::ref_ptr<AsyncInsert> > _pendingWrites;
+
+    Mutex _pendingUpdateMutex;
+    std::map<std::string, osg::ref_ptr<AsyncUpdateAccessTimePool> > _pendingUpdates;
 
     sqlite3* _db;
     std::map<Thread*,sqlite3*> _dbPerThread;
@@ -1300,8 +1367,35 @@ AsyncUpdateAccessTime::AsyncUpdateAccessTime( const TileKey* key, const std::str
 void AsyncUpdateAccessTime::operator()( ProgressCallback* progress ) 
 { 
     osg::ref_ptr<Sqlite3Cache> cache = _cache.get();
-    if ( cache.valid() )
+    if ( cache.valid() ) {
+        //OE_WARN << "AsyncUpdateAccessTime will process " << _key << std::endl;
         cache->updateAccessTimeSync( _layerName, _key.get() , _timeStamp );
+    }
+}
+
+
+AsyncUpdateAccessTimePool::AsyncUpdateAccessTimePool(const std::string& layerName, Sqlite3Cache* cache) : _layerName(layerName), _cache(cache) {}
+void AsyncUpdateAccessTimePool::addEntry(const TileKey* key, int timeStamp)
+{
+    const std::string& keyStr = key->str();
+    if (_keys.find(keyStr) == _keys.end()) {
+        _keys[keyStr] = 1;
+        if (_keyStr.empty())
+            _keyStr = keyStr;
+        else
+            _keyStr += ", " + keyStr;
+    } else {
+        //OE_WARN << "key " << keyStr << " already in batch" << std::endl;
+    }
+    _timeStamp = timeStamp;
+}
+void AsyncUpdateAccessTimePool::operator()( ProgressCallback* progress ) 
+{ 
+    osg::ref_ptr<Sqlite3Cache> cache = _cache.get();
+    if ( cache.valid() ) {
+        OE_WARN << "AsyncUpdateAccessTimePool will process " << _keys.size() << std::endl;
+        cache->updateAccessTimeSyncPool( _layerName, _keyStr , _timeStamp );
+    }
 }
 
 

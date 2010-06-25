@@ -113,7 +113,11 @@ Bounds::center2d() const {
 GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
-GeoExtent::GeoExtent()
+GeoExtent::GeoExtent():
+_xmin(FLT_MAX),
+_ymin(FLT_MAX),
+_xmax(-FLT_MAX),
+_ymax(-FLT_MAX)
 {
     //NOP - invalid
 }

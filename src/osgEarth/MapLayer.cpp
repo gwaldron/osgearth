@@ -747,7 +747,7 @@ MapLayer::createImage( const TileKey* key,
 				OE_DEBUG << "  Cropping image" << std::endl;
                 // crop to fit the map key extents
                 GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key->getGeoExtent() );
-                if ( clampedMapExt.width() * clampedMapExt.height() > 0 )
+                if ( clampedMapExt.isValid() )
 				{
 					int size = _exactCropping == true ? _reprojectedTileSize.value() : 0;
                     result = mosaic->crop(clampedMapExt, _exactCropping.value(), size, size);

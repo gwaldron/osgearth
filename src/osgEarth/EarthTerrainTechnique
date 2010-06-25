@@ -101,6 +101,13 @@ namespace osgEarth
         */
         float getVerticalScaleOverride() const;
 
+        /**
+         * Sets whether to try to optimize the triangle orientation based on the elevation values.
+         *  If false, 
+         */
+        void setOptimizeTriangleOrientation(bool optimizeTriangleOrientation);
+        bool getOptimizeTriangleOrientation() const;
+
         /** If State is non-zero, this function releases any associated OpenGL objects for
         * the specified graphics context. Otherwise, releases OpenGL objects
         * for all graphics contexts. */
@@ -145,6 +152,8 @@ namespace osgEarth
 
         bool _swapPending;
         int _initCount;
+
+        bool _optimizeTriangleOrientation;
     };
 
 }

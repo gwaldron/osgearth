@@ -406,7 +406,14 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     }
     else // LAYERING_MULTITEXTURE (default)
     {
-		terrain->setTerrainTechniquePrototype( new osgEarth::EarthTerrainTechnique() );
+        EarthTerrainTechnique *et = new osgEarth::EarthTerrainTechnique();
+        //If we are using triangulate interpolation, tell the terrain technique to just create simple triangles with
+        //consistent orientation rather than trying to optimize the orientation
+        if (_engineProps.elevationInterpolation() == INTERP_TRIANGULATE)
+        {
+            et->setOptimizeTriangleOrientation(false);
+        }
+		terrain->setTerrainTechniquePrototype( et  );
         OE_INFO << "[MapNode] Layering technique = MULTITEXTURE" << std::endl;
     }
 

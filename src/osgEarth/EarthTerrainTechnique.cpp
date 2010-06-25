@@ -73,7 +73,8 @@ _currentReadOnlyBuffer(1),
 _currentWriteBuffer(0),
 _verticalScaleOverride(1.0f),
 _swapPending( false ),
-_initCount(0)
+_initCount(0),
+_optimizeTriangleOrientation(true)
 {
     this->setThreadSafeRefUnref(true);
 }
@@ -86,7 +87,8 @@ _currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),
 _currentWriteBuffer( gt._currentWriteBuffer ),
 _verticalScaleOverride( gt._verticalScaleOverride ),
 _swapPending( gt._swapPending ),
-_initCount( gt._initCount )
+_initCount( gt._initCount ),
+_optimizeTriangleOrientation(gt._optimizeTriangleOrientation)
 {
     _bufferData[0] = gt._bufferData[0];
     _bufferData[1] = gt._bufferData[1];
@@ -107,6 +109,19 @@ EarthTerrainTechnique::getVerticalScaleOverride() const
 {
     return _verticalScaleOverride;
 }
+
+void
+EarthTerrainTechnique::setOptimizeTriangleOrientation(bool optimizeTriangleOrientation)
+{
+    _optimizeTriangleOrientation = optimizeTriangleOrientation;
+}
+
+bool
+EarthTerrainTechnique::getOptimizeTriangleOrientation() const
+{
+    return _optimizeTriangleOrientation;
+}
+
 
 void
 EarthTerrainTechnique::clearBuffer( int b )
@@ -811,7 +826,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
                 osg::Vec3f &v01 = (*vertices)[i01];
                 osg::Vec3f &v11 = (*vertices)[i11];
 
-                if (fabsf(e00-e11)<fabsf(e01-e10))
+                if (!_optimizeTriangleOrientation || (e00-e11)<fabsf(e01-e10))
                 {
                     elements->push_back(i01);
                     elements->push_back(i00);

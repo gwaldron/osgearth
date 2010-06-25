@@ -868,7 +868,7 @@ bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double 
 }
 
 GeoHeightField*
-GeoHeightField::createSubSample( const GeoExtent& destEx ) const
+GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation interpolation) const
 {
     double div = destEx.width()/_extent.width();
     if ( div >= 1.0f )
@@ -898,7 +898,7 @@ GeoHeightField::createSubSample( const GeoExtent& destEx ) const
     {
         for( y = destEx.yMin(), row=0; row < h; y += dy, row++ )
         {
-            float height = HeightFieldUtils::getHeightAtLocation( _heightField.get(), x, y, _extent.xMin(), _extent.yMin(), xInterval, yInterval );
+            float height = HeightFieldUtils::getHeightAtLocation( _heightField.get(), x, y, _extent.xMin(), _extent.yMin(), xInterval, yInterval, interpolation);
             dest->setHeight( col, row, height );
         }
     }

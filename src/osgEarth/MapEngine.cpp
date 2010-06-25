@@ -356,7 +356,7 @@ MapEngine::addPlaceholderHeightfieldLayer(VersionedTile* tile,
                 osg::HeightField* newHF = HeightFieldUtils::createSubSample(
                     ancestorHF.get(),
                     ancestorKey->getGeoExtent(),
-                    key->getGeoExtent() );
+                    key->getGeoExtent());
 
                 newHFLayer = new osgTerrain::HeightFieldLayer( newHF );
                 newHFLayer->setLocator( defaultLocator );
@@ -606,7 +606,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     osg::ref_ptr<osg::HeightField> hf;
     if ( hfMapLayers.size() > 0 )
     {
-        hf = map->createHeightField( key, false );
+        hf = map->createHeightField( key, false, _engineProps.elevationInterpolation().value());
         hasElevation = hf.valid();
     }
 
@@ -664,7 +664,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = map->createHeightField( key, true );
+            hf = map->createHeightField( key, true, _engineProps.elevationInterpolation().value());
             if (!hf.valid())
             {
                 //We couldn't get any heightfield, so just create an empty one.
@@ -929,7 +929,7 @@ MapEngine::createHeightFieldLayer( Map* map, const TileKey* key, bool exactOnly 
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
 
     // try to create a heightfield at native res:
-    osg::ref_ptr<osg::HeightField> hf = map->createHeightField( key, !exactOnly );
+    osg::ref_ptr<osg::HeightField> hf = map->createHeightField( key, !exactOnly, _engineProps.elevationInterpolation().value());
     if ( !hf )
     {
         if ( exactOnly )

@@ -287,7 +287,7 @@ namespace osgEarth
          * Subsamples the heightfield, returning a new heightfield corresponding ///and Takes the source heightfield and its extent, and takes a subsample that corresponds to 
          * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
          */
-        GeoHeightField* createSubSample( const GeoExtent& destEx ) const;
+        GeoHeightField* createSubSample( const GeoExtent& destEx, ElevationInterpolation interpolation) const;
 
         /**
          * Gets the geospatial extent of the heightfield.

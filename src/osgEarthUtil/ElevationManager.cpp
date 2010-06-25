@@ -99,12 +99,24 @@ ElevationManager::getMaxTilesToCache() const
     return _maxCacheSize;
 }
 
+void
+ElevationManager::setInterpolation( ElevationInterpolation interp)
+{
+    _interpolation = interp;
+}
+
+ElevationInterpolation
+ElevationManager::getElevationInterpolation() const
+{
+    return _interpolation;
+}
+
 bool
 ElevationManager::getElevation(double x, double y,
                                double resolution,
                                const SpatialReference* srs,
                                double& out_elevation,
-                               double& out_resolution )
+                               double& out_resolution)
 {
     checkForMapUpdates();
 
@@ -189,7 +201,7 @@ ElevationManager::getElevation(double x, double y,
 
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        hf = _map->createHeightField( key.get(), true );
+        hf = _map->createHeightField( key.get(), true, _interpolation);
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )
@@ -314,7 +326,7 @@ ElevationManager::getPlacementMatrix(double x, double y, double z,
     }
 
     // get the elevation under those coordinates:
-    if ( !getElevation( map_x, map_y, resolution, _map->getProfile()->getSRS(), out_elevation, out_resolution ) )
+    if ( !getElevation( map_x, map_y, resolution, _map->getProfile()->getSRS(), out_elevation, out_resolution) )
     {
         OE_WARN << "ElevationManager::getElevation() failed" << std::endl;
         return false;

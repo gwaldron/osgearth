@@ -25,6 +25,8 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 
+#include <osgEarth/HeightFieldUtils>
+
 namespace osgEarth
 {
     class OSGEARTH_EXPORT LoadingPolicy
@@ -246,6 +248,10 @@ namespace osgEarth
       /// Returns the minifying filter mode
       optional<osg::Texture::FilterMode> const& getContourMinFilter(void) const {return _contourMinFilter;}
 
+	  optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation;}
+	  optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
+	  
+
     /** @} */
     
     public:
@@ -274,6 +280,8 @@ namespace osgEarth
         //optional<bool> _useMercatorLocator;
         optional<osg::Texture::FilterMode> _contourMagFilter;
         optional<osg::Texture::FilterMode> _contourMinFilter;
+
+        optional<ElevationInterpolation> _elevationInterpolation;
     };
 }
 

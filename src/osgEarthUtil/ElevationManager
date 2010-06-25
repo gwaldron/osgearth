@@ -96,7 +96,7 @@ namespace osgEarthUtil
             double resolution,
             const SpatialReference* srs,
             double& out_elevation,
-            double& out_resolution );
+            double& out_resolution);
 
         /**
          * Gets a matrix that you can use to position a node at the specified coordinates.
@@ -112,7 +112,7 @@ namespace osgEarthUtil
             const SpatialReference* srs,
             osg::Matrixd& out_matrix,
             double& out_elevation,
-            double& out_resolution );
+            double& out_resolution);
 
         /**
          * Sets the technique to use for height determination. See the Technique
@@ -137,6 +137,17 @@ namespace osgEarthUtil
         int getMaxTilesToCache() const;
 
         /**
+         * Sets the elevation interpolation to use when sampling data
+         */
+        void setInterpolation( ElevationInterpolation interp );
+
+        /**
+         * Gets the elevation interpolation to use when sampling data
+         */
+        ElevationInterpolation getElevationInterpolation() const;
+
+
+        /**
          * Gets the map with which this elevation manager is associated.
          */
         Map* getMap() const;
@@ -154,6 +165,7 @@ namespace osgEarthUtil
         int _tileSize;
         unsigned int _maxDataLevel;
         Technique _technique;
+        ElevationInterpolation _interpolation;
 
     private:
         void postCTOR();

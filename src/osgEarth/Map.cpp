@@ -543,6 +543,7 @@ Map::calculateProfile()
 osg::HeightField*
 Map::createHeightField( const TileKey* key,
                         bool fallback,
+                        ElevationInterpolation interpolation,
                         SamplePolicy samplePolicy,
                         ProgressCallback* progress)
 {
@@ -632,7 +633,7 @@ Map::createHeightField( const TileKey* key,
         }
         else
         {
-            osg::ref_ptr<GeoHeightField> geoHF = heightFields[0]->createSubSample( key->getGeoExtent() );
+            osg::ref_ptr<GeoHeightField> geoHF = heightFields[0]->createSubSample( key->getGeoExtent(), interpolation);
             result = geoHF->takeHeightField();
             hfInitialized = true;
         }
@@ -670,7 +671,7 @@ Map::createHeightField( const TileKey* key,
                 for (GeoHeightFieldList::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
                     float elevation = 0.0f;
-                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, elevation))
+                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, interpolation, elevation))
                     {
                         if (elevation != NO_DATA_VALUE)
                         {

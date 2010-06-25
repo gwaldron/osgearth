@@ -720,7 +720,7 @@ MapNode::updateElevation(VersionedTile* tile)
             osg::ref_ptr<osg::HeightField> hf;
             if (hasElevation)
             {
-                hf = _map->createHeightField( key.get(), true );
+                hf = _map->createHeightField( key.get(), true, _engineProps.elevationInterpolation().value());
             }
             if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
             heightFieldLayer->setHeightField( hf.get() );
@@ -744,7 +744,7 @@ MapNode::updateElevation(VersionedTile* tile)
                 //Always load the first LOD so the children tiles can have something to use for placeholders
                 if (tile->getKey()->getLevelOfDetail() == 1)
                 {
-                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true );
+                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true, _engineProps.elevationInterpolation().value());
                     if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
                     heightFieldLayer->setHeightField( hf.get() );
                     hf->setSkirtHeight( tile->getBound().radius() * _engineProps.heightFieldSkirtRatio().value() );

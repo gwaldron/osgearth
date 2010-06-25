@@ -112,7 +112,8 @@ _maxLOD( 23 ),
 _layeringTechnique( LAYERING_MULTITEXTURE ),
 _enableLighting( true ),
 _contourMagFilter(osg::Texture::LINEAR),
-_contourMinFilter(osg::Texture::LINEAR)
+_contourMinFilter(osg::Texture::LINEAR),
+_elevationInterpolation( INTERP_BILINEAR )
 {
     fromConfig( conf );
 }
@@ -136,6 +137,11 @@ MapEngineProperties::toConfig() const
 
     conf.addIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
     conf.addIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
+
+    conf.addIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
+    conf.addIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
+    conf.addIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
+    conf.addIfSet( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
 
     conf.addIfSet("contour_mag_filter","LINEAR",                _contourMagFilter,osg::Texture::LINEAR);
     conf.addIfSet("contour_mag_filter","LINEAR_MIPMAP_LINEAR",  _contourMagFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
@@ -169,7 +175,13 @@ MapEngineProperties::fromConfig( const Config& conf )
     conf.getIfSet( "lighting", _enableLighting );
 
     conf.getIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
-    conf.getIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
+    conf.getIfSet( "layering_technique", "multiteture", _layeringTechnique, LAYERING_MULTITEXTURE );
+
+    conf.getIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
+    conf.getIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
+    conf.getIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
+    conf.getIfSet( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
+
     
     conf.getIfSet("contour_mag_filter","LINEAR",                _contourMagFilter,osg::Texture::LINEAR);
     conf.getIfSet("contour_mag_filter","LINEAR_MIPMAP_LINEAR",  _contourMagFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);

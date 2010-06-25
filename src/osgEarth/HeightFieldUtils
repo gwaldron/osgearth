@@ -33,7 +33,8 @@ namespace osgEarth
     {
         INTERP_AVERAGE,
         INTERP_NEAREST,
-        INTERP_BILINEAR
+        INTERP_BILINEAR,
+        INTERP_TRIANGULATE
     };
 
     class OSGEARTH_EXPORT HeightFieldUtils
@@ -57,7 +58,8 @@ namespace osgEarth
 
         static osg::HeightField* createSubSample(
             osg::HeightField* input, const class GeoExtent& inputEx,
-            const class GeoExtent& outputEx );
+            const class GeoExtent& outputEx,
+            ElevationInterpolation interpolation = INTERP_BILINEAR);
     };
 
     /**

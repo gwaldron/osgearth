@@ -29,6 +29,50 @@ namespace osgEarth { namespace Threading
 {   
 
 #ifdef USE_CUSTOM_READ_WRITE_LOCK
+
+    /**
+     * Event with a toggled signal state.
+     */
+    class Event 
+    {
+    public:
+        Event() : _set( false ) { }
+
+        ~Event() { 
+            reset(); 
+            for( int i=0; i<255; ++i ) // workaround buggy broadcast
+                _cond.signal();
+        }
+
+        inline bool wait() {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            return _set ? true : _cond.wait( &_m );
+        }
+
+        inline void set() {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            if ( !_set ) {
+                _set = true;
+                _cond.signal();
+            }
+        }
+
+        inline void reset() {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            _set = false;
+        }
+
+        inline bool isSet() const {
+            return _set;
+        }
+
+    protected:
+        OpenThreads::Mutex _m;
+        OpenThreads::Condition _cond;
+        bool _set;
+    };
+
+
     /**
      * Customer read/write lock. The read/write lock in OSG can unlock mutexes from a different
      * thread than the one that locked them - this can hang the thread in Windows.
@@ -38,28 +82,21 @@ namespace osgEarth { namespace Threading
      */
     class ReadWriteMutex
     {
-    private:
-        struct MyBlock : public OpenThreads::Block
-        {
-            bool isSignaled() { return _released; }
-            void signal() { release(); }
-        };
-
     public:
         ReadWriteMutex() :
           _readerCount(0)
         { 
-            _writerEvent.signal();
-            _noReadersEvent.signal();
+            _writerEvent.set();
+            _noReadersEvent.set();
         }
 
         void readLock()
         {
             for( ; ; )
             {
-                _writerEvent.block();              // wait for a writer to quit if there is one
+                _writerEvent.wait();               // wait for a writer to quit if there is one
                 incrementReaderCount();            // register this reader
-                if ( !_writerEvent.isSignaled() )  // double lock check, in case a writer snuck in while inrementing
+                if ( !_writerEvent.isSet() )       // double lock check, in case a writer snuck in while inrementing
                     decrementReaderCount();        // if it did, undo the registration and try again
                 else
                     break;                         // otherwise, we're in
@@ -74,14 +111,14 @@ namespace osgEarth { namespace Threading
         void writeLock()
         {
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _lockWriterMutex ); // one at a time please
-            _writerEvent.block();     // wait for a writer to quit if there is one
+            _writerEvent.wait();      // wait for a writer to quit if there is one
             _writerEvent.reset();     // prevent further writers from joining
-            _noReadersEvent.block();  // wait for all readers to quit
+            _noReadersEvent.wait();   // wait for all readers to quit
         }
 
         void writeUnlock()
         {
-            _writerEvent.signal();
+            _writerEvent.set();
         }
 
     protected:
@@ -98,15 +135,15 @@ namespace osgEarth { namespace Threading
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _readerCountMutex );
             _readerCount--;               // remove a reader
             if ( _readerCount <= 0 )      // if that was the last one, signal that writers are now allowed
-                _noReadersEvent.signal();
+                _noReadersEvent.set();
         }
 
     private:
         int _readerCount;
         OpenThreads::Mutex _lockWriterMutex;
         OpenThreads::Mutex _readerCountMutex;
-        MyBlock _writerEvent;
-        MyBlock _noReadersEvent;
+        Event _writerEvent;
+        Event _noReadersEvent;
     };
 
 

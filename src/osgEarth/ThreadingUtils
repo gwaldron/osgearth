@@ -53,7 +53,8 @@ namespace osgEarth { namespace Threading
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
             if ( !_set ) {
                 _set = true;
-                _cond.signal();
+                _cond.broadcast(); // possible deadlock before OSG r10457 on windows
+                //_cond.signal();
             }
         }
 

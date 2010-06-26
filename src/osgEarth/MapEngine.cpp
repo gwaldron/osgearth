@@ -197,7 +197,7 @@ MapEngine::createValidGeoImage(MapLayer* layer,
 bool
 MapEngine::hasMoreLevels( Map* map, const TileKey* key )
 {
-    OpenThreads::ScopedReadLock lock( map->getMapDataMutex() );
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool more_levels = false;
     int max_level = 0;
@@ -228,7 +228,7 @@ MapEngine::hasMoreLevels( Map* map, const TileKey* key )
 bool
 MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 {
-    OpenThreads::ScopedReadLock lock( map->getMapDataMutex() );
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     const Profile* mapProfile = key->getProfile();
 
@@ -440,7 +440,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     }
 
     OE_DEBUG << "Creating placeholder for " << key->str() << std::endl;
-    ScopedReadLock lock( map->getMapDataMutex() );
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
@@ -476,7 +476,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     // Generate placeholder imagery and elevation layers. These "inherit" data from an
     // ancestor tile.
     {
-        ScopedReadLock parentLock( ancestorTile->getTileLayersMutex() );
+        Threading::ScopedReadLock parentLock( ancestorTile->getTileLayersMutex() );
         addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
     }
@@ -558,7 +558,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 osg::Node*
 MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool wrapInPagedLOD, bool &validData )
 {
-    ScopedReadLock lock( map->getMapDataMutex() );
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
@@ -868,7 +868,7 @@ MapEngine::createImageLayer(Map* map,
                             const TileKey* key,
                             ProgressCallback* progress)
 {
-    ScopedReadLock lock( map->getMapDataMutex() );
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     osg::ref_ptr< GeoImage > geoImage;
     
@@ -923,7 +923,7 @@ MapEngine::createImageLayer(Map* map,
 osgTerrain::HeightFieldLayer* 
 MapEngine::createHeightFieldLayer( Map* map, const TileKey* key, bool exactOnly )
 {
-    ScopedReadLock lock( map->getMapDataMutex() );
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();

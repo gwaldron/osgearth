@@ -28,7 +28,6 @@
 #include <osgEarth/Locators>
 #include <osgEarth/MapLayer>
 
-#include <OpenThreads/ReadWriteMutex>
 #include <osgDB/ReaderWriter>
 #include <osgTerrain/Terrain>
 #include <osg/CoordinateSystemNode>

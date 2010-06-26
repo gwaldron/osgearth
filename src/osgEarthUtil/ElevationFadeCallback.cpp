@@ -50,7 +50,7 @@ void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
                 unsigned int numImageSources = 0;
                 {
-                    ScopedReadLock lock( mapNode->getMap()->getMapDataMutex() );
+                    Threading::ScopedReadLock lock( mapNode->getMap()->getMapDataMutex() );
                     numImageSources = mapNode->getMap()->getImageMapLayers().size();
                 }
 

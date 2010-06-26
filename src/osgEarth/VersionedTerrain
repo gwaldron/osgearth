@@ -25,9 +25,9 @@
 #include <osgEarth/Profile>
 #include <osgEarth/MapEngineProperties>
 #include <osgEarth/Map>
+#include <osgEarth/ThreadingUtils>
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
-#include <OpenThreads/ReadWriteMutex>
 #include <list>
 
 namespace osgEarth
@@ -150,7 +150,7 @@ namespace osgEarth
 
         bool getHasBeenTraversed() const;
 
-        OpenThreads::ReadWriteMutex& getTileLayersMutex();
+        Threading::ReadWriteMutex& getTileLayersMutex();
 
         bool cancelRequests();
 
@@ -211,7 +211,7 @@ namespace osgEarth
         osg::observer_ptr<VersionedTerrain> _versionedTerrain;
 
         Relative _family[5];
-        OpenThreads::ReadWriteMutex _tileLayersMutex;
+        Threading::ReadWriteMutex _tileLayersMutex;
 
         /** Deals with completed requests during the UPDATE traversal. */
         void installRequests( int stamp );
@@ -285,7 +285,7 @@ namespace osgEarth
         typedef std::vector< osg::ref_ptr<VersionedTile> > TileVector;
         typedef std::queue< osgTerrain::TileID > TileIDQueue;
 
-        OpenThreads::ReadWriteMutex _tilesMutex;
+        Threading::ReadWriteMutex _tilesMutex;
         TileTable  _tiles;
         TileList   _tilesToShutDown;
         TileQueue  _tilesToRelease;

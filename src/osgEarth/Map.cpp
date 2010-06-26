@@ -62,7 +62,7 @@ Map::getId() const {
     return _id;
 }
 
-OpenThreads::ReadWriteMutex&
+Threading::ReadWriteMutex&
 Map::getMapDataMutex() {
     return _mapDataMutex;
 }
@@ -123,7 +123,7 @@ Map::getImageMapLayers() const {
 
 int
 Map::getImageMapLayers( MapLayerList& out_list ) const {
-    ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
     for( MapLayerList::const_iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end(); ++i )
         out_list.push_back( i->get() );
     return _dataModelRevision;
@@ -136,7 +136,7 @@ Map::getHeightFieldMapLayers() const {
 
 int
 Map::getHeightFieldMapLayers( MapLayerList& out_list ) const {
-    ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
     for( MapLayerList::const_iterator i = _heightFieldMapLayers.begin(); i != _heightFieldMapLayers.end(); ++i )
         out_list.push_back( i->get() );
     return _dataModelRevision;
@@ -164,7 +164,7 @@ Map::getName() const {
 
 int
 Map::getDataModelRevision() const {
-    ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
     return _dataModelRevision;
 }
 
@@ -236,7 +236,7 @@ Map::addMapLayer( MapLayer* layer )
 		layer->setCache( this->getCache() );
 
         {
-            ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( getMapDataMutex() );
             MapLayerList& list = 
                 layer->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers : _heightFieldMapLayers;
             list.push_back( layer );
@@ -261,7 +261,7 @@ Map::removeMapLayer( MapLayer* layer )
 
     if ( layerToRemove.get() )
     {
-        ScopedWriteLock lock( getMapDataMutex() );
+        Threading::ScopedWriteLock lock( getMapDataMutex() );
 
         MapLayerList& list = 
             layerToRemove->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers :
@@ -297,7 +297,7 @@ Map::moveMapLayer( MapLayer* layer, unsigned int newIndex )
 
     if ( layer )
     {
-        ScopedWriteLock lock( getMapDataMutex() );
+        Threading::ScopedWriteLock lock( getMapDataMutex() );
 
         MapLayerList& list = 
             layer->getType() == MapLayer::TYPE_IMAGE? _imageMapLayers :
@@ -346,7 +346,7 @@ Map::addModelLayer( ModelLayer* layer )
     if ( layer )
     {
         {
-            ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( getMapDataMutex() );
             _modelLayers.push_back( layer );
             _dataModelRevision++;
         }
@@ -367,7 +367,7 @@ Map::removeModelLayer( ModelLayer* layer )
     if ( layer )
     {
         {
-            ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( getMapDataMutex() );
             for( ModelLayerList::iterator i = _modelLayers.begin(); i != _modelLayers.end(); ++i )
             {
                 if ( i->get() == layer )
@@ -392,7 +392,7 @@ Map::setTerrainMaskLayer( ModelLayer* layer )
     if ( layer )
     {
         {
-            ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( getMapDataMutex() );
             _terrainMaskLayer = layer;
         }
 
@@ -417,7 +417,7 @@ Map::removeTerrainMaskLayer()
     {
         osg::ref_ptr<ModelLayer> layer = _terrainMaskLayer.get();
         {
-            ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( getMapDataMutex() );
             _terrainMaskLayer = 0L;
         }
         
@@ -502,7 +502,7 @@ Map::calculateProfile()
     // At this point, if we don't have a profile we need to search tile sources until we find one.
     if ( !_profile.valid() )
     {
-        ScopedReadLock lock( getMapDataMutex() );
+        Threading::ScopedReadLock lock( getMapDataMutex() );
 
         for( MapLayerList::iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end() && !_profile.valid(); i++ )
         {

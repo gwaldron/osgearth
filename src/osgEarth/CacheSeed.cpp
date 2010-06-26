@@ -27,7 +27,7 @@ using namespace OpenThreads;
 
 void CacheSeed::seed( Map* map )
 {
-    ScopedReadLock lock( map->getMapDataMutex() );
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     osg::ref_ptr<MapEngine> engine = new MapEngine(); //map->createMapEngine();
 

@@ -24,12 +24,12 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Version>
-#include <OpenThreads/ReadWriteMutex>
 
 #include <osgTerrain/TerrainTechnique>
 #include <osgTerrain/Locator>
 #include <osgEarth/Export>
 #include <osgEarth/Progress>
+#include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
 {
@@ -87,7 +87,7 @@ namespace osgEarth
 
     public:
 
-        inline OpenThreads::ReadWriteMutex& getMutex();
+        inline Threading::ReadWriteMutex& getMutex();
 
         /**
         * Sets a factor by which to scale elevation height values. By default, this object

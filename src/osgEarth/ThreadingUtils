@@ -1,0 +1,141 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_THREADING_UTILS_H
+#define OSGEARTH_THREADING_UTILS_H 1
+
+#include <osgEarth/Common>
+#include <OpenThreads/Condition>
+#include <OpenThreads/Mutex>
+
+#define USE_CUSTOM_READ_WRITE_LOCK 1
+
+namespace osgEarth { namespace Threading
+{   
+
+#ifdef USE_CUSTOM_READ_WRITE_LOCK
+    /**
+     * Customer read/write lock. The read/write lock in OSG can unlock mutexes from a different
+     * thread than the one that locked them - this can hang the thread in Windows.
+     *
+     * Adapted from:
+     * http://www.codeproject.com/KB/threads/ReadWriteLock.aspx
+     */
+    class ReadWriteMutex
+    {
+    private:
+        struct MyBlock : public OpenThreads::Block
+        {
+            bool isSignaled() { return _released; }
+            void signal() { release(); }
+        };
+
+    public:
+        ReadWriteMutex() :
+          _readerCount(0)
+        { 
+            _writerEvent.signal();
+            _noReadersEvent.signal();
+        }
+
+        void readLock()
+        {
+            for( ; ; )
+            {
+                _writerEvent.block();              // wait for a writer to quit if there is one
+                incrementReaderCount();            // register this reader
+                if ( !_writerEvent.isSignaled() )  // double lock check, in case a writer snuck in while inrementing
+                    decrementReaderCount();        // if it did, undo the registration and try again
+                else
+                    break;                         // otherwise, we're in
+            }
+        }
+
+        void readUnlock()
+        {
+            decrementReaderCount();                // unregister this reader
+        }
+
+        void writeLock()
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _lockWriterMutex ); // one at a time please
+            _writerEvent.block();     // wait for a writer to quit if there is one
+            _writerEvent.reset();     // prevent further writers from joining
+            _noReadersEvent.block();  // wait for all readers to quit
+        }
+
+        void writeUnlock()
+        {
+            _writerEvent.signal();
+        }
+
+    protected:
+
+        void incrementReaderCount()
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _readerCountMutex );
+            _readerCount++;            // add a reader
+            _noReadersEvent.reset();   // there's at least one reader now so clear the flag
+        }
+
+        void decrementReaderCount()
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _readerCountMutex );
+            _readerCount--;               // remove a reader
+            if ( _readerCount <= 0 )      // if that was the last one, signal that writers are now allowed
+                _noReadersEvent.signal();
+        }
+
+    private:
+        int _readerCount;
+        OpenThreads::Mutex _lockWriterMutex;
+        OpenThreads::Mutex _readerCountMutex;
+        MyBlock _writerEvent;
+        MyBlock _noReadersEvent;
+    };
+
+
+    struct ScopedWriteLock
+    {
+        ScopedWriteLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.writeLock(); }
+        ~ScopedWriteLock() { _lock.writeUnlock(); }
+    protected:
+        ReadWriteMutex& _lock;
+    };
+
+    struct ScopedReadLock
+    {
+        ScopedReadLock( ReadWriteMutex& lock ) : _lock(lock) { _lock.readLock(); }
+        ~ScopedReadLock() { _lock.readUnlock(); }
+    protected:
+        ReadWriteMutex& _lock;
+    };
+
+#else
+
+    typedef OpenThreads::ReadWriteMutex  ReadWriteMutex;
+    typedef OpenThreads::ScopedWriteLock ScopedWriteLock;
+    typedef OpenThreads::ScopedReadLock  ScopedReadLock;
+
+#endif
+
+} } // namepsace osgEarth::Threading
+
+
+#endif // OSGEARTH_THREADING_UTILS_H
+

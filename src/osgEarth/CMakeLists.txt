@@ -61,6 +61,7 @@ SET(LIB_PUBLIC_HEADERS
     TileKey
     TileSource
     TileSourceFactory
+    ThreadingUtils
     TMS
     VersionedTerrain
     XmlUtils

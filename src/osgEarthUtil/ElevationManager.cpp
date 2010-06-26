@@ -46,7 +46,7 @@ ElevationManager::checkForMapUpdates()
     int mapRev = _map->getDataModelRevision();
     if ( _lastMapRevision != mapRev )
     {
-        ScopedReadLock lock( _map->getMapDataMutex() );
+        Threading::ScopedReadLock lock( _map->getMapDataMutex() );
 
         _tileSize = 0;
         _maxDataLevel = 0;

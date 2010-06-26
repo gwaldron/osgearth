@@ -23,6 +23,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/ThreadingUtils>
 
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
@@ -194,7 +195,7 @@ Cache::setHeightField( const TileKey* key,
 
 /*****************************************************************************/
 
-static OpenThreads::ReadWriteMutex s_mutex;
+static Threading::ReadWriteMutex s_mutex;
 
 DiskCache::DiskCache():
 _writeWorldFiles(false)
@@ -270,7 +271,7 @@ DiskCache::getImage( const TileKey* key,
 					 const std::string& layerName,
 					 const std::string& format)
 {
-    OpenThreads::ScopedReadLock lock(s_mutex);
+    Threading::ScopedReadLock lock(s_mutex);
 	std::string filename = getFilename(key,layerName,format);
 
     //If the path doesn't contain a zip file, check to see that it actually exists on disk
@@ -311,7 +312,7 @@ DiskCache::setImage( const TileKey* key,
 	}
 
     // serialize cache writes.
-    OpenThreads::ScopedWriteLock lock(s_mutex);
+    Threading::ScopedWriteLock lock(s_mutex);
 
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))

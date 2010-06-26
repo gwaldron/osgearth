@@ -599,7 +599,7 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 void
 MapNode::addImageLayer( MapLayer* layer )
 {
-    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     //VersionedTerrain* terrain = getTerrain();
 
@@ -611,7 +611,7 @@ MapNode::addImageLayer( MapLayer* layer )
     for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
         VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-        OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+        Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
         //Create a TileKey from the TileID
         osgTerrain::TileID tileId = tile->getTileID();
@@ -703,13 +703,13 @@ MapNode::addImageLayer( MapLayer* layer )
 void
 MapNode::updateElevation(VersionedTile* tile)
 {
-    OpenThreads::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
+    Threading::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
 
     osg::ref_ptr< const TileKey > key = tile->getKey();
 
     bool hasElevation;
     {
-        OpenThreads::ScopedReadLock mapDataLock(_map->getMapDataMutex());
+        Threading::ScopedReadLock mapDataLock(_map->getMapDataMutex());
         hasElevation = _map->getHeightFieldMapLayers().size() > 0;
     }    
 
@@ -773,7 +773,7 @@ MapNode::updateElevation(VersionedTile* tile)
 void
 MapNode::addHeightFieldLayer( MapLayer* layer )
 {
-    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
     getTerrain()->getTerrainTiles( tiles );
@@ -806,7 +806,7 @@ MapNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
 void
 MapNode::removeImageLayer( unsigned int index )
 {
-    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
     getTerrain()->getTerrainTiles( tiles );
@@ -814,7 +814,7 @@ MapNode::removeImageLayer( unsigned int index )
     for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
         VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-        OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+        Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
         //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
         //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
@@ -855,7 +855,7 @@ MapNode::removeImageLayer( unsigned int index )
 void
 MapNode::removeHeightFieldLayer( unsigned int index )
 {
-    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
     getTerrain()->getTerrainTiles( tiles );
@@ -886,7 +886,7 @@ MapNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int n
 void
 MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
     getTerrain()->getTerrainTiles( tiles );
@@ -894,7 +894,7 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
     for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
         VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
-        OpenThreads::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+        Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
         //Collect the current color layers
         std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
@@ -926,7 +926,7 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 void
 MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    OpenThreads::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
     getTerrain()->getTerrainTiles( tiles );

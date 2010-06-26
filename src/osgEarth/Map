@@ -27,9 +27,9 @@
 #include <osgEarth/ModelLayer>
 #include <osgEarth/MapEngine>
 #include <osgEarth/MapEngineProperties>
+#include <osgEarth/ThreadingUtils>
 #include <osgDB/ReaderWriter>
 #include <osg/TransferFunction>
-#include <OpenThreads/ReadWriteMutex>
 
 namespace osgEarth
 {    
@@ -224,7 +224,7 @@ namespace osgEarth
         /**
          * Gets the mutex that protects access to the Map layer lists.
          */
-        OpenThreads::ReadWriteMutex& getMapDataMutex();
+        Threading::ReadWriteMutex& getMapDataMutex();
 
         /**
          * Sets/Gets the caching setup for the entire map. By default, Map Layers added to
@@ -315,7 +315,7 @@ namespace osgEarth
         osg::ref_ptr<ModelLayer> _terrainMaskLayer;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
-        OpenThreads::ReadWriteMutex _mapDataMutex;
+        Threading::ReadWriteMutex _mapDataMutex;
         std::string _referenceURI;
         osg::ref_ptr<const Profile> _profile;
         unsigned int _id;

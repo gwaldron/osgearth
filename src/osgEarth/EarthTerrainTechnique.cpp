@@ -152,7 +152,7 @@ void
 EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
 {
     // lock changes to the layers while we're rendering them
-    ScopedReadLock lock( getMutex() );
+    Threading::ScopedReadLock lock( getMutex() );
 
     _initCount++;
     //if ( _initCount > 1 ) 
@@ -223,7 +223,7 @@ EarthTerrainTechnique::swapIfNecessary()
 {
     bool swapped = false;
 
-    ScopedReadLock lock( getMutex() );
+    Threading::ScopedReadLock lock( getMutex() );
     if ( _swapPending )
     {
         swapBuffers();
@@ -255,7 +255,7 @@ Locator* EarthTerrainTechnique::computeMasterLocator()
     return masterLocator;
 }
 
-ReadWriteMutex&
+Threading::ReadWriteMutex&
 EarthTerrainTechnique::getMutex()
 {
     return static_cast<VersionedTile*>(_terrainTile)->getTileLayersMutex();
@@ -1218,7 +1218,7 @@ EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
     EarthTerrainTechnique* ncThis = const_cast<EarthTerrainTechnique*>(this);
 
-    ScopedWriteLock lock( ncThis->getMutex() );
+    Threading::ScopedWriteLock lock( ncThis->getMutex() );
 
     if (_bufferData[0]._transform.valid())
     {

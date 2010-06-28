@@ -88,11 +88,11 @@ ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned i
 
     GLenum pf = input->getPixelFormat();
 
-    if ( pf != GL_RGBA && pf != GL_RGB && pf != GL_LUMINANCE && pf != GL_LUMINANCE_ALPHA )
-    {
-        OE_WARN << LC << "resizeImage: unsupported pixel format " << std::hex << pf << std::endl;
-        return 0L;
-    }
+    //if ( pf != GL_RGBA && pf != GL_RGB && pf != GL_LUMINANCE && pf != GL_RED && pf != GL_LUMINANCE_ALPHA )
+    //{
+    //    OE_WARN << LC << "resizeImage: unsupported pixel format " << std::hex << pf << std::endl;
+    //    return 0L;
+    //}
 
     if ( new_s > 0 && new_t > 0 )
     {

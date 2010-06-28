@@ -20,6 +20,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Map>
 #include <osgEarth/EarthFile>
+#include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -156,6 +157,14 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                             mapNode->getTerrain(),
                             key.get(),
                             populateLayers );
+
+                        //Blacklist the tile if we couldn't load it
+                        if (!node)
+                        {
+                            OE_DEBUG << "Blacklisting " << file_name << std::endl;
+                            osgEarth::Registry::instance()->blacklist(file_name);
+                        }
+
                     }
                 }
                 else
@@ -163,6 +172,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     OE_NOTICE << "Error:  Could not find Map with id=" << id << std::endl;
                 }
             }
+
 
             return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;                     
         }

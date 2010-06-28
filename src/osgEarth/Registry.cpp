@@ -180,6 +180,28 @@ Registry::getReaderWriterForMimeType(const std::string& mimeType)
         NULL;
 }
 
+bool
+Registry::isBlacklisted(const std::string &filename)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    return (_blacklistedFilenames.count(filename)==1);
+}
+
+void
+Registry::blacklist(const std::string& filename)
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    _blacklistedFilenames.insert( filename );
+    OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
+}
+
+unsigned int
+Registry::getNumBlacklistedFilenames()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    return _blacklistedFilenames.size();
+}
+
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin
 class RegisterEarthTileExtension
 {

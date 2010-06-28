@@ -89,6 +89,43 @@ struct MapNodeMapCallbackProxy : public MapCallback
     }
 };
 
+class RemoveBlacklistedFilenamesVisitor : public osg::NodeVisitor
+{
+public:
+    RemoveBlacklistedFilenamesVisitor():
+      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+          _numRemoved(0)
+      {
+      }
+
+      virtual void apply(osg::PagedLOD& node)
+      {
+          for (unsigned int i = 0; i < node.getNumFileNames();)
+          {
+              const std::string &filename = node.getFileName(i);
+              if (osgEarth::Registry::instance()->isBlacklisted(filename))
+              {
+                  OE_DEBUG << "Removing blacklisted child" << i << "  " << filename <<  std::endl;
+                  //Adjust the previous LOD's range so that it becomes the last child
+                  if (i > 0)
+                  {
+                      node.setRange(i-1, 0, FLT_MAX);
+                  }
+                  node.removeChildren(i, 1);
+                  _numRemoved++;
+              }
+              else
+              {
+                  i++;
+              }
+          }
+
+          traverse(node);
+      }
+
+      unsigned int _numRemoved;
+};
+
 
 void
 MapNode::registerMapNode(MapNode* mapNode)
@@ -157,6 +194,10 @@ MapNode::init()
 {
 	//Protect the MapNode from the Optimizer
 	setDataVariance(osg::Object::DYNAMIC);
+
+    setNumChildrenRequiringUpdateTraversal(1);
+
+    _lastNumBlacklistedFilenames = 0;
 
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
     _id = s_mapNodeID++;
@@ -1022,5 +1063,23 @@ void MapNode::updateStateSet()
             }
         }
     }
+}
+
+void
+MapNode::traverse(osg::NodeVisitor& nv)
+{
+    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    {
+        unsigned int numBlacklist = osgEarth::Registry::instance()->getNumBlacklistedFilenames();
+        if (numBlacklist != _lastNumBlacklistedFilenames)
+        {
+            //Only remove the blacklisted filenames if new filenames have been added since last time.
+            _lastNumBlacklistedFilenames = numBlacklist;
+            RemoveBlacklistedFilenamesVisitor v;
+            accept(v);
+        }
+    }
+
+    Group::traverse(nv);
 }
 

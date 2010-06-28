@@ -173,6 +173,8 @@ namespace osgEarth
 
         virtual osg::BoundingSphere computeBound() const;
 
+        virtual void traverse( class osg::NodeVisitor& nv );
+
 
     public: // MapCallback adapter funcs
 
@@ -220,6 +222,8 @@ namespace osgEarth
         osg::ref_ptr< osgSim::OverlayNode > _pendingOverlayNode;
         bool _pendingOverlayAutoSetTextureUnit;
         TerrainCallbackList _pendingTerrainCallbacks;
+
+        unsigned _lastNumBlacklistedFilenames;
 
     private:
     

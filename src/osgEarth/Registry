@@ -74,6 +74,21 @@ namespace osgEarth
           * the registered mime-types. */
         osgDB::ReaderWriter* getReaderWriterForMimeType(const std::string& mimeType);
 
+        /**
+        *Gets whether the given filename is blacklisted
+        */
+        bool isBlacklisted(const std::string &filename);
+
+        /**
+        *Blacklist the given filename
+        */
+        void blacklist(const std::string &filename);
+
+        /**
+         *Gets the number of blacklisted filenames
+         */
+        unsigned int getNumBlacklistedFilenames();
+
 
     protected:
         virtual ~Registry();
@@ -97,6 +112,10 @@ namespace osgEarth
         MimeTypeExtensionMap _mimeTypeExtMap;
 
 		osg::ref_ptr<Cache> _cacheOverride;
+
+        typedef std::set<std::string> StringSet;
+        StringSet _blacklistedFilenames;
+        OpenThreads::Mutex _blacklistMutex;
     };
 }
 

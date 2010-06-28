@@ -1316,11 +1316,6 @@ _registeredWithReleaseGLCallback( false )
 
         OE_INFO << "VT: using " << _numAsyncThreads << " loading threads " << std::endl;
     }
-    else
-    {
-        // osgTerrain 2.9.8 explicity sets NCURT=1 .. negate that here in standard mode
-        setNumChildrenRequiringUpdateTraversal( 0 );
-    }
 }
 
 VersionedTerrain::~VersionedTerrain()

@@ -175,7 +175,9 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
     
     if (!_terrainTile) return;
 
-    OpenThreads::ScopedLock<OpenThreads::Mutex> wbLock(_writeBufferMutex);
+    //GW: this does not appear to do anything, since 2 threads should not be calling init()
+    // at the same time. 2010-06-28
+    //OpenThreads::ScopedLock<OpenThreads::Mutex> wbLock(_writeBufferMutex);
 
     BufferData& buffer = getWriteBuffer();
     
@@ -193,9 +195,6 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
     
     applyColorLayers();
     applyTransparency();
-    
-// don't call this here
-//    smoothGeometry();
 
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);
@@ -225,7 +224,7 @@ EarthTerrainTechnique::swapIfNecessary()
 
     Threading::ScopedReadLock lock( getMutex() );
     if ( _swapPending )
-    {
+    {        
         swapBuffers();
         swapped = true;
     }
@@ -377,6 +376,11 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     }
     
     buffer._geometry = new osg::Geometry;
+
+    // setting the geometry to DYNAMIC means its draw will not overlap the next frame's update/cull
+    // traversal - which could access the buffer without a mutex
+    buffer._geometry->setDataVariance( osg::Object::DYNAMIC );
+
     buffer._geode->addDrawable(buffer._geometry.get());
         
     osg::Geometry* geometry = buffer._geometry.get();

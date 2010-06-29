@@ -37,7 +37,8 @@ _profileConf( ProfileConfig() )
     {
         std::string cachePath = getenv( "OSGEARTH_CACHE_PATH" );
         _cacheConf->setType( CacheConfig::TYPE_DEFAULT );
-        _cacheConf->getProperties()[ "path" ] = cachePath;
+        _cacheConf->getDriverConf().add( "path", cachePath );
+        //_cacheConf->getProperties()[ "path" ] = cachePath;
         OE_INFO << "Enabling map cache at " << cachePath << std::endl;
     }
 

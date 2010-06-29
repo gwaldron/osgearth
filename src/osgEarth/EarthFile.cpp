@@ -324,9 +324,9 @@ EarthFile::readXML( std::istream& input, const std::string& location )
     {
         Config conf = doc->toConfig().child( ELEM_MAP );
 
-        //OE_NOTICE
-        //    << "[osgEarth] EARTH FILE: " << std::endl
-        //    << conf.toString() << std::endl;
+        OE_INFO
+            << "[osgEarth] EARTH FILE: " << std::endl
+            << conf.toString() << std::endl;
 
         success = readMap( conf, location, this );
     }

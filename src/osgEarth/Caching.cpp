@@ -53,28 +53,45 @@ _runOffCacheOnly( false )
 CacheConfig::CacheConfig( const Config& conf ) :
 _runOffCacheOnly( false )
 {
+    fromConfig( conf );
+
+    //_type = conf.value( "type" );
+
+    //if ( !conf.value("cache_only").empty() )
+    //    _runOffCacheOnly = conf.value("cache_only") == "true";
+
+    //for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); i++ )
+    //    if ( !i->value().empty() )
+    //        _properties[ i->key() ] = i->value();
+}
+
+void
+CacheConfig::fromConfig( const Config& conf )
+{
+    // copy the input configuration, extract the data we want, and remove it
+    // so that what's left is just the info for the driver.
+    _driverConf = conf;
+
     _type = conf.value( "type" );
+    _driverConf.remove( "type" );
 
     if ( !conf.value("cache_only").empty() )
         _runOffCacheOnly = conf.value("cache_only") == "true";
-
-    for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); i++ )
-        if ( !i->value().empty() )
-            _properties[ i->key() ] = i->value();
+    _driverConf.remove( "cache_only" );
 }
 
 Config
 CacheConfig::toConfig( const std::string& name ) const
 {
-    Config conf( name.empty()? "cache" : name );
-    
+    Config conf( _driverConf );
+    conf.key() = name.empty() ? "cache" : name;
     conf.attr( "type" ) = _type;
 
     if ( _runOffCacheOnly.isSet() )
         conf.attr("cache_only") = _runOffCacheOnly.get() ? "true" : "false";
 
-    for( Properties::const_iterator p = _properties.begin(); p != _properties.end(); p++ )
-        conf.add( p->first, p->second );
+    //for( Properties::const_iterator p = _properties.begin(); p != _properties.end(); p++ )
+    //    conf.add( p->first, p->second );
 
     return conf;
 }
@@ -103,33 +120,33 @@ CacheConfig::runOffCacheOnly() const {
 /**
 * Gets the collection of name/value pairs for the cache.
 */
-Properties&
-CacheConfig::getProperties()
-{
-    return _properties;
-}
+//Properties&
+//CacheConfig::getProperties()
+//{
+//    return _properties;
+//}
+//
+//const Properties& CacheConfig::getProperties() const
+//{
+//    return _properties;
+//}
 
-const Properties& CacheConfig::getProperties() const
-{
-    return _properties;
-}
-
-std::string
-CacheConfig::toString() const
-{
-    std::stringstream buf;
-    buf << "type=" << getType();    
-    buf << ", reproject=";
-    buf << ", caching=";
-    if (runOffCacheOnly().isSet()) buf << runOffCacheOnly().get(); else buf << "unset";
-
-    for (Properties::const_iterator i = _properties.begin(); i != _properties.end(); i++ )
-        buf << ", " << i->first << "=" << i->second;   
-
-	std::string bufStr;
-	bufStr = buf.str();
-    return bufStr;
-}
+//std::string
+//CacheConfig::toString() const
+//{
+//    std::stringstream buf;
+//    buf << "type=" << getType();    
+//    buf << ", reproject=";
+//    buf << ", caching=";
+//    if (runOffCacheOnly().isSet()) buf << runOffCacheOnly().get(); else buf << "unset";
+//
+//    for (Properties::const_iterator i = _properties.begin(); i != _properties.end(); i++ )
+//        buf << ", " << i->first << "=" << i->second;   
+//
+//	std::string bufStr;
+//	bufStr = buf.str();
+//    return bufStr;
+//}
 
 
 /*****************************************************************************/
@@ -622,22 +639,29 @@ CacheFactory::create(const CacheConfig &cacheConfig)
     //Default to TMS if the default is selected.
     if (type == CacheConfig::TYPE_DEFAULT) type = CacheConfig::TYPE_TMS;
 
+
+    //TODO: move all this logic into TMS and TILECACHE cache drivers. (GW)
+    Config driverConf = cacheConfig.toConfig();
+
     if (type == CacheConfig::TYPE_TMS || type == CacheConfig::TYPE_TILECACHE )
     {
-        std::string path;
-
-        if ((!getProp(cacheConfig.getProperties(), "path", path)) || (path.empty()))
+        std::string path = driverConf.value( "path" );
+        if ( path.empty() )
         {
-            OE_NOTICE << "[osgEarth::Cache] No path specified for " << type << " cache " << std::endl;
-            return 0;
-        }      
+            OE_WARN << "[osgEarth::Cache] No path specified for " << type << " cache " << std::endl;
+        }
+        //if ((!getProp(cacheConfig.getProperties(), "path", path)) || (path.empty()))
+        //{
+        //    OE_NOTICE << "[osgEarth::Cache] No path specified for " << type << " cache " << std::endl;
+        //    return 0;
+        //}      
 
         DiskCache* cache = NULL;
         if (type == CacheConfig::TYPE_TMS ) //"tms" || type.empty())
         {
 			TMSCache* tms_cache = new TMSCache(path);
-            std::string tms_type; 
-            getProp(cacheConfig.getProperties(), "tms_type", tms_type);
+            std::string tms_type = driverConf.value( "tms_type" );
+            //getProp(cacheConfig.getProperties(), "tms_type", tms_type);
             if (tms_type == "google")
             {
                 OE_DEBUG << "[osgEarth::Cache] Inverting Y in TMS cache " << std::endl;
@@ -655,8 +679,8 @@ CacheFactory::create(const CacheConfig &cacheConfig)
 
         if (cache)
         {
-            std::string write_world_files;
-            getProp(cacheConfig.getProperties(), "write_world_files", write_world_files);
+            std::string write_world_files = driverConf.value( "write_world_files" );
+            //getProp(cacheConfig.getProperties(), "write_world_files", write_world_files);
             if (write_world_files == "true")
             {
                 cache->setWriteWorldFiles( true );
@@ -674,11 +698,11 @@ CacheFactory::create(const CacheConfig &cacheConfig)
     {
         // for now, create a temporary "DriverOptions" object for use with the plugin. Later
         // we should probably convert the main CacheConfig into a true DriverOptions.
-        osg::ref_ptr<PluginOptions> settings = new PluginOptions();
-        for( Properties::const_iterator i = cacheConfig.getProperties().begin(); i != cacheConfig.getProperties().end(); ++i )
-        {
-            settings->config().add( i->first, i->second );
-        }
+        osg::ref_ptr<PluginOptions> settings = new PluginOptions( driverConf );
+        //for( Properties::const_iterator i = cacheConfig.getProperties().begin(); i != cacheConfig.getProperties().end(); ++i )
+        //{
+        //    settings->config().add( i->first, i->second );
+        //}
 
         osgDB::ReaderWriter::ReadResult rr = osgDB::readObjectFile( ".osgearth_cache_" + type, settings.get() );
         if ( rr.error() )

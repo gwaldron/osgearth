@@ -71,15 +71,20 @@ namespace osgEarth
     void setType(const CacheType& type);
 
     /**
+     * Access to the configuration object for the cache driver.
+     */
+    Config& getDriverConf() { return _driverConf; }
+
+    /**
     * Gets the collection of name/value pairs for the cache. These will be particular
     * to each cache type implementation.
     */
-    Properties& getProperties();
+    //Properties& getProperties();
 
     /**
     * Sets the collection of name/value pairs assoicated with the cache config.
     */
-    const Properties& getProperties() const;
+    //const Properties& getProperties() const;
 
     /**
     * Sets whether the map engine should only pull tiles from the cache and not from
@@ -91,11 +96,13 @@ namespace osgEarth
     std::string toString() const;
 
     /** Serializes this object's settings. */
+    void fromConfig( const Config& conf );
     Config toConfig( const std::string& name ="cache" ) const;
 
   private:
     CacheType       _type;
-    Properties      _properties;
+    //Properties      _properties;
+    Config          _driverConf;
     optional<bool>  _runOffCacheOnly;
   };
 

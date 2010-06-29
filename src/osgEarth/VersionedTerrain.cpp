@@ -1150,12 +1150,6 @@ VersionedTile::traverse( osg::NodeVisitor& nv )
         {
             if ( !_hasBeenTraversed && getVersionedTerrain() )
             {
-                // register this tile with its terrain if we've not already done it.
-                // we want to be sure that the tile is already in the scene graph at the
-                // time of registration (otherwise VersionedTerrain will see its refcount
-                // at 1 and schedule it for removal as soon as it's added. Therefore, we
-                // make sure this is either a CULL or UPDATE traversal.
-                getVersionedTerrain()->registerTile( this );
                 _hasBeenTraversed = true;
 
                 // we constructed this tile with an update traversal count of 1 so it would get

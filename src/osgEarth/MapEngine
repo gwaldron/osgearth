@@ -70,6 +70,7 @@ namespace osgEarth
             const TileKey* key,
             bool populateLayers,
             bool wrapInPagedLOD,
+            bool fallback,
             bool &validData);
 
 
@@ -138,6 +139,7 @@ namespace osgEarth
             VersionedTerrain* terrain,
             const TileKey* key,
             bool wrapInPagedLOD,
+            bool fallback,
             bool &validData);
         
         void addPlaceholderImageLayers(

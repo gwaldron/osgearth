@@ -145,30 +145,55 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
 
     bool hasValidData = false;
     bool validData;
-    osg::ref_ptr<osg::Node> q0 = createTile( map, terrain, k0.get(), populateLayers, true, validData);
+
+    bool fallback = false;
+    osg::ref_ptr<osg::Node> q0 = createTile( map, terrain, k0.get(), populateLayers, true, fallback, validData);
     if (!hasValidData && validData) hasValidData = true;
     
-    osg::ref_ptr<osg::Node> q1 = createTile( map, terrain, k1.get(), populateLayers, true, validData );
+    osg::ref_ptr<osg::Node> q1 = createTile( map, terrain, k1.get(), populateLayers, true, fallback, validData );
     if (!hasValidData && validData) hasValidData = true;
     
-    osg::ref_ptr<osg::Node> q2 = createTile( map, terrain, k2.get(), populateLayers, true, validData );
+    osg::ref_ptr<osg::Node> q2 = createTile( map, terrain, k2.get(), populateLayers, true, fallback, validData );
     if (!hasValidData && validData) hasValidData = true;
     
-    osg::ref_ptr<osg::Node> q3 = createTile( map, terrain, k3.get(), populateLayers, true, validData );
+    osg::ref_ptr<osg::Node> q3 = createTile( map, terrain, k3.get(), populateLayers, true, fallback, validData );
     if (!hasValidData && validData) hasValidData = true;
 
-    if (hasValidData && q0.valid() && q1.valid() && q2.valid() && q3.valid())
+    if (!hasValidData)
     {
-        osg::Group* tile_parent = new osg::Group();
-        tile_parent->addChild( q0.get() );
-        tile_parent->addChild( q1.get() );
-        tile_parent->addChild( q2.get() );
-        tile_parent->addChild( q3.get() );
-        return tile_parent;
+        OE_DEBUG << "Couldn't create any quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+        return NULL;
     }
 
-    OE_DEBUG << "[osgEarth::MapEngine] Couldn't create all quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
-    return NULL;
+    osg::Group* tile_parent = new osg::Group();
+    
+    fallback = true;
+    //Fallback on tiles if we couldn't create any
+    if (!q0.valid())
+    {
+        q0 = createTile( map, terrain, k0.get(), populateLayers, true, fallback, validData);
+    }
+
+    if (!q1.valid())
+    {
+        q1 = createTile( map, terrain, k1.get(), populateLayers, true, fallback, validData);
+    }
+
+    if (!q2.valid())
+    {
+        q2 = createTile( map, terrain, k2.get(), populateLayers, true, fallback, validData);
+    }
+
+    if (!q3.valid())
+    {        
+        q3 = createTile( map, terrain, k3.get(), populateLayers, true, fallback, validData);
+    }
+
+    tile_parent->addChild( q0.get() );
+    tile_parent->addChild( q1.get() );
+    tile_parent->addChild( q2.get() );
+    tile_parent->addChild( q3.get() );
+    return tile_parent;
 }
 
 GeoImage*
@@ -403,11 +428,11 @@ MapEngine::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
 }
 
 osg::Node*
-MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD, bool &validData )
+MapEngine::createTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD, bool fallback, bool &validData )
 {
     if ( populateLayers )
     {        
-        return createPopulatedTile( map, terrain, key, wrapInPagedLOD, validData);
+        return createPopulatedTile( map, terrain, key, wrapInPagedLOD, fallback, validData);
     }
     else
     {
@@ -511,7 +536,8 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     // install a tile switcher:
     tile->setTerrainRevision( terrain->getRevision() );
     tile->setTerrain( terrain );
-    //terrain->registerTile( tile );
+    terrain->registerTile( tile );
+
     osg::Node* result = 0L;
 
 
@@ -556,7 +582,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
 }
 
 osg::Node*
-MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool wrapInPagedLOD, bool &validData )
+MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileKey* key, bool wrapInPagedLOD, bool fallback, bool &validData )
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -584,7 +610,6 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         MapLayer* layer = i->get();
 
         osg::ref_ptr<GeoImage> image;
-        TileSource* source = layer->getTileSource();
 		//Only create images if the key is valid
         if ( layer->isKeyValid( key ) )
         {
@@ -623,6 +648,12 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     {
         OE_DEBUG << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         validData = false;
+
+        //If we're not asked to fallback on previous LOD's and we have no data, return NULL
+        if (!fallback)
+        {
+            return NULL;
+        }
     }
     else
     {
@@ -810,7 +841,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // If there's already a placeholder tile registered, this will be ignored. If there isn't,
     // this will register the new tile.
     tile->setTerrain( terrain );
-    //terrain->registerTile( tile );
+    terrain->registerTile( tile );
 
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );

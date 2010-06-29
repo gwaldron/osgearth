@@ -44,14 +44,17 @@ using namespace OpenThreads;
 
 #define LC "[Sqlite3Cache] "
 
-#define MAX_SIZE_TABLE 40 // in MB
 #define USE_TRANSACTIONS
 #define USE_L2_CACHE
 
 #define SPLIT_DB_FILE
-#define SPLIT_LAYER_DB
+//#define SPLIT_LAYER_DB
 #define UPDATE_ACCESS_TIMES
 #define UPDATE_ACCESS_TIMES_POOL
+#define MAX_REQUEST_TO_RUN_PURGE 100
+
+//#define INSERT_POOL
+
 //#define MONITOR_THREAD_HEALTH
 
 // --------------------------------------------------------------------------
@@ -269,6 +272,45 @@ struct ImageRecord
     osg::ref_ptr<osg::Image> _image;
 };
 
+
+class Sqlite3Cache;
+struct AsyncInsertPool : public TaskRequest {
+    struct Entry {
+        osg::ref_ptr<const TileKey> _key;
+        osg::ref_ptr<osg::Image> _image;
+        std::string _format;
+        Entry() {}
+        Entry(const TileKey* key, const std::string& format, osg::Image* img) : _key(key), _format(format), _image(img) {}
+    };
+
+    typedef std::map<std::string, Entry> PoolContainer;
+
+    AsyncInsertPool(const std::string& layerName, Sqlite3Cache* cache );
+
+    void addEntry( const TileKey* key, const std::string& format, osg::Image* image)
+    {
+        const std::string& keyStr = key->str();
+        if (_pool.find(keyStr) != _pool.end())
+            return;
+        _pool[keyStr] = Entry(key, format, image);
+    }
+
+    osg::Image* findImage(const std::string& key)
+    {
+        PoolContainer::iterator it = _pool.find(key);
+        if (it != _pool.end()) {
+            return it->second._image.get();
+        }
+        return 0;
+    }
+
+    void operator()( ProgressCallback* progress );
+    
+    PoolContainer _pool;
+    std::string _layerName;
+    osg::observer_ptr<Sqlite3Cache> _cache;
+};
+
 /**
  * Database table that holds one record per cached imagery tile in a layer. The layer name
  * is the table name.
@@ -387,9 +429,8 @@ struct LayerTable : public osg::Referenced
         return nbItems;
     }
 
-    void checkAndPurgeIfNeeded(sqlite3* db )
+    void checkAndPurgeIfNeeded(sqlite3* db, unsigned int maxSize )
     {
-        int maxSize = MAX_SIZE_TABLE * 1024 * 1024; // 40Mb for this table
         int size = getTableSize(db);
         if (size < 0 || size < 1.2 * maxSize)
             return;
@@ -464,6 +505,90 @@ struct LayerTable : public osg::Referenced
             return true;
         }
     }
+
+    bool beginStore(sqlite3* db, sqlite3_stmt*& insert) 
+    {
+        int rc;
+        rc = sqlite3_exec( db, "BEGIN TRANSACTION", NULL, NULL, NULL);
+        if (rc != 0) {
+            OE_WARN << LC << "Failed to begin transaction batch of insert for " << _meta._layerName << " "  << sqlite3_errmsg(db) << std::endl;
+            return false;
+        }
+
+        // prepare for multiple inserts
+        rc = sqlite3_prepare_v2( db, _insertSQL.c_str(), _insertSQL.length(), &insert, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN 
+                << LC << "Error preparing SQL: " 
+                << sqlite3_errmsg( db )
+                << "(SQL: " << _insertSQL << ")"
+                << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    bool storePool(sqlite3* db, const AsyncInsertPool::PoolContainer& entries, sqlite3_stmt* insert)
+    {
+        ::time_t t = ::time(0L);
+        sqlite3_bind_int(  insert, 2, t );
+        sqlite3_bind_int(  insert, 3, t );
+        int rc;
+        for (AsyncInsertPool::PoolContainer::const_iterator it = entries.begin(); it != entries.end(); ++it) {
+            
+            // bind the key string:
+            std::string keyStr = it->first;
+            sqlite3_bind_text( insert, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
+
+            // serialize the image:
+#ifdef SPLIT_DB_FILE
+            std::stringstream outStream;
+            _rw->writeImage( * (it)->second._image.get(), outStream, _rwOptions.get() );
+            std::string outBuf = outStream.str();
+            std::string fname = _meta._layerName + "_" + keyStr+".osgb";
+            {
+                std::ofstream file(fname.c_str(), std::ios::out | std::ios::binary);
+                if (file.is_open()) {
+                    file.write(outBuf.c_str(), outBuf.length());
+                }
+            }
+            sqlite3_bind_int( insert, 4, outBuf.length() );
+#else
+            std::stringstream outStream;
+            _rw->writeImage( * (it)->second._image.get(), outStream, _rwOptions.get() );
+            std::string outBuf = outStream.str();
+            sqlite3_bind_blob( insert, 4, outBuf.c_str(), outBuf.length(), SQLITE_STATIC );
+#endif
+            rc = sqlite3_step(insert);   // executes the INSERT
+            if ( rc != SQLITE_DONE )
+            {
+                OE_WARN << LC << "SQL INSERT failed for key " << keyStr << ": " 
+                        << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
+                        << ", rc = " << rc << std::endl;
+                sqlite3_finalize(insert); // clean up prepared statement
+                return false;
+            }
+            sqlite3_reset(insert);  // reset the statement 
+        }
+
+        _statsStored += entries.size();
+        return true;
+    }
+
+    bool endStore(sqlite3* db, sqlite3_stmt* insert)
+    {
+        int rc = 0;
+        rc = sqlite3_finalize(insert); // clean up prepared statement
+        rc = sqlite3_exec( db, "COMMIT", NULL, NULL, NULL);  // COMMIT all dirty pages at once
+        if (rc != 0) {
+            OE_WARN << LC << "Failed to commit batch of insert for " << _meta._layerName << " "  << sqlite3_errmsg(db) << std::endl;
+            return false;
+        }
+        
+        return true;
+    }
+
 
     bool updateAccessTime( const TileKey* key, int newTimestamp, sqlite3* db )
     { 
@@ -833,6 +958,8 @@ struct AsyncUpdateAccessTimePool : public TaskRequest {
     osg::observer_ptr<Sqlite3Cache> _cache;
 };
 
+
+
 // --------------------------------------------------------------------------
 
 struct ThreadTable {
@@ -991,7 +1118,7 @@ public: // Cache interface
                 return result;
         }
 
-        if (_nbRequest > 100) {
+        if (_settings->maxSize() > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
             int t = (int)::time(0L);
             purge(layerName, t, _settings->asyncWrites().value() );
             _nbRequest = 0;
@@ -1001,6 +1128,22 @@ public: // Cache interface
         // next check the deferred-write queue.
         if ( _settings->asyncWrites() == true )
         {
+#ifdef INSERT_POOL
+            ScopedLock<Mutex> lock( _pendingWritesMutex );
+            std::string name = layerName;
+            std::map<std::string, osg::ref_ptr<AsyncInsertPool> >::iterator it = _pendingWrites.find(name);
+            if (it != _pendingWrites.end()) {
+                AsyncInsertPool* p = it->second.get();
+                if (p) {
+                    osg::Image* img = p->findImage(key->str());
+                    if (img) {
+                        // todo: update the access time, or let it slide?
+                        OE_DEBUG << LC << "Got key that is write-queued: " << key->str() << std::endl;
+                        return img;
+                    }
+                }
+            }
+#else
             ScopedLock<Mutex> lock( _pendingWritesMutex );
             std::string name = key->str() + layerName;
             std::map<std::string,osg::ref_ptr<AsyncInsert> >::iterator i = _pendingWrites.find(name);
@@ -1010,6 +1153,7 @@ public: // Cache interface
                 OE_DEBUG << LC << "Got key that is write-queued: " << key->str() << std::endl;
                 return i->second->_image.get();
             }
+#endif
         }
 
         // finally, try to query the database.
@@ -1075,6 +1219,21 @@ public: // Cache interface
             // the "pending writes" table is here so that we don't try to write data to
             // the cache more than once when using an asynchronous write service.
             ScopedLock<Mutex> lock( _pendingWritesMutex );
+#ifdef INSERT_POOL
+            std::string name = layerName;
+            std::map<std::string, osg::ref_ptr<AsyncInsertPool> >::iterator it = _pendingWrites.find(name);
+            if ( it == _pendingWrites.end() )
+            {
+                AsyncInsertPool* req = new AsyncInsertPool(layerName, this);
+                req->addEntry(key, format, image);
+                _pendingWrites[name] = req;
+                _writeService->add( req );
+            }
+            else
+            {
+                it->second->addEntry(key, format, image);
+            }
+#else
             std::string name = key->str() + layerName;
             if ( _pendingWrites.find(name) == _pendingWrites.end() )
             {
@@ -1087,6 +1246,7 @@ public: // Cache interface
                 //NOTE: this should probably never happen.
                 OE_WARN << LC << "Tried to setImage; already in queue: " << key->str() << std::endl;
             }
+#endif
         }
         else
         {
@@ -1107,14 +1267,26 @@ public: // Cache interface
 
         if ( async == true && _settings->asyncWrites() == true )
         {
-            _writeService->add( new AsyncPurge(layerName, olderThanUTC, this) );
+            if (_pendingPurges.find(layerName) != _pendingPurges.end()) {
+                return false;
+            } else {
+                ScopedLock<Mutex> lock( _pendingPurgeMutex );
+                AsyncPurge* req = new AsyncPurge(layerName, olderThanUTC, this);
+                _writeService->add( req);
+                _pendingPurges[layerName] = req;
+            }
         }
         else
         {
             ThreadTable tt = getTable( layerName );
             if ( tt._table )
             {
-                tt._table->checkAndPurgeIfNeeded(tt._db );
+                ScopedLock<Mutex> lock( _pendingPurgeMutex );
+                _pendingPurges.erase( layerName );
+
+                unsigned int maxsize = _settings->maxSize().value();
+                tt._table->checkAndPurgeIfNeeded(tt._db, maxsize * 1024 * 1024);
+                displayPendingOperations();
             }
         }
         return true;
@@ -1151,11 +1323,45 @@ public: // Cache interface
         {
             ScopedLock<Mutex> lock( _pendingUpdateMutex );
             _pendingUpdates.erase( layerName );
+            displayPendingOperations();
         }
         return true;
     }
 
+    void setImageSyncPool( AsyncInsertPool* pool, const std::string& layerName)
+    {
+        ScopedLock<Mutex> lock( _pendingWritesMutex );
+        const AsyncInsertPool::PoolContainer& entries = pool->_pool;
+        OE_WARN << "write " << entries.size() << std::endl;
+        ThreadTable tt = getTable(layerName);
+        if ( tt._table )
+        {
+            sqlite3_stmt* insert;
+            if (!tt._table->beginStore( tt._db, insert )) {
+                return;
+            }
+            if (!tt._table->storePool( tt._db, entries, insert )) {
+                return;
+            }
+            if (!tt._table->endStore( tt._db, insert )) {
+                return;
+            }
+        }
+        _pendingWrites.erase( layerName );
+        displayPendingOperations();
+    }
+
 private:
+
+    void displayPendingOperations() {
+        if (_pendingWrites.size())
+            OE_INFO << LC << "pending insert " << _pendingWrites.size() << std::endl;
+        if (_pendingUpdates.size())
+            OE_INFO << LC << "pending update " << _pendingUpdates.size() << std::endl;
+        if (_pendingPurges.size())
+            OE_INFO << LC << "pending purge " << _pendingPurges.size() << std::endl;
+        //OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
+    }
 
     void setImageSync( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image )
     {
@@ -1177,14 +1383,10 @@ private:
             ScopedLock<Mutex> lock( _pendingWritesMutex );
             std::string name = key->str() + layerName;
             _pendingWrites.erase( name );
-
-            if ( _writeService->getNumRequests() == 0 )
-            {
-                //OE_DEBUG << "Write service queue is empty." << std::endl;
-            } else
-                OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
+            displayPendingOperations();
         }
     }
+
 
 #ifdef SPLIT_LAYER_DB
     sqlite3* getOrCreateDbForThread(const std::string& layer)
@@ -1328,10 +1530,16 @@ private:
     osg::ref_ptr<TaskService> _writeService;
     Mutex _pendingWritesMutex;
 
+#ifdef INSERT_POOL
+    std::map<std::string, osg::ref_ptr<AsyncInsertPool> > _pendingWrites;
+#else
     std::map<std::string, osg::ref_ptr<AsyncInsert> > _pendingWrites;
-
+#endif
     Mutex _pendingUpdateMutex;
     std::map<std::string, osg::ref_ptr<AsyncUpdateAccessTimePool> > _pendingUpdates;
+
+    Mutex _pendingPurgeMutex;
+    std::map<std::string, osg::ref_ptr<AsyncPurge> > _pendingPurges;
 
     sqlite3* _db;
     std::map<Thread*,sqlite3*> _dbPerThread;
@@ -1374,12 +1582,23 @@ void AsyncUpdateAccessTimePool::addEntry(const TileKey* key, int timeStamp)
     }
     _timeStamp = timeStamp;
 }
+
 void AsyncUpdateAccessTimePool::operator()( ProgressCallback* progress ) 
 { 
     osg::ref_ptr<Sqlite3Cache> cache = _cache.get();
     if ( cache.valid() ) {
         OE_WARN << "AsyncUpdateAccessTimePool will process " << _keys.size() << std::endl;
         cache->updateAccessTimeSyncPool( _layerName, _keyStr , _timeStamp );
+    }
+}
+
+
+AsyncInsertPool::AsyncInsertPool(const std::string& layerName, Sqlite3Cache* cache ) : _layerName(layerName), _cache(cache) { }
+void AsyncInsertPool::operator()( ProgressCallback* progress )
+{
+    osg::ref_ptr<Sqlite3Cache> cache = _cache.get();
+    if ( cache.valid() ) {
+        cache->setImageSyncPool( this, _layerName );
     }
 }
 

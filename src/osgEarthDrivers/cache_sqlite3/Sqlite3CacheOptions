@@ -44,11 +44,15 @@ namespace osgEarth { namespace Drivers
         optional<bool>& serialized() { return _serialized; }
         const optional<bool>& serialized() const { return _serialized; }
 
+        optional<unsigned int>& maxSize() { return _maxSize; }
+        const optional<unsigned int>& maxSize() const { return _maxSize; }
+
     public:
         Sqlite3CacheOptions( const PluginOptions* opt =0L )
-            : DriverOptions( opt ), _useAsyncWrites( true ), _serialized( false )
+            : DriverOptions( opt ), _useAsyncWrites( true ), _serialized( false ), _maxSize(0)
         {
             driver() = "cache_sqlite3";
+            config().getIfSet( "max_size", _maxSize );
             config().getIfSet( "path", _path );
             config().getIfSet( "async_writes", _useAsyncWrites );
             config().getIfSet( "serialized", _serialized );
@@ -57,6 +61,7 @@ namespace osgEarth { namespace Drivers
     protected:
         Config toConfig() const {
             Config conf = DriverOptions::toConfig();
+            conf.updateIfSet( "max_size", _maxSize );
             conf.updateIfSet( "path", _path );
             conf.updateIfSet( "async_writes", _useAsyncWrites );
             conf.updateIfSet( "serialized", _serialized );
@@ -66,6 +71,7 @@ namespace osgEarth { namespace Drivers
         optional<std::string> _path;
         optional<bool> _useAsyncWrites;
         optional<bool> _serialized;
+        optional<unsigned int> _maxSize; // in MB
     };
 
 } } // namespace osgEarth::Drivers

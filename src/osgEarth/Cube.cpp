@@ -593,6 +593,24 @@ Profile(SpatialReference::create( "unified-cube" ),
     _faceExtent_gcs[5] = GeoExtent( srs, -180, -90, 180, -45 ); // south polar
 }
 
+//UnifiedCubeProfile::UnifiedCubeProfile(double xmin, double ymin, double xmax, double ymax,
+//                                       double lonMin, double latMin, double lonMax, double latMax ) :
+//Profile(SpatialReference::create( "unified-cube" ),
+//        xmin, ymin, xmax, ymax,
+//        lonMin, latMin, lonMax, latMax,
+//        6, 1 )
+//{
+//    const SpatialReference* srs = getSRS()->getGeographicSRS();
+//
+//    // set up some faceextents
+//    _faceExtent_gcs[0] = GeoExtent( srs, osg::maximum(-180.,lonMin), osg::maximum(-45.,latMin), osg::minimum(-90.,lonMax), osg::minimum( 45.,latMax) );
+//    _faceExtent_gcs[1] = GeoExtent( srs, osg::maximum( -90.,lonMin), osg::maximum(-45.,latMin), osg::minimum(  0.,lonMax), osg::minimum( 45.,latMax) );
+//    _faceExtent_gcs[2] = GeoExtent( srs, osg::maximum(   0.,lonMin), osg::maximum(-45.,latMin), osg::minimum( 90.,lonMax), osg::minimum( 45.,latMax) );
+//    _faceExtent_gcs[3] = GeoExtent( srs, osg::maximum(  90.,lonMin), osg::maximum(-45.,latMin), osg::minimum(180.,lonMax), osg::minimum( 45.,latMax) );
+//    _faceExtent_gcs[4] = GeoExtent( srs, osg::maximum(-180.,lonMin), osg::maximum( 45.,latMin), osg::minimum(180.,lonMax), osg::minimum( 90.,latMax) ); // north polar
+//    _faceExtent_gcs[5] = GeoExtent( srs, osg::maximum(-180.,lonMin), osg::maximum(-90.,latMin), osg::minimum(180.,lonMax), osg::minimum(-45.,latMax) ); // south polar
+//}
+
 int
 UnifiedCubeProfile::getFace( const TileKey* key )
 {

@@ -1453,11 +1453,6 @@ public:
         return hf.release();
     }
 
-    //virtual int getPixelsPerTile() const
-    //{
-    //    return _settings->tileSize().value();
-    //}
-
     bool intersects(const TileKey* key)
     {
         //Get the native extents of the tile

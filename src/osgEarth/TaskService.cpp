@@ -148,7 +148,7 @@ TaskRequestQueue::setDone()
     // wake everyone up so they can see the _done flag set and exit.
     //_cond.broadcast();
 
-    // alternative to buggy win32 broadcast:
+    // alternative to buggy win32 broadcast (OSG pre-r10457 on windows)
     for(int i=0; i<128; i++)
         _cond.signal();
 }

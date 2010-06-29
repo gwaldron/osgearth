@@ -48,6 +48,8 @@ void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 				double delta = osg::minimum(deltaTime / _animationTime, 1.0);
 
+                //TODO:
+                //GW: access top ImageMapLayers is unsafe throughout this method... FIXME
                 unsigned int numImageSources = 0;
                 {
                     Threading::ScopedReadLock lock( mapNode->getMap()->getMapDataMutex() );

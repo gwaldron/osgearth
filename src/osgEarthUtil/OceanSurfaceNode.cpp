@@ -180,7 +180,7 @@ char vert_shader_source[] =
 
 "   if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0.0)\n"
 "   {\n"
-"     const float PI_2 = 3.14158 * 2.0;\n"
+"     float PI_2 = 3.14158 * 2.0;\n"
 "     float period = PI_2/osgEarth_oceanPeriod;\n"
 "     float half_period = period / 2.0;\n"
 //"     vec3 latlon = osgEarth_LatLon;\n"
@@ -211,7 +211,7 @@ char vert_shader_source[] =
 "     gl_Position = ftransform();\n"
 "   }\n"
 "\n"
-"   const float PI = 3.14158;\n"
+"   float PI = 3.14158;\n"
 "   float textureSize = OCEAN_TEXTURE_SIZE;\n"
 "	texCoord0 = gl_MultiTexCoord0.st;\n"
 "	texCoord1 = gl_MultiTexCoord1.st;\n"

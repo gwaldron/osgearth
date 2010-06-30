@@ -47,7 +47,7 @@ using namespace OpenThreads;
 #define USE_TRANSACTIONS
 #define USE_L2_CACHE
 
-#define SPLIT_DB_FILE
+//#define SPLIT_DB_FILE
 //#define SPLIT_LAYER_DB
 #define UPDATE_ACCESS_TIMES
 #define UPDATE_ACCESS_TIMES_POOL

@@ -1340,11 +1340,11 @@ private:
 
     void displayPendingOperations() {
         if (_pendingWrites.size())
-            OE_INFO << LC << "pending insert " << _pendingWrites.size() << std::endl;
+            OE_DEBUG<< LC << "pending insert " << _pendingWrites.size() << std::endl;
         if (_pendingUpdates.size())
-            OE_INFO << LC << "pending update " << _pendingUpdates.size() << std::endl;
+            OE_DEBUG << LC << "pending update " << _pendingUpdates.size() << std::endl;
         if (_pendingPurges.size())
-            OE_INFO << LC << "pending purge " << _pendingPurges.size() << std::endl;
+            OE_DEBUG << LC << "pending purge " << _pendingPurges.size() << std::endl;
         //OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
     }
 

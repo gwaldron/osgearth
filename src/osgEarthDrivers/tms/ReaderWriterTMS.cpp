@@ -147,7 +147,7 @@ public:
                     if (key->getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
                         OE_NOTICE << "Returning empty image " << std::endl;
-                        return ImageUtils::getEmptyImage();
+                        return ImageUtils::createEmptyImage();
                     }
                 }
             }

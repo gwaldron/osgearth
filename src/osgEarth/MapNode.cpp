@@ -640,15 +640,14 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 void
 MapNode::addImageLayer( MapLayer* layer )
 {
+    //TODO: review the scope of this mapdata mutex lock within this method. We can 
+    // probably optimize it some
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
-
-    //VersionedTerrain* terrain = getTerrain();
 
     TerrainTileList tiles;
     getTerrain()->getTerrainTiles( tiles );
 
-    OE_DEBUG << LC << "Found " << tiles.size() << std::endl;
-
+    // visit all existing terrain tiles and inform each one of the new image layer:
     for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
         VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
@@ -663,16 +662,18 @@ MapNode::addImageLayer( MapLayer* layer )
         bool needToUpdateImagery = false;
         int imageLOD = -1;
 
-        //If we are in preemptiveLOD mode, just add an empty placeholder image for the new layer.  Otherwise, go ahead and get the image
+        // establish the initial image for this tile.
         if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
            ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
         {
+            // in Standard mode, fetch the image immediately
             geoImage = _engine->createValidGeoImage( layer, key.get() );
             imageLOD = key->getLevelOfDetail();
         }
         else
         {
-            geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent() );
+            // in seq/pre mode, set up a placeholder and mark the tile as dirty.
+            geoImage = new GeoImage(ImageUtils::createEmptyImage(), key->getGeoExtent() );
             needToUpdateImagery = true;
         }
 
@@ -681,8 +682,7 @@ MapNode::addImageLayer( MapLayer* layer )
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<GeoLocator> img_locator; // = key->getProfile()->getSRS()->createLocator();
-
+            osg::ref_ptr<GeoLocator> img_locator;
             
             // Use a special locator for mercator images (instead of reprojecting).
             // We do this under 2 conditions when we have mercator tiles:
@@ -705,13 +705,14 @@ MapNode::addImageLayer( MapLayer* layer )
                 img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
             }
 
-            //Set the CS to geocentric is we are dealing with a geocentric map
+            //Set the CS to geocentric if we are dealing with a geocentric map
             if ( _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC || _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE)
             {
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
             }
 
-            //osgTerrain::ImageLayer* img_layer = new osgTerrain::ImageLayer( geoImage->getImage() );
+            // Create a layer wrapper that supports opacity.
+            // TODO: review this; the Transparent layer holds a back-reference to the actual MapLayer
 			TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
             img_layer->setLevelOfDetail(imageLOD);
             img_layer->setLocator( img_locator.get());
@@ -728,9 +729,13 @@ MapNode::addImageLayer( MapLayer* layer )
         }
         else
         {
-            OE_NOTICE << "Could not create geoimage for " << layer->getName() << " " << key->str() << std::endl;
-        }
+            // this can happen if there's no data in the new layer for the given tile.
+            // we will rely on the driver to dump out a warning if this is an error.
 
+            //OE_INFO << LC << 
+            //    "Adding layer " << layer->getName()
+            //    << ": Could not create geoimage for tile " << key->str() << std::endl;
+        }
         
         if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty(true);

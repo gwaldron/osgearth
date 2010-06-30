@@ -676,7 +676,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
 			if (!image)
 			{
 				//If the image is not valid, create an empty texture as a placeholder
-				image = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
+                image = new GeoImage(ImageUtils::createEmptyImage(), key->getGeoExtent());
 			}
 
 			//Assign the new image to the proper place in the list
@@ -911,7 +911,7 @@ MapEngine::createImageLayer(Map* map,
     else
     {
         //If the key is not valid, simply make a transparent tile
-        geoImage = new GeoImage(ImageUtils::getEmptyImage(), key->getGeoExtent());
+        geoImage = new GeoImage(ImageUtils::createEmptyImage(), key->getGeoExtent());
     }
 
     if (geoImage.valid())

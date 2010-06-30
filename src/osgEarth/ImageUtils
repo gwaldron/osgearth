@@ -86,7 +86,7 @@ namespace osgEarth
         /**
          * Gets a transparent, single pixel image used for a placeholder
          */
-        static osg::Image* getEmptyImage();
+        static osg::Image* createEmptyImage();
 
 		/**
 		 *Converts the given image to RGB

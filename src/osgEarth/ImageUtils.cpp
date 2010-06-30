@@ -105,18 +105,18 @@ ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned i
 
         unsigned int pixel_size_bytes = input->getRowSizeInBytes() / input->s();
 
-        for( unsigned int output_row=0; output_row < output->t(); output_row++ )
+        for( int output_row=0; output_row < output->t(); output_row++ )
         {
             // get an appropriate input row
             float output_row_ratio = (float)output_row/(float)output->t();
-            unsigned int input_row = (unsigned int)( output_row_ratio * (float)input->t() );
+            int input_row = (unsigned int)( output_row_ratio * (float)input->t() );
             if ( input_row >= input->t() ) input_row = input->t()-1;
             else if ( input_row < 0 ) input_row = 0;
 
-            for( unsigned int output_col = 0; output_col < output->s(); output_col++ )
+            for( int output_col = 0; output_col < output->s(); output_col++ )
             {
                 float output_col_ratio = (float)output_col/(float)output->s();
-                unsigned int input_col = (unsigned int)( output_col_ratio * (float)input->s() );
+                int input_col = (unsigned int)( output_col_ratio * (float)input->s() );
                 if ( input_col >= input->s() ) input_col = input->s()-1;
                 else if ( input_row < 0 ) input_row = 0;
                 
@@ -224,7 +224,7 @@ ImageUtils::sharpenImage( const osg::Image* input )
 
 
 osg::Image*
-ImageUtils::getEmptyImage()
+ImageUtils::createEmptyImage()
 {
     osg::Image* image = new osg::Image;
     image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
@@ -249,9 +249,9 @@ ImageUtils::convertToRGB(const osg::Image *image)
 			osg::Image* result = new osg::Image();
 			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
 
-			for (unsigned int s = 0; s < image->s(); ++s)
+			for (int s = 0; s < image->s(); ++s)
 			{
-				for (unsigned int t = 0; t < image->t(); ++t)
+				for (int t = 0; t < image->t(); ++t)
 				{
 					result->data(s,t)[0] = image->data(s, t)[0];
 					result->data(s,t)[1] = image->data(s, t)[1];

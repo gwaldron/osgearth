@@ -1244,7 +1244,7 @@ public:
         //Create a transparent image if we don't have an image
         if (!image.valid())
         {
-            return ImageUtils::getEmptyImage();
+            return ImageUtils::createEmptyImage();
         }
         return image.release();
     }

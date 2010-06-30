@@ -52,6 +52,15 @@ namespace osgEarth
             double dx, double dy,
             ElevationInterpolation interpolation = INTERP_BILINEAR);
 
+        /**
+         * Gets the interpolated elevation at the specified "normalized unit location".
+         * i.e., nx => [0.0, 1.0], ny => [0.0, 1.0] where 0.0 and 1.0 are the opposing
+         * endposts of the heightfield.
+         */
+        static float getHeightAtNormalizedLocation(
+            const osg::HeightField* hf,
+            double nx, double ny,
+            ElevationInterpolation interp = INTERP_BILINEAR);
 
 
         static void scaleHeightFieldToDegrees( osg::HeightField* hf );
@@ -60,6 +69,16 @@ namespace osgEarth
             osg::HeightField* input, const class GeoExtent& inputEx,
             const class GeoExtent& outputEx,
             ElevationInterpolation interpolation = INTERP_BILINEAR);
+
+        /**
+         * Resizes a heightfield, keeping the corner values the same and
+         * resampling the internal posts.
+         */
+        static osg::HeightField* resizeHeightField(
+            osg::HeightField* input,
+            int newX,
+            int newY,
+            ElevationInterpolation interp = INTERP_BILINEAR );
     };
 
     /**

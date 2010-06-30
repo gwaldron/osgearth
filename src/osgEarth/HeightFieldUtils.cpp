@@ -189,6 +189,16 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, doub
     return getHeightAtPixel(hf, px, py, interpolation);
 }
 
+float
+HeightFieldUtils::getHeightAtNormalizedLocation(const osg::HeightField* input,
+                                                double nx, double ny,
+                                                ElevationInterpolation interp)
+{
+    double px = nx * (double)(input->getNumColumns() - 1);
+    double py = ny * (double)(input->getNumRows() - 1);
+    return getHeightAtPixel( input, px, py, interp );
+}
+
 
 void
 HeightFieldUtils::scaleHeightFieldToDegrees( osg::HeightField* hf )
@@ -257,6 +267,42 @@ HeightFieldUtils::createSubSample(osg::HeightField* input, const GeoExtent& inpu
     return dest;
 }
 
+osg::HeightField*
+HeightFieldUtils::resizeHeightField(osg::HeightField* input, int newColumns, int newRows,
+                                    ElevationInterpolation interp)
+{
+    if ( newColumns <= 1 && newRows <= 1 )
+        return 0L;
+
+    if ( newColumns == input->getNumColumns() && newRows == input->getNumRows() )
+        return new osg::HeightField( *input, osg::CopyOp::DEEP_COPY_ALL );
+
+    double spanX = (input->getNumColumns()-1) * input->getXInterval();
+    double spanY = (input->getNumRows()-1) * input->getYInterval();
+    const osg::Vec3& origin = input->getOrigin();
+
+    double stepX = spanX/(double)(newColumns-1);
+    double stepY = spanY/(double)(newRows-1);
+
+    osg::HeightField* output = new osg::HeightField();
+    output->allocate( newColumns, newRows );
+    output->setXInterval( stepX );
+    output->setYInterval( stepY );
+    output->setOrigin( origin );
+    
+    for( int y = 0; y < newRows; ++y )
+    {
+        for( int x = 0; x < newColumns; ++x )
+        {
+            double nx = (double)x / (double)(newColumns-1);
+            double ny = (double)y / (double)(newRows-1);
+            float h = getHeightAtNormalizedLocation( input, nx, ny );
+            output->setHeight( x, y, h );
+        }
+    }
+
+    return output;
+}
 
 /******************************************************************************************/
 

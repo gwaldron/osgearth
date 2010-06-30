@@ -702,9 +702,9 @@ struct LayerTable : public osg::Referenced
         osg::Timer_t t = osg::Timer::instance()->tick();
         if (osg::Timer::instance()->delta_s( _statsLastCheck, t) > 10.0) {
             double d = osg::Timer::instance()->delta_s(_statsStartTimer, t);
-            OE_INFO << _meta._layerName << " time " << d << " stored " << _statsStored << " rate " << _statsStored * 1.0 / d << std::endl;
-            OE_INFO << _meta._layerName << " time " << d << " loaded " << _statsLoaded << " rate " << _statsLoaded * 1.0 / d << std::endl;
-            OE_INFO << _meta._layerName << " time " << d << " deleted " << _statsDeleted << " rate " << _statsDeleted * 1.0 / d << std::endl;
+            OE_INFO << _meta._layerName << " time " << d << " stored " << std::dec << _statsStored << " rate " << _statsStored * 1.0 / d << std::endl;
+            OE_INFO << _meta._layerName << " time " << d << " loaded " << std::dec  << _statsLoaded << " rate " << _statsLoaded * 1.0 / d << std::endl;
+            OE_INFO << _meta._layerName << " time " << d << " deleted " << std::dec  << _statsDeleted << " rate " << _statsDeleted * 1.0 / d << std::endl;
             _statsLastCheck = t;
         }
     }
@@ -932,6 +932,8 @@ struct AsyncUpdateAccessTime : public TaskRequest {
 struct AsyncUpdateAccessTimePool : public TaskRequest {
     AsyncUpdateAccessTimePool( const std::string& layerName, Sqlite3Cache* cache );
     void addEntry(const TileKey* key, int timeStamp);
+    void addEntryInternal(const TileKey* key);
+
     void operator()( ProgressCallback* progress );
     const std::string& getLayerName() { return _layerName; }
     int getNbEntry() const { return _keys.size(); }
@@ -972,7 +974,7 @@ public:
         }
 
         // enabled shared cache mode.
-        sqlite3_enable_shared_cache( 1 );
+        //sqlite3_enable_shared_cache( 1 );
 
 #ifdef USE_L2_CACHE
         _L2cache = new MemCache();
@@ -1093,6 +1095,8 @@ public: // Cache interface
     {
         if ( !_db ) return 0L;
 
+        // wait if we are purging the db
+        ScopedLock<Mutex> lock2( _pendingPurgeMutex );
 
         // first try the L2 cache.
         if ( _L2cache.valid() )
@@ -1101,13 +1105,6 @@ public: // Cache interface
             if ( result )
                 return result;
         }
-
-        if (_settings->getSize(layerName) > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
-            int t = (int)::time(0L);
-            purge(layerName, t, _settings->asyncWrites().value() );
-            _nbRequest = 0;
-        }
-        _nbRequest++;
 
         // next check the deferred-write queue.
         if ( _settings->asyncWrites() == true )
@@ -1172,6 +1169,7 @@ public: // Cache interface
                     pool = new AsyncUpdateAccessTimePool(layerName, this);
                     pool->addEntry(key, t);
                     _pendingUpdates[layerName] = pool.get();
+                    _writeService->add(pool.get());
                 }
             }
 #else
@@ -1234,6 +1232,7 @@ public: // Cache interface
         }
         else
         {
+
             setImageSync( key, layerName, format, image );
         }
     }
@@ -1246,9 +1245,6 @@ public: // Cache interface
         if ( !_db ) false;
 
         // purge the L2 cache first:
-        if ( _L2cache.valid() )
-            _L2cache->purge( layerName, olderThanUTC, async );
-
         if ( async == true && _settings->asyncWrites() == true )
         {
             if (_pendingPurges.find(layerName) != _pendingPurges.end()) {
@@ -1262,10 +1258,13 @@ public: // Cache interface
         }
         else
         {
+            ScopedLock<Mutex> lock( _pendingPurgeMutex );
+            if ( _L2cache.valid() )
+                _L2cache->purge( layerName, olderThanUTC, async );
+
             ThreadTable tt = getTable( layerName );
             if ( tt._table )
             {
-                ScopedLock<Mutex> lock( _pendingPurgeMutex );
                 _pendingPurges.erase( layerName );
 
                 unsigned int maxsize = _settings->getSize(layerName);
@@ -1351,6 +1350,13 @@ private:
 
     void setImageSync( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image )
     {
+        if (_settings->getSize(layerName) > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
+            int t = (int)::time(0L);
+            purge(layerName, t, _settings->asyncWrites().value() );
+            _nbRequest = 0;
+        }
+        _nbRequest++;
+
         ThreadTable tt = getTable(layerName);
         if ( tt._table )
         {
@@ -1556,6 +1562,22 @@ void AsyncUpdateAccessTime::operator()( ProgressCallback* progress )
 AsyncUpdateAccessTimePool::AsyncUpdateAccessTimePool(const std::string& layerName, Sqlite3Cache* cache) : _layerName(layerName), _cache(cache) {}
 void AsyncUpdateAccessTimePool::addEntry(const TileKey* key, int timeStamp)
 {
+    unsigned int lod = key->getLevelOfDetail();
+    addEntryInternal(key);
+    if (lod > 0) {
+        osg::ref_ptr<const TileKey> previous = key;
+        for (int i = (int)lod-1; i >= 0; --i) {
+            osg::ref_ptr<const TileKey> ancestor = previous->createAncestorKey(i);
+            if (ancestor.valid())
+                addEntryInternal(ancestor);
+            previous = ancestor.get();
+        }
+    }
+    _timeStamp = timeStamp;
+}
+
+void AsyncUpdateAccessTimePool::addEntryInternal(const TileKey* key)
+{
     const std::string& keyStr = key->str();
     if (_keys.find(keyStr) == _keys.end()) {
         _keys[keyStr] = 1;
@@ -1563,17 +1585,14 @@ void AsyncUpdateAccessTimePool::addEntry(const TileKey* key, int timeStamp)
             _keyStr = keyStr;
         else
             _keyStr += ", " + keyStr;
-    } else {
-        //OE_WARN << "key " << keyStr << " already in batch" << std::endl;
     }
-    _timeStamp = timeStamp;
 }
 
 void AsyncUpdateAccessTimePool::operator()( ProgressCallback* progress ) 
 { 
     osg::ref_ptr<Sqlite3Cache> cache = _cache.get();
     if ( cache.valid() ) {
-        OE_WARN << "AsyncUpdateAccessTimePool will process " << _keys.size() << std::endl;
+        //OE_INFO << "AsyncUpdateAccessTimePool will process " << _keys.size() << std::endl;
         cache->updateAccessTimeSyncPool( _layerName, _keyStr , _timeStamp );
     }
 }

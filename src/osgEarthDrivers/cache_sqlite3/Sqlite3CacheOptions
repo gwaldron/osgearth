@@ -61,16 +61,10 @@ namespace osgEarth { namespace Drivers
             : DriverOptions( opt ), _useAsyncWrites( true ), _serialized( false )
         {
             
-            const ConfigSet& limits = config().children();
-            for (ConfigSet::const_iterator it = limits.begin(); it != limits.end(); ++it)
-                OE_INFO << it->key() << " value " << it->value() << std::endl;
-
             driver() = "cache_sqlite3";
             config().getIfSet( "path", _path );
             config().getIfSet( "async_writes", _useAsyncWrites );
             config().getIfSet( "serialized", _serialized );
-
-                
 
             if (config().hasChild("limit")) {
                 const ConfigSet& limits = config().children();
@@ -79,9 +73,9 @@ namespace osgEarth { namespace Drivers
                         continue;
                     std::string k = it->attr("name");
                     std::string size = it->attr("size");
-                    if (k.empty() && !size.empty()) {
+                    if (!k.empty() && !size.empty()) {
                         _sizes->operator[](k) = atoi(size.c_str());
-                        OE_INFO << "Limit " << k << " to " << size << std::endl;
+                        OE_INFO << "Limit " << k << " to " << size << " MB" << std::endl;
                     }
                 }
             }
@@ -94,7 +88,6 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "async_writes", _useAsyncWrites );
             conf.updateIfSet( "serialized", _serialized );
 
-#if 0
             if (_sizes.isSet()) {
                 ConfigSet childs;
                 const std::map<std::string, unsigned int>& values = _sizes.get();
@@ -105,7 +98,6 @@ namespace osgEarth { namespace Drivers
                 }
                 conf.add(childs);
             }
-#endif
             return conf;
         }
 

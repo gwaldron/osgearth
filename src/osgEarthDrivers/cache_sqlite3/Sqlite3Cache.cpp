@@ -252,12 +252,6 @@ struct MetadataTable
         return success;
     }
 
-    bool remove( const std::string& key )
-    {
-        //TODO
-        return false;
-    }
-
     std::string _insertSQL;
     std::string _selectSQL;
  };
@@ -272,7 +266,7 @@ struct ImageRecord
     osg::ref_ptr<osg::Image> _image;
 };
 
-
+#ifdef INSERT_POOL
 class Sqlite3Cache;
 struct AsyncInsertPool : public TaskRequest {
     struct Entry {
@@ -310,6 +304,7 @@ struct AsyncInsertPool : public TaskRequest {
     std::string _layerName;
     osg::observer_ptr<Sqlite3Cache> _cache;
 };
+#endif
 
 /**
  * Database table that holds one record per cached imagery tile in a layer. The layer name
@@ -373,6 +368,7 @@ struct LayerTable : public osg::Referenced
 
         _statsLoaded = 0;
         _statsStored = 0;
+        _statsDeleted = 0;
     }
 
 
@@ -432,6 +428,7 @@ struct LayerTable : public osg::Referenced
     void checkAndPurgeIfNeeded(sqlite3* db, unsigned int maxSize )
     {
         int size = getTableSize(db);
+        OE_INFO << _meta._layerName <<  std::dec << " : "  << size/1024/1024 << " MB" << std::endl;
         if (size < 0 || size < 1.2 * maxSize)
             return;
             
@@ -440,7 +437,7 @@ struct LayerTable : public osg::Referenced
         float averageSize = size * 1.0 / nbElements;
         float diffSize = size - maxSize;
         int maxElementToRemove = static_cast<int>(ceil(diffSize/averageSize));
-        OE_WARN << _meta._layerName <<  " : "  << size/1024/1024 << " MB " << " try to remove " << maxElementToRemove << " / " <<  nbElements << " from  " << _meta._layerName << std::endl;
+        OE_INFO << _meta._layerName <<  " try to remove " << std::dec << maxElementToRemove << " / " <<  nbElements << " to save place" << std::endl;
         purge(t, maxElementToRemove, db);
     }
 
@@ -506,6 +503,7 @@ struct LayerTable : public osg::Referenced
         }
     }
 
+#ifdef INSERT_POOL
     bool beginStore(sqlite3* db, sqlite3_stmt*& insert) 
     {
         int rc;
@@ -588,7 +586,7 @@ struct LayerTable : public osg::Referenced
         
         return true;
     }
-
+#endif
 
     bool updateAccessTime( const TileKey* key, int newTimestamp, sqlite3* db )
     { 
@@ -704,16 +702,11 @@ struct LayerTable : public osg::Referenced
         osg::Timer_t t = osg::Timer::instance()->tick();
         if (osg::Timer::instance()->delta_s( _statsLastCheck, t) > 10.0) {
             double d = osg::Timer::instance()->delta_s(_statsStartTimer, t);
-            OE_WARN << _meta._layerName << " time " << d << " stored " << _statsStored << " rate " << _statsStored * 1.0 / d << std::endl;
-            OE_WARN << _meta._layerName << " time " << d << " loaded " << _statsLoaded << " rate " << _statsLoaded * 1.0 / d << std::endl;
+            OE_INFO << _meta._layerName << " time " << d << " stored " << _statsStored << " rate " << _statsStored * 1.0 / d << std::endl;
+            OE_INFO << _meta._layerName << " time " << d << " loaded " << _statsLoaded << " rate " << _statsLoaded * 1.0 / d << std::endl;
+            OE_INFO << _meta._layerName << " time " << d << " deleted " << _statsDeleted << " rate " << _statsDeleted * 1.0 / d << std::endl;
             _statsLastCheck = t;
         }
-    }
-
-    bool remove( const std::string& key, sqlite3* db )
-    {
-        //TODO
-        return false;
     }
 
     bool purge( int utcTimeStamp, int maxToRemove, sqlite3* db )
@@ -724,18 +717,6 @@ struct LayerTable : public osg::Referenced
         sqlite3_stmt* purge = 0L;
         
         int rc;
-#if 0
-        if ( maxToRemove < 0 )
-        {
-            rc = sqlite3_prepare_v2( db, _purgeSQL.c_str(), _purgeSQL.length(), &purge, 0L );
-            if ( rc != SQLITE_OK )
-            {
-                OE_WARN << LC << "Failed to prepare SQL: " << _purgeSQL << "; " << sqlite3_errmsg(db) << std::endl;
-                return false;
-            }
-        }
-        else
-#endif
         {
 #ifdef SPLIT_DB_FILE
             {
@@ -803,6 +784,7 @@ struct LayerTable : public osg::Referenced
         }
 
         sqlite3_finalize(purge);
+        _statsDeleted += maxToRemove;
         return true;
     }
 
@@ -888,8 +870,10 @@ struct LayerTable : public osg::Referenced
 
     osg::Timer_t _statsStartTimer;
     osg::Timer_t _statsLastCheck;
+
     int _statsLoaded;
     int _statsStored;
+    int _statsDeleted;
 
 };
 
@@ -988,7 +972,7 @@ public:
         }
 
         // enabled shared cache mode.
-        //sqlite3_enable_shared_cache( 1 );
+        sqlite3_enable_shared_cache( 1 );
 
 #ifdef USE_L2_CACHE
         _L2cache = new MemCache();
@@ -1118,7 +1102,7 @@ public: // Cache interface
                 return result;
         }
 
-        if (_settings->maxSize() > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
+        if (_settings->getSize(layerName) > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
             int t = (int)::time(0L);
             purge(layerName, t, _settings->asyncWrites().value() );
             _nbRequest = 0;
@@ -1284,7 +1268,7 @@ public: // Cache interface
                 ScopedLock<Mutex> lock( _pendingPurgeMutex );
                 _pendingPurges.erase( layerName );
 
-                unsigned int maxsize = _settings->maxSize().value();
+                unsigned int maxsize = _settings->getSize(layerName);
                 tt._table->checkAndPurgeIfNeeded(tt._db, maxsize * 1024 * 1024);
                 displayPendingOperations();
             }
@@ -1328,6 +1312,7 @@ public: // Cache interface
         return true;
     }
 
+#ifdef INSERT_POOL
     void setImageSyncPool( AsyncInsertPool* pool, const std::string& layerName)
     {
         ScopedLock<Mutex> lock( _pendingWritesMutex );
@@ -1350,6 +1335,7 @@ public: // Cache interface
         _pendingWrites.erase( layerName );
         displayPendingOperations();
     }
+#endif
 
 private:
 
@@ -1593,6 +1579,7 @@ void AsyncUpdateAccessTimePool::operator()( ProgressCallback* progress )
 }
 
 
+#ifdef INSERT_POOL
 AsyncInsertPool::AsyncInsertPool(const std::string& layerName, Sqlite3Cache* cache ) : _layerName(layerName), _cache(cache) { }
 void AsyncInsertPool::operator()( ProgressCallback* progress )
 {
@@ -1601,7 +1588,7 @@ void AsyncInsertPool::operator()( ProgressCallback* progress )
         cache->setImageSyncPool( this, _layerName );
     }
 }
-
+#endif
 
 /**
  * This driver defers loading of the source data to the appropriate OSG plugin. You

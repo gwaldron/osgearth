@@ -44,34 +44,75 @@ namespace osgEarth { namespace Drivers
         optional<bool>& serialized() { return _serialized; }
         const optional<bool>& serialized() const { return _serialized; }
 
-        optional<unsigned int>& maxSize() { return _maxSize; }
-        const optional<unsigned int>& maxSize() const { return _maxSize; }
+        optional<std::map<std::string, unsigned int> >& layersSize() { return _sizes; }
+        const optional<std::map<std::string, unsigned int> >& layersSize() const { return _sizes; }
+
+        unsigned int getSize(const std::string& layer) const 
+        {
+            std::map<std::string, unsigned int>::const_iterator it = _sizes->find(layer);
+            if (it != _sizes->end()) {
+                return it->second;
+            }
+            return 0;
+        }
 
     public:
         Sqlite3CacheOptions( const PluginOptions* opt =0L )
-            : DriverOptions( opt ), _useAsyncWrites( true ), _serialized( false ), _maxSize(0)
+            : DriverOptions( opt ), _useAsyncWrites( true ), _serialized( false )
         {
+            
+            const ConfigSet& limits = config().children();
+            for (ConfigSet::const_iterator it = limits.begin(); it != limits.end(); ++it)
+                OE_INFO << it->key() << " value " << it->value() << std::endl;
+
             driver() = "cache_sqlite3";
-            config().getIfSet( "max_size", _maxSize );
             config().getIfSet( "path", _path );
             config().getIfSet( "async_writes", _useAsyncWrites );
             config().getIfSet( "serialized", _serialized );
+
+                
+
+            if (config().hasChild("limit")) {
+                const ConfigSet& limits = config().children();
+                for (ConfigSet::const_iterator it = limits.begin(); it != limits.end(); ++it) {
+                    if (it->key() != "limit")
+                        continue;
+                    std::string k = it->attr("name");
+                    std::string size = it->attr("size");
+                    if (k.empty() && !size.empty()) {
+                        _sizes->operator[](k) = atoi(size.c_str());
+                        OE_INFO << "Limit " << k << " to " << size << std::endl;
+                    }
+                }
+            }
         }
 
     protected:
         Config toConfig() const {
             Config conf = DriverOptions::toConfig();
-            conf.updateIfSet( "max_size", _maxSize );
             conf.updateIfSet( "path", _path );
             conf.updateIfSet( "async_writes", _useAsyncWrites );
             conf.updateIfSet( "serialized", _serialized );
+
+#if 0
+            if (_sizes.isSet()) {
+                ConfigSet childs;
+                const std::map<std::string, unsigned int>& values = _sizes.get();
+                for (std::map<std::string, unsigned int>::const_iterator it = values.begin(); it != values.end(); ++it) {
+                    Config k(it->first);
+                    k.attrs()["size"] = it->second;
+                    childs.push_back(k);
+                }
+                conf.add(childs);
+            }
+#endif
             return conf;
         }
 
         optional<std::string> _path;
         optional<bool> _useAsyncWrites;
         optional<bool> _serialized;
-        optional<unsigned int> _maxSize; // in MB
+        optional<std::map<std::string, unsigned int> >_sizes; // layer - MB
     };
 
 } } // namespace osgEarth::Drivers

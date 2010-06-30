@@ -1,0 +1,27 @@
+<map name="map">
+
+    <cache type="sqlite3">
+        <path>simdis.cachedb</path>
+        <serialized>false</serialized>
+        <async_writes>true</async_writes>
+        <max_size>80</max_size>
+    </cache>
+    
+<!--    
+    <cache type="tms">
+        <path>dir.simdis.cachedb</path>
+    </cache>
+-->    
+    
+    <loading_policy mode="standard"/>
+    
+    <image name="simdis.imagery" driver="tms">
+        <url>http://live.pelicanmapping.com/readymap/tiles/1.0.0/7/</url>
+    </image>
+    
+    <heightfield name="simdis.elevation.nobathy" driver="tms">
+        <url>http://live.pelicanmapping.com/readymap/tiles/1.0.0/9/</url>
+        <nodata_min>-1.0</nodata_min>
+    </heightfield>
+    
+</map>

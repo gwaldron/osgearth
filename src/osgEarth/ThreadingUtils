@@ -46,7 +46,7 @@ namespace osgEarth { namespace Threading
 
         inline bool wait() {
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
-            return _set ? true : _cond.wait( &_m );
+            return _set ? true : (_cond.wait( &_m ) == 0);
         }
 
         inline void set() {

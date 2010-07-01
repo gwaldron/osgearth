@@ -19,6 +19,7 @@
 #include "Diamond"
 #include "MeshManager"
 #include <osgEarth/Cube>
+#include <iterator>
 
 #ifdef USE_DEBUG_TEXTURES
 
@@ -389,6 +390,9 @@ Diamond::cull( osgUtil::CullVisitor* cv )
     // add the current geometry to the set.
     if ( _hasGeometry && _primSet->size() > 0 )
     {
+#ifdef USE_AMR
+        std::copy( _amrDrawList.begin(), _amrDrawList.end(), std::back_inserter(_mesh->_amrDrawList) );
+#endif
         _mesh->_activeDrawables.push_back( _geom.get() );
     }
     
@@ -568,21 +572,6 @@ Diamond::refreshPrimitiveSet()
         offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
     }
 
-    //if ( _level > _stateSetLevel )
-    //{
-    //    span = 1.0/(double)(1 << ((_level-_stateSetLevel)/2));
-    //    offset.x() = (_key->getGeoExtent().xMin()-ssaKey->getGeoExtent().xMin())/ssaKey->getGeoExtent().width();
-    //    offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
-    //}
-
-    //if ( _level > _targetStateSetOwner->_level )
-    //{
-    //    span = 1.0/(double)(1 << ((_level-_targetStateSetOwner->_level)/2));
-    //    offset.x() = (_key->getGeoExtent().xMin()-ssaKey->getGeoExtent().xMin())/ssaKey->getGeoExtent().width();
-    //    offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
-    //    //OE_NOTICE << "level=" << _level << ", sslevel=" << _stateSetAncestor->_level << ", offset=" << offset.x() << "," << offset.y() << std::endl;
-    //}
-
     // clear it out so we can build new triangles.
     osg::DrawElementsUInt* p = _primSet;
     _primSet->clear();
@@ -664,6 +653,22 @@ Diamond::refreshPrimitiveSet()
 
 #ifdef USE_TEXTURES
     _texCoords->dirty();
+#endif
+
+#ifdef USE_AMR
+    // temp: copy the tris over to the AMR draw list.
+    _amrDrawList.clear();
+    for(int i=0; i<_primSet->size(); i+=3)
+    {
+        osg::Vec3 p1 = _mesh->v( (*_primSet)[i] );
+        osg::Vec3 p2 = _mesh->v( (*_primSet)[i+1] );
+        osg::Vec3 p3 = _mesh->v( (*_primSet)[i+2] );
+        osg::Vec3 n1 = p1; n1.normalize();
+        osg::Vec3 n2 = p2; n2.normalize();
+        osg::Vec3 n3 = p3; n3.normalize();
+        AMRTriangle* tri = new AMRTriangle( p1, p2, p3, n1, n2, n3 );
+        _amrDrawList.push_back( tri );
+    }
 #endif
 }
 

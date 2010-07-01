@@ -2,20 +2,24 @@
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
 
 SET(TARGET_SRC
-    Diamond.cpp
-    Manifold.cpp
     CubeManifold.cpp
+    Diamond.cpp
     DRoamNode.cpp
+    Manifold.cpp
     MeshManager.cpp
-    Plugin.cpp)
+    Plugin.cpp
+    AMRGeometry.cpp
+)
 
 SET(TARGET_H
     Common
+    CubeManifold
     Diamond
     DRoamNode
-    MeshManager
     Manifold
-    CubeManifold
+    MeshManager
+    AMRGeometry
+    AMRShaders.h
 )
 
 SETUP_PLUGIN(osgearth_engine_droam)

@@ -82,6 +82,13 @@ _maxJobsPerFrame( MAX_JOBS_PER_FRAME )
     _geode->setDataVariance( osg::Object::DYNAMIC );
     _geode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), 1 );
 
+#ifdef USE_AMR
+    _amrGeom = new AMRGeometry();
+    _amrGeom->setDataVariance( osg::Object::DYNAMIC );
+    _amrGeode = new osg::Geode();
+    _amrGeode->addDrawable( _amrGeom.get() );
+#endif
+
     // set up the manifold framework.
     manifold->initialize( this );
 }

@@ -22,6 +22,7 @@
 #include "Common"
 #include "Diamond"
 #include "Manifold"
+#include "AMRGeometry"
 #include <osgEarth/Map>
 #include <osgEarth/TaskService>
 #include <osg/Geode>
@@ -130,6 +131,14 @@ public:
     osg::ref_ptr<osg::Geode> _geode;   // master terrain geode.
 
     osg::ref_ptr<TaskService> _imageService;  // service to load textures.
+
+#ifdef USE_AMR
+
+    osg::ref_ptr<osg::Geode>    _amrGeode;    // geode that hold the AMRGeometry
+    osg::ref_ptr<AMRGeometry>   _amrGeom;     // virtual geometry node
+    AMRTriangleList             _amrDrawList; // culling result
+
+#endif // USE_AMR
 };
 
 #endif // OSGEARTH_DROAM_ENGINE_MESH_MANAGER_H

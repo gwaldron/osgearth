@@ -1,0 +1,82 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DROAM_ENGINE_AMR_GEOMETRY_H
+#define OSGEARTH_DROAM_ENGINE_AMR_GEOMETRY_H 1
+
+#include <osg/Geometry>
+#include <osg/StateSet>
+#include <osg/Program>
+
+class AMRTriangle : public osg::Referenced
+{
+public:
+    AMRTriangle(
+        const osg::Vec3d& p0, const osg::Vec3d& p1, const osg::Vec3d& p2,
+        const osg::Vec3d& n0, const osg::Vec3d& n1, const osg::Vec3d& n2);
+        //const osg::Vec2f& t0, const osg::Vec2f& t1, const osg::Vec2f& t2);
+
+    osg::ref_ptr<osg::StateSet> _stateSet;
+};
+
+typedef std::vector< osg::ref_ptr<AMRTriangle> > AMRTriangleList;
+
+/**
+ * Adaptive Mesh Refining Geometry.
+ *
+ * This class extends OSG's geometry object to perform adaptive mesh refinement
+ * using a virtual vertex manifold and a globally shared VBO that contains the
+ * refinement patches.
+ */
+class AMRGeometry : public osg::Geometry
+{
+public:
+    AMRGeometry();
+    AMRGeometry( const AMRGeometry& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+    META_Object( osgEarth, AMRGeometry );
+
+public:
+    /** Empties the draw list of manifold triangles. */
+    void clearDrawList();
+
+    /** Sets an entire new triangle list. */
+    void setDrawList( const AMRTriangleList& triangles );
+
+protected:
+    /** renders the draw list. */
+    virtual void drawImplementation( osg::RenderInfo& renderInfo ) const;
+
+private:
+    // list of manifold tris to render
+    AMRTriangleList _drawList;
+
+    // the adaptive refinement pattern that is permanently stores in the VBO.
+    // in the future we may support more than one pattern (for LOD matching, e.g.)
+    typedef std::vector< osg::ref_ptr<osg::DrawElements> > Pattern;
+    Pattern _pattern;
+
+    // shader program that draws the virtual geometry
+    osg::ref_ptr<osg::Program> _program;
+
+private:
+
+    void initShaders();
+    void initPatterns();
+};
+
+#endif // OSGEARTH_DROAM_ENGINE_AMR_GEOMETRY_H

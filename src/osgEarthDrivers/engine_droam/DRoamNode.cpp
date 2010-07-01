@@ -45,7 +45,11 @@ _map( map )
 
     this->setInitialBound( _manifold->initialBound() );
 
+#ifdef USE_AMR
+    this->addChild( _mesh->_amrGeode.get() );
+#else // USE_AMR
     this->addChild( _mesh->_geode.get() );
+#endif
 
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 }
@@ -68,8 +72,12 @@ DRoamNode::cull( osg::NodeVisitor* nv )
     // one frame out of sync with the draw. We should probably think of a way to fix that.
     _mesh->_activeDrawables.clear();
 
+#ifdef USE_AMR
+    _mesh->_amrDrawList.clear();
+#endif // USE_AMR
+
     _manifold->cull( static_cast<osgUtil::CullVisitor*>( nv ) );
-    
+
     // I know is not strictly kosher to modify the scene graph from the CULL traversal. But
     // we need frame-coherence, and both the Geode and all Geometry's are marked with DYNAMIC
     // data variance .. so hopefully this is safe.
@@ -77,6 +85,11 @@ DRoamNode::cull( osg::NodeVisitor* nv )
     for( osg::Geode::DrawableList::iterator i = _mesh->_activeDrawables.begin(); i != _mesh->_activeDrawables.end(); ++i )
         _mesh->_geode->addDrawable( i->get() );
     _mesh->_geode->dirtyBound();
+
+#ifdef USE_AMR
+    _mesh->_amrGeom->setDrawList( _mesh->_amrDrawList );
+    _mesh->_amrGeode->dirtyBound();
+#endif // USE_AMR
 }
 
 void 

@@ -53,7 +53,7 @@ typedef int            TravNumber;     // mesh traversal number
 //#define USE_VERTEX_COLORS
 
 // multiple this # by the diamond bounding sphere radius for switch-in/out distance:
-#define CULL_RANGE_FACTOR 12
+#define CULL_RANGE_FACTOR 6 //12
 
 // the highest LOD level at which diamond splits can occur:
 #define MAX_ACTIVE_LEVEL 30
@@ -67,6 +67,9 @@ typedef int            TravNumber;     // mesh traversal number
 
 // maximum subdivision level that can split and merge
 #define MAX_ACTIVE_LEVEL 30
+
+// use adaptive mesh refinement rendering
+#define USE_AMR
 
 
 #endif // OSGEARTH_DROAM_ENGINE_COMMON_H

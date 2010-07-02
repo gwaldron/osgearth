@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_DROAM_ENGINE_AMR_GEOMETRY_H
 #define OSGEARTH_DROAM_ENGINE_AMR_GEOMETRY_H 1
 
+#include <osgEarth/Revisioning>
 #include <osg/Geometry>
 #include <osg/StateSet>
 #include <osg/Program>
@@ -26,15 +27,37 @@
 class AMRTriangle : public osg::Referenced
 {
 public:
-    AMRTriangle(
-        const osg::Vec3d& p0, const osg::Vec3d& p1, const osg::Vec3d& p2,
-        const osg::Vec3d& n0, const osg::Vec3d& n1, const osg::Vec3d& n2);
-        //const osg::Vec2f& t0, const osg::Vec2f& t1, const osg::Vec2f& t2);
+    AMRTriangle();
+
+    void setVerts( const osg::Vec3& p0, const osg::Vec3& p1, const osg::Vec3& p2 );
+    //void setHeights( float h0, float h1, float h2 );
+    void setNormals( const osg::Vec3& n0, const osg::Vec3& n1, const osg::Vec3& n2 );
+    void setTexCoords( int unit, const osg::Vec2f& t0, const osg::Vec2f& t1, const osg::Vec2f& t2 );
 
     osg::ref_ptr<osg::StateSet> _stateSet;
+
+    //float _h0, _h1, _h2;
+    osg::Vec3 _p0, _p1, _p2;
+    osg::Vec3 _n0, _n1, _n2;
+    osg::Vec2 _t0, _t1, _t2;
+
+    void setUniform( const std::string& name, const osg::Vec3& value );
+    void setUniform( const std::string& name, const osg::Vec2& value );
 };
 
 typedef std::vector< osg::ref_ptr<AMRTriangle> > AMRTriangleList;
+
+
+class AMRDrawable : public osg::Referenced
+{
+public:
+    AMRDrawable();
+    osg::ref_ptr<osg::StateSet> _stateSet;
+    AMRTriangleList _primitives;
+};
+
+typedef std::vector< osg::ref_ptr<AMRDrawable> > AMRDrawableList;
+
 
 /**
  * Adaptive Mesh Refining Geometry.
@@ -55,7 +78,7 @@ public:
     void clearDrawList();
 
     /** Sets an entire new triangle list. */
-    void setDrawList( const AMRTriangleList& triangles );
+    void setDrawList( const AMRDrawableList& drawList );
 
 protected:
     /** renders the draw list. */
@@ -63,12 +86,13 @@ protected:
 
 private:
     // list of manifold tris to render
-    AMRTriangleList _drawList;
+    AMRDrawableList _drawList;
 
     // the adaptive refinement pattern that is permanently stores in the VBO.
     // in the future we may support more than one pattern (for LOD matching, e.g.)
     typedef std::vector< osg::ref_ptr<osg::DrawElements> > Pattern;
     Pattern _pattern;
+    int _patternSize;
 
     // shader program that draws the virtual geometry
     osg::ref_ptr<osg::Program> _program;

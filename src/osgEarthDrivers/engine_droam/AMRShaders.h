@@ -17,7 +17,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-char xyz_to_lat_lon_height_source[] =
+// --------------------------------------------------------------------------
+
+static char source_xyzToLatLonHeight[] =
+
 "vec3 xyz_to_lat_lon_height(in vec3 xyz) \n"
 "{ \n"
 "   float X = xyz.x; \n"
@@ -41,9 +44,21 @@ char xyz_to_lat_lon_height_source[] =
 "   return vec3(longitude, latitude, height);\n"
 "}\n";
 
+// --------------------------------------------------------------------------
 
+static char source_slerp[] =
 
-char fnormal_source[] = 
+"vec3 slerp(in vec3 p0, in vec3 p1, in float t) \n"
+"{ \n"
+"   float theta = acos( dot(p0,p1) ); \n"
+"   vec3 s = ( (p0*sin(1.0-t)*theta) + p1*sin(t*theta) ) / sin(theta); \n"
+"   return s * ( length(p0)+length(p1) ) * 0.5; \n"
+"} \n";
+
+// --------------------------------------------------------------------------
+
+static char source_fnormal[] = 
+
 "vec3 fnormal(void)\n"
 "{\n"
 "    //Compute the normal \n"
@@ -52,7 +67,10 @@ char fnormal_source[] =
 "    return normal; \n"
 "}\n";
 
-char directionalLight_source[] = 
+// --------------------------------------------------------------------------
+
+static char source_directionalLight[] = 
+
 "void directionalLight(in int i, \n"
 "                      in vec3 normal, \n"
 "                      inout vec4 ambient, \n"
@@ -80,30 +98,63 @@ char directionalLight_source[] =
 "   specular += gl_LightSource[i].specular * pf; \n"
 "} \n";
 
+// --------------------------------------------------------------------------
 
-static char vert_shader_source[] =
-"uniform vec3 p0, p1, p2, n0, n1, n2; \n"
+static char source_vertShaderMain[] =
+
+"uniform vec3 p0, p1, p2; \n"
+"uniform vec3 n0, n1, n2; \n"
+"uniform vec2 t0, t1, t2; \n"
+"varying vec2 texCoord0; \n"
 "\n"
 "void main (void) \n"
 "{ \n"
 "   // interpolate vert form barycentric coords \n"
-"   float u = gl_Vertex.y; \n"
-"   float v = gl_Vertex.z; \n"
-"   float w = gl_Vertex.x; // 1-u-v  \n"
-"   vec4 outVert = vec4( p0*w + p1*u + p2*v, gl_Vertex.w );  \n"
-"   //gl_Normal = n0+w + n1*u + n2*v;  \n"
-"   gl_Position = gl_ModelViewProjectionMatrix * outVert; \n"
-"   //gl_Vertex = outVert; \n"
-"   //gl_Position = ftransform(); \n"
-"   //vec4 glenn = gl_Vertex + vec4(p0,1); \n"
-"   //gl_Position = gl_ModelViewProjectionMatrix * glenn; \n"
+"   float u = gl_Vertex.x; \n"
+"   float v = gl_Vertex.y; \n"
+"   float w = gl_Vertex.z; // 1-u-v  \n"
+"   vec3 outVert3 = p0*u + p1*v + p2*w; \n"
+"   float h = length(p0)*u + length(p1)*v + length(p2)*w; // interpolate height \n"
+"   vec4 outVert4 = vec4( normalize(outVert3) * h, gl_Vertex.w ); \n"
+"   gl_Position = gl_ModelViewProjectionMatrix * outVert4; \n"
 "\n"
-//"   gl_Position = outVert; \n" //gl_ModelViewProjectionMatrix * outVert; \n"
+"   // set up the tex coords for the frad shader: \n"
+"   u = gl_MultiTexCoord0.s; \n"
+"   v = gl_MultiTexCoord0.t; \n"
+"   w = 1.0 - u - v; \n"
+"   texCoord0 = t0*u + t1*v + t2*w; \n"
 "} \n";
 
-char frag_shader_source[] = 
+//static char source_vertShaderMain[] =
+//"uniform vec3 p0, p1, p2, n0, n1, n2; \n"
+//"uniform vec2 t0, t1, t2; \n"
+//"varying vec2 texCoord0; \n"
+//"\n"
+//"void main (void) \n"
+//"{ \n"
+//"   // interpolate vert form barycentric coords \n"
+//"   float u = gl_Vertex.y; \n"
+//"   float v = gl_Vertex.z; \n"
+//"   float w = gl_Vertex.x; // 1-u-v  \n"
+//"   vec4 outVert = vec4( p0*w + p1*u + p2*v, gl_Vertex.w );  \n"
+//"   gl_Position = gl_ModelViewProjectionMatrix * outVert; \n"
+//"\n"
+//"   u = gl_MultiTexCoord0.s; \n"
+//"   v = gl_MultiTexCoord0.t; \n"
+//"   w = 1.0 - u - v; \n"
+//"   texCoord0 = t0*u + t1*v + t2*w; \n"
+////"   texCoord0 = gl_MultiTexCoord0; \n"
+//"} \n";
+
+// --------------------------------------------------------------------------
+
+char source_fragShaderMain[] = 
+
+"varying vec2 texCoord0; \n"
+"uniform sampler2D tex0; \n"
+"\n"
 "void main (void) \n"
 "{ \n"
-"    gl_FragColor = vec4(1.0,1.0,1.0,1.0); \n"
+"    gl_FragColor = texture2D( tex0, texCoord0 ); \n"
 "} \n";
 

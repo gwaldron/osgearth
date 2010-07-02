@@ -56,7 +56,7 @@ _primSetDirty( false ),
 _bsComputed( false ),
 _isSplit( false ),
 _hasGeometry( level % 2 == 1 ),
-_stateSet( 0L ),
+//_stateSet( 0L ),
 //_stateSetLevel( 0 ),
 _currentStateSetOwner( 0L ),
 _targetStateSetOwner( 0L ),
@@ -102,6 +102,7 @@ _hasFinalImage( false )
         // this is revisioned so that in activate() we can pre-populate the stateset with "placeholder"
         // lower-res textures if they are available (while loading the correct-res textures).
         _stateSet = new RevisionedStateSet();
+        _amrDrawable = new AMRDrawable();
         //_stateSetLevel = _level;
     }
 
@@ -391,7 +392,8 @@ Diamond::cull( osgUtil::CullVisitor* cv )
     if ( _hasGeometry && _primSet->size() > 0 )
     {
 #ifdef USE_AMR
-        std::copy( _amrDrawList.begin(), _amrDrawList.end(), std::back_inserter(_mesh->_amrDrawList) );
+        _mesh->_amrDrawList.push_back( _amrDrawable.get() );
+        //std::copy( _amrDrawList.begin(), _amrDrawList.end(), std::back_inserter(_mesh->_amrDrawList) );
 #endif
         _mesh->_activeDrawables.push_back( _geom.get() );
     }
@@ -505,8 +507,9 @@ Diamond::dirty()
 
 #ifdef USE_TEXTURES
 
-#   define ADD_TRI( P, T, A, C, D, G, H, J, O, S ) { \
+#   define ADD_TRI( P, T, Q, A, C, D, G, H, J, O, S ) { \
         (P)->push_back(A); (P)->push_back(D); (P)->push_back(H); \
+        (Q)->push_back( O+(C*S) ); (Q)->push_back( O+(G*S) ); (Q)->push_back( O+(J*S) ); \
         (*T)[A] = O+(C*S); (*T)[D] = O+(G*S); (*T)[H] = O+(J*S); }
 
 #else
@@ -579,7 +582,13 @@ Diamond::refreshPrimitiveSet()
 #ifdef USE_TEXTURES
     if ( _texCoords->size() < _mesh->_verts->size() )
         _texCoords->resize( _mesh->_verts->size() );
+
     osg::Vec2Array* t = _texCoords;
+    
+    osg::ref_ptr<osg::Vec2Array> aT = new osg::Vec2Array();
+#  ifdef USE_AMR
+    
+#  endif // USE_AMR
 #endif
 
     int o = _orientation;
@@ -587,8 +596,8 @@ Diamond::refreshPrimitiveSet()
     if ( !_isSplit )
     {
         // if the diamond is not split, simply draw the two triangles.
-        ADD_TRI( p, t, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
-        ADD_TRI( p, t, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
+        ADD_TRI( p, t, aT, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
+        ADD_TRI( p, t, aT, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
     }
     else
     {
@@ -599,50 +608,50 @@ Diamond::refreshPrimitiveSet()
         Diamond* q3 = _c[3].valid() ? _c[3]->_c[3].get() : 0L;
 
         if ( !_c[0].valid() || !_c[0]->_isSplit ) {
-            ADD_TRI( p, t, _vi, T_CENTER, _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
+            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
         }
         else {
             if ( !q0 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _c[0]->_vi, OT(T_CHILD_0,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _c[0]->_vi, OT(T_CHILD_0,o), offset, span );
             }
             if ( !q1 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _c[0]->_vi, OT(T_CHILD_0,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[0]->_vi, OT(T_CHILD_0,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
             }
         }
 
         if ( !_c[1].valid() || !_c[1]->_isSplit ) {
-            ADD_TRI( p, t, _vi, T_CENTER, _a[PARENT_R]->_vi, OT(T_PARENT_R,o), _a[GDPARENT]->_vi, OT(T_GDPARENT,o), offset, span );
+            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_R]->_vi, OT(T_PARENT_R,o), _a[GDPARENT]->_vi, OT(T_GDPARENT,o), offset, span );
         }
         else {
             if ( !q1 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _a[PARENT_R]->_vi, OT(T_PARENT_R,o), _c[1]->_vi, OT(T_CHILD_1,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_R]->_vi, OT(T_PARENT_R,o), _c[1]->_vi, OT(T_CHILD_1,o), offset, span );
             }
             if ( !q2 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _c[1]->_vi, OT(T_CHILD_1,o), _a[GDPARENT]->_vi, OT(T_GDPARENT,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[1]->_vi, OT(T_CHILD_1,o), _a[GDPARENT]->_vi, OT(T_GDPARENT,o), offset, span );
             }
         }
 
         if ( !_c[2].valid() || !_c[2]->_isSplit ) {
-            ADD_TRI( p, t, _vi, T_CENTER, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), offset, span );
+            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), offset, span );
         }
         else {
             if ( !q2 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _c[2]->_vi, OT(T_CHILD_2,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _c[2]->_vi, OT(T_CHILD_2,o), offset, span );
             }
             if ( !q3 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _c[2]->_vi, OT(T_CHILD_2,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[2]->_vi, OT(T_CHILD_2,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), offset, span );
             }
         }
 
         if ( !_c[3].valid() || !_c[3]->_isSplit ) {
-            ADD_TRI( p, t, _vi, T_CENTER, _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
+            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
         }
         else {
             if ( !q3 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _c[3]->_vi, OT(T_CHILD_3,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _c[3]->_vi, OT(T_CHILD_3,o), offset, span );
             }
             if ( !q0 ) {
-                ADD_TRI( p, t, _vi, T_CENTER, _c[3]->_vi, OT(T_CHILD_3,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
+                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[3]->_vi, OT(T_CHILD_3,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
             }
         }        
     }
@@ -657,17 +666,16 @@ Diamond::refreshPrimitiveSet()
 
 #ifdef USE_AMR
     // temp: copy the tris over to the AMR draw list.
-    _amrDrawList.clear();
-    for(int i=0; i<_primSet->size(); i+=3)
+    _amrDrawable->_primitives.clear();
+    for(int unsigned i=0; i<_primSet->size(); i+=3)
     {
-        osg::Vec3 p1 = _mesh->v( (*_primSet)[i] );
-        osg::Vec3 p2 = _mesh->v( (*_primSet)[i+1] );
-        osg::Vec3 p3 = _mesh->v( (*_primSet)[i+2] );
-        osg::Vec3 n1 = p1; n1.normalize();
-        osg::Vec3 n2 = p2; n2.normalize();
-        osg::Vec3 n3 = p3; n3.normalize();
-        AMRTriangle* tri = new AMRTriangle( p1, p2, p3, n1, n2, n3 );
-        _amrDrawList.push_back( tri );
+        AMRTriangle* tri = new AMRTriangle();
+        osg::Vec3 p0 = _mesh->v( (*_primSet)[i] );
+        osg::Vec3 p1 = _mesh->v( (*_primSet)[i+1] );
+        osg::Vec3 p2 = _mesh->v( (*_primSet)[i+2] );
+        tri->setVerts( p0, p1, p2 );
+        tri->setTexCoords( 0, (*aT)[i], (*aT)[i+1], (*aT)[i+2] );
+        _amrDrawable->_primitives.push_back( tri );
     }
 #endif
 }
@@ -780,6 +788,7 @@ Diamond::getOrCreateChild( ChildIndex c )
 
     // how that we know the QUADTREE & GDPARENT ancestors, create the diamond vertex.
     osg::Vec3d newCoord = _mesh->_manifold->midpoint( child->_a[QUADTREE]->_coord, child->_a[GDPARENT]->_coord );
+
     child->setCoord( newCoord );
 
     // assign the new child in both d and d0:

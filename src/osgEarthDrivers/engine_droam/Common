@@ -53,13 +53,14 @@ typedef int            TravNumber;     // mesh traversal number
 //#define USE_VERTEX_COLORS
 
 // multiple this # by the diamond bounding sphere radius for switch-in/out distance:
-#define CULL_RANGE_FACTOR 6 //12
+#define CULL_RANGE_FACTOR 3 //12
 
 // the highest LOD level at which diamond splits can occur:
 #define MAX_ACTIVE_LEVEL 30
 
 // the number of quadtree levels ahead of texturing that diamond splits occur
-#define TEX_SUBRANGE_LEVELS 3
+#define TEX_SUBRANGE_LEVELS 0
+//#define TEX_SUBRANGE_LEVELS 3
 
 // maximum number of split, merge, and image jobs to complete per UPDATE frame
 // (todo: replace with time quota)
@@ -70,6 +71,9 @@ typedef int            TravNumber;     // mesh traversal number
 
 // use adaptive mesh refinement rendering
 #define USE_AMR
+
+// density of each AMR patch (number of rows/cols)
+#define AMR_PATCH_ROWS 8
 
 
 #endif // OSGEARTH_DROAM_ENGINE_COMMON_H

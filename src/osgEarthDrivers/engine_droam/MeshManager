@@ -136,7 +136,7 @@ public:
 
     osg::ref_ptr<osg::Geode>    _amrGeode;    // geode that hold the AMRGeometry
     osg::ref_ptr<AMRGeometry>   _amrGeom;     // virtual geometry node
-    AMRTriangleList             _amrDrawList; // culling result
+    AMRDrawableList             _amrDrawList; // culling result
 
 #endif // USE_AMR
 };

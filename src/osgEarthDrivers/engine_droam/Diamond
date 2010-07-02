@@ -86,6 +86,7 @@ struct Diamond : osg::Referenced
     bool _imageRequested;               // whether the texture image has been submitted to the task service
     //osg::ref_ptr<osg::StateSet> _stateSet; // stateset associated with the quadtree diamond at this level
     osg::ref_ptr<RevisionedStateSet> _stateSet;
+    osg::ref_ptr<AMRDrawable> _amrDrawable;
     //Level _stateSetLevel;               // level represented by _stateSet (could be placeholder(<level) or _level)
     Diamond* _targetStateSetOwner;      // Diamond that owns the stateset we ultimately want to use
     Diamond* _currentStateSetOwner;     // Diamond that owns the stateset we are currently using
@@ -105,7 +106,7 @@ struct Diamond : osg::Referenced
     osg::Vec2Array* _texCoords;
 
 #ifdef USE_AMR
-    AMRTriangleList _amrDrawList;
+    //AMRDrawableList _amrDrawList;
 #endif // USE_AMR
 
     /** print debugging info */

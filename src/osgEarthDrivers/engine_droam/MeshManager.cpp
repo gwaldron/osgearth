@@ -325,6 +325,8 @@ MeshManager::update()
             if ( d->_targetStateSetOwner->_stateSet->outOfSyncWith( d->_targetStateSetRevision ) )
             {            
                 d->_geom->setStateSet( d->_targetStateSetOwner->_stateSet.get() );
+                d->_amrDrawable->_stateSet = d->_targetStateSetOwner->_stateSet.get();
+
                 d->_currentStateSetOwner = d->_targetStateSetOwner;
                 d->_targetStateSetOwner->_stateSet->sync( d->_targetStateSetRevision );
             }

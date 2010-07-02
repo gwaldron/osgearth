@@ -321,30 +321,21 @@ CubeManifold::project( const osg::Vec3d& coord )
     {
         if ( !osgEarth::CubeUtils::faceCoordsToLatLon( y, z, 2, lat, lon ) )
             OE_WARN << LC << "+X: fc2ll failed" << std::endl;
-
-        //lon = 0 + 90.0*y;
-        //lat = -45 + 90.0*z;
     }
     else if ( coord.x() == -1.0 ) // negative X ( -180 <= lon <= -90, -45 <= lat <= 45 )
     {
         if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-y, z, 0, lat, lon ) )
             OE_WARN << LC << "-X: fc2ll failed" << std::endl;
-        //lon = -180 + 90.0*(1.0-y);
-        //lat = -45 + 90.0*z;
     }
     else if ( coord.y() == 1.0 ) // positive Y ( 90 <= lon <= 180, -45 <= lat <= 45 )
     {
         if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-x, z, 3, lat, lon ) )
             OE_WARN << LC << "+Y: fc2ll failed" << std::endl;
-        //lon = 90 + 90.0*(1.0-x);
-        //lat = -45 + 90.0*z;
     }
     else if ( coord.y() == -1.0 ) // negative Y ( -90 <= lon <= 0, -45 <= lat <= 45 )
     {
         if ( !osgEarth::CubeUtils::faceCoordsToLatLon( x, z, 1, lat, lon ) )
             OE_WARN << LC << "-Y: fc2ll failed" << std::endl;
-        //lon = -90 + 90.0*x;
-        //lat = -45 + 90.0*z;
     }
     else if ( coord.z() == 1.0 ) // positive Z ( -180 <= lon < 180, 45 <= lat <= 90 )
     {

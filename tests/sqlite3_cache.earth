@@ -4,8 +4,7 @@
         <path>simdis.cachedb</path>
         <serialized>false</serialized>
         <async_writes>true</async_writes>
-        <limit name="simdis.elevation.nobathy" size="300"/>
-        <limit name="simdis.imagery" size="300"/>
+        <max_size> 100 </max_size>
     </cache>
     
 <!--    

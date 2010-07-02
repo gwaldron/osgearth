@@ -53,6 +53,7 @@ using namespace OpenThreads;
 #define UPDATE_ACCESS_TIMES_POOL
 #define MAX_REQUEST_TO_RUN_PURGE 100
 
+#define PURGE_GENERAL
 //#define INSERT_POOL
 
 //#define MONITOR_THREAD_HEALTH
@@ -252,6 +253,42 @@ struct MetadataTable
         return success;
     }
 
+
+    bool loadAllLayers( sqlite3* db, std::vector<std::string>& output )
+    {
+        bool success = true;
+
+        sqlite3_stmt* select = 0L;
+        std::string selectLayersSQL = "select layer from \"metadata\"";
+        int rc = sqlite3_prepare_v2( db, selectLayersSQL.c_str(), selectLayersSQL.length(), &select, 0L );
+        if ( rc != SQLITE_OK )
+        {
+            OE_WARN 
+                << LC << "Error preparing SQL: " 
+                << sqlite3_errmsg( db )
+                << "(SQL: " << _insertSQL << ")"
+                << std::endl;
+            return false;
+        }
+
+        success = true;
+        rc = sqlite3_step( select );
+        while (rc == SQLITE_ROW) {
+            output.push_back((char*)sqlite3_column_text( select, 0 ));
+            rc = sqlite3_step( select );
+        }
+
+        if (rc != SQLITE_DONE)
+        {
+            // no result
+            OE_WARN << "NO layers found in metadata" << std::endl;
+            success = false;
+        }
+
+        sqlite3_finalize( select );
+        return success;
+    }
+
     std::string _insertSQL;
     std::string _selectSQL;
  };
@@ -372,7 +409,7 @@ struct LayerTable : public osg::Referenced
     }
 
 
-    int getTableSize(sqlite3* db) 
+    sqlite3_int64 getTableSize(sqlite3* db)
     {
 #ifdef SPLIT_DB_FILE
         std::string query = "select sum(size) from \"" + _meta._layerName + "\";";
@@ -396,7 +433,7 @@ struct LayerTable : public osg::Referenced
             sqlite3_finalize( select );
             return -1;
         }
-        int size = sqlite3_column_int(select, 0);
+        sqlite3_int64 size = sqlite3_column_int(select, 0);
         sqlite3_finalize( select );
         return size;
     }
@@ -994,6 +1031,12 @@ public:
         {
             _writeService = new osgEarth::TaskService( "Sqlite3Cache Write Service", 1 );
         }
+
+        
+        if (!_metadata.loadAllLayers( _db, _layersList )) {
+            OE_WARN << "can't read layers in meta data" << std::endl;
+        }
+
     }
 
     // just here to satisfy the osg::Object requirements
@@ -1247,6 +1290,14 @@ public: // Cache interface
         // purge the L2 cache first:
         if ( async == true && _settings->asyncWrites() == true )
         {
+#ifdef PURGE_GENERAL
+            if (!_pendingPurges.empty())
+                return false;
+            ScopedLock<Mutex> lock( _pendingPurgeMutex );
+            AsyncPurge* req = new AsyncPurge(layerName, olderThanUTC, this);
+            _writeService->add( req);
+            _pendingPurges[layerName] = req;
+#else
             if (_pendingPurges.find(layerName) != _pendingPurges.end()) {
                 return false;
             } else {
@@ -1255,9 +1306,56 @@ public: // Cache interface
                 _writeService->add( req);
                 _pendingPurges[layerName] = req;
             }
+#endif
         }
         else
         {
+#ifdef PURGE_GENERAL
+            ScopedLock<Mutex> lock( _pendingPurgeMutex );
+
+            sqlite3_int64 limit = _settings->maxSize().value() * 1024 * 1024;
+            std::map<std::string, std::pair<sqlite3_int64,int> > layers;
+            sqlite3_int64 totalSize = 0;
+            for (int i = 0; i < _layersList.size(); ++i) {
+                ThreadTable tt = getTable( _layersList[i] );
+                if ( tt._table ) {
+                    sqlite3_int64 size = tt._table->getTableSize(tt._db);
+                    layers[_layersList[i] ].first = size;
+                    layers[_layersList[i] ].second = tt._table->getNbEntry(tt._db);
+                    totalSize += size;
+                }
+            }
+            OE_INFO << "SQlite cache size " << totalSize/(1024*1024) << " MB" << std::endl;
+            if (totalSize > 1.2 * limit) {
+                sqlite3_int64 diff = totalSize - limit;
+                for (int i = 0; i < _layersList.size(); ++i) {
+                    float ratio = layers[_layersList[i] ].first * 1.0 / (float)(totalSize);
+                    int sizeToRemove = (int)floor(ratio * diff);
+                    if (sizeToRemove > 0) {
+                        if (sizeToRemove / 1024 > 1024) {
+                            OE_INFO << "Try to remove " << sizeToRemove/(1024*1024) << " MB in " << _layersList[i] << std::endl;
+                        } else {
+                            OE_INFO << "Try to remove " << sizeToRemove/1024 << " KB in " << _layersList[i] << std::endl;
+                        }
+
+                        if ( _L2cache.valid() )
+                            _L2cache->purge( _layersList[i], olderThanUTC, async );
+                        ThreadTable tt = getTable(_layersList[i]);
+                        if ( tt._table ) {
+                            float averageSizePerElement = layers[_layersList[i] ].first * 1.0 /layers[_layersList[i] ].second;
+                            int nb = (int)floor(sizeToRemove / averageSizePerElement);
+                            if (nb ) {
+                                OE_INFO << "remove " << nb << " / " << layers[_layersList[i] ].second << " elements in " << _layersList[i] << std::endl;
+                                tt._table->purge(olderThanUTC, nb, tt._db);
+                            }
+                        }
+                    }
+                }
+            }
+            _pendingPurges.clear();
+            displayPendingOperations();
+
+#else
             ScopedLock<Mutex> lock( _pendingPurgeMutex );
             if ( _L2cache.valid() )
                 _L2cache->purge( layerName, olderThanUTC, async );
@@ -1271,6 +1369,7 @@ public: // Cache interface
                 tt._table->checkAndPurgeIfNeeded(tt._db, maxsize * 1024 * 1024);
                 displayPendingOperations();
             }
+#endif
         }
         return true;
     }
@@ -1350,7 +1449,7 @@ private:
 
     void setImageSync( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image )
     {
-        if (_settings->getSize(layerName) > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
+        if (_settings->maxSize().value() > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
             int t = (int)::time(0L);
             purge(layerName, t, _settings->asyncWrites().value() );
             _nbRequest = 0;
@@ -1543,6 +1642,8 @@ private:
 
     int _count;
     int _nbRequest;
+
+    std::vector<std::string> _layersList;
 };
 
 

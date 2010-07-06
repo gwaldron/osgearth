@@ -38,38 +38,35 @@ AMRTriangle::AMRTriangle()
     _stateSet->getOrCreateUniform( "tex0", osg::Uniform::INT )->set( 0 );
 }
 
-void
-AMRTriangle::setVerts( const osg::Vec3& p0, const osg::Vec3& p1, const osg::Vec3& p2 )
-{
-    _p0 = p0, _p1 = p1, _p2 = p2;
-    setUniform( "p0", p0 );
-    setUniform( "p1", p1 );
-    setUniform( "p2", p2 );
-}
 
-//void
-//AMRTriangle::setHeights( float h0, float h1, float h2 )
-//{
-//    _stateSet->getOrCreateUniform( "h0", osg::Uniform::FLOAT )->set( h0 );
-//    _stateSet->getOrCreateUniform( "h1", osg::Uniform::FLOAT )->set( h1 );
-//    _stateSet->getOrCreateUniform( "h2", osg::Uniform::FLOAT )->set( h2 );
-//}
-
-void 
-AMRTriangle::setNormals(  const osg::Vec3& n0, const osg::Vec3& n1, const osg::Vec3& n2 )
+AMRTriangle::AMRTriangle(const MeshNode& n0, const osg::Vec2& t0,
+                         const MeshNode& n1, const osg::Vec2& t1, 
+                         const MeshNode& n2, const osg::Vec2& t2) :
+_node0(n0), _node1(n1), _node2(n2)
 {
-    _n0 = n0, _n1 = n1, _n2 = n2;
-    setUniform( "n0", n0 );
-    setUniform( "n1", n1 );
-    setUniform( "n2", n2 );
-}
+    _stateSet = new osg::StateSet();
+    // should this be INT_SAMPLER_2D?
+    _stateSet->getOrCreateUniform( "tex0", osg::Uniform::INT )->set( 0 );
 
-void
-AMRTriangle::setTexCoords( int unit, const osg::Vec2& t0, const osg::Vec2& t1, const osg::Vec2& t2 )
-{
+    setUniform( "c0", _node0._geodeticCoord );
+    setUniform( "c1", _node1._geodeticCoord );
+    setUniform( "c2", _node2._geodeticCoord );
+
+    setUniform( "v0", _node0._vertex );
+    setUniform( "v1", _node1._vertex );
+    setUniform( "v2", _node2._vertex );
+
     setUniform( "t0", t0 );
     setUniform( "t1", t1 );
     setUniform( "t2", t2 );
+}
+
+void
+AMRTriangle::expand( osg::BoundingBox& box )
+{
+    box.expandBy( _node0._vertex );
+    box.expandBy( _node1._vertex );
+    box.expandBy( _node2._vertex );
 }
 
 void
@@ -124,9 +121,7 @@ AMRGeometry::setDrawList( const AMRDrawableList& drawList )
         const AMRTriangleList& prims = i->get()->_primitives;
         for( AMRTriangleList::const_iterator j = prims.begin(); j != prims.end(); ++j )
         {
-            box.expandBy( j->get()->_p0 );
-            box.expandBy( j->get()->_p1 );
-            box.expandBy( j->get()->_p2 );
+            j->get()->expand( box );
         }
     }
     setBound( box );
@@ -140,8 +135,9 @@ AMRGeometry::initShaders()
     _program->setName( "AMRGeometry" );
 
     osg::Shader* vertexShader = new osg::Shader( osg::Shader::VERTEX,
-        std::string( source_slerp ) +
-        std::string( source_vertShaderMain )
+        std::string( source_lonLatAltToXYZ ) +
+        //std::string( source_vertShaderMain_geocentricMethod )
+        std::string( source_vertShaderMain_latLonMethod )
         );
 
     vertexShader->setName( "AMR Vert Shader" );

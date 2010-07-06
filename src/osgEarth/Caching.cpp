@@ -722,3 +722,25 @@ CacheFactory::create(const CacheConfig &cacheConfig)
 
     return result.release();
 }
+
+Cache*
+CacheFactory::create( const osgEarth::DriverOptions* options )
+{
+    Cache* result = 0L;
+
+    osgDB::ReaderWriter::ReadResult rr = osgDB::readObjectFile( ".osgearth_cache_" + options->driver(), options );
+    if ( rr.error() )
+    {
+        OE_WARN << "Failed to load cache plugin \"" << options->driver() << "\"" << std::endl;
+    }
+    else
+    {
+        result = dynamic_cast<Cache*>( rr.getObject() );
+        if ( !result )
+        {
+            OE_WARN << "Internal error: plugin \"" << options->driver() << "\" is not a cache provider" << std::endl;
+        }
+    }
+
+    return result;
+}

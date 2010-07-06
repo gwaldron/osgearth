@@ -24,6 +24,7 @@
 #include <osgUtil/CullVisitor>
 
 class MeshManager;
+class MeshNode;
 
 /** Abstract base class that represents the layout of a diamond mesh. */
 class Manifold : public osg::Referenced
@@ -37,17 +38,13 @@ public:
     /** update the culling status of the manifold based on a new eyepoint. */
     virtual void cull( osgUtil::CullVisitor* cv ) =0;
 
-    /** projects a map coordinate into vertex space */
-    virtual osg::Vec3d project( const osg::Vec3d& mapCoord ) =0;
-
     /** calculates the midpoint between two coordinates */
-    virtual osg::Vec3d midpoint( const osg::Vec3d& mapCoord0, const osg::Vec3d& mapCoord1 ) =0;
-
-    /** caluclates the general normal for the given map coordinate. */
-    virtual osg::Vec3d normal( const osg::Vec3d& mapCoord ) =0;
+    virtual osg::Vec3d midpoint( const osg::Vec3d& mapCoord0, const osg::Vec3d& mapCoord1 ) const =0;
 
     /** calculates an initial bound for the manifold. */
-    virtual osg::BoundingSphere initialBound() =0;
+    virtual osg::BoundingSphere initialBound() const =0;
+
+    virtual MeshNode createNode( const osg::Vec3d& manifoldCoord ) const =0;
 };
 
 #endif // OSGEARTH_DROAM_ENGINE_MANIFOLD_H

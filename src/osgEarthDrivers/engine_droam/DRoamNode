@@ -19,7 +19,6 @@
 #ifndef OSGEARTH_ENGINE_DROAM_MAPNODE_H
 #define OSGEARTH_ENGINE_DROAM_MAPNODE_H 1
 
-#include "CubeManifold"
 #include "MeshManager"
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
@@ -68,7 +67,7 @@ public:
 
 private:
     osg::ref_ptr<osg::Geode>          _geode;
-    osg::ref_ptr<CubeManifold>        _manifold;
+    osg::ref_ptr<Manifold>            _manifold;
     osg::ref_ptr<MeshManager>         _mesh;
     osg::ref_ptr<osgEarth::Map>       _map;
     osg::ref_ptr<osgEarth::MapEngine> _engine;

@@ -24,23 +24,32 @@
 #include <osg/StateSet>
 #include <osg/Program>
 
+class MeshNode
+{
+public:
+    osg::Vec3d _manifoldCoord;   // source coordinate (in manifold srs)
+    osg::Vec3d _geodeticCoord;   // source coordinate (in lon/lat/alt)
+    osg::Vec3f _vertex;          // world space vertex
+    osg::Vec3f _normal;          // world space normal
+};
+
 class AMRTriangle : public osg::Referenced
 {
 public:
     AMRTriangle();
 
-    void setVerts( const osg::Vec3& p0, const osg::Vec3& p1, const osg::Vec3& p2 );
-    //void setHeights( float h0, float h1, float h2 );
-    void setNormals( const osg::Vec3& n0, const osg::Vec3& n1, const osg::Vec3& n2 );
-    void setTexCoords( int unit, const osg::Vec2f& t0, const osg::Vec2f& t1, const osg::Vec2f& t2 );
+    AMRTriangle(
+        const MeshNode& node0, const osg::Vec2& t0,
+        const MeshNode& node1, const osg::Vec2& t1,
+        const MeshNode& node2, const osg::Vec2& t2 );
 
+    void expand( osg::BoundingBox& box );
+
+public:
     osg::ref_ptr<osg::StateSet> _stateSet;
+    MeshNode _node0, _node1, _node2;
 
-    //float _h0, _h1, _h2;
-    osg::Vec3 _p0, _p1, _p2;
-    osg::Vec3 _n0, _n1, _n2;
-    osg::Vec2 _t0, _t1, _t2;
-
+protected:
     void setUniform( const std::string& name, const osg::Vec3& value );
     void setUniform( const std::string& name, const osg::Vec2& value );
 };
@@ -52,6 +61,8 @@ class AMRDrawable : public osg::Referenced
 {
 public:
     AMRDrawable();
+    void add( AMRTriangle* primitive ) { _primitives.push_back( primitive ); }
+
     osg::ref_ptr<osg::StateSet> _stateSet;
     AMRTriangleList _primitives;
 };

@@ -31,6 +31,7 @@ namespace osgEarth
         std::string& name() { return _name; }
         const std::string& name() const { return _name; }
 
+        //std::string& driver() { return _driver; }
         const std::string& driver() const { return _driver; }
 
     public:        
@@ -43,8 +44,8 @@ namespace osgEarth
         DriverOptions( const PluginOptions* options );
 
         void fromConfig( const Config& conf );
-
         std::string& driver() { return _driver; }
+
         std::string _driver, _name;
     };
 }

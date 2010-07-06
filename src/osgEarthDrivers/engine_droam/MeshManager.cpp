@@ -48,26 +48,6 @@ _maxJobsPerFrame( MAX_JOBS_PER_FRAME )
     // fire up a task service to load textures.
     _imageService = new TaskService( "Image Service", 16 );
 
-    // this geometry is used solely to create VBOs and to act as a cloning
-    // prototype for diamonds.
-    _geomPrototype = new osg::Geometry();
-    _geomPrototype->setUseDisplayList( false );
-    _geomPrototype->setUseVertexBufferObjects( true );
-    _geomPrototype->setDataVariance( osg::Object::DYNAMIC );
-
-    // this vertex array will be shared amongst all diamonds in the manifold.
-    _verts = new osg::Vec3Array();
-    _geomPrototype->setVertexArray( _verts.get() );
-    _verts->reserve( RESERVED_VERTICES ); 
-    _verts->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
-
-    // one-for-one normal array to match the verts.
-    _normals = new osg::Vec3Array();
-    _geomPrototype->setNormalArray( _normals.get() );
-    _geomPrototype->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
-    _normals->reserve( RESERVED_VERTICES );
-    _normals->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
-
 #ifdef USE_VERTEX_COLORS
     // one-for-one color array.
     _colors = new osg::Vec4Array();
@@ -77,66 +57,47 @@ _maxJobsPerFrame( MAX_JOBS_PER_FRAME )
     _colors->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
 #endif
 
-    // the master geode containing the entire visible terrain.
-    _geode = new osg::Geode();
-    _geode->setDataVariance( osg::Object::DYNAMIC );
-    _geode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), 1 );
-
-#ifdef USE_AMR
     _amrGeom = new AMRGeometry();
     _amrGeom->setDataVariance( osg::Object::DYNAMIC );
     _amrGeode = new osg::Geode();
     _amrGeode->addDrawable( _amrGeom.get() );
-#endif
+    _amrGeode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), 1 );
 
     // set up the manifold framework.
     manifold->initialize( this );
 }
 
-VertexIndex
-MeshManager::addVert(const osg::Vec3f& vert, const osg::Vec3f& normal, const osg::Vec4f& color)
+NodeIndex
+MeshManager::addNode( const MeshNode& node )
 {
-    VertexIndex result;
+    NodeIndex result;
 
     if ( _freeList.empty() )
     {
-        _verts->push_back( vert );
-        _normals->push_back( normal );
-#ifdef USE_VERTEX_COLORS
-        _colors->push_back( color );
-#endif
-        result = _verts->size()-1;
+        _nodes.push_back( node );
+        result = _nodes.size()-1;
     }
     else
     {
-        VertexIndex vi = _freeList.front();
+        NodeIndex ni = _freeList.front();
         _freeList.pop();
-        (*_verts)[vi] = vert;
-        (*_normals)[vi] = normal;
-#ifdef USE_VERTEX_COLORS
-        (*_colors)[vi] = color;
-#endif
-        result = vi;
+        _nodes[ni] = node;
+        result = ni;
     }
-
-    _verts->dirty();
-    _normals->dirty();
-
-#ifdef USE_VERTEX_COLORS
-    _colors->dirty();
-#endif
-
-    //OE_NOTICE << "Verts=" << _verts->size() << ", used=" << _verts->size()-_freeList.size() << ", free=" << _freeList.size() << std::endl;
 
     return result;
 }
 
-void
-MeshManager::removeVert( VertexIndex vi )
+NodeIndex
+MeshManager::addNode( const osg::Vec3d& manifoldCoord )
 {
-    // DO NOT remove a vert that is already on the free list
-    // we don't check for that.
-    _freeList.push( vi );
+    return addNode( _manifold->createNode( manifoldCoord ) );
+}
+
+void
+MeshManager::removeNode( NodeIndex ni )
+{
+    _freeList.push( ni );
 }
 
 void
@@ -178,6 +139,22 @@ MeshManager::queueForImage( Diamond* d, float priority )
         _imageService->add( d->_imageRequest.get() );
         _imageQueue.push_back( DiamondJob( d, priority ) ); //.insert( DiamondJob( d, priority ) );
         d->_queuedForImage = true;
+    }
+}
+
+static void
+outlineTexture( osg::Image* image )
+{
+    for( int s=1; s<image->s()-1; ++s )
+    {
+        *((unsigned int*)image->data( s, 1 )) = 0x00ff00ff;
+        *((unsigned int*)image->data( s, image->t()-2 )) = 0x00ff00ff;
+    }
+
+    for( int t=1; t<image->t()-1; ++t )
+    {
+        *((unsigned int*)image->data( 1, t )) = 0x00ff00ff;
+        *((unsigned int*)image->data( image->s()-2, t )) = 0x00ff00ff;
     }
 }
 
@@ -260,12 +237,12 @@ MeshManager::update()
                 //OE_NOTICE << "REQ: " << d->_key->str() << " completed" << std::endl;
                 osg::Texture2D* tex = 0L;
                 
-    #ifdef USE_DEBUG_TEXTURES
+#ifdef USE_DEBUG_TEXTURES
 
                 tex = new osg::Texture2D();
                 tex->setImage( createDebugImage() );
 
-    #else
+#else
 
                 GeoImage* geoImage = dynamic_cast<GeoImage*>( d->_imageRequest->getResult() );
                 if ( geoImage )
@@ -274,7 +251,7 @@ MeshManager::update()
                     tex->setImage( geoImage->getImage() );
                 }
 
-    #endif // USE_DEBUG_TEXTURES
+#endif // USE_DEBUG_TEXTURES
 
                 if ( tex )
                 {
@@ -285,6 +262,11 @@ MeshManager::update()
                     d->_stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
                     d->_stateSet->dirty(); // bump revision number so that users of this stateset can detect the change
                     d->_hasFinalImage = true;
+
+#ifdef OUTLINE_TEXTURES
+
+                    outlineTexture( tex->getImage() );
+#endif
                 }
 
                 remove = true;
@@ -324,7 +306,6 @@ MeshManager::update()
             // install it and mark it up to date.
             if ( d->_targetStateSetOwner->_stateSet->outOfSyncWith( d->_targetStateSetRevision ) )
             {            
-                d->_geom->setStateSet( d->_targetStateSetOwner->_stateSet.get() );
                 d->_amrDrawable->_stateSet = d->_targetStateSetOwner->_stateSet.get();
 
                 d->_currentStateSetOwner = d->_targetStateSetOwner;
@@ -332,7 +313,8 @@ MeshManager::update()
             }
 
             // rebuild the primitives now.
-            d->refreshPrimitiveSet();
+            //d->refreshPrimitiveSet();
+            d->refreshDrawable();
         }
         _dirtyQueue.pop();
     }

@@ -21,6 +21,8 @@
 #include <osgEarth/Caching>
 #include <osgEarth/Registry>
 
+#define LC "[osgEarth::TileSourceFactory] "
+
 using namespace osgEarth;
 
 TileSource*
@@ -29,18 +31,20 @@ TileSourceFactory::create( const DriverOptions* driverOptions )
     TileSource* tileSource = 0L;
     if ( driverOptions )
     {
+        OE_INFO << LC << "Loading tile source from driver \"" << driverOptions->driver() << "\"" << std::endl;
+
         std::string driverExt = std::string(".osgearth_") + driverOptions->driver();
 
         tileSource = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, driverOptions ) );
         if( !tileSource )
         {
-            OE_NOTICE
+            OE_WARN
                 << "WARNING: Failed to load tile source driver for " << driverExt << std::endl;
         }
     }
     else
     {
-        OE_NOTICE
+        OE_WARN
             << "ERROR: null driver options to TileSourceFactory" << std::endl;
     }
     return tileSource;

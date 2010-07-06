@@ -74,10 +74,11 @@ public:
 
 public:
     /** Add a shared vertex (and its normal) to the mesh. */
-    VertexIndex addVert( const osg::Vec3f& coord, const osg::Vec3f& normal, const osg::Vec4f& color );
+    NodeIndex addNode( const osg::Vec3d& manifoldCoord );
+    NodeIndex addNode( const MeshNode& node );
 
     /** Remove a shared vertex from the mesh. */
-    void removeVert( VertexIndex index );
+    void removeNode( NodeIndex index );
 
     /** add a diamond to the dirty list, b/c its primitive set needs refreshing */
     void queueForRefresh( Diamond* d );
@@ -95,7 +96,11 @@ public:
     void update();
 
     /** gets a vertex */
-    inline const osg::Vec3f& v(VertexIndex i) { return (*_verts)[i]; }
+    inline const MeshNode& node( NodeIndex i ) { return _nodes[i]; }
+    //inline const osg::Vec3f& vert( NodeIndex i ) { return _nodes[i]._vertex; }
+    //inline const osg::Vec3d& coord( NodeIndex i ) { return _nodes[i]._manifoldCoord; }
+    //inline const osg::Vec3f& normal( NodeIndex i ) { return _nodes[i]._normal; }
+    //inline const osg::Vec3d& geoCoord( NodeIndex i ) { return _nodes[i]._geodeticCoord; }
 
 public:
     osg::ref_ptr<Manifold> _manifold;
@@ -106,10 +111,8 @@ public:
     DiamondPriorityQueue _mergeQueue;        // queue for diamond merge jobs
     DiamondJobList       _imageQueue;        // queue for texture loading jobs
 
-    osg::ref_ptr<osg::Vec3Array> _verts;     // globally shared VBO (verticies)
-    osg::ref_ptr<osg::Vec3Array> _normals;   // globally shared VBO (normals)
-    osg::ref_ptr<osg::Vec4Array> _colors;    // globally shared VBO (colors) - FOR DEBUGGING ONLY
-    std::queue<VertexIndex>      _freeList;  // to re-use space given up by removed verts.
+    std::vector<MeshNode> _nodes;
+    std::queue<NodeIndex> _freeList;
 
     // the minimum level that contains renderable geometry (i.e. the level of the 
     // first quadtree ancestor that will render its quadtree decendants).
@@ -122,23 +125,14 @@ public:
     // cannot split beyond this level.
     Level _maxActiveLevel;
 
-    osg::Geode::DrawableList _activeDrawables;     // set of geometries to render per frame
-
     CullSettings _cullSettings;
     int _maxJobsPerFrame;
-    osg::ref_ptr<osg::Geometry> _geomPrototype;  // dormant geometry used to int VBOs.
-
-    osg::ref_ptr<osg::Geode> _geode;   // master terrain geode.
 
     osg::ref_ptr<TaskService> _imageService;  // service to load textures.
-
-#ifdef USE_AMR
 
     osg::ref_ptr<osg::Geode>    _amrGeode;    // geode that hold the AMRGeometry
     osg::ref_ptr<AMRGeometry>   _amrGeom;     // virtual geometry node
     AMRDrawableList             _amrDrawList; // culling result
-
-#endif // USE_AMR
 };
 
 #endif // OSGEARTH_DROAM_ENGINE_MESH_MANAGER_H

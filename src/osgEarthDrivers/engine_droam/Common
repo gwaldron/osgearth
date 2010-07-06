@@ -21,7 +21,8 @@
 
 #include <osgEarth/Common>
 
-typedef unsigned int   VertexIndex;    // index into the VBO
+//typedef unsigned int   VertexIndex;    // index into the VBO
+typedef unsigned int   NodeIndex;      // index of a node in the mesh node container
 typedef unsigned short Level;          // LOD level number
 typedef short          ChildIndex;     // -1 = invalid
 typedef short          AncestorIndex;  // -1 = invalid
@@ -46,14 +47,14 @@ typedef int            TravNumber;     // mesh traversal number
 // define this to apply textures to the quadtree diamonds:
 #define USE_TEXTURES
 
-// define this to apply simulated "debugging" textures instead of fetching them from MapLayer (for testing):
+// DEBUGGING: define this to apply simulated "debugging" textures instead of fetching them from MapLayer (for testing):
 //#define USE_DEBUG_TEXTURES
 
-// define this to set a color array on the shared VBO, and to apply colors based on LOD level (for testing):
+// DEBUGGING: define this to set a color array on the shared VBO, and to apply colors based on LOD level (for testing):
 //#define USE_VERTEX_COLORS
 
-// multiple this # by the diamond bounding sphere radius for switch-in/out distance:
-#define CULL_RANGE_FACTOR 3 //12
+// DEBUGGING: draw a green outline around each texture
+//#define OUTLINE_TEXTURES
 
 // the highest LOD level at which diamond splits can occur:
 #define MAX_ACTIVE_LEVEL 30
@@ -69,11 +70,14 @@ typedef int            TravNumber;     // mesh traversal number
 // maximum subdivision level that can split and merge
 #define MAX_ACTIVE_LEVEL 30
 
-// use adaptive mesh refinement rendering
-#define USE_AMR
+// multiple this # by the diamond bounding sphere radius for switch-in/out distance:
+#define CULL_RANGE_FACTOR 3 //12
 
 // density of each AMR patch (number of rows/cols)
 #define AMR_PATCH_ROWS 8
+
+// whether to use the geodetic manifold (or the cube manifold, the default)
+//#define USE_GEODETIC_MANIFOLD 1
 
 
 #endif // OSGEARTH_DROAM_ENGINE_COMMON_H

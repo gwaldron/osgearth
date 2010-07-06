@@ -72,9 +72,11 @@ namespace osgEarth
 
     public:
         TileSourceOptions( const PluginOptions* po =0L );
+        TileSourceOptions( const Config& conf );
 
     protected:
         virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
 
         optional<int> _tileSize;
         optional<float> _noDataValue, _noDataMinValue, _noDataMaxValue;

@@ -40,70 +40,33 @@ static int s_numDiamonds = 0;
 
 Diamond::Diamond( MeshManager* mesh, osgEarth::TileKey* key, Level level, const std::string& name ) :
 osg::Referenced(true),
-//osgEarth::Revisioned<osg::Referenced>(),
 _mesh( mesh ),
 _key( key ),
 _level( level ),
 _name( name ),
 _status( ACTIVE ),
 _childValence( 4 ),
-_color(1,1,1,1),
+//_color(1,1,1,1),
 _lastCullFrame( 0 ),
 _queuedForSplit( false ),
 _queuedForMerge( false ),
 _queuedForImage( false ),
-_primSetDirty( false ),
+_drawableDirty( false ),
 _bsComputed( false ),
 _isSplit( false ),
 _hasGeometry( level % 2 == 1 ),
-//_stateSet( 0L ),
-//_stateSetLevel( 0 ),
 _currentStateSetOwner( 0L ),
 _targetStateSetOwner( 0L ),
 _targetStateSetRevision( -1 ),
 _hasFinalImage( false )
 {
     this->setThreadSafeRefUnref(true);
-    //osg::setNotifyLevel( osg::INFO );
 
     // only ODD-numbered levels have actual geometry.
     if ( _hasGeometry )
     {
-        // Create the geometry for rendering th "quadtree decendants" of this diamond.
-        _geom = new osg::Geometry();
-        _geom->setUseDisplayList( false );
-        _geom->setUseVertexBufferObjects( true );
-
-        // add the texture coordinates. note, we must apply this BEFORE setting the shared
-        // vertex/normal/color arrays. otherwise the vertex processing gets corrupted. don't
-        // ask me why. (to see the effect, just move these 2 lines after the assignments of
-        // the shared vbos.)
-#ifdef USE_TEXTURES
-        _texCoords = new osg::Vec2Array();
-        _geom->setTexCoordArray( 0, _texCoords );
-#endif
-        
-        // but of course we need our own primitive set(s).
-        _primSet = new osg::DrawElementsUInt( GL_TRIANGLES );
-        _geom->addPrimitiveSet( _primSet );
-        
-        // copy the shared data from the mesh prototype:
-        _geom->setVertexArray( _mesh->_geomPrototype->getVertexArray() );
-        _geom->setNormalArray( _mesh->_geomPrototype->getNormalArray() );
-        _geom->setNormalBinding( _mesh->_geomPrototype->getNormalBinding() );
-        _geom->setColorArray( _mesh->_geomPrototype->getColorArray() );
-        _geom->setColorBinding( _mesh->_geomPrototype->getColorBinding() );
-
-        // this will prevent the DRAW of this geometry from overlapping the next UPDATE, making
-        // it safe to change the geometry in the UPDATE traversal:
-        _geom->setDataVariance( osg::Object::DYNAMIC );
-
-        // create a stateset that will hold the textures for the quadtree starting at this diamond.
-        // this is revisioned so that in activate() we can pre-populate the stateset with "placeholder"
-        // lower-res textures if they are available (while loading the correct-res textures).
         _stateSet = new RevisionedStateSet();
         _amrDrawable = new AMRDrawable();
-        //_stateSetLevel = _level;
     }
 
     s_numDiamonds++;
@@ -121,7 +84,36 @@ Diamond::~Diamond()
 {
     s_numDiamonds--;
     //OE_NOTICE << s_numDiamonds << " ... " << std::endl;
-    releaseGLObjects();
+}
+
+//const osg::Vec3&
+//Diamond::vert() const
+//{
+//    return _mesh->vert( _vi );
+//}
+//
+//const osg::Vec3d&
+//Diamond::coord() const
+//{
+//    return _mesh->coord( _vi );
+//}
+//
+//const osg::Vec3f&
+//Diamond::normal() const
+//{
+//    return _mesh->normal( _vi );
+//}
+//
+//const osg::Vec3d&
+//Diamond::geoCoord() const
+//{
+//    return _mesh->geoCoord( _vi );
+//}
+
+const MeshNode&
+Diamond::node() const
+{
+    return _mesh->node( _vi );
 }
 
 void
@@ -134,15 +126,8 @@ Diamond::activate()
 
     if ( _hasGeometry )
     {
-        // this settings directs a Diamond to use a stateset from N levels back.
-        int tsl = TEX_SUBRANGE_LEVELS;
-
-        // for some unknown reason the polar faces come in much lower res. hack:
-        //if ( osgEarth::UnifiedCubeProfile::getFace( _key.get() ) >= 4 )
-        //    tsl--;
-
         // assign this diamond the stateset of the appropriate quadtree ancestor:
-        int stateSetLevel = (int)_level - (tsl*2);
+        int stateSetLevel = (int)_level;
         if ( stateSetLevel < (int)_mesh->_minActiveLevel )
             stateSetLevel = _mesh->_minActiveLevel;
 
@@ -161,7 +146,7 @@ Diamond::activate()
         }
 
         // assign the stateset to this Diamond's geometry.
-        _geom->setStateSet( _currentStateSetOwner->_stateSet.get() );
+        _amrDrawable->_stateSet = _currentStateSetOwner->_stateSet.get();
 
         // synchronize with the target state set. By doing this, we will detect when the target stateset
         // does finally get populated, and at that point we can replace the placeholder stateset with
@@ -192,26 +177,9 @@ Diamond::getBound()
 }
 
 void
-Diamond::setCoord( double x, double y, double z )
-{
-    setCoord( osg::Vec3d(x, y, z) );
-}
-
-void
 Diamond::setCoord( const osg::Vec3d& coord )
 {
-    // store the parametric map coordinate in the diamond
-    _coord = coord;
-
-    // store the normal.
-    //_normal = _mesh->_manifold->normal( _coord );
-
-    // add the projected vert to the mesh, and store the index.
-    Level a = _level % 3;
-    osg::Vec4f color = a==0 ? RED : a==1 ? GREEN : YELLOW; //_level % 2 ? GREEN : YELLOW;
-    osg::Vec3f vert = _mesh->_manifold->project( coord );
-    _normal = _mesh->_manifold->normal( vert );
-    _vi = _mesh->addVert( vert, _normal, color );
+    _vi = _mesh->addNode( coord );
 }
 
 void
@@ -349,10 +317,10 @@ Diamond::cull( osgUtil::CullVisitor* cv )
         int i;
         for( i=0; i<4; ++i )
         {
-            osg::Vec3d eye_vec = eye - _mesh->v( _a[i]->_vi );
+            osg::Vec3d eye_vec = eye - _a[i]->node()._vertex;
             double len = eye_vec.length();
             if ( len <= getBound().radius() ) break; // if we're inside the radius, bail
-            double dev = ( eye_vec * _a[i]->_normal ) / len;
+            double dev = ( eye_vec * _a[i]->node()._normal ) / len;
             if ( dev >= DEVIATION ) break;
         }
         if ( i == 4 )
@@ -384,18 +352,12 @@ Diamond::cull( osgUtil::CullVisitor* cv )
         }
     }
 
-    if ( _hasGeometry && _primSet->size() == 0 && numChildren < _childValence )
+    if ( _hasGeometry && _amrDrawable->_primitives.size() == 00 && numChildren < _childValence )
         OE_WARN << "BOOGER" << std::endl;
-    
-    // if the child traversal resulted in a full load of geometries, we do NOT need to
-    // add the current geometry to the set.
-    if ( _hasGeometry && _primSet->size() > 0 )
+
+    if ( _hasGeometry && _amrDrawable->_primitives.size() > 0 )
     {
-#ifdef USE_AMR
         _mesh->_amrDrawList.push_back( _amrDrawable.get() );
-        //std::copy( _amrDrawList.begin(), _amrDrawList.end(), std::back_inserter(_mesh->_amrDrawList) );
-#endif
-        _mesh->_activeDrawables.push_back( _geom.get() );
     }
     
     // culling is complete. next we will check to see if we need to split this diamond
@@ -434,9 +396,9 @@ void
 Diamond::computeBound()
 {
     // in vert space.
-    _bs = osg::BoundingSphere( _mesh->v(_vi), 1.0 );
+    _bs = osg::BoundingSphere( node()._vertex, 1.0 );
     for(int i=0; i<4; i++) 
-        _bs.expandRadiusBy( _mesh->v( _a[i]->_vi ) );
+        _bs.expandRadiusBy( _a[i]->node()._vertex );
 
     _bs.radius() = _bs.radius() * sqrt(2.0) * 2.0;
 
@@ -485,9 +447,9 @@ Diamond::dirty()
     // queue this diamond for a primitive set refresh .. but only if it actually has geometry.
     if ( _hasGeometry && _level >= _mesh->_minGeomLevel )
     {
-        if ( !_primSetDirty )
+        if ( !_drawableDirty )
         {
-            _primSetDirty = true;
+            _drawableDirty = true;
 #ifdef USE_DIRTY_QUEUE
             _mesh->queueForRefresh( this );
 #else
@@ -500,24 +462,6 @@ Diamond::dirty()
         //OE_WARN << "ILLEGAL: dirty(): _hasGeometry = " << _hasGeometry << ", _level = " << _level << std::endl;
     }
 }
-
-//#define ADD_TRI( P, T, A, C, D, G, H, J ) { \
-//    (P)->push_back(A); (P)->push_back(D); (P)->push_back(H); \
-//    (*T)[A] = C; (*T)[D] = G; (*T)[H] = J; }
-
-#ifdef USE_TEXTURES
-
-#   define ADD_TRI( P, T, Q, A, C, D, G, H, J, O, S ) { \
-        (P)->push_back(A); (P)->push_back(D); (P)->push_back(H); \
-        (Q)->push_back( O+(C*S) ); (Q)->push_back( O+(G*S) ); (Q)->push_back( O+(J*S) ); \
-        (*T)[A] = O+(C*S); (*T)[D] = O+(G*S); (*T)[H] = O+(J*S); }
-
-#else
-
-#   define ADD_TRI( P, T, A, C, D, G, H, J, O, S ) { \
-        (P)->push_back(A); (P)->push_back(D); (P)->push_back(H); }
-
-#endif
 
 // texture coordinate for each orientation.
 #define T_QUADTREE 0
@@ -543,14 +487,19 @@ static osg::Vec2f otex[8] =
 
 #define OT(I,R) otex[ ( I + R ) % 8 ]
 
-#define T_CENTER osg::Vec2f(.5,.5)
-
+#define ADD_TRI( COORDS, TEX, C1, T1, C2, T2, C3, T3, OFFSET, SPAN ) { \
+    COORDS->push_back(C1); \
+    COORDS->push_back(C2); \
+    COORDS->push_back(C3); \
+    TEX->push_back( OFFSET + (T1*SPAN) ); \
+    TEX->push_back( OFFSET + (T2*SPAN) ); \
+    TEX->push_back( OFFSET + (T3*SPAN) );
 
 void
-Diamond::refreshPrimitiveSet()
+Diamond::refreshDrawable()
 {
     // the primitive set may have already been refreshed (due to double-parenting)
-    if ( !_primSetDirty )
+    if ( !_drawableDirty )
         return;
 
     // this level does not generate primitive sets
@@ -575,31 +524,25 @@ Diamond::refreshPrimitiveSet()
         offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
     }
 
-    // clear it out so we can build new triangles.
-    osg::DrawElementsUInt* p = _primSet;
-    _primSet->clear();
-
-#ifdef USE_TEXTURES
-    if ( _texCoords->size() < _mesh->_verts->size() )
-        _texCoords->resize( _mesh->_verts->size() );
-
-    osg::Vec2Array* t = _texCoords;
-    
-    osg::ref_ptr<osg::Vec2Array> aT = new osg::Vec2Array();
-#  ifdef USE_AMR
-    
-#  endif // USE_AMR
-#endif
-
     int o = _orientation;
+    
+    // Start by clearing out the old primitive set:
+    _amrDrawable->_primitives.clear();
 
-    if ( !_isSplit )
-    {
-        // if the diamond is not split, simply draw the two triangles.
-        ADD_TRI( p, t, aT, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
-        ADD_TRI( p, t, aT, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
-    }
-    else
+    //if ( false ) //!_isSplit ) // took this out to preserve the diamond center point.
+    //{
+    //    // if the diamond is not split, simply draw the two triangles.
+    //    _amrDrawable->add( new AMRTriangle(
+    //        _a[GDPARENT]->coord(), _a[GDPARENT]->vert(), offset + OT(T_GDPARENT,o) * span,
+    //        _a[QUADTREE]->coord(), _a[QUADTREE]->vert(), offset + OT(T_QUADTREE,o) * span,
+    //        _a[PARENT_R]->coord(), _a[PARENT_R]->vert(), offset + OT(T_PARENT_R,o) * span ) );
+
+    //    _amrDrawable->add( new AMRTriangle(
+    //        _a[GDPARENT]->coord(), _a[GDPARENT]->vert(), offset + OT(T_GDPARENT,o) * span,
+    //        _a[PARENT_L]->coord(), _a[PARENT_L]->vert(), offset + OT(T_PARENT_L,o) * span,
+    //        _a[QUADTREE]->coord(), _a[QUADTREE]->vert(), offset + OT(T_QUADTREE,o) * span ) );
+    //}
+    //else
     {
         // find this diamond's four quadtree descendants:
         Diamond* q0 = _c[0].valid() ? _c[0]->_c[1].get() : 0L;
@@ -607,77 +550,111 @@ Diamond::refreshPrimitiveSet()
         Diamond* q2 = _c[2].valid() ? _c[2]->_c[1].get() : 0L;
         Diamond* q3 = _c[3].valid() ? _c[3]->_c[3].get() : 0L;
 
-        if ( !_c[0].valid() || !_c[0]->_isSplit ) {
-            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
+        osg::Vec2f center = osg::Vec2f(.5,.5);
+
+        if ( !_c[0].valid() || !_c[0]->_isSplit )
+        {
+            _amrDrawable->add( new AMRTriangle(
+                node(),               offset + center * span,
+                _a[QUADTREE]->node(), offset + OT(T_QUADTREE,o) * span,
+                _a[PARENT_R]->node(), offset + OT(T_PARENT_R,o) * span ) );
         }
-        else {
-            if ( !q0 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[QUADTREE]->_vi, OT(T_QUADTREE,o), _c[0]->_vi, OT(T_CHILD_0,o), offset, span );
+        else
+        {
+            if ( !q0 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _a[QUADTREE]->node(), offset + OT(T_QUADTREE,o) * span,
+                    _c[0]->node(),        offset + OT(T_CHILD_0,o) * span ) );
             }
-            if ( !q1 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[0]->_vi, OT(T_CHILD_0,o), _a[PARENT_R]->_vi, OT(T_PARENT_R,o), offset, span );
+            if ( !q1 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _c[0]->node(),        offset + OT(T_CHILD_0,o) * span,
+                    _a[PARENT_R]->node(), offset + OT(T_PARENT_R,o) * span ) );
             }
         }
 
-        if ( !_c[1].valid() || !_c[1]->_isSplit ) {
-            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_R]->_vi, OT(T_PARENT_R,o), _a[GDPARENT]->_vi, OT(T_GDPARENT,o), offset, span );
+        if ( !_c[1].valid() || !_c[1]->_isSplit )
+        {
+            _amrDrawable->add( new AMRTriangle(
+                node(),               offset + center * span,
+                _a[PARENT_R]->node(), offset + OT(T_PARENT_R,o) * span,
+                _a[GDPARENT]->node(), offset + OT(T_GDPARENT,o) * span ) );
         }
-        else {
-            if ( !q1 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_R]->_vi, OT(T_PARENT_R,o), _c[1]->_vi, OT(T_CHILD_1,o), offset, span );
+        else
+        {
+            if ( !q1 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _a[PARENT_R]->node(), offset + OT(T_PARENT_R,o) * span,
+                    _c[1]->node(),        offset + OT(T_CHILD_1,o) * span ) );
             }
-            if ( !q2 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[1]->_vi, OT(T_CHILD_1,o), _a[GDPARENT]->_vi, OT(T_GDPARENT,o), offset, span );
+            if ( !q2 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _c[1]->node(),        offset + OT(T_CHILD_1,o) * span,
+                    _a[GDPARENT]->node(), offset + OT(T_GDPARENT,o) * span ) );
             }
         }
 
-        if ( !_c[2].valid() || !_c[2]->_isSplit ) {
-            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), offset, span );
+        if ( !_c[2].valid() || !_c[2]->_isSplit )
+        {
+            _amrDrawable->add( new AMRTriangle(
+                node(),               offset + center * span,
+                _a[GDPARENT]->node(), offset + OT(T_GDPARENT,o) * span,
+                _a[PARENT_L]->node(), offset + OT(T_PARENT_L,o) * span ) );
         }
-        else {
-            if ( !q2 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[GDPARENT]->_vi, OT(T_GDPARENT,o), _c[2]->_vi, OT(T_CHILD_2,o), offset, span );
+        else
+        {
+            if ( !q2 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _a[GDPARENT]->node(), offset + OT(T_GDPARENT,o) * span,
+                    _c[2]->node(),        offset + OT(T_CHILD_2,o) * span ) );
             }
-            if ( !q3 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[2]->_vi, OT(T_CHILD_2,o), _a[PARENT_L]->_vi, OT(T_PARENT_L,o), offset, span );
+            if ( !q3 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _c[2]->node(),        offset + OT(T_CHILD_2,o) * span,
+                    _a[PARENT_L]->node(), offset + OT(T_PARENT_L,o) * span ) );
             }
         }
 
-        if ( !_c[3].valid() || !_c[3]->_isSplit ) {
-            ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
+        if ( !_c[3].valid() || !_c[3]->_isSplit )
+        {
+            _amrDrawable->add( new AMRTriangle(
+                node(),               offset + center * span,
+                _a[PARENT_L]->node(), offset + OT(T_PARENT_L,o) * span,
+                _a[QUADTREE]->node(), offset + OT(T_QUADTREE,o) * span ) );
         }
-        else {
-            if ( !q3 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _a[PARENT_L]->_vi, OT(T_PARENT_L,o), _c[3]->_vi, OT(T_CHILD_3,o), offset, span );
+        else
+        {
+            if ( !q3 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _a[PARENT_L]->node(), offset + OT(T_PARENT_L,o) * span,
+                    _c[3]->node(),        offset + OT(T_CHILD_3,o) * span ) );
             }
-            if ( !q0 ) {
-                ADD_TRI( p, t, aT, _vi, T_CENTER, _c[3]->_vi, OT(T_CHILD_3,o), _a[QUADTREE]->_vi, OT(T_QUADTREE,o), offset, span );
+            if ( !q0 )
+            {
+                _amrDrawable->add( new AMRTriangle(
+                    node(),               offset + center * span,
+                    _c[3]->node(),        offset + OT(T_CHILD_3,o) * span,
+                    _a[QUADTREE]->node(), offset + OT(T_QUADTREE,o) * span ) );
             }
         }        
     }
 
     // dirty the underlying element buffer object
-    _primSetDirty = false;
-    _primSet->dirty();
-
-#ifdef USE_TEXTURES
-    _texCoords->dirty();
-#endif
-
-#ifdef USE_AMR
-    // temp: copy the tris over to the AMR draw list.
-    _amrDrawable->_primitives.clear();
-    for(int unsigned i=0; i<_primSet->size(); i+=3)
-    {
-        AMRTriangle* tri = new AMRTriangle();
-        osg::Vec3 p0 = _mesh->v( (*_primSet)[i] );
-        osg::Vec3 p1 = _mesh->v( (*_primSet)[i+1] );
-        osg::Vec3 p2 = _mesh->v( (*_primSet)[i+2] );
-        tri->setVerts( p0, p1, p2 );
-        tri->setTexCoords( 0, (*aT)[i], (*aT)[i+1], (*aT)[i+2] );
-        _amrDrawable->_primitives.push_back( tri );
-    }
-#endif
+    _drawableDirty = false;
 }
 
 bool
@@ -735,7 +712,7 @@ Diamond::getOrCreateNeighbor( ChildIndex c )
 }
 
 ChildIndex 
-Diamond::getIndexOfChildEdgeStartingAt( VertexIndex vi )
+Diamond::getIndexOfChildEdgeStartingAt( NodeIndex vi )
 {
     if ( vi == _a[QUADTREE]->_vi ) return 0;
     else if ( vi == _a[PARENT_R]->_vi ) return 1;
@@ -787,7 +764,9 @@ Diamond::getOrCreateChild( ChildIndex c )
     child->_a[PARENT_L] = (c == 0 || c == 2) ? d0.get() : d;
 
     // how that we know the QUADTREE & GDPARENT ancestors, create the diamond vertex.
-    osg::Vec3d newCoord = _mesh->_manifold->midpoint( child->_a[QUADTREE]->_coord, child->_a[GDPARENT]->_coord );
+    osg::Vec3d newCoord = _mesh->_manifold->midpoint(
+        child->_a[QUADTREE]->node()._manifoldCoord,
+        child->_a[GDPARENT]->node()._manifoldCoord );
 
     child->setCoord( newCoord );
 
@@ -846,11 +825,6 @@ Diamond::getOrCreateChild( ChildIndex c )
 void
 Diamond::removeChild( ChildIndex c )
 {
-    //TODO:
-    //disconnent all the pointers, and mark this diamond as "inactive" or "deleted". b/c it might be
-    //    in a queue somewhere and we don't want to be messing with it once it's
-    //    been removed!
-
     osg::ref_ptr<Diamond> child = _c[c].get();
     if ( !child.valid() ) return;
 
@@ -872,14 +846,10 @@ Diamond::removeChild( ChildIndex c )
         {
             d0->_c[c_d0] = 0L;
         }
-
-        // no longer need this:
-        //d0->dirty();
     }
 
     // now clear out the child slot and invalidate the primitive set.
     this->_c[c] = 0L;
-    //this->dirty();
 
     // notify the common ancestry of the change
     if ( child->_hasGeometry )
@@ -901,18 +871,7 @@ Diamond::removeChild( ChildIndex c )
         child->_c[i] = 0L;
 
     // remove the child's vertex from the VBO.
-    _mesh->removeVert( child->_vi );
+    _mesh->removeNode( child->_vi );
 }
 
-void
-Diamond::releaseGLObjects()
-{
-    if ( _hasGeometry )
-    {
-        //TBD
-        _stateSet->releaseGLObjects();
-        _primSet->releaseGLObjects();
-        _geom->releaseGLObjects();
-    }
-}
 

@@ -42,6 +42,23 @@ _noDataValue( (float)SHRT_MIN ),
 _noDataMinValue( -FLT_MAX ),
 _noDataMaxValue( FLT_MAX )
 {
+    if ( po )
+        fromConfig( po->config() );
+}
+
+TileSourceOptions::TileSourceOptions( const Config& conf ) :
+DriverOptions( conf ),
+_tileSize( 256 ),
+_noDataValue( (float)SHRT_MIN ),
+_noDataMinValue( -FLT_MAX ),
+_noDataMaxValue( FLT_MAX )
+{
+    fromConfig( conf );
+}
+
+void
+TileSourceOptions::fromConfig( const Config& conf )
+{
     config().getIfSet( "tile_size", _tileSize );
     config().getIfSet( "nodata_value", _noDataValue );
     config().getIfSet( "nodata_min", _noDataMinValue );

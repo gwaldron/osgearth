@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DROAM_ENGINE_CUBE_MANIFOLD_H
-#define OSGEARTH_DROAM_ENGINE_CUBE_MANIFOLD_H 1
+#ifndef OSGEARTH_DROAM_ENGINE_GEODETIC_MANIFOLD_H
+#define OSGEARTH_DROAM_ENGINE_GEODETIC_MANIFOLD_H 1
 
 #include "Manifold"
 #include "MeshManager"
@@ -26,10 +26,10 @@
 #include <osgEarth/Profile>
 
 /** The top-level diamond layout for a round earth */
-class CubeManifold : public Manifold
+class GeodeticManifold : public Manifold
 {
 public:
-    CubeManifold();
+    GeodeticManifold();
 
 public:
     /** generate children up to the specified level */
@@ -55,11 +55,11 @@ public:
     osg::BoundingSphere _bs;
     osg::ref_ptr<const Profile> _profile;
     osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
-    osg::ref_ptr<Diamond> _vd[8]; // vertex diamonds
-    osg::ref_ptr<Diamond> _fd[6]; // face diamonds
-    osg::ref_ptr<Diamond> _ed[12]; // edge diamonds
+    osg::ref_ptr<Diamond> _vd[6];  // vertex diamonds
+    osg::ref_ptr<Diamond> _fd[4];  // intermediate base diamonds
+    osg::ref_ptr<Diamond> _ed[8];  // first geometry diamonds
 
-    osg::Vec3d p(double x, double y, double z) const;
+    osg::Vec3d p(double x, double y, double z);
 };
 
-#endif // OSGEARTH_DROAM_ENGINE_CUBE_MANIFOLD_H
+#endif // OSGEARTH_DROAM_ENGINE_GEODETIC_MANIFOLD_H

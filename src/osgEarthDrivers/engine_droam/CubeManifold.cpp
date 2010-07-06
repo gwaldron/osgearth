@@ -28,11 +28,10 @@
 
 #define LC "[osgEarth::CubeManifold] "
 
-CubeManifold::CubeManifold( const Profile* profile ) :
-_profile( profile ),
-_ellipsoid( profile->getSRS()->getGeographicSRS()->getEllipsoid() )
+CubeManifold::CubeManifold()
 {
-    //nop
+    _profile = new osgEarth::UnifiedCubeProfile();
+    _ellipsoid = _profile->getSRS()->getGeographicSRS()->getEllipsoid();
 }
 
 void
@@ -150,7 +149,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[0]->_a[PARENT_L] = _fd[NEG_Y];
     _ed[0]->_a[QUADTREE] = _vd[0];
     _ed[0]->_a[GDPARENT] = _vd[5];
-    _ed[0]->_color = RED;
+//    _ed[0]->_color = RED;
 
     _ed[1] = new Diamond(mesh, 0L, 2, "ed1");
     _ed[1]->setCoord( p(1, -1, 0 ) );
@@ -158,7 +157,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[1]->_a[PARENT_L] = _fd[POS_X];
     _ed[1]->_a[QUADTREE] = _vd[0];
     _ed[1]->_a[GDPARENT] = _vd[6];
-    _ed[1]->_color = RED;
+    //_ed[1]->_color = RED;
 
     _ed[2] = new Diamond(mesh, 0L, 2, "ed2");
     _ed[2]->setCoord( p(1, 0, 1) );
@@ -166,7 +165,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[2]->_a[PARENT_L] = _fd[POS_Z];
     _ed[2]->_a[QUADTREE] = _vd[0];
     _ed[2]->_a[GDPARENT] = _vd[4];
-    _ed[2]->_color = RED;
+    //_ed[2]->_color = RED;
 
     // GROUP OF THREE under the vd[1] "quadtree":
     _ed[3] = new Diamond(mesh, 0L, 2, "ed3");
@@ -175,7 +174,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[3]->_a[PARENT_L] = _fd[POS_Y];
     _ed[3]->_a[QUADTREE] = _vd[1];
     _ed[3]->_a[GDPARENT] = _vd[4];
-    _ed[3]->_color = GREEN;
+    //_ed[3]->_color = GREEN;
 
     _ed[4] = new Diamond(mesh, 0L, 2, "ed4");
     _ed[4]->setCoord( p(-1, 1, 0) );
@@ -183,7 +182,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[4]->_a[PARENT_L] = _fd[NEG_X];
     _ed[4]->_a[QUADTREE] = _vd[1];
     _ed[4]->_a[GDPARENT] = _vd[7];
-    _ed[4]->_color = GREEN;
+    //_ed[4]->_color = GREEN;
 
     _ed[5] = new Diamond(mesh, 0L, 2, "ed5");
     _ed[5]->setCoord( p(-1, 0, 1) );
@@ -191,7 +190,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[5]->_a[PARENT_L] = _fd[POS_Z];
     _ed[5]->_a[QUADTREE] = _vd[1];
     _ed[5]->_a[GDPARENT] = _vd[5];
-    _ed[5]->_color = GREEN;
+    //_ed[5]->_color = GREEN;
 
     // GROUP OF THREE under the vd[2] "quadtree":
     _ed[6] = new Diamond(mesh, 0L, 2, "ed6");
@@ -200,7 +199,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[6]->_a[PARENT_L] = _fd[NEG_X];
     _ed[6]->_a[QUADTREE] = _vd[2];
     _ed[6]->_a[GDPARENT] = _vd[5];
-    _ed[6]->_color = BLUE;
+    //_ed[6]->_color = BLUE;
 
     _ed[7] = new Diamond(mesh, 0L, 2, "ed7");
     _ed[7]->setCoord( p(-1, 0, -1) );
@@ -208,7 +207,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[7]->_a[PARENT_L] = _fd[NEG_Z];
     _ed[7]->_a[QUADTREE] = _vd[2];
     _ed[7]->_a[GDPARENT] = _vd[7];
-    _ed[7]->_color = BLUE;
+    //_ed[7]->_color = BLUE;
 
     _ed[8] = new Diamond(mesh, 0L, 2, "ed8");
     _ed[8]->setCoord( p(0, -1, -1) );
@@ -216,7 +215,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[8]->_a[PARENT_L] = _fd[NEG_Y];
     _ed[8]->_a[QUADTREE] = _vd[2];
     _ed[8]->_a[GDPARENT] = _vd[6];
-    _ed[8]->_color = BLUE;
+    //_ed[8]->_color = BLUE;
 
     // GROUP OF THREE under the vd[3] "quadtree":
     _ed[9] = new Diamond(mesh, 0L, 2, "ed9");
@@ -225,7 +224,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[9]->_a[PARENT_L] = _fd[POS_X];
     _ed[9]->_a[QUADTREE] = _vd[3];
     _ed[9]->_a[GDPARENT] = _vd[4];
-    _ed[9]->_color = YELLOW;
+    //_ed[9]->_color = YELLOW;
 
     _ed[10] = new Diamond(mesh, 0L, 2, "ed10");
     _ed[10]->setCoord( p(1, 0, -1) );
@@ -233,7 +232,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[10]->_a[PARENT_L] = _fd[NEG_Z];
     _ed[10]->_a[QUADTREE] = _vd[3];
     _ed[10]->_a[GDPARENT] = _vd[6];
-    _ed[10]->_color = YELLOW;
+    //_ed[10]->_color = YELLOW;
 
     _ed[11] = new Diamond(mesh, 0L, 2, "ed11");
     _ed[11]->setCoord( p(0, 1, -1) );
@@ -241,7 +240,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[11]->_a[PARENT_L] = _fd[POS_Y];
     _ed[11]->_a[QUADTREE] = _vd[3];
     _ed[11]->_a[GDPARENT] = _vd[7];
-    _ed[11]->_color = YELLOW;
+    //_ed[11]->_color = YELLOW;
 
     // NEXT, set the pointers from each face diamond to its 4 children. We can double-
     // check these by looking at the ancestor assignments above. They should match up.
@@ -293,21 +292,78 @@ CubeManifold::initialize( MeshManager* mesh )
 
 
 osg::Vec3d
-CubeManifold::p( double x, double y, double z )
+CubeManifold::p( double x, double y, double z ) const
 {
     osg::Vec3d v( x, y, z );
     return v;
 }
 
-osg::Vec3d
-CubeManifold::project( const osg::Vec3d& coord )
+//osg::Vec3d
+//CubeManifold::project( const osg::Vec3d& coord ) const
+//{
+//    // uncomment this to see the terrain as a cube.
+//    //return coord;
+//
+//    // this will project the cubic coordinates onto an ellipsoid.
+//
+//    osg::Vec3d out;
+//    double lat, lon;
+//
+//    // normalize all coordinates into the [0..1] range:
+//    double x = (1.0+coord.x())*0.5;
+//    double y = (1.0+coord.y())*0.5;
+//    double z = (1.0+coord.z())*0.5;
+//
+//    // now convert into lat/long; this is different for each face:
+//
+//    if ( coord.x() == 1.0 ) // positive X ( 0 <= lon <= 90, -45 <= lat <= 45 )
+//    {
+//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( y, z, 2, lat, lon ) )
+//            OE_WARN << LC << "+X: fc2ll failed" << std::endl;
+//    }
+//    else if ( coord.x() == -1.0 ) // negative X ( -180 <= lon <= -90, -45 <= lat <= 45 )
+//    {
+//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-y, z, 0, lat, lon ) )
+//            OE_WARN << LC << "-X: fc2ll failed" << std::endl;
+//    }
+//    else if ( coord.y() == 1.0 ) // positive Y ( 90 <= lon <= 180, -45 <= lat <= 45 )
+//    {
+//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-x, z, 3, lat, lon ) )
+//            OE_WARN << LC << "+Y: fc2ll failed" << std::endl;
+//    }
+//    else if ( coord.y() == -1.0 ) // negative Y ( -90 <= lon <= 0, -45 <= lat <= 45 )
+//    {
+//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( x, z, 1, lat, lon ) )
+//            OE_WARN << LC << "-Y: fc2ll failed" << std::endl;
+//    }
+//    else if ( coord.z() == 1.0 ) // positive Z ( -180 <= lon < 180, 45 <= lat <= 90 )
+//    {
+//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-y, x, 4, lat, lon ) )
+//            OE_WARN << LC << "+Z: fc2ll failed" << std::endl;
+//    }
+//    else //if ( coord.z() == -1.0 ) // negative Z ( -180 <= lon < 180, -90 <= lat <= -45 )
+//    {
+//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( x, 1.0-y, 5, lat, lon ) )
+//            OE_WARN << LC << "-Z: fc2ll failed" << std::endl;
+//    }
+//
+//    // finally, convert from lat/long into geocentric:
+//
+//    this->_ellipsoid->convertLatLongHeightToXYZ( 
+//        osg::DegreesToRadians(lat),
+//        osg::DegreesToRadians(lon), 0, 
+//        out.x(), out.y(), out.z() );
+//
+//    OE_DEBUG << LC
+//        << "project: (" << coord.x() << "," << coord.y() << "," << coord.z() << ") => (" << lat << "," << lon << ")"
+//        << std::endl;
+//
+//    return out;
+//}
+
+static bool
+toLonLatRad( const osg::Vec3d& coord, osg::Vec3d& out_lonLat )
 {
-    // uncomment this to see the terrain as a cube.
-    //return coord;
-
-    // this will project the cubic coordinates onto an ellipsoid.
-
-    osg::Vec3d out;
     double lat, lon;
 
     // normalize all coordinates into the [0..1] range:
@@ -348,37 +404,53 @@ CubeManifold::project( const osg::Vec3d& coord )
             OE_WARN << LC << "-Z: fc2ll failed" << std::endl;
     }
 
-    // finally, convert from lat/long into geocentric:
+    out_lonLat.x() = osg::DegreesToRadians( lon );
+    out_lonLat.y() = osg::DegreesToRadians( lat );
+    out_lonLat.z() = 0.0;
 
-    this->_ellipsoid->convertLatLongHeightToXYZ( 
-        osg::DegreesToRadians(lat),
-        osg::DegreesToRadians(lon), 0, 
-        out.x(), out.y(), out.z() );
-
-    OE_DEBUG << LC
-        << "project: (" << coord.x() << "," << coord.y() << "," << coord.z() << ") => (" << lat << "," << lon << ")"
-        << std::endl;
-
-    return out;
+    return true;
 }
 
+
 osg::Vec3d
-CubeManifold::midpoint( const osg::Vec3d& p0, const osg::Vec3d& p1 )
+CubeManifold::midpoint( const osg::Vec3d& p0, const osg::Vec3d& p1 ) const
 {
     return (p0+p1)*0.5;
 }
 
-osg::Vec3d
-CubeManifold::normal( const osg::Vec3d& vert )
+//osg::Vec3d
+//CubeManifold::normal( const osg::Vec3d& vert ) const
+//{
+//    //TODO: this is spherical. adjust for ellipsoid if necessary.
+//    osg::Vec3d n = vert;
+//    n.normalize();
+//    return n;
+//}
+
+MeshNode
+CubeManifold::createNode( const osg::Vec3d& manCoord ) const
 {
-    //TODO: this is spherical. adjust for ellipsoid if necessary.
-    osg::Vec3d n = vert;
-    n.normalize();
-    return n;
+    MeshNode node;
+
+    node._manifoldCoord = manCoord;
+    
+    toLonLatRad( manCoord, node._geodeticCoord ); // our manifold coords are already geodetic
+
+    osg::Vec3d temp;
+    _ellipsoid->convertLatLongHeightToXYZ(
+        node._geodeticCoord.y(), node._geodeticCoord.x(), node._geodeticCoord.z(),
+        temp.x(), temp.y(), temp.z() );
+
+    node._vertex = temp;
+
+    node._normal = _ellipsoid->computeLocalUpVector(
+        temp.x(), temp.y(), temp.z() );
+
+    return node;
 }
 
 osg::BoundingSphere
-CubeManifold::initialBound()
+CubeManifold::initialBound() const
 {
     return osg::BoundingSphere( osg::Vec3d(0,0,0), _ellipsoid->getRadiusEquator() * 1.2 );
     //return osg::BoundingSphere( osg::Vec3d(0,0,0), 2.0 );

@@ -72,22 +72,17 @@ struct Diamond : osg::Referenced
     unsigned short _childValence;       // number of slots for children (always 4, except 3 at level 0)
     bool _isSplit;                      // is this diamond split? (i.e. can it create children?)
     bool _hasGeometry;                  // whether this is a geometry diamond (i.e. odd-numbered level)
-    osg::Vec3d _coord;                  // map coordinates of this vertex (unlocalized)
-    osg::Vec3d _normal;                 // normal vector of centroid (_coord) (UNUSED i think -gw)
-    VertexIndex _vi;                    // index of this diamond's vertex/normal in the master vbos
+    NodeIndex _vi;                      // index of this diamond's vertex/normal in the master vbos
     TravNumber _lastCullFrame;          // frame number of last cull pass
-    osg::Vec4f _color;                  // deprecated (for debugging only)
-    bool _primSetDirty;                 // marks this diamond's primitive set as needing a refresh.
+    bool _drawableDirty;                // marks this diamond's primitive set as needing a refresh.
     bool _queuedForSplit;               // whether this diamond is in the split queue.
     bool _queuedForMerge;               // whether this diamond is in the merge queue.
     bool _queuedForImage;               // whether this diamond is in the image queue.
     osg::BoundingSphere _bs;            // this diamond's bounds
     bool _bsComputed;                   // whether _bs has been computed yet
     bool _imageRequested;               // whether the texture image has been submitted to the task service
-    //osg::ref_ptr<osg::StateSet> _stateSet; // stateset associated with the quadtree diamond at this level
-    osg::ref_ptr<RevisionedStateSet> _stateSet;
-    osg::ref_ptr<AMRDrawable> _amrDrawable;
-    //Level _stateSetLevel;               // level represented by _stateSet (could be placeholder(<level) or _level)
+    osg::ref_ptr<RevisionedStateSet> _stateSet; // stateset for this diamond level
+    osg::ref_ptr<AMRDrawable> _amrDrawable;     // primitive draw list
     Diamond* _targetStateSetOwner;      // Diamond that owns the stateset we ultimately want to use
     Diamond* _currentStateSetOwner;     // Diamond that owns the stateset we are currently using
     osgEarth::Revision _targetStateSetRevision;   // Revision of the stateset we are rendering with
@@ -95,19 +90,7 @@ struct Diamond : osg::Referenced
 
     osg::ref_ptr<osgEarth::TaskRequest> _imageRequest;
 
-    // geometry comprising this diamond.
-    osg::ref_ptr<osg::Geometry> _geom;
 
-    // reference to the primitive set containing the triangles for this diamond
-    // (and omitting triangles where quadtree descendants exist).
-    osg::DrawElementsUInt* _primSet;
-
-    // refernce to this diamond's texture coordinates (contained in _geom)
-    osg::Vec2Array* _texCoords;
-
-#ifdef USE_AMR
-    //AMRDrawableList _amrDrawList;
-#endif // USE_AMR
 
     /** print debugging info */
     void dump();
@@ -115,7 +98,7 @@ struct Diamond : osg::Referenced
     const osg::BoundingSphere& getBound();
 
     /** Sets the diamond centroid coordinate and adds it to the mesh. */
-    void setCoord( double x, double y, double z );
+    void setCoord( double x, double y, double z ) { setCoord( osg::Vec3d(x,y,z) ); }
     void setCoord( const osg::Vec3d& coord );
 
     /** Gets this diamond's neibghor across child-c boundary, creating it if it does not exist */
@@ -135,7 +118,7 @@ struct Diamond : osg::Referenced
     ChildIndex getIndexOfChild( Diamond* child );
 
     /** Gets the child index of the diamond edge that begins at the specified vertex. */
-    ChildIndex getIndexOfChildEdgeStartingAt( VertexIndex vi );
+    ChildIndex getIndexOfChildEdgeStartingAt( NodeIndex vi );
 
     /** recursively populate the diamond bintree up to a maximum depth level. */
     void seed( Level maxLevel );
@@ -161,8 +144,8 @@ struct Diamond : osg::Referenced
     /** assigns a new child to this diamond and invalidates the primitive set. */
     void setChild( ChildIndex index, Diamond* child );
 
-    /** rebuilds this diamond's primitive set if necessary (and updates its precense in the mesh) */            
-    void refreshPrimitiveSet();
+    /** rebuilds this diamond's draw list if necessary (and updates its precense in the mesh) */ 
+    void refreshDrawable();
 
     /** marks this diamond's primitive set as needing a refresh. */
     void dirty();
@@ -173,7 +156,13 @@ struct Diamond : osg::Referenced
         return _c[c].valid() ? _c[c]->_c[c2].get() : 0L;
     }
 
-    void releaseGLObjects();
+    //const osg::Vec3f& vert() const; // { return _mesh->v(_vi); }
+    //const osg::Vec3d& coord() const;
+    //const osg::Vec3f& normal() const;
+    //const osg::Vec3d& geoCoord() const;
+    const MeshNode& node() const;
+
+    //void releaseGLObjects();
 };
 
 #endif // OSGEARTH_DROAM_ENGINE_DIAMOND_H

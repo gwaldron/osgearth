@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/DriverOptions>
 #include <osgEarth/TMS>
 #include <osgEarth/TileKey>
 
@@ -41,6 +42,7 @@ namespace osgEarth
 
   /**
   * Defines the properties for a cache.
+  * TO BE DEPRECATED, probably in version 2.0, and replaced by a DriverOptions-compatible structure.
   */
   class OSGEARTH_EXPORT CacheConfig
   {
@@ -431,9 +433,15 @@ namespace osgEarth
   {
   public:
     /**
-    * Creates a Cache from the given CacheConfig
-    */
+     * Creates a Cache from the given CacheConfig
+     * (note: to be deprecated)
+     */
     Cache* create(const CacheConfig& cacheConfig);
+
+    /**
+     * Creates a cache from the provided DriverOptions class (new method)
+     */
+    Cache* create( const DriverOptions* options );
   };
 
 }

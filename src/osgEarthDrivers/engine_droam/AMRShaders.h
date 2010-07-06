@@ -44,6 +44,31 @@ static char source_xyzToLatLonHeight[] =
 "   return vec3(longitude, latitude, height);\n"
 "}\n";
 
+static char source_lonLatAltToXYZ[] =
+
+"vec3 lonLatAlt_to_XYZ(in vec3 lonLatAlt) \n"
+"{ \n"
+"  float RADIUS_EQUATOR = 6378137.0; \n"
+"  float RADIUS_POLAR   = 6356752.3142; \n"
+"  float FLATTENING     = (RADIUS_EQUATOR-RADIUS_POLAR)/RADIUS_EQUATOR; \n"
+"  float ECC2           = (2.0*FLATTENING) - (FLATTENING*FLATTENING); \n"
+"\n"
+"  float lat = lonLatAlt.y; \n"
+"  float lon = lonLatAlt.x; \n"
+"  float alt = lonLatAlt.z; \n"
+"  float sinLat = sin(lat); \n"
+"  float cosLat = cos(lat); \n"
+"  float n = RADIUS_EQUATOR / sqrt( 1.0 - ECC2*sinLat*sinLat ); \n"
+"  float x = (n+alt)*cosLat*cos(lon); \n"
+"  float y = (n+alt)*cosLat*sin(lon); \n"
+"  float z = (n*(1.0 - ECC2) + alt) * sinLat; \n"
+"  return vec3(x,y,z); \n"
+"} \n";
+
+// --------------------------------------------------------------------------
+
+
+
 // --------------------------------------------------------------------------
 
 static char source_slerp[] =
@@ -100,10 +125,9 @@ static char source_directionalLight[] =
 
 // --------------------------------------------------------------------------
 
-static char source_vertShaderMain[] =
+static char source_vertShaderMain_latLonMethod[] =
 
-"uniform vec3 p0, p1, p2; \n"
-"uniform vec3 n0, n1, n2; \n"
+"uniform vec3 c0, c1, c2; \n"
 "uniform vec2 t0, t1, t2; \n"
 "varying vec2 texCoord0; \n"
 "\n"
@@ -113,8 +137,31 @@ static char source_vertShaderMain[] =
 "   float u = gl_Vertex.x; \n"
 "   float v = gl_Vertex.y; \n"
 "   float w = gl_Vertex.z; // 1-u-v  \n"
-"   vec3 outVert3 = p0*u + p1*v + p2*w; \n"
-"   float h = length(p0)*u + length(p1)*v + length(p2)*w; // interpolate height \n"
+"   vec3 outCoord3 = c0*u + c1*v + c2*w; \n"
+"   vec4 outVert4 = vec4( lonLatAlt_to_XYZ( outCoord3 ), gl_Vertex.w ); \n"
+"   gl_Position = gl_ModelViewProjectionMatrix * outVert4; \n"
+"\n"
+"   // set up the tex coords for the frad shader: \n"
+"   u = gl_MultiTexCoord0.s; \n"
+"   v = gl_MultiTexCoord0.t; \n"
+"   w = 1.0 - u - v; \n"
+"   texCoord0 = t0*u + t1*v + t2*w; \n"
+"} \n";
+
+static char source_vertShaderMain_geocentricMethod[] =
+
+"uniform vec3 v0, v1, v2; \n"
+"uniform vec2 t0, t1, t2; \n"
+"varying vec2 texCoord0; \n"
+"\n"
+"void main (void) \n"
+"{ \n"
+"   // interpolate vert form barycentric coords \n"
+"   float u = gl_Vertex.x; \n"
+"   float v = gl_Vertex.y; \n"
+"   float w = gl_Vertex.z; // 1-u-v  \n"
+"   vec3 outVert3 = v0*u + v1*v + v2*w; \n"
+"   float h = length(v0)*u + length(v1)*v + length(v2)*w; // interpolate height \n"
 "   vec4 outVert4 = vec4( normalize(outVert3) * h, gl_Vertex.w ); \n"
 "   gl_Position = gl_ModelViewProjectionMatrix * outVert4; \n"
 "\n"

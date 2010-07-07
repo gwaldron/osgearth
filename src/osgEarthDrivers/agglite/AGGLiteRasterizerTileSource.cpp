@@ -89,42 +89,17 @@ public:
     {
         BuildData* bd = static_cast<BuildData*>( buildData );
 
-#if 1
-        // Scan the geometry to see if it includes line data, since that will require 
-        // buffering:
-        bool hasLines = false;
-        for( FeatureList::const_iterator i = features.begin(); i != features.end(); ++i )
-        {
-            Feature* feature = *i;
-            // later should be a osgEarth::Symbology::Geometry
-            Geometry* geom = feature->getGeometry();
-            if ( geom && geom->getComponentType() == Geometry::TYPE_LINESTRING )
-            {
-                hasLines = true;
-                break;
-            }
-        }
-
-
         // A processing context to use with the filters:
         FilterContext context;
         context.profile() = getFeatureSource()->getFeatureProfile();
         // If the geometry is lines, we need to buffer them before they will work with stenciling
-        if ( hasLines )
-        {
-            const osgEarth::Symbology::LineSymbol* line = style->getSymbol<osgEarth::Symbology::LineSymbol>();
-            if (line) {
-                BufferFilter buffer;
-                buffer.distance() = 0.5 * line->stroke()->width().value();
-                buffer.capStyle() = line->stroke()->lineCap().value();
-                context = buffer.push( features, context );
-            }
+        const osgEarth::Symbology::LineSymbol* line = style->getSymbol<osgEarth::Symbology::LineSymbol>();
+        if (line) {
+            BufferFilter buffer;
+            buffer.distance() = 0.5 * line->stroke()->width().value();
+            buffer.capStyle() = line->stroke()->lineCap().value();
+            context = buffer.push( features, context );
         }
-#else
-        // A processing context to use with the filters:
-        FilterContext context;
-        context.profile() = getFeatureSource()->getFeatureProfile();
-#endif
         // First, transform the features into the map's SRS:
         TransformFilter xform( imageExtent.getSRS() );
         context = xform.push( features, context );
@@ -167,6 +142,10 @@ public:
 
         //OE_NOTICE << "rendering " << features.size() << " features" << std::endl;
 
+        osg::Vec4 color = osg::Vec4(1, 1, 1, 1);
+        if (style) {
+            color = style->getSymbol<LineSymbol>()->stroke()->color();
+        }
         // render the features
         for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
         {
@@ -178,8 +157,8 @@ public:
             GeometryIterator gi( croppedGeometry.get() );
             while( gi.hasMore() )
             {
+                osg::Vec4 c = color;
                 Geometry* g = gi.next();
-                osg::Vec4f c = osg::Vec4(1, 1, 1, 1);
                 if (g->getType() == Geometry::TYPE_POLYGON) {
                     const PolygonSymbol* symbol = style->getSymbol<PolygonSymbol>();
                     if (symbol)
@@ -243,7 +222,7 @@ public:
                             ras.line_to_d(x1-dx, y1+dy);
 
                         ras.line_to_d(x2-dx, y2+dy);
-                    }                        
+                    }
 
                     ras.render(ren, fgColor);
                 }

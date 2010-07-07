@@ -24,7 +24,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
 #include <osg/Node>
-#include <list>
+#include <vector>
 
 namespace osgEarth
 {
@@ -95,7 +95,7 @@ namespace osgEarth
         osg::ref_ptr<const DriverOptions> _driverOptions;
     };
 
-    typedef std::list< osg::ref_ptr<ModelLayer> > ModelLayerList;
+    typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerList;
 }
 
 #endif // OSGEARTH_MODEL_LAYER_H

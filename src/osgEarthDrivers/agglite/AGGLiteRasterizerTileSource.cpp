@@ -135,7 +135,6 @@ public:
         cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMax(), 0 ));
         cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
 
-        const LineSymbol* line = style->getSymbol<LineSymbol>();
         double lineWidth = 1.0;
         if (line)
             lineWidth = (double)line->stroke()->width().value();
@@ -143,8 +142,8 @@ public:
         //OE_NOTICE << "rendering " << features.size() << " features" << std::endl;
 
         osg::Vec4 color = osg::Vec4(1, 1, 1, 1);
-        if (style) {
-            color = style->getSymbol<LineSymbol>()->stroke()->color();
+        if (line) {
+            color = line->stroke()->color();
         }
         // render the features
         for(FeatureList::iterator i = features.begin(); i != features.end(); i++)

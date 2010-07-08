@@ -57,10 +57,16 @@ namespace osgEarth { namespace Symbology
         const optional<Stroke>& halo() const { return _halo; }
 
         optional<std::string>& font() { return _font; }
-        const optional<std::string> font() const { return _font; }
+        const optional<std::string>& font() const { return _font; }
+
+        optional<std::string>& content() { return _content; }
+        const optional<std::string>& content() const { return _content; }
+
+        optional<std::string>& contentAttributeDelimiter() { return _contentAttributeDelimiter; }
+        const optional<std::string>& contentAttributeDelimiter() const { return _contentAttributeDelimiter; }
 
         optional<std::string>& attribute() { return _attribute; }
-        const optional<std::string> attribute() const { return _attribute; }
+        const optional<std::string>& attribute() const { return _attribute; }
 
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
@@ -88,6 +94,8 @@ namespace osgEarth { namespace Symbology
         optional<Stroke>          _halo;
         optional<std::string>     _font;
         optional<float>           _size;
+        optional<std::string>     _content;
+        optional<std::string>     _contentAttributeDelimiter;
         optional<std::string>     _attribute;
         optional<bool>            _rotateToScreen;
         optional<bool>            _removeDuplicateLabels;

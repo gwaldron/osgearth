@@ -24,7 +24,8 @@ TextSymbol::TextSymbol() :
 _fill( Fill( 1, 1, 1, 1 ) ),
 _halo( Stroke( 0.3, 0.3, 0.3, 1) ),
 _size( 16.0f ),
-_sizeMode( SIZEMODE_SCREEN )
+_sizeMode( SIZEMODE_SCREEN ),
+_contentAttributeDelimiter( "[]" )
 //_font( "fonts/arial.ttf" )
 {
     //nop

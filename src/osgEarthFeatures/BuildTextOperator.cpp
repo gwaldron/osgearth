@@ -34,6 +34,8 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 
+#define LC "[osgEarth::BuildTextOperator] "
+
 struct CullPlaneCallback : public osg::Drawable::CullCallback
 {
     osg::Vec3d _n;
@@ -50,6 +52,44 @@ struct CullPlaneCallback : public osg::Drawable::CullCallback
 
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
+
+// Parse a content string and replace attributes (marked with delim) with their value
+// eg. "City [name], [state]" -> "City San Fransisco, California" if delim is "[]"
+static std::string parseAttributes(Feature*           feature, 
+                                   const std::string& content,
+                                   const std::string& delim)
+{
+    if (delim.size()<2)
+        return content;
+
+    std::string out;
+    size_t pos = 0;
+    while(true) {
+        // Search for an attribute delimiter
+        size_t d = content.find_first_of(delim[0], pos);
+        if (d==std::string::npos) {
+            // No more delimiters? Add remaining text and we're done
+            out += content.substr(pos);
+            break;
+        }
+        // An attribute was found!
+        // Add non-attribute text
+        out += content.substr(pos, d-pos);
+        pos = d+1;
+        // Extract attribute name
+        d = content.find_first_of(delim[1], pos);
+        if (d==std::string::npos) {
+            // No more delimiters? Add remaining text and we're done
+            out += content.substr(pos);
+            break;
+        }
+        // Add attribute and continue
+        out += feature->getAttr( content.substr(pos, d-pos) );
+        pos = d+1;
+    }
+
+    return out;
+}
 
 osg::Node* BuildTextOperator::operator()(const FeatureList&   features, 
                                          const TextSymbol*    symbol,
@@ -73,6 +113,12 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         if (annotation)
         {
             text = annotation->text();
+        }
+        else if (symbol->content().isSet())
+        {
+             //Get the text from the specified content and referenced attributes
+             std::string content = symbol->content().value();
+             text = parseAttributes(feature, content, symbol->contentAttributeDelimiter().value());
         }
         else if (symbol->attribute().isSet())
         {

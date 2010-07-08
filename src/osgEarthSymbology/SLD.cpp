@@ -62,7 +62,8 @@ htmlColorToVec4f( const std::string& html )
 #define CSS_TEXT_REMOVE_DUPLICATE_LABELS "text-remove-duplicate-labels"
 #define CSS_TEXT_LINE_ORIENTATION "text-line-orientation"
 #define CSS_TEXT_LINE_PLACEMENT   "text-line-placement"
-
+#define CSS_TEXT_CONTENT          "text-content"
+#define CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER "text-content-attribute-delimiter"
 
 static void
 parseLineCap( const std::string& value, optional<Stroke::LineCapStyle>& cap )
@@ -175,6 +176,16 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
                 text = new TextSymbol;
             if (p->second == "centroid") text->linePlacement() = TextSymbol::LINEPLACEMENT_CENTROID;
             else if (p->second == "along-line") text->linePlacement() = TextSymbol::LINEPLACEMENT_ALONG_LINE;
+        }
+        else if (p->first == CSS_TEXT_CONTENT) {
+            if (!text)
+                text = new TextSymbol;
+            text->content() = p->second;
+        }
+        else if (p->first == CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER) {
+             if (!text)
+                 text = new TextSymbol;
+             text->contentAttributeDelimiter() = p->second;
         }
     }
     if (line)

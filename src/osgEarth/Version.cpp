@@ -18,5 +18,49 @@
  */
 
 #include <osgEarth/Common>
+#include <osgEarth/Version>
+#include <string>
+#include <stdio.h>
 
-//using namespace osgEarth;
+extern "C" {
+
+const char* osgEarthGetVersion()
+{
+    static char osgearth_version[256];
+    static int osgearth_version_init = 1;
+    if (osgearth_version_init)
+    {
+        if (OSGEARTH_VERSION_REVISION==0)
+        {
+            sprintf(osgearth_version,"%d.%d.%d",OSGEARTH_MAJOR_VERSION,OSGEARTH_MINOR_VERSION,OSGEARTH_PATCH_VERSION);
+        }
+        else
+        {
+            sprintf(osgearth_version,"%d.%d.%d-%d",OSGEARTH_MAJOR_VERSION,OSGEARTH_MINOR_VERSION,OSGEARTH_PATCH_VERSION,OSGEARTH_VERSION_REVISION);
+        }
+
+        osgearth_version_init = 0;
+    }
+    
+    return osgearth_version;
+}
+
+const char* osgEarthGetSOVersion()
+{
+    static char osgearth_soversion[32];
+    static int osgearth_soversion_init = 1;
+    if (osgearth_soversion_init)
+    {
+        sprintf(osgearth_soversion,"%d",OSGEARTH_SOVERSION);
+        osgearth_soversion_init = 0;
+    }
+    
+    return osgearth_soversion;
+}
+
+const char* osgEarthGetLibraryName()
+{
+    return "osgEarth Library";
+}
+
+}

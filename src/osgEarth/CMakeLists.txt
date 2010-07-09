@@ -63,6 +63,7 @@ SET(LIB_PUBLIC_HEADERS
     TileSourceFactory
     ThreadingUtils
     TMS
+	Version
     VersionedTerrain
     XmlUtils
 )

@@ -74,34 +74,19 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_CSTYPE                   "type"
 #define ELEM_IMAGE                    "image"
 #define ELEM_HEIGHTFIELD              "heightfield"
-//#define ELEM_VERTICAL_SCALE           "vertical_scale"
-//#define ELEM_MIN_TILE_RANGE           "min_tile_range_factor"
 #define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
 #define ELEM_USE_MERCATOR_FAST_PATH   "use_mercator_fast_path"
-//#define ATTR_DRIVER                   "driver"
-//#define ELEM_SKIRT_RATIO              "skirt_ratio"
-//#define ELEM_SAMPLE_RATIO             "sample_ratio"
-//#define ELEM_PROXY_HOST               "proxy_host"
-//#define ELEM_PROXY_PORT               "proxy_port"
-//#define ATTR_CACHE_ONLY               "cache_only"
-//#define ELEM_NORMALIZE_EDGES          "normalize_edges"
-//#define ELEM_COMBINE_LAYERS           "combine_layers"
-//#define ELEM_PREEMPTIVE_LOD           "preemptive_lod"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
 #define ATTR_TYPE                     "type"
-//#define ELEM_LAYERING_TECHNIQUE       "layering_technique"
-//#define VALUE_MULTIPASS               "multipass"
-//#define VALUE_MULTITEXTURE            "multitexture"
 #define ELEM_NODATA_IMAGE             "nodata_image"
 #define ELEM_TRANSPARENT_COLOR        "transparent_color"
 #define ELEM_CACHE_FORMAT             "cache_format"
 #define ELEM_CACHE_ENABLED            "cache_enabled"
 #define ELEM_MODEL                    "model"
-//#define ELEM_MAX_LOD                  "max_lod"
-//#define ELEM_LIGHTING                 "lighting"
-#define ELEM_MASK_MODEL               "mask_model"
+//#define ELEM_MASK_MODEL               "mask_model"
+#define ELEM_MASK                     "mask"
 #define ELEM_OPACITY                  "opacity"
 #define ELEM_ENABLED                  "enabled"
 
@@ -116,19 +101,19 @@ EarthFile::getMapEngineProperties() {
 #define ATTR_SRS                      "srs"
 
 #define ATTR_LOADING_WEIGHT           "loading_weight"
-//#define ELEM_LOADING_POLICY           "loading_policy"
-//#define ATTR_MODE                     "mode"
-//#define ATTR_LOADING_THREADS_PER_LOGICAL_PROCESSOR "loading_threads_per_logical_processor"
-//#define ATTR_LOADING_THREADS_PER_CORE "loading_threads_per_core"
-//#define ATTR_LOADING_THREADS          "loading_threads"
-//#define ATTR_TILE_GEN_THREADS         "tile_generation_threads"
 
 
 static ModelLayer*
 readModelLayer( const Config& conf )
 {
     ModelLayer* layer = new ModelLayer( conf.value("name"), new DriverOptions(conf) );
+    return layer;
+}
 
+static MaskLayer*
+readMaskLayer( const Config& conf )
+{
+    MaskLayer* layer = new MaskLayer( new DriverOptions(conf) );
     return layer;
 }
 
@@ -157,6 +142,13 @@ writeLayer( ModelLayer* layer, const std::string& typeName ="" )
     return conf;
 }
 
+static Config
+writeLayer( MaskLayer* layer )
+{
+    Config conf = layer->toConfig();
+    conf.key() = "mask";
+    return conf;
+}
 
 static bool
 readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
@@ -240,10 +232,10 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
             map->addModelLayer( layer );
     }
 
-    Config maskModel = conf.child( ELEM_MASK_MODEL );
-    if ( !maskModel.empty() )
+    Config maskLayerConf = conf.child( ELEM_MASK );
+    if ( !maskLayerConf.empty() )
     {
-        ModelLayer* layer = readModelLayer( maskModel );
+        MaskLayer* layer = readMaskLayer( maskLayerConf );
         if ( layer )
             map->setTerrainMaskLayer( layer );
     }
@@ -298,7 +290,7 @@ mapToConfig( Map* map, const MapEngineProperties& ep )
     //Terrain mask layer, if necc.
     if ( map->getTerrainMaskLayer() )
     {
-        conf.add( writeLayer( map->getTerrainMaskLayer(), ELEM_MASK_MODEL ) );
+        conf.add( writeLayer( map->getTerrainMaskLayer() ) );
     }
 
 	//TODO:  Get this from the getCache call itself, not a CacheConfig.

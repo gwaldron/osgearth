@@ -190,9 +190,9 @@ namespace osgEarth
 
         void onModelLayerRemoved( ModelLayer* layer );
 
-        void onTerrainMaskLayerAdded( ModelLayer* layer );
+        void onMaskLayerAdded( MaskLayer* layer );
 
-        void onTerrainMaskLayerRemoved( ModelLayer* layer );
+        void onMaskLayerRemoved( MaskLayer* layer );
 
     protected:    
 
@@ -216,6 +216,7 @@ namespace osgEarth
         // keep track of nodes created by model layers
         typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
         ModelLayerNodeMap _modelLayerNodes;
+        osg::Group* _maskLayerNode;
 
         static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
 

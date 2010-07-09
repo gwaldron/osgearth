@@ -148,7 +148,7 @@ Map::getModelLayers() const {
     return _modelLayers;
 }
 
-ModelLayer*
+MaskLayer*
 Map::getTerrainMaskLayer() const {
     return _terrainMaskLayer.get();
 }
@@ -388,7 +388,7 @@ Map::removeModelLayer( ModelLayer* layer )
 }
 
 void
-Map::setTerrainMaskLayer( ModelLayer* layer )
+Map::setTerrainMaskLayer( MaskLayer* layer )
 {
     if ( layer )
     {
@@ -402,7 +402,7 @@ Map::setTerrainMaskLayer( ModelLayer* layer )
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onTerrainMaskLayerAdded( layer );
+            i->get()->onMaskLayerAdded( layer );
         }	
     }
     else
@@ -416,7 +416,7 @@ Map::removeTerrainMaskLayer()
 {
     if ( _terrainMaskLayer.valid() )
     {
-        osg::ref_ptr<ModelLayer> layer = _terrainMaskLayer.get();
+        osg::ref_ptr<MaskLayer> layer = _terrainMaskLayer.get();
         {
             Threading::ScopedWriteLock lock( getMapDataMutex() );
             _terrainMaskLayer = 0L;
@@ -425,7 +425,7 @@ Map::removeTerrainMaskLayer()
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onTerrainMaskLayerRemoved( layer );
+            i->get()->onMaskLayerRemoved( layer );
         }	
     }
 }

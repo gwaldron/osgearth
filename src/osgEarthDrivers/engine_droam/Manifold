@@ -44,6 +44,7 @@ public:
     /** calculates an initial bound for the manifold. */
     virtual osg::BoundingSphere initialBound() const =0;
 
+    /** creates a mesh node for a coordinate in manifold profile */
     virtual MeshNode createNode( const osg::Vec3d& manifoldCoord ) const =0;
 };
 

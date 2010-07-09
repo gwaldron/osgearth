@@ -22,7 +22,7 @@
 
 namespace osgEarth 
 {
-    template<class T>
+    template<typename T>
     class FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
     {
     public:
@@ -47,7 +47,7 @@ namespace osgEarth
           T* _foundNode;
     };
 
-    template<class T>
+    template<typename T>
     T* findTopMostNodeOfType(osg::Node* node)
     {
         if (!node) return 0;
@@ -59,7 +59,7 @@ namespace osgEarth
         return fnotv._foundNode;
     }    
 
-    template<class T>
+    template<typename T>
     T* findFirstParentOfType(osg::Node* node)
     {
         if (!node) return 0;
@@ -69,6 +69,16 @@ namespace osgEarth
         node->accept(fnotv);
 
         return fnotv._foundNode;
+    }
+
+    template<typename T>
+    T* findRelativeNodeOfType(osg::Node* node)
+    {
+        if ( !node ) return 0;
+        T* result = findFirstParentOfType<T>( node );
+        if ( !result )
+            result = findTopMostNodeOfType<T>( node );
+        return result;
     }
 }
 

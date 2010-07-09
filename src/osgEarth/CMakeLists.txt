@@ -45,6 +45,7 @@ SET(LIB_PUBLIC_HEADERS
     MapNode
     MapEngine
     MapEngineProperties
+    MaskLayer
     MaskNode
     ModelLayer
     ModelSource
@@ -92,6 +93,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapNode.cpp
     MapEngine.cpp
     MapEngineProperties.cpp
+    MaskLayer.cpp
     MaskNode.cpp
 	MimeTypes.cpp
 	ModelLayer.cpp

@@ -81,11 +81,11 @@ struct MapNodeMapCallbackProxy : public MapCallback
     void onModelLayerRemoved( ModelLayer* layer ) {
         _node->onModelLayerRemoved( layer );
     }
-    void onTerrainMaskLayerAdded( ModelLayer* layer ) {
-        _node->onTerrainMaskLayerAdded( layer );
+    void onMaskLayerAdded( MaskLayer* layer ) {
+        _node->onMaskLayerAdded( layer );
     }
-    void onTerrainMaskLayerRemoved( ModelLayer* layer ) {
-        _node->onTerrainMaskLayerRemoved( layer );
+    void onMaskLayerRemoved( MaskLayer* layer ) {
+        _node->onMaskLayerRemoved( layer );
     }
 };
 
@@ -195,7 +195,11 @@ MapNode::init()
 	//Protect the MapNode from the Optimizer
 	setDataVariance(osg::Object::DYNAMIC);
 
+    setName( "osgEarth::MapNode" );
+
     setNumChildrenRequiringUpdateTraversal(1);
+
+    _maskLayerNode = 0L;
 
     _lastNumBlacklistedFilenames = 0;
 
@@ -227,6 +231,7 @@ MapNode::init()
 
     // make a group for terrain nodes:
     _terrainContainer = new osg::Group();
+    _terrainContainer->setName( "osgEarth::MapNode.terrainContainer" );
 
     //Give the terrain a stateset to protect it from being optimized away by the REMOVE_REDUNDANT_NODES optimization
     _terrainContainer->getOrCreateStateSet();
@@ -240,6 +245,7 @@ MapNode::init()
 
     // make a group for the model layers:
     _models = new osg::Group();
+    _models->setName( "osgEarth::MapNode.modelsGroup" );
     addChild( _models.get() );
 
     // overlays:
@@ -262,7 +268,7 @@ MapNode::init()
     }
     if ( _map->getTerrainMaskLayer() )
     {
-        onTerrainMaskLayerAdded( _map->getTerrainMaskLayer() );
+        onMaskLayerAdded( _map->getTerrainMaskLayer() );
     }
 
     updateStateSet();
@@ -575,7 +581,7 @@ struct MaskNodeFinder : public osg::NodeVisitor {
 };
 
 void
-MapNode::onTerrainMaskLayerAdded( ModelLayer* layer )
+MapNode::onMaskLayerAdded( MaskLayer* layer )
 {
     osg::Node* node = layer->getOrCreateNode();
 
@@ -593,21 +599,19 @@ MapNode::onTerrainMaskLayerAdded( ModelLayer* layer )
         
         OE_NOTICE<<"Installed terrain mask ("
             <<count<< " mask nodes found)" << std::endl;
+
+        _maskLayerNode = node->asGroup();
     }
 }
 
 void
-MapNode::onTerrainMaskLayerRemoved( ModelLayer* layer )
+MapNode::onMaskLayerRemoved( MaskLayer* layer )
 {
-    if ( layer )
+    if ( layer && _maskLayerNode )
     {
-        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
-        if ( i != _modelLayerNodes.end() )
-        {
-            osg::Group* maskNode = i->second->asGroup();
-            osg::ref_ptr<osg::Node> child = maskNode->getChild( 0 );
-            this->replaceChild( maskNode, child.get() );
-        }
+        osg::ref_ptr<osg::Node> child = _maskLayerNode->getChild( 0 );
+        this->replaceChild( _maskLayerNode, child.get() );
+        _maskLayerNode = 0L;
     }
 }
 
@@ -1085,6 +1089,6 @@ MapNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    Group::traverse(nv);
+    osg::CoordinateSystemNode::traverse(nv);
 }
 

@@ -91,7 +91,7 @@ namespace osgEarth { namespace Features
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
-        const FeatureModelSourceOptions* getFeatureModelOptions() const {
+        virtual const FeatureModelSourceOptions* getFeatureModelOptions() const {
             return _options.get(); }
 
         const osgEarth::Map* getMap() const { return _map.get(); }

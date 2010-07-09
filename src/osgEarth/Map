@@ -25,6 +25,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/MapLayer>
 #include <osgEarth/ModelLayer>
+#include <osgEarth/MaskLayer>
 #include <osgEarth/MapEngine>
 #include <osgEarth/MapEngineProperties>
 #include <osgEarth/ThreadingUtils>
@@ -50,9 +51,9 @@ namespace osgEarth
 
         virtual void onModelLayerRemoved( ModelLayer* layer ) { }
 
-        virtual void onTerrainMaskLayerAdded( ModelLayer* layer ) { }
+        virtual void onMaskLayerAdded( MaskLayer* mask ) { }
 
-        virtual void onTerrainMaskLayerRemoved( ModelLayer* layer ) { }
+        virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
     };
 
     typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
@@ -134,7 +135,7 @@ namespace osgEarth
         /**
          * Gets the model layer to draw as a terrain mask.
          */
-        ModelLayer* getTerrainMaskLayer() const;
+        MaskLayer* getTerrainMaskLayer() const;
 
         /**
          * Adds a map layer callback to this map. This will be notified whenever layers are
@@ -171,7 +172,7 @@ namespace osgEarth
          * Set a layer to use as a terrain mask. The map engine will draw
          * this layer using the stencil buffer.
          */
-        void setTerrainMaskLayer( ModelLayer* layer );
+        void setTerrainMaskLayer( MaskLayer* layer );
 
         /**
          * Removed a terrain mask layer that was set with setTerrainMaskLayer().
@@ -312,7 +313,7 @@ namespace osgEarth
         MapLayerList _imageMapLayers;
         MapLayerList _heightFieldMapLayers;
         ModelLayerList _modelLayers;
-        osg::ref_ptr<ModelLayer> _terrainMaskLayer;
+        osg::ref_ptr<MaskLayer> _terrainMaskLayer;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;

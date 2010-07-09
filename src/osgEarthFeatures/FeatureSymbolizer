@@ -28,7 +28,6 @@
 
 namespace osgEarth { namespace Features
 {
-
     class OSGEARTHFEATURES_EXPORT FeatureSymbolizerContext : public Symbology::SymbolizerContext
     {
     public:
@@ -119,19 +118,26 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSymbolizerGraph : public osg::Group
     {
     public:
-        FeatureSymbolizerGraph(SymbolizerFactory* factory) : _factory(factory), _dirty(true) {}
-        virtual void traverse(osg::NodeVisitor& nv);
-        void dirty() { _dirty = true;}
+        FeatureSymbolizerGraph(SymbolizerFactory* factory);
+
+        void dirty() { _dirty = true; }
+
+        // Forces the immediately compilation of all symbolizers under this node.
+        // (compilation is usually deferred until the update traversal).
+        void compile();
 
         virtual osg::Node* createGridSymbolizerNode(
             const Symbology::Style* style,
             const Symbology::Query& query,
-            FeatureSymbolizerContext* context);
+            FeatureSymbolizerContext* context );
 
         virtual osg::Node* createSymbolizerNode(
             const Symbology::Style* style, 
             const FeatureList& features, 
             FeatureSymbolizerContext* ctx );
+
+        //virtual void traverse(osg::NodeVisitor& nv);
+        void update();
 
     protected:
         osg::ref_ptr<SymbolizerFactory> _factory;

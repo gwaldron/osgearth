@@ -49,6 +49,7 @@ public: // Manifold overrides
     /** calculates the initial bound for the manifold. */
     osg::BoundingSphere initialBound() const;
 
+    /** creates a mesh node for a coordinate in manifold profile */
     MeshNode createNode( const osg::Vec3d& manifoldCoord ) const;
 
 public:

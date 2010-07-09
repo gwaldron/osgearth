@@ -31,7 +31,7 @@ This shows how to label point features with an attribute
                    fill: #ffff00;
                    text-halo: #0000ff;
 				   text-rotate-to-screen: true;
-                   text-attribute: name;
+				   text-content: [name];
                 }     
 
             </style>

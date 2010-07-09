@@ -25,7 +25,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-Style::Style() : _revision(0)
+Style::Style()
 {
     //NOP
 }

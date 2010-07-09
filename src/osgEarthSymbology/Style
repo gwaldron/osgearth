@@ -103,7 +103,6 @@ namespace osgEarth { namespace Symbology
         void fromCSS( const std::string& css );
 
     protected:
-        int                         _revision;
         SymbolList                  _symbols;
 
         std::string                 _origType;

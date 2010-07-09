@@ -61,7 +61,11 @@ namespace osgEarth { namespace Symbology
          */
         void setContent( const CONTENT_TYPE* value ) {
             _content = value;
-            ++_contentRevision;
+            if (_content.valid())
+            {
+                _content->sync(_contentRevision);
+            }
+            dirty();
         }
 
         /**
@@ -76,7 +80,11 @@ namespace osgEarth { namespace Symbology
          */
         void setStyle( const Style* style ) {
             _style = style;
-            ++_styleRevision;
+            if (_style.valid())
+            {
+              _style->sync(_styleRevision);
+            }
+            dirty();
         }
 
         /**

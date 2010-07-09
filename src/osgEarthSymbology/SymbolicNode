@@ -122,7 +122,9 @@ namespace osgEarth { namespace Symbology
         {
             if ( _symbolizer.valid() && _state.valid() )
             {   
-                if ( _symbolizer->getAlwaysCompile() || _state->contentDirty() || _state->styleDirty() )
+                bool contentDirty = _state->contentDirty();
+                bool styleDirty = _state->styleDirty();
+                if ( _symbolizer->getAlwaysCompile() || contentDirty || styleDirty )
                 {
                     _symbolizer->compile( _state.get(), _symGroup.get() );
 

@@ -29,9 +29,20 @@
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Graticule>
+#include <osgEarth/EarthFile>
+
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
+#include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
+
+#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
+#include <osgEarthDrivers/agglite/AGGLiteOptions>
 
 using namespace osgEarth::Drivers;
+using namespace osgEarth::Symbology;
+using namespace osgEarth::Features;
 
 // some preset viewpoints.
 static osgEarthUtil::Viewpoint VPs[] = {
@@ -79,6 +90,25 @@ struct NodeToggleHandler : public osgGA::GUIEventHandler
 
 };
 
+// a simple handler that toggles a node mask on/off
+struct ToggleModelLayerHandler : public osgGA::GUIEventHandler 
+{
+    ToggleModelLayerHandler( ModelLayer* modelLayer) : _modelLayer(modelLayer)
+    {
+    }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == 'q' )
+        {
+            _modelLayer->setEnabled( !_modelLayer->getEnabled() );
+        }
+        return false;
+    }
+
+    osg::observer_ptr< ModelLayer > _modelLayer;
+};
+
 
 int main(int argc, char** argv)
 {
@@ -115,9 +145,34 @@ int main(int argc, char** argv)
             map->addMapLayer( new HeightFieldMapLayer( "SRTM", tms.get() ) );
         }
 
-        // The MapNode will render the Map object in the scene graph.
-        osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );
+        //Add a shapefile to the map
+        {
+            //Configure the feature options
+            OGRFeatureOptions* featureOpt = new OGRFeatureOptions();
+            featureOpt->url() = "../data/world.shp";
 
+            //FeatureGeomModelOptions* opt = new FeatureGeomModelOptions();
+            //AGGLiteOptions* opt = new AGGLiteOptions();
+            FeatureStencilModelOptions* opt = new FeatureStencilModelOptions();
+            opt->featureOptions() = featureOpt;
+
+            osgEarth::Symbology::Style* style = new osgEarth::Symbology::Style; 
+            osgEarth::Symbology::LineSymbol* ls = new osgEarth::Symbology::LineSymbol;
+            ls->stroke()->color() = osg::Vec4f( 1,1,0,1 );
+            ls->stroke()->width() = 1;
+            style->addSymbol(ls); 
+            opt->styles()->addStyle(style);
+            opt->geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+
+            ModelLayer* modelLayer = new osgEarth::ModelLayer("shapefile", opt);
+            map->addModelLayer( modelLayer );               
+            //map->addMapLayer( new ImageMapLayer("world", opt) );
+            viewer.addEventHandler( new ToggleModelLayerHandler( modelLayer ) );
+
+        }
+
+        // The MapNode will render the Map object in the scene graph.
+        osgEarth::MapNode* mapNode = new osgEarth::MapNode( map );     
         earthNode = mapNode;
     }    
 

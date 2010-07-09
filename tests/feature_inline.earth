@@ -1,0 +1,37 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to use the OGR feature driver to define inline feature geometry.
+-->
+
+<map name="Feature Geometry Demo" type="geocentric">
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="states" driver="feature_stencil">
+
+	    <!-- Define an inline geometry in WKT format.
+		     See: http://en.wikipedia.org/wiki/Well-known_text#Geometric_objects -->
+	    <features driver="ogr">
+			<geometry>
+				LINESTRING(-100 30, -100 40, -100 50, -90 50, -80 50, -70 50, -70 50, -70 40, -70 30, -80 30, -90 30, -100 30)
+			</geometry>
+		</features>
+        
+        <!-- Appearance details -->
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffff00;
+                   stroke-width: 0.5;
+                }                    
+            </style>
+        </styles>
+        
+    </model>
+    
+    <lighting>false</lighting>
+  
+</map>

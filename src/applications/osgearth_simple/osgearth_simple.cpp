@@ -184,7 +184,8 @@ int main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
     {
-        //manip->setNode( mapNode->getTerrainContainer() );
+        if ( mapNode )
+            manip->setNode( mapNode->getTerrainContainer() );
 
         if ( mapNode->getMap()->isGeocentric() )
         {
@@ -204,6 +205,10 @@ int main(int argc, char** argv)
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( manip );
+
+    // NOTE: You have to call this AFTER setting the viewer's manipulator!
+    //if ( mapNode )
+    //    manip->setNode( mapNode->getTerrainContainer() );
 
     manip->getSettings()->bindMouseDoubleClick(
         osgEarthUtil::EarthManipulator::ACTION_GOTO,

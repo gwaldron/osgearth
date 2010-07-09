@@ -531,67 +531,22 @@ EarthManipulator::getMyCoordinateFrame( const osg::Vec3d& position ) const
     return coordinateFrame;
 }
 
-//    virtual osg::CoordinateFrame getCoordinateFrame(const osg::Vec3d& position) const
-//    {
-//        OSG_NOTIFY(osg::INFO)<<"getCoordinateFrame("<<position<<")"<<std::endl;
-//
-//        osg::NodePath tmpPath = _view->getCoordinateSystemNodePath();
-//
-//        if (!tmpPath.empty())
-//        {
-//            osg::Matrixd coordinateFrame;
-//
-//            osg::CoordinateSystemNode* csn = dynamic_cast<osg::CoordinateSystemNode*>(tmpPath.back());
-//            if (csn)
-//            {
-//                osg::Vec3 local_position = position*osg::computeWorldToLocal(tmpPath);
-//
-//                // get the coordinate frame in world coords.
-//                coordinateFrame = csn->computeLocalCoordinateFrame(local_position)* osg::computeLocalToWorld(tmpPath);
-//
-//                // keep the position of the coordinate frame to reapply after rescale.
-//                osg::Vec3d pos = coordinateFrame.getTrans();
-//
-//                // compensate for any scaling, so that the coordinate frame is a unit size
-//                osg::Vec3d x(1.0,0.0,0.0);
-//                osg::Vec3d y(0.0,1.0,0.0);
-//                osg::Vec3d z(0.0,0.0,1.0);
-//                x = osg::Matrixd::transform3x3(x,coordinateFrame);
-//                y = osg::Matrixd::transform3x3(y,coordinateFrame);
-//                z = osg::Matrixd::transform3x3(z,coordinateFrame);
-//                coordinateFrame.preMultScale(osg::Vec3d(1.0/x.length(),1.0/y.length(),1.0/z.length()));
-//
-//                // reapply the position.
-//                coordinateFrame.setTrans(pos);
-//
-//                OSG_NOTIFY(osg::INFO)<<"csn->computeLocalCoordinateFrame(position)* osg::computeLocalToWorld(tmpPath)"<<coordinateFrame<<std::endl;
-//
-//            }
-//            else
-//            {
-//                OSG_NOTIFY(osg::INFO)<<"osg::computeLocalToWorld(tmpPath)"<<std::endl;
-//                coordinateFrame =  osg::computeLocalToWorld(tmpPath);
-//            }
-//            return coordinateFrame;
-//        }
-//        else
-//        {
-//            OSG_NOTIFY(osg::INFO)<<"   no coordinate system found, using default orientation"<<std::endl;
-//            return osg::Matrixd::translate(position);
-//        }
-//    }
-//}
-
-
-void EarthManipulator::setNode(osg::Node* node)
+void
+EarthManipulator::setNode(osg::Node* node)
 {
-    _node = node;
-    _csn = 0L;
-    _csnPath.clear();
-    reinitialize();
+    // you can only set the node if it has not already been set, OR if you are setting
+    // it to NULL. (So to change it, you must first set it to NULL.) This is to prevent
+    // OSG from overwriting the node after you have already set on manually.
+    if ( node == 0L || !_node.valid() )
+    {
+        _node = node;
+        _csn = 0L;
+        _csnPath.clear();
+        reinitialize();
 
-    // this might be unnecessary..
-    established();
+        // this might be unnecessary..
+        established();
+    }
 }
 
 osg::Node*

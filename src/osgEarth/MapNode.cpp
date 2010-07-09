@@ -230,7 +230,7 @@ MapNode::init()
     _engine = new MapEngine( _engineProps );
 
     // make a group for terrain nodes:
-    _terrainContainer = new osg::Group();
+    _terrainContainer = new osg::CoordinateSystemNode();
     _terrainContainer->setName( "osgEarth::MapNode.terrainContainer" );
 
     //Give the terrain a stateset to protect it from being optimized away by the REMOVE_REDUNDANT_NODES optimization
@@ -436,6 +436,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     // set up the CSN values
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
+    _map->getProfile()->getSRS()->populateCoordinateSystemNode( _terrainContainer.get() );
     
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
     if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )

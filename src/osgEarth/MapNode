@@ -209,7 +209,7 @@ namespace osgEarth
         unsigned int _id;
         osg::ref_ptr<MapEngine> _engine;
         osg::ref_ptr<Map> _map;
-        osg::ref_ptr< osg::Group > _terrainContainer;
+        osg::ref_ptr< osg::CoordinateSystemNode > _terrainContainer;
         osg::ref_ptr< osg::Group > _models;
         MapEngineProperties _engineProps;
 

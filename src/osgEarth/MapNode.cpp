@@ -500,7 +500,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 void
 MapNode::onModelLayerAdded( ModelLayer* layer )
 {
-    osg::Node* node = layer->createNode();
+    osg::Node* node = layer->getOrCreateNode();
 
     if ( node )
     {
@@ -577,7 +577,7 @@ struct MaskNodeFinder : public osg::NodeVisitor {
 void
 MapNode::onTerrainMaskLayerAdded( ModelLayer* layer )
 {
-    osg::Node* node = layer->createNode();
+    osg::Node* node = layer->getOrCreateNode();
 
     if ( node && node->asGroup() )
     {

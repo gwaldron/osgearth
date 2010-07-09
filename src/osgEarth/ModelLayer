@@ -76,9 +76,12 @@ namespace osgEarth
 
     public:
 
-        osg::Node* createNode( ProgressCallback* progress =0L );
+        osg::Node* getOrCreateNode( ProgressCallback* progress =0L );
 
     public: // properties
+
+        bool getEnabled() const;
+        void setEnabled(bool enabled);
 
     public:
 
@@ -93,6 +96,10 @@ namespace osgEarth
         Config _driverConf;
         osg::ref_ptr<ModelSource> _modelSource;
         osg::ref_ptr<const DriverOptions> _driverOptions;
+
+        osg::ref_ptr< osg::Node > _node;
+
+        bool _enabled;
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerList;

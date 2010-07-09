@@ -26,7 +26,8 @@ ModelLayer::ModelLayer( const std::string& name, const std::string& driver, cons
 osg::Referenced( true ),
 _name( name ),
 _driver( driver ),
-_driverConf( driverConf )
+_driverConf( driverConf ),
+_enabled(true)
 {
     _driverConf.attr("name") = name;
     _driverConf.attr("driver") = driver;
@@ -36,7 +37,8 @@ _driverConf( driverConf )
 ModelLayer::ModelLayer( const std::string& name, const DriverOptions* options ) :
 osg::Referenced( true ),
 _name( name ),
-_driverOptions( options )
+_driverOptions( options ),
+_enabled(true)
 {
     //NOP
 }
@@ -44,7 +46,8 @@ _driverOptions( options )
 ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
 osg::Referenced( true ),
 _name( name ),
-_modelSource( source )
+_modelSource( source ),
+_enabled(true)
 {
     //NOP
 }
@@ -71,16 +74,13 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 }
 
 osg::Node*
-ModelLayer::createNode( ProgressCallback* progress )
+ModelLayer::getOrCreateNode( ProgressCallback* progress )
 {
-    osg::Node* result = 0L;
-
-    if ( _modelSource.valid() )
+    if (!_node.valid() && _modelSource.valid())
     {
-        result = _modelSource->createNode( progress );
+        _node = _modelSource->createNode( progress );
     }
-
-    return result;
+    return _node.get();
 }
 
 Config
@@ -93,4 +93,20 @@ ModelLayer::toConfig() const
     conf.attr("name") = _name;
 
     return conf;
+}
+
+bool
+ModelLayer::getEnabled() const
+{
+    return _enabled;
+}
+
+void
+ModelLayer::setEnabled(bool enabled)
+{
+    if (_enabled != enabled)
+    {
+        _enabled = enabled;
+        _node->setNodeMask( _enabled ? ~0 : 0 );
+    }
 }

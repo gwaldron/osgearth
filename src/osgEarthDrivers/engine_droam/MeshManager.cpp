@@ -59,9 +59,12 @@ _maxJobsPerFrame( MAX_JOBS_PER_FRAME )
 
     _amrGeom = new AMRGeometry();
     _amrGeom->setDataVariance( osg::Object::DYNAMIC );
+
     _amrGeode = new osg::Geode();
     _amrGeode->addDrawable( _amrGeom.get() );
     _amrGeode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), 1 );
+    
+    //_amrGeode->getStateSet()->setAttribute( _amrGeom->_program.get(), 1 );
 
     // set up the manifold framework.
     manifold->initialize( this );

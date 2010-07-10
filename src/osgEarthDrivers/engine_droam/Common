@@ -59,10 +59,6 @@ typedef int            TravNumber;     // mesh traversal number
 // the highest LOD level at which diamond splits can occur:
 #define MAX_ACTIVE_LEVEL 30
 
-// the number of quadtree levels ahead of texturing that diamond splits occur
-#define TEX_SUBRANGE_LEVELS 0
-//#define TEX_SUBRANGE_LEVELS 3
-
 // maximum number of split, merge, and image jobs to complete per UPDATE frame
 // (todo: replace with time quota)
 #define MAX_JOBS_PER_FRAME 10
@@ -71,7 +67,7 @@ typedef int            TravNumber;     // mesh traversal number
 #define MAX_ACTIVE_LEVEL 30
 
 // multiple this # by the diamond bounding sphere radius for switch-in/out distance:
-#define CULL_RANGE_FACTOR 3 //12
+#define CULL_RANGE_FACTOR 2
 
 // density of each AMR patch (number of rows/cols)
 #define AMR_PATCH_ROWS 8

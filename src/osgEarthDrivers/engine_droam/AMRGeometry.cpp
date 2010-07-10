@@ -95,36 +95,46 @@ AMRGeometry::AMRGeometry()
     initShaders();
     initPatterns();
 
-    this->setBound( osg::BoundingBox(-1e10, -1e10, -1e10, 1e10, 1e10, 1e10) );
+    //this->setBound( osg::BoundingBox(-1e10, -1e10, -1e10, 1e10, 1e10, 1e10) );
 }
 
 AMRGeometry::AMRGeometry( const AMRGeometry& rhs, const osg::CopyOp& op ) :
-osg::Geometry( rhs, op )
+osg::Drawable( rhs, op ) //osg::Geometry( rhs, op )
 {
     //todo
+    setInitialBound( osg::BoundingBox(-1e10, -1e10, -1e10, 1e10, 1e10, 1e10) );
+}
+
+osg::BoundingBox
+AMRGeometry::computeBound() const
+{
+    osg::BoundingBox box;
+    for( AMRDrawableList::const_iterator i = _drawList.begin(); i != _drawList.end(); ++i )
+    {
+        const AMRTriangleList& prims = i->get()->_triangles;
+        for( AMRTriangleList::const_iterator j = prims.begin(); j != prims.end(); ++j )
+        {
+            j->get()->expand( box );
+        }
+    } 
+    return box;
 }
 
 void
 AMRGeometry::clearDrawList()
 {
-    _drawList.clear();
+    if ( _drawList.size() > 0 )
+    {
+        _drawList.clear();
+        dirtyBound();
+    }
 }
 
 void
 AMRGeometry::setDrawList( const AMRDrawableList& drawList )
 {
     _drawList = drawList;
-
-    osg::BoundingBox box;
-    for( AMRDrawableList::const_iterator i = _drawList.begin(); i != _drawList.end(); ++i )
-    {
-        const AMRTriangleList& prims = i->get()->_primitives;
-        for( AMRTriangleList::const_iterator j = prims.begin(); j != prims.end(); ++j )
-        {
-            j->get()->expand( box );
-        }
-    }
-    setBound( box );
+    dirtyBound();
 }
 
 void
@@ -135,9 +145,10 @@ AMRGeometry::initShaders()
     _program->setName( "AMRGeometry" );
 
     osg::Shader* vertexShader = new osg::Shader( osg::Shader::VERTEX,
-        std::string( source_lonLatAltToXYZ ) +
+        std::string( source_vertShaderMain_flatMethod )
         //std::string( source_vertShaderMain_geocentricMethod )
-        std::string( source_vertShaderMain_latLonMethod )
+        //std::string( source_lonLatAltToXYZ ) +
+        //std::string( source_vertShaderMain_latLonMethod )
         );
 
     vertexShader->setName( "AMR Vert Shader" );
@@ -151,7 +162,7 @@ AMRGeometry::initShaders()
     _program->addShader( fragmentShader );
 
     // the shader program:
-    this->getOrCreateStateSet()->setAttributeAndModes( _program.get(), osg::StateAttribute::ON );
+    this->getOrCreateStateSet()->setAttribute( _program.get(), osg::StateAttribute::ON );
 }
 
 static void
@@ -189,93 +200,95 @@ toBarycentric(const osg::Vec3& p1, const osg::Vec3& p2, const osg::Vec3& p3,
 void
 AMRGeometry::initPatterns()
 {
-    _patternSize = 0;
+    _numPatternVerts = 0;
+    _numPatternElements = 0;
+    _numPatternStrips = 0;
+    _numPatternTriangles = 0;
 
     this->setUseVertexBufferObjects( true );
+    this->setUseDisplayList( false );
 
-    osg::Vec3Array* v = new osg::Vec3Array();
-    this->setVertexArray( v );
+    _patternVBO = new osg::VertexBufferObject();
 
-    osg::Vec2Array* t0 = new osg::Vec2Array();
-    this->setTexCoordArray( 0, t0 );
+    _verts = new osg::Vec3Array();
+    _verts->setVertexBufferObject( _patternVBO.get() );
+
+    _texCoords = new osg::Vec2Array();
+    _texCoords->setVertexBufferObject( _patternVBO.get() );
  
     // build a right-triangle pattern. (0,0) is the lower-left (90d),
     // (0,1) is the lower right (45d) and (1,0) is the upper-left (45d)
+    osg::Vec3f p1(0,0,0), p2(0,1,0), p3(1,0,0);
+
+    for( int r=AMR_PATCH_ROWS-1; r >=0; --r )
     {
-        osg::Vec3f p1(0,0,0), p2(0,1,0), p3(1,0,0);
-
-        for( int r=AMR_PATCH_ROWS-1; r >=0; --r )
+        int cols = AMR_PATCH_ROWS-r;
+        //OE_INFO << "ROW " << r << std::endl;
+        for( int c=0; c<cols; ++c )
         {
-            int cols = AMR_PATCH_ROWS-r;
-            //OE_INFO << "ROW " << r << std::endl;
-            for( int c=0; c<cols; ++c )
-            {
-                osg::Vec3 point( (float)c/(float)(AMR_PATCH_ROWS-1), (float)r/(float)(AMR_PATCH_ROWS-1), 0 );
-                osg::Vec3 baryVert;
-                osg::Vec2 baryTex;
-                toBarycentric( p1, p2, p3, point, baryVert, baryTex );
-                v->push_back( baryVert );
-                t0->push_back( baryTex );
-
-                //OE_INFO << "   " << std::fixed 
-                //    << ec.x() << "," << ec.y() << "," << ec.z() << " ==> "
-                //    << bc.x() << "," << bc.y() << "," << bc.z() << std::endl;
-            }
-        }
-
-        unsigned short off = 0;
-        unsigned short rowptr = off;
-
-        for( int r=1; r<AMR_PATCH_ROWS; ++r )
-        {
-            //OE_INFO << "ROW " << r << std::endl;
-            rowptr += r;
-            osg::DrawElementsUShort* e = new osg::DrawElementsUShort( GL_TRIANGLE_STRIP );
-            e->setElementBufferObject( this->getOrCreateElementBufferObject() );
-
-            for( int c=0; c<=r; ++c )
-            {
-                e->push_back( rowptr + c );
-                //OE_INFO << " " << rowptr+c << ",";
-                
-                if ( c < r ) {
-                    e->push_back( rowptr + c - r );
-                    //OE_INFO << rowptr+c-r << ",";
-                }
-            }
-            OE_INFO << std::endl;
-            _pattern.push_back( e );
-
-            //OE_INFO << LC << "Added element to pattern, size = " << e->size() << std::endl;
-            _patternSize += e->size();
+            osg::Vec3 point( (float)c/(float)(AMR_PATCH_ROWS-1), (float)r/(float)(AMR_PATCH_ROWS-1), 0 );
+            osg::Vec3 baryVert;
+            osg::Vec2 baryTex;
+            toBarycentric( p1, p2, p3, point, baryVert, baryTex );
+            _verts->push_back( baryVert );
+            _texCoords->push_back( baryTex );
         }
     }
+    _numPatternVerts = _verts->size();
+
+    unsigned short off = 0;
+    unsigned short rowptr = off;
+
+    _patternEBO = new osg::ElementBufferObject();
+
+    for( int r=1; r<AMR_PATCH_ROWS; ++r )
+    {
+        rowptr += r;
+        osg::DrawElementsUShort* e = new osg::DrawElementsUShort( GL_TRIANGLE_STRIP );
+        e->setElementBufferObject( _patternEBO.get() );            
+
+        for( int c=0; c<=r; ++c )
+        {
+            e->push_back( rowptr + c );               
+            if ( c < r )
+                e->push_back( rowptr + c - r );
+        }
+        OE_INFO << std::endl;
+        _pattern.push_back( e );
+
+        _numPatternStrips++;
+        _numPatternElements += e->size();
+        _numPatternTriangles += (e->size()-1)/2;     
+    }
+
+    OE_INFO << LC
+        << "Pattern: "   << std::dec
+        << "verts="      << _numPatternVerts
+        << ", strips="   << _numPatternStrips
+        << ", tris="     << _numPatternTriangles
+        << ", elements=" << _numPatternElements
+        << std::endl;
 }
 
+static int s_numTemplates = 0;
 
 void
 AMRGeometry::drawImplementation( osg::RenderInfo& renderInfo ) const
 {   
-    // Copied all this from Geometry::drawImplementation. 
-    // TODO: cull it down to just what we need.
     osg::State& state = *renderInfo.getState();
-
+    
     // bind the VBO:
-    state.setVertexPointer(_vertexData.array.get());
+    state.setVertexPointer( _verts.get() );
 
     // bind the texture coordinate arrrays:
-    for( unsigned int unit = 0; unit < _texCoordList.size(); ++unit )
-    {
-        const osg::Array* array = _texCoordList[unit].array.get();
-        if (array) state.setTexCoordPointer( unit, array );
-    }
+    state.setTexCoordPointer( 0, _texCoords.get() );
 
-    //OE_INFO << LC 
-    //    << "Rendering " << _drawList.size() << " tris, "
-    //    << _drawList.size()*_patternSize << " verts" << std::endl;
-
-    // this will enable the amrgeometry's stateset (and activate the Program)
+    // this will enable the amr geometry's stateset (and activate the Program)
     state.pushStateSet( this->getStateSet() );
+    //state.pushStateSet(0L);
+    //_program->apply( state );
+
+    int numTemplates = 0;
 
     for( AMRDrawableList::const_iterator i = _drawList.begin(); i != _drawList.end(); ++i )
     {
@@ -284,21 +297,35 @@ AMRGeometry::drawImplementation( osg::RenderInfo& renderInfo ) const
         // apply the drawable's state changes:
         state.pushStateSet( drawable->_stateSet.get() );
 
-        for( AMRTriangleList::const_iterator j = drawable->_primitives.begin(); j != drawable->_primitives.end(); ++j )
+        for( AMRTriangleList::const_iterator j = drawable->_triangles.begin(); j != drawable->_triangles.end(); ++j )
         {
-            const AMRTriangle* prim = j->get();
+            const AMRTriangle* dtemplate = j->get();
 
             // apply the primitive's state changes:
-            state.apply( prim->_stateSet.get() );
+            state.apply( dtemplate->_stateSet.get() );
 
             // render the pattern (a collection of primitive sets)
             for( Pattern::const_iterator p = _pattern.begin(); p != _pattern.end(); ++p )
             {
                 p->get()->draw( state, true );
             }
+
+            numTemplates++;
         }
 
         state.popStateSet();
+    }
+
+    if ( s_numTemplates != numTemplates )
+    {
+        s_numTemplates = numTemplates;
+        OE_INFO << LC << std::dec 
+            << "templates="  << numTemplates
+            << ", verts="    << numTemplates*_numPatternVerts
+            << ", strips="   << numTemplates*_numPatternStrips
+            << ", tris="     << numTemplates*_numPatternTriangles
+            << ", elements=" << numTemplates*_numPatternElements
+            << std::endl;
     }
 
     // unbind the buffer objects.

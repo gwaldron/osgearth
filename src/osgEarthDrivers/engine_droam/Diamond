@@ -78,7 +78,6 @@ struct Diamond : osg::Referenced
     bool _queuedForSplit;               // whether this diamond is in the split queue.
     bool _queuedForMerge;               // whether this diamond is in the merge queue.
     bool _queuedForImage;               // whether this diamond is in the image queue.
-    osg::BoundingSphere _bs;            // this diamond's bounds
     bool _bsComputed;                   // whether _bs has been computed yet
     bool _imageRequested;               // whether the texture image has been submitted to the task service
     osg::ref_ptr<RevisionedStateSet> _stateSet; // stateset for this diamond level
@@ -87,6 +86,12 @@ struct Diamond : osg::Referenced
     Diamond* _currentStateSetOwner;     // Diamond that owns the stateset we are currently using
     osgEarth::Revision _targetStateSetRevision;   // Revision of the stateset we are rendering with
     bool _hasFinalImage;                // whether the final texture has been loaded into the stateset.
+    
+    osg::BoundingSphere _visibleBound;  // this diamond's visible extent (for drawing)
+    const osg::BoundingSphere& visibleBound() const;
+
+    osg::BoundingSphere _extendedBound; // this diamond's extended extent (for split/merge determination)  
+    const osg::BoundingSphere& extendedBound() const;
 
     osg::ref_ptr<osgEarth::TaskRequest> _imageRequest;
 
@@ -94,8 +99,6 @@ struct Diamond : osg::Referenced
 
     /** print debugging info */
     void dump();
-
-    const osg::BoundingSphere& getBound();
 
     /** Sets the diamond centroid coordinate and adds it to the mesh. */
     void setCoord( double x, double y, double z ) { setCoord( osg::Vec3d(x,y,z) ); }

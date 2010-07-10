@@ -172,26 +172,27 @@ static char source_vertShaderMain_geocentricMethod[] =
 "   texCoord0 = t0*u + t1*v + t2*w; \n"
 "} \n";
 
-//static char source_vertShaderMain[] =
-//"uniform vec3 p0, p1, p2, n0, n1, n2; \n"
-//"uniform vec2 t0, t1, t2; \n"
-//"varying vec2 texCoord0; \n"
-//"\n"
-//"void main (void) \n"
-//"{ \n"
-//"   // interpolate vert form barycentric coords \n"
-//"   float u = gl_Vertex.y; \n"
-//"   float v = gl_Vertex.z; \n"
-//"   float w = gl_Vertex.x; // 1-u-v  \n"
-//"   vec4 outVert = vec4( p0*w + p1*u + p2*v, gl_Vertex.w );  \n"
-//"   gl_Position = gl_ModelViewProjectionMatrix * outVert; \n"
-//"\n"
-//"   u = gl_MultiTexCoord0.s; \n"
-//"   v = gl_MultiTexCoord0.t; \n"
-//"   w = 1.0 - u - v; \n"
-//"   texCoord0 = t0*u + t1*v + t2*w; \n"
-////"   texCoord0 = gl_MultiTexCoord0; \n"
-//"} \n";
+static char source_vertShaderMain_flatMethod[] =
+
+"uniform vec3 v0, v1, v2; \n"
+"uniform vec2 t0, t1, t2; \n"
+"varying vec2 texCoord0; \n"
+"\n"
+"void main (void) \n"
+"{ \n"
+"   // interpolate vert form barycentric coords \n"
+"   float u = gl_Vertex.x; \n"
+"   float v = gl_Vertex.y; \n"
+"   float w = gl_Vertex.z; // 1-u-v  \n"
+"   vec4 outVert4 = vec4( v0*u + v1*v + v2*w, gl_Vertex.w); \n"
+"   gl_Position = gl_ModelViewProjectionMatrix * outVert4; \n"
+"\n"
+"   // set up the tex coords for the frad shader: \n"
+"   u = gl_MultiTexCoord0.s; \n"
+"   v = gl_MultiTexCoord0.t; \n"
+"   w = 1.0 - u - v; \n"
+"   texCoord0 = t0*u + t1*v + t2*w; \n"
+"} \n";
 
 // --------------------------------------------------------------------------
 

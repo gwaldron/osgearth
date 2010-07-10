@@ -86,30 +86,6 @@ Diamond::~Diamond()
     //OE_NOTICE << s_numDiamonds << " ... " << std::endl;
 }
 
-//const osg::Vec3&
-//Diamond::vert() const
-//{
-//    return _mesh->vert( _vi );
-//}
-//
-//const osg::Vec3d&
-//Diamond::coord() const
-//{
-//    return _mesh->coord( _vi );
-//}
-//
-//const osg::Vec3f&
-//Diamond::normal() const
-//{
-//    return _mesh->normal( _vi );
-//}
-//
-//const osg::Vec3d&
-//Diamond::geoCoord() const
-//{
-//    return _mesh->geoCoord( _vi );
-//}
-
 const MeshNode&
 Diamond::node() const
 {
@@ -166,15 +142,15 @@ Diamond::activate()
 }
 
 
-const osg::BoundingSphere&
-Diamond::getBound()
-{
-    if ( !_bsComputed )
-    {
-        computeBound();
-    }
-    return _bs;
-}
+//const osg::BoundingSphere&
+//Diamond::getBound()
+//{
+//    if ( !_bsComputed )
+//    {
+//        computeBound();
+//    }
+//    return _bs;
+//}
 
 void
 Diamond::setCoord( const osg::Vec3d& coord )
@@ -286,12 +262,13 @@ Diamond::cull( osgUtil::CullVisitor* cv )
     _lastCullFrame = cv->getTraversalNumber();
     
     const osg::Vec3d& eye = cv->getEyePoint();
-    float range = (eye - getBound().center()).length();
-    bool isVisible = true;
+    float range = (eye - visibleBound().center()).length();
 
-    // trivial rejection: the bound does not intersect the view frustum
-    // (note: we do NOT frustum-cull intermediate diamonds)
-    if ( _hasGeometry && cv->isCulled( getBound() ) )
+    // NOTE: we never cull intermediate (non-geometry) diamonds.
+
+    // if this geometry diamond is outside the extended bounds, it is eligible for merge AND
+    // the diamond is not visible.
+    if ( _hasGeometry && cv->isCulled( extendedBound() ) )
     {
         // start merging the children if this diamond fails the visibility tests.
         if (_level >= _mesh->_minActiveLevel && 
@@ -309,9 +286,6 @@ Diamond::cull( osgUtil::CullVisitor* cv )
     // Back-face culling:
     // If the dot product of the eyepoint with each of the four ancestors is negative, then the
     // entire diamond is facing away from the camera and can be culled.
-    //TODO: this does not work that great for some reason. Things disappear when the eyepoint
-    // gets too low to the ground. Probably the higher-level disamond are getting culled
-    // too soon....
     if ( _hasGeometry )
     {
         int i;
@@ -319,7 +293,7 @@ Diamond::cull( osgUtil::CullVisitor* cv )
         {
             osg::Vec3d eye_vec = eye - _a[i]->node()._vertex;
             double len = eye_vec.length();
-            if ( len <= getBound().radius() ) break; // if we're inside the radius, bail
+            if ( len <= visibleBound().radius() ) break; // if we're inside the radius, bail
             double dev = ( eye_vec * _a[i]->node()._normal ) / len;
             if ( dev >= DEVIATION ) break;
         }
@@ -327,6 +301,11 @@ Diamond::cull( osgUtil::CullVisitor* cv )
             return 0;
     }
 
+    // this will determine whether we actually add this diamond to the draw list later. we still
+    // have to traverse children that are in the extended bounds (even if they're not in the view
+    // frustum) in order to satifsy split requirements.
+    bool inVisibleFrustum =
+        _hasGeometry && !cv->isCulled( visibleBound() );
 
     // at this point, culling is now complete for this diamond.
 
@@ -352,10 +331,11 @@ Diamond::cull( osgUtil::CullVisitor* cv )
         }
     }
 
-    if ( _hasGeometry && _amrDrawable->_primitives.size() == 00 && numChildren < _childValence )
+    if ( _hasGeometry && _amrDrawable->_triangles.size() == 0 && numChildren < _childValence )
         OE_WARN << "BOOGER" << std::endl;
 
-    if ( _hasGeometry && _amrDrawable->_primitives.size() > 0 )
+    //if ( _hasGeometry && _amrDrawable->_triangles.size() > 0 )
+    if ( inVisibleFrustum )
     {
         _mesh->_amrDrawList.push_back( _amrDrawable.get() );
     }
@@ -367,7 +347,7 @@ Diamond::cull( osgUtil::CullVisitor* cv )
     if ( _level >= _mesh->_minActiveLevel && _level < _mesh->_maxActiveLevel )
     {
         if (!_isSplit && 
-            range < _bs.radius() * CULL_RANGE_FACTOR &&
+            range < extendedBound().radius() * CULL_RANGE_FACTOR &&
             !_queuedForSplit &&
             !_queuedForMerge &&
             numChildren < _childValence )
@@ -378,7 +358,7 @@ Diamond::cull( osgUtil::CullVisitor* cv )
 
         else if (
             _isSplit &&
-            range > _bs.radius() * CULL_RANGE_FACTOR &&
+            range > extendedBound().radius() * CULL_RANGE_FACTOR &&
             !_queuedForSplit &&
             !_queuedForMerge &&
             numChildren > 0 )
@@ -396,13 +376,30 @@ void
 Diamond::computeBound()
 {
     // in vert space.
-    _bs = osg::BoundingSphere( node()._vertex, 1.0 );
+    _visibleBound = osg::BoundingSphere( node()._vertex, 1.0 );
     for(int i=0; i<4; i++) 
-        _bs.expandRadiusBy( _a[i]->node()._vertex );
+        _visibleBound.expandRadiusBy( _a[i]->node()._vertex );
 
-    _bs.radius() = _bs.radius() * sqrt(2.0) * 2.0;
+    _extendedBound = _visibleBound;
+    _extendedBound.radius() = _extendedBound.radius() * sqrt(2.0) * 2.0;
 
     _bsComputed = true;
+}
+
+const osg::BoundingSphere&
+Diamond::visibleBound() const
+{
+    if ( !_bsComputed )
+        const_cast<Diamond*>(this)->computeBound();
+    return _visibleBound;
+}
+
+const osg::BoundingSphere&
+Diamond::extendedBound() const
+{
+    if ( !_bsComputed )
+        const_cast<Diamond*>(this)->computeBound();
+    return _extendedBound;
 }
 
 void
@@ -453,7 +450,7 @@ Diamond::dirty()
 #ifdef USE_DIRTY_QUEUE
             _mesh->queueForRefresh( this );
 #else
-            refreshPrimitiveSet();
+            refreshDrawable();
 #endif
         }
     }
@@ -527,7 +524,7 @@ Diamond::refreshDrawable()
     int o = _orientation;
     
     // Start by clearing out the old primitive set:
-    _amrDrawable->_primitives.clear();
+    _amrDrawable->_triangles.clear();
 
     //if ( false ) //!_isSplit ) // took this out to preserve the diamond center point.
     //{

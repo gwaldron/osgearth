@@ -61,10 +61,10 @@ class AMRDrawable : public osg::Referenced
 {
 public:
     AMRDrawable();
-    void add( AMRTriangle* primitive ) { _primitives.push_back( primitive ); }
+    void add( AMRTriangle* triangle ) { _triangles.push_back( triangle ); }
 
     osg::ref_ptr<osg::StateSet> _stateSet;
-    AMRTriangleList _primitives;
+    AMRTriangleList _triangles;
 };
 
 typedef std::vector< osg::ref_ptr<AMRDrawable> > AMRDrawableList;
@@ -77,12 +77,14 @@ typedef std::vector< osg::ref_ptr<AMRDrawable> > AMRDrawableList;
  * using a virtual vertex manifold and a globally shared VBO that contains the
  * refinement patches.
  */
-class AMRGeometry : public osg::Geometry
+class AMRGeometry : public osg::Drawable //osg::Geometry
 {
 public:
     AMRGeometry();
     AMRGeometry( const AMRGeometry& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Object( osgEarth, AMRGeometry );
+
+    virtual osg::BoundingBox computeBound() const;
 
 public:
     /** Empties the draw list of manifold triangles. */
@@ -103,8 +105,17 @@ private:
     // in the future we may support more than one pattern (for LOD matching, e.g.)
     typedef std::vector< osg::ref_ptr<osg::DrawElements> > Pattern;
     Pattern _pattern;
-    int _patternSize;
+    int _numPatternVerts;
+    int _numPatternElements;
+    int _numPatternStrips;
+    int _numPatternTriangles;
+    
+    osg::ref_ptr<osg::Vec3Array>           _verts;
+    osg::ref_ptr<osg::Vec2Array>           _texCoords;
+    osg::ref_ptr<osg::VertexBufferObject>  _patternVBO;
+    osg::ref_ptr<osg::ElementBufferObject> _patternEBO;
 
+public: // temp
     // shader program that draws the virtual geometry
     osg::ref_ptr<osg::Program> _program;
 

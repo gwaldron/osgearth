@@ -38,6 +38,7 @@ rasterizing it into image tiles.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
+
         <styles>
             <style type="text/css">
                 default {

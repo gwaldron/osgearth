@@ -47,7 +47,7 @@ using namespace OpenThreads;
 
 /********************************************************************/
 
-
+static int firstCall = 0;
 class AGGLiteRasterizerTileSource : public FeatureTileSource
 {
 public:
@@ -87,19 +87,43 @@ public:
         const GeoExtent& imageExtent,
         osg::Image* image )
     {
+#if 0
+        if (firstCall > 0 )
+            return false;
+        firstCall++;
+#endif
+
+#if 0
+        bool found = false;
+        for(FeatureList::iterator i = features.begin(); i != features.end(); i++) {
+            if (i->get()->getAttr("name") == std::string("Iowa")) {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return false;
+#endif
+        
+
         BuildData* bd = static_cast<BuildData*>( buildData );
 
         // A processing context to use with the filters:
         FilterContext context;
         context.profile() = getFeatureSource()->getFeatureProfile();
-        // If the geometry is lines, we need to buffer them before they will work with stenciling
         const osgEarth::Symbology::LineSymbol* line = style->getSymbol<osgEarth::Symbology::LineSymbol>();
+#if 1
         if (line) {
             BufferFilter buffer;
-            buffer.distance() = 0.5 * line->stroke()->width().value();
+            buffer.distance() = .5 * line->stroke()->width().value();
             buffer.capStyle() = line->stroke()->lineCap().value();
             context = buffer.push( features, context );
+        } else {
+            BufferFilter buffer;
+            buffer.distance() = 1.0;
+            context = buffer.push( features, context );
         }
+#endif
         // First, transform the features into the map's SRS:
         TransformFilter xform( imageExtent.getSRS() );
         context = xform.push( features, context );
@@ -115,7 +139,7 @@ public:
 		ras.gamma(1.3);
         //ras.gamma(2.2);
 		//ras.filling_rule(agg::fill_non_zero);
-        ras.filling_rule(agg::fill_even_odd);
+    ras.filling_rule(agg::fill_even_odd);
 
         // initialize:
 
@@ -129,6 +153,7 @@ public:
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);
 
+        OE_INFO << "agglite extent min " << cropExtent.xMin() <<  " " << cropExtent.yMin() << " max " << cropExtent.xMax() << " " << cropExtent.yMax() << std::endl;
         osg::ref_ptr<Symbology::Polygon> cropPoly = new Symbology::Polygon( 4 );
         cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMin(), 0 ));
         cropPoly->push_back( osg::Vec3d( cropExtent.xMax(), cropExtent.yMin(), 0 ));
@@ -149,6 +174,13 @@ public:
         for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
         {
             bool first = bd->_pass == 0 && i == features.begin();
+
+            if (i->get()->getAttr("name") != std::string("Iowa"))
+                continue;
+
+            for(FeatureList::iterator j = features.begin(); j != features.end(); j++) {
+                OE_INFO << "agglite feature " << j->get()->getAttr("name") << std::endl;
+            }
 
             osg::ref_ptr< Geometry > croppedGeometry = Feature::cropGeometry(cropPoly.get(), i->get()->getGeometry());
             if (!croppedGeometry.valid()) continue;
@@ -227,6 +259,7 @@ public:
                 }
                 else // polygon
                 {
+
                     for( Geometry::iterator p = g->begin(); p != g->end(); p++ )
                     {
                         const osg::Vec3d& p0 = *p;
@@ -247,7 +280,7 @@ public:
                 }
 
                 ras.reset();
-            }            
+            }
         }
 
         bd->_pass++;

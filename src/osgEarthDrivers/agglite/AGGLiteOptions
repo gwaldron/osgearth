@@ -32,15 +32,22 @@ namespace osgEarth { namespace Drivers
     public: // properties
 
     public: // ctors
-        AGGLiteOptions( const PluginOptions* opt =0L ) : FeatureTileSourceOptions( opt ) {
+        optional<bool>& relativeLineSize() { return _relativeLineSize; }
+        const optional<bool>& relativeLineSize() const { return _relativeLineSize; }
+
+        AGGLiteOptions( const PluginOptions* opt =0L ) : FeatureTileSourceOptions( opt ), _relativeLineSize(true) {
             driver() = "agglite";
+            config().getIfSet( "relative_line_size", _relativeLineSize );
         }
 
     protected:
         Config toConfig() const {
             Config conf = FeatureTileSourceOptions::toConfig();
+            conf.updateIfSet("relative_line_size", _relativeLineSize);
             return conf;
         }
+
+        optional<bool> _relativeLineSize;
     };
 
 } } // namespace osgEarth::Drivers

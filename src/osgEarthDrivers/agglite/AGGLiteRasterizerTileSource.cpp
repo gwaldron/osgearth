@@ -121,10 +121,23 @@ public:
         context.profile() = getFeatureSource()->getFeatureProfile();
         const osgEarth::Symbology::LineSymbol* line = style->getSymbol<osgEarth::Symbology::LineSymbol>();
 
+        // initialize:
+        double xmin = imageExtent.xMin();
+        double ymin = imageExtent.yMin();
+        double s = (double)image->s();
+        double t = (double)image->t();
+        double xf = (double)image->s() / imageExtent.width();
+        double yf = (double)image->t() / imageExtent.height();
+
         if (line) {
             BufferFilter buffer;
-            buffer.distance() = 0.005*line->stroke()->width().value();
             buffer.capStyle() = line->stroke()->lineCap().value();
+            if (_settings->relativeLineSize().value()) {
+                double ratio = 1.0/xf;
+                buffer.distance() = ratio * line->stroke()->width().value();
+            } else {
+                buffer.distance() = line->stroke()->width().value();
+            }
             context = buffer.push( features, context );
         }
 
@@ -143,13 +156,6 @@ public:
         ras.gamma(1.3);
         ras.filling_rule(agg::fill_even_odd);
 
-        // initialize:
-        double xmin = imageExtent.xMin();
-        double ymin = imageExtent.yMin();
-        double s = (double)image->s();
-        double t = (double)image->t();
-        double xf = (double)image->s() / imageExtent.width();
-        double yf = (double)image->t() / imageExtent.height();
 
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);

@@ -1,0 +1,41 @@
+<!--
+osgEarth Sample
+-->
+
+<map name="Feature Stencil Demo" type="round">
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <image name="world" driver="agglite">
+
+        <!-- Configure the OGR feature driver to read the shapefile.
+             Convert the goemetry to lines, and apply a small buffer
+             to give the lines thickness. -->
+             
+        <features name="world" driver="ogr">
+            <url>../data/world.shp</url>
+            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <geometry_type>line</geometry_type>
+                
+        <!-- This driver uses the "stroke-width" property below to define
+             the width (in data source coordinates) of the draped lines.
+             In this case the units are degrees. -->
+             
+        <styles>
+            <style type="text/css">
+                world {
+                   stroke: #ffffff;
+                   stroke-opacity: 1.0;
+                   stroke-width: 0.75;
+                }            
+            </style>
+        </styles>
+        
+    </image>
+  
+</map>

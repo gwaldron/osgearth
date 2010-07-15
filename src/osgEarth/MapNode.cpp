@@ -203,11 +203,15 @@ MapNode::init()
 
     _lastNumBlacklistedFilenames = 0;
 
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
-    _id = s_mapNodeID++;
+    // genearte a new unique mapnode ID
+    {
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
+        _id = s_mapNodeID++;
+    }
 
     _map->setId( _id );
 
+    // establish global driver options
     const osgDB::ReaderWriter::Options* global_options = _map->getGlobalOptions();
     osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ? 
         new osgDB::ReaderWriter::Options( *global_options ) :
@@ -225,6 +229,9 @@ MapNode::init()
         << std::endl;
 
     _map->setGlobalOptions( local_options.get() );
+
+    // validate and adjust the engine properties as necessary:
+    validateEngineProps( _engineProps );
 
     // create the map engine that wil geneate tiles for this node:
     _engine = new MapEngine( _engineProps );
@@ -1093,3 +1100,18 @@ MapNode::traverse(osg::NodeVisitor& nv)
     osg::CoordinateSystemNode::traverse(nv);
 }
 
+void
+MapNode::validateEngineProps( MapEngineProperties& props )
+{
+    // make sure all the requested properties are compatible, and fall back as necessary.
+
+    // warn against mixing multipass technique with preemptive/sequential mode:
+    if (props.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS &&
+        props.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    {
+        OE_WARN << LC << "Multi-pass layering technique is not compatible with preemptive/sequential loading policy;" << std::endl;
+        OE_WARN << LC << "Falling back on standard loading policy." << std::endl;
+
+        props.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+    }
+}

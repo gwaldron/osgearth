@@ -243,6 +243,8 @@ namespace osgEarth
         void moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex );
 
         void updateElevation(VersionedTile* tile);
+
+        void validateEngineProps( MapEngineProperties& props );
     };
 }
 

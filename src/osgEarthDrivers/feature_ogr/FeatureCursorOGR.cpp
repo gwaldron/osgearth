@@ -48,6 +48,9 @@ _spatialFilter( 0L )
         OGR_SCOPED_LOCK;
 
         std::string expr;
+        std::string from = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ));
+        from = std::string("'") + from + std::string("'");
+
         if ( query.expression().isSet() )
         {
             // build the SQL: allow the Query to include either a full SQL statement or
@@ -60,19 +63,17 @@ _spatialFilter( 0L )
             bool complete = temp.find( "select" ) == 0;
             if ( temp.find( "select" ) != 0 )
             {
-                OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn( _layerHandle ); // just a ref.
                 std::stringstream buf;
-                buf << "SELECT * FROM " << OGR_FD_GetName( layerDef ) << " WHERE " << expr;
-				std::string bufStr;
-				bufStr = buf.str();
+                buf << "SELECT * FROM " << from << " WHERE " << expr;
+                std::string bufStr;
+                bufStr = buf.str();
                 expr = bufStr;
             }
         }
         else
         {
-            OGRFeatureDefnH layerDef = OGR_L_GetLayerDefn( _layerHandle ); // just a ref.
             std::stringstream buf;
-            buf << "SELECT * FROM " << OGR_FD_GetName( layerDef );
+            buf << "SELECT * FROM " << from;
             expr = buf.str();
         }
 
@@ -90,6 +91,7 @@ _spatialFilter( 0L )
             OGR_G_AddGeometryDirectly( _spatialFilter, ring ); 
             // note: "Directly" above means _spatialFilter takes ownership if ring handle
         }
+
 
         _resultSetHandle = OGR_DS_ExecuteSQL( _dsHandle, expr.c_str(), _spatialFilter, 0L );
 

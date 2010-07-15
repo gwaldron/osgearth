@@ -1218,18 +1218,27 @@ struct ReleaseGLCallback : public osg::Camera::DrawCallback
 
     ReleaseGLCallback()
 	{
+        //nop
 	}
 
-    void operator()( osg::RenderInfo& renderInfo ) const {
-		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(const_cast<ReleaseGLCallback*>(this)->_terrainMutex);
-		for (ObserverTerrainList::const_iterator itr = _terrains.begin(); itr != _terrains.end(); ++itr)
-		{ 
-			osg::ref_ptr< VersionedTerrain > vt = itr->get();
-			if (vt.valid())
-			{
-				(*itr)->releaseGLObjectsForTiles(renderInfo.getState());
-			}
-		}
+    void operator()( osg::RenderInfo& renderInfo ) const
+    {
+        // first release GL objects as necessary
+        {
+		    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(const_cast<ReleaseGLCallback*>(this)->_terrainMutex);
+		    for (ObserverTerrainList::const_iterator itr = _terrains.begin(); itr != _terrains.end(); ++itr)
+		    { 
+			    osg::ref_ptr< VersionedTerrain > vt = itr->get();
+			    if (vt.valid())
+			    {
+				    (*itr)->releaseGLObjectsForTiles(renderInfo.getState());
+			    }
+		    }
+        }
+
+        // then call the previous CB if there is one
+        if ( _previousCB.valid() )
+            _previousCB->operator ()( renderInfo );
     }
 
 	void registerTerrain(VersionedTerrain *terrain)
@@ -1257,6 +1266,7 @@ struct ReleaseGLCallback : public osg::Camera::DrawCallback
 
 	OpenThreads::Mutex _terrainMutex;
 	ObserverTerrainList _terrains;    
+    osg::ref_ptr<osg::Camera::DrawCallback> _previousCB;
 };
 
 static bool s_releaseCBInstalled = false;
@@ -1550,7 +1560,9 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
         if ( cam )
         {
             OE_INFO << "Explicit releaseGLObjects() enabled" << std::endl;
+            osg::ref_ptr<osg::Camera::DrawCallback> previousCB = cam->getPostDrawCallback();
 			cam->setPostDrawCallback( s_releaseCB.get() );
+            s_releaseCB->_previousCB = previousCB.get();
             s_releaseCBInstalled = true;
         }
     }

@@ -142,7 +142,6 @@ GeoLocator::getGeographicFromGeocentric( )
     return NULL;
 }
 
-
 /****************************************************************************/
 
 

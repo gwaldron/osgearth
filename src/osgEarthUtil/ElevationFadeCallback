@@ -31,10 +31,10 @@
 
 namespace osgEarthUtil
 {
-	/**
-	*The ElevationFadeCallback works in conjunction with a FadeLayerNode to fade between layers at specified elevation points
-	*Note:  The ElevationFadeCallback must be installed on the FadeLayerNode as both a cull cullback and as an update callback to function properly
-	*/
+    /**
+     * A callback that sets layers' opacity based of the elevation of the camera.
+     * Helpful for fading layers in and out as your altitude changes.
+     */
 	class OSGEARTHUTIL_EXPORT ElevationFadeCallback : public osg::NodeCallback
 	{
 	public:
@@ -45,32 +45,25 @@ namespace osgEarthUtil
 
 		virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
-		/**
-		*Gets the elevation at which layer i will be visible
-		*/
-		double getElevation(unsigned int i) const;
-
-		/**
-		*Sets the elevation at which layer i will be visible
-		*/
-		void setElevation(unsigned int i, double elevation);
-
-		/**
-		*Gets the animation time
-		*/
-		float getAnimationTime() const;
-
-		/**
-		*Sets the animation time
-		*/
-		void setAnimationTime(float animationTime);
+        /**
+         * Sets the fade elevation range for a layer
+         */
+        void setElevationRange(
+            osgEarth::MapLayer* layer, 
+            float maxElevation, 
+            float minElevation,
+            float maxBuffer = -1.0f,
+            float minBuffer = 0.0f );
 
 	private:
      	osg::observer_ptr<osg::CoordinateSystemNode> _csn;
 		double _currentElevation;
 
-		typedef std::vector<double> Elevations;
-		Elevations _elevations;
+        struct ElevationRange {
+            float min, max, minBuffer, maxBuffer;
+        };
+        typedef std::map< osg::observer_ptr<osgEarth::MapLayer>, ElevationRange> LayerElevationRanges;
+        LayerElevationRanges _ranges;
 
 		bool _firstFrame;
 		double _previousTime;

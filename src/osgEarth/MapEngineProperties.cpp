@@ -137,6 +137,7 @@ MapEngineProperties::toConfig() const
 
     conf.addIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
     conf.addIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
+    conf.addIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
 
     conf.addIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
     conf.addIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
@@ -176,6 +177,7 @@ MapEngineProperties::fromConfig( const Config& conf )
 
     conf.getIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
     conf.getIfSet( "layering_technique", "multiteture", _layeringTechnique, LAYERING_MULTITEXTURE );
+    conf.getIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
 
     conf.getIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
     conf.getIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);

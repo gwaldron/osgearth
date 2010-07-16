@@ -184,8 +184,8 @@ struct OpacityCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->opacity() =
-                _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->opacity().value() + _opacityDelta;
+            float oldOpacity = _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->opacity().value();
+            _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setOpacity( oldOpacity + _opacityDelta );
         }
         return true;
     }
@@ -579,7 +579,7 @@ int main(int argc, char** argv)
 
     for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
     {
-		mapNode->getMap()->getImageMapLayers()[i]->opacity() = 1.0f;
+		mapNode->getMap()->getImageMapLayers()[i]->setOpacity( 1.0f ); //opacity() = 1.0f;
 		mapNode->getMap()->getImageMapLayers()[i]->enabled() = true;
     }
 

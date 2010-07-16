@@ -31,104 +31,91 @@ _previousTime(0.0),
 _animationTime(2.0f),
 _currentElevation(0)
 {
+    //nop
 }
 
-void ElevationFadeCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+void
+ElevationFadeCallback::setElevationRange(MapLayer* layer,
+                                         float maxElevation, float minElevation,
+                                         float maxBuffer,    float minBuffer)
 {
-	MapNode* mapNode = static_cast<MapNode*>(node);
-	if (mapNode)
-	{
-		if (nv->getVisitorType() == NodeVisitor::UPDATE_VISITOR)
-		{
-			if (!_firstFrame)
-			{
-				double deltaTime = nv->getFrameStamp()->getReferenceTime() - _previousTime;
+    _ranges.erase( layer );
+    ElevationRange range;
+    range.min = minElevation;
+    range.max = maxElevation;
+    range.minBuffer = osg::clampAbove( minBuffer, 0.0f );
+    range.maxBuffer = maxBuffer >= 0.0f ? maxBuffer : 0.1 * (maxElevation-minElevation);
+    _ranges[layer] = range;
+}
 
-				_previousTime = nv->getFrameStamp()->getReferenceTime();
+void
+ElevationFadeCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
+{
+    if ( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        //Get the current elevation
+        _currentElevation = nv->getViewPoint().z();
+        if (!_csn.valid())
+        {
+            _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>(node);
+        }
+        if (_csn.valid())
+        {
+            osg::EllipsoidModel* em = _csn->getEllipsoidModel();
+            if (em)
+            {
+                double x = nv->getViewPoint().x();
+                double y = nv->getViewPoint().y();
+                double z = nv->getViewPoint().z();
+                double latitude, longitude;
+                em->convertXYZToLatLongHeight(x, y, z, latitude, longitude, _currentElevation);
+            }
+        }
+    }
 
-				double delta = osg::minimum(deltaTime / _animationTime, 1.0);
+    else if ( nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        if ( !_firstFrame )
+        {
+            double deltaTime = nv->getFrameStamp()->getReferenceTime() - _previousTime;
+            double delta = osg::minimum(deltaTime / _animationTime, 1.0);
 
-                //TODO:
-                //GW: access top ImageMapLayers is unsafe throughout this method... FIXME
-                unsigned int numImageSources = 0;
+            for( LayerElevationRanges::iterator i = _ranges.begin(); i != _ranges.end(); ++i )
+            {
+                osg::ref_ptr<MapLayer> layerSafe = i->first.get();
+                if ( layerSafe.valid() )
                 {
-                    Threading::ScopedReadLock lock( mapNode->getMap()->getMapDataMutex() );
-                    numImageSources = mapNode->getMap()->getImageMapLayers().size();
+                    float opacity = 1.0f;
+                    const ElevationRange& range = i->second;
+                    if ( _currentElevation < range.min-range.minBuffer || _currentElevation > range.max+range.maxBuffer )
+                    {
+                        opacity = 0.0f;
+                    }
+                    else
+                    {
+                        if ( _currentElevation > range.max && range.maxBuffer > 0.0f )
+                        {
+                            opacity = 1.0f - (_currentElevation-range.max)/range.maxBuffer;
+                        }
+                        else if ( _currentElevation < range.min && range.minBuffer > 0.0f )
+                        {
+                            opacity = (_currentElevation-range.min-range.minBuffer)/range.minBuffer;
+                        }
+                        else
+                        {
+                            opacity = 1.0f;
+                        }
+                    }
+
+                    if ( opacity != layerSafe->opacity().value() )
+                        layerSafe->setOpacity( opacity );
                 }
+            }
+        }
+        _firstFrame = false;
+        _previousTime = nv->getFrameStamp()->getReferenceTime();
+    }
 
-				//Determine which layer should be active
-				unsigned int activeLayer = numImageSources-1;
-				for (unsigned int i = 0; i < numImageSources; ++i)
-				{
-					if (_currentElevation > getElevation(i))
-					{
-						activeLayer = i;
-						break;
-					}
-				}
-
-				bool dirtyLayers = false;
-				for (unsigned int i = 0; i < numImageSources; ++i)
-				{
-					//If the layer that we are looking at is greater than the active layer, we want to fade it out to 0.0
-					//Otherwise, we want the layers to go to 1.0
-					float goalOpacity = (i > activeLayer) ? 0.0f : 1.0f;
-					float currentOpacity = mapNode->getMap()->getImageMapLayers()[i]->opacity().value();
-
-					if (goalOpacity != currentOpacity)
-					{
-						float opacityDelta = delta;
-						if (currentOpacity > goalOpacity) opacityDelta = -opacityDelta;
-						float newOpacity = currentOpacity + opacityDelta;
-						mapNode->getMap()->getImageMapLayers()[i]->opacity() = newOpacity; //setOpacity(newOpacity);
-					}
-				}
-			}
-			_firstFrame = false;
-		}
-		else if (nv->getVisitorType() == NodeVisitor::CULL_VISITOR)
-		{
-			//Get the current elevation
-			_currentElevation = nv->getViewPoint().z();
-			if (!_csn.valid())
-			{
-				_csn = findTopMostNodeOfType<osg::CoordinateSystemNode>(node);
-			}
-			if (_csn.valid())
-			{
-				osg::EllipsoidModel* em = _csn->getEllipsoidModel();
-				if (em)
-				{
-					double x = nv->getViewPoint().x();
-					double y = nv->getViewPoint().y();
-					double z = nv->getViewPoint().z();
-					double latitude, longitude;
-					em->convertXYZToLatLongHeight(x, y, z, latitude, longitude, _currentElevation);
-				}
-			}
-		}
-	}
-	//Continue traversal
-	traverse(node, nv);
+    traverse( node, nv );
 }
 
-double ElevationFadeCallback::getElevation(unsigned int i) const
-{
-	return (i < _elevations.size()) ? _elevations[i] : 0.0;
-}
-
-void ElevationFadeCallback::setElevation(unsigned int i, double elevation)
-{
-	if (i >= _elevations.size()) _elevations.resize( i + 1);
-	_elevations[i] = elevation;
-}
-
-float ElevationFadeCallback::getAnimationTime() const
-{
-	return _animationTime;
-}
-
-void ElevationFadeCallback::setAnimationTime(float animationTime)
-{
-	_animationTime = animationTime;
-}

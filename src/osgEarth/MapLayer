@@ -34,6 +34,18 @@
 
 namespace osgEarth
 {
+    class MapLayer;
+
+    /**
+     * Controller interface for updating layer settings that can be changed at run-time.
+     * internal class - no export
+     */
+    class MapLayerController : public osg::Referenced
+    {
+    public:
+        virtual void updateOpacity( MapLayer* layer ) =0;
+    };
+
     /**
      * One layer in the map.
      */
@@ -144,8 +156,9 @@ namespace osgEarth
 		/**
 		 * The opacity of this layer's image tile
 		 */
-        optional<float>& opacity() { return _opacity; }
+        //optional<float>& opacity() { return _opacity; }
         const optional<float>& opacity() const { return _opacity; }
+        void setOpacity( float value );
 
         /**
          * The gamma value for this layer's image tiles
@@ -288,6 +301,13 @@ namespace osgEarth
         
         virtual Config toConfig() const;
 
+        /**
+         * Applies a controller to this layer so that the terrain implementation
+         * can update properties at runtime
+         */
+        void setController( MapLayerController* controller ) {
+            _controller = controller;  }
+
     protected:
 
 		void initTileSource();
@@ -350,6 +370,8 @@ namespace osgEarth
         void init();
         void fromConfig( const Config& conf );
         GeoImage* postProcess( GeoImage* img );
+
+        osg::observer_ptr<MapLayerController> _controller;
     };
 
     /**

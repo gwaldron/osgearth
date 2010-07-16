@@ -212,6 +212,8 @@ namespace osgEarth
         osg::ref_ptr< osg::CoordinateSystemNode > _terrainContainer;
         osg::ref_ptr< osg::Group > _models;
         MapEngineProperties _engineProps;
+        osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
+        osg::ref_ptr< MapLayerController > _mapLayerController;
 
         // keep track of nodes created by model layers
         typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
@@ -225,6 +227,12 @@ namespace osgEarth
         TerrainCallbackList _pendingTerrainCallbacks;
 
         unsigned _lastNumBlacklistedFilenames;
+
+    private: // MapLayerController functions
+
+        friend class MapNodeMapLayerController;
+
+        void updateLayerOpacity( MapLayer* layer );
 
     private:
     
@@ -245,6 +253,8 @@ namespace osgEarth
         void updateElevation(VersionedTile* tile);
 
         void validateEngineProps( MapEngineProperties& props );
+
+        void refreshLayerUniforms();
     };
 }
 

@@ -331,38 +331,6 @@ MapLayer::getMaxDataLevel() const
 	return 20;
 }
 
-//optional<ProfileConfig>&
-//MapLayer::profileConfig() {
-//    return _profileConf;
-//}
-//const optional<ProfileConfig>&
-//MapLayer::profileConfig() const {
-//    return _profileConf;
-//}
-//
-//optional<std::string>& 
-//MapLayer::noDataImageFilename()
-//{
-//	return _nodata_image_filename;
-//}
-//const optional<std::string>&
-//MapLayer::noDataImageFilename() const
-//{
-//	return _nodata_image_filename;
-//}
-
-//const std::string&
-//MapLayer::getCacheFormat() const
-//{
-//	return _cacheFormat;
-//}
-//
-//void
-//MapLayer::setCacheFormat(const std::string& cacheFormat)
-//{
-//	_cacheFormat = cacheFormat;
-//}
-
 std::string
 MapLayer::suggestCacheFormat() const
 {
@@ -487,6 +455,15 @@ MapLayer::getReferenceURI() const {
 void
 MapLayer::setReferenceURI( const std::string& uri ) {
     _referenceURI = uri;
+}
+
+void
+MapLayer::setOpacity( float value ) 
+{
+    _opacity = osg::clampBetween( value, 0.0f, 1.0f );
+    osg::ref_ptr<MapLayerController> _controllerSafe= _controller.get();
+    if ( _controllerSafe.valid() )
+        _controllerSafe->updateOpacity( this );
 }
 
 GeoImage*

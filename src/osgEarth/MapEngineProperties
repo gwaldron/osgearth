@@ -209,7 +209,10 @@ namespace osgEarth
 			LAYERING_MULTIPASS,
 
             /** Use a multitexture control to blend image layers together (DEFAULT) */
-			LAYERING_MULTITEXTURE
+			LAYERING_MULTITEXTURE,
+
+            /** Composite image layers into a single texture */
+            LAYERING_COMPOSITE
 		};
 
 		/**

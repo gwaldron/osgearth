@@ -59,6 +59,72 @@ ImageUtils::getColor(const osg::Image* image, int s, int t, int r)
 }
 
 bool
+ImageUtils::setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& color)
+{
+    if ( image->getDataType() == GL_UNSIGNED_BYTE )
+    {
+        unsigned char* p = image->data(s, t, r);
+        *p++ = (char)(color.r() * 255.0f);
+        *p++ = (char)(color.g() * 255.0f);
+        *p++ = (char)(color.b() * 255.0f);
+        if ( image->getPixelFormat() == GL_RGBA )
+            *p++ = (char)(color.a() * 255.0f);
+        return true;
+    }
+    else 
+    if ( image->getDataType() == GL_UNSIGNED_SHORT_5_5_5_1 )
+    {
+        //TODO
+        OE_WARN << LC << "setColor(GL_UNSIGNED_SHORT_5_5_5_1) not yet implemented!" << std::endl;
+    }
+    else
+    if ( image->getDataType() == GL_UNSIGNED_BYTE_3_3_2 )
+    {
+        //TODO
+        OE_WARN << LC << "setColor(GL_UNSIGNED_BYTE_3_3_2) not yet implemented!" << std::endl;
+    }
+
+    return false;
+}
+
+bool
+ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
+{
+    if (!src || !dst ||
+        dst_start_col + src->s() > dst->s() ||
+        dst_start_row + src->t() > dst->t() )
+    {
+        return false;
+    }
+
+    // check for fast bytewise copy:
+    if (src->getPacking() == dst->getPacking() &&
+        src->getDataType() == dst->getDataType() &&
+        src->getPixelFormat() == dst->getPixelFormat() )
+    {
+        for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
+        {
+            const void* src_data = src->data( 0, src_row, 0 );
+            void* dst_data = dst->data( dst_start_col, dst_row, 0 );
+            memcpy( dst_data, src_data, src->getRowSizeInBytes() );
+        }
+    }
+
+    // otherwise loop through an convert pixel-by-pixel.
+    else
+    {
+        for( int src_t=0, dst_t=dst_start_row; src_t < src->t(); src_t++, dst_t++ )
+        {
+            for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
+            {
+                setColor( dst, dst_s, dst_t, 0, getColor(src, src_s, src_t) );                
+            }
+        }
+    }
+}
+
+#if 0
+bool
 ImageUtils::copyAsSubImage( const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
 {
     if (!src || !dst || 
@@ -80,6 +146,7 @@ ImageUtils::copyAsSubImage( const osg::Image* src, osg::Image* dst, int dst_star
 
     return true;
 }
+#endif
 
 osg::Image*
 ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned int new_t )
@@ -270,6 +337,43 @@ ImageUtils::convertToRGB(const osg::Image *image)
 
 	return NULL;
 }
+//
+//osg::Image* convertToRGBA(const osg::Image* image)
+//{
+//    if ( image )
+//    {
+//        if ( image->getPixelFormat() == GL_RGBA )
+//        {
+//            return new osg::Image( *image );
+//        }
+//
+//        else
+//        {
+//            osg::Image* result = new osg::Image();
+//            result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
+//
+//            for( int r=0; r<image->r(); ++r )
+//            {
+//                for( int s=0; s<image->s(); ++s )
+//                {
+//                    for( int t=0; t<image->t(); ++t )
+//                    {
+//                        osg::Vec4f color = image->getColor( s, t, r );
+//                        unsigned char* data = result->data( s, t, r );
+//                        *data++ = (unsigned char)(color.r()*255.0f);
+//                        *data++ = (unsigned char)(color.g()*255.0f);
+//                        *data++ = (unsigned char)(color.b()*255.0f);
+//                        *data++ = (unsigned char)(color.a()*255.0f);
+//                    }
+//                }
+//            }
+//             
+//            return result;
+//        }
+//
+//    }
+//    return 0L;
+//}
 
 bool 
 ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)

@@ -23,6 +23,7 @@ SET(LIB_PUBLIC_HEADERS
 	CacheSeed
     Common
     Compositing
+    CompositingTerrainTechnique
     Config
     Cube
     DriverOptions
@@ -75,6 +76,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Caching.cpp
     CacheSeed.cpp
     Compositing.cpp
+    CompositingTerrainTechnique.cpp
     Config.cpp
     Cube.cpp
     DriverOptions.cpp

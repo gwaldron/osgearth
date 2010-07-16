@@ -47,75 +47,48 @@ int main(int argc, char** argv)
   // construct the viewer.
   osgViewer::Viewer viewer(arguments);
 
-  osg::Group* group = new osg::Group;
+  std::string temp;
 
-  osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);
-  if (loadedModel.valid())
-  {
-    group->addChild(loadedModel.get());
-  }
-  else
-  {
-      //Create the map dynamically
-	  MapEngineProperties props;
-      osg::ref_ptr<MapNode> mapNode = new MapNode(props);
+  float elevationInterval = 4e6;
+  if ( arguments.read( "--interval", temp ) )
+      sscanf( temp.c_str(), "%f", &elevationInterval );
 
-      //Add the yahoo satellite layer
-      {
-          YahooOptions* imagery = new YahooOptions();
-          imagery->dataset() = "satellite";
-          mapNode->getMap()->addMapLayer( new ImageMapLayer( "Satellite", imagery ) );
-      }
+  float fadeBuffer = 3e6;
+  if ( arguments.read( "--buffer", temp ) )
+      sscanf( temp.c_str(), "%f", &fadeBuffer );
 
-      //Add the yahoo maps layer
-      {
-          YahooOptions* roads = new YahooOptions();
-          roads->dataset() = "roads";
-          mapNode->getMap()->addMapLayer( new ImageMapLayer( "Roads", roads ) );
-      }
-
-      group->addChild(mapNode.get());
-  }
+  osg::ref_ptr<osg::Node> root = osgDB::readNodeFiles(arguments);
 
   //Find the map
-  MapNode* mapNode = findTopMostNodeOfType<MapNode>(group);
-
-  Node* root = group;
+  MapNode* mapNode = findTopMostNodeOfType<MapNode>(root.get());
   if (mapNode)
   {
-      FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties() );
-
-      unsigned int numImageLayers = mapNode->getMap()->getImageMapLayers().size();
-
-      //Set all of the layer's opacity to 0.0 except for the first one
-      for (unsigned int i = 1; i < numImageLayers; ++i)
-      {
-          //fadeLayerNode->setOpacity(i, 0.0f);
-		  mapNode->getMap()->getImageMapLayers()[i]->opacity() = 0.0f;
-      }
-      //fadeLayerNode->setOpacity(0, 1.0f);
-	  mapNode->getMap()->getImageMapLayers()[0]->opacity() = 1.0f;
+      MapLayerList imageLayers;
+      mapNode->getMap()->getImageMapLayers( imageLayers );
 
 	  //Setup the ElevationFadeCallback
 	  ElevationFadeCallback* callback = new ElevationFadeCallback();
 
 	  //Set the up elevation fade points
-	  double maxElevation = 4e6;
-	  for (unsigned int i = 0; i < numImageLayers; ++i)
+      callback->setElevationRange( imageLayers[0].get(), FLT_MAX, elevationInterval, fadeBuffer );
+	  for (unsigned int i = 1; i < imageLayers.size(); ++i )
 	  {
-		  callback->setElevation( i, maxElevation );
-		  maxElevation /= 2.0;
+          callback->setElevationRange( imageLayers[i].get(), elevationInterval, 0.0f, elevationInterval/4.0f );
+		  elevationInterval /= 2.0f;
 	  }
-
+      callback->setElevationRange( imageLayers[imageLayers.size()-1].get(), elevationInterval*2.0f, 0.0f );
+      
 	  //Attach the callback as both an update and a cull callback
-      //fadeLayerNode->setUpdateCallback(callback);
-      //fadeLayerNode->setCullCallback(callback);
-	  mapNode->setUpdateCallback( callback );
-	  mapNode->setCullCallback( callback );
+	  mapNode->addUpdateCallback( callback );
+	  mapNode->addCullCallback( callback );
 
-      root = fadeLayerNode;
-
-      fadeLayerNode->addChild(group);
+      // multitexture mode currently requires some help
+      if ( mapNode->getEngine()->getEngineProperties().layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
+      {
+          FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties() );
+          fadeLayerNode->addChild( root.get() );
+          root = fadeLayerNode;
+      }
   }
   else
   {
@@ -132,7 +105,7 @@ int main(int argc, char** argv)
   viewer.setCameraManipulator( manip );
 
   // set the scene to render
-  viewer.setSceneData(root);
+  viewer.setSceneData( root.get() );
 
   // run the viewers frame loop
   return viewer.run();

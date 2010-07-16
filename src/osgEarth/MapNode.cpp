@@ -22,6 +22,7 @@
 #include <osgEarth/FindNode>
 #include <osgEarth/EarthTerrainTechnique>
 #include <osgEarth/MultiPassTerrainTechnique>
+#include <osgEarth/CompositingTerrainTechnique>
 #include <osgEarth/TileSourceFactory>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
@@ -40,15 +41,16 @@ using namespace OpenThreads;
 
 #define LC "[osgEarth::MapNode] "
 
+#define CHILD_TERRAINS 0
+#define CHILD_MODELS   1
+
+//---------------------------------------------------------------------------
+
 //static
 OpenThreads::ReentrantMutex MapNode::s_mapNodeCacheMutex;
 static unsigned int s_mapNodeID = 0;
 //Caches the MapNodes that have been created
 typedef std::map<unsigned int, osg::observer_ptr<MapNode> > MapNodeCache;
-
-
-#define CHILD_TERRAINS 0
-#define CHILD_MODELS   1
 
 static
 MapNodeCache& getMapNodeCache()
@@ -56,6 +58,8 @@ MapNodeCache& getMapNodeCache()
     static MapNodeCache s_cache;
     return s_cache;
 }
+
+//---------------------------------------------------------------------------
 
 // adapter that lets MapNode listen to Map events
 struct MapNodeMapCallbackProxy : public MapCallback
@@ -88,6 +92,27 @@ struct MapNodeMapCallbackProxy : public MapCallback
         _node->onMaskLayerRemoved( layer );
     }
 };
+
+//---------------------------------------------------------------------------
+
+namespace osgEarth
+{
+    class MapNodeMapLayerController : public MapLayerController
+    {
+    public:
+        MapNodeMapLayerController( MapNode* mapNode ) : _node(mapNode) { }
+
+        void updateOpacity( MapLayer* layer ) 
+        {
+            _node->updateLayerOpacity( layer );
+        }
+
+    private:
+        MapNode* _node;
+    };
+}
+
+//---------------------------------------------------------------------------
 
 class RemoveBlacklistedFilenamesVisitor : public osg::NodeVisitor
 {
@@ -126,6 +151,7 @@ public:
       unsigned int _numRemoved;
 };
 
+//---------------------------------------------------------------------------
 
 void
 MapNode::registerMapNode(MapNode* mapNode)
@@ -161,7 +187,6 @@ MapNode::getId() const
 {
     return _id;
 }
-
 
 MapNode::MapNode() :
 _map( new Map() )
@@ -257,6 +282,9 @@ MapNode::init()
 
     // overlays:
     _pendingOverlayAutoSetTextureUnit = true;
+
+    // the layer controller allows you to use the MapLayer API to affect top-level changes in MapNode:
+    _mapLayerController = new MapNodeMapLayerController( this );
 
     // go through the map and process any already-installed layers:
     unsigned int index = 0;
@@ -457,9 +485,9 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
     {
 		terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
-        OE_INFO << "[MapNode] Layering technique = MULTIPASS" << std::endl;
+        OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;
     }
-    else // LAYERING_MULTITEXTURE (default)
+    else if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
     {
         EarthTerrainTechnique *et = new osgEarth::EarthTerrainTechnique();
         //If we are using triangulate interpolation, tell the terrain technique to just create simple triangles with
@@ -469,7 +497,12 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
             et->setOptimizeTriangleOrientation(false);
         }
 		terrain->setTerrainTechniquePrototype( et  );
-        OE_INFO << "[MapNode] Layering technique = MULTITEXTURE" << std::endl;
+        OE_INFO << LC << "Layering technique = MULTITEXTURE" << std::endl;
+    }
+    else if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_COMPOSITE )
+    {
+        terrain->setTerrainTechniquePrototype( new osgEarth::CompositingTerrainTechnique() );
+        OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
     }
 
     // apply any pending callbacks:
@@ -626,25 +659,28 @@ MapNode::onMaskLayerRemoved( MaskLayer* layer )
 void
 MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
-    if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    if ( layer )
     {
-        if ( layer && layer->getTileSource() )
+        if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
         {
-            getTerrain()->incrementRevision();
-            getTerrain()->updateTaskServiceThreads();
+            if ( layer->getTileSource() )
+            {
+                getTerrain()->incrementRevision();
+                getTerrain()->updateTaskServiceThreads();
+            }
+            updateStateSet();
         }
-        updateStateSet();
-    }
 
-    if ( layer && layer->getTileSource() )
-    {        
-        if ( layer->getType() == MapLayer::TYPE_IMAGE )
-        {
-            addImageLayer( layer );
-        }
-        else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
-        {
-            addHeightFieldLayer( layer );
+        if ( layer->getTileSource() )
+        {        
+            if ( layer->getType() == MapLayer::TYPE_IMAGE )
+            {
+                addImageLayer( layer );
+            }
+            else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
+            {
+                addHeightFieldLayer( layer );
+            }
         }
     }
 }
@@ -655,11 +691,14 @@ MapNode::addImageLayer( MapLayer* layer )
     //TODO: review the scope of this mapdata mutex lock within this method. We can 
     // probably optimize it some
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    
+    // apply a controller to the layer so we can process runtime property updates:
+    layer->setController( _mapLayerController.get() );
 
+    // visit all existing terrain tiles and inform each one of the new image layer:
     TerrainTileList tiles;
     getTerrain()->getTerrainTiles( tiles );
 
-    // visit all existing terrain tiles and inform each one of the new image layer:
     for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
         VersionedTile* tile = static_cast< VersionedTile* >( itr->get() );
@@ -999,86 +1038,128 @@ MapNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
 
 void MapNode::updateStateSet()
 {
-	if (_engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS)
-        return;
+    // ASSUMPTION: map data mutex is held
 
-    if ( _engineProps.combineLayers() == true )
+    if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
     {
-        int numLayers = _map->getImageMapLayers().size();
-
-        osg::StateSet* stateset = getOrCreateStateSet();
-
-        if (numLayers == 1)
+        if ( _engineProps.combineLayers() == true )
         {
-            osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
-            stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
-        }
-        else if (numLayers >= 2)
-        {
-            //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
+            int numLayers = _map->getImageMapLayers().size();
+
+            osg::StateSet* stateset = getOrCreateStateSet();
+
+            if (numLayers == 1)
             {
-                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
-
-                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
-                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+1);
-                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
-
-                texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
-                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource1_Alpha(osg::TexEnvCombine::TEXTURE0+0);
-                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
-
-                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
-                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-
+                osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
                 stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
             }
-
-
-            //For textures 2 and beyond, blend them together with the previous
-            //Add the alpha values of this unit and the previous unit
-            for (int unit = 1; unit < numLayers-1; ++unit)
+            else if (numLayers >= 2)
             {
-                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
+                //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
+                {
+                    osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                    texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                    texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
 
-                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
-                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+unit+1);
-                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+                    texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                    texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                    texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+1);
+                    texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
 
-                texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource1_Alpha(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+                    texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
+                    texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                    texenv->setSource1_Alpha(osg::TexEnvCombine::TEXTURE0+0);
+                    texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
 
-                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
-                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+                    texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                    texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
 
-                stateset->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
-            }
+                    stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+                }
 
-            //Modulate the colors to get proper lighting on the last unit
-            //Keep the alpha results from the previous stage
-            {
-                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-                texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
-                texenv->setCombine_Alpha(osg::TexEnvCombine::REPLACE);
 
-                texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource0_Alpha(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+                //For textures 2 and beyond, blend them together with the previous
+                //Add the alpha values of this unit and the previous unit
+                for (int unit = 1; unit < numLayers-1; ++unit)
+                {
+                    osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                    texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                    texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
 
-                texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
-                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
+                    texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                    texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                    texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+unit+1);
+                    texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                    texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+                    texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                    texenv->setSource1_Alpha(osg::TexEnvCombine::PREVIOUS);
+                    texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                    texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                    texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                    stateset->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
+                }
+
+                //Modulate the colors to get proper lighting on the last unit
+                //Keep the alpha results from the previous stage
+                {
+                    osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                    texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+                    texenv->setCombine_Alpha(osg::TexEnvCombine::REPLACE);
+
+                    texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+                    texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                    texenv->setSource0_Alpha(osg::TexEnvCombine::PREVIOUS);
+                    texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                    texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+                    texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                    stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
+                }
             }
         }
+    }
+
+    // update the layer uniform arrays:
+    osg::StateSet* stateSet = this->getOrCreateStateSet();
+
+    MapLayerList imageLayers;
+    _map->getImageMapLayers( imageLayers );
+
+    stateSet->removeUniform( "osgearth_imagelayer_opacity" );
+    
+    if ( imageLayers.size() > 0 )
+    {
+        _layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", imageLayers.size() );
+        for( MapLayerList::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+            _layerOpacityUniform->setElement( (int)(i-imageLayers.begin()), i->get()->opacity().value() );
+
+        stateSet->addUniform( _layerOpacityUniform.get() );
+    }
+    stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)imageLayers.size() );
+}
+
+void
+MapNode::updateLayerOpacity( MapLayer* layer )
+{
+    MapLayerList imageLayers;
+    {
+        Threading::ScopedReadLock lock( _map->getMapDataMutex() );
+        _map->getImageMapLayers( imageLayers );
+    }
+
+    MapLayerList::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
+    if ( i != imageLayers.end() )
+    {
+        int layerNum = i - imageLayers.begin();
+        _layerOpacityUniform->setElement( layerNum, layer->opacity().value() );
+        //OE_INFO << LC << "Updating layer " << layerNum << " opacity to " << layer->opacity().value() << std::endl;
+    }
+    else
+    {
+        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
     }
 }
 

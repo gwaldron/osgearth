@@ -40,7 +40,8 @@ _name( name ),
 _driverOptions( options ),
 _enabled(true)
 {
-    //NOP
+    if (options)
+        fromConfig( options->config() );
 }
 
 ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
@@ -79,6 +80,8 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
     if (!_node.valid() && _modelSource.valid())
     {
         _node = _modelSource->createNode( progress );
+        //Initialize the nodemask
+        _node->setNodeMask( _enabled.get() ? ~0 : 0 );
     }
     return _node.get();
 }
@@ -91,6 +94,7 @@ ModelLayer::toConfig() const
 
     conf.key() = "model";
     conf.attr("name") = _name;
+    conf.updateIfSet( "enabled", _enabled );
 
     return conf;
 }
@@ -98,7 +102,7 @@ ModelLayer::toConfig() const
 bool
 ModelLayer::getEnabled() const
 {
-    return _enabled;
+    return _enabled.get();
 }
 
 void
@@ -107,6 +111,12 @@ ModelLayer::setEnabled(bool enabled)
     if (_enabled != enabled)
     {
         _enabled = enabled;
-        _node->setNodeMask( _enabled ? ~0 : 0 );
+        _node->setNodeMask( _enabled.get() ? ~0 : 0 );
     }
+}
+
+void
+ModelLayer::fromConfig(const osgEarth::Config &conf)
+{
+    conf.getIfSet( "enabled", _enabled );
 }

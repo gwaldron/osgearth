@@ -90,6 +90,8 @@ namespace osgEarth
         virtual Config toConfig() const;
 
     private:
+        void fromConfig( const Config& conf );
+
         std::string _referenceURI;
         std::string _name;
         std::string _driver;
@@ -99,7 +101,7 @@ namespace osgEarth
 
         osg::ref_ptr< osg::Node > _node;
 
-        bool _enabled;
+        optional<bool> _enabled;
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerList;

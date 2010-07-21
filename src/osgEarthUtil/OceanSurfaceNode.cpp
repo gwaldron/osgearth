@@ -120,14 +120,7 @@ char vert_shader_source[] =
 "\n"
 "//Lighting\n"
 "uniform bool osgEarth_lightingEnabled; \n"
-"uniform bool osgEarth_light0Enabled; \n"
-"uniform bool osgEarth_light1Enabled; \n"
-"uniform bool osgEarth_light2Enabled; \n"
-"uniform bool osgEarth_light3Enabled; \n"
-"uniform bool osgEarth_light4Enabled; \n"
-"uniform bool osgEarth_light5Enabled; \n"
-"uniform bool osgEarth_light6Enabled; \n"
-"uniform bool osgEarth_light7Enabled; \n"
+"uniform bool osgEarth_lightsEnabled[8];\n"
 "\n"
 "\n"
 "void main (void)\n"
@@ -141,15 +134,10 @@ char vert_shader_source[] =
 "    vec3 normal = fnormal(); \n"
 " \n"
 "    //Compute lighting\n"
-"    if (osgEarth_light0Enabled) directionalLight(0, normal, ambient, diffuse, specular); \n"
-"    if (osgEarth_light1Enabled) directionalLight(1, normal, ambient, diffuse, specular); \n"
-"    if (osgEarth_light2Enabled) directionalLight(2, normal, ambient, diffuse, specular); \n"
-"    if (osgEarth_light3Enabled) directionalLight(3, normal, ambient, diffuse, specular); \n"
-"    if (osgEarth_light4Enabled) directionalLight(4, normal, ambient, diffuse, specular); \n"
-"    if (osgEarth_light5Enabled) directionalLight(5, normal, ambient, diffuse, specular); \n"
-"    if (osgEarth_light6Enabled) directionalLight(6, normal, ambient, diffuse, specular); \n"
-"    if (osgEarth_light7Enabled) directionalLight(7, normal, ambient, diffuse, specular); \n"
-
+"    for (int i = 0; i < 8; i++)\n"
+"    {\n"
+"      if (osgEarth_lightsEnabled[i]) directionalLight(i, normal, ambient, diffuse, specular); \n"
+"    }\n"
 "     gl_FrontColor =gl_FrontLightModelProduct.sceneColor + \n"
 "                    ambient  * gl_FrontMaterial.ambient + \n"
 "                    diffuse  * gl_FrontMaterial.diffuse + \n"
@@ -226,28 +214,6 @@ char vert_shader_source[] =
 
 "}\n";
 
-
-typedef std::list<const osg::StateSet*> StateSetStack;
-static osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
-{
-    osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
-    for(StateSetStack::const_iterator itr = statesetStack.begin();
-        itr != statesetStack.end();
-        ++itr)
-    {
-        osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
-        if ((val & ~osg::StateAttribute::INHERIT)!=0)
-        {
-            if ((val & osg::StateAttribute::PROTECTED)!=0 ||
-                (base_val & osg::StateAttribute::OVERRIDE)==0)
-            {
-                base_val = val;
-            }
-        }
-    }
-    return base_val;
-}
-
 typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
 
 OceanSurfaceNode::OceanSurfaceNode():
@@ -275,10 +241,6 @@ _oceanColor(osg::Vec4f(0,0,1,0))
 
     getOrCreateStateSet()->setAttributeAndModes(_program.get(), osg::StateAttribute::ON);
 
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT)->set(0);
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer1_unit", osg::Uniform::INT)->set(1);
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer2_unit", osg::Uniform::INT)->set(2);
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer3_unit", osg::Uniform::INT)->set(3);
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(_enabled);     
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period);   
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask); 
@@ -536,37 +498,6 @@ OceanSurfaceNode::traverse(osg::NodeVisitor& nv)
 
         //bool enableEffect = _currentElevation < _maxRange;
         getOrCreateStateSet()->getOrCreateUniform("osgEarth_cameraElevation", osg::Uniform::FLOAT)->set(_currentElevation);
-
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
-        {
-            StateSetStack statesetStack;
-
-            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
-            while(sg)
-            {
-                const osg::StateSet* stateset = sg->getStateSet();
-                if (stateset)
-                {
-                    statesetStack.push_front(stateset);
-                }                
-                sg = sg->_parent;
-            }
-
-            osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
-            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightingEnabled", osg::Uniform::BOOL);
-            lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
-
-            const unsigned int numLights = 8;
-            for (unsigned int i = 0; i < numLights; ++i)
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0 + i);     
-                std::stringstream ss;
-                ss << "osgEarth_light" << i << "Enabled";
-                osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform(ss.str(), osg::Uniform::BOOL);
-                lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-            }
-        }
     }
     osg::Group::traverse(nv);
 }

@@ -212,7 +212,9 @@ namespace osgEarth
         osg::ref_ptr< osg::CoordinateSystemNode > _terrainContainer;
         osg::ref_ptr< osg::Group > _models;
         MapEngineProperties _engineProps;
+        
         osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
+        osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
         osg::ref_ptr< MapLayerController > _mapLayerController;
 
         // keep track of nodes created by model layers
@@ -233,6 +235,7 @@ namespace osgEarth
         friend class MapNodeMapLayerController;
 
         void updateLayerOpacity( MapLayer* layer );
+        void updateLayerEnabled( MapLayer* layer );
 
     private:
     
@@ -253,8 +256,6 @@ namespace osgEarth
         void updateElevation(VersionedTile* tile);
 
         void validateEngineProps( MapEngineProperties& props );
-
-        void refreshLayerUniforms();
     };
 }
 

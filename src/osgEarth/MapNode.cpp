@@ -107,6 +107,11 @@ namespace osgEarth
             _node->updateLayerOpacity( layer );
         }
 
+        void updateEnabled( MapLayer* layer)
+        {
+            _node->updateLayerEnabled( layer );
+        }
+
     private:
         MapNode* _node;
     };
@@ -220,9 +225,17 @@ MapNode::init()
 	//Protect the MapNode from the Optimizer
 	setDataVariance(osg::Object::DYNAMIC);
 
+
     setName( "osgEarth::MapNode" );
 
     setNumChildrenRequiringUpdateTraversal(1);
+
+    //Set the layer unit uniforms
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT)->set(0);
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer1_unit", osg::Uniform::INT)->set(1);
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer2_unit", osg::Uniform::INT)->set(2);
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer3_unit", osg::Uniform::INT)->set(3);
+
 
     _maskLayerNode = 0L;
 
@@ -1129,14 +1142,23 @@ void MapNode::updateStateSet()
     _map->getImageMapLayers( imageLayers );
 
     stateSet->removeUniform( "osgearth_imagelayer_opacity" );
+    stateSet->removeUniform( "osgearth_imagelayer_enabled" );
     
     if ( imageLayers.size() > 0 )
     {
+        //Update the layer opacity uniform
         _layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", imageLayers.size() );
         for( MapLayerList::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
             _layerOpacityUniform->setElement( (int)(i-imageLayers.begin()), i->get()->opacity().value() );
-
         stateSet->addUniform( _layerOpacityUniform.get() );
+
+        //Update the layer enabled uniform
+        _layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", imageLayers.size() );
+        for( MapLayerList::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+        {
+            _layerEnabledUniform->setElement( (int)(i-imageLayers.begin()), i->get()->enabled().value() );
+        }
+        stateSet->addUniform( _layerEnabledUniform.get() );
     }
     stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)imageLayers.size() );
 }
@@ -1164,6 +1186,49 @@ MapNode::updateLayerOpacity( MapLayer* layer )
 }
 
 void
+MapNode::updateLayerEnabled( MapLayer* layer )
+{
+    MapLayerList imageLayers;
+    {
+        Threading::ScopedReadLock lock( _map->getMapDataMutex() );
+        _map->getImageMapLayers( imageLayers );
+    }
+
+    MapLayerList::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
+    if ( i != imageLayers.end() )
+    {
+        int layerNum = i - imageLayers.begin();
+        _layerEnabledUniform->setElement( layerNum, layer->enabled().value() );
+        //OE_INFO << LC << "Updating layer " << layerNum << " opacity to " << layer->opacity().value() << std::endl;
+    }
+    else
+    {
+        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
+    }
+}
+
+typedef std::list<const osg::StateSet*> StateSetStack;
+static osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
+{
+    osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
+    for(StateSetStack::const_iterator itr = statesetStack.begin();
+        itr != statesetStack.end();
+        ++itr)
+    {
+        osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
+        if ((val & ~osg::StateAttribute::INHERIT)!=0)
+        {
+            if ((val & osg::StateAttribute::PROTECTED)!=0 ||
+                (base_val & osg::StateAttribute::OVERRIDE)==0)
+            {
+                base_val = val;
+            }
+        }
+    }
+    return base_val;
+}
+
+void
 MapNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
@@ -1178,6 +1243,42 @@ MapNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
+    if (_engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE)
+	{
+        //Update the lighting uniforms
+		if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+		{
+			osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+			if (cv)
+			{
+				StateSetStack statesetStack;
+
+				osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
+				while(sg)
+				{
+					const osg::StateSet* stateset = sg->getStateSet();
+					if (stateset)
+					{
+						statesetStack.push_front(stateset);
+					}                
+					sg = sg->_parent;
+				}
+
+                //Update the lighting uniforms
+				osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
+				osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightingEnabled", osg::Uniform::BOOL);
+				lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
+
+                const unsigned int numLights = 8;
+                osg::Uniform* lightsEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightsEnabled", osg::Uniform::BOOL, numLights);
+                for (unsigned int i = 0; i < numLights; ++i)
+                {
+                    osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0 + i);     
+                    lightsEnabledUniform->setElement(i, (lightEnabled & osg::StateAttribute::ON)!=0);
+                }				
+			}
+        }
+    }
     osg::CoordinateSystemNode::traverse(nv);
 }
 

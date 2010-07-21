@@ -466,6 +466,15 @@ MapLayer::setOpacity( float value )
         _controllerSafe->updateOpacity( this );
 }
 
+void
+MapLayer::setEnabled( bool value)
+{
+    _enabled = value;
+    osg::ref_ptr<MapLayerController> _controllerSafe= _controller.get();
+    if ( _controllerSafe.valid() )
+        _controllerSafe->updateEnabled( this );
+}
+
 GeoImage*
 MapLayer::postProcess( GeoImage* input )
 {

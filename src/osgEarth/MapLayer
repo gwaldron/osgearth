@@ -44,6 +44,8 @@ namespace osgEarth
     {
     public:
         virtual void updateOpacity( MapLayer* layer ) =0;
+
+        virtual void updateEnabled( MapLayer* layer ) =0;
     };
 
     /**
@@ -168,9 +170,9 @@ namespace osgEarth
 
 		/**
 		 * Whether to render this layer with the map.
-		 */
-        optional<bool>& enabled() { return _enabled; }
+		 */        
         const optional<bool>& enabled() const { return _enabled; }
+        void setEnabled( bool enabled );
 
 		/**
 		 * Gets or sets the nodata image for this MapLayer

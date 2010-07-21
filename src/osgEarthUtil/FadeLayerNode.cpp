@@ -31,19 +31,10 @@ using namespace osgEarthUtil;
 using namespace OpenThreads;
 
 
-char vert_source[] ="varying vec2 texCoord0;\n"
-                    "varying vec2 texCoord1;\n"
-                    "varying vec2 texCoord2;\n"
-                    "varying vec2 texCoord3;\n"
-                    "uniform bool lightingEnabled; \n"
-                    "uniform bool light0Enabled; \n"
-                    "uniform bool light1Enabled; \n"
-                    "uniform bool light2Enabled; \n"
-                    "uniform bool light3Enabled; \n"
-                    "uniform bool light4Enabled; \n"
-                    "uniform bool light5Enabled; \n"
-                    "uniform bool light6Enabled; \n"
-                    "uniform bool light7Enabled; \n"
+char vert_source[] =
+                    "varying vec2 texCoords[4];\n"
+                    "uniform bool osgEarth_lightingEnabled; \n"
+                    "uniform bool osgEarth_lightsEnabled[8];\n"
                     "\n"
                     "\n"
                     "void directionalLight(in int i, \n"
@@ -83,7 +74,7 @@ char vert_source[] ="varying vec2 texCoord0;\n"
                     "\n"
                     "void main (void)\n"
                     "{\n"
-                    "    if (lightingEnabled)\n"
+                    "    if (osgEarth_lightingEnabled)\n"
                     "    {\n"
                     "    vec4 ambient = vec4(0.0); \n"
                     "    vec4 diffuse = vec4(0.0); \n"
@@ -91,14 +82,10 @@ char vert_source[] ="varying vec2 texCoord0;\n"
                     " \n"
                     "    vec3 normal = fnormal(); \n"
                     " \n"
-                    "    if (light0Enabled) directionalLight(0, normal, ambient, diffuse, specular); \n"
-                    "    if (light1Enabled) directionalLight(1, normal, ambient, diffuse, specular); \n"
-                    "    if (light2Enabled) directionalLight(2, normal, ambient, diffuse, specular); \n"
-                    "    if (light3Enabled) directionalLight(3, normal, ambient, diffuse, specular); \n"
-                    "    if (light4Enabled) directionalLight(4, normal, ambient, diffuse, specular); \n"
-                    "    if (light5Enabled) directionalLight(5, normal, ambient, diffuse, specular); \n"
-                    "    if (light6Enabled) directionalLight(6, normal, ambient, diffuse, specular); \n"
-                    "    if (light7Enabled) directionalLight(7, normal, ambient, diffuse, specular); \n"
+                    "    for (int i = 0; i < 8; i++)\n"
+                    "    {\n"
+                    "      if (osgEarth_lightsEnabled[i]) directionalLight(i, normal, ambient, diffuse, specular); \n"
+                    "    }\n"
 
                     "    vec4 color = gl_FrontLightModelProduct.sceneColor + \n"
                     "                 ambient  * gl_FrontMaterial.ambient + \n"
@@ -113,97 +100,48 @@ char vert_source[] ="varying vec2 texCoord0;\n"
                     " }\n"
                     "    gl_Position = ftransform();\n"
                     "\n"
-                    "	 texCoord0 = gl_MultiTexCoord0.st;\n"
-                    "    texCoord1 = gl_MultiTexCoord1.st;\n"
-                    "    texCoord2 = gl_MultiTexCoord2.st;\n"
-                    "    texCoord3 = gl_MultiTexCoord3.st;\n"
+                    //Pass the tex coords along
+                    "	 texCoords[0] = gl_MultiTexCoord0.st;\n"
+                    "    texCoords[1] = gl_MultiTexCoord1.st;\n"
+                    "    texCoords[2] = gl_MultiTexCoord2.st;\n"
+                    "    texCoords[3] = gl_MultiTexCoord3.st;\n"
                     "}\n";
 
 
-char frag_source[] = "uniform sampler2D osgEarth_Layer0_unit;\n"
-                    "uniform float osgEarth_Layer0_opacity;\n"
-                    "varying vec2 texCoord0;\n"
-                    "uniform bool osgEarth_Layer0_enabled;\n"
-                    "\n"
+char frag_source[] =
+                    "uniform int   osgearth_imagelayer_count;\n"
+                    "uniform float osgearth_imagelayer_opacity[4]; \n"
+                    "uniform bool osgearth_imagelayer_enabled[4]; \n"
+                    "uniform sampler2D osgEarth_Layer0_unit;\n"
                     "uniform sampler2D osgEarth_Layer1_unit;\n"
-                    "uniform float osgEarth_Layer1_opacity;\n"
-                    "varying vec2 texCoord1;\n"
-                    "uniform bool osgEarth_Layer1_enabled;\n"
-                    "\n"
                     "uniform sampler2D osgEarth_Layer2_unit;\n"
-                    "uniform float osgEarth_Layer2_opacity;\n"
-                    "varying vec2 texCoord2;\n"
-                    "uniform bool osgEarth_Layer2_enabled;\n"
-                    "\n"
                     "uniform sampler2D osgEarth_Layer3_unit;\n"
-                    "uniform float osgEarth_Layer3_opacity;\n"
-                    "varying vec2 texCoord3;\n"
-                    "uniform bool osgEarth_Layer3_enabled;\n"
+                    "varying vec2 texCoords[4];\n"
                     "\n"
-                    "void main (void )\n"
+                    "void main( void )\n"
                     "{\n"
-                    "  //Get the fragment for texture 0\n"
+                    //Collect the colors into an array so we can index them in the upcoming loop
+                    "  vec4 colors[4];\n"
+                    //Initialize the colors                    
+                    "  colors[0] = texture2D(osgEarth_Layer0_unit, texCoords[0]);\n"
+                    "  colors[1] = texture2D(osgEarth_Layer1_unit, texCoords[1]);\n"
+                    "  colors[2] = texture2D(osgEarth_Layer2_unit, texCoords[2]);\n"
+                    "  colors[3] = texture2D(osgEarth_Layer3_unit, texCoords[3]);\n"
+                    
+                    "  vec3 color = vec3(1,1,1);\n"
                     "  int numLayersOn = 0;\n"
-                    "  vec4 tex0 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer0_enabled)\n"
+                    "  for(int i=0; i<osgearth_imagelayer_count; i++) \n"
                     "  {\n"
-                    "    tex0 = texture2D(osgEarth_Layer0_unit, texCoord0);\n"
-                    "    numLayersOn++;\n"
+                    "     if (osgearth_imagelayer_enabled[i])\n"
+                    "     {\n"
+                    "       vec4 texel = colors[i];\n"
+                    "       float alpha = texel.a * osgearth_imagelayer_opacity[i];\n"
+                    "       color = mix(color, texel.rgb, alpha);\n"
+                    "       numLayersOn++;\n"
+                    "     }\n"
                     "  }\n"
-                    "  tex0.a *= osgEarth_Layer0_opacity;\n"
-                    "\n"
-                    "  //Get the fragment for texture 1\n"
-                    "  vec4 tex1 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer1_enabled)\n"
-                    "  {\n"
-                    "    tex1 = texture2D(osgEarth_Layer1_unit, texCoord1);\n"
-                    "    numLayersOn++;\n"
-                    "  }\n"
-                    "  tex1.a *= osgEarth_Layer1_opacity;\n"
-                    "\n"
-					"  //Get the fragment for texture 2\n"
-                    "  vec4 tex2 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer2_enabled)\n"
-                    "  {\n"
-                    "    tex2 = texture2D(osgEarth_Layer2_unit, texCoord2);\n"
-                    "    numLayersOn++;\n"
-                    "  }\n"
-                    "  tex2.a *= osgEarth_Layer2_opacity;\n"
-                    "\n"
-                    "  //Get the fragment for texture 3\n"
-                    "  vec4 tex3 = vec4(0.0,0.0,0.0,0.0);\n"
-                    "  if (osgEarth_Layer3_enabled)\n"
-                    "  {\n"
-                    "    tex3 = texture2D(osgEarth_Layer3_unit, texCoord3);\n"
-                    "    numLayersOn++;\n"
-                    "  }\n"
-                    "  tex3.a *= osgEarth_Layer3_opacity;\n"
-                    "\n"
-
-                    "  if (numLayersOn > 0)\n"
-                    "  {\n"
-                    "    //Interpolate the color between the first layer and second\n"
-                    "    vec3 c = mix(tex0.rgb, tex1.rgb, tex1.a);\n"
-                    "\n"
-                    "    c = mix(c, tex2.rgb, tex2.a);\n"
-                    " \n"
-                    "    c = mix(c, tex3.rgb, tex3.a);\n"
-                    " \n"
-                    "    //Take the maximum alpha for the final destination alpha\n"
-                    "    float a = tex0.a;\n"
-                    "    if (a < tex1.a) a = tex1.a;\n"
-                    "    if (a < tex2.a) a = tex2.a;\n"
-                    "    if (a < tex3.a) a = tex3.a;\n"
-                    "\n"
-                    "    gl_FragColor = gl_Color * vec4(c, a);\n"
-                    "  }\n"
-                    "  else\n"
-                    "  {\n"
-                    "    //No layers are on, so just use the underlying color\n"
-                    "    gl_FragColor = gl_Color;\n"
-                    "  }\n"
-                    "}\n"
-                    "\n";
+                    "  gl_FragColor = gl_Color * vec4(color, 1.0); \n"                  
+                    "}\n";                    
 
 
 FadeLayerNode::FadeLayerNode( Map* map, const MapEngineProperties& mapEngineProperties) :
@@ -225,151 +163,7 @@ _mapEngineProperties(mapEngineProperties)
 	}
 }
 
-
-void FadeLayerNode::updateStateSet()
-{
-	if (_mapEngineProperties.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE)
-	{
-		osg::StateSet* stateset = getStateSet();
-		unsigned int maxLayers = 4;
-		for (unsigned int i = 0; i < maxLayers; ++i)
-		{
-			float opacity = 1.0f;
-			bool enabled = false;
-
-			if (i < _map->getImageMapLayers().size())
-			{
-			  opacity = _map->getImageMapLayers()[i]->opacity().value();
-			  enabled = _map->getImageMapLayers()[i]->enabled().value();
-			}
-
-			std::stringstream ss;
-			ss << "osgEarth_Layer" << i << "_unit";
-			std::string ssStr;
-			ssStr = ss.str();
-			osg::Uniform* unitUniform = stateset->getOrCreateUniform(ssStr, osg::Uniform::INT);
-			unitUniform->set( (int)i );
-
-			ss.str("");
-			ss << "osgEarth_Layer" << i << "_enabled";
-			ssStr = ss.str();
-			osg::Uniform* enabledUniform = stateset->getOrCreateUniform(ssStr, osg::Uniform::BOOL);
-			enabledUniform->set(enabled);
-
-			ss.str("");
-			ss << "osgEarth_Layer" << i << "_opacity";
-			ssStr = ss.str();
-			osg::Uniform* opacityUniform = stateset->getOrCreateUniform(ssStr, osg::Uniform::FLOAT);
-			opacityUniform->set(opacity);
-		}
-	}
-}
-
-typedef std::list<const osg::StateSet*> StateSetStack;
-static osg::StateAttribute::GLModeValue getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
-{
-    osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
-    for(StateSetStack::const_iterator itr = statesetStack.begin();
-        itr != statesetStack.end();
-        ++itr)
-    {
-        osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
-        if ((val & ~osg::StateAttribute::INHERIT)!=0)
-        {
-            if ((val & osg::StateAttribute::PROTECTED)!=0 ||
-                (base_val & osg::StateAttribute::OVERRIDE)==0)
-            {
-                base_val = val;
-            }
-        }
-    }
-    return base_val;
-}
-
 void FadeLayerNode::traverse(osg::NodeVisitor& nv)
 {
-	if (_mapEngineProperties.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE)
-	{
-		if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-		{
-			osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-			if (cv)
-			{
-				StateSetStack statesetStack;
-
-				osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
-				while(sg)
-				{
-					const osg::StateSet* stateset = sg->getStateSet();
-					if (stateset)
-					{
-						statesetStack.push_front(stateset);
-					}                
-					sg = sg->_parent;
-				}
-
-				osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
-				osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("lightingEnabled", osg::Uniform::BOOL);
-				lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
-
-				//GL_LIGHT0
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light0Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-
-				//GL_LIGHT1
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT1);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light1Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-
-				//GL_LIGHT2
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT2);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light2Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-
-				//GL_LIGHT3
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT3);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light3Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-
-				//GL_LIGHT4
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT4);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light4Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-
-				//GL_LIGHT5
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT5);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light5Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-
-				//GL_LIGHT6
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT6);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light6Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-
-				//GL_LIGHT7
-				{
-					osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT7);     
-					osg::Uniform* lightEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("light7Enabled", osg::Uniform::BOOL);
-					lightEnabledUniform->set((lightEnabled & osg::StateAttribute::ON)!=0);
-				}
-			}
-		}
-		updateStateSet();
-	}
     osg::Group::traverse(nv);
 }

@@ -50,8 +50,6 @@ namespace osgEarthUtil
 
     protected:
 
-        void updateStateSet();
-
         osg::ref_ptr<osgEarth::Map> _map;
 		osgEarth::MapEngineProperties _mapEngineProperties;
 

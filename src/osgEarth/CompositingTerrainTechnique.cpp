@@ -546,6 +546,14 @@ CompositingTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, do
     }
 }
 
+// allocate and assign tex coords
+struct TexCoordData {
+    osg::ref_ptr<osg::Vec2Array> _surface;
+    osg::ref_ptr<osg::Vec2Array> _skirt;
+    osg::ref_ptr<Locator>        _locator;
+    int                          _layerNum;
+};
+
 void
 CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
 {
@@ -652,13 +660,7 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
         _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
         1.0f;
 
-    // allocate and assign tex coords
-    struct TexCoordData {
-        osg::ref_ptr<osg::Vec2Array> _surface;
-        osg::ref_ptr<osg::Vec2Array> _skirt;
-        osg::ref_ptr<Locator>        _locator;
-        int                          _layerNum;
-    };
+
     typedef std::map<Layer*, TexCoordData> LayerToTexCoordMap;
     //typedef std::pair< osg::ref_ptr<osg::Vec2Array>, osg::ref_ptr<Locator> > TexCoordLocatorPair;
     //typedef std::map< Layer*, TexCoordLocatorPair > LayerToTexCoordMap;

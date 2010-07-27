@@ -65,7 +65,7 @@ namespace osgEarth { namespace Symbology
             {
                 _content->sync(_contentRevision);
             }
-            dirty();
+            --_contentRevision; // force a sync
         }
 
         /**
@@ -84,7 +84,7 @@ namespace osgEarth { namespace Symbology
             {
               _style->sync(_styleRevision);
             }
-            dirty();
+            --_styleRevision; // force a sync
         }
 
         /**
@@ -129,12 +129,6 @@ namespace osgEarth { namespace Symbology
         /** Returns true if the Content has changed since the last time this State was compiled. */
         bool contentDirty() const {
             return _content.valid() && _content->outOfSyncWith( _contentRevision );
-        }
-
-        /** Marks this State as being out of sync with both the Style and the Content. */
-        void dirty() {
-            ++_styleRevision;
-            ++_contentRevision;
         }
 
     public:

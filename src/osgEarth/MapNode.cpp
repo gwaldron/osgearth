@@ -230,6 +230,8 @@ MapNode::init()
 
     setNumChildrenRequiringUpdateTraversal(1);
 
+    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+
     //Set the layer unit uniforms
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT)->set(0);
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer1_unit", osg::Uniform::INT)->set(1);

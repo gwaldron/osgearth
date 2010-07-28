@@ -221,6 +221,8 @@ public:
                     if (buffer)
                     {
                         data.append((char*)buffer, dataSize);
+                        // cpinson 26/07/2010: I would think that it would need a 
+                        // delete [](buffer); here ???
                     }
                 }while (dataSize > 0);
 

@@ -184,7 +184,7 @@ struct TileGenRequest : public TaskRequest
     {
         if (_tile.valid())
         {
-            EarthTerrainTechnique* et = static_cast<EarthTerrainTechnique*>(_tile->getTerrainTechnique());
+            ExtendedTerrainTechnique* et = dynamic_cast<ExtendedTerrainTechnique*>( _tile->getTerrainTechnique() );
             if (et)
             {
                 et->init(false, progress);
@@ -842,7 +842,7 @@ VersionedTile::serviceCompletedRequests( bool tileTableLocked )
     // First service the tile generator:
     if ( _tileGenRequest.valid() && _tileGenRequest->isCompleted() )
     {
-        EarthTerrainTechnique* tech = dynamic_cast<EarthTerrainTechnique*>( getTerrainTechnique() );
+        ExtendedTerrainTechnique* tech = dynamic_cast<ExtendedTerrainTechnique*>( getTerrainTechnique() );
         if ( tech )
         {
             tileModified = tech->swapIfNecessary();

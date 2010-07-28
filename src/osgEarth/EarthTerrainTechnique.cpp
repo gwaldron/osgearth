@@ -68,7 +68,6 @@ using namespace OpenThreads;
 //#define DEBUG_SHOW_TILEKEY_LABELS
 
 EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
-TerrainTechnique(),
 _masterLocator( masterLocator ),
 _currentReadOnlyBuffer(1),
 _currentWriteBuffer(0),
@@ -81,7 +80,7 @@ _optimizeTriangleOrientation(true)
 }
 
 EarthTerrainTechnique::EarthTerrainTechnique(const EarthTerrainTechnique& gt,const osg::CopyOp& copyop):
-TerrainTechnique(gt,copyop),
+ExtendedTerrainTechnique(gt,copyop),
 _masterLocator( gt._masterLocator ),
 _lastCenterModel( gt._lastCenterModel ),
 _currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),

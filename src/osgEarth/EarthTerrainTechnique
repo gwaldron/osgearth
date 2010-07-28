@@ -33,7 +33,23 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT EarthTerrainTechnique : public osgTerrain::TerrainTechnique
+    class ExtendedTerrainTechnique : public osgTerrain::TerrainTechnique
+    {
+    public:
+        virtual void init( bool swapNow, ProgressCallback* progress ) =0;
+
+        virtual bool swapIfNecessary() =0;
+
+    protected:
+        ExtendedTerrainTechnique() { }
+
+        ExtendedTerrainTechnique( const ExtendedTerrainTechnique& rhs, const osg::CopyOp& op ) :
+             osgTerrain::TerrainTechnique( rhs, op ) { }
+    };
+
+
+
+    class OSGEARTH_EXPORT EarthTerrainTechnique : public ExtendedTerrainTechnique
     {
     public:
 

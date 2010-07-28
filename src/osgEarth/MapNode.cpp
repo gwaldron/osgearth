@@ -230,6 +230,8 @@ MapNode::init()
 
     setNumChildrenRequiringUpdateTraversal(1);
 
+    // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
+    // multi-threaded overlap
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
 
     //Set the layer unit uniforms

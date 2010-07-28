@@ -80,6 +80,8 @@
 
 //#define EXTRA_REFERENCED_DATA
 
+#define CHECK_MEMORY 0
+
 using namespace osg;
 using namespace osgDB;
 using namespace osgTerrain;
@@ -149,7 +151,9 @@ struct BlankTileSource : public osgEarth::TileSource
         { 
             if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR) {
                 if (nv->getFrameStamp()->getSimulationTime()-_lastLog > 1.0 && nv->getFrameStamp()->getSimulationTime() > 8.0) {
+#if CHECK_MEMORY
                     osg::Referenced::reportCurrentMemoryObject();
+#endif
                     _lastLog = nv->getFrameStamp()->getSimulationTime();
                     osg::Texture::getTextureObjectManager(0)->reportStats();
                     _nbLog++;
@@ -285,8 +289,8 @@ int main(int argc, char** argv)
 
         for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
         {
-            mapNode->getMap()->getImageMapLayers()[i]->opacity() = 1.0f;
-            mapNode->getMap()->getImageMapLayers()[i]->enabled() = true;
+            mapNode->getMap()->getImageMapLayers()[i]->setOpacity( 1.0f );
+            mapNode->getMap()->getImageMapLayers()[i]->setEnabled( true );
         }
 
         //Setup the osgWidget interface

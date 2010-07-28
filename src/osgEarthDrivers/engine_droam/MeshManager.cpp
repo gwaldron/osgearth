@@ -48,23 +48,12 @@ _maxJobsPerFrame( MAX_JOBS_PER_FRAME )
     // fire up a task service to load textures.
     _imageService = new TaskService( "Image Service", 16 );
 
-#ifdef USE_VERTEX_COLORS
-    // one-for-one color array.
-    _colors = new osg::Vec4Array();
-    _geomPrototype->setColorArray( _colors.get() );
-    _geomPrototype->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-    _colors->reserve( RESERVED_VERTICES );
-    _colors->getVertexBufferObject()->setUsage(GL_DYNAMIC_DRAW_ARB);
-#endif
-
     _amrGeom = new AMRGeometry();
     _amrGeom->setDataVariance( osg::Object::DYNAMIC );
 
     _amrGeode = new osg::Geode();
     _amrGeode->addDrawable( _amrGeom.get() );
     _amrGeode->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), 1 );
-    
-    //_amrGeode->getStateSet()->setAttribute( _amrGeom->_program.get(), 1 );
 
     // set up the manifold framework.
     manifold->initialize( this );
@@ -316,7 +305,6 @@ MeshManager::update()
             }
 
             // rebuild the primitives now.
-            //d->refreshPrimitiveSet();
             d->refreshDrawable();
         }
         _dirtyQueue.pop();

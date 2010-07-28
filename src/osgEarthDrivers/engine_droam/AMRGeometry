@@ -31,6 +31,8 @@ public:
     osg::Vec3d _geodeticCoord;   // source coordinate (in lon/lat/alt)
     osg::Vec3f _vertex;          // world space vertex
     osg::Vec3f _normal;          // world space normal
+
+    osg::Quat  _geodeticRot;     // geodetic rotation (lat/long rotation matrix as quat)
 };
 
 class AMRTriangle : public osg::Referenced
@@ -48,10 +50,6 @@ public:
 public:
     osg::ref_ptr<osg::StateSet> _stateSet;
     MeshNode _node0, _node1, _node2;
-
-protected:
-    void setUniform( const std::string& name, const osg::Vec3& value );
-    void setUniform( const std::string& name, const osg::Vec2& value );
 };
 
 typedef std::vector< osg::ref_ptr<AMRTriangle> > AMRTriangleList;

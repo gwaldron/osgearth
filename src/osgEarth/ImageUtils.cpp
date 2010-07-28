@@ -121,6 +121,8 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
             }
         }
     }
+
+    return true;
 }
 
 #if 0
@@ -315,6 +317,7 @@ ImageUtils::convertToRGB(const osg::Image *image)
 		{
 			osg::Image* result = new osg::Image();
 			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
+            result->setInternalTextureFormat( GL_RGB );
 
 			for (int s = 0; s < image->s(); ++s)
 			{
@@ -337,43 +340,45 @@ ImageUtils::convertToRGB(const osg::Image *image)
 
 	return NULL;
 }
-//
-//osg::Image* convertToRGBA(const osg::Image* image)
-//{
-//    if ( image )
-//    {
-//        if ( image->getPixelFormat() == GL_RGBA )
-//        {
-//            return new osg::Image( *image );
-//        }
-//
-//        else
-//        {
-//            osg::Image* result = new osg::Image();
-//            result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
-//
-//            for( int r=0; r<image->r(); ++r )
-//            {
-//                for( int s=0; s<image->s(); ++s )
-//                {
-//                    for( int t=0; t<image->t(); ++t )
-//                    {
-//                        osg::Vec4f color = image->getColor( s, t, r );
-//                        unsigned char* data = result->data( s, t, r );
-//                        *data++ = (unsigned char)(color.r()*255.0f);
-//                        *data++ = (unsigned char)(color.g()*255.0f);
-//                        *data++ = (unsigned char)(color.b()*255.0f);
-//                        *data++ = (unsigned char)(color.a()*255.0f);
-//                    }
-//                }
-//            }
-//             
-//            return result;
-//        }
-//
-//    }
-//    return 0L;
-//}
+
+osg::Image*
+ImageUtils::convertToRGBA(const osg::Image* image)
+{
+    if ( image )
+    {
+        if ( image->getPixelFormat() == GL_RGBA )
+        {
+            return new osg::Image( *image );
+        }
+
+        else
+        {
+            osg::Image* result = new osg::Image();
+            result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
+            result->setInternalTextureFormat( GL_RGBA );
+
+            for( int r=0; r<image->r(); ++r )
+            {
+                for( int s=0; s<image->s(); ++s )
+                {
+                    for( int t=0; t<image->t(); ++t )
+                    {
+                        osg::Vec4f color = image->getColor( s, t, r );
+                        unsigned char* data = result->data( s, t, r );
+                        *data++ = (unsigned char)(color.r()*255.0f);
+                        *data++ = (unsigned char)(color.g()*255.0f);
+                        *data++ = (unsigned char)(color.b()*255.0f);
+                        *data++ = (unsigned char)(color.a()*255.0f);
+                    }
+                }
+            }
+             
+            return result;
+        }
+
+    }
+    return 0L;
+}
 
 bool 
 ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)

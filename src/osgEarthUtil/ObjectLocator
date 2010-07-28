@@ -55,13 +55,20 @@ namespace osgEarthUtil
         const osg::Vec3d& getOrientation() const { return _hpr; }
 
         /**
+         * The timestamp associated with this locator's position information.
+         * (Note: setting the time does not "dirty" the locator)
+         */
+        void setTime( double t ) { _timestamp = t; }
+        double getTime() const { return _timestamp; }
+
+        /**
          * The optional parent locator. If a Locator has a parent, it inherits position and
          * orientation from that parent as prescribed by the Components flags. Otherwise,
          * the Locator is absolute.
          */
-        void setParent( ObjectLocator* parent, unsigned int componentsToInherit =COMP_ALL );
-        ObjectLocator* getParent() { return _parentLoc.get(); }
-        const ObjectLocator* getParent() const { return _parentLoc.get(); }
+        void setParentLocator( ObjectLocator* parent, unsigned int componentsToInherit =COMP_ALL );
+        ObjectLocator* getParentLocator() { return _parentLoc.get(); }
+        const ObjectLocator* getParentLocator() const { return _parentLoc.get(); }
 
         /** Policy for inheriting parent locator's components */
         void setComponentsToInherit( unsigned int compMask );
@@ -84,9 +91,7 @@ namespace osgEarthUtil
     public:
         //override
         /** Override Revisioned::inSync to track with the parent locator's revision. */
-        virtual bool inSyncWith( int exRev ) const {
-            return _parentLoc.valid() ? _parentLoc->inSyncWith( exRev ) :
-                osgEarth::Revisioned<osg::Referenced>::inSyncWith( exRev ); }
+        virtual bool inSyncWith( int exRev ) const;
 
     private:
         osg::ref_ptr<const osgEarth::SpatialReference> _mapSRS;
@@ -94,6 +99,7 @@ namespace osgEarthUtil
         unsigned int _componentsToInherit; // Locator::Components mask
         osg::Vec3d _xyz;
         osg::Vec3d _hpr;
+        double _timestamp;
         bool _isEmpty;
     };
 
@@ -119,7 +125,7 @@ namespace osgEarthUtil
 
     public:
         /** Synchronizes the transform matrix with the locator. */
-        void update();
+        virtual void update();
 
     private:
         osg::ref_ptr<ObjectLocator> _locator;

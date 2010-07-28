@@ -298,69 +298,6 @@ CubeManifold::p( double x, double y, double z ) const
     return v;
 }
 
-//osg::Vec3d
-//CubeManifold::project( const osg::Vec3d& coord ) const
-//{
-//    // uncomment this to see the terrain as a cube.
-//    //return coord;
-//
-//    // this will project the cubic coordinates onto an ellipsoid.
-//
-//    osg::Vec3d out;
-//    double lat, lon;
-//
-//    // normalize all coordinates into the [0..1] range:
-//    double x = (1.0+coord.x())*0.5;
-//    double y = (1.0+coord.y())*0.5;
-//    double z = (1.0+coord.z())*0.5;
-//
-//    // now convert into lat/long; this is different for each face:
-//
-//    if ( coord.x() == 1.0 ) // positive X ( 0 <= lon <= 90, -45 <= lat <= 45 )
-//    {
-//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( y, z, 2, lat, lon ) )
-//            OE_WARN << LC << "+X: fc2ll failed" << std::endl;
-//    }
-//    else if ( coord.x() == -1.0 ) // negative X ( -180 <= lon <= -90, -45 <= lat <= 45 )
-//    {
-//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-y, z, 0, lat, lon ) )
-//            OE_WARN << LC << "-X: fc2ll failed" << std::endl;
-//    }
-//    else if ( coord.y() == 1.0 ) // positive Y ( 90 <= lon <= 180, -45 <= lat <= 45 )
-//    {
-//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-x, z, 3, lat, lon ) )
-//            OE_WARN << LC << "+Y: fc2ll failed" << std::endl;
-//    }
-//    else if ( coord.y() == -1.0 ) // negative Y ( -90 <= lon <= 0, -45 <= lat <= 45 )
-//    {
-//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( x, z, 1, lat, lon ) )
-//            OE_WARN << LC << "-Y: fc2ll failed" << std::endl;
-//    }
-//    else if ( coord.z() == 1.0 ) // positive Z ( -180 <= lon < 180, 45 <= lat <= 90 )
-//    {
-//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( 1.0-y, x, 4, lat, lon ) )
-//            OE_WARN << LC << "+Z: fc2ll failed" << std::endl;
-//    }
-//    else //if ( coord.z() == -1.0 ) // negative Z ( -180 <= lon < 180, -90 <= lat <= -45 )
-//    {
-//        if ( !osgEarth::CubeUtils::faceCoordsToLatLon( x, 1.0-y, 5, lat, lon ) )
-//            OE_WARN << LC << "-Z: fc2ll failed" << std::endl;
-//    }
-//
-//    // finally, convert from lat/long into geocentric:
-//
-//    this->_ellipsoid->convertLatLongHeightToXYZ( 
-//        osg::DegreesToRadians(lat),
-//        osg::DegreesToRadians(lon), 0, 
-//        out.x(), out.y(), out.z() );
-//
-//    OE_DEBUG << LC
-//        << "project: (" << coord.x() << "," << coord.y() << "," << coord.z() << ") => (" << lat << "," << lon << ")"
-//        << std::endl;
-//
-//    return out;
-//}
-
 static bool
 toLonLatRad( const osg::Vec3d& coord, osg::Vec3d& out_lonLat )
 {
@@ -418,15 +355,6 @@ CubeManifold::midpoint( const osg::Vec3d& p0, const osg::Vec3d& p1 ) const
     return (p0+p1)*0.5;
 }
 
-//osg::Vec3d
-//CubeManifold::normal( const osg::Vec3d& vert ) const
-//{
-//    //TODO: this is spherical. adjust for ellipsoid if necessary.
-//    osg::Vec3d n = vert;
-//    n.normalize();
-//    return n;
-//}
-
 MeshNode
 CubeManifold::createNode( const osg::Vec3d& manCoord ) const
 {
@@ -436,15 +364,23 @@ CubeManifold::createNode( const osg::Vec3d& manCoord ) const
     
     toLonLatRad( manCoord, node._geodeticCoord ); // our manifold coords are already geodetic
 
-    osg::Vec3d temp;
-    _ellipsoid->convertLatLongHeightToXYZ(
+    osg::Matrixd local2world;
+    _ellipsoid->computeLocalToWorldTransformFromLatLongHeight(
         node._geodeticCoord.y(), node._geodeticCoord.x(), node._geodeticCoord.z(),
-        temp.x(), temp.y(), temp.z() );
+        local2world );
 
-    node._vertex = temp;
+    node._vertex = local2world.getTrans();
 
-    node._normal = _ellipsoid->computeLocalUpVector(
-        temp.x(), temp.y(), temp.z() );
+    node._normal = node._vertex;
+    node._normal.normalize();
+    //node._normal = _ellipsoid->computeLocalUpVector(
+    //    node._vertex.x(), node._vertex.y(), node._vertex.z() );
+
+    node._geodeticRot = local2world.getRotate();
+    //OE_INFO << LC
+    //    << "ROT: x=" << node._geodeticRot.x() << ", y=" << node._geodeticRot.y()
+    //    << ", z=" << node._geodeticRot.z() << ", w=" << node._geodeticRot.w()
+    //    << std::endl;
 
     return node;
 }

@@ -23,6 +23,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/Texture2DArray>
 #include <osg/Version>
 
 #include <osgTerrain/TerrainTechnique>
@@ -79,9 +80,9 @@ namespace osgEarth
 
         //virtual void applyColorLayers();
 
-        virtual void applyTransparency();
+        //virtual void applyTransparency();
 
-        virtual void smoothGeometry();
+        //virtual void smoothGeometry();
 
         virtual void update(osgUtil::UpdateVisitor* nv);
 
@@ -185,13 +186,23 @@ namespace osgEarth
         typedef std::vector<LayerTexRegion> LayerTexRegionList;
         
         void initShaders();
-        bool generateComposite( osg::ref_ptr<osg::Image>& out_image, LayerTexRegionList& out_regions );
         void applyTexture();
 
         LayerTexRegionList         _layerTexRegions;
-        osg::ref_ptr<osg::Image>   _compositeImage;
         osg::ref_ptr<osg::Program> _compositeProgram;
         bool                       _attachedProgram;
+
+        //bool generateCompositeImage( osg::ref_ptr<osg::Image>& out_image, LayerTexRegionList& out_regions );
+        // osg::ref_ptr<osg::Image>   _compositeImage;
+
+        bool generateCompositeTexture(
+            osg::ref_ptr<osg::Texture>& out_tex,
+            int& out_width,
+            int& out_height,
+            LayerTexRegionList& out_regions );
+
+        osg::ref_ptr<osg::Texture> _composite;
+        int _compositeWidth, _compositeHeight;
     };
 
 }

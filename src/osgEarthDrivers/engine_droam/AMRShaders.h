@@ -44,18 +44,18 @@ static char source_xyzToLatLonHeight[] =
 "   return vec3(longitude, latitude, height);\n"
 "}\n";
 
-static char source_lonLatAltToXYZ[] =
+static char source_geodeticToXYZ[] =
 
-"vec3 lonLatAlt_to_XYZ(in vec3 lonLatAlt) \n"
+"vec3 geodeticToXYZ(in vec3 geodetic) \n"
 "{ \n"
 "  float RADIUS_EQUATOR = 6378137.0; \n"
 "  float RADIUS_POLAR   = 6356752.3142; \n"
 "  float FLATTENING     = (RADIUS_EQUATOR-RADIUS_POLAR)/RADIUS_EQUATOR; \n"
 "  float ECC2           = (2.0*FLATTENING) - (FLATTENING*FLATTENING); \n"
 "\n"
-"  float lat = lonLatAlt.y; \n"
-"  float lon = lonLatAlt.x; \n"
-"  float alt = lonLatAlt.z; \n"
+"  float lat = geodetic.y; \n"
+"  float lon = geodetic.x; \n"
+"  float alt = geodetic.z; \n"
 "  float sinLat = sin(lat); \n"
 "  float cosLat = cos(lat); \n"
 "  float n = RADIUS_EQUATOR / sqrt( 1.0 - ECC2*sinLat*sinLat ); \n"
@@ -63,6 +63,15 @@ static char source_lonLatAltToXYZ[] =
 "  float y = (n+alt)*cosLat*sin(lon); \n"
 "  float z = (n*(1.0 - ECC2) + alt) * sinLat; \n"
 "  return vec3(x,y,z); \n"
+"} \n";
+
+static char source_rotVecToGeodetic[] =
+
+"vec3 rotVecToGeodetic(in vec3 r) \n"
+"{ \n"
+"  float latitude = -asin(r.y); \n"
+"  float longitude = (r.x*r.x + r.z*r.z < 0.0005 ) ? 0.0 : atan2(r.x,r.z); \n"
+"  return vec3( longitude, latitude, 0.0 ); \n"
 "} \n";
 
 // --------------------------------------------------------------------------
@@ -124,6 +133,31 @@ static char source_directionalLight[] =
 "} \n";
 
 // --------------------------------------------------------------------------
+
+static char source_vertShaderMain_slerpMethod[] =
+
+"uniform vec3 c0, c1, c2; \n"
+"uniform vec2 t0, t1, t2; \n"
+"uniform vec3 n0, n1, n2; \n"
+"varying vec2 texCoord0; \n"
+"\n"
+"void main (void) \n"
+"{ \n"
+"   // interpolate vert form barycentric coords \n"
+"   float u = gl_Vertex.x; \n"
+"   float v = gl_Vertex.y; \n"
+"   float w = gl_Vertex.z; // 1-u-v  \n"
+"   vec3 interpNormal = normalize(n0*u + n1*v + n2*w); \n"
+"   vec3 geodetic = rotVecToGeodetic( interpNormal ); \n"
+"   vec4 outVertex = vec4( geodeticToXYZ(geodetic), gl_Vertex.w ); \n"
+"   gl_Position = gl_ModelViewProjectionMatrix * outVertex; \n"
+"\n"
+"   // set up the tex coords for the frad shader: \n"
+"   u = gl_MultiTexCoord0.s; \n"
+"   v = gl_MultiTexCoord0.t; \n"
+"   w = 1.0 - u - v; \n"
+"   texCoord0 = t0*u + t1*v + t2*w; \n"
+"} \n";
 
 static char source_vertShaderMain_latLonMethod[] =
 

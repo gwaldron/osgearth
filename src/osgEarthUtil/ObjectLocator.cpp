@@ -10,6 +10,7 @@ using namespace osgEarthUtil;
 ObjectLocator::ObjectLocator(const osgEarth::SpatialReference* mapSRS) :
 _mapSRS( mapSRS ),
 _componentsToInherit( COMP_ALL ),
+_timestamp( 0.0 ),
 _isEmpty( true )
 {
     if ( !_mapSRS.valid() )
@@ -17,9 +18,10 @@ _isEmpty( true )
 }
 
 ObjectLocator::ObjectLocator(ObjectLocator* parentLoc, unsigned int inheritMask ) :
+_timestamp( 0.0 ),
 _isEmpty( false )
 {
-    setParent( parentLoc, inheritMask );
+    setParentLocator( parentLoc, inheritMask );
 }
 
 bool
@@ -50,7 +52,7 @@ getHPRFromQuat(const osg::Quat& q, double& h, double& p, double& r)
 
 
 void
-ObjectLocator::setParent( ObjectLocator* newParent, unsigned int inheritMask )
+ObjectLocator::setParentLocator( ObjectLocator* newParent, unsigned int inheritMask )
 {
     if ( newParent == this )
     {
@@ -176,10 +178,16 @@ ObjectLocator::getWorldMatrix( osg::Matrixd& output, unsigned int inherit ) cons
     return outputOK;
 }
 
+bool
+ObjectLocator::inSyncWith( int exRev ) const
+{
+    return _parentLoc.valid() ? _parentLoc->inSyncWith( exRev ) :
+        osgEarth::Revisioned<osg::Referenced>::inSyncWith( exRev );
+}
+
 /***************************************************************************/
 
-// Callback that updates the matrix transform when the locator
-// goes out of sync.
+// Binds the update traversal to the udpate() method
 struct LocatorUpdateCallback : public osg::NodeCallback
 {
     void operator()( osg::Node* node, osg::NodeVisitor* nv ) // override

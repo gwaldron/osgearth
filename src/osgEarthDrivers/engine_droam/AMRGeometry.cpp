@@ -38,6 +38,9 @@ AMRTriangle::AMRTriangle()
     _stateSet->getOrCreateUniform( "tex0", osg::Uniform::INT )->set( 0 );
 }
 
+#define SET_UNIFORM(X,Y,Z) \
+    _stateSet->getOrCreateUniform( X , Y )->set( Z )
+
 
 AMRTriangle::AMRTriangle(const MeshNode& n0, const osg::Vec2& t0,
                          const MeshNode& n1, const osg::Vec2& t1, 
@@ -46,19 +49,27 @@ _node0(n0), _node1(n1), _node2(n2)
 {
     _stateSet = new osg::StateSet();
     // should this be INT_SAMPLER_2D?
-    _stateSet->getOrCreateUniform( "tex0", osg::Uniform::INT )->set( 0 );
+    SET_UNIFORM( "tex0", osg::Uniform::INT, 0 );
 
-    setUniform( "c0", _node0._geodeticCoord );
-    setUniform( "c1", _node1._geodeticCoord );
-    setUniform( "c2", _node2._geodeticCoord );
+    SET_UNIFORM( "c0", osg::Uniform::FLOAT_VEC3, _node0._geodeticCoord );
+    SET_UNIFORM( "c1", osg::Uniform::FLOAT_VEC3, _node1._geodeticCoord );
+    SET_UNIFORM( "c2", osg::Uniform::FLOAT_VEC3, _node2._geodeticCoord );
 
-    setUniform( "v0", _node0._vertex );
-    setUniform( "v1", _node1._vertex );
-    setUniform( "v2", _node2._vertex );
+    SET_UNIFORM( "v0", osg::Uniform::FLOAT_VEC3, _node0._vertex );
+    SET_UNIFORM( "v1", osg::Uniform::FLOAT_VEC3, _node1._vertex );
+    SET_UNIFORM( "v2", osg::Uniform::FLOAT_VEC3, _node2._vertex );
 
-    setUniform( "t0", t0 );
-    setUniform( "t1", t1 );
-    setUniform( "t2", t2 );
+    SET_UNIFORM( "t0", osg::Uniform::FLOAT_VEC2, t0 );
+    SET_UNIFORM( "t1", osg::Uniform::FLOAT_VEC2, t1 );
+    SET_UNIFORM( "t2", osg::Uniform::FLOAT_VEC2, t2 );
+
+    SET_UNIFORM( "n0", osg::Uniform::FLOAT_VEC3, _node0._normal );
+    SET_UNIFORM( "n1", osg::Uniform::FLOAT_VEC3, _node1._normal );
+    SET_UNIFORM( "n2", osg::Uniform::FLOAT_VEC3, _node2._normal );
+
+    SET_UNIFORM( "r0", osg::Uniform::FLOAT_VEC4, _node0._geodeticRot.asVec4() );
+    SET_UNIFORM( "r1", osg::Uniform::FLOAT_VEC4, _node1._geodeticRot.asVec4() );
+    SET_UNIFORM( "r2", osg::Uniform::FLOAT_VEC4, _node2._geodeticRot.asVec4() );
 }
 
 void
@@ -67,18 +78,6 @@ AMRTriangle::expand( osg::BoundingBox& box )
     box.expandBy( _node0._vertex );
     box.expandBy( _node1._vertex );
     box.expandBy( _node2._vertex );
-}
-
-void
-AMRTriangle::setUniform( const std::string& name, const osg::Vec3& value )
-{
-    _stateSet->getOrCreateUniform( name, osg::Uniform::FLOAT_VEC3 )->set( value );
-}
-
-void
-AMRTriangle::setUniform( const std::string& name, const osg::Vec2& value )
-{
-    _stateSet->getOrCreateUniform( name, osg::Uniform::FLOAT_VEC2 )->set( value );
 }
 
 // --------------------------------------------------------------------------
@@ -145,10 +144,12 @@ AMRGeometry::initShaders()
     _program->setName( "AMRGeometry" );
 
     osg::Shader* vertexShader = new osg::Shader( osg::Shader::VERTEX,
-        std::string( source_vertShaderMain_flatMethod )
-        //std::string( source_vertShaderMain_geocentricMethod )
-        //std::string( source_lonLatAltToXYZ ) +
+        //std::string( source_vertShaderMain_flatMethod )
+        std::string( source_vertShaderMain_geocentricMethod ) +
+        std::string( source_geodeticToXYZ ) +
+        std::string( source_rotVecToGeodetic )
         //std::string( source_vertShaderMain_latLonMethod )
+        //std::string( source_vertShaderMain_slerpMethod )
         );
 
     vertexShader->setName( "AMR Vert Shader" );

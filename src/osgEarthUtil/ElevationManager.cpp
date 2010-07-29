@@ -31,6 +31,7 @@ ElevationManager::postCTOR()
     _maxDataLevel = 0;
     _maxCacheSize = 100;
     _technique = TECHNIQUE_GEOMETRIC;
+    _interpolation = INTERP_BILINEAR;
 
     if ( !_mapEngine.valid() )
     {

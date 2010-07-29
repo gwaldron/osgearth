@@ -25,6 +25,7 @@
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <OpenThreads/ScopedLock>
+#include <memory.h>
 
 using namespace osgEarth;
 using namespace OpenThreads;

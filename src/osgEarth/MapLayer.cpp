@@ -624,6 +624,7 @@ MapLayer::createImage( const TileKey* key,
 
 
 			osg::ref_ptr<MultiImage> mi = new MultiImage;
+			std::vector< osg::ref_ptr<const TileKey> > missingTiles;
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
 				double minX, minY, maxX, maxY;
@@ -634,14 +635,42 @@ MapLayer::createImage( const TileKey* key,
 				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j].get(), cacheInLayerProfile, progress);
 				if (img.valid())
 				{
+					if (img->getPixelFormat() != GL_RGBA)
+					{
+                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA(img);
+                        if (convertedImg.valid())
+                        {
+                            img = convertedImg;
+                        }
+					}
 					mi->getImages().push_back(TileImage(img.get(), intersectingTiles[j].get()));
 				}
 				else
 				{
-					//If we couldn't create an image that is needed to composite, return NULL
-					OE_DEBUG << "Couldn't create image for MultiImage " << std::endl;
-					return 0;
+					missingTiles.push_back(intersectingTiles[j].get());
 				}
+			}
+			if (mi->getImages().empty())
+			{
+				osg::notify(osg::INFO) << "Couldn't create image for MultiImage " << std::endl;
+				return 0;
+			}
+			else if (missingTiles.size() > 0)
+			{
+                osg::ref_ptr<osg::Image> validImage = mi->getImages()[0].getImage();
+                unsigned int tileWidth = validImage->s();
+                unsigned int tileHeight = validImage->t();
+                unsigned int tileDepth = validImage->r();
+                for (unsigned int j = 0; j < missingTiles.size(); ++j)
+                {
+                    // Create transparent image which size equals to the size of a valid image
+                    osg::ref_ptr<osg::Image> newImage = new osg::Image;
+                    newImage->allocateImage(tileWidth, tileHeight, tileDepth, validImage->getPixelFormat(), validImage->getDataType());
+                    unsigned char *data = newImage->data(0,0);
+                    memset(data, 0, newImage->getTotalSizeInBytes());
+
+                    mi->getImages().push_back(TileImage(newImage.get(), missingTiles[j].get()));
+                }
 			}
 
 			double rxmin, rymin, rxmax, rymax;

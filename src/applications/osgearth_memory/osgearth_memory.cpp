@@ -326,7 +326,7 @@ int main(int argc, char** argv)
         viewer.setSceneData(group);
         viewer.run();
         if (osg::Referenced::getDeleteHandler()) {
-            OSG_NOTICE << "flush all" << std::endl;
+            OE_NOTICE << "flush all" << std::endl;
             osg::Referenced::getDeleteHandler()->flushAll();
         }
     }

@@ -169,6 +169,11 @@ namespace osgEarthUtil
          */
         const osgEarth::SpatialReference* getSRS() const;
 
+        /**
+         * Returns a printable string with the viewpoint data
+         */
+        std::string toString() const;
+
     private:
         std::string _name;
         osg::Vec3d _focal_point;

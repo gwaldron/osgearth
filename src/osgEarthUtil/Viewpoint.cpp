@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/Viewpoint>
+#include <sstream>
 
 using namespace osgEarthUtil;
 using namespace osgEarth;
@@ -194,4 +195,19 @@ Viewpoint::setRange( double value ) {
 const SpatialReference*
 Viewpoint::getSRS() const {
     return _srs.get();
+}
+
+std::string
+Viewpoint::toString() const
+{
+    std::stringstream buf;
+    buf << "x=" << _focal_point.x()
+        << ", y=" << _focal_point.y()
+        << ", z=" << _focal_point.z()
+        << ", h=" << _heading_deg
+        << ", p=" << _pitch_deg
+        << ", d=" << _range
+        ;
+    std::string str = buf.str();
+    return str;
 }

@@ -135,7 +135,6 @@ namespace osgEarth
         {
             osg::ref_ptr<osg::MatrixTransform>  _transform;
             osg::ref_ptr<osg::Geode>            _geode;
-            osg::ref_ptr<osg::Geode>            _simpleGeode;
             osg::ref_ptr<osg::Geometry>         _surface;
             osg::ref_ptr<osg::Geometry>         _skirt;
         };
@@ -165,46 +164,12 @@ namespace osgEarth
 
     private:
 
-        struct LayerTexRegion
-        {
-            LayerTexRegion();
-
-            // transforms image-space tex coords to composite-space tex coords.
-            osg::Vec2 transform( float x, float y ) const;
-
-            // pixel coordinates of layer in the composite image:
-            int _px, _py, _pw, _ph;
-
-            // texture coordinates of layer in the composite image:
-            float _tx, _ty, _tw, _th;
-
-            // texture scale and offset for this region:
-            float _xoffset, _yoffset, _xscale, _yscale;
-
-            // 0..1
-            float _opacity;
-        };
-
-        typedef std::vector<LayerTexRegion> LayerTexRegionList;
-        
         void initShaders();
-        //void applyTexture();
 
-        //LayerTexRegionList         _layerTexRegions;
         osg::ref_ptr<osg::Program> _compositeProgram;
         bool                       _attachedProgram;
 
-        //bool generateCompositeImage( osg::ref_ptr<osg::Image>& out_image, LayerTexRegionList& out_regions );
-        // osg::ref_ptr<osg::Image>   _compositeImage;
-
         bool generateCompositeTexture();
-            //osg::ref_ptr<osg::Texture>& out_tex,
-            //int& out_width,
-            //int& out_height,
-            //LayerTexRegionList& out_regions );
-
-        //osg::ref_ptr<osg::Texture> _composite;
-        //int _compositeWidth, _compositeHeight;
     };
 
 }

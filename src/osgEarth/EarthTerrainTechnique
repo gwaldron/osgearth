@@ -39,6 +39,10 @@ namespace osgEarth
         virtual void init( bool swapNow, ProgressCallback* progress ) =0;
 
         virtual bool swapIfNecessary() =0;
+        
+        virtual void setOptimizeTriangleOrientation( bool optimizeTriangleOrientation ) =0;
+
+        virtual bool getOptimizeTriangleOrientation() const =0;
 
     protected:
         ExtendedTerrainTechnique() { }

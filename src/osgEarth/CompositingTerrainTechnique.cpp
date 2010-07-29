@@ -90,19 +90,6 @@ struct SwitchedGroup : public osg::Group
 
 // --------------------------------------------------------------------------
 
-CompositingTerrainTechnique::LayerTexRegion::LayerTexRegion() :
-_px(0), _py(0),
-_pw(256), _ph(256),
-_tx(0.0f), _ty(0.0f),
-_tw(1.0f), _th(1.0f),
-_xoffset(0.0f), _yoffset(0.0f),
-_xscale(1.0f), _yscale(1.0f)
-{
-    //nop
-}
-
-// --------------------------------------------------------------------------
-
 CompositingTerrainTechnique::CompositingTerrainTechnique( Locator* masterLocator ) :
 _masterLocator( masterLocator ),
 _currentReadOnlyBuffer(1),
@@ -172,7 +159,6 @@ CompositingTerrainTechnique::clearBuffer( int b )
 {
     _bufferData[b]._transform = 0L;
     _bufferData[b]._geode = 0L;
-    _bufferData[b]._simpleGeode = 0L;
     _bufferData[b]._surface = 0L;
     _bufferData[b]._skirt = 0L;
 }
@@ -242,13 +228,11 @@ CompositingTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
         return;
     }
     
+    // create the geometry and texture coordinates for this tile.
     generateGeometry( masterLocator, centerModel );
 
-    generateCompositeTexture(); // _composite, _compositeWidth, _compositeHeight, _layerTexRegions );
-    
-    //applyColorLayers();
-    //applyTexture();
-//    applyTransparency();
+    // create the texture for this tile.
+    generateCompositeTexture();
 
     if (buffer._transform.valid())
         buffer._transform->setThreadSafeRefUnref(true);
@@ -379,12 +363,35 @@ CompositingTerrainTechnique::computeCenterModel(Locator* masterLocator)
     return centerModel;
 }
 
+
+/** Records the information about a layer's texture space */
+struct LayerTexRegion
+{
+    LayerTexRegion() :
+        _px(0), _py(0),
+        _pw(256), _ph(256),
+        _tx(0.0f), _ty(0.0f),
+        _tw(1.0f), _th(1.0f),
+        _xoffset(0.0f), _yoffset(0.0f),
+        _xscale(1.0f), _yscale(1.0f)
+    {
+        //nop
+    }
+
+    // pixel coordinates of layer in the composite image:
+    int _px, _py, _pw, _ph;
+
+    // texture coordinates of layer in the composite image:
+    float _tx, _ty, _tw, _th;
+
+    // texture scale and offset for this region:
+    float _xoffset, _yoffset, _xscale, _yscale;
+};
+typedef std::vector<LayerTexRegion> LayerTexRegionList;
+
+
 bool
 CompositingTerrainTechnique::generateCompositeTexture()
-                                                      //osg::ref_ptr<osg::Texture>& out_tex,
-                                                      //int& out_width,
-                                                      //int& out_height,
-                                                      //LayerTexRegionList& out_regions )
 {
 
     BufferData& buffer = getWriteBuffer();
@@ -405,9 +412,6 @@ CompositingTerrainTechnique::generateCompositeTexture()
     osg::ref_ptr<osg::Texture2DArray> composite = new osg::Texture2DArray();
     LayerTexRegionList regions;
 
-    //out_tex = 0L;
-    //out_regions.clear();
-
     int texWidth = 0, texHeight = 0;
 
     std::vector<osgTerrain::ImageLayer*> _imageLayers;
@@ -423,8 +427,6 @@ CompositingTerrainTechnique::generateCompositeTexture()
 
         tileExtent = tileLocator->getDataExtent();
     }
-
-    //osg::ref_ptr<osg::Texture2DArray> texArray = new osg::Texture2DArray();
 
     // find each image layer and create a region entry for it
     GeoLocator* masterLocator = 0L;
@@ -443,27 +445,33 @@ CompositingTerrainTechnique::generateCompositeTexture()
 
             osg::Image* image = imageLayer->getImage();
 
+            // Because all tex2darray layers must be identical in format
             if ( image->getPixelFormat() != GL_RGBA )
                 image = ImageUtils::convertToRGBA( image );
 
-            //TEMP solution..
+            // TODO: reconsider.. perhaps grow the tex to the max layer size instead?
             if ( image->s() != 256 || image->t() != 256 )
                 image = ImageUtils::resizeImage( image, 256, 256 );
 
+            // add the layer image to the composite.
             composite->setImage( layerNum, image );
 
+            // TODO: optimize this away
             LayerTexRegion region;
             region._px = 0;
             region._py = 0;
             region._pw = image->s();
             region._ph = image->t();
 
+            // track the maximum texture size
             if ( image->s() > texWidth )
                 texWidth = image->s();
 
             if ( image->t() > texHeight )
                 texHeight = image->t();
             
+            // record the proper texture offset/scale for this layer. this accounts for subregions that
+            // are used when referencing lower LODs.
             osg::ref_ptr<GeoLocator> layerLocator = dynamic_cast<GeoLocator*>( imageLayer->getLocator() );
             if ( layerLocator.valid() )
             {
@@ -485,14 +493,8 @@ CompositingTerrainTechnique::generateCompositeTexture()
 
     composite->setTextureSize( texWidth, texHeight, numColorLayers );
 
-    // now, calculate the size of the composite image and allocate it.
-    // TODO: account for different image pixel formats by converting everything to RGBA
-    //out_image = new osg::Image();
-    //out_image->allocateImage( totalWidth, totalHeight, 1, GL_RGBA, GL_UNSIGNED_BYTE );
-
     // build the uniforms.
-    //osg::StateSet* stateSet = buffer._geode.getOrCreateStateSet(); //_terrainTile->getOrCreateStateSet();
-    
+    //    
     // The uniform array contains 8 floats for each region:
     //   tx, ty : origin texture coordinates in the composite-image space
     //   tw, th : width and height in composite-image space
@@ -704,6 +706,7 @@ CompositingTerrainTechnique::generateCompositeTexture()
         }
 
 #ifdef USE_TEXTURE_2D_ARRAY
+        // because OSG will make an illegal set mode call if we use setTextureAttributeAndModes for a texture array:
         stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON );
 #else
         stateSet->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
@@ -737,15 +740,6 @@ CompositingTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, do
     }
 }
 
-// allocate and assign tex coords
-struct TextureData
-{
-    //osg::ref_ptr<osg::Vec2Array> _surface;
-    //osg::ref_ptr<osg::Vec2Array> _skirt;
-    osg::ref_ptr<Locator>        _locator;
-    int                          _layerNum;
-};
-
 void
 CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
 {
@@ -769,28 +763,8 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
     buffer._geode = new osg::Geode();
     buffer._geode->setThreadSafeRefUnref(true);
 
-    buffer._simpleGeode = new osg::Geode();
-    buffer._simpleGeode->setThreadSafeRefUnref(true);
-
-#if 0
-    if(buffer._transform.valid())
-    {
-        osg::Group* geodeGroup = new SwitchedGroup( 0xf0f0f0f0, false );
-        geodeGroup->setDataVariance( osg::Object::DYNAMIC );
-        geodeGroup->addChild( buffer._geode.get() );
-        buffer._transform->addChild( geodeGroup ); //buffer._geode.get());
-
-        osg::Group* simpleGroup = new SwitchedGroup( 0xf0f0f0f0, true );
-        simpleGroup->setDataVariance( osg::Object::DYNAMIC );
-        simpleGroup->addChild( buffer._simpleGeode.get() );
-        buffer._transform->addChild( simpleGroup ); //buffer._simpleGeode.get());
-
-        buffer._transform->setThreadSafeRefUnref(true);
-    }
-#else
     buffer._transform->addChild( buffer._geode.get() );
     buffer._transform->setThreadSafeRefUnref(true);
-#endif
     
     buffer._surface = new osg::Geometry;
     buffer._skirt = new osg::Geometry;
@@ -802,10 +776,6 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
 
     buffer._geode->addDrawable(buffer._surface.get());
     buffer._geode->addDrawable(buffer._skirt.get());
-
-#if 0
-    buffer._simpleGeode->addDrawable(buffer._surface.get());
-#endif
         
     osg::Geometry* surface = buffer._surface.get();
     surface->setThreadSafeRefUnref(true);
@@ -872,55 +842,8 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
         _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
         1.0f;
 
-
-#if 0
-    typedef std::map<Layer*, TexCoordData> LayerToTexCoordMap;
-
-    LayerToTexCoordMap layerToTexCoordMap;
-    for(unsigned int layerNum=0; layerNum<_terrainTile->getNumColorLayers(); ++layerNum)
-    {
-        osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
-        if (colorLayer)
-        {
-            LayerToTexCoordMap::iterator itr = layerToTexCoordMap.find(colorLayer);
-            if (itr!=layerToTexCoordMap.end())
-            {
-                surface->setTexCoordArray(layerNum, itr->second._surface.get()); //second.first.get());
-            }
-            else
-            {
-
-                Locator* locator = colorLayer->getLocator();
-                
-				TexCoordData& tclp = layerToTexCoordMap[colorLayer];
-                
-                tclp._layerNum = layerNum;
-
-                tclp._surface = new osg::Vec2Array;
-                tclp._surface->reserve( numVerticesInSurface );
-                tclp._skirt = new osg::Vec2Array;
-                tclp._skirt->reserve( numVerticesInSkirt );
-
-                if (!isCube && locator && locator->getCoordinateSystemType() == Locator::GEOCENTRIC)
-                {
-                    GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
-                    if (geo)
-                    {
-                        locator = geo->getGeographicFromGeocentric();
-                    }
-                }
-                tclp._locator = locator ? locator : masterTextureLocator.get();
-
-                surface->setTexCoordArray(layerNum, tclp._surface.get());
-                skirt->setTexCoordArray(layerNum, tclp._skirt.get());
-            }
-        }
-    }
-#endif
-
     osg::ref_ptr<osg::FloatArray> elevations = new osg::FloatArray;
-    if (elevations.valid()) elevations->reserve(numVerticesInSurface);
-        
+    if (elevations.valid()) elevations->reserve(numVerticesInSurface);        
 
     // allocate and assign color
     osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array(1);
@@ -929,12 +852,9 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
     surface->setColorArray(colors.get());
     surface->setColorBinding(osg::Geometry::BIND_OVERALL);
 
-
     typedef std::vector<int> Indices;
-    Indices indices(numVerticesInSurface, -1);
+    Indices indices(numVerticesInSurface, -1);    
 
-
-    
     // populate vertex and tex coord arrays    
     unsigned int i, j;
 
@@ -971,73 +891,6 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
                 (*surfaceVerts).push_back(model - centerModel);
 
                 (*surfaceTexCoords).push_back( osg::Vec2( ndc.x(), ndc.y() ) );
-
-#if 0
-                //TODO: reevaluate. The Compositing technique only uses one texture and therefore only 
-                // needs one set of texture coordinates (not one per layer). 
-
-                for(LayerToTexCoordMap::iterator itr = layerToTexCoordMap.begin();
-                    itr != layerToTexCoordMap.end();
-                    ++itr)
-                {
-                    TexCoordData& tcdata = itr->second;
-                    
-                    osg::Vec2Array*         texcoords (tcdata._surface.get()); //second.first.get());
-                    osgTerrain::ImageLayer* imageLayer(dynamic_cast<osgTerrain::ImageLayer*>(itr->first));
-
-                    if (imageLayer != NULL)
-                    {
-#if 0
-                      osgTerrain::Locator* colorLocator(tcdata._locator.get()); //.second);
-
-                      if (colorLocator != masterLocator)
-                      {
-                          osg::Vec3d color_ndc;
-
-                          Locator::convertLocalCoordBetween(*masterTextureLocator.get(), ndc, *colorLocator, color_ndc);
-                          (*texcoords).push_back( osg::Vec2( color_ndc.x(), color_ndc.y() ) );
-                          //osg::Vec2 compTexCoord = _layerTexRegions[tcdata._layerNum].transform( color_ndc.x(), color_ndc.y() );
-                          //(*texcoords).push_back( compTexCoord );
-                      }
-                      else
-#endif
-                      {
-                          // for the compositing method, all texture coords lie in the [0..1] range and
-                          // get adjusted in the shader as necessary.
-                          (*texcoords).push_back( osg::Vec2( ndc.x(), ndc.y() ) );
-                      }
-                    }
-                    else
-                    {
-                        //TODO: contour layer not supported yet in Compositer
-
-                      osgTerrain::ContourLayer* contourLayer(dynamic_cast<osgTerrain::ContourLayer*>(itr->first));
-
-                      if (contourLayer != NULL)
-                      {
-                        osg::TransferFunction1D const*const transferFunction = contourLayer->getTransferFunction();
-                        osg::Vec3d                          color_ndc;
-                        osgTerrain::Locator*                colorLocator(tcdata._locator.get()); //.second);
-                        
-                        if (colorLocator != masterTextureLocator)
-                          Locator::convertLocalCoordBetween(*masterTextureLocator.get(),ndc,*colorLocator,color_ndc);
-                        else
-                          color_ndc = ndc;
-                        color_ndc[2] /= scaleHeight;
-                        if (transferFunction != NULL)
-                        {
-                          float const difference = transferFunction->getMaximum()-transferFunction->getMinimum();
-                          
-                          //TODO
-                          if (difference != 0)
-                            (*texcoords).push_back(osg::Vec2((color_ndc[2]-transferFunction->getMinimum())/difference,0.0f));
-                          else
-                            (*texcoords).push_back(osg::Vec2(0.0f,0.0f));
-                        }
-                      }
-                    }
-                }
-#endif
 
                 if (elevations.valid())
                 {
@@ -1096,10 +949,6 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            //for(LayerToTexCoordMap::iterator i = layerToTexCoordMap.begin(); i != layerToTexCoordMap.end(); ++i ) {
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //}
         }
 
         // right:
@@ -1110,10 +959,6 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            //for(LayerToTexCoordMap::iterator i = layerToTexCoordMap.begin(); i != layerToTexCoordMap.end(); ++i ) {
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //}
         }
 
         // top:
@@ -1124,10 +969,6 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            //for(LayerToTexCoordMap::iterator i = layerToTexCoordMap.begin(); i != layerToTexCoordMap.end(); ++i ) {
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //}
         }
 
         // left:
@@ -1138,10 +979,6 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
             skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            //for(LayerToTexCoordMap::iterator i = layerToTexCoordMap.begin(); i != layerToTexCoordMap.end(); ++i ) {
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //    i->second._skirt->push_back( (*i->second._surface.get())[orig_i] );
-            //}
         }
 
         skirt->setVertexArray( skirtVerts );
@@ -1329,50 +1166,6 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
         //OE_NOTICE<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 }
-
-#if 0
-void
-CompositingTerrainTechnique::applyTexture()
-{
-    BufferData& buffer = getWriteBuffer();
-
-    osg::StateSet* stateSet = buffer._geode->getOrCreateStateSet();
-
-    osg::Texture* texture = _composite.get();
-    if ( texture )
-    {
-        texture->setMaxAnisotropy(16.0f);
-        texture->setResizeNonPowerOfTwoHint(false);
-
-        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-        texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-
-        texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
-        texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
-        texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
-
-        bool mipMapping = !(texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
-        bool s_NotPowerOfTwo = _compositeWidth==0 || (_compositeWidth & (_compositeWidth - 1));
-        bool t_NotPowerOfTwo = _compositeHeight==0 || (_compositeHeight & (_compositeHeight - 1));
-
-        if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
-        {
-            OE_DEBUG<<"[osgEarth::CompositingTerrainTechnique] Disabling mipmapping for non power of two tile size("
-                <<_compositeWidth<<", "<<_compositeHeight<<")"<<std::endl;
-            texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
-        }
-
-#ifdef USE_TEXTURE_2D_ARRAY
-        stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON );
-#else
-        stateSet->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
-#endif
-    }
-
-    // done with the composite image - can unref it to free the memory.
-    _composite = 0L;
-}
-#endif
 
 void
 CompositingTerrainTechnique::update(osgUtil::UpdateVisitor* uv)

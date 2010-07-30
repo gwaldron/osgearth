@@ -307,12 +307,10 @@ MapLayer::getTileSource() const {
 const Profile*
 MapLayer::getProfile() const
 {
-	if (!_profile.valid())
-	{
-		//Make sure the tileSource is initialized, the profile will be set when the tilesource is initialized.
-		getTileSource();
-	}
-	return _profile.get();
+    //Call getTileSource to make sure the TileSource is initialized
+    if (_cacheOnly == false && !_tileSource.valid()) getTileSource();
+    
+    return _profile.get();
 }
 
 unsigned int
@@ -424,11 +422,8 @@ MapLayer::initTileSource()
 
     if (_tileSource.valid())
     {
-        // check this, because it's possible the profile was already set in setCache()
-        if ( !_profile.valid() )
-        {
-            _profile = _tileSource->getProfile();
-        }
+        //Set the profile from the TileSource
+        _profile = _tileSource->getProfile();
     }
     else if (_cache.valid())
     {

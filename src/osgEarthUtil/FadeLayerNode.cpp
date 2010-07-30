@@ -130,6 +130,7 @@ char frag_source[] =
                     
                     "  vec3 color = vec3(1,1,1);\n"
                     "  int numLayersOn = 0;\n"
+                    "  float maxAlpha = 0.0;\n"
                     "  for(int i=0; i<osgearth_imagelayer_count; i++) \n"
                     "  {\n"
                     "     if (osgearth_imagelayer_enabled[i])\n"
@@ -138,9 +139,11 @@ char frag_source[] =
                     "       float alpha = texel.a * osgearth_imagelayer_opacity[i];\n"
                     "       color = mix(color, texel.rgb, alpha);\n"
                     "       numLayersOn++;\n"
+                    "       if (maxAlpha < alpha) maxAlpha = alpha;\n"
                     "     }\n"
                     "  }\n"
-                    "  gl_FragColor = gl_Color * vec4(color, 1.0); \n"                  
+                    "  if (numLayersOn == 0) maxAlpha = 1.0;\n"
+                    "  gl_FragColor = gl_Color * vec4(color, maxAlpha); \n"                  
                     "}\n";                    
 
 

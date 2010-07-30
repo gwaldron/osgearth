@@ -34,9 +34,9 @@ OSG geometry out of it.
                 }                    
             </style>
         </styles>
+		
+		<lighting>false</lighting>
         
     </model>
-    
-    <lighting>false</lighting>
   
 </map>

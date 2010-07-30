@@ -83,6 +83,10 @@ namespace osgEarth
         bool getEnabled() const;
         void setEnabled(bool enabled);
 
+        // whether to apply lighting to the model layer's root node
+        void setLightingEnabled( bool value );
+        const optional<bool>& lightingEnabled() const { return _enabled; }
+
     public:
 
         void initialize( const std::string& referenceURI, const Map* map );
@@ -102,6 +106,7 @@ namespace osgEarth
         osg::ref_ptr< osg::Node > _node;
 
         optional<bool> _enabled;
+        optional<bool> _lighting;
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerList;

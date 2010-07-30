@@ -80,8 +80,12 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
     if (!_node.valid() && _modelSource.valid())
     {
         _node = _modelSource->createNode( progress );
-        //Initialize the nodemask
-        _node->setNodeMask( _enabled.get() ? ~0 : 0 );
+
+        if ( _enabled.isSet() )
+            setEnabled( _enabled.value() );
+
+        if ( _lighting.isSet() )
+            setLightingEnabled( _lighting.value() );
     }
     return _node.get();
 }
@@ -95,6 +99,7 @@ ModelLayer::toConfig() const
     conf.key() = "model";
     conf.attr("name") = _name;
     conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet( "lighting", _lighting );
 
     return conf;
 }
@@ -108,15 +113,22 @@ ModelLayer::getEnabled() const
 void
 ModelLayer::setEnabled(bool enabled)
 {
-    if (_enabled != enabled)
-    {
-        _enabled = enabled;
+    _enabled = enabled;
+    if ( _node.valid() )
         _node->setNodeMask( _enabled.get() ? ~0 : 0 );
-    }
+}
+
+void
+ModelLayer::setLightingEnabled( bool value )
+{
+    _lighting = value;
+    if ( _node.valid() )
+        _node->getOrCreateStateSet()->setMode( GL_LIGHTING, value ? 1 : 0 );
 }
 
 void
 ModelLayer::fromConfig(const osgEarth::Config &conf)
 {
     conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "lighting", _lighting );
 }

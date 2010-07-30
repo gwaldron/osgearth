@@ -211,18 +211,11 @@ public:
                 int dataSize = 0;
                 std::string data;
                 do{
-                    char* buffer = new char[1024];
+                    char buffer[1024];
                     dataSize = zip_fread(pZipFile, buffer, 1024);
-                    if (dataSize == 0)
+                    if (dataSize > 0)
                     {
-                        delete [](buffer);
-                        buffer = NULL;
-                    }
-                    if (buffer)
-                    {
-                        data.append((char*)buffer, dataSize);
-                        // cpinson 26/07/2010: I would think that it would need a 
-                        // delete [](buffer); here ???
+                       data.append((char*)buffer, dataSize);
                     }
                 }while (dataSize > 0);
 

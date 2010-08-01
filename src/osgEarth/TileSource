@@ -28,6 +28,7 @@
 #include <osgEarth/Caching>
 #include <osgEarth/Progress>
 #include <osgEarth/DriverOptions>
+#include <osgEarth/ThreadingUtils>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -67,6 +68,9 @@ namespace osgEarth
         optional<float>& noDataMaxValue() { return _noDataMaxValue; }
         const optional<float>& noDataMaxValue() const { return _noDataMaxValue; }
 
+        optional<std::string>& blacklistFilename() { return _blacklistFilename; }
+        const optional<std::string>& blacklistFilename() const { return _blacklistFilename; }
+
         optional<Config>& profileConfig() { return _profileConf; }
         const optional<Config>& profileConfig() const { return _profileConf; }
 
@@ -81,6 +85,69 @@ namespace osgEarth
         optional<int> _tileSize;
         optional<float> _noDataValue, _noDataMinValue, _noDataMaxValue;
         optional<Config> _profileConf;
+        optional<std::string> _blacklistFilename;
+    };
+
+    /**
+     * A collection of tiles that should be considered blacklisted
+     */
+    class OSGEARTH_EXPORT TileBlacklist : public virtual osg::Referenced
+    {
+    public:
+        /**
+         *Creates a new TileBlacklist
+         */
+        TileBlacklist();
+
+        /**
+         *Adds the given tile to the blacklist
+         */
+        void add(const osgTerrain::TileID &tile);
+
+        /**
+         *Removes the given tile from the blacklist
+         */
+        void remove(const osgTerrain::TileID& tile);
+
+        /**
+         *Removes all tiles from the blacklist
+         */
+        void clear();
+
+        /**
+         *Returns whether the given tile is in the blacklist
+         */
+        bool contains(const osgTerrain::TileID &tile) const;
+
+        /**
+         *Returns the size of the blacklist
+         */
+        unsigned int size() const;
+
+        /**
+         *Reads a TileBlacklist from the given istream
+         */
+        static TileBlacklist* read(std::istream &in);
+
+        /**
+         *Reads a TileBlacklist from the given filename
+         */
+        static TileBlacklist* read(const std::string &filename);
+
+        /**
+         *Writes this TileBlacklist to the given ostream
+         */
+        void write(std::ostream &output) const;
+
+        /**
+         *Writes this TileBlacklist to the given filename
+         */
+        void write(const std::string &filename) const;
+
+    private:
+        typedef std::set< osgTerrain::TileID > BlacklistedTiles;
+        BlacklistedTiles _tiles;
+        osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
 
@@ -132,31 +199,16 @@ namespace osgEarth
             return _settings->noDataValue().value(); }
 
 		/**
-		 * Sets the nodata elevation value
-		 */
-        //virtual void  setNoDataValue(float noDataValue);
-
-		/**
 		 * Gets the nodata min value
 		 */
         virtual float getNoDataMinValue() {
             return _settings->noDataMinValue().value(); }
 
 		/**
-		 * Sets the nodata min value
-		 */
-        //virtual void setNoDataMinValue(float noDataMinValue);
-
-		/**
 		 * Gets the nodata max value
 		 */
         virtual float getNoDataMaxValue() {
             return _settings->noDataMaxValue().value(); }
-
-		/**
-		 * Sets the nodata max value
-		 */
-        //virtual void  setNoDataMaxValue(float noDataMaxValue);     
 
         /**
          * Gets the extent of available data accessible through this tile source.
@@ -183,6 +235,12 @@ namespace osgEarth
          */
         virtual std::string getExtension() const {return "png";}
 
+        /**
+         *Gets the blacklist for this TileSource
+         */
+        TileBlacklist* getBlacklist();
+        const TileBlacklist* getBlacklist() const;
+
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const TileSource*>(obj)!=NULL; }
@@ -196,6 +254,8 @@ namespace osgEarth
 
    
     protected:
+
+        ~TileSource();
 
 		/**
 		 * Creates an image for the given TileKey
@@ -231,12 +291,11 @@ namespace osgEarth
         friend class MapEngine;
         friend class TileSourceFactory;
 
-        //float _noDataValue;
-        //float _noDataMinValue;
-        //float _noDataMaxValue;
-
         GeoExtent    _dataExtent;
         unsigned int _maxDataLevel;
+
+        osg::ref_ptr< TileBlacklist > _blacklist;
+        std::string _blacklistFilename;
 
 		osg::ref_ptr<MemCache> _memCache;
     };

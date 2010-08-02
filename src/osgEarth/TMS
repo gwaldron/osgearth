@@ -326,7 +326,11 @@ namespace osgEarth
 
         /** Gets the TileSets for this TileMap */
         const TileSetList& getTileSets() const {return _tileSets;}
-        
+
+        DataExtentList& getDataExtents() { return _dataExtents;}
+        const DataExtentList& getDataExtents() const { return _dataExtents;}
+
+       
         /**
         *Gets a URL string that can be used to retrieve the image for the given TileKey
         *@param tileKey
@@ -390,7 +394,9 @@ namespace osgEarth
         unsigned int _numTilesWide;
         unsigned int _numTilesHigh;
 
-        osgEarth::Profile::ProfileType _profile_type;
+        osgEarth::Profile::ProfileType _profile_type;        
+
+        DataExtentList _dataExtents;
     };
 
     class OSGEARTH_EXPORT TileMapReaderWriter

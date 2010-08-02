@@ -805,16 +805,24 @@ MapLayer::createImageWrapper( const TileKey* key,
 	if (source && !image.valid() && _cacheOnly == false )
 	{
         //Only try to get the image if it's not in the blacklist
-        if (!source->getBlacklist()->contains( key->getTileId()))
+        if (!source->getBlacklist()->contains( key->getTileId() ))
         {
-		   image = source->getImage( key, progress );
-           //If the image is not valid and the progress was not cancelled, blacklist
-           if (!image.valid() && (!progress || !progress->isCanceled()))
-           {
-               //Add the tile to the blacklist
-               OE_DEBUG << "Adding tile " << key->str() << " to the blacklist" << std::endl;
-               source->getBlacklist()->add(key->getTileId());
-           }
+            //Only try to get data if the source actually has data
+            if (source->hasData( key ) )
+            {
+                image = source->getImage( key, progress );
+                //If the image is not valid and the progress was not cancelled, blacklist
+                if (!image.valid() && (!progress || !progress->isCanceled()))
+                {
+                    //Add the tile to the blacklist
+                    OE_DEBUG << "Adding tile " << key->str() << " to the blacklist" << std::endl;
+                    source->getBlacklist()->add(key->getTileId());
+                }
+            }
+            else
+            {
+                OE_DEBUG << "Source has no data at " << key->str() << std::endl;
+            }
         }
         else
         {
@@ -865,15 +873,25 @@ MapLayer::createGeoHeightField(const TileKey* key,
                                ProgressCallback * progress)
 {
     osg::ref_ptr<osg::HeightField> hf;
-    
+
+    TileSource* source = getTileSource();
+
     //Only try to get the tile if it isn't blacklisted
-    if (!getTileSource()->getBlacklist()->contains( key->getTileId()) )
+    if (!source->getBlacklist()->contains( key->getTileId() ))
     {
-        hf = getTileSource()->getHeightField( key, progress );
-        //Blacklist the tile if we can't get it and it wasn't cancelled
-        if (!hf.valid() && (!progress || !progress->isCanceled()))
+        //Only try to get data if the source actually has data
+        if (source->hasData( key ) )
         {
-            getTileSource()->getBlacklist()->add(key->getTileId());
+            hf = source->getHeightField( key, progress );
+            //Blacklist the tile if we can't get it and it wasn't cancelled
+            if (!hf.valid() && (!progress || !progress->isCanceled()))
+            {
+                source->getBlacklist()->add(key->getTileId());
+            }
+        }
+        else
+        {
+            OE_DEBUG << "Source has no data at " << key->str() << std::endl;
         }
     }
     else
@@ -884,8 +902,8 @@ MapLayer::createGeoHeightField(const TileKey* key,
 	{
 		//Modify the heightfield data so that is contains a standard value for NO_DATA
 		osg::ref_ptr<CompositeValidValueOperator> ops = new CompositeValidValueOperator;
-		ops->getOperators().push_back(new osgTerrain::NoDataValue(getTileSource()->getNoDataValue()));
-		ops->getOperators().push_back(new osgTerrain::ValidRange(getTileSource()->getNoDataMinValue(), getTileSource()->getNoDataMaxValue()));
+		ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
+		ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
 
 		ReplaceInvalidDataOperator o;
 		o.setReplaceWith(NO_DATA_VALUE);

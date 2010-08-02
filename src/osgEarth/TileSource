@@ -150,7 +150,6 @@ namespace osgEarth
         osgEarth::Threading::ReadWriteMutex _mutex;
     };
 
-
     /**
      * A TileSource is an object that can create image and/or heightfield tiles. Driver 
      * plugins are responsible for creating and returning a TileSource that the Map
@@ -211,19 +210,20 @@ namespace osgEarth
             return _settings->noDataMaxValue().value(); }
 
         /**
-         * Gets the extent of available data accessible through this tile source.
-         * While the Profile will return extents corresponding to the SRS, this
-         * method will reflect the area containing real source data.
-         */
-        virtual const GeoExtent& getDataExtent() const;
-
-        /**
          * Gets the maximum level of detail available from the tile source. Unlike 
          * getMaxLevel(), which reports the maximum level at which to use this tile 
          * source in a Map, this method reports the maximum level for which the 
          * tile source is able to return data.
          */
         virtual unsigned int getMaxDataLevel() const;
+
+        /**
+         * Gets the minimum level of detail available from the tile source. Unlike 
+         * getMinLevel(), which reports the minimum level at which to use this tile 
+         * source in a Map, this method reports the minimum level for which the 
+         * tile source is able to return data.
+         */
+        virtual unsigned int getMinDataLevel() const;
 
         /**
          * Returns true if data from this source can be cached to disk
@@ -239,7 +239,18 @@ namespace osgEarth
          *Gets the blacklist for this TileSource
          */
         TileBlacklist* getBlacklist();
-        const TileBlacklist* getBlacklist() const;
+        const TileBlacklist* getBlacklist() const;             
+
+        /**
+         * Gets the list of areas with data for this TileSource
+         */
+        const DataExtentList& getDataExtents() const { return _dataExtents; }        
+
+        /**
+         * Whether or not the source has data for the given TileKey
+         */
+        virtual bool hasData(const TileKey* key);        
+
 
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
@@ -272,11 +283,10 @@ namespace osgEarth
         const TileSourceOptions* getOptions() const {
             return _settings.get(); }
 
-        // Called by a tile source implementation to set the data extent.
-        void setDataExtent( const GeoExtent& extent );
-
-        // Called by a tile source implementation to set the maximum data level
-        void setMaxDataLevel( unsigned int max_level );
+        /**
+         * Mutable list of the data areas 
+         */
+        DataExtentList& getDataExtents() { return _dataExtents; }
 
 		/**
 		 * Called by subclasses to initialize their profile
@@ -291,13 +301,12 @@ namespace osgEarth
         friend class MapEngine;
         friend class TileSourceFactory;
 
-        GeoExtent    _dataExtent;
-        unsigned int _maxDataLevel;
-
         osg::ref_ptr< TileBlacklist > _blacklist;
         std::string _blacklistFilename;
 
 		osg::ref_ptr<MemCache> _memCache;
+
+        DataExtentList _dataExtents;
     };
 
     

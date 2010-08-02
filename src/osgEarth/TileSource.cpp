@@ -188,13 +188,9 @@ TileBlacklist::write(std::ostream &output) const
     }
 }
 
-
-
-
 /****************************************************************/  
 
-TileSource::TileSource(const PluginOptions* options) :
-_maxDataLevel( INT_MAX )
+TileSource::TileSource(const PluginOptions* options)
 {
     this->setThreadSafeRefUnref( true );
 
@@ -316,28 +312,54 @@ TileSource::getProfile() const
     return _profile.get();
 }
 
-const GeoExtent&
-TileSource::getDataExtent() const
-{
-    return _dataExtent.defined() ? _dataExtent : _profile->getExtent();
-}
-
-void 
-TileSource::setDataExtent( const GeoExtent& extent )
-{
-    _dataExtent = extent;
-}
-
 unsigned int
 TileSource::getMaxDataLevel() const
 {
-    return _maxDataLevel;
+    //If we have no data extents, just use INT_MAX
+    if (_dataExtents.size() == 0) return INT_MAX;
+
+    unsigned int maxDataLevel = INT_MIN;
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        if (itr->getMaxLevel() > maxDataLevel) maxDataLevel = itr->getMaxLevel();
+    }
+    return maxDataLevel;
 }
 
-void
-TileSource::setMaxDataLevel( unsigned int value )
+unsigned int
+TileSource::getMinDataLevel() const
 {
-    _maxDataLevel = value;
+    //If we have no data extents, just use 0
+    if (_dataExtents.size() == 0) return 0;
+
+    unsigned int minDataLevel = INT_MAX;
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        if (itr->getMinLevel() < minDataLevel) minDataLevel = itr->getMinLevel();
+    }
+    return minDataLevel;
+}
+
+bool
+TileSource::hasData(const osgEarth::TileKey* key)
+{
+    //osg::Timer_t start = osg::Timer::instance()->tick();
+    const osgEarth::GeoExtent& keyExtent = key->getGeoExtent();
+    bool intersectsData = false;
+    if (_dataExtents.size() == 0) intersectsData = true;
+    else
+    {
+        for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+        {
+            if (keyExtent.intersects( *itr ) && key->getLevelOfDetail() >= itr->getMinLevel() && key->getLevelOfDetail() <= itr->getMaxLevel())
+            {
+                intersectsData = true;
+            }
+        }
+    }
+    //osg::Timer_t end = osg::Timer::instance()->tick();
+    //OE_NOTICE << "hasData took " << osg::Timer::instance()->delta_m(start, end) << " ms to check " << _dataExtents.size() << " areas " << std::endl;
+    return intersectsData;
 }
 
 bool

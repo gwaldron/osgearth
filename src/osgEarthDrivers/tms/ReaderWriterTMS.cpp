@@ -110,11 +110,18 @@ public:
         if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
         {
           OE_INFO << "[osgEarth::TMS] TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
-          //TODO:  Replace this with a concept of the "data" having a min/max level, not the min-max visible level
-          //setMinLevel(_tileMap->getMinLevel());
-          //setMaxLevel(_tileMap->getMaxLevel());
-
-          this->setMaxDataLevel( _tileMap->getMaxLevel() );
+          if (_tileMap->getDataExtents().size() > 0)
+          {
+              for (DataExtentList::iterator itr = _tileMap->getDataExtents().begin(); itr != _tileMap->getDataExtents().end(); ++itr)
+              {
+                  this->getDataExtents().push_back(*itr);
+              }
+          }
+          else
+          {
+              //Push back a single area that encompasses the whole profile going up to the max level
+              this->getDataExtents().push_back(DataExtent(result->getExtent(), 0, _tileMap->getMaxLevel()));
+          }
         }
 
 		setProfile( result );

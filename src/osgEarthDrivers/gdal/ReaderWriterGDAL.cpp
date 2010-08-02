@@ -920,12 +920,10 @@ public:
             SpatialReference::create( warpedSRSWKT ), //_warpedDS->GetProjectionRef() ),
             _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
         GeoExtent profile_extent = local_extent.transform( profile->getSRS() );
-        setDataExtent( profile_extent );
+
+        getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
         
         OE_INFO << "GDAL: Data Extents: " << profile_extent.toString() << std::endl;
-
-        // record the maximum resolution in profile space:
-        setMaxDataLevel( _maxDataLevel );
 
 		//Set the profile
 		setProfile( profile );

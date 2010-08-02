@@ -355,6 +355,29 @@ GeoExtent::toString() const
     return bufStr;
 }
 
+
+/***************************************************************************/
+
+DataExtent::DataExtent(const osgEarth::GeoExtent &extent, unsigned int minLevel,  unsigned int maxLevel):
+GeoExtent(extent),
+_minLevel(minLevel),
+_maxLevel(maxLevel)
+{
+}
+
+unsigned int
+DataExtent::getMinLevel() const
+{
+    return _minLevel;
+}
+
+unsigned int
+DataExtent::getMaxLevel() const
+{
+    return _maxLevel;
+}
+
+
 /***************************************************************************/
 
 

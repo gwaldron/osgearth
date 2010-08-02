@@ -163,6 +163,26 @@ namespace osgEarth
         double _xmin, _ymin, _xmax, _ymax;
     };
 
+    /**
+     * A geospatial area with tile data
+     */
+    class OSGEARTH_EXPORT DataExtent : public GeoExtent
+    {
+    public:
+        DataExtent(const GeoExtent& extent, unsigned int minLevel, unsigned int maxLevel);
+        unsigned int getMinLevel() const;
+        unsigned int getMaxLevel() const;
+
+    private:
+        unsigned int _minLevel;
+        unsigned int _maxLevel;
+    };
+
+    /**
+    * A list of DataExtent
+    */
+    typedef std::vector< DataExtent > DataExtentList;
+
 
     /**
      * A georeferenced image; i.e. an osg::Image and an associated

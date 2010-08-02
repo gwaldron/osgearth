@@ -153,7 +153,7 @@ public:
 		}
 
         // Next, try to glean the extents from the layer list
-        if ( !result.valid() && capabilities.valid() )
+        if ( capabilities.valid() )
         {
             //TODO: "layers" mights be a comma-separated list. need to loop through and
             //combine the extents?? yes
@@ -173,15 +173,23 @@ public:
 					}
 
 					//If we still don't have any extents, just default to global geodetic.
-					if (minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
+					if (!result.valid() && minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
 					{
 						result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
 					}
                 }	
 
+
                 if (!result.valid())
                 {
                     result = Profile::create( _srsToUse, minx, miny, maxx, maxy );
+                }
+
+                //Add the layer extents to the list of valid areas
+                if (minx != 0 || maxx != 0 || miny != 0 || maxy != 0)
+                {
+                    GeoExtent extent( result->getSRS(), minx, miny, maxx, maxy);                    
+                    getDataExtents().push_back( DataExtent(extent, 0, INT_MAX) );
                 }
             }
         }

@@ -104,6 +104,8 @@ void TileMap::setExtents( double minX, double minY, double maxX, double maxY)
 #define ELEM_TILE_FORMAT "tileformat"
 #define ELEM_TILESETS "tilesets"
 #define ELEM_TILESET "tileset"
+#define ELEM_DATA_EXTENTS "dataextents"
+#define ELEM_DATA_EXTENT "dataextent"
 
 #define ATTR_VERSION "version"
 #define ATTR_TILEMAPSERVICE "tilemapservice"
@@ -114,6 +116,8 @@ void TileMap::setExtents( double minX, double minY, double maxX, double maxY)
 #define ATTR_MAXY "maxy"
 #define ATTR_X "x"
 #define ATTR_Y "y"
+#define ATTR_MIN_LEVEL "minlevel"
+#define ATTR_MAX_LEVEL "maxlevel"
 
 #define ATTR_WIDTH "width"
 #define ATTR_HEIGHT "height"
@@ -493,6 +497,29 @@ TileMapReaderWriter::read(std::istream &in)
 
     tileMap->computeMinMaxLevel();
     tileMap->computeNumTiles();
+
+    //Read the data areas
+    osg::ref_ptr<XmlElement> e_data_extents = e_tile_map->getSubElement(ELEM_DATA_EXTENTS);
+    if (e_data_extents.valid())
+    {
+        osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
+        OE_NOTICE << "Found DataExtents " << std::endl;
+        XmlNodeList data_extents = e_data_extents->getSubElements( ELEM_DATA_EXTENT );
+        for( XmlNodeList::const_iterator i = data_extents.begin(); i != data_extents.end(); i++ )
+        {
+            osg::ref_ptr<XmlElement> e_data_extent = static_cast<XmlElement*>( i->get() );
+            double minX = as<double>(e_data_extent->getAttr( ATTR_MINX ), 0.0);
+            double minY = as<double>(e_data_extent->getAttr( ATTR_MINY ), 0.0);
+            double maxX = as<double>(e_data_extent->getAttr( ATTR_MAXX ), 0.0);
+            double maxY = as<double>(e_data_extent->getAttr( ATTR_MAXY ), 0.0);
+            unsigned int minLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MIN_LEVEL ), 0);
+            unsigned int maxLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MAX_LEVEL ), 0);            
+
+            OE_NOTICE << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
+            tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
+        }
+    }
+
 
     return tileMap.release();
 }

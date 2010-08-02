@@ -182,7 +182,7 @@ void
 TileBlacklist::write(std::ostream &output) const
 {
     ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
-    for (BlacklistedTiles::iterator::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
+    for (BlacklistedTiles::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
     {
         output << itr->level << " " << itr->x << " " << itr->y << std::endl;
     }

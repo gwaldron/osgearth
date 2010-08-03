@@ -354,6 +354,7 @@ TileSource::hasData(const osgEarth::TileKey* key)
             if (keyExtent.intersects( *itr ) && key->getLevelOfDetail() >= itr->getMinLevel() && key->getLevelOfDetail() <= itr->getMaxLevel())
             {
                 intersectsData = true;
+                break;
             }
         }
     }

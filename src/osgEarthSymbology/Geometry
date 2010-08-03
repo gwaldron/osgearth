@@ -29,6 +29,17 @@ using namespace osgEarth;
 
 namespace osgEarth { namespace Symbology 
 {
+    /** Options for the Geometry::buffer() operation. */
+    class BufferParameters
+    {
+    public:
+        enum CapStyle { CAP_DEFAULT, CAP_SQUARE, CAP_ROUND, CAP_FLAT };
+        BufferParameters( CapStyle capStyle =CAP_DEFAULT, int cornerSegs =0 )
+            : _capStyle(capStyle), _cornerSegs(cornerSegs) { }
+        CapStyle _capStyle;
+        int      _cornerSegs; // # of line segment making up a rounded corner
+    };
+
     /**
      * Baseline geometry class. All Geometry objects derive from this
      * class, even MultiGeometry (which does not make use of the Vec3dArray,
@@ -78,6 +89,23 @@ namespace osgEarth { namespace Symbology
         osg::Vec3Array* toVec3Array() const;
 
         virtual Bounds getBounds() const;
+
+        /**
+         * Runs a buffer (dialate/erode) operation on this geometry and returns the
+         * result in the output parameter. Returns true if the op succeeded.
+         */
+        bool buffer(
+            double distance,
+            osg::ref_ptr<Geometry>& output,
+            const BufferParameters& bp =BufferParameters() ) const;
+
+        /**
+         * Crops this geometry to the region represented by the crop polygon, returning
+         * the result in the output parameter. Returns true if the op succeeded.
+         */
+        bool crop(
+            const class Polygon* cropPolygon,
+            osg::ref_ptr<Geometry>& output ) const;
 
     public:
         virtual Type getType() const =0;
@@ -263,6 +291,34 @@ namespace osgEarth { namespace Symbology
         void fetchNext();
     };
 
+    class OSGEARTHSYMBOLOGY_EXPORT ConstGeometryIterator
+    {
+    public:
+        ConstGeometryIterator( const Geometry* geom );
+
+        // set to TRUE to return MG children, but never an MG itself;
+        // set to FALSE to return MGs and NOT their children.
+        // default = TRUE
+        bool& traverseMultiGeometry() {
+            return _traverseMulti; }
+
+        // set to TRUE to return Polygons AND Polygon hole geometries;
+        // set to FALSE to only return Polygon (outer ring).
+        // default = TRUE
+        bool& traversePolygonHoles() {
+            return _traversePolyHoles; }
+
+        bool hasMore() const;
+        const Geometry* next();
+
+    private:
+        const Geometry* _next;
+        std::stack<const Geometry*> _stack;
+        bool _traverseMulti;
+        bool _traversePolyHoles;
+
+        void fetchNext();
+    };
 
     typedef std::vector<osg::ref_ptr<Geometry> > GeometryList;
 

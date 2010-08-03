@@ -23,15 +23,6 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-#ifdef OSGEARTH_HAVE_GEOS
-#  include <osgEarthFeatures/GEOS>
-#  include <geos/geom/Geometry.h>
-#  include <geos/geom/GeometryFactory.h>
-#  include <geos/operation/overlay/OverlayOp.h>
-   using namespace geos;
-   using namespace geos::operation;
-#endif
-
 static
 std::string EMPTY_STRING;
 
@@ -77,52 +68,5 @@ Feature::getAttr( const std::string& name ) const
 {
     AttributeTable::const_iterator i = _attrs.find(name);
     return i != _attrs.end()? i->second : EMPTY_STRING;
-}
-
-Symbology::Geometry*
-Feature::cropGeometry(const Symbology::Polygon* cropPolygon, const Symbology::Geometry* geometry)
-{
-#ifdef OSGEARTH_HAVE_GEOS
-    geom::GeometryFactory* f = new geom::GeometryFactory();
-
-    //Create the GEOS Geometries
-    geom::Geometry* inGeom = GEOSUtils::importGeometry( geometry );
-    geom::Geometry* cropGeom = GEOSUtils::importGeometry( cropPolygon);
-
-    osg::ref_ptr<Symbology::Geometry> result;
-
-    if ( inGeom )
-    {    
-        geom::Geometry* outGeom = 0L;
-        try {
-            outGeom = overlay::OverlayOp::overlayOp(
-                inGeom, cropGeom,
-                overlay::OverlayOp::opINTERSECTION );
-        }
-        catch( ... ) {
-            outGeom = 0L;
-            OE_NOTICE << "Feature gridder, GEOS overlay op exception, skipping feature" << std::endl;
-        }
-
-        if ( outGeom )
-        {
-            result = GEOSUtils::exportGeometry( outGeom );
-            f->destroyGeometry( outGeom );
-            if ( result.valid() && !result->isValid() )
-            {
-                result = NULL;
-            }
-        }
-    }
-
-    //Destroy the geometry
-    f->destroyGeometry( cropGeom );
-    f->destroyGeometry( inGeom );
-
-    delete f;
-    return result.release();
-#else
-    return osg::clone(geometry);
-#endif
 }
 

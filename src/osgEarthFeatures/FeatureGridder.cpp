@@ -21,15 +21,6 @@
 #include <osg/Notify>
 #include <osg/Timer>
 
-#ifdef OSGEARTH_HAVE_GEOS
-#  include <osgEarthFeatures/GEOS>
-#  include <geos/geom/Geometry.h>
-#  include <geos/geom/GeometryFactory.h>
-#  include <geos/operation/overlay/OverlayOp.h>
-   using namespace geos;
-   using namespace geos::operation;
-#endif
-
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
@@ -208,10 +199,10 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
                 Symbology::Geometry* featureGeom = feature->getGeometry();
                 if ( featureGeom )
                 {
-                    Symbology::Geometry* croppedGeometry = Feature::cropGeometry(poly.get(), featureGeom );
-                    if (croppedGeometry)
+                    osg::ref_ptr<Symbology::Geometry> croppedGeometry;
+                    if ( featureGeom->crop( poly.get(), croppedGeometry ) )
                     {
-                        feature->setGeometry( croppedGeometry );
+                        feature->setGeometry( croppedGeometry.get() );
                         keepFeature = true;
                     }                   
                 }

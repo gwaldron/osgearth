@@ -1,12 +1,10 @@
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures)
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology)
 
 SET(TARGET_SRC
-	AGGLiteRasterizerTileSource.cpp
-	agg.cpp)
+	AGGLiteRasterizerTileSource.cpp)
 	
 SET(TARGET_H
-	agg.h
 	AGGLiteOptions
 )
 

@@ -22,6 +22,8 @@
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>
+//TODO: replace this with ImageRasterizer
+#include <osgEarthSymbology/AGG.h>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 
@@ -33,7 +35,7 @@
 #include <osgDB/WriteFile>
 
 #include "AGGLiteOptions"
-#include "agg.h"
+//#include "agg.h"
 
 #include <sstream>
 #include <OpenThreads/Mutex>
@@ -129,7 +131,6 @@ public:
         ras.gamma(1.3);
         ras.filling_rule(agg::fill_even_odd);
 
-
         GeoExtent cropExtent = GeoExtent(imageExtent);
         cropExtent.scale(1.1, 1.1);
 
@@ -152,8 +153,9 @@ public:
         {
             bool first = bd->_pass == 0 && i == features.begin();
 
-            osg::ref_ptr< Geometry > croppedGeometry = Feature::cropGeometry(cropPoly.get(), i->get()->getGeometry());
-            if (!croppedGeometry.valid()) continue;
+            osg::ref_ptr< Geometry > croppedGeometry;
+            if ( ! i->get()->getGeometry()->crop( cropPoly.get(), croppedGeometry ) )
+                continue;
 
             osg::Vec4 c = color;
             unsigned int a = 127+(c.a()*255)/2; // scale alpha up

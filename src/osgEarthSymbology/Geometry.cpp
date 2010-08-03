@@ -17,10 +17,23 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/GEOS>
 #include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
+
+#ifdef OSGEARTH_HAVE_GEOS
+#  include <geos/geom/Geometry.h>
+#  include <geos/geom/GeometryFactory.h>
+#  include <geos/operation/buffer/BufferOp.h>
+#  include <geos/operation/overlay/OverlayOp.h>
+using namespace geos;
+using namespace geos::operation;
+#endif
+
+#define LC "[osgEarth::Geometry] "
+
 
 Geometry::Geometry( const Geometry& rhs, const osg::CopyOp& op ) :
 osg::Vec3dArray( rhs, op )
@@ -99,6 +112,102 @@ Geometry::create( Type type, const osg::Vec3dArray* toCopy )
     }
     return output;
 }
+
+bool
+Geometry::buffer(double distance,
+                 osg::ref_ptr<Geometry>& output,
+                 const BufferParameters& params ) const
+{
+#ifdef OSGEARTH_HAVE_GEOS   
+
+    geom::Geometry* inGeom = GEOSUtils::importGeometry( this );
+    if ( inGeom )
+    {
+        buffer::BufferParameters::EndCapStyle geosEndCap =
+            params._capStyle == BufferParameters::CAP_ROUND  ? buffer::BufferParameters::CAP_ROUND :
+            params._capStyle == BufferParameters::CAP_SQUARE ? buffer::BufferParameters::CAP_SQUARE :
+            params._capStyle == BufferParameters::CAP_FLAT   ? buffer::BufferParameters::CAP_FLAT :
+            buffer::BufferParameters::CAP_SQUARE;
+
+        int geosQuadSegs = params._cornerSegs > 0 
+            ? params._cornerSegs
+            : buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS;
+
+        geom::Geometry* outGeom = buffer::BufferOp::bufferOp(
+            inGeom, distance, geosQuadSegs, geosEndCap );
+
+        if ( outGeom )
+        {
+            output = GEOSUtils::exportGeometry( outGeom );
+            outGeom->getFactory()->destroyGeometry( outGeom );
+        }
+        else
+        {
+            OE_INFO << LC << "Buffer: no output geometry" << std::endl;
+        }
+
+        inGeom->getFactory()->destroyGeometry( inGeom );
+    }
+    return output.valid();
+
+#else // OSGEARTH_HAVE_GEOS
+
+    OE_WARN << LC << "Buffer failed - GEOS not available" << std::endl;
+    return false;
+
+#endif // OSGEARTH_HAVE_GEOS
+}
+
+bool
+Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
+{
+#ifdef OSGEARTH_HAVE_GEOS
+
+    geom::GeometryFactory* f = new geom::GeometryFactory();
+
+    //Create the GEOS Geometries
+    geom::Geometry* inGeom = GEOSUtils::importGeometry( this );
+    geom::Geometry* cropGeom = GEOSUtils::importGeometry( cropPoly );
+
+    if ( inGeom )
+    {    
+        geom::Geometry* outGeom = 0L;
+        try {
+            outGeom = overlay::OverlayOp::overlayOp(
+                inGeom, cropGeom,
+                overlay::OverlayOp::opINTERSECTION );
+        }
+        catch( ... ) {
+            outGeom = 0L;
+            OE_NOTICE << LC << "::crop, GEOS overlay op exception, skipping feature" << std::endl;
+        }
+
+        if ( outGeom )
+        {
+            output = GEOSUtils::exportGeometry( outGeom );
+            f->destroyGeometry( outGeom );
+            if ( output.valid() && !output->isValid() )
+            {
+                output = 0L;
+            }
+        }
+    }
+
+    //Destroy the geometry
+    f->destroyGeometry( cropGeom );
+    f->destroyGeometry( inGeom );
+
+    delete f;
+    return output.valid();
+
+#else // OSGEARTH_HAVE_GEOS
+
+    OE_WARN << LC << "Crop failed - GEOS not available" << std::endl;
+    return false;
+
+#endif // OSGEARTH_HAVE_GEOS
+}
+
 
 //----------------------------------------------------------------------------
 
@@ -369,3 +478,62 @@ GeometryIterator::fetchNext()
         _next = current;
     }    
 }
+
+//----------------------------------------------------------------------------
+
+ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom ) :
+_traverseMulti( true ),
+_traversePolyHoles( true ),
+_next( 0L )
+{
+    if ( geom )
+    {
+        _stack.push( geom );
+        fetchNext();
+    }
+}
+
+bool
+ConstGeometryIterator::hasMore() const
+{
+    return _next != 0L;
+}
+
+const Geometry*
+ConstGeometryIterator::next()
+{
+    const Geometry* n = _next;
+    fetchNext();
+    return n;
+}
+
+void
+ConstGeometryIterator::fetchNext()
+{
+    _next = 0L;
+    if ( _stack.size() == 0 )
+        return;
+
+    const Geometry* current = _stack.top();
+    _stack.pop();
+
+    if ( current->getType() == Geometry::TYPE_MULTI && _traverseMulti )
+    {
+        const MultiGeometry* m = static_cast<const MultiGeometry*>(current);
+        for( GeometryCollection::const_iterator i = m->getComponents().begin(); i != m->getComponents().end(); ++i )
+            _stack.push( i->get() );
+        fetchNext();
+    }
+    else if ( current->getType() == Geometry::TYPE_POLYGON && _traversePolyHoles )
+    {
+        const Polygon* p = static_cast<const Polygon*>(current);
+        for( RingCollection::const_iterator i = p->getHoles().begin(); i != p->getHoles().end(); ++i )
+            _stack.push( i->get() );
+        _next = current;
+    }
+    else
+    {
+        _next = current;
+    }    
+}
+

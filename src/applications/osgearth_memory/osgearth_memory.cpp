@@ -155,7 +155,9 @@ struct BlankTileSource : public osgEarth::TileSource
                     osg::Referenced::reportCurrentMemoryObject();
 #endif
                     _lastLog = nv->getFrameStamp()->getSimulationTime();
+#if OSG_MIN_VERSION_REQUIRED(2,9,6)
                     osg::Texture::getTextureObjectManager(0)->reportStats();
+#endif
                     _nbLog++;
 
                 }

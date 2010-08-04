@@ -34,7 +34,7 @@ ModelSymbolizer::ModelSymbolizer()
 static osg::Node* getNode(const std::string& str)
 {
     osg::ref_ptr<osg::Node> output;
-#if OSG_VERSION_LESS_THAN(2,9,0)
+#if OSG_VERSION_LESS_THAN(2,9,8)
     osg::ref_ptr<osgDB::ReaderWriter::Options> options = new osgDB::ReaderWriter::Options;
     options->setObjectCacheHint(osgDB::ReaderWriter::Options::CACHE_ALL);
 #else

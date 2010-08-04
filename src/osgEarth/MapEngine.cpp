@@ -846,7 +846,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<VersionedTerrain*>(terrain)->getRevision() );
 
-    if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD && key->getLevelOfDetail() > 1 )
+    if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD && key->getLevelOfDetail())
     {
         tile->setUseLayerRequests( true );
         tile->setHasElevationHint( hasElevation );

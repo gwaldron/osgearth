@@ -36,7 +36,7 @@ namespace osgEarth { namespace Symbology
         GeometryRasterizer( int width, int height, Style* style =0L );
 
         /** draws the geometry to the image. */
-        void draw( const Geometry* geom );
+        void draw( const Geometry* geom, const osg::Vec4f& color =osg::Vec4f(1,1,1,1) );
 
         /** finishes the image and returns it. calls to draw() after this will have no effect. */
         osg::Image* finalize();

@@ -1,0 +1,332 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_CONTROLS
+#define OSGEARTHUTIL_CONTROLS
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Common>
+#include <osg/Drawable>
+#include <osg/Geode>
+#include <osgViewer/View>
+#include <osgText/Font>
+#include <vector>
+
+namespace osgEarthUtil { namespace Controls
+{
+    typedef std::vector< osg::ref_ptr<osg::Drawable> > DrawableList;
+
+    typedef std::map< class Control*, osg::Geode* > GeodeTable;
+
+    struct Gutter
+    {
+        Gutter()
+            : _top(0), _right(0), _bottom(0), _left(0) { }
+        Gutter( float top, float right, float bottom, float left )
+            : _top(top), _right(right), _bottom(bottom), _left(left) { }
+        Gutter( float y, float x )
+            : _top(y), _right(x), _bottom(y), _left(x) { }
+        Gutter( float all )
+            : _top(all), _right(all), _bottom(all), _left(all) { }
+        bool operator !=( const Gutter& rhs ) const {
+            return top() != rhs.top() || right() != rhs.right() || bottom() != rhs.bottom() || left() != rhs.left(); }
+
+        float top()  const { return _top; }
+        float left() const { return _left; }
+        float right() const { return _right; }
+        float bottom() const { return _bottom; }
+
+    private:
+        float _top, _right, _left, _bottom;
+    };
+
+    struct ControlContext {
+        ControlContext() : _viewContextID(~0) { }
+        osg::ref_ptr<osg::Viewport> _vp;
+        unsigned int _viewContextID;
+    };
+
+
+    class OSGEARTHUTIL_EXPORT Control : public osg::Referenced
+    {
+    public:
+        Control();
+
+        void setX( float value );
+        const osgEarth::optional<float>& x() const { return _x; }
+
+        void setY( float value );
+        const osgEarth::optional<float>& y() const { return _y; }
+
+        void setWidth( float value );
+        const osgEarth::optional<float>& width() const { return _width; }
+
+        void setHeight( float value );
+        const osgEarth::optional<float>& height() const { return _height; }
+
+        void setMargin( const Gutter& value );
+        const osgEarth::optional<Gutter>& margin() const { return _margin; }
+
+        void setVisible( bool value );
+        const osgEarth::optional<bool>& visible() const { return _visible; }
+
+        void setForeColor( const osg::Vec4f& value );
+        const osgEarth::optional<osg::Vec4f> foreColor() const { return _foreColor; }
+
+        void setBackColor( const osg::Vec4f& value );
+        const osgEarth::optional<osg::Vec4f>& backColor() const { return _backColor; }
+
+        bool getParent( osg::ref_ptr<Control>& out ) const;
+
+    public:
+        
+        // mark the control as dirty so that it will regenerate on the next pass.
+        virtual void dirty();
+        bool isDirty() const { return _dirty; }
+
+        // refresh this control, deriving width/height from the decendants.
+        virtual void layout(
+            const ControlContext& context,
+            const osg::Vec2f& renderPos,
+            osg::Vec2f& out_renderSize );
+
+        // add to the draw list.
+        virtual void draw(
+            const ControlContext& context,
+            DrawableList& drawables ) const;
+
+        const osg::Vec2f& renderPos() const { return _renderPos; }
+        const osg::Vec2f& renderSize() const { return _renderSize; }
+
+    protected:
+        bool _dirty;
+        osg::Vec2f _renderPos;
+        osg::Vec2f _renderSize;
+
+    private:
+        osgEarth::optional<float> _x, _y, _width, _height;
+        osgEarth::optional<Gutter> _margin;
+        osgEarth::optional<osg::Vec4f> _backColor, _foreColor;
+        osgEarth::optional<bool> _visible;
+        osg::observer_ptr<Control> _parent;
+    };
+
+    class OSGEARTHUTIL_EXPORT LabelControl : public Control
+    {
+    public:
+        LabelControl( const std::string& value ="" );
+
+        void setText( const std::string& value );
+        const std::string& text() const { return _text; }
+
+        void setFont( osgText::Font* font );
+        osgText::Font* font() const { return _font.get(); }
+
+        void setFontSize( float value );
+        float fontSize() const { return _fontSize; }
+
+    public: // Control
+        virtual void layout(
+            const ControlContext& context,
+            const osg::Vec2f& renderPos,
+            osg::Vec2f& out_renderSize );
+
+        virtual void draw(
+            const ControlContext& context,
+            DrawableList& drawables ) const;
+
+    private:
+        std::string _text;
+        osg::ref_ptr<osgText::Font> _font;
+        float _fontSize;
+        osg::ref_ptr<osgText::Text> _drawable;
+    };
+
+    class OSGEARTHUTIL_EXPORT ImageControl : public Control
+    {
+    public:
+        ImageControl( osg::Image* image =0L );
+
+        void setImage( osg::Image* image );
+        osg::Image* getImage() const { return _image.get(); }
+
+    public: // Control
+        virtual void layout(
+            const ControlContext& context,
+            const osg::Vec2f& renderPos,
+            osg::Vec2f& out_renderSize );
+
+        virtual void draw(
+            const ControlContext& context,
+            DrawableList& drawables ) const;
+
+    private:
+        osg::ref_ptr<osg::Image> _image;
+    };
+
+    typedef std::vector< osg::ref_ptr<Control> > ControlList;
+
+    /**
+     * A control that renders a border for a container.
+     */
+    class OSGEARTHUTIL_EXPORT Frame : public ImageControl
+    {
+    public:
+        Frame();
+
+    public: // Control
+        virtual void draw(
+            const ControlContext& context,
+            DrawableList& drawables ) const;
+    };
+
+    class OSGEARTHUTIL_EXPORT RoundedFrame : public Frame
+    {
+    public:
+        RoundedFrame();
+
+    public:
+        virtual void draw( const ControlContext& cx, DrawableList& drawables ) const;
+    };
+
+    /**
+     * Base class for containers (controls that house child controls)
+     */
+    class OSGEARTHUTIL_EXPORT Container : public Control
+    {
+    public:
+        Container();
+
+        void setFrame( Frame* frame );
+        Frame* getFrame() const { return _frame.get(); }
+
+        // space between container and its children
+        void setPadding( const Gutter& value );
+        const osgEarth::optional<Gutter>& padding() const { return _padding; }
+        
+        // space between children
+        void setSpacing( float value );
+        const osgEarth::optional<float>& spacing() const { return _spacing; }
+
+        // default add function.
+        virtual void addControl( Control* control ) =0;
+
+    public:
+        virtual void layout(
+            const ControlContext& context,
+            const osg::Vec2f& renderPos,
+            osg::Vec2f& out_renderSize );
+
+        virtual void draw(
+            const ControlContext& context,
+            DrawableList& drawables ) const;
+
+    private:
+        osg::ref_ptr<Frame> _frame;
+        osgEarth::optional<Gutter> _padding;
+        osgEarth::optional<float> _spacing;
+    };
+
+    /**
+     * Container that stacks controls vertically.
+     */
+    class OSGEARTHUTIL_EXPORT VBox : public Container
+    {
+    public:
+        VBox();
+
+    public: // Container
+        virtual void addControl( Control* control );
+
+    public: // Control
+        
+        // refresh this control, deriving width/height from the decendants.
+        virtual void layout(
+            const ControlContext& context,
+            const osg::Vec2f& renderPos,
+            osg::Vec2f& out_renderSize );
+
+        // draw to the draw list.
+        virtual void draw(
+            const ControlContext& context,
+            DrawableList& drawables ) const;
+
+    private:
+        ControlList _controls;
+    };
+
+    /**
+     * Container that stacks controls horizontally.
+     */
+    class OSGEARTHUTIL_EXPORT HBox : public Container
+    {
+    public:
+        HBox();
+
+    public: // Container
+        virtual void addControl( Control* control );
+
+    public: // Control
+        
+        // refresh this control, deriving width/height from the decendants.
+        virtual void layout(
+            const ControlContext& context,
+            const osg::Vec2f& renderPos,
+            osg::Vec2f& out_renderSize );
+
+        // draw to the draw list.
+        virtual void draw(
+            const ControlContext& context,
+            DrawableList& drawables ) const;
+
+    private:
+        ControlList _controls;
+    };
+
+    /**
+     * Creates and manages control associated with an OSG View.
+     */
+    class OSGEARTHUTIL_EXPORT ControlSurface : public osg::Camera
+    {
+    public:
+        ControlSurface( osgViewer::View* view );
+
+        void addControl( Control* control );
+
+        void removeControl( Control* control );
+
+        /** notify this surface that the viewpoint has changed.. */
+        //TODO
+
+    public:
+        void update();
+
+        void setControlContext( const ControlContext& );
+
+    protected:
+        ControlList _controls;
+        GeodeTable  _geodeTable;
+        ControlContext _context;
+        //osg::ref_ptr<const osg::Viewport> _vp;
+        bool _contextDirty;
+    };
+
+
+} } // namespace osgEarthUtil::Controls
+
+#endif // OSGEARTHUTIL_CONTROLS

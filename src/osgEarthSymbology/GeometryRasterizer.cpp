@@ -50,7 +50,8 @@ GeometryRasterizer::GeometryRasterizer( int width, int height, Style* style ) :
 _style( style )
 {
     _image = new osg::Image();
-    _image->allocateImage( width, height, 1, GL_RGBA, osg::Image::USE_NEW_DELETE );
+    _image->allocateImage( width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE );
+    _image->setAllocationMode( osg::Image::USE_NEW_DELETE );
     _state = new AggState( _image.get() );
 }
 
@@ -70,20 +71,20 @@ GeometryRasterizer::finalize()
 }
 
 void
-GeometryRasterizer::draw( const Geometry* geom )
+GeometryRasterizer::draw( const Geometry* geom, const osg::Vec4f& c )
 {
     if ( !_image.valid() ) return;
 
     AggState* state = static_cast<AggState*>( _state.get() );
 
-    osg::Vec4f c;    
+    osg::Vec4f color = c;
     osg::ref_ptr<const Geometry> geomToRender = geom;
 
     if ( geom->getType() == Geometry::TYPE_POLYGON )
     {
         const PolygonSymbol* ps = _style.valid() ? _style->getSymbol<const PolygonSymbol>() : 0L;
         if ( ps )
-            c = ps->fill()->color();
+            color = ps->fill()->color();
     }
     else
     {
@@ -97,11 +98,11 @@ GeometryRasterizer::draw( const Geometry* geom )
         }
         geomToRender = bufferedGeom.get();
         if ( ls )
-            c = ls->stroke()->color();
+            color = ls->stroke()->color();
     }
 
-    float a = 127+(c.a()*255)/2; // scale alpha up
-    agg::rgba8 fgColor = agg::rgba8( c.r()*255, c.g()*255, c.b()*255, a );
+    float a = 127+(color.a()*255)/2; // scale alpha up
+    agg::rgba8 fgColor = agg::rgba8( color.r()*255, color.g()*255, color.b()*255, a );
 
     ConstGeometryIterator gi( geomToRender.get() );
     while( gi.hasMore() )

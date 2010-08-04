@@ -10,6 +10,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS    
     AutoClipPlaneHandler
     Common
+    Controls
     ClampCallback
     EarthManipulator
     ElevationFadeCallback
@@ -29,6 +30,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}  
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
+    Controls.cpp
     EarthManipulator.cpp	
     ElevationFadeCallback.cpp
     ElevationManager.cpp

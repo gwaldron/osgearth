@@ -169,9 +169,9 @@ void
 TileBlacklist::write(const std::string &filename) const
 { 
     std::string path = osgDB::getFilePath(filename);
-    if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
+    if (!path.empty() && !osgDB::fileExists(path) && !osgDB::makeDirectory(path))
     {
-        OE_NOTICE << "Couldn't create path " << std::endl;
+        OE_NOTICE << "Couldn't create path " << path << std::endl;
         return;
     }
     std::ofstream out(filename.c_str());
@@ -211,7 +211,7 @@ TileSource::TileSource(const PluginOptions* options)
         _blacklist = TileBlacklist::read(_blacklistFilename);
         if (_blacklist.valid())
         {
-            OE_INFO << "Read blacklist from file" << std::endl;
+            OE_INFO << "Read blacklist from file" << _blacklistFilename << std::endl;
         }
     }
 

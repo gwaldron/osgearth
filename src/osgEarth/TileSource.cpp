@@ -340,26 +340,70 @@ TileSource::getMinDataLevel() const
     return minDataLevel;
 }
 
+/*
+void
+TileSource::buildDataExtentsIndex()
+{
+    if (_dataExtents.size() == 0) return;
+
+    //Build the spatial index if required
+    OE_NOTICE << "Building spatial index" << std::endl;
+    _dataExtentsIndex = new RTree< unsigned int >();
+    unsigned int numAdded = 0;
+    for (unsigned int i = 0; i < _dataExtents.size(); ++i)
+    {
+        _dataExtentsIndex->insert(GeoExtent(_dataExtents[i]), i);
+        numAdded++;
+    }
+    OE_NOTICE << "Done building spatial index " << numAdded << std::endl;    
+}
+*/
+
 bool
 TileSource::hasData(const osgEarth::TileKey* key)
 {
-    //osg::Timer_t start = osg::Timer::instance()->tick();
+    //If no data extents are provided, just return true
+    if (_dataExtents.size() == 0) return true;
+
     const osgEarth::GeoExtent& keyExtent = key->getGeoExtent();
     bool intersectsData = false;
-    if (_dataExtents.size() == 0) intersectsData = true;
-    else
+    
+    //osg::Timer_t loopStart = osg::Timer::instance()->tick();
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+        if (keyExtent.intersects( *itr ) && key->getLevelOfDetail() >= itr->getMinLevel() && key->getLevelOfDetail() <= itr->getMaxLevel())
         {
-            if (keyExtent.intersects( *itr ) && key->getLevelOfDetail() >= itr->getMinLevel() && key->getLevelOfDetail() <= itr->getMaxLevel())
-            {
-                intersectsData = true;
-                break;
-            }
+            intersectsData = true;
+            break;
         }
     }
-    //osg::Timer_t end = osg::Timer::instance()->tick();
-    //OE_NOTICE << "hasData took " << osg::Timer::instance()->delta_m(start, end) << " ms to check " << _dataExtents.size() << " areas " << std::endl;
+    //osg::Timer_t loopEnd = osg::Timer::instance()->tick();
+
+    /*
+    osg::Timer_t rtreeStart = osg::Timer::instance()->tick();
+
+    std::list<unsigned int> validExtents = _dataExtentsIndex->find(keyExtent);
+    //OE_NOTICE << "Found " << validExtents.size() << " intersecting areas " << std::endl;
+    for (std::list<unsigned int>::const_iterator itr = validExtents.begin(); itr != validExtents.end(); ++itr)
+    {
+        unsigned int index = *itr;
+        //OE_NOTICE << "index " << index << std::endl;
+        const DataExtent& e = _dataExtents[index];
+        if (keyExtent.intersects( e ) && key->getLevelOfDetail() >= e.getMinLevel() && key->getLevelOfDetail() <= e.getMaxLevel())
+        {
+            intersectsData = true;
+            break;
+        }
+    }
+    osg::Timer_t rtreeEnd = osg::Timer::instance()->tick();
+
+    double loopTime = osg::Timer::instance()->delta_m(loopStart, loopEnd);
+    double rtreeTime = osg::Timer::instance()->delta_m(rtreeStart, rtreeEnd);
+
+    OE_NOTICE << "Loop = " << loopTime << "ms   rtree=" << rtreeTime << "ms  diff=" << rtreeTime - loopTime << std::endl;
+    */
+
     return intersectsData;
 }
 

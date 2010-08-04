@@ -56,6 +56,8 @@ SET(LIB_PUBLIC_HEADERS
 	Progress
     Registry
     Revisioning
+	RTree
+	RTree.cpp.inline
     SpatialReference
     StringUtils
     TaskService

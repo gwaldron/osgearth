@@ -63,8 +63,8 @@ namespace osgEarth
         /** Contructs a valid extent */
         GeoExtent(
             const SpatialReference* srs,
-            double xmin, double ymin,
-            double xmax, double ymax );
+            double xmin = FLT_MAX, double ymin = FLT_MAX,
+            double xmax = -FLT_MAX, double ymax = -FLT_MAX );
 
         /** Copy ctor */
         GeoExtent( const GeoExtent& rhs );
@@ -138,6 +138,12 @@ namespace osgEarth
          * in the extent's SRS.
          */
         void expandToInclude( double x, double y );
+
+        /**
+         * Grow this extent to include the specified GeoExtent (which is assumed to be
+         * in the extent's SRS.
+         */
+        void expandToInclude( const GeoExtent& rhs );
         
         /**
          * Intersect this extent with another extent in the same SRS and return the
@@ -154,6 +160,16 @@ namespace osgEarth
          *Inflates this GeoExtent by the given ratios
          */
         void scale(double x_scale, double y_scale);
+
+		/**
+		 * Expands the extent by x and y.
+		 */
+		void expand( double x, double y );
+
+        /**
+         *Gets the area of this GeoExtent
+         */
+        double area() const;
 
     public:
         static GeoExtent INVALID;

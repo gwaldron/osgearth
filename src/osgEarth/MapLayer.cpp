@@ -404,6 +404,7 @@ MapLayer::initTileSource()
 					OE_WARN << "Warning: Could not read nodata image from " << _noDataImageFilename.get() << std::endl;
 				}
 			}
+            //tileSource->buildDataExtentsIndex();
 			_tileSize = tileSource->getPixelsPerTile();
 		}
 		else

@@ -1,0 +1,399 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+// constants from Guttman84
+#define CONST_M 64
+#define CONST_m (CONST_M/2)
+
+
+template<typename DATA>
+RTree<DATA>::RTree()
+{
+    node_id_gen = 0;
+    RtNode<DATA>* root = new RtNode<DATA>();
+    root->is_leaf = true;
+    root_id = ++node_id_gen;
+    root->id = root_id;
+    root->parent_id = 0;
+    node_table[root->id] = root;
+}
+
+
+template<typename DATA>
+void
+RTree<DATA>::insert( const GeoExtent& extent, const DATA& data )
+{
+    // adjust zero-area extents
+    if ( extent.area() == 0.0 )
+    {
+        GeoExtent extent2 = extent;
+        extent2.expand(0.0001, 0.0001);
+        insert( root_id, extent2, data );
+    }
+    else
+    {
+        insert( root_id, extent, data );
+    }
+}
+
+
+template<typename DATA>
+RtNode<DATA>*
+RTree<DATA>::chooseLeaf( const RtNodeId& node_id, const GeoExtent& extent )
+{
+    RtNode<DATA>* node = node_table[ node_id ].get();
+    if ( !node->isLeaf() )
+    {
+        double extent_area = extent.area();
+        double smallest_area_diff = DBL_MAX;
+        typename RtEntryList<DATA>::iterator best_i = node->entries.begin();
+
+        for( typename RtEntryList<DATA>::iterator i = node->entries.begin(); i != node->entries.end(); i++ )
+        {
+            RtEntry<DATA>& entry = *i;
+            GeoExtent future_extent = entry.extent;
+            future_extent.expandToInclude( extent );              
+            double area_diff = future_extent.area() - extent_area;
+            if ( area_diff < smallest_area_diff )
+            {
+                smallest_area_diff = area_diff;
+                best_i = i;
+            }
+        }
+
+        return chooseLeaf( best_i->child_id, extent );
+    }       
+    else
+    {
+        return node;
+    }
+}
+
+
+template<typename DATA>
+void
+RTree<DATA>::pickSeedsQ(RtEntryList<DATA>& list,
+                        int& out_first_index,
+                        int& out_second_index)
+{
+    double largest_d = -1.0; //0.0;
+
+    for( typename RtEntryList<DATA>::iterator i = list.begin(); i != list.end(); i++ )
+    {
+        RtEntry<DATA>& one = *i;
+        for( typename RtEntryList<DATA>::iterator j = i+1; j != list.end(); j++ )
+        {
+            RtEntry<DATA>& two = *j;
+            GeoExtent combined = one.extent;
+            combined.expandToInclude( two.extent );
+            double d = combined.area() - one.extent.area() - two.extent.area();
+            if ( d > largest_d )
+            {
+                largest_d = d;
+                out_first_index = i - list.begin();
+                out_second_index = j - list.begin();
+            }
+        }
+    }
+}
+
+
+template<typename DATA>
+GeoExtent
+computeExtent( RtEntryList<DATA>& list )
+{
+    const osgEarth::SpatialReference* srs = NULL;
+    GeoExtent extent;
+    for( typename RtEntryList<DATA>::iterator i = list.begin(); i != list.end(); i++ )
+    {
+        //Initialize the GeoExtent with an SRS so it will be valid
+        if (srs == NULL)
+        {
+          srs = i->extent.getSRS();
+          extent = GeoExtent(srs);
+        }
+        
+        extent.expandToInclude( i->extent );
+    }
+    return extent;
+}
+
+
+template<typename DATA>
+RtNode<DATA>*
+RTree<DATA>::splitNodeQ( RtNode<DATA>* L )
+{
+    RtNode<DATA>* LL = new RtNode<DATA>();
+    LL->is_leaf = L->is_leaf;
+    LL->parent_id = L->parent_id;
+    LL->id = ++node_id_gen;
+    node_table[LL->id] = LL;
+
+    RtEntryList<DATA> first_group;
+    RtEntryList<DATA> second_group;
+
+    int first_index = 0;
+    int second_index = 1;
+    
+    pickSeedsQ( L->entries, /*out*/first_index, /*out*/second_index );
+    typename RtEntryList<DATA>::iterator first = L->entries.begin() + first_index;
+    typename RtEntryList<DATA>::iterator second = L->entries.begin() + second_index;
+    
+    first_group.push_back( *first );
+    second_group.push_back( *second );
+
+    GeoExtent first_ext = computeExtent( first_group);
+    GeoExtent second_ext = computeExtent( second_group );
+
+    for( typename RtEntryList<DATA>::iterator i = L->entries.begin(); i != L->entries.end(); i++ )
+    {
+        if ( i != first && i != second )
+        {
+            if ( first_group.size() >= CONST_M/2 )
+            {
+                second_group.push_back( *i );
+                second_ext = computeExtent( second_group );
+            }
+            else if ( second_group.size() >= CONST_M/2 )
+            {
+                first_group.push_back( *i );
+                first_ext = computeExtent( first_group );
+            }
+            else
+            {
+                GeoExtent e_first = first_ext;
+                e_first.expandToInclude( i->extent );
+                double d_first = e_first.area() - first_ext.area();
+
+                GeoExtent e_second = second_ext;
+                e_second.expandToInclude( i->extent );
+                double d_second = e_second.area() - second_ext.area();
+
+                if ( d_first < d_second )
+                {
+                    first_group.push_back( *i );
+                    first_ext = computeExtent( first_group );
+                }
+                else
+                {
+                    second_group.push_back( *i );
+                    second_ext = computeExtent( second_group );
+                }
+            }
+        }
+    }
+    
+    L->entries = first_group;    
+    LL->entries = second_group;
+    
+    // if LL has subnodes, inform them of their new parent.
+    if ( !LL->isLeaf() )
+    {
+        for( typename RtEntryList<DATA>::iterator i = LL->entries.begin(); i != LL->entries.end(); i++ )
+        {
+            RtNode<DATA>* child_node = node_table[i->child_id].get();
+            child_node->parent_id = LL->id;
+        }
+    }
+
+    return LL;
+}
+
+
+template<typename DATA>
+void
+RTree<DATA>::adjustTree( RtNode<DATA>* N, RtNode<DATA>* NN )
+{
+    if ( N->isRoot() && NN != NULL ) // I4
+    {
+        // split the root node
+        RtNode<DATA>* P = new RtNode<DATA>();
+        P->is_leaf = false;
+        P->id = ++node_id_gen;
+        P->parent_id = N->parent_id;
+        root_id = P->id;
+        node_table[P->id] = P;
+
+        N->parent_id = P->id;
+        RtEntry<DATA> E_N;
+        E_N.child_id = N->id;
+        E_N.extent = computeExtent( N->entries );
+        P->entries.push_back( E_N );
+
+        NN->parent_id = P->id;
+        RtEntry<DATA> E_NN;
+        E_NN.child_id = NN->id;
+        E_NN.extent = computeExtent( NN->entries );
+        P->entries.push_back( E_NN );
+    }
+    else if ( !N->isRoot() ) 
+    {
+        // AT1, AT2
+        RtNode<DATA>* P = node_table[N->parent_id].get();
+        RtNode<DATA>* PP = NULL;
+
+        // AT3
+        for( typename RtEntryList<DATA>::iterator i = P->entries.begin(); i != P->entries.end(); i++ )
+        {
+            if ( i->child_id == N->id )
+            {
+                i->extent = computeExtent( N->entries );
+                break;
+            }
+        }
+
+        // AT4
+        if ( NN )
+        {
+            NN->parent_id = P->id;
+            
+            RtEntry<DATA> E_NN;
+            E_NN.child_id = NN->id;
+            E_NN.extent = computeExtent( NN->entries );
+            P->entries.push_back( E_NN );
+
+            if ( P->entries.size() >= CONST_M )
+            {
+                PP = splitNodeQ( P );
+            }
+        }
+
+        adjustTree( P, PP );
+    }
+}
+
+
+template<typename DATA>
+void
+RTree<DATA>::insert( const RtNodeId& node_id, const GeoExtent& extent, const DATA& data )
+{      
+    // I1
+    RtNode<DATA>* L = chooseLeaf( node_id, extent );
+    RtNode<DATA>* LL = NULL;
+
+    // I2
+    RtEntry<DATA> entry;
+    entry.extent = extent;
+    entry.data = data;
+    L->entries.push_back( entry );
+
+    if ( L->entries.size() >= CONST_M )
+    {
+        LL = splitNodeQ( L );
+    }
+
+    // I3, I4
+    adjustTree( L, LL );
+}
+
+
+template<typename DATA>
+void
+RTree<DATA>::find( const RtNodeId& node_id, const GeoExtent& extent, std::list<DATA>& results )
+{
+    RtNode<DATA>* node = node_table[node_id].get();
+    for( typename RtEntryList<DATA>::iterator i = node->entries.begin(); i != node->entries.end(); i++ )
+    {
+        const GeoExtent& e = i->extent;
+        if ( e.intersects( extent ) )
+        {
+            if ( node->isLeaf() )
+            {
+                results.push_back( i->data );
+            }
+            else
+            {
+                find( i->child_id, extent, results );
+            }
+        }
+    }
+}
+
+
+template<typename DATA>
+std::list<DATA>
+RTree<DATA>::find( const GeoExtent& extent )
+{
+    std::list<DATA> list;    
+    find( root_id, extent, list );
+    return list;
+}
+
+
+
+template<typename DATA>
+bool 
+RTree<DATA>::writeTo( std::ostream& out, const GeoExtent& extent )
+{
+    out << "OSGGIS_RTREE_1.0" << std::endl;
+    out << root_id << ' ' << node_id_gen << ' ' << std::setprecision(13) << extent.getXMin() << ' ' << extent.getYMin() << ' ' << extent.getXMax() << ' ' << extent.getYMax() << std::endl;
+    for( typename RtNodeMap<DATA>::iterator i = node_table.begin(); i != node_table.end(); i++ )
+    {
+        RtNode<DATA>* node = i->second.get();
+        out << node->id << ' ' << node->parent_id << ' ' << node->is_leaf << ' ' << node->entries.size() << ' ';
+        for( typename RtEntryList<DATA>::iterator j = node->entries.begin(); j != node->entries.end(); j++ )
+        {
+            RtEntry<DATA>& entry = *j;
+            out << std::setprecision(13) << entry.extent.getXMin() << ' ' << entry.extent.getYMin() << ' ' << entry.extent.getXMax() << ' ' << entry.extent.getYMax() << ' ';
+            if ( node->isLeaf() )
+                out << entry.data << ' ';
+            else
+                out << entry.child_id << ' ';
+        }
+        out << std::endl;
+    }
+    return true;
+}
+
+template<typename DATA>
+bool
+RTree<DATA>::readFrom( std::istream& in, SpatialReference* srs, GeoExtent& out_extent )
+{
+    double xmin, ymin, xmax, ymax;
+    std::string line;
+    std::getline( in, line );
+    if ( line != "OSGGIS_RTREE_1.0" ) return false;
+    std::getline( in, line );
+    std::stringstream strin( line );
+    strin >> root_id >> node_id_gen >> xmin >> ymin >> xmax >> ymax;
+    out_extent = GeoExtent( xmin, ymin, xmax, ymax, srs );
+    std::getline( in, line );
+    while( line.length() > 0 )
+    {
+        std::stringstream strin( line );
+        RtNode<DATA>* node = new RtNode<DATA>();
+        int num_entries = 0;
+        strin >> node->id >> node->parent_id >> node->is_leaf >> num_entries;
+        for( int i=0; i<num_entries; i++ )
+        {
+            strin >> xmin >> ymin >> xmax >> ymax;
+            RtEntry<DATA> entry;
+            entry.extent = GeoExtent( xmin, ymin, xmax, ymax, srs );
+            if ( node->is_leaf )
+                strin >> entry.data;
+            else
+                strin >> entry.child_id;
+            node->entries.push_back( entry );
+        }
+        node_table[node->id] = node;
+        
+        std::getline( in, line );
+    }
+    return true;
+}

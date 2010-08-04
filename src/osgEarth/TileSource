@@ -29,6 +29,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/DriverOptions>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/RTree>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -247,6 +248,11 @@ namespace osgEarth
         const DataExtentList& getDataExtents() const { return _dataExtents; }        
 
         /**
+         * Rebuilds the spatial index for the data extents
+         */
+        //void buildDataExtentsIndex();
+
+        /**
          * Whether or not the source has data for the given TileKey
          */
         virtual bool hasData(const TileKey* key);        
@@ -307,6 +313,7 @@ namespace osgEarth
 		osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
+        //osg::ref_ptr< RTree<unsigned int> > _dataExtentsIndex;
     };
 
     

@@ -294,7 +294,8 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 bool
 GeoExtent::intersects( const GeoExtent& rhs ) const
 {
-    if ( !isValid() ) return false;
+    bool valid = isValid();
+    if ( !valid ) return false;
     bool exclusive =
         _xmin > rhs.xMax() ||
         _xmax < rhs.xMin() ||
@@ -310,6 +311,12 @@ GeoExtent::expandToInclude( double x, double y )
     if ( x > _xmax ) _xmax = x;
     if ( y < _ymin ) _ymin = y;
     if ( y > _ymax ) _ymax = y;
+}
+
+void GeoExtent::expandToInclude(const osgEarth::GeoExtent &rhs)
+{
+    expandToInclude( rhs.xMin(), rhs.yMin() );
+    expandToInclude( rhs.xMax(), rhs.yMax() );
 }
 
 GeoExtent
@@ -340,6 +347,21 @@ GeoExtent::scale(double x_scale, double y_scale)
     _xmax += halfXDiff;
     _ymin -= halfYDiff;
     _ymax += halfYDiff;
+}
+
+void
+GeoExtent::expand( double x, double y )
+{
+    _xmin -= .5*x;
+    _xmax += .5*x;
+    _ymin -= .5*y;
+    _ymax += .5*y;
+}
+
+double
+GeoExtent::area() const
+{
+    return width() * height();
 }
 
 std::string

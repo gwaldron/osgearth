@@ -503,7 +503,7 @@ TileMapReaderWriter::read(std::istream &in)
     if (e_data_extents.valid())
     {
         osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
-        OE_NOTICE << "Found DataExtents " << std::endl;
+        OE_DEBUG << "Found DataExtents " << std::endl;
         XmlNodeList data_extents = e_data_extents->getSubElements( ELEM_DATA_EXTENT );
         for( XmlNodeList::const_iterator i = data_extents.begin(); i != data_extents.end(); i++ )
         {
@@ -515,7 +515,7 @@ TileMapReaderWriter::read(std::istream &in)
             unsigned int minLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MIN_LEVEL ), 0);
             unsigned int maxLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MAX_LEVEL ), 0);            
 
-            OE_NOTICE << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
+            OE_DEBUG << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
             tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
         }
     }
@@ -592,6 +592,23 @@ tileMapToXmlDocument(const TileMap* tileMap)
     }
     doc->getChildren().push_back(e_tile_sets.get());
 
+    //Write out the data areas
+    if (tileMap->getDataExtents().size() > 0)
+    {
+        osg::ref_ptr<XmlElement> e_data_extents = new XmlElement( ELEM_DATA_EXTENTS );
+        for (DataExtentList::const_iterator itr = tileMap->getDataExtents().begin(); itr != tileMap->getDataExtents().end(); ++itr)
+        {
+            osg::ref_ptr<XmlElement> e_data_extent = new XmlElement( ELEM_DATA_EXTENT );
+            e_data_extent->getAttrs()[ATTR_MINX] = toString(itr->xMin());
+            e_data_extent->getAttrs()[ATTR_MINY] = toString(itr->yMin());
+            e_data_extent->getAttrs()[ATTR_MAXX] = toString(itr->xMax());
+            e_data_extent->getAttrs()[ATTR_MAXY] = toString(itr->yMax());
+            e_data_extent->getAttrs()[ATTR_MIN_LEVEL] = toString<unsigned int>(itr->getMinLevel());
+            e_data_extent->getAttrs()[ATTR_MAX_LEVEL] = toString<unsigned int>(itr->getMaxLevel());
+            e_data_extents->getChildren().push_back( e_data_extent );
+        }
+        doc->getChildren().push_back( e_data_extents.get() );
+    }
     return doc.release();
 }
 

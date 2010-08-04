@@ -529,12 +529,20 @@ int main(int argc, char** argv)
     //    //engineProps.setPreemptiveLOD( false );
     //}
 
+
+    engineProps.layeringTechnique() = MapEngineProperties::LAYERING_MULTITEXTURE;
 	if (arguments.read( "--multipass") )
 	{
 		engineProps.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
         //Multipass mode is currently only available in STANDARD mode.
         engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
 	}
+    else if (arguments.read("--compositing"))
+    {
+        engineProps.layeringTechnique() = MapEngineProperties::LAYERING_COMPOSITE;
+        //Compositing mode is currently only available in STANDARD mode.
+        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+    }
 
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
@@ -567,7 +575,14 @@ int main(int argc, char** argv)
 
     osg::Group* group = new osg::Group;
 
-    MapNode* mapNode = new MapNode(engineProps);
+    Map::CoordinateSystemType csType = Map::CSTYPE_GEOCENTRIC;
+    if (arguments.read("--cube"))
+    {
+        csType = Map::CSTYPE_GEOCENTRIC_CUBE;
+    }
+
+    Map* map = new Map(csType);
+    MapNode* mapNode = new MapNode(map, engineProps);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
     FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties());

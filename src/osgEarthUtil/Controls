@@ -92,9 +92,11 @@ namespace osgEarthUtil { namespace Controls
         const osgEarth::optional<bool>& visible() const { return _visible; }
 
         void setForeColor( const osg::Vec4f& value );
+        void setForeColor( float r, float g, float b, float a ) { setForeColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f> foreColor() const { return _foreColor; }
 
         void setBackColor( const osg::Vec4f& value );
+        void setBackColor( float r, float g, float b, float a ) { setBackColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f>& backColor() const { return _backColor; }
 
         bool getParent( osg::ref_ptr<Control>& out ) const;
@@ -139,7 +141,10 @@ namespace osgEarthUtil { namespace Controls
     class OSGEARTHUTIL_EXPORT LabelControl : public Control
     {
     public:
-        LabelControl( const std::string& value ="" );
+        LabelControl(
+            const std::string& value ="",
+            float fontSize =18.0f,
+            const osg::Vec4f& foreColor =osg::Vec4f(1,1,1,1) );
 
         void setText( const std::string& value );
         const std::string& text() const { return _text; }
@@ -237,6 +242,7 @@ namespace osgEarthUtil { namespace Controls
 
         // space between container and its children
         void setPadding( const Gutter& value );
+        void setPadding( float globalValue );
         const osgEarth::optional<Gutter>& padding() const { return _padding; }
         
         // space between children

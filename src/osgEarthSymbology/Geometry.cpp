@@ -114,6 +114,16 @@ Geometry::create( Type type, const osg::Vec3dArray* toCopy )
 }
 
 bool
+Geometry::hasBufferOperation()
+{
+#ifdef OSGEARTH_HAVE_GEOS
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool
 Geometry::buffer(double distance,
                  osg::ref_ptr<Geometry>& output,
                  const BufferParameters& params ) const

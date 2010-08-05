@@ -72,6 +72,9 @@ namespace osgEarth { namespace Symbology
 
         static Geometry* create( Type type, const osg::Vec3dArray* toCopy );
 
+        // true if osgEarth is compiled for buffering
+        static bool hasBufferOperation();
+
     public:
         // gets the total number of points in this geometry.
         virtual int getTotalPointCount() const;

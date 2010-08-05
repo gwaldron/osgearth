@@ -169,12 +169,15 @@ struct LabelText : public osgText::Text
 };
 
 
-LabelControl::LabelControl( const std::string& text )
+LabelControl::LabelControl(const std::string& text,
+                           float fontSize,
+                           const osg::Vec4f& foreColor)
 {
     setText( text );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
-    setFontSize( 24.0f );
+    setFontSize( fontSize );
     setBackColor( osg::Vec4f(0,0,0,0) );
+    setForeColor( foreColor );
 }
 
 void
@@ -381,7 +384,7 @@ RoundedFrame::draw( const ControlContext& cx, DrawableList& out ) const
 {
     if ( !getImage() || getImage()->s() != _renderSize.x() || getImage()->t() != _renderSize.y() )
     {        
-        float buffer = 10.0f;
+        float buffer = Geometry::hasBufferOperation() ? 10.0f : 0.0f;
 
         osg::ref_ptr<Geometry> geom = new Polygon();
         geom->push_back( osg::Vec3d( buffer, buffer, 0 ) );
@@ -389,9 +392,12 @@ RoundedFrame::draw( const ControlContext& cx, DrawableList& out ) const
         geom->push_back( osg::Vec3d( _renderSize.x()-1-buffer, _renderSize.y()-1-buffer, 0 ) );
         geom->push_back( osg::Vec3d( buffer, _renderSize.y()-1-buffer, 0 ) );
 
-        BufferParameters bp;
-        bp._capStyle = BufferParameters::CAP_ROUND;
-        geom->buffer( buffer-1.0f, geom, bp );
+        if ( Geometry::hasBufferOperation() )
+        {
+            BufferParameters bp;
+            bp._capStyle = BufferParameters::CAP_ROUND;
+            geom->buffer( buffer-1.0f, geom, bp );
+        }
 
         GeometryRasterizer ras( _renderSize.x(), _renderSize.y() );
         ras.draw( geom.get(), backColor().value() );
@@ -427,6 +433,15 @@ Container::setPadding( const Gutter& value )
 {
     if ( value != _padding.value() ) {
         _padding = value;
+        dirty();
+    }
+}
+
+void
+Container::setPadding( float value ) {
+    Gutter g(value);
+    if ( g != _padding.value() ) {
+        _padding = g;
         dirty();
     }
 }
@@ -675,6 +690,9 @@ ControlSurface::removeControl( Control* control )
          removeChild( i->second );
          _geodeTable.erase( i );
     }
+    ControlList::iterator j = std::find( _controls.begin(), _controls.end(), control );
+    if ( j != _controls.end() )
+        _controls.erase( j );
 }
 
 void

@@ -57,6 +57,16 @@ namespace osgEarthUtil { namespace Controls
         float _top, _right, _left, _bottom;
     };
 
+    enum Alignment
+    {
+        ALIGN_NONE, ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT, ALIGN_TOP, ALIGN_BOTTOM
+    };
+
+    enum Dock
+    {
+        DOCK_NONE, DOCK_LEFT, DOCK_RIGHT, DOCK_TOP, DOCK_BOTTOM, DOCK_FILL
+    };
+
     // internal state class
     struct ControlContext {
         ControlContext() : _viewContextID(~0) { }
@@ -90,6 +100,12 @@ namespace osgEarthUtil { namespace Controls
         void setMargin( const Gutter& value );
         const Gutter& margin() const { return _margin; }
 
+        void setVertAlign( const Alignment& value );
+        const Alignment& getVertAlign() const { return _valign; }
+
+        void setHorizAlign( const Alignment& value );
+        const Alignment& getHorizAlign() const { return _halign; }
+
         void setVisible( bool value );
         const bool visible() const { return _visible; }
 
@@ -109,16 +125,9 @@ namespace osgEarthUtil { namespace Controls
         virtual void dirty();
         bool isDirty() const { return _dirty; }
 
-        // refresh this control, deriving width/height from the decendants.
-        virtual bool layout(
-            const ControlContext& context,
-            const osg::Vec2f& renderPos,
-            osg::Vec2f& out_renderSize );
-
-        // add to the draw list.
-        virtual void draw(
-            const ControlContext& context,
-            DrawableList& drawables ) const;
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw    ( const ControlContext& context, DrawableList& out_drawables );
 
         // actual rendering region on the control surface
         const osg::Vec2f& renderPos() const { return _renderPos; }
@@ -129,10 +138,14 @@ namespace osgEarthUtil { namespace Controls
         osg::Vec2f _renderPos;
         osg::Vec2f _renderSize;
 
+        // adjusts renderpos for alignment.
+        void align();
+
     private:
         osgEarth::optional<float> _x, _y, _width, _height;
         Gutter _margin;
         bool _visible;
+        Alignment _valign, _halign;
         osgEarth::optional<osg::Vec4f> _backColor, _foreColor;
         osg::observer_ptr<Control> _parent;
     };
@@ -158,14 +171,8 @@ namespace osgEarthUtil { namespace Controls
         float fontSize() const { return _fontSize; }
 
     public: // Control
-        virtual bool layout(
-            const ControlContext& context,
-            const osg::Vec2f& renderPos,
-            osg::Vec2f& out_renderSize );
-
-        virtual void draw(
-            const ControlContext& context,
-            DrawableList& drawables ) const;
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw    ( const ControlContext& context, DrawableList& out_drawables );
 
     private:
         std::string _text;
@@ -186,14 +193,8 @@ namespace osgEarthUtil { namespace Controls
         osg::Image* getImage() const { return _image.get(); }
 
     public: // Control
-        virtual bool layout(
-            const ControlContext& context,
-            const osg::Vec2f& renderPos,
-            osg::Vec2f& out_renderSize );
-
-        virtual void draw(
-            const ControlContext& context,
-            DrawableList& drawables ) const;
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw( const ControlContext& cx, DrawableList& out );
 
     private:
         osg::ref_ptr<osg::Image> _image;
@@ -211,9 +212,7 @@ namespace osgEarthUtil { namespace Controls
         Frame();
 
     public: // Control
-        virtual void draw(
-            const ControlContext& context,
-            DrawableList& drawables ) const;
+        virtual void draw( const ControlContext& context, DrawableList& drawables );
     };
 
     /**
@@ -225,7 +224,7 @@ namespace osgEarthUtil { namespace Controls
         RoundedFrame();
 
     public:
-        virtual void draw( const ControlContext& cx, DrawableList& drawables ) const;
+        virtual void draw( const ControlContext& cx, DrawableList& drawables );
     };
 
     /**
@@ -255,14 +254,9 @@ namespace osgEarthUtil { namespace Controls
         virtual void addControl( Control* control ) =0;
 
     public:
-        virtual bool layout(
-            const ControlContext& context,
-            const osg::Vec2f& renderPos,
-            osg::Vec2f& out_renderSize );
-
-        virtual void draw(
-            const ControlContext& context,
-            DrawableList& drawables ) const;
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context, DrawableList& drawables );
 
     private:
         osg::ref_ptr<Frame> _frame;
@@ -281,18 +275,10 @@ namespace osgEarthUtil { namespace Controls
     public: // Container
         virtual void addControl( Control* control );
 
-    public: // Control
-        
-        // refresh this control, deriving width/height from the decendants.
-        virtual bool layout(
-            const ControlContext& context,
-            const osg::Vec2f& renderPos,
-            osg::Vec2f& out_renderSize );
-
-        // draw to the draw list.
-        virtual void draw(
-            const ControlContext& context,
-            DrawableList& drawables ) const;
+    public: // Control        
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context, DrawableList& drawables );
 
     private:
         ControlList _controls;
@@ -309,18 +295,10 @@ namespace osgEarthUtil { namespace Controls
     public: // Container
         virtual void addControl( Control* control );
 
-    public: // Control
-        
-        // refresh this control, deriving width/height from the decendants.
-        virtual bool layout(
-            const ControlContext& context,
-            const osg::Vec2f& renderPos,
-            osg::Vec2f& out_renderSize );
-
-        // draw to the draw list.
-        virtual void draw(
-            const ControlContext& context,
-            DrawableList& drawables ) const;
+    public: // Control        
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context, DrawableList& drawables );
 
     private:
         ControlList _controls;

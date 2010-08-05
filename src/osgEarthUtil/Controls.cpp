@@ -38,6 +38,8 @@ using namespace osgEarthUtil::Controls;
 Control::Control() :
 _x(0), _y(0), _width(1), _height(1),
 _margin( Gutter(0) ),
+_halign( ALIGN_NONE ),
+_valign( ALIGN_NONE ),
 _backColor( osg::Vec4f(0,0,0,0) ),
 _foreColor( osg::Vec4f(1,1,1,1) ),
 _visible( true )
@@ -100,6 +102,24 @@ Control::setMargin( const Gutter& value ) {
 }
 
 void
+Control::setHorizAlign( const Alignment& value ) {
+    if ( value != _halign ) {
+        _halign = value;
+        _x.unset();  // horiz align is mutex with abs positioning
+        dirty();
+    }
+}
+
+void
+Control::setVertAlign( const Alignment& value ) {
+    if ( value != _valign ) {
+        _valign = value;
+        _y.unset(); // vert align is mutex with abs positioning
+        dirty();
+    }
+}
+
+void
 Control::setForeColor( const osg::Vec4f& value ) {
     if ( value != _foreColor.value() ) {
         _foreColor = value;
@@ -131,28 +151,69 @@ Control::dirty()
         parent->dirty();
 }
 
-bool
-Control::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
+void
+Control::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
-        _renderPos.set(
-            parentPos.x() + x().value() + margin().left(),
-            parentPos.y() + y().value() + margin().top() );
-
         _renderSize.set( width().value(), height().value() );
 
         out_size.set(
             _renderSize.x() + margin().left() + margin().right(),
-            _renderSize.y() + margin().top() + margin().bottom() );
-
-        _dirty = false;    
+            _renderSize.y() + margin().top() + margin().bottom() );            
     }
-    return visible() == true;
+    else
+    {
+        out_size.set(0,0);
+    }
 }
 
 void
-Control::draw(const ControlContext& cx, DrawableList& out ) const
+Control::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec2f& parentSize)
+{
+    if ( _x.isSet() )
+    {
+        _renderPos.x() = cursor.x() + margin().left() + *x();
+    }
+    else
+    {
+        if ( _halign == ALIGN_CENTER )
+        {
+            _renderPos.x() = cursor.x() + 0.5*(parentSize.x() - _renderSize.x());
+        }
+        else if ( _halign == ALIGN_RIGHT )
+        {
+            _renderPos.x() = cursor.x() + parentSize.x() - margin().right() - _renderSize.x();
+        }
+        else
+        {
+            _renderPos.x() = cursor.x() + margin().left();
+        }
+    }
+
+    if ( _y.isSet() )
+    {
+        _renderPos.y() = cursor.y() + margin().top() + *y();
+    }
+    else
+    {
+        if ( _valign == ALIGN_CENTER )
+        {
+            _renderPos.y() = cursor.y() + 0.5*(parentSize.y() - _renderSize.y());
+        }
+        else if ( _valign == ALIGN_BOTTOM )
+        {
+            _renderPos.y() = cursor.y() + parentSize.y() - margin().bottom() - _renderSize.y();
+        }
+        else
+        {
+            _renderPos.y() = cursor.y() + margin().top();
+        }
+    }
+}
+
+void
+Control::draw(const ControlContext& cx, DrawableList& out )
 {
     if ( visible() == true && !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
     {
@@ -225,15 +286,11 @@ LabelControl::setFontSize( float value )
     }
 }
 
-bool
-LabelControl::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
+void
+LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
-        {
-        _renderPos.set(
-            parentPos.x() + x().value() + margin().left(),
-            parentPos.y() + y().value() + margin().top() );
-
+    {
         LabelText* t = new LabelText();
 
         t->setText( _text );
@@ -264,16 +321,19 @@ LabelControl::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg:
         out_size.set(
             margin().left() + margin().right() + _renderSize.x(),
             margin().top() + margin().bottom() + _renderSize.y() );
-
-        _dirty = false;
     }
-    return visible() == true;
+    else
+    {
+        out_size.set(0,0);
+    }
+
+    _dirty = false;
 }
 
 void
-LabelControl::draw( const ControlContext& cx, DrawableList& out ) const
+LabelControl::draw( const ControlContext& cx, DrawableList& out )
 {
-    if ( _drawable.valid() )
+    if ( _drawable.valid() && visible() == true )
     {
         //TODO: support alignment here
         float vph = cx._vp->height();
@@ -301,15 +361,11 @@ ImageControl::setImage( osg::Image* image )
     }
 }
 
-bool
-ImageControl::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
+void
+ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
-        _renderPos.set(
-            parentPos.x() + x().value() + margin().left(),
-            parentPos.y() + y().value() + margin().top() );
-
         _renderSize.set( 0, 0 );
 
         if ( _image.valid() )
@@ -327,46 +383,52 @@ ImageControl::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg:
 
         _dirty = false;
     }
-    return visible() == true;
+    else
+    {
+        out_size.set(0,0);
+    }
 }
 
 void
-ImageControl::draw( const ControlContext& cx, DrawableList& out ) const
+ImageControl::draw( const ControlContext& cx, DrawableList& out )
 {
-    //TODO: this is not precisely correct..images get deformed slightly..
-    osg::Geometry* g = new osg::Geometry();
+    if ( visible() == true )
+    {
+        //TODO: this is not precisely correct..images get deformed slightly..
+        osg::Geometry* g = new osg::Geometry();
 
-    float vph = cx._vp->height();
+        float vph = cx._vp->height();
 
-    osg::Vec3Array* verts = new osg::Vec3Array(4);
-    g->setVertexArray( verts );
-    (*verts)[0].set( _renderPos.x(), vph - _renderPos.y(), 0 );
-    (*verts)[1].set( _renderPos.x(), vph - _renderPos.y() - _renderSize.y() - 1, 0 );
-    (*verts)[2].set( _renderPos.x() + _renderSize.x() - 1, vph - _renderPos.y() - _renderSize.y() - 1, 0 );
-    (*verts)[3].set( _renderPos.x() + _renderSize.x() - 1, vph - _renderPos.y(), 0 );
-    g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
+        osg::Vec3Array* verts = new osg::Vec3Array(4);
+        g->setVertexArray( verts );
+        (*verts)[0].set( _renderPos.x(), vph - _renderPos.y(), 0 );
+        (*verts)[1].set( _renderPos.x(), vph - _renderPos.y() - _renderSize.y() - 1, 0 );
+        (*verts)[2].set( _renderPos.x() + _renderSize.x() - 1, vph - _renderPos.y() - _renderSize.y() - 1, 0 );
+        (*verts)[3].set( _renderPos.x() + _renderSize.x() - 1, vph - _renderPos.y(), 0 );
+        g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
 
-    osg::Vec4Array* c = new osg::Vec4Array(1);
-    (*c)[0] = osg::Vec4f(1,1,1,1);
-    g->setColorArray( c );
-    g->setColorBinding( osg::Geometry::BIND_OVERALL );
+        osg::Vec4Array* c = new osg::Vec4Array(1);
+        (*c)[0] = osg::Vec4f(1,1,1,1);
+        g->setColorArray( c );
+        g->setColorBinding( osg::Geometry::BIND_OVERALL );
 
-    osg::Vec2Array* t = new osg::Vec2Array(4);
-    (*t)[0].set( 0, _renderSize.y()-1 );
-    (*t)[1].set( 0, 0 );
-    (*t)[2].set( _renderSize.x()-1, 0 );
-    (*t)[3].set( _renderSize.x()-1, _renderSize.y()-1 );
-    g->setTexCoordArray( 0, t );
+        osg::Vec2Array* t = new osg::Vec2Array(4);
+        (*t)[0].set( 0, _renderSize.y()-1 );
+        (*t)[1].set( 0, 0 );
+        (*t)[2].set( _renderSize.x()-1, 0 );
+        (*t)[3].set( _renderSize.x()-1, _renderSize.y()-1 );
+        g->setTexCoordArray( 0, t );
 
-    osg::TextureRectangle* texrec = new osg::TextureRectangle( _image.get() );
-    texrec->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-    texrec->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
-    g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texrec, osg::StateAttribute::ON );
+        osg::TextureRectangle* texrec = new osg::TextureRectangle( _image.get() );
+        texrec->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+        texrec->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
+        g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texrec, osg::StateAttribute::ON );
 
-    osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
-    g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
+        osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
+        g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
 
-    out.push_back( g );
+        out.push_back( g );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -377,7 +439,7 @@ Frame::Frame()
 }
 
 void
-Frame::draw( const ControlContext& cx, DrawableList& out ) const
+Frame::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( !getImage() || getImage()->s() != _renderSize.x() || getImage()->t() != _renderSize.y() )
     {        
@@ -406,7 +468,7 @@ RoundedFrame::RoundedFrame()
 }
 
 void
-RoundedFrame::draw( const ControlContext& cx, DrawableList& out ) const
+RoundedFrame::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( !getImage() || getImage()->s() != _renderSize.x() || getImage()->t() != _renderSize.y() )
     {        
@@ -481,12 +543,9 @@ Container::setSpacing( float value )
     }
 }
 
-bool
-Container::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
+void
+Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
-    // expects to be called After the subclass's layout(), so that
-    // _render* are already set.
-
     if ( visible() == true )
     {
         if ( _frame.valid() )
@@ -495,18 +554,28 @@ Container::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Ve
             _frame->setHeight( _renderSize.y() );
 
             osg::Vec2f dummy;
-            _frame->layout( cx, _renderPos, dummy );
+            _frame->calcSize( cx, dummy );
         }
 
         // no need to set the output vars.
 
         _dirty = false;  
     }
-    return visible() == true;
 }
 
 void
-Container::draw( const ControlContext& cx, DrawableList& out ) const
+Container::calcPos(const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize)
+{
+    Control::calcPos( context, cursor, parentSize );
+
+    if ( visible() == true && _frame.valid() )
+    {
+        _frame->calcPos( context, _renderPos, parentSize );
+    }
+}
+
+void
+Container::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( visible() == true )
     {
@@ -530,32 +599,24 @@ VBox::addControl( Control* control )
     dirty();
 }
 
-bool
-VBox::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
+void
+VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
-        _renderPos.set(
-            parentPos.x() + x().value() + margin().left(),
-            parentPos.y() + y().value() + margin().top() );
-
         _renderSize.set( 0, 0 );
-
-        osg::Vec2f cursor( 
-            _renderPos.x() + padding().left(),
-            _renderPos.y() + padding().top() );
 
         // collect all the members, growing the container is its orientation.
         for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
         {
+            Control* child = i->get();
             osg::Vec2f childSize;
             bool first = i == _controls.begin();
 
-            i->get()->layout( cx, cursor, childSize );
+            child->calcSize( cx, childSize );
 
             _renderSize.x() = osg::maximum( _renderSize.x(), childSize.x() );
             _renderSize.y() += first ? childSize.y() : spacing() + childSize.y();
-            cursor.y() += childSize.y() + spacing();
         }
 
         _renderSize.set(
@@ -566,14 +627,34 @@ VBox::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& 
             _renderSize.x() + margin().left() + margin().right(),
             _renderSize.y() + margin().top() + margin().bottom() );
 
-        Container::layout( cx, parentPos, out_size );
-        //    _dirty = false;    
+        Container::calcSize( cx, out_size );
     }
-    return visible() == true;
+    else
+    {
+        out_size.set(0,0);
+    }
 }
 
 void
-VBox::draw( const ControlContext& cx, DrawableList& out ) const
+VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec2f& parentSize)
+{
+    Container::calcPos( cx, cursor, parentSize );
+
+    osg::Vec2f childCursor( 
+        _renderPos.x() + padding().left(),
+        _renderPos.y() + padding().top() );
+
+    // collect all the members, growing the container is its orientation.
+    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    {
+        Control* child = i->get();
+        child->calcPos( cx, childCursor, _renderSize );
+        childCursor.y() += child->margin().top() + child->renderSize().y() + child->margin().bottom() + spacing();
+    }
+}
+
+void
+VBox::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( visible() == true )
     {
@@ -597,32 +678,24 @@ HBox::addControl( Control* control )
     dirty();
 }
 
-bool
-HBox::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
+void
+HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
-        _renderPos.set(
-            parentPos.x() + x().value() + margin().left(),
-            parentPos.y() + y().value() + margin().top() );
-
         _renderSize.set( 0, 0 );
-
-        osg::Vec2f cursor( 
-            _renderPos.x() + padding().left(),
-            _renderPos.y() + padding().top() );
 
         // collect all the members, growing the container is its orientation.
         for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
         {
+            Control* child = i->get();
             osg::Vec2f childSize;
             bool first = i == _controls.begin();
 
-            i->get()->layout( cx, cursor, childSize );
+            child->calcSize( cx, childSize );
 
             _renderSize.x() += first ? childSize.x() : spacing() + childSize.x();
             _renderSize.y() = osg::maximum( _renderSize.y(), childSize.y() );
-            cursor.x() += childSize.x() + spacing();
         }
 
         _renderSize.set(
@@ -633,14 +706,30 @@ HBox::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& 
             _renderSize.x() + margin().left() + margin().right(),
             _renderSize.y() + margin().top() + margin().bottom() );
 
-        Container::layout( cx, parentPos, out_size );
-        //    _dirty = false;    
+        Container::calcSize( cx, out_size );
     }
-    return visible() == true;
 }
 
 void
-HBox::draw( const ControlContext& cx, DrawableList& out ) const
+HBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec2f& parentSize)
+{
+    Container::calcPos( cx, cursor, parentSize );
+
+    osg::Vec2f childCursor( 
+        _renderPos.x() + padding().left(),
+        _renderPos.y() + padding().top() );
+
+    // collect all the members, growing the container is its orientation.
+    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    {
+        Control* child = i->get();
+        child->calcPos( cx, childCursor, _renderSize );
+        childCursor.x() += child->margin().left() + child->renderSize().x() + child->margin().right() + spacing();
+    }
+}
+
+void
+HBox::draw( const ControlContext& cx, DrawableList& out ) 
 {
     Container::draw( cx, out );
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
@@ -748,12 +837,17 @@ ControlSurface::update()
         Control* control = i->get();
         if ( control->isDirty() || _contextDirty )
         {
-            osg::Vec2f dummy;
-            control->layout( _context, osg::Vec2f(0,0), dummy );
+            osg::Vec2f size;
+            control->calcSize( _context, size );
+
+            osg::Vec2f surfaceSize( _context._vp->width(), _context._vp->height() );
+            control->calcPos( _context, osg::Vec2f(0,0), surfaceSize );
+
             osg::Geode* geode = _geodeTable[control];
             geode->removeDrawables( 0, geode->getNumDrawables() );
             DrawableList drawables;
             control->draw( _context, drawables );
+
             for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
             {
                 j->get()->setDataVariance( osg::Object::DYNAMIC );

@@ -55,6 +55,8 @@ public:
     /** The high resolution dimension of a patch.
      */
     static const int resolution = 128;
+    double getPrecisionFactor() { return _precisionFactor; }
+    void setPrecisionFactor(double factor) { _precisionFactor = factor; }
 protected:
     ~Patch();
     // Triles at two resolutions, counterclockwise from bottom. 0 is
@@ -68,6 +70,7 @@ protected:
     // 3 both neighbors high
     osg::ref_ptr<osg::Geode> _strip[4][4];
     osg::ref_ptr<Data> _data;
+    double _precisionFactor;
 };
 }
 #endif

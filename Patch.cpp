@@ -6,16 +6,28 @@
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 
+#include <osg/Vec3d>
+
 namespace teng
 {
 using namespace osg;
 
+class MyNodeAcceptOp : public NodeAcceptOp
+{
+public:
+    MyNodeAcceptOp(NodeVisitor& nv) : NodeAcceptOp(nv) {}
+    MyNodeAcceptOp(const NodeAcceptOp& naop) : NodeAcceptOp(naop) {}
+    template<typename T>
+    void operator()(T node) { return node->accept(_nv); }
+};
+
 Patch::Patch()
+    : _precisionFactor(2.0)
 {
 }
 
 Patch::Patch(const Patch& rhs, const CopyOp& copyop)
- : Node(rhs, copyop)
+    : Node(rhs, copyop), _precisionFactor(rhs._precisionFactor)
 {
     for (int res = 0; res < 2; ++res)
         for (int i = 0; i < 4; ++i)
@@ -303,19 +315,68 @@ void Patch::init()
     }
 }
 
+// Find the point closest to P3 on the line segment from P1 to P2
+Vec3 closestPointOnSegment(const Vec3& p1, const Vec3& p2, const Vec3& p3)
+{
+    Vec3 vec = p2 - p1;
+    float len2 = vec.length2();
+    if (equivalent(len2, 0))
+        return p1;
+    float u = ((p3 - p1) * vec) / len2;
+    if (u <= 0.0)
+        return p1;
+    else if (u >= 1.0)
+        return p2;
+    else
+        return p1 + vec * u;
+}
+
+float distanceToSegment(const Vec3& p1, const Vec3& p2, const Vec3& p3)
+{
+    Vec3 pt = closestPointOnSegment(p1, p2, p3);
+    return (p3 - pt).length();
+}
+
+int edgeCoords[4][2][2] = {{{0, 0}, {Patch::resolution, 0}},
+                           {{Patch::resolution, 0},
+                            {Patch::resolution, Patch::resolution}},
+                           {{Patch::resolution, Patch::resolution},
+                            {0, Patch::resolution}},
+                           {{0, Patch::resolution}, {0,0}}};
+
 void Patch::traverse(NodeVisitor& nv)
 {
+    if (!_trile[0][0].valid())
+        return;
     if (nv.getTraversalMode() == NodeVisitor::TRAVERSE_ALL_CHILDREN)
     {
-        for (int res = 0; res < 2; ++res)
-            for (int i = 0; i < 4; ++i)
-                _trile[res][i]->accept(nv);
+        std::for_each(&_trile[0][0], &_trile[1][3] + 1, MyNodeAcceptOp(nv));
+        std::for_each(&_strip[0][0], &_strip[3][3] + 1, MyNodeAcceptOp(nv));
         return;
     }
     if (nv.getTraversalMode() != NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
         return;
-    // XXX test pattern
-    int res[4] = {1, 1, 0, 0};
+    Vec3Array* verts = static_cast<Vec3Array*>(_data->vertexData.array.get());
+    float epsilon[4];
+    int res[4]; // Resolution of each edge / trile.
+    // Get error value for edges
+    Vec3 eye = nv.getEyePoint();
+    for (int i = 0; i < 4; ++i)
+    {
+        const Vec3& p1 = (*verts)[makeIndexCoord(edgeCoords[i][0][0],
+                                                 edgeCoords[i][0][1])];
+        const Vec3& p2 = (*verts)[makeIndexCoord(edgeCoords[i][1][0],
+                                                 edgeCoords[i][1][1])];
+        float len = (p2 - p1).length();
+        Vec3 closestPt =  closestPointOnSegment(p1, p2, eye);
+        float d = (closestPt - eye).length();
+        epsilon[i] = _precisionFactor * len / d;
+        if (epsilon[i] > .5f)
+            res[i] = 1;
+        else
+            res[i] = 0;
+    }
+
     for (int i = 0; i < 4; ++i)
         _trile[res[i]][i]->accept(nv);
     // Now choose a strip

@@ -19,6 +19,8 @@
 #ifndef AGGLITE_H
 #define AGGLITE_H
 
+#include <memory.h>
+
 namespace agg
 {
     //------------------------------------------------------------------------

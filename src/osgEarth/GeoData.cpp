@@ -28,6 +28,7 @@
 #include <gdal_priv.h>
 #include <gdalwarper.h>
 #include <ogr_spatialref.h>
+#include <memory.h>
 
 #include <sstream>
 #include <iomanip>

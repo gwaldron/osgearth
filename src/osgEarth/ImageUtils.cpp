@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osg/Notify>
 #include <string.h>
+#include <memory.h>
 
 #define LC "[osgEarth::ImageUtils] "
 

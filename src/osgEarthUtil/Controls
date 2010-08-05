@@ -79,6 +79,8 @@ namespace osgEarthUtil { namespace Controls
         void setY( float value );
         const osgEarth::optional<float>& y() const { return _y; }
 
+        void setPosition( float x, float y );
+
         void setWidth( float value );
         const osgEarth::optional<float>& width() const { return _width; }
 
@@ -86,10 +88,10 @@ namespace osgEarthUtil { namespace Controls
         const osgEarth::optional<float>& height() const { return _height; }
 
         void setMargin( const Gutter& value );
-        const osgEarth::optional<Gutter>& margin() const { return _margin; }
+        const Gutter& margin() const { return _margin; }
 
         void setVisible( bool value );
-        const osgEarth::optional<bool>& visible() const { return _visible; }
+        const bool visible() const { return _visible; }
 
         void setForeColor( const osg::Vec4f& value );
         void setForeColor( float r, float g, float b, float a ) { setForeColor( osg::Vec4f(r,g,b,a) ); }
@@ -108,7 +110,7 @@ namespace osgEarthUtil { namespace Controls
         bool isDirty() const { return _dirty; }
 
         // refresh this control, deriving width/height from the decendants.
-        virtual void layout(
+        virtual bool layout(
             const ControlContext& context,
             const osg::Vec2f& renderPos,
             osg::Vec2f& out_renderSize );
@@ -129,9 +131,9 @@ namespace osgEarthUtil { namespace Controls
 
     private:
         osgEarth::optional<float> _x, _y, _width, _height;
-        osgEarth::optional<Gutter> _margin;
+        Gutter _margin;
+        bool _visible;
         osgEarth::optional<osg::Vec4f> _backColor, _foreColor;
-        osgEarth::optional<bool> _visible;
         osg::observer_ptr<Control> _parent;
     };
 
@@ -156,7 +158,7 @@ namespace osgEarthUtil { namespace Controls
         float fontSize() const { return _fontSize; }
 
     public: // Control
-        virtual void layout(
+        virtual bool layout(
             const ControlContext& context,
             const osg::Vec2f& renderPos,
             osg::Vec2f& out_renderSize );
@@ -184,7 +186,7 @@ namespace osgEarthUtil { namespace Controls
         osg::Image* getImage() const { return _image.get(); }
 
     public: // Control
-        virtual void layout(
+        virtual bool layout(
             const ControlContext& context,
             const osg::Vec2f& renderPos,
             osg::Vec2f& out_renderSize );
@@ -243,17 +245,17 @@ namespace osgEarthUtil { namespace Controls
         // space between container and its children
         void setPadding( const Gutter& value );
         void setPadding( float globalValue );
-        const osgEarth::optional<Gutter>& padding() const { return _padding; }
+        const Gutter& padding() const { return _padding; }
         
         // space between children
         void setSpacing( float value );
-        const osgEarth::optional<float>& spacing() const { return _spacing; }
+        float spacing() const { return _spacing; }
 
         // default add function.
         virtual void addControl( Control* control ) =0;
 
     public:
-        virtual void layout(
+        virtual bool layout(
             const ControlContext& context,
             const osg::Vec2f& renderPos,
             osg::Vec2f& out_renderSize );
@@ -264,8 +266,8 @@ namespace osgEarthUtil { namespace Controls
 
     private:
         osg::ref_ptr<Frame> _frame;
-        osgEarth::optional<Gutter> _padding;
-        osgEarth::optional<float> _spacing;
+        Gutter _padding;
+        float _spacing;
     };
 
     /**
@@ -282,7 +284,7 @@ namespace osgEarthUtil { namespace Controls
     public: // Control
         
         // refresh this control, deriving width/height from the decendants.
-        virtual void layout(
+        virtual bool layout(
             const ControlContext& context,
             const osg::Vec2f& renderPos,
             osg::Vec2f& out_renderSize );
@@ -310,7 +312,7 @@ namespace osgEarthUtil { namespace Controls
     public: // Control
         
         // refresh this control, deriving width/height from the decendants.
-        virtual void layout(
+        virtual bool layout(
             const ControlContext& context,
             const osg::Vec2f& renderPos,
             osg::Vec2f& out_renderSize );

@@ -46,6 +46,14 @@ _visible( true )
 }
 
 void
+Control::setVisible( bool value ) {
+    if ( value != _visible ) {
+        _visible = value;
+        dirty();
+    }
+}
+
+void
 Control::setX( float value ) {
     if ( value != _x.value() ) {
         _x = value;
@@ -59,6 +67,12 @@ Control::setY( float value ) {
         _y = value;
         dirty();
     }
+}
+
+void
+Control::setPosition( float x, float y ) {
+    setX( x );
+    setY( y );
 }
 
 void
@@ -79,7 +93,7 @@ Control::setHeight( float value ) {
 
 void
 Control::setMargin( const Gutter& value ) {
-    if ( value != _margin.value() ) {
+    if ( value != _margin ) {
         _margin = value;
         dirty();
     }
@@ -117,26 +131,30 @@ Control::dirty()
         parent->dirty();
 }
 
-void
+bool
 Control::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
 {
-    _renderPos.set(
-        parentPos.x() + x().value() + margin()->left(),
-        parentPos.y() + y().value() + margin()->top() );
+    if ( visible() == true )
+    {
+        _renderPos.set(
+            parentPos.x() + x().value() + margin().left(),
+            parentPos.y() + y().value() + margin().top() );
 
-    _renderSize.set( width().value(), height().value() );
+        _renderSize.set( width().value(), height().value() );
 
-    out_size.set(
-        _renderSize.x() + margin()->left() + margin()->right(),
-        _renderSize.y() + margin()->top() + margin()->bottom() );
+        out_size.set(
+            _renderSize.x() + margin().left() + margin().right(),
+            _renderSize.y() + margin().top() + margin().bottom() );
 
-    _dirty = false;    
+        _dirty = false;    
+    }
+    return visible() == true;
 }
 
 void
 Control::draw(const ControlContext& cx, DrawableList& out ) const
 {
-    if ( _visible == true && !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
+    if ( visible() == true && !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
     {
         float vph = cx._vp->height();
 
@@ -207,45 +225,49 @@ LabelControl::setFontSize( float value )
     }
 }
 
-void
+bool
 LabelControl::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
 {
-    _renderPos.set(
-        parentPos.x() + x().value() + margin()->left(),
-        parentPos.y() + y().value() + margin()->top() );
+    if ( visible() == true )
+        {
+        _renderPos.set(
+            parentPos.x() + x().value() + margin().left(),
+            parentPos.y() + y().value() + margin().top() );
 
-    LabelText* t = new LabelText();
+        LabelText* t = new LabelText();
 
-    t->setText( _text );
-    // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
-    t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
-    t->setCharacterSize( _fontSize );
-    t->setAlignment( osgText::Text::LEFT_TOP );
-    t->setColor( foreColor().value() );
-    if ( _font.valid() )
-        t->setFont( _font.get() );
+        t->setText( _text );
+        // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
+        t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
+        t->setCharacterSize( _fontSize );
+        t->setAlignment( osgText::Text::LEFT_TOP );
+        t->setColor( foreColor().value() );
+        if ( _font.valid() )
+            t->setFont( _font.get() );
 
-    osg::BoundingBox bbox = t->getTextBB();
+        osg::BoundingBox bbox = t->getTextBB();
 
-    if ( cx._viewContextID != ~0 )
-    {
-        osg::Matrix m = t->getATMatrix( cx._viewContextID );
-        osg::Vec3 bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
-        osg::Vec3 bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
-        _renderSize.set( bmax.x() - bmin.x(), bmax.y() - bmin.y() );
+        if ( cx._viewContextID != ~0 )
+        {
+            osg::Matrix m = t->getATMatrix( cx._viewContextID );
+            osg::Vec3 bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
+            osg::Vec3 bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
+            _renderSize.set( bmax.x() - bmin.x(), bmax.y() - bmin.y() );
+        }
+        else
+        {
+            _renderSize.set( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() );
+        }
+
+        _drawable = t;
+
+        out_size.set(
+            margin().left() + margin().right() + _renderSize.x(),
+            margin().top() + margin().bottom() + _renderSize.y() );
+
+        _dirty = false;
     }
-    else
-    {
-        _renderSize.set( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() );
-    }
-
-    _drawable = t;
-
-    out_size.set(
-        margin()->left() + margin()->right() + _renderSize.x(),
-        margin()->top() + margin()->bottom() + _renderSize.y() );
-
-    _dirty = false;
+    return visible() == true;
 }
 
 void
@@ -279,29 +301,33 @@ ImageControl::setImage( osg::Image* image )
     }
 }
 
-void
+bool
 ImageControl::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
 {
-    _renderPos.set(
-        parentPos.x() + x().value() + margin()->left(),
-        parentPos.y() + y().value() + margin()->top() );
-
-    _renderSize.set( 0, 0 );
-
-    if ( _image.valid() )
+    if ( visible() == true )
     {
-        _renderSize.set( _image->s(), _image->t() );
+        _renderPos.set(
+            parentPos.x() + x().value() + margin().left(),
+            parentPos.y() + y().value() + margin().top() );
+
+        _renderSize.set( 0, 0 );
+
+        if ( _image.valid() )
+        {
+            _renderSize.set( _image->s(), _image->t() );
+        }
+
+        _renderSize.set(
+            osg::maximum( _renderSize.x(), width().value() ),
+            osg::maximum( _renderSize.y(), height().value() ) );
+
+        out_size.set(
+            margin().left() + margin().right() + _renderSize.x(),
+            margin().top() + margin().bottom() + _renderSize.y() );
+
+        _dirty = false;
     }
-
-    _renderSize.set(
-        osg::maximum( _renderSize.x(), width().value() ),
-        osg::maximum( _renderSize.y(), height().value() ) );
-
-    out_size.set(
-        margin()->left() + margin()->right() + _renderSize.x(),
-        margin()->top() + margin()->bottom() + _renderSize.y() );
-
-    _dirty = false;
+    return visible() == true;
 }
 
 void
@@ -431,7 +457,7 @@ Container::setFrame( Frame* frame )
 void
 Container::setPadding( const Gutter& value )
 {
-    if ( value != _padding.value() ) {
+    if ( value != _padding ) {
         _padding = value;
         dirty();
     }
@@ -440,7 +466,7 @@ Container::setPadding( const Gutter& value )
 void
 Container::setPadding( float value ) {
     Gutter g(value);
-    if ( g != _padding.value() ) {
+    if ( g != _padding ) {
         _padding = g;
         dirty();
     }
@@ -449,38 +475,45 @@ Container::setPadding( float value ) {
 void
 Container::setSpacing( float value )
 {
-    if ( value != _spacing.value() ) {
+    if ( value != _spacing ) {
         _spacing = value;
         dirty();
     }
 }
 
-void
+bool
 Container::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
 {
     // expects to be called After the subclass's layout(), so that
     // _render* are already set.
 
-    if ( _frame.valid() )
+    if ( visible() == true )
     {
-        _frame->setWidth( _renderSize.x() );
-        _frame->setHeight( _renderSize.y() );
+        if ( _frame.valid() )
+        {
+            _frame->setWidth( _renderSize.x() );
+            _frame->setHeight( _renderSize.y() );
 
-        osg::Vec2f dummy;
-        _frame->layout( cx, _renderPos, dummy );
+            osg::Vec2f dummy;
+            _frame->layout( cx, _renderPos, dummy );
+        }
+
+        // no need to set the output vars.
+
+        _dirty = false;  
     }
-
-    // no need to set the output vars.
-
-    _dirty = false;    
+    return visible() == true;
 }
 
 void
 Container::draw( const ControlContext& cx, DrawableList& out ) const
 {
-    Control::draw( cx, out );
-    if ( _frame.valid() )
-        _frame->draw( cx, out );
+    if ( visible() == true )
+    {
+        Control::draw( cx, out );
+        if ( _frame.valid() )
+            _frame->draw( cx, out );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -497,50 +530,57 @@ VBox::addControl( Control* control )
     dirty();
 }
 
-void
+bool
 VBox::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
 {
-    _renderPos.set(
-        parentPos.x() + x().value() + margin()->left(),
-        parentPos.y() + y().value() + margin()->top() );
-    
-    _renderSize.set( 0, 0 );
-
-    osg::Vec2f cursor( 
-        _renderPos.x() + padding()->left(),
-        _renderPos.y() + padding()->top() );
-
-    // collect all the members, growing the container is its orientation.
-    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    if ( visible() == true )
     {
-        osg::Vec2f childSize;
-        bool first = i == _controls.begin();
+        _renderPos.set(
+            parentPos.x() + x().value() + margin().left(),
+            parentPos.y() + y().value() + margin().top() );
 
-        i->get()->layout( cx, cursor, childSize );
+        _renderSize.set( 0, 0 );
 
-        _renderSize.x() = osg::maximum( _renderSize.x(), childSize.x() );
-        _renderSize.y() += first ? childSize.y() : spacing().value() + childSize.y();
-        cursor.y() += childSize.y() + spacing().value();
+        osg::Vec2f cursor( 
+            _renderPos.x() + padding().left(),
+            _renderPos.y() + padding().top() );
+
+        // collect all the members, growing the container is its orientation.
+        for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+        {
+            osg::Vec2f childSize;
+            bool first = i == _controls.begin();
+
+            i->get()->layout( cx, cursor, childSize );
+
+            _renderSize.x() = osg::maximum( _renderSize.x(), childSize.x() );
+            _renderSize.y() += first ? childSize.y() : spacing() + childSize.y();
+            cursor.y() += childSize.y() + spacing();
+        }
+
+        _renderSize.set(
+            _renderSize.x() + padding().left() + padding().right(),
+            _renderSize.y() + padding().top() + padding().bottom() );
+
+        out_size.set(
+            _renderSize.x() + margin().left() + margin().right(),
+            _renderSize.y() + margin().top() + margin().bottom() );
+
+        Container::layout( cx, parentPos, out_size );
+        //    _dirty = false;    
     }
-
-    _renderSize.set(
-        _renderSize.x() + padding()->left() + padding()->right(),
-        _renderSize.y() + padding()->top() + padding()->bottom() );
-
-    out_size.set(
-        _renderSize.x() + margin()->left() + margin()->right(),
-        _renderSize.y() + margin()->top() + margin()->bottom() );
-
-    Container::layout( cx, parentPos, out_size );
-//    _dirty = false;    
+    return visible() == true;
 }
 
 void
 VBox::draw( const ControlContext& cx, DrawableList& out ) const
 {
-    Container::draw( cx, out );
-    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
-        i->get()->draw( cx, out );
+    if ( visible() == true )
+    {
+        Container::draw( cx, out );
+        for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+            i->get()->draw( cx, out );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -557,42 +597,46 @@ HBox::addControl( Control* control )
     dirty();
 }
 
-void
+bool
 HBox::layout(const ControlContext& cx, const osg::Vec2f& parentPos, osg::Vec2f& out_size)
 {
-    _renderPos.set(
-        parentPos.x() + x().value() + margin()->left(),
-        parentPos.y() + y().value() + margin()->top() );
-    
-    _renderSize.set( 0, 0 );
-
-    osg::Vec2f cursor( 
-        _renderPos.x() + padding()->left(),
-        _renderPos.y() + padding()->top() );
-
-    // collect all the members, growing the container is its orientation.
-    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    if ( visible() == true )
     {
-        osg::Vec2f childSize;
-        bool first = i == _controls.begin();
+        _renderPos.set(
+            parentPos.x() + x().value() + margin().left(),
+            parentPos.y() + y().value() + margin().top() );
 
-        i->get()->layout( cx, cursor, childSize );
+        _renderSize.set( 0, 0 );
 
-        _renderSize.x() += first ? childSize.x() : spacing().value() + childSize.x();
-        _renderSize.y() = osg::maximum( _renderSize.y(), childSize.y() );
-        cursor.x() += childSize.x() + spacing().value();
+        osg::Vec2f cursor( 
+            _renderPos.x() + padding().left(),
+            _renderPos.y() + padding().top() );
+
+        // collect all the members, growing the container is its orientation.
+        for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+        {
+            osg::Vec2f childSize;
+            bool first = i == _controls.begin();
+
+            i->get()->layout( cx, cursor, childSize );
+
+            _renderSize.x() += first ? childSize.x() : spacing() + childSize.x();
+            _renderSize.y() = osg::maximum( _renderSize.y(), childSize.y() );
+            cursor.x() += childSize.x() + spacing();
+        }
+
+        _renderSize.set(
+            _renderSize.x() + padding().left() + padding().right(),
+            _renderSize.y() + padding().top() + padding().bottom() );
+
+        out_size.set(
+            _renderSize.x() + margin().left() + margin().right(),
+            _renderSize.y() + margin().top() + margin().bottom() );
+
+        Container::layout( cx, parentPos, out_size );
+        //    _dirty = false;    
     }
-
-    _renderSize.set(
-        _renderSize.x() + padding()->left() + padding()->right(),
-        _renderSize.y() + padding()->top() + padding()->bottom() );
-
-    out_size.set(
-        _renderSize.x() + margin()->left() + margin()->right(),
-        _renderSize.y() + margin()->top() + margin()->bottom() );
-
-    Container::layout( cx, parentPos, out_size );
-//    _dirty = false;    
+    return visible() == true;
 }
 
 void

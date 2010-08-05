@@ -646,6 +646,7 @@ _contextDirty(true)
     setViewMatrix(osg::Matrix::identity());
     setClearMask(GL_DEPTH_BUFFER_BIT);
     setRenderOrder(osg::Camera::POST_RENDER); 
+    setAllowEventFocus( true );
     
     this->setUpdateCallback( new ControlUpdater );
 

@@ -74,8 +74,15 @@ ImageUtils::setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& co
     else 
     if ( image->getDataType() == GL_UNSIGNED_SHORT_5_5_5_1 )
     {
-        //TODO
-        OE_WARN << LC << "setColor(GL_UNSIGNED_SHORT_5_5_5_1) not yet implemented!" << std::endl;
+        unsigned short
+            r = (unsigned short)(color.r()*255),
+            g = (unsigned short)(color.g()*255),
+            b = (unsigned short)(color.b()*255),
+            a = color.a() < 0.15 ? 0 : 1;
+
+        unsigned short* p = (unsigned short*)image->data(s, t, r);
+        *p = (((r) & (0xf8)) << 8) | (((g) & (0xf8)) << 3) | (((b) & (0xF8)) >> 2) | a;
+        return true;
     }
     else
     if ( image->getDataType() == GL_UNSIGNED_BYTE_3_3_2 )

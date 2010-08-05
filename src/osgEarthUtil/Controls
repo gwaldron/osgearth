@@ -25,6 +25,7 @@
 #include <osg/Geode>
 #include <osgViewer/View>
 #include <osgText/Font>
+#include <osgText/Text>
 #include <vector>
 
 namespace osgEarthUtil { namespace Controls
@@ -33,6 +34,7 @@ namespace osgEarthUtil { namespace Controls
 
     typedef std::map< class Control*, osg::Geode* > GeodeTable;
 
+    // holds 4-sided gutter dimensions (for margins and padding) .. no-export, header-only.
     struct Gutter
     {
         Gutter()
@@ -55,13 +57,17 @@ namespace osgEarthUtil { namespace Controls
         float _top, _right, _left, _bottom;
     };
 
+    // internal state class
     struct ControlContext {
         ControlContext() : _viewContextID(~0) { }
         osg::ref_ptr<osg::Viewport> _vp;
         unsigned int _viewContextID;
     };
 
-
+    /**
+     * Base class for all controls. You can actually use a Control directly and it
+     * will just render as a rectangle.
+     */
     class OSGEARTHUTIL_EXPORT Control : public osg::Referenced
     {
     public:
@@ -110,6 +116,7 @@ namespace osgEarthUtil { namespace Controls
             const ControlContext& context,
             DrawableList& drawables ) const;
 
+        // actual rendering region on the control surface
         const osg::Vec2f& renderPos() const { return _renderPos; }
         const osg::Vec2f& renderSize() const { return _renderSize; }
 
@@ -126,6 +133,9 @@ namespace osgEarthUtil { namespace Controls
         osg::observer_ptr<Control> _parent;
     };
 
+    /**
+     * Control that contains a text string, obviously
+     */
     class OSGEARTHUTIL_EXPORT LabelControl : public Control
     {
     public:
@@ -157,6 +167,9 @@ namespace osgEarthUtil { namespace Controls
         osg::ref_ptr<osgText::Text> _drawable;
     };
 
+    /**
+     * Control that contains a raster image
+     */
     class OSGEARTHUTIL_EXPORT ImageControl : public Control
     {
     public:
@@ -182,7 +195,8 @@ namespace osgEarthUtil { namespace Controls
     typedef std::vector< osg::ref_ptr<Control> > ControlList;
 
     /**
-     * A control that renders a border for a container.
+     * A control that renders a simple rectangular border for a container.
+     * This is also the base class for all Frame objects.
      */
     class OSGEARTHUTIL_EXPORT Frame : public ImageControl
     {
@@ -195,6 +209,9 @@ namespace osgEarthUtil { namespace Controls
             DrawableList& drawables ) const;
     };
 
+    /**
+     * A Frame with nice rounded corners.
+     */
     class OSGEARTHUTIL_EXPORT RoundedFrame : public Frame
     {
     public:
@@ -205,13 +222,16 @@ namespace osgEarthUtil { namespace Controls
     };
 
     /**
-     * Base class for containers (controls that house child controls)
+     * Container is a control that houses child controls. This is the base class for
+     * all containers. (It is abstract so cannot be used directly)
+     * Containers are control, so you can nest them in other containers.
      */
     class OSGEARTHUTIL_EXPORT Container : public Control
     {
     public:
         Container();
 
+        // the Frame connected to this container. can be NULL for no frame.
         void setFrame( Frame* frame );
         Frame* getFrame() const { return _frame.get(); }
 
@@ -299,30 +319,30 @@ namespace osgEarthUtil { namespace Controls
     };
 
     /**
-     * Creates and manages control associated with an OSG View.
+     * Associates controls with an OSG View.
      */
     class OSGEARTHUTIL_EXPORT ControlSurface : public osg::Camera
     {
     public:
         ControlSurface( osgViewer::View* view );
 
+        // adds a top-level control to this surface.
         void addControl( Control* control );
 
+        // removes a top-level control.
         void removeControl( Control* control );
 
-        /** notify this surface that the viewpoint has changed.. */
-        //TODO
-
     public:
+        // internal- no need to call directly
         void update();
 
+        // internal - no need to call directly
         void setControlContext( const ControlContext& );
 
     protected:
         ControlList _controls;
         GeodeTable  _geodeTable;
         ControlContext _context;
-        //osg::ref_ptr<const osg::Viewport> _vp;
         bool _contextDirty;
     };
 

@@ -1,0 +1,73 @@
+/* -*-c++-*- */
+#ifndef TENG_PATCH
+#define TENG_PATCH 1
+
+#include <osg/Geode>
+#include <osg/Geometry>
+#include <osg/Node>
+#include <osg/PrimitiveSet>
+
+namespace teng
+{
+class Patch : public osg::Node
+{
+public:
+    Patch();
+    Patch(const Patch& rhs,
+          const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+    META_Node(teng, Patch);
+
+    virtual void traverse(osg::NodeVisitor& nv);
+    virtual osg::BoundingSphere computeBound() const;
+    virtual void resizeGLObjectBuffers(unsigned int maxSize);
+    virtual void releaseGLObjects(osg::State* = 0) const;
+
+    virtual void init();
+
+    // Wrapper around all the data for a patch at the different
+    // LODs. The Geometry objects associated with triles point to the
+    // arrays stored here.
+    struct Data : public osg::Object
+    {
+        Data();
+        Data(const Data&,
+             const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+        ~Data() {}
+        META_Object(teng, Patch::Data);
+        void getGeometryAttributes(const osg::Geometry* geom);
+        void setGeometryAttributes(osg::Geometry* geom);
+        osg::Geometry::ArrayData vertexData;
+        osg::Geometry::ArrayData normalData;
+        osg::Geometry::ArrayData colorData;
+        osg::Geometry::ArrayData secondaryColorData;
+        osg::Geometry::ArrayData fogCoordData;
+        osg::Geometry::ArrayDataList texCoordList;
+        osg::Geometry::ArrayDataList vertexAttribList;
+    };
+
+    Data* getData() { return _data.get(); }
+    const Data* getData() const { return _data.get(); }
+    void setData(Data* data)
+    {
+        _data = data;
+        init();
+    }
+    /** The high resolution dimension of a patch.
+     */
+    static const int resolution = 128;
+protected:
+    ~Patch();
+    // Triles at two resolutions, counterclockwise from bottom. 0 is
+    // low, 1 is high.
+    osg::ref_ptr<osg::Geode> _trile[2][4];
+    // connecting strips at each diagonal, counterclockwise from lower
+    // left. There are 4 possibilities for each strip:
+    // 0 both neighbors low
+    // 1 clockwise neighbor low, counterclockwise neighbor high
+    // 2 clockwise neighbor high, counterclockwise neighbor low
+    // 3 both neighbors high
+    osg::ref_ptr<osg::Geode> _strip[4][4];
+    osg::ref_ptr<Data> _data;
+};
+}
+#endif

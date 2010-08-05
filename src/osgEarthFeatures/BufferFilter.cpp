@@ -44,7 +44,8 @@ BufferFilter::isSupported()
 }
 
 #define ASSERT_SUPPORT() \
-    if ( !BufferFilter::isSupported() ) { OE_NOTICE << "BufferFilter NOT SUPPORTED" << std::endl; }
+    if ( !BufferFilter::isSupported() ) { \
+        OE_NOTICE << "BufferFilter NOT SUPPORTED - please compile osgEarth with GEOS" << std::endl; }
 
 BufferFilter::BufferFilter() :
 _distance( 1.0 ),
@@ -95,7 +96,7 @@ BufferFilter::push( FeatureList& input, const FilterContext& context )
 {
     if ( !isSupported() )
     {
-        OE_NOTICE << "BufferFilter support not enabled" << std::endl;
+        OE_WARN << "BufferFilter support not enabled - please compile osgEarth with GEOS" << std::endl;
         return context;
     }
 

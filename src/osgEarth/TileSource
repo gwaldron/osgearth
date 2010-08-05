@@ -29,7 +29,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/DriverOptions>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/RTree>
+//#include <osgEarth/RTree>
 
 #include <osg/Referenced>
 #include <osg/Object>

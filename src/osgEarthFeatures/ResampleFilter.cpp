@@ -123,7 +123,7 @@ ResampleFilter::push( FeatureList& input, const FilterContext& context )
 {
     if ( !isSupported() )
     {
-        OE_NOTICE << "ResampleFilter support not enabled" << std::endl;
+        OE_WARN << "ResampleFilter support not enabled" << std::endl;
         return context;
     }
 

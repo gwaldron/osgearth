@@ -81,7 +81,7 @@ ConvertTypeFilter::push( FeatureList& input, const FilterContext& context )
 {
     if ( !isSupported() )
     {
-        OE_NOTICE << "ConvertTypeFilter support not enabled" << std::endl;
+        OE_WARN << "ConvertTypeFilter support not enabled" << std::endl;
         return context;
     }
 

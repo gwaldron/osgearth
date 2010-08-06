@@ -28,6 +28,15 @@
 #include <osgText/Text>
 #include <vector>
 
+/**
+ * Controls - A simple 2D UI toolkit.
+ *
+ * Controls are 2D interface components that automatically layout to fit their containers.
+ * The support layout containers, margins and padding, alignment/justification, and docking.
+ * Controls are a quick and easy way to add "HUD" components to a scene. Just create a
+ * ControlSurface and add it to a View's scene. Then create and add Controls to that
+ * surface.
+ */
 namespace osgEarthUtil { namespace Controls
 {
     typedef std::vector< osg::ref_ptr<osg::Drawable> > DrawableList;

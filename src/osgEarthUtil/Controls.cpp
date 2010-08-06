@@ -215,6 +215,8 @@ Control::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::
 void
 Control::draw(const ControlContext& cx, DrawableList& out )
 {
+    // by default, rendering a Control directly results in a colored quad. Usually however
+    // you will not render a Control directly, but rather one of its subclasses.
     if ( visible() == true && !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
     {
         float vph = cx._vp->height();
@@ -291,21 +293,23 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
+        // we have to create the drawable during the layout pass so we can calculate its size.
         LabelText* t = new LabelText();
 
         t->setText( _text );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
         t->setCharacterSize( _fontSize );
-        t->setAlignment( osgText::Text::LEFT_TOP );
+        // always align to top. layout alignment gets calculated layer in Control::calcPos().
+        t->setAlignment( osgText::Text::LEFT_TOP ); 
         t->setColor( foreColor().value() );
         if ( _font.valid() )
             t->setFont( _font.get() );
 
         osg::BoundingBox bbox = t->getTextBB();
-
         if ( cx._viewContextID != ~0 )
         {
+            //the Text's autoTransformCache matrix puts some mojo on the bounding box
             osg::Matrix m = t->getATMatrix( cx._viewContextID );
             osg::Vec3 bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
             osg::Vec3 bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
@@ -445,6 +449,7 @@ Frame::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( !getImage() || getImage()->s() != _renderSize.x() || getImage()->t() != _renderSize.y() )
     {        
+        // a simple colored border frame
         osg::ref_ptr<Geometry> geom = new Ring();
         geom->push_back( osg::Vec3d( 0, 0, 0 ) );
         geom->push_back( osg::Vec3d( _renderSize.x()-1, 0, 0 ) );
@@ -459,7 +464,8 @@ Frame::draw( const ControlContext& cx, DrawableList& out )
             const_cast<Frame*>(this)->setImage( image );
     }
 
-    ImageControl::draw( cx, out );
+    Control::draw( cx, out );       // draws the background
+    ImageControl::draw( cx, out );  // draws the border
 }
 
 // ---------------------------------------------------------------------------
@@ -472,32 +478,39 @@ RoundedFrame::RoundedFrame()
 void
 RoundedFrame::draw( const ControlContext& cx, DrawableList& out )
 {
-    if ( !getImage() || getImage()->s() != _renderSize.x() || getImage()->t() != _renderSize.y() )
-    {        
-        float buffer = Geometry::hasBufferOperation() ? 10.0f : 0.0f;
-
-        osg::ref_ptr<Geometry> geom = new Polygon();
-        geom->push_back( osg::Vec3d( buffer, buffer, 0 ) );
-        geom->push_back( osg::Vec3d( _renderSize.x()-1-buffer, buffer, 0 ) );
-        geom->push_back( osg::Vec3d( _renderSize.x()-1-buffer, _renderSize.y()-1-buffer, 0 ) );
-        geom->push_back( osg::Vec3d( buffer, _renderSize.y()-1-buffer, 0 ) );
-
-        if ( Geometry::hasBufferOperation() )
+    if ( Geometry::hasBufferOperation() )
+    {
+        if ( !getImage() || getImage()->s() != _renderSize.x() || getImage()->t() != _renderSize.y() )
         {
+            // create a rounded rectangle by buffering a rectangle. "buffer" value affects how rounded
+            // the corners are.
+            float buffer = Geometry::hasBufferOperation() ? 10.0f : 0.0f;
+
+            osg::ref_ptr<Geometry> geom = new Polygon();
+            geom->push_back( osg::Vec3d( buffer, buffer, 0 ) );
+            geom->push_back( osg::Vec3d( _renderSize.x()-1-buffer, buffer, 0 ) );
+            geom->push_back( osg::Vec3d( _renderSize.x()-1-buffer, _renderSize.y()-1-buffer, 0 ) );
+            geom->push_back( osg::Vec3d( buffer, _renderSize.y()-1-buffer, 0 ) );
+
             BufferParameters bp;
             bp._capStyle = BufferParameters::CAP_ROUND;
             geom->buffer( buffer-1.0f, geom, bp );
+
+            GeometryRasterizer ras( _renderSize.x(), _renderSize.y() );
+            ras.draw( geom.get(), backColor().value() );
+
+            osg::Image* image = ras.finalize();
+            if ( image )
+                const_cast<RoundedFrame*>(this)->setImage( image );
         }
 
-        GeometryRasterizer ras( _renderSize.x(), _renderSize.y() );
-        ras.draw( geom.get(), backColor().value() );
-
-        osg::Image* image = ras.finalize();
-        if ( image )
-            const_cast<RoundedFrame*>(this)->setImage( image );
+        ImageControl::draw( cx, out );
     }
-
-    ImageControl::draw( cx, out );
+    else
+    {
+        // fallback: draw a non-rounded frame.
+        Frame::draw( cx, out );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -570,6 +583,7 @@ Container::calcPos(const ControlContext& context, const osg::Vec2f& cursor, cons
 {
     Control::calcPos( context, cursor, parentSize );
 
+    // process the frame.. it's not a child of the container
     if ( visible() == true && _frame.valid() )
     {
         _frame->calcPos( context, _renderPos, parentSize );
@@ -608,7 +622,7 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     {
         _renderSize.set( 0, 0 );
 
-        // collect all the members, growing the container is its orientation.
+        // collect all the members, growing the container size vertically
         for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
         {
             Control* child = i->get();
@@ -646,7 +660,6 @@ VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
         _renderPos.x() + padding().left(),
         _renderPos.y() + padding().top() );
 
-    // collect all the members, growing the container is its orientation.
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
         Control* child = i->get();

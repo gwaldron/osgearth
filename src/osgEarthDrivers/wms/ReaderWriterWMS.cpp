@@ -30,6 +30,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <iomanip>
 
 #include "Capabilities"

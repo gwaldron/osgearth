@@ -397,14 +397,16 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         //TODO: this is not precisely correct..images get deformed slightly..
         osg::Geometry* g = new osg::Geometry();
 
+        float rx = osg::round( _renderPos.x() );
+        float ry = osg::round( _renderPos.y() );
         float vph = cx._vp->height();
 
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         g->setVertexArray( verts );
-        (*verts)[0].set( _renderPos.x(), vph - _renderPos.y(), 0 );
-        (*verts)[1].set( _renderPos.x(), vph - _renderPos.y() - _renderSize.y() - 1, 0 );
-        (*verts)[2].set( _renderPos.x() + _renderSize.x() - 1, vph - _renderPos.y() - _renderSize.y() - 1, 0 );
-        (*verts)[3].set( _renderPos.x() + _renderSize.x() - 1, vph - _renderPos.y(), 0 );
+        (*verts)[0].set( rx, vph - ry, 0 );
+        (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
+        (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
+        (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
         g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
 
         osg::Vec4Array* c = new osg::Vec4Array(1);
@@ -421,7 +423,7 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
         osg::TextureRectangle* texrec = new osg::TextureRectangle( _image.get() );
         texrec->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        texrec->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
+        texrec->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
         g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texrec, osg::StateAttribute::ON );
 
         osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );

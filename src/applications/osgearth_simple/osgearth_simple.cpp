@@ -31,6 +31,8 @@
 #include <osgEarthUtil/Graticule>
 #include <osgEarth/EarthFile>
 
+#include <osgEarthUtil/Controls>
+
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthDrivers/tms/TMSOptions>
@@ -206,10 +208,6 @@ int main(int argc, char** argv)
     viewer.setSceneData( root );
     viewer.setCameraManipulator( manip );
 
-    // NOTE: You have to call this AFTER setting the viewer's manipulator!
-    //if ( mapNode )
-    //    manip->setNode( mapNode->getTerrainContainer() );
-
     manip->getSettings()->bindMouseDoubleClick(
         osgEarthUtil::EarthManipulator::ACTION_GOTO,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
@@ -226,6 +224,56 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+
+    viewer.realize();
+
+    osgEarthUtil::Controls::ControlSurface* cs = new osgEarthUtil::Controls::ControlSurface( &viewer );
+    root->addChild( cs );
+
+
+    osgEarthUtil::Controls::VBox* vbox = new osgEarthUtil::Controls::VBox();
+    //vbox->setX( 15 );
+    vbox->setY( 15 );
+    vbox->setPadding( osgEarthUtil::Controls::Gutter(10) );
+    vbox->setSpacing( 5 );
+    cs->addControl( vbox );
+
+    vbox->setFrame( new osgEarthUtil::Controls::RoundedFrame() );
+    vbox->getFrame()->setBackColor( osg::Vec4f(0,0,0,0.5) );
+
+    vbox->setHorizAlign( osgEarthUtil::Controls::ALIGN_CENTER );
+    vbox->setVertAlign( osgEarthUtil::Controls::ALIGN_CENTER );
+
+    osg::Image* i = osgDB::readImageFile( "http://www.osgearth.org/chrome/site/osgearth.gif" );
+    osgEarthUtil::Controls::ImageControl* ic = new osgEarthUtil::Controls::ImageControl( i );
+    ic->setHorizAlign( osgEarthUtil::Controls::ALIGN_CENTER );
+    vbox->addControl( ic );
+
+    osgEarthUtil::Controls::HBox* hbox = new osgEarthUtil::Controls::HBox();
+    {    
+        hbox->setPadding( osgEarthUtil::Controls::Gutter(10) );
+        hbox->setSpacing( 45 );
+        hbox->setFrame( new osgEarthUtil::Controls::RoundedFrame() );
+        hbox->getFrame()->setBackColor( osg::Vec4f(0,1,0,0.5) );
+
+        osgEarthUtil::Controls::LabelControl* label = new osgEarthUtil::Controls::LabelControl();
+        label->setText( "osgEarthUtil Controls" );
+        label->setFontSize( 32 );
+        hbox->addControl( label );
+
+        osgEarthUtil::Controls::LabelControl* label2 = new osgEarthUtil::Controls::LabelControl();
+        label2->setText( "The ultimate control library for OSG" );
+        label2->setFontSize( 22 );
+        label2->setForeColor( osg::Vec4f(1,1,0,1) );
+        hbox->addControl( label2 );
+    }
+    vbox->addControl( hbox );
+
+    osgEarthUtil::Controls::LabelControl* label3 = new osgEarthUtil::Controls::LabelControl();
+    label3->setText( "For is the time for all good men to come to the aid of their country." );
+    label3->setFontSize( 18 );
+    vbox->addControl( label3 );
+
 
     return viewer.run();
 }

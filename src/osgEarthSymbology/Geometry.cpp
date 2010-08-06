@@ -139,9 +139,11 @@ Geometry::buffer(double distance,
             params._capStyle == BufferParameters::CAP_FLAT   ? buffer::BufferParameters::CAP_FLAT :
             buffer::BufferParameters::CAP_SQUARE;
 
+        //JB:  Referencing buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS causes link errors b/c it is defined as a static in the header of BufferParameters.h and not defined in the cpp anywhere.
+        //     This seems to only effect the Linux build, Windows works fine
         int geosQuadSegs = params._cornerSegs > 0 
             ? params._cornerSegs
-            : buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS;
+            : 8;//buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS;
 
         geom::Geometry* outGeom = buffer::BufferOp::bufferOp(
             inGeom, distance, geosQuadSegs, geosEndCap );

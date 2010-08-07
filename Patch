@@ -57,6 +57,11 @@ public:
     static const int resolution = 128;
     double getPrecisionFactor() { return _precisionFactor; }
     void setPrecisionFactor(double factor) { _precisionFactor = factor; }
+    /** Get patch error. This is the maximum of the edge errors.
+        @param eye The eyepoint in local coordinates.
+    */
+    float getPatchError(const osg::Vec3& eye);
+    float getEdgeError(const osg::Vec3& eye, int edge);
 protected:
     ~Patch();
     // Triles at two resolutions, counterclockwise from bottom. 0 is

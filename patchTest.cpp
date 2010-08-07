@@ -37,6 +37,7 @@
 #include <osg/Vec4>
 
 #include "Patch"
+#include "PatchGroup"
 
 using namespace osg;
 using namespace teng;
@@ -156,28 +157,14 @@ int main(int argc, char** argv)
         optimizer.optimize(loadedModel.get());
         sceneRoot->addChild(loadedModel.get());
     }
-    ref_ptr<Patch> patch = new Patch;
-    ref_ptr<Patch::Data> data = new Patch::Data;
-    Vec3Array* verts = new Vec3Array(129 * 129);
-    for (int j = 0; j < 129; ++j)
-        for (int i = 0; i < 129; ++i)
-            (*verts)[129 * j + i] = Vec3(i, j, (i + j) / 5.0);
-    data->vertexData.array = verts;
-    data->vertexData.binding = Geometry::BIND_PER_VERTEX;
-    Vec3Array* norms = new Vec3Array(1);
-    (*norms)[0] = Vec3d(0.0, 0.0, 1.0);
-    data->normalData.array = norms;
-    data->normalData.binding = Geometry::BIND_OVERALL;
-    Vec4Array* colors = new Vec4Array(1);
-    (*colors)[0] = Vec4(1.0, 1.0, 1.0, 1.0);
-    data->colorData.array = colors;
-    data->colorData.binding = Geometry::BIND_OVERALL;
-    patch->setData(data);
-    StateSet* ss = patch->getOrCreateStateSet();
+    ref_ptr<Node> pg = PatchFactory::instance()
+        ->createPatchGroup("bar.tengpatch");
+
+    StateSet* ss = pg->getOrCreateStateSet();
     Material* mat = new Material;
     mat->setDiffuse(Material::FRONT_AND_BACK, Vec4(1.0, 0.0, 1.0, 1.0));
     ss->setAttributeAndModes(mat);
-    sceneRoot->addChild(patch);
+    sceneRoot->addChild(pg);
     viewer.setSceneData(sceneRoot);
 
     viewer.realize();

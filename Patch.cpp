@@ -22,8 +22,11 @@ public:
 };
 
 Patch::Patch()
-    : _precisionFactor(2.0)
 {
+    // Silly default value assuming a 60 degree field of view, laptop
+    // screen (.36 meter near plane), 90 dpi, and max screen size of
+    // our highest resolution polygon  of 4 pixels.
+    _precisionFactor = .36 * (90.0 / .0254) / (4 * resolution);
 }
 
 Patch::Patch(const Patch& rhs, const CopyOp& copyop)
@@ -344,6 +347,26 @@ int edgeCoords[4][2][2] = {{{0, 0}, {Patch::resolution, 0}},
                             {0, Patch::resolution}},
                            {{0, Patch::resolution}, {0,0}}};
 
+float Patch::getEdgeError(const Vec3& eye, int edge)
+{
+    Vec3Array* verts = static_cast<Vec3Array*>(_data->vertexData.array.get());
+    const Vec3& p1 = (*verts)[makeIndexCoord(edgeCoords[edge][0][0],
+                                             edgeCoords[edge][0][1])];
+    const Vec3& p2 = (*verts)[makeIndexCoord(edgeCoords[edge][1][0],
+                                             edgeCoords[edge][1][1])];
+    float len = (p2 - p1).length();
+    Vec3 closestPt =  closestPointOnSegment(p1, p2, eye);
+    float d = (closestPt - eye).length();
+    return _precisionFactor * len / d;
+}
+
+float Patch::getPatchError(const Vec3& eye)
+{
+    float epsilon = getEdgeError(eye, 0);
+    for (int i = 1; i < 4; ++i)
+        epsilon = maximum(epsilon, getEdgeError(eye, i));
+    return epsilon;
+}
 void Patch::traverse(NodeVisitor& nv)
 {
     if (!_trile[0][0].valid())
@@ -363,14 +386,7 @@ void Patch::traverse(NodeVisitor& nv)
     Vec3 eye = nv.getEyePoint();
     for (int i = 0; i < 4; ++i)
     {
-        const Vec3& p1 = (*verts)[makeIndexCoord(edgeCoords[i][0][0],
-                                                 edgeCoords[i][0][1])];
-        const Vec3& p2 = (*verts)[makeIndexCoord(edgeCoords[i][1][0],
-                                                 edgeCoords[i][1][1])];
-        float len = (p2 - p1).length();
-        Vec3 closestPt =  closestPointOnSegment(p1, p2, eye);
-        float d = (closestPt - eye).length();
-        epsilon[i] = _precisionFactor * len / d;
+        epsilon[i] = getEdgeError(eye, i);
         if (epsilon[i] > .5f)
             res[i] = 1;
         else

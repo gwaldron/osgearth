@@ -36,8 +36,7 @@
 #include <osg/Vec3>
 #include <osg/Vec4>
 
-#include "Patch"
-#include "PatchGroup"
+#include "PatchSet"
 
 using namespace osg;
 using namespace teng;
@@ -157,8 +156,8 @@ int main(int argc, char** argv)
         optimizer.optimize(loadedModel.get());
         sceneRoot->addChild(loadedModel.get());
     }
-    ref_ptr<Node> pg = PatchFactory::instance()
-        ->createPatchGroup("bar.tengpatch");
+    ref_ptr<PatchSet> patchSet = new PatchSet;
+    ref_ptr<Node> pg = patchSet->createPatchGroup("bar.tengpatch");
 
     StateSet* ss = pg->getOrCreateStateSet();
     Material* mat = new Material;

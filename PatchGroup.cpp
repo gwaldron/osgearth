@@ -1,10 +1,30 @@
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2010 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
 #include "PatchGroup"
 
 #include <osg/Array>
 #include <osg/Geometry>
+#include <osg/Notify>
 #include <osgDB/Registry>
 
 #include "Patch"
+#include "PatchSet"
 
 namespace teng
 {
@@ -49,8 +69,8 @@ void PatchGroup::traverse(NodeVisitor& nv)
 {
     // set the frame number of the traversal so that external nodes can find out how active this
     // node is.
-    if (nv.getFrameStamp() && 
-        nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR) 
+    if (nv.getFrameStamp() &&
+        nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR)
     {
         setFrameNumberOfLastTraversal(nv.getFrameStamp()->getFrameNumber());
     }
@@ -123,7 +143,7 @@ void PatchGroup::traverse(NodeVisitor& nv)
                 {
                     // compute priority from where abouts in the required range the distance falls.
                     float priority = (_rangeList[numChildren].second - epsilon)/(_rangeList[numChildren].second-_rangeList[numChildren].first);
-                    
+
                     // invert priority for PIXEL_SIZE_ON_SCREEN mode
                     priority = -priority;
 
@@ -170,11 +190,14 @@ public:
     {
         Vec2d lowerLeft(0.0, 1.0);
         Vec2d upperRight(1.0, 1.0);
-        PatchFactory* factory = PatchFactory::instance();
         const PatchOptions* poptions
             = dynamic_cast<const PatchOptions*>(options);
         if (!poptions)
-            poptions = factory->getPatchOptions();
+        {
+            OSG_FATAL << "tengpatch reader: Options object is not PatchOptions";
+            return osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;
+        }
+        PatchSet* pset = poptions->getPatchSet();
         poptions->getPatchExtents(lowerLeft, upperRight);
         Vec2d range = upperRight - lowerLeft;
         Vec2d newRange = range * .5;
@@ -187,7 +210,7 @@ public:
                 Vec2d ll = lowerLeft + componentMultiply(Vec2d(x, y), range);
                 pgroupOptions->setPatchExtents(ll, ll + newRange);
                 pgroupOptions->setPatchLevel(poptions->getPatchLevel() + 1);
-                Node* pgroup = pgroupOptions->createPatch(fileName);
+                Node* pgroup = pset->createPatch(fileName, pgroupOptions);
                 result->addChild(pgroup);
             }
         }
@@ -195,94 +218,39 @@ public:
     }
 };
 
+REGISTER_OSGPLUGIN(tengpatch, ReaderWriterPatchGroup)
+
 PatchOptions::PatchOptions()
-    : _lowerLeft(0.0, 0.0), _upperRight(1.0, 1.0), _level(0), _maxLevel(4)
+    : _lowerLeft(0.0, 0.0), _upperRight(1.0, 1.0), _level(0)
 {
 }
 
 PatchOptions::PatchOptions(const std::string& str)
     : osgDB::Options(str), _lowerLeft(0.0, 0.0), _upperRight(1.0, 1.0),
-      _level(0), _maxLevel(1)
+      _level(0)
 {
 }
 
 PatchOptions::PatchOptions(const PatchOptions& rhs, const CopyOp& copyop)
-    : osgDB::Options(rhs), _lowerLeft(rhs._lowerLeft),
-      _upperRight(rhs._upperRight), _level(rhs._level), _maxLevel(rhs._maxLevel)
+    : osgDB::Options(rhs, copyop), _lowerLeft(rhs._lowerLeft),
+      _upperRight(rhs._upperRight), _level(rhs._level)
+{
+    _patchSet = static_cast<PatchSet*>(copyop(rhs._patchSet.get()));
+}
+
+PatchOptions::~PatchOptions()
 {
 }
 
-Node* PatchOptions::createPatch(const std::string& filename)
+void PatchOptions::setPatchSet(PatchSet* patchSet)
 {
-    PatchGroup* pgroup = new PatchGroup;
-    pgroup->setDatabaseOptions(this);
-    Patch* patch = new Patch;
-    fillPatch(filename, patch);
-    BoundingSphere bsphere = patch->getBound();
-    pgroup->setCenter(bsphere.center());
-    if (_level >= _maxLevel)
-    {
-        pgroup->addChild(patch, 0.0, 1e10);
-    }
-    else
-    {
-        pgroup->addChild(patch, 0.0, 1.0);
-        pgroup->setRange(1, 1.0, 1e10);
-        pgroup->setFileName(1, "foo.tengpatch");
-    }
-    return pgroup;
+    _patchSet = patchSet;
 }
 
-// Default implementation that creates a flat 81920m x 81920m plane.
-
-void PatchOptions::fillPatch(const std::string& filename, Patch* patch)
+PatchSet* PatchOptions::getPatchSet() const
 {
-    Vec2d ll, ur;
-    getPatchExtents(ll, ur);
-    Vec2d range = (ur - ll);
-    ref_ptr<Patch::Data> data = new Patch::Data;
-    Vec3Array* verts = new Vec3Array(129 * 129);
-    for (int j = 0; j < 129; ++j)
-        for (int i = 0; i < 129; ++i)
-            (*verts)[129 * j + i]
-                = Vec3((ll.x() + i * range.x() / 128.0) * 81920.0,
-                       (ll.y() + j * range.y() / 128.0) * 81920.0,
-                       0.0);
-    data->vertexData.array = verts;
-    data->vertexData.binding = Geometry::BIND_PER_VERTEX;
-    Vec3Array* norms = new Vec3Array(1);
-    (*norms)[0] = Vec3d(0.0, 0.0, 1.0);
-    data->normalData.array = norms;
-    data->normalData.binding = Geometry::BIND_OVERALL;
-    Vec4Array* colors = new Vec4Array(1);
-    (*colors)[0] = Vec4(1.0, 1.0, 1.0, 1.0);
-    data->colorData.array = colors;
-    data->colorData.binding = Geometry::BIND_OVERALL;
-    patch->setData(data);
+    return _patchSet.get();
 }
 
-REGISTER_OSGPLUGIN(tengpatch, ReaderWriterPatchGroup)
-
-PatchFactory* PatchFactory::instance()
-{
-    static ref_ptr<PatchFactory> factory = new PatchFactory;
-    return factory.get();
-}
-
-PatchFactory::PatchFactory()
-{
-}
-
-PatchFactory::~PatchFactory()
-{
-}
-
-Node* PatchFactory::createPatchGroup(const std::string& filename)
-{
-    if (!_patchOptions.valid())
-        _patchOptions = new PatchOptions;
-    Node* result = _patchOptions->createPatch(filename);
-    return result;
-}
 
 }

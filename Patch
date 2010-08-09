@@ -1,4 +1,22 @@
 /* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2010 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
 #ifndef TENG_PATCH
 #define TENG_PATCH 1
 
@@ -9,12 +27,15 @@
 
 namespace teng
 {
+class PatchSet;
+
 class Patch : public osg::Node
 {
 public:
     Patch();
     Patch(const Patch& rhs,
           const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
     META_Node(teng, Patch);
 
     virtual void traverse(osg::NodeVisitor& nv);
@@ -52,16 +73,13 @@ public:
         _data = data;
         init();
     }
-    /** The high resolution dimension of a patch.
-     */
-    static const int resolution = 128;
-    double getPrecisionFactor() { return _precisionFactor; }
-    void setPrecisionFactor(double factor) { _precisionFactor = factor; }
     /** Get patch error. This is the maximum of the edge errors.
         @param eye The eyepoint in local coordinates.
     */
     float getPatchError(const osg::Vec3& eye);
     float getEdgeError(const osg::Vec3& eye, int edge);
+    void setPatchSet(PatchSet* patchSet);
+    PatchSet* getPatchSet() const;
 protected:
     ~Patch();
     // Triles at two resolutions, counterclockwise from bottom. 0 is
@@ -75,7 +93,7 @@ protected:
     // 3 both neighbors high
     osg::ref_ptr<osg::Geode> _strip[4][4];
     osg::ref_ptr<Data> _data;
-    double _precisionFactor;
+    osg::ref_ptr<PatchSet> _patchSet;
 };
 }
 #endif

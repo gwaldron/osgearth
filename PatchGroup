@@ -1,4 +1,21 @@
 /* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2010 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 
 #ifndef TENG_PATCHGROUP
 #define TENG_PATCHGROUP 1
@@ -11,6 +28,7 @@
 namespace teng
 {
 class Patch;
+class PatchSet;
 
 class PatchGroup : public osg::PagedLOD
 {
@@ -19,7 +37,7 @@ public:
     PatchGroup(const PatchGroup&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
 
     META_Node(teng, PatchGroup);
-    
+
     virtual void traverse(osg::NodeVisitor& nv);
     // patch extents come from the PatchOptions object stored with the node.
     void getPatchExtents(osg::Vec2d& lowerLeft, osg::Vec2d& upperRight) const;
@@ -36,6 +54,7 @@ public:
     PatchOptions(const std::string& str);
     PatchOptions(const PatchOptions& rhs,
                  const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+    ~PatchOptions();
 
     META_Object(teng, PatchOptions);
     void setPatchExtents(const osg::Vec2d& lowerLeft,
@@ -49,30 +68,14 @@ public:
     }
     void setPatchLevel(int level) { _level = level; }
     int getPatchLevel() const { return _level; }
-    void setMaxLevel(int maxLevel) { _maxLevel = maxLevel; }
-    int getMaxLevel() const { return _maxLevel; }
-    virtual void fillPatch(const std::string& filename, Patch* patch);
-    virtual osg::Node* createPatch(const std::string& filename);
+    void setPatchSet(PatchSet* patchSet);
+    PatchSet* getPatchSet() const;
 protected:
     osg::Vec2d _lowerLeft;
     osg::Vec2d _upperRight;
     int _level;
-    int _maxLevel;
+    osg::ref_ptr<PatchSet> _patchSet;
 };
 
-class PatchFactory : public osg::Referenced
-{
-public:
-    static PatchFactory* instance();
-    void setPatchOptions(PatchOptions* options) { _patchOptions = options; }
-    PatchOptions* getPatchOptions() const { return _patchOptions; }
-    /** Create the top level of a tree of patches.
-     */
-    virtual osg::Node* createPatchGroup(const std::string& filename);
-protected:
-    PatchFactory();
-    virtual ~PatchFactory();
-    osg::ref_ptr<PatchOptions> _patchOptions;
-};
 }
 #endif

@@ -13,7 +13,7 @@ FIND_PACKAGE(osgTerrain)
 FIND_PACKAGE(osgFX)
 
 SET(SOURCES
-    qsc.cpp kml.cpp Patch.cpp PatchGroup.cpp patchTest.cpp
+    qsc.cpp kml.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp patchTest.cpp
 )
 
 INCLUDE_DIRECTORIES(${OPENTHREADS_INCLUDE_DIR} ${OSG_INCLUDE_DIR})
@@ -22,7 +22,7 @@ LINK_DIRECTORIES(${OSG_LIB_DIR})
 
 ADD_EXECUTABLE(kmld kml.cpp qsc.cpp)
 
-ADD_EXECUTABLE(patchTest patchTest.cpp Patch.cpp PatchGroup.cpp)
+ADD_EXECUTABLE(patchTest patchTest.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp)
 
 TARGET_LINK_LIBRARIES(kmld ${OSG_LIBRARY_DEBUG})
 

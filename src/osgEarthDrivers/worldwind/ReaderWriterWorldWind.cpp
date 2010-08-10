@@ -68,6 +68,7 @@ public:
         setProfile( Profile::create(
             "epsg:4326",
             -180.0, -90.0, 180.0, 90.0,
+            "",
             18, 9 ) );
     }
 

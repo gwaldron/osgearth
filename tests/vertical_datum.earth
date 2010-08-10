@@ -1,0 +1,22 @@
+<!--
+osgEarth Sample - EGM96
+This example shows how to request an EGM96 vertical datum. Since there's no
+heightfield layer, you will see the raw EGM96 geoid. We apply a large vertical
+exaggeration in order to make the geoid's shape stand out.
+-->
+
+<map>   
+    <profile>
+        <srs>epsg:4326</srs>
+        <vsrs>egm96-meters</vsrs>
+    </profile>
+    
+    <image driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <engine_properties>
+        <vertical_scale>5000.0</vertical_scale>
+        <lighting>false</lighting>
+    </engine_properties>
+</map>

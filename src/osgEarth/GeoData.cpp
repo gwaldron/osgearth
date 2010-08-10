@@ -925,31 +925,39 @@ GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS,
     {
         double xInterval = _extent.width()  / (double)(_heightField->getNumColumns()-1);
         double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
-        elevation = HeightFieldUtils::getHeightAtLocation(_heightField.get(), local_x, local_y, _extent.xMin(), _extent.yMin(), xInterval, yInterval, interp);
 
-        //TODO: VSRS transformation goes here.
-        const VerticalSpatialReference* fromVSRS = _vsrs.get();
-        const VerticalSpatialReference* toVSRS   = outputVSRS;
+        elevation = HeightFieldUtils::getHeightAtLocation(
+            _heightField.get(), 
+            local_x, local_y, 
+            _extent.xMin(), _extent.yMin(), 
+            xInterval, yInterval, 
+            interp);
 
-        if ( VerticalSpatialReference::canTransform( _vsrs.get(), outputVSRS ) )
+        if ( elevation != NO_DATA_VALUE )
         {
-            // need geodetic coordinates for a VSRS transformation:
-            double lat_deg, lon_deg, newElevation;
+            const VerticalSpatialReference* fromVSRS = _vsrs.get();
+            const VerticalSpatialReference* toVSRS   = outputVSRS;
 
-            if ( inputSRS->isGeographic() ) {
-                lat_deg = y;
-                lon_deg = x;
-            }
-            else if ( _extent.getSRS()->isGeographic() ) {
-                lat_deg = local_y;
-                lon_deg = local_x;
-            }
-            else {
-                _extent.getSRS()->transform( x, y, inputSRS->getGeographicSRS(), lon_deg, lat_deg );
-            }
+            if ( VerticalSpatialReference::canTransform( _vsrs.get(), outputVSRS ) )
+            {
+                // need geodetic coordinates for a VSRS transformation:
+                double lat_deg, lon_deg, newElevation;
 
-            if ( _vsrs->transform( outputVSRS, lat_deg, lon_deg, elevation, newElevation ) )
-                elevation = newElevation;
+                if ( inputSRS->isGeographic() ) {
+                    lat_deg = y;
+                    lon_deg = x;
+                }
+                else if ( _extent.getSRS()->isGeographic() ) {
+                    lat_deg = local_y;
+                    lon_deg = local_x;
+                }
+                else {
+                    _extent.getSRS()->transform( x, y, inputSRS->getGeographicSRS(), lon_deg, lat_deg );
+                }
+
+                if ( _vsrs->transform( outputVSRS, lat_deg, lon_deg, elevation, newElevation ) )
+                    elevation = newElevation;
+            }
         }
 
         return true;

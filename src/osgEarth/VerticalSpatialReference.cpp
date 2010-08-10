@@ -97,26 +97,45 @@ VerticalSpatialReference::canTransform(const VerticalSpatialReference* fromVSRS,
 }
 
 bool 
-VerticalSpatialReference::transform(const VerticalSpatialReference* to_srs, 
+VerticalSpatialReference::transform(const VerticalSpatialReference* toSRS, 
                                     double lat_deg, double lon_deg, double in_z,
                                     double& out_z ) const
-{
-    bool success = false;
-
-    if ( _geoid.valid() && _geoid->isValid() )
+{    
+    if ( this->isEquivalentTo( toSRS ) )
     {
-        float offset = _geoid->getOffset( lat_deg, lon_deg, INTERP_BILINEAR );
-        Units::convert( getUnits(), to_srs->getUnits(), in_z + offset, out_z );
-        success = true;
+        out_z = in_z;
     }
     else
     {
-        // Units-only VSRS. just convert, ignoring the lat/long.
-        Units::convert( getUnits(), to_srs->getUnits(), in_z, out_z );
-        success = true;
+        double workZ = in_z;
+
+        // transform out of the source VSRS (this):
+        if ( _geoid.valid() )
+        {
+            if ( !_geoid->isValid() )
+                return false;
+
+            float offset = _geoid->getOffset( lat_deg, lon_deg, INTERP_BILINEAR );
+            workZ -= offset;
+        }
+
+        // convert the value to output units:
+        Units::convert( getUnits(), toSRS->getUnits(), workZ, workZ );
+
+        // transform into the target VSRS:
+        if ( toSRS->_geoid.valid() )
+        {
+            if ( !toSRS->_geoid->isValid() )
+                return false;
+        
+            float offset = toSRS->_geoid->getOffset( lat_deg, lon_deg, INTERP_BILINEAR );
+            workZ += offset;
+        }
+
+        out_z = workZ;
     }
 
-    return success;
+    return true;
 }
 
 osg::HeightField*

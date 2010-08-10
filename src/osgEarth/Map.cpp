@@ -619,10 +619,6 @@ Map::createHeightField( const TileKey* key,
         }
     }
 
-
-
-
-
 	if (heightFields.size() == 0)
 	{
 	    //If we got no heightfields, return NULL

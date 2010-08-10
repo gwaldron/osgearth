@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef TENG_PATCH
-#define TENG_PATCH 1
+#ifndef SEAMLESS_PATCH
+#define SEAMLESS_PATCH 1
 
 #include <osg/Geode>
 #include <osg/Geometry>

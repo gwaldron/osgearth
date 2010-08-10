@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef TENG_PATCHGROUP
-#define TENG_PATCHGROUP 1
+#ifndef SEAMLESS_PATCHGROUP
+#define SEAMLESS_PATCHGROUP 1
 
 #include <osg/PagedLOD>
 #include <osg/Vec2d>

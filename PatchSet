@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef TENG_PATCHSET
-#define TENG_PATCHSET 1
+#ifndef SEAMLESS_PATCHSET
+#define SEAMLESS_PATCHSET 1
 
 #include <osg/CopyOp>
 #include <osg/Node>

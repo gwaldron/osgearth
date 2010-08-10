@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <string>
+#include <algorithm>
 
 namespace osgEarth
 {
@@ -105,6 +106,15 @@ namespace osgEarth
         while( t.nextToken() )
             if ( allowEmpties || !t.token().empty() )
                 output.push_back( t.token() );
+    }
+
+    /** Returns a lower-case version of the input string. */
+    static std::string
+    toLower( const std::string& input )
+    {
+        std::string output;
+        std::transform( input.begin(), input.end(), output.begin(), ::tolower );
+        return output;
     }
 }
 

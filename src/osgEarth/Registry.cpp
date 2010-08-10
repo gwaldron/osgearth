@@ -98,6 +98,7 @@ Registry::getGlobalGeodeticProfile() const
             const_cast<Registry*>(this)->_global_geodetic_profile = Profile::create(
                 "epsg:4326",
                 -180.0, -90.0, 180.0, 90.0,
+                "",
                 2, 1 );
         }
     }
@@ -120,7 +121,7 @@ Registry::getGlobalMercatorProfile() const
             srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );
             
             const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-                srs, -e, -e, e, e, 1, 1 );
+                srs, -e, -e, e, e, 0L, 1, 1 );
         }
     }
     return _global_mercator_profile.get();

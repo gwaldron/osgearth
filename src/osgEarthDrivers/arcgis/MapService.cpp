@@ -238,6 +238,7 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
     profile = Profile::create(
         ssStr,
         xmin, ymin, xmax, ymax,
+        "",
         num_tiles_wide,
         num_tiles_high);
 

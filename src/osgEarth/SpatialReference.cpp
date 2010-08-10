@@ -229,12 +229,6 @@ replaceIn( std::string& s, const std::string& sub, const std::string& other)
     return s;
 }
 
-//std::string
-//SpatialReference::getAttributeValue( const std::string& name ) const
-//{
-//    return getOGRAttrValue( _handle, name, 0 );
-//}
-
 SpatialReference*
 SpatialReference::validate()
 {

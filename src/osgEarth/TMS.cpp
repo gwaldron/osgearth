@@ -99,6 +99,7 @@ void TileMap::setExtents( double minX, double minY, double maxX, double maxY)
 #define ELEM_TITLE "title"
 #define ELEM_ABSTRACT "abstract"
 #define ELEM_SRS "srs"
+#define ELEM_VERTICAL_SRS "vsrs"
 #define ELEM_BOUNDINGBOX "boundingbox"
 #define ELEM_ORIGIN "origin"
 #define ELEM_TILE_FORMAT "tileformat"
@@ -178,6 +179,7 @@ const Profile*
 TileMap::createProfile() const
 {
     osg::ref_ptr< SpatialReference > spatialReference =  osgEarth::SpatialReference::create(_srs);
+    
     if (spatialReference->isMercator())
     {
         //HACK:  Some TMS sources, most notably TileCache, use a global mercator extent that is very slightly different than
@@ -195,10 +197,12 @@ TileMap::createProfile() const
         }
     }
 
+    
 
     return Profile::create(
         _srs,
         _minX, _minY, _maxX, _maxY,
+        _vsrs,
         osg::maximum(_numTilesWide, (unsigned int)1),
         osg::maximum(_numTilesHigh, (unsigned int)1) );
 }
@@ -339,6 +343,7 @@ TileMap::create(const std::string& url,
     tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
     tileMap->_srs = getSRSString(profile->getSRS());
+    tileMap->_vsrs = profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : "";
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
     tileMap->_format.setExtension( format );
@@ -360,6 +365,7 @@ TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
     const GeoExtent& ex = profile->getExtent();
     
     tileMap->_srs = getSRSString(profile->getSRS()); //srs();
+    tileMap->_vsrs = profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : 0L;
     tileMap->_originX = ex.xMin();
     tileMap->_originY = ex.yMin();
     tileMap->_minX = ex.xMin();
@@ -435,6 +441,7 @@ TileMapReaderWriter::read(std::istream &in)
     tileMap->setTitle( e_tile_map->getSubElementText(ELEM_TITLE) );
     tileMap->setAbstract( e_tile_map->getSubElementText(ELEM_ABSTRACT) );
     tileMap->setSRS( e_tile_map->getSubElementText(ELEM_SRS) );
+    tileMap->setVerticalSRS( e_tile_map->getSubElementText(ELEM_VERTICAL_SRS) );
 
     //Read the bounding box
     osg::ref_ptr<XmlElement> e_bounding_box = e_tile_map->getSubElement(ELEM_BOUNDINGBOX);
@@ -541,6 +548,7 @@ tileMapToXmlDocument(const TileMap* tileMap)
     doc->addSubElement( ELEM_TITLE, tileMap->getTitle() );
     doc->addSubElement( ELEM_ABSTRACT, tileMap->getAbstract() );
     doc->addSubElement( ELEM_SRS, tileMap->getSRS() );
+    doc->addSubElement( ELEM_VERTICAL_SRS, tileMap->getVerticalSRS() );
 
     osg::ref_ptr<XmlElement> e_bounding_box = new XmlElement( ELEM_BOUNDINGBOX );
     double minX, minY, maxX, maxY;

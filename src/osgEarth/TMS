@@ -201,6 +201,16 @@ namespace osgEarth
         void setSRS(const std::string& srs) {_srs = srs;}
 
         /**
+        *Gets the vertical spatial reference of this TileMap
+        */
+        const std::string& getVerticalSRS() const { return _vsrs; }
+
+        /**
+        *Sets the vertical spatial reference of this TileMap
+        */
+        void setVerticalSRS(const std::string& vsrs) { _vsrs = vsrs; }
+
+        /**
         *Gets the filename that this TileMap was loaded from
         */
         const std::string& getFilename() const {return _filename;}
@@ -376,6 +386,7 @@ namespace osgEarth
         std::string _title;
         std::string _abstract;
         std::string _srs;
+        std::string _vsrs;
 
 
         double _originX, _originY;

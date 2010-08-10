@@ -579,6 +579,7 @@ UnifiedCubeProfile::UnifiedCubeProfile() :
 Profile(SpatialReference::create( "unified-cube" ),
         0.0, 0.0, 6.0, 1.0,
         -180.0, -90.0, 180.0, 90.0,
+        0L, // let it automatically create a VSRS
         6, 1 )
 
 {

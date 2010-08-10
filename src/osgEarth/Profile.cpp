@@ -34,7 +34,8 @@ using namespace osgEarth;
 
 ProfileConfig::ProfileConfig() :
 _namedProfile( "" ),
-_srs( "" ),
+_srsInitString( "" ),
+_vsrsInitString( "" ),
 _bounds( Bounds() ),
 _numTilesWideAtLod0( 1 ),
 _numTilesHighAtLod0( 1 )
@@ -44,7 +45,8 @@ _numTilesHighAtLod0( 1 )
 
 ProfileConfig::ProfileConfig( const std::string& namedProfile ) :
 _namedProfile( namedProfile, namedProfile ),
-_srs( "" ),
+_srsInitString( "" ),
+_vsrsInitString( "" ),
 _bounds( Bounds() ),
 _numTilesWideAtLod0( 1 ),
 _numTilesHighAtLod0( 1 )
@@ -54,7 +56,8 @@ _numTilesHighAtLod0( 1 )
 
 ProfileConfig::ProfileConfig( const Config& conf ) :
 _namedProfile( "" ),
-_srs( "" ),
+_srsInitString( "" ),
+_vsrsInitString( "" ),
 _bounds( Bounds() ),
 _numTilesWideAtLod0( 1 ),
 _numTilesHighAtLod0( 1 )
@@ -63,7 +66,10 @@ _numTilesHighAtLod0( 1 )
         _namedProfile = conf.value();
 
     if ( !conf.value( "srs" ).empty() )
-        _srs = conf.value( "srs" );
+        _srsInitString = conf.value( "srs" );
+
+    if ( !conf.value( "vsrs" ).empty() )
+        _vsrsInitString = conf.value( "vsrs" );
 
     if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
     {
@@ -88,8 +94,11 @@ ProfileConfig::toConfig( const std::string& name ) const
     }
     else
     {
-        if ( _srs.isSet() )
-            conf.add( "srs", _srs.value() );
+        if ( _srsInitString.isSet() )
+            conf.add( "srs", _srsInitString.value() );
+
+        if ( _vsrsInitString.isSet() )
+            conf.add( "vsrs", _vsrsInitString.value() );
 
         if ( _bounds.isSet() )
         {
@@ -108,7 +117,7 @@ ProfileConfig::toConfig( const std::string& name ) const
 bool
 ProfileConfig::defined() const
 {
-    return _namedProfile.isSet() || _srs.isSet();
+    return _namedProfile.isSet() || _srsInitString.isSet();
 }
 
 /***********************************************************************/
@@ -117,14 +126,16 @@ ProfileConfig::defined() const
 // FACTORY METHODS:
 
 const Profile*
-Profile::create(const std::string& init_string,
+Profile::create(const std::string& srsInitString,
                 double xmin, double ymin, double xmax, double ymax,
+                const std::string& vsrsInitString,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
     return new Profile(
-        SpatialReference::create( init_string ),
+        SpatialReference::create( srsInitString ),
         xmin, ymin, xmax, ymax,
+        VerticalSpatialReference::create( vsrsInitString ),
         numTilesWideAtLod0,
         numTilesHighAtLod0 );
 }
@@ -132,12 +143,14 @@ Profile::create(const std::string& init_string,
 const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
+                const VerticalSpatialReference* vsrs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
     return new Profile(
         srs,
         xmin, ymin, xmax, ymax,
+        vsrs,
         numTilesWideAtLod0,
         numTilesHighAtLod0 );
 }
@@ -146,6 +159,7 @@ const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
                 double geoxmin, double geoymin, double geoxmax, double geoymax,
+                const VerticalSpatialReference* vsrs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
@@ -153,26 +167,31 @@ Profile::create(const SpatialReference* srs,
         srs,
         xmin, ymin, xmax, ymax,
         geoxmin, geoymin, geoxmax, geoymax,
+        vsrs,
         numTilesWideAtLod0,
         numTilesHighAtLod0 );
 }
 
 const Profile*
-Profile::create(const std::string& init_string,
+Profile::create(const std::string& srsInitString,
+                const std::string& vsrsInitString,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
-    const Profile* named = osgEarth::Registry::instance()->getNamedProfile( init_string );
+    const Profile* named = osgEarth::Registry::instance()->getNamedProfile( srsInitString );
     if ( named )
         return const_cast<Profile*>( named );
 
-    osg::ref_ptr<const SpatialReference> srs = SpatialReference::create( init_string );
+    osg::ref_ptr<const SpatialReference> srs = SpatialReference::create( srsInitString );
+
+    osg::ref_ptr<const VerticalSpatialReference> vsrs = VerticalSpatialReference::create( vsrsInitString );
 
     if ( srs.valid() && srs->isGeographic() )
     {
         return new Profile(
             srs.get(),
             -180.0, -90.0, 180.0, 90.0,
+            vsrs.get(),
             numTilesWideAtLod0, numTilesHighAtLod0 );
     }
     else if ( srs.valid() && srs->isMercator() )
@@ -181,7 +200,7 @@ Profile::create(const std::string& init_string,
         GDAL_SCOPED_LOCK;
         double e, dummy;
         srs->getGeographicSRS()->transform( 180.0, 0.0, srs.get(), e, dummy );
-        return Profile::create( srs.get(), -e, -e, e, e, numTilesWideAtLod0, numTilesHighAtLod0 );
+        return Profile::create( srs.get(), -e, -e, e, e, vsrs.get(), numTilesWideAtLod0, numTilesHighAtLod0 );
     }
 
     return NULL;
@@ -209,6 +228,7 @@ Profile::create( const ProfileConfig& conf )
                 conf.bounds()->yMin(),
                 conf.bounds()->xMax(),
                 conf.bounds()->yMax(),
+                conf.vsrsString().value(),
                 conf.numTilesWideAtLod0().value(),
                 conf.numTilesHighAtLod0().value() );
         }
@@ -219,14 +239,17 @@ Profile::create( const ProfileConfig& conf )
                 conf.bounds()->xMin(),
                 conf.bounds()->yMin(),
                 conf.bounds()->xMax(),
-                conf.bounds()->yMax() );
+                conf.bounds()->yMax(),
+                conf.vsrsString().value() );
         }
     }
 
     // Next try SRS with default extents
     else if ( conf.srsString().isSet() )
     {
-        result = Profile::create( conf.srsString().value() );
+        result = Profile::create(
+            conf.srsString().value(),
+            conf.vsrsString().value() );
     }
 
     return result;
@@ -237,9 +260,11 @@ Profile::create( const ProfileConfig& conf )
 
 Profile::Profile(const SpatialReference* srs,
                  double xmin, double ymin, double xmax, double ymax,
+                 const VerticalSpatialReference* vsrs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0) :
-osg::Referenced( true )
+osg::Referenced( true ),
+_vsrs( vsrs )
 {
     _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
 
@@ -250,14 +275,19 @@ osg::Referenced( true )
     _latlong_extent = srs->isGeographic()?
         _extent :
         _extent.transform( _extent.getSRS()->getGeographicSRS() );
+
+    if ( !_vsrs.valid() )
+        _vsrs = VerticalSpatialReference::DEFAULT_VSRS;
 }
 
 Profile::Profile(const SpatialReference* srs,
                  double xmin, double ymin, double xmax, double ymax,
                  double geo_xmin, double geo_ymin, double geo_xmax, double geo_ymax,
+                 const VerticalSpatialReference* vsrs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0 ) :
-osg::Referenced( true )
+osg::Referenced( true ),
+_vsrs( vsrs )
 {
     _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
 
@@ -267,6 +297,9 @@ osg::Referenced( true )
     _latlong_extent = GeoExtent( 
         srs->getGeographicSRS(),
         geo_xmin, geo_ymin, geo_xmax, geo_ymax );
+
+    if ( !_vsrs.valid() )
+        _vsrs = VerticalSpatialReference::DEFAULT_VSRS;
 }
 
 Profile::ProfileType
@@ -289,6 +322,11 @@ Profile::getSRS() const {
     return _extent.getSRS();
 }
 
+const VerticalSpatialReference*
+Profile::getVerticalSRS() const {
+    return _vsrs.get();
+}
+
 const GeoExtent&
 Profile::getExtent() const {
     return _extent;
@@ -306,6 +344,7 @@ Profile::toString() const
     buf << "[srs=" << _extent.getSRS()->getName() << ", min=" << _extent.xMin() << "," << _extent.yMin()
         << " max=" << _extent.xMax() << "," << _extent.yMax()
         << " lod0=" << _numTilesWideAtLod0 << "," << _numTilesHighAtLod0
+        << " vsrs=" << ( _vsrs.valid() ? _vsrs->getName() : "default" )
         << "]";
     std::string bufStr;
 	bufStr = buf.str();

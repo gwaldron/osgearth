@@ -110,14 +110,14 @@ public:
                     double d = oldEx.width() - oldEx.height();
                     unsigned int tilesX, tilesY;
                     profile->getNumTiles( 0, tilesX, tilesY );
-                    profile = Profile::create( profile->getSRS(), oldEx.xMin(), oldEx.yMin()-d/2, oldEx.xMax(), oldEx.yMax()+d/2, tilesX, tilesY );                    
+                    profile = Profile::create( profile->getSRS(), oldEx.xMin(), oldEx.yMin()-d/2, oldEx.xMax(), oldEx.yMax()+d/2, 0L, tilesX, tilesY );
                 }
                 else if ( oldEx.width() < oldEx.height() )
                 {
                     double d = oldEx.height() - oldEx.width();
                     unsigned int tilesX, tilesY;
                     profile->getNumTiles( 0, tilesX, tilesY );
-                    profile = Profile::create( profile->getSRS(), oldEx.xMin()-d/2, oldEx.yMin(), oldEx.xMax()+d/2, oldEx.yMax(), tilesX, tilesY );    
+                    profile = Profile::create( profile->getSRS(), oldEx.xMin()-d/2, oldEx.yMin(), oldEx.xMax()+d/2, oldEx.yMax(), 0L, tilesX, tilesY );    
                 }
             }
         }        

@@ -230,6 +230,7 @@ public:
                         osg::RadiansToDegrees(min_y), 
                         osg::RadiansToDegrees(max_x), 
                         osg::RadiansToDegrees(max_y),
+                        "",
                         numTilesWideAtLod0,
                         numTilesHighAtLod0 );
                 }

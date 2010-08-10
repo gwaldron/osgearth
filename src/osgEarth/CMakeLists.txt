@@ -31,6 +31,7 @@ SET(LIB_PUBLIC_HEADERS
     EarthTerrainTechnique
 	EarthTerrain
     Export
+    EGM
     FileUtils
 	FileLocationCallback
 	FindNode
@@ -65,8 +66,10 @@ SET(LIB_PUBLIC_HEADERS
     TileSourceFactory
     ThreadingUtils
     TMS
+    Units
 	Version
     VersionedTerrain
+    VerticalSpatialReference
     XmlUtils
 )
 
@@ -82,6 +85,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     DriverOptions.cpp
     EarthFile.cpp
     EarthTerrainTechnique.cpp
+    EGM.cpp
     FileUtils.cpp
     GeoData.cpp
     HeightFieldUtils.cpp
@@ -112,8 +116,10 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileSource.cpp
     TileSourceFactory.cpp
     TMS.cpp
+    Units.cpp
     Version.cpp
     VersionedTerrain.cpp
+    VerticalSpatialReference.cpp
     XmlUtils.cpp
 )
 

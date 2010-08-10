@@ -576,7 +576,8 @@ Map::createHeightField( const TileKey* key,
             if (hf.valid())
             {
                 numValidHeightFields++;
-                heightFields.push_back( new GeoHeightField( hf.get(), key->getGeoExtent() ) );
+                heightFields.push_back( new GeoHeightField(
+                    hf.get(), key->getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
             }
         }
     }
@@ -610,7 +611,9 @@ Map::createHeightField( const TileKey* key,
                 {
                     if ( hf_key->getLevelOfDetail() < lowestLOD )
                         lowestLOD = hf_key->getLevelOfDetail();
-                    heightFields.push_back( new GeoHeightField( hf.get(), hf_key->getGeoExtent() ) );
+
+                    heightFields.push_back( new GeoHeightField(
+                        hf.get(), hf_key->getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
                 }
             }
         }
@@ -658,6 +661,8 @@ Map::createHeightField( const TileKey* key,
         key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
         double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
         double dy = (maxy - miny)/(double)(result->getNumRows()-1);
+
+        const VerticalSpatialReference* vsrs = getProfile()->getVerticalSRS();
         
 		//Create the new heightfield by sampling all of them.
         for (unsigned int c = 0; c < width; ++c)
@@ -672,7 +677,7 @@ Map::createHeightField( const TileKey* key,
                 for (GeoHeightFieldList::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
                     float elevation = 0.0f;
-                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, interpolation, elevation))
+                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation))
                     {
                         if (elevation != NO_DATA_VALUE)
                         {

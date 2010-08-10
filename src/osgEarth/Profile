@@ -24,6 +24,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/VerticalSpatialReference>
 #include <osg/CoordinateSystemNode>
 #include <vector>
 
@@ -55,20 +56,26 @@ namespace osgEarth
         const optional<std::string>& namedProfile() const { return _namedProfile; }
 
         /** Gets the spatial reference system initialization string to use for the profile. */
-        optional<std::string>& srsString() { return _srs; }
-        const optional<std::string>& srsString() const { return _srs; }
+        optional<std::string>& srsString() { return _srsInitString; }
+        const optional<std::string>& srsString() const { return _srsInitString; }
 
+        /** Gets the vertical spatial reference init string for this profile. */
+        optional<std::string>& vsrsString() { return _vsrsInitString; }
+        const optional<std::string>& vsrsString() const { return _vsrsInitString; }
+
+        /** Geospatial bounds for this profile's extent */
         optional<Bounds>& bounds() { return _bounds; }
         const optional<Bounds>& bounds() const { return _bounds; }
 
+        /** Number of tiles in the X axis at LOD 0 */
         optional<int>& numTilesWideAtLod0() { return _numTilesWideAtLod0; }
         const optional<int>& numTilesWideAtLod0() const { return _numTilesWideAtLod0; }
 
+        /** Number of tiles on the Y axis at LOD 0 */
         optional<int>& numTilesHighAtLod0() { return _numTilesHighAtLod0; }
         const optional<int>& numTilesHighAtLod0() const { return _numTilesHighAtLod0; }
 
         ///** Gets the spatial extents of the profile */
-        //void getExtents(double &minX, double &minY, double &maxX, double &maxY) const;
         double xMin() const { return _bounds->xMin(); }
         double yMin() const { return _bounds->yMin(); }
         double xMax() const { return _bounds->xMax(); }
@@ -79,7 +86,8 @@ namespace osgEarth
 
     private:
         optional<std::string> _namedProfile;
-        optional<std::string> _srs;
+        optional<std::string> _srsInitString;
+        optional<std::string> _vsrsInitString;
         optional<Bounds>      _bounds;
         optional<int>         _numTilesWideAtLod0;
         optional<int>         _numTilesHighAtLod0;
@@ -108,6 +116,7 @@ namespace osgEarth
         static const Profile* create(
             const std::string& srs_string,
             double xmin, double ymin, double xmax, double ymax,
+            const std::string& vsrs_string ="",
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
@@ -115,17 +124,20 @@ namespace osgEarth
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
             double geoxmin, double geoymin, double geoxmax, double geoymax,
+            const VerticalSpatialReference* vsrs =0L,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
         static const Profile* create(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
+            const VerticalSpatialReference* vsrs =0L,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
         static const Profile* create(
             const std::string& srs_string,
+            const std::string& vsrs_string ="",
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
@@ -151,6 +163,11 @@ namespace osgEarth
          * Gets the spatial reference system underlying this profile.
          */
         const SpatialReference* getSRS() const;
+
+        /**
+         * Gest the vertical spatial reference system underlying this profile.
+         */
+        const VerticalSpatialReference* getVerticalSRS() const;
 
         /**
          * Gets the profile type
@@ -232,6 +249,7 @@ namespace osgEarth
         Profile(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
+            const VerticalSpatialReference* vsrs,
             unsigned int x_tiles_at_lod0 =0,
             unsigned int y_tiles_at_lod0 =0 );      
 
@@ -239,6 +257,7 @@ namespace osgEarth
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
             double geoxmin, double geoymin, double geoxmax, double geoymax,
+            const VerticalSpatialReference* vsrs,
             unsigned int x_tiles_at_lod0 =0,
             unsigned int y_tiles_at_lod0 =0 );
         
@@ -252,6 +271,7 @@ namespace osgEarth
 
         GeoExtent _extent;
         GeoExtent _latlong_extent;
+        osg::ref_ptr<const VerticalSpatialReference> _vsrs;
         unsigned int _numTilesWideAtLod0;
         unsigned int _numTilesHighAtLod0;
     };

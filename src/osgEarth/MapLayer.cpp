@@ -911,7 +911,7 @@ MapLayer::createGeoHeightField(const TileKey* key,
 		o.setValidDataOperator(ops.get());
 		o(hf);
 
-		return new GeoHeightField(hf.get(), key->getGeoExtent());
+        return new GeoHeightField(hf.get(), key->getGeoExtent(), getProfile()->getVerticalSRS() );
 	}
 	return NULL;
 }
@@ -1016,7 +1016,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 						for (HeightFields::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
 						{
 							float e = 0.0;
-							if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, e))
+                            if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, _profile->getVerticalSRS(), e))
 							{
 								elevation = e;
 								break;

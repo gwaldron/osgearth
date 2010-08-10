@@ -25,7 +25,9 @@
 #include <osgTerrain/Locator>
 #include <osgEarth/Common>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/VerticalSpatialReference>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Units>
 
 namespace osgEarth
 {
@@ -296,17 +298,24 @@ namespace osgEarth
         /**
          * Constructs a new georeferenced heightfield.
          */
-        GeoHeightField(osg::HeightField* heightField, const GeoExtent& extent);
+        GeoHeightField(
+            osg::HeightField* heightField,
+            const GeoExtent& extent,
+            const VerticalSpatialReference* vsrs);
 
         /**
          * Gets the elevation value at a specified point.
          *
          * @param srs
-         *      Spatial reference of the query coordinates.
+         *      Spatial reference of the query coordinates. (If you pass in NULL, the method
+         *      will assume that the SRS is equivalent to that of the GeoHeightField. Be sure
+         *      this is case of you will get incorrect results.)
          * @param x, y
          *      Coordinates at which to query the elevation value.
          * @param interp
          *      Interpolation method for the elevation query.
+         * @param outputVSRS
+         *      Convert the output elevation value to this VSRS (NULL to ignore)
          * @param out_elevation
          *      Output: the elevation value
          * @return
@@ -314,10 +323,11 @@ namespace osgEarth
          *      fell outside the geospatial extent of the heightfield)
          */
         bool getElevation(
-            const SpatialReference* srs, 
+            const SpatialReference* inputSRS, 
             double x, double y,
-            ElevationInterpolation interp, float& out_elevation);
-
+            ElevationInterpolation interp,
+            const VerticalSpatialReference* outputVSRS,
+            float& out_elevation ) const;
         
         /**
          * Subsamples the heightfield, returning a new heightfield corresponding ///and Takes the source heightfield and its extent, and takes a subsample that corresponds to 
@@ -344,9 +354,49 @@ namespace osgEarth
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;
         GeoExtent _extent;
+        osg::ref_ptr<const VerticalSpatialReference> _vsrs;
     };
 
 	typedef std::vector< osg::ref_ptr< GeoHeightField > > GeoHeightFieldList;
+
+    
+    /**
+     * A representation of the surface of the earth based on a grid of
+     * height values that are relative to a reference ellipsoid.
+     */
+    class OSGEARTH_EXPORT Geoid : public osg::Referenced
+    {
+    public:
+        /**
+         * Construct a new Geoid with height values expressed in the specified units.
+         */
+        Geoid( const std::string& name, const GeoHeightField* hf, const Units& units =Units::METERS );
+
+    public:
+        /** Gets the readable name of this geoid. */
+        const std::string& getName() const { return _name; }
+
+        /** Queries to geoid for the height offset at the specified coordinates. */
+        float getOffset(
+            double lat_deg, double lon_deg, 
+            const ElevationInterpolation& interp =INTERP_BILINEAR) const;
+
+        /** Gets the units in which height values are expressed. */
+        const Units& getUnits() const { return _units; }
+
+        /** Whether this is a valid object to use */
+        bool isValid() const { return _valid; }
+
+        /** True if two geoids are mathmatically equivalent. */
+        bool isEquivalentTo( const Geoid& rhs ) const;
+
+    private:
+        std::string _name;
+        osg::ref_ptr<const GeoHeightField> _hf;
+        Units _units;
+        bool _valid;
+    };
+
 }
 
 #endif // OSGEARTH_GEODATA_H

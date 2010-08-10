@@ -184,7 +184,7 @@ TileService::createProfile(TilePatternList &patterns)
       double ymax = topLeftMax.y();
       double ymin = ymax - (double)h * tileHeight;
       
-      profile = Profile::create( patterns[0].getSRS(), xmin, ymin, xmax, ymax, w, h);
+      profile = Profile::create( patterns[0].getSRS(), xmin, ymin, xmax, ymax, "", w, h);
     }
 
     return profile;

@@ -893,11 +893,13 @@ GeoImage::takeImage()
 
 
 /***************************************************************************/
-GeoHeightField::GeoHeightField(osg::HeightField* heightField, const GeoExtent& extent)
+GeoHeightField::GeoHeightField(osg::HeightField* heightField,
+                               const GeoExtent& extent,
+                               const VerticalSpatialReference* vsrs) :
+_heightField( heightField ),
+_extent( extent ),
+_vsrs( vsrs )
 {
-    _extent = extent;
-    _heightField = heightField;
-
     double minx, miny, maxx, maxy;
     _extent.getBounds(minx, miny, maxx, maxy);
 
@@ -907,10 +909,15 @@ GeoHeightField::GeoHeightField(osg::HeightField* heightField, const GeoExtent& e
     _heightField->setBorderWidth( 0 );
 }
 
-bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double x, double y, ElevationInterpolation interp, float &elevation)
+bool
+GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS, 
+                             double x, double y, 
+                             ElevationInterpolation interp,
+                             const VerticalSpatialReference* outputVSRS,
+                             float &elevation) const
 {
     double local_x, local_y;
-    if ( !srs->transform(x, y, _extent.getSRS(), local_x, local_y) )
+    if ( inputSRS && !inputSRS->transform(x, y, _extent.getSRS(), local_x, local_y) )
         return false;
 
     if ( _extent.contains(local_x, local_y) )
@@ -918,6 +925,32 @@ bool GeoHeightField::getElevation(const osgEarth::SpatialReference *srs, double 
         double xInterval = _extent.width()  / (double)(_heightField->getNumColumns()-1);
         double yInterval = _extent.height() / (double)(_heightField->getNumRows()-1);
         elevation = HeightFieldUtils::getHeightAtLocation(_heightField.get(), local_x, local_y, _extent.xMin(), _extent.yMin(), xInterval, yInterval, interp);
+
+        //TODO: VSRS transformation goes here.
+        const VerticalSpatialReference* fromVSRS = _vsrs.get();
+        const VerticalSpatialReference* toVSRS   = outputVSRS;
+
+        if ( VerticalSpatialReference::canTransform( _vsrs.get(), outputVSRS ) )
+        {
+            // need geodetic coordinates for a VSRS transformation:
+            double lat_deg, lon_deg, newElevation;
+
+            if ( inputSRS->isGeographic() ) {
+                lat_deg = y;
+                lon_deg = x;
+            }
+            else if ( _extent.getSRS()->isGeographic() ) {
+                lat_deg = local_y;
+                lon_deg = local_x;
+            }
+            else {
+                _extent.getSRS()->transform( x, y, inputSRS->getGeographicSRS(), lon_deg, lat_deg );
+            }
+
+            if ( _vsrs->transform( outputVSRS, lat_deg, lon_deg, elevation, newElevation ) )
+                elevation = newElevation;
+        }
+
         return true;
     }
     else
@@ -966,7 +999,7 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
     osg::Vec3d orig( destEx.xMin(), destEx.yMin(), _heightField->getOrigin().z() );
     dest->setOrigin( orig );
 
-    return new GeoHeightField( dest, destEx );
+    return new GeoHeightField( dest, destEx, _vsrs.get() );
 }
 
 const GeoExtent&
@@ -993,5 +1026,50 @@ GeoHeightField::takeHeightField()
     return _heightField.release();
 }
 
+// --------------------------------------------------------------------------
 
-/*****************************************************************************/
+#undef  LC
+#define LC "[osgEarth::Geoid] "
+
+Geoid::Geoid( const std::string& name, const GeoHeightField* hf, const Units& units ) :
+_name( name ),
+_hf( hf ),
+_units( units )
+{
+    _valid = false;
+    if ( !_hf.valid() ) {
+        OE_WARN << LC << "ILLEGAL GEOID: no heightfield" << std::endl;
+    }
+    else if ( !_hf->getGeoExtent().getSRS() ||_hf->getGeoExtent().getSRS()->isGeographic() ) {
+        OE_WARN << LC << "ILLEGAL GEOID: heightfield must be geodetic" << std::endl;
+    }
+    else {
+        _valid = true;
+    }
+}
+
+float 
+Geoid::getOffset(double lat_deg, double lon_deg, const ElevationInterpolation& interp ) const
+{
+    float result = 0.0f;
+
+    if ( _valid )
+    {
+        bool ok = _hf->getElevation( 0L, lon_deg, lat_deg, interp, 0L, result );
+        if ( !ok )
+            result = 0.0f;
+    }
+
+    return result;
+}
+
+bool
+Geoid::isEquivalentTo( const Geoid& rhs ) const
+{
+    // weak..
+    return
+        _valid &&
+        _name == rhs._name &&
+        _hf->getGeoExtent() == rhs._hf->getGeoExtent() &&
+        _units == rhs._units;
+}

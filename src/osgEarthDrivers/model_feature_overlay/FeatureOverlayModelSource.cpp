@@ -63,7 +63,9 @@ public:
             featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
         // Transform them into the map's SRS:
-        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS(), context->getModelSource()->getMap()->isGeocentric() );
+        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS() );
+        xform.setMakeGeocentric( context->getModelSource()->getMap()->isGeocentric() );
+        xform.setLocalizeCoordinates( true );
 
         contextFilter = xform.push( featureList, contextFilter );
 

@@ -298,7 +298,8 @@ Graticule::createGridLevel( unsigned int levelNum ) const
                 cx = resample.push( features, cx );
             }
 
-            TransformFilter xform( mapProfile->getSRS(), _map->isGeocentric() );
+            TransformFilter xform( mapProfile->getSRS() );
+            xform.setMakeGeocentric( _map->isGeocentric() );
             cx = xform.push( features, cx );
 
             Bounds bounds = feature->getGeometry()->getBounds();

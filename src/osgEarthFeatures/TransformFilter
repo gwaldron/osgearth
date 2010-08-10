@@ -37,11 +37,20 @@ namespace osgEarth { namespace Features
     {
     public:
         TransformFilter();
-        TransformFilter( const SpatialReference* outputSRS, bool makeGeocentric =false );
+        TransformFilter( const SpatialReference* outputSRS );
 
         /** Height offset to apply after doing the SRS transformation. Output SRS units. */
-        double& heightOffset() { return _heightOffset; }
-        double heightOffset() const { return _heightOffset; }
+        void setHeightOffset( double value ) { _heightOffset = value; }
+        double getHeightOffset() const { return _heightOffset; }
+
+        /** Whether to convert the transformed coordinates into geocentric (default = false ) */
+        void setMakeGeocentric( bool value ) { _makeGeocentric = value; }
+        bool getMakeGeocentric() const { return _makeGeocentric; }
+
+        /** Whether to localize coordinates to the bounding box centroid (to avoid precision jitter
+            when turning the data into OSG geometry) */
+        void setLocalizeCoordinates( bool value ) { _localize = value; }
+        bool getLocalizeCoordinates() const { return _localize; }
 
     public:
         FilterContext push( FeatureList& features, const FilterContext& context );
@@ -51,6 +60,7 @@ namespace osgEarth { namespace Features
         bool _makeGeocentric;
         double _heightOffset;
         osg::BoundingBoxd _bbox;
+        bool _localize;
         
         bool push( Feature* feature, const FilterContext& context );
     };

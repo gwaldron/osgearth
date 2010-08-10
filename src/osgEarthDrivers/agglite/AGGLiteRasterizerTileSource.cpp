@@ -118,6 +118,7 @@ public:
 
         // First, transform the features into the map's SRS:
         TransformFilter xform( imageExtent.getSRS() );
+        xform.setLocalizeCoordinates( false );
         context = xform.push( features, context );
 
         // set up the AGG renderer:

@@ -89,6 +89,10 @@ namespace osgEarth
          */
         unsigned int getNumBlacklistedFilenames();
 
+        /**
+         * The system wide default VSRS
+         */
+        const VerticalSpatialReference* getDefaultVSRS() const;
 
     protected:
         virtual ~Registry();
@@ -116,6 +120,8 @@ namespace osgEarth
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;
         OpenThreads::Mutex _blacklistMutex;
+
+        osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
     };
 }
 

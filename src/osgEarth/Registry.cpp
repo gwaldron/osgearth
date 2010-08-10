@@ -155,6 +155,14 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
+const VerticalSpatialReference*
+Registry::getDefaultVSRS() const
+{
+    if ( !_defaultVSRS.valid() )
+        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
+    return _defaultVSRS.get();
+}
+
 osgEarth::Cache*
 Registry::getCacheOverride() const
 {

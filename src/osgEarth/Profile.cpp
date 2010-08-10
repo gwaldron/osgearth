@@ -277,7 +277,7 @@ _vsrs( vsrs )
         _extent.transform( _extent.getSRS()->getGeographicSRS() );
 
     if ( !_vsrs.valid() )
-        _vsrs = VerticalSpatialReference::DEFAULT_VSRS;
+        _vsrs = Registry::instance()->getDefaultVSRS();
 }
 
 Profile::Profile(const SpatialReference* srs,
@@ -299,7 +299,7 @@ _vsrs( vsrs )
         geo_xmin, geo_ymin, geo_xmax, geo_ymax );
 
     if ( !_vsrs.valid() )
-        _vsrs = VerticalSpatialReference::DEFAULT_VSRS;
+        _vsrs = Registry::instance()->getDefaultVSRS();
 }
 
 Profile::ProfileType

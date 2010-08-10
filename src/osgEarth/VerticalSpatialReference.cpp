@@ -58,9 +58,6 @@ VerticalSpatialReference::registerGeoid( const Geoid* geoid )
         (*_geoidRegistry)[geoid->getName()] = geoid;
 }
 
-const VerticalSpatialReference*
-VerticalSpatialReference::DEFAULT_VSRS = new VerticalSpatialReference( Units::METERS );
-
 VerticalSpatialReference::GeoidRegistry*
 VerticalSpatialReference::_geoidRegistry = 0L;
 

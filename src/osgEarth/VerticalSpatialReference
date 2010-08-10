@@ -20,12 +20,13 @@
 #define OSGEARTH_VERTICAL_SPATIAL_REFERENCE_H 1
 
 #include <osgEarth/Common>
-//#include <osgEarth/GeoData>
 #include <osgEarth/Units>
+#include <osg/Shape>
 
 namespace osgEarth
 {
     class Geoid;
+    class GeoExtent;
 
     /** 
      * Reference information for vertical (height) information.
@@ -62,6 +63,13 @@ namespace osgEarth
         static bool canTransform( 
             const VerticalSpatialReference* from,
             const VerticalSpatialReference* toVSRS );
+
+        /**
+         * Creates a heightfield containing the "zero" refernce values relative to the ellipsoid.
+         * For a vanilla ellipsoidal VSRS, the HF will be all zeros. for an orthometric (geoid) VSRS,
+         * it will contain the raw geoid offsets.
+         */
+        osg::HeightField* createReferenceHeightField(const GeoExtent& extent, int cols, int rows) const;
 
         /** Gets the readable name of this SRS. */
         const std::string& getName() const { return _name; }

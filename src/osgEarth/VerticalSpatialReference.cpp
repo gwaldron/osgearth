@@ -105,6 +105,45 @@ VerticalSpatialReference::transform(const VerticalSpatialReference* to_srs,
     return success;
 }
 
+osg::HeightField*
+VerticalSpatialReference::createReferenceHeightField( const GeoExtent& ex, int numCols, int numRows ) const
+{
+    osg::HeightField* hf = new osg::HeightField();
+    hf->allocate( numCols, numRows );
+    hf->setOrigin( osg::Vec3d( ex.xMin(), ex.yMin(), 0.0 ) );
+    hf->setXInterval( (ex.xMax() - ex.xMin())/(double)(numCols-1) );
+    hf->setYInterval( (ex.yMax() - ex.yMin())/(double)(numRows-1) );
+
+    if ( _geoid.valid() && _geoid->isValid() )
+    {
+        // need the lat/long extent for geoid queries:
+        GeoExtent geodeticExtent = ex.getSRS()->isGeographic() ? ex : ex.transform( ex.getSRS()->getGeographicSRS() );
+        double latMin = geodeticExtent.yMin();
+        double lonMin = geodeticExtent.xMin();
+        double lonInterval = geodeticExtent.width() / (double)(numCols-1);
+        double latInterval = geodeticExtent.height() / (double)(numRows-1);
+
+        for( int r=0; r<numRows; ++r )
+        {            
+            double lat = latMin + latInterval*(double)r;
+            for( int c=0; c<numCols; ++c )
+            {
+                double lon = lonMin + lonInterval*(double)c;
+                double offset = _geoid->getOffset( lat, lon );
+                hf->setHeight( c, r, offset );
+            }
+        }
+    }
+    else
+    {
+        for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+            hf->getHeightList()[i] = 0.0;
+    }
+
+    hf->setBorderWidth( 0 );
+    return hf;    
+}
+
 bool 
 VerticalSpatialReference::isEquivalentTo( const VerticalSpatialReference* rhs ) const
 {

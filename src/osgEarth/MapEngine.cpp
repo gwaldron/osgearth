@@ -322,20 +322,25 @@ MapEngine::isCached(Map* map, const osgEarth::TileKey *key)
 osg::HeightField*
 MapEngine::createEmptyHeightField( const TileKey* key, int numCols, int numRows )
 {
-    //Get the bounds of the key
-    double minx, miny, maxx, maxy;
-    key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+    osg::HeightField* hf = key->getProfile()->getVerticalSRS()->createReferenceHeightField(
+        key->getGeoExtent(), numCols, numRows );
 
-    osg::HeightField *hf = new osg::HeightField();
-    hf->allocate( numCols, numRows );
-    for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
-        hf->getHeightList()[i] = 0.0;
-
-    hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-    hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
-    hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
-    hf->setBorderWidth( 0 );
     return hf;
+
+    ////Get the bounds of the key
+    //double minx, miny, maxx, maxy;
+    //key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+
+    //osg::HeightField *hf = new osg::HeightField();
+    //hf->allocate( numCols, numRows );
+    //for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+    //    hf->getHeightList()[i] = 0.0;
+
+    //hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+    //hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
+    //hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
+    //hf->setBorderWidth( 0 );
+    //return hf;
 }
 
 void

@@ -676,8 +676,10 @@ Map::createHeightField( const TileKey* key,
                 std::vector<float> elevations;
                 for (GeoHeightFieldList::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
+                    GeoHeightField* geoHF = itr->get();
+
                     float elevation = 0.0f;
-                    if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation))
+                    if ( geoHF->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
                     {
                         if (elevation != NO_DATA_VALUE)
                         {

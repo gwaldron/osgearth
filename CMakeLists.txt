@@ -20,8 +20,7 @@ FIND_PACKAGE(osgFX)
 FIND_PACKAGE(osgEarth)
 
 SET(SOURCES
-    qsc.cpp kml.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp patchTest.cpp
-)
+    qsc.cpp kml.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp patchTest.cpp SeamlessPlugin.cpp seamlessTest.cpp)
 
 INCLUDE_DIRECTORIES(${OPENTHREADS_INCLUDE_DIR} ${OSG_INCLUDE_DIR} ${OSGEARTH_INCLUDE_DIR})
 
@@ -31,6 +30,10 @@ ADD_EXECUTABLE(kmld kml.cpp qsc.cpp)
 
 ADD_EXECUTABLE(patchTest patchTest.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp)
 
+ADD_EXECUTABLE(seamlessTest Patch.cpp PatchGroup.cpp PatchSet.cpp SeamlessPlugin.cpp seamlessTest.cpp)
+
 TARGET_LINK_LIBRARIES(kmld ${OSG_LIBRARY_DEBUG} )
 
 TARGET_LINK_LIBRARIES(patchTest ${OSGEARTH_LIBRARY} ${OSG_LIBRARY} ${OSGUTIL_LIBRARY} ${OSGDB_LIBRARY} ${OSGVIEWER_LIBRARY} ${OSGSHADOW_LIBRARY} ${OSGSIM_LIBRARY} ${OSGPARTICLE_LIBRARY} ${OSGTERRAIN_LIBRARY} ${OSGFX_LIBRARY})
+
+TARGET_LINK_LIBRARIES(seamlessTest ${OSGEARTH_LIBRARY} ${OSG_LIBRARY} ${OSGUTIL_LIBRARY} ${OSGDB_LIBRARY} ${OSGVIEWER_LIBRARY} ${OSGSHADOW_LIBRARY} ${OSGSIM_LIBRARY} ${OSGPARTICLE_LIBRARY} ${OSGTERRAIN_LIBRARY} ${OSGFX_LIBRARY})

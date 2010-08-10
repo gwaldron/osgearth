@@ -27,7 +27,8 @@ _geocentric(false),
 _frame(0),
 _nfrAtRadius( 0.00001 ),
 _nfrAtDoubleRadius( 0.0049 ),
-_rp( -1 )
+_rp( -1 ),
+_autoFarPlaneClipping(true)
 {
     //NOP
 }
@@ -65,16 +66,21 @@ AutoClipPlaneHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAction
 
             if ( d > _rp )
             {
-                double fovy, ar, znear, zfar;
-                cam->getProjectionMatrixAsPerspective( fovy, ar, znear, zfar );
+                double fovy, ar, znear, zfar, finalZfar;
+                cam->getProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
 
                 // far clip at the horizon:
                 zfar = sqrt( d*d - _rp*_rp );
 
+                if (_autoFarPlaneClipping)
+                {
+                    finalZfar = zfar;
+                }
+
                 double nfr = _nfrAtRadius + _nfrAtDoubleRadius * ((d-_rp)/d);
                 znear = osg::clampAbove( zfar * nfr, 1.0 );
 
-                cam->setProjectionMatrixAsPerspective( fovy, ar, znear, zfar );
+                cam->setProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
 
                 //OE_NOTICE << fixed
                 //    << "near=" << znear << ", far=" << zfar << std::endl;

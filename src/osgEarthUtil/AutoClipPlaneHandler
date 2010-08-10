@@ -41,6 +41,12 @@ namespace osgEarthUtil
          * Constructs a new clip plane handler.
          */
         AutoClipPlaneHandler();
+        
+        /**
+         * Whether to automatically set the far clip to the horizon. default=true.
+         */
+        void setAutoFarPlaneClipping(bool enabled) { _autoFarPlaneClipping = enabled; }
+        bool getAutoFarPlaneClipping() const { return _autoFarPlaneClipping; }
 
         
     public: // EventHandler
@@ -53,6 +59,7 @@ namespace osgEarthUtil
         bool _geocentric;
         int _frame;
         double _nfrAtRadius, _nfrAtDoubleRadius, _rp;
+        bool _autoFarPlaneClipping;
     };
 }
 

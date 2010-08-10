@@ -23,7 +23,7 @@
 #include "Patch"
 #include "PatchGroup"
 
-namespace teng
+namespace seamless
 {
 using namespace osg;
 

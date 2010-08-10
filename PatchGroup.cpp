@@ -26,7 +26,7 @@
 #include "Patch"
 #include "PatchSet"
 
-namespace teng
+namespace seamless
 {
 using namespace std;
 using namespace osg;

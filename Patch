@@ -25,7 +25,7 @@
 #include <osg/Node>
 #include <osg/PrimitiveSet>
 
-namespace teng
+namespace seamless
 {
 class PatchSet;
 

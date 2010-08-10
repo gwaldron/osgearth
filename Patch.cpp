@@ -27,7 +27,7 @@
 
 #include <osg/Vec3d>
 
-namespace teng
+namespace seamless
 {
 using namespace osg;
 

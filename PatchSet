@@ -29,7 +29,7 @@
 #include "Patch"
 #include "PatchGroup"
 
-namespace teng
+namespace seamless
 {
 class PatchSet : public osg::Object
 {

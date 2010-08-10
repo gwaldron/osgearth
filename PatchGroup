@@ -25,7 +25,7 @@
 
 #include <osgDB/Registry>
 
-namespace teng
+namespace seamless
 {
 class Patch;
 class PatchSet;

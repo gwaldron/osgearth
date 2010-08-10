@@ -39,7 +39,7 @@
 #include "PatchSet"
 
 using namespace osg;
-using namespace teng;
+using namespace seamless;
 
 int main(int argc, char** argv)
 {

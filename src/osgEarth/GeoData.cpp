@@ -916,7 +916,8 @@ GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS,
                              const VerticalSpatialReference* outputVSRS,
                              float &elevation) const
 {
-    double local_x, local_y;
+    double local_x = x, local_y = y;
+
     if ( inputSRS && !inputSRS->transform(x, y, _extent.getSRS(), local_x, local_y) )
         return false;
 
@@ -1031,16 +1032,42 @@ GeoHeightField::takeHeightField()
 #undef  LC
 #define LC "[osgEarth::Geoid] "
 
-Geoid::Geoid( const std::string& name, const GeoHeightField* hf, const Units& units ) :
-_name( name ),
-_hf( hf ),
-_units( units )
+Geoid::Geoid() :
+_valid( false ),
+_units( Units::METERS )
+{
+    //nop
+}
+
+void
+Geoid::setName( const std::string& name )
+{
+    _name = name;
+    validate();
+}
+
+void
+Geoid::setHeightField( const GeoHeightField* hf )
+{
+    _hf = hf;
+    validate();
+}
+
+void
+Geoid::setUnits( const Units& units ) 
+{
+    _units = units;
+    validate();
+}
+
+void
+Geoid::validate()
 {
     _valid = false;
     if ( !_hf.valid() ) {
-        OE_WARN << LC << "ILLEGAL GEOID: no heightfield" << std::endl;
+        //OE_WARN << LC << "ILLEGAL GEOID: no heightfield" << std::endl;
     }
-    else if ( !_hf->getGeoExtent().getSRS() ||_hf->getGeoExtent().getSRS()->isGeographic() ) {
+    else if ( !_hf->getGeoExtent().getSRS() || !_hf->getGeoExtent().getSRS()->isGeographic() ) {
         OE_WARN << LC << "ILLEGAL GEOID: heightfield must be geodetic" << std::endl;
     }
     else {
@@ -1055,6 +1082,16 @@ Geoid::getOffset(double lat_deg, double lon_deg, const ElevationInterpolation& i
 
     if ( _valid )
     {
+        // first convert the query coordinates to the geoid heightfield range if neccesary.
+        if ( lat_deg < _hf->getGeoExtent().yMin() )
+            lat_deg = 90.0 - (-90.0-lat_deg);
+        else if ( lat_deg > _hf->getGeoExtent().yMax() )
+            lat_deg = -90 + (lat_deg-90.0);
+        if ( lon_deg < _hf->getGeoExtent().xMin() )
+            lon_deg += 360.0;
+        else if ( lon_deg > _hf->getGeoExtent().xMax() )
+            lon_deg -= 360.0;
+
         bool ok = _hf->getElevation( 0L, lon_deg, lat_deg, interp, 0L, result );
         if ( !ok )
             result = 0.0f;

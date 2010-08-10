@@ -41,6 +41,10 @@ namespace osgEarth
 
         static const VerticalSpatialReference* DEFAULT_VSRS;
 
+        /** Adds a new geoid to the VSRS registry. You can thereafter create a VSRS based
+            on this geoid with the VSRS::create() method, passing in the name of the geoid. */
+        static void registerGeoid( const Geoid* geoid );
+
     public:
         /**
          * Transform a height value (at the specified lat/long location) to another VSRS.
@@ -97,6 +101,18 @@ namespace osgEarth
         std::string _initString;
         osg::ref_ptr<const Geoid> _geoid;
         Units _units;
+
+        typedef std::map<std::string, osg::ref_ptr<const Geoid> > GeoidRegistry;
+        static GeoidRegistry* _geoidRegistry;
+    };
+
+
+    /** Proxy class for automatic registration of geoids */
+    template<class T>
+    struct  GeoidRegisterProxy {
+        GeoidRegisterProxy() {
+            VerticalSpatialReference::registerGeoid( new T );
+        }
     };
 
 }

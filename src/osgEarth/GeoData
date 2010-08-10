@@ -367,13 +367,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT Geoid : public osg::Referenced
     {
     public:
-        /**
-         * Construct a new Geoid with height values expressed in the specified units.
-         */
-        Geoid( const std::string& name, const GeoHeightField* hf, const Units& units =Units::METERS );
+        Geoid();
+        //Geoid( const std::string& name, const GeoHeightField* hf, const Units& units =Units::METERS );
+
+        /** Sets the underlying heightfield data */
+        void setHeightField( const GeoHeightField* hf );
+
+        /** Sets the linear units of the height offset values in this geoid */
+        void setUnits( const Units& value );
 
     public:
         /** Gets the readable name of this geoid. */
+        void setName( const std::string& value );
         const std::string& getName() const { return _name; }
 
         /** Queries to geoid for the height offset at the specified coordinates. */
@@ -395,6 +400,7 @@ namespace osgEarth
         osg::ref_ptr<const GeoHeightField> _hf;
         Units _units;
         bool _valid;
+        void validate();
     };
 
 }

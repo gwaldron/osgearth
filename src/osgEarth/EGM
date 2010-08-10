@@ -20,16 +20,13 @@
 #define OSGEARTH_EGM
 
 #include <osgEarth/Common>
-#include <osgEarth/VerticalSpatialReference>
+#include <osgEarth/GeoData>
 
 namespace osgEarth
 {
-    class EGM
+    struct EGM96Geoid : public Geoid
     {
-    public:
-        static const std::string EGM96_NAME;
-
-        static Geoid* createEGM96Geoid();
+        EGM96Geoid();
     };
 }
 

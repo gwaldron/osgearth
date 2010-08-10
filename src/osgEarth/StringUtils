@@ -112,8 +112,8 @@ namespace osgEarth
     static std::string
     toLower( const std::string& input )
     {
-        std::string output;
-        std::transform( input.begin(), input.end(), output.begin(), ::tolower );
+        std::string output = input;
+        std::transform( output.begin(), output.end(), output.begin(), ::tolower );
         return output;
     }
 }

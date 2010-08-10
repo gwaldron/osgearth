@@ -34,8 +34,12 @@ VerticalSpatialReference::create( const std::string& initString )
 {
     std::string s = toLower( initString );
 
-    if ( s == EGM::EGM96_NAME )
-        return new VerticalSpatialReference( EGM::EGM96_NAME, initString, EGM::createEGM96Geoid() );
+    GeoidRegistry::const_iterator i = (*_geoidRegistry).find( s );
+    if ( i != (*_geoidRegistry).end() )
+    {
+        const Geoid* geoid = i->second.get();
+        return new VerticalSpatialReference( geoid->getName(), initString, geoid );
+    }
     else if ( s == "meters" || s == "metres" || s == "meter" || s == "metre" )
         return new VerticalSpatialReference( Units::METERS );
     else if ( startsWith( s, "feet" ) || startsWith( s, "foot" ) )
@@ -44,8 +48,21 @@ VerticalSpatialReference::create( const std::string& initString )
     return 0L;
 }
 
+void
+VerticalSpatialReference::registerGeoid( const Geoid* geoid )
+{
+    if ( !_geoidRegistry )
+        _geoidRegistry = new GeoidRegistry();
+
+    if ( geoid )
+        (*_geoidRegistry)[geoid->getName()] = geoid;
+}
+
 const VerticalSpatialReference*
 VerticalSpatialReference::DEFAULT_VSRS = new VerticalSpatialReference( Units::METERS );
+
+VerticalSpatialReference::GeoidRegistry*
+VerticalSpatialReference::_geoidRegistry = 0L;
 
 // --------------------------------------------------------------------------
 

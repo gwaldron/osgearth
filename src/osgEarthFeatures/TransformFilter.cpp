@@ -70,11 +70,12 @@ TransformFilter::push( Feature* input, const FilterContext& context )
                     _bbox.expandBy( x, y, z );
                 }
             }
-            else if ( _heightOffset != 0.0 )
+            else
             {
                 for( int i=0; i<geom->size(); i++ )
                 {
-                    (*geom)[i].z() += _heightOffset;
+                    if ( _heightOffset != 0.0 )
+                        (*geom)[i].z() += _heightOffset;
                     _bbox.expandBy( (*geom)[i] );
                 }
             }

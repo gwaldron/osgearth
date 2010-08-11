@@ -21,6 +21,8 @@
 #include <string>
 
 #include <osg/Math>
+#include <osg/StateSet>
+#include <osg/Texture2D>
 
 #include <osgEarth/GeoData>
 #include <osgEarth/HeightFieldUtils>
@@ -123,10 +125,13 @@ void Projected::fillPatch(const std::string& filename, Patch* patch,
                           PatchOptions* poptions)
 {
     ProjectedOptions* pjoptions = static_cast<ProjectedOptions*>(poptions);
-    TileKey* key
+    ref_ptr<TileKey> key
         = makeTileKey(static_cast<Projected*>(patch->getPatchSet()), pjoptions);
-    ref_ptr<HeightField> hf = _map->createHeightField(key, true,
+    ref_ptr<HeightField> hf = _map->createHeightField(key.get(), true,
                                                       INTERP_BILINEAR);
+    ref_ptr<GeoImage> gimage;
+    if (!_map->getImageMapLayers().empty())
+        gimage = _map->getImageMapLayers()[0]->createImage(key.get());
     ref_ptr<Patch::Data> data = new Patch::Data;
     int patchDim = _resolution + 1;
     hf = resampleHeightField(hf, patchDim);
@@ -146,6 +151,25 @@ void Projected::fillPatch(const std::string& filename, Patch* patch,
     (*colors)[0] = Vec4(1.0, 1.0, 1.0, 1.0);
     data->colorData.array = colors;
     data->colorData.binding = Geometry::BIND_OVERALL;
+    if (gimage)
+    {
+        Texture2D* tex = new Texture2D();
+        tex->setImage(gimage->getImage());
+        tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
+        tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
+        tex->setFilter(Texture::MIN_FILTER, Texture::LINEAR_MIPMAP_LINEAR);
+        tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
+        StateSet* ss = patch->getOrCreateStateSet();
+        ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
+    }
+    Vec2Array* texCoords = new Vec2Array(patchDim * patchDim);
+    for (int j = 0; j < patchDim; ++j)
+        for (int i = 0; i < patchDim; ++i)
+            (*texCoords)[patchDim * j + i]
+                = Vec2(static_cast<float>(i) / (patchDim - 1),
+                       static_cast<float>(j) / (patchDim - 1));
+    data->texCoordList
+        .push_back(Geometry::ArrayData(texCoords, Geometry::BIND_PER_VERTEX));
     patch->setData(data);
 }
 }

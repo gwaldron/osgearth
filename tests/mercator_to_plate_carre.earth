@@ -15,7 +15,7 @@ Plate Carre (y=lat, x=lon) by applying the <profile> tag.
         <tms_type>google</tms_type>
     </image>
     
-    <loading_policy mode="preemptive"/>
+    <loading_policy mode="standard"/>
     <lighting>false</lighting>
     
 </map>

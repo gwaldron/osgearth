@@ -1,7 +1,8 @@
 <!--
 osgEarth Sample
 
-This example demonstrates a floating cloud layer. Use this together with another .earth file.
+This example demonstrates a floating cloud layer. Use this together with another .earth file,
+e.g.: osgviewer tiff.earth clouds.earth
 -->
 
 <map name="Clouds" type="geocentric">     

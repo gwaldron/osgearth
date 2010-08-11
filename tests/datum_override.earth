@@ -21,4 +21,8 @@ http://spatialreference.org
     <image name="pelican nasa blue marble" driver="tms">
         <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>
+    
+    <engine_properties>
+        <lighting>false</lighting>
+    </engine_properties>
 </map>

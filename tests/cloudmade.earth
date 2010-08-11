@@ -1,7 +1,7 @@
 <!-- 
 osgEarth Sample - TMS
 
-Show how to use CloudMade's TMS interface to pull down OpenStreetMap image tiles.
+Show how to use CloudMade's TMS interface.
 -->
 
 <map name="Cloudmade" type="geocentric">

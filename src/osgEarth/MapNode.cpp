@@ -742,10 +742,13 @@ MapNode::addImageLayer( MapLayer* layer )
         int imageLOD = -1;
 
         // establish the initial image for this tile.
-        if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
-           ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
+        //if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
+        //   ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
+
+        if (_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
+            key->getLevelOfDetail() == 1)
         {
-            // in Standard mode, fetch the image immediately
+            // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
             geoImage = _engine->createValidGeoImage( layer, key.get() );
             imageLOD = key->getLevelOfDetail();
         }

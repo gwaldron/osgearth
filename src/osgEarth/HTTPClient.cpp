@@ -241,10 +241,7 @@ HTTPClient::HTTPClient()
 		userAgent = std::string(userAgentEnv);        
     }
 
-	OE_INFO << "HTTPClient setting userAgent=" << userAgent << std::endl;
-
-	
-
+	OE_DEBUG << "HTTPClient setting userAgent=" << userAgent << std::endl;
 
     curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, userAgent.c_str() );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );

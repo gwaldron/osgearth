@@ -78,17 +78,6 @@ namespace osgEarth
     Config& getDriverConf() { return _driverConf; }
 
     /**
-    * Gets the collection of name/value pairs for the cache. These will be particular
-    * to each cache type implementation.
-    */
-    //Properties& getProperties();
-
-    /**
-    * Sets the collection of name/value pairs assoicated with the cache config.
-    */
-    //const Properties& getProperties() const;
-
-    /**
     * Sets whether the map engine should only pull tiles from the cache and not from
     * an end tile source. Forces a sort of "offline" mode.
     */
@@ -109,8 +98,8 @@ namespace osgEarth
   };
 
   /**
-  * Cache for storing image tiles
-  */
+   * Base class for a Cache that stores image tiles
+   */
   class OSGEARTH_EXPORT Cache : public osg::Object
   {
   public:
@@ -208,6 +197,9 @@ namespace osgEarth
     std::string _mapConfigFilename;
   };
 
+  /**
+   * In-memory image tile cache.
+   */
   class OSGEARTH_EXPORT MemCache : public Cache
   {
   public:
@@ -301,6 +293,9 @@ namespace osgEarth
 
   };
 
+  /**
+   * Base class for any cache that stores image tile files to disk
+   */
   class OSGEARTH_EXPORT DiskCache : public Cache
   {
   public:
@@ -393,6 +388,9 @@ namespace osgEarth
     bool        _writeWorldFiles;       
   };
 
+  /**
+   * Disk-based cache that stores image tiles according the the OSGeo TMS specification.
+   */
   class OSGEARTH_EXPORT TMSCache : public DiskCache
   {
   public:

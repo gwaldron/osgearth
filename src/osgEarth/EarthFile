@@ -29,6 +29,7 @@ namespace osgEarth
 {
     /**
      * Utility for reading and writing an XML .earth file.
+     * TODO: move this into its own plugin.
      */
     class OSGEARTH_EXPORT EarthFile
     {

@@ -368,26 +368,22 @@ namespace osgEarth
     {
     public:
         Geoid();
-        //Geoid( const std::string& name, const GeoHeightField* hf, const Units& units =Units::METERS );
 
-        /** Sets the underlying heightfield data */
-        void setHeightField( const GeoHeightField* hf );
-
-        /** Sets the linear units of the height offset values in this geoid */
-        void setUnits( const Units& value );
-
-    public:
         /** Gets the readable name of this geoid. */
         void setName( const std::string& value );
         const std::string& getName() const { return _name; }
+
+        /** Sets the underlying heightfield data */
+        void setHeightField( const GeoHeightField* hf );
 
         /** Queries to geoid for the height offset at the specified coordinates. */
         float getOffset(
             double lat_deg, double lon_deg, 
             const ElevationInterpolation& interp =INTERP_BILINEAR) const;
 
-        /** Gets the units in which height values are expressed. */
+        /** The linear units in which height values are expressed. */
         const Units& getUnits() const { return _units; }
+        void setUnits( const Units& value );
 
         /** Whether this is a valid object to use */
         bool isValid() const { return _valid; }

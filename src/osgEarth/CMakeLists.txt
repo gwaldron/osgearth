@@ -29,7 +29,6 @@ SET(LIB_PUBLIC_HEADERS
     DriverOptions
     EarthFile
     EarthTerrainTechnique
-	EarthTerrain
     Export
     EGM
     FileUtils

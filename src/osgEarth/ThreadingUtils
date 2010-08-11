@@ -75,7 +75,7 @@ namespace osgEarth { namespace Threading
 
 
     /**
-     * Customer read/write lock. The read/write lock in OSG can unlock mutexes from a different
+     * Custom read/write lock. The read/write lock in OSG can unlock mutexes from a different
      * thread than the one that locked them - this can hang the thread in Windows.
      *
      * Adapted from:

@@ -30,11 +30,6 @@
 #include <map>
 #include <algorithm>
 
-//#ifdef WIN32
-//#  include <windows.h>
-//#endif
-
-
 namespace osgEarth
 {
     // general-purpose name/value pair set.
@@ -93,6 +88,8 @@ namespace osgEarth
       return value ? "true" : "false";
     }
 
+    // A template for defining "optional" class members. An optional member has a default value
+    // and a flag indicating whether the member is "set".
     template<typename T> struct optional {
         optional() : _set(false), _value(T()), _defaultValue(T()) { }
         optional(T defaultValue) : _set(false), _value(defaultValue), _defaultValue(defaultValue) { }

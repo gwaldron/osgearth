@@ -21,6 +21,7 @@
 #include <string>
 
 #include <osg/Math>
+#include <osg/MatrixTransform>
 #include <osg/StateSet>
 #include <osg/Texture2D>
 
@@ -129,6 +130,14 @@ Node* Projected::createPatch(const std::string& filename,
     ProjectedOptions* pjoptions = static_cast<ProjectedOptions*>(poptions);
     ref_ptr<TileKey> key
         = makeTileKey(static_cast<Projected*>(patch->getPatchSet()), pjoptions);
+    const GeoExtent& extent = key->getGeoExtent();
+    double xMin = extent.xMin(), yMin = extent.yMin();
+    double centerX, centerY;
+    extent.getCentroid(centerX, centerY);
+    MatrixTransform* transform = new MatrixTransform;
+    Matrixd mat = Matrixd::translate(centerX, centerY, 0.0);
+    transform->setMatrix(mat);
+    transform->addChild(patch);
     ref_ptr<HeightField> hf = _map->createHeightField(key.get(), true,
                                                       INTERP_BILINEAR);
     ref_ptr<GeoImage> gimage;
@@ -139,17 +148,21 @@ Node* Projected::createPatch(const std::string& filename,
     hf = resampleHeightField(hf, patchDim);
     Vec3Array* verts = new Vec3Array(patchDim * patchDim);
     Vec3Array* normals = new Vec3Array(patchDim * patchDim);
+    Vec2f minCoord(xMin - centerX, yMin - centerY);
+    float xInt = hf->getXInterval(), yInt = hf->getYInterval();
     for (int j = 0; j < patchDim; ++j)
         for (int i = 0; i < patchDim; ++i)
         {
-            (*verts)[patchDim * j + i] = hf->getVertex(i, j);
+            (*verts)[patchDim * j + i] = Vec3(minCoord.x() + xInt * i,
+                                              minCoord.y() + yInt * j,
+                                              hf->getHeight(i, j));
             (*normals)[patchDim * j + i] = hf->getNormal(i, j);
         }
     data->vertexData.array = verts;
     data->vertexData.binding = Geometry::BIND_PER_VERTEX;
     data->normalData.array = normals;
     data->normalData.binding = Geometry::BIND_PER_VERTEX;
-        Vec4Array* colors = new Vec4Array(1);
+    Vec4Array* colors = new Vec4Array(1);
     (*colors)[0] = Vec4(1.0, 1.0, 1.0, 1.0);
     data->colorData.array = colors;
     data->colorData.binding = Geometry::BIND_OVERALL;
@@ -173,6 +186,6 @@ Node* Projected::createPatch(const std::string& filename,
     data->texCoordList
         .push_back(Geometry::ArrayData(texCoords, Geometry::BIND_PER_VERTEX));
     patch->setData(data);
-    return patch;
+    return transform;
 }
 }

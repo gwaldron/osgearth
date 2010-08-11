@@ -227,7 +227,7 @@ void Patch::traverse(NodeVisitor& nv)
     float epsilon[4];
     int res[4]; // Resolution of each edge / trile.
     // Get error value for edges
-    Vec3 eye = nv.getEyePoint();
+    Vec3 eye = nv.getViewPoint();
     for (int i = 0; i < 4; ++i)
     {
         epsilon[i] = getEdgeError(eye, i);

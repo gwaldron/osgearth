@@ -36,6 +36,7 @@ ADD_SUBDIRECTORY(osgearth_elevation)
 ADD_SUBDIRECTORY(osgearth_loadmaps)
 ADD_SUBDIRECTORY(osgearth_earthfile)
 ADD_SUBDIRECTORY(osgearth_features)
-ADD_SUBDIRECTORY(osgearth_symbology)
 ADD_SUBDIRECTORY(osgearth_contour)
 ADD_SUBDIRECTORY(osgearth_version)
+
+#ADD_SUBDIRECTORY(osgearth_symbology)

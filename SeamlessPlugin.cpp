@@ -24,11 +24,15 @@
 #include <osgEarth/EarthFile>
 #include <osgEarth/Profile>
 
+#include <seamless/Projected>
+
 #include <string>
 #include <iostream>
 
 using namespace osgEarth;
 
+namespace seamless
+{
 class SeamlessPlugin : public osgDB::ReaderWriter
 {
 public:
@@ -69,7 +73,8 @@ public:
             std::cout << "LOD for 10m resolution: "
                       << profile->getLevelOfDetailForHorizResolution(10, 128)
                       << "\n";
-            return ReadResult::FILE_NOT_FOUND;
+            Projected* projected = new Projected(map);
+            return projected->createPatchGroup("bar.tengpatch");
 
         }
         else
@@ -80,3 +85,4 @@ public:
 };
 
 REGISTER_OSGPLUGIN(engine_seamless, SeamlessPlugin)
+}

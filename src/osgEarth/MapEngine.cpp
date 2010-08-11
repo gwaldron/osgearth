@@ -869,9 +869,13 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
         plod->setCenter( bs.center() );
         plod->addChild( tile, min_range, max_range );
 
-        if ( key->getLevelOfDetail() < this->getEngineProperties().maxLOD().value() && validData )
+        std::string filename = createURI( map->getId(), key );
+
+        //Only add the next tile if it hasn't been blacklisted
+        bool isBlacklisted = osgEarth::Registry::instance()->isBlacklisted( filename );
+        if (!isBlacklisted && key->getLevelOfDetail() < this->getEngineProperties().maxLOD().value() && validData )
         {
-            plod->setFileName( 1, createURI( map->getId(), key ) );
+            plod->setFileName( 1, filename  );
             plod->setRange( 1, 0.0, min_range );
         }
         else

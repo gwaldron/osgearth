@@ -16,15 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include "PatchGroup"
+#include <seamless/PatchGroup>
 
 #include <osg/Array>
 #include <osg/Geometry>
 #include <osg/Notify>
 #include <osgDB/Registry>
 
-#include "Patch"
-#include "PatchSet"
+#include <seamless/Patch>
+#include <seamless/PatchSet>
 
 namespace seamless
 {

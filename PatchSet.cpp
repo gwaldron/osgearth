@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include "PatchSet"
+#include <seamless/PatchSet>
 
 #include <osg/Math>
 
-#include "Patch"
-#include "PatchGroup"
+#include <seamless/Patch>
+#include <seamless/PatchGroup>
 
 namespace seamless
 {

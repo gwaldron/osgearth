@@ -26,8 +26,8 @@
 #include <osg/PrimitiveSet>
 #include <osg/ref_ptr>
 
-#include "Patch"
-#include "PatchGroup"
+#include <seamless/Patch>
+#include <seamless/PatchGroup>
 
 namespace seamless
 {

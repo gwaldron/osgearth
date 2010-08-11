@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include "Patch"
-#include "PatchSet"
+#include <seamless/Patch>
+#include <seamless/PatchSet>
 
 #include <algorithm>
 #include <iterator>

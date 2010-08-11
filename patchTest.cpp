@@ -36,7 +36,7 @@
 #include <osg/Vec3>
 #include <osg/Vec4>
 
-#include "PatchSet"
+#include <seamless/PatchSet>
 
 using namespace osg;
 using namespace seamless;

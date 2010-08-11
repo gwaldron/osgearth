@@ -346,6 +346,8 @@ LabelControl::draw( const ControlContext& cx, DrawableList& out )
         osg::BoundingBox bbox = t->getTextBB();
         t->setPosition( osg::Vec3( _renderPos.x(), vph - _renderPos.y(), 0 ) );
         out.push_back( _drawable.get() );
+
+        Control::draw( cx, out );
     }
 }
 

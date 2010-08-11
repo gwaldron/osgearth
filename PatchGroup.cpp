@@ -210,7 +210,7 @@ public:
                 Vec2d ll = lowerLeft + componentMultiply(Vec2d(x, y), range);
                 pgroupOptions->setPatchExtents(ll, ll + newRange);
                 pgroupOptions->setPatchLevel(poptions->getPatchLevel() + 1);
-                Node* pgroup = pset->createPatch(fileName, pgroupOptions);
+                Node* pgroup = pset->createPatchGroup(fileName, pgroupOptions);
                 result->addChild(pgroup);
             }
         }

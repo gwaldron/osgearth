@@ -40,8 +40,8 @@ class Projected : public PatchSet
 {
 public:
     Projected(osgEarth::Map* map);
-    virtual void fillPatch(const std::string& filename, Patch* patch,
-                           PatchOptions* poptions);
+    virtual osg::Node* createPatch(const std::string& filename,
+                                   PatchOptions* poptions);
     osgEarth::Map* getMap() const { return _map.get(); }
 protected:
     osg::ref_ptr<osgEarth::Map> _map;

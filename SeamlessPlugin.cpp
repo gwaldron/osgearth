@@ -74,7 +74,7 @@ public:
                       << profile->getLevelOfDetailForHorizResolution(10, 128)
                       << "\n";
             Projected* projected = new Projected(map);
-            return projected->createPatchGroup("bar.tengpatch");
+            return projected->createPatchSetGraph("bar.tengpatch");
 
         }
         else

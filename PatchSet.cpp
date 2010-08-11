@@ -59,14 +59,12 @@ PatchSet::~PatchSet()
 {
 }
 
-Node* PatchSet::createPatch(const std::string& filename,
-                            PatchOptions* poptions)
+Node* PatchSet::createPatchGroup(const std::string& filename,
+                                 PatchOptions* poptions)
 {
     PatchGroup* pgroup = new PatchGroup;
     pgroup->setDatabaseOptions(poptions);
-    Patch* patch = new Patch;
-    patch->setPatchSet(this);
-    fillPatch(filename, patch, poptions);
+    Node* patch = createPatch(filename, poptions);
     BoundingSphere bsphere = patch->getBound();
     pgroup->setCenter(bsphere.center());
     if (poptions->getPatchLevel() >= _maxLevel)
@@ -84,9 +82,10 @@ Node* PatchSet::createPatch(const std::string& filename,
 
 // Default implementation that creates a flat 81920m x 81920m plane.
 
-void PatchSet::fillPatch(const std::string& filename, Patch* patch,
-    PatchOptions* poptions)
+Node* PatchSet::createPatch(const std::string& filename, PatchOptions* poptions)
 {
+    Patch* patch = new Patch;
+    patch->setPatchSet(this);
     Vec2d ll, ur;
     poptions->getPatchExtents(ll, ur);
     Vec2d range = (ur - ll);
@@ -112,12 +111,13 @@ void PatchSet::fillPatch(const std::string& filename, Patch* patch,
     data->colorData.array = colors;
     data->colorData.binding = Geometry::BIND_OVERALL;
     patch->setData(data);
+    return patch;
 }
 
-Node* PatchSet::createPatchGroup(const std::string& filename)
+Node* PatchSet::createPatchSetGraph(const std::string& filename)
 {
     PatchOptions* poptions = osg::clone(_patchOptionsPrototype.get());
-    return createPatch(filename, poptions);
+    return createPatchGroup(filename, poptions);
 }
 
 double PatchSet::calcPrecisionFactor(int pixelError, double horiz_fov_deg,

@@ -53,11 +53,11 @@ public:
     PatchOptions* getPatchOptionsPrototype() const;
     void setMaxLevel(int maxLevel) { _maxLevel = maxLevel; }
     int getMaxLevel() const { return _maxLevel; }
+    virtual osg::Node* createPatchGroup(const std::string& filename,
+                                        PatchOptions* poptions);
     virtual osg::Node* createPatch(const std::string& filename,
                                    PatchOptions* poptions);
-    virtual void fillPatch(const std::string& filename, Patch* patch,
-                           PatchOptions* poptions);
-    virtual osg::Node* createPatchGroup(const std::string& filename);
+    virtual osg::Node* createPatchSetGraph(const std::string& filename);
     friend class Patch;
     /** Get the index (into attribute array) for vertex.
         @param x x grid coordinate

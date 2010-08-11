@@ -157,7 +157,7 @@ int main(int argc, char** argv)
         sceneRoot->addChild(loadedModel.get());
     }
     ref_ptr<PatchSet> patchSet = new PatchSet;
-    ref_ptr<Node> pg = patchSet->createPatchGroup("bar.tengpatch");
+    ref_ptr<Node> pg = patchSet->createPatchSetGraph("bar.tengpatch");
 
     StateSet* ss = pg->getOrCreateStateSet();
     Material* mat = new Material;

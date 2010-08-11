@@ -121,9 +121,11 @@ Projected::Projected(Map* map)
     }
 }
 
-void Projected::fillPatch(const std::string& filename, Patch* patch,
-                          PatchOptions* poptions)
+Node* Projected::createPatch(const std::string& filename,
+                             PatchOptions* poptions)
 {
+    Patch* patch = new Patch;
+    patch->setPatchSet(this);
     ProjectedOptions* pjoptions = static_cast<ProjectedOptions*>(poptions);
     ref_ptr<TileKey> key
         = makeTileKey(static_cast<Projected*>(patch->getPatchSet()), pjoptions);
@@ -171,5 +173,6 @@ void Projected::fillPatch(const std::string& filename, Patch* patch,
     data->texCoordList
         .push_back(Geometry::ArrayData(texCoords, Geometry::BIND_PER_VERTEX));
     patch->setData(data);
+    return patch;
 }
 }

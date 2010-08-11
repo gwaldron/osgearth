@@ -167,7 +167,8 @@ namespace osgEarth
         /**
          * Gest the vertical spatial reference system underlying this profile.
          */
-        const VerticalSpatialReference* getVerticalSRS() const;
+        const VerticalSpatialReference* getVerticalSRS() const { return _vsrs.get(); }
+        void setVerticalSRS( const VerticalSpatialReference* value ) { _vsrs = value; }
 
         /**
          * Gets the profile type

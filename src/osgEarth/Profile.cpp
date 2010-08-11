@@ -322,11 +322,6 @@ Profile::getSRS() const {
     return _extent.getSRS();
 }
 
-const VerticalSpatialReference*
-Profile::getVerticalSRS() const {
-    return _vsrs.get();
-}
-
 const GeoExtent&
 Profile::getExtent() const {
     return _extent;

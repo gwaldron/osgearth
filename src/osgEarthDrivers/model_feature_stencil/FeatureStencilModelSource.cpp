@@ -424,6 +424,7 @@ public:
         // Transform them into the map's SRS, localizing the verts along the way:
         TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS() );
         xform.setMakeGeocentric( isGeocentric );
+        xform.setLocalizeCoordinates( !isGeocentric );
         filterContext = xform.push( featureList, filterContext );
 
         if ( isGeocentric )

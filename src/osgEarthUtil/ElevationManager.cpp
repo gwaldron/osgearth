@@ -211,11 +211,12 @@ ElevationManager::getElevation(double x, double y,
             return false;
         }
 
-        osgTerrain::Locator* locator = GeoLocator::createForKey( key.get(), _map.get() );
+        GeoLocator* locator = GeoLocator::createForKey( key.get(), _map.get() );
 
-        tile = new osgTerrain::TerrainTile();
-        tile->setTileID( tileId );
-        tile->setLocator( locator );
+        //tile = new osgTerrain::TerrainTile();
+        tile = new VersionedTile(key, locator);
+        //tile->setTileID( tileId );
+        //tile->setLocator( locator );
 
         osgTerrain::HeightFieldLayer* layer = new osgTerrain::HeightFieldLayer( hf.get() );
         layer->setLocator( locator );

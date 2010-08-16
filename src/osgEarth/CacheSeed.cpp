@@ -29,6 +29,12 @@ void CacheSeed::seed( Map* map )
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
+    if (!map->getCache())
+    {
+        OE_WARN << "Warning:  Map does not have a cache defined, please define a cache." << std::endl;
+        return;
+    }
+
     osg::ref_ptr<MapEngine> engine = new MapEngine(); //map->createMapEngine();
 
     std::vector< osg::ref_ptr<TileKey> > keys;
@@ -53,7 +59,16 @@ void CacheSeed::seed( Map* map )
 		MapLayer* layer = i->get();
         TileSource* src = i->get()->getTileSource();
 
-        if ( !src->supportsPersistentCaching() )
+        if (layer->cacheOnly().get())
+        {
+            OE_WARN << "Warning:  Cannot seed b/c Layer \"" << layer->getName() << "\" is cache only." << std::endl;
+            return;
+        }
+        else if (!src)
+        {
+            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource." << std::endl;
+        }
+        else if ( !src->supportsPersistentCaching() )
         {
             OE_WARN << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
         }
@@ -77,7 +92,16 @@ void CacheSeed::seed( Map* map )
 		MapLayer* layer = i->get();
         TileSource* src = i->get()->getTileSource();
 
-        if ( !src->supportsPersistentCaching() )
+        if (layer->cacheOnly().get())
+        {
+            OE_WARN << "Warning:  Cannot seed b/c Layer \"" << layer->getName() << "\" is cache only." << std::endl;
+            return;
+        }
+        else if (!src)
+        {
+            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource." << std::endl;
+        }
+        else if ( !src->supportsPersistentCaching() )
         {
             OE_WARN << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
         }

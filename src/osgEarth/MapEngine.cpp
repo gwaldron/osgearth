@@ -637,6 +637,12 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     if ( hfMapLayers.size() > 0 )
     {
         hf = map->createHeightField( key, false, _engineProps.elevationInterpolation().value());
+        //If we are on the first LOD and we couldn't get a heightfield tile, just create an empty one.  Otherwise you can run into the situation
+        //where you could have an inset heightfield on one hemisphere and the whole other hemisphere won't show up.
+        if (map->isGeocentric() && key->getLevelOfDetail() <= 1 && !hf.valid())
+        {
+            hf = createEmptyHeightField( key );
+        }
         hasElevation = hf.valid();
     }
 
@@ -651,7 +657,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
-        OE_DEBUG << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        OE_NOTICE << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         validData = false;
 
         //If we're not asked to fallback on previous LOD's and we have no data, return NULL

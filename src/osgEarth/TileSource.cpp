@@ -315,10 +315,10 @@ TileSource::getProfile() const
 unsigned int
 TileSource::getMaxDataLevel() const
 {
-    //If we have no data extents, just use INT_MAX
-    if (_dataExtents.size() == 0) return INT_MAX;
+    //If we have no data extents, just use a reasonably high number
+    if (_dataExtents.size() == 0) return 35;
 
-    unsigned int maxDataLevel = INT_MIN;
+    unsigned int maxDataLevel = 0;
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
         if (itr->getMaxLevel() > maxDataLevel) maxDataLevel = itr->getMaxLevel();

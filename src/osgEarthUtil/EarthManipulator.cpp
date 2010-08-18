@@ -1314,8 +1314,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
         osg::Matrixd rotation_matrix = osg::Matrixd::translate(0.0,0.0,-_distance)*
                                        matrix*
                                        osg::Matrixd::translate(-_center);
-
-        _rotation = rotation_matrix.getRotate().inverse() * _centerRotation.inverse();	
+        _rotation = rotation_matrix.getRotate() * _centerRotation.inverse();
         hitFound = true;
     }
 

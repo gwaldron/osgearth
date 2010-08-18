@@ -1,4 +1,3 @@
-/* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2009 Pelican Ventures, Inc.
  * http://osgearth.org
@@ -24,6 +23,7 @@
 #include <osgEarth/EarthFile>
 #include <osgEarth/Profile>
 
+#include <seamless/Geographic>
 #include <seamless/Projected>
 
 #include <string>
@@ -55,11 +55,6 @@ public:
         if (ef.readXML(earthFile))
         {
             Map* map = ef.getMap();
-            if (map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED)
-            {
-                OSG_WARN << "map is not projected\n";
-                return ReadResult::FILE_NOT_FOUND;
-            }
             const Profile* profile = map->getProfile();
             if (!profile)
             {
@@ -73,8 +68,22 @@ public:
             std::cout << "LOD for 10m resolution: "
                       << profile->getLevelOfDetailForHorizResolution(10, 128)
                       << "\n";
-            Projected* projected = new Projected(map);
-            return projected->createPatchSetGraph("bar.tengpatch");
+            PatchSet* patchSet;
+            if (map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC)
+            {
+                patchSet = new Geographic(map);
+            }
+            else if (map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED)
+            {
+                patchSet = new Projected(map);
+            }
+            else
+            {
+                OSG_WARN << "map is not projected\n";
+                return ReadResult::FILE_NOT_FOUND;
+
+            }
+            return patchSet->createPatchSetGraph("bar.tengpatch");
 
         }
         else

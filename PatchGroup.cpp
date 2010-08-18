@@ -211,22 +211,9 @@ public:
             return osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;
         }
         PatchSet* pset = poptions->getPatchSet();
-        poptions->getPatchExtents(lowerLeft, upperRight);
-        Vec2d range = upperRight - lowerLeft;
-        Vec2d newRange = range * .5;
         Group* result = new Group;
-        for (double x = 0; x < 1.0; x += .5)
-        {
-            for (double y = 0; y < 1.0; y += .5)
-            {
-                PatchOptions* pgroupOptions = osg::clone(poptions);
-                Vec2d ll = lowerLeft + componentMultiply(Vec2d(x, y), range);
-                pgroupOptions->setPatchExtents(ll, ll + newRange);
-                pgroupOptions->setPatchLevel(poptions->getPatchLevel() + 1);
-                Node* pgroup = pset->createPatchGroup(fileName, pgroupOptions);
-                result->addChild(pgroup);
-            }
-        }
+        for (int i = 0; i < 4; ++i)
+            result->addChild(pset->createChild(poptions, i));
         return result;
     }
 };

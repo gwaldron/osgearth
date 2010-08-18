@@ -258,14 +258,13 @@ BoundingSphere Patch::computeBound() const
     bb.init();
     for (int res = 0; res < 2; ++res)
         for (int i = 0; i < 4; ++i)
-            bb.expandBy(_trile[res][i]->getBound());
+            bb.expandBy(_trile[res][i]->getBoundingBox());
+    for (int strip = 0; strip < 4; ++strip)
+        for (int i = 0; i < 4; ++i)
+            bb.expandBy(_strip[strip][i]->getBoundingBox());
     if (!bb.valid())
         return bsphere;
-    bsphere._center = bb.center();
-    bsphere._radius = 0.0f;
-    for (int res = 0; res < 2; ++res)
-        for (int i = 0; i < 4; ++i)
-            bsphere.expandRadiusBy(_trile[res][i]->getBound());
+    bsphere.expandBy(bb);
     return bsphere;
 }
 

@@ -33,7 +33,6 @@ PatchSet::PatchSet(int resolution, PatchOptions* poptionsPrototype)
                              : new PatchOptions)
 {
     setPrecisionFactor(4);
-    _patchOptionsPrototype->setPatchSet(this);
     initPrimitiveSets();
 }
 
@@ -117,6 +116,7 @@ Node* PatchSet::createPatch(const std::string& filename, PatchOptions* poptions)
 Node* PatchSet::createPatchSetGraph(const std::string& filename)
 {
     PatchOptions* poptions = osg::clone(_patchOptionsPrototype.get());
+    poptions->setPatchSet(this);
     return createPatchGroup(filename, poptions);
 }
 
@@ -286,4 +286,22 @@ void PatchSet::initPrimitiveSets()
     }
 }
 
+osg::Node* PatchSet::createChild(const PatchOptions* parentOptions, int childNum)
+{
+    Vec2d lowerLeft(0.0, 1.0);
+    Vec2d upperRight(1.0, 1.0);
+
+    parentOptions->getPatchExtents(lowerLeft, upperRight);
+    Vec2d range = upperRight - lowerLeft;
+    Vec2d newRange = range * .5;
+    Group* result = new Group;
+    double x = (childNum % 2) * .5;
+    double y = (childNum / 2) * .5;
+    PatchOptions* pgroupOptions = osg::clone(parentOptions);
+    Vec2d ll = lowerLeft + componentMultiply(Vec2d(x, y), range);
+    pgroupOptions->setPatchExtents(ll, ll + newRange);
+    pgroupOptions->setPatchLevel(parentOptions->getPatchLevel() + 1);
+    Node* pgroup = createPatchGroup("foobies.tengpatch", pgroupOptions);
+    return pgroup;
+}
 }

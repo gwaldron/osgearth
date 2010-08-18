@@ -42,10 +42,13 @@ public:
     {
     }
     ProjectedOptions(string& str)
+        : PatchOptions(str)
     {
     }
     ProjectedOptions(const ProjectedOptions& rhs,
                      const CopyOp& copyop = CopyOp::SHALLOW_COPY)
+        : PatchOptions(rhs, copyop),
+          _tileKey(static_cast<TileKey*>(copyop(rhs._tileKey.get())))
     {
 
     }

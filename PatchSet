@@ -37,7 +37,7 @@ public:
     PatchSet(int resolution = 128, PatchOptions* poptionsPrototype = 0);
     PatchSet(const PatchSet& rhs,
              const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
-    META_Object(teng, PatchSet);
+    META_Object(seamless, PatchSet);
     int getResolution() const { return _resolution; }
     void setPrecisionFactor(double factor) { _precisionFactor = factor; }
     double getPrecisionFactor() const { return _precisionFactor; }
@@ -49,8 +49,14 @@ public:
         setPrecisionFactor(calcPrecisionFactor(pixelError, horiz_fov_deg,
                                                screenRes, dpi));
     }
-    void setPatchOptionsPrototype(PatchOptions* proto);
-    PatchOptions* getPatchOptionsPrototype() const;
+    void setPatchOptionsPrototype(PatchOptions* proto)
+    {
+        _patchOptionsPrototype = proto;
+    }
+    PatchOptions* getPatchOptionsPrototype() const
+    {
+        return _patchOptionsPrototype;
+    }
     void setMaxLevel(int maxLevel) { _maxLevel = maxLevel; }
     int getMaxLevel() const { return _maxLevel; }
     virtual osg::Node* createPatchGroup(const std::string& filename,
@@ -58,6 +64,7 @@ public:
     virtual osg::Node* createPatch(const std::string& filename,
                                    PatchOptions* poptions);
     virtual osg::Node* createPatchSetGraph(const std::string& filename);
+    virtual osg::Node* createChild(const PatchOptions* parentOptions, int childNum);
     friend class Patch;
     /** Get the index (into attribute array) for vertex.
         @param x x grid coordinate

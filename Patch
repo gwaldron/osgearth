@@ -36,7 +36,7 @@ public:
     Patch(const Patch& rhs,
           const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
 
-    META_Node(teng, Patch);
+    META_Node(seamless, Patch);
 
     virtual void traverse(osg::NodeVisitor& nv);
     virtual osg::BoundingSphere computeBound() const;
@@ -54,7 +54,7 @@ public:
         Data(const Data&,
              const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
         ~Data() {}
-        META_Object(teng, Patch::Data);
+        META_Object(seamless, Patch::Data);
         void getGeometryAttributes(const osg::Geometry* geom);
         void setGeometryAttributes(osg::Geometry* geom);
         osg::Geometry::ArrayData vertexData;

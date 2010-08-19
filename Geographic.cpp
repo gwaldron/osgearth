@@ -10,6 +10,7 @@
 #include <osg/Math>
 #include <osg/Texture2D>
 
+#include <osgEarth/ImageUtils>
 #include <osgEarth/Notify>
 
 #include <seamless/QSC>
@@ -97,7 +98,6 @@ Node* Geographic::createPatchSetGraph(const std::string& filename)
 
 namespace
 {
-typedef vector<ref_ptr<GeoHeightField> > GeoHeightFieldList;
 
 GeoHeightField*
 mergeHeightFields(const GeoExtent& targetExtent, const GeoHeightFieldList& hfs)
@@ -118,11 +118,11 @@ mergeHeightFields(const GeoExtent& targetExtent, const GeoHeightFieldList& hfs)
     {
         HeightField* src = hfs[i]->getHeightField();
         int targetColumn
-            = floor(hfs[i]->getGeoExtent().xMin() / targetExtent.width()
-                    * (targetCols - 1) + .5);
+            = floor((hfs[i]->getGeoExtent().xMin() - targetExtent.xMin())
+                    / targetExtent.width() * (targetCols - 1) + .5);
         int targetRow
-            = floor(hfs[i]->getGeoExtent().yMin() / targetExtent.height()
-                    * (targetRows - 1) + .5);
+            = floor((hfs[i]->getGeoExtent().yMin() - targetExtent.yMin())
+                    / targetExtent.height() * (targetRows - 1) + .5);
         for (int sj = 0, tj = targetRow;
              sj < src->getNumRows() && tj < targetRows;
              ++sj, ++tj)
@@ -134,6 +134,35 @@ mergeHeightFields(const GeoExtent& targetExtent, const GeoHeightFieldList& hfs)
         }
     }
     return geo;
+}
+
+GeoImage*
+mergeImages(const GeoExtent& targetExtent, const GeoImageList& imgs)
+{
+    Image* targetImage = new Image;
+    const Image* proto = imgs[0]->getImage();
+    targetImage->setInternalTextureFormat(proto->getInternalTextureFormat());
+    int numRows = proto->s() * 2;
+    int numCols = proto->t() * 2;
+    targetImage->allocateImage(numRows, numCols, proto->r(),
+                               proto->getPixelFormat(), proto->getDataType(),
+                               proto->getPacking());
+    for (GeoImageList::const_iterator itr = imgs.begin(),
+             end = imgs.end();
+         itr != end;
+         ++itr)
+    {
+        const GeoExtent& srcExtent = (*itr)->getExtent();
+        int dstx
+            = floor((srcExtent.xMin() - targetExtent.xMin()) / targetExtent.width()
+                    * numCols + .5);
+        int dsty
+            = floor((srcExtent.yMin() - targetExtent.yMin()) / targetExtent.height()
+                    * numRows + .5);
+        ImageUtils::copyAsSubImage((*itr)->getImage(), targetImage,
+                                   dstx, dsty);
+    }
+    return new GeoImage(targetImage, targetExtent);
 }
 }
 // Create the geometry for a patch
@@ -264,46 +293,48 @@ Node* Geographic::createPatch(const std::string& filename,
     GeographicOptions* goptions = static_cast<GeographicOptions*>(poptions);
     const TileKey* patchKey = goptions->getTileKey();
     int face = QscProfile::getFace(patchKey);
-    TileKeyList mapKeys;        // keep in cube srs?
+    const GeoExtent& keyExtent = patchKey->getGeoExtent();
+    ref_ptr<GeoHeightField> hf;
+    ref_ptr<GeoImage> gimage;
     // Split up patch keys that cross the Date Line. The only patches
     // that do are the the equatorial face with center at (-180, 0),
     // and the poles faces.
-    const GeoExtent& keyExtent = patchKey->getGeoExtent();
-    ref_ptr<GeoHeightField> hf;
     bool crossesDateLine = ((face == 2 || face == 4 || face == 5)
                             && keyExtent.xMax() - keyExtent.xMin() > .5);
     if (crossesDateLine)
     {
         GeoHeightFieldList hfs;
+        GeoImageList gis;
         for (int child = 0; child < 4; ++child)
         {
             ref_ptr<TileKey> subCubeKey = patchKey->createSubkey(child);
             hfs.push_back(getGeoHeightField(_map, subCubeKey, _resolution));
+            if (!_map->getImageMapLayers().empty())
+                gis.push_back(_map->getImageMapLayers()[0]
+                              ->createImage(subCubeKey));
         }
         hf = mergeHeightFields(patchKey->getGeoExtent(), hfs);
+        if (!gis.empty())
+            gimage = mergeImages(patchKey->getGeoExtent(), gis);
     }
     else
     {
         hf = getGeoHeightField(_map, patchKey, _resolution);
-    }
-    MatrixTransform* transform = createPatchAux(patchKey, hf.get());
-    if (!crossesDateLine)
-    {
-        ref_ptr<GeoImage> gimage;
         if (!_map->getImageMapLayers().empty())
             gimage = _map->getImageMapLayers()[0]->createImage(patchKey);
-        if (gimage)
-        {
-            Texture2D* tex = new Texture2D();
-            tex->setImage(gimage->getImage());
-            tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
-            tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
-            tex->setFilter(Texture::MIN_FILTER, Texture::LINEAR_MIPMAP_LINEAR);
-            tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
-            Patch* patch = dynamic_cast<Patch*>(transform->getChild(0));
-            StateSet* ss = patch->getOrCreateStateSet();
-            ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
-        }
+    }
+    MatrixTransform* transform = createPatchAux(patchKey, hf.get());
+    if (gimage)
+    {
+        Texture2D* tex = new Texture2D();
+        tex->setImage(gimage->getImage());
+        tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
+        tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
+        tex->setFilter(Texture::MIN_FILTER, Texture::LINEAR_MIPMAP_LINEAR);
+        tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
+        Patch* patch = dynamic_cast<Patch*>(transform->getChild(0));
+        StateSet* ss = patch->getOrCreateStateSet();
+        ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
     }
     return transform;
 }

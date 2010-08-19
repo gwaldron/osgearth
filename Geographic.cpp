@@ -1,6 +1,7 @@
 #include <seamless/Geographic>
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <vector>
 
@@ -93,11 +94,51 @@ Node* Geographic::createPatchSetGraph(const std::string& filename)
     return csn;
 }
 
+namespace
+{
+typedef vector<ref_ptr<GeoHeightField> > GeoHeightFieldList;
+
+GeoHeightField*
+mergeHeightFields(const GeoExtent& targetExtent, const GeoHeightFieldList& hfs)
+{
+    if (hfs.size() != 4)
+    {
+        OE_FATAL << "mergeHeightFields expected 4 height fields\n";
+        return 0;
+    }
+    // List is in tile subkey quadrant order.
+    // Assume the height fields all have the same dimensions
+    int targetCols = hfs[0]->getHeightField()->getNumColumns() * 2 - 1;
+    int targetRows = hfs[0]->getHeightField()->getNumRows() * 2 - 1;
+    HeightField* targethf = new HeightField;
+    targethf->allocate(targetCols, targetRows);
+    GeoHeightField* geo = new GeoHeightField(targethf, targetExtent, 0);
+    for (int i = 0; i < 4; ++i)
+    {
+        HeightField* src = hfs[i]->getHeightField();
+        int targetColumn
+            = floor(hfs[i]->getGeoExtent().xMin() / targetExtent.width()
+                    * (targetCols - 1) + .5);
+        int targetRow
+            = floor(hfs[i]->getGeoExtent().yMin() / targetExtent.height()
+                    * (targetRows - 1) + .5);
+        for (int sj = 0, tj = targetRow;
+             sj < src->getNumRows() && tj < targetRows;
+             ++sj, ++tj)
+        {
+            for (int si = 0, ti = targetColumn;
+             si < src->getNumColumns() && ti < targetCols;
+             ++si, ++ti)
+                targethf->setHeight(ti, tj, src->getHeight(si, sj));
+        }
+    }
+    return geo;
+}
+}
 // Create the geometry for a patch
 MatrixTransform* Geographic::createPatchAux(const TileKey* key,
-                                            TileKeyList& keyList)
+                                            const GeoHeightField* hf)
 {
-    typedef vector<ref_ptr<GeoHeightField> > GeoHeightFieldList;
     Patch* patch = new Patch;
     patch->setPatchSet(this);
     const GeoExtent& patchExtent = key->getGeoExtent();
@@ -105,21 +146,8 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
     patchExtent.getCentroid(centx, centy);
     Vec3d patchCenter = toModel(centx, centy, 0);
     Matrixd patchMat = Matrixd::translate(patchCenter);
-    GeoHeightFieldList hfs;
-    for (TileKeyList::iterator itr = keyList.begin(), end = keyList.end();
-         itr != end;
-        ++itr)
-    {
-        const TileKey* key = itr->get();
-        HeightField* hf = _map->createHeightField(key, true, INTERP_BILINEAR);
-        if  (!hf)
-            hf = key->getProfile()->getVerticalSRS()
-                ->createReferenceHeightField(key->getGeoExtent(),
-                                             _resolution + 1, _resolution + 1);
-        hfs.push_back(new GeoHeightField(hf, key->getGeoExtent(), 0));
-    }
     const SpatialReference* srs = key->getProfile()->getSRS();
-    const SpatialReference* mapSrs = _map->getProfile()->getSRS();
+    const SpatialReference* geoSrs = srs->getGeographicSRS();
     // Populate cell
     ref_ptr<Patch::Data> data = new Patch::Data;
     int patchDim = _resolution + 1;
@@ -135,21 +163,11 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
             Vec2d cubeCoord(patchExtent.xMin() + i * xInc,
                             patchExtent.yMin() + j * yInc);
             double lon, lat;
-            srs->transform(cubeCoord.x(), cubeCoord.y(), mapSrs, lon, lat);
-            bool found = false;
+            srs->transform(cubeCoord.x(), cubeCoord.y(), geoSrs, lon, lat);
             float elevation;
-            for (GeoHeightFieldList::iterator itr = hfs.begin(),
-                     end = hfs.end();
-                 itr != end;
-                ++itr)
-            {
-                if ((*itr)->getElevation(mapSrs, lon, lat, INTERP_BILINEAR, 0,
-                                         elevation))
-                {
-                    found = true;
-                    break;
-                }
-            }
+            
+            bool found = hf->getElevation(srs, cubeCoord.x(), cubeCoord.y(),
+                                          INTERP_BILINEAR, 0, elevation);
             // Into ec coordinates
             if (!found)
             {
@@ -223,35 +241,50 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
     return result;
 }
 
-        
+namespace
+{
+// Get a height field from the map, or an empty one if there is no
+// data for this tile.
+GeoHeightField* getGeoHeightField(Map* map, const TileKey* key, int resolution)
+{
+    HeightField* hf = map->createHeightField(key, true, INTERP_BILINEAR);
+    if  (!hf)
+        hf = key->getProfile()->getVerticalSRS()
+            ->createReferenceHeightField(key->getGeoExtent(),
+                                         resolution + 1, resolution + 1);
+    return new GeoHeightField(hf, key->getGeoExtent(),
+                              key->getProfile()->getVerticalSRS());
+}
+}
+
 Node* Geographic::createPatch(const std::string& filename,
                               PatchOptions* poptions)
 {
     GeographicOptions* goptions = static_cast<GeographicOptions*>(poptions);
     const TileKey* patchKey = goptions->getTileKey();
     int face = QscProfile::getFace(patchKey);
-    TileKeyList mapKeys;
+    TileKeyList mapKeys;        // keep in cube srs?
     // Split up patch keys that cross the Date Line. The only patches
-    // that do that are the top-level patches for the equatorial patch
-    // with center at (-180, 0) and the poles.
+    // that do are the the equatorial face with center at (-180, 0),
+    // and the poles faces.
     const GeoExtent& keyExtent = patchKey->getGeoExtent();
+    ref_ptr<GeoHeightField> hf;
     if ((face == 2 || face == 4 || face == 5)
         && keyExtent.xMax() - keyExtent.xMin() > .5)
     {
+        GeoHeightFieldList hfs;
         for (int child = 0; child < 4; ++child)
         {
-            TileKeyList subMapKeys;
             ref_ptr<TileKey> subCubeKey = patchKey->createSubkey(child);
-            _map->getProfile()->getIntersectingTiles(subCubeKey.get(),
-                                                     subMapKeys);
-            copy(subMapKeys.begin(), subMapKeys.end(), back_inserter(mapKeys));
+            hfs.push_back(getGeoHeightField(_map, subCubeKey, _resolution));
         }
+        hf = mergeHeightFields(patchKey->getGeoExtent(), hfs);
     }
     else
     {
-        _map->getProfile()->getIntersectingTiles(patchKey, mapKeys);
+        hf = getGeoHeightField(_map, patchKey, _resolution);
     }
-    MatrixTransform* transform = createPatchAux(patchKey, mapKeys);
+    MatrixTransform* transform = createPatchAux(patchKey, hf.get());
 #if 0
     ref_ptr<GeoImage> gimage;
     if (!_map->getImageMapLayers().empty())

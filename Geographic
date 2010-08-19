@@ -55,7 +55,7 @@ public:
 protected:
     typedef std::vector<osg::ref_ptr<const osgEarth::TileKey> > TileKeyList;
     osg::MatrixTransform* createPatchAux(const osgEarth::TileKey* key,
-                                         TileKeyList& keyList);
+                                         const osgEarth::GeoHeightField* keyList);
     osg::ref_ptr<osgEarth::Map> _map;
     osg::ref_ptr<QscProfile> _profile;
     osg::ref_ptr<osg::EllipsoidModel> _eModel;

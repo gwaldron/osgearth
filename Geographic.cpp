@@ -8,6 +8,7 @@
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
 #include <osg/Math>
+#include <osg/Texture2D>
 
 #include <osgEarth/Notify>
 
@@ -269,8 +270,9 @@ Node* Geographic::createPatch(const std::string& filename,
     // and the poles faces.
     const GeoExtent& keyExtent = patchKey->getGeoExtent();
     ref_ptr<GeoHeightField> hf;
-    if ((face == 2 || face == 4 || face == 5)
-        && keyExtent.xMax() - keyExtent.xMin() > .5)
+    bool crossesDateLine = ((face == 2 || face == 4 || face == 5)
+                            && keyExtent.xMax() - keyExtent.xMin() > .5);
+    if (crossesDateLine)
     {
         GeoHeightFieldList hfs;
         for (int child = 0; child < 4; ++child)
@@ -285,30 +287,24 @@ Node* Geographic::createPatch(const std::string& filename,
         hf = getGeoHeightField(_map, patchKey, _resolution);
     }
     MatrixTransform* transform = createPatchAux(patchKey, hf.get());
-#if 0
-    ref_ptr<GeoImage> gimage;
-    if (!_map->getImageMapLayers().empty())
-        gimage = _map->getImageMapLayers()[0]->createImage(key.get());
-
-    int patchDim = _resolution + 1;
-    hf = resampleHeightField(hf, patchDim);
-    Vec3Array* verts = new Vec3Array(patchDim * patchDim);
-    Vec3Array* normals = new Vec3Array(patchDim * patchDim);
-    Vec2f minCoord(xMin - centerX, yMin - centerY);
-    float xInt = hf->getXInterval(), yInt = hf->getYInterval();
-
-    if (gimage)
+    if (!crossesDateLine)
     {
-        Texture2D* tex = new Texture2D();
-        tex->setImage(gimage->getImage());
-        tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
-        tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
-        tex->setFilter(Texture::MIN_FILTER, Texture::LINEAR_MIPMAP_LINEAR);
-        tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
-        StateSet* ss = patch->getOrCreateStateSet();
-        ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
+        ref_ptr<GeoImage> gimage;
+        if (!_map->getImageMapLayers().empty())
+            gimage = _map->getImageMapLayers()[0]->createImage(patchKey);
+        if (gimage)
+        {
+            Texture2D* tex = new Texture2D();
+            tex->setImage(gimage->getImage());
+            tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
+            tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
+            tex->setFilter(Texture::MIN_FILTER, Texture::LINEAR_MIPMAP_LINEAR);
+            tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
+            Patch* patch = dynamic_cast<Patch*>(transform->getChild(0));
+            StateSet* ss = patch->getOrCreateStateSet();
+            ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
+        }
     }
-#endif
     return transform;
 }
 

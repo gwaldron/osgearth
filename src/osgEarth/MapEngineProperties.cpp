@@ -176,7 +176,7 @@ MapEngineProperties::fromConfig( const Config& conf )
     conf.getIfSet( "lighting", _enableLighting );
 
     conf.getIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
-    conf.getIfSet( "layering_technique", "multiteture", _layeringTechnique, LAYERING_MULTITEXTURE );
+    conf.getIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
     conf.getIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
 
     conf.getIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);

@@ -22,7 +22,7 @@
 
 using namespace osgEarth::Symbology;
 
-#define LC "[osgEarthSymbology::GeometryRasterizer] "
+#define LC "[GeometryRasterizer] "
 
 // --------------------------------------------------------------------------
 

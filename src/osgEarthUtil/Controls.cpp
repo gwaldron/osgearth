@@ -31,7 +31,7 @@ using namespace osgEarth::Symbology;
 using namespace osgEarthUtil;
 using namespace osgEarthUtil::Controls;
 
-#define LC "[osgEarth::Controls] "
+#define LC "[Controls] "
 
 // ---------------------------------------------------------------------------
 

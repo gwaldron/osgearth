@@ -34,7 +34,7 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 
-#define LC "[osgEarth::BuildTextOperator] "
+#define LC "[BuildTextOperator] "
 
 struct CullPlaneCallback : public osg::Drawable::CullCallback
 {

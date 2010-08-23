@@ -96,11 +96,11 @@ void Layer::setExtents(double minX, double minY, double maxX, double maxY)
 }
 
 
-Capabilities::Capabilities()
+WMSCapabilities::WMSCapabilities()
 {
 }
 
-std::string Capabilities::suggestExtension()
+std::string WMSCapabilities::suggestExtension()
 {
     //Default to png
     std::string ext = "png";
@@ -127,15 +127,15 @@ std::string Capabilities::suggestExtension()
 }
 
 Layer*
-Capabilities::getLayerByName(const std::string &name)
+WMSCapabilities::getLayerByName(const std::string &name)
 {
     return ::getLayerByName(name, _layers);
 }
 
-Capabilities* 
-CapabilitiesReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
+WMSCapabilities* 
+WMSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
 {
-    Capabilities *caps = NULL;
+    WMSCapabilities *caps = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
         HTTPResponse response = HTTPClient::get( location, options );
@@ -249,10 +249,10 @@ readLayers(XmlElement* e, Layer* parentLayer, Layer::LayerList& layers)
 
 
 
-Capabilities*
-CapabilitiesReader::read(std::istream &in)
+WMSCapabilities*
+WMSCapabilitiesReader::read(std::istream &in)
 {
-    osg::ref_ptr<Capabilities> capabilities = new Capabilities;
+    osg::ref_ptr<WMSCapabilities> capabilities = new WMSCapabilities;
 
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
     if (!doc.valid() || doc->getChildren().empty())

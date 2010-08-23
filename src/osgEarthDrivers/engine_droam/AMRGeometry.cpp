@@ -22,7 +22,7 @@
 #include <osg/Uniform>
 #include <osgEarth/Notify>
 
-#define LC "[osgEarth::AMRGeometry] "
+#define LC "[AMRGeometry] "
 
 // --------------------------------------------------------------------------
 

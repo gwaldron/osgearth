@@ -32,7 +32,7 @@ using namespace geos;
 using namespace geos::operation;
 #endif
 
-#define LC "[osgEarth::Geometry] "
+#define LC "[Geometry] "
 
 
 Geometry::Geometry( const Geometry& rhs, const osg::CopyOp& op ) :

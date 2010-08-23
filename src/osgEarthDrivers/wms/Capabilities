@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTH_CAPABILITIES_H
-#define OSGEARTH_CAPABILITIES_H
+#ifndef OSGEARTH_WMS_CAPABILITIES_H
+#define OSGEARTH_WMS_CAPABILITIES_H
 
 #include <osg/Referenced>
 #include <osg/ref_ptr>
@@ -185,10 +185,10 @@ namespace osgEarth
     /**
     *WMS Capabilities
     */
-    class Capabilities : public osg::Referenced
+    class WMSCapabilities : public osg::Referenced
     {
     public:
-        Capabilities();
+        WMSCapabilities();
 
         /**
         *Gets the WMS capabilities version
@@ -239,14 +239,14 @@ namespace osgEarth
     /*
     * Reads Capabilities from a URL or file
     */
-    class CapabilitiesReader
+    class WMSCapabilitiesReader
     {
     public:
-        static Capabilities* read( const std::string &location, const osgDB::ReaderWriter::Options *options );
-        static Capabilities* read( std::istream &in );
+        static WMSCapabilities* read( const std::string &location, const osgDB::ReaderWriter::Options *options );
+        static WMSCapabilities* read( std::istream &in );
     private:
-        CapabilitiesReader(){}
-        CapabilitiesReader(const CapabilitiesReader &cr){}
+        WMSCapabilitiesReader(){}
+        WMSCapabilitiesReader(const WMSCapabilitiesReader &cr){}
     };
 }
 

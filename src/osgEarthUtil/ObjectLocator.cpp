@@ -3,7 +3,7 @@
 using namespace osgEarth;
 using namespace osgEarthUtil;
 
-#define LC "osgEarthUtil::ObjectLocator "
+#define LC "[ObjectLocator] "
 
 /***************************************************************************/
 

@@ -48,9 +48,7 @@
 using namespace OpenThreads;
 using namespace osgEarth;
 
-
-/*****************************************************************************/
-
+#define LC "[MapEngine] "
 
 /*****************************************************************************/
 
@@ -95,7 +93,7 @@ MapEngine::init()
     _L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
 
     LoadingPolicy::Mode mode = _engineProps.loadingPolicy()->mode().value();
-    OE_INFO << "MapEngine: loading policy mode = " <<
+    OE_INFO << LC << "Loading policy mode = " <<
         ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "preemptive" :
           mode == LoadingPolicy::MODE_SEQUENTIAL ? "sequential" :
           "standard" )
@@ -161,7 +159,7 @@ MapEngine::createSubTiles( Map* map, VersionedTerrain* terrain, const TileKey* k
 
     if (!hasValidData)
     {
-        OE_DEBUG << "Couldn't create any quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+        OE_DEBUG << LC << "Couldn't create any quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
         return NULL;
     }
 
@@ -465,11 +463,11 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     }
     if ( !ancestorTile.valid() )
     {
-        OE_NOTICE << "cannot find ancestor tile for (" << key->str() << ")" <<std::endl;
+        OE_WARN << LC << "cannot find ancestor tile for (" << key->str() << ")" <<std::endl;
         return 0L;
     }
 
-    OE_DEBUG << "Creating placeholder for " << key->str() << std::endl;
+    OE_DEBUG << LC << "Creating placeholder for " << key->str() << std::endl;
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
@@ -521,7 +519,7 @@ MapEngine::createPlaceholderTile( Map* map, VersionedTerrain* terrain, const Til
     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
     if (!hfLayer)
     {
-        OE_NOTICE << "Warning:  Couldn't get hfLayer for " << key->str() << std::endl;
+        OE_WARN << LC << "Warning: Couldn't get hfLayer for " << key->str() << std::endl;
     }
     hfLayer->getHeightField()->setSkirtHeight(radius * _engineProps.heightFieldSkirtRatio().get() );
                 
@@ -657,7 +655,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
-        OE_NOTICE << "[osgEarth::MapEngine] Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        OE_WARN << LC << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         validData = false;
 
         //If we're not asked to fallback on previous LOD's and we have no data, return NULL

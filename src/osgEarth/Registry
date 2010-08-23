@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Caching>
+#include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
 #include <OpenThreads/ReentrantMutex>
@@ -94,6 +95,11 @@ namespace osgEarth
          */
         const VerticalSpatialReference* getDefaultVSRS() const;
 
+        /**
+         * Gets the graphics hardware capabilities for this platform
+         */
+        const Capabilities& getCapabilities() const;
+
     protected:
         virtual ~Registry();
         Registry();
@@ -122,6 +128,8 @@ namespace osgEarth
         OpenThreads::Mutex _blacklistMutex;
 
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
+
+        Capabilities* _caps;
     };
 }
 

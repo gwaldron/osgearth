@@ -34,6 +34,8 @@
 
 using namespace osgEarth;
 
+#define LC "[Cache] "
+
 
 const CacheConfig::CacheType CacheConfig::TYPE_DEFAULT   = "";
 const CacheConfig::CacheType CacheConfig::TYPE_TMS       = "tms";
@@ -54,15 +56,6 @@ CacheConfig::CacheConfig( const Config& conf ) :
 _runOffCacheOnly( false )
 {
     fromConfig( conf );
-
-    //_type = conf.value( "type" );
-
-    //if ( !conf.value("cache_only").empty() )
-    //    _runOffCacheOnly = conf.value("cache_only") == "true";
-
-    //for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); i++ )
-    //    if ( !i->value().empty() )
-    //        _properties[ i->key() ] = i->value();
 }
 
 void
@@ -90,9 +83,6 @@ CacheConfig::toConfig( const std::string& name ) const
     if ( _runOffCacheOnly.isSet() )
         conf.attr("cache_only") = _runOffCacheOnly.get() ? "true" : "false";
 
-    //for( Properties::const_iterator p = _properties.begin(); p != _properties.end(); p++ )
-    //    conf.add( p->first, p->second );
-
     return conf;
 }
 
@@ -116,38 +106,6 @@ const optional<bool>&
 CacheConfig::runOffCacheOnly() const {
     return _runOffCacheOnly;
 }
-
-/**
-* Gets the collection of name/value pairs for the cache.
-*/
-//Properties&
-//CacheConfig::getProperties()
-//{
-//    return _properties;
-//}
-//
-//const Properties& CacheConfig::getProperties() const
-//{
-//    return _properties;
-//}
-
-//std::string
-//CacheConfig::toString() const
-//{
-//    std::stringstream buf;
-//    buf << "type=" << getType();    
-//    buf << ", reproject=";
-//    buf << ", caching=";
-//    if (runOffCacheOnly().isSet()) buf << runOffCacheOnly().get(); else buf << "unset";
-//
-//    for (Properties::const_iterator i = _properties.begin(); i != _properties.end(); i++ )
-//        buf << ", " << i->first << "=" << i->second;   
-//
-//	std::string bufStr;
-//	bufStr = buf.str();
-//    return bufStr;
-//}
-
 
 /*****************************************************************************/
 
@@ -190,7 +148,7 @@ Cache::getHeightField( const TileKey* key,
 	osg::ref_ptr<osg::Image> image = getImage( key, layerName, format );
 	if (image.valid())
 	{
-		OE_DEBUG << "[osgEarth::Cache] Read cached heightfield " << std::endl;
+		OE_DEBUG << LC << "Read cached heightfield " << std::endl;
 		ImageToHeightFieldConverter conv;
 		hf = conv.convert(image.get());
 	}
@@ -334,7 +292,7 @@ DiskCache::setImage( const TileKey* key,
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(path) && !osgEarth::isZipPath(path) && !osgDB::makeDirectory(path))
     {
-        OE_WARN << "[osgEarth::Cache] Couldn't create path " << path << std::endl;
+        OE_WARN << LC << "Couldn't create path " << path << std::endl;
     }
 
     std::string ext = osgDB::getFileExtension(filename);
@@ -412,7 +370,7 @@ void DiskCache::storeLayerProperties( const std::string& layerName,
 {
 	osg::ref_ptr<TileMap> tileMap = TileMap::create("", profile, format, tile_size, tile_size);
 	std::string path = getTMSPath( layerName );
-    OE_DEBUG << "[osgEarth::DiskCache] Writing TMS file to  " << path << std::endl;
+    OE_DEBUG << LC << "Writing TMS file to  " << path << std::endl;
 	TileMapReaderWriter::write( tileMap.get(), path );
 }
 
@@ -432,7 +390,7 @@ const Profile* DiskCache::loadLayerProperties( const std::string& layerName,
 	osg::ref_ptr<TileMap> tileMap;
 
 	std::string path = getTMSPath( layerName );
-	OE_NOTICE << "[osgEarth::DiskCache] TileMap file is " << path << std::endl;
+	OE_INFO << LC << "TileMap file is " << path << std::endl;
 
 	if (osgDB::fileExists( path ) )
 	{
@@ -627,12 +585,15 @@ static bool getProp(const std::map<std::string,std::string> &map, const std::str
 
 /*****************************************************************************/
 
+#undef  LC
+#define LC "[CacheFactory] "
+
 Cache*
 CacheFactory::create(const CacheConfig &cacheConfig)
 {
 	CacheConfig::CacheType type = cacheConfig.getType();
 
-    OE_INFO << "Cache: initializing cache of type " << type << std::endl;
+    OE_INFO << LC << "Initializing cache of type " << type << std::endl;
 
     osg::ref_ptr<Cache> result;
 
@@ -648,7 +609,7 @@ CacheFactory::create(const CacheConfig &cacheConfig)
         std::string path = driverConf.value( "path" );
         if ( path.empty() )
         {
-            OE_WARN << "[osgEarth::Cache] No path specified for " << type << " cache " << std::endl;
+            OE_WARN << LC << "No path specified for " << type << " cache " << std::endl;
         }
         //if ((!getProp(cacheConfig.getProperties(), "path", path)) || (path.empty()))
         //{
@@ -664,16 +625,16 @@ CacheFactory::create(const CacheConfig &cacheConfig)
             //getProp(cacheConfig.getProperties(), "tms_type", tms_type);
             if (tms_type == "google")
             {
-                OE_DEBUG << "[osgEarth::Cache] Inverting Y in TMS cache " << std::endl;
+                OE_DEBUG << LC << "Inverting Y in TMS cache " << std::endl;
                 tms_cache->setInvertY(true);
             }
-            OE_DEBUG << "[osgEarth::Cache] Returning TMS cache " << std::endl;
+            OE_DEBUG << LC << "Returning TMS cache " << std::endl;
             cache = tms_cache;
         }
 
         if (type == CacheConfig::TYPE_TILECACHE ) //"tilecache")
         {
-            OE_DEBUG << "[osgEarth::Cache] Returning disk cache " << std::endl;
+            OE_DEBUG << LC << "Returning disk cache " << std::endl;
             cache = new DiskCache(path);
         }
 
@@ -707,7 +668,7 @@ CacheFactory::create(const CacheConfig &cacheConfig)
         osgDB::ReaderWriter::ReadResult rr = osgDB::readObjectFile( ".osgearth_cache_" + type, settings.get() );
         if ( rr.error() )
         {
-            OE_WARN << "Failed to load cache plugin for type \"" << type << "\"" << std::endl;
+            OE_WARN << LC << "Failed to load cache plugin for type \"" << type << "\"" << std::endl;
         }
         else
         {
@@ -717,7 +678,7 @@ CacheFactory::create(const CacheConfig &cacheConfig)
 
     if ( !result )
     {
-        OE_WARN << "[osgEarth::Cache] Unknown cache type: " << type << std::endl;
+        OE_WARN << LC << "Unknown cache type: " << type << std::endl;
     }
 
     return result.release();
@@ -731,14 +692,14 @@ CacheFactory::create( const osgEarth::DriverOptions* options )
     osgDB::ReaderWriter::ReadResult rr = osgDB::readObjectFile( ".osgearth_cache_" + options->driver(), options );
     if ( rr.error() )
     {
-        OE_WARN << "Failed to load cache plugin \"" << options->driver() << "\"" << std::endl;
+        OE_WARN << LC << "Failed to load cache plugin \"" << options->driver() << "\"" << std::endl;
     }
     else
     {
         result = dynamic_cast<Cache*>( rr.getObject() );
         if ( !result )
         {
-            OE_WARN << "Internal error: plugin \"" << options->driver() << "\" is not a cache provider" << std::endl;
+            OE_WARN << LC << "Internal error: plugin \"" << options->driver() << "\" is not a cache provider" << std::endl;
         }
     }
 

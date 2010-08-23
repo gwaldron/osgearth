@@ -21,7 +21,7 @@
 #include <osgEarth/Caching>
 #include <osgEarth/Registry>
 
-#define LC "[osgEarth::TileSourceFactory] "
+#define LC "[TileSourceFactory] "
 
 using namespace osgEarth;
 

@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-#define LC "[osgEarth::Profile] "
+#define LC "[Profile] "
 
 /***********************************************************************/
 

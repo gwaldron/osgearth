@@ -91,7 +91,7 @@ public:
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<Capabilities> capabilities = CapabilitiesReader::read( capUrl, getOptions() );
+        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, getOptions() );
         if ( !capabilities.valid() )
         {
             OE_WARN << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;

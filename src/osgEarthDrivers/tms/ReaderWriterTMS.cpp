@@ -39,10 +39,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-//#define PROPERTY_URL         "url"
-//#define PROPERTY_TMS_TYPE    "tms_type"
-//#define PROPERTY_TILE_SIZE   "tile_size"
-//#define PROPERTY_FORMAT      "format"
+#define LC "[TMS driver] "
 
 
 class TMSSource : public TileSource
@@ -84,7 +81,7 @@ public:
 		//Take the override profile if one is given
 		if (overrideProfile)
 		{
-		    OE_NOTICE << "[osgEarth::TMS] Using override profile " << overrideProfile->toString() << std::endl;				
+		    OE_INFO << LC << "Using override profile " << overrideProfile->toString() << std::endl;				
 			result = overrideProfile;
 			_tileMap = TileMap::create( 
                 _settings->url().value(), 
@@ -101,7 +98,7 @@ public:
 			}
 			else
 			{
-		      OE_WARN << "[osgEarth::TMS] Error reading TileMap and no overrides set" << std::endl;		
+		      OE_WARN << LC << "Error reading TileMap and no overrides set" << std::endl;		
 			  return;
 			}
 		}
@@ -109,7 +106,7 @@ public:
         //Automatically set the min and max level of the TileMap
         if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
         {
-          OE_INFO << "[osgEarth::TMS] TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
+          OE_INFO << LC << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
           if (_tileMap->getDataExtents().size() > 0)
           {
               for (DataExtentList::iterator itr = _tileMap->getDataExtents().begin(); itr != _tileMap->getDataExtents().end(); ++itr)
@@ -153,7 +150,7 @@ public:
                     //of the tilemap and create a transparent image.
                     if (key->getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
-                        OE_NOTICE << "Returning empty image " << std::endl;
+                        OE_INFO << LC << "Returning empty image " << std::endl;
                         return ImageUtils::createEmptyImage();
                     }
                 }

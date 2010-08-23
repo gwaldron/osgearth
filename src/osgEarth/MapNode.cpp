@@ -39,7 +39,7 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[osgEarth::MapNode] "
+#define LC "[MapNode] "
 
 #define CHILD_TERRAINS 0
 #define CHILD_MODELS   1
@@ -163,7 +163,7 @@ MapNode::registerMapNode(MapNode* mapNode)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
     getMapNodeCache()[mapNode->_id] = mapNode;
-    OE_INFO << "[osgEarth::MapNode] Registered " << mapNode->_id << std::endl;
+    OE_INFO << LC << "Registered map " << mapNode->_id << std::endl;
 }
 
 void
@@ -174,7 +174,7 @@ MapNode::unregisterMapNode(unsigned int id)
     if (k != getMapNodeCache().end())
     {
         getMapNodeCache().erase(k);
-        OE_INFO << "[osgEarth::MapNode] Unregistered " << id << std::endl;
+        OE_INFO << LC << "Unregistered map " << id << std::endl;
     }
 }
 
@@ -265,10 +265,13 @@ MapNode::init()
 		HTTPClient::setProxySettings( _engineProps.proxySettings().get() );
     }
 
-    OE_INFO 
-        << "Map: options string = " 
-        << (local_options.valid()? local_options->getOptionString() : "<empty>")
-        << std::endl;
+    if ( local_options.valid() )
+    {
+        OE_INFO << LC
+            << "Options string = " 
+            << (local_options.valid()? local_options->getOptionString() : "<empty>")
+            << std::endl;
+    }
 
     _map->setGlobalOptions( local_options.get() );
 
@@ -1304,14 +1307,29 @@ void
 MapNode::validateEngineProps( MapEngineProperties& props )
 {
     // make sure all the requested properties are compatible, and fall back as necessary.
+    const Capabilities& caps = Registry::instance()->getCapabilities();
+
+    // check that the layering technique is supported by the hardware.
+    if (props.layeringTechnique() == MapEngineProperties::LAYERING_COMPOSITE &&
+        !caps.supportsTextureArrays() )
+    {
+        OE_WARN << LC << "COMPOSITE layering requires EXT_texture_array; falling back to MULTIPASS" << std::endl;
+        props.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
+    }
+
+    if (props.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE &&
+        !caps.supportsMultiTexture() )
+    {
+        OE_WARN << LC << "MULTITEXTURE layering requires EXT_multitexture; falling back to MULTIPASS" << std::endl;
+        props.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
+    }
 
     // warn against mixing multipass technique with preemptive/sequential mode:
     if (props.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS &&
         props.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
     {
-        OE_WARN << LC << "Multi-pass layering technique is not compatible with preemptive/sequential loading policy;" << std::endl;
-        OE_WARN << LC << "Falling back on standard loading policy." << std::endl;
-
+        OE_WARN << LC << "MULTIPASS layering is incompatible with preemptive/sequential loading policy; "
+            << "falling back on STANDARD mode" << std::endl;
         props.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }
 }

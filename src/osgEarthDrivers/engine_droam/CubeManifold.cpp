@@ -26,7 +26,7 @@
 #define NEG_Z 4
 #define POS_Z 5
 
-#define LC "[osgEarth::CubeManifold] "
+#define LC "[CubeManifold] "
 
 CubeManifold::CubeManifold()
 {

@@ -24,7 +24,7 @@
 
 using namespace osgEarth;
 
-#define LC "[osgEarth::VSRS] "
+#define LC "[VSRS] "
 
 // --------------------------------------------------------------------------
 

@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_CAPABILITIES_H
+#define OSGEARTH_CAPABILITIES_H 1
+
+#include <osgEarth/Common>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT Capabilities
+    {
+    public:
+        // the maximum # of texture units exposed in the fixed-function pipeline
+        int getMaxFFPTextureUnits() const { return _maxFFPTextureUnits; }
+
+        // the maximum supported size (in pixels) of a texture
+        int getMaxTextureSize() const { return _maxTextureSize; }
+
+        // whether the card supports shaders
+        bool supportsGLSL() const { return _supportsGLSL; }
+
+        // whether the card supports the TEXTURE_2D_ARRAY and similar extensions
+        bool supportsTextureArrays() const { return _supportsTextureArrays; }
+
+        bool supportsMultiTexture() const { return _supportsMultiTexture; }
+
+        bool supportsStencilWrap() const { return _supportsStencilWrap; }
+
+        bool supportsTwoSidedStencil() const { return _supportsTwoSidedStencil; }
+
+    private:
+        Capabilities();
+
+    private:
+        int  _maxFFPTextureUnits;
+        int  _maxTextureSize;
+        bool _supportsGLSL;
+        bool _supportsTextureArrays;
+        bool _supportsMultiTexture;
+        bool _supportsStencilWrap;
+        bool _supportsTwoSidedStencil;
+
+    public:
+        friend class Registry;
+    };
+}
+
+#endif // OSGEARTH_CAPABILITIES_H

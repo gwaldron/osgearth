@@ -39,7 +39,8 @@ extern const char* builtinMimeTypeExtMappings[];
 Registry::Registry() :
 osg::Referenced(true),
 _gdal_registered( false ),
-_numGdalMutexGets( 0 )
+_numGdalMutexGets( 0 ),
+_caps( 0L )
 {
     OGRRegisterAll();
     GDALAllRegister();
@@ -209,6 +210,15 @@ Registry::getNumBlacklistedFilenames()
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
     return _blacklistedFilenames.size();
+}
+
+const Capabilities&
+Registry::getCapabilities() const
+{
+    if ( !_caps )
+        const_cast<Registry*>(this)->_caps = new Capabilities();
+
+    return *_caps;
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

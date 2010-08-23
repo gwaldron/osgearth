@@ -25,7 +25,7 @@
 
 using namespace osgEarth;
 
-#define LC "[osgEarth::Cube] "
+#define LC "[Cube] "
 
 // --------------------------------------------------------------------------
 

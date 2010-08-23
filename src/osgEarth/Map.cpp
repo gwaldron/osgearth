@@ -24,6 +24,9 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
+#define LC "[Map] "
+
+
 Map::Map(const CoordinateSystemType& cstype) :
 osg::Referenced(true),
 _cstype( cstype ),
@@ -39,7 +42,7 @@ _profileConf( ProfileConfig() )
         _cacheConf->setType( CacheConfig::TYPE_DEFAULT );
         _cacheConf->getDriverConf().add( "path", cachePath );
         //_cacheConf->getProperties()[ "path" ] = cachePath;
-        OE_INFO << "Enabling map cache at " << cachePath << std::endl;
+        OE_INFO << LC << "Enabling map cache at " << cachePath << std::endl;
     }
 
     if ( getenv( "OSGEARTH_CACHE_TYPE" ) )
@@ -48,7 +51,7 @@ _profileConf( ProfileConfig() )
         if ( !cacheType.empty() )
         {
             _cacheConf->setType( cacheType );
-            OE_INFO << "Setting map cache type to: " << cacheType << std::endl;
+            OE_INFO << LC << "Setting map cache type to: " << cacheType << std::endl;
         }
     }
 }
@@ -473,7 +476,8 @@ Map::calculateProfile()
             }
             else
             {
-                OE_WARN << "[osgEarth::Map] Map is geocentric, but the configured profile does not "
+                OE_WARN << LC 
+                    << "Map is geocentric, but the configured profile does not "
                     << "have a geographic SRS. Falling back on default.."
                     << std::endl;
             }
@@ -526,7 +530,7 @@ Map::calculateProfile()
     // finally, fire an event if the profile has been set.
     if ( _profile.valid() )
     {
-        OE_INFO << "[osgEarth::Map] Map profile is: " << _profile->toString() << std::endl;
+        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
 
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
@@ -536,7 +540,7 @@ Map::calculateProfile()
 
     else
     {
-        OE_WARN << "[osgEarth::Map] Warning, not yet able to establish a map profile!" << std::endl;
+        OE_WARN << LC << "Warning, not yet able to establish a map profile!" << std::endl;
     }
 }
 

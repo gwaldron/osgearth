@@ -22,7 +22,7 @@
 #include <string.h>
 #include <memory.h>
 
-#define LC "[osgEarth::ImageUtils] "
+#define LC "[ImageUtils] "
 
 using namespace osgEarth;
 

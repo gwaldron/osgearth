@@ -32,6 +32,8 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
+#define LC "[VersionedTerrain] "
+
 #define EXPLICIT_RELEASE_GL_OBJECTS 1
 
 //#if OSG_MIN_VERSION_REQUIRED(2,9,5)
@@ -1559,7 +1561,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
         osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
         if ( cam )
         {
-            OE_INFO << "Explicit releaseGLObjects() enabled" << std::endl;
+            OE_INFO << LC << "Explicit releaseGLObjects() enabled" << std::endl;
             osg::ref_ptr<osg::Camera::DrawCallback> previousCB = cam->getPostDrawCallback();
 			cam->setPostDrawCallback( s_releaseCB.get() );
             s_releaseCB->_previousCB = previousCB.get();

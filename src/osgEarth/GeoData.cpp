@@ -33,7 +33,7 @@
 #include <sstream>
 #include <iomanip>
 
-#define LC "[osgEarth::GeoData] "
+#define LC "[GeoData] "
 
 using namespace osgEarth;
 
@@ -1038,7 +1038,7 @@ GeoHeightField::takeHeightField()
 // --------------------------------------------------------------------------
 
 #undef  LC
-#define LC "[osgEarth::Geoid] "
+#define LC "[Geoid] "
 
 Geoid::Geoid() :
 _valid( false ),

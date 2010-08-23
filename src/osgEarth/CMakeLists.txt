@@ -21,6 +21,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
     Caching
 	CacheSeed
+	Capabilities
     Common
     Compositing
     CompositingTerrainTechnique
@@ -77,6 +78,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     Caching.cpp
     CacheSeed.cpp
+	Capabilities.cpp
     Compositing.cpp
     CompositingTerrainTechnique.cpp
     Config.cpp

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/StencilVolumeNode>
+#include <osgEarth/Registry>
 #include <osg/Stencil>
 #include <osg/StencilTwoSided>
 #include <osg/Depth>
@@ -214,8 +215,9 @@ StencilVolumeNode::init()
     // In the future we hope to rewrite this as a custom StencilVolumeNode that 
     // will automatically detect extension availability at draw time and choose
     // the optimal GL rendering path.
-    static bool s_EXT_stencil_wrap     = true; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_wrap");
-    static bool s_EXT_stencil_two_side = false; //osg::isGLExtensionSupported(0, "GL_EXT_stencil_two_side");
+    const Capabilities& caps = osgEarth::Registry::instance()->getCapabilities();
+    bool s_EXT_stencil_wrap     = caps.supportsStencilWrap(); //true;
+    bool s_EXT_stencil_two_side = caps.supportsTwoSidedStencil(); //false;
 
 
     // zFail=true if more compute intensive, but lets you get inside the volume.

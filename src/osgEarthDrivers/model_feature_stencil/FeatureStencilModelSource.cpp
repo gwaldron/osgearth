@@ -51,7 +51,7 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define LC "[osgEarth::FeatureStencilModelSource] "
+#define LC "[FeatureStencilModelSource] "
 
 #define RENDER_BIN_START 100
 #define MAX_NUM_STYLES   100

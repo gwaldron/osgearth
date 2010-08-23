@@ -57,7 +57,7 @@ using namespace osgTerrain;
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[osgEarth::CompositingTechnique] "
+#define LC "[CompositingTechnique] "
 #define EXPLICIT_RELEASE_GL_OBJECTS 1
 
 // OSG 2.9.8 changed the osgTerrain API...

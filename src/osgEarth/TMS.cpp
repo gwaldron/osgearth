@@ -35,6 +35,8 @@
 
 using namespace osgEarth;
 
+#define LC "[TMS] "
+
 static std::string toString(double value, int precision = 25)
 {
     std::stringstream out;
@@ -171,7 +173,7 @@ void TileMap::computeNumTiles()
             _numTilesHigh /= 2;
         }
 
-        OE_DEBUG << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
+        OE_DEBUG << LC << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
     }
 }
 
@@ -213,7 +215,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
 {
     if (!intersectsKey(tileKey))
     {
-        //OE_NOTICE << "No key intersection for tile key " << tileKey->str() << std::endl;
+        //OE_NOTICE << LC << "No key intersection for tile key " << tileKey->str() << std::endl;
         return "";
     }
 
@@ -232,7 +234,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
         y  = numRows - y - 1;
     }
 
-    //OE_NOTICE << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
+    //OE_NOTICE << LC << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
 
     //Select the correct TileSet
     if ( _tileSets.size() > 0 )
@@ -244,7 +246,7 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
                 std::stringstream ss;
                 std::string path = osgDB::getFilePath(_filename);
                 ss << path << "/" << zoom << "/" << x << "/" << y << "." << _format.getExtension();
-                //OE_NOTICE << "Returning URL " << ss.str() << std::endl;
+                //OE_NOTICE << LC << "Returning URL " << ss.str() << std::endl;
                 std::string ssStr;
 				ssStr = ss.str();
 				return ssStr;
@@ -423,7 +425,7 @@ TileMapReaderWriter::read(std::istream &in)
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
     if (!doc.valid())
     {
-        OE_NOTICE << "Failed to load TileMap " << std::endl;
+        OE_WARN << LC << "Failed to load TileMap " << std::endl;
         return 0;
     }
    
@@ -431,7 +433,7 @@ TileMapReaderWriter::read(std::istream &in)
     osg::ref_ptr<XmlElement> e_tile_map = doc->getSubElement( ELEM_TILEMAP );
     if (!e_tile_map.valid())
     {
-        OE_NOTICE << "Could not find root TileMap element " << std::endl;
+        OE_WARN << LC << "Could not find root TileMap element " << std::endl;
         return 0;
     }
 
@@ -510,7 +512,7 @@ TileMapReaderWriter::read(std::istream &in)
     if (e_data_extents.valid())
     {
         osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
-        OE_DEBUG << "Found DataExtents " << std::endl;
+        OE_DEBUG << LC << "Found DataExtents " << std::endl;
         XmlNodeList data_extents = e_data_extents->getSubElements( ELEM_DATA_EXTENT );
         for( XmlNodeList::const_iterator i = data_extents.begin(); i != data_extents.end(); i++ )
         {
@@ -522,7 +524,7 @@ TileMapReaderWriter::read(std::istream &in)
             unsigned int minLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MIN_LEVEL ), 0);
             unsigned int maxLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MAX_LEVEL ), 0);            
 
-            OE_DEBUG << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
+            OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
             tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
         }
     }
@@ -626,7 +628,7 @@ TileMapReaderWriter::write(const TileMap* tileMap, const std::string &location)
     std::string path = osgDB::getFilePath(location);
     if (!osgDB::fileExists(path) && !osgDB::makeDirectory(path))
     {
-        OE_NOTICE << "Couldn't create path " << std::endl;
+        OE_WARN << LC << "Couldn't create path " << std::endl;
     }
     std::ofstream out(location.c_str());
     write(tileMap, out);

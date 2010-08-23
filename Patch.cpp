@@ -183,7 +183,7 @@ int edgeCoords[4][2][2] = {{{0, 0}, {1, 0}},
 inline void getEdge(const Patch* patch, Vec3& p1, Vec3& p2, int edgeNo)
 {
     PatchSet* ps = patch->getPatchSet();
-    int psRes = ps->getResolution();
+    int psRes = ps->getResolution(); // patch dimension - 1
     int coords[2][2];
     for (int j = 0; j < 2; ++j)
         for (int i = 0; i < 2; ++i)

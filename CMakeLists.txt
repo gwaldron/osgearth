@@ -21,7 +21,7 @@ FIND_PACKAGE(GDAL)
 FIND_PACKAGE(osgEarth)
 
 SET(SOURCES
-    qsc.cpp QSC.cpp kml.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp patchTest.cpp SeamlessPlugin.cpp Projected.cpp Geographic.cpp seamlessTest.cpp)
+    qsc.cpp QSC.cpp kml.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp patchTest.cpp SeamlessPlugin.cpp Projected.cpp Geographic.cpp GeoPatch.cpp seamlessTest.cpp)
 
 INCLUDE_DIRECTORIES(
         ${SEAMLESS_SOURCE_DIR}/..
@@ -34,7 +34,7 @@ ADD_EXECUTABLE(kmld kml.cpp qsc.cpp)
 
 ADD_EXECUTABLE(patchTest patchTest.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp)
 
-ADD_EXECUTABLE(seamlessTest Patch.cpp PatchGroup.cpp PatchSet.cpp SeamlessPlugin.cpp Projected.cpp QSC.cpp Geographic.cpp seamlessTest.cpp)
+ADD_EXECUTABLE(seamlessTest Patch.cpp PatchGroup.cpp PatchSet.cpp SeamlessPlugin.cpp Projected.cpp QSC.cpp Geographic.cpp GeoPatch.cpp seamlessTest.cpp)
 
 TARGET_LINK_LIBRARIES(kmld ${OSG_LIBRARY_DEBUG} )
 

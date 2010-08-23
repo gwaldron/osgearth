@@ -13,6 +13,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Notify>
 
+#include <seamless/GeoPatch>
 #include <seamless/QSC>
 
 namespace seamless
@@ -21,29 +22,13 @@ using namespace std;
 using namespace osg;
 using namespace osgEarth;
 
-class GeographicOptions : public PatchOptions
-{
-public:
-    GeographicOptions()
-    {
-    }
-    GeographicOptions(string& str)
-        : PatchOptions(str)
-    {
-    }
-    GeographicOptions(const GeographicOptions& rhs,
-                     const CopyOp& copyop = CopyOp::SHALLOW_COPY)
-        : PatchOptions(rhs, copyop),
-          _tileKey(static_cast<TileKey*>(copyop(rhs._tileKey.get())))
-    {
-
-    }
-    META_Object(seamless, GeographicOptions);
-    void setTileKey(TileKey* key) { _tileKey = key; }
-    TileKey* getTileKey() const { return _tileKey.get(); }
-protected:
-    ref_ptr<TileKey> _tileKey;
-};
+// A fictional value to use as the level 0 edge length. This value is
+// divided by 2 at each LOD. It is used instead of the real edge
+// length because the patches are not square.
+//
+// sqrt(earth_surface_area / 6)
+const double edgeLength0 = sqrt(
+    4.0 * PI * WGS_84_RADIUS_EQUATOR * WGS_84_RADIUS_EQUATOR / 6.0);
 
 // Hard-wire the patch resolution and screen-space polygon size.
 Geographic::Geographic(Map* map)
@@ -169,7 +154,8 @@ mergeImages(const GeoExtent& targetExtent, const GeoImageList& imgs)
 MatrixTransform* Geographic::createPatchAux(const TileKey* key,
                                             const GeoHeightField* hf)
 {
-    Patch* patch = new Patch;
+    GeoPatch* patch = new GeoPatch;
+    patch->setEdgeLength(edgeLength0 / pow(2.0, key->getLevelOfDetail()));
     patch->setPatchSet(this);
     const GeoExtent& patchExtent = key->getGeoExtent();
     double centx, centy;

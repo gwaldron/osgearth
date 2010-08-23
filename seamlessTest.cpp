@@ -13,6 +13,7 @@
 #include <osgUtil/Optimizer>
 #include <osg/CoordinateSystemNode>
 
+#include <osg/CullFace>
 #include <osg/Switch>
 #include <osgText/Text>
 
@@ -152,10 +153,13 @@ int main(int argc, char** argv)
     if (loadedModel.valid())
     {
         // optimize the scene graph, remove redundant nodes and state etc.
-        osgUtil::Optimizer optimizer;
-        optimizer.optimize(loadedModel.get());
+        // osgUtil::Optimizer optimizer;
+        // optimizer.optimize(loadedModel.get());
         sceneRoot->addChild(loadedModel.get());
     }
+    StateSet* ss = sceneRoot->getOrCreateStateSet();
+    CullFace* cf = new CullFace(CullFace::BACK);
+    ss->setAttributeAndModes(cf);
     viewer.setSceneData(sceneRoot);
 
     viewer.realize();

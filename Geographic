@@ -60,5 +60,30 @@ protected:
     osg::ref_ptr<QscProfile> _profile;
     osg::ref_ptr<osg::EllipsoidModel> _eModel;
 };
+
+class GeographicOptions : public PatchOptions
+{
+public:
+    GeographicOptions()
+    {
+    }
+    GeographicOptions(std::string& str)
+        : PatchOptions(str)
+    {
+    }
+    GeographicOptions(const GeographicOptions& rhs,
+                      const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY)
+        : PatchOptions(rhs, copyop),
+          _tileKey(static_cast<osgEarth::TileKey*>(copyop(rhs._tileKey.get())))
+    {
+
+    }
+    META_Object(seamless, GeographicOptions);
+    void setTileKey(osgEarth::TileKey* key) { _tileKey = key; }
+    osgEarth::TileKey* getTileKey() const { return _tileKey.get(); }
+protected:
+    osg::ref_ptr<osgEarth::TileKey> _tileKey;
+};
+
 }
 #endif

@@ -77,7 +77,7 @@ public:
         @param eye The eyepoint in local coordinates.
     */
     float getPatchError(const osg::Vec3& eye);
-    float getEdgeError(const osg::Vec3& eye, int edge);
+    virtual float getEdgeError(const osg::Vec3& eye, int edge);
     void setPatchSet(PatchSet* patchSet);
     PatchSet* getPatchSet() const;
 protected:
@@ -95,5 +95,12 @@ protected:
     osg::ref_ptr<Data> _data;
     osg::ref_ptr<PatchSet> _patchSet;
 };
+
+// Utilities useful in Patch subclasses
+// Find the point closest to P3 on the line segment from P1 to P2
+osg::Vec3 closestPointOnSegment(
+    const osg::Vec3& p1, const osg::Vec3& p2, const osg::Vec3& p3);
+float distanceToSegment(
+    const osg::Vec3& p1, const osg::Vec3& p2, const osg::Vec3& p3);
 }
 #endif

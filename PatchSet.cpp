@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <algorithm>
+
 #include <seamless/PatchSet>
 
 #include <osg/Math>
@@ -270,6 +272,13 @@ void PatchSet::initPrimitiveSets()
         getGridCoords(_resolution, *itr, x, y);
         stripPset[2][0]->push_back(makeIndex(y, x));
     }
+    // Now switch the order on the triangles on the reflected strip
+    for (int i = 1; i < stripPset[2][0]->size(); i += 3)
+    {
+        std::swap((*stripPset[2][0].get())[i],
+                  (*stripPset[2][0].get())[i + 1]);
+    }
+    
     stripPset[3][0] = makeSingleStrip(1); // hi res
     // Now rotate the strips for the other diagonals.
     for (int j = 1; j < 4; ++j)

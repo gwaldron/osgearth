@@ -14,7 +14,6 @@
 #include <osgEarth/Notify>
 
 #include <seamless/GeoPatch>
-#include <seamless/QSC>
 
 namespace seamless
 {
@@ -32,7 +31,7 @@ const double edgeLength0 = sqrt(
 
 // Hard-wire the patch resolution and screen-space polygon size.
 Geographic::Geographic(Map* map)
-    : PatchSet(64, new GeographicOptions), _map(map), _profile(new QscProfile),
+    : PatchSet(64, new GeographicOptions), _map(map), _profile(new EulerProfile),
       _eModel(new EllipsoidModel)
 {
     setPrecisionFactor(8);
@@ -54,7 +53,7 @@ Geographic::Geographic(Map* map)
 
 Geographic::Geographic(const Geographic& rhs, const osg::CopyOp& copyop)
     : PatchSet(rhs, copyop), _map(static_cast<Map*>(copyop(rhs._map.get()))),
-      _profile(static_cast<QscProfile*>(copyop(rhs._profile.get()))),
+      _profile(static_cast<EulerProfile*>(copyop(rhs._profile.get()))),
       _eModel(static_cast<EllipsoidModel*>(copyop(rhs._eModel.get())))
                                   
 {
@@ -70,7 +69,7 @@ Node* Geographic::createPatchSetGraph(const std::string& filename)
     for (int face = 0; face < 6; ++face)
     {
         double x = 0.0, y = 0.0;
-        qsc::faceToCube(x, y, face);
+        euler::faceToCube(x, y, face);
         GeographicOptions* goptions = static_cast<GeographicOptions*>(
             osg::clone(getPatchOptionsPrototype()));
         goptions->setPatchSet(this);
@@ -278,7 +277,7 @@ Node* Geographic::createPatch(const std::string& filename,
 {
     GeographicOptions* goptions = static_cast<GeographicOptions*>(poptions);
     const TileKey* patchKey = goptions->getTileKey();
-    int face = QscProfile::getFace(patchKey);
+    int face = EulerProfile::getFace(patchKey);
     const GeoExtent& keyExtent = patchKey->getGeoExtent();
     ref_ptr<GeoHeightField> hf;
     ref_ptr<GeoImage> gimage;
@@ -415,9 +414,9 @@ Vec3d Geographic::toModel(double cubeX, double cubeY, double elevation)
 {
     double faceX = cubeX, faceY = cubeY;
     int face;
-    qsc::cubeToFace(faceX, faceY, face);
+    euler::cubeToFace(faceX, faceY, face);
     double lat_deg, lon_deg;
-    qsc::faceCoordsToLatLon(faceX, faceY, face, lat_deg, lon_deg);
+    euler::faceCoordsToLatLon(faceX, faceY, face, lat_deg, lon_deg);
     Vec3d result;
     _eModel->convertLatLongHeightToXYZ(
         DegreesToRadians(lat_deg), DegreesToRadians(lon_deg), elevation,

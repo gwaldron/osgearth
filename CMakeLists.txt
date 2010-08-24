@@ -21,7 +21,7 @@ FIND_PACKAGE(GDAL)
 FIND_PACKAGE(osgEarth)
 
 SET(SOURCES
-    qsc.cpp QSC.cpp kml.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp patchTest.cpp SeamlessPlugin.cpp Projected.cpp Geographic.cpp GeoPatch.cpp seamlessTest.cpp)
+    qsc.cpp QSC.cpp Euler.cpp kml.cpp kmllonlon.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp patchTest.cpp SeamlessPlugin.cpp Projected.cpp Geographic.cpp GeoPatch.cpp seamlessTest.cpp)
 
 INCLUDE_DIRECTORIES(
         ${SEAMLESS_SOURCE_DIR}/..
@@ -32,11 +32,15 @@ LINK_DIRECTORIES(${OSG_LIB_DIR} ${OSGEARTH_LIB_DIR})
 
 ADD_EXECUTABLE(kmld kml.cpp qsc.cpp)
 
+ADD_EXECUTABLE(kmleuler kmleuler.cpp Euler.cpp)
+
 ADD_EXECUTABLE(patchTest patchTest.cpp Patch.cpp PatchGroup.cpp PatchSet.cpp)
 
-ADD_EXECUTABLE(seamlessTest Patch.cpp PatchGroup.cpp PatchSet.cpp SeamlessPlugin.cpp Projected.cpp QSC.cpp Geographic.cpp GeoPatch.cpp seamlessTest.cpp)
+ADD_EXECUTABLE(seamlessTest Patch.cpp PatchGroup.cpp PatchSet.cpp SeamlessPlugin.cpp Projected.cpp Euler.cpp Geographic.cpp GeoPatch.cpp seamlessTest.cpp)
 
 TARGET_LINK_LIBRARIES(kmld ${OSG_LIBRARY_DEBUG} )
+
+TARGET_LINK_LIBRARIES(kmleuler ${OSGEARTH_LIBRARY} ${OSG_LIBRARY} )
 
 TARGET_LINK_LIBRARIES(patchTest ${OSGEARTH_LIBRARY} ${OSG_LIBRARY} ${OSGUTIL_LIBRARY} ${OSGDB_LIBRARY} ${OSGVIEWER_LIBRARY} ${OSGSHADOW_LIBRARY} ${OSGSIM_LIBRARY} ${OSGPARTICLE_LIBRARY} ${OSGTERRAIN_LIBRARY} ${OSGFX_LIBRARY})
 

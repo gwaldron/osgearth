@@ -1582,10 +1582,7 @@ VersionedTerrain::traverse( osg::NodeVisitor &nv )
         
         TerrainTileList _updatedTiles;
 
-        // update the internal Tile table. This block is the ONLY PLACE where _tiles
-        // can be changed, hence the Write Lock. The only other time this mutex is
-        // write-locked is in registerTile(), which simply pushes a new tile on to
-        // the _tilesToAdd queue.
+        // update the internal Tile table.
         {
             Threading::ScopedWriteLock lock( _tilesMutex );
 

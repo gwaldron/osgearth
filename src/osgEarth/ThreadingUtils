@@ -87,7 +87,7 @@ namespace osgEarth { namespace Threading
         ReadWriteMutex() :
           _readerCount(0)
         { 
-            _writerEvent.set();
+            _noWriterEvent.set();
             _noReadersEvent.set();
         }
 
@@ -95,9 +95,9 @@ namespace osgEarth { namespace Threading
         {
             for( ; ; )
             {
-                _writerEvent.wait();               // wait for a writer to quit if there is one
+                _noWriterEvent.wait();             // wait for a writer to quit if there is one
                 incrementReaderCount();            // register this reader
-                if ( !_writerEvent.isSet() )       // double lock check, in case a writer snuck in while inrementing
+                if ( !_noWriterEvent.isSet() )     // double lock check, in case a writer snuck in while inrementing
                     decrementReaderCount();        // if it did, undo the registration and try again
                 else
                     break;                         // otherwise, we're in
@@ -112,14 +112,14 @@ namespace osgEarth { namespace Threading
         void writeLock()
         {
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _lockWriterMutex ); // one at a time please
-            _writerEvent.wait();      // wait for a writer to quit if there is one
-            _writerEvent.reset();     // prevent further writers from joining
+            _noWriterEvent.wait();    // wait for a writer to quit if there is one
+            _noWriterEvent.reset();   // prevent further writers from joining
             _noReadersEvent.wait();   // wait for all readers to quit
         }
 
         void writeUnlock()
         {
-            _writerEvent.set();
+            _noWriterEvent.set();
         }
 
     protected:
@@ -143,7 +143,7 @@ namespace osgEarth { namespace Threading
         int _readerCount;
         OpenThreads::Mutex _lockWriterMutex;
         OpenThreads::Mutex _readerCountMutex;
-        Event _writerEvent;
+        Event _noWriterEvent;
         Event _noReadersEvent;
     };
 

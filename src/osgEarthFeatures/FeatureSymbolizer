@@ -43,7 +43,7 @@ namespace osgEarth { namespace Features
     };
 
     /**
-     * A symbolizer content object to wrap the FeatureList.
+     * A simple symbolizer content object to wrap up a FeatureList.
      */
     class OSGEARTHFEATURES_EXPORT FeatureContent : public Symbology::Content<osg::Referenced>
     {
@@ -52,7 +52,8 @@ namespace osgEarth { namespace Features
         const FeatureList& getFeatures() const { return _features; }
 
     protected:
-        const FeatureList& _features;
+        FeatureList _features;
+        //const FeatureList& _features;
     };
 
     typedef Symbology::State<FeatureContent> FeatureSymbolizerState;

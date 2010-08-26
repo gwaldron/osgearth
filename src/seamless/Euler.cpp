@@ -165,16 +165,16 @@ Vec3d face2ec(int faceNum, const Vec2d& faceCoord)
         return Vec3d(local.z(), local.x(), local.y());
         break;
     case 1:
-        return Vec3d(-local.x(), local.z(), local.y());        
+        return Vec3d(-local.x(), local.z(), local.y());
         break;
     case 2:
-        return Vec3d(-local.z(), -local.x(), local.y()); 
+        return Vec3d(-local.z(), -local.x(), local.y());
     case 3:
-        return Vec3d(local.x(), -local.z(), local.y());        
+        return Vec3d(local.x(), -local.z(), local.y());
     case 4:
-        return Vec3d(-local.y(),local.x(), local.z());        
+        return Vec3d(-local.y(),local.x(), local.z());
     case 5:
-        return Vec3d(local.y(), local.x(), -local.z());        
+        return Vec3d(local.y(), local.x(), -local.z());
     default:
         return Vec3d(0,0,0);
     }
@@ -231,8 +231,8 @@ bool cubeToFace(double& in_out_x, double& in_out_y, int& out_face )
     return true;
 }
 
-bool cubeToFace(double& in_out_xmin, double& in_out_ymin, 
-                double& in_out_xmax, double& in_out_ymax, 
+bool cubeToFace(double& in_out_xmin, double& in_out_ymin,
+                double& in_out_xmax, double& in_out_ymax,
                 int& out_face)
 {
     double xmin, xmax, ymin, ymax;
@@ -257,7 +257,7 @@ bool cubeToFace(double& in_out_xmin, double& in_out_ymin,
         ymin = in_out_ymin - 2.0;
         ymax = in_out_ymax - 2.0;
         xmin = in_out_xmin;
-        xmax = in_out_xmax; 
+        xmax = in_out_xmax;
     }
     else if (in_out_ymax < 1.0 + 1e-11)
     {
@@ -343,8 +343,8 @@ double distanceToSegment(const Vec3d& p,
         return (p - qnorm * r).length();
     }
     return minimum((p - geo1 * r).length(), (p - geo2 * r).length());
-        
-    
+
+
 }
 }
 
@@ -375,7 +375,7 @@ bool EulerFaceLocator::convertLocalToModel(const Vec3d& local, Vec3d& world) con
             world.x(), world.y(), world.z());
 
         return true;
-    }    
+    }
     return true;
 }
 
@@ -389,7 +389,7 @@ bool EulerFaceLocator::convertModelToLocal(const Vec3d& world, Vec3d& local) con
     switch(_coordinateSystemType)
     {
     case(GEOCENTRIC):
-        {         
+        {
             double longitude, latitude, height;
 
             _ellipsoidModel->convertXYZToLatLongHeight
@@ -425,11 +425,11 @@ bool EulerFaceLocator::convertModelToLocal(const Vec3d& world, Vec3d& local) con
     case(GEOGRAPHIC):
     case(PROJECTED):
         // Neither of these is supported for this locator..
-        {        
+        {
             local = world * _inverse;
-            return true;      
+            return true;
         }
-    }    
+    }
 
     return false;
 }
@@ -469,7 +469,7 @@ EulerSpatialReference::createLocator(double xmin, double ymin,
         xmax-xmin, 0.0,       0.0, 0.0,
         0.0,       ymax-ymin, 0.0, 0.0,
         0.0,       0.0,       1.0, 0.0,
-        xmin,      ymin,      0.0, 1.0); 
+        xmin,      ymin,      0.0, 1.0);
     result->setTransform( transform );
 
     return result;
@@ -520,7 +520,7 @@ EulerSpatialReference::postTransform(double& x, double& y, void* context) const
         OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
         return false;
     }
-    
+
     x = out_x;
     y = out_y;
 
@@ -553,7 +553,7 @@ EulerSpatialReference::transformExtent(const SpatialReference* to_srs,
     }
     // The polar and equatorial faces behave the same way, except if
     // an extent crosses the pole.
-    
+
     double lonmin, lonmax, latmin, latmax;
     // if the extent crosses the center axes of the face, then,
     // due to the curvy nature of the projection, the maximim /
@@ -637,7 +637,7 @@ SpatialReference* createEulerSRS()
 	{
         result = new EulerSpatialReference( handle );
 	}
-	else 
+	else
 	{
         OE_WARN << "[osgEarth::SRS] Unable to create SRS: " << init << std::endl;
         OSRDestroySpatialReference( handle );

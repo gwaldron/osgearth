@@ -30,7 +30,7 @@ using namespace osgEarth;
 GeoPatch::GeoPatch()
     : _edgeLength(0.0)
 {
-    
+
 }
 
 GeoPatch::GeoPatch(const GeoPatch& rhs, const CopyOp& copyop)
@@ -81,5 +81,5 @@ float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
                                          face);
     return _patchSet->getPrecisionFactor() * len / d;
 }
-      
+
 }

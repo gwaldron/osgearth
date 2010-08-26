@@ -276,8 +276,8 @@ bool cubeToFace(double& in_out_x, double& in_out_y, int& out_face )
     return true;
 }
 
-bool cubeToFace(double& in_out_xmin, double& in_out_ymin, 
-                double& in_out_xmax, double& in_out_ymax, 
+bool cubeToFace(double& in_out_xmin, double& in_out_ymin,
+                double& in_out_xmax, double& in_out_ymax,
                 int& out_face)
 {
     double xmin, xmax, ymin, ymax;
@@ -302,7 +302,7 @@ bool cubeToFace(double& in_out_xmin, double& in_out_ymin,
         ymin = in_out_ymin - 2.0;
         ymax = in_out_ymax - 2.0;
         xmin = in_out_xmin;
-        xmax = in_out_xmax; 
+        xmax = in_out_xmax;
     }
     else if (in_out_ymax < 1.0 + 1e-11)
     {
@@ -375,7 +375,7 @@ bool QscFaceLocator::convertLocalToModel(const Vec3d& local, Vec3d& world) const
             world.x(), world.y(), world.z());
 
         return true;
-    }    
+    }
     return true;
 }
 
@@ -389,7 +389,7 @@ bool QscFaceLocator::convertModelToLocal(const Vec3d& world, Vec3d& local) const
     switch(_coordinateSystemType)
     {
     case(GEOCENTRIC):
-        {         
+        {
             double longitude, latitude, height;
 
             _ellipsoidModel->convertXYZToLatLongHeight
@@ -425,11 +425,11 @@ bool QscFaceLocator::convertModelToLocal(const Vec3d& world, Vec3d& local) const
     case(GEOGRAPHIC):
     case(PROJECTED):
         // Neither of these is supported for this locator..
-        {        
+        {
             local = world * _inverse;
-            return true;      
+            return true;
         }
-    }    
+    }
 
     return false;
 }
@@ -469,7 +469,7 @@ QscSpatialReference::createLocator(double xmin, double ymin,
         xmax-xmin, 0.0,       0.0, 0.0,
         0.0,       ymax-ymin, 0.0, 0.0,
         0.0,       0.0,       1.0, 0.0,
-        xmin,      ymin,      0.0, 1.0); 
+        xmin,      ymin,      0.0, 1.0);
     result->setTransform( transform );
 
     return result;
@@ -520,7 +520,7 @@ QscSpatialReference::postTransform(double& x, double& y, void* context) const
         OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
         return false;
     }
-    
+
     x = out_x;
     y = out_y;
 
@@ -553,7 +553,7 @@ QscSpatialReference::transformExtent(const SpatialReference* to_srs,
     }
     // The polar and equatorial faces behave the same way, except if
     // an extent crosses the pole.
-    
+
     double lonmin, lonmax, latmin, latmax;
     // if the extent crosses the center axes of the face, then,
     // due to the curvy nature of the projection, the maximim /
@@ -637,7 +637,7 @@ SpatialReference* createQscSRS()
 	{
         result = new QscSpatialReference( handle );
 	}
-	else 
+	else
 	{
         OE_WARN << "[osgEarth::SRS] Unable to create SRS: " << init << std::endl;
         OSRDestroySpatialReference( handle );

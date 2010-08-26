@@ -58,7 +58,7 @@ extern SEAMLESS_EXPORT bool faceCoordsToLatLon(
 /**
  * Converts cube coordinates (0,0=>4,3) to face coordinates (-1,-1=>1,1,F).
  * WARNING. If the cube coordinate lies on a face boundary, this method will
- * always return the lower-numbered face. The "extent" version of this 
+ * always return the lower-numbered face. The "extent" version of this
  * method (below) is better b/c it's unambiguous.
  */
 extern SEAMLESS_EXPORT bool cubeToFace(
@@ -70,8 +70,8 @@ extern SEAMLESS_EXPORT bool cubeToFace(
  * can resolve face-border ambiguity.
  */
 extern SEAMLESS_EXPORT bool cubeToFace(
-    double& in_out_xmin, double& in_out_ymin, 
-    double& in_out_xmax, double& in_out_ymax, 
+    double& in_out_xmin, double& in_out_ymin,
+    double& in_out_xmax, double& in_out_ymax,
     int& out_face);
 
 /**

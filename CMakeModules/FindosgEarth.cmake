@@ -9,7 +9,7 @@
 # directory, and source directory, respectively
 # OSGEARTHDIR or OSGEARTH_SOURCE_DIR: osg source directory, typically OpenSceneGraph
 # OSGEARTH_DIR or OSGEARTH_BUILD_DIR: osg build directory, place in which you've
-#    built osg via cmake 
+#    built osg via cmake
 
 # Header files are presumed to be included like
 # #include <osg/PositionAttitudeTransform>

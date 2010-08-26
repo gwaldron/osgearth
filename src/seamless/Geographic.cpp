@@ -55,7 +55,6 @@ Geographic::Geographic(const Geographic& rhs, const osg::CopyOp& copyop)
     : PatchSet(rhs, copyop), _map(static_cast<Map*>(copyop(rhs._map.get()))),
       _profile(static_cast<EulerProfile*>(copyop(rhs._profile.get()))),
       _eModel(static_cast<EllipsoidModel*>(copyop(rhs._eModel.get())))
-                                  
 {
 }
 
@@ -180,7 +179,7 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
             double lon, lat;
             srs->transform(cubeCoord.x(), cubeCoord.y(), geoSrs, lon, lat);
             float elevation;
-            
+
             bool found = hf->getElevation(srs, cubeCoord.x(), cubeCoord.y(),
                                           INTERP_BILINEAR, 0, elevation);
             // Into ec coordinates
@@ -337,9 +336,9 @@ createClusterCullingCallback(const Matrixd& transform, const Patch* patch,
     Vec3 center_position(transform.getTrans());
     Vec3 center_normal(center_position);
     center_normal.normalize();
-    
+
     unsigned int r,c;
-    
+
     // populate the vertex/normal/texcoord arrays from the grid.
 
     float min_dot_product = 1.0f;
@@ -365,7 +364,7 @@ createClusterCullingCallback(const Matrixd& transform, const Patch* patch,
         double sb = sin(beta);
         double cb = cos(beta);
         double cutoff = osg::PI_2 - 0.1;
-            
+
         //log(osg::INFO,"theta="<<theta<<"\tphi="<<phi<<" beta "<<beta);
         if (phi<cutoff && beta<cutoff)
         {
@@ -373,7 +372,7 @@ createClusterCullingCallback(const Matrixd& transform, const Patch* patch,
             float local_m = globe_radius*( 1.0/ cb - 1.0);
             float local_radius = static_cast<float>(globe_radius * sb / cb); // beta*globe_radius;
             min_dot_product = osg::minimum(min_dot_product, local_dot_product);
-            max_cluster_culling_height = osg::maximum(max_cluster_culling_height,local_m);      
+            max_cluster_culling_height = osg::maximum(max_cluster_culling_height,local_m);
             max_cluster_culling_radius = osg::maximum(max_cluster_culling_radius,local_radius);
         }
         else
@@ -386,7 +385,7 @@ createClusterCullingCallback(const Matrixd& transform, const Patch* patch,
     osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback;
 
     ccc->set(center_position + center_normal*max_cluster_culling_height ,
-             center_normal, 
+             center_normal,
              min_dot_product,
              max_cluster_culling_radius);
 
@@ -432,6 +431,6 @@ Node* Geographic::createChild(const PatchOptions* parentOptions, int childNum)
     goptions->setPatchLevel(parentgopt->getPatchLevel() + 1);
     goptions->setTileKey(parentgopt->getTileKey()->createSubkey(childNum));
     return createPatchGroup("foobies.tengpatch", goptions);
-    
+
 }
 }

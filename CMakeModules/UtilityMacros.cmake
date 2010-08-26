@@ -3,21 +3,21 @@ INCLUDE(ListHandle)
 
 
   MACRO(FILTER_OUT FILTERS INPUTS OUTPUT)
-       # Mimicks Gnu Make's $(filter-out) which removes elements 
+       # Mimicks Gnu Make's $(filter-out) which removes elements
        # from a list that match the pattern.
        # Arguments:
        #  FILTERS - list of patterns that need to be removed
        #  INPUTS  - list of inputs that will be worked on
        #  OUTPUT  - the filtered list to be returned
-       # 
-       # Example: 
+       #
+       # Example:
        #  SET(MYLIST this that and the other)
        #  SET(FILTS this that)
        #
        #  FILTER_OUT("${FILTS}" "${MYLIST}" OUT)
        #  MESSAGE("OUTPUT = ${OUT}")
        #
-       # The output - 
+       # The output -
        #   OUTPUT = and;the;other
        #
        SET(FOUT "")
@@ -47,9 +47,9 @@ INCLUDE(ListHandle)
             FILTER_OUT("${DIR}/cvs" "${TMP}" ${OUTPUT})
             FILTER_OUT("${DIR}/.svn" "${TMP}" ${OUTPUT})
    ENDMACRO(GET_HEADERS_EXTENSIONLESS DIR GLOB_PATTERN OUTPUT)
-   
+
 MACRO(ADD_DIRS_TO_ENV_VAR _VARNAME )
- FOREACH(_ADD_PATH ${ARGN}) 
+ FOREACH(_ADD_PATH ${ARGN})
     FILE(TO_NATIVE_PATH ${_ADD_PATH} _ADD_NATIVE)
     #SET(_CURR_ENV_PATH $ENV{PATH})
     #LIST(SET _CURR_ENV_PATH ${_ADD_PATH})
@@ -64,16 +64,16 @@ MACRO(ADD_DIRS_TO_ENV_VAR _VARNAME )
 ENDMACRO(ADD_DIRS_TO_ENV_VAR _VARNAME )
 
 #---------------------------------------------------
-# MACRO CORRECT_PATH VAR PATH 
-# corrects slashes in PATH to be cmake conformous ( / ) 
-# and puts result in VAR 
+# MACRO CORRECT_PATH VAR PATH
+# corrects slashes in PATH to be cmake conformous ( / )
+# and puts result in VAR
 #---------------------------------------------------
 
 MACRO(CORRECT_PATH VAR PATH)
     SET(${VAR} ${PATH})
-IF(WIN32)    
+IF(WIN32)
     STRING(REGEX REPLACE "/" "\\\\" ${VAR} "${PATH}")
-ENDIF(WIN32)    
+ENDIF(WIN32)
 ENDMACRO(CORRECT_PATH)
 
 MACRO(TARGET_LOCATIONS_SET_FILE FILE)
@@ -96,7 +96,7 @@ ENDMACRO(TARGET_LOCATIONS_ACCUM TARGET_NAME)
 MACRO(TARGET_LOCATIONS_GET_LIST _VAR)
  IF(ACCUM_FILE_TARGETS)
   IF(EXISTS ${ACCUM_FILE_TARGETS})
-      FILE(READ ${ACCUM_FILE_TARGETS} ${_VAR})    
+      FILE(READ ${ACCUM_FILE_TARGETS} ${_VAR})
   ENDIF(EXISTS ${ACCUM_FILE_TARGETS})
  ENDIF(ACCUM_FILE_TARGETS)
 ENDMACRO(TARGET_LOCATIONS_GET_LIST _VAR)
@@ -122,14 +122,14 @@ SEPARATE_ARGUMENTS(MYLIBRARY)
 #MESSAGE( " include paths: -->${MY_PATH_INCLUDE}<--")
 
 #MESSAGE( " ${DEPNAME}_INCLUDE_DIR --> ${${DEPNAME}_INCLUDE_DIR}<--")
-    
+
 FIND_PATH("${DEPNAME}_INCLUDE_DIR" ${INCLUDEFILE}
   ${MY_PATH_INCLUDE}
 )
 MARK_AS_ADVANCED("${DEPNAME}_INCLUDE_DIR")
 #MESSAGE( " ${DEPNAME}_INCLUDE_DIR --> ${${DEPNAME}_INCLUDE_DIR}<--")
 
-FIND_LIBRARY("${DEPNAME}_LIBRARY" 
+FIND_LIBRARY("${DEPNAME}_LIBRARY"
     NAMES ${MYLIBRARY}
   PATHS ${MY_PATH_LIB}
 )
@@ -151,11 +151,11 @@ IF(${DEPNAME}_LIBRARY)
         ENDIF(MYFOUND EQUAL 0)
     ENDIF(EXISTS ${MYBINPATH})
     #MESSAGE("${DEPNAME}_BINDEP searching -->${MYLIBNAME}${CMAKE_SHARED_MODULE_SUFFIX}<--in-->${MY_PATH_BIN}<--")
-#    FIND_FILE("${DEPNAME}_BINDEP" 
+#    FIND_FILE("${DEPNAME}_BINDEP"
 #        ${MYLIBNAME}${CMAKE_SHARED_MODULE_SUFFIX}
 #      PATHS ${MY_PATH_BIN}
 #    )
-#    FIND_LIBRARY("${DEPNAME}_BINDEP" 
+#    FIND_LIBRARY("${DEPNAME}_BINDEP"
 #        NAMES ${MYLIBRARY}
 #      PATHS ${MY_PATH_BIN}
 #    )

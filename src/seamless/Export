@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-/* -*-c++-*- 
+/*
  * Derived from osgEarth/Export, which was derived from osg/Export
  */
 
@@ -52,7 +52,7 @@
     #  endif
 #else
     #  define SEAMLESS_EXPORT
-#endif  
+#endif
 
 // set up define for whether member templates are supported by VisualStudio compilers.
 #ifdef _MSC_VER

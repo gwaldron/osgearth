@@ -278,7 +278,7 @@ void PatchSet::initPrimitiveSets()
         std::swap((*stripPset[2][0].get())[i],
                   (*stripPset[2][0].get())[i + 1]);
     }
-    
+
     stripPset[3][0] = makeSingleStrip(1); // hi res
     // Now rotate the strips for the other diagonals.
     for (int j = 1; j < 4; ++j)

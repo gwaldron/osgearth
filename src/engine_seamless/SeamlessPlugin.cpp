@@ -90,7 +90,7 @@ public:
         {
             return ReadResult::FILE_NOT_FOUND;
         }
-    }           
+    }
 };
 
 REGISTER_OSGPLUGIN(engine_seamless, SeamlessPlugin)

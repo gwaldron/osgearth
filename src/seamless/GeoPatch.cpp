@@ -38,13 +38,6 @@ GeoPatch::GeoPatch(const GeoPatch& rhs, const CopyOp& copyop)
 {
 }
 
-namespace
-{
-// Map from vertex number to grid coordinates. An edge is then defined
-// as being from a vertex to vertex + 1 mod 4.
-int vertCoords[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
-}
-
 float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
 {
     // Massive hack to get back to face parameters.

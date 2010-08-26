@@ -76,7 +76,7 @@ TileKey* makeTileKey(const Projected* ps, const ProjectedOptions* pjoptions)
                        ps->getMap()->getProfile());
 }
 
-HeightField* resampleHeightField(HeightField* hf, int newDim)
+HeightField* resampleHeightField(HeightField* hf, unsigned newDim)
 {
     const unsigned nCols = hf->getNumColumns();
     const unsigned nRows = hf->getNumRows();

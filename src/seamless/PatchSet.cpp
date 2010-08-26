@@ -273,7 +273,7 @@ void PatchSet::initPrimitiveSets()
         stripPset[2][0]->push_back(makeIndex(y, x));
     }
     // Now switch the order on the triangles on the reflected strip
-    for (int i = 1; i < stripPset[2][0]->size(); i += 3)
+    for (size_t i = 1; i < stripPset[2][0]->size(); i += 3)
     {
         std::swap((*stripPset[2][0].get())[i],
                   (*stripPset[2][0].get())[i + 1]);
@@ -303,7 +303,6 @@ osg::Node* PatchSet::createChild(const PatchOptions* parentOptions, int childNum
     parentOptions->getPatchExtents(lowerLeft, upperRight);
     Vec2d range = upperRight - lowerLeft;
     Vec2d newRange = range * .5;
-    Group* result = new Group;
     double x = (childNum % 2) * .5;
     double y = (childNum / 2) * .5;
     PatchOptions* pgroupOptions = osg::clone(parentOptions);

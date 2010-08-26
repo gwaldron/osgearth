@@ -408,7 +408,7 @@ bool QscFaceLocator::convertModelToLocal(const Vec3d& world, Vec3d& local) const
             {
                 OE_NOTICE << LC << "Couldn't convert to face coords\n";
             }
-            if (face != _face)
+            if (face != static_cast<int>(_face))
             {
                 OE_NOTICE << LC
                     << "Face should be " << _face << " but is " << face

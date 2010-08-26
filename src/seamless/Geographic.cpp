@@ -92,25 +92,25 @@ mergeHeightFields(const GeoExtent& targetExtent, const GeoHeightFieldList& hfs)
     }
     // List is in tile subkey quadrant order.
     // Assume the height fields all have the same dimensions
-    int targetCols = hfs[0]->getHeightField()->getNumColumns() * 2 - 1;
-    int targetRows = hfs[0]->getHeightField()->getNumRows() * 2 - 1;
+    unsigned targetCols = hfs[0]->getHeightField()->getNumColumns() * 2 - 1;
+    unsigned targetRows = hfs[0]->getHeightField()->getNumRows() * 2 - 1;
     HeightField* targethf = new HeightField;
     targethf->allocate(targetCols, targetRows);
     GeoHeightField* geo = new GeoHeightField(targethf, targetExtent, 0);
     for (int i = 0; i < 4; ++i)
     {
         HeightField* src = hfs[i]->getHeightField();
-        int targetColumn
+        unsigned targetColumn
             = floor((hfs[i]->getGeoExtent().xMin() - targetExtent.xMin())
                     / targetExtent.width() * (targetCols - 1) + .5);
-        int targetRow
+        unsigned targetRow
             = floor((hfs[i]->getGeoExtent().yMin() - targetExtent.yMin())
                     / targetExtent.height() * (targetRows - 1) + .5);
-        for (int sj = 0, tj = targetRow;
+        for (unsigned sj = 0, tj = targetRow;
              sj < src->getNumRows() && tj < targetRows;
              ++sj, ++tj)
         {
-            for (int si = 0, ti = targetColumn;
+            for (unsigned si = 0, ti = targetColumn;
              si < src->getNumColumns() && ti < targetCols;
              ++si, ++ti)
                 targethf->setHeight(ti, tj, src->getHeight(si, sj));
@@ -336,8 +336,6 @@ createClusterCullingCallback(const Matrixd& transform, const Patch* patch,
     Vec3 center_position(transform.getTrans());
     Vec3 center_normal(center_position);
     center_normal.normalize();
-
-    unsigned int r,c;
 
     // populate the vertex/normal/texcoord arrays from the grid.
 

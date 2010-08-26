@@ -21,8 +21,8 @@
  * Derived from osgEarth/Export, which was derived from osg/Export
  */
 
-#ifndef SEAMLESS_EXPORT
-#define SEAMLESS_EXPORT 1
+#ifndef SEAMLESS_EXPORT_H
+#define SEAMLESS_EXPORT_H 1
 
 // define USE_DEPRECATED_API is used to include in API which is being fazed out
 // if you can compile your apps with this turned off you are

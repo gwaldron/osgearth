@@ -22,6 +22,7 @@
 #include <osg/Geometry>
 #include <osg/Notify>
 #include <osg/Transform>
+#include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 
 #include <seamless/Patch>
@@ -82,103 +83,103 @@ void PatchGroup::traverse(NodeVisitor& nv)
 
     switch(nv.getTraversalMode())
     {
-        case(NodeVisitor::TRAVERSE_ALL_CHILDREN):
-            std::for_each(_children.begin(),_children.end(),NodeAcceptOp(nv));
-            break;
-        case(NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
+    case(NodeVisitor::TRAVERSE_ALL_CHILDREN):
+        std::for_each(_children.begin(),_children.end(),NodeAcceptOp(nv));
+        break;
+    case(NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
+    {
+        Vec3 eye = nv.getViewPoint();
+        Patch* patch = 0;
+        if (_children.empty())
+            return;
+        patch = dynamic_cast<Patch*>(_children[0].get());
+        if (!patch)
         {
-            Vec3 eye = nv.getViewPoint();
-            Patch* patch = 0;
-            if (_children.empty())
+            Transform* tform = dynamic_cast<Transform*>(_children[0].get());
+            if (!tform || tform->getNumChildren() == 0)
                 return;
-            patch = dynamic_cast<Patch*>(_children[0].get());
+            Matrix localMat;
+            tform->computeWorldToLocalMatrix(localMat, &nv);
+            eye = eye * localMat;
+            patch = dynamic_cast<Patch*>(tform->getChild(0));
             if (!patch)
+                return;
+        }
+
+        float epsilon = patch->getPatchError(eye);
+
+        int lastChildTraversed = -1;
+        bool needToLoadChild = false;
+        // Range list is set up so that the error is [0,1] for the
+        // patch  at this level and (1, 1e10) for the next level.
+        for(unsigned int i=0;i<_rangeList.size();++i)
+        {
+            if (_rangeList[i].first <= epsilon
+                && epsilon < _rangeList[i].second)
             {
-                Transform* tform = dynamic_cast<Transform*>(_children[0].get());
-                if (!tform || tform->getNumChildren() == 0)
-                    return;
-                Matrix localMat;
-                tform->computeWorldToLocalMatrix(localMat, &nv);
-                eye = eye * localMat;
-                patch = dynamic_cast<Patch*>(tform->getChild(0));
-                if (!patch)
-                    return;
-            }
-
-            float epsilon = patch->getPatchError(eye);
-
-            int lastChildTraversed = -1;
-            bool needToLoadChild = false;
-            // Range list is set up so that the error is [0,1] for the
-            // patch  at this level and (1, 1e10) for the next level.
-            for(unsigned int i=0;i<_rangeList.size();++i)
-            {
-                if (_rangeList[i].first <= epsilon
-                    && epsilon < _rangeList[i].second)
-                {
-                    if (i<_children.size())
-                    {
-                        if (updateTimeStamp)
-                        {
-                            _perRangeDataList[i]._timeStamp=timeStamp;
-                            _perRangeDataList[i]._frameNumber=frameNumber;
-                        }
-
-                        _children[i]->accept(nv);
-                        lastChildTraversed = (int)i;
-                    }
-                    else
-                    {
-                        needToLoadChild = true;
-                    }
-                }
-            }
-
-            if (needToLoadChild)
-            {
-                unsigned int numChildren = _children.size();
-
-                // select the last valid child.
-                if (numChildren>0 && ((int)numChildren-1)!=lastChildTraversed)
+                if (i<_children.size())
                 {
                     if (updateTimeStamp)
                     {
-                        _perRangeDataList[numChildren-1]._timeStamp=timeStamp;
-                        _perRangeDataList[numChildren-1]._frameNumber=frameNumber;
+                        _perRangeDataList[i]._timeStamp=timeStamp;
+                        _perRangeDataList[i]._frameNumber=frameNumber;
                     }
-                    _children[numChildren-1]->accept(nv);
-                }
 
-                // now request the loading of the next unloaded child.
-                if (!_disableExternalChildrenPaging &&
-                    nv.getDatabaseRequestHandler() &&
-                    numChildren<_perRangeDataList.size())
+                    _children[i]->accept(nv);
+                    lastChildTraversed = (int)i;
+                }
+                else
                 {
-                    // compute priority from where abouts in the required range the distance falls.
-                    float priority = (_rangeList[numChildren].second - epsilon)/(_rangeList[numChildren].second-_rangeList[numChildren].first);
-
-                    // invert priority for PIXEL_SIZE_ON_SCREEN mode
-                    priority = -priority;
-
-                    // modify the priority according to the child's priority offset and scale.
-                    priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
-
-                    if (_databasePath.empty())
-                    {
-                        nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,this,priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
-                    }
-                    else
-                    {
-                        // prepend the databasePath to the child's filename.
-                        nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,this,priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
-                    }
+                    needToLoadChild = true;
                 }
-
             }
-           break;
         }
-        default:
-            break;
+
+        if (needToLoadChild)
+        {
+            unsigned int numChildren = _children.size();
+
+            // select the last valid child.
+            if (numChildren>0 && ((int)numChildren-1)!=lastChildTraversed)
+            {
+                if (updateTimeStamp)
+                {
+                    _perRangeDataList[numChildren-1]._timeStamp=timeStamp;
+                    _perRangeDataList[numChildren-1]._frameNumber=frameNumber;
+                }
+                _children[numChildren-1]->accept(nv);
+            }
+
+            // now request the loading of the next unloaded child.
+            if (!_disableExternalChildrenPaging &&
+                nv.getDatabaseRequestHandler() &&
+                numChildren<_perRangeDataList.size())
+            {
+                // compute priority from where abouts in the required range the distance falls.
+                float priority = (_rangeList[numChildren].second - epsilon)/(_rangeList[numChildren].second-_rangeList[numChildren].first);
+
+                // invert priority for PIXEL_SIZE_ON_SCREEN mode
+                priority = -priority;
+
+                // modify the priority according to the child's priority offset and scale.
+                priority = _perRangeDataList[numChildren]._priorityOffset + priority * _perRangeDataList[numChildren]._priorityScale;
+
+                if (_databasePath.empty())
+                {
+                    nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,this,priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                }
+                else
+                {
+                    // prepend the databasePath to the child's filename.
+                    nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,this,priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                }
+            }
+
+        }
+        break;
+    }
+    default:
+        break;
     }
 }
 
@@ -201,14 +202,18 @@ public:
     readNode(const string& fileName,
              const osgDB::ReaderWriter::Options* options) const
     {
+        string ext = osgDB::getFileExtension(fileName);
+        if (!acceptsExtension(ext))
+            return osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;
         Vec2d lowerLeft(0.0, 1.0);
         Vec2d upperRight(1.0, 1.0);
         const PatchOptions* poptions
             = dynamic_cast<const PatchOptions*>(options);
         if (!poptions)
         {
-            OSG_FATAL << "tengpatch reader: Options object is not PatchOptions";
-            return osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;
+            OSG_FATAL
+                << "PatchGroup reader: Options object is not PatchOptions";
+            return osgDB::ReaderWriter::ReadResult::ERROR_IN_READING_FILE;
         }
         PatchSet* pset = poptions->getPatchSet();
         Group* result = new Group;

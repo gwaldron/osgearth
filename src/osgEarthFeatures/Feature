@@ -85,8 +85,9 @@ namespace osgEarth { namespace Features
 
         const std::string& getAttr( const std::string& name ) const;
 
-        optional<osg::ref_ptr<Symbology::Style> > style() { return _style; }
-        const optional<osg::ref_ptr<Symbology::Style> > style() const { return _style; }
+        /** Embedded style. */
+        optional<osg::ref_ptr<Symbology::Style> >& style() { return _style; }
+        const optional<osg::ref_ptr<Symbology::Style> >& style() const { return _style; }
 
     protected:
         long _fid;

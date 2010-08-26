@@ -18,6 +18,7 @@
  */
 
 #include <osgEarthFeatures/FeatureTileSource>
+#include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthSymbology/Style>
@@ -83,11 +84,13 @@ public:
     //override
     bool renderFeaturesForStyle(
         const Symbology::Style* style,
-        FeatureList& features,
+        const FeatureList& inFeatures,
         osg::Referenced* buildData,
         const GeoExtent& imageExtent,
         osg::Image* image )
     {
+        // local copy of the features that we can process
+        FeatureList features = inFeatures;
 
         BuildData* bd = static_cast<BuildData*>( buildData );
 
@@ -104,16 +107,54 @@ public:
         double xf = (double)image->s() / imageExtent.width();
         double yf = (double)image->t() / imageExtent.height();
 
-        if (line) {
-            BufferFilter buffer;
-            buffer.capStyle() = line->stroke()->lineCap().value();
-            if (_settings->relativeLineSize().value()) {
-                double ratio = 1.0/xf;
-                buffer.distance() = ratio * line->stroke()->width().value();
-            } else {
-                buffer.distance() = line->stroke()->width().value();
+        // strictly speaking we should iterate over the features and buffer each one that's a line,
+        // rather then checking for the existence of a LineSymbol.
+        FeatureList linesToBuffer;
+        for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
+        {
+            Feature* feature = i->get();
+            Geometry* geom = feature->getGeometry();
+            if ( geom && geom->getType() == Geometry::TYPE_LINESTRING )
+            {
+                linesToBuffer.push_back( feature );
             }
-            context = buffer.push( features, context );
+        }
+
+        if ( linesToBuffer.size() > 0 )
+        {
+            // resolution of the image (pixel extents):
+            double xres = 1.0/xf;
+            double yres = 1.0/yf;
+
+            // downsample the line data so that it is no higher resolution than to image to which
+            // we intend to rasterize it. If you don't do this, you run the risk of the buffer 
+            // operation taking forever on very high-res input data.
+            if ( _settings->optimizeLineSampling() == true )
+            {
+                ResampleFilter resample;
+                resample.minLength() = osg::minimum( xres, yres );
+                context = resample.push( linesToBuffer, context );
+            }
+
+            // now run the buffer operation on all lines:
+            BufferFilter buffer;
+            float lineWidth = 0.5;
+            if ( line )
+            {
+                buffer.capStyle() = line->stroke()->lineCap().value();
+
+                if ( line->stroke()->width().isSet() )
+                    lineWidth = line->stroke()->width().value();
+            }
+
+            // "relative line size" means that the line width is expressed in (approx) pixels
+            // rather than in map units
+            if ( _settings->relativeLineSize() == true )
+                buffer.distance() = xres * lineWidth;
+            else
+                buffer.distance() = lineWidth;
+
+            buffer.push( linesToBuffer, context );
         }
 
         // First, transform the features into the map's SRS:
@@ -154,8 +195,10 @@ public:
         {
             bool first = bd->_pass == 0 && i == features.begin();
 
+            Geometry* geometry = i->get()->getGeometry();
+
             osg::ref_ptr< Geometry > croppedGeometry;
-            if ( ! i->get()->getGeometry()->crop( cropPoly.get(), croppedGeometry ) )
+            if ( ! geometry->crop( cropPoly.get(), croppedGeometry ) )
                 continue;
 
             osg::Vec4 c = color;

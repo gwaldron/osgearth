@@ -1,8 +1,9 @@
 <!--
 osgEarth Sample
+Demonstrates use of the "agglite" feature rasterization driver.
 -->
 
-<map name="Feature Stencil Demo" type="round">
+<map name="Geometry Rasterizer Demo" type="round">
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -10,22 +11,18 @@ osgEarth Sample
     
     <image name="world" driver="agglite">
 
-        <!-- Configure the OGR feature driver to read the shapefile.
-             Convert the goemetry to lines, and apply a small buffer
-             to give the lines thickness. -->
-             
+        <!-- Configure the OGR feature driver to read the shapefile. -->             
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
-            <ogr_driver>ESRI Shapefile</ogr_driver>
             <build_spatial_index>true</build_spatial_index>
         </features>
         
+        <!-- Treat the geometry as lines. -->
         <geometry_type>line</geometry_type>
                 
-        <!-- This driver uses the "stroke-width" property below to define
-             the width (in data source coordinates) of the draped lines.
-             In this case the units are degrees. -->
-             
+        <!-- This means the "stroke-width" in the style is (approximately) in pixels. -->
+        <relative_line_size>true</relative_line_size>
+                
         <styles>
             <style type="text/css">
                 world {

@@ -102,7 +102,7 @@ namespace osgEarth { namespace Features
          */
         virtual bool renderFeaturesForStyle(
             const Symbology::Style* style,
-            FeatureList& features,
+            const FeatureList& features,
             osg::Referenced* buildData,
             const GeoExtent& imageExtent,
             osg::Image* out_image ) { return false; }            

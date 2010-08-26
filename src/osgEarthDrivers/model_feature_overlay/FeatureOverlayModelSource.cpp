@@ -102,7 +102,7 @@ public:
 
 #if 0
     //override
-    osg::Node* renderFeaturesForStyle( const Style& style, FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
+    osg::Node* renderFeaturesForStyle( const Style& style, const FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
     {
         // A processing context to use with the filters:
         FilterContext context;

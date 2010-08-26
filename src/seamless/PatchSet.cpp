@@ -30,7 +30,7 @@ namespace seamless
 using namespace osg;
 
 PatchSet::PatchSet(int resolution, PatchOptions* poptionsPrototype)
-    : _resolution(resolution), _maxLevel(8),
+    : _resolution(resolution), _maxLevel(16),
       _patchOptionsPrototype(poptionsPrototype ? poptionsPrototype
                              : new PatchOptions)
 {

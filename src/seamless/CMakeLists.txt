@@ -1,0 +1,33 @@
+IF(WIN32)
+    SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+ENDIF(WIN32)
+
+SET(LIB_NAME seamless)
+
+SET(LIB_PUBLIC_HEADERS
+        QSC
+        Euler
+        Patch
+        PatchGroup
+        PatchSet
+        Projected
+        Geographic
+        GeoPatch
+)
+
+ADD_LIBRARY(${LIB_NAME} SHARED
+        ${LIB_PUBLIC_HEADERS}                        
+        QSC.cpp
+        Euler.cpp
+        Patch.cpp
+        PatchGroup.cpp
+        PatchSet.cpp
+        Projected.cpp
+        Geographic.cpp
+        GeoPatch.cpp
+        )
+
+LINK_WITH_VARIABLES(${LIB_NAME} OSGEARTH_LIBRARY OSG_LIBRARY OSGUTIL_LIBRARY OPENTHREADS_LIBRARY GDAL_LIBRARY)
+LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
+    
+INCLUDE(ModuleInstall OPTIONAL)

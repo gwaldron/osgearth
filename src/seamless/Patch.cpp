@@ -129,6 +129,7 @@ void Patch::init()
         for (int trile = 0; trile < 4; ++trile)
         {
             Geometry* geom = new Geometry;
+            geom->setUseVertexBufferObjects(true);
             _data->setGeometryAttributes(geom);
             geom->addPrimitiveSet(_patchSet->trilePset[res][trile]);
             _trile[res][trile] = new Geode;

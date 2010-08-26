@@ -23,9 +23,11 @@
 // implementation.
 
 #include <seamless/Patch>
+#include <seamless/Export>
+
 namespace seamless
 {
-class GeoPatch : public Patch
+class SEAMLESS_EXPORT GeoPatch : public Patch
 {
 public:
     GeoPatch();

@@ -25,11 +25,13 @@
 #include <osg/Node>
 #include <osg/PrimitiveSet>
 
+#include <seamless/Export>
+
 namespace seamless
 {
 class PatchSet;
 
-class Patch : public osg::Node
+class SEAMLESS_EXPORT Patch : public osg::Node
 {
 public:
     Patch();
@@ -98,9 +100,9 @@ protected:
 
 // Utilities useful in Patch subclasses
 // Find the point closest to P3 on the line segment from P1 to P2
-osg::Vec3 closestPointOnSegment(
+extern SEAMLESS_EXPORT osg::Vec3 closestPointOnSegment(
     const osg::Vec3& p1, const osg::Vec3& p2, const osg::Vec3& p3);
-float distanceToSegment(
+extern SEAMLESS_EXPORT float distanceToSegment(
     const osg::Vec3& p1, const osg::Vec3& p2, const osg::Vec3& p3);
 }
 #endif

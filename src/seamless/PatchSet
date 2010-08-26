@@ -28,10 +28,11 @@
 
 #include <seamless/Patch>
 #include <seamless/PatchGroup>
+#include <seamless/Export>
 
 namespace seamless
 {
-class PatchSet : public osg::Object
+class SEAMLESS_EXPORT PatchSet : public osg::Object
 {
 public:
     PatchSet(int resolution = 128, PatchOptions* poptionsPrototype = 0);

@@ -23,6 +23,7 @@
 #include <osgEarth/Map>
 
 #include <seamless/PatchSet>
+#include <seamless/Export>
 
 namespace seamless
 {
@@ -36,7 +37,7 @@ namespace seamless
  * doesn't match the tile size returned by the map then the tile is
  * resampled.
  */
-class Projected : public PatchSet
+class SEAMLESS_EXPORT Projected : public PatchSet
 {
 public:
     Projected(osgEarth::Map* map);

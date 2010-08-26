@@ -25,12 +25,13 @@
 
 #include <osgDB/Registry>
 
+#include <seamless/Export>
 namespace seamless
 {
 class Patch;
 class PatchSet;
 
-class PatchGroup : public osg::PagedLOD
+class SEAMLESS_EXPORT PatchGroup : public osg::PagedLOD
 {
 public:
     PatchGroup();
@@ -47,7 +48,7 @@ protected:
 
 // Database options for creating a patch
 
-class PatchOptions : public osgDB::Options
+class SEAMLESS_EXPORT PatchOptions : public osgDB::Options
 {
 public:
     PatchOptions();

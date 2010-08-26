@@ -32,9 +32,11 @@
 #include <seamless/PatchSet>
 #include <seamless/Euler>
 
+#include <seamless/Export>
+
 namespace seamless
 {
-class Geographic : public PatchSet
+class SEAMLESS_EXPORT Geographic : public PatchSet
 {
 public:
     Geographic(osgEarth::Map* map);
@@ -61,7 +63,7 @@ protected:
     osg::ref_ptr<osg::EllipsoidModel> _eModel;
 };
 
-class GeographicOptions : public PatchOptions
+class SEAMLESS_EXPORT GeographicOptions : public PatchOptions
 {
 public:
     GeographicOptions()

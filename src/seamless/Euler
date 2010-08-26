@@ -25,6 +25,8 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Locators>
 
+#include <seamless/Export>
+
 namespace seamless
 {
 /** The Euler cube
@@ -50,15 +52,15 @@ namespace seamless
 
 namespace euler
 {
-bool latLonToFaceCoords(double lat_deg, double lon_deg,
-                        double& out_x, double& out_y, int& out_face,
-                        int faceHint = -1 );
+extern bool SEAMLESS_EXPORT latLonToFaceCoords(
+    double lat_deg, double lon_deg, double& out_x, double& out_y,
+    int& out_face, int faceHint = -1);
 
 /**
  * Converts face coordinates into lat/long.
  */
-bool faceCoordsToLatLon(double x, double y, int face,
-                        double& out_lat_deg, double& out_lon_deg );
+extern bool SEAMLESS_EXPORT faceCoordsToLatLon(
+    double x, double y, int face, double& out_lat_deg, double& out_lon_deg);
 
 /**
  * Converts cube coordinates (0,0=>4,3) to face coordinates (-1,-1=>1,1,F).
@@ -66,28 +68,32 @@ bool faceCoordsToLatLon(double x, double y, int face,
  * always return the lower-numbered face. The "extent" version of this 
  * method (below) is better b/c it's unambiguous.
  */
-bool cubeToFace(double& in_out_x, double& in_out_y,int& out_face);
+extern bool SEAMLESS_EXPORT cubeToFace(
+    double& in_out_x, double& in_out_y,int& out_face);
 
 /**
  * Converts cube coordinates (0,0=>4,3) to face coordinates (-1,-1=>1,1,F). This
  * version takes an extent, which is better than the non-extent version since it
  * can resolve face-border ambiguity.
  */
-bool cubeToFace(double& in_out_xmin, double& in_out_ymin, 
-                double& in_out_xmax, double& in_out_ymax, 
-                int& out_face );
+extern bool SEAMLESS_EXPORT cubeToFace(
+    double& in_out_xmin, double& in_out_ymin,
+    double& in_out_xmax, double& in_out_ymax, 
+    int& out_face);
 
 /**
  * Converts face coordinates (-1,-1=>1,1 +F) to cube coordinates (0,0=>4,3).
  */
-bool faceToCube(double& in_out_x, double& in_out_y, int face);
+extern bool SEAMLESS_EXPORT faceToCube(
+    double& in_out_x, double& in_out_y, int face);
 
 /**
  * Length of great circle arc between face coordinates. This will be the
  * length of a grid edge if the points share a coordinate.
  */
 
-double arcLength(const osg::Vec2d& coord1, const osg::Vec2d& coord2, int face);
+extern double SEAMLESS_EXPORT arcLength(
+    const osg::Vec2d& coord1, const osg::Vec2d& coord2, int face);
 
 /**
  * Distance between a point and an arc on a face.
@@ -96,16 +102,16 @@ double arcLength(const osg::Vec2d& coord1, const osg::Vec2d& coord2, int face);
  * @param coord2 end of segment in face coordinates
  * @param face cube face. coord1 and coord2 lie on the same face.
  */
-double distanceToSegment(const osg::Vec3d& p,
-                         const osg::Vec2d& coord1, const osg::Vec2d& coord2,
-                         int face);
+extern double SEAMLESS_EXPORT distanceToSegment(
+    const osg::Vec3d& p, const osg::Vec2d& coord1, const osg::Vec2d& coord2,
+    int face);
 }
 
 /**
  * osgTerrain locator for positioning data on the terrain using a cube-face
  * coordinate system.
  */
-class EulerFaceLocator : public osgEarth::GeoLocator
+class SEAMLESS_EXPORT EulerFaceLocator : public osgEarth::GeoLocator
 {
 public:
     EulerFaceLocator(unsigned int face)
@@ -132,7 +138,7 @@ private:
  * face is above face 0 and the South Pole face is below face 0. This
  * results in a space measuring (0,0=>4,3).
  */
-class EulerSpatialReference : public osgEarth::SpatialReference
+class SEAMLESS_EXPORT EulerSpatialReference : public osgEarth::SpatialReference
 {
 public:
     EulerSpatialReference(void* handle);
@@ -164,7 +170,7 @@ protected: // SpatialReference overrides
 
 };
 
-class EulerProfile : public osgEarth::Profile
+class SEAMLESS_EXPORT EulerProfile : public osgEarth::Profile
 {
 public:
     EulerProfile();

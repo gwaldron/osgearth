@@ -18,6 +18,7 @@
  */
 #include <osgEarth/ModelLayer>
 #include <osgEarth/Map>
+#include <osg/Depth>
 
 using namespace osgEarth;
 
@@ -86,6 +87,12 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
 
         if ( _lighting.isSet() )
             setLightingEnabled( _lighting.value() );
+
+        if ( _modelSource->getOptions()->depthTestEnabled() == false )            
+        {
+            if ( _node )
+                _node->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+        }
     }
     return _node.get();
 }

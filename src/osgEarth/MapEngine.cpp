@@ -655,7 +655,7 @@ MapEngine::createPopulatedTile( Map* map, VersionedTerrain* terrain, const TileK
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
-        OE_WARN << LC << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        OE_DEBUG << LC << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
         validData = false;
 
         //If we're not asked to fallback on previous LOD's and we have no data, return NULL

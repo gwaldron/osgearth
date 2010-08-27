@@ -30,11 +30,13 @@ ModelSourceOptions::ModelSourceOptions( const PluginOptions* po ) :
 DriverOptions( po ),
 _minRange(0),
 _maxRange(FLT_MAX),
-_renderOrder( 11 )
+_renderOrder( 11 ),
+_depthTestEnabled( true )
 {
     config().getIfSet<float>( "min_range", _minRange );
     config().getIfSet<float>( "max_range", _maxRange );
     config().getIfSet<int>( "render_order", _renderOrder );
+    config().getIfSet<bool>( "depth_test_enabled", _depthTestEnabled );
 }
 
 Config
@@ -44,6 +46,7 @@ ModelSourceOptions::toConfig() const
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "render_order", _renderOrder );
+    conf.updateIfSet( "depth_test_enabled", _depthTestEnabled );
     return conf;
 }
 

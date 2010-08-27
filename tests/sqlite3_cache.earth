@@ -10,11 +10,11 @@
     <loading_policy mode="standard"/>
     
     <image name="test.imagery" driver="tms">
-        <url>http://live.pelicanmapping.com/readymap/tiles/1.0.0/7/</url>
+        <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>
     
     <heightfield name="test.elevation.nobathy" driver="tms">
-        <url>http://live.pelicanmapping.com/readymap/tiles/1.0.0/9/</url>
+        <url>http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml</url>
         <nodata_min>-1.0</nodata_min>
     </heightfield>
     

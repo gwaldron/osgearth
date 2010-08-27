@@ -651,7 +651,7 @@ MapLayer::createImage( const TileKey* key,
 			}
 			if (mi->getImages().empty())
 			{
-				OE_WARN << LC << "Couldn't create image for MultiImage " << std::endl;
+				OE_DEBUG << LC << "Couldn't create image for MultiImage " << std::endl;
 				return 0;
 			}
 			else if (missingTiles.size() > 0)

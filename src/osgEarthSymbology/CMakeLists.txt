@@ -37,7 +37,6 @@ SET(LIB_PUBLIC_HEADERS
     SymbolicNode
     Symbolizer
     Text
-    TextMarkup
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
@@ -64,7 +63,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     SymbolicNode.cpp
     Symbolizer.cpp
     Text.cpp
-    TextMarkup.cpp
 )
 
 IF(GEOS_FOUND)

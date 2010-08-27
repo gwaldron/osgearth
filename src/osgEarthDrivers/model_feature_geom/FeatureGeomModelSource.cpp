@@ -20,20 +20,24 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+
 #include <osgEarthFeatures/FeatureSymbolizer>
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/BuildTextOperator>
+
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/GeometrySymbolizer>
+#include <osgEarthSymbology/SymbolicNode>
+
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
-#include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/SymbolicNode>
 
 #include "FeatureGeomModelOptions"
 
@@ -62,53 +66,37 @@ public:
         FeatureSymbolizerContext* context,
         osg::Node** out_newNode)
     {
-        // A processing context to use with the filters:
-        FilterContext contextFilter;
-        contextFilter.profile() = context->getModelSource()->getFeatureSource()->getFeatureProfile();
+        const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
+            _model->getFeatureModelOptions() );
 
-        // Transform them into the map's SRS:
-        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS() );
-        xform.setMakeGeocentric( context->getModelSource()->getMap()->isGeocentric() );
-        xform.setLocalizeCoordinates( true );
+        // break the features out into separate lists for geometries and text annotations:
+        FeatureList geomFeatureList, textAnnoList;
 
-        const FeatureGeomModelOptions* options = dynamic_cast<const FeatureGeomModelOptions*>(context->getModelSource()->getFeatureModelOptions());
-
-        FeatureList featureList;
         for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
-            featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
-
-        xform.setHeightOffset( options->heightOffset().value() );
-        contextFilter = xform.push( featureList, contextFilter );
-
-        GeometryList geometryList;
-        for (FeatureList::iterator it = featureList.begin(); it != featureList.end(); ++it)
         {
-            Feature* feature = it->get();
-            if ( feature )
-            {
-                Geometry* geometry = feature->getGeometry();
-                if ( geometry )
-                    geometryList.push_back(geometry);
-            }
+            Feature* f = osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL);
+            if ( dynamic_cast<TextAnnotation*>(f) )
+                textAnnoList.push_back( f );
+            else
+                geomFeatureList.push_back( f );
         }
-        GeometrySymbolizer::GeometrySymbolizerOperator geometryOperator;
-        osg::Node* result = geometryOperator(geometryList, style);        
 
-
+        // a single group to hold the results:
         osg::Group* root = new osg::Group;
 
-        // If the context specifies a reference frame, apply it to the resulting model.
-        // Q: should this be here, or should the reference frame matrix be passed to the Symbolizer?
-        // ...probably the latter.
-        if ( contextFilter.hasReferenceFrame() )
+        // compile the geometry features:
+        if ( geomFeatureList.size() > 0 )
         {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
-                contextFilter.inverseReferenceFrame() );
-            delocalizer->addChild( result );
-            result = delocalizer;
+            osg::Node* node = compileGeometries( geomFeatureList, style );
+            if ( node ) root->addChild( node );
         }
 
-        root->addChild( result );
+        // compile the text annotation features:
+        if ( textAnnoList.size() > 0 )
+        {
+            osg::Node* node = compileTextAnnotations( textAnnoList, style );
+            if ( node ) root->addChild( node );
+        }
         
         // Apply an LOD if required:
         if ( options->minRange().isSet() || options->maxRange().isSet() )
@@ -124,9 +112,99 @@ public:
 
         return root;
     }
+
+    osg::Node*
+    compileGeometries( FeatureList& features, const Style* style )
+    {
+        const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
+            _model->getFeatureModelOptions() );
+
+        // A processing context to use with the filters:
+        FilterContext contextFilter;
+        contextFilter.profile() = _model->getFeatureSource()->getFeatureProfile();
+
+        // Transform them into the map's SRS:
+        TransformFilter xform( _model->getMap()->getProfile()->getSRS() );
+        xform.setMakeGeocentric( _model->getMap()->isGeocentric() );
+        xform.setLocalizeCoordinates( true );
+
+        // Apply the height offset if necessary:
+        xform.setHeightOffset( options->heightOffset().value() );
+        contextFilter = xform.push( features, contextFilter );
+
+        // Assemble the geometries into a list:
+        GeometryList geometryList;
+        for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
+        {
+            Feature* feature = it->get();
+            if ( feature )
+            {
+                Geometry* geometry = feature->getGeometry();
+                if ( geometry )
+                    geometryList.push_back(geometry);
+            }
+        }
+
+        // build the geometry.
+        GeometrySymbolizer::GeometrySymbolizerOperator geometryOperator;
+        osg::Node* result = geometryOperator( geometryList, style );
+        
+        // install the localization transform if necessary.
+        if ( contextFilter.hasReferenceFrame() )
+        {
+            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( contextFilter.inverseReferenceFrame() );
+            delocalizer->addChild( result );
+            result = delocalizer;
+        }
+
+        return result;
+    }
+
+    osg::Node*
+    compileTextAnnotations( FeatureList& features, const Style* style )
+    {
+        const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
+            _model->getFeatureModelOptions() );
+
+        // A processing context to use with the filters:
+        FilterContext contextFilter;
+        contextFilter.profile() = _model->getFeatureSource()->getFeatureProfile();
+
+        // Transform them into the map's SRS:
+        TransformFilter xform( _model->getMap()->getProfile()->getSRS() );
+        xform.setMakeGeocentric( _model->getMap()->isGeocentric() );
+        xform.setLocalizeCoordinates( true );
+
+        // Apply the height offset if necessary:
+        xform.setHeightOffset( options->heightOffset().value() );
+        contextFilter = xform.push( features, contextFilter );
+
+        osg::ref_ptr<const TextSymbol> textSymbol = style->getSymbol<TextSymbol>();
+        //Use a default symbol if we have no text symbol
+        if (! textSymbol)
+        {
+            TextSymbol* ts = new TextSymbol();
+            ts->rotateToScreen() = true;
+            textSymbol = ts;
+        }
+
+        // build the text.
+        BuildTextOperator textOperator;
+        osg::Node* result = textOperator( features, textSymbol.get(), contextFilter );
+        
+        // install the localization transform if necessary.
+        if ( contextFilter.hasReferenceFrame() )
+        {
+            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( contextFilter.inverseReferenceFrame() );
+            delocalizer->addChild( result );
+            result = delocalizer;
+        }
+
+        return result;
+    }
 };
 
-
+/** The model source implementation for feature_geom */
 class FeatureGeomModelSource : public FeatureModelSource
 {
 public:
@@ -149,13 +227,11 @@ public:
         return new FeatureSymbolizerGraph(new FactoryGeomSymbolizer(this));
     }
 
-
 protected:
     int _sourceId;
 };
 
-
-
+/** The plugin factory object */
 class FeatureGeomModelSourceFactory : public osgDB::ReaderWriter
 {
 public:

@@ -257,7 +257,6 @@ public:
         osgDB::ReaderWriter* result = 0L;
 
         std::string uri = createURI(key);
-        OE_NOTICE << "WMS: URL = " << uri << std::endl;
         if ( !extraAttrs.empty() )
         {
             std::string delim = uri.find("?") == std::string::npos ? "?" : "&";

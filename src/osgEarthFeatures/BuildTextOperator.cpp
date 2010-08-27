@@ -138,48 +138,54 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         osg::Vec3d position;
         osg::Quat orientation;
 
-        TextSymbol::LinePlacement linePlacement = symbol->linePlacement().isSet() ? symbol->linePlacement().get() : TextSymbol::LINEPLACEMENT_ALONG_LINE;
-        if (feature->getGeometry()->getType() == Symbology::Geometry::TYPE_LINESTRING && linePlacement == TextSymbol::LINEPLACEMENT_ALONG_LINE)
+        GeometryIterator gi( feature->getGeometry() );
+        while( gi.hasMore() )
         {
-            //Compute the "middle" of the line string
-            LineString* lineString = static_cast<LineString*>(feature->getGeometry());
-            double length = lineString->getLength();
-            double center = length / 2.0;
-            osg::Vec3d start, end;
-            if (lineString->getSegment(center, start, end))
+            Geometry* geom = gi.next();
+
+            TextSymbol::LinePlacement linePlacement = symbol->linePlacement().isSet() ? symbol->linePlacement().get() : TextSymbol::LINEPLACEMENT_ALONG_LINE;
+            if (geom->getType() == Symbology::Geometry::TYPE_LINESTRING && linePlacement == TextSymbol::LINEPLACEMENT_ALONG_LINE)
             {
-                TextSymbol::LineOrientation lineOrientation = symbol->lineOrientation().isSet() ? symbol->lineOrientation().get() : TextSymbol::LINEORIENTATION_HORIZONTAL;
-
-                position = (end + start) / 2.0;
-                //We don't want to orient the text at all if we are rotating to the screen
-                if (!rotateToScreen && lineOrientation != TextSymbol::LINEORIENTATION_HORIZONTAL)
+                //Compute the "middle" of the line string
+                LineString* lineString = static_cast<LineString*>(geom);
+                double length = lineString->getLength();
+                double center = length / 2.0;
+                osg::Vec3d start, end;
+                if (lineString->getSegment(center, start, end))
                 {
-                    osg::Vec3d dir = (end-start);
-                    dir.normalize();
+                    TextSymbol::LineOrientation lineOrientation = symbol->lineOrientation().isSet() ? symbol->lineOrientation().get() : TextSymbol::LINEORIENTATION_HORIZONTAL;
 
-                    if (lineOrientation == TextSymbol::LINEORIENTATION_PERPENDICULAR)
+                    position = (end + start) / 2.0;
+                    //We don't want to orient the text at all if we are rotating to the screen
+                    if (!rotateToScreen && lineOrientation != TextSymbol::LINEORIENTATION_HORIZONTAL)
                     {
-                        osg::Vec3d up(0,0,1);
-                        const SpatialReference* srs = context.profile()->getSRS();
-                        if (srs && context.isGeocentric() && srs->getEllipsoid())
+                        osg::Vec3d dir = (end-start);
+                        dir.normalize();
+
+                        if (lineOrientation == TextSymbol::LINEORIENTATION_PERPENDICULAR)
                         {
-                            osg::Vec3d w = context.toWorld( position );
-                            up = srs->getEllipsoid()->computeLocalUpVector(w.x(), w.y(), w.z());
+                            osg::Vec3d up(0,0,1);
+                            const SpatialReference* srs = context.profile()->getSRS();
+                            if (srs && context.isGeocentric() && srs->getEllipsoid())
+                            {
+                                osg::Vec3d w = context.toWorld( position );
+                                up = srs->getEllipsoid()->computeLocalUpVector(w.x(), w.y(), w.z());
+                            }
+                            dir = up ^ dir;
                         }
-                        dir = up ^ dir;
-                    }
-                    orientation.makeRotate(osg::Vec3d(1,0,0), dir);
-                }                
+                        orientation.makeRotate(osg::Vec3d(1,0,0), dir);
+                    }                
+                }
+                else
+                {
+                    //Fall back on using the center
+                    position = lineString->getBounds().center();
+                }
             }
             else
             {
-                //Fall back on using the center
-                position = lineString->getBounds().center();
+              position = geom->getBounds().center();
             }
-        }
-        else
-        {
-          position = feature->getGeometry()->getBounds().center();
         }
         
         osgText::Text* t = new osgText::Text();

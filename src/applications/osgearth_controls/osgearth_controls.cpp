@@ -26,7 +26,7 @@
 using namespace osgEarthUtil::Controls;
 
 
-void createControls( ControlSurface* );
+void createControls( ControlCanvas* );
 
 int main(int argc, char** argv)
 {
@@ -39,7 +39,7 @@ int main(int argc, char** argv)
         root->addChild( node );
 
     // create a surface to house the controls
-    ControlSurface* cs = new ControlSurface( &viewer );
+    ControlCanvas* cs = new ControlCanvas( &viewer );
     root->addChild( cs );
 
     viewer.setSceneData( root );
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 }
 
 void
-createControls( ControlSurface* cs )
+createControls( ControlCanvas* cs )
 {
     // a container centered on the screen, containing an image and a text label.
     {

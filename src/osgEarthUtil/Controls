@@ -316,10 +316,10 @@ namespace osgEarthUtil { namespace Controls
     /**
      * Associates controls with an OSG View.
      */
-    class OSGEARTHUTIL_EXPORT ControlSurface : public osg::Camera
+    class OSGEARTHUTIL_EXPORT ControlCanvas : public osg::Camera
     {
     public:
-        ControlSurface( osgViewer::View* view );
+        ControlCanvas( osgViewer::View* view );
 
         // adds a top-level control to this surface.
         void addControl( Control* control );

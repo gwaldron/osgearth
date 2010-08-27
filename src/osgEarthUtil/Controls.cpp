@@ -760,7 +760,7 @@ struct ControlUpdater : public osg::NodeCallback
 {
     void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
-        static_cast<ControlSurface*>(node)->update();
+        static_cast<ControlCanvas*>(node)->update();
     }
 };
 
@@ -768,7 +768,7 @@ struct ControlUpdater : public osg::NodeCallback
 // We need this info since controls position from the upper-left corner.
 struct ViewportHandler : public osgGA::GUIEventHandler
 {
-    ViewportHandler( ControlSurface* cs ) : _cs(cs), _width(0), _height(0), _first(true) { }
+    ViewportHandler( ControlCanvas* cs ) : _cs(cs), _width(0), _height(0), _first(true) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
     {
@@ -795,14 +795,14 @@ struct ViewportHandler : public osgGA::GUIEventHandler
         }
         return false;
     }
-    ControlSurface* _cs;
+    ControlCanvas* _cs;
     int _width, _height;
     bool _first;
 };
 
 // ---------------------------------------------------------------------------
 
-ControlSurface::ControlSurface( osgViewer::View* view ) :
+ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
 {
     view->addEventHandler( new ViewportHandler(this) );
@@ -822,7 +822,7 @@ _contextDirty(true)
 }
 
 void
-ControlSurface::addControl( Control* control )
+ControlCanvas::addControl( Control* control )
 {
     osg::Geode* geode = new osg::Geode();
     _geodeTable[control] = geode;
@@ -832,7 +832,7 @@ ControlSurface::addControl( Control* control )
 }
 
 void
-ControlSurface::removeControl( Control* control )
+ControlCanvas::removeControl( Control* control )
 {
     GeodeTable::iterator i = _geodeTable.find( control );
     if ( i != _geodeTable.end() )
@@ -846,7 +846,7 @@ ControlSurface::removeControl( Control* control )
 }
 
 void
-ControlSurface::update()
+ControlCanvas::update()
 {
     //int bin = 999999;
     for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
@@ -877,7 +877,7 @@ ControlSurface::update()
 }
 
 void
-ControlSurface::setControlContext( const ControlContext& cx )
+ControlCanvas::setControlContext( const ControlContext& cx )
 {
     _context = cx;
     _contextDirty = true;

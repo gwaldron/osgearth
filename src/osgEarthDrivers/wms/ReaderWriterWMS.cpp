@@ -305,7 +305,6 @@ public:
     /** override */
     osg::Image* createImage( const TileKey* key, ProgressCallback* progress )
     {
-        osg::notify(osg::NOTICE) << "Creating tile " << key->str() << std::endl;
         osg::ref_ptr<osg::Image> image;
 
         if ( _timesVec.size() > 1 )

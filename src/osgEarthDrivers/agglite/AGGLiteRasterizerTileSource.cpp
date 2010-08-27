@@ -114,7 +114,12 @@ public:
         {
             Feature* feature = i->get();
             Geometry* geom = feature->getGeometry();
-            if ( geom && geom->getType() == Geometry::TYPE_LINESTRING )
+            bool needsBuffering =
+                geom &&
+                ( geom->getComponentType() == Geometry::TYPE_LINESTRING || 
+                  geom->getComponentType() == Geometry::TYPE_RING);
+
+            if ( needsBuffering )
             {
                 linesToBuffer.push_back( feature );
             }

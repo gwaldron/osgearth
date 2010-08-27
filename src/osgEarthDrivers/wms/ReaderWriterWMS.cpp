@@ -161,17 +161,14 @@ public:
             Layer* layer = capabilities->getLayerByName( _settings->layers().value() );
             if ( layer )
             {
-                double minx, miny, maxx, maxy;
-                layer->getExtents(minx, miny, maxx, maxy);
+                double minx, miny, maxx, maxy;                
+                minx = miny = maxx = maxy = 0;
 
                 //Check to see if the profile is equivalent to global-geodetic
                 if (wms_srs->isGeographic())
                 {
 					//Try to get the lat lon extents if they are provided
-					if (minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
-					{
-						layer->getLatLonExtents(minx, miny, maxx, maxy);
-					}
+				    layer->getLatLonExtents(minx, miny, maxx, maxy);
 
 					//If we still don't have any extents, just default to global geodetic.
 					if (!result.valid() && minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
@@ -179,6 +176,11 @@ public:
 						result = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
 					}
                 }	
+
+                if (minx == 0 && miny == 0 && maxx == 0 && maxy == 0)
+                {
+                    layer->getExtents(minx, miny, maxx, maxy);
+                }
 
 
                 if (!result.valid())
@@ -255,13 +257,13 @@ public:
         osgDB::ReaderWriter* result = 0L;
 
         std::string uri = createURI(key);
+        OE_NOTICE << "WMS: URL = " << uri << std::endl;
         if ( !extraAttrs.empty() )
         {
             std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
             uri = uri + delim + extraAttrs;
         }
 
-        //OE_NOTICE << "WMS: URL = " << uri << std::endl;
 
         out_response = HTTPClient::get( uri, getOptions(), progress );
 
@@ -304,6 +306,7 @@ public:
     /** override */
     osg::Image* createImage( const TileKey* key, ProgressCallback* progress )
     {
+        osg::notify(osg::NOTICE) << "Creating tile " << key->str() << std::endl;
         osg::ref_ptr<osg::Image> image;
 
         if ( _timesVec.size() > 1 )

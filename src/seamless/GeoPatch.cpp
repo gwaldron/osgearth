@@ -28,7 +28,6 @@ using namespace osg;
 using namespace osgEarth;
 
 GeoPatch::GeoPatch()
-    : _edgeLength(0.0)
 {
     // When an arc on the cube grid is subdivided, this is the largest
     // ratio of the lengths of the parent arc and its longest
@@ -40,7 +39,7 @@ GeoPatch::GeoPatch()
 }
 
 GeoPatch::GeoPatch(const GeoPatch& rhs, const CopyOp& copyop)
-    : Patch(rhs, copyop), _edgeLength(rhs._edgeLength)
+    : Patch(rhs, copyop)
 {
 }
 

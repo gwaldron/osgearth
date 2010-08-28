@@ -21,14 +21,6 @@ using namespace std;
 using namespace osg;
 using namespace osgEarth;
 
-// A fictional value to use as the level 0 edge length. This value is
-// divided by 2 at each LOD. It is used instead of the real edge
-// length because the patches are not square.
-//
-// sqrt(earth_surface_area / 6)
-const double edgeLength0 = sqrt(
-    4.0 * PI * WGS_84_RADIUS_EQUATOR * WGS_84_RADIUS_EQUATOR / 6.0);
-
 // Hard-wire the patch resolution and screen-space polygon size.
 Geographic::Geographic(Map* map)
     : PatchSet(64, new GeographicOptions), _map(map), _profile(new EulerProfile),
@@ -153,7 +145,6 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
                                             const GeoHeightField* hf)
 {
     GeoPatch* patch = new GeoPatch;
-    patch->setEdgeLength(edgeLength0 / pow(2.0, key->getLevelOfDetail()));
     patch->setPatchSet(this);
     const GeoExtent& patchExtent = key->getGeoExtent();
     double centx, centy;

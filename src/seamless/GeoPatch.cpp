@@ -30,7 +30,13 @@ using namespace osgEarth;
 GeoPatch::GeoPatch()
     : _edgeLength(0.0)
 {
-
+    // When an arc on the cube grid is subdivided, this is the largest
+    // ratio of the lengths of the parent arc and its longest
+    // child. The ratio goes to .5 as the arcs are further subdivided
+    // at higher LODs. The error threshold is set to this value to
+    // insure that the triles that share an edge will display the same
+    // LOD when the enclosing patches are from different LODs.
+    setErrorThreshold(.5371);
 }
 
 GeoPatch::GeoPatch(const GeoPatch& rhs, const CopyOp& copyop)

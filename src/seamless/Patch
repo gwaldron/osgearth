@@ -76,12 +76,18 @@ public:
         init();
     }
     /** Get patch error. This is the maximum of the edge errors.
-        @param eye The eyepoint in local coordinates.
-    */
+     *   @param eye The eyepoint in local coordinates.
+     */
     float getPatchError(const osg::Vec3& eye);
     virtual float getEdgeError(const osg::Vec3& eye, int edge);
     void setPatchSet(PatchSet* patchSet);
     PatchSet* getPatchSet() const;
+    /**
+     * Set error threshold between high and low resolution
+     * LOD. Default is .5.
+     */
+    void setErrorThreshold(float threshold) { _errorThreshold = threshold; }
+    float getErrorThreshold() const { return _errorThreshold; }
 protected:
     ~Patch();
     // Triles at two resolutions, counterclockwise from bottom. 0 is
@@ -96,6 +102,7 @@ protected:
     osg::ref_ptr<osg::Geode> _strip[4][4];
     osg::ref_ptr<Data> _data;
     osg::ref_ptr<PatchSet> _patchSet;
+    float _errorThreshold;
 };
 
 // Utilities useful in Patch subclasses

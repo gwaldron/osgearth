@@ -41,11 +41,12 @@ public:
 };
 
 Patch::Patch()
+    : _errorThreshold(.5f)
 {
 }
 
 Patch::Patch(const Patch& rhs, const CopyOp& copyop)
-    : Node(rhs, copyop)
+    : Node(rhs, copyop), _errorThreshold(rhs._errorThreshold)
 {
     for (int res = 0; res < 2; ++res)
         for (int i = 0; i < 4; ++i)
@@ -232,7 +233,7 @@ void Patch::traverse(NodeVisitor& nv)
     for (int i = 0; i < 4; ++i)
     {
         epsilon[i] = getEdgeError(eye, i);
-        if (epsilon[i] > .5f)
+        if (epsilon[i] > _errorThreshold)
             res[i] = 1;
         else
             res[i] = 0;

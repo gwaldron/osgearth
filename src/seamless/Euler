@@ -167,7 +167,7 @@ public:
 protected: // SpatialReference overrides
 
     void _init();
-
+    friend class CacheInitializer;
 };
 
 class SEAMLESS_EXPORT EulerProfile : public osgEarth::Profile

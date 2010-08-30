@@ -437,7 +437,7 @@ bool EulerFaceLocator::convertModelToLocal(const Vec3d& world, Vec3d& local) con
 
 EulerSpatialReference::EulerSpatialReference( void* handle )
     : SpatialReference(handle, "OSGEARTH", "euler-cube",
-                       "Quadralateralized Sphere Cube")
+                       "Euler Cube")
 {
     //nop
 }
@@ -451,7 +451,7 @@ EulerSpatialReference::_init()
     _is_cube = true;
     _is_contiguous = false;
     _is_geographic = false;
-    _name = "Quadralateralized Sphere Cube";
+    _name = "Euler Cube";
 }
 
 GeoLocator*
@@ -623,6 +623,7 @@ EulerSpatialReference::transformExtent(const SpatialReference* to_srs,
     return ok;
 }
 
+
 namespace
 {
 SpatialReference* createEulerSRS()
@@ -644,9 +645,26 @@ SpatialReference* createEulerSRS()
 	}
     return result;
 }
-
-
 }
+
+#ifdef SEAMLESS_TILE_CACHE
+// Hack to get euler-cube into the spatial reference cache
+class CacheInitializer
+{
+public:
+    CacheInitializer()
+    {
+        EulerSpatialReference::getSpatialReferenceCache()["euler-cube"]
+            = createEulerSRS();
+    }
+};
+
+namespace
+{
+CacheInitializer s_cacheInitializer;
+}
+#endif
+
 EulerProfile::EulerProfile()
     : Profile(createEulerSRS(),
               0.0, 0.0, 4.0, 3.0,

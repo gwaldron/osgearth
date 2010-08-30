@@ -173,6 +173,7 @@ ELSE (INSTALL_TO_OSG_DIR)
     SET(SEAMLESS_INSTALL_TO_OSG_DIR FALSE)
 ENDIF(INSTALL_TO_OSG_DIR)
 
+OPTION(SEAMLESS_TILE_CACHE "Set to ON to enable tile cache support. Requires osgEarth changes." OFF)
 INCLUDE(OsgEarthMacroUtils)
 
 DETECT_OSG_VERSION()

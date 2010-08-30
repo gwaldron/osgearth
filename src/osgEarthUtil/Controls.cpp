@@ -774,23 +774,26 @@ struct ViewportHandler : public osgGA::GUIEventHandler
     {
         if ( ea.getEventType() == osgGA::GUIEventAdapter::RESIZE || _first )
         {
-            int w = ea.getWindowWidth();
-            int h = ea.getWindowHeight();
-            if ( w != _width || h != _height )
+            osg::Camera* cam = aa.asView()->getCamera();
+            if ( cam && cam->getViewport() )
             {
-                _cs->setProjectionMatrix(osg::Matrix::ortho2D( 0, w-1, 0, h-1 ) );
+                const osg::Viewport* vp = cam->getViewport();
+                if ( _first || vp->width() != _width || vp->height() != _height )
+                {
+                    _cs->setProjectionMatrix(osg::Matrix::ortho2D( 0, vp->width()-1, 0, vp->height()-1 ) );
 
-                ControlContext cx;
-                cx._vp = new osg::Viewport( 0, 0, w, h );
-                cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
-                _cs->setControlContext( cx );
+                    ControlContext cx;
+                    cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
+                    cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
+                    _cs->setControlContext( cx );
 
-                _width = w;
-                _height = h;
-            }
-            if ( w != 0 && h != 0 )
-            {
-                _first = false;
+                    _width = vp->width();
+                    _height = vp->height();
+                }
+                if ( vp->width() != 0 && vp->height() != 0 )
+                {
+                    _first = false;
+                }
             }
         }
         return false;

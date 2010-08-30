@@ -79,7 +79,7 @@ namespace osgEarthUtil { namespace Controls
     // internal state class
     struct ControlContext {
         ControlContext() : _viewContextID(~0) { }
-        osg::ref_ptr<osg::Viewport> _vp;
+        osg::ref_ptr<const osg::Viewport> _vp;
         unsigned int _viewContextID;
     };
 

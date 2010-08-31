@@ -142,6 +142,7 @@ void Patch::init()
         for (int i = 0; i < 4; ++i)
         {
             Geometry* geom = new Geometry;
+            geom->setUseVertexBufferObjects(true);
             _data->setGeometryAttributes(geom);
             geom->addPrimitiveSet(_patchSet->stripPset[j][i]);
             _strip[j][i] = new Geode;

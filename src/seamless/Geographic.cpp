@@ -153,8 +153,9 @@ mergeImages(const GeoExtent& targetExtent, const GeoImageList& imgs)
 // Create vertex arrays from the height field for a patch and install
 // them in the patch. XXX This should copy the data into the existing
 // arrays (and vbos) of a patch.
-void installHeightField(GeoPatch* patch, const TileKey* key,
-                        const GeoHeightField* hf)
+void expandHeights(GeoPatch* patch, const TileKey* key,
+                   const GeoHeightField* hf, Vec3Array* verts,
+                   Vec3Array* normals)
 {
     Geographic* gpatchset = static_cast<Geographic*>(patch->getPatchSet());
     int resolution = gpatchset->getResolution();
@@ -167,9 +168,6 @@ void installHeightField(GeoPatch* patch, const TileKey* key,
     // Populate cell
     ref_ptr<Patch::Data> data = new Patch::Data;
     int patchDim = resolution + 1;
-    Vec3Array* verts = new Vec3Array(patchDim * patchDim);
-    Vec3Array* normals = new Vec3Array(patchDim * patchDim);
-    Vec2Array* texCoords = new Vec2Array(patchDim * patchDim);
     double xInc = (patchExtent.xMax() - patchExtent.xMin()) / resolution;
     double yInc = (patchExtent.yMax() - patchExtent.yMin()) / resolution;
     const EllipsoidModel* eModel = gpatchset->getEllipsoidModel();
@@ -202,9 +200,6 @@ void installHeightField(GeoPatch* patch, const TileKey* key,
             {
                 OE_WARN << "found huge coordinate.\n";
             }
-            (*texCoords)[j * patchDim +i]
-                = Vec2(i / static_cast<float>(resolution),
-                       j / static_cast<float>(resolution));
         }
     }
     // Normals. Average the normals of the triangles around the sample
@@ -240,7 +235,29 @@ void installHeightField(GeoPatch* patch, const TileKey* key,
             (*normals)[j * patchDim + i] = normal;
         }
     }
+}
+
+void installHeightField(GeoPatch* patch, const TileKey* key,
+                        const GeoHeightField* hf)
+{
+    Geographic* gpatchset = static_cast<Geographic*>(patch->getPatchSet());
+    int resolution = gpatchset->getResolution();
+    // Populate cell
+    int patchDim = resolution + 1;
+    Vec3Array* verts = new Vec3Array(patchDim * patchDim);
+    Vec3Array* normals = new Vec3Array(patchDim * patchDim);
+    Vec2Array* texCoords = new Vec2Array(patchDim * patchDim);
+    expandHeights(patch, key, hf, verts, normals);
+    const float resinv = 1.0f / static_cast<float>(resolution);
+    for (int j = 0; j < patchDim; ++j)
+    {
+        for (int i = 0; i < patchDim; i++)
+        {
+            (*texCoords)[j * patchDim +i] = Vec2(i * resinv, j * resinv);
+        }
+    }
     // Construct the patch and its transform.
+    ref_ptr<Patch::Data> data = new Patch::Data;
     data->vertexData.array = verts;
     data->vertexData.binding = Geometry::BIND_PER_VERTEX;
     data->normalData.array = normals;

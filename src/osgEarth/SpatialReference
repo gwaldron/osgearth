@@ -204,11 +204,12 @@ namespace osgEarth
         virtual bool preTransform(double& x, double& y, void* context) const { return true; }
         virtual bool postTransform(double& x, double& y, void* context) const { return true;}
         
-    private:
+
 
         typedef std::map< std::string, osg::ref_ptr<SpatialReference> > SpatialReferenceCache;
         static SpatialReferenceCache& getSpatialReferenceCache();
 
+    private:
         static SpatialReference* createFromWKT(
             const std::string& wkt, const std::string& alias, const std::string& name ="" );
 

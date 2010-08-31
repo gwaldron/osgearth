@@ -46,8 +46,8 @@ namespace osgEarth
         {
             //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
 
-            unsigned int face, lod, x, y, id;
-            sscanf(filename.c_str(), "%d_%d_%d_%d.%d", &face, &lod, &x, &y, &id);
+            unsigned int lod, x, y, id;
+            sscanf(filename.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &id);
 
             osg::ref_ptr<MapNode> mapNode = MapNode::getMapNodeById( id );
 

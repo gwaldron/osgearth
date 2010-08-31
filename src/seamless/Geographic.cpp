@@ -8,10 +8,12 @@
 #include <osg/ClusterCullingCallback>
 #include <osg/CoordinateSystemNode>
 #include <osg/Math>
+#include <osg/NodeCallback>
 #include <osg/Texture2D>
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Notify>
+#include <osgEarth/TaskService>
 
 #include <seamless/GeoPatch>
 
@@ -41,12 +43,19 @@ Geographic::Geographic(Map* map)
         if (maxLevel > 0)
             setMaxLevel(maxLevel);
     }
+    _hfService = new TaskService("Height Field Service");
+    _imageService = new TaskService("Image Service");
 }
 
 Geographic::Geographic(const Geographic& rhs, const osg::CopyOp& copyop)
     : PatchSet(rhs, copyop), _map(static_cast<Map*>(copyop(rhs._map.get()))),
       _profile(static_cast<EulerProfile*>(copyop(rhs._profile.get()))),
-      _eModel(static_cast<EllipsoidModel*>(copyop(rhs._eModel.get())))
+      _eModel(static_cast<EllipsoidModel*>(copyop(rhs._eModel.get()))),
+      _hfService(rhs._hfService), _imageService(rhs._imageService)
+{
+}
+
+Geographic::~Geographic()
 {
 }
 
@@ -140,27 +149,30 @@ mergeImages(const GeoExtent& targetExtent, const GeoImageList& imgs)
     return new GeoImage(targetImage, targetExtent);
 }
 }
-// Create the geometry for a patch
-MatrixTransform* Geographic::createPatchAux(const TileKey* key,
-                                            const GeoHeightField* hf)
+
+// Create vertex arrays from the height field for a patch and install
+// them in the patch. XXX This should copy the data into the existing
+// arrays (and vbos) of a patch.
+void installHeightField(GeoPatch* patch, const TileKey* key,
+                        const GeoHeightField* hf)
 {
-    GeoPatch* patch = new GeoPatch;
-    patch->setPatchSet(this);
+    Geographic* gpatchset = static_cast<Geographic*>(patch->getPatchSet());
+    int resolution = gpatchset->getResolution();
     const GeoExtent& patchExtent = key->getGeoExtent();
     double centx, centy;
     patchExtent.getCentroid(centx, centy);
-    Vec3d patchCenter = toModel(centx, centy, 0);
-    Matrixd patchMat = Matrixd::translate(patchCenter);
+    Vec3d patchCenter = gpatchset->toModel(centx, centy, 0);
     const SpatialReference* srs = key->getProfile()->getSRS();
     const SpatialReference* geoSrs = srs->getGeographicSRS();
     // Populate cell
     ref_ptr<Patch::Data> data = new Patch::Data;
-    int patchDim = _resolution + 1;
+    int patchDim = resolution + 1;
     Vec3Array* verts = new Vec3Array(patchDim * patchDim);
     Vec3Array* normals = new Vec3Array(patchDim * patchDim);
     Vec2Array* texCoords = new Vec2Array(patchDim * patchDim);
-    double xInc = (patchExtent.xMax() - patchExtent.xMin()) / _resolution;
-    double yInc = (patchExtent.yMax() - patchExtent.yMin()) / _resolution;
+    double xInc = (patchExtent.xMax() - patchExtent.xMin()) / resolution;
+    double yInc = (patchExtent.yMax() - patchExtent.yMin()) / resolution;
+    const EllipsoidModel* eModel = gpatchset->getEllipsoidModel();
     for (int j = 0; j < patchDim; ++j)
     {
         for (int i = 0; i < patchDim; i++)
@@ -182,7 +194,7 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
                 continue;
             }
             Vec3d coord;
-            _eModel->convertLatLongHeightToXYZ(
+            eModel->convertLatLongHeightToXYZ(
                 DegreesToRadians(lat), DegreesToRadians(lon), elevation,
                 coord.x(), coord.y(), coord.z());
             (*verts)[j * patchDim + i] = coord - patchCenter;
@@ -191,8 +203,8 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
                 OE_WARN << "found huge coordinate.\n";
             }
             (*texCoords)[j * patchDim +i]
-                = Vec2(i / static_cast<float>(_resolution),
-                       j / static_cast<float>(_resolution));
+                = Vec2(i / static_cast<float>(resolution),
+                       j / static_cast<float>(resolution));
         }
     }
     // Normals. Average the normals of the triangles around the sample
@@ -240,11 +252,29 @@ MatrixTransform* Geographic::createPatchAux(const TileKey* key,
     data->texCoordList
         .push_back(Geometry::ArrayData(texCoords, Geometry::BIND_PER_VERTEX));
     patch->setData(data);
+}
+
+// Create a patch and the transform that places it in the
+// world. Install a height field if one is given.
+MatrixTransform* createPatchAux(Geographic* gpatchset,
+                                const TileKey* key,
+                                const GeoHeightField* hf)
+{
+    GeoPatch* patch = new GeoPatch;
+    patch->setPatchSet(gpatchset);
+    const GeoExtent& patchExtent = key->getGeoExtent();
+    double centx, centy;
+    patchExtent.getCentroid(centx, centy);
+    Vec3d patchCenter = gpatchset->toModel(centx, centy, 0);
+    Matrixd patchMat = Matrixd::translate(patchCenter);
+    if (hf)
+        installHeightField(patch, key, hf);
     MatrixTransform* result = new MatrixTransform;
     result->addChild(patch);
     result->setMatrix(patchMat);
     return result;
 }
+
 
 namespace
 {
@@ -252,7 +282,11 @@ namespace
 // data for this tile.
 GeoHeightField* getGeoHeightField(Map* map, const TileKey* key, int resolution)
 {
-    HeightField* hf = map->createHeightField(key, true, INTERP_BILINEAR);
+    HeightField* hf = 0;
+    {
+        Threading::ScopedReadLock lock(map->getMapDataMutex());
+        hf = map->createHeightField(key, true, INTERP_BILINEAR);
+    }
     if  (!hf)
         hf = key->getProfile()->getVerticalSRS()
             ->createReferenceHeightField(key->getGeoExtent(),
@@ -260,6 +294,143 @@ GeoHeightField* getGeoHeightField(Map* map, const TileKey* key, int resolution)
     return new GeoHeightField(hf, key->getGeoExtent(),
                               key->getProfile()->getVerticalSRS());
 }
+
+// Split up patch keys that cross the Date Line. The only patches
+// that do are the the equatorial face with center at (-180, 0),
+// and the poles faces.
+
+inline bool crossesDateLine(const TileKey* key)
+{
+    int face = EulerProfile::getFace(key);
+    const GeoExtent& keyExtent = key->getGeoExtent();
+    return ((face == 2 || face == 4 || face == 5)
+            && keyExtent.xMax() - keyExtent.xMin() > .5);
+}
+
+struct HeightFieldRequest : public TaskRequest
+{
+    HeightFieldRequest(Geographic* gpatchset, const TileKey* key)
+
+        : _gpatchset(gpatchset), _key(key)
+    {
+    }
+    void operator()(ProgressCallback* progress)
+    {
+        Map* map = _gpatchset->getMap();
+        int resolution = _gpatchset->getResolution();
+        ref_ptr<GeoHeightField> hf;
+        if (crossesDateLine(_key.get()))
+        {
+            GeoHeightFieldList hfs;
+            for (int child = 0; child < 4; ++child)
+            {
+                ref_ptr<TileKey> subCubeKey = _key->createSubkey(child);
+                hfs.push_back(getGeoHeightField(map, subCubeKey, resolution));
+            }
+            hf = mergeHeightFields(_key->getGeoExtent(), hfs);
+        }
+        else
+        {
+            hf = getGeoHeightField(map, _key.get(), resolution);
+        }
+        _result = hf.get();
+    }
+    ref_ptr<Geographic> _gpatchset;
+    ref_ptr<const TileKey> _key;
+};
+
+struct ImageRequest : public TaskRequest
+{
+    ImageRequest(Geographic* gpatchset, const TileKey* key)
+        : _gpatchset(gpatchset), _key(key)
+    {
+    }
+
+    void operator()(ProgressCallback* progress)
+    {
+        ref_ptr<GeoImage> gimage;
+        Map* map = _gpatchset->getMap();
+        Threading::ScopedReadLock lock(map->getMapDataMutex());
+        if (crossesDateLine(_key.get()))
+        {
+            GeoImageList gis;
+            for (int child = 0; child < 4; ++child)
+            {
+                ref_ptr<TileKey> subCubeKey = _key->createSubkey(child);
+                if (!map->getImageMapLayers().empty())
+                    gis.push_back(map->getImageMapLayers()[0]
+                                  ->createImage(subCubeKey));
+            }
+            if (!gis.empty())
+                gimage = mergeImages(_key->getGeoExtent(), gis);
+        }
+        else
+        {
+            if (!map->getImageMapLayers().empty())
+                gimage = map->getImageMapLayers()[0]->createImage(_key.get());
+        }
+        _result = gimage->getImage();
+    }
+    ref_ptr<Geographic> _gpatchset;
+    ref_ptr<const TileKey> _key;
+};
+
+// Update a patch node once map data is available
+class GeoPatchUpdateCallback : public NodeCallback
+{
+public:
+    GeoPatchUpdateCallback() {}
+    GeoPatchUpdateCallback(HeightFieldRequest* hfRequest,
+                           ImageRequest* imageRequest)
+        : _hfRequest(hfRequest), _imageRequest(imageRequest)
+    {
+    }
+
+    GeoPatchUpdateCallback(const GeoPatchUpdateCallback& nc,
+                           const CopyOp& copyop)
+        : NodeCallback(nc, copyop), _hfRequest(nc._hfRequest),
+          _imageRequest(nc._imageRequest)
+    {
+    }
+
+    META_Object(seamless, GeoPatchUpdateCallback);
+
+    virtual void operator()(Node* node, NodeVisitor* nv)
+    {
+        GeoPatch* patch = dynamic_cast<GeoPatch*>(node);
+        if (!patch)
+            return;
+        if (_hfRequest.valid() && _hfRequest->isCompleted())
+        {
+            GeoHeightField* hf
+                = dynamic_cast<GeoHeightField*>(_hfRequest->getResult());
+            if (hf)
+                installHeightField(patch, _hfRequest->_key.get(), hf);
+            _hfRequest = 0;
+        }
+        if (_imageRequest.valid() && _imageRequest->isCompleted())
+        {
+            Image* image = dynamic_cast<Image*>(_imageRequest->getResult());
+            if (image)
+            {
+                Texture2D* tex = new Texture2D();
+                tex->setImage(image);
+                tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
+                tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
+                tex->setFilter(Texture::MIN_FILTER,
+                               Texture::LINEAR_MIPMAP_LINEAR);
+                tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
+                StateSet* ss = patch->getOrCreateStateSet();
+                ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
+            }
+            _imageRequest = 0;
+        }
+        if (!_hfRequest.valid() && !_imageRequest.valid())
+            node->setUpdateCallback(0);
+    }
+    ref_ptr<HeightFieldRequest> _hfRequest;
+    ref_ptr<ImageRequest> _imageRequest;
+};
 }
 
 Node* Geographic::createPatch(const std::string& filename,
@@ -267,51 +438,22 @@ Node* Geographic::createPatch(const std::string& filename,
 {
     GeographicOptions* goptions = static_cast<GeographicOptions*>(poptions);
     const TileKey* patchKey = goptions->getTileKey();
-    int face = EulerProfile::getFace(patchKey);
-    const GeoExtent& keyExtent = patchKey->getGeoExtent();
-    ref_ptr<GeoHeightField> hf;
-    ref_ptr<GeoImage> gimage;
-    // Split up patch keys that cross the Date Line. The only patches
-    // that do are the the equatorial face with center at (-180, 0),
-    // and the poles faces.
-    bool crossesDateLine = ((face == 2 || face == 4 || face == 5)
-                            && keyExtent.xMax() - keyExtent.xMin() > .5);
-    if (crossesDateLine)
-    {
-        GeoHeightFieldList hfs;
-        GeoImageList gis;
-        for (int child = 0; child < 4; ++child)
-        {
-            ref_ptr<TileKey> subCubeKey = patchKey->createSubkey(child);
-            hfs.push_back(getGeoHeightField(_map, subCubeKey, _resolution));
-            if (!_map->getImageMapLayers().empty())
-                gis.push_back(_map->getImageMapLayers()[0]
-                              ->createImage(subCubeKey));
-        }
-        hf = mergeHeightFields(patchKey->getGeoExtent(), hfs);
-        if (!gis.empty())
-            gimage = mergeImages(patchKey->getGeoExtent(), gis);
-    }
-    else
-    {
-        hf = getGeoHeightField(_map, patchKey, _resolution);
-        if (!_map->getImageMapLayers().empty())
-            gimage = _map->getImageMapLayers()[0]->createImage(patchKey);
-    }
-    MatrixTransform* transform = createPatchAux(patchKey, hf.get());
-    if (gimage)
-    {
-        Texture2D* tex = new Texture2D();
-        tex->setImage(gimage->getImage());
-        tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
-        tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
-        tex->setFilter(Texture::MIN_FILTER, Texture::LINEAR_MIPMAP_LINEAR);
-        tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
-        Patch* patch = dynamic_cast<Patch*>(transform->getChild(0));
-        StateSet* ss = patch->getOrCreateStateSet();
-        ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
-    }
-    return transform;
+    // Dummy height field until data is available.
+    ref_ptr<HeightField> hf = patchKey->getProfile()->getVerticalSRS()
+        ->createReferenceHeightField(patchKey->getGeoExtent(),
+                                     _resolution + 1, _resolution + 1);
+    ref_ptr<GeoHeightField> ghf
+        = new GeoHeightField(hf.get(), patchKey->getGeoExtent(),
+                              patchKey->getProfile()->getVerticalSRS());
+    ref_ptr<MatrixTransform> transform
+        = createPatchAux(this, patchKey, ghf.get());
+    GeoPatch* patch = dynamic_cast<GeoPatch*>(transform->getChild(0));
+    ref_ptr<HeightFieldRequest> hfr = new HeightFieldRequest(this, patchKey);
+    ref_ptr<ImageRequest> ir = new ImageRequest(this, patchKey);
+    patch->setUpdateCallback(new GeoPatchUpdateCallback(hfr.get(), ir.get()));
+    _hfService->add(hfr.get());
+    _imageService->add(ir.get());
+    return transform.release();
 }
 
 namespace
@@ -422,4 +564,26 @@ Node* Geographic::createChild(const PatchOptions* parentOptions, int childNum)
     return createPatchGroup("foobies.tengpatch", goptions);
 
 }
+
+GeographicOptions::GeographicOptions()
+{
+}
+
+GeographicOptions::GeographicOptions(string& str)
+    : PatchOptions(str)
+{
+}
+
+GeographicOptions::GeographicOptions(const GeographicOptions& rhs,
+                                     const CopyOp& copyop)
+    : PatchOptions(rhs, copyop),
+      _tileKey(static_cast<TileKey*>(copyop(rhs._tileKey.get())))
+{
+
+}
+
+GeographicOptions::~GeographicOptions()
+{
+}
+
 }

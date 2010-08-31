@@ -13,6 +13,7 @@
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Notify>
+#include <osgEarth/VerticalSpatialReference>
 #include <osgEarth/TaskService>
 
 #include <seamless/GeoPatch>
@@ -153,11 +154,10 @@ mergeImages(const GeoExtent& targetExtent, const GeoImageList& imgs)
 // Create vertex arrays from the height field for a patch and install
 // them in the patch. XXX This should copy the data into the existing
 // arrays (and vbos) of a patch.
-void expandHeights(GeoPatch* patch, const TileKey* key,
+void expandHeights(Geographic* gpatchset, const TileKey* key,
                    const GeoHeightField* hf, Vec3Array* verts,
                    Vec3Array* normals)
 {
-    Geographic* gpatchset = static_cast<Geographic*>(patch->getPatchSet());
     int resolution = gpatchset->getResolution();
     const GeoExtent& patchExtent = key->getGeoExtent();
     double centx, centy;
@@ -245,9 +245,11 @@ void installHeightField(GeoPatch* patch, const TileKey* key,
     // Populate cell
     int patchDim = resolution + 1;
     Vec3Array* verts = new Vec3Array(patchDim * patchDim);
+    verts->setDataVariance(Object::DYNAMIC);
     Vec3Array* normals = new Vec3Array(patchDim * patchDim);
+    normals->setDataVariance(Object::DYNAMIC);
     Vec2Array* texCoords = new Vec2Array(patchDim * patchDim);
-    expandHeights(patch, key, hf, verts, normals);
+    expandHeights(gpatchset, key, hf, verts, normals);
     const float resinv = 1.0f / static_cast<float>(resolution);
     for (int j = 0; j < patchDim; ++j)
     {
@@ -350,10 +352,17 @@ struct HeightFieldRequest : public TaskRequest
         {
             hf = getGeoHeightField(map, _key.get(), resolution);
         }
-        _result = hf.get();
+        int patchDim = resolution + 1;
+        Vec3Array* verts = new Vec3Array(patchDim * patchDim);
+        _result = verts;
+        _normalResult = new Vec3Array(patchDim * patchDim);
+        expandHeights(_gpatchset.get(), _key.get(), hf.get(),
+                      verts, _normalResult.get());
     }
     ref_ptr<Geographic> _gpatchset;
     ref_ptr<const TileKey> _key;
+    // vertices are in _result;
+    ref_ptr<Vec3Array> _normalResult;
 };
 
 struct ImageRequest : public TaskRequest
@@ -419,10 +428,19 @@ public:
             return;
         if (_hfRequest.valid() && _hfRequest->isCompleted())
         {
-            GeoHeightField* hf
-                = dynamic_cast<GeoHeightField*>(_hfRequest->getResult());
-            if (hf)
-                installHeightField(patch, _hfRequest->_key.get(), hf);
+            Vec3Array* verts = dynamic_cast<Vec3Array*>(_hfRequest->getResult());
+            Vec3Array* norms = _hfRequest->_normalResult.get();
+            if (verts && norms)
+            {
+                Vec3Array* patchVerts = static_cast<Vec3Array*>(
+                    patch->getData()->vertexData.array.get());
+                Vec3Array* patchNorms = static_cast<Vec3Array*>(
+                    patch->getData()->normalData.array.get());
+                copy(verts->begin(), verts->end(), patchVerts->begin());
+                patchVerts->dirty();
+                copy(norms->begin(), norms->end(), patchNorms->begin());
+                patchNorms->dirty();
+            }
             _hfRequest = 0;
         }
         if (_imageRequest.valid() && _imageRequest->isCompleted())
@@ -456,12 +474,12 @@ Node* Geographic::createPatch(const std::string& filename,
     GeographicOptions* goptions = static_cast<GeographicOptions*>(poptions);
     const TileKey* patchKey = goptions->getTileKey();
     // Dummy height field until data is available.
-    ref_ptr<HeightField> hf = patchKey->getProfile()->getVerticalSRS()
-        ->createReferenceHeightField(patchKey->getGeoExtent(),
-                                     _resolution + 1, _resolution + 1);
+    const VerticalSpatialReference* vsrs
+        = patchKey->getProfile()->getVerticalSRS();
+    ref_ptr<HeightField> hf = vsrs->createReferenceHeightField(
+        patchKey->getGeoExtent(), _resolution + 1, _resolution + 1);
     ref_ptr<GeoHeightField> ghf
-        = new GeoHeightField(hf.get(), patchKey->getGeoExtent(),
-                              patchKey->getProfile()->getVerticalSRS());
+        = new GeoHeightField(hf.get(), patchKey->getGeoExtent(), vsrs);
     ref_ptr<MatrixTransform> transform
         = createPatchAux(this, patchKey, ghf.get());
     GeoPatch* patch = dynamic_cast<GeoPatch*>(transform->getChild(0));

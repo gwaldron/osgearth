@@ -43,20 +43,21 @@ struct MyGraphicsContext
         traits->windowDecoration = false;
         traits->doubleBuffer = false;
         traits->sharedContext = 0;
-        traits->pbuffer = true;
+        traits->pbuffer = false;
 
-        if ( getenv( "OSGEARTH_SKIP_PBUFFER_TEST" ) )
+        // Intel graphics adapters dont' support pbuffers, and some of their drivers crash when
+        // you try to create them. So by default we will only use the unmapped/pbuffer method
+        // upon special request.
+        if ( getenv( "OSGEARTH_USE_PBUFFER_TEST" ) )
         {
-            OE_INFO << LC << "Skipping pbuffer test" << std::endl;
-            traits->pbuffer = false;
+            traits->pbuffer = true;
+            OE_INFO << LC << "Activating pbuffer test for graphics capabilities" << std::endl;
+            _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
         }
-
-        _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
         if (!_gc)
         {
-            OE_INFO << LC << "Failed to create pbuffer, failing back to normal graphics window.." << std::endl;
-
+            // fall back on a mapped window
             traits->pbuffer = false;
             _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
         }
@@ -67,7 +68,6 @@ struct MyGraphicsContext
             _gc->makeCurrent();
 
             if ( traits->pbuffer == false )
-            //if (dynamic_cast<osgViewer::GraphicsWindow*>(_gc.get()))
             {
                 OE_DEBUG << LC << "Realized graphics window for OpenGL operations." << std::endl;
             }

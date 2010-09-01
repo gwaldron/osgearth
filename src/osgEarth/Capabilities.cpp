@@ -45,6 +45,12 @@ struct MyGraphicsContext
         traits->sharedContext = 0;
         traits->pbuffer = true;
 
+        if ( getenv( "OSGEARTH_SKIP_PBUFFER_TEST" ) )
+        {
+            OE_INFO << LC << "Skipping pbuffer test" << std::endl;
+            traits->pbuffer = false;
+        }
+
         _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
         if (!_gc)

@@ -137,6 +137,12 @@ private:
  * The cube lays out the 4 equatorial faces in a row. The North Pole
  * face is above face 0 and the South Pole face is below face 0. This
  * results in a space measuring (0,0=>4,3).
+ *
+ * Note: The cube faces have coordinates (0,0=>4,3), but the profile
+ * is defined as having a range of (0,0=>4,4) and one key at the top
+ * level. This key and its subkeys are not valid, but the cube faces
+ * will have an LOD of 2. This betters corresponds to the LODs in a
+ * geographic profile.
  */
 class SEAMLESS_EXPORT EulerSpatialReference : public osgEarth::SpatialReference
 {

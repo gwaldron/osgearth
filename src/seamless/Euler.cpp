@@ -667,10 +667,10 @@ CacheInitializer s_cacheInitializer;
 
 EulerProfile::EulerProfile()
     : Profile(createEulerSRS(),
-              0.0, 0.0, 4.0, 3.0,
+              0.0, 0.0, 4.0, 4.0,
               -180.0, -90.0, 180.0, 90.0,
               0,
-              4, 3)
+              1, 1)
 {
 }
 

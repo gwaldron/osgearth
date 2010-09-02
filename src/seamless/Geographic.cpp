@@ -74,7 +74,7 @@ Node* Geographic::createPatchSetGraph(const std::string& filename)
         GeographicOptions* goptions = static_cast<GeographicOptions*>(
             osg::clone(getPatchOptionsPrototype()));
         goptions->setPatchSet(this);
-        goptions->setTileKey(_profile->createTileKey(x, y, 0));
+        goptions->setTileKey(_profile->createTileKey(x, y, 2));
         Node* node = createPatchGroup("foobar.tengpatch", goptions);
         csn->addChild(node);
     }

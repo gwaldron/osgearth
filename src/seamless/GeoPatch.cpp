@@ -49,14 +49,9 @@ float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
     MatrixList worldmats = getWorldMatrices();
     Vec3d worldEye = Vec3d(eye) * worldmats[0];
     Group* parent = getParent(0);
-    PatchGroup* pgroup = dynamic_cast<PatchGroup*>(parent->getParent(0));
-    if (!pgroup)
-    {
-        OE_FATAL << "can't find parent!\n";
-        return 0;
-    }
+    PatchGroup* pgroup = static_cast<PatchGroup*>(parent->getParent(0));
     GeographicOptions* goptions
-        = dynamic_cast<GeographicOptions*>(pgroup->getDatabaseOptions());
+        = static_cast<GeographicOptions*>(pgroup->getDatabaseOptions());
     TileKey* tk = goptions->getTileKey();
     int face;
     const GeoExtent& extent = tk->getGeoExtent();

@@ -125,8 +125,8 @@ Projected::Projected(Map* map)
     }
 }
 
-Node* Projected::createPatch(const std::string& filename,
-                             PatchOptions* poptions)
+Transform* Projected::createPatch(const std::string& filename,
+                                  PatchOptions* poptions)
 {
     Patch* patch = new Patch;
     patch->setPatchSet(this);

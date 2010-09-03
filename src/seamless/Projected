@@ -41,8 +41,8 @@ class SEAMLESS_EXPORT Projected : public PatchSet
 {
 public:
     Projected(osgEarth::Map* map);
-    virtual osg::Node* createPatch(const std::string& filename,
-                                   PatchOptions* poptions);
+    virtual osg::Transform* createPatch(const std::string& filename,
+                                        PatchOptions* poptions);
     osgEarth::Map* getMap() const { return _map.get(); }
 protected:
     osg::ref_ptr<osgEarth::Map> _map;

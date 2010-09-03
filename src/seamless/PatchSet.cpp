@@ -21,6 +21,7 @@
 #include <seamless/PatchSet>
 
 #include <osg/Math>
+#include <osg/MatrixTransform>
 
 #include <seamless/Patch>
 #include <seamless/PatchGroup>
@@ -65,7 +66,7 @@ Node* PatchSet::createPatchGroup(const std::string& filename,
 {
     PatchGroup* pgroup = new PatchGroup;
     pgroup->setDatabaseOptions(poptions);
-    Node* patch = createPatch(filename, poptions);
+    Transform* patch = createPatch(filename, poptions);
     BoundingSphere bsphere = patch->getBound();
     pgroup->setCenter(bsphere.center());
     if (poptions->getPatchLevel() >= _maxLevel)
@@ -83,7 +84,7 @@ Node* PatchSet::createPatchGroup(const std::string& filename,
 
 // Default implementation that creates a flat 81920m x 81920m plane.
 
-Node* PatchSet::createPatch(const std::string& filename, PatchOptions* poptions)
+Transform* PatchSet::createPatch(const std::string& filename, PatchOptions* poptions)
 {
     Patch* patch = new Patch;
     patch->setPatchSet(this);
@@ -112,7 +113,9 @@ Node* PatchSet::createPatch(const std::string& filename, PatchOptions* poptions)
     data->colorData.array = colors;
     data->colorData.binding = Geometry::BIND_OVERALL;
     patch->setData(data);
-    return patch;
+    MatrixTransform* transform = new MatrixTransform;
+    transform->addChild(patch);
+    return transform;
 }
 
 Node* PatchSet::createPatchSetGraph(const std::string& filename)

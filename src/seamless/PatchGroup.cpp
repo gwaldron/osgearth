@@ -89,23 +89,15 @@ void PatchGroup::traverse(NodeVisitor& nv)
     case(NodeVisitor::TRAVERSE_ACTIVE_CHILDREN):
     {
         Vec3 eye = nv.getViewPoint();
-        Patch* patch = 0;
         if (_children.empty())
             return;
-        patch = dynamic_cast<Patch*>(_children[0].get());
-        if (!patch)
-        {
-            Transform* tform = dynamic_cast<Transform*>(_children[0].get());
-            if (!tform || tform->getNumChildren() == 0)
-                return;
-            Matrix localMat;
-            tform->computeWorldToLocalMatrix(localMat, &nv);
-            eye = eye * localMat;
-            patch = dynamic_cast<Patch*>(tform->getChild(0));
-            if (!patch)
-                return;
-        }
-
+        Transform* tform = static_cast<Transform*>(_children[0].get());
+        if (tform->getNumChildren() == 0)
+            return;
+        Matrix localMat;
+        tform->computeWorldToLocalMatrix(localMat, &nv);
+        eye = eye * localMat;
+        Patch* patch = static_cast<Patch*>(tform->getChild(0));
         float epsilon = patch->getPatchError(eye);
 
         int lastChildTraversed = -1;

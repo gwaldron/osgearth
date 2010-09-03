@@ -25,6 +25,7 @@
 #include <osg/Object>
 #include <osg/PrimitiveSet>
 #include <osg/ref_ptr>
+#include <osg/Transform>
 
 #include <seamless/Patch>
 #include <seamless/PatchGroup>
@@ -62,8 +63,8 @@ public:
     int getMaxLevel() const { return _maxLevel; }
     virtual osg::Node* createPatchGroup(const std::string& filename,
                                         PatchOptions* poptions);
-    virtual osg::Node* createPatch(const std::string& filename,
-                                   PatchOptions* poptions);
+    virtual osg::Transform* createPatch(const std::string& filename,
+                                        PatchOptions* poptions);
     virtual osg::Node* createPatchSetGraph(const std::string& filename);
     virtual osg::Node* createChild(const PatchOptions* parentOptions, int childNum);
     friend class Patch;

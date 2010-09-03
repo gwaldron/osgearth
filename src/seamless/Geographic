@@ -47,8 +47,8 @@ public:
     virtual ~Geographic();
     virtual osg::Node* createPatchGroup(const std::string& filename,
                                         PatchOptions* poptions);
-    virtual osg::Node* createPatch(const std::string& filename,
-                                   PatchOptions* poptions);
+    virtual osg::Transform* createPatch(const std::string& filename,
+                                        PatchOptions* poptions);
     virtual osg::Node* createPatchSetGraph(const std::string& filename);
     virtual osg::Node* createChild(const PatchOptions* parentOptions, int childNum);
     osgEarth::Map* getMap() const { return _map.get(); }

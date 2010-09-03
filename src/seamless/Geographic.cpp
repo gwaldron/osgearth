@@ -468,8 +468,8 @@ public:
 };
 }
 
-Node* Geographic::createPatch(const std::string& filename,
-                              PatchOptions* poptions)
+Transform* Geographic::createPatch(const std::string& filename,
+                                   PatchOptions* poptions)
 {
     GeographicOptions* goptions = static_cast<GeographicOptions*>(poptions);
     const TileKey* patchKey = goptions->getTileKey();

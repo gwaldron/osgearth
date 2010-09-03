@@ -29,6 +29,8 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+#define LC "[FeatureModelSource] "
+
 /****************************************************************/
 
 FeatureModelSourceOptions::FeatureModelSourceOptions( const PluginOptions* opt ) :
@@ -87,10 +89,17 @@ ModelSource( options )
         _options = new FeatureModelSourceOptions( options );
 
     // the data source from which to pull features:
-    _features = FeatureSourceFactory::create( _options->featureOptions().get() );
-    if ( !_features.valid() )
+    if ( _options->featureSource().valid() )
     {
-        OE_WARN << "FeatureModelSource - no valid feature source provided" << std::endl;
+        _features = _options->featureSource().get();
+    }
+    else if ( _options->featureOptions().valid() )
+    {
+        _features = FeatureSourceFactory::create( _options->featureOptions().get() );
+        if ( !_features.valid() )
+        {
+            OE_WARN << "FeatureModelSource - no valid feature source provided" << std::endl;
+        }
     }
 }
 
@@ -100,7 +109,13 @@ FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth:
     ModelSource::initialize( referenceURI, map );
 
     if ( _features.valid() )
+    {
         _features->initialize( referenceURI );
+    }
+    else
+    {
+        OE_WARN << LC << "No FeatureSource provided; nothing will be rendered (" << getName() << ")" << std::endl;
+    }
 
     _map = map;
 }

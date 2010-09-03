@@ -54,6 +54,11 @@ namespace osgEarth { namespace Features
         const optional<bool>& enableLighting() const { return _lit; }
 
     public:
+        /** A live feature source instance to use. Note, this does not serialize. */
+        osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
+        const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
+
+    public:
         FeatureModelSourceOptions( const PluginOptions* opt =0L );
 
         virtual Config toConfig() const;
@@ -64,6 +69,8 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
+
+        osg::ref_ptr<FeatureSource> _featureSource;
     };
 
     /**

@@ -76,7 +76,11 @@ _initialized( false )
     if ( !_options.valid() )
         _options = new FeatureTileSourceOptions( options );
 
-    if ( _options->featureOptions().valid() )
+    if ( _options->featureSource().valid() )
+    {
+        _features = _options->featureSource().get();
+    }
+    else if ( _options->featureOptions().valid() )
     {
         _features = FeatureSourceFactory::create( _options->featureOptions() );
         if ( !_features.valid() )

@@ -24,6 +24,8 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+#define LC "[FeatureTileSource] "
+
 /*************************************************************************/
 
 FeatureTileSourceOptions::FeatureTileSourceOptions( const PluginOptions* opt ) :
@@ -67,16 +69,20 @@ FeatureTileSourceOptions::toConfig() const
 /*************************************************************************/
 
 FeatureTileSource::FeatureTileSource( const PluginOptions* options ) :
-TileSource( options )
+TileSource( options ),
+_initialized( false )
 {
     _options = dynamic_cast<const FeatureTileSourceOptions*>( options );
     if ( !_options.valid() )
         _options = new FeatureTileSourceOptions( options );
 
-    _features = FeatureSourceFactory::create( _options->featureOptions() );
-    if ( !_features.valid() )
+    if ( _options->featureOptions().valid() )
     {
-        OE_WARN << "FeatureTileSource - no valid feature source provided" << std::endl;
+        _features = FeatureSourceFactory::create( _options->featureOptions() );
+        if ( !_features.valid() )
+        {
+            OE_WARN << LC << "Failed to create FeatureSource from options" << std::endl;
+        }
     }
 }
 
@@ -95,7 +101,28 @@ FeatureTileSource::initialize( const std::string& referenceURI, const Profile* o
     }            
 
     if ( _features.valid() )
+    {
         _features->initialize( referenceURI );
+    }
+    else
+    {
+        OE_WARN << LC << "No FeatureSource provided; nothing will be rendered (" << getName() << ")" << std::endl;
+    }
+
+    _initialized = true;
+}
+
+void
+FeatureTileSource::setFeatureSource( FeatureSource* source )
+{
+    if ( !_initialized )
+    {
+        _features = source;
+    }
+    else
+    {
+        OE_WARN << LC << "Illegal: cannot set FeatureSource after intitialization ( " << getName() << ")" << std::endl;
+    }
 }
 
 osg::Image*

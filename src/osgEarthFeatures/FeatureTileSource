@@ -77,8 +77,13 @@ namespace osgEarth { namespace Features
 
     public: // properties:
 
-            /** The underlying feature source. */
+        /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
+
+        /** Sets the source from which to read feature data. It is only legal to call this method
+            before this TileSource has been initialized by the map engine. Afterwards it will have
+            no effect. */
+        void setFeatureSource( FeatureSource* source );
 
     protected:
 
@@ -140,6 +145,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<const FeatureTileSourceOptions> _options;
         osg::ref_ptr<const osgEarth::Map> _map;
+        bool _initialized;
         
         bool queryAndRenderFeaturesForStyle(
             const Symbology::Style* style,

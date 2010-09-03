@@ -65,6 +65,7 @@ FIND_PACKAGE(GDAL)
 FIND_PACKAGE(LibZip)
 FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
+FIND_PACKAGE(ZLIB)
 
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys

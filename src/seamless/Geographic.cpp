@@ -279,7 +279,7 @@ MatrixTransform* createPatchAux(Geographic* gpatchset,
                                 const TileKey* key,
                                 const GeoHeightField* hf)
 {
-    GeoPatch* patch = new GeoPatch;
+    GeoPatch* patch = new GeoPatch(key);
     patch->setPatchSet(gpatchset);
     const GeoExtent& patchExtent = key->getGeoExtent();
     double centx, centy;

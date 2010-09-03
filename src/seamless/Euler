@@ -88,6 +88,13 @@ extern bool SEAMLESS_EXPORT faceToCube(
     double& in_out_x, double& in_out_y, int face);
 
 /**
+ * Calculate the direction cosine representation (unit vector from the
+ * origin) of a face coordinate's geographic location.
+ */
+extern osg::Vec3d SEAMLESS_EXPORT face2dc(int face,
+                                          const osg::Vec2d& faceCoord);
+
+/**
  * Length of great circle arc between face coordinates. This will be the
  * length of a grid edge if the points share a coordinate.
  */
@@ -97,14 +104,25 @@ extern double SEAMLESS_EXPORT arcLength(
 
 /**
  * Distance between a point and an arc on a face.
- * @param p the point
+ * @param p the point, for example the eyepoint.
  * @param coord1 beginning of segment in face coordinates
  * @param coord2 end of segment in face coordinates
  * @param face cube face. coord1 and coord2 lie on the same face.
+ * @returns distance
  */
 extern double SEAMLESS_EXPORT distanceToSegment(
     const osg::Vec3d& p, const osg::Vec2d& coord1, const osg::Vec2d& coord2,
     int face);
+
+/**
+ * Distance between a point and an arc on the spherical earth.
+ * @param p the point, for example the eyepoint.
+ * @param coord1 beginning of the arc as a direction cosine.
+ * @param coord2 end of the arc as a direction cosine.
+ * @returns distance
+ */
+extern double SEAMLESS_EXPORT distanceToSegment(
+    const osg::Vec3d& p, const osg::Vec3d& coord1, const osg::Vec3d& coord2);
 }
 
 /**

@@ -25,24 +25,28 @@
 #include <seamless/Patch>
 #include <seamless/Export>
 
+#include <osg/Vec3>
+#include <osg/Vec3d>
+
+#include <osgEarth/TileKey>
+
 namespace seamless
 {
 class SEAMLESS_EXPORT GeoPatch : public Patch
 {
 public:
-    GeoPatch();
+    GeoPatch(const osgEarth::TileKey* key = 0);
     GeoPatch(const GeoPatch& rhs,
              const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
 
     META_Node(seamless, GeoPatch);
 
     virtual float getEdgeError(const osg::Vec3& eye, int edge);
-    // An edge length (the square root of the patch area)
-    // used for the LOD calculation.
-    void setEdgeLength(float edgeLength) { _edgeLength = edgeLength; }
-    float getEdgeLength() const { return _edgeLength; }
 protected:
-    float _edgeLength;
+    int _face;
+    double _edgeLengths[4];
+    // Direction cosines of patch vertex latitude and longitude
+    osg::Vec3d _patchCosines[4];
 };
 
 }

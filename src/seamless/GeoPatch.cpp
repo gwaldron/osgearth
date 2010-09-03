@@ -18,6 +18,8 @@
 
 #include <seamless/GeoPatch>
 
+#include <algorithm>
+
 #include <seamless/Geographic>
 #include <seamless/Euler>
 #include <seamless/PatchSet>
@@ -27,7 +29,7 @@ namespace seamless
 using namespace osg;
 using namespace osgEarth;
 
-GeoPatch::GeoPatch()
+GeoPatch::GeoPatch(const osgEarth::TileKey* key)
 {
     // When an arc on the cube grid is subdivided, this is the largest
     // ratio of the lengths of the parent arc and its longest
@@ -36,11 +38,36 @@ GeoPatch::GeoPatch()
     // insure that the triles that share an edge will display the same
     // LOD when the enclosing patches are from different LODs.
     setErrorThreshold(.5371);
+    if (key)
+    {
+        const GeoExtent& extent = key->getGeoExtent();
+        double xMin = extent.xMin(), yMin = extent.yMin(),
+            xMax = extent.xMax(), yMax = extent.yMax();
+        euler::cubeToFace(xMin, yMin, xMax, yMax, _face);
+        Vec2d faceCoords[4];
+        faceCoords[0][0] = xMin; faceCoords[0][1] = yMin;
+        faceCoords[1][0] = xMax; faceCoords[1][1] = yMin;
+        faceCoords[2][0] = xMax; faceCoords[2][1] = yMax;
+        faceCoords[3][0] = xMin; faceCoords[3][1] = yMax;
+        for (int i = 0; i < 4; ++i)
+        {
+            _edgeLengths[i] = euler::arcLength(faceCoords[i],
+                                               faceCoords[(i + 1) % 4], _face);
+            _patchCosines[i] = euler::face2dc(_face, faceCoords[i]);
+        }
+    }
+    else
+    {
+        _face = -1;
+        std::fill(&_edgeLengths[0], &_edgeLengths[4], 0.0);
+    }
 }
 
 GeoPatch::GeoPatch(const GeoPatch& rhs, const CopyOp& copyop)
-    : Patch(rhs, copyop)
+    : Patch(rhs, copyop), _face(rhs._face)
 {
+    std::copy(&rhs._edgeLengths[0], &rhs._edgeLengths[4], &_edgeLengths[0]);
+    std::copy(&rhs._patchCosines[0], &rhs._patchCosines[4], &_patchCosines[0]);
 }
 
 float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
@@ -53,27 +80,9 @@ float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
     Matrix worldMat;
     parent->computeLocalToWorldMatrix(worldMat, 0);
     Vec3d worldEye = Vec3d(eye) * worldMat;
-    TileKey* tk = goptions->getTileKey();
-    int face;
-    const GeoExtent& extent = tk->getGeoExtent();
-    double xMin = extent.xMin(), yMin = extent.yMin(),
-        xMax = extent.xMax(), yMax = extent.yMax();
-    euler::cubeToFace(xMin, yMin, xMax, yMax, face);
-    Vec2d faceCoords[4];
-    faceCoords[0][0] = xMin; faceCoords[0][1] = yMin;
-    faceCoords[1][0] = xMax; faceCoords[1][1] = yMin;
-    faceCoords[2][0] = xMax; faceCoords[2][1] = yMax;
-    faceCoords[3][0] = xMin; faceCoords[3][1] = yMax;
-    Vec2d edgeCoords[2];
-    for (unsigned j = 0; j < 2; ++j)
-    {
-        unsigned vert = (edge + j) % 4;
-        edgeCoords[j] = faceCoords[vert];
-    }
-    double len = euler::arcLength(edgeCoords[0], edgeCoords[1], face);
-    double d = euler::distanceToSegment(worldEye, edgeCoords[0], edgeCoords[1],
-                                         face);
-    return _patchSet->getPrecisionFactor() * len / d;
+    double d = euler::distanceToSegment(worldEye, _patchCosines[edge],
+                                        _patchCosines[(edge + 1) % 4]);
+    return _patchSet->getPrecisionFactor() * _edgeLengths[edge] / d;
 }
 
 }

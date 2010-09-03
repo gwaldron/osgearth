@@ -156,7 +156,7 @@ Vec3d face2qrs(const Vec2d& face)
 // around the equator in direction of increasing longitude
 // (east). Face 4 is the North Pole, Face 5 the South.
 
-Vec3d face2ec(int faceNum, const Vec2d& faceCoord)
+Vec3d face2dc(int faceNum, const Vec2d& faceCoord)
 {
     Vec3d local = face2qrs(faceCoord);
     switch (faceNum)
@@ -183,7 +183,7 @@ Vec3d face2ec(int faceNum, const Vec2d& faceCoord)
 bool faceCoordsToLatLon(double x, double y, int face,
                         double& out_lat_deg, double& out_lon_deg)
 {
-    Vec3d geo = face2ec(face, Vec2d(x, y));
+    Vec3d geo = face2dc(face, Vec2d(x, y));
     const double lon = atan2(geo.y(),geo.x());
     const double lat = atan2(geo.z(),
                              sqrt(geo.x() * geo.x() + geo.y() * geo.y()));
@@ -303,14 +303,14 @@ bool faceToCube(double& in_out_x, double& in_out_y, int face)
 
 double arcLength(const Vec2d& coord1, const Vec2d& coord2, int face)
 {
-    Vec3d geo1 = face2ec(face, coord1);
-    Vec3d geo2 = face2ec(face, coord2);
+    Vec3d geo1 = face2dc(face, coord1);
+    Vec3d geo2 = face2dc(face, coord2);
     Vec3d norm = geo1 ^ geo2;
     return atan2(norm.length(), geo1 * geo2) * WGS_84_RADIUS_EQUATOR;
 }
 
 double distanceToSegment(const Vec3d& p,
-                         const Vec2d& coord1, const Vec2d& coord2, int face)
+                         const Vec3d& geo1, const Vec3d& geo2)
 {
     // Find the distance to the closet point on the circle that
     // contains the segment. If that point lies on the segment, that's
@@ -318,8 +318,6 @@ double distanceToSegment(const Vec3d& p,
     // end points is the shortest.
 
     // Normal to plane containing circle.
-    Vec3d geo1 = face2ec(face, coord1);
-    Vec3d geo2 = face2ec(face, coord2);
     Vec3d norm = geo1 ^ geo2;
     norm.normalize();
     // Project p into plane of circle
@@ -343,8 +341,14 @@ double distanceToSegment(const Vec3d& p,
         return (p - qnorm * r).length();
     }
     return minimum((p - geo1 * r).length(), (p - geo2 * r).length());
+}
 
-
+double distanceToSegment(const Vec3d& p,
+                         const Vec2d& coord1, const Vec2d& coord2, int face)
+{
+    Vec3d geo1 = face2dc(face, coord1);
+    Vec3d geo2 = face2dc(face, coord2);
+    return distanceToSegment(p, geo1, geo2);
 }
 }
 

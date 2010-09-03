@@ -45,13 +45,14 @@ GeoPatch::GeoPatch(const GeoPatch& rhs, const CopyOp& copyop)
 
 float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
 {
-    // Massive hack to get back to face parameters.
-    MatrixList worldmats = getWorldMatrices();
-    Vec3d worldEye = Vec3d(eye) * worldmats[0];
-    Group* parent = getParent(0);
+    // Hack to get back to face parameters and world coordinates.
+    Transform* parent = static_cast<Transform*>(getParent(0));
     PatchGroup* pgroup = static_cast<PatchGroup*>(parent->getParent(0));
     GeographicOptions* goptions
         = static_cast<GeographicOptions*>(pgroup->getDatabaseOptions());
+    Matrix worldMat;
+    parent->computeLocalToWorldMatrix(worldMat, 0);
+    Vec3d worldEye = Vec3d(eye) * worldMat;
     TileKey* tk = goptions->getTileKey();
     int face;
     const GeoExtent& extent = tk->getGeoExtent();

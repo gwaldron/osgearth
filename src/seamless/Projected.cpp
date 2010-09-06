@@ -156,9 +156,10 @@ Transform* Projected::createPatch(const std::string& filename,
     for (int j = 0; j < patchDim; ++j)
         for (int i = 0; i < patchDim; ++i)
         {
-            (*verts)[patchDim * j + i] = Vec3(minCoord.x() + xInt * i,
-                                              minCoord.y() + yInt * j,
-                                              hf->getHeight(i, j));
+            (*verts)[patchDim * j + i] = Vec3(
+                minCoord.x() + xInt * i, minCoord.y() + yInt * j,
+                hf->getHeight(i, j) * getVerticalScale());
+            // XXX normals change if verticalScale != 1.0
             (*normals)[patchDim * j + i] = hf->getNormal(i, j);
         }
     data->vertexData.array = verts;

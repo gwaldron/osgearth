@@ -83,6 +83,8 @@ public:
                 return ReadResult::FILE_NOT_FOUND;
 
             }
+            patchSet->setVerticalScale(ef.getMapEngineProperties()
+                                       .verticalScale().value());
             return patchSet->createPatchSetGraph("bar.tengpatch");
 
         }

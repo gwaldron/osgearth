@@ -152,8 +152,7 @@ mergeImages(const GeoExtent& targetExtent, const GeoImageList& imgs)
 }
 
 // Create vertex arrays from the height field for a patch and install
-// them in the patch. XXX This should copy the data into the existing
-// arrays (and vbos) of a patch.
+// them in the patch.
 void expandHeights(Geographic* gpatchset, const TileKey* key,
                    const GeoHeightField* hf, Vec3Array* verts,
                    Vec3Array* normals)
@@ -171,6 +170,7 @@ void expandHeights(Geographic* gpatchset, const TileKey* key,
     double xInc = (patchExtent.xMax() - patchExtent.xMin()) / resolution;
     double yInc = (patchExtent.yMax() - patchExtent.yMin()) / resolution;
     const EllipsoidModel* eModel = gpatchset->getEllipsoidModel();
+    const float verticalScale = gpatchset->getVerticalScale();
     for (int j = 0; j < patchDim; ++j)
     {
         for (int i = 0; i < patchDim; i++)
@@ -191,6 +191,7 @@ void expandHeights(Geographic* gpatchset, const TileKey* key,
                         << " (lon lat " << lon << ", " << lat << ")\n";
                 continue;
             }
+            elevation *= verticalScale;
             Vec3d coord;
             eModel->convertLatLongHeightToXYZ(
                 DegreesToRadians(lat), DegreesToRadians(lon), elevation,

@@ -31,7 +31,7 @@ namespace seamless
 using namespace osg;
 
 PatchSet::PatchSet(int resolution, PatchOptions* poptionsPrototype)
-    : _resolution(resolution), _maxLevel(16),
+    : _resolution(resolution), _maxLevel(16), _verticalScale(1.0f),
       _patchOptionsPrototype(poptionsPrototype ? poptionsPrototype
                              : new PatchOptions)
 {
@@ -41,7 +41,7 @@ PatchSet::PatchSet(int resolution, PatchOptions* poptionsPrototype)
 
 PatchSet::PatchSet(const PatchSet& rhs, const CopyOp& copyop)
     : _precisionFactor(rhs._precisionFactor), _resolution(rhs._resolution),
-      _maxLevel(rhs._maxLevel),
+      _maxLevel(rhs._maxLevel), _verticalScale(rhs._verticalScale),
       _patchOptionsPrototype(static_cast<PatchOptions*>(copyop(_patchOptionsPrototype.get())))
 {
     _patchOptionsPrototype

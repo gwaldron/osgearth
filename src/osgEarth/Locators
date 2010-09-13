@@ -73,7 +73,7 @@ namespace osgEarth
      * Note: the MercatorLocator doesn't have a "cropping" variation b/c it automatically
      * self-crops as necessary.
      */
-    class MercatorLocator : public GeoLocator
+    class OSGEARTH_EXPORT MercatorLocator : public GeoLocator
     {
     public:
         MercatorLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent );

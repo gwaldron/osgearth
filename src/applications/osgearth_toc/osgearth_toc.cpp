@@ -58,6 +58,7 @@
 
 #include <osgEarthDrivers/arcgis/ArcGISOptions>
 #include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
 
 #include <osgGA/StateSetManipulator>
 #include <osgGA/TrackballManipulator>
@@ -78,7 +79,6 @@
 
 
 #include <osgViewer/ViewerEventHandlers>
-
 
 using namespace osg;
 using namespace osgDB;
@@ -508,40 +508,36 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    MapEngineProperties engineProps;
+    OSGTerrainOptions terrainOptions;
 
-    engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
+    terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
 
     if ( arguments.read( "--preemptive" ) || arguments.read( "--preemptive=ON" ) )
     {
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_PREEMPTIVE;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_PREEMPTIVE;
     }
     else if ( arguments.read( "--standard" ) || arguments.read( "--standard=ON" ) )
     {
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }
     else if ( arguments.read( "--sequential" ) || arguments.read( "--sequential=ON" ) )
     {
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
     }
-    //else 
-    //{
-    //    //engineProps.setPreemptiveLOD( false );
-    //}
 
 
-    engineProps.layeringTechnique() = MapEngineProperties::LAYERING_MULTITEXTURE;
+    terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_MULTITEXTURE;
 	if (arguments.read( "--multipass") )
 	{
-		engineProps.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
+		terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_MULTIPASS;
         //Multipass mode is currently only available in STANDARD mode.
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
 	}
     else if (arguments.read("--compositing"))
     {
-        engineProps.layeringTechnique() = MapEngineProperties::LAYERING_COMPOSITE;
+        terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_COMPOSITE;
         //Compositing mode is currently only available in STANDARD mode.
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }
 
     // construct the viewer.
@@ -582,10 +578,11 @@ int main(int argc, char** argv)
     }
 
     Map* map = new Map(csType);
-    MapNode* mapNode = new MapNode(map, engineProps);
+    MapOptions mapOptions( terrainOptions );
+    MapNode* mapNode = new MapNode(map, mapOptions);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
-    FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties());
+    FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapOptions ); //mapNode->getEngine()->getEngineProperties());
     fadeLayerNode->addChild(loadedModel.get());
     group->addChild(fadeLayerNode);
 	//group->addChild( loadedModel.get() );

@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     if ( mapNode )
     {
         if ( mapNode )
-            manip->setNode( mapNode->getTerrainContainer() );
+            manip->setNode( mapNode->getTerrainEngine() );
 
         if ( mapNode->getMap()->isGeocentric() )
         {

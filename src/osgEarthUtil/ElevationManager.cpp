@@ -1,5 +1,5 @@
 #include <osgEarthUtil/ElevationManager>
-#include <osgEarth/EarthTerrainTechnique>
+#include <osgEarth/Locators>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/GeometryTechnique>
 #include <osgUtil/IntersectionVisitor>
@@ -15,14 +15,6 @@ _map( map )
     postCTOR();
 }
 
-//ElevationManager::ElevationManager( MapNode* mapNode ) :
-//_mapNode( mapNode ),
-//_map( mapNode? mapNode->getMap() : NULL ),
-//_mapEngine( mapNode? mapNode->getEngine() : NULL )
-//{
-//    postCTOR();
-//}
-
 void
 ElevationManager::postCTOR()
 {
@@ -32,11 +24,6 @@ ElevationManager::postCTOR()
     _maxCacheSize = 100;
     _technique = TECHNIQUE_GEOMETRIC;
     _interpolation = INTERP_BILINEAR;
-
-    if ( !_mapEngine.valid() )
-    {
-        _mapEngine = new MapEngine();
-    }
 
     checkForMapUpdates();
 }
@@ -162,16 +149,6 @@ ElevationManager::getElevation(double x, double y,
     // now, see if we already have this tile loaded somewhere:
     osgTerrain::TileID tileId = key->getTileId();
 
-    //if ( _mapNode.valid() )
-    //{
-    //    // first look in the map node's default terrain:
-    //    tile = _mapNode->getTerrain(0)->getTile( tileId );
-
-    //    // if it's in the map, remove it from the local tile cache
-    //    if ( tile.valid() )
-    //        _tileCache.erase( tileId );
-    //}
-
     if ( !tile.valid() )
     {
         // next check the local tile cache:
@@ -213,10 +190,7 @@ ElevationManager::getElevation(double x, double y,
 
         GeoLocator* locator = GeoLocator::createForKey( key.get(), _map.get() );
 
-        //tile = new osgTerrain::TerrainTile();
         tile = new VersionedTile(key, locator);
-        //tile->setTileID( tileId );
-        //tile->setLocator( locator );
 
         osgTerrain::HeightFieldLayer* layer = new osgTerrain::HeightFieldLayer( hf.get() );
         layer->setLocator( locator );

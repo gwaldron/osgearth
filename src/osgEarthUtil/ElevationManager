@@ -22,7 +22,6 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
-#include <osgEarth/MapEngine>
 
 using namespace osgEarth;
 
@@ -155,7 +154,6 @@ namespace osgEarthUtil
     private:
         osg::ref_ptr<Map> _map;
         osg::ref_ptr<MapNode> _mapNode;
-        osg::ref_ptr<MapEngine> _mapEngine;
         typedef std::map< osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileTable;
         TileTable _tileCache;
         typedef std::list< osgTerrain::TileID > TileIdList;

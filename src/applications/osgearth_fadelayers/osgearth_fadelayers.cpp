@@ -82,6 +82,7 @@ int main(int argc, char** argv)
 	  mapNode->addUpdateCallback( callback );
 	  mapNode->addCullCallback( callback );
 
+#if 0
       // multitexture mode currently requires some help
       if ( mapNode->getEngine()->getEngineProperties().layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
       {
@@ -89,6 +90,8 @@ int main(int argc, char** argv)
           fadeLayerNode->addChild( root.get() );
           root = fadeLayerNode;
       }
+#endif
+
   }
   else
   {

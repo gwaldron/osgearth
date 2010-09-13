@@ -34,6 +34,7 @@ namespace osgEarth
     {
     public:
         MapOptions( const Config& conf =Config() );
+        MapOptions( const TerrainOptions& terrainOpts );
         virtual ~MapOptions();
 
         /** 

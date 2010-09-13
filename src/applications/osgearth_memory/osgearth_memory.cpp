@@ -57,6 +57,7 @@
 
 #include <osgEarthDrivers/arcgis/ArcGISOptions>
 #include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
 
 #include <osgGA/StateSetManipulator>
 #include <osgGA/TrackballManipulator>
@@ -67,14 +68,11 @@
 #include <osgGA/AnimationPathManipulator>
 #include <osgGA/TerrainManipulator>
 
-
 #include <osgWidget/Util>
 #include <osgWidget/WindowManager>
 #include <osgWidget/Box>
 #include <osgWidget/Label>
 #include <osgWidget/ViewerEventHandlers>
-
-
 
 #include <osgViewer/ViewerEventHandlers>
 
@@ -216,32 +214,28 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    MapEngineProperties engineProps;
+    OSGTerrainOptions terrainOptions;
 
-    engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
+    terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
 
     if ( arguments.read( "--preemptive" ) || arguments.read( "--preemptive=ON" ) )
     {
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_PREEMPTIVE;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_PREEMPTIVE;
     }
     else if ( arguments.read( "--standard" ) || arguments.read( "--standard=ON" ) )
     {
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }
     else if ( arguments.read( "--sequential" ) || arguments.read( "--sequential=ON" ) )
     {
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
     }
-    //else 
-    //{
-    //    //engineProps.setPreemptiveLOD( false );
-    //}
 
     if (arguments.read( "--multipass") )
     {
-        engineProps.layeringTechnique() = MapEngineProperties::LAYERING_MULTIPASS;
+        terrainOptions.layeringTechnique() = OSGTerrainOptions::LAYERING_MULTIPASS;
         //Multipass mode is currently only available in STANDARD mode.
-        engineProps.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }
     {
 
@@ -275,12 +269,14 @@ int main(int argc, char** argv)
         osg::ref_ptr<osg::Group> group = new osg::Group;
         group->setName("root");
 
+        MapOptions mapOptions;
+        mapOptions.setTerrainOptions( terrainOptions );
 
-        osg::ref_ptr<MapNode> mapNode = new MapNode(engineProps);
+        osg::ref_ptr<MapNode> mapNode = new MapNode(mapOptions);
         osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
 
-        osg::ref_ptr<FadeLayerNode> fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties());
+        osg::ref_ptr<FadeLayerNode> fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapOptions ); //mapNode->getEngine()->getEngineProperties());
         fadeLayerNode->addChild(loadedModel.get());
         group->addChild(fadeLayerNode);
 

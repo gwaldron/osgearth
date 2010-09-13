@@ -20,11 +20,8 @@
 #define OSGEARTHUTIL_FADELAYERNODE
 
 #include <osg/Group>
-
 #include <osgEarth/MapNode>
-
 #include <osgEarthUtil/Common>
-
 
 namespace osgEarthUtil
 {
@@ -39,7 +36,7 @@ namespace osgEarthUtil
 		*@param map
 		*       The MapNode this FadeLayerNode will operate on.
 		*/
-		FadeLayerNode(osgEarth::Map* map, const osgEarth::MapEngineProperties& mapEngineProperties);
+		FadeLayerNode(osgEarth::Map* map, const osgEarth::MapOptions& mapOptions );
 
 		/**
 		*Gets the Map that this FadeLayerNode is operating on
@@ -51,7 +48,7 @@ namespace osgEarthUtil
     protected:
 
         osg::ref_ptr<osgEarth::Map> _map;
-		osgEarth::MapEngineProperties _mapEngineProperties;
+		osgEarth::MapOptions _mapOptions;
 
 		osg::ref_ptr<osg::Shader> _fragShader;
 		osg::ref_ptr<osg::Shader> _vertShader;

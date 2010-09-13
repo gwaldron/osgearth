@@ -40,6 +40,16 @@ _terrainOptions( 0L )
     fromConfig( conf );
 }
 
+MapOptions::MapOptions( const TerrainOptions& to ) :
+_proxySettings( ProxySettings() ),
+_cacheOnly( false ),
+_enableLighting( true ),
+_terrainOptions( 0L )
+{
+    setTerrainOptions( to );
+}
+
+
 MapOptions::~MapOptions()
 {
     if ( _terrainOptions )

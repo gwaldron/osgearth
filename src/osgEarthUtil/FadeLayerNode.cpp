@@ -147,11 +147,11 @@ char frag_source[] =
                     "}\n";                    
 
 
-FadeLayerNode::FadeLayerNode( Map* map, const MapEngineProperties& mapEngineProperties) :
+FadeLayerNode::FadeLayerNode( Map* map, const MapOptions& mapOptions) :
 _map( map ),
-_mapEngineProperties(mapEngineProperties)
+_mapOptions(mapOptions)
 {
-	if (_mapEngineProperties.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE)
+    if (_mapOptions.getTerrainOptions().layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE)
 	{
 		osg::Program* program = new osg::Program;
 		_vertShader = new osg::Shader( osg::Shader::VERTEX, vert_source );

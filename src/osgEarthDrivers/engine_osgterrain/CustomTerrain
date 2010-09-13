@@ -20,11 +20,11 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_VERSIONED_TERRAIN 1
 
 #include "Common"
-#include "TileFactory"
+#include "OSGTileFactory"
 #include <osgEarth/TaskService>
 #include <osgEarth/Locators>
 #include <osgEarth/Profile>
-#include <osgEarth/MapEngineProperties>
+#include <osgEarth/TerrainOptions>
 #include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
 #include <osgTerrain/Terrain>
@@ -156,7 +156,7 @@ public:
 
     bool cancelRequests();
 
-    void updateImagery( unsigned int layerId, Map* map, TileFactory* factory );
+    void updateImagery( unsigned int layerId, Map* map, OSGTileFactory* factory );
 
     bool getUseTileGenRequest() const;
 
@@ -239,7 +239,7 @@ public:
 class CustomTerrain : public osgTerrain::Terrain
 {
 public:
-    CustomTerrain( Map* map, TileFactory* factory );
+    CustomTerrain( Map* map, OSGTileFactory* factory );
 
     virtual const char* libraryName() const { return "osgEarth"; }
     virtual const char* className() const { return "CustomTerrain"; }
@@ -258,7 +258,7 @@ public:
 
 
     Map* getMap();
-    TileFactory* getTileFactory();
+    OSGTileFactory* getTileFactory();
     //MapEngine* getEngine();
 
     TaskService* getImageryTaskService(int layerId);
@@ -317,7 +317,7 @@ private:
     OpenThreads::Mutex _revisionMutex;
 
     osg::ref_ptr<Map> _map;
-    osg::ref_ptr<TileFactory> _tileFactory; // _engine;
+    osg::ref_ptr<OSGTileFactory> _tileFactory; // _engine;
     typedef std::map< int, osg::ref_ptr< TaskService > > TaskServiceMap;
     TaskServiceMap _taskServices;
 

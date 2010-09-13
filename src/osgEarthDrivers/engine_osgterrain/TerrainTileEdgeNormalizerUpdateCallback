@@ -24,48 +24,46 @@
 #include <osgTerrain/TerrainTile>
 #include <osgEarth/Common>
 
+class CustomTile;
 
-namespace osgEarth
+enum CardinalDirection
 {
-    class VersionedTile;
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST,
+    NORTH_EAST,
+    NORTH_WEST,
+    SOUTH_EAST,
+    SOUTH_WEST
+};
 
-    enum CardinalDirection
-    {
-        NORTH,
-        EAST,
-        SOUTH,
-        WEST,
-        NORTH_EAST,
-        NORTH_WEST,
-        SOUTH_EAST,
-        SOUTH_WEST
-    };
+/**
+* Update callback that scans adjacent tiles and adjusts the edge verts so that
+* they match up. Helps match up mismatched elevation data at tile edges.
+*/
+class TerrainTileEdgeNormalizerUpdateCallback : public osg::NodeCallback
+{
+public:
+    TerrainTileEdgeNormalizerUpdateCallback();
+    void operator()(osg::Node* node, osg::NodeVisitor* nv);
 
-    /**
-     * Update callback that scans adjacent tiles and adjusts the edge verts so that
-     * they match up. Helps match up mismatched elevation data at tile edges.
-     */
-    class OSGEARTH_EXPORT TerrainTileEdgeNormalizerUpdateCallback : public osg::NodeCallback
-    {
-    public:
-        TerrainTileEdgeNormalizerUpdateCallback();
-        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+protected:
 
-    protected:
+    bool normalizeCorner(CustomTile *tile, CardinalDirection direction);
+    bool normalizeEdge(CustomTile *tile, CardinalDirection direction);
+    osgTerrain::TileID getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const;
 
-        bool normalizeCorner(VersionedTile *tile, CardinalDirection direction);
-        bool normalizeEdge(VersionedTile *tile, CardinalDirection direction);
-        osgTerrain::TileID getNeighborTile(const osgTerrain::TileID &id, CardinalDirection direction) const;
+    bool _normalizedWest;
+    bool _normalizedEast;
+    bool _normalizedNorth;
+    bool _normalizedSouth;
+    bool _normalizedNorthWest;
+    bool _normalizedNorthEast;
+    bool _normalizedSouthWest;
+    bool _normalizedSouthEast;
 
-        bool _normalizedWest;
-        bool _normalizedEast;
-        bool _normalizedNorth;
-        bool _normalizedSouth;
-        bool _normalizedNorthWest;
-        bool _normalizedNorthEast;
-        bool _normalizedSouthWest;
-        bool _normalizedSouthEast;
+};
 
-    };
-}
+
 #endif //OSGEARTH_TERRAIN_TILE_EDGE_NORMALIZATION_CALLBACK

@@ -77,19 +77,19 @@ public:
 
 struct TileLayerRequest : public TaskRequest
 {
-    TileLayerRequest( const TileKey* key, Map* map, TileFactory* tileFactory )
+    TileLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory )
         : _key( key ), _map(map), _tileFactory(tileFactory), _numTries(0), _maxTries(3) { }
 
     osg::ref_ptr<const TileKey> _key;
     osg::ref_ptr<Map>           _map;
-    osg::ref_ptr<TileFactory>   _tileFactory;
+    osg::ref_ptr<OSGTileFactory>   _tileFactory;
 	unsigned int _numTries;
 	unsigned int _maxTries;
 };
 
 struct TileColorLayerRequest : public TileLayerRequest
 {
-    TileColorLayerRequest( const TileKey* key, Map* map, TileFactory* tileFactory, unsigned int layerId )
+    TileColorLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory, unsigned int layerId )
         : TileLayerRequest( key, map, tileFactory ), _layerId(layerId) { }
 
     void operator()( ProgressCallback* progress )
@@ -122,7 +122,7 @@ struct TileColorLayerRequest : public TileLayerRequest
 
 struct TileElevationLayerRequest : public TileLayerRequest
 {
-    TileElevationLayerRequest( const TileKey* key, Map* map, TileFactory* tileFactory )
+    TileElevationLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory )
         : TileLayerRequest( key, map, tileFactory )
     {
     }
@@ -136,7 +136,7 @@ struct TileElevationLayerRequest : public TileLayerRequest
 
 struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 {
-    TileElevationPlaceholderLayerRequest( const TileKey* key, Map* map, TileFactory* tileFactory, GeoLocator* keyLocator )
+    TileElevationPlaceholderLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory, GeoLocator* keyLocator )
         : TileLayerRequest( key, map, tileFactory ),
           _keyLocator(keyLocator)
     {
@@ -566,7 +566,7 @@ CustomTile::installRequests( int stamp )
     Map* map = terrain->getMap();
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    TileFactory* tileFactory = terrain->getTileFactory();
+    OSGTileFactory* tileFactory = terrain->getTileFactory();
     //MapEngine* engine = terrain->getEngine();
 
     bool hasElevationLayer;
@@ -624,7 +624,7 @@ CustomTile::resetElevationRequests()
 
 
 void
-CustomTile::updateImagery(unsigned int layerId, Map* map, TileFactory* tileFactory)
+CustomTile::updateImagery(unsigned int layerId, Map* map, OSGTileFactory* tileFactory)
 {
     CustomTerrain* terrain = getCustomTerrain();
 
@@ -1053,7 +1053,7 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
                 if ( newHFLayer.valid() && newHFLayer->getHeightField() != NULL )
                 {
                     newHFLayer->getHeightField()->setSkirtHeight( 
-                        getCustomTerrain()->getTileFactory()->getEngineProperties().heightFieldSkirtRatio().get()
+                        getCustomTerrain()->getTileFactory()->getTerrainOptions().heightFieldSkirtRatio().get()
                         * this->getBound().radius() );
 
                     // need to write-lock the layer data since we'll be changing it:
@@ -1291,7 +1291,7 @@ CustomTerrain::releaseGLObjectsForTiles(osg::State* state)
     }
 }
 
-CustomTerrain::CustomTerrain( Map* map, TileFactory* tileFactory ) :
+CustomTerrain::CustomTerrain( Map* map, OSGTileFactory* tileFactory ) :
 _map( map ),
 _tileFactory( tileFactory ),
 _revision(0),
@@ -1300,7 +1300,7 @@ _registeredWithReleaseGLCallback( false )
 {
     this->setThreadSafeRefUnref( true );
 
-    _loadingPolicy = _tileFactory->getEngineProperties().loadingPolicy().get();
+    _loadingPolicy = _tileFactory->getTerrainOptions().loadingPolicy().get();
 
     if ( _loadingPolicy.mode() != LoadingPolicy::MODE_STANDARD )
     {
@@ -1519,7 +1519,7 @@ CustomTerrain::getMap() {
     return _map.get();
 }
 
-TileFactory*
+OSGTileFactory*
 CustomTerrain::getTileFactory() {
     return _tileFactory.get();
 }

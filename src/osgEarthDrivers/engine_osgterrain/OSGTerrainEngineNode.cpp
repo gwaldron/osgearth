@@ -1,21 +1,21 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
 #include "OSGTerrainEngineNode"
 #include "MultiTextureTerrainTechnique"
 #include "MultiPassTerrainTechnique"
@@ -194,29 +194,29 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     TerrainEngineNode::onMapProfileEstablished( mapProfile );
 
-    _tileFactory = new TileFactory( _id, _options );
+    _tileFactory = new OSGTileFactory( _id, _options );
 
     // go through and build the root nodesets.
     _terrain = new CustomTerrain( _map.get(), _tileFactory.get() );
 
     // install the proper layering technique:
 
-    if ( _options.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
+    if ( _options.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS )
     {
-		_terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique());
+        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique());
         OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;
     }
     else
     {
         CustomTerrainTechnique* tech = 0;
 
-        if ( _options.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
+        if ( _options.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE )
         {
             tech = new MultiTextureTerrainTechnique();
             OE_INFO << LC << "Layering technique = MULTITEXTURE" << std::endl;
         }
 
-        else if ( _options.layeringTechnique() == MapEngineProperties::LAYERING_COMPOSITE )
+        else if ( _options.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
         {
             tech = new CompositingTerrainTechnique();
             OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
@@ -230,7 +230,7 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
             {
                 tech->setOptimizeTriangleOrientation( false );
             }
-            
+
             _terrain->setTerrainTechniquePrototype( tech );
         }
     }
@@ -246,7 +246,7 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 
     _terrain->setVerticalScale( _options.verticalScale().value() );
     _terrain->setSampleRatio( _options.heightFieldSampleRatio().value() );
-    
+
     // put the terrain in its container. TODO: later, this may be the attach point for terrain engine plugins.
     this->addChild( _terrain );
     //_terrainContainer->addChild( terrain );
@@ -303,7 +303,7 @@ OSGTerrainEngineNode::onModelLayerAdded( ModelLayer* layer )
             }
             else
             {
-               _models->addChild( node );
+                _models->addChild( node );
             }
 
             ModelSource* ms = layer->getModelSource();
@@ -328,7 +328,7 @@ OSGTerrainEngineNode::onModelLayerRemoved( ModelLayer* layer )
         if ( i != _modelLayerNodes.end() )
         {
             osg::Node* node = i->second;
-            
+
             if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
             {
                 // handle the special-case overlay node
@@ -338,7 +338,7 @@ OSGTerrainEngineNode::onModelLayerRemoved( ModelLayer* layer )
             {
                 _models->removeChild( node );
             }
-            
+
             _modelLayerNodes.erase( i );
         }
     }
@@ -371,7 +371,7 @@ OSGTerrainEngineNode::onMaskLayerAdded( MaskLayer* layer )
             count++;
         }
         this->replaceChild( _terrainContainer.get(), node );
-        
+
         OE_NOTICE<<"Installed terrain mask ("
             <<count<< " mask nodes found)" << std::endl;
 
@@ -428,7 +428,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
     //TODO: review the scope of this mapdata mutex lock within this method. We can 
     // probably optimize it some
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
-    
+
     // apply a controller to the layer so we can process runtime property updates:
     //layer->setController( _mapLayerController.get() );
 
@@ -443,7 +443,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
         //Create a TileKey from the TileID
         osgTerrain::TileID tileId = tile->getTileID();
-	    osg::ref_ptr< TileKey > key = new TileKey( TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile() );
+        osg::ref_ptr< TileKey > key = new TileKey( TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile() );
 
         osg::ref_ptr< GeoImage > geoImage;
 
@@ -455,7 +455,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
         //   (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
 
         if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
-             key->getLevelOfDetail() == 1)
+            key->getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
             geoImage = _tileFactory->createValidGeoImage( layer, key.get() );
@@ -474,7 +474,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<GeoLocator> img_locator;
-            
+
             // Use a special locator for mercator images (instead of reprojecting).
             // We do this under 2 conditions when we have mercator tiles:
             // a) The map is geocentric; or
@@ -504,11 +504,11 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
             // Create a layer wrapper that supports opacity.
             // TODO: review this; the Transparent layer holds a back-reference to the actual MapLayer
-			TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
+            TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
             img_layer->setLevelOfDetail(imageLOD);
             img_layer->setLocator( img_locator.get());
-			img_layer->setMinFilter( layer->getMinFilter().value());
-			img_layer->setMagFilter( layer->getMagFilter().value());
+            img_layer->setMinFilter( layer->getMinFilter().value());
+            img_layer->setMagFilter( layer->getMagFilter().value());
 
             unsigned int newLayer = _map->getImageMapLayers().size() - 1;
             tile->setColorLayer( newLayer, img_layer );
@@ -527,7 +527,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
             //    "Adding layer " << layer->getName()
             //    << ": Could not create geoimage for tile " << key->str() << std::endl;
         }
-        
+
         if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty(true);
         else
@@ -559,16 +559,16 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
     if (heightFieldLayer)
     {
         //In standard mode, just load the elevation data and dirty the tile.
-        
+
         if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-        //if (!_options.getPreemptiveLOD())
+            //if (!_options.getPreemptiveLOD())
         {
             osg::ref_ptr<osg::HeightField> hf;
             if (hasElevation)
             {
                 hf = _map->createHeightField( key.get(), true, _options.elevationInterpolation().value());
             }
-            if (!hf.valid()) hf = TileFactory::createEmptyHeightField( key.get() );
+            if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key.get() );
             heightFieldLayer->setHeightField( hf.get() );
             hf->setSkirtHeight( tile->getBound().radius() * _options.heightFieldSkirtRatio().value() );
             tile->setDirty(true);
@@ -578,7 +578,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
             //In preemptive mode, if there is no elevation, just clear out all the elevation on the tiles
             if (!hasElevation)
             {
-                osg::ref_ptr<osg::HeightField> hf = TileFactory::createEmptyHeightField( key.get() );
+                osg::ref_ptr<osg::HeightField> hf = OSGTileFactory::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf.get() );
                 hf->setSkirtHeight( tile->getBound().radius() * _options.heightFieldSkirtRatio().value() );
                 tile->setElevationLOD( key->getLevelOfDetail() );
@@ -591,7 +591,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
                 if (tile->getKey()->getLevelOfDetail() == 1)
                 {
                     osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true, _options.elevationInterpolation().value());
-                    if (!hf.valid()) hf = TileFactory::createEmptyHeightField( key.get() );
+                    if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key.get() );
                     heightFieldLayer->setHeightField( hf.get() );
                     hf->setSkirtHeight( tile->getBound().radius() * _options.heightFieldSkirtRatio().value() );
                     tile->setElevationLOD(tile->getKey()->getLevelOfDetail());
@@ -679,7 +679,7 @@ OSGTerrainEngineNode::removeImageLayer( unsigned int index )
             itr->get()->setColorLayer( i, layers[i].get() );
         }
 
-        
+
         if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else

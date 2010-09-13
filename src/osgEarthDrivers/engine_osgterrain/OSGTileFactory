@@ -20,7 +20,7 @@
 #ifndef OSGEARTH_ENGINE_OSGTERRAIN_TILE_FACTORY_H
 #define OSGEARTH_ENGINE_OSGTERRAIN_TILE_FACTORY_H 1
 
-#include <osgEarth/MapEngineProperties>
+#include "OSGTerrainOptions"
 #include <osgEarth/TileSource>
 #include <osgEarth/Compositing>
 #include <osgEarth/MapLayer>
@@ -33,6 +33,7 @@
 #include <vector>
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 class osgEarth::Map;
 class CustomTerrain;
@@ -41,12 +42,12 @@ class CustomTile;
 /**
 * TileFactory is the main workhorse - it generates osg Nodes for TileKeys.
 */
-class TileFactory : public osg::Referenced
+class OSGTileFactory : public osg::Referenced
 {
 public:
-    TileFactory(
+    OSGTileFactory(
         unsigned int engineId,
-        const MapEngineProperties& props =MapEngineProperties() );
+        const OSGTerrainOptions& props =OSGTerrainOptions() );
 
 public:
     /**
@@ -86,7 +87,7 @@ public:
     /**
     * Gets the properties that customize how this engine renders tile data.
     */
-    const MapEngineProperties& getEngineProperties() const;
+    const OSGTerrainOptions& getTerrainOptions() const;
 
     /**
     * Returns true if all the data needed to contruct a tile from the specified tile key is
@@ -168,7 +169,7 @@ protected:
 protected:
 
     unsigned int _engineId;
-    MapEngineProperties _engineProps;
+    OSGTerrainOptions _terrainOptions;
     L2Cache* _L2cache;
 };
 

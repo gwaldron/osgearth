@@ -86,7 +86,7 @@ public:
             const Profile* profile = engineNode->getMap()->getProfile();
             osg::ref_ptr<TileKey> key = new TileKey( lod, x, y, profile );
 
-            bool populateLayers = engineNode->getTileFactory()->getEngineProperties().loadingPolicy()->mode() 
+            bool populateLayers = engineNode->getTileFactory()->getTerrainOptions().loadingPolicy()->mode() 
                 == LoadingPolicy::MODE_STANDARD;
 
             node = engineNode->getTileFactory()->createSubTiles(

@@ -17,11 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "OSGTerrainEngineNode"
+#include "OSGTerrainOptions"
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <osgEarth/EarthFile>
 #include <string>
+
+using namespace osgEarth::Drivers;
 
 class OSGTerrainEnginePlugin : public osgDB::ReaderWriter
 {

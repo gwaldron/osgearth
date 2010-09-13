@@ -22,7 +22,6 @@
 #include <osgTerrain/GeometryTechnique>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
-//#include <osgEarth/CustomTerrain>
 #include <osgEarth/MapLayer>
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>

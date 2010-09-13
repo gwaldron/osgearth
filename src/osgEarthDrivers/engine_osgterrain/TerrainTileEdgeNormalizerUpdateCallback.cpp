@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/TerrainTileEdgeNormalizerUpdateCallback>
-#include <osgEarth/MapEngine>
+#include "TerrainTileEdgeNormalizerUpdateCallback"
+#include "CustomTerrain"
 #include <osg/Version>
 #include <osg/Timer>
 
@@ -170,12 +170,12 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
       {
       }
 
-      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeCorner(VersionedTile *tile, CardinalDirection direction)
+      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeCorner(CustomTile *tile, CardinalDirection direction)
       {
           if (tile && tile->getTerrain())
           {
               //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
-              osgEarth::VersionedTerrain* et = static_cast<osgEarth::VersionedTerrain*>(tile->getTerrain());
+              CustomTerrain* et = static_cast<CustomTerrain*>(tile->getTerrain());
               if (et)
               {
                   //Determine the TileID's of the 4 tiles that need to take place in this normalization
@@ -219,11 +219,11 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                   }
 
                   //Get the terrain tiles
-                  osg::ref_ptr<VersionedTile> ll_tile, lr_tile, ul_tile, ur_tile;
-                  et->getVersionedTile(ll_id, ll_tile);
-                  et->getVersionedTile(lr_id, lr_tile);
-                  et->getVersionedTile(ul_id, ul_tile);
-                  et->getVersionedTile(ur_id, ur_tile);
+                  osg::ref_ptr<CustomTile> ll_tile, lr_tile, ul_tile, ur_tile;
+                  et->getCustomTile(ll_id, ll_tile);
+                  et->getCustomTile(lr_id, lr_tile);
+                  et->getCustomTile(ul_id, ul_tile);
+                  et->getCustomTile(ur_id, ur_tile);
 
                   if (ll_tile.valid() && lr_tile.valid() && ul_tile.valid() && ur_tile.valid())
                   {
@@ -266,12 +266,12 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
       }
 
 
-      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeEdge(VersionedTile *tile, CardinalDirection direction)
+      bool TerrainTileEdgeNormalizerUpdateCallback::normalizeEdge(CustomTile *tile, CardinalDirection direction)
       {
           if (tile && tile->getTerrain())
           {
               //TODO:  Remove the use of EarthTerrain once getTile fix is included in OpenSceneGraph proper
-              osgEarth::VersionedTerrain* et = static_cast<osgEarth::VersionedTerrain*>(tile->getTerrain());
+              CustomTerrain* et = static_cast<CustomTerrain*>(tile->getTerrain());
               if (et)
               {
 
@@ -284,8 +284,8 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
                   if (tile->getTerrain())
                   {
-                      osg::ref_ptr<VersionedTile> tile2;
-                      et->getVersionedTile(id2, tile2);
+                      osg::ref_ptr<CustomTile> tile2;
+                      et->getCustomTile(id2, tile2);
 
                       if (tile2)
                       {
@@ -329,7 +329,7 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
 
           osg::Timer_t start = osg::Timer::instance()->tick();
           //TODO:  Look at heightDelta's to assist with normal generation.
-          VersionedTile* tt = static_cast<VersionedTile*>(node);
+          CustomTile* tt = static_cast<CustomTile*>(node);
 
           if (!_normalizedNorth) _normalizedNorth = normalizeEdge(tt, NORTH);
           if (!_normalizedSouth) _normalizedSouth = normalizeEdge(tt, SOUTH);

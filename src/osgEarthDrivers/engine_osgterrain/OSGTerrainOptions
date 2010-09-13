@@ -20,7 +20,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_DRIVEROPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarth/TerrainEngineOptions>
+#include <osgEarth/TerrainOptions>
 
 using namespace osgEarth;
 
@@ -29,13 +29,18 @@ namespace osgEarth { namespace Drivers
     class OSGTerrainOptions : public TerrainOptions // NO EXPORT (header-only)
     {
     public:
-        OSGTerrainOptions( const ConfigOptions& opt =ConfigOptions() ) : TerrainOptions( opt ),
+        OSGTerrainOptions( const ConfigOptions& opt =ConfigOptions() ) : TerrainOptions( opt.config() ),
             _skirtRatio( 0.02 )
         {
             config().add( "driver", "osgterrain" );
             //driver() = "osgterrain";
             fromConfig( config() );
         }
+
+    public:
+
+        optional<float>& heightFieldSkirtRatio() { return _skirtRatio; }
+        const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }
 
     protected:
         virtual Config toConfig() const {

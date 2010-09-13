@@ -26,8 +26,6 @@
 #include <osgEarth/MapLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/MaskLayer>
-#include <osgEarth/MapEngine>
-#include <osgEarth/MapEngineProperties>
 #include <osgEarth/ThreadingUtils>
 #include <osgDB/ReaderWriter>
 #include <osg/TransferFunction>

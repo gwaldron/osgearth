@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
+#include <osgEarth/MapOptions>
 #include <osgEarth/MapEngineProperties>
 #include <iostream>
 
@@ -35,16 +36,20 @@ namespace osgEarth
     {
     public:
         EarthFile();
-        EarthFile( Map* map, const MapEngineProperties& props );
+        EarthFile( Map* map, const MapOptions& options );
+        //EarthFile( Map* map, const MapEngineProperties& props );
 
         void setMap( Map* map );
-        void setMapEngineProperties( const MapEngineProperties& props );
+        void setMapOptions( const MapOptions& options );
+        //void setMapEngineProperties( const MapEngineProperties& props );
 
         Map* getMap();
         const Map* getMap() const;
 
-        MapEngineProperties& getMapEngineProperties();
-        const MapEngineProperties& getMapEngineProperties() const;
+        MapOptions& getMapOptions();
+        const MapOptions& getMapOptions() const;
+        //MapEngineProperties& getMapEngineProperties();
+        //const MapEngineProperties& getMapEngineProperties() const;
 
         bool readXML( const std::string& location );
         bool readXML( std::istream& input, const std::string& referencePath );
@@ -54,7 +59,8 @@ namespace osgEarth
             
     private:
         osg::ref_ptr<Map> _map;
-        MapEngineProperties _engineProps;
+        MapOptions _mapOptions;
+        //MapEngineProperties _engineProps;
     };
 }
 

@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#ifndef OSGEARTH2
 
 #include <osgEarth/MapNode>
 #include <osgEarth/Locators>
@@ -207,14 +208,14 @@ _map( map )
 
 MapNode::MapNode( const MapEngineProperties& engineProps ) :
 _map( new Map() ),
-_engineProps( engineProps )
+_mapOptions( engineProps )
 {
     init();
 }
 
 MapNode::MapNode( Map* map, const MapEngineProperties& engineProps ) :
 _map( map? map : new Map() ),
-_engineProps( engineProps )
+_mapOptions( engineProps )
 {
     init();
 }
@@ -260,9 +261,9 @@ MapNode::init()
         NULL;
 
     //Set the global proxy settings
-    if ( _engineProps.proxySettings().isSet() )
+    if ( _mapOptions.proxySettings().isSet() )
     {
-		HTTPClient::setProxySettings( _engineProps.proxySettings().get() );
+		HTTPClient::setProxySettings( _mapOptions.proxySettings().get() );
     }
 
     if ( local_options.valid() )
@@ -276,10 +277,10 @@ MapNode::init()
     _map->setGlobalOptions( local_options.get() );
 
     // validate and adjust the engine properties as necessary:
-    validateEngineProps( _engineProps );
+    validateEngineProps( _mapOptions );
 
     // create the map engine that wil geneate tiles for this node:
-    _engine = new MapEngine( _engineProps );
+    _engine = new MapEngine( _mapOptions );
 
     // make a group for terrain nodes:
     _terrainContainer = new osg::CoordinateSystemNode();
@@ -335,9 +336,9 @@ MapNode::init()
 	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
     //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
-    if ( _engineProps.enableLighting().isSet() )
+    if ( _mapOptions.enableLighting().isSet() )
     {
-        ss->setMode( GL_LIGHTING, _engineProps.enableLighting().value() ? 
+        ss->setMode( GL_LIGHTING, _mapOptions.enableLighting().value() ? 
             osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
@@ -380,7 +381,7 @@ MapNode::getEngine() const
 const MapEngineProperties&
 MapNode::getMapEngineProperties() const
 {
-    return _engineProps;
+    return _mapOptions;
 }
 
 MapNode*
@@ -437,7 +438,7 @@ MapNode::installOverlayNode( osgSim::OverlayNode* overlay, bool autoSetTextureUn
         if ( autoSetTextureUnit )
         {
             int nextTextureUnit =
-                _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS ? 1 :
+                _mapOptions.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS ? 1 :
                 _map->getImageMapLayers().size();
 
             overlay->setOverlayTextureUnit( nextTextureUnit );
@@ -502,7 +503,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
 
     // install the proper layering technique:
 
-    if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
+    if ( _mapOptions.layeringTechnique() == MapEngineProperties::LAYERING_MULTIPASS )
     {
 		terrain->setTerrainTechniquePrototype( new osgEarth::MultiPassTerrainTechnique());
         OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;
@@ -511,13 +512,13 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     {
         ExtendedTerrainTechnique* tech = 0;
 
-        if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
+        if ( _mapOptions.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
         {
             tech = new EarthTerrainTechnique();
             OE_INFO << LC << "Layering technique = MULTITEXTURE" << std::endl;
         }
 
-        else if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_COMPOSITE )
+        else if ( _mapOptions.layeringTechnique() == MapEngineProperties::LAYERING_COMPOSITE )
         {
             tech = new CompositingTerrainTechnique();
             OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
@@ -527,7 +528,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
         {
             //If we are using triangulate interpolation, tell the terrain technique to just create simple triangles with
             //consistent orientation rather than trying to optimize the orientation
-            if ( _engineProps.elevationInterpolation() == INTERP_TRIANGULATE )
+            if ( _mapOptions.elevationInterpolation() == INTERP_TRIANGULATE )
             {
                 tech->setOptimizeTriangleOrientation( false );
             }
@@ -543,8 +544,8 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     }
     _pendingTerrainCallbacks.clear();
 
-    terrain->setVerticalScale( _engineProps.verticalScale().value() );
-    terrain->setSampleRatio( _engineProps.heightFieldSampleRatio().value() );
+    terrain->setVerticalScale( _mapOptions.verticalScale().value() );
+    terrain->setSampleRatio( _mapOptions.heightFieldSampleRatio().value() );
     
     // put the terrain in its container. TODO: later, this may be the attach point for terrain engine plugins.
     _terrainContainer->addChild( terrain );
@@ -556,7 +557,7 @@ MapNode::onMapProfileEstablished( const Profile* mapProfile )
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
         // always load the root tiles completely; no deferring. -gw
-        bool loadNow = true; //!_engineProps.getPreemptiveLOD();
+        bool loadNow = true; //!_mapOptions.getPreemptiveLOD();
 
         osg::Node* node = _engine->createSubTiles( _map.get(), terrain, keys[i].get(), loadNow );
         if (node)
@@ -692,7 +693,7 @@ MapNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
     if ( layer )
     {
-        if ( _engineProps.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+        if ( _mapOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
         {
             if ( layer->getTileSource() )
             {
@@ -745,10 +746,10 @@ MapNode::addImageLayer( MapLayer* layer )
         int imageLOD = -1;
 
         // establish the initial image for this tile.
-        //if (( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
-        //   ((_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
+        //if (( _mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
+        //   ((_mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
 
-        if (_engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
+        if (_mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
             key->getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
@@ -822,7 +823,7 @@ MapNode::addImageLayer( MapLayer* layer )
             //    << ": Could not create geoimage for tile " << key->str() << std::endl;
         }
         
-        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        if ( _mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty(true);
         else
             tile->markTileForRegeneration();
@@ -852,17 +853,17 @@ MapNode::updateElevation(VersionedTile* tile)
     {
         //In standard mode, just load the elevation data and dirty the tile.
         
-        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-        //if (!_engineProps.getPreemptiveLOD())
+        if ( _mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        //if (!_mapOptions.getPreemptiveLOD())
         {
             osg::ref_ptr<osg::HeightField> hf;
             if (hasElevation)
             {
-                hf = _map->createHeightField( key.get(), true, _engineProps.elevationInterpolation().value());
+                hf = _map->createHeightField( key.get(), true, _mapOptions.elevationInterpolation().value());
             }
             if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
             heightFieldLayer->setHeightField( hf.get() );
-            hf->setSkirtHeight( tile->getBound().radius() * _engineProps.heightFieldSkirtRatio().value() );
+            hf->setSkirtHeight( tile->getBound().radius() * _mapOptions.heightFieldSkirtRatio().value() );
             tile->setDirty(true);
         }
         else
@@ -872,7 +873,7 @@ MapNode::updateElevation(VersionedTile* tile)
             {
                 osg::ref_ptr<osg::HeightField> hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf.get() );
-                hf->setSkirtHeight( tile->getBound().radius() * _engineProps.heightFieldSkirtRatio().value() );
+                hf->setSkirtHeight( tile->getBound().radius() * _mapOptions.heightFieldSkirtRatio().value() );
                 tile->setElevationLOD( key->getLevelOfDetail() );
                 tile->resetElevationRequests();
                 tile->markTileForRegeneration();
@@ -882,10 +883,10 @@ MapNode::updateElevation(VersionedTile* tile)
                 //Always load the first LOD so the children tiles can have something to use for placeholders
                 if (tile->getKey()->getLevelOfDetail() == 1)
                 {
-                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true, _engineProps.elevationInterpolation().value());
+                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true, _mapOptions.elevationInterpolation().value());
                     if (!hf.valid()) hf = MapEngine::createEmptyHeightField( key.get() );
                     heightFieldLayer->setHeightField( hf.get() );
-                    hf->setSkirtHeight( tile->getBound().radius() * _engineProps.heightFieldSkirtRatio().value() );
+                    hf->setSkirtHeight( tile->getBound().radius() * _mapOptions.heightFieldSkirtRatio().value() );
                     tile->setElevationLOD(tile->getKey()->getLevelOfDetail());
                     tile->markTileForRegeneration();
                 }
@@ -972,7 +973,7 @@ MapNode::removeImageLayer( unsigned int index )
         }
 
         
-        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        if ( _mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
             tile->markTileForRegeneration();
@@ -1045,7 +1046,7 @@ MapNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
             itr->get()->setColorLayer( i, layers[i].get() );
         }
 
-        if ( _engineProps.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        if ( _mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
             tile->markTileForRegeneration();
@@ -1074,9 +1075,9 @@ void MapNode::updateStateSet()
 {
     // ASSUMPTION: map data mutex is held
 
-    if ( _engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
+    if ( _mapOptions.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
     {
-        if ( _engineProps.combineLayers() == true )
+        if ( _mapOptions.combineLayers() == true )
         {
             int numLayers = _map->getImageMapLayers().size();
 
@@ -1264,7 +1265,7 @@ MapNode::traverse(osg::NodeVisitor& nv)
         }
     }
 
-    if (_engineProps.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE)
+    if (_mapOptions.layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE)
 	{
         //Update the lighting uniforms
 		if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
@@ -1333,3 +1334,263 @@ MapNode::validateEngineProps( MapEngineProperties& props )
         props.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }
 }
+
+#else // OSGEARTH2
+
+#include <osgEarth/MapNode>
+#include <osgEarth/Registry>
+
+using namespace osgEarth;
+
+#define LC "[MapNode] "
+
+//---------------------------------------------------------------------------
+
+namespace osgEarth
+{
+    class MapNodeMapLayerController : public MapLayerController
+    {
+    public:
+        MapNodeMapLayerController( MapNode* mapNode ) : _node(mapNode) { }
+
+        void updateOpacity( MapLayer* layer ) 
+        {
+            _node->updateLayerOpacity( layer );
+        }
+
+        void updateEnabled( MapLayer* layer)
+        {
+            _node->updateLayerEnabled( layer );
+        }
+
+    private:
+        MapNode* _node;
+    };
+}
+
+//---------------------------------------------------------------------------
+
+class RemoveBlacklistedFilenamesVisitor : public osg::NodeVisitor
+{
+public:
+    RemoveBlacklistedFilenamesVisitor():
+      osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+          _numRemoved(0)
+      {
+      }
+
+      virtual void apply(osg::PagedLOD& node)
+      {
+          for (unsigned int i = 0; i < node.getNumFileNames();)
+          {
+              const std::string &filename = node.getFileName(i);
+              if (osgEarth::Registry::instance()->isBlacklisted(filename))
+              {
+                  OE_DEBUG << "Removing blacklisted child" << i << "  " << filename <<  std::endl;
+                  //Adjust the previous LOD's range so that it becomes the last child
+                  if (i > 0)
+                  {
+                      node.setRange(i-1, 0, FLT_MAX);
+                  }
+                  node.removeChildren(i, 1);
+                  _numRemoved++;
+              }
+              else
+              {
+                  i++;
+              }
+          }
+
+          traverse(node);
+      }
+
+      unsigned int _numRemoved;
+};
+
+//---------------------------------------------------------------------------
+
+MapNode::MapNode() :
+_map( new Map() )
+{
+    init();
+}
+
+MapNode::MapNode( Map* map ) :
+_map( map )
+{
+    init();
+}
+
+MapNode::MapNode( const MapOptions& options ) :
+_map( new Map() ),
+_mapOptions( options )
+{
+    init();
+}
+
+MapNode::MapNode( Map* map, const MapOptions& options ) :
+_map( map? map : new Map() ),
+_mapOptions( options )
+{
+    init();
+}
+
+void
+MapNode::init()
+{
+	// Protect the MapNode from the Optimizer
+	setDataVariance(osg::Object::DYNAMIC);
+
+    setName( "osgEarth::MapNode" );
+
+    setNumChildrenRequiringUpdateTraversal( 1 );
+
+    // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
+    // multi-threaded overlap
+    getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
+
+    // Set the layer unit uniforms
+    // TODO: depcrecate in favor of the opacity uniform array?
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT)->set(0);
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer1_unit", osg::Uniform::INT)->set(1);
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer2_unit", osg::Uniform::INT)->set(2);
+    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer3_unit", osg::Uniform::INT)->set(3);
+
+    _maskLayerNode = 0L;
+    _lastNumBlacklistedFilenames = 0;
+
+    // Set the global proxy settings
+    // TODO: this should probably happen elsewhere, like in the registry?
+    if ( _mapOptions.proxySettings().isSet() )
+    {
+		HTTPClient::setProxySettings( _mapOptions.proxySettings().get() );
+    }
+
+    // establish global driver options. These are OSG reader-writer options that
+    // will make their way to any read* calls down the pipe
+    const osgDB::ReaderWriter::Options* global_options = _map->getGlobalOptions();
+    osg::ref_ptr<osgDB::ReaderWriter::Options> local_options = global_options ? 
+        new osgDB::ReaderWriter::Options( *global_options ) :
+        NULL;
+
+    if ( local_options.valid() )
+    {
+        OE_INFO << LC
+            << "Options string = " 
+            << (local_options.valid()? local_options->getOptionString() : "<empty>")
+            << std::endl;
+    }
+
+    // TODO: not sure why we call this here
+    _map->setGlobalOptions( local_options.get() );
+
+    // validate and adjust the engine properties as necessary:
+    // TODO: this will move to Engine
+    validateEngineProps( _mapOptions );
+
+    // create the map engine that wil geneate tiles for this node:
+//    _engine = new MapEngine( _mapOptions );
+
+    // make a group for the model layers:
+    _models = new osg::Group();
+    _models->setName( "osgEarth::MapNode.modelsGroup" );
+    addChild( _models.get() );
+
+    // overlays:
+    _pendingOverlayAutoSetTextureUnit = true;
+
+    // the layer controller allows you to use the MapLayer API to affect top-level changes in MapNode:
+    _mapLayerController = new MapNodeMapLayerController( this );
+
+    // go through the map and process any already-installed layers:
+    // TODO: non-hard-code
+    _terrainEngine = TerrainEngineFactory::create( "osgterrain" );
+
+#if 0
+    unsigned int index = 0;
+    for( MapLayerList::const_iterator i = _map->getHeightFieldMapLayers().begin(); i != _map->getHeightFieldMapLayers().end(); i++ )
+    {
+        onMapLayerAdded( i->get(), index++ );
+    }
+    index = 0;
+    for( MapLayerList::const_iterator j = _map->getImageMapLayers().begin(); j != _map->getImageMapLayers().end(); j++ )
+    {
+        onMapLayerAdded( j->get(), index++ );
+    }
+#endif
+
+    for( ModelLayerList::const_iterator k = _map->getModelLayers().begin(); k != _map->getModelLayers().end(); k++ )
+    {
+        onModelLayerAdded( k->get() );
+    }
+    if ( _map->getTerrainMaskLayer() )
+    {
+        onMaskLayerAdded( _map->getTerrainMaskLayer() );
+    }
+
+    updateStateSet();
+
+    // install a layer callback for processing further map actions:
+    _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
+
+    osg::StateSet* ss = getOrCreateStateSet();
+	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
+    //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
+
+    if ( _mapOptions.enableLighting().isSet() )
+    {
+        ss->setMode( GL_LIGHTING, _mapOptions.enableLighting().value() ? 
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    }
+}
+
+MapNode::~MapNode()
+{
+    removeChildren( 0, getNumChildren() );
+}
+
+osg::BoundingSphere
+MapNode::computeBound() const
+{
+    if ( isGeocentric() )
+    {
+        return osg::BoundingSphere( osg::Vec3(0,0,0), getEllipsoidModel()->getRadiusEquator()+25000 );
+    }
+    else
+    {
+        return osg::CoordinateSystemNode::computeBound();
+    }
+}
+
+Map*
+MapNode::getMap()
+{
+    return _map.get();
+}
+
+MapEngine*
+MapNode::getEngine() const
+{
+    return _engine.get();
+}
+
+const MapEngineProperties&
+MapNode::getMapEngineProperties() const
+{
+    return _mapOptions;
+}
+
+MapNode*
+MapNode::findMapNode( osg::Node* graph )
+{
+    return findTopMostNodeOfType<MapNode>( graph );
+}
+
+bool
+MapNode::isGeocentric() const
+{
+    return _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
+}
+
+#endif // OSGEARTH2

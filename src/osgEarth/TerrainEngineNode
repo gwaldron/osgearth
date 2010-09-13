@@ -1,0 +1,103 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_MAP_ENGINE_NODE_H
+#define OSGEARTH_MAP_ENGINE_NODE_H 1
+
+#ifdef OSGEARTH2
+
+#include <osg/CoordinateSystemNode>
+#include <osg/Geode>
+#include <osg/NodeCallback>
+#include <osgEarth/Map>
+
+namespace osgEarth
+{
+    /**
+     * TerrainEngineNode is the base class and interface for map engine implementations.
+     *
+     * A map engine lives under a MapNode and is responsible for generating the
+     * actual geometry representing the Earth.
+     */
+    class OSGEARTH_EXPORT TerrainEngineNode : public osg::CoordinateSystemNode
+    {
+    public:
+        /** Gets the map that this engine is rendering. */
+        Map* getMap() const { return _map.get(); }
+
+        /** Gets the property set in use by this map engine. */
+        const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
+
+    public: // Runtime configuration
+
+        /** Sets the scale factor to apply to elevation height values. Default is 1.0 */
+        void setVerticalScale( float value );
+
+        /** Gets the scale factor to apply to elevation height values. */
+        float getVerticalScale() const { return _verticalScale; }
+
+        /** Sets the sampling ratio for elevation grid data. Default is 1.0. */
+        void setElevationSamplingRatio( float value );
+
+        /** Gets the sampling ratio for elevation grid data. */
+        float getElevationSamplingRatio() const { return _elevationSamplingRatio; }
+
+    protected:
+        TerrainEngineNode() { }
+
+        TerrainEngineNode( Map* map, const TerrainOptions& options );
+
+        TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) 
+            : osg::CoordinateSystemNode( rhs, op ) { }
+
+    public: // MapCallback adapter functions (internal)
+
+        virtual void onMapProfileEstablished( const Profile* profile );
+
+    protected: // implementation events
+
+        /** Allows the engine to validate the options and alter them if necessary. */
+        virtual void validateTerrainOptions( TerrainOptions& options );
+
+        virtual void onVerticalScaleChanged() { }
+
+        virtual void onElevationSamplingRatioChanged() { }
+
+    protected:
+        osg::ref_ptr<osgEarth::Map> _map;
+
+    private:
+        float _verticalScale;
+        float _elevationSamplingRatio;
+        TerrainOptions _terrainOptions;
+    };
+
+    /**
+     * Factory class for creating terrain engine instances.
+     */
+    class TerrainEngineNodeFactory
+    {
+    public:
+        static TerrainEngineNode* create( const TerrainOptions& options );
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_2
+
+#endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

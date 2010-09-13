@@ -16,11 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include "CompositingTerrainTechnique"
+#include "CustomTerrain"
 
 #include <osgTerrain/GeometryTechnique>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
-#include <osgEarth/VersionedTerrain>
+//#include <osgEarth/CustomTerrain>
 #include <osgEarth/MapLayer>
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>
@@ -29,12 +31,8 @@
 #include <osg/Shader>
 #include <osg/Uniform>
 
-#include <osgEarth/CompositingTerrainTechnique>
-
 #include <osgUtil/SmoothingVisitor>
-
 #include <osgDB/FileUtils>
-
 #include <osg/io_utils>
 #include <osg/StateSet>
 #include <osg/Texture2DArray>
@@ -107,7 +105,7 @@ _attachedProgram(false)
 }
 
 CompositingTerrainTechnique::CompositingTerrainTechnique(const CompositingTerrainTechnique& gt,const osg::CopyOp& copyop):
-ExtendedTerrainTechnique(gt,copyop),
+CustomTerrainTechnique(gt,copyop),
 _masterLocator( gt._masterLocator ),
 _lastCenterModel( gt._lastCenterModel ),
 _currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),
@@ -296,7 +294,7 @@ CompositingTerrainTechnique::computeMasterLocator()
 Threading::ReadWriteMutex&
 CompositingTerrainTechnique::getMutex()
 {
-    return static_cast<VersionedTile*>(_terrainTile)->getTileLayersMutex();
+    return static_cast<CustomTile*>(_terrainTile)->getTileLayersMutex();
 }
 
 osg::Vec3d

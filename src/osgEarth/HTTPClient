@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Progress>
 #include <osgEarth/MapEngineProperties>
+#include <osgEarth/TerrainOptions>
 #include <OpenThreads/Thread>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
@@ -36,6 +37,39 @@
 
 namespace osgEarth
 {
+#ifdef OSGEARTH2
+
+    class OSGEARTH_EXPORT ProxySettings
+    {
+    public:
+        ProxySettings( const Config& conf =Config() );
+        ProxySettings( const std::string& host, int port );
+
+        std::string& hostName() { return _hostName; }
+        const std::string& hostName() const { return _hostName; }
+
+        int& port() { return _port; }
+        const int& port() const { return _port; }
+
+		std::string& userName() { return _userName; }
+        const std::string& userName() const { return _userName; }
+
+		std::string& password() { return _password; }
+        const std::string& password() const { return _password; }
+
+    public:
+        virtual Config toConfig() const;
+        virtual void fromConfig( const Config& conf );
+
+    protected:
+        std::string _hostName;
+        int _port;
+		std::string _userName;
+		std::string _password;
+    };
+
+
+#endif
     /**
      * An HTTP request for use with the HTTPClient class.
      */

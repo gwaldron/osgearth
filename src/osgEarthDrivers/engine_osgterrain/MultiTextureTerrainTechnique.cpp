@@ -16,18 +16,17 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include "MultiTextureTerrainTechnique"
+#include "CustomTerrain"
 
 #include <osgTerrain/GeometryTechnique>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
-#include <osgEarth/VersionedTerrain>
+//#include <osgEarth/CustomTerrain>
 #include <osgEarth/MapLayer>
 #include <osgEarth/Cube>
 
-#include <osgEarth/EarthTerrainTechnique>
-
 #include <osgUtil/SmoothingVisitor>
-
 #include <osgDB/FileUtils>
 
 #include <osg/io_utils>
@@ -67,7 +66,7 @@ using namespace OpenThreads;
 
 //#define DEBUG_SHOW_TILEKEY_LABELS
 
-EarthTerrainTechnique::EarthTerrainTechnique( Locator* masterLocator ) :
+MultiTextureTerrainTechnique::MultiTextureTerrainTechnique( Locator* masterLocator ) :
 _masterLocator( masterLocator ),
 _currentReadOnlyBuffer(1),
 _currentWriteBuffer(0),
@@ -79,8 +78,8 @@ _optimizeTriangleOrientation(true)
     this->setThreadSafeRefUnref(true);
 }
 
-EarthTerrainTechnique::EarthTerrainTechnique(const EarthTerrainTechnique& gt,const osg::CopyOp& copyop):
-ExtendedTerrainTechnique(gt,copyop),
+MultiTextureTerrainTechnique::MultiTextureTerrainTechnique(const MultiTextureTerrainTechnique& gt,const osg::CopyOp& copyop):
+CustomTerrainTechnique(gt,copyop),
 _masterLocator( gt._masterLocator ),
 _lastCenterModel( gt._lastCenterModel ),
 _currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),
@@ -94,44 +93,44 @@ _optimizeTriangleOrientation(gt._optimizeTriangleOrientation)
     _bufferData[1] = gt._bufferData[1];
 }
 
-EarthTerrainTechnique::~EarthTerrainTechnique()
+MultiTextureTerrainTechnique::~MultiTextureTerrainTechnique()
 {
 }
 
 void
-EarthTerrainTechnique::setVerticalScaleOverride( float value )
+MultiTextureTerrainTechnique::setVerticalScaleOverride( float value )
 {
     _verticalScaleOverride = value;
 }
 
 float
-EarthTerrainTechnique::getVerticalScaleOverride() const 
+MultiTextureTerrainTechnique::getVerticalScaleOverride() const 
 {
     return _verticalScaleOverride;
 }
 
 void
-EarthTerrainTechnique::setOptimizeTriangleOrientation(bool optimizeTriangleOrientation)
+MultiTextureTerrainTechnique::setOptimizeTriangleOrientation(bool optimizeTriangleOrientation)
 {
     _optimizeTriangleOrientation = optimizeTriangleOrientation;
 }
 
 bool
-EarthTerrainTechnique::getOptimizeTriangleOrientation() const
+MultiTextureTerrainTechnique::getOptimizeTriangleOrientation() const
 {
     return _optimizeTriangleOrientation;
 }
 
 
 void
-EarthTerrainTechnique::clearBuffer( int b )
+MultiTextureTerrainTechnique::clearBuffer( int b )
 {
     _bufferData[b]._transform = 0L;
     _bufferData[b]._geode = 0L;
     _bufferData[b]._geometry = 0L;
 }
 
-void EarthTerrainTechnique::swapBuffers()
+void MultiTextureTerrainTechnique::swapBuffers()
 {
     std::swap(_currentReadOnlyBuffer,_currentWriteBuffer);
     clearBuffer( _currentWriteBuffer );
@@ -139,16 +138,16 @@ void EarthTerrainTechnique::swapBuffers()
 
 void
 #ifdef USE_NEW_OSGTERRAIN_298_API
-EarthTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
+MultiTextureTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
 #else
-EarthTerrainTechnique::init()
+MultiTextureTerrainTechnique::init()
 #endif
 {
     init( true, 0L );
 }
 
 void
-EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
+MultiTextureTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
 {
     // lock changes to the layers while we're rendering them
     Threading::ScopedReadLock lock( getMutex() );
@@ -217,7 +216,7 @@ EarthTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
 }
 
 bool
-EarthTerrainTechnique::swapIfNecessary()
+MultiTextureTerrainTechnique::swapIfNecessary()
 {
     bool swapped = false;
 
@@ -232,7 +231,7 @@ EarthTerrainTechnique::swapIfNecessary()
     return swapped;
 }
 
-Locator* EarthTerrainTechnique::computeMasterLocator()
+Locator* MultiTextureTerrainTechnique::computeMasterLocator()
 {
     if ( _masterLocator.valid() )
         return _masterLocator.get();
@@ -246,7 +245,7 @@ Locator* EarthTerrainTechnique::computeMasterLocator()
     Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
     if (!masterLocator)
     {
-        OE_NOTICE<<"[osgEarth::EarthTerrainTechnique] Problem, no locator found in any of the terrain layers"<<std::endl;
+        OE_NOTICE<<"[osgEarth::MultiTextureTerrainTechnique] Problem, no locator found in any of the terrain layers"<<std::endl;
         return 0;
     }
     
@@ -254,12 +253,12 @@ Locator* EarthTerrainTechnique::computeMasterLocator()
 }
 
 Threading::ReadWriteMutex&
-EarthTerrainTechnique::getMutex()
+MultiTextureTerrainTechnique::getMutex()
 {
-    return static_cast<VersionedTile*>(_terrainTile)->getTileLayersMutex();
+    return static_cast<CustomTile*>(_terrainTile)->getTileLayersMutex();
 }
 
-osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
+osg::Vec3d MultiTextureTerrainTechnique::computeCenterModel(Locator* masterLocator)
 {
     if (!masterLocator) return osg::Vec3d(0.0,0.0,0.0);
 
@@ -307,8 +306,8 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
         }
     }
 
-//    OE_INFO<<"[osgEarth::EarthTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
-//    OE_INFO<<"[osgEarth::EarthTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
+//    OE_INFO<<"[osgEarth::MultiTextureTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
+//    OE_INFO<<"[osgEarth::MultiTextureTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
 
     buffer._transform = new osg::MatrixTransform;
 
@@ -323,7 +322,7 @@ osg::Vec3d EarthTerrainTechnique::computeCenterModel(Locator* masterLocator)
 }
 
 void
-EarthTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j )
+MultiTextureTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j )
 {            
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
@@ -346,7 +345,7 @@ EarthTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& 
     }
 }
 
-void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
+void MultiTextureTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
 {
     osg::ref_ptr< Locator > masterTextureLocator = masterLocator;
     GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(masterLocator);
@@ -398,7 +397,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
 
 //    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-//    OE_INFO<<"[osgEarth::EarthTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+//    OE_INFO<<"[osgEarth::MultiTextureTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
@@ -962,7 +961,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     text->setFont( s_font );
     std::stringstream buf;
     buf << "" << _terrainTile->getTileID().level << "(" <<_terrainTile->getTileID().x << "," << _terrainTile->getTileID().y << ")" << std::endl
-        << "elev=" << static_cast<VersionedTile*>(_terrainTile)->getElevationLOD() << std::endl;
+        << "elev=" << static_cast<CustomTile*>(_terrainTile)->getElevationLOD() << std::endl;
 
         buf << "imglod" << std::endl;
     for (unsigned int i = 0; i < _terrainTile->getNumColorLayers(); ++i)
@@ -993,7 +992,7 @@ void EarthTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::
     //osg::notify( osg::NOTICE ) << "generateGeometryTime " << osg::Timer::instance()->delta_m(before, after) << std::endl;
 }
 
-void EarthTerrainTechnique::applyColorLayers()
+void MultiTextureTerrainTechnique::applyColorLayers()
 {
     BufferData& buffer = getWriteBuffer();
 
@@ -1030,7 +1029,7 @@ void EarthTerrainTechnique::applyColorLayers()
                 if ( dynamic_cast<osg::ImageSequence*>( image ) )
                 {
                     //TODO: this is a totally un-threasd-safe hack!! fix it!!
-                    static_cast<VersionedTile*>(_terrainTile)->adjustUpdateTraversalCount( 1 );
+                    static_cast<CustomTile*>(_terrainTile)->adjustUpdateTraversalCount( 1 );
                 }
 
                 texture->setMaxAnisotropy(16.0f);
@@ -1054,7 +1053,7 @@ void EarthTerrainTechnique::applyColorLayers()
 
                 if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
                 {
-                    OE_DEBUG<<"[osgEarth::EarthTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+                    OE_DEBUG<<"[osgEarth::MultiTextureTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
                     texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
                 }
 
@@ -1099,7 +1098,7 @@ void EarthTerrainTechnique::applyColorLayers()
     }
 }
 
-void EarthTerrainTechnique::applyTransparency()
+void MultiTextureTerrainTechnique::applyTransparency()
 {
     BufferData& buffer = getWriteBuffer();
     
@@ -1123,7 +1122,7 @@ void EarthTerrainTechnique::applyTransparency()
 
 }
 
-void EarthTerrainTechnique::smoothGeometry()
+void MultiTextureTerrainTechnique::smoothGeometry()
 {
     BufferData& buffer = getWriteBuffer();
 
@@ -1140,13 +1139,13 @@ void EarthTerrainTechnique::smoothGeometry()
     //OE_NOTICE << "Smooth time " << osg::Timer::instance()->delta_m(before, after) << std::endl;
 }
 
-void EarthTerrainTechnique::update(osgUtil::UpdateVisitor* uv)
+void MultiTextureTerrainTechnique::update(osgUtil::UpdateVisitor* uv)
 {
     if (_terrainTile) _terrainTile->osg::Group::traverse(*uv);
 }
 
 
-void EarthTerrainTechnique::cull(osgUtil::CullVisitor* cv)
+void MultiTextureTerrainTechnique::cull(osgUtil::CullVisitor* cv)
 {
     BufferData& buffer = getReadOnlyBuffer();
 
@@ -1161,7 +1160,7 @@ void EarthTerrainTechnique::cull(osgUtil::CullVisitor* cv)
 }
 
 
-void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
+void MultiTextureTerrainTechnique::traverse(osg::NodeVisitor& nv)
 {
     if (!_terrainTile) return;
 
@@ -1212,14 +1211,14 @@ void EarthTerrainTechnique::traverse(osg::NodeVisitor& nv)
 }
 
 
-void EarthTerrainTechnique::cleanSceneGraph()
+void MultiTextureTerrainTechnique::cleanSceneGraph()
 {
 }
 
 void
-EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
+MultiTextureTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
-    EarthTerrainTechnique* ncThis = const_cast<EarthTerrainTechnique*>(this);
+    MultiTextureTerrainTechnique* ncThis = const_cast<MultiTextureTerrainTechnique*>(this);
 
     Threading::ScopedWriteLock lock( ncThis->getMutex() );
 
@@ -1234,13 +1233,13 @@ EarthTerrainTechnique::releaseGLObjects(osg::State* state) const
 }
 
 //void
-//EarthTerrainTechnique::releaseStaleGLObjects(osg::State* state) const
+//MultiTextureTerrainTechnique::releaseStaleGLObjects(osg::State* state) const
 //{     
-//    ScopedReadLock lock( const_cast<EarthTerrainTechnique*>(this)->getMutex() );
+//    ScopedReadLock lock( const_cast<MultiTextureTerrainTechnique*>(this)->getMutex() );
 //
 //    for( ObjectList::const_iterator i = _objsToRelease.begin(); i != _objsToRelease.end(); ++i )
 //    {        
 //        i->get()->releaseGLObjects( state );
 //    }
-//    const_cast<EarthTerrainTechnique*>(this)->_objsToRelease.clear();
+//    const_cast<MultiTextureTerrainTechnique*>(this)->_objsToRelease.clear();
 //}

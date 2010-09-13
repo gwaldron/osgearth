@@ -359,6 +359,28 @@ namespace osgEarth
     }
 
 
+    class ConfigOptions // header-only (no export required)
+    {
+    public:
+        ConfigOptions( const Config& conf =Config() )
+            : _conf( conf ) { }
+
+        Config& config() { return _conf; }
+        const Config& config() const { return _conf; }
+
+        void merge( const ConfigOptions& rhs ) {
+            fromConfig( rhs.toConfig() );
+        }
+
+    public:
+        virtual Config toConfig() const { return Config(); }
+
+        virtual void fromConfig( const Config& conf ) { }
+
+
+    private:
+        Config _conf;
+    };
 
 }
 

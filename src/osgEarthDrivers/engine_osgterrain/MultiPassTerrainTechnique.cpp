@@ -16,18 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
+#include "MultiPassTerrainTechnique"
 
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
-
-#include <osgEarth/MultiPassTerrainTechnique>
 #include <osgEarth/MapLayer>
 
 #include <osgUtil/SmoothingVisitor>
-
 #include <osgDB/FileUtils>
-
 #include <osg/io_utils>
 #include <osg/Texture2D>
 #include <osg/Texture1D>
@@ -43,7 +39,8 @@ using namespace osgTerrain;
 
 #define NEW_COORD_CODE
 
-MultiPassTerrainTechnique::MultiPassTerrainTechnique():
+MultiPassTerrainTechnique::MultiPassTerrainTechnique() :
+osgTerrain::TerrainTechnique(),
 _terrainTileInitialized(false)
 {
     this->setThreadSafeRefUnref( true );
@@ -52,8 +49,8 @@ _terrainTileInitialized(false)
     setFilterMatrixAs(GAUSSIAN);   
 }
 
-MultiPassTerrainTechnique::MultiPassTerrainTechnique(const MultiPassTerrainTechnique& mt,const osg::CopyOp& copyop):
-    TerrainTechnique(mt,copyop)
+MultiPassTerrainTechnique::MultiPassTerrainTechnique(const MultiPassTerrainTechnique& mt,const osg::CopyOp& copyop) :
+TerrainTechnique(mt,copyop)
 {
     setFilterBias(mt._filterBias);
     setFilterWidth(mt._filterWidth);

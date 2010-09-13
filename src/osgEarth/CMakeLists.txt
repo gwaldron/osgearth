@@ -24,16 +24,13 @@ SET(LIB_PUBLIC_HEADERS
 	Capabilities
     Common
     Compositing
-    CompositingTerrainTechnique
     Config
     Cube
     DriverOptions
     EarthFile
-    EarthTerrainTechnique
     Export
     EGM
     FileUtils
-	FileLocationCallback
 	FindNode
     GeoData
     HeightFieldUtils
@@ -45,13 +42,11 @@ SET(LIB_PUBLIC_HEADERS
     Map
     MapLayer
     MapNode
-    MapEngine
-    MapEngineProperties
+    MapOptions
     MaskLayer
     MaskNode
     ModelLayer
     ModelSource
-	MultiPassTerrainTechnique
 	Notify
     Profile
 	Progress
@@ -60,7 +55,9 @@ SET(LIB_PUBLIC_HEADERS
     SpatialReference
     StringUtils
     TaskService
-    TerrainTileEdgeNormalizerUpdateCallback
+    TerrainOptions
+    TerrainEngineNode
+    TileFactory
     TileKey
     TileSource
     TileSourceFactory
@@ -68,7 +65,6 @@ SET(LIB_PUBLIC_HEADERS
     TMS
     Units
 	Version
-    VersionedTerrain
     VerticalSpatialReference
     XmlUtils
 )
@@ -80,12 +76,10 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CacheSeed.cpp
 	Capabilities.cpp
     Compositing.cpp
-    CompositingTerrainTechnique.cpp
     Config.cpp
     Cube.cpp
     DriverOptions.cpp
     EarthFile.cpp
-    EarthTerrainTechnique.cpp
     EGM.cpp
     FileUtils.cpp
     GeoData.cpp
@@ -98,28 +92,27 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Map.cpp
     MapLayer.cpp
     MapNode.cpp
-    MapEngine.cpp
-    MapEngineProperties.cpp
+    MapOptions.cpp
     MaskLayer.cpp
     MaskNode.cpp
 	MimeTypes.cpp
 	ModelLayer.cpp
 	ModelSource.cpp
-	MultiPassTerrainTechnique.cpp
 	Notify.cpp
     Profile.cpp
 	Progress.cpp
     Registry.cpp
     SpatialReference.cpp
     TaskService.cpp
-    TerrainTileEdgeNormalizerUpdateCallback.cpp
+    TerrainOptions.cpp
+    TerrainEngineNode.cpp
+    TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
     TileSourceFactory.cpp
     TMS.cpp
     Units.cpp
     Version.cpp
-    VersionedTerrain.cpp
     VerticalSpatialReference.cpp
     XmlUtils.cpp
 )

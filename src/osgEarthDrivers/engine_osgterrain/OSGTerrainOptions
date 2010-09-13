@@ -1,0 +1,56 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ENGINE_OSGTERRAIN_DRIVEROPTIONS
+#define OSGEARTH_ENGINE_OSGTERRAIN_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TerrainEngineOptions>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Drivers
+{
+    class OSGTerrainOptions : public TerrainOptions // NO EXPORT (header-only)
+    {
+    public:
+        OSGTerrainOptions( const ConfigOptions& opt =ConfigOptions() ) : TerrainOptions( opt ),
+            _skirtRatio( 0.02 )
+        {
+            config().add( "driver", "osgterrain" );
+            //driver() = "osgterrain";
+            fromConfig( config() );
+        }
+
+    protected:
+        virtual Config toConfig() const {
+            Config conf = TerrainOptions::toConfig();
+            conf.updateIfSet( "skirt_ratio", _skirtRatio );
+            return conf;
+        }
+
+        virtual void fromConfig( const Config& conf ) {
+            conf.getIfSet( "skirt_ratio", _skirtRatio );
+        }
+
+        optional<float> _skirtRatio;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_ENGINE_OSGTERRAIN_DRIVEROPTIONS

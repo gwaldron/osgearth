@@ -22,13 +22,13 @@
 
 #include <osg/Node>
 #include <osgTerrain/TerrainTile>
-
 #include <osgEarth/Common>
-#include <osgEarth/VersionedTerrain>
 
 
 namespace osgEarth
 {
+    class VersionedTile;
+
     enum CardinalDirection
     {
         NORTH,

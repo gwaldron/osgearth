@@ -2,6 +2,7 @@ osgEarth - Dynamic map generation toolkit for OpenSceneGraph
 Copyright 2008-2010 Pelican Mapping
 
 http://osgearth.org
+git://github.com/gwaldron/osgearth
 
 osgEarth is free software; you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by

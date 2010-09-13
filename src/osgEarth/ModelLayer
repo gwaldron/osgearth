@@ -34,12 +34,6 @@ namespace osgEarth
     {
     public:
         /**
-         * Constructs a new model layer based on a configuration setup.
-         */
-        // deprecated
-        ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf );
-
-        /**
          * Constructs a new model layer with a user-provided driver options.
          */
         ModelLayer( const std::string& name, const DriverOptions* options );

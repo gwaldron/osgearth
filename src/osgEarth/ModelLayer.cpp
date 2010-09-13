@@ -22,19 +22,6 @@
 
 using namespace osgEarth;
 
-// to be depcreated
-ModelLayer::ModelLayer( const std::string& name, const std::string& driver, const Config& driverConf ) :
-osg::Referenced( true ),
-_name( name ),
-_driver( driver ),
-_driverConf( driverConf ),
-_enabled(true)
-{
-    _driverConf.attr("name") = name;
-    _driverConf.attr("driver") = driver;
-    _driverOptions = new DriverOptions( _driverConf );
-}
-
 ModelLayer::ModelLayer( const std::string& name, const DriverOptions* options ) :
 osg::Referenced( true ),
 _name( name ),

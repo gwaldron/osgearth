@@ -16,9 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifdef OSGEARTH2
-
 #include <osgEarth/TerrainEngineNode>
+#include <osgDB/ReadFile>
 
 using namespace osgEarth;
 
@@ -60,24 +59,23 @@ TerrainEngineNode::onMapProfileEstablished( const Profile* profile )
 #define LC "[TerrainEngineFactory] "
 
 TerrainEngineNode*
-TerrainEngineNodeFactpry::create( const TerrainOptions& options )
+TerrainEngineNodeFactory::create( const TerrainOptions& options )
 {
     TerrainEngineNode* result = 0L;
 
-    if ( !options.driver().empty() )
+    if ( !options.getDriver().empty() )
     {
-        OE_INGO << LC << "Loading terrain engine from driver \"" << options.driver() << "\"" << std::endl;
+        OE_INFO << LC << "Loading terrain engine from driver \"" << options.getDriver() << "\"" << std::endl;
     }
 
-    std::string driverExt = std::string( ".osgearth_" ) + options.driver();
-    result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt, options ) );
+    std::string driverExt = std::string( ".osgearth_engine_" ) + options.getDriver();
+    result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) ); //, options ) );
 
     if ( !result )
     {
-        OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << options.driver() << "\"" << std::endl;
+        OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << options.getDriver() << "\"" << std::endl;
     }
 
     return result;
 }
 
-#endif // OSGEARTH2

@@ -102,7 +102,7 @@ ProxySettings::toConfig() const
 //----------------------------------------------------------------------------
 
 TerrainOptions::TerrainOptions( const Config& conf ) :
-ConfigOptions( conf ),
+DriverConfigOptions( conf ),
 _loadingPolicy( LoadingPolicy() ),
 _verticalScale( 1.0f ),
 _heightFieldSkirtRatio( 0.05f ),
@@ -121,7 +121,7 @@ _elevationInterpolation( INTERP_BILINEAR )
 Config
 TerrainOptions::toConfig() const
 {
-    Config conf = ConfigOptions::toConfig();
+    Config conf = DriverConfigOptions::toConfig();
     conf.key() = "terrain_options";
 
     conf.addObjIfSet( "loading_policy", _loadingPolicy );
@@ -149,7 +149,7 @@ TerrainOptions::toConfig() const
 void
 TerrainOptions::fromConfig( const Config& conf )
 {
-    ConfigOptions::fromConfig( conf );
+    DriverConfigOptions::fromConfig( conf );
 
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );

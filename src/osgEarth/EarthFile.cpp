@@ -32,9 +32,9 @@ EarthFile::EarthFile()
     //nop
 }
 
-EarthFile::EarthFile( Map* map, const MapEngineProperties& props ) :
+EarthFile::EarthFile( Map* map, const MapOptions& mapOptions ) :
 _map( map ),
-_engineProps( props )
+_mapOptions( mapOptions )
 {
     //nop
 }
@@ -45,8 +45,8 @@ EarthFile::setMap( Map* map ) {
 }
 
 void
-EarthFile::setMapEngineProperties( const MapEngineProperties& props ) {
-    _engineProps = props;
+EarthFile::setMapOptions( const MapOptions& mapOptions ) {
+    _mapOptions = mapOptions;
 }
 
 const Map*
@@ -59,14 +59,14 @@ EarthFile::getMap() {
     return _map.get();
 }
 
-const MapEngineProperties& 
-EarthFile::getMapEngineProperties() const {
-    return _engineProps;
+const MapOptions& 
+EarthFile::getMapOptions() const {
+    return _mapOptions;
 }
 
-MapEngineProperties& 
-EarthFile::getMapEngineProperties() {
-    return _engineProps;
+MapOptions& 
+EarthFile::getMapOptions() {
+    return _mapOptions;
 }
 
 #define ELEM_MAP                      "map"
@@ -172,12 +172,12 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
     map->setName( conf.value( ATTR_NAME ) );
 
-    MapEngineProperties engineProps;
+    MapOptions mapOptions;
 
-    if ( conf.hasChild( "engine_properties" ) )
-        engineProps = MapEngineProperties( conf.child("engine_properties") );
+    if ( conf.hasChild( "map_options" ) )
+        mapOptions = MapOptions( conf.child("map_options") );
     else
-        engineProps = MapEngineProperties( conf ); // old style, for backwards compatibility  
+        mapOptions = MapOptions( conf ); // old style, for backwards compatibility  
 
     //Read the profile definition
     if ( conf.hasChild( ELEM_PROFILE ) )
@@ -241,19 +241,19 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     }
 
     earth->setMap( map.get() );
-    earth->setMapEngineProperties( engineProps );
+    earth->setMapOptions( mapOptions );
 
     return success;
 }
 
 
 static Config
-mapToConfig( Map* map, const MapEngineProperties& ep )
+mapToConfig( Map* map, const MapOptions& ep )
 {
     Config conf( ELEM_MAP );
     conf.attr( ATTR_NAME ) = map->getName();
     
-    conf.add( "engine_properties", ep.toConfig() );
+    conf.add( "map_options", ep.toConfig() );
 
     //Write the coordinate system
     std::string cs;
@@ -378,7 +378,7 @@ EarthFile::writeXML( std::ostream& output )
 
     Threading::ScopedReadLock lock( _map->getMapDataMutex() );
 
-    Config conf = mapToConfig( _map.get(), _engineProps );
+    Config conf = mapToConfig( _map.get(), _mapOptions );
     osg::ref_ptr<XmlDocument> doc = new XmlDocument( conf );
     doc->store( output );
 

@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthSymbology/SymbolicNode>
 #include <osg/NodeVisitor>
+#include <osg/ClusterCullingCallback>
 #include <osgUtil/Optimizer>
 
 using namespace osgEarth;

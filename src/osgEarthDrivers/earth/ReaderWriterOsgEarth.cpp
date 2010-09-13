@@ -99,23 +99,18 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if ( success )
                 {
-                    MapEngineProperties props = earthFile.getMapEngineProperties();
+                    MapOptions mapOptions = earthFile.getMapOptions();
 
-                    if ( options )
+                    // check is an engine properties object was supplied in the Options structure. If so,
+                    // merge it in. Note that the properties will override those in the earth file.
+                    const MapOptions* userOptions = static_cast<const MapOptions*>(
+                        options->getPluginData( MapOptions::OPTIONS_TAG ) );
+                    if ( userOptions )
                     {
-                        // check is an engine properties object was supplied in the Options structure. If so,
-                        // merge it in. Note that the properties will override those in the earth file.
-
-                        const MapEngineProperties* userProps = static_cast<const MapEngineProperties*>(
-                            options->getPluginData( MapEngineProperties::OPTIONS_TAG ) );
-
-                        if ( userProps )
-                        {
-                            props.merge( *userProps );
-                        }
+                        mapOptions.merge( *userOptions );
                     }
 
-                    osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), props );
+                    osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), mapOptions );
 
                     //Create the root node for the scene
                     node = mapNode.release();
@@ -126,6 +121,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 }                
             }
 
+#if 0
             // Reading a specific tile from an existing TileBuilder
             else if (ext == "earth_tile")
             {
@@ -172,7 +168,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                     OE_NOTICE << "Error:  Could not find Map with id=" << id << std::endl;
                 }
             }
-
+#endif
 
             return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;                     
         }

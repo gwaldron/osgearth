@@ -31,6 +31,9 @@ namespace osgEarth
         TerrainEngineNodeCallbackProxy(TerrainEngineNode* node) : _node(node) { }
         osg::observer_ptr<TerrainEngineNode> _node;
 
+        void onMapProfileEstablished( const Profile* profile ) {
+            _node->onMapProfileEstablished( profile );
+        }
         void onMapLayerAdded( MapLayer* layer, unsigned int index ) {
             _node->onMapLayerStackChanged();
         }

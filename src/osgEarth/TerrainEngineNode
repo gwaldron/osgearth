@@ -77,8 +77,8 @@ namespace osgEarth
     private:
         friend struct TerrainEngineNodeCallbackProxy;
 
-        virtual void onMapProfileEstablished( const Profile* profile );
-        virtual void onMapLayerStackChanged();
+        void onMapProfileEstablished( const Profile* profile );
+        void onMapLayerStackChanged();
 
     private:
         friend struct MapNodeMapLayerController;

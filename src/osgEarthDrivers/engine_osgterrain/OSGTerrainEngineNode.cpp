@@ -194,8 +194,6 @@ OSGTerrainEngineNode::init()
 void
 OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 {
-    TerrainEngineNode::onMapProfileEstablished( mapProfile );
-
     _tileFactory = new OSGTileFactory( _id, _terrainOptions );
 
     // go through and build the root nodesets.

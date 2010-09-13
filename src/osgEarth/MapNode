@@ -20,7 +20,7 @@
 #ifndef OSGEARTH_MAPNODE_H
 #define OSGEARTH_MAPNODE_H 1
 
-#ifndef OSGEARTH2
+#if 0
 
 #include <osgEarth/Common>
 #include <osgEarth/EarthFile>
@@ -265,6 +265,7 @@ namespace osgEarth
 #else // OSGEARTH2
 
 #include <osgEarth/Common>
+#include <osgEarth/Map>
 #include <osgEarth/MapOptions>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/CoordinateSystemNode>
@@ -278,7 +279,7 @@ namespace osgEarth
      * OSG Node that forms the root of an osgEarth terrain. This node is a "view" component
      * that renders data from a "Map" data model.
      */
-    class OSGEARTH_EXPORT MapNode : public osg::CoordinateSystemNode //, public MapCallback
+    class OSGEARTH_EXPORT MapNode : public osg::CoordinateSystemNode
     {
     public:
         /**
@@ -381,6 +382,7 @@ namespace osgEarth
          */
         void uninstallOverlayNode( osgSim::OverlayNode* overlay );
 
+        TerrainEngineNode* getTerrainEngine() const;
 
     public: //override osg::Node
 
@@ -417,10 +419,18 @@ namespace osgEarth
 
         unsigned _lastNumBlacklistedFilenames;
 
+        osg::ref_ptr<TerrainEngineNode> _terrainEngine;
+
+    public: // MapCallback proxy
+
+        void onModelLayerAdded( ModelLayer* );
+        void onModelLayerRemoved( ModelLayer* );
+        void onMaskLayerAdded( MaskLayer* );
+        void onMaskLayerRemoved( MaskLayer* );
+
     private: // MapLayerController functions
 
         friend class MapNodeMapLayerController;
-
 
         void updateLayerOpacity( MapLayer* layer );
         void updateLayerEnabled( MapLayer* layer );

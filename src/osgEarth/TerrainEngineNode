@@ -19,8 +19,6 @@
 #ifndef OSGEARTH_MAP_ENGINE_NODE_H
 #define OSGEARTH_MAP_ENGINE_NODE_H 1
 
-#ifdef OSGEARTH2
-
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -97,7 +95,5 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_2
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

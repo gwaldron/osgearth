@@ -25,6 +25,7 @@ using namespace osgEarth;
 
 std::string TerrainOptions::OPTIONS_TAG = "__osgEarth::TerrainOptions";
 
+//------------------------------------------------------------------------
 
 LoadingPolicy::LoadingPolicy( const Config& conf ) :
 _mode( MODE_STANDARD ),

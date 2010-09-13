@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH2
+#if 0
 
 #include <osgEarth/MapNode>
 #include <osgEarth/Locators>
@@ -1338,11 +1338,49 @@ MapNode::validateEngineProps( MapEngineProperties& props )
 #else // OSGEARTH2
 
 #include <osgEarth/MapNode>
+#include <osgEarth/MaskNode>
+#include <osgEarth/FindNode>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
 
 #define LC "[MapNode] "
+
+//---------------------------------------------------------------------------
+
+// adapter that lets MapNode listen to Map events
+struct MapNodeMapCallbackProxy : public MapCallback
+{
+    MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
+    osg::observer_ptr<MapNode> _node;
+
+#if 0
+    void onMapProfileEstablished( const Profile* profile ) {
+        _node->onMapProfileEstablished(profile);
+    }
+    void onMapLayerAdded( MapLayer* layer, unsigned int index ) {
+        _node->onMapLayerAdded(layer, index);
+    }
+    void onMapLayerRemoved( MapLayer* layer, unsigned int index ) {
+        _node->onMapLayerRemoved(layer, index);
+    }
+    void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+        _node->onMapLayerMoved(layer,oldIndex,newIndex);
+    }
+#endif
+    void onModelLayerAdded( ModelLayer* layer ) {
+        _node->onModelLayerAdded( layer );
+    }
+    void onModelLayerRemoved( ModelLayer* layer ) {
+        _node->onModelLayerRemoved( layer );
+    }
+    void onMaskLayerAdded( MaskLayer* layer ) {
+        _node->onMaskLayerAdded( layer );
+    }
+    void onMaskLayerRemoved( MaskLayer* layer ) {
+        _node->onMaskLayerRemoved( layer );
+    }
+};
 
 //---------------------------------------------------------------------------
 
@@ -1486,7 +1524,7 @@ MapNode::init()
 
     // validate and adjust the engine properties as necessary:
     // TODO: this will move to Engine
-    validateEngineProps( _mapOptions );
+    //validateEngineProps( _mapOptions );
 
     // create the map engine that wil geneate tiles for this node:
 //    _engine = new MapEngine( _mapOptions );
@@ -1504,7 +1542,13 @@ MapNode::init()
 
     // go through the map and process any already-installed layers:
     // TODO: non-hard-code
-    _terrainEngine = TerrainEngineFactory::create( "osgterrain" );
+    TerrainOptions terrainOpt;
+    terrainOpt.setDriver( "osgterrain" );
+    _terrainEngine = TerrainEngineNodeFactory::create( terrainOpt );
+    if ( _terrainEngine.valid() )
+        this->addChild( _terrainEngine.get() );
+    else
+        OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
 
 #if 0
     unsigned int index = 0;
@@ -1519,10 +1563,13 @@ MapNode::init()
     }
 #endif
 
+    // install any pre-existing model layers:
     for( ModelLayerList::const_iterator k = _map->getModelLayers().begin(); k != _map->getModelLayers().end(); k++ )
     {
         onModelLayerAdded( k->get() );
     }
+
+    // install any pre-existing mask layer:
     if ( _map->getTerrainMaskLayer() )
     {
         onMaskLayerAdded( _map->getTerrainMaskLayer() );
@@ -1569,14 +1616,14 @@ MapNode::getMap()
     return _map.get();
 }
 
-MapEngine*
-MapNode::getEngine() const
+TerrainEngineNode*
+MapNode::getTerrainEngine() const
 {
-    return _engine.get();
+    return _terrainEngine.get();
 }
 
-const MapEngineProperties&
-MapNode::getMapEngineProperties() const
+const MapOptions&
+MapNode::getMapOptions() const
 {
     return _mapOptions;
 }
@@ -1591,6 +1638,118 @@ bool
 MapNode::isGeocentric() const
 {
     return _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
+}
+
+void
+MapNode::onModelLayerAdded( ModelLayer* layer )
+{
+    osg::Node* node = layer->getOrCreateNode();
+
+    if ( node )
+    {
+        if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
+        {
+            OE_WARN
+                << "Illegal: tried to add the name model layer more than once: " 
+                << layer->getName()
+                << std::endl;
+        }
+        else
+        {
+            // treat overlay node as a special case
+            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            {
+                osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
+                bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
+                installOverlayNode( overlay, autoTextureUnit );
+            }
+            else
+            {
+               _models->addChild( node );
+            }
+
+            ModelSource* ms = layer->getModelSource();
+            if ( ms && ms->getOptions()->renderOrder().isSet() )
+            {
+                node->getOrCreateStateSet()->setRenderBinDetails(
+                    ms->getOptions()->renderOrder().value(), "RenderBin" );
+            }
+
+            _modelLayerNodes[ layer ] = node;
+        }
+    }
+}
+
+void
+MapNode::onModelLayerRemoved( ModelLayer* layer )
+{
+    if ( layer )
+    {
+        // look up the node associated with this model layer.
+        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
+        if ( i != _modelLayerNodes.end() )
+        {
+            osg::Node* node = i->second;
+            
+            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            {
+                // handle the special-case overlay node
+                uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
+            }
+            else
+            {
+                _models->removeChild( node );
+            }
+            
+            _modelLayerNodes.erase( i );
+        }
+    }
+}
+
+struct MaskNodeFinder : public osg::NodeVisitor {
+    MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+    void apply( osg::Group& group ) {
+        if ( dynamic_cast<MaskNode*>( &group ) ) {
+            _groups.push_back( &group );
+        }
+        traverse(group);
+    }
+    std::list< osg::Group* > _groups;
+};
+
+void
+MapNode::onMaskLayerAdded( MaskLayer* layer )
+{
+    osg::Node* node = layer->getOrCreateNode();
+
+    if ( node && node->asGroup() )
+    {
+        int count = 0;
+        MaskNodeFinder f;
+        node->accept( f );
+        for( std::list<osg::Group*>::iterator i = f._groups.begin(); i != f._groups.end(); ++i )
+        {
+            (*i)->addChild( _terrainEngine );
+            count++;
+        }
+        this->replaceChild( _terrainEngine, node );
+        
+        OE_NOTICE<<"Installed terrain mask ("
+            <<count<< " mask nodes found)" << std::endl;
+
+        _maskLayerNode = node->asGroup();
+    }
+}
+
+void
+MapNode::onMaskLayerRemoved( MaskLayer* layer )
+{
+    if ( layer && _maskLayerNode )
+    {
+        osg::ref_ptr<osg::Node> child = _maskLayerNode->getChild( 0 );
+        this->replaceChild( _maskLayerNode, child.get() );
+        _maskLayerNode = 0L;
+    }
 }
 
 #endif // OSGEARTH2

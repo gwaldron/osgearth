@@ -16,8 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifdef OSGEARTH2
-
 #ifndef OSGEARTH_TERRAIN_OPTIONS_H
 #define OSGEARTH_TERRAIN_OPTIONS_H 1
 
@@ -100,7 +98,7 @@ namespace osgEarth
     /**
      * Base class for the configuration for a terrain engine driver.
      */
-    class OSGEARTH_EXPORT TerrainOptions : public ConfigOptions
+    class OSGEARTH_EXPORT TerrainOptions : public DriverConfigOptions
     {
     public:
         TerrainOptions( const Config& conf =Config() );
@@ -233,7 +231,5 @@ namespace osgEarth
         optional<ElevationInterpolation> _elevationInterpolation;
     };
 }
-
-#endif // OSGEARTH2
 
 #endif // OSGEARTH_MAP_ENGINE_PROPERTIES_H

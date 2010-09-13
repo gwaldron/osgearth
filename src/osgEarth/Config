@@ -382,6 +382,34 @@ namespace osgEarth
         Config _conf;
     };
 
+    class DriverConfigOptions : public ConfigOptions // header-only (no export required)
+    {
+    public:
+        DriverConfigOptions( const Config& conf =Config() ) 
+            : ConfigOptions( conf ) { fromConfig( conf ); }
+
+        void setDriver( const std::string& value ) { _driver = value; }
+        const std::string& getDriver() const { return _driver; }
+
+        void setName( const std::string& value ) { _name = value; }
+        const std::string& getName() const { return _name; }
+
+    public:
+        virtual Config toConfig() const {
+            Config conf = ConfigOptions::toConfig();
+            conf.value( "name" ) = _name;
+            conf.value( "driver" ) = _driver;
+            return conf;
+        }
+
+        virtual void fromConfig( const Config& conf ) {
+            _name = conf.value( "name" );
+            _driver = conf.value( "driver" );
+        }
+
+    private:
+        std::string _name, _driver;
+    };
 }
 
 #endif // OSGEARTH_CONFIG_H

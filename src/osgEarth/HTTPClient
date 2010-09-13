@@ -16,13 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTH_HTTP_CLIENT_H
 #define OSGEARTH_HTTP_CLIENT_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/Progress>
-#include <osgEarth/MapEngineProperties>
 #include <osgEarth/TerrainOptions>
 #include <OpenThreads/Thread>
 #include <osg/ref_ptr>
@@ -34,11 +32,8 @@
 #include <map>
 #include <vector>
 
-
 namespace osgEarth
 {
-#ifdef OSGEARTH2
-
     class OSGEARTH_EXPORT ProxySettings
     {
     public:
@@ -69,7 +64,6 @@ namespace osgEarth
     };
 
 
-#endif
     /**
      * An HTTP request for use with the HTTPClient class.
      */

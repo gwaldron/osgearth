@@ -33,6 +33,41 @@
 
 using namespace osgEarth;
 
+//----------------------------------------------------------------------------
+
+ProxySettings::ProxySettings( const Config& conf )
+{
+    fromConfig( conf );
+}
+
+ProxySettings::ProxySettings( const std::string& host, int port ) :
+_hostName(host),
+_port(port)
+{
+    //nop
+}
+
+void
+ProxySettings::fromConfig( const Config& conf )
+{
+    _hostName = conf.value<std::string>( "host", "" );
+    _port = conf.value<int>( "port", 8080 );
+	_userName = conf.value<std::string>( "username", "" );
+	_password = conf.value<std::string>( "password", "" );
+}
+
+Config
+ProxySettings::toConfig() const
+{
+    Config conf( "proxy" );
+    conf.add( "host", _hostName );
+    conf.add( "port", toString(_port) );
+	conf.add( "username", _userName);
+	conf.add( "password", _password);
+
+    return conf;
+}
+
 /****************************************************************************/
    
 namespace osgEarth

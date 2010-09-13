@@ -273,7 +273,7 @@ namespace osgEarth
 
 namespace osgEarth
 {
-    class MapNodeMapLayerController;
+    //class MapNodeMapLayerController;
 
     /**
      * OSG Node that forms the root of an osgEarth terrain. This node is a "view" component
@@ -365,23 +365,8 @@ namespace osgEarth
         const MapOptions& getMapOptions() const;
 
         /**
-         * Installs a new overlay node in this map node.
-         *
-         * @param overlay
-         *      Node to install within the MapNode
-         * @param autoSetTextureUnit
-         *      Automatically assign a texture unit to the overlay node based on
-         *      the currently active map layers
+         * Gets the underlying terrain engine that renders the terrain surface of the map.
          */
-        void installOverlayNode(
-            osgSim::OverlayNode* overlay,
-            bool autoSetTextureUnit =true );
-
-        /** 
-         * Removes an overlay previously added via installOverlayNode.
-         */
-        void uninstallOverlayNode( osgSim::OverlayNode* overlay );
-
         TerrainEngineNode* getTerrainEngine() const;
 
     public: //override osg::Node
@@ -400,12 +385,6 @@ namespace osgEarth
         osg::ref_ptr<Map> _map;
         osg::ref_ptr< osg::Group > _models;
         MapOptions _mapOptions;
-        
-        // a uniform array marking the opacity of each image layer
-        osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
-
-        // a uniform array marking the enabled state of each image layer
-        osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
 
         osg::ref_ptr< MapLayerController > _mapLayerController;
 
@@ -423,17 +402,18 @@ namespace osgEarth
 
     public: // MapCallback proxy
 
+        void onMapLayerStackChanged();
         void onModelLayerAdded( ModelLayer* );
         void onModelLayerRemoved( ModelLayer* );
         void onMaskLayerAdded( MaskLayer* );
         void onMaskLayerRemoved( MaskLayer* );
 
-    private: // MapLayerController functions
+    //private: // MapLayerController functions
 
-        friend class MapNodeMapLayerController;
+    //    friend class MapNodeMapLayerController;
 
-        void updateLayerOpacity( MapLayer* layer );
-        void updateLayerEnabled( MapLayer* layer );
+    //    void updateLayerOpacity( MapLayer* layer );
+    //    void updateLayerEnabled( MapLayer* layer );
 
     private:
     

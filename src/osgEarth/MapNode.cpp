@@ -1358,16 +1358,8 @@ struct MapNodeMapCallbackProxy : public MapCallback
     void onMapProfileEstablished( const Profile* profile ) {
         _node->onMapProfileEstablished(profile);
     }
-    void onMapLayerAdded( MapLayer* layer, unsigned int index ) {
-        _node->onMapLayerAdded(layer, index);
-    }
-    void onMapLayerRemoved( MapLayer* layer, unsigned int index ) {
-        _node->onMapLayerRemoved(layer, index);
-    }
-    void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-        _node->onMapLayerMoved(layer,oldIndex,newIndex);
-    }
 #endif
+
     void onModelLayerAdded( ModelLayer* layer ) {
         _node->onModelLayerAdded( layer );
     }
@@ -1386,19 +1378,18 @@ struct MapNodeMapCallbackProxy : public MapCallback
 
 namespace osgEarth
 {
-    class MapNodeMapLayerController : public MapLayerController
+    struct MapNodeMapLayerController : public MapLayerController
     {
-    public:
         MapNodeMapLayerController( MapNode* mapNode ) : _node(mapNode) { }
 
         void updateOpacity( MapLayer* layer ) 
         {
-            _node->updateLayerOpacity( layer );
+            _node->getTerrainEngine()->updateLayerOpacity( layer );
         }
 
         void updateEnabled( MapLayer* layer)
         {
-            _node->updateLayerEnabled( layer );
+            _node->getTerrainEngine()->updateLayerEnabled( layer );
         }
 
     private:
@@ -1481,6 +1472,7 @@ MapNode::init()
 
     setName( "osgEarth::MapNode" );
 
+    // so that our custom traverse() is called with an update visitor each frame
     setNumChildrenRequiringUpdateTraversal( 1 );
 
     // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
@@ -1575,7 +1567,7 @@ MapNode::init()
         onMaskLayerAdded( _map->getTerrainMaskLayer() );
     }
 
-    updateStateSet();
+    //updateStateSet();
 
     // install a layer callback for processing further map actions:
     _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
@@ -1656,14 +1648,14 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
         }
         else
         {
-            // treat overlay node as a special case
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            {
-                osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
-                bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
-                installOverlayNode( overlay, autoTextureUnit );
-            }
-            else
+            //// treat overlay node as a special case
+            //if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            //{
+            //    osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
+            //    bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
+            //    installOverlayNode( overlay, autoTextureUnit );
+            //}
+            //else
             {
                _models->addChild( node );
             }
@@ -1691,12 +1683,12 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
         {
             osg::Node* node = i->second;
             
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            {
-                // handle the special-case overlay node
-                uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
-            }
-            else
+            //if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            //{
+            //    // handle the special-case overlay node
+            //    uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
+            //}
+            //else
             {
                 _models->removeChild( node );
             }
@@ -1750,6 +1742,51 @@ MapNode::onMaskLayerRemoved( MaskLayer* layer )
         this->replaceChild( _maskLayerNode, child.get() );
         _maskLayerNode = 0L;
     }
+}
+
+void
+MapNode::addTerrainDecorator(osg::Group* decorator)
+{    
+    if ( _terrainEngine.valid() )
+    {
+        decorator->addChild( _terrainEngine.get() );
+        _terrainEngine->getParent(0)->replaceChild( _terrainEngine.get(), decorator );
+    }
+}
+
+void
+MapNode::removeTerrainDecorator(osg::Group* decorator)
+{
+    if ( _terrainEngine.valid() )
+    {
+        osg::Node* child = _terrainEngine.get();
+        for( osg::Group* g = child->getParent(0); g != this; child = g, g = g->getParent(0) )
+        {
+            if ( g == decorator )
+            {
+                g->getParent(0)->replaceChild( g, child );
+                break;
+            }
+        }
+    }
+}
+
+void
+MapNode::traverse( osg::NodeVisitor& nv )
+{
+    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    {
+        unsigned int numBlacklist = osgEarth::Registry::instance()->getNumBlacklistedFilenames();
+        if (numBlacklist != _lastNumBlacklistedFilenames)
+        {
+            //Only remove the blacklisted filenames if new filenames have been added since last time.
+            _lastNumBlacklistedFilenames = numBlacklist;
+            RemoveBlacklistedFilenamesVisitor v;
+            accept(v);
+        }
+    }
+
+    osg::CoordinateSystemNode::traverse(nv);
 }
 
 #endif // OSGEARTH2

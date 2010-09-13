@@ -274,7 +274,7 @@ namespace osgEarth
         osg::HeightField* createHeightField(
             const TileKey* key,
             bool fallback,
-            ElevationInterpolation interpolation,
+            ElevationInterpolation interpolation =INTERP_AVERAGE,
             SamplePolicy samplePolicy =FIRST_VALID,
             ProgressCallback* progress = 0);
 

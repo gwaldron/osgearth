@@ -37,6 +37,10 @@ public:
     META_Node(osgEarth,OSGTerrainEngineNode);
     ~OSGTerrainEngineNode();
 
+public: // TerrainEngineNode overrides    
+    virtual void validateTerrainOptions( TerrainOptions& options );
+    virtual void traverse( osg::NodeVisitor& );
+
 public: // MapCallback adapter functions
     void onMapProfileEstablished( const Profile* profile );
     void onMapLayerAdded( MapLayer*, unsigned int index );
@@ -72,13 +76,14 @@ private:
     void moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex );
     
     void updateElevation(CustomTile* tile);
+    void updateTextureCombining();
     
 private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;
     osg::ref_ptr<MapLayerController> _mapLayerController;
     class CustomTerrain* _terrain;
     unsigned int _id;
-    osgEarth::Drivers::OSGTerrainOptions _options;
+    osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

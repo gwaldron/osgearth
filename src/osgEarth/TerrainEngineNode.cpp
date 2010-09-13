@@ -18,14 +18,38 @@
  */
 #include <osgEarth/TerrainEngineNode>
 #include <osgDB/ReadFile>
+#define LC "[TerrainEngineNode] "
 
 using namespace osgEarth;
+
+//------------------------------------------------------------------------
+
+namespace osgEarth
+{
+    struct TerrainEngineNodeCallbackProxy : public MapCallback
+    {
+        TerrainEngineNodeCallbackProxy(TerrainEngineNode* node) : _node(node) { }
+        osg::observer_ptr<TerrainEngineNode> _node;
+
+        void onMapLayerAdded( MapLayer* layer, unsigned int index ) {
+            _node->onMapLayerStackChanged();
+        }
+        void onMapLayerRemoved( MapLayer* layer, unsigned int index ) {
+            _node->onMapLayerStackChanged();
+        }
+        void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+            _node->onMapLayerStackChanged();
+        }
+    };
+}
+
+//------------------------------------------------------------------------
 
 TerrainEngineNode::TerrainEngineNode( Map* map, const TerrainOptions& options ) :
 _map( map ),
 _terrainOptions( options )
 {
-    //nop
+    _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
 }
 
 void
@@ -51,6 +75,87 @@ TerrainEngineNode::onMapProfileEstablished( const Profile* profile )
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
     if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
         this->setEllipsoidModel( NULL );
+}
+
+void
+TerrainEngineNode::onMapLayerStackChanged()
+{
+    updateUniforms();
+}
+
+void
+TerrainEngineNode::updateUniforms()
+{
+    // update the layer uniform arrays:
+    osg::StateSet* stateSet = this->getOrCreateStateSet();
+
+    MapLayerList imageLayers;
+    _map->getImageMapLayers( imageLayers );
+
+    stateSet->removeUniform( "osgearth_imagelayer_opacity" );
+    stateSet->removeUniform( "osgearth_imagelayer_enabled" );
+    
+    if ( imageLayers.size() > 0 )
+    {
+        //Update the layer opacity uniform
+        _layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", imageLayers.size() );
+        for( MapLayerList::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+            _layerOpacityUniform->setElement( (int)(i-imageLayers.begin()), i->get()->opacity().value() );
+        stateSet->addUniform( _layerOpacityUniform.get() );
+
+        //Update the layer enabled uniform
+        _layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", imageLayers.size() );
+        for( MapLayerList::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+        {
+            _layerEnabledUniform->setElement( (int)(i-imageLayers.begin()), i->get()->enabled().value() );
+        }
+        stateSet->addUniform( _layerEnabledUniform.get() );
+    }
+    stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)imageLayers.size() );
+}
+
+void
+TerrainEngineNode::updateLayerOpacity( MapLayer* layer )
+{
+    MapLayerList imageLayers;
+    _map->getImageMapLayers( imageLayers );
+
+    MapLayerList::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
+    if ( i != imageLayers.end() )
+    {
+        int layerNum = i - imageLayers.begin();
+        _layerOpacityUniform->setElement( layerNum, layer->opacity().value() );
+        //OE_INFO << LC << "Updating layer " << layerNum << " opacity to " << layer->opacity().value() << std::endl;
+    }
+    else
+    {
+        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
+    }
+}
+
+void
+TerrainEngineNode::updateLayerEnabled( MapLayer* layer )
+{
+    MapLayerList imageLayers;
+    _map->getImageMapLayers( imageLayers );
+
+    MapLayerList::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
+    if ( i != imageLayers.end() )
+    {
+        int layerNum = i - imageLayers.begin();
+        _layerEnabledUniform->setElement( layerNum, layer->enabled().value() );
+        //OE_INFO << LC << "Updating layer " << layerNum << " opacity to " << layer->opacity().value() << std::endl;
+    }
+    else
+    {
+        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
+    }
+}
+
+void
+TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
+{
+    //TODO...
 }
 
 //------------------------------------------------------------------------

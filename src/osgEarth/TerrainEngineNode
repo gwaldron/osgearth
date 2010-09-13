@@ -63,18 +63,30 @@ namespace osgEarth
         TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) 
             : osg::CoordinateSystemNode( rhs, op ) { }
 
-    public: // MapCallback adapter functions (internal)
-
-        virtual void onMapProfileEstablished( const Profile* profile );
-
     protected: // implementation events
-
-        /** Allows the engine to validate the options and alter them if necessary. */
-        virtual void validateTerrainOptions( TerrainOptions& options );
 
         virtual void onVerticalScaleChanged() { }
 
         virtual void onElevationSamplingRatioChanged() { }
+
+    protected:
+        
+        /** Allows the engine to validate the options and alter them if necessary. */
+        virtual void validateTerrainOptions( TerrainOptions& options );
+
+    private:
+        friend struct TerrainEngineNodeCallbackProxy;
+
+        virtual void onMapProfileEstablished( const Profile* profile );
+        virtual void onMapLayerStackChanged();
+
+    private:
+        friend struct MapNodeMapLayerController;
+
+        virtual void updateLayerOpacity( MapLayer* layer );
+        virtual void updateLayerEnabled( MapLayer* layer );
+
+        virtual void updateUniforms();
 
     protected:
         osg::ref_ptr<osgEarth::Map> _map;
@@ -83,6 +95,12 @@ namespace osgEarth
         float _verticalScale;
         float _elevationSamplingRatio;
         TerrainOptions _terrainOptions;
+        
+        // a uniform array marking the opacity of each image layer
+        osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
+
+        // a uniform array marking the enabled state of each image layer
+        osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
     };
 
     /**

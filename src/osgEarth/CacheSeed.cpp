@@ -35,7 +35,7 @@ void CacheSeed::seed( Map* map )
         return;
     }
 
-    osg::ref_ptr<MapEngine> engine = new MapEngine(); //map->createMapEngine();
+//    osg::ref_ptr<MapEngine> engine = new MapEngine(); //map->createMapEngine();
 
     std::vector< osg::ref_ptr<TileKey> > keys;
     map->getProfile()->getRootKeys(keys);
@@ -135,24 +135,25 @@ void CacheSeed::seed( Map* map )
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( map, engine.get(), keys[i].get() );
+        processKey( map, keys[i].get() ); // map, engine.get(), keys[i].get() );
     }
 }
 
 
-void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
+void CacheSeed::processKey( Map* map, const TileKey* key ) const
 {
     unsigned int x, y, lod;
     key->getTileXY(x, y);
     lod = key->getLevelOfDetail();
 
-	osg::ref_ptr<osgEarth::VersionedTerrain> terrain = new osgEarth::VersionedTerrain( map, engine );
+//	osg::ref_ptr<osgEarth::VersionedTerrain> terrain = new osgEarth::VersionedTerrain( map, engine );
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
         OE_NOTICE << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
-        bool validData;
-		osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, false, validData );        
+        cacheTile( map, key );
+  //      bool validData;
+		//osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, false, validData );        
     }
 
     if (key->getLevelOfDetail() <= _maxLevel)
@@ -167,10 +168,29 @@ void CacheSeed::processKey( Map* map, MapEngine* engine, TileKey* key )
         if (_bounds.intersects( k0->getGeoExtent().bounds() ) || _bounds.intersects(k1->getGeoExtent().bounds()) ||
             _bounds.intersects( k2->getGeoExtent().bounds() ) || _bounds.intersects(k3->getGeoExtent().bounds()) )
         {
-            processKey(map, engine, k0.get()); 
-            processKey(map, engine, k1.get()); 
-            processKey(map, engine, k2.get()); 
-            processKey(map, engine, k3.get()); 
+            processKey(map, k0.get()); 
+            processKey(map, k1.get()); 
+            processKey(map, k2.get()); 
+            processKey(map, k3.get()); 
         }
     }
 }
+
+void
+CacheSeed::cacheTile( Map* map, const TileKey* key ) const
+{
+    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
+    {
+        MapLayer* layer = i->get();
+        if ( layer->isKeyValid( key ) )
+        {
+            osg::ref_ptr<GeoImage> image = layer->createImage( key );
+        }
+    }
+
+    if ( map->getHeightFieldMapLayers().size() > 0 )
+    {
+        osg::ref_ptr<osg::HeightField> hf = map->createHeightField( key, false );
+    }
+}
+

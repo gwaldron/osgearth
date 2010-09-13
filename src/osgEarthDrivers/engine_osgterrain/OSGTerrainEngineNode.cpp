@@ -22,6 +22,8 @@
 #include "CompositingTerrainTechnique"
 #include "CustomTerrain"
 #include <osgEarth/ImageUtils>
+#include <osg/TexEnv>
+#include <osg/TexEnvCombine>
 
 #define LC "[OSGTerrainEngine] "
 
@@ -119,7 +121,7 @@ OSGTerrainEngineNode::OSGTerrainEngineNode( Map* map, const TerrainOptions& opti
 TerrainEngineNode( map, options.toConfig() )
 {
     // morph general options into implementation-specific options
-    _options.merge( options );
+    _terrainOptions.merge( options );
 
     // TODO: provide the ellipsoid in the ctor (like with OSGTerrainEngineNode->Map)
     this->setCoordinateSystem( "EPSG:4326" );
@@ -194,14 +196,14 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 {
     TerrainEngineNode::onMapProfileEstablished( mapProfile );
 
-    _tileFactory = new OSGTileFactory( _id, _options );
+    _tileFactory = new OSGTileFactory( _id, _terrainOptions );
 
     // go through and build the root nodesets.
     _terrain = new CustomTerrain( _map.get(), _tileFactory.get() );
 
     // install the proper layering technique:
 
-    if ( _options.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS )
+    if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS )
     {
         _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique());
         OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;
@@ -210,13 +212,13 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     {
         CustomTerrainTechnique* tech = 0;
 
-        if ( _options.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE )
+        if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE )
         {
             tech = new MultiTextureTerrainTechnique();
             OE_INFO << LC << "Layering technique = MULTITEXTURE" << std::endl;
         }
 
-        else if ( _options.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
+        else if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
         {
             tech = new CompositingTerrainTechnique();
             OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
@@ -226,7 +228,7 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
         {
             //If we are using triangulate interpolation, tell the terrain technique to just create simple triangles with
             //consistent orientation rather than trying to optimize the orientation
-            if ( _options.elevationInterpolation() == INTERP_TRIANGULATE )
+            if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
             {
                 tech->setOptimizeTriangleOrientation( false );
             }
@@ -244,8 +246,8 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     _pendingTerrainCallbacks.clear();
 #endif
 
-    _terrain->setVerticalScale( _options.verticalScale().value() );
-    _terrain->setSampleRatio( _options.heightFieldSampleRatio().value() );
+    _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
+    _terrain->setSampleRatio( _terrainOptions.heightFieldSampleRatio().value() );
 
     // put the terrain in its container. TODO: later, this may be the attach point for terrain engine plugins.
     this->addChild( _terrain );
@@ -258,7 +260,7 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
         // always load the root tiles completely; no deferring. -gw
-        bool loadNow = true; //!_options.getPreemptiveLOD();
+        bool loadNow = true; //!_terrainOptions.getPreemptiveLOD();
 
         osg::Node* node = _tileFactory->createSubTiles( _map.get(), _terrain, keys[i].get(), loadNow );
         if (node)
@@ -397,7 +399,7 @@ OSGTerrainEngineNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
     if ( layer )
     {
 #if 0
-        if ( _options.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+        if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
         {
             if ( layer->getTileSource() )
             {
@@ -454,7 +456,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
         //if (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
         //   (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
 
-        if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
+        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
             key->getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
@@ -528,15 +530,13 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
             //    << ": Could not create geoimage for tile " << key->str() << std::endl;
         }
 
-        if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty(true);
         else
             tile->markTileForRegeneration();
     }
 
-#if 0
-    updateStateSet();
-#endif
+    updateTextureCombining();
 }
 
 void
@@ -560,17 +560,17 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
     {
         //In standard mode, just load the elevation data and dirty the tile.
 
-        if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             //if (!_options.getPreemptiveLOD())
         {
             osg::ref_ptr<osg::HeightField> hf;
             if (hasElevation)
             {
-                hf = _map->createHeightField( key.get(), true, _options.elevationInterpolation().value());
+                hf = _map->createHeightField( key.get(), true, _terrainOptions.elevationInterpolation().value());
             }
             if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key.get() );
             heightFieldLayer->setHeightField( hf.get() );
-            hf->setSkirtHeight( tile->getBound().radius() * _options.heightFieldSkirtRatio().value() );
+            hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
             tile->setDirty(true);
         }
         else
@@ -580,7 +580,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
             {
                 osg::ref_ptr<osg::HeightField> hf = OSGTileFactory::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf.get() );
-                hf->setSkirtHeight( tile->getBound().radius() * _options.heightFieldSkirtRatio().value() );
+                hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
                 tile->setElevationLOD( key->getLevelOfDetail() );
                 tile->resetElevationRequests();
                 tile->markTileForRegeneration();
@@ -590,10 +590,10 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
                 //Always load the first LOD so the children tiles can have something to use for placeholders
                 if (tile->getKey()->getLevelOfDetail() == 1)
                 {
-                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true, _options.elevationInterpolation().value());
+                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true, _terrainOptions.elevationInterpolation().value());
                     if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key.get() );
                     heightFieldLayer->setHeightField( hf.get() );
-                    hf->setSkirtHeight( tile->getBound().radius() * _options.heightFieldSkirtRatio().value() );
+                    hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
                     tile->setElevationLOD(tile->getKey()->getLevelOfDetail());
                     tile->markTileForRegeneration();
                 }
@@ -680,15 +680,13 @@ OSGTerrainEngineNode::removeImageLayer( unsigned int index )
         }
 
 
-        if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
             tile->markTileForRegeneration();
     }
-
-#if 0
-    updateStateSet();
-#endif
+    
+    updateTextureCombining();
 
     OE_DEBUG << "[osgEarth::Map::removeImageSource] end " << std::endl;  
 }
@@ -755,15 +753,13 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
             itr->get()->setColorLayer( i, layers[i].get() );
         }
 
-        if ( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
             tile->markTileForRegeneration();
     }     
 
-#if 0
-    updateStateSet();
-#endif
+    updateTextureCombining();
 }
 
 void
@@ -779,5 +775,159 @@ OSGTerrainEngineNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int 
     {
         CustomTile* tile = static_cast< CustomTile* >( itr->get() );
         updateElevation(tile);
+    }
+}
+
+void
+OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
+{
+    TerrainEngineNode::validateTerrainOptions( options );
+    //TODO...
+}
+
+typedef std::list<const osg::StateSet*> StateSetStack;
+static osg::StateAttribute::GLModeValue 
+getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
+{
+    osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
+    for(StateSetStack::const_iterator itr = statesetStack.begin();
+        itr != statesetStack.end();
+        ++itr)
+    {
+        osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
+        if ((val & ~osg::StateAttribute::INHERIT)!=0)
+        {
+            if ((val & osg::StateAttribute::PROTECTED)!=0 ||
+                (base_val & osg::StateAttribute::OVERRIDE)==0)
+            {
+                base_val = val;
+            }
+        }
+    }
+    return base_val;
+}
+
+void
+OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
+{
+    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR &&
+        _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE)
+	{
+        //Update the lighting uniforms
+        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        if (cv)
+        {
+            StateSetStack statesetStack;
+
+            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
+            while(sg)
+            {
+                const osg::StateSet* stateset = sg->getStateSet();
+                if (stateset)
+                {
+                    statesetStack.push_front(stateset);
+                }                
+                sg = sg->_parent;
+            }
+
+            //Update the lighting uniforms
+            osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
+            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightingEnabled", osg::Uniform::BOOL);
+            lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
+
+            const unsigned int numLights = 8;
+            osg::Uniform* lightsEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightsEnabled", osg::Uniform::BOOL, numLights);
+            for (unsigned int i = 0; i < numLights; ++i)
+            {
+                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0 + i);     
+                lightsEnabledUniform->setElement(i, (lightEnabled & osg::StateAttribute::ON)!=0);
+            }				
+        }
+    }
+}
+
+void
+OSGTerrainEngineNode::updateTextureCombining()
+{
+    // ASSUMPTION: map data mutex is held
+
+    if (_terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE &&
+        _terrainOptions.combineLayers() == true )
+    {
+        int numLayers = _map->getImageMapLayers().size();
+
+        osg::StateSet* stateset = getOrCreateStateSet();
+
+        if (numLayers == 1)
+        {
+            osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
+            stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+        }
+        else if (numLayers >= 2)
+        {
+            //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
+
+                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource1_Alpha(osg::TexEnvCombine::TEXTURE0+0);
+                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+            }
+
+
+            //For textures 2 and beyond, blend them together with the previous
+            //Add the alpha values of this unit and the previous unit
+            for (int unit = 1; unit < numLayers-1; ++unit)
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
+
+                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource1_Alpha(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                stateset->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
+            }
+
+            //Modulate the colors to get proper lighting on the last unit
+            //Keep the alpha results from the previous stage
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::REPLACE);
+
+                texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
+            }
+        }
     }
 }

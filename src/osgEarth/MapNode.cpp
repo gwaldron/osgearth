@@ -1534,11 +1534,11 @@ MapNode::init()
 
     // go through the map and process any already-installed layers:
     // TODO: non-hard-code
-    TerrainOptions terrainOpt;
-    terrainOpt.setDriver( "osgterrain" );
-    _terrainEngine = TerrainEngineNodeFactory::create( terrainOpt );
+    _terrainEngine = TerrainEngineNodeFactory::create( _map.get(), _mapOptions.getTerrainOptions() );
     if ( _terrainEngine.valid() )
+    {
         this->addChild( _terrainEngine.get() );
+    }
     else
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
 
@@ -1582,6 +1582,8 @@ MapNode::init()
             osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
+
+    dirtyBound();
 }
 
 MapNode::~MapNode()
@@ -1592,14 +1594,12 @@ MapNode::~MapNode()
 osg::BoundingSphere
 MapNode::computeBound() const
 {
-    if ( isGeocentric() )
-    {
-        return osg::BoundingSphere( osg::Vec3(0,0,0), getEllipsoidModel()->getRadiusEquator()+25000 );
-    }
-    else
-    {
-        return osg::CoordinateSystemNode::computeBound();
-    }
+    osg::BoundingSphere bs;
+    if ( _terrainEngine.valid() )
+        bs.expandBy( _terrainEngine->getBound() );
+    if ( _models.valid() )
+        bs.expandBy( _models->getBound() );
+    return bs;
 }
 
 Map*
@@ -1669,6 +1669,8 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
 
             _modelLayerNodes[ layer ] = node;
         }
+
+        dirtyBound();
     }
 }
 
@@ -1695,6 +1697,8 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
             
             _modelLayerNodes.erase( i );
         }
+        
+        dirtyBound();
     }
 }
 
@@ -1730,6 +1734,7 @@ MapNode::onMaskLayerAdded( MaskLayer* layer )
             <<count<< " mask nodes found)" << std::endl;
 
         _maskLayerNode = node->asGroup();
+        dirtyBound();
     }
 }
 
@@ -1741,6 +1746,7 @@ MapNode::onMaskLayerRemoved( MaskLayer* layer )
         osg::ref_ptr<osg::Node> child = _maskLayerNode->getChild( 0 );
         this->replaceChild( _maskLayerNode, child.get() );
         _maskLayerNode = 0L;
+        dirtyBound();
     }
 }
 
@@ -1751,6 +1757,7 @@ MapNode::addTerrainDecorator(osg::Group* decorator)
     {
         decorator->addChild( _terrainEngine.get() );
         _terrainEngine->getParent(0)->replaceChild( _terrainEngine.get(), decorator );
+        dirtyBound();
     }
 }
 
@@ -1768,6 +1775,7 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
                 break;
             }
         }
+        dirtyBound();
     }
 }
 

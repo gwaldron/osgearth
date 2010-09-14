@@ -32,14 +32,15 @@ class OSGTerrainEngineNode : public TerrainEngineNode
 {
 public:
     OSGTerrainEngineNode() { }
-    OSGTerrainEngineNode( Map* map, const TerrainOptions& options );
     OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Node(osgEarth,OSGTerrainEngineNode);
     ~OSGTerrainEngineNode();
 
 public: // TerrainEngineNode overrides    
+    virtual void initialize( Map* map, const TerrainOptions& options );
     virtual void validateTerrainOptions( TerrainOptions& options );
     virtual void traverse( osg::NodeVisitor& );
+    virtual osg::BoundingSphere computeBound() const;
 
 public: // MapCallback adapter functions
     void onMapProfileEstablished( const Profile* profile );

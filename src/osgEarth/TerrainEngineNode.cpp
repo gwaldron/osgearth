@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TerrainEngineNode>
 #include <osgDB/ReadFile>
+
 #define LC "[TerrainEngineNode] "
 
 using namespace osgEarth;
@@ -48,11 +49,44 @@ namespace osgEarth
 
 //------------------------------------------------------------------------
 
-TerrainEngineNode::TerrainEngineNode( Map* map, const TerrainOptions& options ) :
-_map( map ),
-_terrainOptions( options )
+TerrainEngineNode::TerrainEngineNode() :
+_verticalScale( 1.0f ),
+_elevationSamplingRatio( 1.0f )
 {
-    _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
+    //nop
+}
+
+TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :
+osg::CoordinateSystemNode( rhs, op ),
+_verticalScale( rhs._verticalScale ),
+_elevationSamplingRatio( rhs._elevationSamplingRatio ),
+_map( rhs._map.get() ),
+_terrainOptions( rhs._terrainOptions )
+{
+    //nop
+}
+
+void
+TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
+{
+    _map = map;
+    _terrainOptions = options;
+
+    if ( _map.valid() )
+        _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
+}
+
+osg::BoundingSphere
+TerrainEngineNode::computeBound() const
+{
+    if ( _map.valid() && _map->isGeocentric() && getEllipsoidModel() )
+    {
+        return osg::BoundingSphere( osg::Vec3(0,0,0), getEllipsoidModel()->getRadiusEquator()+25000 );
+    }
+    else
+    {
+        return osg::CoordinateSystemNode::computeBound();
+    }
 }
 
 void
@@ -73,7 +107,8 @@ void
 TerrainEngineNode::onMapProfileEstablished( const Profile* profile )
 {
     // set up the CSN values
-    _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
+    if ( _map.valid() )
+        _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
     
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
     if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
@@ -167,23 +202,24 @@ TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 #define LC "[TerrainEngineFactory] "
 
 TerrainEngineNode*
-TerrainEngineNodeFactory::create( const TerrainOptions& options )
+TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
 {
     TerrainEngineNode* result = 0L;
 
-    if ( !options.getDriver().empty() )
+    std::string driver = options.getDriver();
+    if ( driver.empty() )
+        driver = "osgterrain";
+
+    std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
+    result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) );
+    if ( result )
     {
-        OE_INFO << LC << "Loading terrain engine from driver \"" << options.getDriver() << "\"" << std::endl;
+        result->initialize( map, options );
     }
-
-    std::string driverExt = std::string( ".osgearth_engine_" ) + options.getDriver();
-    result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) ); //, options ) );
-
-    if ( !result )
+    else
     {
-        OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << options.getDriver() << "\"" << std::endl;
+        OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;
     }
 
     return result;
 }
-

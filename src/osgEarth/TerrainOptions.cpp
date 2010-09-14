@@ -64,48 +64,11 @@ LoadingPolicy::toConfig() const
 
 //----------------------------------------------------------------------------
 
-#if 0
-ProxySettings::ProxySettings( const Config& conf )
-{
-    fromConfig( conf );
-}
-
-ProxySettings::ProxySettings( const std::string& host, int port ) :
-_hostName(host),
-_port(port)
-{
-    //nop
-}
-
-void
-ProxySettings::fromConfig( const Config& conf )
-{
-    _hostName = conf.value<std::string>( "host", "" );
-    _port = conf.value<int>( "port", 8080 );
-	_userName = conf.value<std::string>( "username", "" );
-	_password = conf.value<std::string>( "password", "" );
-}
-
-Config
-ProxySettings::toConfig() const
-{
-    Config conf( "proxy" );
-    conf.add( "host", _hostName );
-    conf.add( "port", toString(_port) );
-	conf.add( "username", _userName);
-	conf.add( "password", _password);
-
-    return conf;
-}
-#endif
-
-//----------------------------------------------------------------------------
-
 TerrainOptions::TerrainOptions( const Config& conf ) :
 DriverConfigOptions( conf ),
 _loadingPolicy( LoadingPolicy() ),
 _verticalScale( 1.0f ),
-_heightFieldSkirtRatio( 0.05f ),
+//_heightFieldSkirtRatio( 0.05f ),
 _heightFieldSampleRatio( 1.0f ),
 _minTileRangeFactor( 6.0 ),
 _normalizeEdges( false ),
@@ -126,7 +89,7 @@ TerrainOptions::toConfig() const
 
     conf.addObjIfSet( "loading_policy", _loadingPolicy );
     conf.addIfSet( "vertical_scale", _verticalScale );
-    conf.addIfSet( "skirt_ratio", _heightFieldSkirtRatio );
+    //conf.addIfSet( "skirt_ratio", _heightFieldSkirtRatio );
     conf.addIfSet( "sample_ratio", _heightFieldSampleRatio );
     conf.addIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.addIfSet( "normalize_edges", _normalizeEdges );
@@ -153,7 +116,7 @@ TerrainOptions::fromConfig( const Config& conf )
 
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );
-    conf.getIfSet( "skirt_ratio", _heightFieldSkirtRatio );
+    //conf.getIfSet( "skirt_ratio", _heightFieldSkirtRatio );
     conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.getIfSet( "normalize_edges", _normalizeEdges );

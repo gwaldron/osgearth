@@ -107,7 +107,7 @@ std::string
 OSGTileFactory::createURI( unsigned int id, const TileKey* key )
 {
     std::stringstream ss;
-    ss << key->str() << "." <<id<<".earth_osgterrain_tile";
+    ss << key->str() << "." <<id<<".osgearth_osgterrain_tile";
     std::string ssStr;
     ssStr = ss.str();
     return ssStr;

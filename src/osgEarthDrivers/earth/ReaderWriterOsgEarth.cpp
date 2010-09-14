@@ -103,11 +103,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                     // check is an engine properties object was supplied in the Options structure. If so,
                     // merge it in. Note that the properties will override those in the earth file.
-                    const MapOptions* userOptions = static_cast<const MapOptions*>(
-                        options->getPluginData( MapOptions::OPTIONS_TAG ) );
-                    if ( userOptions )
+                    if ( options )
                     {
-                        mapOptions.merge( *userOptions );
+                        const MapOptions* userOptions = static_cast<const MapOptions*>( options->getPluginData( MapOptions::OPTIONS_TAG ) );
+                        if ( userOptions )
+                        {
+                            mapOptions.merge( *userOptions );
+                        }
                     }
 
                     osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), mapOptions );

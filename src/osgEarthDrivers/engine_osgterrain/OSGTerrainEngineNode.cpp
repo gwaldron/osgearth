@@ -85,7 +85,7 @@ OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* mapNode)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
     getMapNodeCache()[mapNode->_id] = mapNode;
-    OE_INFO << LC << "Registered map " << mapNode->_id << std::endl;
+    OE_INFO << LC << "Registered engine " << mapNode->_id << std::endl;
 }
 
 void
@@ -96,7 +96,7 @@ OSGTerrainEngineNode::unregisterEngine(unsigned int id)
     if (k != getMapNodeCache().end())
     {
         getMapNodeCache().erase(k);
-        OE_INFO << LC << "Unregistered map " << id << std::endl;
+        OE_INFO << LC << "Unregistered engine " << id << std::endl;
     }
 }
 
@@ -117,22 +117,9 @@ OSGTerrainEngineNode::getId() const
 
 //------------------------------------------------------------------------
 
-OSGTerrainEngineNode::OSGTerrainEngineNode( Map* map, const TerrainOptions& options ) :
-TerrainEngineNode( map, options.toConfig() )
-{
-    // morph general options into implementation-specific options
-    _terrainOptions.merge( options );
-
-    // TODO: provide the ellipsoid in the ctor (like with OSGTerrainEngineNode->Map)
-    this->setCoordinateSystem( "EPSG:4326" );
-    this->setFormat( "WKT" );
-    this->setEllipsoidModel( new osg::EllipsoidModel );
-
-    init();
-}
-
 OSGTerrainEngineNode::OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op ) :
-TerrainEngineNode( rhs, op )
+TerrainEngineNode( rhs, op ),
+_terrain( 0L )
 {
     //nop
 }
@@ -143,8 +130,13 @@ OSGTerrainEngineNode::~OSGTerrainEngineNode()
 }
 
 void
-OSGTerrainEngineNode::init()
+OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions )
 {
+    TerrainEngineNode::initialize( map, terrainOptions );
+
+    // merge in the custom options:
+    _terrainOptions.merge( terrainOptions );
+
     // genearte a new unique mapnode ID
     {
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
@@ -191,16 +183,38 @@ OSGTerrainEngineNode::init()
     registerEngine( this );
 }
 
+osg::BoundingSphere
+OSGTerrainEngineNode::computeBound() const
+{
+    if ( _terrain )
+        return _terrain->getBound();
+    else
+        return TerrainEngineNode::computeBound();
+}
+
 void
 OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 {
+    OE_INFO << LC << "Map profile established" << std::endl;
+
+    // set up the ellipsoid
+    this->setCoordinateSystem( mapProfile->getSRS()->getInitString() );
+    this->setFormat( mapProfile->getSRS()->getInitType() );
+    if ( !mapProfile->getSRS()->isProjected() )
+        this->setEllipsoidModel( new osg::EllipsoidModel( *mapProfile->getSRS()->getEllipsoid() ) );
+
+    // create a factory for creating actual tile data
     _tileFactory = new OSGTileFactory( _id, _terrainOptions );
 
     // go through and build the root nodesets.
     _terrain = new CustomTerrain( _map.get(), _tileFactory.get() );
+    this->addChild( _terrain );
+
+    // set the initial properties from the options structure:
+    _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
+    _terrain->setSampleRatio( _terrainOptions.heightFieldSampleRatio().value() );
 
     // install the proper layering technique:
-
     if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS )
     {
         _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique());
@@ -244,12 +258,6 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     _pendingTerrainCallbacks.clear();
 #endif
 
-    _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
-    _terrain->setSampleRatio( _terrainOptions.heightFieldSampleRatio().value() );
-
-    // put the terrain in its container. TODO: later, this may be the attach point for terrain engine plugins.
-    this->addChild( _terrain );
-    //_terrainContainer->addChild( terrain );
 
     // collect the tile keys comprising the root tiles of the terrain.
     std::vector< osg::ref_ptr<TileKey> > keys;
@@ -271,10 +279,8 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
         }
     }
 
-    //if ( _pendingOverlayNode.valid() )
-    //{
-    //    installOverlayNode( _pendingOverlayNode.get(), _pendingOverlayAutoSetTextureUnit );
-    //}
+    // we just added the root tiles, so mark the bound in need of recomputation.
+    dirtyBound();
 }
 
 #if 0
@@ -842,6 +848,8 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
             }				
         }
     }
+
+    TerrainEngineNode::traverse( nv );
 }
 
 void

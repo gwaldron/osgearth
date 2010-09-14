@@ -215,7 +215,7 @@ namespace osgEarth
     private:
             
         optional<float> _verticalScale;
-        optional<float> _heightFieldSkirtRatio;
+        //optional<float> _heightFieldSkirtRatio;
         optional<float> _heightFieldSampleRatio;
         optional<float> _minTileRangeFactor;
         optional<bool> _normalizeEdges;

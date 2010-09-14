@@ -30,7 +30,7 @@ namespace osgEarth { namespace Drivers
     {
     public:
         OSGTerrainOptions( const ConfigOptions& opt =ConfigOptions() ) : TerrainOptions( opt.config() ),
-            _skirtRatio( 0.02 )
+            _skirtRatio( 0.05 )
         {
             config().add( "driver", "osgterrain" );
             //driver() = "osgterrain";

@@ -56,23 +56,25 @@ namespace osgEarth
         float getElevationSamplingRatio() const { return _elevationSamplingRatio; }
 
     protected:
-        TerrainEngineNode() { }
+        TerrainEngineNode();
 
-        TerrainEngineNode( Map* map, const TerrainOptions& options );
+        TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
-        TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) 
-            : osg::CoordinateSystemNode( rhs, op ) { }
+    public: // osg::Node overrides
+        virtual osg::BoundingSphere computeBound() const;
 
     protected: // implementation events
-
         virtual void onVerticalScaleChanged() { }
-
         virtual void onElevationSamplingRatioChanged() { }
 
     protected:
-        
-        /** Allows the engine to validate the options and alter them if necessary. */
+        friend class TerrainEngineNodeFactory;
+
+        virtual void initialize( Map* map, const TerrainOptions& options );
         virtual void validateTerrainOptions( TerrainOptions& options );
+
+    protected:
+        osg::ref_ptr< Map > _map;
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;
@@ -85,11 +87,7 @@ namespace osgEarth
 
         virtual void updateLayerOpacity( MapLayer* layer );
         virtual void updateLayerEnabled( MapLayer* layer );
-
         virtual void updateUniforms();
-
-    protected:
-        osg::ref_ptr<osgEarth::Map> _map;
 
     private:
         float _verticalScale;
@@ -109,7 +107,7 @@ namespace osgEarth
     class TerrainEngineNodeFactory
     {
     public:
-        static TerrainEngineNode* create( const TerrainOptions& options );
+        static TerrainEngineNode* create( Map* map, const TerrainOptions& options );
     };
 
 } // namespace osgEarth

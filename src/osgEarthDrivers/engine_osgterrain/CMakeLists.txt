@@ -7,7 +7,6 @@ SET(TARGET_SRC
     MultiPassTerrainTechnique.cpp
     MultiTextureTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
-    OSGTerrainTileLoader.cpp
     OSGTileFactory.cpp
     Plugin.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp

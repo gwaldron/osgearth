@@ -125,14 +125,14 @@ public:
     }
 
 
-    osg::Image* createImage(const osgEarth::TileKey *key,
+    osg::Image* createImage(const osgEarth::TileKey& key,
                             ProgressCallback* progress)
     {
-        if (_tileMap.valid() && key->getLevelOfDetail() <= getMaxDataLevel() )
+        if (_tileMap.valid() && key.getLevelOfDetail() <= getMaxDataLevel() )
         {
             std::string image_url = _tileMap->getURL( key, _invertY );
                 
-            //OE_NOTICE << "TMSSource: Key=" << key->str() << ", URL=" << image_url << std::endl;
+            //OE_NOTICE << "TMSSource: Key=" << key.str() << ", URL=" << image_url << std::endl;
 
             
             osg::ref_ptr<osg::Image> image;
@@ -148,7 +148,7 @@ public:
                 {
                     //We couldn't read the image from the URL or the cache, so check to see if the given key is less than the max level
                     //of the tilemap and create a transparent image.
-                    if (key->getLevelOfDetail() <= _tileMap->getMaxLevel())
+                    if (key.getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
                         OE_INFO << LC << "Returning empty image " << std::endl;
                         return ImageUtils::createEmptyImage();

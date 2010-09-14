@@ -39,7 +39,7 @@ namespace osgEarth
         /**
         *Constructor
         */
-        TileImage(osg::Image* image, const TileKey* key);
+        TileImage(osg::Image* image, const TileKey& key);
 
         /**
         *Gets a reference to the Image held by this GeoImage

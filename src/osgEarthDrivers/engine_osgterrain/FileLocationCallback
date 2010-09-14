@@ -49,22 +49,22 @@ public:
         if ( engine.valid() )
         {
             const osgEarth::Profile* profile = engine->getMap()->getProfile();
-            osg::ref_ptr<osgEarth::TileKey> mapKey = new osgEarth::TileKey( lod, x, y, profile );
+            osgEarth::TileKey mapKey( lod, x, y, profile );
 
             //Split the key into it's 4 children and check to see if all 4 are cached.
-            std::vector< osg::ref_ptr< osgEarth::TileKey > > keys;
-            for (unsigned int i = 0; i < 4; ++i) keys.push_back(mapKey->createSubkey(i));
+            std::vector< osgEarth::TileKey > keys;
+            for (unsigned int i = 0; i < 4; ++i) keys.push_back(mapKey.createChildKey(i));
 
             for (unsigned int i = 0; i < keys.size(); ++i)
             {
                 if ( !engine->getTileFactory()->isCached(engine->getMap(), keys[i]))
                 {
-                    OE_DEBUG << "Returning REMOTE_FILE for " << mapKey->str() << std::endl;
+                    OE_DEBUG << "Returning REMOTE_FILE for " << mapKey.str() << std::endl;
                     return REMOTE_FILE;
                 }
             }
 
-            OE_DEBUG << "Returning LOCAL_FILE for " << mapKey->str() << std::endl;
+            OE_DEBUG << "Returning LOCAL_FILE for " << mapKey.str() << std::endl;
             return LOCAL_FILE;
         }
 

@@ -546,7 +546,7 @@ Map::calculateProfile()
 
 
 osg::HeightField*
-Map::createHeightField( const TileKey* key,
+Map::createHeightField( const TileKey& key,
                         bool fallback,
                         ElevationInterpolation interpolation,
                         SamplePolicy samplePolicy,
@@ -557,7 +557,7 @@ Map::createHeightField( const TileKey* key,
 //     OpenThreads::ScopedReadLock lock( _mapDataMutex );
 
 	osg::HeightField *result = NULL;
-    int lowestLOD = key->getLevelOfDetail();
+    int lowestLOD = key.getLevelOfDetail();
     bool hfInitialized = false;
 
     typedef std::map< MapLayer*, bool> LayerValidMap;
@@ -581,7 +581,7 @@ Map::createHeightField( const TileKey* key,
             {
                 numValidHeightFields++;
                 heightFields.push_back( new GeoHeightField(
-                    hf.get(), key->getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
+                    hf.get(), key.getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
             }
         }
     }
@@ -602,22 +602,22 @@ Map::createHeightField( const TileKey* key,
         {
             if (!layerValidMap[ layer ])
             {
-                osg::ref_ptr< const TileKey > hf_key = key;
+                TileKey hf_key = key;
                 osg::ref_ptr< osg::HeightField > hf;
                 while (hf_key.valid())
                 {
-                    hf = layer->createHeightField( hf_key.get(), progress );
+                    hf = layer->createHeightField( hf_key, progress );
                     if (hf.valid()) break;
-                    hf_key = hf_key->createParentKey();
+                    hf_key = hf_key.createParentKey();
                 }
 
                 if (hf.valid())
                 {
-                    if ( hf_key->getLevelOfDetail() < lowestLOD )
-                        lowestLOD = hf_key->getLevelOfDetail();
+                    if ( hf_key.getLevelOfDetail() < lowestLOD )
+                        lowestLOD = hf_key.getLevelOfDetail();
 
                     heightFields.push_back( new GeoHeightField(
-                        hf.get(), hf_key->getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
+                        hf.get(), hf_key.getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
                 }
             }
         }
@@ -630,14 +630,14 @@ Map::createHeightField( const TileKey* key,
 	}
 	else if (heightFields.size() == 1)
 	{
-        if ( lowestLOD == key->getLevelOfDetail() )
+        if ( lowestLOD == key.getLevelOfDetail() )
         {
 		    //If we only have on heightfield, just return it.
 		    result = heightFields[0]->takeHeightField();
         }
         else
         {
-            osg::ref_ptr<GeoHeightField> geoHF = heightFields[0]->createSubSample( key->getGeoExtent(), interpolation);
+            osg::ref_ptr<GeoHeightField> geoHF = heightFields[0]->createSubSample( key.getGeoExtent(), interpolation);
             result = geoHF->takeHeightField();
             hfInitialized = true;
         }
@@ -658,7 +658,7 @@ Map::createHeightField( const TileKey* key,
 
 		//Go ahead and set up the heightfield so we don't have to worry about it later
         double minx, miny, maxx, maxy;
-        key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+        key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
         double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
         double dy = (maxy - miny)/(double)(result->getNumRows()-1);
 
@@ -679,7 +679,7 @@ Map::createHeightField( const TileKey* key,
                     GeoHeightField* geoHF = itr->get();
 
                     float elevation = 0.0f;
-                    if ( geoHF->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
+                    if ( geoHF->getElevation(key.getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
                     {
                         if (elevation != NO_DATA_VALUE)
                         {
@@ -741,7 +741,7 @@ Map::createHeightField( const TileKey* key,
 	{	
 		//Go ahead and set up the heightfield so we don't have to worry about it later
 		double minx, miny, maxx, maxy;
-		key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+		key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
 		result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
 		double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
 		double dy = (maxy - miny)/(double)(result->getNumRows()-1);

@@ -35,7 +35,7 @@ namespace osgEarth
     /**
      * Uniquely identifies a single tile on the map, relative to a Profile.
      */
-    class OSGEARTH_EXPORT TileKey : public osg::Referenced
+    class OSGEARTH_EXPORT TileKey
     {
     public:        
         /**
@@ -55,26 +55,19 @@ namespace osgEarth
             unsigned int tile_x,
             unsigned int tile_y,
             const Profile* profile );
-        
-        /** DEPRECATED (face no longer used.) This method will be REMOVED in future versions */
-        //TileKey(
-        //    unsigned int face,
-        //    unsigned int lod,
-        //    unsigned int tile_x,
-        //    unsigned int tile_y,
-        //    const Profile* profile );
+
+        TileKey( const TileKey& rhs );
+
+        /**
+         * Canonical invalid tile key.
+         */
+        static TileKey INVALID;
 
         /**
          * Gets the string representation of the key, formatted like:
          * "lod_x_y"
          */
-        std::string str() const;
-
-        /**
-         * Gets the old-style string (with the face # prepended). For backwards-compatibility
-         * only. Format: "face_lod_x_y"
-         */
-        std::string str_v1() const;
+        std::string str() const { return _key; }
 
         /**
          * Gets a TileID corresponding to this key.
@@ -86,24 +79,29 @@ namespace osgEarth
          */
         const osgEarth::Profile* getProfile() const;
 
+        /**
+         * Whether this is a valid key.
+         */
+        const bool valid() const { return _profile.valid(); }
+
     public:
         /**
          * Gets a reference to the child key of this key in the specified
          * quadrant (0, 1, 2, or 3).
          */
-        TileKey* createSubkey( unsigned int quadrant ) const;
+        TileKey createChildKey( unsigned int quadrant ) const;
 
         /**
          * Creates and returns a key that represents the parent tile of this key. The
          * caller is responsible for deleting the returned object.
          */
-        TileKey* createParentKey() const;
+        TileKey createParentKey() const;
 
         /**
          * Creates and returns a key that represents an ancestor tile corresponding to
          * the specified LOD. The caller is responsible for deleting the returned object.
          */
-        TileKey* createAncestorKey( int ancestorLod ) const;
+        TileKey createAncestorKey( int ancestorLod ) const;
 
         /**
          * Gets the face index of the tile represented by this key.
@@ -159,17 +157,9 @@ namespace osgEarth
 			return id.level;
 #endif
 		}
-        
-    protected:
-
-        TileKey();
-
-        TileKey( const TileKey& rhs );
 
     protected:
         std::string _key;
-
-        //unsigned int _face;
         unsigned int _lod;
         unsigned int _x;
         unsigned int _y;

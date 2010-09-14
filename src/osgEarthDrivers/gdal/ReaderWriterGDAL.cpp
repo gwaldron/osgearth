@@ -951,13 +951,13 @@ public:
         geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
     }
 
-    osg::Image* createImage( const TileKey* key,
+    osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress)
     {
-        if (key->getLevelOfDetail() > _maxDataLevel)
+        if (key.getLevelOfDetail() > _maxDataLevel)
         {
             OE_DEBUG << "GDAL: " << getName() << ": Reached maximum data resolution key=" 
-                << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+                << key.getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
 
@@ -970,7 +970,7 @@ public:
         {
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
-            key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
+            key.getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
             int target_width = tileSize;
             int target_height = tileSize;
@@ -1405,12 +1405,12 @@ public:
     }
 
 
-    osg::HeightField* createHeightField( const TileKey* key,
+    osg::HeightField* createHeightField( const TileKey& key,
                                          ProgressCallback* progress)
     {
-        if (key->getLevelOfDetail() > _maxDataLevel)
+        if (key.getLevelOfDetail() > _maxDataLevel)
         {
-            //OE_NOTICE << "Reached maximum data resolution key=" << key->getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
+            //OE_NOTICE << "Reached maximum data resolution key=" << key.getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
 
@@ -1426,7 +1426,7 @@ public:
         {
             //Get the meter extents of the tile
             double xmin, ymin, xmax, ymax;
-            key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
+            key.getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
             //Just read from the first band
             GDALRasterBand* band = _warpedDS->GetRasterBand(1);
@@ -1452,11 +1452,11 @@ public:
         return hf.release();
     }
 
-    bool intersects(const TileKey* key)
+    bool intersects(const TileKey& key)
     {
         //Get the native extents of the tile
         double xmin, ymin, xmax, ymax;
-        key->getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
+        key.getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
 
         return ! ( xmin >= _extentsMax.x() || xmax <= _extentsMin.x() || ymin >= _extentsMax.y() || ymax <= _extentsMin.y() );        
     }

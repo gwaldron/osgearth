@@ -137,15 +137,15 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey* key,
+    osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress)
     {
         std::stringstream buf;
 
-        int level = key->getLevelOfDetail();
+        int level = key.getLevelOfDetail();
 
         unsigned int tile_x, tile_y;
-        key->getTileXY( tile_x, tile_y );
+        key.getTileXY( tile_x, tile_y );
 
         std::string f = _map_service.getTileInfo().getFormat();
         std::transform( f.begin(), f.end(), f.begin(), tolower );
@@ -161,7 +161,7 @@ public:
         }
         else
         {
-            const GeoExtent& ex = key->getGeoExtent();
+            const GeoExtent& ex = key.getGeoExtent();
 
             buf << std::setprecision(16)
                 << _settings->url().value() << "/export"
@@ -173,7 +173,7 @@ public:
                 << "&" << "." << f;
         }
 
-        //OE_NOTICE << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
+        //OE_NOTICE << "Key = " << key.str() << ", URL = " << buf.str() << std::endl;
         //return osgDB::readImageFile( buf.str(), getOptions() );
         //return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
         
@@ -185,7 +185,7 @@ public:
     }
 
     // override
-    osg::HeightField* createHeightField( const TileKey* key,
+    osg::HeightField* createHeightField( const TileKey& key,
                                          ProgressCallback* progress)
     {
         //TODO

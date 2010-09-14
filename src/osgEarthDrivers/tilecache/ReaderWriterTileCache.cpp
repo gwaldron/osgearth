@@ -63,15 +63,15 @@ public:
 		}            
     }
 
-    osg::Image* createImage( const TileKey* key,
+    osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress)
     {
         unsigned int level, tile_x, tile_y;
-        level = key->getLevelOfDetail() +1;
-        key->getTileXY( tile_x, tile_y );
+        level = key.getLevelOfDetail() +1;
+        key.getTileXY( tile_x, tile_y );
 
         unsigned int numCols, numRows;
-        key->getProfile()->getNumTiles(level, numCols, numRows);
+        key.getProfile()->getNumTiles(level, numCols, numRows);
         
         // need to invert the y-tile index
         tile_y = numRows - tile_y - 1;

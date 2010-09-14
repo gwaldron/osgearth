@@ -437,12 +437,12 @@ MapLayer::initTileSource()
 
 
 bool
-MapLayer::isKeyValid(const TileKey* key) const
+MapLayer::isKeyValid(const TileKey& key) const
 {
-	if (!key) return false;
+	if (!key.valid()) return false;
 
-	if (_minLevel.isSet() && key->getLevelOfDetail() < _minLevel.get()) return false;
-	if (_maxLevel.isSet() && key->getLevelOfDetail() > _maxLevel.get()) return false;
+	if (_minLevel.isSet() && key.getLevelOfDetail() < _minLevel.get()) return false;
+	if (_maxLevel.isSet() && key.getLevelOfDetail() > _maxLevel.get()) return false;
 	return true;
 }
 
@@ -519,14 +519,14 @@ MapLayer::postProcess( GeoImage* input )
 }
 
 GeoImage*
-MapLayer::createImage( const TileKey* key,
+MapLayer::createImage( const TileKey& key,
                        ProgressCallback* progress)
 {
-    //OE_NOTICE << "[MapLayer] createImage for " << key->str() << std::endl;
+    //OE_NOTICE << "[MapLayer] createImage for " << key.str() << std::endl;
 
     osg::ref_ptr<GeoImage> result = NULL;
     const Profile* layerProfile = getProfile();
-    const Profile* mapProfile = key->getProfile();
+    const Profile* mapProfile = key.getProfile();
 
 	if ( !getProfile() )
 	{
@@ -534,7 +534,7 @@ MapLayer::createImage( const TileKey* key,
 		return NULL;
 	}
 
-	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key->str() << std::endl;
+	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key.str() << std::endl;
 	if (!getTileSource() && _cacheOnly == false )
 	{
 		OE_WARN << LC << "Error:  MapLayer does not have a valid TileSource, cannot create image " << std::endl;
@@ -581,8 +581,8 @@ MapLayer::createImage( const TileKey* key,
         osg::ref_ptr<osg::Image> image = _cache->getImage( key, _name, _cacheFormat.value() );
 		if (image.valid())
 		{
-			OE_DEBUG << LC << "Layer " << _name << " got tile " << key->str() << " from map cache " << std::endl;
-			return postProcess( new GeoImage( image.get(), key->getGeoExtent() ) );
+			OE_DEBUG << LC << "Layer " << _name << " got tile " << key.str() << " from map cache " << std::endl;
+			return postProcess( new GeoImage( image.get(), key.getGeoExtent() ) );
 		}
 	}
 
@@ -593,7 +593,7 @@ MapLayer::createImage( const TileKey* key,
         osg::ref_ptr<osg::Image> image = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( image )
         {
-            result = new GeoImage( image.get(), key->getGeoExtent() );
+            result = new GeoImage( image.get(), key.getGeoExtent() );
         }
     }
     // Otherwise, we need to process the tiles.
@@ -603,35 +603,34 @@ MapLayer::createImage( const TileKey* key,
 		osg::ref_ptr<GeoImage> mosaic;
 
 		// Determine the intersecting keys and create and extract an appropriate image from the tiles
-		std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
+		std::vector<TileKey> intersectingTiles;
 
         //Scale the extent if necessary
-        GeoExtent ext = key->getGeoExtent();
+        GeoExtent ext = key.getGeoExtent();
         if (_edgeBufferRatio.isSet())
         {
             double ratio = _edgeBufferRatio.get();
             ext.scale(ratio, ratio);
         }
 
-		//layerProfile->getIntersectingTiles(key, intersectingTiles);
         layerProfile->getIntersectingTiles(ext, intersectingTiles);
 
 		if (intersectingTiles.size() > 0)
 		{
 			double dst_minx, dst_miny, dst_maxx, dst_maxy;
-			key->getGeoExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
+			key.getGeoExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 
 
 			osg::ref_ptr<MultiImage> mi = new MultiImage;
-			std::vector< osg::ref_ptr<const TileKey> > missingTiles;
+			std::vector< const TileKey > missingTiles;
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
 				double minX, minY, maxX, maxY;
-				intersectingTiles[j]->getGeoExtent().getBounds(minX, minY, maxX, maxY);
+				intersectingTiles[j].getGeoExtent().getBounds(minX, minY, maxX, maxY);
 
 				OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
-				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j].get(), cacheInLayerProfile, progress);
+				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j], cacheInLayerProfile, progress);
 				if (img.valid())
 				{
 					if (img->getPixelFormat() != GL_RGBA)
@@ -642,11 +641,11 @@ MapLayer::createImage( const TileKey* key,
                             img = convertedImg;
                         }
 					}
-					mi->getImages().push_back(TileImage(img.get(), intersectingTiles[j].get()));
+					mi->getImages().push_back(TileImage(img.get(), intersectingTiles[j]));
 				}
 				else
 				{
-					missingTiles.push_back(intersectingTiles[j].get());
+					missingTiles.push_back(intersectingTiles[j]);
 				}
 			}
 			if (mi->getImages().empty())
@@ -668,7 +667,7 @@ MapLayer::createImage( const TileKey* key,
                     unsigned char *data = newImage->data(0,0);
                     memset(data, 0, newImage->getTotalSizeInBytes());
 
-                    mi->getImages().push_back(TileImage(newImage.get(), missingTiles[j].get()));
+                    mi->getImages().push_back(TileImage(newImage.get(), missingTiles[j]));
                 }
 			}
 
@@ -685,7 +684,7 @@ MapLayer::createImage( const TileKey* key,
             // whether to use the fast-path mercator locator. If so, DO NOT reproject the imagery here.
             bool useMercatorFastPath =
                 mosaic->getSRS()->isMercator() &&
-                key->getProfile()->getSRS()->isGeographic() &&
+                key.getProfile()->getSRS()->isGeographic() &&
                 _useMercatorFastPath == true;
 
             // the imagery must be reprojected iff:
@@ -694,8 +693,8 @@ MapLayer::createImage( const TileKey* key,
             //  * UNLESS they are both geographic SRS's (in which case we can skip reprojection)
             bool needsReprojection =
                 !useMercatorFastPath &&
-                !mosaic->getSRS()->isEquivalentTo( key->getProfile()->getSRS()) &&
-                !(mosaic->getSRS()->isGeographic() && key->getProfile()->getSRS()->isGeographic());
+                !mosaic->getSRS()->isEquivalentTo( key.getProfile()->getSRS()) &&
+                !(mosaic->getSRS()->isGeographic() && key.getProfile()->getSRS()->isGeographic());
 
             bool needsLeftBorder = false;
             bool needsRightBorder = false;
@@ -706,12 +705,12 @@ MapLayer::createImage( const TileKey* key,
             //because the data doesn't encompass the entire map.
             if (!needsReprojection)
             {
-                GeoExtent keyExtent = key->getGeoExtent();
+                GeoExtent keyExtent = key.getGeoExtent();
                 //If the key is geographic and the mosaic is mercator, we need to get the mercator extents to determine if we need
                 //to add the border or not
-                if (key->getGeoExtent().getSRS()->isGeographic() && mosaic->getSRS()->isMercator())
+                if (key.getGeoExtent().getSRS()->isGeographic() && mosaic->getSRS()->isMercator())
                 {
-                    keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( key->getGeoExtent( ));
+                    keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( key.getGeoExtent( ));
                 }
 
 
@@ -754,13 +753,13 @@ MapLayer::createImage( const TileKey* key,
 				OE_DEBUG << LC << "  Reprojecting image" << std::endl;
                 //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
-                result = mosaic->reproject( key->getProfile()->getSRS(), &key->getGeoExtent(), _reprojectedTileSize.value(), _reprojectedTileSize.value() );
+                result = mosaic->reproject( key.getProfile()->getSRS(), &key.getGeoExtent(), _reprojectedTileSize.value(), _reprojectedTileSize.value() );
             }
             else
             {
 				OE_DEBUG << LC << "  Cropping image" << std::endl;
                 // crop to fit the map key extents
-                GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key->getGeoExtent() );
+                GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key.getGeoExtent() );
                 if ( clampedMapExt.isValid() )
 				{
 					int size = _exactCropping == true ? _reprojectedTileSize.value() : 0;
@@ -781,7 +780,7 @@ MapLayer::createImage( const TileKey* key,
 	//If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
 	if (result && _cache.valid() && _cacheEnabled == true && cacheInMapProfile)
 	{
-		OE_DEBUG << LC << "Layer " << _name << " writing tile " << key->str() << " to cache " << std::endl;
+		OE_DEBUG << LC << "Layer " << _name << " writing tile " << key.str() << " to cache " << std::endl;
 		_cache->setImage( key, _name, _cacheFormat.value(), result->getImage());
 	}
 
@@ -789,7 +788,7 @@ MapLayer::createImage( const TileKey* key,
 }
 
 osg::Image*
-MapLayer::createImageWrapper( const TileKey* key,
+MapLayer::createImageWrapper( const TileKey& key,
                               bool cacheInLayerProfile,
                               ProgressCallback* progress)
 {
@@ -802,13 +801,13 @@ MapLayer::createImageWrapper( const TileKey* key,
 
 	if (image.valid())
 	{
-		OE_DEBUG << LC << " Layer " << _name << " got " << key->str() << " from cache " << std::endl;
+		OE_DEBUG << LC << " Layer " << _name << " got " << key.str() << " from cache " << std::endl;
 	}
 
 	if (source && !image.valid() && _cacheOnly == false )
 	{
         //Only try to get the image if it's not in the blacklist
-        if (!source->getBlacklist()->contains( key->getTileId() ))
+        if (!source->getBlacklist()->contains( key.getTileId() ))
         {
             //Only try to get data if the source actually has data
             if (source->hasData( key ) )
@@ -818,18 +817,18 @@ MapLayer::createImageWrapper( const TileKey* key,
                 if (!image.valid() && (!progress || !progress->isCanceled()))
                 {
                     //Add the tile to the blacklist
-                    OE_DEBUG << LC << "Adding tile " << key->str() << " to the blacklist" << std::endl;
-                    source->getBlacklist()->add(key->getTileId());
+                    OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
+                    source->getBlacklist()->add(key.getTileId());
                 }
             }
             else
             {
-                OE_DEBUG << LC << "Source has no data at " << key->str() << std::endl;
+                OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
             }
         }
         else
         {
-            OE_DEBUG << LC << "Tile " << key->str() << " is blacklisted, not checking" << std::endl;
+            OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
         }
 
 		//Check to see if the image is the nodata image
@@ -837,7 +836,7 @@ MapLayer::createImageWrapper( const TileKey* key,
 		{
 			if (ImageUtils::areEquivalent(image.get(), _nodata_image.get()))
 			{
-				OE_DEBUG << LC << "Found nodata for " << key->str() << std::endl;
+				OE_DEBUG << LC << "Found nodata for " << key.str() << std::endl;
 				image = 0;
 			}
 		}
@@ -872,7 +871,7 @@ MapLayer::createImageWrapper( const TileKey* key,
 }
 
 GeoHeightField*
-MapLayer::createGeoHeightField(const TileKey* key,
+MapLayer::createGeoHeightField(const TileKey& key,
                                ProgressCallback * progress)
 {
     osg::ref_ptr<osg::HeightField> hf;
@@ -880,7 +879,7 @@ MapLayer::createGeoHeightField(const TileKey* key,
     TileSource* source = getTileSource();
 
     //Only try to get the tile if it isn't blacklisted
-    if (!source->getBlacklist()->contains( key->getTileId() ))
+    if (!source->getBlacklist()->contains( key.getTileId() ))
     {
         //Only try to get data if the source actually has data
         if (source->hasData( key ) )
@@ -889,17 +888,17 @@ MapLayer::createGeoHeightField(const TileKey* key,
             //Blacklist the tile if we can't get it and it wasn't cancelled
             if (!hf.valid() && (!progress || !progress->isCanceled()))
             {
-                source->getBlacklist()->add(key->getTileId());
+                source->getBlacklist()->add(key.getTileId());
             }
         }
         else
         {
-            OE_DEBUG << LC << "Source has no data at " << key->str() << std::endl;
+            OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
         }
     }
     else
     {
-        OE_DEBUG << LC << "Tile " << key->str() << " is blacklisted " << std::endl;
+        OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted " << std::endl;
     }
 	if (hf.valid())
 	{
@@ -913,16 +912,16 @@ MapLayer::createGeoHeightField(const TileKey* key,
 		o.setValidDataOperator(ops.get());
 		o(hf);
 
-        return new GeoHeightField(hf.get(), key->getGeoExtent(), getProfile()->getVerticalSRS() );
+        return new GeoHeightField(hf.get(), key.getGeoExtent(), getProfile()->getVerticalSRS() );
 	}
 	return NULL;
 }
 
 osg::HeightField*
-MapLayer::createHeightField(const osgEarth::TileKey *key,
+MapLayer::createHeightField(const osgEarth::TileKey& key,
                             ProgressCallback* progress)
 {
-    const Profile* mapProfile = key->getProfile();
+    const Profile* mapProfile = key.getProfile();
 
 	osg::ref_ptr<osg::HeightField> result;
 
@@ -942,14 +941,14 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 		result = _cache->getHeightField( key, _name, _cacheFormat.value() );
 		if (result.valid())
 		{
-			OE_DEBUG << LC << "MapLayer::createHeightField got tile " << key->str() << " from layer " << _name << " from cache " << std::endl;
+			OE_DEBUG << LC << "MapLayer::createHeightField got tile " << key.str() << " from layer " << _name << " from cache " << std::endl;
 		}
 	}
 
 	if (!result.valid() && getTileSource() && getTileSource()->isOK() )
     {
 		//If the profiles are equivalent, get the HF from the TileSource.
-		if (key->getProfile()->isEquivalentTo( getProfile() ))
+		if (key.getProfile()->isEquivalentTo( getProfile() ))
 		{
 			if (isKeyValid( key ) )
 			{
@@ -967,15 +966,15 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 			HeightFields heightFields;
 
 			//Determine the intersecting keys
-			std::vector< osg::ref_ptr<const TileKey> > intersectingTiles;
+			std::vector< TileKey > intersectingTiles;
 			getProfile()->getIntersectingTiles(key, intersectingTiles);
 			if (intersectingTiles.size() > 0)
 			{
 				for (unsigned int i = 0; i < intersectingTiles.size(); ++i)
 				{
-					if (isKeyValid( intersectingTiles[i].get() ) )
+					if (isKeyValid( intersectingTiles[i] ) )
 					{
-                        osg::ref_ptr<GeoHeightField> hf = createGeoHeightField( intersectingTiles[i].get(), progress );
+                        osg::ref_ptr<GeoHeightField> hf = createGeoHeightField( intersectingTiles[i], progress );
 						if (hf.valid())
 						{
 							heightFields.push_back(hf.get());
@@ -1001,7 +1000,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 
 				//Go ahead and set up the heightfield so we don't have to worry about it later
 				double minx, miny, maxx, maxy;
-				key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+				key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
 				double dx = (maxx - minx)/(double)(width-1);
 				double dy = (maxy - miny)/(double)(height-1);
 
@@ -1018,7 +1017,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 						for (HeightFields::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
 						{
 							float e = 0.0;
-                            if (itr->get()->getElevation(key->getGeoExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, _profile->getVerticalSRS(), e))
+                            if (itr->get()->getElevation(key.getGeoExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, _profile->getVerticalSRS(), e))
 							{
 								elevation = e;
 								break;
@@ -1042,7 +1041,7 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 	{	
 		//Go ahead and set up the heightfield so we don't have to worry about it later
 		double minx, miny, maxx, maxy;
-		key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+		key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
 		result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
 		double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
 		double dy = (maxy - miny)/(double)(result->getNumRows()-1);
@@ -1062,24 +1061,24 @@ MapLayer::createHeightField(const osgEarth::TileKey *key,
 
 struct FetchTask : public TaskRequest 
 {
-    FetchTask( MapLayer* layer, const TileKey* key, L2Cache::TileCache& cache )
+    FetchTask( MapLayer* layer, const TileKey& key, L2Cache::TileCache& cache )
         : _layer(layer), _key(key), _cache(cache) { }
 
     void operator() ( ProgressCallback* progress )
     {
-        //OE_NOTICE << "Task: fetching " << _key->str() << std::endl;
+        //OE_NOTICE << "Task: fetching " << _key.str() << std::endl;
 
         if ( _layer->getType() == MapLayer::TYPE_IMAGE ) {
             GeoImage* img = _layer->createImage( _key );
-            if ( img ) _cache.put( L2Cache::TileTag(_layer.get(),_key->str()), img );
+            if ( img ) _cache.put( L2Cache::TileTag(_layer.get(),_key.str()), img );
         }
         else { // MapLayer::TYPE_HEIGHTFIELD
-            osg::HeightField* hf = _layer->createHeightField( _key.get() );
-            if ( hf ) _cache.put( L2Cache::TileTag(_layer.get(),_key->str()), hf );
+            osg::HeightField* hf = _layer->createHeightField( _key );
+            if ( hf ) _cache.put( L2Cache::TileTag(_layer.get(),_key.str()), hf );
         }
     }
     osg::ref_ptr<MapLayer> _layer;
-    osg::ref_ptr<const TileKey> _key;
+    TileKey _key;
     L2Cache::TileCache& _cache;
 };
 
@@ -1121,33 +1120,33 @@ L2Cache::L2Cache()
 }
 
 void
-L2Cache::scheduleSubKeys(MapLayer* layer, const TileKey* key)
+L2Cache::scheduleSubKeys(MapLayer* layer, const TileKey& key)
 {
     for( int i=0; i<4; i++ )
     {
-        osg::ref_ptr<TileKey> subkey = key->createSubkey( i );
-        if ( layer->isKeyValid( subkey.get() ) )
-            _service->add( new FetchTask( layer, subkey.get(), _cache ) );
+        TileKey subkey = key.createChildKey( i );
+        if ( layer->isKeyValid( subkey ) )
+            _service->add( new FetchTask( layer, subkey, _cache ) );
     }
 }
 
 GeoImage*
-L2Cache::createImage(MapLayer* layer, const TileKey* key)
+L2Cache::createImage(MapLayer* layer, const TileKey& key)
 {
     scheduleSubKeys(layer,key);
     osg::ref_ptr<GeoImage> result;
-    result = dynamic_cast<GeoImage*>( _cache.get( TileTag(layer,key->str()) ) );
+    result = dynamic_cast<GeoImage*>( _cache.get( TileTag(layer,key.str()) ) );
     if ( !result.valid() )
         result = layer->createImage( key );
     return result.release();
 }
 
 osg::HeightField*
-L2Cache::createHeightField(MapLayer* layer, const TileKey* key)
+L2Cache::createHeightField(MapLayer* layer, const TileKey& key)
 {
     scheduleSubKeys(layer,key);
     osg::ref_ptr<osg::HeightField> result;
-    result = dynamic_cast<osg::HeightField*>( _cache.get( TileTag(layer,key->str()) ) );
+    result = dynamic_cast<osg::HeightField*>( _cache.get( TileTag(layer,key.str()) ) );
     if ( !result.valid() )
         result = layer->createHeightField( key );
     return result.release();

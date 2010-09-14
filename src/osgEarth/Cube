@@ -53,7 +53,7 @@ namespace osgEarth
         /**
          * Get the face # containing a TileKey.
          */
-        static int getFace( const TileKey* key );
+        static int getFace( const TileKey& key );
         
         /**
          * Converts cube coordinates (0,0=>6,1) to face coordinates (0,0=>1,1,F).
@@ -175,13 +175,13 @@ namespace osgEarth
         /**
          * Gets the cube face associated with a tile key (in cube srs).
          */
-        static int getFace( const TileKey* key );
+        static int getFace( const TileKey& key );
 
     public: // Profile
 
         virtual void getIntersectingTiles(
             const GeoExtent& extent,
-            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys ) const;
+            std::vector< TileKey >& out_intersectingKeys ) const;
 
     private:
 

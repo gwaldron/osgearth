@@ -313,11 +313,11 @@ public:
 		return bufStr;
     }
     
-    osgTerrain::TerrainTile* getTerrainTile( const TileKey* key, ProgressCallback* progress )
+    osgTerrain::TerrainTile* getTerrainTile( const TileKey& key, ProgressCallback* progress )
     {
-        int level = key->getLevelOfDetail();
+        int level = key.getLevelOfDetail();
         unsigned int tile_x, tile_y;
-        key->getTileXY( tile_x, tile_y );
+        key.getTileXY( tile_x, tile_y );
         
         int max_x = (2 << level) - 1;
         int max_y = (1 << level) - 1;
@@ -497,7 +497,7 @@ public:
 		}
     }
     
-    osg::Image* createImage( const TileKey* key,
+    osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress)
     {
         //TODO:  Make VPB driver use progress callback
@@ -520,7 +520,7 @@ public:
         return 0;
     }
 
-    osg::HeightField* createHeightField( const TileKey* key,
+    osg::HeightField* createHeightField( const TileKey& key,
                                          ProgressCallback* progress
                                          )
     {

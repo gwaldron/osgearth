@@ -101,13 +101,13 @@ public:
     }
 
     osg::Image*
-    createImage( const TileKey* key, ProgressCallback* progress )
+    createImage( const TileKey& key, ProgressCallback* progress )
     {
-        if ( !_image.valid() || !getProfile() || key->getLevelOfDetail() > getMaxDataLevel() )
+        if ( !_image.valid() || !getProfile() || key.getLevelOfDetail() > getMaxDataLevel() )
             return NULL;
 
         const GeoExtent& imageEx = getProfile()->getExtent();
-        const GeoExtent& keyEx = key->getGeoExtent();
+        const GeoExtent& keyEx = key.getGeoExtent();
 
         double x0r = (keyEx.xMin()-imageEx.xMin())/imageEx.width();
         double x1r = (keyEx.xMax()-imageEx.xMin())/imageEx.width();

@@ -350,12 +350,12 @@ namespace osgEarth
         *@returns
         *       The URL if the data intersects the TileKey.
         */
-        std::string getURL(const osgEarth::TileKey *tileKey, bool invertY);
+        std::string getURL(const osgEarth::TileKey& tileKey, bool invertY);
 
         /**
         *Determines whether or not the given TileKey intersects the TileMap
         */
-        bool intersectsKey(const osgEarth::TileKey *tileKey);
+        bool intersectsKey(const osgEarth::TileKey& tileKey);
 
         /**
         *Automatically generates a number of TileSets

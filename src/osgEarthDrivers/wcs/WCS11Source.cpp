@@ -67,15 +67,15 @@ WCS11Source::getExtension() const
 
 
 osg::Image*
-WCS11Source::createImage( const TileKey* key,
+WCS11Source::createImage( const TileKey& key,
                          ProgressCallback* progress)
 {
     HTTPRequest request = createRequest( key );
 
-    OE_INFO << "[osgEarth::WCS1.1] Key=" << key->str() << " URL = " << request.getURL() << std::endl;
+    OE_INFO << "[osgEarth::WCS1.1] Key=" << key.str() << " URL = " << request.getURL() << std::endl;
 
     double lon0,lat0,lon1,lat1;
-    key->getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
+    key.getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
 
     // download the data
     HTTPResponse response = HTTPClient::get( request, getOptions(), progress );
@@ -113,7 +113,7 @@ WCS11Source::createImage( const TileKey* key,
 
 
 osg::HeightField*
-WCS11Source::createHeightField( const TileKey* key,
+WCS11Source::createHeightField( const TileKey& key,
                                 ProgressCallback* progress)
 {
     osg::HeightField* field = NULL;
@@ -147,12 +147,12 @@ http://server/ArcGIS/services/WorldElevation/MapServer/WCSServer
 
 
 HTTPRequest
-WCS11Source::createRequest( const TileKey* key ) const
+WCS11Source::createRequest( const TileKey& key ) const
 {
     std::stringstream buf;
 
     double lon_min, lat_min, lon_max, lat_max;
-    key->getGeoExtent().getBounds( lon_min, lat_min, lon_max, lat_max );
+    key.getGeoExtent().getBounds( lon_min, lat_min, lon_max, lat_max );
 
     int lon_samples = _settings->tileSize().value();
     int lat_samples = _settings->tileSize().value();

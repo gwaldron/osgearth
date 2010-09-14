@@ -49,11 +49,11 @@ public:
         setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
     }
 
-    osg::Image* createImage( const TileKey* key,
+    osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress )
     {
         //Return NULL if we are given a non-mercator key
-        if ( !key->isMercator() ) return 0;
+        if ( !key.isMercator() ) return 0;
 
         std::stringstream buf;
 
@@ -64,10 +64,10 @@ public:
         {            
             // http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl?v=4.1&md=2&x=0&y=0&z=2&r=1
             unsigned int tile_x, tile_y;
-            key->getTileXY( tile_x, tile_y );
-            unsigned int zoom = key->getLevelOfDetail();
+            key.getTileXY( tile_x, tile_y );
+            unsigned int zoom = key.getLevelOfDetail();
             unsigned int size_x, size_y;
-            key->getProfile()->getNumTiles( zoom, size_x, size_y );
+            key.getProfile()->getNumTiles( zoom, size_x, size_y );
 
             buf << "http://us.maps1.yimg.com/us.tile.maps.yimg.com/tl"
                 << "?v=4.1&md=2&r=1"
@@ -78,10 +78,10 @@ public:
         else if ( dataset == "aerial" || dataset == "satellite" )
         {
             unsigned int tile_x, tile_y;
-            key->getTileXY( tile_x, tile_y );
-            unsigned int zoom = key->getLevelOfDetail();
+            key.getTileXY( tile_x, tile_y );
+            unsigned int zoom = key.getLevelOfDetail();
             unsigned int size_x, size_y;
-            key->getProfile()->getNumTiles( zoom, size_x, size_y );
+            key.getProfile()->getNumTiles( zoom, size_x, size_y );
 
             buf << "http://us.maps3.yimg.com/aerial.maps.yimg.com/ximg"
                 << "?v=1.8&s=256&t=a&r=1"
@@ -93,14 +93,14 @@ public:
 		std::string base;
 		base = buf.str();
 
-        OE_DEBUG << key->str() << "=" << base << std::endl;
+        OE_DEBUG << key.str() << "=" << base << std::endl;
         
         osg::ref_ptr<osg::Image> image;
         HTTPClient::readImageFile( base, image, getOptions(), progress );
         return image.release();
     }
 
-    osg::HeightField* createHeightField( const TileKey* key,
+    osg::HeightField* createHeightField( const TileKey& key,
                                          ProgressCallback* progress)
     {
         //NI

@@ -249,7 +249,7 @@ public:
 
     // fetch a tile from the WMS service and report any exceptions.
     osgDB::ReaderWriter* fetchTileAndReader( 
-        const TileKey*     key, 
+        const TileKey&     key, 
         const std::string& extraAttrs,
         ProgressCallback*  progress, 
         HTTPResponse&      out_response )
@@ -303,7 +303,7 @@ public:
 
 
     /** override */
-    osg::Image* createImage( const TileKey* key, ProgressCallback* progress )
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Image> image;
 
@@ -335,7 +335,7 @@ public:
     }
 
     /** creates a 3D image from timestamped data. */
-    osg::Image* createImage3D( const TileKey* key, ProgressCallback* progress )
+    osg::Image* createImage3D( const TileKey& key, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Image> image;
 
@@ -377,7 +377,7 @@ public:
     }
     
     ///** creates a 3D image from timestamped data. */
-    //osg::Image* createImageSequence( const TileKey* key, ProgressCallback* progress )
+    //osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
     //{
     //    osg::ImageSequence* seq = new osg::ImageSequence();
 
@@ -401,7 +401,7 @@ public:
     //}
 
     /** creates a 3D image from timestamped data. */
-    osg::Image* createImageSequence( const TileKey* key, ProgressCallback* progress )
+    osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
     {
         osg::ImageSequence* seq = new SyncImageSequence(); //osg::ImageSequence();
 
@@ -434,7 +434,7 @@ public:
 
 
     /** override */
-    osg::HeightField* createHeightField( const TileKey* key,
+    osg::HeightField* createHeightField( const TileKey& key,
                                          ProgressCallback* progress)
     {
         osg::Image* image = createImage(key, progress);
@@ -456,10 +456,10 @@ public:
     }
 
 
-    std::string createURI( const TileKey* key ) const
+    std::string createURI( const TileKey& key ) const
     {
         double minx, miny, maxx, maxy;
-        key->getGeoExtent().getBounds( minx, miny, maxx, maxy);
+        key.getGeoExtent().getBounds( minx, miny, maxx, maxy);
         
         char buf[2048];
         sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);

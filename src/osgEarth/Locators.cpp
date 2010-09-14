@@ -64,18 +64,18 @@ _inverseCalculated(false)
 }
 
 GeoLocator*
-GeoLocator::createForKey( const TileKey* key, Map* map )
+GeoLocator::createForKey( const TileKey& key, Map* map )
 {
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
     bool isGeocentric = !isProjected;
 
-    const GeoExtent& ex = key->getGeoExtent();
+    const GeoExtent& ex = key.getGeoExtent();
     double xmin, ymin, xmax, ymax;
-    key->getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
+    key.getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
 
     // A locator will place the tile on the globe:
-    GeoLocator* locator = key->getProfile()->getSRS()->createLocator(
+    GeoLocator* locator = key.getProfile()->getSRS()->createLocator(
         ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax(),
         isPlateCarre );
 

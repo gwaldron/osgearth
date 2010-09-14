@@ -80,7 +80,7 @@ namespace osgEarth { namespace Features
         virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL);
 
         //override
-        virtual osg::Image* createImage( const TileKey* key, ProgressCallback* progress );
+        virtual osg::Image* createImage( const TileKey& key, ProgressCallback* progress );
 
     public: // properties:
 

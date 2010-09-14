@@ -185,7 +185,7 @@ namespace osgEarth
          * Gets the tile keys that comprise the tiles at the root (LOD 0) of this
          * profile.
          */
-        void getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys ) const;
+        void getRootKeys(std::vector<TileKey>& out_keys ) const;
 
         /** 
          * Calculates an extent given a tile location in this profile.
@@ -216,15 +216,15 @@ namespace osgEarth
          *Gets the intersecting tiles of this Profile with the given TileKey.
          */
         void getIntersectingTiles(
-            const TileKey* key,
-            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+            const TileKey& key,
+            std::vector<TileKey>& out_intersectingKeys) const;
 
         /**
          *Gets the intersecting tiles of this Profile with the given extents
          */
         virtual void getIntersectingTiles(
             const GeoExtent& extent,
-            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys ) const;
+            std::vector<TileKey>& out_intersectingKeys) const;
 
         /** 
          * Clamps the incoming extents to the extents of this profile, and then converts the 
@@ -238,7 +238,7 @@ namespace osgEarth
          * Express the coordinates in the profile's SRS.
          * Returns NULL if the point lies outside the profile's extents.
          */
-        TileKey* createTileKey( double x, double y, unsigned int level ) const;
+        TileKey createTileKey( double x, double y, unsigned int level ) const;
 
         /**
          * Returns a readable description of the profile.
@@ -265,7 +265,7 @@ namespace osgEarth
 
         virtual void addIntersectingTiles(
             const GeoExtent& key_ext,
-            std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const;
+            std::vector<TileKey>& out_intersectingKeys) const;
 
 
     private:

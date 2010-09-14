@@ -138,7 +138,7 @@ const Profile* Cache::loadLayerProperties( const std::string& layerName,
 }
 
 osg::HeightField*
-Cache::getHeightField( const TileKey* key,
+Cache::getHeightField( const TileKey& key,
 			           const std::string& layerName,
 					   const std::string& format)
 {
@@ -156,7 +156,7 @@ Cache::getHeightField( const TileKey* key,
 }
 
 void
-Cache::setHeightField( const TileKey* key,
+Cache::setHeightField( const TileKey& key,
 					   const std::string& layerName,
 					   const std::string& format,
 					   osg::HeightField* hf)
@@ -193,7 +193,7 @@ _writeWorldFiles( rhs._writeWorldFiles )
 }
 
 bool
-DiskCache::isCached(const osgEarth::TileKey *key,
+DiskCache::isCached(const osgEarth::TileKey& key,
 					const std::string& layerName,
 					const std::string& format) const
 {
@@ -211,16 +211,16 @@ DiskCache::getPath() const
 }
 
 std::string
-DiskCache::getFilename(const osgEarth::TileKey *key,
+DiskCache::getFilename(const osgEarth::TileKey& key,
 					   const std::string& layerName,
 					   const std::string& format) const
 {
 	unsigned int level, x, y;
-    level = key->getLevelOfDetail() +1;
-    key->getTileXY( x, y );
+    level = key.getLevelOfDetail() +1;
+    key.getTileXY( x, y );
 
     unsigned int numCols, numRows;
-    key->getProfile()->getNumTiles(level, numCols, numRows);
+    key.getProfile()->getNumTiles(level, numCols, numRows);
 
     // need to invert the y-tile index
     y = numRows - y - 1;
@@ -242,7 +242,7 @@ DiskCache::getFilename(const osgEarth::TileKey *key,
 }
 
 osg::Image*
-DiskCache::getImage( const TileKey* key,
+DiskCache::getImage( const TileKey& key,
 					 const std::string& layerName,
 					 const std::string& format)
 {
@@ -262,7 +262,7 @@ DiskCache::getImage( const TileKey* key,
 * Sets the cached image for the given TileKey
 */
 void 
-DiskCache::setImage( const TileKey* key,
+DiskCache::setImage( const TileKey& key,
 					 const std::string& layerName,
 					 const std::string& format,
 					 osg::Image* image)
@@ -301,7 +301,7 @@ DiskCache::setImage( const TileKey* key,
     {
         //Write out the world file along side the image
         double minx, miny, maxx, maxy;
-        key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+        key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
 
         std::string baseFilename = osgDB::getNameLessExtension(filename);
 
@@ -364,9 +364,9 @@ DiskCache::getTMSPath(const std::string &layerName)
 }
 
 void DiskCache::storeLayerProperties( const std::string& layerName,
-		                          const Profile* profile,
-			                      const std::string& format,
-			                      unsigned int tile_size)
+                                     const Profile* profile,
+                                     const std::string& format,
+                                     unsigned int tile_size)
 {
 	osg::ref_ptr<TileMap> tileMap = TileMap::create("", profile, format, tile_size, tile_size);
 	std::string path = getTMSPath( layerName );
@@ -436,7 +436,7 @@ MemCache::setMaxNumTilesInCache(unsigned int max)
 }
 
 osg::Image*
-MemCache::getImage(const osgEarth::TileKey *key,
+MemCache::getImage(const osgEarth::TileKey& key,
 				   const std::string& layerName,
 				   const std::string& format)
 {
@@ -444,7 +444,7 @@ MemCache::getImage(const osgEarth::TileKey *key,
 }
 
 void
-MemCache::setImage(const osgEarth::TileKey *key,
+MemCache::setImage(const osgEarth::TileKey& key,
 				   const std::string& layerName,
 				   const std::string& format,
 				   osg::Image *image)
@@ -452,13 +452,13 @@ MemCache::setImage(const osgEarth::TileKey *key,
   setObject( key, layerName, format, image );
 }
 
-osg::HeightField* MemCache::getHeightField( const TileKey* key,
+osg::HeightField* MemCache::getHeightField( const TileKey& key,
   const std::string& layerName,
   const std::string& format) {
   return dynamic_cast<osg::HeightField*>( getObject( key, layerName, format ) );
 }
 
-void MemCache::setHeightField( const TileKey* key,
+void MemCache::setHeightField( const TileKey& key,
                               const std::string& layerName,
                               const std::string& format,
                               osg::HeightField* hf)
@@ -479,7 +479,7 @@ MemCache::purge( const std::string& layerName, int olderThan, bool async )
     return true;
 }
 
-osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& layerName, const std::string& format)
+osg::Referenced* MemCache::getObject( const TileKey& key, const std::string& layerName, const std::string& format)
 {
   osg::Timer_t now = osg::Timer::instance()->tick();
 
@@ -487,7 +487,7 @@ osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& lay
 
   //OE_NOTICE << "List contains: " << _images.size() << std::endl;
 
-  std::string id = key->str() + layerName;
+  std::string id = key.str() + layerName;
   //Find the image in the cache
   //ImageCache::iterator itr = _images.find(id);
   KeyToIteratorMap::iterator itr = _keyToIterMap.find(id);
@@ -497,16 +497,16 @@ osg::Referenced* MemCache::getObject( const TileKey* key, const std::string& lay
     _objects.erase(itr->second);
     _objects.push_front(entry);
     itr->second = _objects.begin();
-    //OE_NOTICE<<"Getting from memcache "<< key->str() <<std::endl;
+    //OE_NOTICE<<"Getting from memcache "<< key.str() <<std::endl;
     return itr->second->_object.get();
   }
   return 0;
 }
 
-void MemCache::setObject( const TileKey* key, const std::string& layerName, const std::string& format, osg::Referenced* referenced ) {
+void MemCache::setObject( const TileKey& key, const std::string& layerName, const std::string& format, osg::Referenced* referenced ) {
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
-  std::string id = key->str() + layerName;
+  std::string id = key.str() + layerName;
 
   CachedObject entry;
   entry._object = referenced;
@@ -524,7 +524,7 @@ void MemCache::setObject( const TileKey* key, const std::string& layerName, cons
 }
 
 bool
-MemCache::isCached(const osgEarth::TileKey *key,
+MemCache::isCached(const osgEarth::TileKey& key,
 				   const std::string& layerName,
 				   const std::string& format)
 {
@@ -549,17 +549,17 @@ _invertY( rhs._invertY )
 }
 
 std::string
-TMSCache::getFilename( const TileKey* key,
+TMSCache::getFilename( const TileKey& key,
 					   const std::string& layerName,
 					   const std::string& format) const
 {
 	unsigned int x,y;
-    key->getTileXY(x, y);
+    key.getTileXY(x, y);
 
-    unsigned int lod = key->getLevelOfDetail();
+    unsigned int lod = key.getLevelOfDetail();
     
     unsigned int numCols, numRows;
-    key->getProfile()->getNumTiles(lod, numCols, numRows);
+    key.getProfile()->getNumTiles(lod, numCols, numRows);
     if (!_invertY)
     {
         y = numRows - y - 1;

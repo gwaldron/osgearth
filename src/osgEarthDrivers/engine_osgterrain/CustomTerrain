@@ -87,14 +87,14 @@ struct Relative {
 class CustomTile : public osgTerrain::TerrainTile
 {
 public:
-    CustomTile( const TileKey* key, GeoLocator* keyLocator );
+    CustomTile( const TileKey& key, GeoLocator* keyLocator );
 
     virtual const char* libraryName() const { return "osgEarth"; }
     virtual const char* className() const { return "CustomTile"; }
 
 
     /** Gets the tilekey associated with this tile. */
-    const TileKey* getKey() const;
+    const TileKey& getKey() const;
 
     /** Sets whether to use the TaskService to schedule per-layer background data loading. */
     void setUseLayerRequests( bool );
@@ -203,7 +203,7 @@ private:
     bool _tileGenNeeded;
     bool _sequentialImagery;
 
-    osg::ref_ptr<const TileKey> _key;
+    TileKey _key;
     osg::ref_ptr<GeoLocator> _keyLocator;
     TaskRequestList _requests;
     osg::ref_ptr<TaskRequest> _elevRequest;

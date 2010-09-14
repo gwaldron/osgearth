@@ -260,7 +260,7 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 
 
     // collect the tile keys comprising the root tiles of the terrain.
-    std::vector< osg::ref_ptr<TileKey> > keys;
+    std::vector< TileKey > keys;
     _map->getProfile()->getRootKeys( keys );
 
     for (unsigned int i = 0; i < keys.size(); ++i)
@@ -268,14 +268,14 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
         // always load the root tiles completely; no deferring. -gw
         bool loadNow = true; //!_terrainOptions.getPreemptiveLOD();
 
-        osg::Node* node = _tileFactory->createSubTiles( _map.get(), _terrain, keys[i].get(), loadNow );
+        osg::Node* node = _tileFactory->createSubTiles( _map.get(), _terrain, keys[i], loadNow );
         if (node)
         {
             _terrain->addChild(node);
         }
         else
         {
-            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i]->str() << std::endl;
+            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
         }
     }
 
@@ -449,7 +449,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
         //Create a TileKey from the TileID
         osgTerrain::TileID tileId = tile->getTileID();
-        osg::ref_ptr< TileKey > key = new TileKey( TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile() );
+        TileKey key( TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile() );
 
         osg::ref_ptr< GeoImage > geoImage;
 
@@ -458,19 +458,19 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
         // establish the initial image for this tile.
         //if (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
-        //   (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
+        //   (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key.getLevelOfDetail() == 1))
 
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
-            key->getLevelOfDetail() == 1)
+            key.getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
-            geoImage = _tileFactory->createValidGeoImage( layer, key.get() );
-            imageLOD = key->getLevelOfDetail();
+            geoImage = _tileFactory->createValidGeoImage( layer, key );
+            imageLOD = key.getLevelOfDetail();
         }
         else
         {
             // in seq/pre mode, set up a placeholder and mark the tile as dirty.
-            geoImage = new GeoImage(ImageUtils::createEmptyImage(), key->getGeoExtent() );
+            geoImage = new GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent() );
             needToUpdateImagery = true;
         }
 
@@ -493,13 +493,13 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
             {
                 GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
+                img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
                 img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
             }
             else
             {
                 geoImage->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
+                img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
             }
 
             //Set the CS to geocentric if we are dealing with a geocentric map
@@ -531,7 +531,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
             //OE_INFO << LC << 
             //    "Adding layer " << layer->getName()
-            //    << ": Could not create geoimage for tile " << key->str() << std::endl;
+            //    << ": Could not create geoimage for tile " << key.str() << std::endl;
         }
 
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
@@ -548,7 +548,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
 {
     Threading::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
 
-    osg::ref_ptr< const TileKey > key = tile->getKey();
+    const TileKey& key = tile->getKey();
 
     bool hasElevation;
     {
@@ -570,9 +570,9 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
             osg::ref_ptr<osg::HeightField> hf;
             if (hasElevation)
             {
-                hf = _map->createHeightField( key.get(), true, _terrainOptions.elevationInterpolation().value());
+                hf = _map->createHeightField( key, true, _terrainOptions.elevationInterpolation().value());
             }
-            if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key.get() );
+            if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key );
             heightFieldLayer->setHeightField( hf.get() );
             hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
             tile->setDirty(true);
@@ -582,23 +582,23 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
             //In preemptive mode, if there is no elevation, just clear out all the elevation on the tiles
             if (!hasElevation)
             {
-                osg::ref_ptr<osg::HeightField> hf = OSGTileFactory::createEmptyHeightField( key.get() );
+                osg::ref_ptr<osg::HeightField> hf = OSGTileFactory::createEmptyHeightField( key );
                 heightFieldLayer->setHeightField( hf.get() );
                 hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
-                tile->setElevationLOD( key->getLevelOfDetail() );
+                tile->setElevationLOD( key.getLevelOfDetail() );
                 tile->resetElevationRequests();
                 tile->markTileForRegeneration();
             }
             else
             {
                 //Always load the first LOD so the children tiles can have something to use for placeholders
-                if (tile->getKey()->getLevelOfDetail() == 1)
+                if (tile->getKey().getLevelOfDetail() == 1)
                 {
-                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key.get(), true, _terrainOptions.elevationInterpolation().value());
-                    if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key.get() );
+                    osg::ref_ptr<osg::HeightField> hf = _map->createHeightField( key, true, _terrainOptions.elevationInterpolation().value());
+                    if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key );
                     heightFieldLayer->setHeightField( hf.get() );
                     hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
-                    tile->setElevationLOD(tile->getKey()->getLevelOfDetail());
+                    tile->setElevationLOD(tile->getKey().getLevelOfDetail());
                     tile->markTileForRegeneration();
                 }
                 else

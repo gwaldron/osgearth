@@ -107,14 +107,14 @@ namespace osgEarth
     /**
     * Gets the cached image for the given TileKey
     */
-    virtual osg::Image* getImage( const TileKey* key,
+    virtual osg::Image* getImage( const TileKey& key,
       const std::string& layerName,
       const std::string& format ) = 0;
 
     /**
     * Sets the cached image for the given TileKey
     */
-    virtual void setImage( const TileKey* key,
+    virtual void setImage( const TileKey& key,
       const std::string& layerName,
       const std::string& format,
       osg::Image* image ) = 0;
@@ -122,14 +122,14 @@ namespace osgEarth
     /**
     * Gets the cached heightfield for the given TileKey
     */
-    virtual osg::HeightField* getHeightField( const TileKey* key,
+    virtual osg::HeightField* getHeightField( const TileKey& key,
       const std::string& layerName,
       const std::string& format);
 
     /**
     * Sets the cached heightfield for the given TileKey
     */
-    virtual void setHeightField( const TileKey* key,
+    virtual void setHeightField( const TileKey& key,
       const std::string& layerName,
       const std::string& format,
       osg::HeightField* hf );
@@ -147,7 +147,7 @@ namespace osgEarth
     /**
     * Gets whether the given TileKey is cached or not
     */
-    virtual bool isCached( const TileKey* key,
+    virtual bool isCached( const TileKey& key,
       const std::string& layerName,
       const std::string& format) const { return false; }
 
@@ -220,21 +220,21 @@ namespace osgEarth
     /**
     * Gets whether the given TileKey is cached or not
     */
-    virtual bool isCached( const TileKey* key,
+    virtual bool isCached( const TileKey& key,
       const std::string& layerName,
       const std::string& format);
 
     /**
     * Gets the cached image for the given TileKey
     */
-    virtual osg::Image* getImage( const TileKey* key,
+    virtual osg::Image* getImage( const TileKey& key,
       const std::string& layerName,
       const std::string& format);
 
     /**
     * Sets the cached image for the given TileKey
     */
-    virtual void setImage( const TileKey* key,
+    virtual void setImage( const TileKey& key,
       const std::string& layerName,
       const std::string& format,
       osg::Image* image);
@@ -242,14 +242,14 @@ namespace osgEarth
     /**
     * Gets the cached heightfield for the given TileKey
     */
-    virtual osg::HeightField* getHeightField( const TileKey* key,
+    virtual osg::HeightField* getHeightField( const TileKey& key,
       const std::string& layerName,
       const std::string& format);
 
     /**
     * Sets the cached heightfield for the given TileKey
     */
-    virtual void setHeightField( const TileKey* key,
+    virtual void setHeightField( const TileKey& key,
       const std::string& layerName,
       const std::string& format,
       osg::HeightField* hf);
@@ -264,14 +264,14 @@ namespace osgEarth
     /**
     * Gets the cached object for the given TileKey
     */
-    osg::Referenced* getObject( const TileKey* key,
+    osg::Referenced* getObject( const TileKey& key,
       const std::string& layerName,
       const std::string& format);
 
     /**
     * Sets the cached object for the given TileKey
     */
-    void setObject( const TileKey* key,
+    void setObject( const TileKey& key,
       const std::string& layerName,
       const std::string& format,
       osg::Referenced* image );
@@ -330,28 +330,28 @@ namespace osgEarth
     /**
     * Gets whether the given TileKey is cached or not
     */
-    virtual bool isCached( const TileKey* key,
+    virtual bool isCached( const TileKey& key,
       const std::string& layerName,
       const std::string& format) const;
 
     /**
     * Gets the filename to cache to for the given TileKey
     */
-    virtual std::string getFilename( const TileKey* key,
+    virtual std::string getFilename( const TileKey& key,
       const std::string& layerName,
       const std::string& format) const;
 
     /**
     * Gets the cached image for the given TileKey
     */
-    virtual osg::Image* getImage( const TileKey* key,
+    virtual osg::Image* getImage( const TileKey& key,
       const std::string& layerName,
       const std::string& format);
 
     /**
     * Sets the cached image for the given TileKey
     */
-    virtual void setImage( const TileKey* key,
+    virtual void setImage( const TileKey& key,
       const std::string& layerName,
       const std::string& format,
       osg::Image* image);
@@ -415,7 +415,7 @@ namespace osgEarth
     /**
     * Gets the filename to cache to for the given TileKey
     */
-    virtual std::string getFilename( const TileKey* key,
+    virtual std::string getFilename( const TileKey& key,
       const std::string& layerName,
       const std::string& format) const;
 

@@ -37,10 +37,10 @@ class WCS11Source : public TileSource
 public:
     WCS11Source( const PluginOptions* options );
     
-    osg::Image* createImage( const TileKey* key,
+    osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress = 0 );
 
-    osg::HeightField* createHeightField( const TileKey* key, 
+    osg::HeightField* createHeightField( const TileKey& key, 
                                          ProgressCallback* progress = 0 );
     
     std::string getExtension() const;
@@ -64,7 +64,7 @@ private:
 
     std::string _covFormat, _osgFormat;
 
-    HTTPRequest createRequest( const TileKey* key ) const;
+    HTTPRequest createRequest( const TileKey& key ) const;
 };
 
 #endif // OSGEARTH_WCS_PLUGIN_WCS11SOURCE_H_

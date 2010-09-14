@@ -237,7 +237,7 @@ TileSource::getPixelsPerTile() const
 }
 
 osg::Image*
-TileSource::getImage( const TileKey* key,
+TileSource::getImage( const TileKey& key,
                       ProgressCallback* progress )
 {
 	//Try to get it from the memcache fist
@@ -259,7 +259,7 @@ TileSource::getImage( const TileKey* key,
 }
 
 osg::HeightField*
-TileSource::getHeightField( const TileKey* key,
+TileSource::getHeightField( const TileKey& key,
                             ProgressCallback* progress
                            )
 {
@@ -281,7 +281,7 @@ TileSource::getHeightField( const TileKey* key,
 }
 
 osg::HeightField*
-TileSource::createHeightField( const TileKey* key,
+TileSource::createHeightField( const TileKey& key,
                                ProgressCallback* progress)
 {
     osg::ref_ptr<osg::Image> image = createImage(key, progress);
@@ -360,19 +360,19 @@ TileSource::buildDataExtentsIndex()
 */
 
 bool
-TileSource::hasData(const osgEarth::TileKey* key)
+TileSource::hasData(const osgEarth::TileKey& key)
 {
     //If no data extents are provided, just return true
     if (_dataExtents.size() == 0) return true;
 
-    const osgEarth::GeoExtent& keyExtent = key->getGeoExtent();
+    const osgEarth::GeoExtent& keyExtent = key.getGeoExtent();
     bool intersectsData = false;
     
     //osg::Timer_t loopStart = osg::Timer::instance()->tick();
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
-        if (keyExtent.intersects( *itr ) && key->getLevelOfDetail() >= itr->getMinLevel() && key->getLevelOfDetail() <= itr->getMaxLevel())
+        if (keyExtent.intersects( *itr ) && key.getLevelOfDetail() >= itr->getMinLevel() && key.getLevelOfDetail() <= itr->getMaxLevel())
         {
             intersectsData = true;
             break;
@@ -390,7 +390,7 @@ TileSource::hasData(const osgEarth::TileKey* key)
         unsigned int index = *itr;
         //OE_NOTICE << "index " << index << std::endl;
         const DataExtent& e = _dataExtents[index];
-        if (keyExtent.intersects( e ) && key->getLevelOfDetail() >= e.getMinLevel() && key->getLevelOfDetail() <= e.getMaxLevel())
+        if (keyExtent.intersects( e ) && key.getLevelOfDetail() >= e.getMinLevel() && key.getLevelOfDetail() <= e.getMaxLevel())
         {
             intersectsData = true;
             break;

@@ -37,7 +37,7 @@ void CacheSeed::seed( Map* map )
 
 //    osg::ref_ptr<MapEngine> engine = new MapEngine(); //map->createMapEngine();
 
-    std::vector< osg::ref_ptr<TileKey> > keys;
+    std::vector<TileKey> keys;
     map->getProfile()->getRootKeys(keys);
 
     //Set the default bounds to the entire profile if the user didn't override the bounds
@@ -135,49 +135,49 @@ void CacheSeed::seed( Map* map )
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( map, keys[i].get() ); // map, engine.get(), keys[i].get() );
+        processKey( map, keys[i] );
     }
 }
 
 
-void CacheSeed::processKey( Map* map, const TileKey* key ) const
+void CacheSeed::processKey( Map* map, const TileKey& key ) const
 {
     unsigned int x, y, lod;
-    key->getTileXY(x, y);
-    lod = key->getLevelOfDetail();
+    key.getTileXY(x, y);
+    lod = key.getLevelOfDetail();
 
 //	osg::ref_ptr<osgEarth::VersionedTerrain> terrain = new osgEarth::VersionedTerrain( map, engine );
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-        OE_NOTICE << "Caching tile = " << key->str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
+        OE_NOTICE << "Caching tile = " << key.str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
         cacheTile( map, key );
   //      bool validData;
 		//osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, false, validData );        
     }
 
-    if (key->getLevelOfDetail() <= _maxLevel)
+    if (lod <= _maxLevel)
     {
-        osg::ref_ptr<TileKey> k0 = key->createSubkey(0);
-        osg::ref_ptr<TileKey> k1 = key->createSubkey(1);
-        osg::ref_ptr<TileKey> k2 = key->createSubkey(2);
-        osg::ref_ptr<TileKey> k3 = key->createSubkey(3);        
+        TileKey k0 = key.createChildKey(0);
+        TileKey k1 = key.createChildKey(1);
+        TileKey k2 = key.createChildKey(2);
+        TileKey k3 = key.createChildKey(3);        
 
         //Check to see if the bounds intersects ANY of the tile's children.  If it does, then process all of the children
         //for this level
-        if (_bounds.intersects( k0->getGeoExtent().bounds() ) || _bounds.intersects(k1->getGeoExtent().bounds()) ||
-            _bounds.intersects( k2->getGeoExtent().bounds() ) || _bounds.intersects(k3->getGeoExtent().bounds()) )
+        if (_bounds.intersects( k0.getGeoExtent().bounds() ) || _bounds.intersects(k1.getGeoExtent().bounds()) ||
+            _bounds.intersects( k2.getGeoExtent().bounds() ) || _bounds.intersects(k3.getGeoExtent().bounds()) )
         {
-            processKey(map, k0.get()); 
-            processKey(map, k1.get()); 
-            processKey(map, k2.get()); 
-            processKey(map, k3.get()); 
+            processKey(map, k0); 
+            processKey(map, k1); 
+            processKey(map, k2); 
+            processKey(map, k3); 
         }
     }
 }
 
 void
-CacheSeed::cacheTile( Map* map, const TileKey* key ) const
+CacheSeed::cacheTile( Map* map, const TileKey& key ) const
 {
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {

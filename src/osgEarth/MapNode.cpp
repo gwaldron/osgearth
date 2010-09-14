@@ -747,19 +747,19 @@ MapNode::addImageLayer( MapLayer* layer )
 
         // establish the initial image for this tile.
         //if (( _mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
-        //   ((_mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key->getLevelOfDetail() == 1))
+        //   ((_mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key.getLevelOfDetail() == 1))
 
         if (_mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
-            key->getLevelOfDetail() == 1)
+            key.getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
             geoImage = _engine->createValidGeoImage( layer, key.get() );
-            imageLOD = key->getLevelOfDetail();
+            imageLOD = key.getLevelOfDetail();
         }
         else
         {
             // in seq/pre mode, set up a placeholder and mark the tile as dirty.
-            geoImage = new GeoImage(ImageUtils::createEmptyImage(), key->getGeoExtent() );
+            geoImage = new GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent() );
             needToUpdateImagery = true;
         }
 
@@ -782,13 +782,13 @@ MapNode::addImageLayer( MapLayer* layer )
             {
                 GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
+                img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
                 img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
             }
             else
             {
                 geoImage->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                img_locator = key->getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
+                img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
             }
 
             //Set the CS to geocentric if we are dealing with a geocentric map
@@ -820,7 +820,7 @@ MapNode::addImageLayer( MapLayer* layer )
 
             //OE_INFO << LC << 
             //    "Adding layer " << layer->getName()
-            //    << ": Could not create geoimage for tile " << key->str() << std::endl;
+            //    << ": Could not create geoimage for tile " << key.str() << std::endl;
         }
         
         if ( _mapOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
@@ -874,7 +874,7 @@ MapNode::updateElevation(VersionedTile* tile)
                 osg::ref_ptr<osg::HeightField> hf = MapEngine::createEmptyHeightField( key.get() );
                 heightFieldLayer->setHeightField( hf.get() );
                 hf->setSkirtHeight( tile->getBound().radius() * _mapOptions.heightFieldSkirtRatio().value() );
-                tile->setElevationLOD( key->getLevelOfDetail() );
+                tile->setElevationLOD( key.getLevelOfDetail() );
                 tile->resetElevationRequests();
                 tile->markTileForRegeneration();
             }

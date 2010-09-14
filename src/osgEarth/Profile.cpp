@@ -347,7 +347,7 @@ Profile::toString() const
 }
 
 void
-Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys ) const
+Profile::getRootKeys( std::vector<TileKey>& out_keys ) const
 {
     out_keys.clear();
 
@@ -356,7 +356,7 @@ Profile::getRootKeys(std::vector< osg::ref_ptr<osgEarth::TileKey> >& out_keys ) 
         for (unsigned int r = 0; r < _numTilesHighAtLod0; ++r)
         {
             //TODO: upgrade to support multi-face profile:
-            out_keys.push_back( new TileKey(0, c, r, this) ); // face, lod, x, y, profile
+            out_keys.push_back( TileKey(0, c, r, this) ); // lod, x, y, profile
         }
     }
 }
@@ -439,7 +439,7 @@ Profile::getLevelOfDetailForHorizResolution( double resolution, int tileSize ) c
     return level;
 }
 
-TileKey*
+TileKey
 Profile::createTileKey( double x, double y, unsigned int level ) const
 {
     if ( _extent.contains( x, y ) )
@@ -452,11 +452,11 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
         double ry = (y - _extent.yMin()) / _extent.height();
         int tileY = osg::clampBelow( (int)((1.0-ry) * (double)tilesY), tilesY-1 );
 
-        return new TileKey( level, tileX, tileY, this );
+        return TileKey( level, tileX, tileY, this );
     }
     else
     {
-        return 0L;
+        return TileKey::INVALID;
     }
 }
 
@@ -496,7 +496,7 @@ Profile::clampAndTransformExtent( const GeoExtent& input ) const
 
 
 void
-Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
+Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& out_intersectingKeys) const
 {
     // assume a non-crossing extent here.
     if ( key_ext.crossesDateLine() )
@@ -535,7 +535,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         destTileHeight = h;
     }
 
-    //OE_DEBUG << std::fixed << "  Source Tile: " << key->getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
+    //OE_DEBUG << std::fixed << "  Source Tile: " << key.getLevelOfDetail() << " (" << keyWidth << ", " << keyHeight << ")" << std::endl;
     OE_DEBUG << std::fixed << "  Dest Size: " << destLOD << " (" << destTileWidth << ", " << destTileHeight << ")" << std::endl;
 
     int tileMinX = (int)((key_ext.xMin() - _extent.xMin()) / destTileWidth);
@@ -559,7 +559,7 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
         for (int j = tileMinY; j <= tileMaxY; ++j)
         {
             //TODO: does not support multi-face destination keys.
-            out_intersectingKeys.push_back( new TileKey(destLOD, i, j, this) );
+            out_intersectingKeys.push_back( TileKey(destLOD, i, j, this) );
         }
     }
 
@@ -568,12 +568,12 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<osg::ref_ptr
 
 
 void
-Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
+Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_intersectingKeys) const
 {
-    OE_DEBUG << "GET ISECTING TILES for key " << key->str() << " -----------------" << std::endl;
+    OE_DEBUG << "GET ISECTING TILES for key " << key.str() << " -----------------" << std::endl;
 
     //If the profiles are exactly equal, just add the given tile key.
-    if ( isEquivalentTo( key->getProfile() ) )
+    if ( isEquivalentTo( key.getProfile() ) )
     {
         //Clear the incoming list
         out_intersectingKeys.clear();
@@ -581,11 +581,11 @@ Profile::getIntersectingTiles(const TileKey* key, std::vector<osg::ref_ptr<const
         out_intersectingKeys.push_back(key);
         return;
     }
-    return getIntersectingTiles(key->getGeoExtent(), out_intersectingKeys);
+    return getIntersectingTiles(key.getGeoExtent(), out_intersectingKeys);
 }
 
 void
-Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys) const
+Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<TileKey>& out_intersectingKeys) const
 {
     GeoExtent ext = extent;
 

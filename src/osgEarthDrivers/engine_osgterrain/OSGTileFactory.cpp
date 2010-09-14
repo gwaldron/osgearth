@@ -104,10 +104,10 @@ OSGTileFactory::getTerrainOptions() const
 }
 
 std::string
-OSGTileFactory::createURI( unsigned int id, const TileKey* key )
+OSGTileFactory::createURI( unsigned int id, const TileKey& key )
 {
     std::stringstream ss;
-    ss << key->str() << "." <<id<<".osgearth_osgterrain_tile";
+    ss << key.str() << "." <<id<<".osgearth_osgterrain_tile";
     std::string ssStr;
     ssStr = ss.str();
     return ssStr;
@@ -129,33 +129,33 @@ OSGTileFactory::getTransformFromExtents(double minX, double minY, double maxX, d
 }
 
 osg::Node*
-OSGTileFactory::createSubTiles( Map* map, CustomTerrain* terrain, const TileKey* key, bool populateLayers )
+OSGTileFactory::createSubTiles( Map* map, CustomTerrain* terrain, const TileKey& key, bool populateLayers )
 {
     //OE_NOTICE << "createSubTiles" << std::endl;
-    osg::ref_ptr<TileKey> k0 = key->createSubkey(0);
-    osg::ref_ptr<TileKey> k1 = key->createSubkey(1);
-    osg::ref_ptr<TileKey> k2 = key->createSubkey(2);
-    osg::ref_ptr<TileKey> k3 = key->createSubkey(3);
+    TileKey k0 = key.createChildKey(0);
+    TileKey k1 = key.createChildKey(1);
+    TileKey k2 = key.createChildKey(2);
+    TileKey k3 = key.createChildKey(3);
 
     bool hasValidData = false;
     bool validData;
 
     bool fallback = false;
-    osg::ref_ptr<osg::Node> q0 = createTile( map, terrain, k0.get(), populateLayers, true, fallback, validData);
+    osg::ref_ptr<osg::Node> q0 = createTile( map, terrain, k0, populateLayers, true, fallback, validData);
     if (!hasValidData && validData) hasValidData = true;
 
-    osg::ref_ptr<osg::Node> q1 = createTile( map, terrain, k1.get(), populateLayers, true, fallback, validData );
+    osg::ref_ptr<osg::Node> q1 = createTile( map, terrain, k1, populateLayers, true, fallback, validData );
     if (!hasValidData && validData) hasValidData = true;
 
-    osg::ref_ptr<osg::Node> q2 = createTile( map, terrain, k2.get(), populateLayers, true, fallback, validData );
+    osg::ref_ptr<osg::Node> q2 = createTile( map, terrain, k2, populateLayers, true, fallback, validData );
     if (!hasValidData && validData) hasValidData = true;
 
-    osg::ref_ptr<osg::Node> q3 = createTile( map, terrain, k3.get(), populateLayers, true, fallback, validData );
+    osg::ref_ptr<osg::Node> q3 = createTile( map, terrain, k3, populateLayers, true, fallback, validData );
     if (!hasValidData && validData) hasValidData = true;
 
     if (!hasValidData)
     {
-        OE_DEBUG << LC << "Couldn't create any quadrants for " << key->str() << " time to stop subdividing!" << std::endl;
+        OE_DEBUG << LC << "Couldn't create any quadrants for " << key.str() << " time to stop subdividing!" << std::endl;
         return NULL;
     }
 
@@ -165,22 +165,22 @@ OSGTileFactory::createSubTiles( Map* map, CustomTerrain* terrain, const TileKey*
     //Fallback on tiles if we couldn't create any
     if (!q0.valid())
     {
-        q0 = createTile( map, terrain, k0.get(), populateLayers, true, fallback, validData);
+        q0 = createTile( map, terrain, k0, populateLayers, true, fallback, validData);
     }
 
     if (!q1.valid())
     {
-        q1 = createTile( map, terrain, k1.get(), populateLayers, true, fallback, validData);
+        q1 = createTile( map, terrain, k1, populateLayers, true, fallback, validData);
     }
 
     if (!q2.valid())
     {
-        q2 = createTile( map, terrain, k2.get(), populateLayers, true, fallback, validData);
+        q2 = createTile( map, terrain, k2, populateLayers, true, fallback, validData);
     }
 
     if (!q3.valid())
     {        
-        q3 = createTile( map, terrain, k3.get(), populateLayers, true, fallback, validData);
+        q3 = createTile( map, terrain, k3, populateLayers, true, fallback, validData);
     }
 
     tile_parent->addChild( q0.get() );
@@ -192,29 +192,29 @@ OSGTileFactory::createSubTiles( Map* map, CustomTerrain* terrain, const TileKey*
 
 GeoImage*
 OSGTileFactory::createValidGeoImage(MapLayer* layer,
-                                    const TileKey* key,
+                                    const TileKey& key,
                                     ProgressCallback* progress)
 {
     //TODO:  Redo this to just grab images from the parent TerrainTiles
     //Try to create the image with the given key
-    osg::ref_ptr<const TileKey> image_key = key;
+    TileKey image_key = key;
 
     osg::ref_ptr<GeoImage> geo_image;
 
     while (image_key.valid())
     {
-        if ( layer->isKeyValid(image_key.get()) )
+        if ( layer->isKeyValid(image_key) )
         {
-            geo_image = layer->createImage( image_key.get(), progress );
+            geo_image = layer->createImage( image_key, progress );
             if (geo_image.valid()) return geo_image.release();
         }
-        image_key = image_key->createParentKey();
+        image_key = image_key.createParentKey();
     }
     return geo_image.release();
 }
 
 bool
-OSGTileFactory::hasMoreLevels( Map* map, const TileKey* key )
+OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -223,7 +223,7 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey* key )
 
     for ( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-        if ( !i->get()->maxLevel().isSet() || key->getLevelOfDetail() < i->get()->maxLevel().get() )
+        if ( !i->get()->maxLevel().isSet() || key.getLevelOfDetail() < i->get()->maxLevel().get() )
         {
             more_levels = true;
             break;
@@ -233,7 +233,7 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey* key )
     {
         for( MapLayerList::const_iterator j = map->getHeightFieldMapLayers().begin(); j != map->getHeightFieldMapLayers().end(); j++ )
         {
-            if ( !j->get()->maxLevel().isSet() || key->getLevelOfDetail() < j->get()->maxLevel().get() )
+            if ( !j->get()->maxLevel().isSet() || key.getLevelOfDetail() < j->get()->maxLevel().get() )
             {
                 more_levels = true;
                 break;
@@ -245,11 +245,11 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey* key )
 }
 
 bool
-OSGTileFactory::isCached(Map* map, const osgEarth::TileKey *key)
+OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    const Profile* mapProfile = key->getProfile();
+    const Profile* mapProfile = key.getProfile();
 
     //Check the imagery layers
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
@@ -258,7 +258,7 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey *key)
         osg::ref_ptr< Cache > cache = layer->getCache();
         if (!cache.valid()) return false;
 
-        std::vector< osg::ref_ptr< const TileKey > > keys;
+        std::vector< TileKey > keys;
 
         if ( map->getProfile()->isEquivalentTo( layer->getProfile() ) )
         {
@@ -271,9 +271,9 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey *key)
 
         for (unsigned int j = 0; j < keys.size(); ++j)
         {
-            if ( layer->isKeyValid( keys[j].get() ) )
+            if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->cacheFormat().value() ) )
+                if ( !cache->isCached( keys[j], layer->getName(), layer->cacheFormat().value() ) )
                 {
                     return false;
                 }
@@ -288,7 +288,7 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey *key)
         osg::ref_ptr< Cache > cache = layer->getCache();
         if (!cache.valid()) return false;
 
-        std::vector< osg::ref_ptr< const TileKey > > keys;
+        std::vector<TileKey> keys;
 
         if ( map->getProfile()->isEquivalentTo( layer->getProfile() ) )
         {
@@ -301,9 +301,9 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey *key)
 
         for (unsigned int j = 0; j < keys.size(); ++j)
         {
-            if ( layer->isKeyValid( keys[j].get() ) )
+            if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j].get(), layer->getName(), layer->cacheFormat().value() ) )
+                if ( !cache->isCached( keys[j], layer->getName(), layer->cacheFormat().value() ) )
                 {
                     return false;
                 }
@@ -314,16 +314,16 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey *key)
 }
 
 osg::HeightField*
-OSGTileFactory::createEmptyHeightField( const TileKey* key, int numCols, int numRows )
+OSGTileFactory::createEmptyHeightField( const TileKey& key, int numCols, int numRows )
 {
-    osg::HeightField* hf = key->getProfile()->getVerticalSRS()->createReferenceHeightField(
-        key->getGeoExtent(), numCols, numRows );
+    osg::HeightField* hf = key.getProfile()->getVerticalSRS()->createReferenceHeightField(
+        key.getGeoExtent(), numCols, numRows );
 
     return hf;
 
     ////Get the bounds of the key
     //double minx, miny, maxx, maxy;
-    //key->getGeoExtent().getBounds(minx, miny, maxx, maxy);
+    //key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
 
     //osg::HeightField *hf = new osg::HeightField();
     //hf->allocate( numCols, numRows );
@@ -342,11 +342,11 @@ OSGTileFactory::addPlaceholderImageLayers(CustomTile* tile,
                                           CustomTile* ancestorTile,
                                           const MapLayerList& imageMapLayers,
                                           GeoLocator* defaultLocator,
-                                          const TileKey* key)
+                                          const TileKey& key)
 {
     if ( !ancestorTile )
     {
-        //OE_NOTICE << "No ancestorTile for key " << key->str() << std::endl;
+        //OE_NOTICE << "No ancestorTile for key " << key.str() << std::endl;
         return;
     }        
 
@@ -364,12 +364,12 @@ void
 OSGTileFactory::addPlaceholderHeightfieldLayer(CustomTile* tile,
                                                CustomTile* ancestorTile,
                                                GeoLocator* defaultLocator,
-                                               const TileKey* key,
-                                               const TileKey* ancestorKey)
+                                               const TileKey& key,
+                                               const TileKey& ancestorKey)
 {
     osgTerrain::HeightFieldLayer* newHFLayer = 0L;
 
-    if ( ancestorTile && ancestorKey )
+    if ( ancestorTile && ancestorKey.valid() )
     {
         osg::ref_ptr<osgTerrain::HeightFieldLayer> ancestorLayer = dynamic_cast<osgTerrain::HeightFieldLayer*>(ancestorTile->getElevationLayer());
         if ( ancestorLayer.valid() )
@@ -379,8 +379,8 @@ OSGTileFactory::addPlaceholderHeightfieldLayer(CustomTile* tile,
             {
                 osg::HeightField* newHF = HeightFieldUtils::createSubSample(
                     ancestorHF.get(),
-                    ancestorKey->getGeoExtent(),
-                    key->getGeoExtent());
+                    ancestorKey.getGeoExtent(),
+                    key.getGeoExtent());
 
                 newHFLayer = new osgTerrain::HeightFieldLayer( newHF );
                 newHFLayer->setLocator( defaultLocator );
@@ -407,16 +407,16 @@ OSGTileFactory::addPlaceholderHeightfieldLayer(CustomTile* tile,
 
 osgTerrain::HeightFieldLayer*
 OSGTileFactory::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
-                                                  const TileKey* ancestorKey,
-                                                  const TileKey* key,
+                                                  const TileKey& ancestorKey,
+                                                  const TileKey& key,
                                                   GeoLocator* keyLocator )
 {
     osgTerrain::HeightFieldLayer* hfLayer = NULL;
 
     osg::HeightField* newHF = HeightFieldUtils::createSubSample(
         ancestorHF,
-        ancestorKey->getGeoExtent(),
-        key->getGeoExtent() );
+        ancestorKey.getGeoExtent(),
+        key.getGeoExtent() );
 
     newHF->setSkirtHeight( ancestorHF->getSkirtHeight() / 2.0 );
 
@@ -427,7 +427,7 @@ OSGTileFactory::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
 }
 
 osg::Node*
-OSGTileFactory::createTile( Map* map, CustomTerrain* terrain, const TileKey* key, bool populateLayers, bool wrapInPagedLOD, bool fallback, bool &validData )
+OSGTileFactory::createTile( Map* map, CustomTerrain* terrain, const TileKey& key, bool populateLayers, bool wrapInPagedLOD, bool fallback, bool &validData )
 {
     if ( populateLayers )
     {        
@@ -444,26 +444,26 @@ OSGTileFactory::createTile( Map* map, CustomTerrain* terrain, const TileKey* key
 
 
 osg::Node*
-OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const TileKey* key )
+OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const TileKey& key )
 {
     // Start out by finding the nearest registered ancestor tile, since the placeholder is
     // going to be based on inherited data. Note- the ancestor may not be the immediate
     // parent, b/c the parent may or may not be in the scene graph.
-    osg::ref_ptr<const TileKey> ancestorKey = key->createParentKey();
+    TileKey ancestorKey = key.createParentKey();
     osg::ref_ptr<CustomTile> ancestorTile;
     while( !ancestorTile.valid() && ancestorKey.valid() )
     {
-        terrain->getCustomTile( ancestorKey->getTileId(), ancestorTile );
+        terrain->getCustomTile( ancestorKey.getTileId(), ancestorTile );
         if ( !ancestorTile.valid() )
-            ancestorKey = ancestorKey->createParentKey();
+            ancestorKey = ancestorKey.createParentKey();
     }
     if ( !ancestorTile.valid() )
     {
-        OE_WARN << LC << "cannot find ancestor tile for (" << key->str() << ")" <<std::endl;
+        OE_WARN << LC << "cannot find ancestor tile for (" << key.str() << ")" <<std::endl;
         return 0L;
     }
 
-    OE_DEBUG << LC << "Creating placeholder for " << key->str() << std::endl;
+    OE_DEBUG << LC << "Creating placeholder for " << key.str() << std::endl;
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
@@ -477,7 +477,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
 
     // Build a "placeholder" tile.
     double xmin, ymin, xmax, ymax;
-    key->getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
+    key.getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
 
     // A locator will place the tile on the globe:
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( key, map );
@@ -502,7 +502,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
     {
         Threading::ScopedReadLock parentLock( ancestorTile->getTileLayersMutex() );
         addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
-        addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey.get() );
+        addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey );
     }
 
     // calculate the switching distances:
@@ -515,7 +515,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
     if (!hfLayer)
     {
-        OE_WARN << LC << "Warning: Couldn't get hfLayer for " << key->str() << std::endl;
+        OE_WARN << LC << "Warning: Couldn't get hfLayer for " << key.str() << std::endl;
     }
     hfLayer->getHeightField()->setSkirtHeight(radius * _terrainOptions.heightFieldSkirtRatio().get() );
 
@@ -545,7 +545,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
     plod->setCenter( bs.center() );
     plod->addChild( tile, min_range, max_range );
 
-    if ( key->getLevelOfDetail() < getTerrainOptions().maxLOD().get() )
+    if ( key.getLevelOfDetail() < getTerrainOptions().maxLOD().get() )
     {
         plod->setFileName( 1, createURI( _engineId, key ) ); //map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );
@@ -581,7 +581,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
 }
 
 osg::Node*
-OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const TileKey* key, bool wrapInPagedLOD, bool fallback, bool &validData )
+OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const TileKey& key, bool wrapInPagedLOD, bool fallback, bool &validData )
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
@@ -590,7 +590,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     bool isGeocentric = !isProjected;
 
     double xmin, ymin, xmax, ymax;
-    key->getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
+    key.getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
 
     GeoImageList image_tiles;
 
@@ -635,7 +635,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 
     //If we are on the first LOD and we couldn't get a heightfield tile, just create an empty one.  Otherwise you can run into the situation
     //where you could have an inset heightfield on one hemisphere and the whole other hemisphere won't show up.
-    if (map->isGeocentric() && key->getLevelOfDetail() <= 1 && !hf.valid())
+    if (map->isGeocentric() && key.getLevelOfDetail() <= 1 && !hf.valid())
     {
         hf = createEmptyHeightField( key );
     }
@@ -652,7 +652,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     //If we couldn't create any imagery or heightfields, bail out
     if (!hf.valid() && (numValidImages == 0) && !empty_map)
     {
-        OE_DEBUG << LC << "Could not create any imagery or heightfields for " << key->str() <<".  Not building tile" << std::endl;
+        OE_DEBUG << LC << "Could not create any imagery or heightfields for " << key.str() <<".  Not building tile" << std::endl;
         validData = false;
 
         //If we're not asked to fallback on previous LOD's and we have no data, return NULL
@@ -682,7 +682,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             if (!image)
             {
                 //If the image is not valid, create an empty texture as a placeholder
-                image = new GeoImage(ImageUtils::createEmptyImage(), key->getGeoExtent());
+                image = new GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
             }
 
             //Assign the new image to the proper place in the list
@@ -781,14 +781,14 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             {
                 GeoExtent geog_ext = image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
-                img_locator = key->getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
+                img_locator = key.getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
                 img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
             }
             else
             {
                 image_tiles[i]->getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
 
-                img_locator = key->getProfile()->getSRS()->createLocator( 
+                img_locator = key.getProfile()->getSRS()->createLocator( 
                     img_xmin, img_ymin, img_xmax, img_ymax, isPlateCarre );
             }
 
@@ -796,7 +796,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
             TransparentLayer* img_layer = new TransparentLayer(geo_image->getImage(), imageMapLayers[i].get());
-            img_layer->setLevelOfDetail( key->getLevelOfDetail() );
+            img_layer->setLevelOfDetail( key.getLevelOfDetail() );
             img_layer->setName( imageMapLayers[i]->getName() );
             img_layer->setLocator( img_locator.get());
             img_layer->setMinFilter( imageMapLayers[i]->getMinFilter().value());
@@ -805,7 +805,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             double upp = geo_image->getUnitsPerPixel();
 
             // Scale the units per pixel to degrees if the image is mercator (and the key is geo)
-            if ( geo_image->getSRS()->isMercator() && key->getGeoExtent().getSRS()->isGeographic() )
+            if ( geo_image->getSRS()->isMercator() && key.getGeoExtent().getSRS()->isGeographic() )
                 upp *= 1.0f/111319.0f;
 
             min_units_per_pixel = osg::minimum(upp, min_units_per_pixel);
@@ -823,7 +823,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     double min_range = radius * _terrainOptions.minTileRangeFactor().get();
     osg::LOD::RangeMode mode = osg::LOD::DISTANCE_FROM_EYE_POINT;
 #else
-    double width = key->getGeoExtent().width();	
+    double width = key.getGeoExtent().width();	
     if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
     double min_range = (width / min_units_per_pixel) * _terrainOptions.getMinTileRangeFactor(); 
     osg::LOD::RangeMode mode = osg::LOD::PIXEL_SIZE_ON_SCREEN;
@@ -854,7 +854,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     // Set the tile's revision to the current terrain revision
     tile->setTerrainRevision( static_cast<CustomTerrain*>(terrain)->getRevision() );
 
-    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD && key->getLevelOfDetail())
+    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD && key.getLevelOfDetail())
     {
         tile->setUseLayerRequests( true );
         tile->setHasElevationHint( hasElevation );
@@ -876,7 +876,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 
         //Only add the next tile if it hasn't been blacklisted
         bool isBlacklisted = osgEarth::Registry::instance()->isBlacklisted( filename );
-        if (!isBlacklisted && key->getLevelOfDetail() < this->getTerrainOptions().maxLOD().value() && validData )
+        if (!isBlacklisted && key.getLevelOfDetail() < this->getTerrainOptions().maxLOD().value() && validData )
         {
             plod->setFileName( 1, filename  );
             plod->setRange( 1, 0.0, min_range );
@@ -908,7 +908,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 osgTerrain::ImageLayer* 
 OSGTileFactory::createImageLayer(Map* map, 
                                  MapLayer* layer,
-                                 const TileKey* key,
+                                 const TileKey& key,
                                  ProgressCallback* progress)
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
@@ -923,7 +923,7 @@ OSGTileFactory::createImageLayer(Map* map,
     else
     {
         //If the key is not valid, simply make a transparent tile
-        geoImage = new GeoImage(ImageUtils::createEmptyImage(), key->getGeoExtent());
+        geoImage = new GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
     }
 
     if (geoImage.valid())
@@ -940,7 +940,7 @@ OSGTileFactory::createImageLayer(Map* map,
             layer->useMercatorFastPath() == true )
         {
             GeoExtent gx = geoImage->getExtent().transform( geoImage->getExtent().getSRS()->getGeographicSRS() );
-            imgLocator = key->getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax() );
+            imgLocator = key.getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax() );
             imgLocator = new MercatorLocator( *imgLocator.get(), geoImage->getExtent() );
         }
         else
@@ -955,7 +955,7 @@ OSGTileFactory::createImageLayer(Map* map,
         //osgTerrain::ImageLayer* imgLayer = new osgTerrain::ImageLayer( geoImage->getImage() );
         TransparentLayer* imgLayer = new TransparentLayer(geoImage->getImage(), layer);
         imgLayer->setLocator( imgLocator.get() );
-        imgLayer->setLevelOfDetail( key->getLevelOfDetail() );
+        imgLayer->setLevelOfDetail( key.getLevelOfDetail() );
         imgLayer->setMinFilter( layer->getMinFilter().value());
         imgLayer->setMagFilter( layer->getMagFilter().value());
         return imgLayer;
@@ -964,7 +964,7 @@ OSGTileFactory::createImageLayer(Map* map,
 }
 
 osgTerrain::HeightFieldLayer* 
-OSGTileFactory::createHeightFieldLayer( Map* map, const TileKey* key, bool exactOnly )
+OSGTileFactory::createHeightFieldLayer( Map* map, const TileKey& key, bool exactOnly )
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 

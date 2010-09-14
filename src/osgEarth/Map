@@ -272,7 +272,7 @@ namespace osgEarth
          *      See enum SamplePolicy in this class.
          */
         osg::HeightField* createHeightField(
-            const TileKey* key,
+            const TileKey& key,
             bool fallback,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             SamplePolicy samplePolicy =FIRST_VALID,

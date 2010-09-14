@@ -91,7 +91,7 @@ struct AsyncCache : public Cache
 {
 public:
     virtual void setImageSync(
-        const TileKey* key,
+        const TileKey& key,
         const std::string& layerName,
         const std::string& format,
         osg::Image* image ) =0;
@@ -297,7 +297,8 @@ struct MetadataTable
 
 struct ImageRecord
 {
-    osg::ref_ptr<const TileKey> _key;
+    ImageRecord( const TileKey& key ) : _key(key) { }
+    TileKey _key;
     int _created;
     int _accessed;
     osg::ref_ptr<osg::Image> _image;
@@ -307,20 +308,20 @@ struct ImageRecord
 class Sqlite3Cache;
 struct AsyncInsertPool : public TaskRequest {
     struct Entry {
-        osg::ref_ptr<const TileKey> _key;
+        TileKey _key;
         osg::ref_ptr<osg::Image> _image;
         std::string _format;
         Entry() {}
-        Entry(const TileKey* key, const std::string& format, osg::Image* img) : _key(key), _format(format), _image(img) {}
+        Entry(const TileKey& key, const std::string& format, osg::Image* img) : _key(key), _format(format), _image(img) {}
     };
 
     typedef std::map<std::string, Entry> PoolContainer;
 
     AsyncInsertPool(const std::string& layerName, Sqlite3Cache* cache );
 
-    void addEntry( const TileKey* key, const std::string& format, osg::Image* image)
+    void addEntry( const TileKey& key, const std::string& format, osg::Image* image)
     {
-        const std::string& keyStr = key->str();
+        const std::string& keyStr = key.str();
         if (_pool.find(keyStr) != _pool.end())
             return;
         _pool[keyStr] = Entry(key, format, image);
@@ -495,7 +496,7 @@ struct LayerTable : public osg::Referenced
         }
 
         // bind the key string:
-        std::string keyStr = rec._key->str();
+        std::string keyStr = rec._key.str();
         sqlite3_bind_text( insert, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
         sqlite3_bind_int(  insert, 2, rec._created );
         sqlite3_bind_int(  insert, 3, rec._accessed );
@@ -525,7 +526,7 @@ struct LayerTable : public osg::Referenced
 
         if ( rc != SQLITE_DONE )
         {
-            OE_WARN << LC << "SQL INSERT failed for key " << rec._key->str() << ": " 
+            OE_WARN << LC << "SQL INSERT failed for key " << rec._key.str() << ": " 
                 << sqlite3_errmsg( db ) //<< "; tries=" << (1000-tries)
                 << ", rc = " << rc << std::endl;
             sqlite3_finalize( insert );
@@ -533,7 +534,7 @@ struct LayerTable : public osg::Referenced
         }
         else
         {
-            OE_DEBUG << LC << "cache INSERT tile " << rec._key->str() << std::endl;
+            OE_DEBUG << LC << "cache INSERT tile " << rec._key.str() << std::endl;
             sqlite3_finalize( insert );
             _statsStored++;
             return true;
@@ -625,7 +626,7 @@ struct LayerTable : public osg::Referenced
     }
 #endif
 
-    bool updateAccessTime( const TileKey* key, int newTimestamp, sqlite3* db )
+    bool updateAccessTime( const TileKey& key, int newTimestamp, sqlite3* db )
     { 
         sqlite3_stmt* update = 0L;
         int rc = sqlite3_prepare_v2( db, _updateTimeSQL.c_str(), _updateTimeSQL.length(), &update, 0L );
@@ -637,12 +638,12 @@ struct LayerTable : public osg::Referenced
 
         bool success = true;
         sqlite3_bind_int( update, 1, newTimestamp );
-        std::string keyStr = key->str();
+        std::string keyStr = key.str();
         sqlite3_bind_text( update, 2, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
         rc = sqlite3_step( update );
         if ( rc != SQLITE_DONE )
         {
-            OE_WARN << LC << "Failed to update timestamp for " << key->str() << " on layer " << _meta._layerName << " rc = " << rc << std::endl;
+            OE_WARN << LC << "Failed to update timestamp for " << key.str() << " on layer " << _meta._layerName << " rc = " << rc << std::endl;
             success = false;
         }
 
@@ -675,7 +676,7 @@ struct LayerTable : public osg::Referenced
         return success;
     }
 
-    bool load( const TileKey* key, ImageRecord& output, sqlite3* db )
+    bool load( const TileKey& key, ImageRecord& output, sqlite3* db )
     {
         displayStats();
         int imageBufLen = 0;
@@ -688,14 +689,14 @@ struct LayerTable : public osg::Referenced
             return false;
         }
 
-        std::string keyStr = key->str();
+        std::string keyStr = key.str();
         sqlite3_bind_text( select, 1, keyStr.c_str(), keyStr.length(), SQLITE_STATIC );
 
         rc = sqlite3_step( select );
         if ( rc != SQLITE_ROW ) // == SQLITE_DONE ) // SQLITE_DONE means "no more rows"
         {
             // cache miss
-            OE_DEBUG << LC << "Cache MISS on tile " << key->str() << std::endl;
+            OE_DEBUG << LC << "Cache MISS on tile " << key.str() << std::endl;
             sqlite3_finalize(select);
             return false;
         }
@@ -725,7 +726,7 @@ struct LayerTable : public osg::Referenced
         {
             output._image = rr.takeImage();
             output._key = key;
-            OE_DEBUG << LC << "Cache HIT on tile " << key->str() << std::endl;
+            OE_DEBUG << LC << "Cache HIT on tile " << key.str() << std::endl;
         }
 
         sqlite3_finalize(select);
@@ -938,27 +939,27 @@ struct AsyncPurge : public TaskRequest {
 };
 
 struct AsyncInsert : public TaskRequest {
-    AsyncInsert( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image, AsyncCache* cache )
+    AsyncInsert( const TileKey& key, const std::string& layerName, const std::string& format, osg::Image* image, AsyncCache* cache )
         : _key(key), _layerName(layerName), _format(format), _image(image), _cache(cache) { }
 
     void operator()( ProgressCallback* progress ) {
         osg::ref_ptr<AsyncCache> cache = _cache.get();
         if ( cache.valid() )
-            cache->setImageSync( _key.get(), _layerName, _format, _image.get() );
+            cache->setImageSync( _key, _layerName, _format, _image.get() );
     }
 
     std::string _layerName, _format;
-    osg::ref_ptr<const TileKey> _key;
+    TileKey _key;
     osg::ref_ptr<osg::Image> _image;
     osg::observer_ptr<AsyncCache> _cache;
 };
 
 class Sqlite3Cache;
 struct AsyncUpdateAccessTime : public TaskRequest {
-    AsyncUpdateAccessTime( const TileKey* key, const std::string& layerName, int timeStamp, Sqlite3Cache* cache );
+    AsyncUpdateAccessTime( const TileKey& key, const std::string& layerName, int timeStamp, Sqlite3Cache* cache );
     void operator()( ProgressCallback* progress );
 
-    osg::ref_ptr<const TileKey> _key;
+    TileKey _key;
     std::string _layerName;
     int _timeStamp;
     osg::observer_ptr<Sqlite3Cache> _cache;
@@ -968,8 +969,8 @@ struct AsyncUpdateAccessTime : public TaskRequest {
 
 struct AsyncUpdateAccessTimePool : public TaskRequest {
     AsyncUpdateAccessTimePool( const std::string& layerName, Sqlite3Cache* cache );
-    void addEntry(const TileKey* key, int timeStamp);
-    void addEntryInternal(const TileKey* key);
+    void addEntry(const TileKey& key, int timeStamp);
+    void addEntryInternal(const TileKey& key);
 
     void operator()( ProgressCallback* progress );
     const std::string& getLayerName() { return _layerName; }
@@ -1049,7 +1050,7 @@ public: // Cache interface
     /**
      * Gets whether the given TileKey is cached or not
      */
-    bool isCached( const TileKey* key, const std::string& layerName, const std::string& format ) const
+    bool isCached( const TileKey& key, const std::string& layerName, const std::string& format ) const
     {
         // this looks ineffecient, but usually when isCached() is called, getImage() will be
         // called soon thereafter. And this call will load it into the L2 cache so the subsequent
@@ -1134,7 +1135,7 @@ public: // Cache interface
     /**
      * Gets the cached image for the given TileKey
      */
-    osg::Image* getImage( const TileKey* key,  const std::string& layerName, const std::string& format )
+    osg::Image* getImage( const TileKey& key,  const std::string& layerName, const std::string& format )
     {
         if ( !_db ) return 0L;
 
@@ -1159,22 +1160,22 @@ public: // Cache interface
             if (it != _pendingWrites.end()) {
                 AsyncInsertPool* p = it->second.get();
                 if (p) {
-                    osg::Image* img = p->findImage(key->str());
+                    osg::Image* img = p->findImage(key.str());
                     if (img) {
                         // todo: update the access time, or let it slide?
-                        OE_DEBUG << LC << "Got key that is write-queued: " << key->str() << std::endl;
+                        OE_DEBUG << LC << "Got key that is write-queued: " << key.str() << std::endl;
                         return img;
                     }
                 }
             }
 #else
             ScopedLock<Mutex> lock( _pendingWritesMutex );
-            std::string name = key->str() + layerName;
+            std::string name = key.str() + layerName;
             std::map<std::string,osg::ref_ptr<AsyncInsert> >::iterator i = _pendingWrites.find(name);
             if ( i != _pendingWrites.end() )
             {
                 // todo: update the access time, or let it slide?
-                OE_DEBUG << LC << "Got key that is write-queued: " << key->str() << std::endl;
+                OE_DEBUG << LC << "Got key that is write-queued: " << key.str() << std::endl;
                 return i->second->_image.get();
             }
 #endif
@@ -1184,7 +1185,7 @@ public: // Cache interface
         ThreadTable tt = getTable(layerName);
         if ( tt._table )
         {
-            ImageRecord rec;
+            ImageRecord rec( key );
             if (!tt._table->load( key, rec, tt._db ))
                 return 0;
 
@@ -1207,7 +1208,7 @@ public: // Cache interface
                 {
                     i->second->addEntry(key, t);
                     pool = i->second;
-                    OE_DEBUG << LC << "Add key " << key << " to existing layer batch " << layerName << std::endl;
+                    OE_DEBUG << LC << "Add key " << key.str() << " to existing layer batch " << layerName << std::endl;
                 } else {
                     pool = new AsyncUpdateAccessTimePool(layerName, this);
                     pool->addEntry(key, t);
@@ -1235,7 +1236,7 @@ public: // Cache interface
     /**
      * Sets the cached image for the given TileKey
      */
-    void setImage( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image )
+    void setImage( const TileKey& key, const std::string& layerName, const std::string& format, osg::Image* image )
     {        
         if ( !_db ) return;
 
@@ -1259,7 +1260,7 @@ public: // Cache interface
                 it->second->addEntry(key, format, image);
             }
 #else
-            std::string name = key->str() + layerName;
+            std::string name = key.str() + layerName;
             if ( _pendingWrites.find(name) == _pendingWrites.end() )
             {
                 AsyncInsert* req = new AsyncInsert(key, layerName, format, image, this);
@@ -1269,7 +1270,7 @@ public: // Cache interface
             else
             {
                 //NOTE: this should probably never happen.
-                OE_WARN << LC << "Tried to setImage; already in queue: " << key->str() << std::endl;
+                OE_WARN << LC << "Tried to setImage; already in queue: " << key.str() << std::endl;
             }
 #endif
         }
@@ -1377,7 +1378,7 @@ public: // Cache interface
     /**
      * updateAccessTime records on the database.
      */
-    bool updateAccessTimeSync( const std::string& layerName, const TileKey* key, int newTimestamp )
+    bool updateAccessTimeSync( const std::string& layerName, const TileKey& key, int newTimestamp )
     {
         if ( !_db ) false;
 
@@ -1447,7 +1448,7 @@ private:
         //OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
     }
 
-    void setImageSync( const TileKey* key, const std::string& layerName, const std::string& format, osg::Image* image )
+    void setImageSync( const TileKey& key, const std::string& layerName, const std::string& format, osg::Image* image )
     {
         if (_settings->maxSize().value() > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
             int t = (int)::time(0L);
@@ -1460,8 +1461,7 @@ private:
         if ( tt._table )
         {
             ::time_t t = ::time(0L);
-            ImageRecord rec;
-            rec._key = key;
+            ImageRecord rec( key );
             rec._created = (int)t;
             rec._accessed = (int)t;
             rec._image = image;
@@ -1472,7 +1472,7 @@ private:
         if ( _settings->asyncWrites() == true )
         {
             ScopedLock<Mutex> lock( _pendingWritesMutex );
-            std::string name = key->str() + layerName;
+            std::string name = key.str() + layerName;
             _pendingWrites.erase( name );
             displayPendingOperations();
         }
@@ -1648,38 +1648,38 @@ private:
 
 
 
-AsyncUpdateAccessTime::AsyncUpdateAccessTime( const TileKey* key, const std::string& layerName, int timeStamp, Sqlite3Cache* cache ) : _key(key), _layerName(layerName), _timeStamp(timeStamp), _cache(cache) { }
+AsyncUpdateAccessTime::AsyncUpdateAccessTime( const TileKey& key, const std::string& layerName, int timeStamp, Sqlite3Cache* cache ) : _key(key), _layerName(layerName), _timeStamp(timeStamp), _cache(cache) { }
 
 void AsyncUpdateAccessTime::operator()( ProgressCallback* progress ) 
 { 
     osg::ref_ptr<Sqlite3Cache> cache = _cache.get();
     if ( cache.valid() ) {
         //OE_WARN << "AsyncUpdateAccessTime will process " << _key << std::endl;
-        cache->updateAccessTimeSync( _layerName, _key.get() , _timeStamp );
+        cache->updateAccessTimeSync( _layerName, _key , _timeStamp );
     }
 }
 
 
 AsyncUpdateAccessTimePool::AsyncUpdateAccessTimePool(const std::string& layerName, Sqlite3Cache* cache) : _layerName(layerName), _cache(cache) {}
-void AsyncUpdateAccessTimePool::addEntry(const TileKey* key, int timeStamp)
+void AsyncUpdateAccessTimePool::addEntry(const TileKey& key, int timeStamp)
 {
-    unsigned int lod = key->getLevelOfDetail();
+    unsigned int lod = key.getLevelOfDetail();
     addEntryInternal(key);
     if (lod > 0) {
-        osg::ref_ptr<const TileKey> previous = key;
+        TileKey previous = key;
         for (int i = (int)lod-1; i >= 0; --i) {
-            osg::ref_ptr<const TileKey> ancestor = previous->createAncestorKey(i);
+            TileKey ancestor = previous.createAncestorKey(i);
             if (ancestor.valid())
                 addEntryInternal(ancestor);
-            previous = ancestor.get();
+            previous = ancestor;
         }
     }
     _timeStamp = timeStamp;
 }
 
-void AsyncUpdateAccessTimePool::addEntryInternal(const TileKey* key)
+void AsyncUpdateAccessTimePool::addEntryInternal(const TileKey& key)
 {
-    const std::string& keyStr = key->str();
+    const std::string& keyStr = key.str();
     if (_keys.find(keyStr) == _keys.end()) {
         _keys[keyStr] = 1;
         if (_keyStr.empty())

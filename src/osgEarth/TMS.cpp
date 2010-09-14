@@ -211,18 +211,18 @@ TileMap::createProfile() const
 
 
 std::string
-TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
+TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
 {
-    if (!intersectsKey(tileKey))
+    if (!intersectsKey(tilekey))
     {
-        //OE_NOTICE << LC << "No key intersection for tile key " << tileKey->str() << std::endl;
+        //OE_NOTICE << LC << "No key intersection for tile key " << tilekey.str() << std::endl;
         return "";
     }
 
-    unsigned int zoom = tileKey->getLevelOfDetail();
+    unsigned int zoom = tilekey.getLevelOfDetail();
 
     unsigned int x, y;
-    tileKey->getTileXY(x, y);
+    tilekey.getTileXY(x, y);
 
     //Some TMS like services swap the Y coordinate so 0,0 is the upper left rather than the lower left.  The normal TMS
     //specification has 0,0 at the bottom left, so inverting Y will make 0,0 in the upper left.
@@ -230,11 +230,11 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
     if (!invertY)
     {
         unsigned int numRows, numCols;
-        tileKey->getProfile()->getNumTiles(tileKey->getLevelOfDetail(), numCols, numRows);
+        tilekey.getProfile()->getNumTiles(tilekey.getLevelOfDetail(), numCols, numRows);
         y  = numRows - y - 1;
     }
 
-    //OE_NOTICE << LC << "KEY: " << tileKey->str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
+    //OE_NOTICE << LC << "KEY: " << tilekey.str() << " level " << zoom << " ( " << x << ", " << y << ")" << std::endl;
 
     //Select the correct TileSet
     if ( _tileSets.size() > 0 )
@@ -267,21 +267,21 @@ TileMap::getURL(const osgEarth::TileKey *tileKey, bool invertY)
 }
 
 bool
-TileMap::intersectsKey(const TileKey *tileKey)
+TileMap::intersectsKey(const TileKey& tilekey)
 {
     double keyMinX, keyMinY, keyMaxX, keyMaxY;
 
     //Check to see if the key overlaps the bounding box using lat/lon.  This is necessary to check even in 
     //Mercator situations in case the BoundingBox is described using lat/lon coordinates such as those produced by GDAL2Tiles
     //This should be considered a bug on the TMS production side, but we can work around it for now...
-    tileKey->getGeoExtent().getBounds(keyMinX, keyMinY, keyMaxX, keyMaxY);
+    tilekey.getGeoExtent().getBounds(keyMinX, keyMinY, keyMaxX, keyMaxY);
 
     bool inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
 
-    if (!inter && tileKey->isMercator())
+    if (!inter && tilekey.isMercator())
     {
-        tileKey->getProfile()->getSRS()->transform(keyMinX, keyMinY, tileKey->getProfile()->getSRS()->getGeographicSRS(), keyMinX, keyMinY);
-        tileKey->getProfile()->getSRS()->transform(keyMaxX, keyMaxY, tileKey->getProfile()->getSRS()->getGeographicSRS(), keyMaxX, keyMaxY);
+        tilekey.getProfile()->getSRS()->transform(keyMinX, keyMinY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMinX, keyMinY);
+        tilekey.getProfile()->getSRS()->transform(keyMaxX, keyMaxY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMaxX, keyMaxY);
         inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
     }
 

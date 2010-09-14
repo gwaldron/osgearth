@@ -116,7 +116,7 @@ struct BlankTileSource : public osgEarth::TileSource
 	}
 
 
-    virtual osg::Image* createImage( const TileKey* key, ProgressCallback* progress ) {
+    virtual osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) {
         osg::Image* image = new osg::Image();
         image->setName("BlankTileSource");
         image->setAllocationMode( osg::Image::USE_NEW_DELETE );

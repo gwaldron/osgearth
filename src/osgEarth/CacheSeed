@@ -83,8 +83,8 @@ namespace osgEarth
         unsigned int _maxLevel;
 
         Bounds _bounds;
-        void processKey( Map* map, const TileKey* key ) const;
-        void cacheTile( Map* map, const TileKey* key ) const;
+        void processKey( Map* map, const TileKey& key ) const;
+        void cacheTile( Map* map, const TileKey& key ) const;
     };
 }
 

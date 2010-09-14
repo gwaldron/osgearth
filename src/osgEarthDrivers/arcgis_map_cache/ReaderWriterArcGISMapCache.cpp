@@ -73,23 +73,23 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey* key,
+    osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress)
     {
         //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
-        //if ( dynamic_cast<const PlateCarreTileKey*>( key ) )
+        //if ( dynamic_cast<const PlateCarreTileKey&>( key ) )
         //{
         //    MercatorTileConverter converter( this );
-        //    return converter.createImage( static_cast<const PlateCarreTileKey*>( key ) );
+        //    return converter.createImage( static_cast<const PlateCarreTileKey&>( key ) );
         //}
 
         std::stringstream buf;
 
-        //int level = key->getLevelOfDetail();
-        int level = key->getLevelOfDetail()-1;
+        //int level = key.getLevelOfDetail();
+        int level = key.getLevelOfDetail()-1;
 
         unsigned int tile_x, tile_y;
-        key->getTileXY( tile_x, tile_y );
+        key.getTileXY( tile_x, tile_y );
 
         buf << _url << "/" << _map 
             << "/Layers/" << _layer
@@ -97,7 +97,7 @@ public:
             << "/R" << std::hex << std::setw(8) << std::setfill('0') << tile_y
             << "/C" << std::hex << std::setw(8) << std::setfill('0') << tile_x << "." << _format;
 
-        //OE_NOTICE << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
+        //OE_NOTICE << "Key = " << key.str() << ", URL = " << buf.str() << std::endl;
         //return osgDB::readImageFile( buf.str(), getOptions() );
         //return HTTPClient::readImageFile( buf.str(), getOptions(), progress);
         
@@ -109,7 +109,7 @@ public:
     }
 
     // override
-    osg::HeightField* createHeightField( const TileKey* key,
+    osg::HeightField* createHeightField( const TileKey& key,
                                          ProgressCallback* progress)
     {
         //TODO

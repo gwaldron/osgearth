@@ -77,10 +77,10 @@ public:
 
 struct TileLayerRequest : public TaskRequest
 {
-    TileLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory )
+    TileLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory )
         : _key( key ), _map(map), _tileFactory(tileFactory), _numTries(0), _maxTries(3) { }
 
-    osg::ref_ptr<const TileKey> _key;
+    TileKey _key;
     osg::ref_ptr<Map>           _map;
     osg::ref_ptr<OSGTileFactory>   _tileFactory;
 	unsigned int _numTries;
@@ -89,7 +89,7 @@ struct TileLayerRequest : public TaskRequest
 
 struct TileColorLayerRequest : public TileLayerRequest
 {
-    TileColorLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory, unsigned int layerId )
+    TileColorLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory, unsigned int layerId )
         : TileLayerRequest( key, map, tileFactory ), _layerId(layerId) { }
 
     void operator()( ProgressCallback* progress )
@@ -107,10 +107,7 @@ struct TileColorLayerRequest : public TileLayerRequest
         }
         if ( mapLayer.valid() )
         {
-            /*osg::ref_ptr<GeoImage> image = mapLayer->createImage( _key.get(), progress );
-            if ( image.get() )
-                _result = _tileFactory->createImageLayer( _map.get(), _key.get(), image.get() );*/
-            _result = _tileFactory->createImageLayer(_map.get(), mapLayer, _key.get(), progress);
+            _result = _tileFactory->createImageLayer(_map.get(), mapLayer, _key, progress);
 			if (!wasCanceled())
 			{
 			  _numTries++;
@@ -122,25 +119,26 @@ struct TileColorLayerRequest : public TileLayerRequest
 
 struct TileElevationLayerRequest : public TileLayerRequest
 {
-    TileElevationLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory )
+    TileElevationLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory )
         : TileLayerRequest( key, map, tileFactory )
     {
     }
 
     void operator()( ProgressCallback* progress )
     {
-        _result = _tileFactory->createHeightFieldLayer( _map.get(), _key.get(), true ); //exactOnly=true
+        _result = _tileFactory->createHeightFieldLayer( _map.get(), _key, true ); //exactOnly=true
 		_numTries++;
     }
 };
 
 struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 {
-    TileElevationPlaceholderLayerRequest( const TileKey* key, Map* map, OSGTileFactory* tileFactory, GeoLocator* keyLocator )
+    TileElevationPlaceholderLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory, GeoLocator* keyLocator )
         : TileLayerRequest( key, map, tileFactory ),
-          _keyLocator(keyLocator)
+          _keyLocator(keyLocator),
+          _parentKey( key.createParentKey() )
     {
-        _parentKey = key->createParentKey();
+        //nop
     }
 
     void setParentHF( osg::HeightField* parentHF )
@@ -159,14 +157,14 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
         {
             _result = _tileFactory->createPlaceholderHeightfieldLayer(
                 _parentHF.get(),
-                _parentKey.get(),
-                _key.get(),
+                _parentKey,
+                _key,
                 _keyLocator.get() );
         }
     }
 
     osg::ref_ptr<osg::HeightField> _parentHF;
-    osg::ref_ptr<const TileKey> _parentKey;
+    TileKey _parentKey;
     osg::ref_ptr<GeoLocator>    _keyLocator;
     int _nextLOD;
 };
@@ -208,7 +206,7 @@ struct TileGenRequest : public TaskRequest
 #define SOUTH  4
 
 
-CustomTile::CustomTile( const TileKey* key, GeoLocator* keyLocator ) :
+CustomTile::CustomTile( const TileKey& key, GeoLocator* keyLocator ) :
 _key( key ),
 _keyLocator( keyLocator ),
 _useLayerRequests( false ),       // always set this to false here; use setUseLayerRequests() to enable
@@ -219,7 +217,7 @@ _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
 _usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
-_elevationLOD( key->getLevelOfDetail() ),
+_elevationLOD( key.getLevelOfDetail() ),
 _hasBeenTraversed(false),
 _useTileGenRequest( true ),
 _tileGenNeeded( false ),
@@ -227,10 +225,10 @@ _verticalScale(1.0f)
 {
     this->setThreadSafeRefUnref( true );
 
-    this->setTileID( key->getTileId() );
+    this->setTileID( key.getTileId() );
 
     // because the lowest LOD (1) is always loaded fully:
-    _elevationLayerUpToDate = _key->getLevelOfDetail() <= 1;
+    _elevationLayerUpToDate = _key.getLevelOfDetail() <= 1;
 
     // initially bump the update requirement so that this tile will receive an update
     // traversal the first time through. It is on the first update traversal that we
@@ -255,7 +253,7 @@ CustomTile::adjustUpdateTraversalCount( int delta )
     else
     {
         OE_NOTICE << "WARNING, tile (" 
-            << _key->str() << ") tried to set a negative NCRUT"
+            << _key.str() << ") tried to set a negative NCRUT"
             << std::endl;
     }
 }
@@ -303,17 +301,17 @@ CustomTile::getTileLayersMutex()
     return _tileLayersMutex;
 }
 
-const TileKey*
+const TileKey&
 CustomTile::getKey() const
 {
-    return _key.get();
+    return _key;
 }
 
 void
 CustomTile::setElevationLOD( int lod )
 {
     _elevationLOD = lod;
-    _elevationLayerUpToDate = _elevationLOD == _key->getLevelOfDetail();
+    _elevationLayerUpToDate = _elevationLOD == _key.getLevelOfDetail();
 
     //Should probably just reset the placeholder requests
     //if (_elevPlaceholderRequest.valid()) _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
@@ -477,7 +475,7 @@ CustomTile::readyForNewElevation()
 {
     bool ready = true;
 
-    if ( _elevationLOD == _key->getLevelOfDetail() )
+    if ( _elevationLOD == _key.getLevelOfDetail() )
     {
         ready = false;
     }
@@ -497,7 +495,7 @@ CustomTile::readyForNewElevation()
         }
 
         // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
-        if ( ready && _elevationLOD+1 < _key->getLevelOfDetail() && _elevationLOD == _family[PARENT].elevLOD )
+        if ( ready && _elevationLOD+1 < _key.getLevelOfDetail() && _elevationLOD == _family[PARENT].elevLOD )
         {
             ready = false;
         }
@@ -505,7 +503,7 @@ CustomTile::readyForNewElevation()
 
 #ifdef PREEMPTIVE_DEBUG
     OE_NOTICE
-        << "Tile (" << _key->str() << ") at (" << _elevationLOD << "), parent at ("
+        << "Tile (" << _key.str() << ") at (" << _elevationLOD << "), parent at ("
         << _family[PARENT].elevLOD << "), sibs at (";
     if ( _family[WEST].expected ) osg::notify( osg::NOTICE ) << "W=" << _family[WEST].elevLOD << " ";
     if ( _family[NORTH].expected ) osg::notify( osg::NOTICE ) << "N=" << _family[NORTH].elevLOD << " ";
@@ -525,7 +523,7 @@ CustomTile::readyForNewImagery(MapLayer* layer, int currentLOD)
 {
     bool ready = true;
 
-    if ( currentLOD == _key->getLevelOfDetail() )
+    if ( currentLOD == _key.getLevelOfDetail() )
     {
         ready = false;
     }
@@ -545,7 +543,7 @@ CustomTile::readyForNewImagery(MapLayer* layer, int currentLOD)
         }
 
         // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
-        if ( ready && currentLOD+1 < _key->getLevelOfDetail() && currentLOD == _family[PARENT].getImageLOD(layer->getId()) )
+        if ( ready && currentLOD+1 < _key.getLevelOfDetail() && currentLOD == _family[PARENT].getImageLOD(layer->getId()) )
         {
             ready = false;
         }
@@ -603,21 +601,21 @@ CustomTile::resetElevationRequests()
     if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isRunning()) _elevPlaceholderRequest->cancel();
 
     // this request will load real elevation data for the tile:
-    _elevRequest = new TileElevationLayerRequest(_key.get(), getCustomTerrain()->getMap(), getCustomTerrain()->getTileFactory());
-    float priority = (float)_key->getLevelOfDetail();
+    _elevRequest = new TileElevationLayerRequest(_key, getCustomTerrain()->getMap(), getCustomTerrain()->getTileFactory());
+    float priority = (float)_key.getLevelOfDetail();
     _elevRequest->setPriority( priority );
     std::stringstream ss;
-    ss << "TileElevationLayerRequest " << _key->str() << std::endl;
+    ss << "TileElevationLayerRequest " << _key.str() << std::endl;
 	std::string ssStr;
 	ssStr = ss.str();
     _elevRequest->setName( ssStr );
 
     // this request will load placeholder elevation data for the tile:
     _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
-        _key.get(), getCustomTerrain()->getMap(), getCustomTerrain()->getTileFactory(), _keyLocator.get() );
+        _key, getCustomTerrain()->getMap(), getCustomTerrain()->getTileFactory(), _keyLocator.get() );
     _elevPlaceholderRequest->setPriority( priority );
     ss.str("");
-    ss << "TileElevationPlaceholderLayerRequest " << _key->str() << std::endl;
+    ss << "TileElevationPlaceholderLayerRequest " << _key.str() << std::endl;
 	ssStr = ss.str();
     _elevPlaceholderRequest->setName( ssStr );
 }
@@ -650,9 +648,9 @@ CustomTile::updateImagery(unsigned int layerId, Map* map, OSGTileFactory* tileFa
     {
         unsigned int layerId = mapLayer->getId();
         // imagery is slighty higher priority than elevation data
-        TaskRequest* r = new TileColorLayerRequest( _key.get(), map, tileFactory, layerId );
+        TaskRequest* r = new TileColorLayerRequest( _key, map, tileFactory, layerId );
         std::stringstream ss;
-        ss << "TileColorLayerRequest " << _key->str() << std::endl;
+        ss << "TileColorLayerRequest " << _key.str() << std::endl;
 		std::string ssStr;
 		ssStr = ss.str();
         r->setName( ssStr );
@@ -662,12 +660,12 @@ CustomTile::updateImagery(unsigned int layerId, Map* map, OSGTileFactory* tileFa
         // needs to come in before higher-resolution stuff. 
         if ( getCustomTerrain()->getLoadingPolicy().mode() == LoadingPolicy::MODE_SEQUENTIAL )
         {
-            r->setPriority( -(float)_key->getLevelOfDetail() + PRI_IMAGE_OFFSET );
+            r->setPriority( -(float)_key.getLevelOfDetail() + PRI_IMAGE_OFFSET );
         }
         // in image-preemptive mode, the highest LOD should get higher load priority:
         else // MODE_PREEMPTIVE
         {
-            r->setPriority( PRI_IMAGE_OFFSET + (float)_key->getLevelOfDetail());
+            r->setPriority( PRI_IMAGE_OFFSET + (float)_key.getLevelOfDetail());
         }
 
         r->setProgressCallback( new StampedProgressCallback( r, terrain->getImageryTaskService( layerIndex ) ));
@@ -708,7 +706,7 @@ CustomTile::servicePendingImageRequests( int stamp )
         //and it was either deemed out of date or was cancelled, so we need to add it again.
         if ( r->isIdle() )
         {
-            //OE_NOTICE << "Queuing IR (" << _key->str() << ")" << std::endl;
+            //OE_NOTICE << "Queuing IR (" << _key.str() << ")" << std::endl;
             r->setStamp( stamp );
             getCustomTerrain()->getImageryTaskService(r->_layerId)->add( r );
         }
@@ -746,7 +744,7 @@ CustomTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
         if ( !_elevRequest->isIdle() )
         {
 #ifdef PREEMPTIVE_DEBUG
-            OE_NOTICE << "Tile (" << _key->str() << ") .. ER not idle" << std::endl;
+            OE_NOTICE << "Tile (" << _key.str() << ") .. ER not idle" << std::endl;
 #endif
             
             if ( !_elevRequest->isCompleted() )
@@ -759,7 +757,7 @@ CustomTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
         else if ( !_elevPlaceholderRequest->isIdle() )
         {
 #ifdef PREEMPTIVE_DEBUG
-            OE_NOTICE << "Tile (" << _key->str() << ") .. PR not idle" << std::endl;
+            OE_NOTICE << "Tile (" << _key.str() << ") .. PR not idle" << std::endl;
 #endif
             if ( !_elevPlaceholderRequest->isCompleted() )
             {
@@ -770,13 +768,13 @@ CustomTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
         // otherwise, see if it is legal yet to start a new request:
         else if ( readyForNewElevation() )
         {
-            if ( _elevationLOD + 1 == _key->getLevelOfDetail() )
+            if ( _elevationLOD + 1 == _key.getLevelOfDetail() )
             {
                 _elevRequest->setStamp( stamp );
                 _elevRequest->setProgressCallback( new ProgressCallback() );
                 terrain->getElevationTaskService()->add( _elevRequest.get() );
 #ifdef PREEMPTIVE_DEBUG
-                OE_NOTICE << "..queued FE req for (" << _key->str() << ")" << std::endl;
+                OE_NOTICE << "..queued FE req for (" << _key.str() << ")" << std::endl;
 #endif
             }
             
@@ -791,7 +789,7 @@ CustomTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
 
                     er->setStamp( stamp );
                     er->setProgressCallback( new ProgressCallback() );
-                    float priority = (float)_key->getLevelOfDetail();
+                    float priority = (float)_key.getLevelOfDetail();
                     er->setPriority( priority );
                     //TODO: should there be a read lock here when accessing the parent tile's elevation layer? GW
                     osgTerrain::HeightFieldLayer* hfLayer = static_cast<osgTerrain::HeightFieldLayer*>(parentTile->getElevationLayer());
@@ -799,14 +797,14 @@ CustomTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
                     er->setNextLOD( _family[PARENT].elevLOD );
                     terrain->getElevationTaskService()->add( er );
 #ifdef PREEMPTIVE_DEBUG
-                    OE_NOTICE << "..queued PH req for (" << _key->str() << ")" << std::endl;
+                    OE_NOTICE << "..queued PH req for (" << _key.str() << ")" << std::endl;
 #endif
                 }
 
                 else 
                 {
 #ifdef PREEMPTIVE_DEBUG
-                    OE_NOTICE << "...tile (" << _key->str() << ") ready, but nothing to do." << std::endl;
+                    OE_NOTICE << "...tile (" << _key.str() << ") ready, but nothing to do." << std::endl;
 #endif
                 }
             }
@@ -884,7 +882,7 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
                 {
                     // in sequential mode, we have to incrementally increase imagery resolution by
                     // creating placeholders based of parent tiles, one LOD at a time.
-                    if ( layer->getLevelOfDetail()+1 < _key->getLevelOfDetail() )
+                    if ( layer->getLevelOfDetail()+1 < _key.getLevelOfDetail() )
                     {
                         if ( _family[PARENT].getImageLOD(layer->getId()) > layer->getLevelOfDetail() )
                         {
@@ -980,7 +978,7 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
 
                                     markTileForRegeneration();
 
-                                    //OE_NOTICE << "Complete IR (" << _key->str() << ") layer=" << r->_layerId << std::endl;
+                                    //OE_NOTICE << "Complete IR (" << _key.str() << ") layer=" << r->_layerId << std::endl;
 
                                     // remove from the list (don't reference "r" after this!)
                                     itr = _requests.erase( itr );
@@ -996,22 +994,22 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
 											TransparentLayer* newLayer = new osgEarth::TransparentLayer(oldLayer->getImage(), oldLayer->getMapLayer());
 											newLayer->setLocator( oldLayer->getLocator() );
 											newLayer->setName( oldLayer->getName() );
-											newLayer->setLevelOfDetail(_key->getLevelOfDetail());
+											newLayer->setLevelOfDetail(_key.getLevelOfDetail());
 											// update the color layer safely:
 											{
 												Threading::ScopedWriteLock layerLock( getTileLayersMutex() );
 												this->setColorLayer( index, newLayer );
 											}
 
-											//static_cast<osgEarth::TransparentLayer*>(this->getColorLayer(index))->setLevelOfDetail( _key->getLevelOfDetail());										
+											//static_cast<osgEarth::TransparentLayer*>(this->getColorLayer(index))->setLevelOfDetail( _key.getLevelOfDetail());										
 											itr = _requests.erase( itr );
 											increment = false;
-											OE_INFO << "Tried (" << _key->str() << ") (layer " << r->_layerId << "), too many times, moving on...." << std::endl;
+											OE_INFO << "Tried (" << _key.str() << ") (layer " << r->_layerId << "), too many times, moving on...." << std::endl;
 										}
 									}
 									else
 									{
-										OE_DEBUG << "IReq error (" << _key->str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
+										OE_DEBUG << "IReq error (" << _key.str() << ") (layer " << r->_layerId << "), retrying" << std::endl;
 
 										//The color layer request failed, probably due to a server error. Reset it.
 										r->setState( TaskRequest::STATE_IDLE );
@@ -1067,11 +1065,11 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
                     markTileForRegeneration();
                     
                     // finalize the LOD marker for this tile, so other tiles can see where we are.
-                    //setElevationLOD( _key->getLevelOfDetail() );
-                    _elevationLOD = _key->getLevelOfDetail();
+                    //setElevationLOD( _key.getLevelOfDetail() );
+                    _elevationLOD = _key.getLevelOfDetail();
 
     #ifdef PREEMPTIVE_DEBUG
-                    OE_NOTICE << "Tile (" << _key->str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
+                    OE_NOTICE << "Tile (" << _key.str() << ") final HF, LOD (" << _elevationLOD << ")" << std::endl;
     #endif
                     // this was the final elev request, so mark elevation as DONE.
                     _elevationLayerUpToDate = true;
@@ -1121,7 +1119,7 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
                     //setElevationLOD( r->_nextLOD );
 
     #ifdef PREEMPTIVE_DEBUG
-                    OE_NOTICE << "..tile (" << _key->str() << ") is now at (" << _elevationLOD << ")" << std::endl;
+                    OE_NOTICE << "..tile (" << _key.str() << ") is now at (" << _elevationLOD << ")" << std::endl;
     #endif
                 }
                 _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
@@ -1134,7 +1132,7 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
     if ( _tileGenNeeded && !_tileGenRequest.valid())
     {
         _tileGenRequest = new TileGenRequest(this);
-        //OE_NOTICE << "tile (" << _key->str() << ") queuing new tile gen" << std::endl;
+        //OE_NOTICE << "tile (" << _key.str() << ") queuing new tile gen" << std::endl;
         getCustomTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
         _tileGenNeeded = false;
     }

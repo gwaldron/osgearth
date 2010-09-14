@@ -94,7 +94,7 @@ public:
             if ( engineNode.valid() )
             {
                 const Profile* profile = engineNode->getMap()->getProfile();
-                osg::ref_ptr<TileKey> key = new TileKey( lod, x, y, profile );
+                TileKey key( lod, x, y, profile );
 
                 bool populateLayers = engineNode->getTileFactory()->getTerrainOptions().loadingPolicy()->mode() 
                     == LoadingPolicy::MODE_STANDARD;
@@ -102,7 +102,7 @@ public:
                 node = engineNode->getTileFactory()->createSubTiles(
                     engineNode->getMap(),
                     engineNode->getTerrain(),
-                    key.get(),
+                    key,
                     populateLayers );
 
                 //Blacklist the tile if we couldn't load it

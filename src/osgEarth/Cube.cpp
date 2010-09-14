@@ -613,9 +613,9 @@ Profile(SpatialReference::create( "unified-cube" ),
 //}
 
 int
-UnifiedCubeProfile::getFace( const TileKey* key )
+UnifiedCubeProfile::getFace( const TileKey& key )
 {
-    return key->getTileX() >> key->getLevelOfDetail();
+    return key.getTileX() >> key.getLevelOfDetail();
 }
 
 GeoExtent
@@ -663,7 +663,7 @@ UnifiedCubeProfile::transformGcsExtentOnFace( const GeoExtent& gcsExtent, int fa
 void
 UnifiedCubeProfile::getIntersectingTiles(
     const GeoExtent& remoteExtent,
-    std::vector<osg::ref_ptr<const TileKey> >& out_intersectingKeys ) const
+    std::vector<TileKey>& out_intersectingKeys ) const
 {
     if ( getSRS()->isEquivalentTo( remoteExtent.getSRS() ) )
     {

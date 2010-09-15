@@ -93,7 +93,7 @@ namespace osgEarth { namespace Features
 
     public:
         FeatureSourceOptions( const PluginOptions* po =0L );
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
     protected:
         FeatureFilterList _filters;

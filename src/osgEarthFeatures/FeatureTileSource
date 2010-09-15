@@ -54,7 +54,7 @@ namespace osgEarth { namespace Features
         FeatureTileSourceOptions( const PluginOptions* opt =0L );
 
     protected:
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
         osg::ref_ptr<const FeatureSourceOptions> _featureOptions;
         optional<Symbology::StyleCatalog> _styles;

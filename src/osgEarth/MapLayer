@@ -301,7 +301,7 @@ namespace osgEarth
         std::string suggestCacheFormat() const;
 
         
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
         /**
          * Applies a controller to this layer so that the terrain implementation
@@ -370,7 +370,7 @@ namespace osgEarth
         double _prevGamma;
 
         void init();
-        void fromConfig( const Config& conf );
+        void mergeConfig( const Config& conf );
         GeoImage* postProcess( GeoImage* img );
 
         osg::observer_ptr<MapLayerController> _controller;

@@ -33,11 +33,11 @@ _numThreads( 2 ),
 _numThreadsPerCore( 4 ),
 _numTileGenThreads( OpenThreads::GetNumberOfProcessors() )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 void
-LoadingPolicy::fromConfig( const Config& conf )
+LoadingPolicy::mergeConfig( const Config& conf )
 {
     conf.getIfSet( "mode", "standard", _mode, MODE_STANDARD );
     conf.getIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
@@ -49,7 +49,7 @@ LoadingPolicy::fromConfig( const Config& conf )
 }
 
 Config
-LoadingPolicy::toConfig() const
+LoadingPolicy::getConfig() const
 {
     Config conf( "loading_policy" );
     conf.addIfSet( "mode", "standard", _mode, MODE_STANDARD );
@@ -78,13 +78,13 @@ _layeringTechnique( LAYERING_MULTITEXTURE ),
 _enableLighting( true ),
 _elevationInterpolation( INTERP_BILINEAR )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 Config
-TerrainOptions::toConfig() const
+TerrainOptions::getConfig() const
 {
-    Config conf = DriverConfigOptions::toConfig();
+    Config conf = DriverConfigOptions::getConfig();
     conf.key() = "terrain_options";
 
     conf.addObjIfSet( "loading_policy", _loadingPolicy );
@@ -110,9 +110,9 @@ TerrainOptions::toConfig() const
 }
 
 void
-TerrainOptions::fromConfig( const Config& conf )
+TerrainOptions::mergeConfig( const Config& conf )
 {
-    DriverConfigOptions::fromConfig( conf );
+    DriverConfigOptions::mergeConfig( conf );
 
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );

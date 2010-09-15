@@ -215,7 +215,7 @@ XmlElement::addSubElement(const std::string& tag, const Properties& attrs, const
 }
 
 Config
-XmlElement::toConfig() const
+XmlElement::getConfig() const
 {
     Config conf( name );
     for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
@@ -224,7 +224,7 @@ XmlElement::toConfig() const
     {
         XmlNode* n = c->get();
         if ( n->isElement() )
-            conf.children().push_back( static_cast<const XmlElement*>(n)->toConfig() );
+            conf.children().push_back( static_cast<const XmlElement*>(n)->getConfig() );
     }
 
     conf.value() = getText();

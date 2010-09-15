@@ -38,11 +38,11 @@ _cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
 _spatializeGroups( true ),
 _clusterCulling( false )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 Config
-GriddingPolicy::toConfig() const 
+GriddingPolicy::getConfig() const 
 {
     Config conf;
 
@@ -62,7 +62,7 @@ GriddingPolicy::toConfig() const
 }
 
 void
-GriddingPolicy::fromConfig( const Config& conf )
+GriddingPolicy::mergeConfig( const Config& conf )
 {
     conf.getIfSet( PROP_CELL_SIZE, _cellSize );
 

@@ -47,9 +47,9 @@ _geomTypeOverride( Geometry::TYPE_UNKNOWN )
 }
 
 Config
-FeatureTileSourceOptions::toConfig() const
+FeatureTileSourceOptions::getConfig() const
 {
-    Config conf = TileSourceOptions::toConfig();
+    Config conf = TileSourceOptions::getConfig();
 
     conf.updateObjIfSet( "features", _featureOptions );
     conf.updateObjIfSet( "styles", _styles );

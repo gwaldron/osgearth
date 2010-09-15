@@ -61,7 +61,7 @@ namespace osgEarth { namespace Features
     public:
         FeatureModelSourceOptions( const PluginOptions* opt =0L );
 
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
     protected:
         osg::ref_ptr<FeatureSourceOptions> _featureOptions;

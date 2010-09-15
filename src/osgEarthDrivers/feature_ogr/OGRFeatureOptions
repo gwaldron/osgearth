@@ -59,8 +59,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = FeatureSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = FeatureSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
             conf.updateIfSet( "ogrDriver", _ogrDriver );
             conf.updateIfSet( "build_spatial_index", _buildSpatialIndex );

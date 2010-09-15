@@ -76,9 +76,9 @@ MaskLayer::getOrCreateNode( ProgressCallback* progress )
 }
 
 Config
-MaskLayer::toConfig() const
+MaskLayer::getConfig() const
 {
-    Config conf = _driverOptions.valid() ? _driverOptions->toConfig() : Config();
+    Config conf = _driverOptions.valid() ? _driverOptions->getConfig() : Config();
     conf.key() = "mask";
     conf.remove( "driver" );
     return conf;

@@ -29,24 +29,24 @@ DriverOptions::DriverOptions( const PluginOptions* rhs ) :
 PluginOptions( rhs ? *rhs : *dummyPO )
 {
     if ( rhs )
-        fromConfig( rhs->config() );
+        mergeConfig( rhs->config() );
 }
 
 DriverOptions::DriverOptions( const Config& conf ) :
 PluginOptions( conf )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 void
-DriverOptions::fromConfig( const Config& conf )
+DriverOptions::mergeConfig( const Config& conf )
 {
     _name = conf.value("name");
     _driver = conf.value("driver");
 }
 
 Config
-DriverOptions::toConfig() const
+DriverOptions::getConfig() const
 {
     Config conf = config();
     conf.attr("name") = _name;

@@ -46,8 +46,8 @@ namespace osgEarth { namespace Symbology
 
     public: // configurable
 
-        virtual Config toConfig() const;
-        void fromConfig( const Config& conf );
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
 
     protected:
         optional<Bounds> _bounds;

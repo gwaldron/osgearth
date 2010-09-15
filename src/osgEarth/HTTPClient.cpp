@@ -37,7 +37,7 @@ using namespace osgEarth;
 
 ProxySettings::ProxySettings( const Config& conf )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 ProxySettings::ProxySettings( const std::string& host, int port ) :
@@ -48,7 +48,7 @@ _port(port)
 }
 
 void
-ProxySettings::fromConfig( const Config& conf )
+ProxySettings::mergeConfig( const Config& conf )
 {
     _hostName = conf.value<std::string>( "host", "" );
     _port = conf.value<int>( "port", 8080 );
@@ -57,7 +57,7 @@ ProxySettings::fromConfig( const Config& conf )
 }
 
 Config
-ProxySettings::toConfig() const
+ProxySettings::getConfig() const
 {
     Config conf( "proxy" );
     conf.add( "host", _hostName );

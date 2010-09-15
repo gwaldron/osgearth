@@ -61,8 +61,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = DriverOptions::toConfig();
+        Config getConfig() const {
+            Config conf = DriverOptions::getConfig();
             conf.updateIfSet( "path", _path );
             conf.updateIfSet( "async_writes", _useAsyncWrites );
             conf.updateIfSet( "serialized", _serialized );

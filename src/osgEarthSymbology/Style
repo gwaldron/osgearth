@@ -97,9 +97,9 @@ namespace osgEarth { namespace Symbology
         void addSubStyle( Style* style );
 
         /** Serializes this object into a Config. */
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
-        void fromConfig( const Config& conf );
+        void mergeConfig( const Config& conf );
         void fromCSS( const std::string& css );
 
     protected:
@@ -150,8 +150,8 @@ namespace osgEarth { namespace Symbology
         std::string getSelectedStyleName() const;
 
         //Configurable
-        virtual void fromConfig( const Config& conf );
-        virtual Config toConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        virtual Config getConfig() const;
 
     protected:
         std::string _name;
@@ -176,8 +176,8 @@ namespace osgEarth { namespace Symbology
         bool getStyle( const std::string& name, Style*& out ) const;
         const Style* getDefaultStyle() const;
 
-        virtual Config toConfig() const;
-        virtual void fromConfig( const Config& conf );
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
 
     protected:
         StyleSelectorList _selectors;

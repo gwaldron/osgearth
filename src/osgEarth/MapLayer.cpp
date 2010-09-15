@@ -58,7 +58,7 @@ _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter(osg::Texture::LINEAR)
 {
     if ( options )
-        fromConfig( options->config() );
+        mergeConfig( options->config() );
 
     // since fromConfig sets the name from the config(), override that here:
     _name = name;
@@ -89,7 +89,7 @@ _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter(osg::Texture::LINEAR)
 {
     _driverOptions = new DriverOptions( driverConf );
-    fromConfig( driverConf );
+    mergeConfig( driverConf );
     init();
 }
 
@@ -160,7 +160,7 @@ colorToString( const osg::Vec4ub& c )
 }
 
 void
-MapLayer::fromConfig( const Config& conf )
+MapLayer::mergeConfig( const Config& conf )
 {
     _name = conf.value("name");
     conf.getIfSet( "min_level", _minLevel );
@@ -199,9 +199,9 @@ MapLayer::fromConfig( const Config& conf )
 }
 
 Config
-MapLayer::toConfig() const
+MapLayer::getConfig() const
 {
-    Config conf = _driverOptions->toConfig();
+    Config conf = _driverOptions->getConfig();
 
     conf.key() = _type == MapLayer::TYPE_IMAGE ? "image" : "heightfield";
     conf.attr("name") = _name;

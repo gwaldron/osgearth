@@ -22,11 +22,11 @@ using namespace osgEarth::Symbology;
 
 Query::Query( const Config& conf )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 void
-Query::fromConfig( const Config& conf )
+Query::mergeConfig( const Config& conf )
 {
     if ( !conf.getIfSet( "expr", _expression ) )
         if ( !conf.getIfSet( "where", _expression ) )
@@ -45,7 +45,7 @@ Query::fromConfig( const Config& conf )
 }
 
 Config
-Query::toConfig() const
+Query::getConfig() const
 {
     Config conf( "query" );
     conf.addIfSet( "expr", _expression );

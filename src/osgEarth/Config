@@ -36,8 +36,8 @@ namespace osgEarth
     class Configurable : public osg::Referenced // marker interface class
     {
     public:
-        virtual class Config toConfig() const =0;
-        virtual void fromConfig( const Config& conf ) =0;
+        virtual class Config getConfig() const =0;
+        virtual void mergeConfig( const Config& conf ) =0;
     };
 
     /**
@@ -119,7 +119,7 @@ namespace osgEarth
         template<typename T>
         void addObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
             if ( opt.valid() ) {
-                Config conf = opt->toConfig();
+                Config conf = opt->getConfig();
                 conf.key() = key;
                 add( conf );
             }
@@ -128,7 +128,7 @@ namespace osgEarth
         template<typename T>
         void addObjIfSet( const std::string& key, const optional<T>& obj ) {
             if ( obj.isSet() ) {
-                Config conf = obj->toConfig();
+                Config conf = obj->getConfig();
                 conf.key() = key;
                 add( conf );
             }
@@ -181,7 +181,7 @@ namespace osgEarth
         void updateObjIfSet( const std::string& key, const osg::ref_ptr<T>& opt ) {
             if ( opt.valid() ) {
                 remove(key);
-                Config conf = opt->toConfig();
+                Config conf = opt->getConfig();
                 conf.key() = key;
                 add( conf );
             }
@@ -191,7 +191,7 @@ namespace osgEarth
         void updateObjIfSet( const std::string& key, const optional<T>& obj ) {
             if ( obj.isSet() ) {
                 remove(key);
-                Config conf = obj->toConfig();
+                Config conf = obj->getConfig();
                 conf.key() = key;
                 add( conf );
             }
@@ -369,13 +369,13 @@ namespace osgEarth
         const Config& config() const { return _conf; }
 
         void merge( const ConfigOptions& rhs ) {
-            fromConfig( rhs.toConfig() );
+            mergeConfig( rhs.getConfig() );
         }
 
     public:
-        virtual Config toConfig() const { return Config(); }
+        virtual Config getConfig() const { return _conf; }
 
-        virtual void fromConfig( const Config& conf ) { }
+        virtual void mergeConfig( const Config& conf ) { }
 
 
     private:
@@ -386,7 +386,7 @@ namespace osgEarth
     {
     public:
         DriverConfigOptions( const Config& conf =Config() ) 
-            : ConfigOptions( conf ) { fromConfig( conf ); }
+            : ConfigOptions( conf ) { } // { mergeConfig( conf ); }
 
         void setDriver( const std::string& value ) { _driver = value; }
         const std::string& getDriver() const { return _driver; }
@@ -395,14 +395,14 @@ namespace osgEarth
         const std::string& getName() const { return _name; }
 
     public:
-        virtual Config toConfig() const {
-            Config conf = ConfigOptions::toConfig();
+        virtual Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
             conf.value( "name" ) = _name;
             conf.value( "driver" ) = _driver;
             return conf;
         }
 
-        virtual void fromConfig( const Config& conf ) {
+        virtual void mergeConfig( const Config& conf ) {
             _name = conf.value( "name" );
             _driver = conf.value( "driver" );
         }

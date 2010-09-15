@@ -37,13 +37,13 @@ namespace osgEarth
     public:        
         DriverOptions( const Config& conf );
         
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
     protected:
         DriverOptions() { }
         DriverOptions( const PluginOptions* options );
 
-        void fromConfig( const Config& conf );
+        void mergeConfig( const Config& conf );
         std::string& driver() { return _driver; }
 
         std::string _driver, _name;

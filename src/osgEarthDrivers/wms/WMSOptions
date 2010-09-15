@@ -92,8 +92,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = TileSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url);
             conf.updateIfSet("capabilities_url", _capabilitiesUrl);
             conf.updateIfSet("tile_service_url", _tileServiceUrl);

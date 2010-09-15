@@ -82,7 +82,7 @@ namespace osgEarth
         double yMax() const { return _bounds->yMax(); }
 
         /** Serialize to configuration object */
-        Config toConfig( const std::string& name ="profile" ) const;
+        Config getConfig( const std::string& name ="profile" ) const;
 
     private:
         optional<std::string> _namedProfile;

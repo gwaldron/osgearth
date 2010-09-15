@@ -44,7 +44,7 @@ _noDataMinValue( -FLT_MAX ),
 _noDataMaxValue( FLT_MAX )
 {
     if ( po )
-        fromConfig( po->config() );
+        mergeConfig( po->config() );
 }
 
 TileSourceOptions::TileSourceOptions( const Config& conf ) :
@@ -54,11 +54,11 @@ _noDataValue( (float)SHRT_MIN ),
 _noDataMinValue( -FLT_MAX ),
 _noDataMaxValue( FLT_MAX )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 void
-TileSourceOptions::fromConfig( const Config& conf )
+TileSourceOptions::mergeConfig( const Config& conf )
 {
     config().getIfSet( "tile_size", _tileSize );
     config().getIfSet( "nodata_value", _noDataValue );
@@ -74,9 +74,9 @@ TileSourceOptions::fromConfig( const Config& conf )
 }
 
 Config
-TileSourceOptions::toConfig() const
+TileSourceOptions::getConfig() const
 { 
-    Config conf = DriverOptions::toConfig();
+    Config conf = DriverOptions::getConfig();
     conf.updateIfSet( "tile_size", _tileSize );
     conf.updateIfSet( "nodata_value", _noDataValue );
     conf.updateIfSet( "nodata_min", _noDataMinValue );

@@ -53,7 +53,7 @@ namespace osgEarth
         const optional<bool>& depthTestEnabled() const { return _depthTestEnabled; }
 
     protected:
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
         optional<float> _minRange, _maxRange;
         optional<int> _renderOrder;

@@ -68,8 +68,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = ModelSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "extrusion_distance", _extrusionDistance );
             conf.updateIfSet( "densification_threshold", _densificationThreshold );
             conf.updateIfSet( "inverted", _inverted );

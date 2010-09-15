@@ -65,8 +65,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = ModelSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "texture_unit", _textureUnit );
             conf.updateIfSet( "texture_size", _textureSize );
             conf.updateIfSet( "base_height",  _baseHeight );

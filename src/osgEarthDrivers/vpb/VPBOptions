@@ -88,8 +88,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = TileSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url);
             conf.updateIfSet("primary_split_level", _primarySplitLevel);
             conf.updateIfSet("secondary_split_level", _secondarySplitLevel);

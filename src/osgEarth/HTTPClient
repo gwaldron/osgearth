@@ -53,8 +53,8 @@ namespace osgEarth
         const std::string& password() const { return _password; }
 
     public:
-        virtual Config toConfig() const;
-        virtual void fromConfig( const Config& conf );
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
 
     protected:
         std::string _hostName;

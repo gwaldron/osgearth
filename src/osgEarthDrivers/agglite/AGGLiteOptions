@@ -59,8 +59,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = FeatureTileSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = FeatureTileSourceOptions::getConfig();
             conf.updateIfSet("relative_line_size", _relativeLineSize);
             conf.updateIfSet("optimize_line_sampling", _optimizeLineSampling);
             return conf;

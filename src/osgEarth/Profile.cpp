@@ -85,7 +85,7 @@ _numTilesHighAtLod0( 1 )
 }
 
 Config
-ProfileConfig::toConfig( const std::string& name ) const
+ProfileConfig::getConfig( const std::string& name ) const
 {
     Config conf( name.empty() ? "profile" : name );
     if ( _namedProfile.isSet() )

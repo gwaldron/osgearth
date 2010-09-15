@@ -39,8 +39,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = ModelSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
             return conf;
         }

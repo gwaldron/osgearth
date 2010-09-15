@@ -58,9 +58,9 @@ _lit( true )
 }
 
 Config
-FeatureModelSourceOptions::toConfig() const
+FeatureModelSourceOptions::getConfig() const
 {
-    Config conf = ModelSourceOptions::toConfig();
+    Config conf = ModelSourceOptions::getConfig();
 
     conf.updateObjIfSet( "features", _featureOptions );
     conf.updateObjIfSet( "gridding", _gridding );

@@ -87,8 +87,8 @@ namespace osgEarth
     std::string toString() const;
 
     /** Serializes this object's settings. */
-    void fromConfig( const Config& conf );
-    Config toConfig( const std::string& name ="cache" ) const;
+    void mergeConfig( const Config& conf );
+    Config getConfig( const std::string& name ="cache" ) const;
 
   private:
     CacheType       _type;

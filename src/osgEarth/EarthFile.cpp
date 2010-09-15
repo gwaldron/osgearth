@@ -139,7 +139,7 @@ readMapLayer( const Config& conf, const Config& additional )
 static Config
 writeLayer( ModelLayer* layer, const std::string& typeName ="" )
 {
-    Config conf = layer->toConfig();
+    Config conf = layer->getConfig();
     conf.key() = !typeName.empty() ? typeName : ELEM_MODEL;
     return conf;
 }
@@ -147,7 +147,7 @@ writeLayer( ModelLayer* layer, const std::string& typeName ="" )
 static Config
 writeLayer( MaskLayer* layer )
 {
-    Config conf = layer->toConfig();
+    Config conf = layer->getConfig();
     conf.key() = "mask";
     return conf;
 }
@@ -250,12 +250,12 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
 
 static Config
-mapToConfig( Map* map, const MapOptions& ep )
+mapgetConfig( Map* map, const MapOptions& ep )
 {
     Config conf( ELEM_MAP );
     conf.attr( ATTR_NAME ) = map->getName();
     
-    conf.add( ELEM_MAP_OPTIONS, ep.toConfig() );
+    conf.add( ELEM_MAP_OPTIONS, ep.getConfig() );
 
     //Write the coordinate system
     std::string cs;
@@ -272,14 +272,14 @@ mapToConfig( Map* map, const MapOptions& ep )
     //Write all the image sources
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
     {
-        conf.add( i->get()->toConfig() );
+        conf.add( i->get()->getConfig() );
         //conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the heightfield sources
     for (MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
     {
-        conf.add( i->get()->toConfig() );
+        conf.add( i->get()->getConfig() );
         //conf.add( writeLayer( i->get() ) );
     }
 
@@ -298,12 +298,12 @@ mapToConfig( Map* map, const MapOptions& ep )
 	//TODO:  Get this from the getCache call itself, not a CacheConfig.
     if ( map->cacheConfig().isSet() )
     {
-        conf.add( map->cacheConfig()->toConfig( ELEM_CACHE ) );
+        conf.add( map->cacheConfig()->getConfig( ELEM_CACHE ) );
     }
 
     if ( map->profileConfig().isSet() )
     {
-        conf.add( map->profileConfig()->toConfig( ELEM_PROFILE ) );
+        conf.add( map->profileConfig()->getConfig( ELEM_PROFILE ) );
     }
 
     return conf;
@@ -316,7 +316,7 @@ EarthFile::readXML( std::istream& input, const std::string& location )
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( input );
     if ( doc.valid() )
     {
-        Config conf = doc->toConfig().child( ELEM_MAP );
+        Config conf = doc->getConfig().child( ELEM_MAP );
 
         OE_INFO
             << "[osgEarth] EARTH FILE: " << std::endl
@@ -380,7 +380,7 @@ EarthFile::writeXML( std::ostream& output )
 
     Threading::ScopedReadLock lock( _map->getMapDataMutex() );
 
-    Config conf = mapToConfig( _map.get(), _mapOptions );
+    Config conf = mapgetConfig( _map.get(), _mapOptions );
     osg::ref_ptr<XmlDocument> doc = new XmlDocument( conf );
     doc->store( output );
 

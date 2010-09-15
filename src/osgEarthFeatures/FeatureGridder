@@ -49,8 +49,8 @@ namespace osgEarth { namespace Features
         GriddingPolicy( const Config& conf =Config() );
 
     public: // Configurable
-        virtual Config toConfig() const;
-        virtual void fromConfig( const Config& conf );
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
 
     public: // properties
 

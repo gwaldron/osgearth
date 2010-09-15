@@ -44,7 +44,7 @@ void Style::addSymbol(Symbol* symbol)
 
 Style::Style( const Config& conf )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 void
@@ -68,7 +68,7 @@ Style::getSubStyle( const std::string& name )
 }
 
 void
-Style::fromConfig( const Config& conf )
+Style::mergeConfig( const Config& conf )
 {
     _name = conf.value( "name" );
 
@@ -94,7 +94,7 @@ Style::fromConfig( const Config& conf )
 }
 
 Config
-Style::toConfig() const
+Style::getConfig() const
 {
     Config conf( "style" );
     conf.attr("name") = _name;
@@ -111,7 +111,7 @@ Style::toConfig() const
 
 StyleSelector::StyleSelector( const Config& conf )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 std::string
@@ -121,7 +121,7 @@ StyleSelector::getSelectedStyleName() const
 }
 
 void
-StyleSelector::fromConfig( const Config& conf )
+StyleSelector::mergeConfig( const Config& conf )
 {
     _name = conf.value( "name" );
     conf.getIfSet( "style", _styleName );
@@ -129,7 +129,7 @@ StyleSelector::fromConfig( const Config& conf )
 }
 
 Config
-StyleSelector::toConfig() const
+StyleSelector::getConfig() const
 {
     Config conf( "selector" );
     conf.add( "name", _name );
@@ -145,7 +145,7 @@ StyleCatalog::StyleCatalog( const Config& conf ) :
     Configurable(),
     _emptyStyle(new Style)
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 void
@@ -186,22 +186,22 @@ StyleCatalog::getDefaultStyle() const
 }
 
 Config
-StyleCatalog::toConfig() const
+StyleCatalog::getConfig() const
 {
     Config conf;
     for( StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
     {
-        conf.add( "selector", i->toConfig() );
+        conf.add( "selector", i->getConfig() );
     }
     for( StyleMap::const_iterator i = _styles.begin(); i != _styles.end(); ++i )
     {
-        conf.add( "style", i->second->toConfig() );
+        conf.add( "style", i->second->getConfig() );
     }
     return conf;
 }
 
 void
-StyleCatalog::fromConfig( const Config& conf )
+StyleCatalog::mergeConfig( const Config& conf )
 {
     // first read any style class definitions. either "class" or "selector" is allowed
     ConfigSet selectors = conf.children( "selector" );

@@ -29,7 +29,7 @@ Config::loadXML( std::istream& in )
 {
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in );
     if ( xml.valid() )
-        *this = xml->toConfig();
+        *this = xml->getConfig();
     return xml.valid();
 }
 

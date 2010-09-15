@@ -46,8 +46,8 @@ namespace osgEarth { namespace Drivers
         }
 
     protected:
-        Config toConfig() const {
-            Config conf = FeatureModelSourceOptions::toConfig();
+        Config getConfig() const {
+            Config conf = FeatureModelSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
             conf.updateIfSet( "height_offset", _heightOffset );
             return conf;

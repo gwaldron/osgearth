@@ -33,8 +33,7 @@ namespace osgEarth { namespace Drivers
             _skirtRatio( 0.05 )
         {
             config().add( "driver", "osgterrain" );
-            //driver() = "osgterrain";
-            fromConfig( config() );
+            mergeConfig( config() );
         }
 
     public:
@@ -43,13 +42,14 @@ namespace osgEarth { namespace Drivers
         const optional<float>& heightFieldSkirtRatio() const { return _skirtRatio; }
 
     protected:
-        virtual Config toConfig() const {
-            Config conf = TerrainOptions::toConfig();
+        virtual Config getConfig() const {
+            Config conf = TerrainOptions::getConfig();
             conf.updateIfSet( "skirt_ratio", _skirtRatio );
             return conf;
         }
 
-        virtual void fromConfig( const Config& conf ) {
+        virtual void mergeConfig( const Config& conf ) {
+            TerrainOptions::mergeConfig( conf );
             conf.getIfSet( "skirt_ratio", _skirtRatio );
         }
 

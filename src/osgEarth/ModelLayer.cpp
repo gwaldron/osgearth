@@ -29,7 +29,7 @@ _driverOptions( options ),
 _enabled(true)
 {
     if (options)
-        fromConfig( options->config() );
+        mergeConfig( options->config() );
 }
 
 ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
@@ -85,10 +85,10 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
 }
 
 Config
-ModelLayer::toConfig() const
+ModelLayer::getConfig() const
 {
     Config conf = 
-        _driverOptions.valid() ? _driverOptions->toConfig() : Config();
+        _driverOptions.valid() ? _driverOptions->getConfig() : Config();
 
     conf.key() = "model";
     conf.attr("name") = _name;
@@ -121,7 +121,7 @@ ModelLayer::setLightingEnabled( bool value )
 }
 
 void
-ModelLayer::fromConfig(const osgEarth::Config &conf)
+ModelLayer::mergeConfig(const osgEarth::Config &conf)
 {
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "lighting", _lighting );

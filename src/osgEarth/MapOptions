@@ -65,8 +65,8 @@ namespace osgEarth
         void setTerrainOptions( const TerrainOptions& options );        
     
     public:
-        virtual Config toConfig() const;
-        virtual void fromConfig( const Config& conf );
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
 
         static std::string OPTIONS_TAG;
 

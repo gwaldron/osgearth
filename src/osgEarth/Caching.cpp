@@ -55,11 +55,11 @@ _runOffCacheOnly( false )
 CacheConfig::CacheConfig( const Config& conf ) :
 _runOffCacheOnly( false )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 void
-CacheConfig::fromConfig( const Config& conf )
+CacheConfig::mergeConfig( const Config& conf )
 {
     // copy the input configuration, extract the data we want, and remove it
     // so that what's left is just the info for the driver.
@@ -74,7 +74,7 @@ CacheConfig::fromConfig( const Config& conf )
 }
 
 Config
-CacheConfig::toConfig( const std::string& name ) const
+CacheConfig::getConfig( const std::string& name ) const
 {
     Config conf( _driverConf );
     conf.key() = name.empty() ? "cache" : name;
@@ -602,7 +602,7 @@ CacheFactory::create(const CacheConfig &cacheConfig)
 
 
     //TODO: move all this logic into TMS and TILECACHE cache drivers. (GW)
-    Config driverConf = cacheConfig.toConfig();
+    Config driverConf = cacheConfig.getConfig();
 
     if (type == CacheConfig::TYPE_TMS || type == CacheConfig::TYPE_TILECACHE )
     {

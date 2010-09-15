@@ -40,9 +40,9 @@ _depthTestEnabled( true )
 }
 
 Config
-ModelSourceOptions::toConfig() const
+ModelSourceOptions::getConfig() const
 {
-    Config conf = DriverOptions::toConfig();
+    Config conf = DriverOptions::getConfig();
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "render_order", _renderOrder );

@@ -85,10 +85,10 @@ namespace osgEarth
 
         void initialize( const std::string& referenceURI, const Map* map );
 
-        virtual Config toConfig() const;
+        virtual Config getConfig() const;
 
     private:
-        void fromConfig( const Config& conf );
+        void mergeConfig( const Config& conf );
 
         std::string _referenceURI;
         std::string _name;

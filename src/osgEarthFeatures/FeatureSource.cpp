@@ -116,9 +116,9 @@ DriverOptions( opt )
 }
 
 Config
-FeatureSourceOptions::toConfig() const
+FeatureSourceOptions::getConfig() const
 {
-    Config conf = DriverOptions::toConfig();
+    Config conf = DriverOptions::getConfig();
 
     //TODO: make each of these filters Configurable.
     for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )

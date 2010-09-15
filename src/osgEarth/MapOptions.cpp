@@ -37,7 +37,7 @@ _cacheOnly( false ),
 _enableLighting( true ),
 _terrainOptions( 0L )
 {
-    fromConfig( conf );
+    mergeConfig( conf );
 }
 
 MapOptions::MapOptions( const TerrainOptions& to ) :
@@ -60,9 +60,9 @@ MapOptions::~MapOptions()
 }
 
 Config
-MapOptions::toConfig() const
+MapOptions::getConfig() const
 {
-    Config conf = ConfigOptions::toConfig();
+    Config conf = ConfigOptions::getConfig();
     conf.key() = "map_options";
 
     conf.addObjIfSet( "proxy", _proxySettings );
@@ -75,9 +75,9 @@ MapOptions::toConfig() const
 }
 
 void
-MapOptions::fromConfig( const Config& conf )
+MapOptions::mergeConfig( const Config& conf )
 {
-    ConfigOptions::fromConfig( conf );
+    ConfigOptions::mergeConfig( conf );
 
     conf.getObjIfSet( "proxy", _proxySettings );
     conf.getIfSet( "cache_only", _cacheOnly );
@@ -97,7 +97,7 @@ MapOptions::fromConfig( const Config& conf )
 void
 MapOptions::setTerrainOptions( const TerrainOptions& options )
 {
-    _terrainOptionsConf = options.toConfig();
+    _terrainOptionsConf = options.getConfig();
     if ( _terrainOptions )
     {
         delete _terrainOptions;

@@ -42,13 +42,14 @@ using namespace osgEarth::Drivers;
 class ArcGISSource : public TileSource
 {
 public:
-    ArcGISSource( const PluginOptions* options ) :
+    ArcGISSource( const TileSourceOptions& options ) :
       TileSource( options ),
       _profileConf( ProfileConfig() )
     {
-        _settings = dynamic_cast<const ArcGISOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new ArcGISOptions( options );
+        _options.merge( options );
+        //_settings = dynamic_cast<const ArcGISOptions*>( options );
+        //if ( !_settings.valid() )
+        //    _settings = new ArcGISOptions( options );
 
         //if ( options )
         //{
@@ -73,7 +74,7 @@ public:
             _format = "png";
 
         // read metadata from the server
-        if ( !_map_service.init( _settings->url().value(), getOptions()) )
+        if ( !_map_service.init( _options.url().value() ) ) //, getOptions()) )
         {
             OE_WARN << "[osgearth] [ArcGIS] map service initialization failed: "
                 << _map_service.getError() << std::endl;
@@ -154,7 +155,7 @@ public:
 
         if ( _map_service.isTiled() )
         {
-            buf << _settings->url().value() << "/tile"
+            buf << _options.url().value() << "/tile"
                 << "/" << level
                 << "/" << tile_y
                 << "/" << tile_x << "." << f;
@@ -164,7 +165,7 @@ public:
             const GeoExtent& ex = key.getGeoExtent();
 
             buf << std::setprecision(16)
-                << _settings->url().value() << "/export"
+                << _options.url().value() << "/export"
                 << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
                 << "&format=" << f 
                 << "&size=256,256"
@@ -180,7 +181,7 @@ public:
         osg::ref_ptr<osg::Image> image;
 		std::string bufStr;
 		bufStr = buf.str();
-        HTTPClient::readImageFile( bufStr, image, getOptions(), progress );
+        HTTPClient::readImageFile( bufStr, image, 0L, progress ); //getOptions(), progress );
         return image.release();
     }
 
@@ -199,20 +200,16 @@ public:
     }
 
 private:
-    osg::ref_ptr<const ArcGISOptions> _settings;
-    //osg::ref_ptr<const osgDB::ReaderWriter::Options> _options;
-    //std::string _url;
-    //std::string _profile_str;
+    ArcGISOptions _options;
     optional<ProfileConfig> _profileConf;
     std::string _map;
     std::string _layer;
     std::string _format;
     MapService _map_service;
-    //osg::ref_ptr<const Profile> manual_profile;
 };
 
 
-class ArcGISTileSourceFactory : public osgDB::ReaderWriter
+class ArcGISTileSourceFactory : public TileSourceDriver
 {
 public:
     ArcGISTileSourceFactory()
@@ -230,7 +227,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new ArcGISSource( static_cast<const PluginOptions*>( options ));
+        return new ArcGISSource( getTileSourceOptions(options) );
     }
 };
 

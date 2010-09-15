@@ -35,7 +35,7 @@ using namespace osgEarth::Drivers;
 class WCS11Source : public TileSource
 {
 public:
-    WCS11Source( const PluginOptions* options );
+    WCS11Source( const TileSourceOptions& opt );
     
     osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress = 0 );
@@ -51,7 +51,8 @@ public: // TileSource interface
     void initialize( const std::string& referenceURI, const Profile* overrideProfile);
 
 private:
-    osg::ref_ptr<const WCSOptions> _settings;
+    WCSOptions _options;
+//    osg::ref_ptr<const WCSOptions> _settings;
 
     //std::string _url;
     //std::string _identifier;

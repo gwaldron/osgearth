@@ -18,7 +18,7 @@
  */
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
-#include <osgEarth/TileSourceFactory>
+#include <osgEarth/TileSource>
 #include <OpenThreads/ScopedLock>
 
 using namespace osgEarth;

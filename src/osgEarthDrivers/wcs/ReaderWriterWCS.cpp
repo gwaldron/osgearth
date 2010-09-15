@@ -27,7 +27,7 @@
 
 using namespace osgEarth;
 
-class WCSSourceFactory : public osgDB::ReaderWriter
+class WCSSourceFactory : public TileSourceDriver
 {
 public:
     WCSSourceFactory() {}
@@ -49,7 +49,7 @@ public:
         {
             return ReadResult::FILE_NOT_HANDLED;
         }
-        return new WCS11Source( static_cast<const PluginOptions*>(opt) );
+        return new WCS11Source( getTileSourceOptions(opt) );
     }
 };
 

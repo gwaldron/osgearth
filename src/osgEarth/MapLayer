@@ -26,7 +26,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
 #include <osgEarth/TaskService>
-#include <osgEarth/DriverOptions>
+//#include <osgEarth/DriverOptions>
 #include <map>
 #include <utility>
 #include <queue>
@@ -70,7 +70,7 @@ namespace osgEarth
         MapLayer(
             const std::string& name,
             Type type,
-            const DriverOptions* options );
+            const TileSourceOptions& options =TileSourceOptions() );
 
         /**
          * Constructs a new map layer based on information in a Config object. This is
@@ -110,8 +110,10 @@ namespace osgEarth
         /**
          * Gets the driver options used to create this layer.
          */
-        const DriverOptions* getDriverOptions() const {
-            return _driverOptions.get(); }
+        //const DriverOptions* getDriverOptions() const {
+        //    return _driverOptions.get(); }
+        const TileSourceOptions getTileSourceOptions() const {
+            return _options; }
 
 		/**
 		 * Gets the profile of this MapLayer
@@ -329,7 +331,8 @@ namespace osgEarth
         std::string _name;
         Type        _type;
 
-        osg::ref_ptr<const DriverOptions> _driverOptions;
+        //osg::ref_ptr<const DriverOptions> _driverOptions;
+        TileSourceOptions _options;
        
         optional<ProfileConfig> _profileConf;
         optional<int> _minLevel;
@@ -382,7 +385,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ImageMapLayer : public MapLayer
     {
     public:
-        ImageMapLayer( const std::string& name, const DriverOptions* options ) :
+        ImageMapLayer( const std::string& name, const TileSourceOptions& options ) :
           MapLayer( name, MapLayer::TYPE_IMAGE, options ) { }
         
         ImageMapLayer( const std::string& name, TileSource* source ) :
@@ -392,7 +395,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT HeightFieldMapLayer : public MapLayer
     {
     public:
-        HeightFieldMapLayer( const std::string& name, const DriverOptions* options ) :
+        HeightFieldMapLayer( const std::string& name, const TileSourceOptions& options ) :
           MapLayer( name, MapLayer::TYPE_HEIGHTFIELD, options ) { }
         
         HeightFieldMapLayer( const std::string& name, TileSource* source ) :

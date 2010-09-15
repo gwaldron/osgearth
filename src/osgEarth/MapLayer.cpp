@@ -18,7 +18,7 @@
  */
 #include <osgEarth/MapLayer>
 #include <osgEarth/Compositing>
-#include <osgEarth/TileSourceFactory>
+#include <osgEarth/TileSource>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TaskService>
 #include <osgEarth/Registry>
@@ -35,10 +35,10 @@ using namespace OpenThreads;
 static unsigned int s_mapLayerID = 0;
 
 
-MapLayer::MapLayer(const std::string& name, Type type, const DriverOptions* options ) :
+MapLayer::MapLayer(const std::string& name, Type type, const TileSourceOptions& options ) :
 osg::Referenced( true ),
 _type( type ),
-_driverOptions( options ),
+_options( options ),
 _opacity(1.0f),
 _gamma(1.0), _prevGamma(1.0),
 _enabled(true),
@@ -57,8 +57,7 @@ _transparentColor(osg::Vec4ub(0,0,0,0)),
 _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter(osg::Texture::LINEAR)
 {
-    if ( options )
-        mergeConfig( options->config() );
+    mergeConfig( options.getConfig() );
 
     // since fromConfig sets the name from the config(), override that here:
     _name = name;
@@ -88,7 +87,8 @@ _transparentColor(osg::Vec4ub(0,0,0,0)),
 _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter(osg::Texture::LINEAR)
 {
-    _driverOptions = new DriverOptions( driverConf );
+    _options.merge( driverConf );
+    //_driverOptions = new DriverOptions( driverConf );
     mergeConfig( driverConf );
     init();
 }
@@ -201,7 +201,7 @@ MapLayer::mergeConfig( const Config& conf )
 Config
 MapLayer::getConfig() const
 {
-    Config conf = _driverOptions->getConfig();
+    Config conf = _options.getConfig();
 
     conf.key() = _type == MapLayer::TYPE_IMAGE ? "image" : "heightfield";
     conf.attr("name") = _name;
@@ -378,9 +378,9 @@ MapLayer::initTileSource()
 
     osg::ref_ptr<TileSource> tileSource;
 
-    if ( _driverOptions.valid() )
+    if ( !_options.getDriver().empty() )
     {
-        tileSource = tileSourceFactory.create( _driverOptions.get() );
+        tileSource = tileSourceFactory.create( _options );
     }
 
 	//Get the override profile if it is set.

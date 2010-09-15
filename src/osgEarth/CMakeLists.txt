@@ -60,7 +60,6 @@ SET(LIB_PUBLIC_HEADERS
     TileFactory
     TileKey
     TileSource
-    TileSourceFactory
     ThreadingUtils
     TMS
     Units
@@ -109,7 +108,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
-    TileSourceFactory.cpp
     TMS.cpp
     Units.cpp
     Version.cpp

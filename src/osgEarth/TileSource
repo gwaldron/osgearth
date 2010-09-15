@@ -53,9 +53,9 @@ namespace osgEarth
     /**
      * Configuration options for a tile source driver.
      */
-    class OSGEARTH_EXPORT TileSourceOptions : public DriverOptions
+    class TileSourceOptions : public DriverConfigOptions // no export; header only
     {
-    public: //properties
+    public:
         
         optional<int>& tileSize() { return _tileSize; }
         const optional<int>& tileSize() const { return _tileSize; }
@@ -76,12 +76,40 @@ namespace osgEarth
         const optional<Config>& profileConfig() const { return _profileConf; }
 
     public:
-        TileSourceOptions( const PluginOptions* po =0L );
-        TileSourceOptions( const Config& conf );
+        TileSourceOptions( const Config& conf =Config() )
+            : DriverConfigOptions( conf ),
+              _tileSize( 256 ),
+              _noDataValue( (float)SHRT_MIN ),
+              _noDataMinValue( -FLT_MAX ),
+              _noDataMaxValue( FLT_MAX ) { }
 
-    protected:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+    public:
+        virtual Config getConfig() const
+        {
+            Config conf = DriverConfigOptions::getConfig();
+            conf.updateIfSet( "tile_size", _tileSize );
+            conf.updateIfSet( "nodata_value", _noDataValue );
+            conf.updateIfSet( "nodata_min", _noDataMinValue );
+            conf.updateIfSet( "nodata_max", _noDataMaxValue );
+            conf.updateIfSet( "blacklist_filename", _blacklistFilename);
+            return conf;
+        }
+
+        virtual void mergeConfig( const Config& conf )
+        {
+            DriverConfigOptions::mergeConfig( conf );
+            config().getIfSet( "tile_size", _tileSize );
+            config().getIfSet( "nodata_value", _noDataValue );
+            config().getIfSet( "nodata_min", _noDataMinValue );
+            config().getIfSet( "nodata_max", _noDataMaxValue );
+            config().getIfSet( "blacklist_filename", _blacklistFilename);
+
+            // special handling of default tile size:
+            if ( !tileSize().isSet() )
+                config().getIfSet( "default_tile_size", _tileSize );
+            // remove it now so it does not get serialized
+            config().remove( "default_tile_size" );
+        }
 
         optional<int> _tileSize;
         optional<float> _noDataValue, _noDataMinValue, _noDataMaxValue;
@@ -159,7 +187,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
     public:        
-        TileSource( const PluginOptions* options =NULL ); //const osgDB::ReaderWriter::Options* options =NULL );
+        TileSource( const TileSourceOptions& options );
 
         /**
          * Gets the number of pixels per tile for this TileSource.
@@ -196,19 +224,19 @@ namespace osgEarth
 		 * Gets the nodata elevation value
 		 */
         virtual float getNoDataValue() {
-            return _settings->noDataValue().value(); }
+            return _options.noDataValue().value(); }
 
 		/**
 		 * Gets the nodata min value
 		 */
         virtual float getNoDataMinValue() {
-            return _settings->noDataMinValue().value(); }
+            return _options.noDataMinValue().value(); }
 
 		/**
 		 * Gets the nodata max value
 		 */
         virtual float getNoDataMaxValue() {
-            return _settings->noDataMaxValue().value(); }
+            return _options.noDataMaxValue().value(); }
 
         /**
          * Gets the maximum level of detail available from the tile source. Unlike 
@@ -286,8 +314,8 @@ namespace osgEarth
         virtual osg::HeightField* createHeightField( const TileKey& key, 
                                                      ProgressCallback* progress = 0);
 
-        const TileSourceOptions* getOptions() const {
-            return _settings.get(); }
+        const TileSourceOptions& getOptions() const {
+            return _options; }
 
         /**
          * Mutable list of the data areas 
@@ -301,7 +329,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<const TileSourceOptions> _settings;
+        TileSourceOptions _options;
 
         friend class Map;
         friend class MapEngine;
@@ -318,6 +346,26 @@ namespace osgEarth
 
     
     typedef std::vector< osg::ref_ptr<TileSource> > TileSourceList;
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTH_EXPORT TileSourceDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const TileSourceOptions& getTileSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+    };
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Creates TileSource instances and chains them together to create
+     * tile source "pipelines" for data access and processing.
+     */
+    class OSGEARTH_EXPORT TileSourceFactory
+    {   
+	public:
+        TileSource* create( const TileSourceOptions& options ) const;
+    };
 }
 
 #endif // OSGEARTH_TILE_SOURCE_H

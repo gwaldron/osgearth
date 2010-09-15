@@ -130,7 +130,7 @@ readMapLayer( const Config& conf, const Config& additional )
     Config driverConf = conf;
     driverConf.add( additional.children() );
 
-    MapLayer* layer = new MapLayer( conf.value("name"), layerType, new DriverOptions(driverConf) );
+    MapLayer* layer = new MapLayer( conf.value("name"), layerType, TileSourceOptions(driverConf) );
 
     return layer;
 }

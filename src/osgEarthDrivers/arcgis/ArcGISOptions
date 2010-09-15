@@ -33,18 +33,25 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& url() const { return _url; }
 
     public:
-        ArcGISOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ) {
-            driver() = "arcgis";
-            config().getIfSet( "url", _url );
+        ArcGISOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
+            TileSourceOptions( opt )
+        {
+            setDriver( "arcgis" );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url);
             return conf;
         }
 
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            conf.getIfSet( "url", _url );
+        }
+
+    private:
         optional<std::string> _url;
     };
 

@@ -92,7 +92,7 @@ public:
      * provided REST API URL (e.g.: http://server/ArcGIS/rest/services/MyMapService)
      * Call isValid() to verify success.
      */
-    bool init( const std::string& url, const osgDB::ReaderWriter::Options* options );
+    bool init( const std::string& url, const osgDB::ReaderWriter::Options* options =0L );
 
     /**
      * Returns true if the map service initialized succesfully.

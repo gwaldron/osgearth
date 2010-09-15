@@ -46,20 +46,11 @@ namespace osgEarth { namespace Drivers
 
     public: // ctors
 
-        GDALOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
+        GDALOptions( const TileSourceOptions& options =TileSourceOptions() ) :
+            TileSourceOptions( options ),
             _interpolation( INTERP_AVERAGE )
         {
-            driver() = "gdal";
-
-            config().getIfSet( "url", _url );
-            config().getIfSet( "extensions", _extensions );
-
-            std::string in = config().value( "interpolation" );
-            if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
-            else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
-            else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
-
-            config().getIfSet( "max_data_level", _maxDataLevel);
+            setDriver( "gdal" );
         }
 
     protected:
@@ -78,6 +69,20 @@ namespace osgEarth { namespace Drivers
 
             conf.updateIfSet( "max_data_level", _maxDataLevel);
             return conf;
+        }
+
+        void mergeConfig( const Config& conf )
+        {
+            TileSourceOptions::mergeConfig( conf );
+
+            conf.getIfSet( "url", _url );
+            conf.getIfSet( "extensions", _extensions );
+            std::string in = conf.value( "interpolation" );
+            if ( in == "nearest" ) _interpolation = osgEarth::INTERP_NEAREST;
+            else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
+            else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
+            conf.getIfSet( "max_data_level", _maxDataLevel);
+
         }
 
         optional<std::string> _url;

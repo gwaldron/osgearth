@@ -629,15 +629,17 @@ GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
 class GDALTileSource : public TileSource
 {
 public:
-    GDALTileSource(const PluginOptions* options) :
+    GDALTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
       _srcDS(NULL),
       _warpedDS(NULL),
       _maxDataLevel(30)
     {
-        _settings = dynamic_cast<const GDALOptions*>( options );
-        if ( !_settings )
-            _settings = new GDALOptions( options );
+        _options.merge( options );
+
+        //_settings = dynamic_cast<const GDALOptions*>( options );
+        //if ( !_settings )
+        //    _settings = new GDALOptions( options );
 
         //std::string interpOption;
 
@@ -686,13 +688,13 @@ public:
     {   
         GDAL_SCOPED_LOCK;
 
-        if ( !_settings->url().isSet() || _settings->url()->empty() )
+        if ( !_options.url().isSet() || _options.url()->empty() )
         {
             OE_WARN << "GDAL: No URL or directory specified " << std::endl;
             return;
         }
 
-        std::string path = _settings->url().value();
+        std::string path = _options.url().value();
 
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
@@ -709,7 +711,7 @@ public:
 
 
         std::vector<std::string> exts;
-        tokenize( _settings->extensions().value(), exts, ";");
+        tokenize( _options.extensions().value(), exts, ";");
         for (unsigned int i = 0; i < exts.size(); ++i)
         {
             OE_DEBUG << "GDAL: Using Extension: " << exts[i] << std::endl;
@@ -891,9 +893,9 @@ public:
 
         OE_INFO << "GDAL: Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
-        if (_settings->maxDataLevel().isSet())
+        if (_options.maxDataLevel().isSet())
         {
-            _maxDataLevel = _settings->maxDataLevel().value();
+            _maxDataLevel = _options.maxDataLevel().value();
             OE_INFO << "Using override max data level " << _maxDataLevel << std::endl;
         }
         else
@@ -904,8 +906,8 @@ public:
                 _maxDataLevel = i;
                 double w, h;
                 profile->getTileDimensions(i, w, h);
-                double resX = (w / (double)_settings->tileSize().value() );
-                double resY = (h / (double)_settings->tileSize().value() );
+                double resX = (w / (double)_options.tileSize().value() );
+                double resY = (h / (double)_options.tileSize().value() );
 
                 if (resX < maxResolution || resY < maxResolution)
                 {
@@ -963,7 +965,7 @@ public:
 
         GDAL_SCOPED_LOCK;
 
-        int tileSize = _settings->tileSize().value();
+        int tileSize = _options.tileSize().value();
 
         osg::ref_ptr<osg::Image> image;
         if (intersects(key))
@@ -1233,7 +1235,7 @@ public:
             {
                 OE_WARN 
                     << "GDAL: Could not find red, green and blue bands or gray bands in "
-                    << _settings->url().value()
+                    << _options.url().value()
                     << ".  Cannot create image. " << std::endl;
 
                 return NULL;
@@ -1320,7 +1322,7 @@ public:
         if (c < 0 || r < 0 || c > _warpedDS->GetRasterXSize()-1 || r > _warpedDS->GetRasterYSize()-1)
             return NO_DATA_VALUE;
 
-        if ( _settings->interpolation() == INTERP_NEAREST )
+        if ( _options.interpolation() == INTERP_NEAREST )
         {
             band->RasterIO(GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
             if (!isValidValue( result, band))
@@ -1356,7 +1358,7 @@ public:
                 return NO_DATA_VALUE;
             }
 
-            if ( _settings->interpolation() == INTERP_AVERAGE )
+            if ( _options.interpolation() == INTERP_AVERAGE )
             {
                 double x_rem = c - (int)c;
                 double y_rem = r - (int)r;
@@ -1368,7 +1370,7 @@ public:
 
                 result = (float)(w00 + w01 + w10 + w11);
             }
-            else if ( _settings->interpolation() == INTERP_BILINEAR )
+            else if ( _options.interpolation() == INTERP_BILINEAR )
             {
                 //Check for exact value
                 if ((colMax == colMin) && (rowMax == rowMin))
@@ -1416,7 +1418,7 @@ public:
 
         GDAL_SCOPED_LOCK;
 
-        int tileSize = _settings->tileSize().value();
+        int tileSize = _options.tileSize().value();
 
         //Allocate the heightfield
         osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
@@ -1477,13 +1479,14 @@ private:
     //std::string     _extensions;
     //ElevationInterpolation   _interpolation;
 
-    osg::ref_ptr<const GDALOptions> _settings;
+    GDALOptions _options;
+    //osg::ref_ptr<const GDALOptions> _settings;
 
     unsigned int _maxDataLevel;
 };
 
 
-class ReaderWriterGDALTile : public osgDB::ReaderWriter
+class ReaderWriterGDALTile : public TileSourceDriver
 {
 public:
     ReaderWriterGDALTile() {}
@@ -1504,7 +1507,7 @@ public:
         {
             return ReadResult::FILE_NOT_HANDLED;
         }
-        return new GDALTileSource( static_cast<const PluginOptions*>(opt) );
+        return new GDALTileSource( getTileSourceOptions(opt) );
     }
 };
 

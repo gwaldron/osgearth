@@ -23,69 +23,15 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/ThreadingUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
-#include <OpenThreads/ScopedLock>
-
 using namespace osgEarth;
-using namespace osgEarth::Threading;
 
-
-/****************************************************************/
-
-TileSourceOptions::TileSourceOptions( const PluginOptions* po ) :
-DriverOptions( po ),
-_tileSize( 256 ),
-_noDataValue( (float)SHRT_MIN ),
-_noDataMinValue( -FLT_MAX ),
-_noDataMaxValue( FLT_MAX )
-{
-    if ( po )
-        mergeConfig( po->config() );
-}
-
-TileSourceOptions::TileSourceOptions( const Config& conf ) :
-DriverOptions( conf ),
-_tileSize( 256 ),
-_noDataValue( (float)SHRT_MIN ),
-_noDataMinValue( -FLT_MAX ),
-_noDataMaxValue( FLT_MAX )
-{
-    mergeConfig( conf );
-}
-
-void
-TileSourceOptions::mergeConfig( const Config& conf )
-{
-    config().getIfSet( "tile_size", _tileSize );
-    config().getIfSet( "nodata_value", _noDataValue );
-    config().getIfSet( "nodata_min", _noDataMinValue );
-    config().getIfSet( "nodata_max", _noDataMaxValue );
-    config().getIfSet( "blacklist_filename", _blacklistFilename);
-    
-    // special handling of default tile size:
-    if ( !tileSize().isSet() )
-        config().getIfSet( "default_tile_size", _tileSize );
-    // remove it now so it does not get serialized
-    config().remove( "default_tile_size" );
-}
-
-Config
-TileSourceOptions::getConfig() const
-{ 
-    Config conf = DriverOptions::getConfig();
-    conf.updateIfSet( "tile_size", _tileSize );
-    conf.updateIfSet( "nodata_value", _noDataValue );
-    conf.updateIfSet( "nodata_min", _noDataMinValue );
-    conf.updateIfSet( "nodata_max", _noDataMaxValue );
-    conf.updateIfSet( "blacklist_filename", _blacklistFilename);
-    return conf;
-}
-
-/****************************************************************/  
+//------------------------------------------------------------------------
 
 TileBlacklist::TileBlacklist()
 {
@@ -95,7 +41,7 @@ TileBlacklist::TileBlacklist()
 void
 TileBlacklist::add(const osgTerrain::TileID &tile)
 {
-    ScopedWriteLock lock(_mutex);
+    Threading::ScopedWriteLock lock(_mutex);
     _tiles.insert(tile);
     OE_DEBUG << "Added " << tile.level << " (" << tile.x << ", " << tile.y << ") to blacklist" << std::endl;
 }
@@ -103,7 +49,7 @@ TileBlacklist::add(const osgTerrain::TileID &tile)
 void
 TileBlacklist::remove(const osgTerrain::TileID &tile)
 {
-    ScopedWriteLock lock(_mutex);
+    Threading::ScopedWriteLock lock(_mutex);
     _tiles.erase(tile);
     OE_DEBUG << "Removed " << tile.level << " (" << tile.x << ", " << tile.y << ") from blacklist" << std::endl;
 }
@@ -111,7 +57,7 @@ TileBlacklist::remove(const osgTerrain::TileID &tile)
 void
 TileBlacklist::clear()
 {
-    ScopedWriteLock lock(_mutex);
+    Threading::ScopedWriteLock lock(_mutex);
     _tiles.clear();
     OE_DEBUG << "Cleared blacklist" << std::endl;
 }
@@ -119,14 +65,14 @@ TileBlacklist::clear()
 bool
 TileBlacklist::contains(const osgTerrain::TileID &tile) const
 {
-    ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
+    Threading::ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
     return _tiles.find(tile) != _tiles.end();
 }
 
 unsigned int
 TileBlacklist::size() const
 {
-    ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
+    Threading::ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
     return _tiles.size();
 }
 
@@ -181,28 +127,26 @@ TileBlacklist::write(const std::string &filename) const
 void
 TileBlacklist::write(std::ostream &output) const
 {
-    ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
+    Threading::ScopedReadLock lock(const_cast<TileBlacklist*>(this)->_mutex);
     for (BlacklistedTiles::const_iterator itr = _tiles.begin(); itr != _tiles.end(); ++itr)
     {
         output << itr->level << " " << itr->x << " " << itr->y << std::endl;
     }
 }
 
-/****************************************************************/  
+//------------------------------------------------------------------------
 
-TileSource::TileSource(const PluginOptions* options)
+TileSource::TileSource( const TileSourceOptions& options )
 {
     this->setThreadSafeRefUnref( true );
 
-    _settings = dynamic_cast<const TileSourceOptions*>( options );
-    if ( !_settings.valid() )
-        _settings = new TileSourceOptions( options );
+    _options.merge( options );
 
     _memCache = new MemCache();
 
-    if (_settings->blacklistFilename().isSet())
+    if (_options.blacklistFilename().isSet())
     {
-        _blacklistFilename = _settings->blacklistFilename().value();
+        _blacklistFilename = _options.blacklistFilename().value();
     }
 
     
@@ -233,7 +177,7 @@ TileSource::~TileSource()
 int
 TileSource::getPixelsPerTile() const
 {
-    return _settings->tileSize().value();
+    return _options.tileSize().value();
 }
 
 osg::Image*
@@ -340,25 +284,6 @@ TileSource::getMinDataLevel() const
     return minDataLevel;
 }
 
-/*
-void
-TileSource::buildDataExtentsIndex()
-{
-    if (_dataExtents.size() == 0) return;
-
-    //Build the spatial index if required
-    OE_NOTICE << "Building spatial index" << std::endl;
-    _dataExtentsIndex = new RTree< unsigned int >();
-    unsigned int numAdded = 0;
-    for (unsigned int i = 0; i < _dataExtents.size(); ++i)
-    {
-        _dataExtentsIndex->insert(GeoExtent(_dataExtents[i]), i);
-        numAdded++;
-    }
-    OE_NOTICE << "Done building spatial index " << numAdded << std::endl;    
-}
-*/
-
 bool
 TileSource::hasData(const osgEarth::TileKey& key)
 {
@@ -423,4 +348,44 @@ const TileBlacklist*
 TileSource::getBlacklist() const
 {
     return _blacklist.get();
+}
+
+//------------------------------------------------------------------------
+
+#undef LC
+#define LC "[TileSourceFactory] "
+
+#define TILESOURCEOPTIONS_TAG "__osgEarth::TileSourceOptions"
+
+TileSource*
+TileSourceFactory::create( const TileSourceOptions& options ) const
+{
+    TileSource* result = 0L;
+
+    std::string driver = options.getDriver();
+    if ( driver.empty() )
+    {
+        OE_WARN << "ILLEGAL- no driver set for tile source \"" << options.getName() << "\"" << std::endl;
+        return 0L;
+    }
+
+    osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();
+    rwopt->setPluginData( TILESOURCEOPTIONS_TAG, (void*)&options );
+
+    std::string driverExt = std::string( ".osgearth_" ) + driver;
+    result = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, rwopt.get() ) );
+    if ( !result )
+    {
+        OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;
+    }
+
+    return result;
+}
+
+//------------------------------------------------------------------------
+
+const TileSourceOptions&
+TileSourceDriver::getTileSourceOptions( const osgDB::ReaderWriter::Options* rwopt ) const
+{
+    return *static_cast<const TileSourceOptions*>( rwopt->getPluginData( TILESOURCEOPTIONS_TAG ) );
 }

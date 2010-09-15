@@ -995,7 +995,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
         if ( _thrown || _continuous )
         {
-            handleContinuousAction( _last_action );
+            handleContinuousAction( _last_action, aa.asView() );
             aa.requestRedraw();
         }
 
@@ -1647,7 +1647,7 @@ EarthManipulator::setDistance( double distance )
 }
 
 void
-EarthManipulator::handleMovementAction( const ActionType& type, double dx, double dy )
+EarthManipulator::handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view )
 {
     switch( type )
     {
@@ -1669,6 +1669,10 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
 
     case ACTION_ZOOM:
         zoom( dx, dy );
+        break;
+
+    case ACTION_EARTH_DRAG:
+        drag( dx, dy, view );
         break;
     }
 }
@@ -1707,9 +1711,9 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
 }
 
 void
-EarthManipulator::handleContinuousAction( const Action& action )
+EarthManipulator::handleContinuousAction( const Action& action, osg::View* view )
 {
-    handleMovementAction( action._type, _continuous_dx * _t_factor, _continuous_dy * _t_factor );
+    handleMovementAction( action._type, _continuous_dx * _t_factor, _continuous_dy * _t_factor, view );
 }
 
 void
@@ -1754,7 +1758,7 @@ EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
     }
     else
     {
-        handleMovementAction( action._type, dx, dy );
+        handleMovementAction( action._type, dx, dy, view );
     }
 
     return true;
@@ -1935,4 +1939,137 @@ EarthManipulator::setHomeViewpoint( const Viewpoint& vp, double duration_s )
 {
     _homeViewpoint = vp;
     _homeViewpointDuration = duration_s;
+}
+
+// Find the point on a line closest to another point. Returns that
+// point.
+osg::Vec3d closestPtOnLine(const osg::Vec3d& p1, const osg::Vec3d& v,
+                           const osg::Vec3d& p)
+{
+    double u = (p - p1) * v / v.length2();
+    return p1 + v * u;
+}
+
+bool findPointOnLineWithD2(const osg::Vec3d& origin, double d2,
+                           const osg::Vec3d& p1, const osg::Vec3d& v,
+                           osg::Vec3d& result)
+{
+    osg::Vec3d perp = closestPtOnLine(p1, v, origin);
+    // d2 is length of hypotenuse. Length of perp - origin is adjacent
+    // side of right triangle.
+    double adj2 = (perp - origin).length2();
+    // Use Pythagorian theorem to find the length of the "opposite"
+    // side, and from that the point that gives us a vector from
+    // origin with length d that lies on the line.
+    double op2 = d2 - adj2;
+    if (op2 < 0)
+        return false;
+    double op = sqrt(op2);
+    osg::Vec3d norm = v;
+    norm.normalize();
+    result = perp - norm * op;
+    return true;
+}
+
+bool findIntersectionWithPlane(const osg::Vec3d& normal, const osg::Vec3d& pt,
+                               const osg::Vec3d& p1, const osg::Vec3d& v,
+                               osg::Vec3d& result)
+{
+    double denom = normal * v;
+    if (osg::equivalent(0, denom))
+        return false;
+    double u = normal * (pt - p1) / denom;
+    result = p1 + v * u;
+    return true;
+}
+
+osg::Vec3d getWindowPoint(osgViewer::View* view, float x, float y)
+{
+    float local_x, local_y;
+    const osg::Camera* camera
+        = view->getCameraContainingPosition(x, y, local_x, local_y);
+    if (!camera)
+        camera = view->getCamera();
+    osg::Matrix winMat;
+    if (camera->getViewport())
+        winMat = camera->getViewport()->computeWindowMatrix();
+    osg::Matrix projMat = camera->getProjectionMatrix();
+    // ray from eye through pointer in camera coordinate system goes
+    // from origin through transformed pointer coordinates
+    osg::Matrix win2camera = projMat * winMat;
+    win2camera.invert(win2camera);
+    osg::Vec4d winpt4 = osg::Vec4d(x, y, 0.0, 1.0) * win2camera;
+    winpt4 = winpt4 / winpt4.w();
+    return osg::Vec3d(winpt4.x(), winpt4.y(), winpt4.z());
+}
+
+void
+EarthManipulator::drag(double dx, double dy, osg::View* theView)
+{
+    osgViewer::View* view = dynamic_cast<osgViewer::View*>(theView);
+    float x = _ga_t0->getX(), y = _ga_t0->getY();
+    float local_x, local_y;
+    const osg::Camera* camera
+        = view->getCameraContainingPosition(x, y, local_x, local_y);
+    if (!camera)
+        camera = view->getCamera();
+    osg::Matrix viewMat = camera->getViewMatrix();
+    osg::Matrix viewMatInv = camera->getInverseViewMatrix();
+    if (!_ga_t1.valid())
+        return;
+    osg::Vec3d worldStartDrag;
+    // drag start in camera coordinate system.
+    osg::Vec3d startDrag;
+    osg::Vec3d worldNormal(1.0, 0.0, 0.0);
+    const osg::Vec3d zero(0.0, 0.0, 0.0);
+    bool onEarth;
+    if ((onEarth = screenToWorld( _ga_t1->getX(), _ga_t1->getY(),
+                                  view, worldStartDrag)))
+    {
+        startDrag = worldStartDrag * viewMat;
+        double startLat, startLon, startH;
+        _csn->getEllipsoidModel()->convertXYZToLatLongHeight(
+            worldStartDrag.x(), worldStartDrag.y(), worldStartDrag.z(),
+            startLat, startLon, startH);
+        // Find the normal plane on the earth at the start drag point        
+        // NB order imposed by parentheses!
+        worldNormal = (osg::Quat(startLon, osg::Vec3d(0.0, 0.0, 1.0))
+                       * (osg::Quat(startLat, osg::Vec3d(0.0, -1.0, 0.0))
+                          * worldNormal));
+    }
+    else
+    {
+        const osg::Vec3d startWinPt = getWindowPoint(view, _ga_t1->getX(),
+                                                     _ga_t1->getY());
+        startDrag = closestPtOnLine(zero, startWinPt, zero * viewMat);
+        worldStartDrag = startDrag * viewMatInv;
+        worldNormal = worldStartDrag;
+    }
+    // Normal gets multiplied by inverse transpose.
+    osg::Vec3d normal = osg::Matrixd::transform3x3(viewMatInv, worldNormal);
+    normal.normalize();
+    // ray from eye through pointer in camera coordinate system goes
+    // from origin through transformed pointer coordinates
+    const osg::Vec3d winpt = getWindowPoint(view, x, y);
+    // Find new point to which startDrag has been moved
+    osg::Vec3d endDrag;
+    osg::Vec3d worldEndDrag;
+    osg::Quat worldRot;
+    if (onEarth)
+    {
+        if (!findIntersectionWithPlane(normal, startDrag, zero, winpt, endDrag))
+            return;
+    }
+    else
+    {
+        endDrag = closestPtOnLine(zero, winpt, zero * viewMat);
+    }
+    worldEndDrag = endDrag * viewMatInv;
+    worldRot.makeRotate(worldStartDrag, worldEndDrag);
+    // Move the camera by the inverse rotation
+    osg::Quat cameraRot = worldRot.conj();
+    _center = cameraRot * _center;
+    _centerRotation = _centerRotation * cameraRot;
+    osg::CoordinateFrame local_frame = getMyCoordinateFrame(_center);
+    _previousUp = getUpVector(local_frame);
 }

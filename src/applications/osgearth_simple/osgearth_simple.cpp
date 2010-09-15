@@ -139,6 +139,11 @@ int main(int argc, char** argv)
         osgEarthUtil::EarthManipulator::ACTION_GOTO,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
 
+    manip->getSettings()->bindMouse(
+        osgEarthUtil::EarthManipulator::ACTION_EARTH_DRAG,
+        osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
+        osgGA::GUIEventAdapter::MODKEY_SHIFT );
+    
     // add our fly-to handler
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
 

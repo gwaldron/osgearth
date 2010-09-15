@@ -66,7 +66,8 @@ namespace osgEarthUtil
             ACTION_ROTATE_DOWN,
             ACTION_ZOOM,
             ACTION_ZOOM_IN,
-            ACTION_ZOOM_OUT
+            ACTION_ZOOM_OUT,
+            ACTION_EARTH_DRAG
         };
 
         /** Bindable event types. */
@@ -537,6 +538,11 @@ namespace osgEarthUtil
          * Zoom the camera using deltas (dy only)
          */
         virtual void zoom( double dx, double dy );
+
+        /**
+         * Drag the earth using deltas
+         */
+        virtual void drag( double dx, double dy, osg::View* view);
         
         /**
          * Converts screen coordinates (relative to the view's viewpoint) to world
@@ -644,8 +650,9 @@ namespace osgEarthUtil
         bool handleKeyboardAction( const Action& action, double duration_s = DBL_MAX );
         bool handleScrollAction( const Action& action, double duration_s = DBL_MAX );        
         bool handlePointAction( const Action& type, float mx, float my, osg::View* view );
-        void handleContinuousAction( const Action& action );
-        void handleMovementAction( const ActionType& type, double dx, double dy );
+        void handleContinuousAction( const Action& action, osg::View* view );
+        void handleMovementAction( const ActionType& type, double dx, double dy,
+                                   osg::View* view );
 
         // checks to see whether the mouse is "moving".
         bool isMouseMoving();
@@ -726,9 +733,15 @@ namespace osgEarthUtil
         osg::Timer_t            _now;
         double                  _delta_t;
         double                  _t_factor;
-        bool                    _thrown;      
+        bool                    _thrown;
+        // The world coordinate of the Viewpoint focal point.
         osg::Vec3d              _center;
+        // The rotation (heading and pitch) of the camera in the
+        // earth-local frame.
         osg::Quat               _rotation;
+        // The rotation that makes the camera look down on the focal
+        // point on the earth. This is equivalent to a rotation by
+        // latitude, longitude.
 		osg::Quat               _centerRotation;
         double                  _distance;
 		double                  _offset_x;
@@ -778,6 +791,7 @@ namespace osgEarthUtil
         };
         void postUpdate();
         friend struct CameraUpdateCallback;
+
     };
 }
 

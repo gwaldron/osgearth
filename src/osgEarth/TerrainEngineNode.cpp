@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Capabilities>
+#include <osgEarth/Registry>
 #include <osgDB/ReadFile>
 
 #define LC "[TerrainEngineNode] "
@@ -60,8 +62,7 @@ TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::C
 osg::CoordinateSystemNode( rhs, op ),
 _verticalScale( rhs._verticalScale ),
 _elevationSamplingRatio( rhs._elevationSamplingRatio ),
-_map( rhs._map.get() ),
-_terrainOptions( rhs._terrainOptions )
+_map( rhs._map.get() )
 {
     //nop
 }
@@ -70,8 +71,6 @@ void
 TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
 {
     _map = map;
-    _terrainOptions = options;
-
     if ( _map.valid() )
         _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
 }
@@ -193,7 +192,32 @@ TerrainEngineNode::updateLayerEnabled( MapLayer* layer )
 void
 TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 {
-    //TODO...
+    // make sure all the requested properties are compatible, and fall back as necessary.
+    const Capabilities& caps = Registry::instance()->getCapabilities();
+
+    // check that the layering technique is supported by the hardware.
+    if (options.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE &&
+        !caps.supportsTextureArrays() )
+    {
+        OE_WARN << LC << "COMPOSITE layering requires EXT_texture_array; falling back to MULTIPASS" << std::endl;
+        options.layeringTechnique() = TerrainOptions::LAYERING_MULTIPASS;
+    }
+
+    if (options.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE &&
+        !caps.supportsMultiTexture() )
+    {
+        OE_WARN << LC << "MULTITEXTURE layering requires EXT_multitexture; falling back to MULTIPASS" << std::endl;
+        options.layeringTechnique() = TerrainOptions::LAYERING_MULTIPASS;
+    }
+
+    // warn against mixing multipass technique with preemptive/sequential mode:
+    if (options.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS &&
+        options.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    {
+        OE_WARN << LC << "MULTIPASS layering is incompatible with preemptive/sequential loading policy; "
+            << "falling back on STANDARD mode" << std::endl;
+        options.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -214,7 +238,9 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
     result = dynamic_cast<TerrainEngineNode*>( osgDB::readObjectFile( driverExt ) );
     if ( result )
     {
-        result->initialize( map, options );
+        TerrainOptions terrainOptions( options );
+        result->validateTerrainOptions( terrainOptions );
+        result->initialize( map, terrainOptions );
     }
     else
     {

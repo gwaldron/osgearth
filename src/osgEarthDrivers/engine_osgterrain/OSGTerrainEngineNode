@@ -39,6 +39,7 @@ public:
 public: // TerrainEngineNode overrides    
     virtual void initialize( Map* map, const TerrainOptions& options );
     virtual void validateTerrainOptions( TerrainOptions& options );
+    virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
     virtual void traverse( osg::NodeVisitor& );
     virtual osg::BoundingSphere computeBound() const;
 

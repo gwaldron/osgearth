@@ -786,7 +786,11 @@ void
 OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 {
     TerrainEngineNode::validateTerrainOptions( options );
-    //TODO...
+    
+    //nop for now.
+    //note: to validate plugin-specific features, we would create an OSGTerrainOptions
+    // and do the validation on that. You would then re-integrate it by calling
+    // options.mergeConfig( osgTerrainOptions ).
 }
 
 typedef std::list<const osg::StateSet*> StateSetStack;

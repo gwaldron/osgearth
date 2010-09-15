@@ -198,7 +198,7 @@ namespace osgEarth
         }
 
         template<typename X, typename Y>
-        void updateIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) const {
+        void updateIfSet( const std::string& key, const std::string& val, const optional<X>& target, const Y& targetValue ) {
             if ( target.isSetTo( targetValue ) ) {
                 remove(key);
                 add( key, val );
@@ -363,7 +363,7 @@ namespace osgEarth
     {
     public:
         ConfigOptions( const Config& conf =Config() )
-            : _conf( conf ) { }
+            : _conf( conf ) { mergeConfig( conf ); }
 
         Config& config() { return _conf; }
         const Config& config() const { return _conf; }
@@ -386,7 +386,7 @@ namespace osgEarth
     {
     public:
         DriverConfigOptions( const Config& conf =Config() ) 
-            : ConfigOptions( conf ) { } // { mergeConfig( conf ); }
+            : ConfigOptions( conf ) { }
 
         void setDriver( const std::string& value ) { _driver = value; }
         const std::string& getDriver() const { return _driver; }
@@ -403,6 +403,7 @@ namespace osgEarth
         }
 
         virtual void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
             _name = conf.value( "name" );
             _driver = conf.value( "driver" );
         }

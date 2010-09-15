@@ -56,7 +56,6 @@ LoadingPolicy::getConfig() const
     conf.addIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.addIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
     conf.addIfSet( "loading_threads", _numThreads );
-    //conf.addIfSet( "loading_threads_per_logical_processor", _numThreadsPerCore );
     conf.addIfSet( "loading_threads_per_core", _numThreadsPerCore );
     conf.addIfSet( "tile_generation_threads", _numTileGenThreads );
     return conf;
@@ -87,24 +86,23 @@ TerrainOptions::getConfig() const
     Config conf = DriverConfigOptions::getConfig();
     conf.key() = "terrain_options";
 
-    conf.addObjIfSet( "loading_policy", _loadingPolicy );
-    conf.addIfSet( "vertical_scale", _verticalScale );
-    //conf.addIfSet( "skirt_ratio", _heightFieldSkirtRatio );
-    conf.addIfSet( "sample_ratio", _heightFieldSampleRatio );
-    conf.addIfSet( "min_tile_range_factor", _minTileRangeFactor );
-    conf.addIfSet( "normalize_edges", _normalizeEdges );
-    conf.addIfSet( "combine_layers", _combineLayers );
-    conf.addIfSet( "max_lod", _maxLOD );
-    conf.addIfSet( "lighting", _enableLighting );
+    conf.updateObjIfSet( "loading_policy", _loadingPolicy );
+    conf.updateIfSet( "vertical_scale", _verticalScale );
+    conf.updateIfSet( "sample_ratio", _heightFieldSampleRatio );
+    conf.updateIfSet( "min_tile_range_factor", _minTileRangeFactor );
+    conf.updateIfSet( "normalize_edges", _normalizeEdges );
+    conf.updateIfSet( "combine_layers", _combineLayers );
+    conf.updateIfSet( "max_lod", _maxLOD );
+    conf.updateIfSet( "lighting", _enableLighting );
 
-    conf.addIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
-    conf.addIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
-    conf.addIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
+    conf.updateIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
+    conf.updateIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
+    conf.updateIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
 
-    conf.addIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
-    conf.addIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
-    conf.addIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
-    conf.addIfSet( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
+    conf.updateIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
+    conf.updateIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
+    conf.updateIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
+    conf.updateIfSet( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
 
     return conf;
 }

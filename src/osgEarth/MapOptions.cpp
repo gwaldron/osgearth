@@ -65,11 +65,10 @@ MapOptions::getConfig() const
     Config conf = ConfigOptions::getConfig();
     conf.key() = "map_options";
 
-    conf.addObjIfSet( "proxy", _proxySettings );
-    conf.addIfSet( "cache_only", _cacheOnly );
-    conf.addIfSet( "lighting", _enableLighting );
-
-    conf.addIfSet( "terrain_options", _terrainOptionsConf );
+    conf.updateObjIfSet( "proxy", _proxySettings );
+    conf.updateIfSet( "cache_only", _cacheOnly );
+    conf.updateIfSet( "lighting", _enableLighting );
+    conf.updateIfSet( "terrain_options", _terrainOptionsConf );
 
     return conf;
 }

@@ -116,6 +116,38 @@ EarthManipulator::Action::getDoubleOption( int option, double defaultValue ) con
 
 EarthManipulator::Action EarthManipulator::NullAction( EarthManipulator::ACTION_NULL );
 
+static std::string s_actionNames[] = {
+    "null",
+    "home",
+    "goto",
+    "pan",
+    "pan-left",
+    "pan-right",
+    "pan-up",
+    "pan-down",
+    "rotate",
+    "rotate-left",
+    "rotate-right",
+    "rotate-up",
+    "rotate-down",
+    "zoom",
+    "zoom-in",
+    "zoom-out",
+    "earth-drag"
+};
+
+static std::string s_actionOptionNames[] = {
+    "scale-x",
+    "scale-y",
+    "continuous",
+    "single-axis",
+    "goto-range-factor",
+    "duration"
+};
+
+static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
+
+//------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
 _throwing( false ),
@@ -333,6 +365,7 @@ EarthManipulator::configureDefaultSettings()
     _settings->bindKey( ACTION_HOME, osgGA::GUIEventAdapter::KEY_Space );
 
     _settings->bindMouse( ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
+    //_settings->bindMouse( ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
 
     // zoom as you hold the right button:
     options.clear();
@@ -1100,11 +1133,14 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;
 
         case osgGA::GUIEventAdapter::KEYDOWN:
-            resetMouse( aa );
-            action = _settings->getAction( ea.getEventType(), ea.getKey(), ea.getModKeyMask() );
-            if ( handleKeyboardAction( action ) )
-                aa.requestRedraw();
-            handled = true;
+            if ( ea.getKey() < osgGA::GUIEventAdapter::KEY_Shift_L )
+            {
+                resetMouse( aa );
+                action = _settings->getAction( ea.getEventType(), ea.getKey(), ea.getModKeyMask() );
+                if ( handleKeyboardAction( action ) )
+                    aa.requestRedraw();
+                handled = true;
+            }
             break;
             
         case osgGA::GUIEventAdapter::KEYUP:
@@ -1647,6 +1683,25 @@ EarthManipulator::setDistance( double distance )
 }
 
 void
+EarthManipulator::dumpActionInfo( const EarthManipulator::Action& action, osg::NotifySeverity level ) const
+{
+    osgEarth::notify(level) << "action: " << s_actionNames[action._type] << "; options: ";
+    for( ActionOptions::const_iterator i = action._options.begin(); i != action._options.end(); ++i )
+    {
+        const ActionOption& option = *i;
+        std::string val;
+        if ( s_actionOptionTypes[option.option()] == 0 )
+            val = option.boolValue() ? "true" : "false";
+        else
+            val = option.doubleValue();
+
+        osgEarth::notify(level)
+            << s_actionOptionNames[option.option()] << "=" << val << ", ";
+    }
+    osgEarth::notify(level) << std::endl;        
+}
+
+void
 EarthManipulator::handleMovementAction( const ActionType& type, double dx, double dy, osg::View* view )
 {
     switch( type )
@@ -1737,6 +1792,9 @@ EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
     // return if less then two events have been added.
     if (_ga_t0.get()==NULL || _ga_t1.get()==NULL) return false;
 
+    if ( osgEarth::getNotifyLevel() > osg::INFO )
+        dumpActionInfo( action, osg::DEBUG_INFO );
+
     double dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
     double dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
 
@@ -1819,6 +1877,9 @@ bool
 EarthManipulator::handleAction( const Action& action, double dx, double dy, double duration )
 {
     bool handled = true;
+
+    if ( osgEarth::getNotifyLevel() > osg::INFO )
+        dumpActionInfo( action, osg::DEBUG_INFO );
 
     //OE_NOTICE << "action=" << action << ", dx=" << dx << ", dy=" << dy << std::endl;
 

@@ -173,6 +173,8 @@ namespace osgEarthUtil
         private:
             void init();
         };
+
+        void dumpActionInfo( const Action& action, osg::NotifySeverity level ) const;
         
         static Action NullAction;
 

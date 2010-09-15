@@ -1941,7 +1941,7 @@ EarthManipulator::setHomeViewpoint( const Viewpoint& vp, double duration_s )
     _homeViewpointDuration = duration_s;
 }
 
-// Find the point on a line closest to another point. Returns that
+// Find the point on a line, specified by p1 and v, closest to another
 // point.
 osg::Vec3d closestPtOnLine(const osg::Vec3d& p1, const osg::Vec3d& v,
                            const osg::Vec3d& p)
@@ -1950,27 +1950,7 @@ osg::Vec3d closestPtOnLine(const osg::Vec3d& p1, const osg::Vec3d& v,
     return p1 + v * u;
 }
 
-bool findPointOnLineWithD2(const osg::Vec3d& origin, double d2,
-                           const osg::Vec3d& p1, const osg::Vec3d& v,
-                           osg::Vec3d& result)
-{
-    osg::Vec3d perp = closestPtOnLine(p1, v, origin);
-    // d2 is length of hypotenuse. Length of perp - origin is adjacent
-    // side of right triangle.
-    double adj2 = (perp - origin).length2();
-    // Use Pythagorian theorem to find the length of the "opposite"
-    // side, and from that the point that gives us a vector from
-    // origin with length d that lies on the line.
-    double op2 = d2 - adj2;
-    if (op2 < 0)
-        return false;
-    double op = sqrt(op2);
-    osg::Vec3d norm = v;
-    norm.normalize();
-    result = perp - norm * op;
-    return true;
-}
-
+// Intersection of line and plane
 bool findIntersectionWithPlane(const osg::Vec3d& normal, const osg::Vec3d& pt,
                                const osg::Vec3d& p1, const osg::Vec3d& v,
                                osg::Vec3d& result)
@@ -1983,6 +1963,7 @@ bool findIntersectionWithPlane(const osg::Vec3d& normal, const osg::Vec3d& pt,
     return true;
 }
 
+// Calculate a pointer click in eye coordinates
 osg::Vec3d getWindowPoint(osgViewer::View* view, float x, float y)
 {
     float local_x, local_y;
@@ -2003,6 +1984,20 @@ osg::Vec3d getWindowPoint(osgViewer::View* view, float x, float y)
     return osg::Vec3d(winpt4.x(), winpt4.y(), winpt4.z());
 }
 
+// Theory of operation for the manipulator drag motion
+//
+// The mouse drag is transformed to a vector on the surface of the
+// earth i.e., in the surface plane at the start of the drag. This is
+// treated as a displacement along the arc of a great circle. The
+// earth will be rotated by the equivalent rotation around the axis of
+// the circle. However, the manipulator controls the camera, not the
+// earth, so the camera's placement matrix (inverse view matrix)
+// should be rotated by the inverse of the calculated
+// rotation. EarthManipulator represents the placement matrix as the
+// concatenation of 4 transformations: distance from focal point,
+// local heading and pitch, rotation to frame of focal point, focal
+// point. To change the camera placement we rotate the frame rotation
+// (_centerRotation) and focal point (_center).
 void
 EarthManipulator::drag(double dx, double dy, osg::View* theView)
 {

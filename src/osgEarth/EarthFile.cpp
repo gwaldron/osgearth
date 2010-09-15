@@ -72,6 +72,8 @@ EarthFile::getMapOptions() {
 #define ELEM_MAP                      "map"
 #define ATTR_NAME                     "name"
 #define ATTR_CSTYPE                   "type"
+#define ELEM_MAP_OPTIONS              "map_options"
+#define ELEM_TERRAIN_OPTIONS          "terrain_options"
 #define ELEM_IMAGE                    "image"
 #define ELEM_HEIGHTFIELD              "heightfield"
 #define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
@@ -174,8 +176,8 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
     MapOptions mapOptions;
 
-    if ( conf.hasChild( "map_options" ) )
-        mapOptions = MapOptions( conf.child("map_options") );
+    if ( conf.hasChild( ELEM_MAP_OPTIONS ) )
+        mapOptions = MapOptions( conf.child( ELEM_MAP_OPTIONS ) );
     else
         mapOptions = MapOptions( conf ); // old style, for backwards compatibility  
 
@@ -253,7 +255,7 @@ mapToConfig( Map* map, const MapOptions& ep )
     Config conf( ELEM_MAP );
     conf.attr( ATTR_NAME ) = map->getName();
     
-    conf.add( "map_options", ep.toConfig() );
+    conf.add( ELEM_MAP_OPTIONS, ep.toConfig() );
 
     //Write the coordinate system
     std::string cs;

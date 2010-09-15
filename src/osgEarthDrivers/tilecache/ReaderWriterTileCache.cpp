@@ -40,11 +40,9 @@ using namespace osgEarth::Drivers;
 class TileCacheSource : public TileSource
 {
 public:
-    TileCacheSource( const PluginOptions* options ) : TileSource( options )
+    TileCacheSource( const TileSourceOptions& options ) : TileSource( options )
     {
-        _settings = dynamic_cast<const TileCacheOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new TileCacheOptions();
+        _options.merge( options );
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
@@ -78,8 +76,8 @@ public:
 
         char buf[2048];
         sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
-            _settings->url()->c_str(),
-            _settings->layer()->c_str(),
+            _options.url()->c_str(),
+            _options.layer()->c_str(),
             level,
             (tile_x / 1000000),
             (tile_x / 1000) % 1000,
@@ -87,7 +85,7 @@ public:
             (tile_y / 1000000),
             (tile_y / 1000) % 1000,
             (tile_y % 1000),
-            _settings->format()->c_str() );
+            _options.format()->c_str() );
 
        
         std::string path = buf;
@@ -105,7 +103,7 @@ public:
         }
         
         osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile(path, image, getOptions(), progress );
+        HTTPClient::readImageFile(path, image, 0L, progress ); //getOptions(), progress );
         return image.release();
 
         //if (osgDB::containsServerAddress(path))
@@ -119,16 +117,16 @@ public:
 
     virtual std::string getExtension()  const 
     {
-        return _settings->format().value();
+        return _options.format().value();
     }
 
 private:
     std::string _configPath;
-    osg::ref_ptr<const TileCacheOptions> _settings;
+    TileCacheOptions _options;
 };
 
 // Reads tiles from a TileCache disk cache.
-class TileCacheSourceFactory : public osgDB::ReaderWriter
+class TileCacheSourceFactory : public TileSourceDriver
 {
     public:
         TileCacheSourceFactory() {}
@@ -151,7 +149,7 @@ class TileCacheSourceFactory : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            return new TileCacheSource( static_cast<const PluginOptions*>(options) );
+            return new TileCacheSource( getTileSourceOptions(options) );
         }
 };
 

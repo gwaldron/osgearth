@@ -40,21 +40,24 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& format() const { return _format; }
 
     public:
-        TileServiceOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt )
+        TileServiceOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt )
         {
-            driver() = "tileservice";
-            config().getIfSet( "dataset", _dataset );
-            config().getIfSet( "url", _url );
-            config().getIfSet( "format", _format );
+            setDriver( "tileservice" );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("dataset", _dataset);
             conf.updateIfSet("url", _url );
             conf.updateIfSet("format", _format);
             return conf;
+        }
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            conf.getIfSet( "dataset", _dataset );
+            conf.getIfSet( "url", _url );
+            conf.getIfSet( "format", _format );
         }
 
         optional<std::string> _dataset, _url, _format;

@@ -39,24 +39,23 @@ using namespace osgEarth;
 class AGSMapCacheSource : public TileSource
 {
 public:
-    AGSMapCacheSource( const PluginOptions* options ) :
+    AGSMapCacheSource( const TileSourceOptions& options ) :
       TileSource( options )
     {
-        if ( options )
-        {
-            // this is the AGS virtual directory pointing to the map cache
-            _url = options->config().value( PROPERTY_URL );
+        const Config& conf = options.getConfig();
 
-            // the name of the map service cache
-            _map = options->config().value( PROPERTY_MAP );
+        // this is the AGS virtual directory pointing to the map cache
+        _url = conf.value( PROPERTY_URL );
 
-            // the layer, or null to use the fused "_alllayers" cache
-            _layer = options->config().value( PROPERTY_LAYER );
+        // the name of the map service cache
+        _map = conf.value( PROPERTY_MAP );
 
-            // the image format (defaults to "png")
-            // TODO: read this from the XML tile schema file
-            _format = options->config().value( PROPERTY_FORMAT );
-        }
+        // the layer, or null to use the fused "_alllayers" cache
+        _layer = conf.value( PROPERTY_LAYER );
+
+        // the image format (defaults to "png")
+        // TODO: read this from the XML tile schema file
+        _format = conf.value( PROPERTY_FORMAT );
 
         // validate dataset
         if ( _layer.empty() )
@@ -73,8 +72,7 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
         //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
         //if ( dynamic_cast<const PlateCarreTileKey&>( key ) )
@@ -104,7 +102,7 @@ public:
         osg::ref_ptr<osg::Image> image;
 		std::string bufStr;
 		bufStr = buf.str();
-        HTTPClient::readImageFile( bufStr, image, getOptions(), progress );
+        HTTPClient::readImageFile( bufStr, image, 0L, progress ); //getOptions(), progress );
         return image.release();
     }
 
@@ -130,7 +128,7 @@ private:
 };
 
 
-class ReaderWriterAGSMapCache : public osgDB::ReaderWriter
+class ReaderWriterAGSMapCache : public TileSourceDriver
 {
     public:
         ReaderWriterAGSMapCache()
@@ -148,7 +146,7 @@ class ReaderWriterAGSMapCache : public osgDB::ReaderWriter
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            return new AGSMapCacheSource( static_cast<const PluginOptions*>(options) );
+            return new AGSMapCacheSource( getTileSourceOptions(options) );
         }
 };
 

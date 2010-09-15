@@ -36,20 +36,24 @@ namespace osgEarth { namespace Drivers
         const optional<bool>& convertLuminanceToRGBA() const { return _lum2rgba; }
 
     public:
-        OSGOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
+        OSGOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
+            TileSourceOptions( opt ),
             _lum2rgba( false )
         {
-            driver() = "osg";
-            config().getIfSet( "url", _url );
-            config().getIfSet( "luminance_to_rgba", _lum2rgba );
+            setDriver( "osg" );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url );
             conf.updateIfSet("luminance_to_rgba", _lum2rgba);
             return conf;
+        }
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            config().getIfSet( "url", _url );
+            config().getIfSet( "luminance_to_rgba", _lum2rgba );
         }
 
         optional<std::string> _url;

@@ -39,12 +39,10 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& format() const { return _format; }
 
     public:
-        TileCacheOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt )
+        TileCacheOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
+            TileSourceOptions( opt )
         {
-            driver() = "tilecache";
-            config().getIfSet( "url", _url );
-            config().getIfSet( "layer", _layer );
-            config().getIfSet( "format", _format );
+            setDriver( "tilecache" );
         }
 
     protected:
@@ -54,6 +52,12 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("layer", _layer);
             conf.updateIfSet("format", _format);
             return conf;
+        }
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            config().getIfSet( "url", _url );
+            config().getIfSet( "layer", _layer );
+            config().getIfSet( "format", _format );
         }
 
         optional<std::string> _url, _layer, _format;

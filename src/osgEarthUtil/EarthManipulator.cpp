@@ -562,7 +562,7 @@ EarthManipulator::getSRS() const
     {
         EarthManipulator* nonconst_this = const_cast<EarthManipulator*>(this);
 
-        nonconst_this->_is_geocentric = true;
+        nonconst_this->_is_geocentric = false;
 
         // first try to find a map node:
         osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( _node.get() );
@@ -2018,21 +2018,29 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     osg::Vec3d worldNormal(1.0, 0.0, 0.0);
     const osg::Vec3d zero(0.0, 0.0, 0.0);
     bool onEarth;
-    if ((onEarth = screenToWorld( _ga_t1->getX(), _ga_t1->getY(),
+    if ((onEarth = screenToWorld(_ga_t1->getX(), _ga_t1->getY(),
                                   view, worldStartDrag)))
     {
         startDrag = worldStartDrag * viewMat;
         double startLat, startLon, startH;
-        _csn->getEllipsoidModel()->convertXYZToLatLongHeight(
-            worldStartDrag.x(), worldStartDrag.y(), worldStartDrag.z(),
-            startLat, startLon, startH);
-        // Find the normal plane on the earth at the start drag point        
-        // NB order imposed by parentheses!
-        worldNormal = (osg::Quat(startLon, osg::Vec3d(0.0, 0.0, 1.0))
-                       * (osg::Quat(startLat, osg::Vec3d(0.0, -1.0, 0.0))
-                          * worldNormal));
+        if (_is_geocentric)
+        {
+            _csn->getEllipsoidModel()->convertXYZToLatLongHeight(
+                worldStartDrag.x(), worldStartDrag.y(), worldStartDrag.z(),
+                startLat, startLon, startH);
+            // Find the normal plane on the earth at the start drag point        
+            // NB order imposed by parentheses!
+            worldNormal = (osg::Quat(startLon, osg::Vec3d(0.0, 0.0, 1.0))
+                           * (osg::Quat(startLat, osg::Vec3d(0.0, -1.0, 0.0))
+                              * worldNormal));
+        }
+        else
+        {
+            osg::CoordinateFrame cf = getMyCoordinateFrame(worldStartDrag);
+            worldNormal = getUpVector(cf);
+        }
     }
-    else
+    else if (_is_geocentric)
     {
         const osg::Vec3d startWinPt = getWindowPoint(view, _ga_t1->getX(),
                                                      _ga_t1->getY());
@@ -2040,6 +2048,8 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         worldStartDrag = startDrag * viewMatInv;
         worldNormal = worldStartDrag;
     }
+    else
+        return;
     // Normal gets multiplied by inverse transpose.
     osg::Vec3d normal = osg::Matrixd::transform3x3(viewMatInv, worldNormal);
     normal.normalize();
@@ -2060,11 +2070,18 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         endDrag = closestPtOnLine(zero, winpt, zero * viewMat);
     }
     worldEndDrag = endDrag * viewMatInv;
-    worldRot.makeRotate(worldStartDrag, worldEndDrag);
-    // Move the camera by the inverse rotation
-    osg::Quat cameraRot = worldRot.conj();
-    _center = cameraRot * _center;
-    _centerRotation = _centerRotation * cameraRot;
-    osg::CoordinateFrame local_frame = getMyCoordinateFrame(_center);
-    _previousUp = getUpVector(local_frame);
+    if (_is_geocentric)
+    {
+        worldRot.makeRotate(worldStartDrag, worldEndDrag);
+        // Move the camera by the inverse rotation
+        osg::Quat cameraRot = worldRot.conj();
+        _center = cameraRot * _center;
+        _centerRotation = _centerRotation * cameraRot;
+        osg::CoordinateFrame local_frame = getMyCoordinateFrame(_center);
+        _previousUp = getUpVector(local_frame);
+    }
+    else
+    {
+        _center = _center + (worldStartDrag - worldEndDrag);
+    }
 }

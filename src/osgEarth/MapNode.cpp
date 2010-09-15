@@ -476,4 +476,3 @@ MapNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse(nv);
 }
 
-#endif // OSGEARTH2

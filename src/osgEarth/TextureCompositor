@@ -42,9 +42,9 @@ namespace osgEarth
         osg::StateSet* createStateSet( const GeoImageList& layerImages, const GeoExtent& outputExtent ) const;
 
         /**
-         * Gets the shader program that will perform the runtime texture composition.
-         * The caller will need to retrieve this and apply it to the terrain engine's
-         * stateset.
+         * Some composition techniques require a shader program. This method returns the shader program
+         * necessary to support the compositing, or NULL if no shaders are required. You should attach
+         * the program to whatever node is rendering the terrain tile.
          */
         osg::Program* getProgram() const;
 

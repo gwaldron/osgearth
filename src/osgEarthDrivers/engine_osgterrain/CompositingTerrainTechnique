@@ -156,7 +156,7 @@ private:
 
 private:
 
-    void initShaders();
+    //void initShaders();
 
     osg::ref_ptr<const TextureCompositor> _texCompositor;
 

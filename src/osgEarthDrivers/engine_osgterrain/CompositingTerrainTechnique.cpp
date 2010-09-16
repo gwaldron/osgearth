@@ -62,29 +62,6 @@ using namespace OpenThreads;
 #   define USE_NEW_OSGTERRAIN_298_API 1 
 #endif
 
-#define USE_TEXTURE_2D_ARRAY
-
-// --------------------------------------------------------------------------
-
-struct SwitchedGroup : public osg::Group
-{
-    SwitchedGroup( int mask, bool positive )
-        : _mask(mask), _positive(positive) { }
-
-    void traverse( osg::NodeVisitor& nv )
-    {
-        bool match = nv.getTraversalMask() == _mask;
-        //OE_INFO << std::hex << "mask=" << nv.getTraversalMask() << ",match=" << match << ", trav=" << (match==_positive) << std::endl;
-        if ( match == _positive )
-        {
-            osg::Group::traverse( nv );
-        }
-    }
-
-    int _mask;
-    bool _positive;
-};
-
 // --------------------------------------------------------------------------
 
 CompositingTerrainTechnique::CompositingTerrainTechnique( Locator* masterLocator ) :
@@ -103,7 +80,7 @@ _attachedProgram(false)
     _texCompositor = new TextureCompositor();
 
     // do this here so that we can use the program in the prototype
-    initShaders();
+    _compositeProgram = _texCompositor->getProgram();
 }
 
 CompositingTerrainTechnique::CompositingTerrainTechnique(const CompositingTerrainTechnique& gt,const osg::CopyOp& copyop):
@@ -210,9 +187,9 @@ CompositingTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
     // at the same time. 2010-06-28
     //OpenThreads::ScopedLock<OpenThreads::Mutex> wbLock(_writeBufferMutex);
 
-    if ( !_attachedProgram )
+    if ( !_attachedProgram && _compositeProgram.valid() )
     {
-        _terrainTile->getOrCreateStateSet()->setAttributeAndModes( _compositeProgram.get(), 1 );
+        _terrainTile->getOrCreateStateSet()->setAttributeAndModes( _compositeProgram.get(), osg::StateAttribute::ON );
         _attachedProgram = true;
     }
 
@@ -969,107 +946,4 @@ CompositingTerrainTechnique::releaseGLObjects(osg::State* state) const
     {
         _bufferData[1]._transform->releaseGLObjects(state);   
     }
-}
-
-
-static char source_vertMain[] =
-
-"varying vec3 normal, lightDir, halfVector; \n"
-
-"void main(void) \n"
-"{ \n"
-"    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
-"    gl_Position = ftransform(); \n"
-"} \n";
-
-#ifdef USE_TEXTURE_2D_ARRAY
-
-static char source_fragMain[] =
-
-"varying vec3 normal, lightDir, halfVector; \n"
-
-"uniform float osgearth_region[256]; \n"
-"uniform int   osgearth_region_count; \n"
-"uniform sampler2DArray tex0; \n"
-
-"uniform float osgearth_imagelayer_opacity[128]; \n"
-
-"void main(void) \n"
-"{ \n"
-"    vec3 color = vec3(1,1,1); \n"
-"    for(int i=0; i<osgearth_region_count; i++) \n"
-"    { \n"
-"        int j = 8*i; \n"
-"        float tx   = osgearth_region[j];   \n"
-"        float ty   = osgearth_region[j+1]; \n"
-"        float tw   = osgearth_region[j+2]; \n"
-"        float th   = osgearth_region[j+3]; \n"
-"        float xoff = osgearth_region[j+4]; \n"
-"        float yoff = osgearth_region[j+5]; \n"
-"        float xsca = osgearth_region[j+6]; \n"
-"        float ysca = osgearth_region[j+7]; \n"
-
-"        float opac = osgearth_imagelayer_opacity[i]; \n"
-
-"        float u = tx + ( xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
-"        float v = ty + ( yoff + ysca * gl_TexCoord[0].t ) * th; \n"
-
-"        vec4 texel = texture2DArray( tex0, vec3(u,v,i) ); \n"
-"        color = mix(color, texel.rgb, texel.a * opac); \n"
-"    } \n"
-"    gl_FragColor = vec4(color, 1); \n"
-"} \n";
-
-#else // !USE_TEXTURE_2D_ARRAY
-
-static char source_fragMain[] =
-
-"varying vec3 normal, lightDir, halfVector; \n"
-
-"uniform float osgearth_region[256]; \n"
-"uniform int   osgearth_region_count; \n"
-"uniform sampler2D tex0; \n"
-
-"uniform float osgearth_imagelayer_opacity[128]; \n"
-
-"void main(void) \n"
-"{ \n"
-"    vec3 color = vec3(1,1,1); \n"
-"    for(int i=0; i<osgearth_region_count; i++) \n"
-"    { \n"
-"        int r = 8*i; \n"
-"        float tx   = osgearth_region[r];   \n"
-"        float ty   = osgearth_region[r+1]; \n"
-"        float tw   = osgearth_region[r+2]; \n"
-"        float th   = osgearth_region[r+3]; \n"
-"        float xoff = osgearth_region[r+4]; \n"
-"        float yoff = osgearth_region[r+5]; \n"
-"        float xsca = osgearth_region[r+6]; \n"
-"        float ysca = osgearth_region[r+7]; \n"
-
-"        float opac = osgearth_imagelayer_opacity[i]; \n"
-
-"        float u = tx + ( xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
-"        float v = ty + ( yoff + ysca * gl_TexCoord[0].t ) * th; \n"
-
-"        vec4 texel = texture2D( tex0, vec2(u,v) ); \n"
-"        color = mix(color, texel.rgb, texel.a * opac); \n"
-"    } \n"
-"    gl_FragColor = vec4(color, 1); \n"
-"} \n";
-
-#endif // USE_TEXTURE_2D_ARRAY
-
-void
-CompositingTerrainTechnique::initShaders()
-{
-    _compositeProgram = new osg::Program();
-
-    osg::Shader* vert = new osg::Shader( osg::Shader::VERTEX, std::string(source_vertMain) );
-    _compositeProgram->addShader( vert );
-
-    osg::Shader* frag = new osg::Shader( osg::Shader::FRAGMENT, std::string(source_fragMain) );
-    _compositeProgram->addShader( frag );
-
-    OE_INFO << LC << "Initialized shaders." << std::endl;
 }

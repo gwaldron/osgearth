@@ -95,6 +95,54 @@ configureTexture( osg::Texture* texture, int w, int h )
 
 //------------------------------------------------------------------------
 
+static char source_vertMain[] =
+
+    "varying vec3 normal, lightDir, halfVector; \n"
+
+    "void main(void) \n"
+    "{ \n"
+    "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+    "    gl_Position = ftransform(); \n"
+    "} \n";
+
+//------------------------------------------------------------------------
+
+static char source_array_fragMain[] =
+
+    "varying vec3 normal, lightDir, halfVector; \n"
+
+    "uniform float osgearth_region[256]; \n"
+    "uniform int   osgearth_region_count; \n"
+    "uniform sampler2DArray tex0; \n"
+
+    "uniform float osgearth_imagelayer_opacity[128]; \n"
+
+    "void main(void) \n"
+    "{ \n"
+    "    vec3 color = vec3(1,1,1); \n"
+    "    for(int i=0; i<osgearth_region_count; i++) \n"
+    "    { \n"
+    "        int j = 8*i; \n"
+    "        float tx   = osgearth_region[j];   \n"
+    "        float ty   = osgearth_region[j+1]; \n"
+    "        float tw   = osgearth_region[j+2]; \n"
+    "        float th   = osgearth_region[j+3]; \n"
+    "        float xoff = osgearth_region[j+4]; \n"
+    "        float yoff = osgearth_region[j+5]; \n"
+    "        float xsca = osgearth_region[j+6]; \n"
+    "        float ysca = osgearth_region[j+7]; \n"
+
+    "        float opac = osgearth_imagelayer_opacity[i]; \n"
+
+    "        float u = tx + ( xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
+    "        float v = ty + ( yoff + ysca * gl_TexCoord[0].t ) * th; \n"
+
+    "        vec4 texel = texture2DArray( tex0, vec3(u,v,i) ); \n"
+    "        color = mix(color, texel.rgb, texel.a * opac); \n"
+    "    } \n"
+    "    gl_FragColor = vec4(color, 1); \n"
+    "} \n";
+
 static osg::StateSet*
 createTexture2DArray( const GeoImageList& layerImages, const GeoExtent& tileExtent )
 {
@@ -220,6 +268,42 @@ createTexture3D( const GeoImageList& layerImages, const GeoExtent& tileExtent )
 }
 
 //------------------------------------------------------------------------
+
+static char source_atlas_fragMain[] =
+
+    "varying vec3 normal, lightDir, halfVector; \n"
+
+    "uniform float osgearth_region[256]; \n"
+    "uniform int   osgearth_region_count; \n"
+    "uniform sampler2D tex0; \n"
+
+    "uniform float osgearth_imagelayer_opacity[128]; \n"
+
+    "void main(void) \n"
+    "{ \n"
+    "    vec3 color = vec3(1,1,1); \n"
+    "    for(int i=0; i<osgearth_region_count; i++) \n"
+    "    { \n"
+    "        int r = 8*i; \n"
+    "        float tx   = osgearth_region[r];   \n"
+    "        float ty   = osgearth_region[r+1]; \n"
+    "        float tw   = osgearth_region[r+2]; \n"
+    "        float th   = osgearth_region[r+3]; \n"
+    "        float xoff = osgearth_region[r+4]; \n"
+    "        float yoff = osgearth_region[r+5]; \n"
+    "        float xsca = osgearth_region[r+6]; \n"
+    "        float ysca = osgearth_region[r+7]; \n"
+
+    "        float opac = osgearth_imagelayer_opacity[i]; \n"
+
+    "        float u = tx + ( xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
+    "        float v = ty + ( yoff + ysca * gl_TexCoord[0].t ) * th; \n"
+
+    "        vec4 texel = texture2D( tex0, vec2(u,v) ); \n"
+    "        color = mix(color, texel.rgb, texel.a * opac); \n"
+    "    } \n"
+    "    gl_FragColor = vec4(color, 1); \n"
+    "} \n";
 
 static osg::StateSet*
 createTextureAtlas( const GeoImageList& layerImages, const GeoExtent& tileExtent )
@@ -366,9 +450,7 @@ TextureCompositor::createStateSet( const GeoImageList& layerImages, const GeoExt
     // first time through, poll the system capabilities to figure out
     // which technique to use.
     if ( _tech == TECH_UNSET )
-    {
         const_cast<TextureCompositor*>(this)->init();
-    }
 
     switch( _tech )
     {
@@ -390,6 +472,15 @@ TextureCompositor::createStateSet( const GeoImageList& layerImages, const GeoExt
     }
 }
 
+osg::Program*
+TextureCompositor::getProgram() const
+{
+    if ( _tech == TECH_UNSET )
+        const_cast<TextureCompositor*>(this)->init();
+
+    return _program.get();
+}
+
 void
 TextureCompositor::init()
 {        
@@ -399,26 +490,46 @@ TextureCompositor::init()
         return; // already initialized
     }
 
+    osg::Shader* vertShader =0L;
+    osg::Shader* fragShader =0L;
+
     const Capabilities& caps = Registry::instance()->getCapabilities();
 
     if ( caps.supportsTextureArrays() )
     {
         _tech = TECH_TEXTURE_2D_ARRAY;
+        vertShader = new osg::Shader( osg::Shader::VERTEX, std::string( source_vertMain ) );
+        fragShader = new osg::Shader( osg::Shader::FRAGMENT, std::string( source_array_fragMain ) );
+        OE_INFO << LC << "technique = texture2darray" << std::endl;
     }
     else if ( caps.supportsTexture3D() )
     {
         _tech = TECH_TEXTURE_3D;
+        OE_INFO << LC << "technique = texture3d" << std::endl;
     }
     else if ( caps.supportsGLSL() )
     {
         _tech = TECH_TEXTURE_2D_ATLAS;
+        vertShader = new osg::Shader( osg::Shader::VERTEX, std::string( source_vertMain ) );
+        fragShader = new osg::Shader( osg::Shader::FRAGMENT, std::string( source_atlas_fragMain ) );
+        OE_INFO << LC << "technique = atlas" << std::endl;
     }
     else if ( caps.supportsMultiTexture() )
     {
         _tech = TECH_MULTI_TEXTURE;
+        OE_INFO << LC << "technique = multitexture" << std::endl;
     }
     else
     {
         _tech = TECH_SINGLE_TEXTURE;
+        OE_INFO << LC << "technique = single texture" << std::endl;
+    }
+
+
+    if ( vertShader && fragShader )
+    {
+        _program = new osg::Program();
+        _program->addShader( vertShader );
+        _program->addShader( fragShader );
     }
 }

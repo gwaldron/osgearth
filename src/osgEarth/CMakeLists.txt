@@ -57,6 +57,7 @@ SET(LIB_PUBLIC_HEADERS
     TaskService
     TerrainOptions
     TerrainEngineNode
+    TextureCompositor
     TileFactory
     TileKey
     TileSource
@@ -105,6 +106,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TaskService.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TextureCompositor.cpp
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp

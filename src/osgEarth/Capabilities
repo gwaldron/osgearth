@@ -39,6 +39,8 @@ namespace osgEarth
         // whether the card supports the TEXTURE_2D_ARRAY and similar extensions
         bool supportsTextureArrays() const { return _supportsTextureArrays; }
 
+        bool supportsTexture3D() const { return _supportsTexture3D; }
+
         bool supportsMultiTexture() const { return _supportsMultiTexture; }
 
         bool supportsStencilWrap() const { return _supportsStencilWrap; }
@@ -53,6 +55,7 @@ namespace osgEarth
         int  _maxTextureSize;
         bool _supportsGLSL;
         bool _supportsTextureArrays;
+        bool _supportsTexture3D;
         bool _supportsMultiTexture;
         bool _supportsStencilWrap;
         bool _supportsTwoSidedStencil;

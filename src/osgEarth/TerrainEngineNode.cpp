@@ -71,8 +71,18 @@ void
 TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
 {
     _map = map;
+
     if ( _map.valid() )
+    {
+        // manually trigger the map callbacks the first time:
+        if ( _map->getProfile() )
+            onMapProfileEstablished( map->getProfile() );
+
+        onMapLayerStackChanged();
+
+        // then register the callback
         _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
+    }
 }
 
 osg::BoundingSphere
@@ -123,6 +133,10 @@ TerrainEngineNode::onMapLayerStackChanged()
 void
 TerrainEngineNode::updateUniforms()
 {
+    // don't bother if this is a hurting old card
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
     // update the layer uniform arrays:
     osg::StateSet* stateSet = this->getOrCreateStateSet();
 
@@ -154,6 +168,9 @@ TerrainEngineNode::updateUniforms()
 void
 TerrainEngineNode::updateLayerOpacity( MapLayer* layer )
 {
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
     MapLayerList imageLayers;
     _map->getImageMapLayers( imageLayers );
 
@@ -173,6 +190,9 @@ TerrainEngineNode::updateLayerOpacity( MapLayer* layer )
 void
 TerrainEngineNode::updateLayerEnabled( MapLayer* layer )
 {
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
     MapLayerList imageLayers;
     _map->getImageMapLayers( imageLayers );
 

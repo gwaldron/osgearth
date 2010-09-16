@@ -135,6 +135,9 @@ _supportsTwoSidedStencil( false )
         _supportsTextureArrays = osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_INFO << LC << "  Supports texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
+        _supportsTexture3D = osg::isGLExtensionSupported( id, "GL_EXT_texture3D" );
+        OE_INFO << LC << "  Supports 3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
+
         _supportsMultiTexture = 
             osg::getGLVersionNumber() >= 1.3 ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||

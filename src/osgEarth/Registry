@@ -130,6 +130,7 @@ namespace osgEarth
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
         Capabilities* _caps;
+        void initCapabilities();
     };
 }
 

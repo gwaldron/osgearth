@@ -99,6 +99,9 @@ _attachedProgram(false)
 {
     this->setThreadSafeRefUnref(true);
 
+    // create a texture compositor.
+    _texCompositor = new TextureCompositor();
+
     // do this here so that we can use the program in the prototype
     initShaders();
 }
@@ -113,8 +116,8 @@ _verticalScaleOverride( gt._verticalScaleOverride ),
 _swapPending( gt._swapPending ),
 _initCount( gt._initCount ),
 _optimizeTriangleOrientation(gt._optimizeTriangleOrientation),
-//_layerTexRegions(gt._layerTexRegions),
-_compositeProgram(gt._compositeProgram)
+_compositeProgram(gt._compositeProgram),
+_texCompositor(gt._texCompositor)
 {
     _attachedProgram = false;
     _bufferData[0] = gt._bufferData[0];
@@ -360,41 +363,11 @@ CompositingTerrainTechnique::computeCenterModel(Locator* masterLocator)
     return centerModel;
 }
 
-
-/** Records the information about a layer's texture space */
-struct LayerTexRegion
-{
-    LayerTexRegion() :
-        _px(0), _py(0),
-        _pw(256), _ph(256),
-        _tx(0.0f), _ty(0.0f),
-        _tw(1.0f), _th(1.0f),
-        _xoffset(0.0f), _yoffset(0.0f),
-        _xscale(1.0f), _yscale(1.0f)
-    {
-        //nop
-    }
-
-    // pixel coordinates of layer in the composite image:
-    int _px, _py, _pw, _ph;
-
-    // texture coordinates of layer in the composite image:
-    float _tx, _ty, _tw, _th;
-
-    // texture scale and offset for this region:
-    float _xoffset, _yoffset, _xscale, _yscale;
-};
-typedef std::vector<LayerTexRegion> LayerTexRegionList;
-
-
 bool
 CompositingTerrainTechnique::generateCompositeTexture()
 {
-
     BufferData& buffer = getWriteBuffer();
     osg::StateSet* stateSet = buffer._geode->getOrCreateStateSet();
-    
-#ifdef USE_TEXTURE_2D_ARRAY
 
     // Composite all the image layer images into a single composite image.
     //
@@ -405,17 +378,9 @@ CompositingTerrainTechnique::generateCompositeTexture()
     // GLSL will only support one tex-coord pair per texture unit, and we are doing the
     // compositing so we only need to use one texture unit.
 
-    // clear out the old
-    osg::ref_ptr<osg::Texture2DArray> composite = new osg::Texture2DArray();
-    LayerTexRegionList regions;
-
-    int texWidth = 0, texHeight = 0;
-
-    std::vector<osgTerrain::ImageLayer*> _imageLayers;
-
+    // establish the tile extent. we will calculate texture coordinate offset/scale based on this
     GeoExtent tileExtent;
 
-    // establish the tile locator. we will calculate texture coordinate offset/scale based on this
     osg::ref_ptr<GeoLocator> tileLocator = dynamic_cast<GeoLocator*>( _terrainTile->getLocator() );
     if ( tileLocator.valid() )
     {
@@ -426,288 +391,34 @@ CompositingTerrainTechnique::generateCompositeTexture()
     }
 
     // find each image layer and create a region entry for it
-    GeoLocator* masterLocator = 0L;
+    GeoImageList imageStack;
     unsigned int numColorLayers = _terrainTile->getNumColorLayers();
-    composite->setTextureDepth( numColorLayers );
-    composite->setInternalFormat( GL_RGBA );
 
     for( unsigned int layerNum=0; layerNum < numColorLayers; ++layerNum )
     {
         // TODO: consider contour layers..
         osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>( _terrainTile->getColorLayer( layerNum ) );
         if ( imageLayer )
-        {
-            // save these for later:
-            _imageLayers.push_back( imageLayer );
-
-            osg::Image* image = imageLayer->getImage();
-
-            // Because all tex2darray layers must be identical in format
-            if ( image->getPixelFormat() != GL_RGBA )
-                image = ImageUtils::convertToRGBA( image );
-
-            // TODO: reconsider.. perhaps grow the tex to the max layer size instead?
-            if ( image->s() != 256 || image->t() != 256 )
-                image = ImageUtils::resizeImage( image, 256, 256 );
-
-            // add the layer image to the composite.
-            composite->setImage( layerNum, image );
-
-            // TODO: optimize this away
-            LayerTexRegion region;
-            region._px = 0;
-            region._py = 0;
-            region._pw = image->s();
-            region._ph = image->t();
-
-            // track the maximum texture size
-            if ( image->s() > texWidth )
-                texWidth = image->s();
-
-            if ( image->t() > texHeight )
-                texHeight = image->t();
-            
+        {            
             // record the proper texture offset/scale for this layer. this accounts for subregions that
             // are used when referencing lower LODs.
             osg::ref_ptr<GeoLocator> layerLocator = dynamic_cast<GeoLocator*>( imageLayer->getLocator() );
-            if ( layerLocator.valid() )
+            if ( layerLocator )
             {
                 if ( layerLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
                     layerLocator = layerLocator->getGeographicFromGeocentric();
 
                 const GeoExtent& layerExtent = layerLocator->getDataExtent();
 
-                region._xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
-                region._yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
-
-                region._xscale = tileExtent.width() / layerExtent.width();
-                region._yscale = tileExtent.height() / layerExtent.height();
+                imageStack.push_back( new GeoImage( imageLayer->getImage(), layerExtent ) );
             }
-            
-            regions.push_back( region );
         }
     }
 
-    composite->setTextureSize( texWidth, texHeight, numColorLayers );
-
-    // build the uniforms.
-    //    
-    // The uniform array contains 8 floats for each region:
-    //   tx, ty : origin texture coordinates in the composite-image space
-    //   tw, th : width and height in composite-image space
-    //   xoff, yoff : x- and y- offsets within texture space
-    //   xsca, ysca : x- and y- scale factors within texture space
-
-    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_region", regions.size() * 8 );
-    int p=0;
-    for( unsigned int i=0; i<regions.size(); ++i )
+    osg::StateSet* texStateSet = _texCompositor->createStateSet( imageStack, tileExtent );
+    if ( texStateSet )
     {
-        LayerTexRegion& region = regions[i];
-        osgTerrain::ImageLayer* layer = _imageLayers[i];
-
-        // copy the image into the composite:
-        //ImageUtils::copyAsSubImage( layer->getImage(), out_image.get(), region._px, region._py );
-
-        // next calculate the texture space extents and store those in uniforms.
-        // (GW: there is no actual reason to store these in the region structure)
-        region._tx = (float)region._px/(float)texWidth;
-        region._ty = (float)region._py/(float)texHeight;
-        region._tw = (float)region._pw/(float)texWidth;
-        region._th = (float)region._ph/(float)texHeight;
-
-        texInfoArray->setElement( p++, region._tx );
-        texInfoArray->setElement( p++, region._ty );
-        texInfoArray->setElement( p++, region._tw );
-        texInfoArray->setElement( p++, region._th );
-        texInfoArray->setElement( p++, region._xoffset );
-        texInfoArray->setElement( p++, region._yoffset );
-        texInfoArray->setElement( p++, region._xscale );
-        texInfoArray->setElement( p++, region._yscale );
-
-        //OE_NOTICE << LC
-        //    << "Region " << i << ": size=(" << region._pw << ", " << region._ph << ")" << std::endl;
-    }
-
-    stateSet->addUniform( texInfoArray );
-    stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( (int)regions.size() );
-
-#else // !USE_TEXTURE_2D_ARRAY
-
-    // Composite all the image layer images into a single composite image.
-    //
-    // NOTE!
-    // This should work if images are different sizes, BUT it will NOT work if they use
-    // different locators. In other words, this will only work if the texture coordinate
-    // pair (u,v) is the SAME across all image layers for a given vertex. That's because
-    // GLSL will only support one tex-coord pair per texture unit, and we are doing the
-    // compositing so we only need to use one texture unit.
-
-    // clear out the old
-    osg::Image* out_image = 0L;
-    out_regions.clear();
-
-    int cx=0, cy=0;
-    int maxRowHeight=0;
-    int maxLegalWidth=1024, maxLegalHeight=1024; // hard coded for the moment..just testing
-
-    int totalWidth=0, totalHeight=0;
-
-    std::vector<osgTerrain::ImageLayer*> _imageLayers;
-
-    GeoExtent tileExtent;
-
-    // establish the tile locator. we will calculate texture coordinate offset/scale based on this
-    osg::ref_ptr<GeoLocator> tileLocator = dynamic_cast<GeoLocator*>( _terrainTile->getLocator() );
-    if ( tileLocator.valid() )
-    {
-        if ( tileLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
-            tileLocator = tileLocator->getGeographicFromGeocentric();
-
-        tileExtent = tileLocator->getDataExtent();
-    }
-
-    // find each image layer and create a region entry for it
-    GeoLocator* masterLocator = 0L;
-    unsigned int numColorLayers = _terrainTile->getNumColorLayers();
-    for( unsigned int layerNum=0; layerNum < numColorLayers; ++layerNum )
-    {
-        // TODO: consider contour layers..
-        osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>( _terrainTile->getColorLayer( layerNum ) );
-        if ( imageLayer )
-        {
-            // save these for later:
-            _imageLayers.push_back( imageLayer );
-
-            osg::Image* image = imageLayer->getImage();
-
-            LayerTexRegion region;
-
-            if ( cx + image->s() <= maxLegalWidth )
-            {
-                // append this tile to the current row
-                region._px = cx;
-                region._py = cy;
-                region._pw = image->s(); 
-                region._ph = image->t();
-                if ( maxRowHeight < region._ph )
-                    maxRowHeight = region._ph;
-            }
-            else
-            {
-                // ran out of width; start a new row
-                cx = 0;
-                cy += maxRowHeight;
-                maxRowHeight = 0.0;
-                region._px = cx;
-                region._py = cy;
-                region._pw = image->s();
-                region._ph = image->t();
-            }
-            cx += region._pw;
-
-            
-            osg::ref_ptr<GeoLocator> layerLocator = dynamic_cast<GeoLocator*>( imageLayer->getLocator() );
-            if ( layerLocator.valid() )
-            {
-                if ( layerLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
-                    layerLocator = layerLocator->getGeographicFromGeocentric();
-
-                const GeoExtent& layerExtent = layerLocator->getDataExtent();
-
-                region._xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
-                region._yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
-
-                region._xscale = tileExtent.width() / layerExtent.width();
-                region._yscale = tileExtent.height() / layerExtent.height();
-            }
-            
-            out_regions.push_back( region );
-
-            totalWidth = osg::maximum( totalWidth, cx );
-            totalHeight = osg::maximum( totalHeight, cy + maxRowHeight );
-        }
-    }
-
-    // now, calculate the size of the composite image and allocate it.
-    // TODO: account for different image pixel formats by converting everything to RGBA
-    out_image = new osg::Image();
-    out_image->allocateImage( totalWidth, totalHeight, 1, GL_RGBA, GL_UNSIGNED_BYTE );
-
-    // build the uniforms.
-    osg::StateSet* stateSet = _terrainTile->getOrCreateStateSet();
-    
-    // The uniform array contains 8 floats for each region:
-    //   tx, ty : origin texture coordinates in the composite-image space
-    //   tw, th : width and height in composite-image space
-    //   xoff, yoff : x- and y- offsets within texture space
-    //   xsca, ysca : x- and y- scale factors within texture space
-
-    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_region", out_regions.size() * 8 );
-    int p=0;
-    for( unsigned int i=0; i<out_regions.size(); ++i )
-    {
-        LayerTexRegion& region = out_regions[i];
-        osgTerrain::ImageLayer* layer = _imageLayers[i];
-
-        // copy the image into the composite:
-        ImageUtils::copyAsSubImage( layer->getImage(), out_image.get(), region._px, region._py );
-
-        // next calculate the texture space extents and store those in uniforms.
-        // (GW: there is no actual reason to store these in the region structure)
-        region._tx = (float)region._px/(float)totalWidth;
-        region._ty = (float)region._py/(float)totalHeight;
-        region._tw = (float)region._pw/(float)totalWidth;
-        region._th = (float)region._ph/(float)totalHeight;
-
-        texInfoArray->setElement( p++, region._tx );
-        texInfoArray->setElement( p++, region._ty );
-        texInfoArray->setElement( p++, region._tw );
-        texInfoArray->setElement( p++, region._th );
-        texInfoArray->setElement( p++, region._xoffset );
-        texInfoArray->setElement( p++, region._yoffset );
-        texInfoArray->setElement( p++, region._xscale );
-        texInfoArray->setElement( p++, region._yscale );
-    }
-
-    stateSet->addUniform( texInfoArray );
-    stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( (int)out_regions.size() );
-
-    out_tex = new osg::Texture2D( out_image );
-    out_width = totalWidth;
-    out_height = totalHeight;
-
-#endif // USE_TEXTURE_2D_ARRAY
-
-    osg::Texture* texture = composite.get();
-    if ( texture )
-    {
-        texture->setMaxAnisotropy(16.0f);
-        texture->setResizeNonPowerOfTwoHint(false);
-
-        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-        texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-
-        texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
-        texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
-        texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
-
-        bool mipMapping = !(texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
-        bool s_NotPowerOfTwo = texWidth==0 || (texWidth & (texWidth - 1));
-        bool t_NotPowerOfTwo = texHeight==0 || (texHeight & (texHeight - 1));
-
-        if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
-        {
-            OE_DEBUG<<"[osgEarth::CompositingTerrainTechnique] Disabling mipmapping for non power of two tile size("
-                << texWidth <<", "<< texHeight <<")"<<std::endl;
-            texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
-        }
-
-#ifdef USE_TEXTURE_2D_ARRAY
-        // because OSG will make an illegal set mode call if we use setTextureAttributeAndModes for a texture array:
-        stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON );
-#else
-        stateSet->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
-#endif
+        buffer._geode->setStateSet( texStateSet );
     }
 
     return true;

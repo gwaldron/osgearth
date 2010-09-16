@@ -31,6 +31,7 @@
 #include <osgTerrain/Locator>
 #include <osgEarth/Export>
 #include <osgEarth/Progress>
+#include <osgEarth/TextureCompositor>
 #include <osgEarth/ThreadingUtils>
 
 /**
@@ -76,12 +77,6 @@ public: /* overrides */
     virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
 
     virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
-
-    //virtual void applyColorLayers();
-
-    //virtual void applyTransparency();
-
-    //virtual void smoothGeometry();
 
     virtual void update(osgUtil::UpdateVisitor* nv);
 
@@ -162,6 +157,8 @@ private:
 private:
 
     void initShaders();
+
+    osg::ref_ptr<const TextureCompositor> _texCompositor;
 
     osg::ref_ptr<osg::Program> _compositeProgram;
     bool                       _attachedProgram;

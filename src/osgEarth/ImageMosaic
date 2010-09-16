@@ -55,24 +55,24 @@ namespace osgEarth
     /**
      * Utility class for extracting a single image from a collection of image tiles
      */
-    class MultiImage : public osg::Referenced
+    class ImageMosaic : public osg::Referenced
     {
     public:
-        MultiImage();
+        ImageMosaic();
 
         osg::Image* createImage();
 
         /** A list of GeoImages */
         typedef std::vector<TileImage> TileImageList;
 
-        /** Gets the images for this MultiImage */
+        /** Gets the images for this ImageMosaic */
         TileImageList& getImages() {return _images;}
 
         void getExtents(double &minX, double &minY, double &maxX, double &maxY);
 
     protected:
 
-        ~MultiImage();
+        ~ImageMosaic();
         TileImageList _images;
     };
 }

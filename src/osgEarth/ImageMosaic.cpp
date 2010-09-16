@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/Compositing>
+#include <osgEarth/ImageMosaic>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HeightFieldUtils>
 #include <osg/Notify>
@@ -39,15 +39,15 @@ TileImage::TileImage(osg::Image* image, const TileKey& key)
 
 /***************************************************************************/
 
-MultiImage::MultiImage()
+ImageMosaic::ImageMosaic()
 {
 }
 
-MultiImage::~MultiImage()
+ImageMosaic::~ImageMosaic()
 {
 }
 
-void MultiImage::getExtents(double &minX, double &minY, double &maxX, double &maxY)
+void ImageMosaic::getExtents(double &minX, double &minY, double &maxX, double &maxY)
 {
     minX = DBL_MAX;
     maxX = -DBL_MAX;
@@ -64,11 +64,11 @@ void MultiImage::getExtents(double &minX, double &minY, double &maxX, double &ma
 }
 
 osg::Image*
-MultiImage::createImage()
+ImageMosaic::createImage()
 {
     if (_images.size() == 0)
     {
-        OE_NOTICE << "MultiImage has no images..." << std::endl;
+        OE_NOTICE << "ImageMosaic has no images..." << std::endl;
         return 0;
     }
 

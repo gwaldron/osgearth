@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MapLayer>
-#include <osgEarth/Compositing>
 #include <osgEarth/TileSource>
+#include <osgEarth/ImageMosaic>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TaskService>
 #include <osgEarth/Registry>
@@ -620,7 +620,7 @@ MapLayer::createImage( const TileKey& key,
 			key.getGeoExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 
 
-			osg::ref_ptr<MultiImage> mi = new MultiImage;
+			osg::ref_ptr<ImageMosaic> mi = new ImageMosaic;
 			std::vector< const TileKey > missingTiles;
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
@@ -649,7 +649,7 @@ MapLayer::createImage( const TileKey& key,
 			}
 			if (mi->getImages().empty())
 			{
-				OE_DEBUG << LC << "Couldn't create image for MultiImage " << std::endl;
+				OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
 				return 0;
 			}
 			else if (missingTiles.size() > 0)

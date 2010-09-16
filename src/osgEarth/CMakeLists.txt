@@ -23,7 +23,6 @@ SET(LIB_PUBLIC_HEADERS
 	CacheSeed
 	Capabilities
     Common
-    Compositing
     Config
     Cube
     DriverOptions
@@ -36,6 +35,7 @@ SET(LIB_PUBLIC_HEADERS
     HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
+    ImageMosaic
     ImageUtils
     JsonUtils
     Locators
@@ -75,7 +75,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Caching.cpp
     CacheSeed.cpp
 	Capabilities.cpp
-    Compositing.cpp
     Config.cpp
     Cube.cpp
     DriverOptions.cpp
@@ -86,6 +85,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageToHeightFieldConverter.cpp
+    ImageMosaic.cpp
     ImageUtils.cpp
     JsonUtils.cpp
     Locators.cpp

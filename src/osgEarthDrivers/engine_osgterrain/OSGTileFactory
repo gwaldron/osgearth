@@ -22,7 +22,6 @@
 
 #include "OSGTerrainOptions"
 #include <osgEarth/TileSource>
-#include <osgEarth/Compositing>
 #include <osgEarth/MapLayer>
 #include <osgEarth/Locators>
 

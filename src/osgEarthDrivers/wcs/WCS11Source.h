@@ -51,18 +51,7 @@ public: // TileSource interface
     void initialize( const std::string& referenceURI, const Profile* overrideProfile);
 
 private:
-    WCSOptions _options;
-//    osg::ref_ptr<const WCSOptions> _settings;
-
-    //std::string _url;
-    //std::string _identifier;
-    //std::string _cov_format;
-    //std::string _osg_format;
-    //std::string _srs;
-    //std::string _elevation_unit;
-    //std::string _range_subset;
-    //int         _tile_size;
-
+    const WCSOptions _options;
     std::string _covFormat, _osgFormat;
 
     HTTPRequest createRequest( const TileKey& key ) const;

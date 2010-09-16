@@ -45,10 +45,8 @@ using namespace osgEarth::Drivers;
 class TMSSource : public TileSource
 {
 public:
-    TMSSource(const TileSourceOptions& options) : TileSource(options)
+    TMSSource(const TileSourceOptions& options) : TileSource(options), _options(options)
     {
-        _options.merge( options );
-
         _invertY = _options.tmsType() == "google";
     }
 
@@ -172,7 +170,7 @@ private:
 
     osg::ref_ptr<TileMap> _tileMap;
     bool _invertY;
-    TMSOptions _options;
+    const TMSOptions _options;
 };
 
 

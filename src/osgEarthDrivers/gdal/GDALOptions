@@ -51,6 +51,7 @@ namespace osgEarth { namespace Drivers
             _interpolation( INTERP_AVERAGE )
         {
             setDriver( "gdal" );
+            fromConfig( _conf );
         }
 
     protected:
@@ -71,10 +72,12 @@ namespace osgEarth { namespace Drivers
             return conf;
         }
 
-        void mergeConfig( const Config& conf )
-        {
+        void mergeConfig( const Config& conf ) {
             TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
 
+        void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
             conf.getIfSet( "extensions", _extensions );
             std::string in = conf.value( "interpolation" );
@@ -82,7 +85,6 @@ namespace osgEarth { namespace Drivers
             else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
             else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
             conf.getIfSet( "max_data_level", _maxDataLevel);
-
         }
 
         optional<std::string> _url;

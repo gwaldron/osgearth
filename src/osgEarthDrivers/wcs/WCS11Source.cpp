@@ -30,10 +30,9 @@ using namespace osgEarth;
 
 
 WCS11Source::WCS11Source( const TileSourceOptions& options ) :
-TileSource( options )
+TileSource( options ),
+_options(options)
 {
-    _options.merge( options );
-
     _covFormat = _options.format().value();
     
     if ( _covFormat.empty() )

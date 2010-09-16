@@ -85,9 +85,10 @@ _tileSize(256),
 _noDataImageFilename(""),
 _transparentColor(osg::Vec4ub(0,0,0,0)),
 _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
-_magFilter(osg::Texture::LINEAR)
+_magFilter(osg::Texture::LINEAR),
+_options( driverConf )
 {
-    _options.merge( driverConf );
+    //_options.merge( driverConf );
     //_driverOptions = new DriverOptions( driverConf );
     mergeConfig( driverConf );
     init();

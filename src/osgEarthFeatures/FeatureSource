@@ -84,7 +84,7 @@ namespace osgEarth { namespace Features
     /**
      * Configuration options for creating a FeatureSource.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceOptions : public DriverOptions
+    class OSGEARTHFEATURES_EXPORT FeatureSourceOptions : public DriverConfigOptions
     {
     public: // properties
 
@@ -92,10 +92,18 @@ namespace osgEarth { namespace Features
         const FeatureFilterList& filters() const { return _filters; }
 
     public:
-        FeatureSourceOptions( const PluginOptions* po =0L );
+        FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
         virtual Config getConfig() const;
 
     protected:
+        virtual void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf );
+
         FeatureFilterList _filters;
     };
 
@@ -109,7 +117,7 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new feature source with the provided read/write options.
          */
-        FeatureSource( const PluginOptions* options =NULL );
+        FeatureSource( const ConfigOptions& options =ConfigOptions() );
 
         /**
          * Gets a reference to the metadata that describes features that you can
@@ -121,8 +129,7 @@ namespace osgEarth { namespace Features
         /**
          * Gets the options that were passed into this object's CTOR.
          */
-        const FeatureSourceOptions* getFeatureSourceOptions() const {
-            return _options.get(); }
+        const FeatureSourceOptions& getFeatureSourceOptions() const { return _options; }
 
         /**
          * Creates a cursor that iterates over all the features corresponding to the
@@ -181,16 +188,24 @@ namespace osgEarth { namespace Features
         virtual ~FeatureSource() { }
 
     private:
-        osg::ref_ptr<const FeatureSourceOptions> _options;
+        const FeatureSourceOptions _options;
 
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        //FeatureFilterList _filters;
         OpenThreads::Mutex _createMutex;
 
         friend class Map;
         friend class FeatureSourceFactory;
     };
 
+    //--------------------------------------------------------------------
+
+    class OSGEARTHFEATURES_EXPORT FeatureSourceDriver : public osgDB::ReaderWriter
+    {
+    public:
+        virtual const FeatureSourceOptions& getFeatureSourceOptions( const osgDB::ReaderWriter::Options* rwopt ) const;
+    };
+
+    //--------------------------------------------------------------------
 
     /**
      * Factory class that will instantiate a FeatureSource corresponding to a driver name.
@@ -198,18 +213,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureSourceFactory
     {
 	public:
-        static FeatureSource* create( const DriverOptions* options );
-
-    public: // deprecated
-		static FeatureSource* create(
-            const std::string& name,
-            const std::string& driver,
-            const Config&      driverConf,
-            const osgDB::ReaderWriter::Options* globalOptions =NULL );
-
-        static FeatureSource* create(
-            const Config& featureStoreConf,
-            const osgDB::ReaderWriter::Options* globalOptions =NULL );
+        static FeatureSource* create( const FeatureSourceOptions& options );
     };
 
 } } // namespace osgEarth::Features

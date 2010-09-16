@@ -44,13 +44,9 @@ class ArcGISSource : public TileSource
 public:
     ArcGISSource( const TileSourceOptions& options ) :
       TileSource( options ),
+      _options( options ),
       _profileConf( ProfileConfig() )
     {
-        _options.merge( options );
-        //_settings = dynamic_cast<const ArcGISOptions*>( options );
-        //if ( !_settings.valid() )
-        //    _settings = new ArcGISOptions( options );
-
         //if ( options )
         //{
         //    const Config& conf = options->config();
@@ -200,7 +196,7 @@ public:
     }
 
 private:
-    ArcGISOptions _options;
+    const ArcGISOptions _options;
     optional<ProfileConfig> _profileConf;
     std::string _map;
     std::string _layer;

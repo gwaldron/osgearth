@@ -66,7 +66,7 @@ void
 FeatureTileSourceOptions::fromConfig( const Config& conf )
 {
     if ( conf.hasChild("features") )
-        _featureOptions = new FeatureSourceOptions( new PluginOptions( conf.child("features") ) );
+        _featureOptions->merge( ConfigOptions(conf.child("features")) );
 
     conf.getObjIfSet( "styles", _styles );
     
@@ -90,9 +90,9 @@ _options( options.getConfig() )
     {
         _features = _options.featureSource().get();
     }
-    else if ( _options.featureOptions().valid() )
+    else if ( _options.featureOptions().isSet() )
     {
-        _features = FeatureSourceFactory::create( _options.featureOptions() );
+        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
         if ( !_features.valid() )
         {
             OE_WARN << LC << "Failed to create FeatureSource from options" << std::endl;

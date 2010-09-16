@@ -17,5 +17,5 @@ SETUP_PLUGIN(osgearth_feature_ogr)
 
 # to install public driver includes:
 SET(LIB_NAME feature_ogr)
-SET(LIB_PUBLIC_HEADERS OGRFeatureOptions)
+SET(LIB_PUBLIC_HEADERS ${TARGET_H})
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

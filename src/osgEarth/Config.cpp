@@ -43,6 +43,16 @@ Config::child( const std::string& childName ) const
     return emptyConfig;
 }
 
+void
+Config::merge( const Config& rhs ) 
+{
+    for( Properties::const_iterator a = rhs._attrs.begin(); a != rhs._attrs.end(); ++a )
+        _attrs[ a->first ] = a->second;
+
+    for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
+        addChild( *c );
+}
+
 std::string
 Config::toString( int indent ) const
 {

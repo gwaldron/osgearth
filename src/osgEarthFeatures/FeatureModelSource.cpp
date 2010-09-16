@@ -45,7 +45,7 @@ void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
     if ( conf.hasChild("features") )
-        _featureOptions = new FeatureSourceOptions( new PluginOptions( conf.child("features") ) );
+        _featureOptions->merge( conf.child("features") );
 
     conf.getObjIfSet( "styles", _styles );
     conf.getObjIfSet( "gridding", _gridding );
@@ -93,9 +93,9 @@ _options( options )
     {
         _features = _options.featureSource().get();
     }
-    else if ( _options.featureOptions().valid() )
+    else if ( _options.featureOptions().isSet() )
     {
-        _features = FeatureSourceFactory::create( _options.featureOptions().get() );
+        _features = FeatureSourceFactory::create( _options.featureOptions().value() );
         if ( !_features.valid() )
         {
             OE_WARN << "FeatureModelSource - no valid feature source provided" << std::endl;

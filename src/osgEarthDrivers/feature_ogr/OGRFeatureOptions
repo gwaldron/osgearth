@@ -49,16 +49,12 @@ namespace osgEarth { namespace Drivers
         const osg::ref_ptr<Symbology::Geometry>& geometry() const { return _geometry; }
 
     public:
-        OGRFeatureOptions( const PluginOptions* opt =0L ) : FeatureSourceOptions( opt ) {
-            driver() = "ogr";
-            config().getIfSet<std::string>( "url", _url );
-            config().getIfSet<std::string>( "ogrDriver", _ogrDriver );
-            config().getIfSet<bool>( "build_spatial_index", _buildSpatialIndex );
-            config().getIfSet<Config>( "geometry", _geometryConf );
-            config().getIfSet<Config>( "geometry_profile", _geometryProfileConf );
+        OGRFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) : FeatureSourceOptions( opt ) {
+            setDriver( "ogr" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
@@ -67,6 +63,21 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "geometry", _geometryConf );    
             conf.updateIfSet( "geometry_profile", _geometryProfileConf );
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            FeatureSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "url", _url );
+            conf.getIfSet( "ogrDriver", _ogrDriver );
+            conf.getIfSet( "build_spatial_index", _buildSpatialIndex );
+            conf.getIfSet( "geometry", _geometryConf );
+            conf.getIfSet( "geometry_profile", _geometryProfileConf );
         }
 
         optional<std::string> _url;

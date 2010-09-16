@@ -38,8 +38,8 @@ namespace osgEarth { namespace Features
     {
     public: //properties
 
-        osg::ref_ptr<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const osg::ref_ptr<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
         osg::ref_ptr<GriddingPolicy>& gridding() { return _gridding; }
         const osg::ref_ptr<GriddingPolicy>& gridding() const { return _gridding; }
@@ -72,7 +72,7 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        osg::ref_ptr<FeatureSourceOptions> _featureOptions;
+        optional<FeatureSourceOptions> _featureOptions;
         optional<Symbology::StyleCatalog> _styles;
         osg::ref_ptr<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;

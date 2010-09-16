@@ -333,7 +333,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const Profile> _profile;
-        TileSourceOptions _options;
+        const TileSourceOptions _options;
 
         friend class Map;
         friend class MapEngine;

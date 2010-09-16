@@ -40,9 +40,8 @@ using namespace osgEarth::Drivers;
 class TileCacheSource : public TileSource
 {
 public:
-    TileCacheSource( const TileSourceOptions& options ) : TileSource( options )
+    TileCacheSource( const TileSourceOptions& options ) : TileSource( options ), _options( options )
     {
-        _options.merge( options );
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
@@ -122,7 +121,7 @@ public:
 
 private:
     std::string _configPath;
-    TileCacheOptions _options;
+    const TileCacheOptions _options;
 };
 
 // Reads tiles from a TileCache disk cache.

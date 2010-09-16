@@ -46,18 +46,16 @@ using namespace osgEarth::Drivers;
 class OGRFeatureSource : public FeatureSource
 {
 public:
-    OGRFeatureSource( const PluginOptions* options ) : FeatureSource( options ),
+    OGRFeatureSource( const FeatureSourceOptions& options ) : FeatureSource( options ),
+      _options( options ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
       _ogrDriverHandle( 0L )
     {
-        _options = dynamic_cast<const OGRFeatureOptions*>( options );
-        if ( !_options.valid() )
-            _options = new OGRFeatureOptions( options );
 
         _geometry = 
-            _options->geometry().valid() ? _options->geometry().get() :
-            _options->geometryConfig().isSet() ? parseGeometry( _options->geometryConfig().value() ) :
+            _options.geometry().valid() ? _options.geometry().get() :
+            _options.geometryConfig().isSet() ? parseGeometry( _options.geometryConfig().value() ) :
             0L;
     }
 
@@ -82,9 +80,9 @@ public:
     //override
     void initialize( const std::string& referenceURI )
     {
-        if ( _options->url().isSet() )
+        if ( _options.url().isSet() )
         {
-            _absUrl = osgEarth::getFullPath( referenceURI, _options->url().value() );
+            _absUrl = osgEarth::getFullPath( referenceURI, _options.url().value() );
         }
     }
 
@@ -98,10 +96,10 @@ public:
         {
             // if the user specified explicit geometry/profile, use that:
             GeoExtent ex;
-            if ( _options->geometryProfileConfig().isSet() )
+            if ( _options.geometryProfileConfig().isSet() )
             {
                 osg::ref_ptr<const Profile> _profile = Profile::create( 
-                    _options->geometryProfileConfig().value() );
+                    _options.geometryProfileConfig().value() );
 
                 if ( _profile.valid() )
                     ex = _profile->getExtent();
@@ -120,7 +118,7 @@ public:
             OGR_SCOPED_LOCK;
 
             // load up the driver, defaulting to shapefile if unspecified.
-            std::string driverName = _options->ogrDriver().value();
+            std::string driverName = _options.ogrDriver().value();
             if ( driverName.empty() )
                 driverName = "ESRI Shapefile";
             _ogrDriverHandle = OGRGetDriverByName( driverName.c_str() );
@@ -154,7 +152,7 @@ public:
                     }
 
                     // assuming we successfully opened the layer, build a spatial index if requested.
-                    if ( _options->buildSpatialIndex() == true )
+                    if ( _options.buildSpatialIndex() == true )
                     {
                         OE_NOTICE <<
                             "OGR: Building spatial index for " << getName() << " ..." << std::flush;
@@ -193,7 +191,7 @@ public:
             return new GeometryFeatureCursor(
                 _geometry.get(),
                 getFeatureProfile(),
-                _options->filters() );
+                _options.filters() );
                 //getFilters() );
         }
         else
@@ -213,7 +211,7 @@ public:
                     layerHandle, 
                     getFeatureProfile(),
                     query, 
-                    _options->filters() );
+                    _options.filters() );
             }
             else
             {
@@ -261,11 +259,11 @@ private:
     //bool _buildSpatialIndex;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
     //optional<ProfileConfig> _geometryProfileConf;
-    osg::ref_ptr<const OGRFeatureOptions> _options;
+    const OGRFeatureOptions _options;
 };
 
 
-class OGRFeatureSourceFactory : public osgDB::ReaderWriter
+class OGRFeatureSourceFactory : public FeatureSourceDriver
 {
 public:
     OGRFeatureSourceFactory()
@@ -283,7 +281,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return new OGRFeatureSource( static_cast<const PluginOptions*>(options) );
+        return ReadResult( new OGRFeatureSource( getFeatureSourceOptions(options) ) );
     }
 };
 

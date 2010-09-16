@@ -136,11 +136,10 @@ TileBlacklist::write(std::ostream &output) const
 
 //------------------------------------------------------------------------
 
-TileSource::TileSource( const TileSourceOptions& options )
+TileSource::TileSource( const TileSourceOptions& options ) :
+_options( options )
 {
     this->setThreadSafeRefUnref( true );
-
-    _options.merge( options );
 
     _memCache = new MemCache();
 

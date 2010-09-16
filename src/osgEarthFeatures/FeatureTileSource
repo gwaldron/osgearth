@@ -37,8 +37,8 @@ namespace osgEarth { namespace Features
     {
     public: // serializable properties
 
-        osg::ref_ptr<const FeatureSourceOptions>& featureOptions() { return _featureOptions; }
-        const osg::ref_ptr<const FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
         optional<Symbology::StyleCatalog>& styles() { return _styles; }
         const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
@@ -58,7 +58,7 @@ namespace osgEarth { namespace Features
 
     protected:
         virtual void mergeConfig( const Config& conf );
-        osg::ref_ptr<const FeatureSourceOptions> _featureOptions;
+        optional<FeatureSourceOptions> _featureOptions;
         optional<Symbology::StyleCatalog> _styles;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         osg::ref_ptr<FeatureSource> _featureSource;

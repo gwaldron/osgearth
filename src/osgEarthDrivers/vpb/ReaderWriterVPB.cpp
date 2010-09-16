@@ -571,8 +571,7 @@ class VPBSourceFactory : public TileSourceDriver
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            VPBOptions vpbOptions;
-            vpbOptions.merge( getTileSourceOptions(options) );
+            VPBOptions vpbOptions( getTileSourceOptions(options) );
 
             std::string url = vpbOptions.url().value();
             if ( !url.empty() )

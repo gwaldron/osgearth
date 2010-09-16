@@ -631,45 +631,13 @@ class GDALTileSource : public TileSource
 public:
     GDALTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
+      _options(options),
       _srcDS(NULL),
       _warpedDS(NULL),
       _maxDataLevel(30)
     {
-        _options.merge( options );
-
-        //_settings = dynamic_cast<const GDALOptions*>( options );
-        //if ( !_settings )
-        //    _settings = new GDALOptions( options );
-
-        //std::string interpOption;
-
-        //if ( options )
-        //{
-        //    const Config& conf = options->config();
-
-        //    _url = conf.value( PROPERTY_URL );
-        //    _extensions = conf.value( PROPERTY_EXTENTSIONS );
-
-        //    if ( conf.hasValue( PROPERTY_TILE_SIZE ) )
-        //        _tile_size = conf.value<int>( PROPERTY_TILE_SIZE, 256 );
-        //    else
-        //        _tile_size = conf.value<int>( PROPERTY_DEFAULT_TILE_SIZE, 256 );
-
-        //    interpOption = conf.value( PROPERTY_INTERPOLATION );
-        //}
-
-        //if (interpOption.empty())
-        //{
-        //    interpOption = "average";
-        //}
-
-        //if (interpOption == "nearest") _interpolation = NEAREST;
-        //else if (interpOption == "average") _interpolation = AVERAGE;
-        //else if (interpOption == "bilinear") _interpolation = BILINEAR;
-        //else _interpolation = AVERAGE;
+        //nop
     }
-
-
 
     ~GDALTileSource()
     {
@@ -1479,7 +1447,7 @@ private:
     //std::string     _extensions;
     //ElevationInterpolation   _interpolation;
 
-    GDALOptions _options;
+    const GDALOptions _options;
     //osg::ref_ptr<const GDALOptions> _settings;
 
     unsigned int _maxDataLevel;

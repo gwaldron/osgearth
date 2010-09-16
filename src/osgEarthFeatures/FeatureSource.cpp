@@ -92,10 +92,16 @@ GeometryFeatureCursor::nextFeature()
 
 /****************************************************************************/
 
-FeatureSourceOptions::FeatureSourceOptions( const PluginOptions* opt ) :
-DriverOptions( opt )
+FeatureSourceOptions::FeatureSourceOptions( const ConfigOptions& options ) :
+DriverConfigOptions( options )
 {
-    const Config& bufferConf = config().child("buffer");
+    fromConfig( _conf );
+}
+
+void
+FeatureSourceOptions::fromConfig( const Config& conf )
+{
+    const Config& bufferConf = conf.child("buffer");
     if ( !bufferConf.empty() )
     {
         BufferFilter* buffer = new BufferFilter();
@@ -105,7 +111,7 @@ DriverOptions( opt )
 
     // resample operation:
     // resampling must occur AFTER buffering, because the buffer op will remove colinear segments.
-    const Config& resampleConf = config().child("resample");
+    const Config& resampleConf = conf.child("resample");
     if ( !resampleConf.empty() )
     {
         ResampleFilter* resample = new ResampleFilter();
@@ -118,7 +124,7 @@ DriverOptions( opt )
 Config
 FeatureSourceOptions::getConfig() const
 {
-    Config conf = DriverOptions::getConfig();
+    Config conf = DriverConfigOptions::getConfig();
 
     //TODO: make each of these filters Configurable.
     for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
@@ -143,11 +149,10 @@ FeatureSourceOptions::getConfig() const
 
 /****************************************************************************/
 
-FeatureSource::FeatureSource( const PluginOptions* options )
+FeatureSource::FeatureSource( const ConfigOptions& options ) :
+_options( options )
 {    
-    _options = dynamic_cast<const FeatureSourceOptions*>( options );
-    if ( !_options.valid() )
-        _options = new FeatureSourceOptions( options );
+    //nop
 }
 
 const FeatureProfile*
@@ -171,82 +176,49 @@ FeatureSource::getFeatureProfile() const
 
 const FeatureFilterList&
 FeatureSource::getFilters() const {
-    return _options->filters();
+    return _options.filters();
 }
 
-/****************************************************************************/
+//------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[FeatureSourceFactory] "
+#define FEATURE_SOURCE_OPTIONS_TAG "__osgEarth::FeatureSourceOptions"
 
 FeatureSource*
-FeatureSourceFactory::create( const DriverOptions* driverOptions )
+FeatureSourceFactory::create( const FeatureSourceOptions& options )
 {
     FeatureSource* featureSource = 0L;
-    if ( driverOptions )
-    {
-        std::string driverExt = std::string(".osgearth_feature_") + driverOptions->driver();
 
-        featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, driverOptions ) );
+    if ( !options.getDriver().empty() )
+    {
+        std::string driverExt = std::string(".osgearth_feature_") + options.getDriver();
+
+        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        rwopts->setPluginData( FEATURE_SOURCE_OPTIONS_TAG, (void*)&options );
+
+        featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
         if ( featureSource )
         {
-            featureSource->setName( driverOptions->name() );
+            featureSource->setName( options.getName() );
         }
         else
         {
-            OE_NOTICE
-                << "WARNING: Failed to load feature driver for " << driverExt << std::endl;
+            OE_WARN << LC << "FAILED to load feature driver \"" << options.getDriver() << "\"" << std::endl;
         }
     }
     else
     {
-        OE_NOTICE
-            << "ERROR: null driver options to FeatureSourceFactory" << std::endl;
+        OE_WARN << LC << "ILLEGAL null feature driver name" << std::endl;
     }
 
     return featureSource;
 }
 
-// deprecated
-FeatureSource*
-FeatureSourceFactory::create(const std::string& name,
-                             const std::string& driver,
-                             const Config&      driverConf,
-                             const osgDB::ReaderWriter::Options* globalOptions )
+//------------------------------------------------------------------------
+
+const FeatureSourceOptions&
+FeatureSourceDriver::getFeatureSourceOptions( const osgDB::ReaderWriter::Options* rwopt ) const
 {
-    osg::ref_ptr<PluginOptions> options = globalOptions?
-        new PluginOptions( *globalOptions ) :
-        new PluginOptions();
-
-    //Setup the plugin options for the source
-    options->config() = driverConf;
-
-    OE_INFO
-        << "Feature Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
-
-	// Load the source from a plugin.
-    osg::ref_ptr<FeatureSource> source = dynamic_cast<FeatureSource*>(
-                osgDB::readObjectFile( std::string(".osgearth_feature_") + driver, options.get()));
-
-    if ( source.valid() )
-    {
-        source->setName( name );
-    }
-    else
-	{
-		OE_NOTICE << "Warning: Could not load Feature Source for driver "  << driver << std::endl;
-	}
-
-	return source.release();
+    return *static_cast<const FeatureSourceOptions*>( rwopt->getPluginData( FEATURE_SOURCE_OPTIONS_TAG ) );
 }
-
-
-// deprecated
-FeatureSource*
-FeatureSourceFactory::create(const Config& featureStoreConf,
-                             const osgDB::ReaderWriter::Options* globalOptions )
-{
-    return create(
-        featureStoreConf.attr( "name" ),
-        featureStoreConf.attr( "driver" ),
-        featureStoreConf,
-        globalOptions );
-}
-

@@ -60,8 +60,8 @@ int main(int argc, char** argv)
 
     // Next we add a feature layer. First configure a feature driver to 
     // load the vectors from a shapefile:
-    OGRFeatureOptions* featureOpt = new OGRFeatureOptions();
-    featureOpt->url() = "../data/world.shp";
+    OGRFeatureOptions featureOpt;
+    featureOpt.url() = "../data/world.shp";
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:

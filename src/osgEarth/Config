@@ -108,6 +108,7 @@ namespace osgEarth
 
         const Config& child( const std::string& key ) const;
 
+        void merge( const Config& rhs );
 
         template<typename T>
         void addIfSet( const std::string& key, const optional<T>& opt ) {
@@ -166,8 +167,6 @@ namespace osgEarth
             for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
                 _children.push_back( *i );
         }
-
-
 
         template<typename T>
         void updateIfSet( const std::string& key, const optional<T>& opt ) {
@@ -367,7 +366,14 @@ namespace osgEarth
         ConfigOptions( const ConfigOptions& rhs )
             : _conf( rhs.getConfig() ) { }
 
+        ConfigOptions& operator = ( const ConfigOptions& rhs ) {
+            _conf = rhs._conf;
+            merge( rhs );
+            return *this;
+        }
+
         void merge( const ConfigOptions& rhs ) {
+            _conf.merge( rhs._conf );
             mergeConfig( rhs.getConfig() );
         }
 

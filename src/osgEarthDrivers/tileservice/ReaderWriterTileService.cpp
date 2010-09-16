@@ -40,10 +40,8 @@ using namespace osgEarth::Drivers;
 class TileServiceSource : public TileSource
 {
 public:
-	TileServiceSource( const TileSourceOptions& options ) : TileSource( options )
-    {
-        _options.merge( options );
-        
+	TileServiceSource( const TileSourceOptions& options ) : TileSource( options ), _options(options)
+    {        
         _formatToUse =
             _options.format()->empty() ? "png" : _options.format().value();
     }
@@ -105,7 +103,7 @@ public:
 
 private:
     std::string _formatToUse;
-    TileServiceOptions _options;
+    const TileServiceOptions _options;
 };
 
 

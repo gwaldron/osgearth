@@ -58,9 +58,10 @@ class OSGTileSource : public TileSource
 public:
     OSGTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
+      _options( options ),
       _maxDataLevel( 21 )
     {
-        _options.merge( options );
+        //nop
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
@@ -138,7 +139,7 @@ private:
     std::string _url;
     int _maxDataLevel;
     osg::ref_ptr<osg::Image> _image;
-    OSGOptions _options;
+    const OSGOptions _options;
 };
 
 

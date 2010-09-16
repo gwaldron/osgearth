@@ -14,6 +14,6 @@ SETUP_PLUGIN(osgearth_wms)
 
 # to install public driver includes:
 SET(LIB_NAME wms)
-SET(LIB_PUBLIC_HEADERS WMSOptions)
+SET(LIB_PUBLIC_HEADERS ${TARGET_H} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

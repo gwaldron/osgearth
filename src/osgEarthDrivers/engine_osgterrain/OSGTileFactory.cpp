@@ -27,7 +27,7 @@
 #include <osgEarth/Compositing>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
-#include <osgEarth/TileSourceFactory>
+#include <osgEarth/TileSource>
 
 #include <osg/Image>
 #include <osg/Notify>

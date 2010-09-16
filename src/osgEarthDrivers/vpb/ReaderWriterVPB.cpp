@@ -139,7 +139,7 @@ public:
 class VPBDatabase : public osg::Referenced
 {
 public:
-    VPBDatabase( const VPBOptions* in_options ) :
+    VPBDatabase( const VPBOptions& in_options ) :
         _options( in_options ),
         //_directory_structure( FLAT_TASK_DIRECTORIES ),
         _maxNumTilesInCache( 128 ),
@@ -149,7 +149,7 @@ public:
         _profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
 
         // validate dataset
-        _url = _options->url().value();
+        _url = _options.url().value();
 
         if ( !_url.empty() )
         {
@@ -161,7 +161,7 @@ public:
 
             if ( rc == HTTPClient::RESULT_OK && _rootNode.valid() )
             {
-                _baseNameToUse = _options->baseName().value();
+                _baseNameToUse = _options.baseName().value();
 
                 _path = osgDB::getFilePath(_url);
                 if ( _baseNameToUse.empty() )
@@ -212,13 +212,13 @@ public:
                     OE_DEBUG<<"VPB: computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
                     OE_DEBUG<<"VPB: computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                     
-                    if ( _options.valid() )
+                    //if ( _options.valid() )
                     {
-                        if ( _options->numTilesWideAtLod0().isSet() )
-                            numTilesWideAtLod0 = _options->numTilesWideAtLod0().value();
+                        if ( _options.numTilesWideAtLod0().isSet() )
+                            numTilesWideAtLod0 = _options.numTilesWideAtLod0().value();
 
-                        if ( _options->numTilesHighAtLod0().isSet() )
-                            numTilesHighAtLod0 = _options->numTilesHighAtLod0().value();
+                        if ( _options.numTilesHighAtLod0().isSet() )
+                            numTilesHighAtLod0 = _options.numTilesHighAtLod0().value();
                     }
 
                     OE_DEBUG<<"VPB: final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
@@ -252,14 +252,14 @@ public:
     std::string createTileName( int level, int tile_x, int tile_y )
     {
         std::stringstream buf;
-        if ( _options->directoryStructure() == VPBOptions::DS_FLAT )
+        if ( _options.directoryStructure() == VPBOptions::DS_FLAT )
         {
              buf<<_path<<"/"<<_baseNameToUse<<"_L"<<level<<"_X"<<tile_x/2<<"_Y"<<tile_y/2<<"_subtile."<<_extension;
         }
         else
         {
-            int psl = _options->primarySplitLevel().value();
-            int ssl = _options->secondarySplitLevel().value();
+            int psl = _options.primarySplitLevel().value();
+            int ssl = _options.secondarySplitLevel().value();
 
             if (level<psl)
             {
@@ -278,7 +278,7 @@ public:
                 buf<<_path<<"/"<<_baseNameToUse<<"_subtile_L"<<psl<<"_X"<<split_x<<"_Y"<<split_y<<"/"<<
                      _baseNameToUse<<"_L"<<level<<"_X"<<tile_x<<"_Y"<<tile_y<<"_subtile."<<_extension;
             }
-            else if ( _options->directoryStructure() == VPBOptions::DS_TASK )
+            else if ( _options.directoryStructure() == VPBOptions::DS_TASK )
             {
                 tile_x /= 2;
                 tile_y /= 2;
@@ -450,7 +450,7 @@ public:
         return 0;
     }
 
-    osg::ref_ptr<const VPBOptions> _options;
+    const VPBOptions _options;
     std::string _url;
     std::string _path;
     std::string _extension;
@@ -478,11 +478,12 @@ public:
 class VPBSource : public TileSource
 {
 public:
-    VPBSource( VPBDatabase* vpbDatabase, const VPBOptions* in_options) :  
+    VPBSource( VPBDatabase* vpbDatabase, const VPBOptions& in_options ) : //const VPBOptions* in_options) :  
         TileSource(in_options),
-        _vpbDatabase(vpbDatabase)
+        _vpbDatabase(vpbDatabase),
+        _options( in_options )
     {
-        _options = in_options;
+        //nop
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
@@ -504,7 +505,7 @@ public:
         osg::ref_ptr<osgTerrain::TerrainTile> tile = _vpbDatabase->getTerrainTile(key, progress);                
         if (tile.valid())
         {        
-            int layerNum = _options->layer().value();
+            int layerNum = _options.layer().value();
 
             if (layerNum < tile->getNumColorLayers())
             {
@@ -547,12 +548,12 @@ public:
 
 private:
     osg::ref_ptr<VPBDatabase> _vpbDatabase;
-    osg::ref_ptr<const VPBOptions>  _options;
+    const VPBOptions _options;
     //unsigned int                                        layerNum;
 };
 
 
-class VPBSourceFactory : public osgDB::ReaderWriter
+class VPBSourceFactory : public TileSourceDriver
 {
     public:
         VPBSourceFactory()
@@ -570,26 +571,19 @@ class VPBSourceFactory : public osgDB::ReaderWriter
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            const PluginOptions* pluginOpts = static_cast<const PluginOptions*>( options );
+            VPBOptions vpbOptions;
+            vpbOptions.merge( getTileSourceOptions(options) );
 
-            osg::ref_ptr<const VPBOptions> settings = dynamic_cast<const VPBOptions*>( pluginOpts );
-            if ( !settings.valid() )
-            {
-                settings = new VPBOptions( pluginOpts );
-            }
-
-            //OE_NOTICE << pluginOpts->config().toString() << std::endl;
-
-            std::string url = settings->url().value();
+            std::string url = vpbOptions.url().value();
             if ( !url.empty() )
             {                
                 OpenThreads::ScopedLock<OpenThreads::Mutex> lock(vpbDatabaseMapMutex);
                 osg::observer_ptr<VPBDatabase>& db_ptr = vpbDatabaseMap[url]; //get or create
                 
-                if (!db_ptr) db_ptr = new VPBDatabase( settings.get() );
+                if (!db_ptr) db_ptr = new VPBDatabase( vpbOptions );
                 
                 if (db_ptr.valid())
-                    return new VPBSource( db_ptr.get(), settings.get() );
+                    return new VPBSource( db_ptr.get(), vpbOptions );
                 else
                     return ReadResult::FILE_NOT_FOUND;               
             }

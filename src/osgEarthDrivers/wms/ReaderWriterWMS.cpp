@@ -56,20 +56,16 @@ public:
 class WMSSource : public TileSource
 {
 public:
-	WMSSource( const PluginOptions* options ) : TileSource( options )
+	WMSSource( const TileSourceOptions& options ) : TileSource( options ), _options(options)
     {
-        _settings = dynamic_cast<const WMSOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new WMSOptions( options );
-
-        if ( _settings->times().isSet() )
+        if ( _options.times().isSet() )
         {
-            osgEarth::split( _settings->times().value(), ",", _timesVec, false );
+            osgEarth::split( _options.times().value(), ",", _timesVec, false );
         }
 
         // localize it since we might override them:
-        _formatToUse = _settings->format().value();
-        _srsToUse = _settings->srs().value();
+        _formatToUse = _options.format().value();
+        _srsToUse = _options.srs().value();
     }
 
     /** override */
@@ -77,21 +73,21 @@ public:
     {
         osg::ref_ptr<const Profile> result;
 
-        char sep = _settings->url()->find_first_of('?') == std::string::npos? '?' : '&';
+        char sep = _options.url()->find_first_of('?') == std::string::npos? '?' : '&';
 
-        std::string capUrl = _settings->capabilitiesUrl().value();
+        std::string capUrl = _options.capabilitiesUrl().value();
         if ( capUrl.empty() )
         {
             capUrl = 
-                _settings->url().value() + 
+                _options.url().value() + 
                 sep + 
                 "SERVICE=WMS" +
-                "&VERSION=" + _settings->wmsVersion().value() +
+                "&VERSION=" + _options.wmsVersion().value() +
                 "&REQUEST=GetCapabilities";
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, getOptions() );
+        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, 0L ); //getOptions() );
         if ( !capabilities.valid() )
         {
             OE_WARN << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
@@ -114,28 +110,28 @@ public:
         if ( _srsToUse.empty() )
             _srsToUse = "EPSG:4326";
 
-        std::string wmsFormatToUse = _settings->wmsFormat().value();
+        std::string wmsFormatToUse = _options.wmsFormat().value();
 
         //Initialize the WMS request prototype
         std::stringstream buf;
 
         // first the mandatory keys:
         buf
-            << std::fixed << _settings->url().value() << sep
+            << std::fixed << _options.url().value() << sep
             << "SERVICE=WMS"
-            << "&VERSION=" << _settings->wmsVersion().value()
+            << "&VERSION=" << _options.wmsVersion().value()
             << "&REQUEST=GetMap"
-            << "&LAYERS=" << _settings->layers().value()
+            << "&LAYERS=" << _options.layers().value()
             << "&FORMAT=" << ( wmsFormatToUse.empty() ? std::string("image/") + _formatToUse : wmsFormatToUse )
-            << "&STYLES=" << _settings->style().value()
+            << "&STYLES=" << _options.style().value()
             << "&SRS=" << _srsToUse
-            << "&WIDTH="<< _settings->tileSize().value()
-            << "&HEIGHT="<< _settings->tileSize().value()
+            << "&WIDTH="<< _options.tileSize().value()
+            << "&HEIGHT="<< _options.tileSize().value()
             << "&BBOX=%lf,%lf,%lf,%lf";
 
         // then the optional keys:
-        if ( _settings->transparent().isSet() )
-            buf << "&TRANSPARENT=" << (_settings->transparent() == true ? "TRUE" : "FALSE");
+        if ( _options.transparent().isSet() )
+            buf << "&TRANSPARENT=" << (_options.transparent() == true ? "TRUE" : "FALSE");
             
 
 		_prototype = "";
@@ -158,7 +154,7 @@ public:
         {
             //TODO: "layers" mights be a comma-separated list. need to loop through and
             //combine the extents?? yes
-            Layer* layer = capabilities->getLayerByName( _settings->layers().value() );
+            Layer* layer = capabilities->getLayerByName( _options.layers().value() );
             if ( layer )
             {
                 double minx, miny, maxx, maxy;                
@@ -206,31 +202,31 @@ public:
 
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
-        std::string tsUrl = _settings->tileServiceUrl().value();
+        std::string tsUrl = _options.tileServiceUrl().value();
         if (tsUrl.empty() )
         {
-            tsUrl = _settings->url().value() + sep + std::string("request=GetTileService");
+            tsUrl = _options.url().value() + sep + std::string("request=GetTileService");
         }
 
         OE_INFO << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl << std::endl;
-        _tileService = TileServiceReader::read(tsUrl, getOptions());
+        _tileService = TileServiceReader::read(tsUrl, 0L); //getOptions());
         if (_tileService.valid())
         {
             OE_INFO << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
             TileService::TilePatternList patterns;
             _tileService->getMatchingPatterns(
-                _settings->layers().value(),
+                _options.layers().value(),
                 _formatToUse,
-                _settings->style().value(),
+                _options.style().value(),
                 _srsToUse,
-                _settings->tileSize().value(),
-                _settings->tileSize().value(),
+                _options.tileSize().value(),
+                _options.tileSize().value(),
                 patterns );
 
             if (patterns.size() > 0)
             {
                 result = _tileService->createProfile( patterns );
-				_prototype = _settings->url().value() + sep + patterns[0].getPrototype();
+				_prototype = _options.url().value() + sep + patterns[0].getPrototype();
             }
         }
         else
@@ -264,7 +260,7 @@ public:
         }
 
 
-        out_response = HTTPClient::get( uri, getOptions(), progress );
+        out_response = HTTPClient::get( uri, 0L, progress ); //getOptions(), progress );
 
         if ( out_response.isOK() )
         {
@@ -321,7 +317,7 @@ public:
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extras, progress, response );
             if ( reader )
             {
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), 0L ); //getOptions() );
                 if ( readResult.error() ) {
                     OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
                 }
@@ -346,7 +342,7 @@ public:
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
             if ( reader )
             {
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), 0L ); //getOptions() );
                 if ( readResult.error() ) {
                     OE_WARN << "WMS: image read failed for " << createURI(key) << std::endl;
                 }
@@ -406,7 +402,7 @@ public:
         osg::ImageSequence* seq = new SyncImageSequence(); //osg::ImageSequence();
 
         seq->setLoopingMode( osg::ImageStream::LOOPING );
-        seq->setLength( _settings->secondsPerFrame().value() * (double)_timesVec.size() );
+        seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
         seq->play();
 
         for( int r=0; r<_timesVec.size(); ++r )
@@ -417,7 +413,7 @@ public:
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
             if ( reader )
             {
-                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), getOptions() );
+                osgDB::ReaderWriter::ReadResult readResult = reader->readImage( response.getPartStream( 0 ), 0L ); //getOptions() );
                 if ( !readResult.error() )
                 {
                     seq->addImage( readResult.getImage() );
@@ -446,7 +442,7 @@ public:
         float scaleFactor = 1;
 
         //Scale the heightfield to meters
-        if ( _settings->elevationUnit() == "ft")
+        if ( _options.elevationUnit() == "ft")
         {
             scaleFactor = 0.3048;
         }
@@ -475,7 +471,7 @@ public:
 
     virtual int getPixelsPerTile() const
     {
-        return _settings->tileSize().value();
+        return _options.tileSize().value();
     }
 
     virtual std::string getExtension()  const 
@@ -484,7 +480,7 @@ public:
     }
 
 private:
-    osg::ref_ptr<const WMSOptions> _settings;
+    const WMSOptions _options;
     std::string _formatToUse;
     std::string _srsToUse;
     osg::ref_ptr<TileService> _tileService;
@@ -494,7 +490,7 @@ private:
 };
 
 
-class WMSSourceFactory : public osgDB::ReaderWriter
+class WMSSourceFactory : public TileSourceDriver
 {
     public:
         WMSSourceFactory() {}
@@ -517,7 +513,7 @@ class WMSSourceFactory : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            return new WMSSource( static_cast<const PluginOptions*>(opt) );
+            return new WMSSource( getTileSourceOptions(opt) );
         }
 };
 

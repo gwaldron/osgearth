@@ -39,21 +39,32 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& format() const { return _format; }
 
     public:
-        TMSOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt )
+        TMSOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt )
         {
-            driver() = "tms";
-            config().getIfSet( "url", _url );
-            config().getIfSet( "format", _format );
-            config().getIfSet( "tms_type", _tmsType );
+            setDriver( "tms" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url);
             conf.updateIfSet("tms_type", _tmsType);
             conf.updateIfSet("format", _format);
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "url", _url );
+            conf.getIfSet( "format", _format );
+            conf.getIfSet( "tms_type", _tmsType );
         }
 
         optional<std::string> _url;

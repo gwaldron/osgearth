@@ -63,7 +63,7 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& baseName() const { return _baseName; }
 
     public:
-        VPBOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
+        VPBOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
             _primarySplitLevel( -1 ),
             _secondarySplitLevel( -1 ),
             _layer( 0 ),
@@ -71,23 +71,11 @@ namespace osgEarth { namespace Drivers
             _heightLod0( 1 ),
             _dirStruct( DS_NESTED )
         {
-            driver() = "vpb";
-
-            config().getIfSet("url", _url);
-            config().getIfSet("primary_split_level", _primarySplitLevel);
-            config().getIfSet("secondary_split_level", _secondarySplitLevel);
-            config().getIfSet("layer", _layer);
-            config().getIfSet("numTilesWideAtLod0", _widthLod0 );
-            config().getIfSet("numTilesHighAtLod0", _heightLod0 );
-            config().getIfSet("base_name", _baseName);
-            
-            std::string ds = config().value("directory_structure");
-            if ( ds == "flat" ) _dirStruct = DS_FLAT;
-            else if ( ds == "task" ) _dirStruct = DS_TASK;
-            else if ( ds == "nested" ) _dirStruct = DS_NESTED;
+            setDriver( "vpb" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url);
@@ -103,6 +91,28 @@ namespace osgEarth { namespace Drivers
                 else if ( _dirStruct == DS_NESTED ) conf.update("directory_structure", "nested");
             }
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("url", _url);
+            conf.getIfSet("primary_split_level", _primarySplitLevel);
+            conf.getIfSet("secondary_split_level", _secondarySplitLevel);
+            conf.getIfSet("layer", _layer);
+            conf.getIfSet("numTilesWideAtLod0", _widthLod0 );
+            conf.getIfSet("numTilesHighAtLod0", _heightLod0 );
+            conf.getIfSet("base_name", _baseName);
+            
+            std::string ds = conf.value("directory_structure");
+            if ( ds == "flat" ) _dirStruct = DS_FLAT;
+            else if ( ds == "task" ) _dirStruct = DS_TASK;
+            else if ( ds == "nested" ) _dirStruct = DS_NESTED;
         }
 
         optional<std::string> _url, _baseName;

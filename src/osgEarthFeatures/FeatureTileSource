@@ -51,16 +51,20 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
         const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
 
-        FeatureTileSourceOptions( const PluginOptions* opt =0L );
+        FeatureTileSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
 
-    protected:
+    public:
         virtual Config getConfig() const;
 
+    protected:
+        virtual void mergeConfig( const Config& conf );
         osg::ref_ptr<const FeatureSourceOptions> _featureOptions;
         optional<Symbology::StyleCatalog> _styles;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
-
         osg::ref_ptr<FeatureSource> _featureSource;
+
+    private:
+        void fromConfig( const Config& conf );
     };
 
 
@@ -74,7 +78,7 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new feature tile source with the provided options.
          */
-        FeatureTileSource( const PluginOptions* options =NULL );
+        FeatureTileSource( const TileSourceOptions& options =TileSourceOptions() );
 
         //override
         virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL);
@@ -150,7 +154,8 @@ namespace osgEarth { namespace Features
         virtual ~FeatureTileSource() { }
 
         osg::ref_ptr<FeatureSource> _features;
-        osg::ref_ptr<const FeatureTileSourceOptions> _options;
+        const FeatureTileSourceOptions _options;
+        //osg::ref_ptr<const FeatureTileSourceOptions> _options;
         osg::ref_ptr<const osgEarth::Map> _map;
         bool _initialized;
         

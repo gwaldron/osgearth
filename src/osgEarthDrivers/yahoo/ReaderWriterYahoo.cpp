@@ -36,11 +36,9 @@ using namespace osgEarth::Drivers;
 class YahooSource : public TileSource
 {
 public:
-    YahooSource( const PluginOptions* options ) : TileSource( options )
+    YahooSource( const TileSourceOptions& options ) : TileSource( options ), _options(options)
     {
-        _settings = dynamic_cast<const YahooOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new YahooOptions( options );
+        //nop
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
@@ -58,7 +56,7 @@ public:
         std::stringstream buf;
 
         std::string dataset = 
-            _settings->dataset().isSet() ? _settings->dataset().value() : "roads";
+            _options.dataset().isSet() ? _options.dataset().value() : "roads";
         
         if ( dataset == "roads" || dataset == "map" )
         {            
@@ -96,7 +94,7 @@ public:
         OE_DEBUG << key.str() << "=" << base << std::endl;
         
         osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile( base, image, getOptions(), progress );
+        HTTPClient::readImageFile( base, image, 0L, progress ); //getOptions(), progress );
         return image.release();
     }
 
@@ -120,11 +118,11 @@ public:
     }
 
 private:
-    osg::ref_ptr<const YahooOptions> _settings;
+    const YahooOptions _options;
 };
 
 
-class ReaderWriterYahoo : public osgDB::ReaderWriter
+class ReaderWriterYahoo : public TileSourceDriver
 {
     public:
         ReaderWriterYahoo()
@@ -142,7 +140,7 @@ class ReaderWriterYahoo : public osgDB::ReaderWriter
             if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
                 return ReadResult::FILE_NOT_HANDLED;
 
-            return new YahooSource( static_cast<const PluginOptions*>(options) );
+            return new YahooSource( getTileSourceOptions(options) );
         }
 };
 

@@ -53,11 +53,10 @@ using namespace OpenThreads;
 class AGGLiteRasterizerTileSource : public FeatureTileSource
 {
 public:
-    AGGLiteRasterizerTileSource( const PluginOptions* options ) : FeatureTileSource( options )
+    AGGLiteRasterizerTileSource( const TileSourceOptions& options ) : FeatureTileSource( options ),
+        _options( options )
     {
-        _settings = dynamic_cast<const AGGLiteOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new AGGLiteOptions( options );
+        //nop
     }
 
     struct BuildData : public osg::Referenced {
@@ -134,7 +133,7 @@ public:
             // downsample the line data so that it is no higher resolution than to image to which
             // we intend to rasterize it. If you don't do this, you run the risk of the buffer 
             // operation taking forever on very high-res input data.
-            if ( _settings->optimizeLineSampling() == true )
+            if ( _options.optimizeLineSampling() == true )
             {
                 ResampleFilter resample;
                 resample.minLength() = osg::minimum( xres, yres );
@@ -154,7 +153,7 @@ public:
 
             // "relative line size" means that the line width is expressed in (approx) pixels
             // rather than in map units
-            if ( _settings->relativeLineSize() == true )
+            if ( _options.relativeLineSize() == true )
                 buffer.distance() = xres * lineWidth;
             else
                 buffer.distance() = lineWidth;
@@ -272,15 +271,15 @@ public:
     }
 
 private:
-    osg::ref_ptr<const AGGLiteOptions> _settings;
+    const AGGLiteOptions _options;
     std::string _configPath;
 };
 
 // Reads tiles from a TileCache disk cache.
-class AGGLiteRasterizerTileSourceFactory : public osgDB::ReaderWriter
+class AGGLiteRasterizerTileSourceDriver : public TileSourceDriver
 {
     public:
-        AGGLiteRasterizerTileSourceFactory() {}
+        AGGLiteRasterizerTileSourceDriver() {}
 
         virtual const char* className()
         {
@@ -300,8 +299,8 @@ class AGGLiteRasterizerTileSourceFactory : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            return new AGGLiteRasterizerTileSource( static_cast<const PluginOptions*>(options) );
+            return new AGGLiteRasterizerTileSource( getTileSourceOptions(options) );
         }
 };
 
-REGISTER_OSGPLUGIN(osgearth_agglite, AGGLiteRasterizerTileSourceFactory)
+REGISTER_OSGPLUGIN(osgearth_agglite, AGGLiteRasterizerTileSourceDriver)

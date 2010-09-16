@@ -76,16 +76,22 @@ namespace osgEarth
         const optional<Config>& profileConfig() const { return _profileConf; }
 
     public:
-        TileSourceOptions( const Config& conf =Config() )
-            : DriverConfigOptions( conf ),
+        //TileSourceOptions( const Config& conf =Config() )
+        //    : DriverConfigOptions( conf ),
+        //      _tileSize( 256 ),
+        //      _noDataValue( (float)SHRT_MIN ),
+        //      _noDataMinValue( -FLT_MAX ),
+        //      _noDataMaxValue( FLT_MAX ) { fromConfig( conf ); }
+
+        TileSourceOptions( const ConfigOptions& options =ConfigOptions() )
+            : DriverConfigOptions( options ),
               _tileSize( 256 ),
               _noDataValue( (float)SHRT_MIN ),
               _noDataMinValue( -FLT_MAX ),
-              _noDataMaxValue( FLT_MAX ) { }
+              _noDataMaxValue( FLT_MAX ) { fromConfig( _conf ); }
 
     public:
-        virtual Config getConfig() const
-        {
+        virtual Config getConfig() const {
             Config conf = DriverConfigOptions::getConfig();
             conf.updateIfSet( "tile_size", _tileSize );
             conf.updateIfSet( "nodata_value", _noDataValue );
@@ -95,20 +101,25 @@ namespace osgEarth
             return conf;
         }
 
-        virtual void mergeConfig( const Config& conf )
-        {
+    protected:
+        virtual void mergeConfig( const Config& conf ) {
             DriverConfigOptions::mergeConfig( conf );
-            config().getIfSet( "tile_size", _tileSize );
-            config().getIfSet( "nodata_value", _noDataValue );
-            config().getIfSet( "nodata_min", _noDataMinValue );
-            config().getIfSet( "nodata_max", _noDataMaxValue );
-            config().getIfSet( "blacklist_filename", _blacklistFilename);
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "tile_size", _tileSize );
+            conf.getIfSet( "nodata_value", _noDataValue );
+            conf.getIfSet( "nodata_min", _noDataMinValue );
+            conf.getIfSet( "nodata_max", _noDataMaxValue );
+            conf.getIfSet( "blacklist_filename", _blacklistFilename);
 
             // special handling of default tile size:
             if ( !tileSize().isSet() )
-                config().getIfSet( "default_tile_size", _tileSize );
+                conf.getIfSet( "default_tile_size", _tileSize );
             // remove it now so it does not get serialized
-            config().remove( "default_tile_size" );
+            _conf.remove( "default_tile_size" );
         }
 
         optional<int> _tileSize;
@@ -187,7 +198,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSource : public virtual osg::Object
     {
     public:        
-        TileSource( const TileSourceOptions& options );
+        TileSource( const TileSourceOptions& options =TileSourceOptions() );
 
         /**
          * Gets the number of pixels per tile for this TileSource.

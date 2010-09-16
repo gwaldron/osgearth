@@ -51,7 +51,7 @@ namespace osgEarth
 
     public: // Configrable
         virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        virtual void fromConfig( const Config& conf );
 
     public:
         /**
@@ -101,7 +101,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainOptions : public DriverConfigOptions
     {
     public:
-        TerrainOptions( const Config& conf =Config() );
+        TerrainOptions( const ConfigOptions& options =ConfigOptions() );
        
         /**
          * Sets or gets the scale factor for height-field values.
@@ -208,11 +208,15 @@ namespace osgEarth
     
     public:
         virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
 
-        static std::string OPTIONS_TAG;
+    protected:
+        virtual void mergeConfig( const Config& conf ) {
+            DriverConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
 
     private:
+        void fromConfig( const Config& conf );
             
         optional<float> _verticalScale;
         //optional<float> _heightFieldSkirtRatio;

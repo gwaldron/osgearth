@@ -99,7 +99,7 @@ const unsigned int MASK_2D = 0xF0000000;
 
 struct BlankTileSource : public osgEarth::TileSource 
 {
-    BlankTileSource(const PluginOptions* options =0L) : osgEarth::TileSource( options )
+    BlankTileSource(const TileSourceOptions& options =TileSourceOptions()) : osgEarth::TileSource( options )
 	{
 	}
 

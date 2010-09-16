@@ -23,8 +23,6 @@
 
 using namespace osgEarth;
 
-std::string TerrainOptions::OPTIONS_TAG = "__osgEarth::TerrainOptions";
-
 //------------------------------------------------------------------------
 
 LoadingPolicy::LoadingPolicy( const Config& conf ) :
@@ -33,11 +31,11 @@ _numThreads( 2 ),
 _numThreadsPerCore( 4 ),
 _numTileGenThreads( OpenThreads::GetNumberOfProcessors() )
 {
-    mergeConfig( conf );
+    fromConfig( conf );
 }
 
 void
-LoadingPolicy::mergeConfig( const Config& conf )
+LoadingPolicy::fromConfig( const Config& conf )
 {
     conf.getIfSet( "mode", "standard", _mode, MODE_STANDARD );
     conf.getIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
@@ -63,11 +61,10 @@ LoadingPolicy::getConfig() const
 
 //----------------------------------------------------------------------------
 
-TerrainOptions::TerrainOptions( const Config& conf ) :
-DriverConfigOptions( conf ),
+TerrainOptions::TerrainOptions( const ConfigOptions& options ) :
+DriverConfigOptions( options ),
 _loadingPolicy( LoadingPolicy() ),
 _verticalScale( 1.0f ),
-//_heightFieldSkirtRatio( 0.05f ),
 _heightFieldSampleRatio( 1.0f ),
 _minTileRangeFactor( 6.0 ),
 _normalizeEdges( false ),
@@ -77,7 +74,7 @@ _layeringTechnique( LAYERING_MULTITEXTURE ),
 _enableLighting( true ),
 _elevationInterpolation( INTERP_BILINEAR )
 {
-    mergeConfig( conf );
+    fromConfig( _conf );
 }
 
 Config
@@ -108,13 +105,10 @@ TerrainOptions::getConfig() const
 }
 
 void
-TerrainOptions::mergeConfig( const Config& conf )
+TerrainOptions::fromConfig( const Config& conf )
 {
-    DriverConfigOptions::mergeConfig( conf );
-
     conf.getObjIfSet( "loading_policy", _loadingPolicy );
     conf.getIfSet( "vertical_scale", _verticalScale );
-    //conf.getIfSet( "skirt_ratio", _heightFieldSkirtRatio );
     conf.getIfSet( "sample_ratio", _heightFieldSampleRatio );
     conf.getIfSet( "min_tile_range_factor", _minTileRangeFactor );
     conf.getIfSet( "normalize_edges", _normalizeEdges );

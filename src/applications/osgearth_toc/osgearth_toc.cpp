@@ -97,9 +97,7 @@ const unsigned int MASK_2D = 0xF0000000;
 
 struct BlankTileSource : public osgEarth::TileSource 
 {
-    BlankTileSource(const PluginOptions* options =0L) : osgEarth::TileSource( options )
-	{
-	}
+    BlankTileSource() { }
 
 	virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile =0)
 	{
@@ -293,7 +291,7 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     
     // Custom green layer:
     {
-		BlankTileSource *tileSource = new BlankTileSource();
+		BlankTileSource* tileSource = new BlankTileSource();
 		tileSource->initialize( "" );
         MapLayer* layer = new MapLayer( "Green", MapLayer::TYPE_IMAGE,tileSource );
         addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
@@ -301,25 +299,25 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 
     // ESRI reference labels
     {
-        ArcGISOptions* opt = new ArcGISOptions();
-        opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer";
+        ArcGISOptions opt;
+        opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer";
         addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Boundaries", opt ) ) );
     }
 
     // ArcGIS transportation layer:
     {
-        ArcGISOptions* opt = new ArcGISOptions();
-        opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
+        ArcGISOptions opt;
+        opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
         addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Transportation", opt ) ) );
     }
 
     // OpenStreetMap:
     {
-        TMSOptions* opt = new TMSOptions();
-        opt->url() = "http://tile.openstreetmap.org";
-        opt->format() = "png";
-        opt->tileSize() = 256;
-        opt->tmsType() = "google";
+        TMSOptions opt;
+        opt.url() = "http://tile.openstreetmap.org";
+        opt.format() = "png";
+        opt.tileSize() = 256;
+        opt.tmsType() = "google";
         MapLayer* layer = new ImageMapLayer( "OpenStreetMap", opt );
 
         layer->profileConfig() = ProfileConfig( "global-mercator" );
@@ -328,8 +326,8 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
 
     // ArcGIS imagery:
     {
-        ArcGISOptions* opt = new ArcGISOptions();
-        opt->url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
+        ArcGISOptions opt;
+        opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
         addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Imagery", opt ) ) );
     }
 

@@ -41,6 +41,7 @@ namespace osgEarth { namespace Drivers
             _lum2rgba( false )
         {
             setDriver( "osg" );
+            fromConfig( _conf );
         }
 
     public:
@@ -50,10 +51,17 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("luminance_to_rgba", _lum2rgba);
             return conf;
         }
+
+    protected:
         void mergeConfig( const Config& conf ) {
             TileSourceOptions::mergeConfig( conf );
-            config().getIfSet( "url", _url );
-            config().getIfSet( "luminance_to_rgba", _lum2rgba );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "url", _url );
+            conf.getIfSet( "luminance_to_rgba", _lum2rgba );
         }
 
         optional<std::string> _url;

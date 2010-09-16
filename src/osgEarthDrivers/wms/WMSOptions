@@ -69,29 +69,17 @@ namespace osgEarth { namespace Drivers
         const optional<double>& secondsPerFrame() const { return _secondsPerFrame; }
 
     public:
-        WMSOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ),
+        WMSOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
             _wmsVersion( "1.1.1" ),
             _transparent( true ),
             _elevationUnit( "m" ),
             _secondsPerFrame( 1.0 )
         {
-            driver() = "wms";
-            config().getIfSet("url", _url);
-            config().getIfSet("capabilities_url", _capabilitiesUrl);
-            config().getIfSet("tile_service_url", _tileServiceUrl);
-            config().getIfSet("layers", _layers);
-            config().getIfSet("style", _style);
-            config().getIfSet("format", _format);
-            config().getIfSet("wms_format", _wmsFormat);
-            config().getIfSet("wms_version", _wmsVersion);
-            config().getIfSet("elevation_unit", _elevationUnit);
-            config().getIfSet("srs", _srs);
-            config().getIfSet("transparent", _transparent);
-            config().getIfSet("times", _times);
-            config().getIfSet("seconds_per_frame", _secondsPerFrame );
+            setDriver( "wms" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url);
@@ -108,6 +96,29 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("times", _times);
             conf.updateIfSet("seconds_per_frame", _secondsPerFrame );
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("url", _url);
+            conf.getIfSet("capabilities_url", _capabilitiesUrl);
+            conf.getIfSet("tile_service_url", _tileServiceUrl);
+            conf.getIfSet("layers", _layers);
+            conf.getIfSet("style", _style);
+            conf.getIfSet("format", _format);
+            conf.getIfSet("wms_format", _wmsFormat);
+            conf.getIfSet("wms_version", _wmsVersion);
+            conf.getIfSet("elevation_unit", _elevationUnit);
+            conf.getIfSet("srs", _srs);
+            conf.getIfSet("transparent", _transparent);
+            conf.getIfSet("times", _times);
+            conf.getIfSet("seconds_per_frame", _secondsPerFrame );
         }
 
         optional<std::string> _url;

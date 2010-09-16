@@ -43,6 +43,7 @@ namespace osgEarth { namespace Drivers
         TileServiceOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt )
         {
             setDriver( "tileservice" );
+            fromConfig( _conf );
         }
 
     public:
@@ -53,8 +54,14 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("format", _format);
             return conf;
         }
+    protected:
         void mergeConfig( const Config& conf ) {
             TileSourceOptions::mergeConfig( conf );
+            fromConfig(conf);
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
             conf.getIfSet( "dataset", _dataset );
             conf.getIfSet( "url", _url );
             conf.getIfSet( "format", _format );

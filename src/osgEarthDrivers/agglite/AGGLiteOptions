@@ -48,22 +48,32 @@ namespace osgEarth { namespace Drivers
         const optional<bool>& optimizeLineSampling() const { return _optimizeLineSampling; }
 
     public:
-        AGGLiteOptions( const PluginOptions* opt =0L )
-            : FeatureTileSourceOptions( opt ),
+        AGGLiteOptions( const TileSourceOptions& options =TileSourceOptions() )
+            : FeatureTileSourceOptions( options ),
               _relativeLineSize(true), 
               _optimizeLineSampling(true)
         {
-            driver() = "agglite";
-            config().getIfSet( "relative_line_size", _relativeLineSize );
-            config().getIfSet( "optimize_line_sampling", _optimizeLineSampling );
+            setDriver( "agglite" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = FeatureTileSourceOptions::getConfig();
             conf.updateIfSet("relative_line_size", _relativeLineSize);
             conf.updateIfSet("optimize_line_sampling", _optimizeLineSampling);
             return conf;
+        }
+    protected:
+        void mergeConfig( const Config& conf ) {
+            FeatureTileSourceOptions::mergeConfig( conf );
+            fromConfig(conf);
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "relative_line_size", _relativeLineSize );
+            conf.getIfSet( "optimize_line_sampling", _optimizeLineSampling );
         }
 
         optional<bool> _relativeLineSize;

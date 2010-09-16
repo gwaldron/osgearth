@@ -363,30 +363,27 @@ namespace osgEarth
     {
     public:
         ConfigOptions( const Config& conf =Config() )
-            : _conf( conf ) { mergeConfig( conf ); }
-
-        Config& config() { return _conf; }
-        const Config& config() const { return _conf; }
+            : _conf( conf ) { }
+        ConfigOptions( const ConfigOptions& rhs )
+            : _conf( rhs.getConfig() ) { }
 
         void merge( const ConfigOptions& rhs ) {
             mergeConfig( rhs.getConfig() );
         }
 
-    public:
         virtual Config getConfig() const { return _conf; }
 
+    protected:
         virtual void mergeConfig( const Config& conf ) { }
 
-
-    private:
         Config _conf;
     };
 
     class DriverConfigOptions : public ConfigOptions // header-only (no export required)
     {
     public:
-        DriverConfigOptions( const Config& conf =Config() ) 
-            : ConfigOptions( conf ) { }
+        DriverConfigOptions( const ConfigOptions& rhs )
+            : ConfigOptions( rhs ) { fromConfig( _conf ); }
 
         void setDriver( const std::string& value ) { _driver = value; }
         const std::string& getDriver() const { return _driver; }
@@ -402,8 +399,13 @@ namespace osgEarth
             return conf;
         }
 
+    protected:
         virtual void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );
+            ConfigOptions::mergeConfig(conf);
+            fromConfig(conf);
+        }
+
+        void fromConfig( const Config& conf ) {
             _name = conf.value( "name" );
             _driver = conf.value( "driver" );
         }

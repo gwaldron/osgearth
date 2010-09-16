@@ -54,20 +54,10 @@ namespace osgEarth { namespace Drivers
               _elevationUnit( "m" )
           {
               setDriver( "wcs" );
+              fromConfig( _conf );
           }
 
     public:
-        void mergeConfig( const Config& conf )
-        {
-            TileSourceOptions::mergeConfig( conf );
-            conf.getIfSet("url", _url);
-            conf.getIfSet("identifier", _identifier);
-            conf.getIfSet("format", _format);
-            conf.getIfSet("elevation_unit", _elevationUnit);
-            conf.getIfSet("srs", _srs);
-            conf.getIfSet("range_subset", _rangeSubset);
-        }
-
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url);
@@ -77,6 +67,22 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("srs", _srs);
             conf.updateIfSet("range_subset", _rangeSubset);
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("url", _url);
+            conf.getIfSet("identifier", _identifier);
+            conf.getIfSet("format", _format);
+            conf.getIfSet("elevation_unit", _elevationUnit);
+            conf.getIfSet("srs", _srs);
+            conf.getIfSet("range_subset", _rangeSubset);
         }
 
         optional<std::string> _url, _identifier, _format, _elevationUnit, _srs, _rangeSubset;

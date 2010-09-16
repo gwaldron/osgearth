@@ -155,10 +155,10 @@ int main(int argc, char** argv)
         // Add a heightfield layer to the map. You can add any number of heightfields and
         // osgEarth will composite them automatically.
         {
-            osg::ref_ptr<TMSOptions> tms = new TMSOptions();
-            tms->tileSize() = 256;
-            tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
-            map->addMapLayer( new HeightFieldMapLayer( "SRTM", tms.get() ) );
+            TMSOptions tms;
+            tms.tileSize() = 256;
+            tms.url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+            map->addMapLayer( new HeightFieldMapLayer( "SRTM", tms ) );
         }
 
         // The MapNode will render the Map object in the scene graph.

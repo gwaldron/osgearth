@@ -54,8 +54,8 @@ int main(int argc, char** argv)
 
     // Start with a basemap imagery layer; we'll be using the GDAL driver
     // to load a local GeoTIFF file:
-    GDALOptions* basemapOpt = new GDALOptions();
-    basemapOpt->url() = "../data/world.tif";
+    GDALOptions basemapOpt;
+    basemapOpt.url() = "../data/world.tif";
     map->addMapLayer( new ImageMapLayer( "basemap", basemapOpt ) );
 
     // Next we add a feature layer. First configure a feature driver to 
@@ -75,10 +75,10 @@ int main(int argc, char** argv)
     // Now we'll choose the AGG-Lite driver to render the features. By the way, the
     // feature data is actually polygons, so we override that to treat it as lines.
     // We apply the feature driver and set the style as well.
-    AGGLiteOptions* worldOpt = new AGGLiteOptions();
-    worldOpt->featureOptions() = featureOpt;
-    worldOpt->geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-    worldOpt->styles()->addStyle( style );
+    AGGLiteOptions worldOpt;
+    worldOpt.featureOptions() = featureOpt;
+    worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+    worldOpt.styles()->addStyle( style );
     map->addMapLayer( new ImageMapLayer("world", worldOpt) );
 
     // That's it, the map is ready; now create a MapNode to render the Map:

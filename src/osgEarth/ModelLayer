@@ -36,13 +36,14 @@ namespace osgEarth
         /**
          * Constructs a new model layer with a user-provided driver options.
          */
-        ModelLayer( const std::string& name, const DriverOptions* options );
+        ModelLayer( const std::string& name, const ModelSourceOptions& options );
         
         /**
          * Constructs a new model layer with a user-provided model source.
          */
         ModelLayer( const std::string& name, ModelSource* source );
 
+    public:
         /** 
          * Gets the name of this model layer
          */
@@ -95,7 +96,7 @@ namespace osgEarth
         std::string _driver;
         Config _driverConf;
         osg::ref_ptr<ModelSource> _modelSource;
-        osg::ref_ptr<const DriverOptions> _driverOptions;
+        const ModelSourceOptions _driverOptions;
 
         osg::ref_ptr< osg::Node > _node;
 

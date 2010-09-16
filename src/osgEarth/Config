@@ -382,7 +382,7 @@ namespace osgEarth
     class DriverConfigOptions : public ConfigOptions // header-only (no export required)
     {
     public:
-        DriverConfigOptions( const ConfigOptions& rhs )
+        DriverConfigOptions( const ConfigOptions& rhs =ConfigOptions() )
             : ConfigOptions( rhs ) { fromConfig( _conf ); }
 
         void setDriver( const std::string& value ) { _driver = value; }

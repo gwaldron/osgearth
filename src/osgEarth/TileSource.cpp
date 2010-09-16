@@ -352,13 +352,12 @@ TileSource::getBlacklist() const
 
 //------------------------------------------------------------------------
 
-#undef LC
+#undef  LC
 #define LC "[TileSourceFactory] "
-
 #define TILESOURCEOPTIONS_TAG "__osgEarth::TileSourceOptions"
 
 TileSource*
-TileSourceFactory::create( const TileSourceOptions& options ) const
+TileSourceFactory::create( const TileSourceOptions& options )
 {
     TileSource* result = 0L;
 

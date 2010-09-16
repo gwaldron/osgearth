@@ -26,23 +26,26 @@ using namespace OpenThreads;
 
 /****************************************************************/
 
-ModelSourceOptions::ModelSourceOptions( const PluginOptions* po ) :
-DriverOptions( po ),
-_minRange(0),
-_maxRange(FLT_MAX),
-_renderOrder( 11 ),
-_depthTestEnabled( true )
+void
+ModelSourceOptions::fromConfig( const Config& conf )
 {
-    config().getIfSet<float>( "min_range", _minRange );
-    config().getIfSet<float>( "max_range", _maxRange );
-    config().getIfSet<int>( "render_order", _renderOrder );
-    config().getIfSet<bool>( "depth_test_enabled", _depthTestEnabled );
+    conf.getIfSet<float>( "min_range", _minRange );
+    conf.getIfSet<float>( "max_range", _maxRange );
+    conf.getIfSet<int>( "render_order", _renderOrder );
+    conf.getIfSet<bool>( "depth_test_enabled", _depthTestEnabled );
+}
+
+void
+ModelSourceOptions::mergeConfig( const Config& conf )
+{
+    DriverConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
 }
 
 Config
 ModelSourceOptions::getConfig() const
 {
-    Config conf = DriverOptions::getConfig();
+    Config conf = DriverConfigOptions::getConfig();
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "render_order", _renderOrder );
@@ -50,90 +53,56 @@ ModelSourceOptions::getConfig() const
     return conf;
 }
 
-/****************************************************************/
+//------------------------------------------------------------------------
 
-ModelSource::ModelSource( const PluginOptions* options )
+ModelSource::ModelSource( const ModelSourceOptions& options ) :
+_options( options )
 {
+    //TODO: is this really necessary?
     this->setThreadSafeRefUnref( true );
-
-    _options = dynamic_cast<const ModelSourceOptions*>( options );
-    if ( !_options.valid() )
-        _options = new ModelSourceOptions( options );
 }
 
-/****************************************************************/
+//------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[ModelSourceFactory] "
+#define MODEL_SOURCE_OPTIONS_TAG "__osgEarth::ModelSourceOptions"
 
 ModelSource*
-ModelSourceFactory::create( const DriverOptions* driverOptions )
+ModelSourceFactory::create( const ModelSourceOptions& options )
 {
     ModelSource* modelSource = 0L;
-    if ( driverOptions )
-    {
-        std::string driverExt = std::string(".osgearth_model_") + driverOptions->driver();
 
-        modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, driverOptions ) );
+    if ( !options.getDriver().empty() )
+    {
+        std::string driverExt = std::string(".osgearth_model_") + options.getDriver();
+
+        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopts = new osgDB::ReaderWriter::Options();
+        rwopts->setPluginData( MODEL_SOURCE_OPTIONS_TAG, (void*)&options );
+
+        modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
         if ( modelSource )
         {
-            modelSource->setName( driverOptions->name() );
+            modelSource->setName( options.getName() );
+            OE_INFO << "Loaded ModelSource driver \"" << options.getDriver() << "\" OK" << std::endl;
         }
         else
         {
-            OE_NOTICE
-                << "WARNING: Failed to load model source driver for " << driverExt << std::endl;
+            OE_WARN << "FAIL, unable to load model source driver for \"" << options.getDriver() << "\"" << std::endl;
         }
     }
     else
     {
-        OE_NOTICE
-            << "ERROR: null driver options to ModelSourceFactory" << std::endl;
+        OE_WARN << LC << "FAIL, illegal null driver specification" << std::endl;
     }
 
     return modelSource;
 }
 
+//------------------------------------------------------------------------
 
-// to be deprecated.
-ModelSource*
-ModelSourceFactory::create(const std::string& name,
-                           const std::string& driver,
-                           const Config&      driverConf,
-                           const osgDB::ReaderWriter::Options* globalOptions )
+const ModelSourceOptions&
+ModelSourceDriver::getModelSourceOptions( const osgDB::ReaderWriter::Options* options ) const
 {
-    osg::ref_ptr<PluginOptions> options = globalOptions?
-        new PluginOptions( *globalOptions ) :
-        new PluginOptions();
-
-    //Setup the plugin options for the source
-    options->config() = driverConf;
-
-    OE_DEBUG
-        << "Model Driver " << driver << ", config =" << std::endl << driverConf.toString() << std::endl;
-
-	// Load the source from a plugin.
-    osg::ref_ptr<ModelSource> source = dynamic_cast<ModelSource*>(
-                osgDB::readObjectFile( std::string(".osgearth_model_") + driver, options.get()));
-
-    if ( source.valid() )
-    {
-        source->setName( name );
-    }
-    else
-	{
-		OE_NOTICE << "Warning: Could not load Model driver "  << driver << std::endl;
-	}
-
-	return source.release();
+    return *static_cast<const ModelSourceOptions*>( options->getPluginData( MODEL_SOURCE_OPTIONS_TAG ) );
 }
-
-
-ModelSource*
-ModelSourceFactory::create(const Config& sourceConf,
-                           const osgDB::ReaderWriter::Options* globalOptions )
-{
-    return create(
-        sourceConf.attr( "name" ),
-        sourceConf.attr( "driver" ),
-        sourceConf,
-        globalOptions );
-}
-

@@ -37,45 +37,32 @@ using namespace osgEarth::Drivers;
 class SimpleModelSource : public ModelSource
 {
 public:
-    SimpleModelSource( const PluginOptions* options ) : ModelSource( options )
-    {
-        _settings = dynamic_cast<const SimpleModelOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new SimpleModelOptions( options );
-    }
+    SimpleModelSource( const ModelSourceOptions& options )
+        : ModelSource( options ), _options(options) { }
 
     //override
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         ModelSource::initialize( referenceURI, map );
 
-        _url = osgEarth::getFullPath( referenceURI, _settings->url().value() );
+        _url = osgEarth::getFullPath( referenceURI, _options.url().value() );
     }
 
     // override
     osg::Node* createNode( ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
-        HTTPClient::readNodeFile( _url, result, _settings.get(), progress );
+        HTTPClient::readNodeFile( _url, result, 0L, progress ); //_settings.get(), progress );
         return result.release();
-
-        //osgEarth::Symbology::Style* style = new osgEarth::Symbology::Style;
-        //osgEarth::Symbology::MarkerSymbol* symbol = new osgEarth::Symbology::MarkerSymbol;
-        //symbol->marker() = _url;
-        //style->addSymbol(symbol);
-        //osgEarth::Symbology::SymbolicNode* symb = new osgEarth::Symbology::SymbolicNode;
-        //symb->setStyle(style);
-        //symb->setSymbolizer(new osgEarth::Symbology::ModelSymbolizer);
-        //return symb;
     }
 
 protected:
     std::string _url;
-    osg::ref_ptr<const SimpleModelOptions> _settings;
+    const SimpleModelOptions _options;
 };
 
 
-class SimpleModelSourceFactory : public osgDB::ReaderWriter
+class SimpleModelSourceFactory : public ModelSourceDriver
 {
 public:
     SimpleModelSourceFactory()
@@ -88,18 +75,12 @@ public:
         return "osgEarth Simple Model Plugin";
     }
 
-    SimpleModelSource* create( const PluginOptions* options )
-    {
-        return new SimpleModelSource( options );
-    }
-
     virtual ReadResult readObject(const std::string& file_name, const Options* options) const
     {
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        SimpleModelSourceFactory* nonConstThis = const_cast<SimpleModelSourceFactory*>(this);
-        return nonConstThis->create( static_cast<const PluginOptions*>(options) );
+        return ReadResult( new SimpleModelSource( getModelSourceOptions(options) ) );
     }
 };
 

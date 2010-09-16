@@ -83,7 +83,7 @@ FeatureSymbolizerGraph::update()
         osg::ref_ptr<osg::Referenced> buildData = model->createBuildData();
         osg::ref_ptr<FeatureSymbolizerContext> context = new FeatureSymbolizerContext(model, buildData);
 
-        const optional<StyleCatalog>& styles = model->getFeatureModelOptions()->styles();
+        const optional<StyleCatalog>& styles = model->getFeatureModelOptions().styles();
 
         // figure out if and how to style the geometry.
         if ( model->getFeatureSource()->hasEmbeddedStyles() )
@@ -220,9 +220,9 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
 
     // first we need the overall extent of the layer:
     const GeoExtent& extent = context->getModelSource()->getFeatureSource()->getFeatureProfile()->getExtent();
-    const FeatureModelSourceOptions* options = context->getModelSource()->getFeatureModelOptions();
+    const FeatureModelSourceOptions& options = context->getModelSource()->getFeatureModelOptions();
 
-    osg::ref_ptr<GriddingPolicy> gridding = options->gridding().valid() ? options->gridding().get() : new GriddingPolicy();
+    osg::ref_ptr<GriddingPolicy> gridding = options.gridding().valid() ? options.gridding().get() : new GriddingPolicy();
 
     // next set up a gridder/cropper:
     FeatureGridder gridder( extent.bounds(), gridding );
@@ -259,9 +259,9 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
                 if ( geom )
                 {
                     // apply a type override if requested:
-                    if ( options->geometryTypeOverride().isSet() && options->geometryTypeOverride() != geom->getComponentType() )
+                    if ( options.geometryTypeOverride().isSet() && options.geometryTypeOverride() != geom->getComponentType() )
                     {
-                        geom = geom->cloneAs( options->geometryTypeOverride().value() );
+                        geom = geom->cloneAs( options.geometryTypeOverride().value() );
                         if ( geom )
                             feature->setGeometry( geom );
                     }
@@ -347,7 +347,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
     }
 
     // run the SpatializeGroups optimization pass on the result
-    if ( options->gridding().valid() && options->gridding()->spatializeGroups() == true )
+    if ( options.gridding().valid() && options.gridding()->spatializeGroups() == true )
     {
         OE_NOTICE << context->getModelSource()->getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;

@@ -51,9 +51,12 @@ class FactoryLabelSymbolizer : public SymbolizerFactory
 {
 protected:
     osg::ref_ptr<FeatureModelSource> _model;
+    const FeatureLabelModelOptions _options;
 
 public:
-    FactoryLabelSymbolizer(FeatureModelSource* model) : _model(model) {}
+    FactoryLabelSymbolizer(FeatureModelSource* model, const FeatureLabelModelOptions& options) 
+        : _model(model), _options(options) { }
+
     FeatureModelSource* getFeatureModelSource() { return _model.get(); }
     //override
 
@@ -65,21 +68,21 @@ public:
     {
         // A processing context to use with the filters:
         FilterContext contextFilter;
-        contextFilter.profile() = context->getModelSource()->getFeatureSource()->getFeatureProfile();
+        contextFilter.profile() = _model->getFeatureSource()->getFeatureProfile();
 
         // Transform them into the map's SRS:
-        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS() );
-        xform.setMakeGeocentric( context->getModelSource()->getMap()->isGeocentric() );
+        TransformFilter xform( _model->getMap()->getProfile()->getSRS() );
+        xform.setMakeGeocentric( _model->getMap()->isGeocentric() );
         xform.setLocalizeCoordinates( true );
 
-        const FeatureLabelModelOptions* options = dynamic_cast<const FeatureLabelModelOptions*>(
-            context->getModelSource()->getFeatureModelOptions());
+        //const FeatureLabelModelOptions* options = dynamic_cast<const FeatureLabelModelOptions*>(
+        //    context->getModelSource()->getFeatureModelOptions());
 
         FeatureList featureList;
         for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
             featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
-        xform.setHeightOffset( options->heightOffset().value() );
+        xform.setHeightOffset( _options.heightOffset().value() );
         contextFilter = xform.push( featureList, contextFilter );        
         
         //Make some labels
@@ -107,10 +110,10 @@ public:
         }
 
         // Apply an LOD if required:
-        if ( options->minRange().isSet() || options->maxRange().isSet() )
+        if ( _options.minRange().isSet() || _options.maxRange().isSet() )
         {
             osg::LOD* lod = new osg::LOD();
-            lod->addChild( result, options->minRange().value(), options->maxRange().value() );
+            lod->addChild( result, _options.minRange().value(), _options.maxRange().value() );
             result = lod;
         }
 
@@ -122,17 +125,13 @@ public:
     }
 };
 
+//------------------------------------------------------------------------
 
 class FeatureLabelModelSource : public FeatureModelSource
 {
 public:
-    FeatureLabelModelSource( const PluginOptions* options, int sourceId ) : FeatureModelSource( options ),
-        _sourceId( sourceId )
-    {
-        _options = dynamic_cast<const FeatureLabelModelOptions*>( options );
-        if ( !_options )
-            _options = new FeatureLabelModelOptions( options );
-    }
+    FeatureLabelModelSource( const ModelSourceOptions& options ) : FeatureModelSource( options ),
+        _options( options ) { }
 
     //override
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
@@ -142,17 +141,18 @@ public:
 
     osg::Node* createNode( ProgressCallback* progress )
     {
-        return new FeatureSymbolizerGraph(new FactoryLabelSymbolizer(this));
+        return new FeatureSymbolizerGraph(new FactoryLabelSymbolizer(this, _options));
     }
 
 
 protected:
     int _sourceId;
+    ModelSourceOptions _options;
 };
 
+//------------------------------------------------------------------------
 
-
-class FeatureLabelModelSourceFactory : public osgDB::ReaderWriter
+class FeatureLabelModelSourceFactory : public ModelSourceDriver
 {
 public:
     FeatureLabelModelSourceFactory()
@@ -165,48 +165,13 @@ public:
         return "osgEarth Feature Label Model Plugin";
     }
 
-    FeatureLabelModelSource* create( const PluginOptions* options )
-    {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        FeatureLabelModelSource* obj = new FeatureLabelModelSource( options, _sourceId );
-        if ( obj ) _sourceMap[_sourceId++] = obj;
-        return obj;
-    }
-
-    FeatureLabelModelSource* get( int sourceId )
-    {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        return _sourceMap[sourceId].get();
-    }
-
     virtual ReadResult readObject(const std::string& file_name, const Options* options) const
     {
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        FeatureLabelModelSourceFactory* nonConstThis = const_cast<FeatureLabelModelSourceFactory*>(this);
-        return nonConstThis->create( static_cast<const PluginOptions*>(options) );
+        return new FeatureLabelModelSource( getModelSourceOptions(options) );
     }
-
-    // NOTE: this doesn't do anything, yet. it's a template for recursing into the
-    // plugin during pagedlod traversals.
-    virtual ReadResult readNode(const std::string& fileName, const Options* options) const
-    {
-        if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( fileName )))
-            return ReadResult::FILE_NOT_HANDLED;
-   
-        std::string stripped = osgDB::getNameLessExtension( fileName );
-        int sourceId = 0;
-        sscanf( stripped.c_str(), "%d", &sourceId );
-
-        FeatureLabelModelSourceFactory* nonConstThis = const_cast<FeatureLabelModelSourceFactory*>(this);
-        return ReadResult( nonConstThis->get( sourceId ) );
-    }
-
-protected:
-    Mutex _sourceIdMutex;
-    int _sourceId;
-    std::map<int, osg::ref_ptr<FeatureLabelModelSource> > _sourceMap;
 };
 
 REGISTER_OSGPLUGIN(osgearth_model_feature_label, FeatureLabelModelSourceFactory) 

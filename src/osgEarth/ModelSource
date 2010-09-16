@@ -33,10 +33,15 @@ namespace osgEarth
     /**
      * Configuration options for a models source.
      */
-    class OSGEARTH_EXPORT ModelSourceOptions : public DriverOptions
+    class OSGEARTH_EXPORT ModelSourceOptions : public DriverConfigOptions
     {
     public:
-        ModelSourceOptions( const PluginOptions* rhs =0L );
+        ModelSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
+              DriverConfigOptions( options ),
+              _minRange(0),
+              _maxRange(FLT_MAX),
+              _renderOrder( 11 ),
+              _depthTestEnabled( true ) { fromConfig(_conf); }
 
     public: // properties
 
@@ -52,8 +57,14 @@ namespace osgEarth
         optional<bool>& depthTestEnabled() { return _depthTestEnabled; }
         const optional<bool>& depthTestEnabled() const { return _depthTestEnabled; }
 
-    protected:
+    public:
         virtual Config getConfig() const;
+
+    protected:
+        virtual void mergeConfig( const Config& conf );
+        
+    private:
+        void fromConfig( const Config& conf );
 
         optional<float> _minRange, _maxRange;
         optional<int> _renderOrder;
@@ -66,7 +77,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ModelSource : public virtual osg::Object
     {
     public:        
-        ModelSource( const PluginOptions* options =NULL );
+        ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );
 
         /**
          * Subclass implements this method to create the mode node.
@@ -87,14 +98,14 @@ namespace osgEarth
             const std::string& referenceURI,
             const Map* map ) { }
 
-        const ModelSourceOptions* getOptions() const {
-            return _options.get(); }
+        const ModelSourceOptions& getOptions() const {
+            return _options; }
 
     protected:
         virtual ~ModelSource() { }
 
     private:
-        osg::ref_ptr<const ModelSourceOptions> _options;
+        const ModelSourceOptions _options;
         optional<double> _minRange;
         optional<double> _maxRange;
         optional<int>    _renderOrder;
@@ -104,29 +115,24 @@ namespace osgEarth
         friend class ModelSourceFactory;
     };
 
+    //--------------------------------------------------------------------
+
+    class OSGEARTH_EXPORT ModelSourceDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const ModelSourceOptions& getModelSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+    };
+
+    //--------------------------------------------------------------------
 
     /**
-     * The factory object takes a driver name and loads the appropriate plugin
-     * and instantiates the source object.
+     * Creates TileSource instances and chains them together to create
+     * tile source "pipelines" for data access and processing.
      */
     class OSGEARTH_EXPORT ModelSourceFactory
-    {
-    public:
-        static ModelSource* create( const DriverOptions* options );
-
-    public: // DEPRECATED
-
-		/** Create a model source with the given driver and properties */
-		static ModelSource* create(
-            const std::string& name,
-            const std::string& driver,
-            const Config&      driverConf,
-            const osgDB::ReaderWriter::Options* global_options =NULL );
-
-        /** Create a model source from a configuration object. */
-        static ModelSource* create(
-            const Config& sourceConfig,
-            const osgDB::ReaderWriter::Options* global_options =NULL );
+    {   
+	public:
+        static ModelSource* create( const ModelSourceOptions& options );
     };
 }
 

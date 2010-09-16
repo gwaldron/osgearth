@@ -41,7 +41,7 @@ namespace osgEarth
         /**
          * Constructs a new mask layer based on a configuration setup.
          */
-        MaskLayer( const DriverOptions* options );
+        MaskLayer( const ConfigOptions& options =ConfigOptions() );
 
         /**
          * Gets the reference URI (for resolving relative paths)
@@ -66,7 +66,7 @@ namespace osgEarth
     private:
         std::string _referenceURI;
         osg::ref_ptr<ModelSource> _modelSource;
-        osg::ref_ptr<const DriverOptions> _driverOptions;
+        DriverConfigOptions _driverOptions;
         osg::ref_ptr<osg::Node> _node;
     };
 }

@@ -44,27 +44,18 @@ namespace osgEarth { namespace Drivers
         const optional<osgSim::OverlayNode::OverlayTechnique>& overlayTechnique() const { return _tech; }
 
     public:
-        FeatureOverlayModelOptions( const PluginOptions* opt =0L ) : FeatureModelSourceOptions( opt ),
-        _textureUnit( 0 ),
-        _textureSize( 1024 ),
-        _baseHeight( 0.0 ),
-        _tech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
+        FeatureOverlayModelOptions( const ConfigOptions& opt =ConfigOptions() ) :
+            FeatureModelSourceOptions( opt ),
+            _textureUnit( 0 ),
+            _textureSize( 1024 ),
+            _baseHeight( 0.0 ),
+            _tech( osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY )
         {
-            driver() = "feature_overlay";
-            config().getIfSet( "texture_unit", _textureUnit );
-            config().getIfSet( "texture_size", _textureSize );
-            config().getIfSet( "base_height",  _baseHeight );
-
-            std::string t = config().value( "overlay_technique" );
-            if ( t == "object_dependent_with_orthographic_overlay" )
-                _tech = osgSim::OverlayNode::OBJECT_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
-            else if ( t == "view_dependent_with_orthographic_overlay" )
-                _tech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
-            else if ( t == "view_dependent_with_perspective_overlay" )
-                _tech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
+            setDriver( "feature_overlay" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "texture_unit", _textureUnit );
@@ -81,6 +72,27 @@ namespace osgEarth { namespace Drivers
             }
                 
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            FeatureModelSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "texture_unit", _textureUnit );
+            conf.getIfSet( "texture_size", _textureSize );
+            conf.getIfSet( "base_height",  _baseHeight );
+
+            std::string t = conf.value( "overlay_technique" );
+            if ( t == "object_dependent_with_orthographic_overlay" )
+                _tech = osgSim::OverlayNode::OBJECT_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
+            else if ( t == "view_dependent_with_orthographic_overlay" )
+                _tech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_ORTHOGRAPHIC_OVERLAY;
+            else if ( t == "view_dependent_with_perspective_overlay" )
+                _tech = osgSim::OverlayNode::VIEW_DEPENDENT_WITH_PERSPECTIVE_OVERLAY;
         }
 
         optional<int> _textureUnit, _textureSize;

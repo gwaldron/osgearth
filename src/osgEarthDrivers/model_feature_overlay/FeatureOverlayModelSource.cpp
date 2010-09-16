@@ -37,16 +37,20 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 
 
-class FactoryLayerSymbolizer : public SymbolizerFactory
+class FactoryOverlaySymbolizer : public SymbolizerFactory
 {
 protected:
     osg::ref_ptr<FeatureModelSource> _model;
+    const FeatureOverlayModelOptions _options;
 
 public:
-    FactoryLayerSymbolizer(FeatureModelSource* model) : _model(model) {}
-    FeatureModelSource* getFeatureModelSource() { return _model.get(); }
-    //override
+    FactoryOverlaySymbolizer(FeatureModelSource* model, const FeatureOverlayModelOptions& options ) : 
+      _model(model), _options(options) { }
 
+    //override
+    FeatureModelSource* getFeatureModelSource() { return _model.get(); }
+
+    //override
     virtual osg::Node* createNodeForStyle(
         const Symbology::Style* style,
         const FeatureList& features,
@@ -55,24 +59,24 @@ public:
     {
         // A processing context to use with the filters:
         FilterContext contextFilter;
-        contextFilter.profile() = context->getModelSource()->getFeatureSource()->getFeatureProfile();
-        const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>(context->getModelSource()->getFeatureModelOptions());
+        contextFilter.profile() = _model->getFeatureSource()->getFeatureProfile();
+        //const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>(context->getModelSource()->getFeatureModelOptions());
 
         FeatureList featureList;
         for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
             featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
         // Transform them into the map's SRS:
-        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS() );
-        xform.setMakeGeocentric( context->getModelSource()->getMap()->isGeocentric() );
+        TransformFilter xform( _model->getMap()->getProfile()->getSRS() );
+        xform.setMakeGeocentric( _model->getMap()->isGeocentric() );
         xform.setLocalizeCoordinates( true );
 
         contextFilter = xform.push( featureList, contextFilter );
 
         // Build geometry:
         BuildGeometryFilter build;    
-        if ( options->geometryTypeOverride().isSet() )
-            build.geomTypeOverride() = options->geometryTypeOverride().value();
+        if ( _options.geometryTypeOverride().isSet() )
+            build.geomTypeOverride() = _options.geometryTypeOverride().value();
 
         // apply the style rule if we have one:
         osg::ref_ptr<osg::Node> result;
@@ -88,84 +92,37 @@ public:
 class FeatureOverlayModelSource : public FeatureModelSource
 {
 public:
-    FeatureOverlayModelSource( const PluginOptions* options ) : FeatureModelSource( options )
-    {
-        _options = dynamic_cast<const FeatureOverlayModelOptions*>( options );
-        if ( !_options )
-            _options = new FeatureOverlayModelOptions( options );
-    }
+    FeatureOverlayModelSource( const ModelSourceOptions& options )
+        : FeatureModelSource( options ), _options( options ) { }
 
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         FeatureModelSource::initialize( referenceURI, map );
     }
 
-#if 0
-    //override
-    osg::Node* renderFeaturesForStyle( const Style& style, const FeatureList& features, osg::Referenced* data, osg::Node** out_newNode )
-    {
-        // A processing context to use with the filters:
-        FilterContext context;
-        context.profile() = getFeatureSource()->getFeatureProfile();
-
-        // Transform them into the map's SRS:
-        TransformFilter xform( _mapSRS.get(), _mapIsGeocentric );
-        context = xform.push( features, context );
-
-        // Build geometry:
-        BuildGeometryFilter build;    
-        if ( _options->geometryTypeOverride().isSet() )
-            build.geomTypeOverride() = _options->geometryTypeOverride().value();
-
-        // apply the style rule if we have one:
-        osg::ref_ptr<osg::Node> result;
-        build.style() = style;
-        context = build.push( features, result, context );
-
-        if ( out_newNode ) *out_newNode = result.get();
-        return result.release();
-    }
-
-    //override
-    osg::Node* createNode( ProgressCallback* progress =0L )
-    {
-        osg::Node* node = FeatureModelSource::createNode( progress );
-
-        // build an overlay node around the geometry
-        osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
-        overlayNode->setName( this->getName() );
-        overlayNode->setOverlayTechnique( _options->overlayTechnique().value() );
-        overlayNode->setOverlayBaseHeight( _options->baseHeight().value() );
-        overlayNode->setOverlayTextureSizeHint( _options->textureSize().value() );
-        overlayNode->setOverlayTextureUnit( _options->textureUnit().value() );
-        overlayNode->setContinuousUpdate( false );
-        overlayNode->setOverlaySubgraph( node );
-
-        return overlayNode;
-    }
-#endif
-
     osg::Node* createNode( ProgressCallback* progress )
     {
-        osg::Node* node = new FeatureSymbolizerGraph(new FactoryLayerSymbolizer(this));
-        const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>( _options.get() );
+        osg::Node* node = new FeatureSymbolizerGraph(new FactoryOverlaySymbolizer(this, _options));
+        //const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>( _options.get() );
         
         // build an overlay node around the geometry
         osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
         overlayNode->setName( this->getName() );
-        overlayNode->setOverlayTechnique( options->overlayTechnique().value() );
-        overlayNode->setOverlayBaseHeight( options->baseHeight().value() );
-        overlayNode->setOverlayTextureSizeHint( options->textureSize().value() );
-        overlayNode->setOverlayTextureUnit( options->textureUnit().value() );
+        overlayNode->setOverlayTechnique( _options.overlayTechnique().value() );
+        overlayNode->setOverlayBaseHeight( _options.baseHeight().value() );
+        overlayNode->setOverlayTextureSizeHint( _options.textureSize().value() );
+        overlayNode->setOverlayTextureUnit( _options.textureUnit().value() );
         overlayNode->setContinuousUpdate( false );
         overlayNode->setOverlaySubgraph( node );
         return overlayNode;
     }
 
+private:
+    FeatureOverlayModelOptions _options;
 };
 
 
-class FeatureOverlayModelSourceFactory : public osgDB::ReaderWriter
+class FeatureOverlayModelSourceFactory : public ModelSourceDriver
 {
 public:
     FeatureOverlayModelSourceFactory()
@@ -183,7 +140,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return ReadResult( new FeatureOverlayModelSource( dynamic_cast<const PluginOptions*>(options) ) );
+        return ReadResult( new FeatureOverlayModelSource( getModelSourceOptions(options) ) );
     }
 };
 

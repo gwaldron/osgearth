@@ -47,35 +47,45 @@ namespace osgEarth { namespace Drivers
         const optional<bool>& showVolumes() const { return _showVolumes; }
 
     public:
-        FeatureStencilModelOptions( const PluginOptions* opt =0L ) : FeatureModelSourceOptions( opt ),
+        FeatureStencilModelOptions( const ConfigOptions& options =ConfigOptions() ) : FeatureModelSourceOptions( options ),
             _extrusionDistance( 300000 ),
             _densificationThreshold( 1000000 ),
             _inverted( false ),
             _mask( false ),
             _showVolumes( false )
         {
-            driver() = "feature_stencil";
-
-            config().getIfSet( "extrusion_distance", _extrusionDistance );
-            config().getIfSet( "densification_threshold", _densificationThreshold );
-            config().getIfSet( "inverted", _inverted );
-            config().getIfSet( "mask", _mask );
-            config().getIfSet( "show_volumes", _showVolumes );
-
-            //special: you can also set mask=true by naming the config:
-            if ( !_mask.isSet() && config().key() == "mask_model" )
-                _mask = true;
+            setDriver( "feature_stencil" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
-            Config conf = ModelSourceOptions::getConfig();
+            Config conf = FeatureModelSourceOptions::getConfig();
             conf.updateIfSet( "extrusion_distance", _extrusionDistance );
             conf.updateIfSet( "densification_threshold", _densificationThreshold );
             conf.updateIfSet( "inverted", _inverted );
             conf.updateIfSet( "mask", _mask );               
             conf.updateIfSet( "showVolumes", _showVolumes );
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            FeatureModelSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "extrusion_distance", _extrusionDistance );
+            conf.getIfSet( "densification_threshold", _densificationThreshold );
+            conf.getIfSet( "inverted", _inverted );
+            conf.getIfSet( "mask", _mask );
+            conf.getIfSet( "show_volumes", _showVolumes );
+
+            //special: you can also set mask=true by naming the config:
+            if ( !_mask.isSet() && conf.key() == "mask_model" )
+                _mask = true;
         }
 
         optional<double> _extrusionDistance, _densificationThreshold;

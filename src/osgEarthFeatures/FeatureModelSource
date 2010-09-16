@@ -59,11 +59,19 @@ namespace osgEarth { namespace Features
         const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
 
     public:
-        FeatureModelSourceOptions( const PluginOptions* opt =0L );
+        FeatureModelSourceOptions( const ConfigOptions& rhs =ConfigOptions() );
 
         virtual Config getConfig() const;
 
     protected:
+        virtual void mergeConfig( const Config& conf ) {
+            ModelSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf );
+
         osg::ref_ptr<FeatureSourceOptions> _featureOptions;
         optional<Symbology::StyleCatalog> _styles;
         osg::ref_ptr<GriddingPolicy> _gridding;
@@ -82,7 +90,7 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new feature model source with the provided options.
          */
-        FeatureModelSource( const PluginOptions* options =NULL );
+        FeatureModelSource( const FeatureModelSourceOptions& options =FeatureModelSourceOptions() );
 
     public:
 
@@ -98,8 +106,8 @@ namespace osgEarth { namespace Features
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
-        virtual const FeatureModelSourceOptions* getFeatureModelOptions() const {
-            return _options.get(); }
+        virtual const FeatureModelSourceOptions& getFeatureModelOptions() const {
+            return _options; }
 
         const osgEarth::Map* getMap() const { return _map.get(); }
 
@@ -164,7 +172,7 @@ namespace osgEarth { namespace Features
         //StyleCatalog _styleCatalog;
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<const osgEarth::Map> _map;
-        osg::ref_ptr<const FeatureModelSourceOptions> _options;
+        const FeatureModelSourceOptions _options;
 
     };
 

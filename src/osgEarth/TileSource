@@ -76,13 +76,6 @@ namespace osgEarth
         const optional<Config>& profileConfig() const { return _profileConf; }
 
     public:
-        //TileSourceOptions( const Config& conf =Config() )
-        //    : DriverConfigOptions( conf ),
-        //      _tileSize( 256 ),
-        //      _noDataValue( (float)SHRT_MIN ),
-        //      _noDataMinValue( -FLT_MAX ),
-        //      _noDataMaxValue( FLT_MAX ) { fromConfig( conf ); }
-
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() )
             : DriverConfigOptions( options ),
               _tileSize( 256 ),
@@ -375,7 +368,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileSourceFactory
     {   
 	public:
-        TileSource* create( const TileSourceOptions& options ) const;
+        static TileSource* create( const TileSourceOptions& options );
     };
 }
 

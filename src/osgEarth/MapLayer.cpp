@@ -373,14 +373,12 @@ void
 MapLayer::initTileSource()
 {	
 	OE_DEBUG << "[osgEarth::MapLayer::initTileSource()]" << std::endl;
-	//Create the TileSource
-	TileSourceFactory tileSourceFactory;
 
     osg::ref_ptr<TileSource> tileSource;
 
     if ( !_options.getDriver().empty() )
     {
-        tileSource = tileSourceFactory.create( _options );
+        tileSource = TileSourceFactory::create( _options );
     }
 
 	//Get the override profile if it is set.

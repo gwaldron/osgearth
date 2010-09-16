@@ -33,16 +33,27 @@ namespace osgEarth { namespace Drivers
         const optional<std::string>& url() const { return _url; }
 
     public:
-        SimpleModelOptions( const PluginOptions* opt =0L ) : ModelSourceOptions( opt ) {
-            driver() = "simple";
-            config().getIfSet<std::string>( "url", _url );
+        SimpleModelOptions( const ConfigOptions& options ) : ModelSourceOptions( options ) {
+            setDriver( "simple" );
+            fromConfig( _conf );
         }
 
-    protected:
+    public:
         Config getConfig() const {
             Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
             return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ModelSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "url", _url );
         }
 
         optional<std::string> _url;

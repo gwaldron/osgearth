@@ -340,10 +340,10 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
             }
 
             ModelSource* ms = layer->getModelSource();
-            if ( ms && ms->getOptions()->renderOrder().isSet() )
+            if ( ms && ms->getOptions().renderOrder().isSet() )
             {
                 node->getOrCreateStateSet()->setRenderBinDetails(
-                    ms->getOptions()->renderOrder().value(), "RenderBin" );
+                    ms->getOptions().renderOrder().value(), "RenderBin" );
             }
 
             _modelLayerNodes[ layer ] = node;

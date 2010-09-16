@@ -49,25 +49,34 @@ using namespace OpenThreads;
 
 #define PROP_HEIGHT_OFFSET "height_offset"
 
+class FeatureGeomModelSource;
+
+//------------------------------------------------------------------------
 
 class FactoryGeomSymbolizer : public SymbolizerFactory
 {
 protected:
-    osg::ref_ptr<FeatureModelSource> _model;
+    osg::ref_ptr<FeatureModelSource> _modelSource;
+    const FeatureGeomModelOptions _options;
 
 public:
-    FactoryGeomSymbolizer(FeatureModelSource* model) : _model(model) {}
-    FeatureModelSource* getFeatureModelSource() { return _model.get(); }
-    //override
+    FactoryGeomSymbolizer( FeatureModelSource* modelSource, const FeatureGeomModelOptions& options ) :
+      _modelSource( modelSource ),
+      _options( options ) { }
 
+    //override
+    virtual FeatureModelSource* getFeatureModelSource() { return _modelSource.get(); }
+
+    //override
     virtual osg::Node* createNodeForStyle(
         const Symbology::Style* style,
         const FeatureList& features,
         FeatureSymbolizerContext* context,
         osg::Node** out_newNode)
     {
-        const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
-            _model->getFeatureModelOptions() );
+        //const FeatureGeomModelOptions options( _modelSource->getOptions() );
+        //const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
+        //    _model->getFeatureModelOptions() );
 
         // break the features out into separate lists for geometries and text annotations:
         FeatureList geomFeatureList, textAnnoList;
@@ -99,10 +108,10 @@ public:
         }
         
         // Apply an LOD if required:
-        if ( options->minRange().isSet() || options->maxRange().isSet() )
+        if ( _options.minRange().isSet() || _options.maxRange().isSet() )
         {
             osg::LOD* lod = new osg::LOD();
-            lod->addChild( root, options->minRange().value(), options->maxRange().value() );
+            lod->addChild( root, _options.minRange().value(), _options.maxRange().value() );
             root = lod;
         }
 
@@ -116,20 +125,20 @@ public:
     osg::Node*
     compileGeometries( FeatureList& features, const Style* style )
     {
-        const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
-            _model->getFeatureModelOptions() );
+        //const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
+        //    _model->getFeatureModelOptions() );
 
         // A processing context to use with the filters:
         FilterContext contextFilter;
-        contextFilter.profile() = _model->getFeatureSource()->getFeatureProfile();
+        contextFilter.profile() = _modelSource->getFeatureSource()->getFeatureProfile();
 
         // Transform them into the map's SRS:
-        TransformFilter xform( _model->getMap()->getProfile()->getSRS() );
-        xform.setMakeGeocentric( _model->getMap()->isGeocentric() );
+        TransformFilter xform( _modelSource->getMap()->getProfile()->getSRS() );
+        xform.setMakeGeocentric( _modelSource->getMap()->isGeocentric() );
         xform.setLocalizeCoordinates( true );
 
         // Apply the height offset if necessary:
-        xform.setHeightOffset( options->heightOffset().value() );
+        xform.setHeightOffset( _options.heightOffset().value() );
         contextFilter = xform.push( features, contextFilter );
 
         // Assemble the geometries into a list:
@@ -163,20 +172,20 @@ public:
     osg::Node*
     compileTextAnnotations( FeatureList& features, const Style* style )
     {
-        const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
-            _model->getFeatureModelOptions() );
+        //const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
+        //    _model->getFeatureModelOptions() );
 
         // A processing context to use with the filters:
         FilterContext contextFilter;
-        contextFilter.profile() = _model->getFeatureSource()->getFeatureProfile();
+        contextFilter.profile() = _modelSource->getFeatureSource()->getFeatureProfile();
 
         // Transform them into the map's SRS:
-        TransformFilter xform( _model->getMap()->getProfile()->getSRS() );
-        xform.setMakeGeocentric( _model->getMap()->isGeocentric() );
+        TransformFilter xform( _modelSource->getMap()->getProfile()->getSRS() );
+        xform.setMakeGeocentric( _modelSource->getMap()->isGeocentric() );
         xform.setLocalizeCoordinates( true );
 
         // Apply the height offset if necessary:
-        xform.setHeightOffset( options->heightOffset().value() );
+        xform.setHeightOffset( _options.heightOffset().value() );
         contextFilter = xform.push( features, contextFilter );
 
         osg::ref_ptr<const TextSymbol> textSymbol = style->getSymbol<TextSymbol>();
@@ -204,17 +213,19 @@ public:
     }
 };
 
+//------------------------------------------------------------------------
+
 /** The model source implementation for feature_geom */
 class FeatureGeomModelSource : public FeatureModelSource
 {
 public:
-    FeatureGeomModelSource( const PluginOptions* options, int sourceId ) : FeatureModelSource( options ),
-        _sourceId( sourceId )
+    FeatureGeomModelSource( const ModelSourceOptions& options )
+        : FeatureModelSource( options ), _options( options )
     {
-        _options = dynamic_cast<const FeatureGeomModelOptions*>( options );
-        if ( !_options )
-            _options = new FeatureGeomModelOptions( options );
+        //nop
     }
+
+    const FeatureGeomModelOptions& getOptions() const { return _options; }
 
     //override
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
@@ -224,15 +235,17 @@ public:
 
     osg::Node* createNode( ProgressCallback* progress )
     {
-        return new FeatureSymbolizerGraph(new FactoryGeomSymbolizer(this));
+        return new FeatureSymbolizerGraph( new FactoryGeomSymbolizer(this, _options) );
     }
 
-protected:
-    int _sourceId;
+private:
+    const FeatureGeomModelOptions _options;
 };
 
+//------------------------------------------------------------------------
+
 /** The plugin factory object */
-class FeatureGeomModelSourceFactory : public osgDB::ReaderWriter
+class FeatureGeomModelSourceFactory : public ModelSourceDriver
 {
 public:
     FeatureGeomModelSourceFactory()
@@ -245,48 +258,13 @@ public:
         return "osgEarth Feature Geom Model Plugin";
     }
 
-    FeatureGeomModelSource* create( const PluginOptions* options )
-    {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        FeatureGeomModelSource* obj = new FeatureGeomModelSource( options, _sourceId );
-        if ( obj ) _sourceMap[_sourceId++] = obj;
-        return obj;
-    }
-
-    FeatureGeomModelSource* get( int sourceId )
-    {
-        ScopedLock<Mutex> lock( _sourceIdMutex );
-        return _sourceMap[sourceId].get();
-    }
-
     virtual ReadResult readObject(const std::string& file_name, const Options* options) const
     {
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        FeatureGeomModelSourceFactory* nonConstThis = const_cast<FeatureGeomModelSourceFactory*>(this);
-        return nonConstThis->create( static_cast<const PluginOptions*>(options) );
+        return new FeatureGeomModelSource( getModelSourceOptions(options) );
     }
-
-    // NOTE: this doesn't do anything, yet. it's a template for recursing into the
-    // plugin during pagedlod traversals.
-    virtual ReadResult readNode(const std::string& fileName, const Options* options) const
-    {
-        if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( fileName )))
-            return ReadResult::FILE_NOT_HANDLED;
-   
-        std::string stripped = osgDB::getNameLessExtension( fileName );
-        int sourceId = 0;
-        sscanf( stripped.c_str(), "%d", &sourceId );
-
-        FeatureGeomModelSourceFactory* nonConstThis = const_cast<FeatureGeomModelSourceFactory*>(this);
-        return ReadResult( nonConstThis->get( sourceId ) );
-    }
-
-protected:
-    Mutex _sourceIdMutex;
-    int _sourceId;
-    std::map<int, osg::ref_ptr<FeatureGeomModelSource> > _sourceMap;
 };
 
 REGISTER_OSGPLUGIN(osgearth_model_feature_geom, FeatureGeomModelSourceFactory) 

@@ -108,14 +108,14 @@ EarthFile::getMapOptions() {
 static ModelLayer*
 readModelLayer( const Config& conf )
 {
-    ModelLayer* layer = new ModelLayer( conf.value("name"), new DriverOptions(conf) );
+    ModelLayer* layer = new ModelLayer( conf.value("name"), ModelSourceOptions(conf) );
     return layer;
 }
 
 static MaskLayer*
 readMaskLayer( const Config& conf )
 {
-    MaskLayer* layer = new MaskLayer( new DriverOptions(conf) );
+    MaskLayer* layer = new MaskLayer( ModelSourceOptions(conf) );
     return layer;
 }
 

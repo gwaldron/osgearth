@@ -344,9 +344,12 @@ class StencilVolumeSymbolizerFactory : public SymbolizerFactory
 {
 protected:
     osg::ref_ptr<FeatureModelSource> _model;
+    const FeatureStencilModelOptions _options;
 
 public:
-    StencilVolumeSymbolizerFactory(FeatureModelSource* model) : _model(model) {}
+    StencilVolumeSymbolizerFactory(FeatureModelSource* model, const FeatureStencilModelOptions& options ) 
+        : _model(model), _options(options) { }
+
     FeatureModelSource* getFeatureModelSource() { return _model.get(); }
 
 
@@ -359,32 +362,30 @@ public:
 
         FeatureSymbolizerContext* context = dynamic_cast<FeatureSymbolizerContext*>(symbolizerContext);
 
-
         FeatureList featureList;
         for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
             featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
-
-        const FeatureStencilModelOptions* options = dynamic_cast<const FeatureStencilModelOptions*>(
-            context->getModelSource()->getFeatureModelOptions());
+        //const FeatureStencilModelOptions* options = dynamic_cast<const FeatureStencilModelOptions*>(
+        //    _model->getFeatureModelOptions());
 
         double extrusionDistance = 1;
         double densificationThreshold = 1.0;
-        if ( options->extrusionDistance().isSet() )
+        if ( _options.extrusionDistance().isSet() )
         {
-            extrusionDistance = options->extrusionDistance().value();
+            extrusionDistance = _options.extrusionDistance().value();
         }
         else
         {
-            if ( context->getModelSource()->getMap()->isGeocentric() )
+            if ( _model->getMap()->isGeocentric() )
                 extrusionDistance = 300000.0; // meters geocentric
-            else if ( context->getModelSource()->getMap()->getProfile()->getSRS()->isGeographic() )
+            else if ( _model->getMap()->getProfile()->getSRS()->isGeographic() )
                 extrusionDistance = 5.0; // degrees-as-meters
             else
                 extrusionDistance = 12000.0; // meters
         }
 
-        densificationThreshold = options->densificationThreshold().value();
+        densificationThreshold = _options.densificationThreshold().value();
 
         BuildData* buildData = dynamic_cast<BuildData*>(context->getBuildData());
 
@@ -403,11 +404,11 @@ public:
             }
         }
 
-        bool isGeocentric = context->getModelSource()->getMap()->isGeocentric();
+        bool isGeocentric = _model->getMap()->isGeocentric();
 
         // A processing context to use with the filters:
         FilterContext filterContext;
-        filterContext.profile() = context->getModelSource()->getFeatureSource()->getFeatureProfile();
+        filterContext.profile() = _model->getFeatureSource()->getFeatureProfile();
 
         // If the geometry is lines, we need to buffer them before they will work with stenciling
         if ( hasLines )
@@ -422,7 +423,7 @@ public:
         }
 
         // Transform them into the map's SRS, localizing the verts along the way:
-        TransformFilter xform( context->getModelSource()->getMap()->getProfile()->getSRS() );
+        TransformFilter xform( _model->getMap()->getProfile()->getSRS() );
         xform.setMakeGeocentric( isGeocentric );
         xform.setLocalizeCoordinates( !isGeocentric );
         filterContext = xform.push( featureList, filterContext );
@@ -474,16 +475,16 @@ public:
             }
 
             // Apply an LOD if required:
-            if ( options->minRange().isSet() || options->maxRange().isSet() )
+            if ( _options.minRange().isSet() || _options.maxRange().isSet() )
             {
                 osg::LOD* lod = new osg::LOD();
-                lod->addChild( volumes, options->minRange().value(), options->maxRange().value() );
+                lod->addChild( volumes, _options.minRange().value(), _options.maxRange().value() );
                 volumes = lod;
             }
 
             osgEarth::Symbology::StencilVolumeNode* styleNode = 0L;
             bool styleNodeAlreadyCreated = buildData->getStyleNode(style->getName(), styleNode);
-            if ( options->showVolumes() == true )
+            if ( _options.showVolumes() == true )
             {
                 result = volumes;
             }
@@ -491,13 +492,13 @@ public:
             {
                 if ( !styleNodeAlreadyCreated )
                 {
-                    if ( options->mask() == true )
+                    if ( _options.mask() == true )
                         OE_INFO << LC << "Creating MASK LAYER for feature group" << std::endl;
                     else
                         OE_INFO << LC << "Creating new style group for '" << style->getName() << "'" << std::endl;
 
-                    styleNode = new osgEarth::Symbology::StencilVolumeNode( options->mask().value(), options->inverted().value() );
-                    if ( options->mask() == false )
+                    styleNode = new osgEarth::Symbology::StencilVolumeNode( _options.mask().value(), _options.inverted().value() );
+                    if ( _options.mask() == false )
                     {
                         osg::Vec4f maskColor = osg::Vec4(1,1,0,1);
                         if (hasLines && style->getSymbol<LineSymbol>()) {
@@ -521,10 +522,10 @@ public:
         }
 
         // apply explicit lighting if necessary:
-        if ( result && options && options->enableLighting().isSet() )
+        if ( result && _options.enableLighting().isSet() )
         {
             osg::StateSet* ss = result->getOrCreateStateSet();
-            ss->setMode( GL_LIGHTING, options->enableLighting() == true?
+            ss->setMode( GL_LIGHTING, _options.enableLighting() == true?
                          osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
                          osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
         }
@@ -536,15 +537,11 @@ public:
 class FeatureStencilModelSource : public FeatureModelSource
 {
 public:
-    FeatureStencilModelSource( const PluginOptions* options, int renderBinStart ) :
+    FeatureStencilModelSource( const ModelSourceOptions& options, int renderBinStart ) :
         FeatureModelSource( options ),
+        _options( options ),
         _renderBinStart( renderBinStart )
     {
-        const FeatureStencilModelOptions* opt = dynamic_cast<const FeatureStencilModelOptions*>( options );
-        if ( !opt )
-            opt = new FeatureStencilModelOptions( options );
-        _options = opt;
-
         // make sure we have stencil bits. Note, this only works before
         // a viewer gets created. You may need to allocate stencil bits
         // yourself if you make this object after realizing a viewer.
@@ -555,9 +552,9 @@ public:
     }
     
     //override
-    virtual const FeatureModelSourceOptions* getFeatureModelOptions() const
+    virtual const FeatureModelSourceOptions& getFeatureModelOptions() const
     {
-        return _options.get();
+        return _options;
     }
 
     //override
@@ -579,10 +576,10 @@ public:
         if ( !_features.valid() || !_features->getFeatureProfile() )
             return 0L;
 
-        FeatureSymbolizerGraph* graph = new FeatureSymbolizerGraph( new StencilVolumeSymbolizerFactory(this) );
+        FeatureSymbolizerGraph* graph = new FeatureSymbolizerGraph( new StencilVolumeSymbolizerFactory(this, _options) );
 
         // for Mask models, we need to immediately traverse the new graph and generate the mask
-        if ( _options->mask() == true )
+        if ( _options.mask() == true )
         {
             graph->compile();
         }
@@ -592,11 +589,11 @@ public:
 
 protected:
     int _renderBinStart;
-    osg::ref_ptr<const FeatureStencilModelOptions> _options;
+    const FeatureStencilModelOptions _options;
 };
 
 
-class FeatureStencilModelSourceFactory : public osgDB::ReaderWriter
+class FeatureStencilModelSourceFactory : public ModelSourceDriver
 {
 public:
     FeatureStencilModelSourceFactory() :
@@ -610,10 +607,10 @@ public:
         return "osgEarth Feature Stencil Model Plugin";
     }
 
-    FeatureStencilModelSource* create( const PluginOptions* options )
+    FeatureStencilModelSource* create( const Options* options )
     {
         ScopedLock<Mutex> lock( _createMutex );
-        FeatureStencilModelSource* obj = new FeatureStencilModelSource( options, _renderBinStart );
+        FeatureStencilModelSource* obj = new FeatureStencilModelSource( getModelSourceOptions(options), _renderBinStart );
         _renderBinStart += MAX_NUM_STYLES*4;
         return obj;
     }
@@ -624,7 +621,7 @@ public:
             return ReadResult::FILE_NOT_HANDLED;
 
         FeatureStencilModelSourceFactory* nonConstThis = const_cast<FeatureStencilModelSourceFactory*>(this);
-        return nonConstThis->create( static_cast<const PluginOptions*>(options) );
+        return nonConstThis->create( options );
     }
 
 protected:
@@ -633,4 +630,3 @@ protected:
 };
 
 REGISTER_OSGPLUGIN(osgearth_model_feature_stencil, FeatureStencilModelSourceFactory)
-

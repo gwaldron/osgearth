@@ -23,19 +23,19 @@ using namespace osgEarth;
 
 #define MASK_MODEL_DRIVER "feature_stencil"
 
-MaskLayer::MaskLayer( const DriverOptions* options ) :
-osg::Referenced( true )
+MaskLayer::MaskLayer( const ConfigOptions& options ) :
+osg::Referenced( true ) //TODO: necessary?
 {
     // just in case the caller did not ref the parameter:
-    osg::ref_ptr<const DriverOptions> tempHold = options;
+    //osg::ref_ptr<const DriverOptions> tempHold = options;
 
     // copy the input options and set some special settings:
-    Config conf = options->config();
-    conf.add( "driver", MASK_MODEL_DRIVER );
-    conf.add( "mask", "true" );
-    conf.add( "inverted", "true" );
-    conf.add( "extrusion_distance", "100000" );
-    _driverOptions = new DriverOptions( conf );
+    Config conf = options.getConfig();
+    conf.update( "mask", "true" );
+    conf.update( "inverted", "true" );
+    conf.update( "extrusion_distance", "100000" );
+    _driverOptions = DriverConfigOptions( conf );
+    _driverOptions.setDriver( MASK_MODEL_DRIVER );
 }
 
 void
@@ -45,7 +45,7 @@ MaskLayer::initialize( const std::string& referenceURI, const Map* map )
 
     if ( !_modelSource.valid() )
     {
-        _modelSource = ModelSourceFactory::create( _driverOptions.get() );
+        _modelSource = ModelSourceFactory::create( _driverOptions );
     }
 
     if ( _modelSource.valid() )
@@ -78,7 +78,7 @@ MaskLayer::getOrCreateNode( ProgressCallback* progress )
 Config
 MaskLayer::getConfig() const
 {
-    Config conf = _driverOptions.valid() ? _driverOptions->getConfig() : Config();
+    Config conf = _driverOptions.getConfig();
     conf.key() = "mask";
     conf.remove( "driver" );
     return conf;

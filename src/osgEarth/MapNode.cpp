@@ -193,13 +193,6 @@ MapNode::init()
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
 
-    // validate and adjust the engine properties as necessary:
-    // TODO: this will move to Engine
-    //validateEngineProps( _mapOptions );
-
-    // create the map engine that wil geneate tiles for this node:
-//    _engine = new MapEngine( _mapOptions );
-
     // make a group for the model layers:
     _models = new osg::Group();
     _models->setName( "osgEarth::MapNode.modelsGroup" );
@@ -213,7 +206,8 @@ MapNode::init()
 
     // go through the map and process any already-installed layers:
     // TODO: non-hard-code
-    _terrainEngine = TerrainEngineNodeFactory::create( _map.get(), _mapOptions.getTerrainOptions() );
+    const TerrainOptions& terrainOptions = _mapOptions.getTerrainOptions();
+    _terrainEngine = TerrainEngineNodeFactory::create( _map.get(), terrainOptions );
     if ( _terrainEngine.valid() )
     {
         this->addChild( _terrainEngine.get() );

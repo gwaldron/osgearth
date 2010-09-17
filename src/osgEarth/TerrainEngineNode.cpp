@@ -83,6 +83,12 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
         // then register the callback
         _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
     }
+
+    // apply visual options.
+    if ( options.enableLighting().isSet() )
+    {
+        this->getOrCreateStateSet()->setMode( GL_LIGHTING, options.enableLighting() == true ? 1 : 0 );
+    }
 }
 
 osg::BoundingSphere

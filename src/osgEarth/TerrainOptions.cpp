@@ -71,7 +71,7 @@ _normalizeEdges( false ),
 _combineLayers( true ),
 _maxLOD( 23 ),
 _layeringTechnique( LAYERING_MULTITEXTURE ),
-_enableLighting( true ),
+_enableLighting( false ),
 _elevationInterpolation( INTERP_BILINEAR )
 {
     fromConfig( _conf );

@@ -327,14 +327,12 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
         }
         else
         {
-            //// treat overlay node as a special case
-            //if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            //{
-            //    osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
-            //    bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
-            //    installOverlayNode( overlay, autoTextureUnit );
-            //}
-            //else
+            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            {
+              // treat overlay node as a special case
+                installOverlayNode( static_cast<osgSim::OverlayNode*>( node ) );
+            }
+            else
             {
                _models->addChild( node );
             }
@@ -364,12 +362,12 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
         {
             osg::Node* node = i->second;
             
-            //if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            //{
-            //    // handle the special-case overlay node
-            //    uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
-            //}
-            //else
+            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            {
+                // treat overlay node as a special case
+                uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
+            }
+            else
             {
                 _models->removeChild( node );
             }
@@ -455,6 +453,26 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
             }
         }
         dirtyBound();
+    }
+}
+
+void
+MapNode::installOverlayNode( osgSim::OverlayNode* overlay )
+{
+    if ( _terrainEngine.valid() )
+    {
+        overlay->addChild( _terrainEngine.get() );
+        this->replaceChild( _terrainEngine.get(), overlay );
+    }
+}
+
+void
+MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
+{
+    if ( _terrainEngine.valid() )
+    {
+        osg::ref_ptr<osg::Node> overlayChild = overlay->getChild( 0 );
+        this->replaceChild( overlay, overlayChild.get() );
     }
 }
 

@@ -359,6 +359,16 @@ namespace osgEarth
         void removeTerrainDecorator( osg::Group* decorator );
 
         /**
+         * Installs an OverlayNode atop the terrain engine.
+         */
+        void installOverlayNode( osgSim::OverlayNode* overlay );
+
+        /**
+         * Removes an OverlayNode installed with installOverlayNode
+         */
+        void uninstallOverlayNode( osgSim::OverlayNode* overlay );
+
+        /**
          * Gets the engine properties associated with this node. The engine
          * properties dictate how the map engine will create scene graph elements.
          */

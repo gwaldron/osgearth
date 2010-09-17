@@ -470,7 +470,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
         else
         {
             // in seq/pre mode, set up a placeholder and mark the tile as dirty.
-            geoImage = GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent() );
+            geoImage = GeoImage(ImageUtils::createEmptyImage(), key.getExtent() );
             needToUpdateImagery = true;
         }
 

@@ -72,7 +72,7 @@ WCS11Source::createImage( const TileKey& key,
     OE_INFO << "[osgEarth::WCS1.1] Key=" << key.str() << " URL = " << request.getURL() << std::endl;
 
     double lon0,lat0,lon1,lat1;
-    key.getGeoExtent().getBounds( lon0, lat0, lon1, lat1 );
+    key.getExtent().getBounds( lon0, lat0, lon1, lat1 );
 
     // download the data
     HTTPResponse response = HTTPClient::get( request, 0L, progress ); //getOptions(), progress );
@@ -149,7 +149,7 @@ WCS11Source::createRequest( const TileKey& key ) const
     std::stringstream buf;
 
     double lon_min, lat_min, lon_max, lat_max;
-    key.getGeoExtent().getBounds( lon_min, lat_min, lon_max, lat_max );
+    key.getExtent().getBounds( lon_min, lat_min, lon_max, lat_max );
 
     int lon_samples = _options.tileSize().value();
     int lat_samples = _options.tileSize().value();

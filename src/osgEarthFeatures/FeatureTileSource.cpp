@@ -171,7 +171,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                 list.push_back( feature );
                 renderFeaturesForStyle( 
                     feature->style().get(), list, buildData.get(),
-                    key.getGeoExtent(), image.get() );
+                    key.getExtent(), image.get() );
             }
         }
     }
@@ -184,18 +184,18 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
                 const StyleSelector& sel = *i;
                 Style* style;
                 styles->getStyle( sel.getSelectedStyleName(), style );
-                queryAndRenderFeaturesForStyle( style, sel.query().value(), buildData.get(), key.getGeoExtent(), image.get() );
+                queryAndRenderFeaturesForStyle( style, sel.query().value(), buildData.get(), key.getExtent(), image.get() );
             }
         }
         else
         {
             const Style* style = styles->getDefaultStyle();
-            queryAndRenderFeaturesForStyle( style, Query(), buildData.get(), key.getGeoExtent(), image.get() );
+            queryAndRenderFeaturesForStyle( style, Query(), buildData.get(), key.getExtent(), image.get() );
         }
     }
     else
     {
-        queryAndRenderFeaturesForStyle( new Style, Query(), buildData.get(), key.getGeoExtent(), image.get() );
+        queryAndRenderFeaturesForStyle( new Style, Query(), buildData.get(), key.getExtent(), image.get() );
     }
 
     // final tile processing after all styles are done

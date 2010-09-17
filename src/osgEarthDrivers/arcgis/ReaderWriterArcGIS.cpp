@@ -158,7 +158,7 @@ public:
         }
         else
         {
-            const GeoExtent& ex = key.getGeoExtent();
+            const GeoExtent& ex = key.getExtent();
 
             buf << std::setprecision(16)
                 << _options.url().value() << "/export"

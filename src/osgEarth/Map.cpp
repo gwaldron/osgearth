@@ -580,7 +580,7 @@ Map::createHeightField( const TileKey& key,
             if (hf.valid())
             {
                 numValidHeightFields++;
-                GeoHeightField ghf( hf.get(), key.getGeoExtent(), layer->getProfile()->getVerticalSRS() );
+                GeoHeightField ghf( hf.get(), key.getExtent(), layer->getProfile()->getVerticalSRS() );
                 heightFields.push_back( ghf );
             }
         }
@@ -617,7 +617,7 @@ Map::createHeightField( const TileKey& key,
                         lowestLOD = hf_key.getLevelOfDetail();
 
                     heightFields.push_back( GeoHeightField(
-                        hf.get(), hf_key.getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
+                        hf.get(), hf_key.getExtent(), layer->getProfile()->getVerticalSRS() ) );
                 }
             }
         }
@@ -637,7 +637,7 @@ Map::createHeightField( const TileKey& key,
         }
         else
         {
-            GeoHeightField geoHF = heightFields[0].createSubSample( key.getGeoExtent(), interpolation);
+            GeoHeightField geoHF = heightFields[0].createSubSample( key.getExtent(), interpolation);
             result = geoHF.takeHeightField();
             hfInitialized = true;
         }
@@ -660,7 +660,7 @@ Map::createHeightField( const TileKey& key,
 
 		//Go ahead and set up the heightfield so we don't have to worry about it later
         double minx, miny, maxx, maxy;
-        key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
+        key.getExtent().getBounds(minx, miny, maxx, maxy);
         double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
         double dy = (maxy - miny)/(double)(result->getNumRows()-1);
 
@@ -681,7 +681,7 @@ Map::createHeightField( const TileKey& key,
                     const GeoHeightField& geoHF = *itr;
 
                     float elevation = 0.0f;
-                    if ( geoHF.getElevation(key.getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
+                    if ( geoHF.getElevation(key.getExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
                     {
                         if (elevation != NO_DATA_VALUE)
                         {
@@ -743,7 +743,7 @@ Map::createHeightField( const TileKey& key,
 	{	
 		//Go ahead and set up the heightfield so we don't have to worry about it later
 		double minx, miny, maxx, maxy;
-		key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
+		key.getExtent().getBounds(minx, miny, maxx, maxy);
 		result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
 		double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
 		double dy = (maxy - miny)/(double)(result->getNumRows()-1);

@@ -158,12 +158,6 @@ TileKey::createAncestorKey( int ancestorLod ) const
     return TileKey( ancestorLod, x, y, _profile.get() );
 }
 
-const GeoExtent&
-TileKey::getGeoExtent() const
-{
-    return _extent;
-}
-
 bool TileKey::isGeodetic() const
 {
     return _profile->getProfileType() == Profile::TYPE_GEODETIC; //GLOBAL_GEODETIC;

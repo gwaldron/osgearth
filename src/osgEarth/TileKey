@@ -117,7 +117,8 @@ namespace osgEarth
         /**
          * Gets the geospatial extents of the tile represented by this key.
          */
-        const GeoExtent& getGeoExtent() const;
+        const GeoExtent& getExtent() const {
+            return _extent; }
 
         /**
          * Gets the extents of this key's tile, in pixels

@@ -581,7 +581,7 @@ Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_inte
         out_intersectingKeys.push_back(key);
         return;
     }
-    return getIntersectingTiles(key.getGeoExtent(), out_intersectingKeys);
+    return getIntersectingTiles(key.getExtent(), out_intersectingKeys);
 }
 
 void

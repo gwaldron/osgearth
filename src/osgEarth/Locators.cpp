@@ -70,9 +70,9 @@ GeoLocator::createForKey( const TileKey& key, Map* map )
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
     bool isGeocentric = !isProjected;
 
-    const GeoExtent& ex = key.getGeoExtent();
+    const GeoExtent& ex = key.getExtent();
     double xmin, ymin, xmax, ymax;
-    key.getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
+    key.getExtent().getBounds( xmin, ymin, xmax, ymax );
 
     // A locator will place the tile on the globe:
     GeoLocator* locator = key.getProfile()->getSRS()->createLocator(

@@ -580,7 +580,7 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		if (image.valid())
 		{
 			OE_DEBUG << LC << "Layer " << _name << " got tile " << key.str() << " from map cache " << std::endl;
-            result = GeoImage( image.get(), key.getGeoExtent() );
+            result = GeoImage( image.get(), key.getExtent() );
             postProcess( result );
             return result;
 		}
@@ -593,7 +593,7 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
         osg::ref_ptr<osg::Image> image = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( image )
         {
-            result = GeoImage( image.get(), key.getGeoExtent() );
+            result = GeoImage( image.get(), key.getExtent() );
         }
     }
     // Otherwise, we need to process the tiles.
@@ -606,7 +606,7 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		std::vector<TileKey> intersectingTiles;
 
         //Scale the extent if necessary
-        GeoExtent ext = key.getGeoExtent();
+        GeoExtent ext = key.getExtent();
         if (_edgeBufferRatio.isSet())
         {
             double ratio = _edgeBufferRatio.get();
@@ -618,7 +618,7 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		if (intersectingTiles.size() > 0)
 		{
 			double dst_minx, dst_miny, dst_maxx, dst_maxy;
-			key.getGeoExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
+			key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 
 
 			osg::ref_ptr<ImageMosaic> mi = new ImageMosaic;
@@ -626,7 +626,7 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
 				double minX, minY, maxX, maxY;
-				intersectingTiles[j].getGeoExtent().getBounds(minX, minY, maxX, maxY);
+				intersectingTiles[j].getExtent().getBounds(minX, minY, maxX, maxY);
 
 				OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
@@ -705,13 +705,13 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
             //because the data doesn't encompass the entire map.
             if (!needsReprojection)
             {
-                GeoExtent keyExtent = key.getGeoExtent();
+                GeoExtent keyExtent = key.getExtent();
                 //If the key is geographic and the mosaic is mercator, we need to get the mercator extents to determine if we need
                 //to add the border or not
-                if (key.getGeoExtent().getSRS()->isGeographic() && mosaic.getSRS()->isMercator())
+                if (key.getExtent().getSRS()->isGeographic() && mosaic.getSRS()->isMercator())
                 {
                     keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( 
-                        key.getGeoExtent( ));
+                        key.getExtent( ));
                 }
 
 
@@ -754,13 +754,13 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
 				OE_DEBUG << LC << "  Reprojecting image" << std::endl;
                 //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
-                result = mosaic.reproject( key.getProfile()->getSRS(), &key.getGeoExtent(), _reprojectedTileSize.value(), _reprojectedTileSize.value() );
+                result = mosaic.reproject( key.getProfile()->getSRS(), &key.getExtent(), _reprojectedTileSize.value(), _reprojectedTileSize.value() );
             }
             else
             {
 				OE_DEBUG << LC << "  Cropping image" << std::endl;
                 // crop to fit the map key extents
-                GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key.getGeoExtent() );
+                GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key.getExtent() );
                 if ( clampedMapExt.isValid() )
 				{
 					int size = _exactCropping == true ? _reprojectedTileSize.value() : 0;
@@ -913,7 +913,7 @@ MapLayer::createGeoHeightField(const TileKey& key, ProgressCallback * progress)
 		o.setValidDataOperator(ops.get());
 		o(hf);
 
-        return GeoHeightField(hf.get(), key.getGeoExtent(), getProfile()->getVerticalSRS() );
+        return GeoHeightField(hf.get(), key.getExtent(), getProfile()->getVerticalSRS() );
 	}
     return GeoHeightField::INVALID;
 }
@@ -1003,7 +1003,7 @@ MapLayer::createHeightField(const osgEarth::TileKey& key,
 
 				//Go ahead and set up the heightfield so we don't have to worry about it later
 				double minx, miny, maxx, maxy;
-				key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
+				key.getExtent().getBounds(minx, miny, maxx, maxy);
 				double dx = (maxx - minx)/(double)(width-1);
 				double dy = (maxy - miny)/(double)(height-1);
 
@@ -1020,7 +1020,7 @@ MapLayer::createHeightField(const osgEarth::TileKey& key,
 						for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
 						{
 							float e = 0.0;
-                            if (itr->getElevation(key.getGeoExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, _profile->getVerticalSRS(), e))
+                            if (itr->getElevation(key.getExtent().getSRS(), geoX, geoY, INTERP_BILINEAR, _profile->getVerticalSRS(), e))
 							{
 								elevation = e;
 								break;
@@ -1044,7 +1044,7 @@ MapLayer::createHeightField(const osgEarth::TileKey& key,
 	{	
 		//Go ahead and set up the heightfield so we don't have to worry about it later
 		double minx, miny, maxx, maxy;
-		key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
+		key.getExtent().getBounds(minx, miny, maxx, maxy);
 		result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
 		double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
 		double dy = (maxy - miny)/(double)(result->getNumRows()-1);

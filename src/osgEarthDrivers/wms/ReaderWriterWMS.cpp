@@ -455,7 +455,7 @@ public:
     std::string createURI( const TileKey& key ) const
     {
         double minx, miny, maxx, maxy;
-        key.getGeoExtent().getBounds( minx, miny, maxx, maxy);
+        key.getExtent().getBounds( minx, miny, maxx, maxy);
         
         char buf[2048];
         sprintf(buf, _prototype.c_str(), minx, miny, maxx, maxy);

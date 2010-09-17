@@ -317,13 +317,13 @@ osg::HeightField*
 OSGTileFactory::createEmptyHeightField( const TileKey& key, int numCols, int numRows )
 {
     osg::HeightField* hf = key.getProfile()->getVerticalSRS()->createReferenceHeightField(
-        key.getGeoExtent(), numCols, numRows );
+        key.getExtent(), numCols, numRows );
 
     return hf;
 
     ////Get the bounds of the key
     //double minx, miny, maxx, maxy;
-    //key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
+    //key.getExtent().getBounds(minx, miny, maxx, maxy);
 
     //osg::HeightField *hf = new osg::HeightField();
     //hf->allocate( numCols, numRows );
@@ -379,8 +379,8 @@ OSGTileFactory::addPlaceholderHeightfieldLayer(CustomTile* tile,
             {
                 osg::HeightField* newHF = HeightFieldUtils::createSubSample(
                     ancestorHF.get(),
-                    ancestorKey.getGeoExtent(),
-                    key.getGeoExtent());
+                    ancestorKey.getExtent(),
+                    key.getExtent());
 
                 newHFLayer = new osgTerrain::HeightFieldLayer( newHF );
                 newHFLayer->setLocator( defaultLocator );
@@ -415,8 +415,8 @@ OSGTileFactory::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
 
     osg::HeightField* newHF = HeightFieldUtils::createSubSample(
         ancestorHF,
-        ancestorKey.getGeoExtent(),
-        key.getGeoExtent() );
+        ancestorKey.getExtent(),
+        key.getExtent() );
 
     newHF->setSkirtHeight( ancestorHF->getSkirtHeight() / 2.0 );
 
@@ -477,7 +477,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
 
     // Build a "placeholder" tile.
     double xmin, ymin, xmax, ymax;
-    key.getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
+    key.getExtent().getBounds( xmin, ymin, xmax, ymax );
 
     // A locator will place the tile on the globe:
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( key, map );
@@ -590,7 +590,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     bool isGeocentric = !isProjected;
 
     double xmin, ymin, xmax, ymax;
-    key.getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
+    key.getExtent().getBounds( xmin, ymin, xmax, ymax );
 
     GeoImageVector image_tiles;
 
@@ -682,7 +682,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             if (!image.valid())
             {
                 //If the image is not valid, create an empty texture as a placeholder
-                image = GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
+                image = GeoImage(ImageUtils::createEmptyImage(), key.getExtent());
             }
 
             //Assign the new image to the proper place in the list
@@ -805,7 +805,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             double upp = geo_image.getUnitsPerPixel();
 
             // Scale the units per pixel to degrees if the image is mercator (and the key is geo)
-            if ( geo_image.getSRS()->isMercator() && key.getGeoExtent().getSRS()->isGeographic() )
+            if ( geo_image.getSRS()->isMercator() && key.getExtent().getSRS()->isGeographic() )
                 upp *= 1.0f/111319.0f;
 
             min_units_per_pixel = osg::minimum(upp, min_units_per_pixel);
@@ -823,7 +823,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     double min_range = radius * _terrainOptions.minTileRangeFactor().get();
     osg::LOD::RangeMode mode = osg::LOD::DISTANCE_FROM_EYE_POINT;
 #else
-    double width = key.getGeoExtent().width();	
+    double width = key.getExtent().width();	
     if (min_units_per_pixel == DBL_MAX) min_units_per_pixel = width/256.0;
     double min_range = (width / min_units_per_pixel) * _terrainOptions.getMinTileRangeFactor(); 
     osg::LOD::RangeMode mode = osg::LOD::PIXEL_SIZE_ON_SCREEN;
@@ -923,7 +923,7 @@ OSGTileFactory::createImageLayer(Map* map,
     else
     {
         //If the key is not valid, simply make a transparent tile
-        geoImage = GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
+        geoImage = GeoImage(ImageUtils::createEmptyImage(), key.getExtent());
     }
 
     if (geoImage.valid())

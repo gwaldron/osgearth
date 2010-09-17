@@ -940,7 +940,7 @@ public:
         {
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
-            key.getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
+            key.getExtent().getBounds(xmin, ymin, xmax, ymax);
 
             int target_width = tileSize;
             int target_height = tileSize;
@@ -1396,7 +1396,7 @@ public:
         {
             //Get the meter extents of the tile
             double xmin, ymin, xmax, ymax;
-            key.getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
+            key.getExtent().getBounds(xmin, ymin, xmax, ymax);
 
             //Just read from the first band
             GDALRasterBand* band = _warpedDS->GetRasterBand(1);
@@ -1426,7 +1426,7 @@ public:
     {
         //Get the native extents of the tile
         double xmin, ymin, xmax, ymax;
-        key.getGeoExtent().getBounds(xmin, ymin, xmax, ymax);
+        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
 
         return ! ( xmin >= _extentsMax.x() || xmax <= _extentsMin.x() || ymin >= _extentsMax.y() || ymax <= _extentsMin.y() );        
     }

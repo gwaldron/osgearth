@@ -106,7 +106,7 @@ public:
             return NULL;
 
         const GeoExtent& imageEx = getProfile()->getExtent();
-        const GeoExtent& keyEx = key.getGeoExtent();
+        const GeoExtent& keyEx = key.getExtent();
 
         double x0r = (keyEx.xMin()-imageEx.xMin())/imageEx.width();
         double x1r = (keyEx.xMax()-imageEx.xMin())/imageEx.width();

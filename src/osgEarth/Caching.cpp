@@ -301,7 +301,7 @@ DiskCache::setImage( const TileKey& key,
     {
         //Write out the world file along side the image
         double minx, miny, maxx, maxy;
-        key.getGeoExtent().getBounds(minx, miny, maxx, maxy);
+        key.getExtent().getBounds(minx, miny, maxx, maxy);
 
         std::string baseFilename = osgDB::getNameLessExtension(filename);
 

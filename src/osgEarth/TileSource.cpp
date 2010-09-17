@@ -289,7 +289,7 @@ TileSource::hasData(const osgEarth::TileKey& key)
     //If no data extents are provided, just return true
     if (_dataExtents.size() == 0) return true;
 
-    const osgEarth::GeoExtent& keyExtent = key.getGeoExtent();
+    const osgEarth::GeoExtent& keyExtent = key.getExtent();
     bool intersectsData = false;
     
     //osg::Timer_t loopStart = osg::Timer::instance()->tick();

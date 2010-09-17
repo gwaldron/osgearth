@@ -403,6 +403,16 @@ DataExtent::getMaxLevel() const
 
 /***************************************************************************/
 
+// static
+GeoImage GeoImage::INVALID( 0L, GeoExtent::INVALID );
+
+GeoImage::GeoImage() :
+_image(0L),
+_extent( GeoExtent::INVALID )
+{
+    //nop
+}
+
 
 GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent ) :
 _image(image),
@@ -433,7 +443,7 @@ GeoImage::getUnitsPerPixel() const {
 	return (uppw + upph) / 2.0;
 }
 
-GeoImage*
+GeoImage
 GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height  ) const
 {
     //Check for equivalence
@@ -475,19 +485,20 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
 
             //The destination extents may be different than the input extents due to not being able to crop along pixel boundaries.
             return new_image?
-                new GeoImage( new_image, GeoExtent( getSRS(), destXMin, destYMin, destXMax, destYMax ) ) :
-            NULL;
+                GeoImage( new_image, GeoExtent( getSRS(), destXMin, destYMin, destXMax, destYMax ) ) :
+                GeoImage::INVALID;
         }
     }
     else
     {
         //TODO: just reproject the image before cropping
         OE_NOTICE << "[osgEarth::GeoImage::crop] Cropping extent does not have equivalent SpatialReference" << std::endl;
-        return NULL;
+        return GeoImage::INVALID;
     }
 }
 
-GeoImage* GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool bottomBorder, bool topBorder)
+GeoImage
+GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool bottomBorder, bool topBorder)
 {
     unsigned int buffer = 1;
 
@@ -516,7 +527,7 @@ GeoImage* GeoImage::addTransparentBorder(bool leftBorder, bool rightBorder, bool
     double xmax = rightBorder ? _extent.xMax() + buffer * uppw : _extent.xMax();
     double ymax = topBorder ? _extent.yMax() + buffer * upph : _extent.yMax();
 
-    return new GeoImage(newImage, GeoExtent(getSRS(), xmin, ymin, xmax, ymax));
+    return GeoImage(newImage, GeoExtent(getSRS(), xmin, ymin, xmax, ymax));
 }
 
 static osg::Image*
@@ -851,7 +862,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
 
 
 
-GeoImage*
+GeoImage
 GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, unsigned int width, unsigned int height) const
 {  
     GeoExtent destExtent;
@@ -882,7 +893,7 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
             destExtent.xMin(), destExtent.yMin(), destExtent.xMax(), destExtent.yMax(),
             width, height);
     }   
-    return new GeoImage(resultImage, destExtent);
+    return GeoImage(resultImage, destExtent);
 }
 
 osg::Image*
@@ -893,6 +904,18 @@ GeoImage::takeImage()
 
 
 /***************************************************************************/
+
+// static
+GeoHeightField GeoHeightField::INVALID( 0L, GeoExtent::INVALID, 0L );
+
+GeoHeightField::GeoHeightField() :
+_heightField( 0L ),
+_extent( GeoExtent::INVALID ),
+_vsrs( 0L )
+{
+    //nop
+}
+
 GeoHeightField::GeoHeightField(osg::HeightField* heightField,
                                const GeoExtent& extent,
                                const VerticalSpatialReference* vsrs) :
@@ -900,13 +923,16 @@ _heightField( heightField ),
 _extent( extent ),
 _vsrs( vsrs )
 {
-    double minx, miny, maxx, maxy;
-    _extent.getBounds(minx, miny, maxx, maxy);
+    if ( _heightField )
+    {
+        double minx, miny, maxx, maxy;
+        _extent.getBounds(minx, miny, maxx, maxy);
 
-    _heightField->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-    _heightField->setXInterval( (maxx - minx)/(double)(_heightField->getNumColumns()-1) );
-    _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
-    _heightField->setBorderWidth( 0 );
+        _heightField->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+        _heightField->setXInterval( (maxx - minx)/(double)(_heightField->getNumColumns()-1) );
+        _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
+        _heightField->setBorderWidth( 0 );
+    }
 }
 
 bool
@@ -969,12 +995,12 @@ GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS,
     }
 }
 
-GeoHeightField*
+GeoHeightField
 GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation interpolation) const
 {
     double div = destEx.width()/_extent.width();
     if ( div >= 1.0f )
-        return 0L;
+        return GeoHeightField::INVALID;
 
     int w = _heightField->getNumColumns();
     int h = _heightField->getNumRows();
@@ -1008,11 +1034,11 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
     osg::Vec3d orig( destEx.xMin(), destEx.yMin(), _heightField->getOrigin().z() );
     dest->setOrigin( orig );
 
-    return new GeoHeightField( dest, destEx, _vsrs.get() );
+    return GeoHeightField( dest, destEx, _vsrs.get() );
 }
 
 const GeoExtent&
-GeoHeightField::getGeoExtent() const
+GeoHeightField::getExtent() const
 {
     return _extent;
 }
@@ -1042,7 +1068,8 @@ GeoHeightField::takeHeightField()
 
 Geoid::Geoid() :
 _valid( false ),
-_units( Units::METERS )
+_units( Units::METERS ),
+_hf( GeoHeightField::INVALID )
 {
     //nop
 }
@@ -1055,7 +1082,7 @@ Geoid::setName( const std::string& name )
 }
 
 void
-Geoid::setHeightField( const GeoHeightField* hf )
+Geoid::setHeightField( const GeoHeightField& hf )
 {
     _hf = hf;
     validate();
@@ -1075,7 +1102,7 @@ Geoid::validate()
     if ( !_hf.valid() ) {
         //OE_WARN << LC << "ILLEGAL GEOID: no heightfield" << std::endl;
     }
-    else if ( !_hf->getGeoExtent().getSRS() || !_hf->getGeoExtent().getSRS()->isGeographic() ) {
+    else if ( !_hf.getExtent().getSRS() || !_hf.getExtent().getSRS()->isGeographic() ) {
         OE_WARN << LC << "ILLEGAL GEOID: heightfield must be geodetic" << std::endl;
     }
     else {
@@ -1091,16 +1118,16 @@ Geoid::getOffset(double lat_deg, double lon_deg, const ElevationInterpolation& i
     if ( _valid )
     {
         // first convert the query coordinates to the geoid heightfield range if neccesary.
-        if ( lat_deg < _hf->getGeoExtent().yMin() )
+        if ( lat_deg < _hf.getExtent().yMin() )
             lat_deg = 90.0 - (-90.0-lat_deg);
-        else if ( lat_deg > _hf->getGeoExtent().yMax() )
+        else if ( lat_deg > _hf.getExtent().yMax() )
             lat_deg = -90 + (lat_deg-90.0);
-        if ( lon_deg < _hf->getGeoExtent().xMin() )
+        if ( lon_deg < _hf.getExtent().xMin() )
             lon_deg += 360.0;
-        else if ( lon_deg > _hf->getGeoExtent().xMax() )
+        else if ( lon_deg > _hf.getExtent().xMax() )
             lon_deg -= 360.0;
 
-        bool ok = _hf->getElevation( 0L, lon_deg, lat_deg, interp, 0L, result );
+        bool ok = _hf.getElevation( 0L, lon_deg, lat_deg, interp, 0L, result );
         if ( !ok )
             result = 0.0f;
     }
@@ -1115,6 +1142,6 @@ Geoid::isEquivalentTo( const Geoid& rhs ) const
     return
         _valid &&
         _name == rhs._name &&
-        _hf->getGeoExtent() == rhs._hf->getGeoExtent() &&
+        _hf.getExtent() == rhs._hf.getExtent() &&
         _units == rhs._units;
 }

@@ -451,7 +451,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
         osgTerrain::TileID tileId = tile->getTileID();
         TileKey key( TileKey::getLOD(tileId), tileId.x, tileId.y, _map->getProfile() );
 
-        osg::ref_ptr< GeoImage > geoImage;
+        GeoImage geoImage;
 
         bool needToUpdateImagery = false;
         int imageLOD = -1;
@@ -470,7 +470,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
         else
         {
             // in seq/pre mode, set up a placeholder and mark the tile as dirty.
-            geoImage = new GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent() );
+            geoImage = GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent() );
             needToUpdateImagery = true;
         }
 
@@ -487,18 +487,18 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
             // b) The map is projected but is also "geographic" (i.e., plate carre)
             bool isGeocentric = _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
             bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
-            bool canUseMercatorLocator = geoImage->getSRS()->isMercator() && (isGeocentric || isGeographic);
+            bool canUseMercatorLocator = geoImage.getSRS()->isMercator() && (isGeocentric || isGeographic);
 
             if ( canUseMercatorLocator && layer->useMercatorFastPath() == true )
             {
-                GeoExtent geog_ext = geoImage->getExtent().transform(geoImage->getExtent().getSRS()->getGeographicSRS());
+                GeoExtent geog_ext = geoImage.getExtent().transform(geoImage.getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
                 img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
-                img_locator = new MercatorLocator( *img_locator.get(), geoImage->getExtent() );
+                img_locator = new MercatorLocator( *img_locator.get(), geoImage.getExtent() );
             }
             else
             {
-                geoImage->getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+                geoImage.getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
                 img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
             }
 
@@ -510,7 +510,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
             // Create a layer wrapper that supports opacity.
             // TODO: review this; the Transparent layer holds a back-reference to the actual MapLayer
-            TransparentLayer* img_layer = new TransparentLayer( geoImage->getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
+            TransparentLayer* img_layer = new TransparentLayer( geoImage.getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
             img_layer->setLevelOfDetail(imageLOD);
             img_layer->setLocator( img_locator.get());
             img_layer->setMinFilter( layer->getMinFilter().value());

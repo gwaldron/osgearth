@@ -84,8 +84,8 @@ _terrainOptions( props )
 void
 OSGTileFactory::init()
 {
-    const char* useL2 = ::getenv("OSGEARTH_L2_CACHE");
-    _L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
+    //const char* useL2 = ::getenv("OSGEARTH_L2_CACHE");
+    //_L2cache = useL2 && useL2[0] != 0L ? new L2Cache() : 0L;
 
     LoadingPolicy::Mode mode = _terrainOptions.loadingPolicy()->mode().value();
     OE_INFO << LC << "Loading policy mode = " <<
@@ -189,7 +189,7 @@ OSGTileFactory::createSubTiles( Map* map, CustomTerrain* terrain, const TileKey&
     return tile_parent;
 }
 
-GeoImage*
+GeoImage
 OSGTileFactory::createValidGeoImage(MapLayer* layer,
                                     const TileKey& key,
                                     ProgressCallback* progress)
@@ -198,18 +198,19 @@ OSGTileFactory::createValidGeoImage(MapLayer* layer,
     //Try to create the image with the given key
     TileKey image_key = key;
 
-    osg::ref_ptr<GeoImage> geo_image;
+    GeoImage geo_image;
 
     while (image_key.valid())
     {
         if ( layer->isKeyValid(image_key) )
         {
             geo_image = layer->createImage( image_key, progress );
-            if (geo_image.valid()) return geo_image.release();
+            if (geo_image.valid()) 
+                return geo_image;
         }
         image_key = image_key.createParentKey();
     }
-    return geo_image.release();
+    return geo_image;
 }
 
 bool
@@ -591,7 +592,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     double xmin, ymin, xmax, ymax;
     key.getGeoExtent().getBounds( xmin, ymin, xmax, ymax );
 
-    GeoImageList image_tiles;
+    GeoImageVector image_tiles;
 
     const MapLayerList& imageMapLayers = map->getImageMapLayers();
     const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
@@ -607,16 +608,16 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     {
         MapLayer* layer = i->get();
 
-        osg::ref_ptr<GeoImage> image;
+        GeoImage image;
         //Only create images if the key is valid
         if ( layer->isKeyValid( key ) )
         {
-            if ( _L2cache )
-                image = _L2cache->createImage( layer, key );
-            else
-                image = layer->createImage( key );
+            //if ( _L2cache )
+            //    image = _L2cache->createImage( layer, key );
+            //else
+            image = layer->createImage( key );
         }
-        image_tiles.push_back(image.get());
+        image_tiles.push_back(image);
 
         // if any one of the layers explicity disables the merc fast path, disable for the whole thing:
         if ( layer->useMercatorFastPath().isSetTo( false ) )
@@ -670,7 +671,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     {
         if (!image_tiles[i].valid())
         {
-            GeoImage* image = NULL;
+            GeoImage image;
             if (imageMapLayers[i]->isKeyValid(key))
             {
                 //If the key was valid and we have no image, then something possibly went wrong with the image creation such as a server being busy.
@@ -678,10 +679,10 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             }
 
             //If we still couldn't create an image, either something is really wrong or the key wasn't valid, so just create a transparent placeholder image
-            if (!image)
+            if (!image.valid())
             {
                 //If the image is not valid, create an empty texture as a placeholder
-                image = new GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
+                image = GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
             }
 
             //Assign the new image to the proper place in the list
@@ -771,21 +772,21 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
             osg::ref_ptr<GeoLocator> img_locator;
 
-            GeoImage* geo_image = image_tiles[i].get();
+            const GeoImage& geo_image = image_tiles[i];
 
             // Use a special locator for mercator images (instead of reprojecting)
             if (map->getProfile()->getSRS()->isGeographic() &&
-                geo_image->getSRS()->isMercator() && 
+                geo_image.getSRS()->isMercator() && 
                 useMercatorLocator )
             {
-                GeoExtent geog_ext = image_tiles[i]->getExtent().transform(image_tiles[i]->getExtent().getSRS()->getGeographicSRS());
+                GeoExtent geog_ext = image_tiles[i].getExtent().transform(image_tiles[i].getExtent().getSRS()->getGeographicSRS());
                 geog_ext.getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
                 img_locator = key.getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
-                img_locator = new MercatorLocator( *img_locator.get(), geo_image->getExtent() );
+                img_locator = new MercatorLocator( *img_locator.get(), geo_image.getExtent() );
             }
             else
             {
-                image_tiles[i]->getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
+                image_tiles[i].getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
 
                 img_locator = key.getProfile()->getSRS()->createLocator( 
                     img_xmin, img_ymin, img_xmax, img_ymax, isPlateCarre );
@@ -794,17 +795,17 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             if ( isGeocentric )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            TransparentLayer* img_layer = new TransparentLayer(geo_image->getImage(), imageMapLayers[i].get());
+            TransparentLayer* img_layer = new TransparentLayer(geo_image.getImage(), imageMapLayers[i].get());
             img_layer->setLevelOfDetail( key.getLevelOfDetail() );
             img_layer->setName( imageMapLayers[i]->getName() );
             img_layer->setLocator( img_locator.get());
             img_layer->setMinFilter( imageMapLayers[i]->getMinFilter().value());
             img_layer->setMagFilter( imageMapLayers[i]->getMagFilter().value());
 
-            double upp = geo_image->getUnitsPerPixel();
+            double upp = geo_image.getUnitsPerPixel();
 
             // Scale the units per pixel to degrees if the image is mercator (and the key is geo)
-            if ( geo_image->getSRS()->isMercator() && key.getGeoExtent().getSRS()->isGeographic() )
+            if ( geo_image.getSRS()->isMercator() && key.getGeoExtent().getSRS()->isGeographic() )
                 upp *= 1.0f/111319.0f;
 
             min_units_per_pixel = osg::minimum(upp, min_units_per_pixel);
@@ -912,7 +913,7 @@ OSGTileFactory::createImageLayer(Map* map,
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    osg::ref_ptr< GeoImage > geoImage;
+    GeoImage geoImage;
 
     //If the key is valid, try to get the image from the MapLayer
     if (layer->isKeyValid( key ) )
@@ -922,7 +923,7 @@ OSGTileFactory::createImageLayer(Map* map,
     else
     {
         //If the key is not valid, simply make a transparent tile
-        geoImage = new GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
+        geoImage = GeoImage(ImageUtils::createEmptyImage(), key.getGeoExtent());
     }
 
     if (geoImage.valid())
@@ -935,16 +936,15 @@ OSGTileFactory::createImageLayer(Map* map,
 
         // Use a special locator for mercator images (instead of reprojecting)
         if (map->getProfile()->getSRS()->isGeographic() &&
-            geoImage->getSRS()->isMercator() &&
+            geoImage.getSRS()->isMercator() &&
             layer->useMercatorFastPath() == true )
         {
-            GeoExtent gx = geoImage->getExtent().transform( geoImage->getExtent().getSRS()->getGeographicSRS() );
+            GeoExtent gx = geoImage.getExtent().transform( geoImage.getExtent().getSRS()->getGeographicSRS() );
             imgLocator = key.getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax() );
-            imgLocator = new MercatorLocator( *imgLocator.get(), geoImage->getExtent() );
+            imgLocator = new MercatorLocator( *imgLocator.get(), geoImage.getExtent() );
         }
         else
         {
-            const GeoExtent& gx = geoImage->getExtent();
             imgLocator = GeoLocator::createForKey( key, map );
         }
 
@@ -952,7 +952,7 @@ OSGTileFactory::createImageLayer(Map* map,
             imgLocator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
         //osgTerrain::ImageLayer* imgLayer = new osgTerrain::ImageLayer( geoImage->getImage() );
-        TransparentLayer* imgLayer = new TransparentLayer(geoImage->getImage(), layer);
+        TransparentLayer* imgLayer = new TransparentLayer(geoImage.getImage(), layer);
         imgLayer->setLocator( imgLocator.get() );
         imgLayer->setLevelOfDetail( key.getLevelOfDetail() );
         imgLayer->setMinFilter( layer->getMinFilter().value());

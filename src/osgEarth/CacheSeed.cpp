@@ -184,7 +184,7 @@ CacheSeed::cacheTile( Map* map, const TileKey& key ) const
         MapLayer* layer = i->get();
         if ( layer->isKeyValid( key ) )
         {
-            osg::ref_ptr<GeoImage> image = layer->createImage( key );
+            GeoImage image = layer->createImage( key );
         }
     }
 

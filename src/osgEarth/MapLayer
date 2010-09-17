@@ -261,16 +261,13 @@ namespace osgEarth
 		/**
 		 * Creates a GeoImage from this MapLayer
 		 */
-		GeoImage* createImage( const TileKey& key,
-                               ProgressCallback* progress = 0);
+		GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
 
         /**
          * Creates a GeoHeightField for this MapLayer.
          * The returned HeightField will always match the geospatial extents of the incoming TileKey.
          */
-        osg::HeightField* createHeightField( const TileKey& key,
-                                             ProgressCallback* progress = 0);
-
+        osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress = 0);
 
 		/**
          * Gets the reference URI. See setReferenceURI for more info.
@@ -285,7 +282,6 @@ namespace osgEarth
          * Note: Set this before adding any layers to the map.
          */
         void setReferenceURI( const std::string& uri );
-
 
 		/**
 		 * Gets the Cache to be used on this MapLayer.
@@ -319,8 +315,9 @@ namespace osgEarth
 		osg::Image* createImageWrapper( const TileKey& key,
                                         bool cacheInLayerProfile,
                                         ProgressCallback* progress );
-		GeoHeightField* createGeoHeightField( const TileKey& key,
-                                              ProgressCallback* progress);
+
+		GeoHeightField createGeoHeightField( const TileKey& key,
+                                             ProgressCallback* progress);
 
 		void readEnvironmentalVariables();
 
@@ -374,7 +371,7 @@ namespace osgEarth
 
         void init();
         void mergeConfig( const Config& conf );
-        GeoImage* postProcess( GeoImage* img );
+        void postProcess( GeoImage& img );
 
         osg::observer_ptr<MapLayerController> _controller;
     };
@@ -449,12 +446,12 @@ namespace osgEarth
         int _lod;
 	};
 
-
+#if 0
     class OSGEARTH_EXPORT L2Cache
     {
     public:
         L2Cache();
-        GeoImage* createImage( MapLayer* layer, const TileKey& key );
+        GeoImage& createImage( MapLayer* layer, const TileKey& key );
         osg::HeightField* createHeightField( MapLayer* layer, const TileKey& key );
     public:
         typedef std::pair<MapLayer*,std::string> TileTag;
@@ -475,6 +472,8 @@ namespace osgEarth
         TaskService* _service;
         void scheduleSubKeys(MapLayer*,const TileKey&);
     };
+#endif
+
 }
 
 #endif // OSGEARTH_MAP_LAYER_H

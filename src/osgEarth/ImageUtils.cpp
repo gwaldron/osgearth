@@ -96,7 +96,7 @@ ImageUtils::setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& co
 }
 
 bool
-ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
+ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row, int dst_img )
 {
     if (!src || !dst ||
         dst_start_col + src->s() > dst->s() ||
@@ -113,7 +113,7 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
         {
             const void* src_data = src->data( 0, src_row, 0 );
-            void* dst_data = dst->data( dst_start_col, dst_row, 0 );
+            void* dst_data = dst->data( dst_start_col, dst_row, dst_img );
             memcpy( dst_data, src_data, src->getRowSizeInBytes() );
         }
     }
@@ -125,7 +125,7 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         {
             for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
             {
-                setColor( dst, dst_s, dst_t, 0, getColor(src, src_s, src_t) );                
+                setColor( dst, dst_s, dst_t, dst_img, getColor(src, src_s, src_t) );                
             }
         }
     }

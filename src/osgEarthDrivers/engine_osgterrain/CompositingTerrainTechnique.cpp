@@ -368,7 +368,7 @@ CompositingTerrainTechnique::generateCompositeTexture()
     }
 
     // find each image layer and create a region entry for it
-    GeoImageList imageStack;
+    GeoImageVector imageStack;
     unsigned int numColorLayers = _terrainTile->getNumColorLayers();
 
     for( unsigned int layerNum=0; layerNum < numColorLayers; ++layerNum )
@@ -387,7 +387,7 @@ CompositingTerrainTechnique::generateCompositeTexture()
 
                 const GeoExtent& layerExtent = layerLocator->getDataExtent();
 
-                imageStack.push_back( new GeoImage( imageLayer->getImage(), layerExtent ) );
+                imageStack.push_back( GeoImage( imageLayer->getImage(), layerExtent ) );
             }
         }
     }

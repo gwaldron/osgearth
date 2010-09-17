@@ -206,15 +206,25 @@ namespace osgEarth
      * A georeferenced image; i.e. an osg::Image and an associated
      * GeoExtent with SRS.
      */
-    class OSGEARTH_EXPORT GeoImage : public osg::Referenced
+    class OSGEARTH_EXPORT GeoImage
     {
     public:
+        /** Construct an empty (invalid) geoimage. */
+        GeoImage();
+
         /**
          * Constructs a new goereferenced image.
          */
         GeoImage( osg::Image* image, const GeoExtent& extent );
 
+        static GeoImage INVALID;
+
     public:
+        /**
+         * True if this is a valid geo image. 
+         */
+        bool valid() const { return _image.valid(); }
+
         /**
          * Gets a pointer to the underlying OSG image.
          */
@@ -246,10 +256,11 @@ namespace osgEarth
          *      New pixel size for the output image. By default, the method will automatically
          *      calculate a new pixel size.
          */
-        GeoImage* crop( const GeoExtent& extent,
-                        bool exact = false,
-                        unsigned int width = 0,
-                        unsigned int height = 0) const;
+        GeoImage crop( 
+            const GeoExtent& extent,
+            bool exact = false,
+            unsigned int width = 0,
+            unsigned int height = 0) const;
 
         /**
          * Warps the image into a new spatial reference system.
@@ -263,14 +274,20 @@ namespace osgEarth
          *      New pixel size for the output image. Be default, the method will automatically
          *      calculate a new pixel size.
          */
-        GeoImage* reproject(
+        GeoImage reproject(
             const SpatialReference* to_srs,
             const GeoExtent* to_extent = 0,
             unsigned int width = 0,
             unsigned int height = 0) const;
 
-
-        GeoImage* addTransparentBorder(bool leftBorder=true, bool rightBorder=true, bool bottomBorder=true, bool topBorder=true);
+        /**
+         * TODO: needs docs
+         */
+        GeoImage addTransparentBorder(
+            bool leftBorder=true, 
+            bool rightBorder=true, 
+            bool bottomBorder=true, 
+            bool topBorder=true);
 
         /**
          * Returns the underlying OSG image and releases the reference pointer.
@@ -287,14 +304,17 @@ namespace osgEarth
         GeoExtent _extent;
     };
 
-    typedef std::vector< osg::ref_ptr<GeoImage> > GeoImageList;
+    typedef std::vector<GeoImage> GeoImageVector;
 
     /**
      * A georeferenced heightfield.
      */
-    class OSGEARTH_EXPORT GeoHeightField : public osg::Referenced
+    class OSGEARTH_EXPORT GeoHeightField
     {
     public:
+        /** Constructs an empty (invalid) heightfield. */
+        GeoHeightField();
+
         /**
          * Constructs a new georeferenced heightfield.
          */
@@ -302,6 +322,13 @@ namespace osgEarth
             osg::HeightField* heightField,
             const GeoExtent& extent,
             const VerticalSpatialReference* vsrs);
+
+        static GeoHeightField INVALID;
+
+        /**
+         * True if this is a valid heightfield. 
+         */
+        bool valid() const { return _heightField.valid(); }
 
         /**
          * Gets the elevation value at a specified point.
@@ -333,12 +360,12 @@ namespace osgEarth
          * Subsamples the heightfield, returning a new heightfield corresponding ///and Takes the source heightfield and its extent, and takes a subsample that corresponds to 
          * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
          */
-        GeoHeightField* createSubSample( const GeoExtent& destEx, ElevationInterpolation interpolation) const;
+        GeoHeightField createSubSample( const GeoExtent& destEx, ElevationInterpolation interpolation) const;
 
         /**
          * Gets the geospatial extent of the heightfield.
          */
-        const GeoExtent& getGeoExtent() const;
+        const GeoExtent& getExtent() const;
 
         /**
          * Gets a pointer to the underlying OSG heightfield.
@@ -357,7 +384,7 @@ namespace osgEarth
         osg::ref_ptr<const VerticalSpatialReference> _vsrs;
     };
 
-	typedef std::vector< osg::ref_ptr< GeoHeightField > > GeoHeightFieldList;
+	typedef std::vector<GeoHeightField> GeoHeightFieldVector;
 
     
     /**
@@ -374,7 +401,7 @@ namespace osgEarth
         const std::string& getName() const { return _name; }
 
         /** Sets the underlying heightfield data */
-        void setHeightField( const GeoHeightField* hf );
+        void setHeightField( const GeoHeightField& hf );
 
         /** Queries to geoid for the height offset at the specified coordinates. */
         float getOffset(
@@ -393,7 +420,7 @@ namespace osgEarth
 
     private:
         std::string _name;
-        osg::ref_ptr<const GeoHeightField> _hf;
+        GeoHeightField _hf;
         Units _units;
         bool _valid;
         void validate();

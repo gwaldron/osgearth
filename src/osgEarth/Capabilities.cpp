@@ -132,7 +132,10 @@ _supportsTwoSidedStencil( false )
         _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  Supports GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
-        _supportsTextureArrays = osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
+        _supportsTextureArrays = 
+            _supportsGLSL &&
+            osg::getGLVersionNumber() >= 2.0 && // hopefully this will detect Intel cards
+            osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
         OE_INFO << LC << "  Supports texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
         _supportsTexture3D = osg::isGLExtensionSupported( id, "GL_EXT_texture3D" );

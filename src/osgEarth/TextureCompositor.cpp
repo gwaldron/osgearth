@@ -144,7 +144,7 @@ static char source_array_fragMain[] =
     "} \n";
 
 static osg::StateSet*
-createTexture2DArray( const GeoImageList& layerImages, const GeoExtent& tileExtent )
+createTexture2DArray( const GeoImageVector& layerImages, const GeoExtent& tileExtent )
 {
     osg::StateSet* stateSet = new osg::StateSet();
 
@@ -169,10 +169,10 @@ createTexture2DArray( const GeoImageList& layerImages, const GeoExtent& tileExte
     composite->setInternalFormat( GL_RGBA );
 
     int layerNum = 0;
-    for( GeoImageList::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
+    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
     {
-        const GeoImage* geoImage = i->get();
-        osg::ref_ptr<osg::Image> image = geoImage->getImage();
+        const GeoImage& geoImage = *i;
+        osg::ref_ptr<osg::Image> image = geoImage.getImage();
 
         // Because all tex2darray layers must be identical in format:
         if ( image->getPixelFormat() != GL_RGBA )
@@ -201,7 +201,7 @@ createTexture2DArray( const GeoImageList& layerImages, const GeoExtent& tileExte
             
         // record the proper texture offset/scale for this layer. this accounts for subregions that
         // are used when referencing lower LODs.
-        const GeoExtent& layerExtent = geoImage->getExtent();
+        const GeoExtent& layerExtent = geoImage.getExtent();
 
         region._xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
         region._yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
@@ -260,11 +260,168 @@ createTexture2DArray( const GeoImageList& layerImages, const GeoExtent& tileExte
 
 //------------------------------------------------------------------------
 
+//NOTE: This code is exactly the same as for Texture2DArray, but uses a Texture3D instead.
+//      And doesn't work.
+
+static char source_3d_fragMain[] =
+
+    "varying vec3 normal, lightDir, halfVector; \n"
+
+    "uniform float osgearth_region[256]; \n"
+    "uniform int   osgearth_region_count; \n"
+    "uniform sampler3D tex0; \n"
+
+    "uniform float osgearth_imagelayer_opacity[128]; \n"
+
+    "void main(void) \n"
+    "{ \n"
+    "    vec3 color = vec3(1,1,1); \n"
+    "    for(int i=0; i<osgearth_region_count; i++) \n"
+    "    { \n"
+    "        int j = 8*i; \n"
+    "        float tx   = osgearth_region[j];   \n"
+    "        float ty   = osgearth_region[j+1]; \n"
+    "        float tw   = osgearth_region[j+2]; \n"
+    "        float th   = osgearth_region[j+3]; \n"
+    "        float xoff = osgearth_region[j+4]; \n"
+    "        float yoff = osgearth_region[j+5]; \n"
+    "        float xsca = osgearth_region[j+6]; \n"
+    "        float ysca = osgearth_region[j+7]; \n"
+
+    "        float opac = osgearth_imagelayer_opacity[i]; \n"
+
+    "        float u = tx + ( xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
+    "        float v = ty + ( yoff + ysca * gl_TexCoord[0].t ) * th; \n"
+
+    "        float w = (float)i/(float)osgearth_region_count; \n"
+    "        vec4 texel = texture3D( tex0, vec3(u,v,w) ); \n"
+    "        color = mix(color, texel.rgb, texel.a * opac); \n"
+    "    } \n"
+    "    gl_FragColor = vec4(color, 1); \n"
+    "} \n";
+
 static osg::StateSet*
-createTexture3D( const GeoImageList& layerImages, const GeoExtent& tileExtent )
+createTexture3D( const GeoImageVector& layerImages, const GeoExtent& tileExtent )
 {
-    OE_WARN << LC << "Texture 3D technique not yet implemented!" << std::endl;
-    return new osg::StateSet();
+    osg::StateSet* stateSet = new osg::StateSet();
+
+    // Composite all the image layer images into a single composite image.
+    //
+    // NOTE!
+    // This should work if images are different sizes, BUT it will NOT work if they use
+    // different locators. In other words, this will only work if the texture coordinate
+    // pair (u,v) is the SAME across all image layers for a given vertex. That's because
+    // GLSL will only support one tex-coord pair per texture unit, and we are doing the
+    // compositing so we only need to use one texture unit.
+
+    LayerTexRegionList regions;
+
+    int texWidth = 0, texHeight = 0;
+
+    typedef std::vector<osg::ref_ptr<osg::Image> > ImageVec;
+    ImageVec images;
+    images.reserve( layerImages.size() );
+
+    int layerNum = 0;
+    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
+    {
+        const GeoImage& geoImage = *i;
+        osg::ref_ptr<osg::Image> image = geoImage.getImage();
+
+        // Because all tex2darray layers must be identical in format:
+        if ( image->getPixelFormat() != GL_RGBA )
+            image = ImageUtils::convertToRGBA( image );
+
+        // TODO: reconsider.. perhaps grow the tex to the max layer size instead?
+        if ( image->s() != 256 || image->t() != 256 )
+            image = ImageUtils::resizeImage( image, 256, 256 );
+
+        // add the layer image to the composite.
+        images.push_back( image.get() );
+
+        // TODO: optimize this away
+        LayerTexRegion region;
+        region._px = 0;
+        region._py = 0;
+        region._pw = image->s();
+        region._ph = image->t();
+
+        // track the maximum texture size
+        if ( image->s() > texWidth )
+            texWidth = image->s();
+
+        if ( image->t() > texHeight )
+            texHeight = image->t();
+            
+        // record the proper texture offset/scale for this layer. this accounts for subregions that
+        // are used when referencing lower LODs.
+        const GeoExtent& layerExtent = geoImage.getExtent();
+
+        region._xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
+        region._yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
+
+        region._xscale = tileExtent.width() / layerExtent.width();
+        region._yscale = tileExtent.height() / layerExtent.height();
+            
+        regions.push_back( region );
+    }
+
+    // build an image stack:
+    osg::Image* image = new osg::Image();
+    image->allocateImage( texWidth, texHeight, layerImages.size(), GL_RGBA, GL_UNSIGNED_BYTE );
+    int r=0;
+    for( ImageVec::const_iterator i=images.begin(); i != images.end(); ++i, ++r )
+        ImageUtils::copyAsSubImage( i->get(), image, 0, 0, r );
+
+    // put it in a 3D texture:
+    osg::Texture3D* texture = new osg::Texture3D( image );
+
+    // no mipmapping for a 3D texture
+    texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+
+    texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
+    texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
+    texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
+
+    // build the uniforms.
+    //    
+    // The uniform array contains 8 floats for each region:
+    //   tx, ty : origin texture coordinates in the composite-image space
+    //   tw, th : width and height in composite-image space
+    //   xoff, yoff : x- and y- offsets within texture space
+    //   xsca, ysca : x- and y- scale factors within texture space
+    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_region", regions.size() * 8 );
+    int p=0;
+    for( unsigned int i=0; i<regions.size(); ++i )
+    {
+        LayerTexRegion& region = regions[i];
+
+        // next calculate the texture space extents and store those in uniforms.
+        // (GW: there is no actual reason to store these in the region structure)
+        region._tx = (float)region._px/(float)texWidth;
+        region._ty = (float)region._py/(float)texHeight;
+        region._tw = (float)region._pw/(float)texWidth;
+        region._th = (float)region._ph/(float)texHeight;
+
+        texInfoArray->setElement( p++, region._tx );
+        texInfoArray->setElement( p++, region._ty );
+        texInfoArray->setElement( p++, region._tw );
+        texInfoArray->setElement( p++, region._th );
+        texInfoArray->setElement( p++, region._xoffset );
+        texInfoArray->setElement( p++, region._yoffset );
+        texInfoArray->setElement( p++, region._xscale );
+        texInfoArray->setElement( p++, region._yscale );
+
+        //OE_NOTICE << LC
+        //    << "Region " << i << ": size=(" << region._pw << ", " << region._ph << ")" << std::endl;
+    }
+
+    stateSet->setTextureAttributeAndModes( 0, texture, osg::StateAttribute::ON ); //TODO: un-hard-code the texture unit, perhaps
+    stateSet->addUniform( texInfoArray );
+    stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( (int)regions.size() );
+
+    return stateSet;
 }
 
 //------------------------------------------------------------------------
@@ -306,7 +463,7 @@ static char source_atlas_fragMain[] =
     "} \n";
 
 static osg::StateSet*
-createTextureAtlas( const GeoImageList& layerImages, const GeoExtent& tileExtent )
+createTextureAtlas( const GeoImageVector& layerImages, const GeoExtent& tileExtent )
 {
     // Composite all the image layer images into a single composite image.
     //
@@ -325,10 +482,10 @@ createTextureAtlas( const GeoImageList& layerImages, const GeoExtent& tileExtent
     LayerTexRegionList regions;
 
     int layerNum = 0;
-    for( GeoImageList::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
+    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
     {
-        const GeoImage* geoImage = i->get();
-        osg::ref_ptr<osg::Image> image = geoImage->getImage();
+        const GeoImage& geoImage = *i;
+        osg::ref_ptr<osg::Image> image = geoImage.getImage();
 
         LayerTexRegion region;
 
@@ -355,7 +512,7 @@ createTextureAtlas( const GeoImageList& layerImages, const GeoExtent& tileExtent
         }
         cx += region._pw;
 
-        const GeoExtent& layerExtent = geoImage->getExtent();
+        const GeoExtent& layerExtent = geoImage.getExtent();
 
         region._xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
         region._yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
@@ -384,12 +541,12 @@ createTextureAtlas( const GeoImageList& layerImages, const GeoExtent& tileExtent
     //   xsca, ysca : x- and y- scale factors within texture space
     osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_region", regions.size() * 8 );
     int p=0, r=0;
-    for( GeoImageList::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++r )
+    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++r )
     {
         LayerTexRegion& region = regions[r];
 
         // copy the image into the composite:
-        ImageUtils::copyAsSubImage( i->get()->getImage(), out_image, region._px, region._py );
+        ImageUtils::copyAsSubImage( i->getImage(), out_image, region._px, region._py );
 
         // next calculate the texture space extents and store those in uniforms.
         // (GW: there is no actual reason to store these in the region structure)
@@ -421,7 +578,7 @@ createTextureAtlas( const GeoImageList& layerImages, const GeoExtent& tileExtent
 //------------------------------------------------------------------------
 
 static osg::StateSet*
-createMultiTexture( const GeoImageList& layerImages, const GeoExtent& outputExtent )
+createMultiTexture( const GeoImageVector& layerImages, const GeoExtent& outputExtent )
 {
     OE_WARN << LC << "Multi-texture technique not yet implemented!" << std::endl;
     return new osg::StateSet();
@@ -430,7 +587,7 @@ createMultiTexture( const GeoImageList& layerImages, const GeoExtent& outputExte
 //------------------------------------------------------------------------
 
 static osg::StateSet*
-createSingleTexture( const GeoImageList& layerImages, const GeoExtent& outputExtent )
+createSingleTexture( const GeoImageVector& layerImages, const GeoExtent& outputExtent )
 {
     OE_WARN << LC << "Single-texture technique not yet implemented!" << std::endl;
     return new osg::StateSet();
@@ -445,7 +602,7 @@ _tech( TECH_UNSET )
 }
 
 osg::StateSet*
-TextureCompositor::createStateSet( const GeoImageList& layerImages, const GeoExtent& outputExtent ) const
+TextureCompositor::createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const
 {
     // first time through, poll the system capabilities to figure out
     // which technique to use.
@@ -505,6 +662,8 @@ TextureCompositor::init()
     else if ( caps.supportsTexture3D() )
     {
         _tech = TECH_TEXTURE_3D;
+        vertShader = new osg::Shader( osg::Shader::VERTEX, std::string( source_vertMain ) );
+        fragShader = new osg::Shader( osg::Shader::FRAGMENT, std::string( source_3d_fragMain ) );
         OE_INFO << LC << "technique = texture3d" << std::endl;
     }
     else if ( caps.supportsGLSL() )
@@ -524,7 +683,6 @@ TextureCompositor::init()
         _tech = TECH_SINGLE_TEXTURE;
         OE_INFO << LC << "technique = single texture" << std::endl;
     }
-
 
     if ( vertShader && fragShader )
     {

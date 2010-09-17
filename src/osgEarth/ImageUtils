@@ -34,7 +34,7 @@ namespace osgEarth
         static bool copyAsSubImage(
             const osg::Image* src, 
             osg::Image* dst, 
-            int dst_start_col, int dst_start_row );
+            int dst_start_col, int dst_start_row, int dst_start_img=0 );
 
         /**
          * Resizes an image using nearest-neighbor resampling. Returns a new image, leaving

@@ -49,8 +49,8 @@ int main(int argc, char** argv)
       osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_simple", opt );
 
       TileKey key(0, 0, 0, layer->getProfile());
-	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
-	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key.str() + std::string(".png"));
+	  GeoImage image = layer->createImage( key );
+	  osgDB::writeImageFile(*image.getImage(), layer->getName()+key.str() + std::string(".png"));
   }
 
   //Mosaic test.  Request a tile in the global geodetic profile from a layer with a geographic SRS but a different tiling scheme.
@@ -60,8 +60,8 @@ int main(int argc, char** argv)
       osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mosaic", opt );
 
       TileKey key(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
-	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key.str() + std::string(".png"));
+	  GeoImage image = layer->createImage( key );
+	  osgDB::writeImageFile(*image.getImage(), layer->getName()+key.str() + std::string(".png"));
   }
 
   //Reprojection.  Request a UTM image from a global geodetic profile
@@ -75,8 +75,8 @@ int main(int argc, char** argv)
 	  layer->reprojectedTileSize() = 512;
 
       TileKey key(0, 0, 0, Profile::create("epsg:26917", 560725, 4385762, 573866, 4400705));
-	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
-	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key.str() + std::string(".png"));
+	  GeoImage image = layer->createImage( key );
+	  osgDB::writeImageFile(*image.getImage(), layer->getName()+key.str() + std::string(".png"));
   }
 
   //Mercator.  Test Mercator fast path.
@@ -93,12 +93,12 @@ int main(int argc, char** argv)
 
 	  //Request a mercator image using the mercator fast path, the default
 	  TileKey key(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
-	  if (!image->getSRS()->isMercator())
+	  GeoImage image = layer->createImage( key );
+	  if (!image.getSRS()->isMercator())
 	  {
-		  OE_NOTICE << "Error:  Should be using mercator fast path but returned SRS is " << image->getSRS()->getWKT() << std::endl;
+		  OE_NOTICE << "Error:  Should be using mercator fast path but returned SRS is " << image.getSRS()->getWKT() << std::endl;
 	  }
-	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key.str() + std::string(".png"));
+	  osgDB::writeImageFile(*image.getImage(), layer->getName()+key.str() + std::string(".png"));
   }
 
     //Mercator.  Request a geodetic reprojected image from a mercator source
@@ -117,12 +117,12 @@ int main(int argc, char** argv)
 
 	  //Request an image from the mercator source.  Should be reprojected to geodetic
 	  TileKey key(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-	  osg::ref_ptr<GeoImage> image = layer->createImage( key );
-	  if (!image->getSRS()->isGeographic())
+	  GeoImage image = layer->createImage( key );
+	  if (!image.getSRS()->isGeographic())
 	  {
-		  OE_NOTICE << "Error:  Should have reprojected image to geodetic but returned SRS is  " << image->getSRS()->getWKT() << std::endl;
+		  OE_NOTICE << "Error:  Should have reprojected image to geodetic but returned SRS is  " << image.getSRS()->getWKT() << std::endl;
 	  }
-	  osgDB::writeImageFile(*image->getImage(), layer->getName()+key.str() + std::string(".png"));
+	  osgDB::writeImageFile(*image.getImage(), layer->getName()+key.str() + std::string(".png"));
   }
 
   return 0;

@@ -39,7 +39,7 @@ namespace osgEarth
          * composite the list of layer images such that they result in the specified
          * output extent.
          */
-        osg::StateSet* createStateSet( const GeoImageList& layerImages, const GeoExtent& outputExtent ) const;
+        osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const;
 
         /**
          * Some composition techniques require a shader program. This method returns the shader program

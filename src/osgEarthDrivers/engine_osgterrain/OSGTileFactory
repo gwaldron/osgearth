@@ -101,7 +101,8 @@ public:
 
 
 
-    GeoImage* createValidGeoImage(MapLayer* layer,
+    GeoImage createValidGeoImage(
+        MapLayer* layer,
         const TileKey& key,
         ProgressCallback* progress  = 0);
 
@@ -169,7 +170,7 @@ protected:
 
     unsigned int _engineId;
     OSGTerrainOptions _terrainOptions;
-    L2Cache* _L2cache;
+//    L2Cache* _L2cache;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_TILE_FACTORY_H

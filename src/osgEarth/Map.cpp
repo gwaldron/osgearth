@@ -564,7 +564,7 @@ Map::createHeightField( const TileKey& key,
     LayerValidMap layerValidMap;
 
 	//Get a HeightField for each of the enabled layers
-	GeoHeightFieldList heightFields;
+	GeoHeightFieldVector heightFields;
 
     unsigned int numValidHeightFields = 0;
 
@@ -580,8 +580,8 @@ Map::createHeightField( const TileKey& key,
             if (hf.valid())
             {
                 numValidHeightFields++;
-                heightFields.push_back( new GeoHeightField(
-                    hf.get(), key.getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
+                GeoHeightField ghf( hf.get(), key.getGeoExtent(), layer->getProfile()->getVerticalSRS() );
+                heightFields.push_back( ghf );
             }
         }
     }
@@ -616,7 +616,7 @@ Map::createHeightField( const TileKey& key,
                     if ( hf_key.getLevelOfDetail() < lowestLOD )
                         lowestLOD = hf_key.getLevelOfDetail();
 
-                    heightFields.push_back( new GeoHeightField(
+                    heightFields.push_back( GeoHeightField(
                         hf.get(), hf_key.getGeoExtent(), layer->getProfile()->getVerticalSRS() ) );
                 }
             }
@@ -633,12 +633,12 @@ Map::createHeightField( const TileKey& key,
         if ( lowestLOD == key.getLevelOfDetail() )
         {
 		    //If we only have on heightfield, just return it.
-		    result = heightFields[0]->takeHeightField();
+		    result = heightFields[0].takeHeightField();
         }
         else
         {
-            osg::ref_ptr<GeoHeightField> geoHF = heightFields[0]->createSubSample( key.getGeoExtent(), interpolation);
-            result = geoHF->takeHeightField();
+            GeoHeightField geoHF = heightFields[0].createSubSample( key.getGeoExtent(), interpolation);
+            result = geoHF.takeHeightField();
             hfInitialized = true;
         }
 	}
@@ -648,10 +648,12 @@ Map::createHeightField( const TileKey& key,
 		unsigned int width = 0;
 		unsigned int height = 0;
 
-		for (GeoHeightFieldList::const_iterator i = heightFields.begin(); i < heightFields.end(); ++i)
+		for (GeoHeightFieldVector::const_iterator i = heightFields.begin(); i < heightFields.end(); ++i)
 		{
-			if (i->get()->getHeightField()->getNumColumns() > width) width = i->get()->getHeightField()->getNumColumns();
-			if (i->get()->getHeightField()->getNumRows() > height) height = i->get()->getHeightField()->getNumRows();
+			if (i->getHeightField()->getNumColumns() > width) 
+                width = i->getHeightField()->getNumColumns();
+			if (i->getHeightField()->getNumRows() > height) 
+                height = i->getHeightField()->getNumRows();
 		}
 		result = new osg::HeightField();
 		result->allocate( width, height );
@@ -674,12 +676,12 @@ Map::createHeightField( const TileKey& key,
 
                 //Collect elevations from all of the layers
                 std::vector<float> elevations;
-                for (GeoHeightFieldList::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
+                for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                 {
-                    GeoHeightField* geoHF = itr->get();
+                    const GeoHeightField& geoHF = *itr;
 
                     float elevation = 0.0f;
-                    if ( geoHF->getElevation(key.getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
+                    if ( geoHF.getElevation(key.getGeoExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
                     {
                         if (elevation != NO_DATA_VALUE)
                         {

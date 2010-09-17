@@ -17,106 +17,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MapOptions>
-#include <osg/Notify>
-#include <OpenThreads/Thread>
 
 using namespace osgEarth;
 
-std::string MapOptions::OPTIONS_TAG = "__osgEarth::MapOptions";
-
-//----------------------------------------------------------------------------
-
-static TerrainOptions s_defaultTerrainOptions;
-
-//----------------------------------------------------------------------------
-
-MapOptions::MapOptions( const Config& conf ) :
-ConfigOptions( conf ),
-_proxySettings( ProxySettings() ),
-_cacheOnly( false ),
-_enableLighting( true ),
-_terrainOptions( 0L )
+void
+MapOptions::fromConfig( const Config& conf )
 {
-    mergeConfig( conf );
-}
+    conf.getIfSet( "name", _name );
+    conf.getObjIfSet( "profile", _profileOptions );
 
-MapOptions::MapOptions( const TerrainOptions& to ) :
-_proxySettings( ProxySettings() ),
-_cacheOnly( false ),
-_enableLighting( true ),
-_terrainOptions( 0L )
-{
-    setTerrainOptions( to );
-}
-
-
-MapOptions::~MapOptions()
-{
-    if ( _terrainOptions )
-    {
-        delete _terrainOptions;
-        _terrainOptions = 0L;
-    }
+    // all variations:
+    conf.getIfSet( "type", "geocentric", _cstype, CSTYPE_GEOCENTRIC );
+    conf.getIfSet( "type", "globe",      _cstype, CSTYPE_GEOCENTRIC );
+    conf.getIfSet( "type", "round",      _cstype, CSTYPE_GEOCENTRIC );
+    conf.getIfSet( "type", "projected",  _cstype, CSTYPE_PROJECTED );
+    conf.getIfSet( "type", "flat",       _cstype, CSTYPE_PROJECTED );
+    conf.getIfSet( "type", "cube",       _cstype, CSTYPE_GEOCENTRIC_CUBE );
 }
 
 Config
 MapOptions::getConfig() const
 {
-    Config conf = ConfigOptions::getConfig();
-    conf.key() = "options";
+    Config conf; // get a fresh one since this is a final object // = ConfigOptions::getConfig();
 
-    conf.updateObjIfSet( "proxy", _proxySettings );
-    conf.updateIfSet( "cache_only", _cacheOnly );
-    conf.updateIfSet( "lighting", _enableLighting );
-    conf.updateIfSet( "terrain", _terrainOptionsConf );
+    conf.updateIfSet( "name", _name );
+    conf.updateObjIfSet( "profile", _profileOptions );
+
+    // all variations:
+    conf.updateIfSet( "type", "geocentric", _cstype, CSTYPE_GEOCENTRIC );
+    conf.updateIfSet( "type", "projected",  _cstype, CSTYPE_PROJECTED );
+    conf.updateIfSet( "type", "cube",       _cstype, CSTYPE_GEOCENTRIC_CUBE );
 
     return conf;
-}
-
-void
-MapOptions::mergeConfig( const Config& conf )
-{
-    ConfigOptions::mergeConfig( conf );
-
-    conf.getObjIfSet( "proxy", _proxySettings );
-    conf.getIfSet( "cache_only", _cacheOnly );
-    conf.getIfSet( "lighting", _enableLighting );
-
-    if ( conf.hasChild( "terrain" ) )
-    {
-        _terrainOptionsConf = conf.child( "terrain" );
-        if ( _terrainOptions )
-        {
-            delete _terrainOptions;
-            _terrainOptions = 0L;
-        }
-    }
-}
-
-void
-MapOptions::setTerrainOptions( const TerrainOptions& options )
-{
-    _terrainOptionsConf = options.getConfig();
-    if ( _terrainOptions )
-    {
-        delete _terrainOptions;
-        _terrainOptions = 0L;
-    }
-}
-
-const TerrainOptions&
-MapOptions::getTerrainOptions() const
-{
-    if ( _terrainOptionsConf.isSet() )
-    {
-        if ( !_terrainOptions )
-        {
-            const_cast<MapOptions*>(this)->_terrainOptions = new TerrainOptions( _terrainOptionsConf.value() );
-        }
-        return *_terrainOptions;
-    }
-    else
-    {
-        return s_defaultTerrainOptions;
-    }
 }

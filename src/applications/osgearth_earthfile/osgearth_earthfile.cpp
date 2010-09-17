@@ -45,12 +45,12 @@ int main(int argc, char** argv)
     if ( earthReader.readXML( infile ) )
     {
         osg::ref_ptr<Map> map = earthReader.getMap();
-        MapOptions mapOptions = earthReader.getMapOptions();
+        MapNodeOptions mapOptions = earthReader.getMapNodeOptions();
 
         // now write it back out
         EarthFile earthWriter;
         earthWriter.setMap( map.get() );
-        earthWriter.setMapOptions( mapOptions );
+        earthWriter.setMapNodeOptions( mapOptions );
 
         if ( !earthWriter.writeXML( outfile ) ) {
             OE_NOTICE 

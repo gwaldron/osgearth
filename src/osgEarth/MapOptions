@@ -23,6 +23,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Profile>
 #include <osgEarth/TerrainOptions>
 
 namespace osgEarth
@@ -30,54 +31,65 @@ namespace osgEarth
     /**
      * Configuration for a runtime map.
      */
-    class OSGEARTH_EXPORT MapOptions : public ConfigOptions
+    class OSGEARTH_EXPORT MapOptions : public ConfigOptions // no export (header-only)
     {
     public:
-        MapOptions( const Config& conf =Config() );
-        MapOptions( const TerrainOptions& terrainOpts );
-        virtual ~MapOptions();
+        enum CoordinateSystemType
+        {
+            CSTYPE_GEOCENTRIC,
+            CSTYPE_GEOCENTRIC_CUBE,
+            CSTYPE_PROJECTED
+        };		
 
-        /** 
-         * The hostname/port of a proxy server to use for all HTTP communications.
-         * Default = no proxy.
-         */
-        optional<ProxySettings>& proxySettings() { return _proxySettings; }
-        const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
-
-        /**
-         * Whether the map should be run exclusively off of the cache.
-         * Default = false
-         */
-        optional<bool>& cacheOnly() { return _cacheOnly; }
-        const optional<bool>& cacheOnly() const { return _cacheOnly; }
+    public:
+        MapOptions( const ConfigOptions& options =ConfigOptions() )
+            : ConfigOptions( options ),
+              _cstype( CSTYPE_GEOCENTRIC )
+        {
+            fromConfig(_conf);
+        }
 
         /**
-         * Whether to explicity enable or disable GL lighting on the map node.
+         * Human-readable name of the map.
          */
-        optional<bool>& enableLighting() { return _enableLighting; }
-        const optional<bool>& enableLighting() const { return _enableLighting; } 
+        optional<std::string> name() { return _name; }
+        const optional<std::string> name() const { return _name; }
 
         /**
-         * Options to conigure the terrain engine (the component that renders the
-         * terrain surface).
+         * The coordinate system type of the map (default is CSTYPE_GEOCENTRIC)
          */
-        const TerrainOptions& getTerrainOptions() const;
-        void setTerrainOptions( const TerrainOptions& options );        
+        optional<CoordinateSystemType>& coordSysType() { return _cstype; }
+        const optional<CoordinateSystemType>& coordSysType() const { return _cstype; }
+
+        /**
+         * An explicit master profile for the Map. Usually this is calculated automatically,
+         * but in some cases you need to set it manually.
+         */
+        optional<ProfileOptions>& profile() { return _profileOptions; }
+        const optional<ProfileOptions>& profile() const { return _profileOptions; }
+
+        /**
+         * A reference location that drivers can use to load data from relative locations.
+         * NOTE: this is a runtime-only property and is NOT serialized in the ConfigOptions.
+         */
+        optional<std::string>& referenceURI() { return _referenceURI; }
+        const optional<std::string>& referenceURI() const { return _referenceURI; }
     
     public:
-        virtual Config getConfig() const;
-        virtual void mergeConfig( const Config& conf );
+        Config getConfig() const;
 
-        static std::string OPTIONS_TAG;
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
 
     private:
-            
-        optional<ProxySettings> _proxySettings;
-        optional<bool> _cacheOnly;
-        optional<bool> _enableLighting;
+        void fromConfig( const Config& conf );
 
-        optional<Config> _terrainOptionsConf;
-        TerrainOptions* _terrainOptions;
+        optional<std::string>          _name;
+        optional<ProfileOptions>       _profileOptions;
+        optional<CoordinateSystemType> _cstype;
+        optional<std::string>          _referenceURI;
     };
 }
 

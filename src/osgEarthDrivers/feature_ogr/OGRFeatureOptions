@@ -42,8 +42,8 @@ namespace osgEarth { namespace Drivers
         optional<Config>& geometryConfig() { return _geometryConf; }
         const optional<Config>& geometryConfig() const { return _geometryConf; }
 
-        optional<Config>& geometryProfileConfig() { return _geometryProfileConf; }
-        const optional<Config>& geometryProfileConfig() const { return _geometryProfileConf; }
+        optional<Config>& geometryProfileOptions() { return _geometryProfileConf; }
+        const optional<Config>& geometryProfileOptions() const { return _geometryProfileConf; }
 
         osg::ref_ptr<Symbology::Geometry>& geometry() { return _geometry; }
         const osg::ref_ptr<Symbology::Geometry>& geometry() const { return _geometry; }

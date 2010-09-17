@@ -30,9 +30,10 @@ using namespace osgEarth;
 
 #define LC "[Profile] "
 
-/***********************************************************************/
+//------------------------------------------------------------------------
 
-ProfileConfig::ProfileConfig() :
+ProfileOptions::ProfileOptions( const ConfigOptions& options ) :
+ConfigOptions( options ),
 _namedProfile( "" ),
 _srsInitString( "" ),
 _vsrsInitString( "" ),
@@ -40,11 +41,11 @@ _bounds( Bounds() ),
 _numTilesWideAtLod0( 1 ),
 _numTilesHighAtLod0( 1 )
 {
-    //NOP
+    fromConfig( _conf );
 }
 
-ProfileConfig::ProfileConfig( const std::string& namedProfile ) :
-_namedProfile( namedProfile, namedProfile ),
+ProfileOptions::ProfileOptions( const std::string& namedProfile ) :
+_namedProfile( namedProfile ),
 _srsInitString( "" ),
 _vsrsInitString( "" ),
 _bounds( Bounds() ),
@@ -54,22 +55,14 @@ _numTilesHighAtLod0( 1 )
     //nop
 }
 
-ProfileConfig::ProfileConfig( const Config& conf ) :
-_namedProfile( "" ),
-_srsInitString( "" ),
-_vsrsInitString( "" ),
-_bounds( Bounds() ),
-_numTilesWideAtLod0( 1 ),
-_numTilesHighAtLod0( 1 )
+void
+ProfileOptions::fromConfig( const Config& conf )
 {
     if ( !conf.value().empty() )
         _namedProfile = conf.value();
 
-    if ( !conf.value( "srs" ).empty() )
-        _srsInitString = conf.value( "srs" );
-
-    if ( !conf.value( "vsrs" ).empty() )
-        _vsrsInitString = conf.value( "vsrs" );
+    conf.getIfSet( "srs", _srsInitString );
+    conf.getIfSet( "vsrs", _vsrsInitString );
 
     if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
     {
@@ -80,42 +73,39 @@ _numTilesHighAtLod0( 1 )
             conf.value<double>( "ymax", 0 ) );
     }
 
-    conf.getIfSet<int>( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
-    conf.getIfSet<int>( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+    conf.getIfSet( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+    conf.getIfSet( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
 }
 
 Config
-ProfileConfig::getConfig( const std::string& name ) const
+ProfileOptions::getConfig() const
 {
-    Config conf( name.empty() ? "profile" : name );
+    Config conf( "profile" );
     if ( _namedProfile.isSet() )
     {
         conf.value() = _namedProfile.value();
     }
     else
     {
-        if ( _srsInitString.isSet() )
-            conf.add( "srs", _srsInitString.value() );
-
-        if ( _vsrsInitString.isSet() )
-            conf.add( "vsrs", _vsrsInitString.value() );
+        conf.updateIfSet( "srs", _srsInitString );
+        conf.updateIfSet( "vsrs", _vsrsInitString );
 
         if ( _bounds.isSet() )
         {
-            conf.add( "xmin", toString(_bounds->xMin()) );
-            conf.add( "ymin", toString(_bounds->yMin()) );
-            conf.add( "xmax", toString(_bounds->xMax()) );
-            conf.add( "ymax", toString(_bounds->yMax()) );
+            conf.update( "xmin", toString(_bounds->xMin()) );
+            conf.update( "ymin", toString(_bounds->yMin()) );
+            conf.update( "xmax", toString(_bounds->xMax()) );
+            conf.update( "ymax", toString(_bounds->yMax()) );
         }
 
-        conf.addIfSet( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
-        conf.addIfSet( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
+        conf.updateIfSet( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
+        conf.updateIfSet( "num_tiles_high_at_lod_0", _numTilesHighAtLod0 );
     }
     return conf;
 }
 
 bool
-ProfileConfig::defined() const
+ProfileOptions::defined() const
 {
     return _namedProfile.isSet() || _srsInitString.isSet();
 }
@@ -207,49 +197,49 @@ Profile::create(const std::string& srsInitString,
 }
 
 const Profile*
-Profile::create( const ProfileConfig& conf )
+Profile::create( const ProfileOptions& options )
 {
     const Profile* result = 0L;
 
     // Check for a "well known named" profile:
-    if ( conf.namedProfile().isSet() )
+    if ( options.namedProfile().isSet() )
     {
-        result = osgEarth::Registry::instance()->getNamedProfile( conf.namedProfile().value() );
+        result = osgEarth::Registry::instance()->getNamedProfile( options.namedProfile().value() );
     }
 
     // Next check for a user-defined extents:
-    else if ( conf.srsString().isSet() && conf.bounds().isSet() )
+    else if ( options.srsString().isSet() && options.bounds().isSet() )
     {
-        if ( conf.numTilesWideAtLod0().isSet() && conf.numTilesHighAtLod0().isSet() )
+        if ( options.numTilesWideAtLod0().isSet() && options.numTilesHighAtLod0().isSet() )
         {
             result = Profile::create(
-                conf.srsString().value(),
-                conf.bounds()->xMin(),
-                conf.bounds()->yMin(),
-                conf.bounds()->xMax(),
-                conf.bounds()->yMax(),
-                conf.vsrsString().value(),
-                conf.numTilesWideAtLod0().value(),
-                conf.numTilesHighAtLod0().value() );
+                options.srsString().value(),
+                options.bounds()->xMin(),
+                options.bounds()->yMin(),
+                options.bounds()->xMax(),
+                options.bounds()->yMax(),
+                options.vsrsString().value(),
+                options.numTilesWideAtLod0().value(),
+                options.numTilesHighAtLod0().value() );
         }
         else
         {
             result = Profile::create(
-                conf.srsString().value(),
-                conf.bounds()->xMin(),
-                conf.bounds()->yMin(),
-                conf.bounds()->xMax(),
-                conf.bounds()->yMax(),
-                conf.vsrsString().value() );
+                options.srsString().value(),
+                options.bounds()->xMin(),
+                options.bounds()->yMin(),
+                options.bounds()->xMax(),
+                options.bounds()->yMax(),
+                options.vsrsString().value() );
         }
     }
 
     // Next try SRS with default extents
-    else if ( conf.srsString().isSet() )
+    else if ( options.srsString().isSet() )
     {
         result = Profile::create(
-            conf.srsString().value(),
-            conf.vsrsString().value() );
+            options.srsString().value(),
+            options.vsrsString().value() );
     }
 
     return result;

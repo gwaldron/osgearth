@@ -129,16 +129,16 @@ _map( map )
     init();
 }
 
-MapNode::MapNode( const MapOptions& options ) :
+MapNode::MapNode( const MapNodeOptions& options ) :
 _map( new Map() ),
-_mapOptions( options )
+_mapNodeOptions( options )
 {
     init();
 }
 
-MapNode::MapNode( Map* map, const MapOptions& options ) :
+MapNode::MapNode( Map* map, const MapNodeOptions& options ) :
 _map( map? map : new Map() ),
-_mapOptions( options )
+_mapNodeOptions( options )
 {
     init();
 }
@@ -170,9 +170,9 @@ MapNode::init()
 
     // Set the global proxy settings
     // TODO: this should probably happen elsewhere, like in the registry?
-    if ( _mapOptions.proxySettings().isSet() )
+    if ( _mapNodeOptions.proxySettings().isSet() )
     {
-		HTTPClient::setProxySettings( _mapOptions.proxySettings().get() );
+		HTTPClient::setProxySettings( _mapNodeOptions.proxySettings().get() );
     }
 
     // establish global driver options. These are OSG reader-writer options that
@@ -206,7 +206,7 @@ MapNode::init()
 
     // go through the map and process any already-installed layers:
     // TODO: non-hard-code
-    const TerrainOptions& terrainOptions = _mapOptions.getTerrainOptions();
+    const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
     _terrainEngine = TerrainEngineNodeFactory::create( _map.get(), terrainOptions );
     if ( _terrainEngine.valid() )
     {
@@ -249,9 +249,9 @@ MapNode::init()
 	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
     //ss->setAttributeAndModes( new osg::PolygonOffset( -1, -1 ) );
 
-    if ( _mapOptions.enableLighting().isSet() )
+    if ( _mapNodeOptions.enableLighting().isSet() )
     {
-        ss->setMode( GL_LIGHTING, _mapOptions.enableLighting().value() ? 
+        ss->setMode( GL_LIGHTING, _mapNodeOptions.enableLighting().value() ? 
             osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
     }
@@ -287,10 +287,10 @@ MapNode::getTerrainEngine() const
     return _terrainEngine.get();
 }
 
-const MapOptions&
-MapNode::getMapOptions() const
+const MapNodeOptions&
+MapNode::getMapNodeOptions() const
 {
-    return _mapOptions;
+    return _mapNodeOptions;
 }
 
 MapNode*
@@ -302,7 +302,7 @@ MapNode::findMapNode( osg::Node* graph )
 bool
 MapNode::isGeocentric() const
 {
-    return _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
+    return _map->isGeocentric();
 }
 
 void

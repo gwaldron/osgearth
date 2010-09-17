@@ -368,7 +368,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
             // We do this under 2 conditions when we have mercator tiles:
             // a) The map is geocentric; or
             // b) The map is projected but is also "geographic" (i.e., plate carre)
-            bool isGeocentric = _map->getCoordinateSystemType() != Map::CSTYPE_PROJECTED;
+            bool isGeocentric = _map->isGeocentric();
             bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
             bool canUseMercatorLocator = geoImage.getSRS()->isMercator() && (isGeocentric || isGeographic);
 
@@ -386,7 +386,7 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
             }
 
             //Set the CS to geocentric if we are dealing with a geocentric map
-            if ( _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC || _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE)
+            if ( _map->isGeocentric() )
             {
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
             }

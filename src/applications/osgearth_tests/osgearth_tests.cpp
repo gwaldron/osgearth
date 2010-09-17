@@ -88,7 +88,7 @@ int main(int argc, char** argv)
       opt.tmsType() = "google";
       osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mercator", opt );
 
-	  layer->profileConfig() = ProfileConfig( "global-mercator" );
+	  layer->profileOptions() = ProfileOptions( "global-mercator" );
       layer->useMercatorFastPath() = true;
 
 	  //Request a mercator image using the mercator fast path, the default
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
 	  layer->useMercatorFastPath() = false;
 	  layer->reprojectedTileSize() = 256;
 	  layer->exactCropping() = true;
-	  layer->profileConfig() = ProfileConfig( "global-mercator" );
+	  layer->profileOptions() = ProfileOptions( "global-mercator" );
 
 	  //Request an image from the mercator source.  Should be reprojected to geodetic
 	  TileKey key(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());

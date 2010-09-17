@@ -26,14 +26,12 @@ using namespace OpenThreads;
 
 #define LC "[Map] "
 
-
-Map::Map(const CoordinateSystemType& cstype) :
-osg::Referenced(true),
-_cstype( cstype ),
-_id(-1),
+Map::Map( const MapOptions& options ) :
+osg::Referenced( true ),
+_mapOptions( options ),
+//_id(-1),
 _dataModelRevision(0),
-_cacheConf( CacheConfig() ),
-_profileConf( ProfileConfig() )
+_cacheConf( CacheConfig() )
 {
     // see if a cache if configured via env-var(s).
     if ( getenv( "OSGEARTH_CACHE_PATH" ) )
@@ -56,30 +54,32 @@ _profileConf( ProfileConfig() )
     }
 }
 
-void
-Map::setId( unsigned int id ) {
-    _id = id;
-}
-
-unsigned int
-Map::getId() const {
-    return _id;
-}
+//void
+//Map::setId( unsigned int id ) {
+//    _id = id;
+//}
+//
+//unsigned int
+//Map::getId() const {
+//    return _id;
+//}
 
 Threading::ReadWriteMutex&
 Map::getMapDataMutex() {
     return _mapDataMutex;
 }
 
-const Map::CoordinateSystemType&
-Map::getCoordinateSystemType() const {
-    return _cstype;
-}
+//const Map::CoordinateSystemType&
+//Map::getCoordinateSystemType() const {
+//    return _cstype;
+//}
 
 bool
 Map::isGeocentric() const
 {
-    return _cstype == CSTYPE_GEOCENTRIC || _cstype == CSTYPE_GEOCENTRIC_CUBE;
+    return 
+        _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC ||
+        _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
 }
 
 const osgDB::ReaderWriter::Options*
@@ -92,15 +92,15 @@ Map::setGlobalOptions( const osgDB::ReaderWriter::Options* options ) {
     _globalOptions = options;
 }
 
-const std::string&
-Map::getReferenceURI() const { 
-    return _referenceURI;
-}
-
-void
-Map::setReferenceURI( const std::string& uri ) {
-    _referenceURI = uri;
-}
+//const std::string&
+//Map::getReferenceURI() const { 
+//    return _referenceURI;
+//}
+//
+//void
+//Map::setReferenceURI( const std::string& uri ) {
+//    _referenceURI = uri;
+//}
 
 optional<CacheConfig>&
 Map::cacheConfig() {
@@ -111,14 +111,14 @@ Map::cacheConfig() const {
     return _cacheConf;
 }
 
-optional<ProfileConfig>&
-Map::profileConfig() {
-    return _profileConf;
-}
-const optional<ProfileConfig>&
-Map::profileConfig() const {
-    return _profileConf;
-}
+//optional<ProfileOptions>&
+//Map::profileOptions() {
+//    return _profileConf;
+//}
+//const optional<ProfileOptions>&
+//Map::profileOptions() const {
+//    return _profileConf;
+//}
 
 const MapLayerList& 
 Map::getImageMapLayers() const {
@@ -200,7 +200,7 @@ Map::setCache( Cache* cache)
     if (_cache.get() != cache)
     {
         _cache = cache;
-        _cache->setMapConfigFilename( _referenceURI );
+        _cache->setMapConfigFilename( _mapOptions.referenceURI().value() ); //_referenceURI );
 
         //Propagate the cache to any of our layers
         for (MapLayerList::iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end(); ++i)
@@ -229,7 +229,7 @@ Map::addMapLayer( MapLayer* layer )
     if ( layer )
     {
 	    //Set options for the map from the layer
-		layer->setReferenceURI( getReferenceURI() );
+		layer->setReferenceURI( _mapOptions.referenceURI().value() );
 		if ( _cacheConf.isSet() && _cacheConf->runOffCacheOnly().isSet() && _cacheConf->runOffCacheOnly().get())
 		{
 			layer->cacheOnly() = true;
@@ -355,7 +355,7 @@ Map::addModelLayer( ModelLayer* layer )
             _dataModelRevision++;
         }
 
-        layer->initialize( getReferenceURI(), this );        
+        layer->initialize( _mapOptions.referenceURI().get(), this ); //getReferenceURI(), this );        
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -400,7 +400,7 @@ Map::setTerrainMaskLayer( MaskLayer* layer )
             _terrainMaskLayer = layer;
         }
 
-        layer->initialize( getReferenceURI(), this );
+        layer->initialize( _mapOptions.referenceURI().value(), this ); //getReferenceURI(), this );
 
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -443,17 +443,6 @@ void Map::setContourTransferFunction(osg::TransferFunction1D* transferFunction)
   _contourTransferFunction = transferFunction;
 }
 
-//static const Profile*
-//getSuitableMapProfileFor( const Profile* candidate )
-//{
-//    if ( candidate->getProfileType() == Profile::TYPE_GEODETIC )
-//        return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-//    else if ( candidate->getProfileType() == Profile::TYPE_MERCATOR )
-//        return osgEarth::Registry::instance()->getGlobalMercatorProfile();
-//    else
-//        return candidate;
-//}
-
 void
 Map::calculateProfile()
 {
@@ -461,12 +450,12 @@ Map::calculateProfile()
         return;
 
     osg::ref_ptr<const Profile> userProfile;
-    if ( _profileConf.isSet() )
+    if ( _mapOptions.profile().isSet() )
     {
-        userProfile = Profile::create( _profileConf.get() );
+        userProfile = Profile::create( _mapOptions.profile().value() );
     }
 
-    if ( getCoordinateSystemType() == CSTYPE_GEOCENTRIC )
+    if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC )
     {
         if ( userProfile.valid() )
         {
@@ -490,7 +479,7 @@ Map::calculateProfile()
         }
     }
 
-    else if ( getCoordinateSystemType() == CSTYPE_GEOCENTRIC_CUBE )
+    else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE )
     {
         //If the map type is a Geocentric Cube, set the profile to the cube profile.
         _profile = osgEarth::Registry::instance()->getCubeProfile();

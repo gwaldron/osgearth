@@ -24,6 +24,7 @@
 #include <osgEarth/Caching>
 #include <osgEarth/Profile>
 #include <osgEarth/MapLayer>
+#include <osgEarth/MapOptions>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/MaskLayer>
 #include <osgEarth/ThreadingUtils>
@@ -64,13 +65,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT Map : public osg::Referenced
     {
     public:
-        enum CoordinateSystemType
-        {
-            CSTYPE_GEOCENTRIC,
-            CSTYPE_GEOCENTRIC_CUBE,
-            CSTYPE_PROJECTED
-        };
-		
         enum SamplePolicy
         {
             FIRST_VALID,
@@ -83,14 +77,13 @@ namespace osgEarth
         /**
          * Constructs a new, empty map.
          */
-        Map( const CoordinateSystemType& ctype =CSTYPE_GEOCENTRIC );
+        Map( const MapOptions& options =MapOptions() );
 
     public:
         /**
-         * Gets the coordinate system type for this map. This affects the profile in
-         * which tiles are generated for this map.
+         * Gets the optons with which this map was created.
          */
-        const CoordinateSystemType& getCoordinateSystemType() const;
+        const MapOptions& getMapOptions() const { return _mapOptions; }
 
         /**
          * Gets the map's master profile. This value may not be available until 
@@ -241,13 +234,13 @@ namespace osgEarth
          *
          * Note: Set thie before adding any layers to the map.
          */
-        optional<ProfileConfig>& profileConfig();
-        const optional<ProfileConfig>& profileConfig() const;
+        //optional<ProfileOptions>& profileOptions();
+        //const optional<ProfileOptions>& profileOptions() const;
 
         /**
          * Gets the reference URI. See setReferenceURI for more info.
          */
-        const std::string& getReferenceURI() const;
+        //const std::string& getReferenceURI() const;
 
         /**
          * Sets a reference URI. Usually this is the location of a file from which this map
@@ -256,11 +249,11 @@ namespace osgEarth
          *
          * Note: Set this before adding any layers to the map.
          */
-        void setReferenceURI( const std::string& uri );
+        //void setReferenceURI( const std::string& uri );
 
         // internal.
-        void setId( unsigned int id );
-        unsigned int getId() const;
+        //void setId( unsigned int id );
+        //unsigned int getId() const;
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
@@ -307,6 +300,7 @@ namespace osgEarth
 
     private:
 
+        MapOptions _mapOptions;
         std::string _name;
         MapLayerList _imageMapLayers;
         MapLayerList _heightFieldMapLayers;
@@ -315,16 +309,15 @@ namespace osgEarth
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
-        std::string _referenceURI;
+        //std::string _referenceURI;
         osg::ref_ptr<const Profile> _profile;
-        unsigned int _id;
-        CoordinateSystemType _cstype;
+        //unsigned int _id;
+        //CoordinateSystemType _cstype;
 		osg::ref_ptr<Cache> _cache;
 		bool _use_mercator_locator;
         int _dataModelRevision;
         
         optional<CacheConfig> _cacheConf;
-        optional<ProfileConfig> _profileConf;
 
         osg::ref_ptr<osg::TransferFunction1D> _contourTransferFunction; ///< Storing the colour data for elevation levels
 

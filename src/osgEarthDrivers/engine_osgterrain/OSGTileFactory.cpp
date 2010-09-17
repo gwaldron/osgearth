@@ -466,9 +466,9 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
     OE_DEBUG << LC << "Creating placeholder for " << key.str() << std::endl;
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
+    bool isGeocentric = map->isGeocentric();
+    bool isProjected = !isGeocentric;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-    bool isGeocentric = !isProjected;
 
     const MapLayerList& imageMapLayers = map->getImageMapLayers();
     const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
@@ -567,7 +567,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
     result->addCullCallback( new TileImageBackfillCallback() );
 
     // Install a cluster culler (FIXME for cube mode)
-    bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
+    bool isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
     if ( isGeocentric && !isCube )
     {
         osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
@@ -585,9 +585,9 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
+    bool isGeocentric = map->isGeocentric();
+    bool isProjected = !isGeocentric;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-    bool isGeocentric = !isProjected;
 
     double xmin, ymin, xmax, ymax;
     key.getExtent().getBounds( xmin, ymin, xmax, ymax );
@@ -834,7 +834,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     hf->setSkirtHeight(radius * _terrainOptions.heightFieldSkirtRatio().get() );
 
     // for now, cluster culling does not work for CUBE rendering
-    bool isCube = map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE;
+    bool isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
     if ( isGeocentric && !isCube )
     {
         //TODO:  Work on cluster culling computation for cube faces
@@ -928,9 +928,9 @@ OSGTileFactory::createImageLayer(Map* map,
 
     if (geoImage.valid())
     {
-        bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
+        bool isGeocentric = map->isGeocentric();
+        bool isProjected = !isGeocentric;
         bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-        bool isGeocentric = !isProjected;
 
         osg::ref_ptr<GeoLocator> imgLocator;
 
@@ -967,7 +967,7 @@ OSGTileFactory::createHeightFieldLayer( Map* map, const TileKey& key, bool exact
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
+    bool isProjected = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_PROJECTED;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
 
     // try to create a heightfield at native res:

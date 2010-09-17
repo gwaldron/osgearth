@@ -126,7 +126,7 @@ TerrainEngineNode::onMapProfileEstablished( const Profile* profile )
         _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
     
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-    if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
+    if ( !_map->isGeocentric() )
         this->setEllipsoidModel( NULL );
 }
 

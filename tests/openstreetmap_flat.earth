@@ -13,9 +13,8 @@ invert the Y tile index.
 
 <map name="OpenStreetMap" type="projected">
 
-    <profile>global-mercator</profile>
-    
     <options>
+        <profile>global-mercator</profile>
         <lighting>false</lighting>
         <terrain>
             <loading_policy mode="preemptive"/>

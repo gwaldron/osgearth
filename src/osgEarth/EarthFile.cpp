@@ -32,9 +32,9 @@ EarthFile::EarthFile()
     //nop
 }
 
-EarthFile::EarthFile( Map* map, const MapOptions& mapOptions ) :
+EarthFile::EarthFile( Map* map, const MapNodeOptions& mapOptions ) :
 _map( map ),
-_mapOptions( mapOptions )
+_mapNodeOptions( mapOptions )
 {
     //nop
 }
@@ -45,8 +45,8 @@ EarthFile::setMap( Map* map ) {
 }
 
 void
-EarthFile::setMapOptions( const MapOptions& mapOptions ) {
-    _mapOptions = mapOptions;
+EarthFile::setMapNodeOptions( const MapNodeOptions& mapOptions ) {
+    _mapNodeOptions = mapOptions;
 }
 
 const Map*
@@ -59,14 +59,14 @@ EarthFile::getMap() {
     return _map.get();
 }
 
-const MapOptions& 
-EarthFile::getMapOptions() const {
-    return _mapOptions;
+const MapNodeOptions& 
+EarthFile::getMapNodeOptions() const {
+    return _mapNodeOptions;
 }
 
-MapOptions& 
-EarthFile::getMapOptions() {
-    return _mapOptions;
+MapNodeOptions& 
+EarthFile::getMapNodeOptions() {
+    return _mapNodeOptions;
 }
 
 #define ELEM_MAP                      "map"
@@ -159,31 +159,43 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
 
     bool success = true;
 
-    Map::CoordinateSystemType cstype = Map::CSTYPE_GEOCENTRIC;
+    MapOptions mapOptions( conf.child( ELEM_MAP_OPTIONS ) );
 
-    std::string a_cstype = conf.value( ATTR_CSTYPE );
-    if ( a_cstype == "geocentric" || a_cstype == "round" || a_cstype == "globe" || a_cstype == "earth" )
-        cstype = Map::CSTYPE_GEOCENTRIC;
-    else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" || a_cstype == "projected")
-        cstype = Map::CSTYPE_PROJECTED;
-    else if ( a_cstype == "cube" )
-        cstype = Map::CSTYPE_GEOCENTRIC_CUBE;
+    // legacy: check for name/type in top-level attrs:
+    if ( conf.hasValue( "name" ) || conf.hasValue( "type" ) )
+    {
+        Config legacy;
+        if ( conf.hasValue("name") ) legacy.add( "name", conf.value("name") );
+        if ( conf.hasValue("type") ) legacy.add( "type", conf.value("type") );
+        mapOptions.mergeConfig( legacy );
+    }
 
-    osg::ref_ptr<Map> map = new Map( cstype );
-    map->setReferenceURI( referenceURI );
+    // setting the reference URI will support relative paths in the earth file.
+    mapOptions.referenceURI() = referenceURI;
 
-    map->setName( conf.value( ATTR_NAME ) );
+    //std::string a_cstype = conf.value( ATTR_CSTYPE );
+    //if ( a_cstype == "geocentric" || a_cstype == "round" || a_cstype == "globe" || a_cstype == "earth" )
+    //    cstype = Map::CSTYPE_GEOCENTRIC;
+    //else if ( a_cstype == "geographic" || a_cstype == "flat" || a_cstype == "plate carre" || a_cstype == "projected")
+    //    cstype = Map::CSTYPE_PROJECTED;
+    //else if ( a_cstype == "cube" )
+    //    cstype = Map::CSTYPE_GEOCENTRIC_CUBE;
 
-    MapOptions mapOptions;
+    osg::ref_ptr<Map> map = new Map( mapOptions );
+    //map->setReferenceURI( referenceURI );
+    //map->setName( conf.value( ATTR_NAME ) );
 
-    if ( conf.hasChild( ELEM_MAP_OPTIONS ) )
-        mapOptions = MapOptions( conf.child( ELEM_MAP_OPTIONS ) );
-    else
-        mapOptions = MapOptions( conf ); // old style, for backwards compatibility  
+    MapNodeOptions mapNodeOptions( conf.child( ELEM_MAP_OPTIONS ) );
 
-    //Read the profile definition
-    if ( conf.hasChild( ELEM_PROFILE ) )
-        map->profileConfig() = ProfileConfig( conf.child( ELEM_PROFILE ) );
+    //if ( conf.hasChild( ELEM_MAP_OPTIONS ) )
+    //    mapOptions = MapNodeOptions( conf.child( ELEM_MAP_OPTIONS ) );
+    //else
+    //    mapOptions = MapNodeOptions( conf ); // old style, for backwards compatibility  
+
+    //NOTE: this is now in MapNodeOptions
+    ////Read the profile definition
+    //if ( conf.hasChild( ELEM_PROFILE ) )
+    //    map->profileOptions() = ProfileOptions( conf.child( ELEM_PROFILE ) );
 
     //Try to read the global map cache if one is specifiec
     if ( conf.hasChild( ELEM_CACHE ) )
@@ -243,31 +255,36 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     }
 
     earth->setMap( map.get() );
-    earth->setMapOptions( mapOptions );
+    earth->setMapNodeOptions( mapNodeOptions );
 
     return success;
 }
 
 
 static Config
-mapgetConfig( Map* map, const MapOptions& ep )
+getConfig( Map* map, const MapNodeOptions& ep )
 {
     Config conf( ELEM_MAP );
-    conf.attr( ATTR_NAME ) = map->getName();
     
-    conf.add( ELEM_MAP_OPTIONS, ep.getConfig() );
+    //conf.attr( ATTR_NAME ) = map->getName();
+    
+    // merge the MapOptions and MapNodeOptions together under <options>:
+    Config optionsConf( ELEM_MAP_OPTIONS );
+    optionsConf.merge( map->getMapOptions().getConfig() );
+    optionsConf.merge( ep.getConfig() );
+    conf.add( optionsConf );
 
-    //Write the coordinate system
-    std::string cs;
-    if (map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC) cs = "geocentric";
-    else if (map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED) cs = "projected";
-    else if ( map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE) cs = "cube";
-    else
-    {
-        OE_NOTICE << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
-        return Config();
-    }
-    conf.attr( ATTR_CSTYPE ) = cs;
+    ////Write the coordinate system
+    //std::string cs;
+    //if (map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC) cs = "geocentric";
+    //else if (map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED) cs = "projected";
+    //else if ( map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE) cs = "cube";
+    //else
+    //{
+    //    OE_NOTICE << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
+    //    return Config();
+    //}
+    //conf.attr( ATTR_CSTYPE ) = cs;
 
     //Write all the image sources
     for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
@@ -301,10 +318,11 @@ mapgetConfig( Map* map, const MapOptions& ep )
         conf.add( map->cacheConfig()->getConfig( ELEM_CACHE ) );
     }
 
-    if ( map->profileConfig().isSet() )
-    {
-        conf.add( map->profileConfig()->getConfig( ELEM_PROFILE ) );
-    }
+    //NOTE: moved to MapNodeOptions
+    //if ( map->profileOptions().isSet() )
+    //{
+    //    conf.add( map->profileOptions()->getConfig() ); // ELEM_PROFILE ) );
+    //}
 
     return conf;
 }
@@ -322,7 +340,13 @@ EarthFile::readXML( std::istream& input, const std::string& location )
             << "[osgEarth] EARTH FILE: " << std::endl
             << conf.toString() << std::endl;
 
-        success = readMap( conf, location, this );
+        std::string refURI = location;
+        if (!osgDB::containsServerAddress(refURI))
+        {
+            refURI = osgDB::getRealPath( location );
+        }
+
+        success = readMap( conf, refURI, this );
     }
     return success;
 }
@@ -349,16 +373,6 @@ EarthFile::readXML( const std::string& location )
         }
     }
 
-    if ( success )
-    {
-        std::string filename = location;
-        if (!osgDB::containsServerAddress(filename))
-        {
-            filename = osgDB::getRealPath( location );
-        }
-        _map->setReferenceURI( filename );
-    }
-
     return success;
 }
 
@@ -380,7 +394,7 @@ EarthFile::writeXML( std::ostream& output )
 
     Threading::ScopedReadLock lock( _map->getMapDataMutex() );
 
-    Config conf = mapgetConfig( _map.get(), _mapOptions );
+    Config conf = getConfig( _map.get(), _mapNodeOptions );
     osg::ref_ptr<XmlDocument> doc = new XmlDocument( conf );
     doc->store( output );
 

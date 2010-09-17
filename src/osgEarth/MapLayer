@@ -26,7 +26,6 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
 #include <osgEarth/TaskService>
-//#include <osgEarth/DriverOptions>
 #include <map>
 #include <utility>
 #include <queue>
@@ -44,7 +43,6 @@ namespace osgEarth
     {
     public:
         virtual void updateOpacity( MapLayer* layer ) =0;
-
         virtual void updateEnabled( MapLayer* layer ) =0;
     };
 
@@ -110,8 +108,6 @@ namespace osgEarth
         /**
          * Gets the driver options used to create this layer.
          */
-        //const DriverOptions* getDriverOptions() const {
-        //    return _driverOptions.get(); }
         const TileSourceOptions getTileSourceOptions() const {
             return _options; }
 
@@ -142,8 +138,8 @@ namespace osgEarth
          * try to automatically determine the Profile from the tile source. This property
          * sets it explicitly instead.
          */
-        optional<ProfileConfig>& profileConfig() { return _profileConf; }
-        const optional<ProfileConfig>& profileConfig() const { return _profileConf; }
+        optional<ProfileOptions>& profileOptions() { return _profileConf; }
+        const optional<ProfileOptions>& profileOptions() const { return _profileConf; }
 
         /**
          * Gets or sets the minimum level of detail for which this layer should generate data.
@@ -331,7 +327,7 @@ namespace osgEarth
         //osg::ref_ptr<const DriverOptions> _driverOptions;
         TileSourceOptions _options;
        
-        optional<ProfileConfig> _profileConf;
+        optional<ProfileOptions> _profileConf;
         optional<int> _minLevel;
         optional<int> _maxLevel;
 	    optional<std::string> _noDataImageFilename;

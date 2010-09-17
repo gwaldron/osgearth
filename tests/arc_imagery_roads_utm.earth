@@ -13,13 +13,13 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 -->
 
 <map name="ESRI Imagery and Roads UTM" type="projected">
-
-    <!--Specify the profile to use since we want to reproject to UTM-->        
-    <profile srs="+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
-             xmin="560725.500" ymin="4385762.500" 
-             xmax="573866.500" ymax="4400705.500"/>
     
     <options>
+        <!--Specify the profile to use since we want to reproject to UTM-->        
+        <profile srs="+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
+                 xmin="560725.500" ymin="4385762.500" 
+                 xmax="573866.500" ymax="4400705.500"/>
+                 
         <lighting>false</lighting>
     </options>
 

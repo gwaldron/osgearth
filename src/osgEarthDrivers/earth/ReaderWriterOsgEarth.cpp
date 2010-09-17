@@ -82,15 +82,21 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 
                 if ( file_name == "__globe.earth" )
                 {
-                    earthFile.setMap( new Map(Map::CSTYPE_GEOCENTRIC) );
+                    MapOptions options;
+                    options.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC;
+                    earthFile.setMap( new Map(options) );
                 }
                 else if ( file_name == "__flat.earth" )
                 {
-                    earthFile.setMap( new Map(Map::CSTYPE_PROJECTED) );
+                    MapOptions options;
+                    options.coordSysType() = MapOptions::CSTYPE_PROJECTED;
+                    earthFile.setMap( new Map(options) );
                 }
                 else if ( file_name == "__cube.earth" )
                 {
-                    earthFile.setMap( new Map(Map::CSTYPE_GEOCENTRIC_CUBE) );
+                    MapOptions options;
+                    options.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC_CUBE;
+                    earthFile.setMap( new Map(options) );
                 }
                 else
                 {
@@ -99,13 +105,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if ( success )
                 {
-                    MapOptions mapOptions = earthFile.getMapOptions();
+                    MapNodeOptions mapOptions = earthFile.getMapNodeOptions();
 
                     // check is an engine properties object was supplied in the Options structure. If so,
                     // merge it in. Note that the properties will override those in the earth file.
                     if ( options )
                     {
-                        const MapOptions* userOptions = static_cast<const MapOptions*>( options->getPluginData( MapOptions::OPTIONS_TAG ) );
+                        const MapNodeOptions* userOptions = static_cast<const MapNodeOptions*>( options->getPluginData( MapNodeOptions::OPTIONS_TAG ) );
                         if ( userOptions )
                         {
                             mapOptions.merge( *userOptions );

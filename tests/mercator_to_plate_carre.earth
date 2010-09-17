@@ -5,8 +5,13 @@ Plate Carre (y=lat, x=lon) by applying the <profile> tag.
 
 <map name="OpenStreetMap" type="projected">
 
-    <profile>global-geodetic</profile>    
-    <options lighting="false"/>
+    <options>
+        <profile>global-geodetic</profile>    
+        <lighting>false</lighting>
+        <terrain>
+            <loading_policy mode="preemptive"/>
+        </terrain>
+    </options>
     
     <image name="OSM on Mapnik" driver="tms">
         <url>http://tile.openstreetmap.org/</url>

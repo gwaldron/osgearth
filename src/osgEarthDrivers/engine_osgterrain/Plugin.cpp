@@ -128,7 +128,7 @@ public:
             if ( ef.readXML( earthFile ) )
             {
                 OSGTerrainEngineNode* node = new OSGTerrainEngineNode();
-                node->initialize( ef.getMap(), ef.getMapOptions().getTerrainOptions() );
+                node->initialize( ef.getMap(), ef.getMapNodeOptions().getTerrainOptions() );
                 return ReadResult(node);
             }
         }

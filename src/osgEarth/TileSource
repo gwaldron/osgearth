@@ -72,8 +72,8 @@ namespace osgEarth
         optional<std::string>& blacklistFilename() { return _blacklistFilename; }
         const optional<std::string>& blacklistFilename() const { return _blacklistFilename; }
 
-        optional<Config>& profileConfig() { return _profileConf; }
-        const optional<Config>& profileConfig() const { return _profileConf; }
+        optional<Config>& ProfileOptions() { return _profileConf; }
+        const optional<Config>& ProfileOptions() const { return _profileConf; }
 
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() )

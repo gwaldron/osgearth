@@ -42,6 +42,7 @@ SET(LIB_PUBLIC_HEADERS
     Map
     MapLayer
     MapNode
+    MapNodeOptions
     MapOptions
     MaskLayer
     MaskNode
@@ -97,6 +98,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Map.cpp
     MapLayer.cpp
     MapNode.cpp
+    MapNodeOptions.cpp
     MapOptions.cpp
     MaskLayer.cpp
     MaskNode.cpp

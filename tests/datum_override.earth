@@ -13,16 +13,13 @@ http://spatialreference.org
 -->
 
 <map name="datum override example" type="geocentric">
-
-    <profile>
-        <srs>+proj=longlat +ellps=clrk66 +datum=NAD27 +no_defs</srs>
-    </profile>   
+    
+    <options>
+        <lighting>false</lighting>
+        <profile srs="+proj=longlat +ellps=clrk66 +datum=NAD27 +no_defs"/>
+    </options> 
     
     <image name="pelican nasa blue marble" driver="tms">
         <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>
-    
-    <options>
-        <lighting>false</lighting>
-    </options>
 </map>

@@ -36,7 +36,7 @@ namespace osgEarthUtil
 		*@param map
 		*       The MapNode this FadeLayerNode will operate on.
 		*/
-		FadeLayerNode(osgEarth::Map* map, const osgEarth::MapOptions& mapOptions );
+		FadeLayerNode(osgEarth::Map* map, const osgEarth::MapNodeOptions& mapOptions );
 
 		/**
 		*Gets the Map that this FadeLayerNode is operating on
@@ -48,7 +48,7 @@ namespace osgEarthUtil
     protected:
 
         osg::ref_ptr<osgEarth::Map> _map;
-		osgEarth::MapOptions _mapOptions;
+		osgEarth::MapNodeOptions _mapNodeOptions;
 
 		osg::ref_ptr<osg::Shader> _fragShader;
 		osg::ref_ptr<osg::Shader> _vertShader;

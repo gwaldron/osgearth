@@ -96,10 +96,10 @@ public:
         {
             // if the user specified explicit geometry/profile, use that:
             GeoExtent ex;
-            if ( _options.geometryProfileConfig().isSet() )
+            if ( _options.geometryProfileOptions().isSet() )
             {
                 osg::ref_ptr<const Profile> _profile = Profile::create( 
-                    _options.geometryProfileConfig().value() );
+                    ProfileOptions(_options.geometryProfileOptions().value())  );
 
                 if ( _profile.valid() )
                     ex = _profile->getExtent();
@@ -258,7 +258,7 @@ private:
     //bool _ready;
     //bool _buildSpatialIndex;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
-    //optional<ProfileConfig> _geometryProfileConf;
+    //optional<ProfileOptions> _geometryProfileConf;
     const OGRFeatureOptions _options;
 };
 

@@ -25,13 +25,15 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 
 <map name="DC State Plane" type="projected">
 
-    <profile name="NAD83 Maryland State Plane (meters)">
-        <srs>+proj=lcc +lat_1=38.3 +lat_2=39.45 +lat_0=37.66666666666666 +lon_0=-77 +x_0=399999.9999999999 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=1.0 +no_defs</srs>
-        <xmin>390021</xmin>
-        <ymin>126298</ymin>
-        <xmax>407833</xmax>
-        <ymax>147521</ymax>
-    </profile>
+    <options>
+        <profile name="NAD83 Maryland State Plane (meters)">
+            <srs>+proj=lcc +lat_1=38.3 +lat_2=39.45 +lat_0=37.66666666666666 +lon_0=-77 +x_0=399999.9999999999 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=1.0 +no_defs</srs>
+            <xmin>390021</xmin>
+            <ymin>126298</ymin>
+            <xmax>407833</xmax>
+            <ymax>147521</ymax>
+        </profile>
+    </options>
     
     <!-- This image layer returns global geodetic tiles -->
     <image name="ags-imagery" driver="arcgis" max_level="16">

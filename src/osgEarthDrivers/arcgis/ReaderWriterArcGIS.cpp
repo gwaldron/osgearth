@@ -45,7 +45,7 @@ public:
     ArcGISSource( const TileSourceOptions& options ) :
       TileSource( options ),
       _options( options ),
-      _profileConf( ProfileConfig() )
+      _profileConf( ProfileOptions() )
     {
         //if ( options )
         //{
@@ -58,7 +58,7 @@ public:
         //    // force a profile type
         //    // TODO? do we need this anymore? doesn't this happen with overrideprofile now?
         //    if ( conf.hasChild( PROPERTY_PROFILE ) )
-        //        _profileConf = ProfileConfig( conf.child( PROPERTY_PROFILE ) );
+        //        _profileConf = ProfileOptions( conf.child( PROPERTY_PROFILE ) );
         //}
 
         //TODO: allow single layers vs. "fused view"
@@ -197,7 +197,7 @@ public:
 
 private:
     const ArcGISOptions _options;
-    optional<ProfileConfig> _profileConf;
+    optional<ProfileOptions> _profileConf;
     std::string _map;
     std::string _layer;
     std::string _format;

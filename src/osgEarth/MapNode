@@ -22,7 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
-#include <osgEarth/MapOptions>
+#include <osgEarth/MapNodeOptions>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/CoordinateSystemNode>
 #include <osgSim/OverlayNode>
@@ -47,7 +47,7 @@ namespace osgEarth
          * @param options
          *      Tile creation and rendering properties
          */
-        MapNode( const MapOptions& options );
+        MapNode( const MapNodeOptions& options );
 
         /**
          * Creates a new map node.
@@ -65,7 +65,7 @@ namespace osgEarth
          * @param options
          *      Tile creation and rendering properties
          */
-        MapNode( Map* map, const MapOptions& options );
+        MapNode( Map* map, const MapNodeOptions& options );
 
     public:
 
@@ -126,7 +126,7 @@ namespace osgEarth
          * Gets the engine properties associated with this node. The engine
          * properties dictate how the map engine will create scene graph elements.
          */
-        const MapOptions& getMapOptions() const;
+        const MapNodeOptions& getMapNodeOptions() const;
 
         /**
          * Gets the underlying terrain engine that renders the terrain surface of the map.
@@ -148,7 +148,7 @@ namespace osgEarth
         unsigned int _id;
         osg::ref_ptr<Map> _map;
         osg::ref_ptr< osg::Group > _models;
-        MapOptions _mapOptions;
+        MapNodeOptions _mapNodeOptions;
 
         osg::ref_ptr< MapLayerController > _mapLayerController;
 

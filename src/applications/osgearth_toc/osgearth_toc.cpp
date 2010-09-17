@@ -320,7 +320,7 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
         opt.tmsType() = "google";
         MapLayer* layer = new ImageMapLayer( "OpenStreetMap", opt );
 
-        layer->profileConfig() = ProfileConfig( "global-mercator" );
+        layer->profileOptions() = ProfileOptions( "global-mercator" );
         addLayersBox->addWidget( new AddLayerButton( map, view, layer ) );
     }
 
@@ -569,18 +569,21 @@ int main(int argc, char** argv)
 
     osg::Group* group = new osg::Group;
 
-    Map::CoordinateSystemType csType = Map::CSTYPE_GEOCENTRIC;
+
+    MapOptions mapOptions;
+    mapOptions.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC;
     if (arguments.read("--cube"))
     {
-        csType = Map::CSTYPE_GEOCENTRIC_CUBE;
+        mapOptions.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC_CUBE;
     }
 
-    Map* map = new Map(csType);
-    MapOptions mapOptions( terrainOptions );
-    MapNode* mapNode = new MapNode(map, mapOptions);
+    Map* map = new Map(mapOptions);
+
+    MapNodeOptions mapNodeOptions( terrainOptions );
+    MapNode* mapNode = new MapNode(map, mapNodeOptions);
     osg::ref_ptr<osg::Node> loadedModel = mapNode;
 
-    FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapOptions ); //mapNode->getEngine()->getEngineProperties());
+    FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNodeOptions );
     fadeLayerNode->addChild(loadedModel.get());
     group->addChild(fadeLayerNode);
 	//group->addChild( loadedModel.get() );

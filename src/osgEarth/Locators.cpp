@@ -66,9 +66,9 @@ _inverseCalculated(false)
 GeoLocator*
 GeoLocator::createForKey( const TileKey& key, Map* map )
 {
-    bool isProjected = map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED;
-    bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-    bool isGeocentric = !isProjected;
+    bool isGeocentric = map->isGeocentric();
+    //bool isProjected = !isGeocentric;
+    bool isPlateCarre = !isGeocentric && map->getProfile()->getSRS()->isGeographic();
 
     const GeoExtent& ex = key.getExtent();
     double xmin, ymin, xmax, ymax;

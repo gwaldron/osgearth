@@ -71,7 +71,7 @@ public:
         _url = _options.url().value();
         if ( !_url.empty() )
         {
-            _url = osgEarth::getFullPath( osgDB::getFilePath(referenceURI), _url );
+            _url = osgEarth::getFullPath( referenceURI, _url );
             HTTPClient::readImageFile( _url, _image ); //, getOptions() );
         }
 

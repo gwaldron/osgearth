@@ -269,7 +269,7 @@ int main(int argc, char** argv)
         osg::ref_ptr<osg::Group> group = new osg::Group;
         group->setName("root");
 
-        MapOptions mapOptions;
+        MapNodeOptions mapOptions;
         mapOptions.setTerrainOptions( terrainOptions );
 
         osg::ref_ptr<MapNode> mapNode = new MapNode(mapOptions);

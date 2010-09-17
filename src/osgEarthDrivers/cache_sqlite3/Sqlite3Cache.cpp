@@ -230,7 +230,7 @@ struct MetadataTable
             output._format = (char*)sqlite3_column_text( select, 1 );
             output._compressor = (char*)sqlite3_column_text( select, 2 );
             output._tileSize = sqlite3_column_int( select, 3 );
-            ProfileConfig pconf;
+            ProfileOptions pconf;
             pconf.srsString() = (char*)sqlite3_column_text( select, 4 );
             pconf.bounds() = Bounds(
                 sqlite3_column_double( select, 5 ),

@@ -49,7 +49,7 @@ _cacheEnabled( true ),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _loadingWeight( 1.0f ),
-_profileConf( ProfileConfig() ),
+_profileConf( ProfileOptions() ),
 _minLevel(0),
 _maxLevel(99),
 _noDataImageFilename(""),
@@ -78,7 +78,7 @@ _cacheEnabled( true ),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _loadingWeight( 1.0f ),
-_profileConf( ProfileConfig() ),
+_profileConf( ProfileOptions() ),
 _minLevel(0),
 _maxLevel(99),
 _tileSize(256),
@@ -109,7 +109,7 @@ _cacheEnabled( true ),
 _cacheOnly( false ),
 _cacheOnlyEnv( false ),
 _loadingWeight( 1.0f ),
-_profileConf( ProfileConfig() ),
+_profileConf( ProfileOptions() ),
 _minLevel(0),
 _maxLevel(99),
 _noDataImageFilename(""),
@@ -384,9 +384,9 @@ MapLayer::initTileSource()
 
 	//Get the override profile if it is set.
 	osg::ref_ptr<const Profile> override_profile;
-	if (profileConfig().isSet())
+	if (profileOptions().isSet())
 	{
-		override_profile = Profile::create( profileConfig().get() );
+		override_profile = Profile::create( profileOptions().get() );
 	}
 
 	if ( tileSource.valid() )

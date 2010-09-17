@@ -229,33 +229,6 @@ namespace osgEarth
         const optional<CacheConfig>& cacheConfig() const;
 
         /**
-         * Sets/Gets an explicit master profile for the Map. Usually this is calculated automatically,
-         * but in some cases you need to set it manually. 
-         *
-         * Note: Set thie before adding any layers to the map.
-         */
-        //optional<ProfileOptions>& profileOptions();
-        //const optional<ProfileOptions>& profileOptions() const;
-
-        /**
-         * Gets the reference URI. See setReferenceURI for more info.
-         */
-        //const std::string& getReferenceURI() const;
-
-        /**
-         * Sets a reference URI. Usually this is the location of a file from which this map
-         * was created. This acts as a reference point for any relative paths/URIS that may
-         * occur elsewhere in the configuration.
-         *
-         * Note: Set this before adding any layers to the map.
-         */
-        //void setReferenceURI( const std::string& uri );
-
-        // internal.
-        //void setId( unsigned int id );
-        //unsigned int getId() const;
-
-        /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
          * lower resolutions if necessary. 
          *

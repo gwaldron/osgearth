@@ -1,0 +1,84 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_MAP_NODE_OPTIONS_H
+#define OSGEARTH_MAP_NODE_OPTIONS_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/HTTPClient>
+#include <osgEarth/Profile>
+#include <osgEarth/TerrainOptions>
+
+namespace osgEarth
+{
+    /**
+     * Configuration for a runtime map node.
+     */
+    class OSGEARTH_EXPORT MapNodeOptions : public ConfigOptions
+    {
+    public:
+        MapNodeOptions( const Config& conf =Config() );
+        MapNodeOptions( const TerrainOptions& terrainOpts );
+        virtual ~MapNodeOptions();
+
+        /** 
+         * The hostname/port of a proxy server to use for all HTTP communications.
+         * Default = no proxy.
+         */
+        optional<ProxySettings>& proxySettings() { return _proxySettings; }
+        const optional<ProxySettings>& proxySettings() const { return _proxySettings; }
+
+        /**
+         * Whether the map should be run exclusively off of the cache.
+         * Default = false
+         */
+        optional<bool>& cacheOnly() { return _cacheOnly; }
+        const optional<bool>& cacheOnly() const { return _cacheOnly; }
+
+        /**
+         * Whether to explicity enable or disable GL lighting on the map node.
+         */
+        optional<bool>& enableLighting() { return _enableLighting; }
+        const optional<bool>& enableLighting() const { return _enableLighting; } 
+
+        /**
+         * Options to conigure the terrain engine (the component that renders the
+         * terrain surface).
+         */
+        const TerrainOptions& getTerrainOptions() const;
+        void setTerrainOptions( const TerrainOptions& options );     
+    
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+        static std::string OPTIONS_TAG;
+
+    private:            
+        optional<ProxySettings> _proxySettings;
+        optional<bool> _cacheOnly;
+        optional<bool> _enableLighting;
+
+        optional<Config> _terrainOptionsConf;
+        TerrainOptions* _terrainOptions;
+    };
+}
+
+#endif // OSGEARTH_MAP_NODE_OPTIONS_H

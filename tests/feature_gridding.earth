@@ -8,8 +8,11 @@ Zoom in to see the US interstates.
 -->
 
 <map name="Feature Stencil Demo" type="geocentric">
+  
+    <options>
+        <lighting>false</lighting>
+    </options>
 
-    <loading_policy mode="sequential"/>
     
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -64,6 +67,4 @@ Zoom in to see the US interstates.
         </styles>
         
     </model>
-  
-    <lighting>false</lighting>
 </map>

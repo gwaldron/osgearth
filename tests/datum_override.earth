@@ -22,7 +22,7 @@ http://spatialreference.org
         <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>
     
-    <engine_properties>
+    <options>
         <lighting>false</lighting>
-    </engine_properties>
+    </options>
 </map>

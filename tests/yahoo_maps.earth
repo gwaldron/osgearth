@@ -13,7 +13,11 @@ the provider's terms of service when using their data.
         <dataset>roads</dataset>
     </image>
     
-    <loading_policy mode="preemptive"/>
-    <lighting>false</lighting>
+    <options>
+        <terrain>
+            <loading_policy mode="preemptive"/>
+        </terrain>
+        <lighting>false</lighting>
+    </options>
    
 </map>

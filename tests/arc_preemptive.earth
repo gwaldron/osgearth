@@ -15,10 +15,11 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 
     <!-- Set a "preemptive" loading policy, and set the number of
          loading threads to use. -->
-    <engine_properties>        
-        <loading_policy mode="preemptive" loading_threads_per_core="3"/>
-        <lighting>false</lighting>
-    </engine_properties>
+    <options>
+        <terrain>
+            <loading_policy mode="preemptive" loading_threads_per_core="3"/>
+        </terrain>
+    </options>
     
     <!-- loading_weight specifies the relative number of threads
          to use for this particular layer.  For heightfield layers,

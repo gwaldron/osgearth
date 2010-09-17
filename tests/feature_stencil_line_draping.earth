@@ -9,6 +9,8 @@ build osgEarth with GEOS support.
 -->
 
 <map name="Feature Stencil Demo" type="round">
+    
+    <options lighting="false"/>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>

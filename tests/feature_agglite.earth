@@ -6,6 +6,10 @@ rasterizing it into image tiles.
 -->
 
 <map name="AGGLite Sample" type="geocentric">
+  
+    <options>
+        <lighting>false</lighting>
+    </options>
     
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -50,6 +54,4 @@ rasterizing it into image tiles.
         </styles>
         
     </image>
-  
-    <lighting>false</lighting>
 </map>

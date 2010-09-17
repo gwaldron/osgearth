@@ -13,5 +13,7 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
         <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
     </image>
     
-    <lighting>false</lighting>
+    <options>
+        <lighting>false</lighting>
+    </options>
 </map>

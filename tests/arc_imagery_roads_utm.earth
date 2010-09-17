@@ -18,6 +18,10 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
     <profile srs="+proj=utm +zone=17 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" 
              xmin="560725.500" ymin="4385762.500" 
              xmax="573866.500" ymax="4400705.500"/>
+    
+    <options>
+        <lighting>false</lighting>
+    </options>
 
     <image name="ags-imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>

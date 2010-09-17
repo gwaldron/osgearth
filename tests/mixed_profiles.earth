@@ -5,8 +5,6 @@ This shows how to mix data from a Mercator and a Geodetic source on the same
 geodetic globe.
 -->
 <map name="mercator data on a geodetic globe" type="round">
-
-    <loading_policy mode="sequential"/>
    
     <image name="mercator-imagery" driver="yahoo">
         <dataset>satellite</dataset>

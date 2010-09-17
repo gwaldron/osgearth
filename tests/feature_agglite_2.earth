@@ -1,9 +1,13 @@
-<!--
+d<!--
 osgEarth Sample
 Demonstrates use of the "agglite" feature rasterization driver.
 -->
 
 <map name="Geometry Rasterizer Demo" type="round">
+  
+    <options>
+        <lighting>false</lighting>
+    </options>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>

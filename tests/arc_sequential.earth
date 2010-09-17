@@ -10,5 +10,10 @@ This example shows how to use the "sequential" loading policy.
         <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
     </image>
 
-    <loading_policy mode="sequential" loading_threads="12"/>
+    <options>
+        <lighting>false</lighting>
+        <terrain>
+            <loading_policy mode="sequential" loading_threads="12"/>
+        </terrain>
+    </options>
 </map>

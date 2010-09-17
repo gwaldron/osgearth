@@ -31,8 +31,11 @@ A couple notes:
         <elevation_unit>ft</elevation_unit>
     </heightfield>
     
-    <vertical_scale>8</vertical_scale>
-    
-    <skirt_ratio>0.01</skirt_ratio>
+    <options>
+        <terrain>
+            <vertical_scale>8</vertical_scale>
+            <skirt_ratio>0.01</skirt_ratio>
+        </terrain>
+    </options>
     
 </map>

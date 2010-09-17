@@ -14,9 +14,6 @@ Tests the use of an oceanmask, use with the osgearth_ocean example
       <url>../data/ocean_mask.tif</url>
     </image>   
     
-    
-    <engine_properties>
-        <lighting>false</lighting>
-    </engine_properties>
+    <options lighting="false"/>
 
 </map>

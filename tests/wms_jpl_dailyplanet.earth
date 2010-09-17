@@ -8,7 +8,10 @@
 <map name="JPL" type="geocentric">
    
    <!--Decrease the min_tile_range_factor so tiles don't come in so early-->
-   <min_tile_range_factor>4</min_tile_range_factor>
+   <options>
+      <lighting>false</lighting>
+      <min_tile_range_factor>4</min_tile_range_factor>
+   </options>
 
    <!--
     Specify the JPL source.  There are certain patterns that are pre-tiled.

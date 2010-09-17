@@ -9,10 +9,16 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 
 <map name="The World" type="geocentric">
 
-  <image name="ESRI_Political_World_2D" driver="arcgis">
-      <url>http://server.arcgisonline.com/ArcGIS/rest/services/Specialty/NGS_Political_World_2D/MapServer</url>
-  </image>
+    <image name="ESRI_Political_World_2D" driver="arcgis">
+        <url>http://server.arcgisonline.com/ArcGIS/rest/services/Specialty/NGS_Political_World_2D/MapServer</url>
+    </image>
 
-  <min_tile_range_factor>4</min_tile_range_factor>
+    
+    <options>
+        <lighting>false</lighting>
+        <terrain>
+            <min_tile_range_factor>4</min_tile_range_factor>
+        </terrain>
+    </options>
   
 </map>

@@ -7,6 +7,10 @@ Note:  There are tons of NoData areas in the sample terrain files, so expect see
 -->
 
 <map type="geocentric">
+    
+    <options>
+        <terrain vertical_scale="3"/>
+    </options>
 
     <!--Load a simple base image of the world-->
     <image name="world" driver="gdal">
@@ -30,7 +34,5 @@ Note:  There are tons of NoData areas in the sample terrain files, so expect see
 	    <extensions>tif</extensions>  
 
     </heightfield>
-    
-    <vertical_scale>3</vertical_scale>
     
 </map>

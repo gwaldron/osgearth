@@ -5,6 +5,8 @@ This shows how to label point features with an attribute.
 
 <map name="Feature Geometry Demo" type="geocentric">
     
+    <options lighting="false"/>
+    
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
     </image>
@@ -33,9 +35,5 @@ This shows how to label point features with an attribute.
         </styles>
         
     </model>
-    
-    <engine_properties>
-        <lighting>false</lighting>
-    </engine_properties>
   
 </map>

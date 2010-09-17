@@ -17,4 +17,6 @@ pre-rendered for speed.
        <tile_size>256</tile_size>
    </image>
    
+   <options lighting="false"/>
+   
 </map>

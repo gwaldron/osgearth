@@ -7,8 +7,6 @@
         <max_size> 100 </max_size>
     </cache>
     
-    <loading_policy mode="standard"/>
-    
     <image name="test.imagery" driver="tms">
         <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>

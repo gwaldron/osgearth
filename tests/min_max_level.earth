@@ -7,8 +7,6 @@ Please note that usage of Yahoo! map data is subject to Yahoo!'s terms of servic
 
 <map name="Yahoo Levels" type="geocentric">
 
-    <preemptive_lod>false</preemptive_lod>
-
     <!-- this level will be visible at lower resolutions -->
     <image name="yahoo_sat" driver="yahoo">
         <dataset>satellite</dataset>

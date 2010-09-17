@@ -21,8 +21,12 @@ invert the Y tile index.
         <tms_type>google</tms_type>
     </image>
     
-    <loading_policy mode="preemptive"/>
-    <min_tile_range_factor>8</min_tile_range_factor>
-    <lighting>false</lighting>
+    <options>
+        <terrain>
+            <loading_policy mode="preemptive"/>
+            <min_tile_range_factor>8</min_tile_range_factor>
+            <lighting>false</lighting>
+        </terrain>
+    </options>
     
 </map>

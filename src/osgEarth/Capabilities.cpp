@@ -130,28 +130,28 @@ _supportsTwoSidedStencil( false )
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
         _supportsGLSL = GL2->isGlslSupported();
-        OE_INFO << LC << "  Supports GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
+        OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
 
         _supportsTextureArrays = 
             _supportsGLSL &&
             osg::getGLVersionNumber() >= 2.0 && // hopefully this will detect Intel cards
             osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
-        OE_INFO << LC << "  Supports texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
+        OE_INFO << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
 
         _supportsTexture3D = osg::isGLExtensionSupported( id, "GL_EXT_texture3D" );
-        OE_INFO << LC << "  Supports 3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
+        OE_INFO << LC << "  3D textures = " << SAYBOOL(_supportsTexture3D) << std::endl;
 
         _supportsMultiTexture = 
             osg::getGLVersionNumber() >= 1.3 ||
             osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
             osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
-        OE_INFO << LC << "  Supports multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
+        OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
 
         _supportsStencilWrap = osg::isGLExtensionSupported( id, "GL_EXT_stencil_wrap" );
-        OE_INFO << LC << "  Supports stencil wrapping = " << SAYBOOL(_supportsStencilWrap) << std::endl;
+        OE_INFO << LC << "  Stencil wrapping = " << SAYBOOL(_supportsStencilWrap) << std::endl;
 
         _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
-        OE_INFO << LC << "  Supports 2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
+        OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
     }
 }
 

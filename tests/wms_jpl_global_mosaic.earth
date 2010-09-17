@@ -6,5 +6,11 @@
        <styles>visual</styles>
        <tile_size>512</tile_size>
    </image> 
-   <loading_policy mode="preemptive"/>
+   
+   <options>
+       <terrain>
+           <loading_policy mode="preemptive"/>
+           <lighting>false</lighting>
+       </terrain>
+   </options>
 </map>

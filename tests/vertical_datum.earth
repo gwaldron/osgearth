@@ -15,8 +15,10 @@ exaggeration in order to make the geoid's shape stand out.
         <url>../data/world.tif</url>
     </image>
     
-    <engine_properties>
-        <vertical_scale>5000.0</vertical_scale>
-        <lighting>false</lighting>
-    </engine_properties>
+    <options>
+        <terrain>
+            <vertical_scale>5000.0</vertical_scale>
+            <lighting>false</lighting>
+        </terrain>
+    </options>
 </map>

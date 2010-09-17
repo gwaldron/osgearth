@@ -5,6 +5,10 @@ This one demonstrates how to use the OGR feature driver to define inline feature
 -->
 
 <map name="Feature Geometry Demo" type="geocentric">
+
+    <options>
+        <lighting>false</lighting>
+    </options>
     
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -31,7 +35,5 @@ This one demonstrates how to use the OGR feature driver to define inline feature
         </styles>
         
     </model>
-    
-    <lighting>false</lighting>
   
 </map>

@@ -8,7 +8,5 @@ Demonstrates the simplest possible use of the GDAL driver to load a GeoTIFF imag
         <url>../data/world.tif</url>
     </image>
     
-    <engine_properties>
-        <lighting>false</lighting>
-    </engine_properties>
+    <options lighting="false"/>
 </map>

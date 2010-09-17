@@ -16,6 +16,8 @@ block.
 -->
 
 <map name="Feature Stencil Demo" type="geocentric">
+    
+    <options lighting="false"/>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -99,6 +101,4 @@ block.
         </styles>
         
     </model>
-  
-    <lighting>false</lighting>
 </map>

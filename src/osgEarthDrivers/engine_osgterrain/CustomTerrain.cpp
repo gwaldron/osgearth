@@ -1272,6 +1272,8 @@ struct ReleaseGLCallback : public osg::Camera::DrawCallback
 static bool s_releaseCBInstalled = false;
 static osg::ref_ptr< ReleaseGLCallback > s_releaseCB = new ReleaseGLCallback();
 
+#undef  LC
+#define LC "[CustomTerrain] "
 
 //TODO:  Register with the callback when we are first created...
 // immediately release GL memory for any expired tiles.
@@ -1318,7 +1320,7 @@ _registeredWithReleaseGLCallback( false )
             _numAsyncThreads = _loadingPolicy.numThreadsPerCore().get() * OpenThreads::GetNumberOfProcessors();
         }
 
-        OE_INFO << "VT: using " << _numAsyncThreads << " loading threads " << std::endl;
+        OE_INFO << LC << "Using a total of " << _numAsyncThreads << " loading threads " << std::endl;
     }
 }
 
@@ -1697,6 +1699,13 @@ TaskService*
 CustomTerrain::createTaskService( const std::string& name, int id, int numThreads )
 {
     ScopedLock<Mutex> lock( _taskServiceMutex );
+
+    // first, double-check that the service wasn't created during the locking process:
+    TaskServiceMap::iterator itr = _taskServices.find(id);
+    if (itr != _taskServices.end())
+        return itr->second.get();
+
+    // ok, make a new one
     TaskService* service =  new TaskService( name, numThreads );
     _taskServices[id] = service;
     return service;

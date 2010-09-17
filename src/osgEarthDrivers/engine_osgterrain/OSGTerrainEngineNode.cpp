@@ -283,126 +283,11 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     dirtyBound();
 }
 
-#if 0
-void
-OSGTerrainEngineNode::onModelLayerAdded( ModelLayer* layer )
-{
-    osg::Node* node = layer->getOrCreateNode();
-
-    if ( node )
-    {
-        if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
-        {
-            OE_WARN
-                << "Illegal: tried to add the name model layer more than once: " 
-                << layer->getName()
-                << std::endl;
-        }
-        else
-        {
-            // treat overlay node as a special case
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            {
-                osgSim::OverlayNode* overlay = static_cast<osgSim::OverlayNode*>( node );
-                bool autoTextureUnit = overlay->getOverlayTextureUnit() == 0; // indicates AUTO mode
-                installOverlayNode( overlay, autoTextureUnit );
-            }
-            else
-            {
-                _models->addChild( node );
-            }
-
-            ModelSource* ms = layer->getModelSource();
-            if ( ms && ms->getOptions()->renderOrder().isSet() )
-            {
-                node->getOrCreateStateSet()->setRenderBinDetails(
-                    ms->getOptions()->renderOrder().value(), "RenderBin" );
-            }
-
-            _modelLayerNodes[ layer ] = node;
-        }
-    }
-}
-
-void
-OSGTerrainEngineNode::onModelLayerRemoved( ModelLayer* layer )
-{
-    if ( layer )
-    {
-        // look up the node associated with this model layer.
-        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
-        if ( i != _modelLayerNodes.end() )
-        {
-            osg::Node* node = i->second;
-
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
-            {
-                // handle the special-case overlay node
-                uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
-            }
-            else
-            {
-                _models->removeChild( node );
-            }
-
-            _modelLayerNodes.erase( i );
-        }
-    }
-}
-
-struct MaskNodeFinder : public osg::NodeVisitor {
-    MaskNodeFinder() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
-    void apply( osg::Group& group ) {
-        if ( dynamic_cast<MaskNode*>( &group ) ) {
-            _groups.push_back( &group );
-        }
-        traverse(group);
-    }
-    std::list< osg::Group* > _groups;
-};
-
-void
-OSGTerrainEngineNode::onMaskLayerAdded( MaskLayer* layer )
-{
-    osg::Node* node = layer->getOrCreateNode();
-
-    if ( node && node->asGroup() )
-    {
-        int count = 0;
-        MaskNodeFinder f;
-        node->accept( f );
-        for( std::list<osg::Group*>::iterator i = f._groups.begin(); i != f._groups.end(); ++i )
-        {
-            (*i)->addChild( _terrainContainer.get() );
-            count++;
-        }
-        this->replaceChild( _terrainContainer.get(), node );
-
-        OE_NOTICE<<"Installed terrain mask ("
-            <<count<< " mask nodes found)" << std::endl;
-
-        _maskLayerNode = node->asGroup();
-    }
-}
-
-void
-OSGTerrainEngineNode::onMaskLayerRemoved( MaskLayer* layer )
-{
-    if ( layer && _maskLayerNode )
-    {
-        osg::ref_ptr<osg::Node> child = _maskLayerNode->getChild( 0 );
-        this->replaceChild( _maskLayerNode, child.get() );
-        _maskLayerNode = 0L;
-    }
-}
-#endif
-
 void
 OSGTerrainEngineNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
 {
     if ( layer )
     {
-#if 0
         if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
         {
             if ( layer->getTileSource() )
@@ -410,9 +295,7 @@ OSGTerrainEngineNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
                 getTerrain()->incrementRevision();
                 getTerrain()->updateTaskServiceThreads();
             }
-            updateStateSet();
         }
-#endif
 
         if ( layer->getTileSource() )
         {        

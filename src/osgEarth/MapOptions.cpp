@@ -63,12 +63,12 @@ Config
 MapOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
-    conf.key() = "map_options";
+    conf.key() = "options";
 
     conf.updateObjIfSet( "proxy", _proxySettings );
     conf.updateIfSet( "cache_only", _cacheOnly );
     conf.updateIfSet( "lighting", _enableLighting );
-    conf.updateIfSet( "terrain_options", _terrainOptionsConf );
+    conf.updateIfSet( "terrain", _terrainOptionsConf );
 
     return conf;
 }
@@ -82,9 +82,9 @@ MapOptions::mergeConfig( const Config& conf )
     conf.getIfSet( "cache_only", _cacheOnly );
     conf.getIfSet( "lighting", _enableLighting );
 
-    if ( conf.hasChild( "terrain_options" ) )
+    if ( conf.hasChild( "terrain" ) )
     {
-        _terrainOptionsConf = conf.child( "terrain_options" );
+        _terrainOptionsConf = conf.child( "terrain" );
         if ( _terrainOptions )
         {
             delete _terrainOptions;

@@ -81,7 +81,7 @@ Config
 TerrainOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
-    conf.key() = "terrain_options";
+    conf.key() = "terrain";
 
     conf.updateObjIfSet( "loading_policy", _loadingPolicy );
     conf.updateIfSet( "vertical_scale", _verticalScale );

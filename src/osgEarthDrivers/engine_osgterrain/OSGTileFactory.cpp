@@ -89,9 +89,9 @@ OSGTileFactory::init()
 
     LoadingPolicy::Mode mode = _terrainOptions.loadingPolicy()->mode().value();
     OE_INFO << LC << "Loading policy mode = " <<
-        ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "preemptive" :
-        mode == LoadingPolicy::MODE_SEQUENTIAL ? "sequential" :
-        "standard" )
+        ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "PREEMPTIVE" :
+        mode == LoadingPolicy::MODE_SEQUENTIAL ? "SEQUENTIAL" :
+        "STANDARD" )
         << ", threads per core = " << _terrainOptions.loadingPolicy()->numThreadsPerCore().value()
         << std::endl;
 }

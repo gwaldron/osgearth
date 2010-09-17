@@ -22,17 +22,45 @@
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/ThreadingUtils>
-#include <osg/Texture>
+#include <osg/StateSet>
+#include <osg/Program>
 
 namespace osgEarth
 {
+    /**
+     * Base interface for a particular texture composition implementation
+     */
+    class OSGEARTH_EXPORT TextureCompositorTechnique : public osg::Referenced
+    {
+    public:
+        virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const =0;
+
+        virtual osg::Program* createProgram() const =0;
+    };
+
+    /**
+     * Utility class that composites texture data for use by a terrain engine.
+     */
     class OSGEARTH_EXPORT TextureCompositor : public osg::Referenced
     {
+    public:
+        enum TechniqueType
+        {
+            TECH_AUTO,
+            TECH_TEXTURE_ARRAY,
+            TECH_TEXTURE_3D,
+            TECH_TEXTURE_ATLAS,
+            TECH_MULTITEXTURE_GPU,
+            TECH_MULTITEXTURE_FFP,
+            TECH_SOFTWARE,
+            TECH_USER
+        };
+
     public:
         /**
          * Constructs a new compositor.
          */
-        TextureCompositor();
+        TextureCompositor( TechniqueType tech =TECH_AUTO );
 
         /**
          * Creates a stateset that contains all the texture attributes necessary to 
@@ -51,9 +79,10 @@ namespace osgEarth
     private:
         void init();
 
-        OpenThreads::Mutex         _initMutex;
-        int                        _tech;
-        osg::ref_ptr<osg::Program> _program;
+        OpenThreads::Mutex                       _initMutex;
+        TechniqueType                            _tech;
+        osg::ref_ptr<osg::Program>               _program;
+        osg::ref_ptr<TextureCompositorTechnique> _impl;
     };
 }
 

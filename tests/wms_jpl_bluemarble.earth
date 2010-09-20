@@ -13,7 +13,7 @@ osgEarth Sample - NASA BlueMarble NG Imagery from JPL WMS
     <profile>global-geodetic</profile>
   </image>
   
-  <engine_properties>
+  <options>
     <lighting>false</lighting>
-  </engine_properties>
+  </options>
 </map>

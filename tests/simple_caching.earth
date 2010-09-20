@@ -6,10 +6,12 @@ Shows how to set up a simple map level cache
 
 <map name="My Map" type="geocentric">
 
-  <!--Specify a map level "tms" cache for all images and heightfields.--> 
-  <cache type="tms">
-     <path>cache</path>
-  </cache>
+  <options>
+      <!--Specify a map level "tms" cache for all images and heightfields.--> 
+      <cache type="tms">
+          <path>cache_dir</path>
+      </cache>
+  </options>
 
   <!--Because the bluemarble image doesn't have a cache element of its own, it will inherit the map level cache-->
   <image name="bluemarble" driver="tms">

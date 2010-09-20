@@ -1,11 +1,13 @@
 <map name="map">
 
-    <cache type="sqlite3">
-        <path>test_sqlite3.cachedb</path>
-        <serialized>false</serialized>
-        <async_writes>true</async_writes>
-        <max_size> 100 </max_size>
-    </cache>
+    <options>
+        <cache type="sqlite3">
+            <path>test_sqlite3.cachedb</path>
+            <serialized>false</serialized>
+            <async_writes>true</async_writes>
+            <max_size>100</max_size>
+        </cache>
+    </options>
     
     <image name="test.imagery" driver="tms">
         <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>

@@ -404,16 +404,17 @@ namespace osgEarth
             conf.value( "driver" ) = _driver;
             return conf;
         }
-
-    protected:
         virtual void mergeConfig( const Config& conf ) {
             ConfigOptions::mergeConfig(conf);
             fromConfig(conf);
         }
 
+    public:
         void fromConfig( const Config& conf ) {
             _name = conf.value( "name" );
             _driver = conf.value( "driver" );
+            if ( _driver.empty() && conf.hasValue("type") )
+                _driver = conf.value("type");
         }
 
     private:

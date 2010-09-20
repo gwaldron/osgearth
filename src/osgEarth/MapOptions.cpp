@@ -25,6 +25,7 @@ MapOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "name", _name );
     conf.getObjIfSet( "profile", _profileOptions );
+    conf.getObjIfSet( "cache", _cacheOptions );
 
     // all variations:
     conf.getIfSet( "type", "geocentric", _cstype, CSTYPE_GEOCENTRIC );
@@ -42,6 +43,7 @@ MapOptions::getConfig() const
 
     conf.updateIfSet( "name", _name );
     conf.updateObjIfSet( "profile", _profileOptions );
+    conf.updateObjIfSet( "cache", _cacheOptions );
 
     // all variations:
     conf.updateIfSet( "type", "geocentric", _cstype, CSTYPE_GEOCENTRIC );

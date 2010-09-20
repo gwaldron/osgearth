@@ -225,8 +225,9 @@ namespace osgEarth
          *
          * Note: Set this before adding any layers to the map.
          */
-        optional<CacheConfig>& cacheConfig();
-        const optional<CacheConfig>& cacheConfig() const;
+        //NOTE: moved to MapOptions
+        //optional<CacheConfig>& cacheConfig();
+        //const optional<CacheConfig>& cacheConfig() const;
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
@@ -243,11 +244,6 @@ namespace osgEarth
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             SamplePolicy samplePolicy =FIRST_VALID,
             ProgressCallback* progress = 0);
-
-		/**
-		 * Gets the Cache for this Map
-		 */
-		Cache* getCache() const;
 
 		/**
 		 * Sets the Cache for this Map
@@ -271,6 +267,11 @@ namespace osgEarth
 
         ~Map() { }
 
+		/**
+		 * Gets the Cache for this Map
+		 */
+		Cache* getCache();
+
     private:
 
         MapOptions _mapOptions;
@@ -290,7 +291,7 @@ namespace osgEarth
 		bool _use_mercator_locator;
         int _dataModelRevision;
         
-        optional<CacheConfig> _cacheConf;
+        //optional<CacheConfig> _cacheConf;
 
         osg::ref_ptr<osg::TransferFunction1D> _contourTransferFunction; ///< Storing the colour data for elevation levels
 

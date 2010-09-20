@@ -36,7 +36,7 @@ using namespace osgEarth;
 
 #define LC "[Cache] "
 
-
+#if 0
 const CacheConfig::CacheType CacheConfig::TYPE_DEFAULT   = "";
 const CacheConfig::CacheType CacheConfig::TYPE_TMS       = "tms";
 const CacheConfig::CacheType CacheConfig::TYPE_TILECACHE = "tilecache";
@@ -108,33 +108,21 @@ CacheConfig::runOffCacheOnly() const {
 }
 
 /*****************************************************************************/
+#endif
 
-Cache::Cache() :
+//------------------------------------------------------------------------
+
+Cache::Cache( const CacheOptions& options ) :
 osg::Object( true )
-{
-}
-
-Cache::Cache(const Cache& rhs, const osg::CopyOp& op) :
-osg::Object(rhs),
-_mapConfigFilename( rhs._mapConfigFilename )
 {
     //NOP
 }
 
-void Cache::storeLayerProperties( const std::string& layerName,
-		                          const Profile* profile,
-			                      const std::string& format,
-			                      unsigned int tile_size)
+Cache::Cache(const Cache& rhs, const osg::CopyOp& op) :
+osg::Object(rhs),
+_refURI( rhs._refURI )
 {
-	//NOP
-}
-
-const Profile* Cache::loadLayerProperties( const std::string& layerName,
-	                                       std::string& format,
-			                               unsigned int &tile_size )
-{
-	//NOP
-	return NULL;
+    //NOP
 }
 
 osg::HeightField*
@@ -167,27 +155,30 @@ Cache::setHeightField( const TileKey& key,
 	setImage( key, layerName, format, image.get() );
 }
 
+//------------------------------------------------------------------------
 
-/*****************************************************************************/
+#undef  LC
+#define LC "[DiskCache] "
 
 static Threading::ReadWriteMutex s_mutex;
 
-DiskCache::DiskCache():
-_writeWorldFiles(false)
+DiskCache::DiskCache( const DiskCacheOptions& options ) :
+_options( options )
 {
+    _writeWorldFilesOverride = getenv("OSGEARTH_WRITE_WORLD_FILES") != 0L;
 }
-
-DiskCache::DiskCache(const std::string& path):
-_path(path),
-_writeWorldFiles(false)
-{
-}
+//
+//DiskCache::DiskCache(const std::string& path):
+//_path(path),
+//_writeWorldFiles(false)
+//{
+//}
 
 DiskCache::DiskCache( const DiskCache& rhs, const osg::CopyOp& op ) :
 Cache( rhs, op ),
+_options( rhs._options ),
 _layerPropertiesCache( rhs._layerPropertiesCache ),
-_path( rhs._path ),
-_writeWorldFiles( rhs._writeWorldFiles )
+_writeWorldFilesOverride( rhs._writeWorldFilesOverride )
 {
     //NOP
 }
@@ -205,9 +196,10 @@ DiskCache::isCached(const osgEarth::TileKey& key,
 std::string
 DiskCache::getPath() const
 {
-	//Return early if the cache path is empty
-    if (_path.empty() || _mapConfigFilename.empty() ) return _path;
-    else return getFullPath(_mapConfigFilename, _path);
+    if ( _options.path().empty() || _refURI.empty() )
+        return _options.path();
+    else
+        return osgEarth::getFullPath( _refURI, _options.path() );
 }
 
 std::string
@@ -225,7 +217,6 @@ DiskCache::getFilename(const osgEarth::TileKey& key,
     // need to invert the y-tile index
     y = numRows - y - 1;
 
-
     char buf[2048];
     sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
         getPath().c_str(),
@@ -238,6 +229,7 @@ DiskCache::getFilename(const osgEarth::TileKey& key,
         (y / 1000) % 1000,
         (y % 1000),
         format.c_str());
+
     return buf;
 }
 
@@ -297,7 +289,7 @@ DiskCache::setImage( const TileKey& key,
 
     std::string ext = osgDB::getFileExtension(filename);
 
-    if (_writeWorldFiles || (getenv("OSGEARTH_WRITE_WORLD_FILES") != 0))
+    if ( _options.writeWorldFiles() == true || _writeWorldFilesOverride )
     {
         //Write out the world file along side the image
         double minx, miny, maxx, maxy;
@@ -390,7 +382,7 @@ const Profile* DiskCache::loadLayerProperties( const std::string& layerName,
 	osg::ref_ptr<TileMap> tileMap;
 
 	std::string path = getTMSPath( layerName );
-	OE_INFO << LC << "TileMap file is " << path << std::endl;
+	OE_INFO << LC << "Metadata file is " << path << std::endl;
 
 	if (osgDB::fileExists( path ) )
 	{
@@ -412,7 +404,11 @@ const Profile* DiskCache::loadLayerProperties( const std::string& layerName,
 	return NULL;
 }
 
-/*****************************************************************************/
+//------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[MemCache] "
+
 MemCache::MemCache():
 _maxNumTilesInCache(16)
 {
@@ -532,18 +528,21 @@ MemCache::isCached(const osgEarth::TileKey& key,
 	return image.valid();
 }
 
+//------------------------------------------------------------------------
 
-/*****************************************************************************/
+#undef  LC
+#define LC "[TMSCache] "
 
-TMSCache::TMSCache(const std::string &path):
-DiskCache(path),
-_invertY(false)
+TMSCache::TMSCache( const TMSCacheOptions& options ) :
+DiskCache( options ),
+_options( options )
 {
+    //nop
 }
 
 TMSCache::TMSCache( const TMSCache& rhs, const osg::CopyOp& op ) :
 DiskCache( rhs, op ),
-_invertY( rhs._invertY )
+_options( rhs._options )
 {
     //nop
 }
@@ -560,7 +559,7 @@ TMSCache::getFilename( const TileKey& key,
     
     unsigned int numCols, numRows;
     key.getProfile()->getNumTiles(lod, numCols, numRows);
-    if (!_invertY)
+    if ( _options.invertY() == false )
     {
         y = numRows - y - 1;
     }
@@ -572,22 +571,56 @@ TMSCache::getFilename( const TileKey& key,
     return bufStr;
 }
 
-static bool getProp(const std::map<std::string,std::string> &map, const std::string &key, std::string &value)
-{
-    std::map<std::string,std::string>::const_iterator i = map.find(key);
-    if (i != map.end())
-    {
-        value = i->second;
-        return true;
-    }
-    return false;
-}
-
-/*****************************************************************************/
+//------------------------------------------------------------------------
 
 #undef  LC
 #define LC "[CacheFactory] "
+#define CACHE_OPTIONS_TAG "__osgEarth::CacheOptions"
 
+Cache*
+CacheFactory::create( const CacheOptions& options )
+{
+    osg::ref_ptr<Cache> result =0L;
+    OE_INFO << LC << "Initializing cache of type \"" << options.getDriver() << "\"" << std::endl;
+
+    if ( options.getDriver().empty() )
+    {
+        OE_WARN << LC << "ILLEGAL: no driver set in cache options" << std::endl;
+    }
+    else if ( options.getDriver() == "tms" )
+    {
+        result = new TMSCache( options );
+    }
+    else if ( options.getDriver() == "tilecache" )
+    {
+        result = new DiskCache( options );
+    }
+    else // try to load from a plugin
+    {
+        osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();
+        rwopt->setPluginData( CACHE_OPTIONS_TAG, (void*)&options );
+
+        std::string driverExt = ".osgearth_cache_" + options.getDriver();
+        osgDB::ReaderWriter::ReadResult rr = osgDB::readObjectFile( driverExt, rwopt.get() );
+        result = dynamic_cast<Cache*>( rr.getObject() );
+        if ( !result )
+        {
+            OE_WARN << LC << "Failed to load cache plugin for type \"" << options.getDriver() << "\"" << std::endl;
+        }
+    }
+    return result.release();
+}
+
+//------------------------------------------------------------------------
+
+const CacheOptions&
+CacheDriver::getCacheOptions( const osgDB::ReaderWriter::Options* rwopt ) const 
+{
+    return *static_cast<const CacheOptions*>( rwopt->getPluginData( CACHE_OPTIONS_TAG ) );
+}
+
+
+#if 0
 Cache*
 CacheFactory::create(const CacheConfig &cacheConfig)
 {
@@ -705,3 +738,4 @@ CacheFactory::create( const osgEarth::DriverOptions* options )
 
     return result;
 }
+#endif

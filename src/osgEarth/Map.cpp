@@ -30,9 +30,10 @@ Map::Map( const MapOptions& options ) :
 osg::Referenced( true ),
 _mapOptions( options ),
 //_id(-1),
-_dataModelRevision(0),
-_cacheConf( CacheConfig() )
+_dataModelRevision(0)
+//_cacheConf( CacheConfig() )
 {
+#if 0
     // see if a cache if configured via env-var(s).
     if ( getenv( "OSGEARTH_CACHE_PATH" ) )
     {
@@ -52,6 +53,7 @@ _cacheConf( CacheConfig() )
             OE_INFO << LC << "Setting map cache type to: " << cacheType << std::endl;
         }
     }
+#endif
 }
 
 //void
@@ -102,14 +104,14 @@ Map::setGlobalOptions( const osgDB::ReaderWriter::Options* options ) {
 //    _referenceURI = uri;
 //}
 
-optional<CacheConfig>&
-Map::cacheConfig() {
-    return _cacheConf;
-}
-const optional<CacheConfig>&
-Map::cacheConfig() const {
-    return _cacheConf;
-}
+//optional<CacheConfig>&
+//Map::cacheConfig() {
+//    return _cacheConf;
+//}
+//const optional<CacheConfig>&
+//Map::cacheConfig() const {
+//    return _cacheConf;
+//}
 
 //optional<ProfileOptions>&
 //Map::profileOptions() {
@@ -181,12 +183,11 @@ Map::getProfile() const
 }
 
 Cache*
-Map::getCache() const
+Map::getCache()
 {
-    if ( !_cache.valid() && _cacheConf.isSet() )
+    if ( !_cache.valid() && _mapOptions.cache().isSet() ) //_cacheConf.isSet() )
     {
-        CacheFactory factory;
-        Cache* cache = factory.create( _cacheConf.value() );
+        Cache* cache = CacheFactory::create( _mapOptions.cache().get() );
         if ( cache ) {
             const_cast<Map*>(this)->setCache( cache );
         }
@@ -200,7 +201,7 @@ Map::setCache( Cache* cache)
     if (_cache.get() != cache)
     {
         _cache = cache;
-        _cache->setMapConfigFilename( _mapOptions.referenceURI().value() ); //_referenceURI );
+        _cache->setReferenceURI( _mapOptions.referenceURI().value() ); //_referenceURI );
 
         //Propagate the cache to any of our layers
         for (MapLayerList::iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end(); ++i)
@@ -230,7 +231,10 @@ Map::addMapLayer( MapLayer* layer )
     {
 	    //Set options for the map from the layer
 		layer->setReferenceURI( _mapOptions.referenceURI().value() );
-		if ( _cacheConf.isSet() && _cacheConf->runOffCacheOnly().isSet() && _cacheConf->runOffCacheOnly().get())
+
+        //propagate the cache to the layer:
+        if ( _mapOptions.cache().isSet() && _mapOptions.cache()->cacheOnly().isSetTo( true ) )
+		//if ( _cacheConf.isSet() && _cacheConf->runOffCacheOnly().isSet() && _cacheConf->runOffCacheOnly().get())
 		{
 			layer->cacheOnly() = true;
 		}

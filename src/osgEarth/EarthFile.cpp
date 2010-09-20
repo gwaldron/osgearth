@@ -197,17 +197,18 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     //if ( conf.hasChild( ELEM_PROFILE ) )
     //    map->profileOptions() = ProfileOptions( conf.child( ELEM_PROFILE ) );
 
+    //NOTE: this is now in MapOptions
     //Try to read the global map cache if one is specifiec
-    if ( conf.hasChild( ELEM_CACHE ) )
-    {
-        map->cacheConfig() = CacheConfig( conf.child( ELEM_CACHE ) );
+  //  if ( conf.hasChild( ELEM_CACHE ) )
+  //  {
+  //      map->cacheConfig() = CacheConfig( conf.child( ELEM_CACHE ) );
 
-		//Create and set the Cache for the Map
-		CacheFactory factory;
-        Cache* cache = factory.create( map->cacheConfig().value() );
-        if ( cache )
-		    map->setCache( cache );
-    }
+		////Create and set the Cache for the Map
+		//CacheFactory factory;
+  //      Cache* cache = factory.create( map->cacheConfig().value() );
+  //      if ( cache )
+		//    map->setCache( cache );
+  //  }
 
 	if ( osgEarth::Registry::instance()->getCacheOverride() )
 	{
@@ -312,11 +313,12 @@ getConfig( Map* map, const MapNodeOptions& ep )
         conf.add( writeLayer( map->getTerrainMaskLayer() ) );
     }
 
+    //NOTE: this is now in MapOptions
 	//TODO:  Get this from the getCache call itself, not a CacheConfig.
-    if ( map->cacheConfig().isSet() )
-    {
-        conf.add( map->cacheConfig()->getConfig( ELEM_CACHE ) );
-    }
+    //if ( map->cacheConfig().isSet() )
+    //{
+    //    conf.add( map->cacheConfig()->getConfig( ELEM_CACHE ) );
+    //}
 
     //NOTE: moved to MapNodeOptions
     //if ( map->profileOptions().isSet() )

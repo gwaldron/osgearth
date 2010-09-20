@@ -29,7 +29,8 @@ void CacheSeed::seed( Map* map )
 {
     Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    if (!map->getCache())
+    if ( !map->getMapOptions().cache().isSet() )
+    //if (!map->getCache())
     {
         OE_WARN << "Warning:  Map does not have a cache defined, please define a cache." << std::endl;
         return;

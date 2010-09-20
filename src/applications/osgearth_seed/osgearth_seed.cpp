@@ -28,10 +28,14 @@
 #include <osgEarth/EarthFile>
 #include <osgEarth/Registry>
 
+#include <osgEarth/Caching>
+
 #include <iostream>
 #include <sstream>
 
 using namespace osgEarth;
+
+#define LC "[seed] "
 
 int main(int argc, char** argv)
 {
@@ -90,7 +94,7 @@ int main(int argc, char** argv)
     //Make sure the user specified a file
     if ( filename.empty() )
     {
-        OE_NOTICE << "Please specify a .earth file to seed." << std::endl;
+        OE_WARN << LC << "Please specify a .earth file to seed." << std::endl;
         return 1;
     }
 
@@ -100,13 +104,17 @@ int main(int argc, char** argv)
         osg::ref_ptr< Cache > cache;
         if (cacheType == "disk")
         {
-            OE_NOTICE << "Creating DiskCache" << std::endl;
-            cache = new DiskCache( cachePath );
+            OE_NOTICE << LC << "Creating DiskCache" << std::endl;
+            DiskCacheOptions options;
+            options.setPath( cachePath );
+            cache = new DiskCache( options );
         }
         else
         {
-            OE_NOTICE << "Creating TMSCache" << std::endl;
-            cache = new TMSCache( cachePath );
+            OE_NOTICE << LC << "Creating TMSCache" << std::endl;
+            TMSCacheOptions options;
+            options.setPath( cachePath );
+            cache = new TMSCache( options );
         }
 
         OE_NOTICE <<"Override Cache Path: "<<cachePath<<std::endl;

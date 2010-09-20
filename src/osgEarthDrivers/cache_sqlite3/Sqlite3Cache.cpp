@@ -995,15 +995,16 @@ struct ThreadTable {
 class Sqlite3Cache : public AsyncCache
 {
 public:
-
-    Sqlite3Cache( const PluginOptions* options ) : AsyncCache(), _db(0L)
+    Sqlite3Cache( const CacheOptions& options ) 
+        : AsyncCache(), _db(0L), _options(options)
     {
         _nbRequest = 0;
-        _settings = dynamic_cast<const Sqlite3CacheOptions*>( options );
-        if ( !_settings.valid() )
-            _settings = new Sqlite3CacheOptions( options );
 
-        OE_INFO << LC << "settings: " << options->config().toString() << std::endl;
+        //_settings = dynamic_cast<const Sqlite3CacheOptions*>( options );
+        //if ( !_settings.valid() )
+        //    _settings = new Sqlite3CacheOptions( options );
+
+        OE_INFO << LC << "options: " << _options.getConfig().toString() << std::endl;
 
         if ( sqlite3_threadsafe() == 0 )
         {
@@ -1020,7 +1021,7 @@ public:
         OE_INFO << LC << "Using L2 memory cache" << std::endl;
 #endif
 
-        _db = openDatabase( _settings->path().value(), _settings->serialized().value() );
+        _db = openDatabase( _options.path().value(), _options.serialized().value() );
 
         if ( _db )
         {
@@ -1028,7 +1029,7 @@ public:
                 _db = 0L;
         }
 
-        if ( _db && _settings->asyncWrites() == true )
+        if ( _db && _options.asyncWrites() == true )
         {
             _writeService = new osgEarth::TaskService( "Sqlite3Cache Write Service", 1 );
         }
@@ -1151,7 +1152,7 @@ public: // Cache interface
         }
 
         // next check the deferred-write queue.
-        if ( _settings->asyncWrites() == true )
+        if ( _options.asyncWrites() == true )
         {
 #ifdef INSERT_POOL
             ScopedLock<Mutex> lock( _pendingWritesMutex );
@@ -1240,7 +1241,7 @@ public: // Cache interface
     {        
         if ( !_db ) return;
 
-        if ( _settings->asyncWrites() == true )
+        if ( _options.asyncWrites() == true )
         {
             // the "pending writes" table is here so that we don't try to write data to
             // the cache more than once when using an asynchronous write service.
@@ -1289,7 +1290,7 @@ public: // Cache interface
         if ( !_db ) false;
 
         // purge the L2 cache first:
-        if ( async == true && _settings->asyncWrites() == true )
+        if ( async == true && _options.asyncWrites() == true )
         {
 #ifdef PURGE_GENERAL
             if (!_pendingPurges.empty())
@@ -1314,7 +1315,7 @@ public: // Cache interface
 #ifdef PURGE_GENERAL
             ScopedLock<Mutex> lock( _pendingPurgeMutex );
 
-            sqlite3_int64 limit = _settings->maxSize().value() * 1024 * 1024;
+            sqlite3_int64 limit = _options.maxSize().value() * 1024 * 1024;
             std::map<std::string, std::pair<sqlite3_int64,int> > layers;
             sqlite3_int64 totalSize = 0;
             for (int i = 0; i < _layersList.size(); ++i) {
@@ -1366,7 +1367,7 @@ public: // Cache interface
             {
                 _pendingPurges.erase( layerName );
 
-                unsigned int maxsize = _settings->getSize(layerName);
+                unsigned int maxsize = _options.getSize(layerName);
                 tt._table->checkAndPurgeIfNeeded(tt._db, maxsize * 1024 * 1024);
                 displayPendingOperations();
             }
@@ -1450,9 +1451,9 @@ private:
 
     void setImageSync( const TileKey& key, const std::string& layerName, const std::string& format, osg::Image* image )
     {
-        if (_settings->maxSize().value() > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
+        if (_options.maxSize().value() > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
             int t = (int)::time(0L);
-            purge(layerName, t, _settings->asyncWrites().value() );
+            purge(layerName, t, _options.asyncWrites().value() );
             _nbRequest = 0;
         }
         _nbRequest++;
@@ -1469,7 +1470,7 @@ private:
             tt._table->store( rec, tt._db );
         }
 
-        if ( _settings->asyncWrites() == true )
+        if ( _options.asyncWrites() == true )
         {
             ScopedLock<Mutex> lock( _pendingWritesMutex );
             std::string name = key.str() + layerName;
@@ -1491,7 +1492,7 @@ private:
         std::map<Thread*,sqlite3*>::const_iterator k = _dbPerThreadLayers[layer].find(thread);
         if ( k == _dbPerThreadLayers[layer].end() )
         {
-            db = openDatabase( layer + _settings->path().value(), _settings->serialized().value() );
+            db = openDatabase( layer + _options.path().value(), _options.serialized().value() );
             if ( db )
             {
                 _dbPerThreadLayers[layer][thread] = db;
@@ -1522,7 +1523,7 @@ private:
         std::map<Thread*,sqlite3*>::const_iterator k = _dbPerThreadMeta.find(thread);
         if ( k == _dbPerThreadMeta.end() )
         {
-            db = openDatabase( _settings->path().value(), _settings->serialized().value() );
+            db = openDatabase( _options.path().value(), _options.serialized().value() );
             if ( db )
             {
                 _dbPerThreadMeta[thread] = db;
@@ -1553,7 +1554,7 @@ private:
         std::map<Thread*,sqlite3*>::const_iterator k = _dbPerThread.find(thread);
         if ( k == _dbPerThread.end() )
         {
-            db = openDatabase( _settings->path().value(), _settings->serialized().value() );
+            db = openDatabase( _options.path().value(), _options.serialized().value() );
             if ( db )
             {
                 _dbPerThread[thread] = db;
@@ -1611,7 +1612,8 @@ private:
 
 private:
 
-    osg::ref_ptr<const Sqlite3CacheOptions> _settings;
+    const Sqlite3CacheOptions _options;
+    //osg::ref_ptr<const Sqlite3CacheOptions> _settings;
     osg::ref_ptr<osgDB::ReaderWriter> _defaultRW;
     Mutex             _tableListMutex;
     MetadataTable     _metadata;
@@ -1710,6 +1712,8 @@ void AsyncInsertPool::operator()( ProgressCallback* progress )
 }
 #endif
 
+//------------------------------------------------------------------------
+
 /**
  * This driver defers loading of the source data to the appropriate OSG plugin. You
  * must explicity set an override profile when using this driver.
@@ -1717,7 +1721,7 @@ void AsyncInsertPool::operator()( ProgressCallback* progress )
  * For example, use this driver to load a simple jpeg file; then set the profile to
  * tell osgEarth its projection.
  */
-class Sqlite3CacheFactory : public osgDB::ReaderWriter
+class Sqlite3CacheFactory : public CacheDriver
 {
 public:
     Sqlite3CacheFactory()
@@ -1735,7 +1739,7 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return ReadResult( new Sqlite3Cache( static_cast<const PluginOptions*>(options) ) );
+        return ReadResult( new Sqlite3Cache( getCacheOptions(options) ) );
     }
 };
 

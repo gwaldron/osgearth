@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/Caching>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Profile>
@@ -69,6 +70,13 @@ namespace osgEarth
         const optional<ProfileOptions>& profile() const { return _profileOptions; }
 
         /**
+         * Caching setup for the entire map. By default, map layers added to the map will
+         * inherit this setup unless they override or customize it with their own settings.
+         */
+        optional<CacheOptions>& cache() { return _cacheOptions; }
+        const optional<CacheOptions>& cache() const { return _cacheOptions; }
+
+        /**
          * A reference location that drivers can use to load data from relative locations.
          * NOTE: this is a runtime-only property and is NOT serialized in the ConfigOptions.
          */
@@ -88,6 +96,7 @@ namespace osgEarth
 
         optional<std::string>          _name;
         optional<ProfileOptions>       _profileOptions;
+        optional<CacheOptions>         _cacheOptions;
         optional<CoordinateSystemType> _cstype;
         optional<std::string>          _referenceURI;
     };

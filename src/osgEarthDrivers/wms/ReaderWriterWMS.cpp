@@ -21,6 +21,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
 #include <osgEarth/XmlUtils>
+#include <osgEarthUtil/WMS>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -33,11 +34,11 @@
 #include <limits.h>
 #include <iomanip>
 
-#include "Capabilities"
 #include "TileService"
 #include "WMSOptions"
 
 using namespace osgEarth;
+using namespace osgEarthUtil;
 using namespace osgEarth::Drivers;
 
 // All looping ImageSequences deriving from this class will by in sync due to
@@ -158,7 +159,7 @@ public:
         {
             //TODO: "layers" mights be a comma-separated list. need to loop through and
             //combine the extents?? yes
-            Layer* layer = capabilities->getLayerByName( _settings->layers().value() );
+            WMSLayer* layer = capabilities->getLayerByName( _settings->layers().value() );
             if ( layer )
             {
                 double minx, miny, maxx, maxy;                

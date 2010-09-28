@@ -54,7 +54,7 @@
 class CompositingTerrainTechnique : public CustomTerrainTechnique
 {
 public:
-    CompositingTerrainTechnique( osgTerrain::Locator* locator =0L );
+    CompositingTerrainTechnique( TextureCompositor* compositor =0L ); //osgTerrain::Locator* locator =0L );
 
     CompositingTerrainTechnique(const CompositingTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
     META_Object(osgEarth, CompositingTerrainTechnique);

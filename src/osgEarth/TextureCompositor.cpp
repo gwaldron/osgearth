@@ -62,6 +62,24 @@ TextureCompositor::getProgram() const
     return _program.get();
 }
 
+bool
+TextureCompositor::requiresUnitTextureSpace() const
+{
+    if ( !_impl.valid() )
+        const_cast<TextureCompositor*>(this)->init();
+
+    return _impl->requiresUnitTextureSpace();
+}
+
+void
+TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
+{
+    if ( !_impl.valid() )
+        const_cast<TextureCompositor*>(this)->init();
+
+    _impl->updateGlobalStateSet( stateSet, numImageLayers );
+}
+
 void
 TextureCompositor::init()
 {        
@@ -81,36 +99,46 @@ TextureCompositor::init()
         _impl = new TextureCompositorTexArray();
         OE_INFO << LC << "technique = TEXTURE ARRAY" << std::endl;
     }
-    else if ( _tech == TECH_TEXTURE_3D || (isAuto && caps.supportsTexture3D()) )
-    {
-        _tech = TECH_TEXTURE_3D;
-        _impl = new TextureCompositorTex3D();
-        OE_INFO << LC << "technique = TEXTURE 3D" << std::endl;
-    }
-    else if ( _tech == TECH_TEXTURE_ATLAS || (isAuto && caps.supportsGLSL()) )
-    {
-        _tech = TECH_TEXTURE_ATLAS;
-        _impl = new TextureCompositorAtlas();
-        OE_INFO << LC << "technique = TEXTURE ATLAS" << std::endl;
-    }
+
+    // commented out because it doesn't work yet:
+    //else if ( _tech == TECH_TEXTURE_3D || (isAuto && caps.supportsTexture3D()) )
+    //{
+    //    _tech = TECH_TEXTURE_3D;
+    //    _impl = new TextureCompositorTex3D();
+    //    OE_INFO << LC << "technique = TEXTURE 3D" << std::endl;
+    //}
+
+    // commented out because the tile boundaries show
+    //else if ( _tech == TECH_TEXTURE_ATLAS || (isAuto && caps.supportsGLSL()) )
+    //{
+    //    _tech = TECH_TEXTURE_ATLAS;
+    //    _impl = new TextureCompositorAtlas();
+    //    OE_INFO << LC << "technique = TEXTURE ATLAS" << std::endl;
+    //}
+
+    // commented out because it's NYI:
     else if ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) )
     {
         _tech = TECH_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true );
         OE_INFO << LC << "technique = MULTITEXTURE/GPU" << std::endl;
     }
-    else if ( _tech == TECH_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
+
+    // NOTE: uncomment this to "else if" when Software mode is ready
+    else // if ( _tech == TECH_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
     {
         _tech = TECH_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false );
         OE_INFO << LC << "technique = MULTITEXTURE/FFP" << std::endl;
     }
-    else
-    {
-        _tech = TECH_SOFTWARE;
-        _impl = new TextureCompositorSoftware();
-        OE_INFO << LC << "technique = software" << std::endl;
-    }
+
+    // commented out because it's NYI:
+    //else
+    //{
+    //    _tech = TECH_SOFTWARE;
+    //    _impl = new TextureCompositorSoftware();
+    //    OE_INFO << LC << "technique = software" << std::endl;
+    //}
 
     if ( _impl.valid() )
         _program = _impl->createProgram();

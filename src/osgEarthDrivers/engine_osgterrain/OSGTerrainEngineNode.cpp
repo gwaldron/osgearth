@@ -232,7 +232,8 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 
         else if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
         {
-            tech = new CompositingTerrainTechnique();
+            _texCompositor = new TextureCompositor();
+            tech = new CompositingTerrainTechnique( _texCompositor.get() );
             OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
         }
 
@@ -742,10 +743,21 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 void
 OSGTerrainEngineNode::updateTextureCombining()
 {
-    // ASSUMPTION: map data mutex is held
+    if ( _texCompositor.valid() )
+    {
+        // ASSUMPTION: map data mutex is held
+        _texCompositor->updateGlobalStateSet( getOrCreateStateSet(), _map->getImageMapLayers().size() );
+    }
 
-    if (_terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE &&
-        _terrainOptions.combineLayers() == true )
+    //TODO: reintroduce support for _terrainOptions.combineLayers() ????
+}
+
+#if 0
+    if ( _texCompositor.valid() )
+    {
+        if ( 
+    //if (_terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE &&
+    //    _terrainOptions.combineLayers() == true )
     {
         int numLayers = _map->getImageMapLayers().size();
 
@@ -824,3 +836,5 @@ OSGTerrainEngineNode::updateTextureCombining()
         }
     }
 }
+#endif
+

@@ -36,6 +36,10 @@ namespace osgEarth
         virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const =0;
 
         virtual osg::Program* createProgram() const =0;
+
+        virtual bool requiresUnitTextureSpace() const =0;
+
+        virtual void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const { }
     };
 
     /**
@@ -46,14 +50,14 @@ namespace osgEarth
     public:
         enum TechniqueType
         {
-            TECH_AUTO,
-            TECH_TEXTURE_ARRAY,
-            TECH_TEXTURE_3D,
-            TECH_TEXTURE_ATLAS,
-            TECH_MULTITEXTURE_GPU,
-            TECH_MULTITEXTURE_FFP,
-            TECH_SOFTWARE,
-            TECH_USER
+            TECH_AUTO,              // automatically select a technique based on platform capabilities
+            TECH_TEXTURE_ARRAY,     // 2D texture array, GPU compositing, single tex unit
+            TECH_TEXTURE_3D,        // 3D texture, GPU compositing, single tex unit
+            TECH_TEXTURE_ATLAS,     // texture atlas, GPU compositing, single tex unit
+            TECH_MULTITEXTURE_GPU,  // multiple textures, GPU compositing, one tex unit per image
+            TECH_MULTITEXTURE_FFP,  // multiple textures, fixed-function multitexturing, one tex unit per image
+            TECH_SOFTWARE,          // software compositing, one texture/tex unit
+            TECH_USER               // user-supplied technique
         };
 
     public:
@@ -75,6 +79,21 @@ namespace osgEarth
          * the program to whatever node is rendering the terrain tile.
          */
         osg::Program* getProgram() const;
+
+        /**
+         * Whether the texture composition technique uses a single, unit (0..1) texture coordinate
+         * space (true), or a separate texture coordinate space per layer (false). This provides a
+         * hint to whomever is generating the texture coordinates as to what they need to do to 
+         * support the current technique.
+         */
+        bool requiresUnitTextureSpace() const;
+
+        /**
+         * Updates a state set with attributes required to support the technique.
+         * Call this whenever the composition of the image layer stack changes in order to update
+         * applicable global uniforms, texture attributes, and so forth.
+         */
+        void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
 
     private:
         void init();

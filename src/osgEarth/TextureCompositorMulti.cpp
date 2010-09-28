@@ -20,58 +20,14 @@
 #include <osgEarth/TextureCompositorMulti>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
-#include <osg/Texture3D>
+#include <osg/Texture2D>
+#include <osg/TexEnv>
+#include <osg/TexEnvCombine>
 #include <vector>
 
 using namespace osgEarth;
 
 #define LC "[TextureCompositorMultiTexture] "
-
-//------------------------------------------------------------------------
-
-// Records the information about a layer's texture space
-struct LayerTexRegion
-{
-    LayerTexRegion() :
-        _px(0), _py(0),
-        _pw(256), _ph(256),
-        _tx(0.0f), _ty(0.0f),
-        _tw(1.0f), _th(1.0f),
-        _xoffset(0.0f), _yoffset(0.0f),
-        _xscale(1.0f), _yscale(1.0f)
-    {
-        //nop
-    }
-
-    // pixel coordinates of layer in the composite image:
-    int _px, _py, _pw, _ph;
-
-    // texture coordinates of layer in the composite image:
-    float _tx, _ty, _tw, _th;
-
-    // texture scale and offset for this region:
-    float _xoffset, _yoffset, _xscale, _yscale;
-};
-typedef std::vector<LayerTexRegion> LayerTexRegionList;
-
-//------------------------------------------------------------------------
-
-static char s_source_vertMain[] =
-
-    "varying vec3 normal, lightDir, halfVector; \n"
-
-    "void main(void) \n"
-    "{ \n"
-    "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
-    "    gl_Position = ftransform(); \n"
-    "} \n";
-
-//------------------------------------------------------------------------
-
-static char s_source_fragMain[] =
-
-    "    gl_FragColor = gl_Color; \n"
-    "} \n";
 
 //------------------------------------------------------------------------
 
@@ -84,15 +40,118 @@ osg::StateSet*
 TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
 {
     osg::StateSet* stateSet = new osg::StateSet();
-    //TODO
+
+    int texUnit =0;
+    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++texUnit )
+    {
+        osg::Texture2D* texture = new osg::Texture2D( i->getImage() );
+        int texWidth = i->getImage()->s();
+        int texHeight = i->getImage()->t();
+
+        // configure the mipmapping 
+        texture->setMaxAnisotropy(16.0f);
+        texture->setResizeNonPowerOfTwoHint(false);
+        texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+        bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
+        if ( powerOfTwo )
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        else
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+
+        // configure the wrapping
+        texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
+        texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
+
+        // populate the stateset
+        stateSet->setTextureAttributeAndModes( texUnit, texture, osg::StateAttribute::ON );
+    }
+
     return stateSet;
 }
 
 osg::Program*
 TextureCompositorMultiTexture::createProgram() const
 {
-    osg::Program* program = new osg::Program();
-    program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_source_fragMain ) );
-    return program;
+    return 0L;
+}
+
+void 
+TextureCompositorMultiTexture::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
+{
+    if ( !_useGPU )
+    {
+        // FFP multitexturing requires that we set up a series of TexCombine attributes:
+
+        if (numImageLayers == 1)
+        {
+            osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
+            stateSet->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+        }
+        else if (numImageLayers >= 2)
+        {
+            //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
+
+                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource1_Alpha(osg::TexEnvCombine::TEXTURE0+0);
+                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
+                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                stateSet->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
+            }
+
+
+            //For textures 2 and beyond, blend them together with the previous
+            //Add the alpha values of this unit and the previous unit
+            for (int unit = 1; unit < numImageLayers-1; ++unit)
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
+
+                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource1_Alpha(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
+                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
+
+                stateSet->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
+            }
+
+            //Modulate the colors to get proper lighting on the last unit
+            //Keep the alpha results from the previous stage
+            {
+                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
+                texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
+                texenv->setCombine_Alpha(osg::TexEnvCombine::REPLACE);
+
+                texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
+                texenv->setSource0_Alpha(osg::TexEnvCombine::PREVIOUS);
+                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
+
+                texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
+                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
+                stateSet->setTextureAttributeAndModes(numImageLayers-1, texenv, osg::StateAttribute::ON);
+            }
+        }
+    }
 }

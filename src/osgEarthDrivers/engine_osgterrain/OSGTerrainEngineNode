@@ -20,6 +20,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/TextureCompositor>
 #include "OSGTerrainOptions"
 #include "OSGTileFactory"
 #include <osg/Geode>
@@ -83,6 +84,7 @@ private:
 private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;
     osg::ref_ptr<MapLayerController> _mapLayerController;
+    osg::ref_ptr<TextureCompositor> _texCompositor;
     class CustomTerrain* _terrain;
     unsigned int _id;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;

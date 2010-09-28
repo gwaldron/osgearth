@@ -2035,6 +2035,14 @@ void decomposeCenter(const osg::Vec3d& center, const osg::Quat& centerRotation,
     Me = Mtotal * MlonInv;
 }
 
+osg::Matrixd rotateAroundPoint(const osg::Vec3d& pt, double theta,
+                               const osg::Vec3d& axis)
+{
+    return (osg::Matrixd::translate(pt)
+            * osg::Matrixd::rotate(theta, axis)
+            * osg::Matrixd::translate(pt * -1.0));
+}
+
 // Theory of operation for the manipulator drag motion
 //
 // The mouse drag is transformed to a vector on the surface of the
@@ -2158,10 +2166,10 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
             S.normalize();
             // Solve for angle that rotates xAxis into z = 0 plane.
             // soln to 0 = P1.z + r cos(theta) R.z + r sin(theta) S.z
-            double temp1 = r * (S.z() * S.z() + R.z() * R.z());
+            double temp1 = r * (square(S.z()) + square(R.z()));
             if (equivalent(temp1, 0.0))
                 return;
-            double radical = r * temp1 - P1.z() * P1.z();
+            double radical = r * temp1 - square(P1.z());
             if (radical < 0)
                 return;
             double temp2 = R.z() * sqrt(radical) / temp1;
@@ -2170,23 +2178,30 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
             double sin2 = temp2 - temp3;
             double theta1 = DBL_MAX;
             double theta2 = DBL_MAX;
+            Matrixd cm1, cm2;
             if (fabs(sin1) <= 1.0)
+            {
                 theta1 = -asin(sin1);
+                Matrixd m = rotateAroundPoint(worldEndDrag, -theta1, coneAxis);
+                cm1 = Me * m;
+            }
             if (fabs(sin2) <= 1.0)
+            {
                 theta2 = asin(sin2);
+                Matrix m = rotateAroundPoint(worldEndDrag, -theta2, coneAxis);
+                cm2 = Me * m;
+            }
             if (theta1 == DBL_MAX && theta2 == DBL_MAX)
                 return;
-            double theta;
-            if (fabs(theta1) < fabs(theta2))
-                theta = theta1;
+            Matrixd* CameraMat = 0;
+            if (theta1 != DBL_MAX && cm1(1, 2) >= 0.0)
+                CameraMat = &cm1;
+            else if (theta2 != DBL_MAX && cm2(1, 2) >= 0.0)
+                CameraMat = &cm2;
             else
-                theta = theta2;
-            Matrixd m = (Matrixd::translate(worldEndDrag)
-                         * Matrixd::rotate(-theta, coneAxis)
-                         * Matrixd::translate(worldEndDrag * -1.0));
-            Matrix CameraMat = Me * m;
-            _center = CameraMat.getTrans();
-            _centerRotation = CameraMat.getRotate();
+                return;
+            _center = CameraMat->getTrans();
+            _centerRotation = CameraMat->getRotate();
         }
         else
         {

@@ -132,7 +132,7 @@ struct MetadataTable
             "tw int, "
             "th int )";
 
-        OE_INFO << LC << "SQL = " << sql << std::endl;
+        OE_DEBUG << LC << "SQL = " << sql << std::endl;
 
         char* errMsg = 0L;
         int err = sqlite3_exec( db, sql.c_str(), 0L, 0L, &errMsg );
@@ -196,7 +196,7 @@ struct MetadataTable
         }
         else
         {
-            OE_INFO << LC << "Stored metadata record for \"" << rec._layerName << "\"" << std::endl;
+            OE_DEBUG << LC << "Stored metadata record for \"" << rec._layerName << "\"" << std::endl;
             success = true;
         }
 
@@ -245,7 +245,7 @@ struct MetadataTable
         else
         {
             // no result
-            OE_INFO << "NO metadata record found for \"" << key << "\"" << std::endl;
+            OE_DEBUG << "NO metadata record found for \"" << key << "\"" << std::endl;
             success = false;
         }
 
@@ -466,7 +466,7 @@ struct LayerTable : public osg::Referenced
     void checkAndPurgeIfNeeded(sqlite3* db, unsigned int maxSize )
     {
         int size = getTableSize(db);
-        OE_INFO << _meta._layerName <<  std::dec << " : "  << size/1024/1024 << " MB" << std::endl;
+        OE_DEBUG << _meta._layerName <<  std::dec << " : "  << size/1024/1024 << " MB" << std::endl;
         if (size < 0 || size < 1.2 * maxSize)
             return;
             
@@ -475,7 +475,7 @@ struct LayerTable : public osg::Referenced
         float averageSize = size * 1.0 / nbElements;
         float diffSize = size - maxSize;
         int maxElementToRemove = static_cast<int>(ceil(diffSize/averageSize));
-        OE_INFO << _meta._layerName <<  " try to remove " << std::dec << maxElementToRemove << " / " <<  nbElements << " to save place" << std::endl;
+        OE_DEBUG << _meta._layerName <<  " try to remove " << std::dec << maxElementToRemove << " / " <<  nbElements << " to save place" << std::endl;
         purge(t, maxElementToRemove, db);
     }
 
@@ -740,9 +740,9 @@ struct LayerTable : public osg::Referenced
         osg::Timer_t t = osg::Timer::instance()->tick();
         if (osg::Timer::instance()->delta_s( _statsLastCheck, t) > 10.0) {
             double d = osg::Timer::instance()->delta_s(_statsStartTimer, t);
-            OE_INFO << _meta._layerName << " time " << d << " stored " << std::dec << _statsStored << " rate " << _statsStored * 1.0 / d << std::endl;
-            OE_INFO << _meta._layerName << " time " << d << " loaded " << std::dec  << _statsLoaded << " rate " << _statsLoaded * 1.0 / d << std::endl;
-            OE_INFO << _meta._layerName << " time " << d << " deleted " << std::dec  << _statsDeleted << " rate " << _statsDeleted * 1.0 / d << std::endl;
+            OE_DEBUG << _meta._layerName << " time " << d << " stored " << std::dec << _statsStored << " rate " << _statsStored * 1.0 / d << std::endl;
+            OE_DEBUG << _meta._layerName << " time " << d << " loaded " << std::dec  << _statsLoaded << " rate " << _statsLoaded * 1.0 / d << std::endl;
+            OE_DEBUG << _meta._layerName << " time " << d << " deleted " << std::dec  << _statsDeleted << " rate " << _statsDeleted * 1.0 / d << std::endl;
             _statsLastCheck = t;
         }
     }
@@ -844,7 +844,7 @@ struct LayerTable : public osg::Referenced
 #endif
         std::string sql = buf.str();
 
-        OE_INFO << LC << "SQL = " << sql << std::endl;
+        OE_DEBUG << LC << "SQL = " << sql << std::endl;
 
         char* errMsg = 0L;
         int rc = sqlite3_exec( db, sql.c_str(), 0L, 0L, &errMsg );
@@ -862,7 +862,7 @@ struct LayerTable : public osg::Referenced
             << "ON \"" << _meta._layerName << "\" (accessed)";
         sql = buf.str();
 
-        OE_INFO << LC << "SQL = " << sql << std::endl;
+        OE_DEBUG << LC << "SQL = " << sql << std::endl;
 
         rc = sqlite3_exec( db, sql.c_str(), 0L, 0L, &errMsg );
         if ( rc != SQLITE_OK )
@@ -1121,7 +1121,7 @@ public: // Cache interface
         if ( !db )
             return 0L;
 
-        OE_INFO << LC << "Loading metadata for layer \"" << layerName << "\"" << std::endl;
+        OE_DEBUG << LC << "Loading metadata for layer \"" << layerName << "\"" << std::endl;
 
         MetadataRecord rec;
         if ( _metadata.load( layerName, db, rec ) )
@@ -1229,7 +1229,7 @@ public: // Cache interface
         }
         else
         {
-            OE_WARN << LC << "What, no layer table?" << std::endl;
+            OE_DEBUG << LC << "What, no layer table?" << std::endl;
         }
         return 0L;
     }
@@ -1327,7 +1327,7 @@ public: // Cache interface
                     totalSize += size;
                 }
             }
-            OE_INFO << "SQlite cache size " << totalSize/(1024*1024) << " MB" << std::endl;
+            OE_INFO << LC << "SQlite cache size " << totalSize/(1024*1024) << " MB" << std::endl;
             if (totalSize > 1.2 * limit) {
                 sqlite3_int64 diff = totalSize - limit;
                 for (int i = 0; i < _layersList.size(); ++i) {
@@ -1335,9 +1335,9 @@ public: // Cache interface
                     int sizeToRemove = (int)floor(ratio * diff);
                     if (sizeToRemove > 0) {
                         if (sizeToRemove / 1024 > 1024) {
-                            OE_INFO << "Try to remove " << sizeToRemove/(1024*1024) << " MB in " << _layersList[i] << std::endl;
+                            OE_DEBUG << "Try to remove " << sizeToRemove/(1024*1024) << " MB in " << _layersList[i] << std::endl;
                         } else {
-                            OE_INFO << "Try to remove " << sizeToRemove/1024 << " KB in " << _layersList[i] << std::endl;
+                            OE_DEBUG << "Try to remove " << sizeToRemove/1024 << " KB in " << _layersList[i] << std::endl;
                         }
 
                         if ( _L2cache.valid() )
@@ -1347,7 +1347,7 @@ public: // Cache interface
                             float averageSizePerElement = layers[_layersList[i] ].first * 1.0 /layers[_layersList[i] ].second;
                             int nb = (int)floor(sizeToRemove / averageSizePerElement);
                             if (nb ) {
-                                OE_INFO << "remove " << nb << " / " << layers[_layersList[i] ].second << " elements in " << _layersList[i] << std::endl;
+                                OE_DEBUG << "remove " << nb << " / " << layers[_layersList[i] ].second << " elements in " << _layersList[i] << std::endl;
                                 tt._table->purge(olderThanUTC, nb, tt._db);
                             }
                         }
@@ -1558,7 +1558,7 @@ private:
             if ( db )
             {
                 _dbPerThread[thread] = db;
-                OE_INFO << LC << "Created DB handle " << std::hex << db << " for thread " << thread << std::endl;
+                OE_DEBUG << LC << "Created DB handle " << std::hex << db << " for thread " << thread << std::endl;
             }
             else
             {
@@ -1605,7 +1605,7 @@ private:
             }
 
             _tables[layerName] = new LayerTable( meta, db );
-            OE_INFO << LC << "New LayerTable for " << layerName << std::endl;
+            OE_DEBUG << LC << "New LayerTable for " << layerName << std::endl;
         }
         return ThreadTable( _tables[layerName].get(), db );
     }

@@ -100,6 +100,7 @@ namespace osgEarth
 
         OpenThreads::Mutex                       _initMutex;
         TechniqueType                            _tech;
+        bool                                     _forceTech;
         osg::ref_ptr<osg::Program>               _program;
         osg::ref_ptr<TextureCompositorTechnique> _impl;
     };

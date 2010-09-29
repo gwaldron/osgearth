@@ -37,9 +37,23 @@ using namespace OpenThreads;
 #define LC "[TextureCompositor] "
 
 TextureCompositor::TextureCompositor( TextureCompositor::TechniqueType tech ) :
-_tech( tech )
+_tech( tech ),
+_forceTech( false )
 {
-    //nop
+    // for debugging:
+    if ( _tech == TECH_AUTO && ::getenv( "OSGEARTH_COMPOSITOR_TECH" ) )
+    {
+        TechniqueType oldTech = _tech;
+        std::string t( ::getenv( "OSGEARTH_COMPOSITOR_TECH" ) );
+        if      ( t == "TEXTURE_ARRAY" )    _tech = TECH_TEXTURE_ARRAY;
+        else if ( t == "TEXTURE_3D" )       _tech = TECH_TEXTURE_3D;
+        else if ( t == "TEXTURE_ATLAS" )    _tech = TECH_TEXTURE_ATLAS;
+        else if ( t == "MULTITEXTURE_GPU" ) _tech = TECH_MULTITEXTURE_GPU;
+        else if ( t == "MULTITEXTURE_FFP" ) _tech = TECH_MULTITEXTURE_FFP;
+        else if ( t == "SOFTWARE" )         _tech = TECH_SOFTWARE;
+        if ( oldTech != _tech )
+            _forceTech = true;
+    }
 }
 
 osg::StateSet*
@@ -100,24 +114,24 @@ TextureCompositor::init()
         OE_INFO << LC << "technique = TEXTURE ARRAY" << std::endl;
     }
 
-    // commented out because it doesn't work yet:
-    //else if ( _tech == TECH_TEXTURE_3D || (isAuto && caps.supportsTexture3D()) )
-    //{
-    //    _tech = TECH_TEXTURE_3D;
-    //    _impl = new TextureCompositorTex3D();
-    //    OE_INFO << LC << "technique = TEXTURE 3D" << std::endl;
-    //}
+    // check "forceTech" because it doesn't work yet:
+    else if ( _forceTech && ( _tech == TECH_TEXTURE_3D || (isAuto && caps.supportsTexture3D()) ) )
+    {
+        _tech = TECH_TEXTURE_3D;
+        _impl = new TextureCompositorTex3D();
+        OE_INFO << LC << "technique = TEXTURE 3D" << std::endl;
+    }
 
-    // commented out because the tile boundaries show
-    //else if ( _tech == TECH_TEXTURE_ATLAS || (isAuto && caps.supportsGLSL()) )
-    //{
-    //    _tech = TECH_TEXTURE_ATLAS;
-    //    _impl = new TextureCompositorAtlas();
-    //    OE_INFO << LC << "technique = TEXTURE ATLAS" << std::endl;
-    //}
+    // check "forceTech" because the tile boundaries show
+    else if ( _forceTech && ( _tech == TECH_TEXTURE_ATLAS || (isAuto && caps.supportsGLSL()) ) )
+    {
+        _tech = TECH_TEXTURE_ATLAS;
+        _impl = new TextureCompositorAtlas();
+        OE_INFO << LC << "technique = TEXTURE ATLAS" << std::endl;
+    }
 
     // commented out because it's NYI:
-    else if ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) )
+    else if ( _forceTech && ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) ) )
     {
         _tech = TECH_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true );

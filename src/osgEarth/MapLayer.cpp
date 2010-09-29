@@ -519,7 +519,7 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
     const Profile* layerProfile = getProfile();
     const Profile* mapProfile = key.getProfile();
 
-	if ( !getProfile() )
+	if ( !layerProfile )
 	{
 		OE_WARN << LC << "Could not get a valid profile for Layer " << _name << std::endl;
         return GeoImage::INVALID;

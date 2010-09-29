@@ -94,44 +94,18 @@ Map::setGlobalOptions( const osgDB::ReaderWriter::Options* options ) {
     _globalOptions = options;
 }
 
-//const std::string&
-//Map::getReferenceURI() const { 
-//    return _referenceURI;
-//}
-//
-//void
-//Map::setReferenceURI( const std::string& uri ) {
-//    _referenceURI = uri;
-//}
-
-//optional<CacheConfig>&
-//Map::cacheConfig() {
-//    return _cacheConf;
-//}
-//const optional<CacheConfig>&
-//Map::cacheConfig() const {
-//    return _cacheConf;
-//}
-
-//optional<ProfileOptions>&
-//Map::profileOptions() {
-//    return _profileConf;
-//}
-//const optional<ProfileOptions>&
-//Map::profileOptions() const {
-//    return _profileConf;
-//}
-
 const MapLayerList& 
 Map::getImageMapLayers() const {
     return _imageMapLayers;
 }
 
 int
-Map::getImageMapLayers( MapLayerList& out_list ) const {
+Map::getImageMapLayers( MapLayerList& out_list, bool validLayersOnly ) const
+{
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
     for( MapLayerList::const_iterator i = _imageMapLayers.begin(); i != _imageMapLayers.end(); ++i )
-        out_list.push_back( i->get() );
+        if ( !validLayersOnly || i->get()->getProfile() )
+            out_list.push_back( i->get() );
     return _dataModelRevision;
 }
 
@@ -141,10 +115,12 @@ Map::getHeightFieldMapLayers() const {
 }
 
 int
-Map::getHeightFieldMapLayers( MapLayerList& out_list ) const {
+Map::getHeightFieldMapLayers( MapLayerList& out_list, bool validLayersOnly ) const
+{
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
     for( MapLayerList::const_iterator i = _heightFieldMapLayers.begin(); i != _heightFieldMapLayers.end(); ++i )
-        out_list.push_back( i->get() );
+        if ( !validLayersOnly || i->get()->getProfile() )
+            out_list.push_back( i->get() );
     return _dataModelRevision;
 }
 
@@ -565,7 +541,7 @@ Map::createHeightField( const TileKey& key,
     for( MapLayerList::const_iterator i = getHeightFieldMapLayers().begin(); i != getHeightFieldMapLayers().end(); i++ )
     {
         MapLayer* layer = i->get();
-        if (layer->enabled() == true)
+        if (layer->getProfile() && layer->enabled() == true)
         {
             osg::ref_ptr< osg::HeightField > hf = layer->createHeightField( key, progress );
             layerValidMap[ layer ] = hf.valid();
@@ -590,7 +566,7 @@ Map::createHeightField( const TileKey& key,
     {
         MapLayer* layer = i->get();
 
-        if (layer->enabled() == true)
+        if (layer->getProfile() && layer->enabled() == true)
         {
             if (!layerValidMap[ layer ])
             {

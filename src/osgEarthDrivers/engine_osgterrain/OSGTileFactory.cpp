@@ -256,7 +256,9 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
     {
         MapLayer* layer = i->get();
         osg::ref_ptr< Cache > cache = layer->getCache();
-        if (!cache.valid()) return false;
+
+        if ( !cache.valid() || !layer->getProfile() ) 
+            return false;
 
         std::vector< TileKey > keys;
 
@@ -286,7 +288,9 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
     {
         MapLayer* layer = i->get();
         osg::ref_ptr< Cache > cache = layer->getCache();
-        if (!cache.valid()) return false;
+
+        if ( !cache.valid() || !layer->getProfile() )
+            return false;
 
         std::vector<TileKey> keys;
 
@@ -594,8 +598,14 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 
     GeoImageVector image_tiles;
 
-    const MapLayerList& imageMapLayers = map->getImageMapLayers();
-    const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
+    MapLayerList imageMapLayers;
+    map->getImageMapLayers( imageMapLayers, true );
+
+    MapLayerList hfMapLayers;
+    map->getHeightFieldMapLayers( hfMapLayers, true );
+
+    //const MapLayerList& imageMapLayers = map->getImageMapLayers();
+    //const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
 
     // Collect the image layers
     bool empty_map = imageMapLayers.size() == 0 && hfMapLayers.size() == 0;
@@ -604,7 +614,6 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
     {
         MapLayer* layer = i->get();
-
         GeoImage image;
         //Only create images if the key is valid
         if ( layer->isKeyValid( key ) )

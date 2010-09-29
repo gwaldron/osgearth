@@ -102,7 +102,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        int getImageMapLayers( MapLayerList& out_list ) const;
+        int getImageMapLayers( MapLayerList& out_list, bool validLayersOnly =false ) const;
 
         /**
          * Gets the ordered list of heightfield layers in this map. Be sure to use
@@ -115,7 +115,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        int getHeightFieldMapLayers( MapLayerList& out_list ) const;
+        int getHeightFieldMapLayers( MapLayerList& out_list, bool validLayersOnly =false ) const;
 
         /** 
          * Gets the unordered list of model layer in this map. Be sure to use

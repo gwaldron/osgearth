@@ -361,31 +361,13 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
         if (geoImage.valid())
         {
             double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
+            geoImage.getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<GeoLocator> img_locator;
-
-            // Use a special locator for mercator images (instead of reprojecting).
-            // We do this under 2 conditions when we have mercator tiles:
-            // a) The map is geocentric; or
-            // b) The map is projected but is also "geographic" (i.e., plate carre)
-            bool isGeocentric = _map->isGeocentric();
-            bool isGeographic = _map->getProfile()->getSRS()->isGeographic();
-            bool canUseMercatorLocator = geoImage.getSRS()->isMercator() && (isGeocentric || isGeographic);
-
-            if ( canUseMercatorLocator && layer->useMercatorFastPath() == true )
-            {
-                GeoExtent geog_ext = geoImage.getExtent().transform(geoImage.getExtent().getSRS()->getGeographicSRS());
-                geog_ext.getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
-                img_locator = new MercatorLocator( *img_locator.get(), geoImage.getExtent() );
-            }
-            else
-            {
-                geoImage.getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-                img_locator = key.getProfile()->getSRS()->createLocator( img_min_lon, img_min_lat, img_max_lon, img_max_lat, !isGeocentric );
-            }
-
+            osg::ref_ptr<GeoLocator> img_locator = key.getProfile()->getSRS()->createLocator( 
+                img_min_lon, img_min_lat, img_max_lon, img_max_lat, 
+                !_map->isGeocentric() );
+            
             //Set the CS to geocentric if we are dealing with a geocentric map
             if ( _map->isGeocentric() )
             {

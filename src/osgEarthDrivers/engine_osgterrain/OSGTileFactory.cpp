@@ -600,9 +600,6 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     // Collect the image layers
     bool empty_map = imageMapLayers.size() == 0 && hfMapLayers.size() == 0;
 
-    // Whether to use a special mercator locator instead of reprojecting data to spherical mercator
-    bool useMercatorLocator = true;
-
     // Create the images for the tile
     for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
     {
@@ -618,10 +615,6 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             image = layer->createImage( key );
         }
         image_tiles.push_back(image);
-
-        // if any one of the layers explicity disables the merc fast path, disable for the whole thing:
-        if ( layer->useMercatorFastPath().isSetTo( false ) )
-            useMercatorLocator = false;
     }
 
     bool hasElevation = false;
@@ -767,30 +760,14 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     {
         if (image_tiles[i].valid())
         {
-            double img_xmin, img_ymin, img_xmax, img_ymax;
-
-            //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<GeoLocator> img_locator;
-
             const GeoImage& geo_image = image_tiles[i];
 
-            // Use a special locator for mercator images (instead of reprojecting)
-            if (map->getProfile()->getSRS()->isGeographic() &&
-                geo_image.getSRS()->isMercator() && 
-                useMercatorLocator )
-            {
-                GeoExtent geog_ext = image_tiles[i].getExtent().transform(image_tiles[i].getExtent().getSRS()->getGeographicSRS());
-                geog_ext.getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
-                img_locator = key.getProfile()->getSRS()->createLocator( img_xmin, img_ymin, img_xmax, img_ymax );
-                img_locator = new MercatorLocator( *img_locator.get(), geo_image.getExtent() );
-            }
-            else
-            {
-                image_tiles[i].getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
+            double img_xmin, img_ymin, img_xmax, img_ymax;
+            image_tiles[i].getExtent().getBounds( img_xmin, img_ymin, img_xmax, img_ymax );
 
-                img_locator = key.getProfile()->getSRS()->createLocator( 
-                    img_xmin, img_ymin, img_xmax, img_ymax, isPlateCarre );
-            }
+            //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
+            osg::ref_ptr<GeoLocator> img_locator = key.getProfile()->getSRS()->createLocator( 
+                img_xmin, img_ymin, img_xmax, img_ymax, isPlateCarre );
 
             if ( isGeocentric )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
@@ -932,21 +909,7 @@ OSGTileFactory::createImageLayer(Map* map,
         bool isProjected = !isGeocentric;
         bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
 
-        osg::ref_ptr<GeoLocator> imgLocator;
-
-        // Use a special locator for mercator images (instead of reprojecting)
-        if (map->getProfile()->getSRS()->isGeographic() &&
-            geoImage.getSRS()->isMercator() &&
-            layer->useMercatorFastPath() == true )
-        {
-            GeoExtent gx = geoImage.getExtent().transform( geoImage.getExtent().getSRS()->getGeographicSRS() );
-            imgLocator = key.getProfile()->getSRS()->createLocator( gx.xMin(), gx.yMin(), gx.xMax(), gx.yMax() );
-            imgLocator = new MercatorLocator( *imgLocator.get(), geoImage.getExtent() );
-        }
-        else
-        {
-            imgLocator = GeoLocator::createForKey( key, map );
-        }
+        osg::ref_ptr<GeoLocator> imgLocator = GeoLocator::createForKey( key, map );
 
         if ( isGeocentric )
             imgLocator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );

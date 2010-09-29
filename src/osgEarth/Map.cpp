@@ -238,7 +238,6 @@ Map::addMapLayer( MapLayer* layer )
 		{
 			layer->cacheOnly() = true;
 		}
-		//layer->setUseMercatorFastPath( getUseMercatorLocator() );
 
 		//Set the Cache for the MapLayer to our cache.
 		layer->setCache( this->getCache() );

@@ -185,12 +185,6 @@ namespace osgEarth
         const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
 
 		/**
-		 * Whether or not to allow the creation of Mercator images for Geographic scenes
-		 */
-        optional<bool>& useMercatorFastPath() { return _useMercatorFastPath; }
-        const optional<bool>& useMercatorFastPath() const { return _useMercatorFastPath; }
-
-		/**
 		 * Whether to use exact cropping if image cropping is necessary
 		 */
         optional<bool>& exactCropping() { return _exactCropping; }
@@ -332,7 +326,6 @@ namespace osgEarth
         optional<int> _maxLevel;
 	    optional<std::string> _noDataImageFilename;
 		optional<osg::Vec4ub> _transparentColor;
-        optional<bool> _useMercatorFastPath;
 		optional<std::string> _cacheFormat;
         optional<bool> _cacheEnabled;
 		optional<bool> _cacheOnly;

@@ -43,7 +43,6 @@ _opacity(1.0f),
 _gamma(1.0), _prevGamma(1.0),
 _enabled(true),
 _exactCropping(false),
-_useMercatorFastPath(true),
 _reprojectedTileSize(256),
 _cacheEnabled( true ),
 _cacheOnly( false ),
@@ -72,7 +71,6 @@ _opacity(1.0f),
 _gamma(1.0), _prevGamma(1.0),
 _enabled(true),
 _exactCropping(false),
-_useMercatorFastPath(true),
 _reprojectedTileSize(256),
 _cacheEnabled( true ),
 _cacheOnly( false ),
@@ -103,7 +101,6 @@ _opacity(1.0f),
 _gamma(1.0), _prevGamma(1.0),
 _enabled(true),
 _exactCropping(false),
-_useMercatorFastPath(true),
 _reprojectedTileSize(256),
 _cacheEnabled( true ),
 _cacheOnly( false ),
@@ -171,8 +168,6 @@ MapLayer::mergeConfig( const Config& conf )
     conf.getIfSet( "cache_format", _cacheFormat );
     conf.getIfSet( "nodata_image", _noDataImageFilename );
     conf.getIfSet( "loading_weight", _loadingWeight );
-    conf.getIfSet( "use_mercator_locator", _useMercatorFastPath );
-    conf.getIfSet( "use_mercator_fast_path", _useMercatorFastPath );
     conf.getIfSet( "opacity", _opacity );
     conf.getIfSet( "gamma", _gamma );
     conf.getIfSet( "enabled", _enabled );
@@ -213,8 +208,6 @@ MapLayer::getConfig() const
     conf.updateIfSet( "cache_format", _cacheFormat );
     conf.updateIfSet( "nodata_image", _noDataImageFilename );
     conf.updateIfSet( "loading_weight", _loadingWeight );
-    conf.updateIfSet( "use_mercator_locator", _useMercatorFastPath );
-    conf.updateIfSet( "use_mercator_fast_path", _useMercatorFastPath );
     conf.updateIfSet( "opacity", _opacity );
     conf.updateIfSet( "gamma", _gamma );
     conf.updateIfSet( "enabled", _enabled );
@@ -552,12 +545,6 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		OE_DEBUG << LC << "Layer " << _name << ": Map and Layer profiles are in the same SRS and non-exact cropping is allowed, caching in layer profile." << std::endl;
 		cacheInMapProfile = false;
 	}
-	//If the map profile is geographic and the layer is mercator and we are allowed to use the mercator fast path, cache in the layer profile.
-	else if (mapProfile->getSRS()->isGeographic() && layerProfile->getSRS()->isMercator() && _useMercatorFastPath == true)
-	{
-		OE_DEBUG << LC << "Layer " << _name << ": Map profile is geographic and Layer profile is mercator and mercator fast path is allowed, caching in layer profile" << std::endl;
-		cacheInMapProfile = false;
-	}
 
 	bool cacheInLayerProfile = !cacheInMapProfile;
 
@@ -681,18 +668,10 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
 
 		if ( mosaic.valid() )
         {
-            // whether to use the fast-path mercator locator. If so, DO NOT reproject the imagery here.
-            bool useMercatorFastPath =
-                mosaic.getSRS()->isMercator() &&
-                key.getProfile()->getSRS()->isGeographic() &&
-                _useMercatorFastPath == true;
-
             // the imagery must be reprojected iff:
-            //  * we're not using the mercator fast path (see above);
             //  * the SRS of the image is different from the SRS of the key;
             //  * UNLESS they are both geographic SRS's (in which case we can skip reprojection)
             bool needsReprojection =
-                !useMercatorFastPath &&
                 !mosaic.getSRS()->isEquivalentTo( key.getProfile()->getSRS()) &&
                 !(mosaic.getSRS()->isGeographic() && key.getProfile()->getSRS()->isGeographic());
 
@@ -701,13 +680,14 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
             bool needsTopBorder = false;
             bool needsBottomBorder = false;
 
-            //If we don't need to reproject the data, we had to composite the data, so check to see if we need to add an extra, transparent pixel on the sides
-            //because the data doesn't encompass the entire map.
+            // If we don't need to reproject the data, we had to mosaic the data, so check to see if we need to add
+            // an extra, transparent pixel on the sides because the data doesn't encompass the entire map.
             if (!needsReprojection)
             {
                 GeoExtent keyExtent = key.getExtent();
-                //If the key is geographic and the mosaic is mercator, we need to get the mercator extents to determine if we need
-                //to add the border or not
+                // If the key is geographic and the mosaic is mercator, we need to get the mercator
+                // extents to determine if we need to add the border or not
+                // (TODO: this might be OBE due to the elimination of the Mercator fast-path -gw)
                 if (key.getExtent().getSRS()->isGeographic() && mosaic.getSRS()->isMercator())
                 {
                     keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( 
@@ -741,18 +721,12 @@ MapLayer::createImage( const TileKey& key, ProgressCallback* progress)
                 {
                     needsTopBorder = true;
                 }
-
-               
-                //needsLeftBorder  = mosaic->getExtent().xMin() > keyExtent.xMin();
-                //needsBottomBorder = mosaic->getExtent().yMin() > keyExtent.yMin();
-                //needsRightBorder = mosaic->getExtent().xMax() < keyExtent.xMax();
-                //needsTopBorder = mosaic->getExtent().yMax() < keyExtent.yMax();
             }
 
             if ( needsReprojection )
             {
 				OE_DEBUG << LC << "  Reprojecting image" << std::endl;
-                //We actually need to reproject the image.  Note:  The GeoImage::reprojection function will automatically
+                //We actually need to reproject the image.  Note: GeoImage::reproject() will automatically
                 //crop the image to the correct extents, so there is no need to crop after reprojection.
                 result = mosaic.reproject( key.getProfile()->getSRS(), &key.getExtent(), _reprojectedTileSize.value(), _reprojectedTileSize.value() );
             }

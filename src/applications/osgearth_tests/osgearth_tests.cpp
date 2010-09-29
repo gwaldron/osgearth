@@ -79,29 +79,8 @@ int main(int argc, char** argv)
 	  osgDB::writeImageFile(*image.getImage(), layer->getName()+key.str() + std::string(".png"));
   }
 
-  //Mercator.  Test Mercator fast path.
-  {
-      TMSOptions opt;
-      opt.url() = "http://tile.openstreetmap.org";
-      opt.format() = "png";
-      opt.tileSize() = 256;
-      opt.tmsType() = "google";
-      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mercator", opt );
 
-	  layer->profileOptions() = ProfileOptions( "global-mercator" );
-      layer->useMercatorFastPath() = true;
-
-	  //Request a mercator image using the mercator fast path, the default
-	  TileKey key(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-	  GeoImage image = layer->createImage( key );
-	  if (!image.getSRS()->isMercator())
-	  {
-		  OE_NOTICE << "Error:  Should be using mercator fast path but returned SRS is " << image.getSRS()->getWKT() << std::endl;
-	  }
-	  osgDB::writeImageFile(*image.getImage(), layer->getName()+key.str() + std::string(".png"));
-  }
-
-    //Mercator.  Request a geodetic reprojected image from a mercator source
+  //Mercator.  Request a geodetic reprojected image from a mercator source
   {
       TMSOptions opt;
       opt.url() = "http://tile.openstreetmap.org";
@@ -110,7 +89,6 @@ int main(int argc, char** argv)
       opt.tmsType() = "google";
       osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mercator_reprojected", opt );
 
-	  layer->useMercatorFastPath() = false;
 	  layer->reprojectedTileSize() = 256;
 	  layer->exactCropping() = true;
 	  layer->profileOptions() = ProfileOptions( "global-mercator" );

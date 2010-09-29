@@ -76,8 +76,6 @@ EarthFile::getMapNodeOptions() {
 #define ELEM_TERRAIN_OPTIONS          "terrain"
 #define ELEM_IMAGE                    "image"
 #define ELEM_HEIGHTFIELD              "heightfield"
-#define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
-#define ELEM_USE_MERCATOR_FAST_PATH   "use_mercator_fast_path"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"

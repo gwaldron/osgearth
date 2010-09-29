@@ -877,7 +877,9 @@ GeoImage::reproject(const SpatialReference* to_srs, const GeoExtent* to_extent, 
 
     osg::Image* resultImage = 0L;
 
-    if ( getSRS()->isUserDefined() || to_srs->isUserDefined() )
+    if ( getSRS()->isUserDefined() || to_srs->isUserDefined() ||
+        ( getSRS()->isMercator() && to_srs->isGeographic() ) ||
+        ( getSRS()->isGeographic() && to_srs->isMercator() ) )
     {
         // if either of the SRS is a custom projection, we have to do a manual reprojection since
         // GDAL will not recognize the SRS.

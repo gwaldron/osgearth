@@ -48,8 +48,6 @@
  * This technique is limited by the maximum texture size your GPU will support, since it 
  * creates a single mosaic texture. For example, if your GPU's max texture size is 2048,
  * this technique can support 64 256-pixel layers.
- *
- * This technique does not work with the specialized MercatorLocator.
  */
 class CompositingTerrainTechnique : public CustomTerrainTechnique
 {

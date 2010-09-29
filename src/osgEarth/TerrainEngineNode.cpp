@@ -221,21 +221,6 @@ TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     // make sure all the requested properties are compatible, and fall back as necessary.
     const Capabilities& caps = Registry::instance()->getCapabilities();
 
-    // check that the layering technique is supported by the hardware.
-    if (options.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE &&
-        !caps.supportsTextureArrays() )
-    {
-        OE_WARN << LC << "COMPOSITE layering requires EXT_texture_array; falling back to MULTIPASS" << std::endl;
-        options.layeringTechnique() = TerrainOptions::LAYERING_MULTIPASS;
-    }
-
-    if (options.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE &&
-        !caps.supportsMultiTexture() )
-    {
-        OE_WARN << LC << "MULTITEXTURE layering requires EXT_multitexture; falling back to MULTIPASS" << std::endl;
-        options.layeringTechnique() = TerrainOptions::LAYERING_MULTIPASS;
-    }
-
     // warn against mixing multipass technique with preemptive/sequential mode:
     if (options.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS &&
         options.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )

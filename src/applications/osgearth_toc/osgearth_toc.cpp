@@ -524,19 +524,13 @@ int main(int argc, char** argv)
     }
 
 
-    terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_MULTITEXTURE;
+    terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_COMPOSITE;
 	if (arguments.read( "--multipass") )
 	{
 		terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_MULTIPASS;
         //Multipass mode is currently only available in STANDARD mode.
         terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
 	}
-    else if (arguments.read("--compositing"))
-    {
-        terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_COMPOSITE;
-        //Compositing mode is currently only available in STANDARD mode.
-        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
-    }
 
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);

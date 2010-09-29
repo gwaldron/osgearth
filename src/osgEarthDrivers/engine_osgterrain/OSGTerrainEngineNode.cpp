@@ -17,10 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "OSGTerrainEngineNode"
-#include "MultiTextureTerrainTechnique"
-#include "MultiPassTerrainTechnique"
 #include "CompositingTerrainTechnique"
 #include "CustomTerrain"
+#include "MultiPassTerrainTechnique"
 #include <osgEarth/ImageUtils>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -215,39 +214,23 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     _terrain->setSampleRatio( _terrainOptions.heightFieldSampleRatio().value() );
 
     // install the proper layering technique:
-    if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS )
+    if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
     {
-        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique());
-        OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;
+        _texCompositor = new TextureCompositor();
+        CustomTerrainTechnique* tech = new CompositingTerrainTechnique( _texCompositor.get() );
+
+        // prepare the interpolation technique for generating triangles:
+        if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
+            tech->setOptimizeTriangleOrientation( false );
+
+        _terrain->setTerrainTechniquePrototype( tech );
+
+        OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
     }
-    else
+    else // MULTIPASS ... probably to be deprecated
     {
-        CustomTerrainTechnique* tech = 0;
-
-        if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE )
-        {
-            tech = new MultiTextureTerrainTechnique();
-            OE_INFO << LC << "Layering technique = MULTITEXTURE" << std::endl;
-        }
-
-        else if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
-        {
-            _texCompositor = new TextureCompositor();
-            tech = new CompositingTerrainTechnique( _texCompositor.get() );
-            OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
-        }
-
-        if ( tech )
-        {
-            //If we are using triangulate interpolation, tell the terrain technique to just create simple triangles with
-            //consistent orientation rather than trying to optimize the orientation
-            if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
-            {
-                tech->setOptimizeTriangleOrientation( false );
-            }
-
-            _terrain->setTerrainTechniquePrototype( tech );
-        }
+        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique() );
+        OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;
     }
 
     // apply any pending callbacks:
@@ -684,8 +667,8 @@ getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mod
 void
 OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
-    if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR &&
-        _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE)
+    //TODO: this should not change the uniforms during the cull traversal...
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
 	{
         //Update the lighting uniforms
         osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);

@@ -1,0 +1,73 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ENGINE_TRANSPARENT_LAYER
+#define OSGEARTH_ENGINE_TRANSPARENT_LAYER 1
+
+#include "Common"
+#include <osgTerrain/Layer>
+#include <osgEarth/ImageLayer>
+
+using namespace osgEarth;
+
+class TransparentLayer : public osgTerrain::ImageLayer
+{
+public:
+    TransparentLayer(osg::Image* image, osgEarth::ImageLayer* mapLayer):
+      osgTerrain::ImageLayer(image),
+          _mapLayer(mapLayer),
+          _lod(-1)
+      {
+      }
+
+      unsigned int getId() const
+      {
+          return _mapLayer->getId();
+      }
+
+      float getOpacity() const
+      {
+          return _mapLayer->getOpacity();
+      }
+
+      bool getEnabled() const
+      {
+          return _mapLayer->getEnabled();
+      }
+
+      int getLevelOfDetail() const
+      {
+          return _lod;
+      }
+
+      void setLevelOfDetail(int lod)
+      {
+          _lod = lod;
+      }
+
+      osgEarth::ImageLayer* getMapLayer() const
+      {
+          return _mapLayer.get();
+      }
+
+      osg::ref_ptr<osgEarth::ImageLayer> _mapLayer;
+      int _lod;
+};
+
+#endif // OSGEARTH_ENGINE_TRANSPARENT_LAYER

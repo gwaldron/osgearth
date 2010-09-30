@@ -20,6 +20,7 @@
 #include "CustomTerrain"
 #include "FileLocationCallback"
 #include "TerrainTileEdgeNormalizerUpdateCallback"
+#include "TransparentLayer"
 
 #include <osgEarth/Map>
 #include <osgEarth/Caching>
@@ -190,7 +191,7 @@ OSGTileFactory::createSubTiles( Map* map, CustomTerrain* terrain, const TileKey&
 }
 
 GeoImage
-OSGTileFactory::createValidGeoImage(MapLayer* layer,
+OSGTileFactory::createValidGeoImage(ImageLayer* layer,
                                     const TileKey& key,
                                     ProgressCallback* progress)
 {
@@ -216,14 +217,19 @@ OSGTileFactory::createValidGeoImage(MapLayer* layer,
 bool
 OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
 {
-    Threading::ScopedReadLock lock( map->getMapDataMutex() );
+    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool more_levels = false;
     int max_level = 0;
 
-    for ( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
+    ImageLayerVector imageLayers;
+    map->getImageLayers( imageLayers );
+
+    for ( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
     {
-        if ( !i->get()->maxLevel().isSet() || key.getLevelOfDetail() < i->get()->maxLevel().get() )
+        const ImageLayerOptions& opt = i->get()->getImageLayerOptions();
+
+        if ( !opt.maxLevel().isSet() || key.getLevelOfDetail() < *opt.maxLevel() )
         {
             more_levels = true;
             break;
@@ -231,9 +237,15 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
     }
     if ( !more_levels )
     {
-        for( MapLayerList::const_iterator j = map->getHeightFieldMapLayers().begin(); j != map->getHeightFieldMapLayers().end(); j++ )
+        ElevationLayerVector elevLayers;
+        map->getElevationLayers( elevLayers );
+
+        for( ElevationLayerVector::const_iterator j = elevLayers.begin(); j != elevLayers.end(); j++ )
         {
-            if ( !j->get()->maxLevel().isSet() || key.getLevelOfDetail() < j->get()->maxLevel().get() )
+            const ElevationLayerOptions& opt = j->get()->getElevationLayerOptions();
+
+            if ( !opt.maxLevel().isSet() || key.getLevelOfDetail() < *opt.maxLevel() )
+            //if ( !j->get()->maxLevel().isSet() || key.getLevelOfDetail() < j->get()->maxLevel().get() )
             {
                 more_levels = true;
                 break;
@@ -247,14 +259,17 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
 bool
 OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
 {
-    Threading::ScopedReadLock lock( map->getMapDataMutex() );
+    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     const Profile* mapProfile = key.getProfile();
 
+    ImageLayerVector imageLayers;
+    map->getImageLayers( imageLayers );
+
     //Check the imagery layers
-    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
     {
-        MapLayer* layer = i->get();
+        ImageLayer* layer = i->get();
         osg::ref_ptr< Cache > cache = layer->getCache();
 
         if ( !cache.valid() || !layer->getProfile() ) 
@@ -275,7 +290,7 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
         {
             if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j], layer->getName(), layer->cacheFormat().value() ) )
+                if ( !cache->isCached( keys[j], layer->getName(), layer->getCacheFormat() ) )
                 {
                     return false;
                 }
@@ -284,9 +299,12 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
     }
 
     //Check the elevation layers
-    for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
+    ElevationLayerVector elevLayers;
+    map->getElevationLayers( elevLayers );
+
+    for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
     {
-        MapLayer* layer = i->get();
+        ElevationLayer* layer = i->get();
         osg::ref_ptr< Cache > cache = layer->getCache();
 
         if ( !cache.valid() || !layer->getProfile() )
@@ -307,7 +325,7 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
         {
             if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j], layer->getName(), layer->cacheFormat().value() ) )
+                if ( !cache->isCached( keys[j], layer->getName(), layer->getCacheFormat() ) )
                 {
                     return false;
                 }
@@ -344,7 +362,7 @@ OSGTileFactory::createEmptyHeightField( const TileKey& key, int numCols, int num
 void
 OSGTileFactory::addPlaceholderImageLayers(CustomTile* tile,
                                           CustomTile* ancestorTile,
-                                          const MapLayerList& imageMapLayers,
+                                          const ImageLayerVector& imageLayers,
                                           GeoLocator* defaultLocator,
                                           const TileKey& key)
 {
@@ -468,16 +486,24 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
     }
 
     OE_DEBUG << LC << "Creating placeholder for " << key.str() << std::endl;
-    Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool isGeocentric = map->isGeocentric();
     bool isProjected = !isGeocentric;
     bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
 
-    const MapLayerList& imageMapLayers = map->getImageMapLayers();
-    const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
+    ImageLayerVector imageLayers;
+    map->getImageLayers( imageLayers );
 
-    bool hasElevation = hfMapLayers.size() > 0;
+    ElevationLayerVector elevLayers;
+    map->getElevationLayers( elevLayers );
+
+    //const MapLayerList& imageMapLayers = map->getImageLayers();
+    //const MapLayerList& hfMapLayers = map->getElevationLayers();
+
+    // TODO: evaluate the need for this mutex.
+    Threading::ScopedReadLock lock( map->getMapDataMutex() );
+
+    bool hasElevation = elevLayers.size() > 0;
 
     // Build a "placeholder" tile.
     double xmin, ymin, xmax, ymax;
@@ -505,7 +531,7 @@ OSGTileFactory::createPlaceholderTile( Map* map, CustomTerrain* terrain, const T
     // ancestor tile.
     {
         Threading::ScopedReadLock parentLock( ancestorTile->getTileLayersMutex() );
-        addPlaceholderImageLayers( tile, ancestorTile.get(), imageMapLayers, locator.get(), key );
+        addPlaceholderImageLayers( tile, ancestorTile.get(), imageLayers, locator.get(), key );
         addPlaceholderHeightfieldLayer( tile, ancestorTile.get(), locator.get(), key, ancestorKey );
     }
 
@@ -598,22 +624,22 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 
     GeoImageVector image_tiles;
 
-    MapLayerList imageMapLayers;
-    map->getImageMapLayers( imageMapLayers, true );
+    //MapLayerList imageMapLayers;
+    //map->getImageLayers( imageMapLayers, true );
 
-    MapLayerList hfMapLayers;
-    map->getHeightFieldMapLayers( hfMapLayers, true );
+    //MapLayerList hfMapLayers;
+    //map->getElevationLayers( hfMapLayers, true );
 
-    //const MapLayerList& imageMapLayers = map->getImageMapLayers();
-    //const MapLayerList& hfMapLayers = map->getHeightFieldMapLayers();
+    const ImageLayerVector& imageLayers = map->getImageLayers();
+    const ElevationLayerVector& elevLayers = map->getElevationLayers();
 
     // Collect the image layers
-    bool empty_map = imageMapLayers.size() == 0 && hfMapLayers.size() == 0;
+    bool empty_map = imageLayers.size() == 0 && elevLayers.size() == 0;
 
     // Create the images for the tile
-    for( MapLayerList::const_iterator i = imageMapLayers.begin(); i != imageMapLayers.end(); i++ )
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
     {
-        MapLayer* layer = i->get();
+        ImageLayer* layer = i->get();
         GeoImage image;
         //Only create images if the key is valid
         if ( layer->isKeyValid( key ) )
@@ -630,7 +656,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 
     //Create the heightfield for the tile
     osg::ref_ptr<osg::HeightField> hf;
-    if ( hfMapLayers.size() > 0 )
+    if ( elevLayers.size() > 0 )
     {
         hf = map->createHeightField( key, false, _terrainOptions.elevationInterpolation().value());     
     }
@@ -669,15 +695,15 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     }
 
     //Try to interpolate any missing image layers from parent tiles
-    for (unsigned int i = 0; i < imageMapLayers.size(); i++ )
+    for (unsigned int i = 0; i < imageLayers.size(); i++ )
     {
         if (!image_tiles[i].valid())
         {
             GeoImage image;
-            if (imageMapLayers[i]->isKeyValid(key))
+            if (imageLayers[i]->isKeyValid(key))
             {
                 //If the key was valid and we have no image, then something possibly went wrong with the image creation such as a server being busy.
-                image = createValidGeoImage(imageMapLayers[i].get(), key);
+                image = createValidGeoImage(imageLayers[i].get(), key);
             }
 
             //If we still couldn't create an image, either something is really wrong or the key wasn't valid, so just create a transparent placeholder image
@@ -696,7 +722,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
     if (!hf.valid())
     {
         //We have no heightfield sources, 
-        if ( hfMapLayers.size() == 0 )
+        if ( elevLayers.size() == 0 )
         {
             hf = createEmptyHeightField( key );
         }
@@ -781,12 +807,12 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
             if ( isGeocentric )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            TransparentLayer* img_layer = new TransparentLayer(geo_image.getImage(), imageMapLayers[i].get());
+            TransparentLayer* img_layer = new TransparentLayer(geo_image.getImage(), imageLayers[i].get());
             img_layer->setLevelOfDetail( key.getLevelOfDetail() );
-            img_layer->setName( imageMapLayers[i]->getName() );
+            img_layer->setName( imageLayers[i]->getName() );
             img_layer->setLocator( img_locator.get());
-            img_layer->setMinFilter( imageMapLayers[i]->getMinFilter().value());
-            img_layer->setMagFilter( imageMapLayers[i]->getMagFilter().value());
+            img_layer->setMinFilter( imageLayers[i]->getImageLayerOptions().minFilter().value());
+            img_layer->setMagFilter( imageLayers[i]->getImageLayerOptions().magFilter().value());
 
             double upp = geo_image.getUnitsPerPixel();
 
@@ -893,7 +919,7 @@ OSGTileFactory::createPopulatedTile( Map* map, CustomTerrain* terrain, const Til
 
 osgTerrain::ImageLayer* 
 OSGTileFactory::createImageLayer(Map* map, 
-                                 MapLayer* layer,
+                                 ImageLayer* layer,
                                  const TileKey& key,
                                  ProgressCallback* progress)
 {
@@ -927,8 +953,8 @@ OSGTileFactory::createImageLayer(Map* map,
         TransparentLayer* imgLayer = new TransparentLayer(geoImage.getImage(), layer);
         imgLayer->setLocator( imgLocator.get() );
         imgLayer->setLevelOfDetail( key.getLevelOfDetail() );
-        imgLayer->setMinFilter( layer->getMinFilter().value());
-        imgLayer->setMagFilter( layer->getMagFilter().value());
+        imgLayer->setMinFilter( layer->getImageLayerOptions().minFilter().value() );
+        imgLayer->setMagFilter( layer->getImageLayerOptions().magFilter().value() );
         return imgLayer;
     }
     return NULL;

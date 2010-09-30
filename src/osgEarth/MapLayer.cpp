@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #include <osgEarth/MapLayer>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageMosaic>
@@ -32,23 +33,19 @@ using namespace OpenThreads;
 
 #define LC "[MapLayer] "
 
-static unsigned int s_mapLayerID = 0;
+//------------------------------------------------------------------------
 
-
-MapLayer::MapLayer(const std::string& name, Type type, const TileSourceOptions& options ) :
-osg::Referenced( true ),
-_type( type ),
-_options( options ),
+MapLayerOptions::MapLayerOptions( const ConfigOptions& options ) :
+ConfigOptions( options ),
 _opacity(1.0f),
-_gamma(1.0), _prevGamma(1.0),
+_gamma(1.0),
 _enabled(true),
 _exactCropping(false),
 _reprojectedTileSize(256),
 _cacheEnabled( true ),
 _cacheOnly( false ),
-_cacheOnlyEnv( false ),
 _loadingWeight( 1.0f ),
-_profileConf( ProfileOptions() ),
+_profile( ProfileOptions() ),
 _minLevel(0),
 _maxLevel(99),
 _noDataImageFilename(""),
@@ -56,8 +53,131 @@ _transparentColor(osg::Vec4ub(0,0,0,0)),
 _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
 _magFilter(osg::Texture::LINEAR)
 {
-    mergeConfig( options.getConfig() );
+    fromConfig( _conf );
+}
 
+void
+MapLayerOptions::mergeConfig( const Config& conf )
+{
+    ConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+void
+MapLayerOptions::fromConfig( const Config& conf )
+{
+    _name = conf.value("name");
+    conf.getIfSet( "min_level", _minLevel );
+    conf.getIfSet( "max_level", _maxLevel );
+    conf.getIfSet( "cache_enabled", _cacheEnabled );
+    conf.getIfSet( "cache_only", _cacheOnly );
+    conf.getIfSet( "cache_format", _cacheFormat );
+    conf.getIfSet( "loading_weight", _loadingWeight );
+    conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
+    conf.getObjIfSet( "profile", _profileConf );
+}
+
+Config
+MapLayerOptions::getConfig() const
+{
+    Config conf = ConfigOptions::getConfig();
+
+    conf.key() = _type == MapLayer::TYPE_IMAGE ? "image" : "heightfield";
+    conf.attr("name") = _name;
+    conf.updateIfSet( "min_level", _minLevel );
+    conf.updateIfSet( "max_level", _maxLevel );
+    conf.updateIfSet( "cache_enabled", _cacheEnabled );
+    conf.updateIfSet( "cache_only", _cacheOnly );
+    conf.updateIfSet( "cache_format", _cacheFormat );
+    conf.updateIfSet( "loading_weight", _loadingWeight );
+    conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet("edge_buffer_ratio", _edgeBufferRatio);
+    conf.updateObjIfSet( "profile", _profileConf );
+
+
+    return conf;
+}
+
+//------------------------------------------------------------------------
+
+Config
+ImageLayerOptions::getConfig() const
+{
+    Config conf = TerrainLayerOptions::getConfig();
+    conf.updateIfSet( "nodata_image", _noDataImageFilename );
+    conf.updateIfSet( "opacity", _opacity );
+    conf.updateIfSet( "gamma", _gamma );
+
+	if (_transparentColor.isSet())
+		conf.update("transparent_color", colorToString( _transparentColor.value()));
+
+    //Save the filter settings
+	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+
+    return conf;
+}
+
+void
+ImageLayerOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "nodata_image", _noDataImageFilename );
+    conf.getIfSet( "opacity", _opacity );
+    conf.getIfSet( "gamma", _gamma );
+
+    if ( conf.hasValue( "transparent_color" ) )
+		_transparentColor = getColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
+
+	//Load the filter settings
+	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+}
+
+//------------------------------------------------------------------------
+
+ImageLayer::ImageLayer( const ImageLayerOptions& options ) :
+TerrainLayer( options ),
+_options( options )
+{
+    //TODO...
+}
+
+//------------------------------------------------------------------------
+
+
+
+
+static unsigned int s_mapLayerID = 0;
+
+MapLayer::MapLayer(const std::string& name, Type type, const TileSourceOptions& options ) :
+osg::Referenced( true ),
+_type( type ),
+_opacity( 1.0f ),
+_options( options ),
+_prevGamma(1.0),
+_enabled(true)
+{
     // since fromConfig sets the name from the config(), override that here:
     _name = name;
     init();
@@ -67,28 +187,11 @@ MapLayer::MapLayer( Type type, const Config& driverConf ) :
 osg::Referenced( true ),
 _type( type ),
 _name( driverConf.value("name") ),
-_opacity(1.0f),
-_gamma(1.0), _prevGamma(1.0),
-_enabled(true),
-_exactCropping(false),
-_reprojectedTileSize(256),
-_cacheEnabled( true ),
-_cacheOnly( false ),
-_cacheOnlyEnv( false ),
-_loadingWeight( 1.0f ),
-_profileConf( ProfileOptions() ),
-_minLevel(0),
-_maxLevel(99),
-_tileSize(256),
-_noDataImageFilename(""),
-_transparentColor(osg::Vec4ub(0,0,0,0)),
-_minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
-_magFilter(osg::Texture::LINEAR),
+_opacity( 1.0f ),
+_prevGamma(1.0),
+_enabled( true ),
 _options( driverConf )
 {
-    //_options.merge( driverConf );
-    //_driverOptions = new DriverOptions( driverConf );
-    mergeConfig( driverConf );
     init();
 }
 
@@ -98,22 +201,8 @@ _name( name ),
 _type( type ),
 _tileSource( source ),
 _opacity(1.0f),
-_gamma(1.0), _prevGamma(1.0),
-_enabled(true),
-_exactCropping(false),
-_reprojectedTileSize(256),
-_cacheEnabled( true ),
-_cacheOnly( false ),
-_cacheOnlyEnv( false ),
-_loadingWeight( 1.0f ),
-_profileConf( ProfileOptions() ),
-_minLevel(0),
-_maxLevel(99),
-_noDataImageFilename(""),
-_tileSize(256),
-_transparentColor(osg::Vec4ub(0,0,0,0)),
-_minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
-_magFilter(osg::Texture::LINEAR)
+_prevGamma(1.0),
+_enabled(true)
 {
     init();
 
@@ -377,9 +466,9 @@ MapLayer::initTileSource()
 
 	//Get the override profile if it is set.
 	osg::ref_ptr<const Profile> override_profile;
-	if (profileOptions().isSet())
+	if ( profile().isSet() )
 	{
-		override_profile = Profile::create( profileOptions().get() );
+		override_profile = Profile::create( profile().get() );
 	}
 
 	if ( tileSource.valid() )
@@ -1131,5 +1220,7 @@ L2Cache::createHeightField(MapLayer* layer, const TileKey& key)
         result = layer->createHeightField( key );
     return result.release();
 }
+
+#endif
 
 #endif

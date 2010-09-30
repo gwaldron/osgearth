@@ -104,7 +104,7 @@ namespace osgEarth
         optional<bool> _lighting;
     };
 
-    typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerList;
+    typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;
 }
 
 #endif // OSGEARTH_MODEL_LAYER_H

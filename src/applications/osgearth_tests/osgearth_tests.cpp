@@ -44,9 +44,14 @@ int main(int argc, char** argv)
 
   //One to one test.  Read a single 1 to 1 tile out of a MapLayer
   {
-      GDALOptions opt;
-      opt.url() = "../data/world.tif";
-      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_simple", opt );
+      GDALOptions driverOpt;
+      driverOpt.url() = "../data/world.tif";
+
+      ImageLayerOptions layerOpt;
+      layerOpt.driver() = driverOpt;
+      layerOpt.name() = "test_simple";
+
+      osg::ref_ptr<ImageLayer> layer = new ImageLayer( layerOpt );
 
       TileKey key(0, 0, 0, layer->getProfile());
 	  GeoImage image = layer->createImage( key );
@@ -55,9 +60,14 @@ int main(int argc, char** argv)
 
   //Mosaic test.  Request a tile in the global geodetic profile from a layer with a geographic SRS but a different tiling scheme.
   {
-      ArcGISOptions opt;
-      opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
-      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mosaic", opt );
+      ArcGISOptions driverOpt;
+      driverOpt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
+
+      ImageLayerOptions layerOpt;
+      layerOpt.driver() = driverOpt;
+      layerOpt.name() = "test_mosaic";
+
+      osg::ref_ptr<ImageLayer> layer = new ImageLayer( layerOpt );
 
       TileKey key(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
 	  GeoImage image = layer->createImage( key );
@@ -66,13 +76,15 @@ int main(int argc, char** argv)
 
   //Reprojection.  Request a UTM image from a global geodetic profile
   {
-      ArcGISOptions opt;
-      opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
-      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_reprojected_utm", opt );
+      ArcGISOptions driverOpt;
+      driverOpt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
 
-	  //Tell the layer that if reprojection is necessary, the reprojected image should be the given tile size.
-	  //Otherwise, the optimal tile size will be computed.
-	  layer->reprojectedTileSize() = 512;
+      ImageLayerOptions layerOpt;
+      layerOpt.name() = "test_reprojected_utm";
+      layerOpt.driver() = driverOpt;
+      layerOpt.reprojectedTileSize() = 512;
+
+      osg::ref_ptr<ImageLayer> layer = new ImageLayer( layerOpt );
 
       TileKey key(0, 0, 0, Profile::create("epsg:26917", 560725, 4385762, 573866, 4400705));
 	  GeoImage image = layer->createImage( key );
@@ -82,16 +94,20 @@ int main(int argc, char** argv)
 
   //Mercator.  Request a geodetic reprojected image from a mercator source
   {
-      TMSOptions opt;
-      opt.url() = "http://tile.openstreetmap.org";
-      opt.format() = "png";
-      opt.tileSize() = 256;
-      opt.tmsType() = "google";
-      osg::ref_ptr<MapLayer> layer = new ImageMapLayer( "test_mercator_reprojected", opt );
+      TMSOptions driverOpt;
+      driverOpt.url() = "http://tile.openstreetmap.org";
+      driverOpt.format() = "png";
+      driverOpt.tileSize() = 256;
+      driverOpt.tmsType() = "google";
 
-	  layer->reprojectedTileSize() = 256;
-	  layer->exactCropping() = true;
-	  layer->profileOptions() = ProfileOptions( "global-mercator" );
+      ImageLayerOptions layerOpt;
+      layerOpt.driver() = driverOpt;
+      layerOpt.name() = "test_mercator_reprojected";
+      layerOpt.reprojectedTileSize() = 256;
+      layerOpt.exactCropping() = true;
+      layerOpt.profile() = ProfileOptions( "global-mercator" );
+
+      osg::ref_ptr<ImageLayer> layer = new ImageLayer( layerOpt );
 
 	  //Request an image from the mercator source.  Should be reprojected to geodetic
 	  TileKey key(0, 0, 0, osgEarth::Registry::instance()->getGlobalGeodeticProfile());

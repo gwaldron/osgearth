@@ -34,7 +34,7 @@
 class TileFactory; //MapEngine;
 class CustomTerrain;
 class CustomTile;
-class osgEarth::MapLayer;
+class osgEarth::ImageLayer;
 
 
 typedef std::list< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
@@ -218,7 +218,7 @@ private:
     /** Deals with completed requests during the UPDATE traversal. */
     void installRequests( int stamp );
     bool readyForNewElevation();
-    bool readyForNewImagery(osgEarth::MapLayer* layer, int currentLOD);
+    bool readyForNewImagery(osgEarth::ImageLayer* layer, int currentLOD);
 
     float _verticalScale;
 

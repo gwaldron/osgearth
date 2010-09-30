@@ -1,0 +1,189 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_IMAGE_TERRAIN_LAYER_H
+#define OSGEARTH_IMAGE_TERRAIN_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/TileSource>
+#include <osgEarth/Profile>
+#include <osgEarth/Caching>
+#include <osgEarth/TerrainLayer>
+#include <osgEarth/ThreadingUtils>
+
+namespace osgEarth
+{
+    /**
+     * Initialization options for an image layer.
+     */
+    class OSGEARTH_EXPORT ImageLayerOptions : public TerrainLayerOptions
+    {
+    public:
+        ImageLayerOptions( const ConfigOptions& options =ConfigOptions() );
+
+        ImageLayerOptions( const std::string& name, const TileSourceOptions& driverOpt );
+
+
+    public: // properties
+
+		/**
+		 * The initial opacity of this layer
+		 */
+        optional<float>& opacity() { return _opacity; }
+        const optional<float>& opacity() const { return _opacity; }
+
+        /**
+         * The initial gamma value for this layer's images
+         */
+        optional<double>& gamma() { return _gamma; }
+        const optional<double>& gamma() const { return _gamma; }
+
+		/**
+		 * Gets or sets the nodata image for this MapLayer
+		 */
+        optional<std::string>& noDataImageFilename() { return _noDataImageFilename; }
+        const optional<std::string>& noDataImageFilename() const { return _noDataImageFilename; }
+
+		/**
+		 * Gets the transparent color of this TileSource
+		 */
+		optional<osg::Vec4ub>& transparentColor() { return _transparentColor; }
+        const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
+
+        /**
+         * The texture magnification mipmapping filter mode
+         */
+		optional<osg::Texture::FilterMode>& magFilter(void) {return _magFilter;}
+		const optional<osg::Texture::FilterMode>& magFilter(void) const {return _magFilter;}
+
+        /**
+         * The texture minification mipmapping filter mode
+         */
+		optional<osg::Texture::FilterMode>& minFilter(void) {return _minFilter;}
+		const optional<osg::Texture::FilterMode>& minFilter(void) const {return _minFilter;}
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        
+    private:
+        void fromConfig( const Config& conf );
+        void setDefaults();
+
+		optional<float> _opacity;
+        optional<double> _gamma;
+		optional<osg::Vec4ub> _transparentColor;
+	    optional<std::string> _noDataImageFilename;
+		optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::FilterMode> _minFilter;   
+    };
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Callback for receiving notification of property changes on an ImageLayer.
+     */
+    struct ImageLayerCallback : public TerrainLayerCallback
+    {
+        virtual void onOpacityChanged( class ImageLayer* layer ) const { }
+        virtual void onGammaChanged( class ImageLayer* layer ) const { }
+    };
+
+    typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(ImageLayer* layer) const;
+
+    typedef std::list< osg::ref_ptr<ImageLayerCallback> > ImageLayerCallbackList;
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
+    {
+    public:
+        /**
+         * Constructs a new image layer.
+         */
+        ImageLayer( const ImageLayerOptions& options );
+
+        /**
+         * Constructs a new image layer with the given name and driver options.
+         */
+        ImageLayer( const std::string& name, const TileSourceOptions& driverOptions );
+
+        /**
+         * Constructs a new image layer with a custom TileSource.
+         */
+        ImageLayer( const ImageLayerOptions& options, TileSource* tileSource );
+
+    public:
+        /**
+         * Access to the initialization options used to create this image layer
+         */
+        const ImageLayerOptions& getImageLayerOptions() const { return _options; }
+        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
+
+        /** Adds a property notification callback to this layer */
+        void addCallback( ImageLayerCallback* cb );
+
+        /** Removes a property notification callback from this layer */
+        void removeCallback( ImageLayerCallback* cb );
+
+    public: // properties
+
+        void setOpacity( float opacity );
+        float getOpacity() const { return _actualOpacity; }
+
+        void setGamma( float gamma );
+        float getGamma() const { return _actualGamma; }
+
+    public: // methods
+
+		/**
+		 * Creates a GeoImage from this MapLayer
+		 */
+		GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+
+    protected:
+
+		osg::Image* createImageWrapper( const TileKey& key,
+                                        bool cacheInLayerProfile,
+                                        ProgressCallback* progress );
+
+        virtual void initTileSource();
+
+    private:
+        ImageLayerOptions _options;
+        float _actualOpacity;
+        float _actualGamma;
+        float _prevGamma;
+        unsigned char _gammaLUT[256];
+        osg::ref_ptr<osg::Image> _noDataImage;
+
+        ImageLayerCallbackList _callbacks;
+        virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
+        virtual void fireCallback( ImageLayerCallbackMethodPtr method );
+
+        void postProcess( GeoImage& img );
+        void init();
+    };
+
+    typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_IMAGE_TERRAIN_LAYER_H

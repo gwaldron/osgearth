@@ -82,7 +82,6 @@
 
 using namespace osg;
 using namespace osgDB;
-using namespace osgTerrain;
 using namespace osgEarth;
 using namespace osgEarthUtil;
 using namespace osgEarth::Drivers;
@@ -159,8 +158,8 @@ struct ToggleVisiblityCallback: public osgWidget::Callback {
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-			_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setEnabled(
-                _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->enabled() == false);
+			_fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->setEnabled(
+                _fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->getEnabled() == false);
         }
         return true;
     }
@@ -181,8 +180,8 @@ struct OpacityCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            float oldOpacity = _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->opacity().value();
-            _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setOpacity( oldOpacity + _opacityDelta );
+            float oldOpacity = _fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->getOpacity();
+            _fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->setOpacity( oldOpacity + _opacityDelta );
         }
         return true;
     }
@@ -205,7 +204,7 @@ struct RemoveLayerCallback: public osgWidget::Callback
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
             //_view->getDatabasePager()->clear();
-            _map->removeMapLayer( _map->getImageMapLayers()[_layerIndex] );
+            _map->removeImageLayer( _map->getImageLayers()[_layerIndex] );
             //_mapNode->removeImageSource( _layerIndex );
             hudDirty = true;
         }
@@ -232,10 +231,10 @@ struct MoveLayerCallback: public osgWidget::Callback
         {
             //_view->getDatabasePager()->clear();
             int dir = _up ? 1 : -1;
-            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)_map->getImageMapLayers().size()-1u);
+            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)_map->getImageLayers().size()-1u);
             //_map->moveImageSource( _layerIndex, newPosition );
-            MapLayer* layer = _map->getImageMapLayers()[_layerIndex];
-            _map->moveMapLayer( layer, newPosition );
+            ImageLayer* layer = _map->getImageLayers()[_layerIndex];
+            _map->moveImageLayer( layer, newPosition );
             hudDirty = true;
         }
         return true;
@@ -250,7 +249,7 @@ struct MoveLayerCallback: public osgWidget::Callback
 class AddLayerButton : public osgWidget::Label
 {
 public:
-    AddLayerButton(Map* map, osgViewer::View* view, MapLayer* layer) :
+    AddLayerButton(Map* map, osgViewer::View* view, ImageLayer* layer) :
       osgWidget::Label("",""),
           _map(map),
           _view(view),
@@ -273,14 +272,14 @@ public:
       virtual bool mousePush(double, double, osgWidget::WindowManager*) {
 #endif
          //_view->getDatabasePager()->clear();
-         _map->addMapLayer( _layer );
+         _map->addImageLayer( _layer );
          //_mapNode->addImageSource( _sourceConfig );
           hudDirty = true;
          return true;
      }
 
      osg::ref_ptr<Map> _map;
-     osg::ref_ptr<MapLayer> _layer;
+     osg::ref_ptr<ImageLayer> _layer;
      osgViewer::View* _view;
      osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
 };
@@ -293,7 +292,9 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
 		BlankTileSource* tileSource = new BlankTileSource();
 		tileSource->initialize( "" );
-        MapLayer* layer = new MapLayer( "Green", MapLayer::TYPE_IMAGE,tileSource );
+        ImageLayerOptions layerOpt;
+        layerOpt.name() = "Green";
+        ImageLayer* layer = new ImageLayer( layerOpt, tileSource );
         addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
     }
 
@@ -301,26 +302,29 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
         ArcGISOptions opt;
         opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Boundaries", opt ) ) );
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageLayer( "ESRI Boundaries", opt ) ) );
     }
 
     // ArcGIS transportation layer:
     {
         ArcGISOptions opt;
         opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Transportation", opt ) ) );
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageLayer( "ESRI Transportation", opt ) ) );
     }
 
     // OpenStreetMap:
     {
-        TMSOptions opt;
-        opt.url() = "http://tile.openstreetmap.org";
-        opt.format() = "png";
-        opt.tileSize() = 256;
-        opt.tmsType() = "google";
-        MapLayer* layer = new ImageMapLayer( "OpenStreetMap", opt );
+        TMSOptions driverOpt;
+        driverOpt.url() = "http://tile.openstreetmap.org";
+        driverOpt.format() = "png";
+        driverOpt.tileSize() = 256;
+        driverOpt.tmsType() = "google";
 
-        layer->profileOptions() = ProfileOptions( "global-mercator" );
+        ImageLayerOptions layerOpt;
+        layerOpt.driver() = driverOpt;
+        layerOpt.profile() = ProfileOptions( "global-mercator" );
+
+        ImageLayer* layer = new ImageLayer( "OpenStreetMap", layerOpt );
         addLayersBox->addWidget( new AddLayerButton( map, view, layer ) );
     }
 
@@ -328,7 +332,7 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
         ArcGISOptions opt;
         opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Imagery", opt ) ) );
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageLayer( "ESRI Imagery", opt ) ) );
     }
 
     addLayersBox->getBackground()->setColor(1,0,0,0.3);
@@ -393,11 +397,11 @@ public:
 
     void updateText()
     {
-        if ( _layerIndex < _map->getImageMapLayers().size() )
+        if ( _layerIndex < _map->getImageLayers().size() )
         {
-            std::string name = _map->getImageMapLayers()[_layerIndex]->getName(); //Node->getImageSource( _layerIndex );
+            std::string name = _map->getImageLayers()[_layerIndex]->getName(); //Node->getImageSource( _layerIndex );
             std::stringstream ss;
-            unsigned int index = (_map->getImageMapLayers().size() - _layerIndex);
+            unsigned int index = (_map->getImageLayers().size() - _layerIndex);
             ss << index << ") ";
 			std::string ssStr;
 			ssStr = ss.str();
@@ -460,7 +464,7 @@ public:
               _wm->removeChild(_lines[i].get());
           }
 
-          for (unsigned int i = 0; i < _map->getImageMapLayers().size(); ++i)
+          for (unsigned int i = 0; i < _map->getImageLayers().size(); ++i)
           {
               Line* line = i < _lines.size() ? _lines[i] : NULL;
               if (line)
@@ -583,10 +587,10 @@ int main(int argc, char** argv)
 	//group->addChild( loadedModel.get() );
 
 
-    for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
+    for (unsigned int i = 0; i < mapNode->getMap()->getImageLayers().size(); ++i)
     {
-		mapNode->getMap()->getImageMapLayers()[i]->setOpacity( 1.0f ); //opacity() = 1.0f;
-		mapNode->getMap()->getImageMapLayers()[i]->setEnabled(true);
+		mapNode->getMap()->getImageLayers()[i]->setOpacity( 1.0f ); //opacity() = 1.0f;
+		mapNode->getMap()->getImageLayers()[i]->setEnabled(true);
     }
 
     //Setup the osgWidget interface

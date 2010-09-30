@@ -37,16 +37,83 @@ namespace osgEarth
         void onMapProfileEstablished( const Profile* profile ) {
             _node->onMapProfileEstablished( profile );
         }
-        void onMapLayerAdded( MapLayer* layer, unsigned int index ) {
+        void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
+            _node->onImageLayerAdded( layer );
             _node->onMapLayerStackChanged();
         }
-        void onMapLayerRemoved( MapLayer* layer, unsigned int index ) {
+        void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
+            _node->onImageLayerRemoved( layer );
             _node->onMapLayerStackChanged();
         }
-        void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+        void onImageLayerMoved( ImageLayer* layer, unsigned int from, unsigned int to ) {
+            _node->onMapLayerStackChanged();
+        }
+        void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
+            _node->onMapLayerStackChanged();
+        }
+        void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
+            _node->onMapLayerStackChanged();
+        }
+        void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
             _node->onMapLayerStackChanged();
         }
     };
+}
+
+//------------------------------------------------------------------------
+
+TerrainEngineNode::ImageLayerController::ImageLayerController( Map* map ) :
+_map( map )
+{
+    //NOP
+}
+
+void
+TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer ) const
+{
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
+    ImageLayerVector imageLayers;
+    _map->getImageLayers( imageLayers );
+
+    ImageLayerVector::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
+    if ( i != imageLayers.end() )
+    {
+        int layerNum = i - imageLayers.begin();
+        _layerEnabledUniform->setElement( layerNum, layer->getEnabled() );
+    }
+    else
+    {
+        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
+    }
+}
+
+void
+TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer ) const
+{
+    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
+        return;
+
+    ImageLayerVector imageLayers;
+    _map->getImageLayers( imageLayers );
+
+    ImageLayerVector::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
+    if ( i != imageLayers.end() )
+    {
+        int layerNum = i - imageLayers.begin();
+        _layerOpacityUniform->setElement( layerNum, layer->getOpacity() );
+    }
+    else
+    {
+        OE_WARN << LC << "Odd, onOpacityChanged did not find layer" << std::endl;
+    }
+}
+
+void
+TerrainEngineNode::ImageLayerController::onGammaChanged( ImageLayer* layer ) const
+{
+    //TODO
 }
 
 //------------------------------------------------------------------------
@@ -82,6 +149,15 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
 
         // then register the callback
         _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
+
+        // create a layer controller, and register it with all pre-existing image layers:
+        _imageLayerController = new ImageLayerController( map );
+        ImageLayerVector imageLayers;
+        _map->getImageLayers( imageLayers, true );
+        for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+        {
+            i->get()->addCallback( _imageLayerController.get() );
+        }
     }
 
     // apply visual options.
@@ -137,6 +213,18 @@ TerrainEngineNode::onMapLayerStackChanged()
 }
 
 void
+TerrainEngineNode::onImageLayerAdded( ImageLayer* layer )
+{
+    layer->addCallback( _imageLayerController.get() );
+}
+
+void
+TerrainEngineNode::onImageLayerRemoved( ImageLayer* layer )
+{
+    layer->removeCallback( _imageLayerController.get() );
+}
+
+void
 TerrainEngineNode::updateUniforms()
 {
     // don't bother if this is a hurting old card
@@ -146,8 +234,8 @@ TerrainEngineNode::updateUniforms()
     // update the layer uniform arrays:
     osg::StateSet* stateSet = this->getOrCreateStateSet();
 
-    MapLayerList imageLayers;
-    _map->getImageMapLayers( imageLayers );
+    ImageLayerVector imageLayers;
+    _map->getImageLayers( imageLayers );
 
     stateSet->removeUniform( "osgearth_imagelayer_opacity" );
     stateSet->removeUniform( "osgearth_imagelayer_enabled" );
@@ -155,64 +243,20 @@ TerrainEngineNode::updateUniforms()
     if ( imageLayers.size() > 0 )
     {
         //Update the layer opacity uniform
-        _layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", imageLayers.size() );
-        for( MapLayerList::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-            _layerOpacityUniform->setElement( (int)(i-imageLayers.begin()), i->get()->opacity().value() );
-        stateSet->addUniform( _layerOpacityUniform.get() );
+        _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", imageLayers.size() );
+        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+            _imageLayerController->_layerOpacityUniform->setElement( (int)(i-imageLayers.begin()), i->get()->getOpacity() );
+        stateSet->addUniform( _imageLayerController->_layerOpacityUniform.get() );
 
         //Update the layer enabled uniform
-        _layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", imageLayers.size() );
-        for( MapLayerList::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+        _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", imageLayers.size() );
+        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
-            _layerEnabledUniform->setElement( (int)(i-imageLayers.begin()), i->get()->enabled().value() );
+            _imageLayerController->_layerEnabledUniform->setElement( (int)(i-imageLayers.begin()), i->get()->getEnabled() );
         }
-        stateSet->addUniform( _layerEnabledUniform.get() );
+        stateSet->addUniform( _imageLayerController->_layerEnabledUniform.get() );
     }
     stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)imageLayers.size() );
-}
-
-void
-TerrainEngineNode::updateLayerOpacity( MapLayer* layer )
-{
-    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
-        return;
-
-    MapLayerList imageLayers;
-    _map->getImageMapLayers( imageLayers );
-
-    MapLayerList::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
-    if ( i != imageLayers.end() )
-    {
-        int layerNum = i - imageLayers.begin();
-        _layerOpacityUniform->setElement( layerNum, layer->opacity().value() );
-        //OE_INFO << LC << "Updating layer " << layerNum << " opacity to " << layer->opacity().value() << std::endl;
-    }
-    else
-    {
-        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
-    }
-}
-
-void
-TerrainEngineNode::updateLayerEnabled( MapLayer* layer )
-{
-    if ( !Registry::instance()->getCapabilities().supportsGLSL() )
-        return;
-
-    MapLayerList imageLayers;
-    _map->getImageMapLayers( imageLayers );
-
-    MapLayerList::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
-    if ( i != imageLayers.end() )
-    {
-        int layerNum = i - imageLayers.begin();
-        _layerEnabledUniform->setElement( layerNum, layer->enabled().value() );
-        //OE_INFO << LC << "Updating layer " << layerNum << " opacity to " << layer->opacity().value() << std::endl;
-    }
-    else
-    {
-        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
-    }
 }
 
 void

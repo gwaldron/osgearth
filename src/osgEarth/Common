@@ -111,6 +111,8 @@ namespace osgEarth
         const T& value() const { return _value; }
         const T& defaultValue() const { return _defaultValue; }
 
+        T& defaultValue() { return _defaultValue; }
+
         //operator T* () const { _set=true; return &_value; }
         operator const T*() const { return &_value; }
 

@@ -27,7 +27,7 @@ using namespace OpenThreads;
 
 void CacheSeed::seed( Map* map )
 {
-    Threading::ScopedReadLock lock( map->getMapDataMutex() );
+    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     if ( !map->getMapOptions().cache().isSet() )
     //if (!map->getCache())
@@ -54,13 +54,20 @@ void CacheSeed::seed( Map* map )
     int src_min_level = INT_MAX;
     int src_max_level = 0;
 
-    //Assumes the the TileSource will perform the caching for us when we call createImage
-    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
-    {
-		MapLayer* layer = i->get();
-        TileSource* src = i->get()->getTileSource();
+    ImageLayerVector imageLayers;
+    map->getImageLayers( imageLayers );
 
-        if (layer->cacheOnly().get())
+    ElevationLayerVector elevLayers;
+    map->getElevationLayers( elevLayers );
+
+    //Assumes the the TileSource will perform the caching for us when we call createImage
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
+    {
+		ImageLayer* layer = i->get();
+        TileSource* src = i->get()->getTileSource();
+        const ImageLayerOptions& opt = layer->getImageLayerOptions();
+
+        if ( opt.cacheOnly() == true )
         {
             OE_WARN << "Warning:  Cannot seed b/c Layer \"" << layer->getName() << "\" is cache only." << std::endl;
             return;
@@ -81,19 +88,20 @@ void CacheSeed::seed( Map* map )
         {
             hasCaches = true;
 
-			if (layer->minLevel().isSet() && layer->minLevel().get() < src_min_level)
-                src_min_level = layer->minLevel().get();
-			if (layer->maxLevel().isSet() && layer->maxLevel().get() > src_max_level)
-                src_max_level = layer->maxLevel().get();
+			if (opt.minLevel().isSet() && opt.minLevel().get() < src_min_level)
+                src_min_level = opt.minLevel().get();
+			if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
+                src_max_level = opt.maxLevel().get();
         }
     }
 
-    for( MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
+    for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
     {
-		MapLayer* layer = i->get();
+		ElevationLayer* layer = i->get();
         TileSource* src = i->get()->getTileSource();
+        const ElevationLayerOptions& opt = layer->getElevationLayerOptions();
 
-        if (layer->cacheOnly().get())
+        if ( opt.cacheOnly().get())
         {
             OE_WARN << "Warning:  Cannot seed b/c Layer \"" << layer->getName() << "\" is cache only." << std::endl;
             return;
@@ -114,10 +122,10 @@ void CacheSeed::seed( Map* map )
         {
             hasCaches = true;
 
-			if (layer->minLevel().isSet() && layer->minLevel().get() < src_min_level)
-                src_min_level = layer->minLevel().get();
-			if (layer->maxLevel().isSet() && layer->maxLevel().get() > src_max_level)
-                src_max_level = layer->maxLevel().get();
+			if (opt.minLevel().isSet() && opt.minLevel().get() < src_min_level)
+                src_min_level = opt.minLevel().get();
+			if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
+                src_max_level = opt.maxLevel().get();
 		}
     }
 
@@ -136,12 +144,16 @@ void CacheSeed::seed( Map* map )
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( map, keys[i] );
+        processKey( map, keys[i], imageLayers, elevLayers );
     }
 }
 
 
-void CacheSeed::processKey( Map* map, const TileKey& key ) const
+void
+CacheSeed::processKey(Map* map,
+                      const TileKey& key,
+                      const ImageLayerVector& imageLayers,
+                      const ElevationLayerVector& elevLayers ) const
 {
     unsigned int x, y, lod;
     key.getTileXY(x, y);
@@ -152,7 +164,7 @@ void CacheSeed::processKey( Map* map, const TileKey& key ) const
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
         OE_NOTICE << "Caching tile = " << key.str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
-        cacheTile( map, key );
+        cacheTile( map, key, imageLayers, elevLayers); 
   //      bool validData;
 		//osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, false, validData );        
     }
@@ -169,27 +181,30 @@ void CacheSeed::processKey( Map* map, const TileKey& key ) const
         if (_bounds.intersects( k0.getExtent().bounds() ) || _bounds.intersects(k1.getExtent().bounds()) ||
             _bounds.intersects( k2.getExtent().bounds() ) || _bounds.intersects(k3.getExtent().bounds()) )
         {
-            processKey(map, k0); 
-            processKey(map, k1); 
-            processKey(map, k2); 
-            processKey(map, k3); 
+            processKey(map, k0, imageLayers, elevLayers); 
+            processKey(map, k1, imageLayers, elevLayers); 
+            processKey(map, k2, imageLayers, elevLayers); 
+            processKey(map, k3, imageLayers, elevLayers); 
         }
     }
 }
 
 void
-CacheSeed::cacheTile( Map* map, const TileKey& key ) const
+CacheSeed::cacheTile(Map* map,
+                     const TileKey& key,
+                     const ImageLayerVector& imageLayers,
+                     const ElevationLayerVector& elevLayers ) const
 {
-    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
     {
-        MapLayer* layer = i->get();
+        ImageLayer* layer = i->get();
         if ( layer->isKeyValid( key ) )
         {
             GeoImage image = layer->createImage( key );
         }
     }
 
-    if ( map->getHeightFieldMapLayers().size() > 0 )
+    if ( elevLayers.size() > 0 )
     {
         osg::ref_ptr<osg::HeightField> hf = map->createHeightField( key, false );
     }

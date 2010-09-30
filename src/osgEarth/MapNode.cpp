@@ -31,13 +31,6 @@ using namespace osgEarth;
 struct MapNodeMapCallbackProxy : public MapCallback
 {
     MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
-    osg::observer_ptr<MapNode> _node;
-
-#if 0
-    void onMapProfileEstablished( const Profile* profile ) {
-        _node->onMapProfileEstablished(profile);
-    }
-#endif
 
     void onModelLayerAdded( ModelLayer* layer ) {
         _node->onModelLayerAdded( layer );
@@ -51,10 +44,13 @@ struct MapNodeMapCallbackProxy : public MapCallback
     void onMaskLayerRemoved( MaskLayer* layer ) {
         _node->onMaskLayerRemoved( layer );
     }
+
+    osg::observer_ptr<MapNode> _node;
 };
 
 //---------------------------------------------------------------------------
 
+#if 0
 namespace osgEarth
 {
     struct MapNodeMapLayerController : public MapLayerController
@@ -75,6 +71,7 @@ namespace osgEarth
         MapNode* _node;
     };
 }
+#endif
 
 //---------------------------------------------------------------------------
 
@@ -201,9 +198,6 @@ MapNode::init()
     // overlays:
     _pendingOverlayAutoSetTextureUnit = true;
 
-    // the layer controller allows you to use the MapLayer API to affect top-level changes in MapNode:
-    _mapLayerController = new MapNodeMapLayerController( this );
-
     // go through the map and process any already-installed layers:
     // TODO: non-hard-code
     const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
@@ -217,19 +211,21 @@ MapNode::init()
 
 #if 0
     unsigned int index = 0;
-    for( MapLayerList::const_iterator i = _map->getHeightFieldMapLayers().begin(); i != _map->getHeightFieldMapLayers().end(); i++ )
+    for( MapLayerList::const_iterator i = _map->getElevationLayers().begin(); i != _map->getElevationLayers().end(); i++ )
     {
         onMapLayerAdded( i->get(), index++ );
     }
     index = 0;
-    for( MapLayerList::const_iterator j = _map->getImageMapLayers().begin(); j != _map->getImageMapLayers().end(); j++ )
+    for( MapLayerList::const_iterator j = _map->getImageLayers().begin(); j != _map->getImageLayers().end(); j++ )
     {
         onMapLayerAdded( j->get(), index++ );
     }
 #endif
 
     // install any pre-existing model layers:
-    for( ModelLayerList::const_iterator k = _map->getModelLayers().begin(); k != _map->getModelLayers().end(); k++ )
+    ModelLayerVector modelLayers;
+    _map->getModelLayers( modelLayers );
+    for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++ )
     {
         onModelLayerAdded( k->get() );
     }

@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
+#if 0
 #ifndef OSGEARTH_MAP_LAYER_H
 #define OSGEARTH_MAP_LAYER_H 1
 
@@ -33,7 +33,356 @@
 
 namespace osgEarth
 {
-    class MapLayer;
+    //class MapLayer;
+
+    class TerrainLayerOptions : public ConfigOptions
+    {
+    public:
+        TerrainLayerOptions( const ConfigOptions& options =ConfigOptions() );
+
+        /**
+         * Gets the explicit profile setup for this map layer. By default, the layer will 
+         * try to automatically determine the Profile from the tile source. This property
+         * sets it explicitly instead.
+         */
+        optional<ProfileOptions>& profile() { return _profileConf; }
+        const optional<ProfileOptions>& profile() const { return _profileConf; }
+
+        /**
+         * Gets or sets the minimum level of detail for which this layer should generate data.
+         */
+        optional<int>& minLevel() { return _minLevel; }
+        const optional<int>& minLevel() const { return _minLevel; }
+
+        /**
+         * The maximum level of detail for which this layer should generate data.
+         */
+        optional<int>& maxLevel() { return _maxLevel; }
+        const optional<int>& maxLevel() const { return _maxLevel; }
+
+		/**
+		 * Whether to render this layer with the map.
+		 */        
+        const optional<bool>& enabled() const { return _enabled; }
+        void setEnabled( bool enabled );
+
+		/**
+		 * Whether to use exact cropping if image cropping is necessary
+		 */
+        optional<bool>& exactCropping() { return _exactCropping; }
+        const optional<bool>& exactCropping() const { return _exactCropping; }
+
+		/**
+		 * The desired tile size to reproject imagery to if necessary.
+		 */
+        optional<unsigned int> reprojectedTileSize() { return _reprojectedTileSize; }
+        const optional<unsigned int> reprojectedTileSize() const { return _reprojectedTileSize; }
+
+		/**
+		 * The format that this MapLayer should use when caching.
+		 */
+        optional<std::string>& cacheFormat() { return _cacheFormat; }
+        const optional<std::string>& cacheFormat() const { return _cacheFormat; }
+
+        /**
+         * Whether to cache this layer or not.
+         */
+        optional<bool>& cacheEnabled() { return _cacheEnabled; }
+        const optional<bool>& cacheEnabled() const { return _cacheEnabled; }
+
+		/**
+		 * Whether to try to run this MapLayer strictly from the cache only.
+		 */
+        optional<bool>& cacheOnly() { return _cacheOnly; }
+        const optional<bool>& cacheOnly() const { return _cacheOnly; }
+        
+        /**
+         * The loading weight of this MapLayer (for threaded loading policies).
+         */
+        optional<float>& loadingWeight() { return _loadingWeight; }
+        const optional<float>& loadingWeight() const { return _loadingWeight; }
+
+        /**
+         * The ratio used to expand the extent of a tile when the layer
+         * needs to be mosaiced to projected.  This can be used to increase the
+         * number of tiles grabbed to ensure that enough data is grabbed to
+         * overlap the incoming tile.
+         */
+        optional<double>& edgeBufferRatio() { return _edgeBufferRatio;}
+        const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio;}
+
+        /**
+         * A reference location that drivers can use to load data from relative locations.
+         * NOTE: this is a runtime-only property and is NOT serialized in the ConfigOptions.
+         */
+        std::string& referenceURI() { return _referenceURI; }
+        const std::string& referenceURI() const { return _referenceURI; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    private:
+        void fromConfig( const Config& conf );
+       
+        optional<ProfileOptions> _profile;
+        optional<int> _minLevel;
+        optional<int> _maxLevel;
+		optional<std::string> _cacheFormat;
+        optional<bool> _cacheEnabled;
+		optional<bool> _cacheOnly;
+        optional<float> _loadingWeight;
+        optional<bool> _exactCropping;
+		optional<bool> _enabled;
+		optional<unsigned int> _reprojectedTileSize;
+        optional<double> _edgeBufferRatio;
+
+        std::string _referenceURI;
+    };
+
+
+    class OSGEARTH_EXPORT ImageLayerOptions : public TerrainLayerOptions
+    {
+    public:
+        ImageLayerOptions( const ConfigOptions& options =ConfigOptions() ) :
+          _opacity( 1.0f ),
+          _gamma  ( 1.0f ),
+          transparentColor( osg::Vec4ub(0,0,0,0) )
+        { 
+            fromConfig( _conf );
+        }
+
+    public: // properties
+
+		/**
+		 * The initial opacity of this layer
+		 */
+        optional<float>& opacity() { return _opacity; }
+        const optional<float>& opacity() const { return _opacity; }
+
+        /**
+         * The initial gamma value for this layer's images
+         */
+        optional<double>& gamma() { return _gamma; }
+        const optional<double>& gamma() const { return _gamma; }
+
+		/**
+		 * Gets or sets the nodata image for this MapLayer
+		 */
+        optional<std::string>& noDataImageFilename() { return _noDataImageFilename; }
+        const optional<std::string>& noDataImageFilename() const { return _noDataImageFilename; }
+
+		/**
+		 * Gets the transparent color of this TileSource
+		 */
+		optional<osg::Vec4ub>& transparentColor() { return _transparentColor; }
+        const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
+
+        /**
+         * The texture magnification mipmapping filter mode
+         */
+		optional<osg::Texture::FilterMode>& getMagFilter(void) {return _magFilter;}
+		const optional<osg::Texture::FilterMode>& getMagFilter(void) const {return _magFilter;}
+
+        /**
+         * The texture minification mipmapping filter mode
+         */
+		optional<osg::Texture::FilterMode>& getMinFilter(void) {return _minFilter;}
+		const optional<osg::Texture::FilterMode>& getMinFilter(void) const {return _minFilter;}
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        
+    private:
+        void fromConfig( const Config& conf );
+
+		optional<float> _opacity;
+        optional<double> _gamma;
+		optional<osg::Vec4ub> _transparentColor;
+	    optional<std::string> _noDataImageFilename;
+		optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::FilterMode> _minFilter;   
+    };
+
+
+    class OSGEARTH_EXPORT ElevationLayerOptions : public TerrainLayerOptions
+    {
+    public:
+        ElevationLayerOptions( const ConfigOptions& options =ConfigOptions() );
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        
+    private:
+        void fromConfig( const Config& conf );            
+    };
+
+
+
+
+    class OSGEARTH_EXPORT TerrainLayer : public osg::Referenced
+    {
+    protected:
+        TerrainLayer();
+
+        virtual TerrainLayerOptions& getTerrainLayerOptions() const =0;
+
+        void setEnabled( bool value );
+        bool getEnabled() const { return _enabled; }
+
+        /**
+         * Gets the unique ID of this map layer
+         */
+        unsigned int getId() const;
+
+        /**
+         * Gets the readable name of the map layer.
+         */
+        const std::string& getName() const;
+
+		/**
+		 * Gets the profile of this MapLayer
+		 */
+		const Profile* getProfile() const;
+
+        /**
+         * Gets the underlying TileSource engine that serves this map layer. Use with caution.
+         */
+        TileSource* getTileSource() const;
+
+		/**
+		 *Gets the tile size of the this MapLayer
+		 */
+		unsigned int getTileSize() const;
+
+		/**
+		 *Gets the maximum data level of this MapLayer
+		 */
+		unsigned int getMaxDataLevel() const;
+
+    public: // methods
+
+		/**
+		 * Whether the given key is valid for this layer
+		 */
+		bool isKeyValid(const TileKey& key) const;
+
+		/**
+		 * Gets the Cache to be used on this MapLayer.
+		 */
+		Cache* getCache() const;
+
+		/**
+		 * Sets the cache to be used on this MapLayer
+         * TODO: is it legal to set this at any time?
+		 */
+		void setCache( Cache* cache );
+
+        /**
+         * Suggests a cache format for this layer
+         */
+        std::string suggestCacheFormat() const;
+
+    protected:
+
+		void initTileSource();
+
+		void readEnvironmentalVariables();
+
+    private:
+        bool _enabled;
+
+        unsigned int _id;
+        std::string _name;
+
+        bool _cacheOnlyEnv;
+
+		unsigned int _tileSize;
+        
+        osg::ref_ptr<TileSource> _tileSource;
+		osg::ref_ptr<Cache> _cache;
+
+		osg::ref_ptr< const Profile > _profile;
+        osg::ref_ptr< const Profile > _cacheProfile;
+        
+        //TODO: move this to a shader
+        unsigned char _gammaLUT[256];
+        double _prevGamma;
+
+        OpenThreads::Mutex _initMutex;
+        void init();
+
+        void mergeConfig( const Config& conf );
+    };
+
+
+    class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
+    {
+    public:
+        ImageLayer( const ImageLayerOptions& options );
+
+        const ImageLayerOptions& getImageLayerOptions() const { return _options; }
+        const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
+
+    public: // properties
+
+        void setOpacity( float opacity );
+        float getOpacity() const;
+
+    public: // methods
+
+		/**
+		 * Creates a GeoImage from this MapLayer
+		 */
+		GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+
+    protected:
+
+		osg::Image* createImageWrapper( const TileKey& key,
+                                        bool cacheInLayerProfile,
+                                        ProgressCallback* progress );
+
+    private:
+        ImageLayerOptions _options;
+        float _opacity;	    
+        osg::ref_ptr<osg::Image> _noDataImage;
+
+        void postProcess( GeoImage& img );
+    };
+
+
+    class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
+    {
+    public:
+        ElevationLayer( const ElevationLayerOptions& options );
+
+        const ElevationLayerOptions& getElevationLayerOptions() const { return _options; }
+        const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
+
+    public: // properties
+
+
+    public: // methods
+
+        /**
+         * Creates a GeoHeightField for this MapLayer.
+         * The returned HeightField will always match the geospatial extents of the incoming TileKey.
+         */
+        osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress = 0);
+
+    protected:
+        
+		GeoHeightField createGeoHeightField( const TileKey& key,
+                                             ProgressCallback* progress);
+
+    private:
+        ElevationLayerOptions _options;
+    };
+
+
+#if 0
 
     /**
      * Controller interface for updating layer settings that can be changed at run-time.
@@ -61,6 +410,11 @@ namespace osgEarth
         };
 
     public: //ctors
+
+        /**
+         * Constructs a new MapLayer with the specified options.
+         */
+        MapLayer( const string& name, const MapLayerOptions& options );
 
         /**
          * Constructs a new map layer with the specified driver options.
@@ -132,112 +486,6 @@ namespace osgEarth
 		unsigned int getMaxDataLevel() const;
 
     public: // properties
-
-        /**
-         * Gets the explicit profile setup for this map layer. By default, the layer will 
-         * try to automatically determine the Profile from the tile source. This property
-         * sets it explicitly instead.
-         */
-        optional<ProfileOptions>& profileOptions() { return _profileConf; }
-        const optional<ProfileOptions>& profileOptions() const { return _profileConf; }
-
-        /**
-         * Gets or sets the minimum level of detail for which this layer should generate data.
-         */
-        optional<int>& minLevel() { return _minLevel; }
-        const optional<int>& minLevel() const { return _minLevel; }
-
-        /**
-         * The maximum level of detail for which this layer should generate data.
-         */
-        optional<int>& maxLevel() { return _maxLevel; }
-        const optional<int>& maxLevel() const { return _maxLevel; }
-
-		/**
-		 * The opacity of this layer's image tile
-		 */
-        //optional<float>& opacity() { return _opacity; }
-        const optional<float>& opacity() const { return _opacity; }
-        void setOpacity( float value );
-
-        /**
-         * The gamma value for this layer's image tiles
-         */
-        optional<double>& gamma() { return _gamma; }
-        const optional<double>& gamma() const { return _gamma; }
-
-		/**
-		 * Whether to render this layer with the map.
-		 */        
-        const optional<bool>& enabled() const { return _enabled; }
-        void setEnabled( bool enabled );
-
-		/**
-		 * Gets or sets the nodata image for this MapLayer
-		 */
-        optional<std::string>& noDataImageFilename() { return _noDataImageFilename; }
-        const optional<std::string>& noDataImageFilename() const { return _noDataImageFilename; }
-
-		/**
-		 * Gets the transparent color of this TileSource
-		 */
-		optional<osg::Vec4ub>& transparentColor() { return _transparentColor; }
-        const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
-
-		/**
-		 * Whether to use exact cropping if image cropping is necessary
-		 */
-        optional<bool>& exactCropping() { return _exactCropping; }
-        const optional<bool>& exactCropping() const { return _exactCropping; }
-
-		/**
-		 * The desired tile size to reproject imagery to if necessary.
-		 */
-        optional<unsigned int> reprojectedTileSize() { return _reprojectedTileSize; }
-        const optional<unsigned int> reprojectedTileSize() const { return _reprojectedTileSize; }
-
-		/**
-		 * The format that this MapLayer should use when caching.
-		 */
-        optional<std::string>& cacheFormat() { return _cacheFormat; }
-        const optional<std::string>& cacheFormat() const { return _cacheFormat; }
-
-        /**
-         * Whether to cache this layer or not.
-         */
-        optional<bool>& cacheEnabled() { return _cacheEnabled; }
-        const optional<bool>& cacheEnabled() const { return _cacheEnabled; }
-
-		/**
-		 * Whether to try to run this MapLayer strictly from the cache only.
-		 */
-        optional<bool>& cacheOnly() { return _cacheOnly; }
-        const optional<bool>& cacheOnly() const { return _cacheOnly; }
-        
-        /**
-         * The loading weight of this MapLayer (for threaded loading policies).
-         */
-        optional<float> loadingWeight() { return _loadingWeight; }
-        const optional<float>& loadingWeight() const { return _loadingWeight; }
-
-        /**
-         *The ratio used to expand the extent of a tile when the layer
-         *needs to be mosaiced to projected.  This can be used to increase the
-         *number of tiles grabbed to ensure that enough data is grabbed to
-         *overlap the incoming tile.
-         */
-        optional<double> edgeBufferRatio() { return _edgeBufferRatio;}
-        const optional<double> edgeBufferRatio() const { return _edgeBufferRatio;}
-
-		/// Returns the magnification filter mode
-		optional<osg::Texture::FilterMode>& getMagFilter(void) {return _magFilter;}
-		/// Returns the magnification filter mode
-		optional<osg::Texture::FilterMode> const& getMagFilter(void) const {return _magFilter;}
-
-		/// Returns the minifying filter mode
-		optional<osg::Texture::FilterMode>& getMinFilter(void) {return _minFilter;}
-		/// Returns the minifying filter mode
-		optional<osg::Texture::FilterMode> const& getMinFilter(void) const {return _minFilter;}
 
 
 
@@ -320,24 +568,6 @@ namespace osgEarth
 
         //osg::ref_ptr<const DriverOptions> _driverOptions;
         TileSourceOptions _options;
-       
-        optional<ProfileOptions> _profileConf;
-        optional<int> _minLevel;
-        optional<int> _maxLevel;
-	    optional<std::string> _noDataImageFilename;
-		optional<osg::Vec4ub> _transparentColor;
-		optional<std::string> _cacheFormat;
-        optional<bool> _cacheEnabled;
-		optional<bool> _cacheOnly;
-        optional<float> _loadingWeight;
-        optional<bool> _exactCropping;
-		optional<float> _opacity;
-        optional<double> _gamma;
-		optional<bool> _enabled;
-		optional<unsigned int> _reprojectedTileSize;
-        optional<double> _edgeBufferRatio;
-		optional<osg::Texture::FilterMode> _magFilter;
-        optional<osg::Texture::FilterMode> _minFilter;
 
         bool _cacheOnlyEnv;
 
@@ -434,6 +664,7 @@ namespace osgEarth
 		osg::ref_ptr<MapLayer> _mapLayer;
         int _lod;
 	};
+#endif
 
 #if 0
     class OSGEARTH_EXPORT L2Cache
@@ -466,3 +697,4 @@ namespace osgEarth
 }
 
 #endif // OSGEARTH_MAP_LAYER_H
+#endif

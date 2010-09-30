@@ -40,17 +40,17 @@ osgEarth::MapNode* createSimpleMap()
 
     // Add an image layer to the map.
     {
-        TMSOptions opt;
-        opt.url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
-        map->addMapLayer( new ImageMapLayer( "NASA", opt ) );
+        TMSOptions driver;
+        driver.url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
+        map->addImageLayer( new ImageLayer("NASA", driver) );
     }
 
     // Add a heightfield layer to the map. You can add any number of heightfields and
     // osgEarth will composite them automatically.
     {
-        TMSOptions opt;
-        opt.url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
-        map->addMapLayer( new HeightFieldMapLayer( "SRTM", opt ) );
+        TMSOptions driverOpt;
+        driverOpt.url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
+        map->addElevationLayer( new ElevationLayer("SRTM", driverOpt) );
     }
 
     // The MapNode will render the Map object in the scene graph.

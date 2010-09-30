@@ -82,7 +82,6 @@
 
 using namespace osg;
 using namespace osgDB;
-using namespace osgTerrain;
 using namespace osgEarth;
 using namespace osgEarthUtil;
 using namespace osgEarth::Drivers;
@@ -141,7 +140,9 @@ struct BlankTileSource : public osgEarth::TileSource
         {
             osg::ref_ptr<BlankTileSource> tileSource = new BlankTileSource();
             tileSource->initialize( "" );
-            _layer = new MapLayer( "Green", MapLayer::TYPE_IMAGE,tileSource );
+            ImageLayerOptions layerOpt;
+            layerOpt.name() = "Green";
+            _layer = new ImageLayer( layerOpt, tileSource );
         }
 
         /** Callback method called by the NodeVisitor when visiting a node.*/
@@ -161,11 +162,11 @@ struct BlankTileSource : public osgEarth::TileSource
                 }
 
                 if (_nbLog % 15 == 7 && !_layerActive) {
-                    _map->addMapLayer( _layer.get() );
+                    _map->addImageLayer( _layer.get() );
                     _layerActive = true;
                 }
                 if (_nbLog % 15 == 14 && _layerActive) {
-                    _map->removeMapLayer( _map->getImageMapLayers()[0] );
+                    _map->removeImageLayer( _map->getImageLayers()[0] );
                     _layerActive = false;
                 }
             }
@@ -174,7 +175,7 @@ struct BlankTileSource : public osgEarth::TileSource
             // scene graph subtree (and associated callbacks) are traversed.
             traverse(node,nv);
         }
-        osg::ref_ptr<MapLayer> _layer;
+        osg::ref_ptr<ImageLayer> _layer;
         osg::ref_ptr<Map> _map;
 
     };
@@ -285,10 +286,10 @@ int main(int argc, char** argv)
         viewer.addEventHandler(new PrintObjectReference());
 
 
-        for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
+        for (unsigned int i = 0; i < mapNode->getMap()->getImageLayers().size(); ++i)
         {
-            mapNode->getMap()->getImageMapLayers()[i]->setOpacity( 1.0f );
-            mapNode->getMap()->getImageMapLayers()[i]->setEnabled( true );
+            mapNode->getMap()->getImageLayers()[i]->setOpacity( 1.0f );
+            mapNode->getMap()->getImageLayers()[i]->setEnabled( true );
         }
 
         //Setup the osgWidget interface

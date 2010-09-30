@@ -22,7 +22,8 @@
 
 #include "OSGTerrainOptions"
 #include <osgEarth/TileSource>
-#include <osgEarth/MapLayer>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 #include <osgEarth/Locators>
 
 #include <osgDB/ReaderWriter>
@@ -74,7 +75,7 @@ public:
 
     osgTerrain::ImageLayer* createImageLayer(
         Map* map,
-        MapLayer* layer,
+        ImageLayer* layer,
         const TileKey& key,
         ProgressCallback* progress);
 
@@ -102,7 +103,7 @@ public:
 
 
     GeoImage createValidGeoImage(
-        MapLayer* layer,
+        ImageLayer* layer,
         const TileKey& key,
         ProgressCallback* progress  = 0);
 
@@ -144,7 +145,7 @@ protected:
     void addPlaceholderImageLayers(
         CustomTile* tile,
         CustomTile* ancestorTile,
-        const MapLayerList& imageMapLayers,
+        const ImageLayerVector& imageLayers,
         GeoLocator* defaultLocator,
         const TileKey& key);
 

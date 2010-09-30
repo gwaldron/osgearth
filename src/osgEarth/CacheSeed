@@ -81,10 +81,19 @@ namespace osgEarth
     protected:
         unsigned int _minLevel;
         unsigned int _maxLevel;
-
         Bounds _bounds;
-        void processKey( Map* map, const TileKey& key ) const;
-        void cacheTile( Map* map, const TileKey& key ) const;
+
+        void processKey( 
+            Map* map, 
+            const TileKey& key,
+            const ImageLayerVector& imageLayers,
+            const ElevationLayerVector& elevLayers ) const;
+
+        void cacheTile( 
+            Map* map, 
+            const TileKey& key,
+            const ImageLayerVector& imageLayers,
+            const ElevationLayerVector& elevLayers ) const;
     };
 }
 

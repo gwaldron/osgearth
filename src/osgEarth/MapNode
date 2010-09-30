@@ -150,7 +150,7 @@ namespace osgEarth
         osg::ref_ptr< osg::Group > _models;
         MapNodeOptions _mapNodeOptions;
 
-        osg::ref_ptr< MapLayerController > _mapLayerController;
+        //osg::ref_ptr< MapLayerController > _mapLayerController;
 
         // keep track of nodes created by model layers
         typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
@@ -166,7 +166,6 @@ namespace osgEarth
 
     public: // MapCallback proxy
 
-        void onMapLayerStackChanged();
         void onModelLayerAdded( ModelLayer* );
         void onModelLayerRemoved( ModelLayer* );
         void onMaskLayerAdded( MaskLayer* );
@@ -176,8 +175,8 @@ namespace osgEarth
     
         void init();
         
-        TileSource* installTileSource( MapLayer* layer );
-        void updateStateSet();
+        //TileSource* installTileSource( MapLayer* layer );
+        //void updateStateSet();
     };
 
 } // namespace osgEarth

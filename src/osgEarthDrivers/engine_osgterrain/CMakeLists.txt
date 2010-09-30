@@ -22,6 +22,7 @@ SET(TARGET_H
     OSGTerrainOptions
     OSGTileFactory
     TerrainTileEdgeNormalizerUpdateCallback
+    TransparentLayer
 )
 
 SETUP_PLUGIN(osgearth_engine_osgterrain)

@@ -117,22 +117,35 @@ readMaskLayer( const Config& conf )
     return layer;
 }
 
-static MapLayer*
-readMapLayer( const Config& conf, const Config& additional )
+static ImageLayer*
+readImageLayer( const Config& conf, const Config& additional )
 {
-    // divine layer type
-    MapLayer::Type layerType =
-        conf.key() == ELEM_HEIGHTFIELD ? MapLayer::TYPE_HEIGHTFIELD :
-        MapLayer::TYPE_IMAGE;
-
     Config driverConf = conf;
     driverConf.add( additional.children() );
 
-    MapLayer* layer = new MapLayer( conf.value("name"), layerType, TileSourceOptions(driverConf) );
+    ImageLayerOptions layerOpt( conf );
+    layerOpt.name() = conf.value("name");
+    layerOpt.driver() = TileSourceOptions( conf );
 
-    return layer;
+    return new ImageLayer( layerOpt );
+    //ImageLayer* layer = new ImageLayer( layerOpt ); //conf.value("name"), layerType, TileSourceOptions(driverConf) );
+    //return layer;
 }
 
+static ElevationLayer*
+readElevationLayer( const Config& conf, const Config& additional )
+{
+    Config driverConf = conf;
+    driverConf.add( additional.children() );
+
+    ElevationLayerOptions layerOpt( conf );
+    layerOpt.name() = conf.value("name");
+    layerOpt.driver() = TileSourceOptions( conf );
+
+    return new ElevationLayer( layerOpt );
+    //ImageLayer* layer = new ImageLayer( layerOpt ); //conf.value("name"), layerType, TileSourceOptions(driverConf) );
+    //return layer;
+}
 
 static Config
 writeLayer( ModelLayer* layer, const std::string& typeName ="" )
@@ -220,10 +233,12 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     {
         Config additional;
         additional.add( "default_tile_size", "256" );
-
-        MapLayer* layer = readMapLayer( *i, additional );
+        ImageLayer* layer = readImageLayer( *i, additional );
         if ( layer )
-            map->addMapLayer( layer );
+            map->addImageLayer( layer );
+        //MapLayer* layer = readMapLayer( *i, additional );
+        //if ( layer )
+        //    map->addMapLayer( layer );
     }
 
     ConfigSet heightfields = conf.children( ELEM_HEIGHTFIELD );
@@ -231,10 +246,12 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     {
         Config additional;
         additional.add( "default_tile_size", "16" );
-
-        MapLayer* layer = readMapLayer( *i, additional );
+        ElevationLayer* layer = readElevationLayer( *i, additional );
         if ( layer )
-            map->addMapLayer( layer );
+            map->addElevationLayer( layer );
+        //MapLayer* layer = readMapLayer( *i, additional );
+        //if ( layer )
+        //    map->addMapLayer( layer );
     }
 
     ConfigSet models = conf.children( ELEM_MODEL );
@@ -286,21 +303,29 @@ getConfig( Map* map, const MapNodeOptions& ep )
     //conf.attr( ATTR_CSTYPE ) = cs;
 
     //Write all the image sources
-    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
+    ImageLayerVector imageLayers;
+    map->getImageLayers( imageLayers );
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
     {
-        conf.add( i->get()->getConfig() );
+        conf.add( i->get()->getImageLayerOptions().getConfig() );
+        //conf.add( i->get()->getConfig() );
         //conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the heightfield sources
-    for (MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
+    ElevationLayerVector elevLayers;
+    map->getElevationLayers( elevLayers );
+    for ( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
     {
-        conf.add( i->get()->getConfig() );
+        conf.add( i->get()->getElevationLayerOptions().getConfig() );
+        //conf.add( i->get()->getConfig() );
         //conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the model layers
-    for(ModelLayerList::const_iterator i = map->getModelLayers().begin(); i != map->getModelLayers().end(); i++ )
+    ModelLayerVector modelLayers;
+    map->getModelLayers( modelLayers );
+    for(ModelLayerVector::const_iterator i = modelLayers.begin(); i != modelLayers.end(); i++ )
     {
         conf.add( writeLayer( i->get() ) );
     }

@@ -35,7 +35,7 @@ _currentElevation(0)
 }
 
 void
-ElevationFadeCallback::setElevationRange(MapLayer* layer,
+ElevationFadeCallback::setElevationRange(ImageLayer* layer,
                                          float maxElevation, float minElevation,
                                          float maxBuffer,    float minBuffer)
 {
@@ -82,7 +82,7 @@ ElevationFadeCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 
             for( LayerElevationRanges::iterator i = _ranges.begin(); i != _ranges.end(); ++i )
             {
-                osg::ref_ptr<MapLayer> layerSafe = i->first.get();
+                osg::ref_ptr<ImageLayer> layerSafe = i->first.get();
                 if ( layerSafe.valid() )
                 {
                     float opacity = 1.0f;
@@ -107,7 +107,7 @@ ElevationFadeCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                         }
                     }
 
-                    if ( opacity != layerSafe->opacity().value() )
+                    if ( opacity != layerSafe->getOpacity() )
                         layerSafe->setOpacity( opacity );
                 }
             }

@@ -23,8 +23,9 @@
 #include <osgEarth/Common>
 #include <osgEarth/Caching>
 #include <osgEarth/Profile>
-#include <osgEarth/MapLayer>
 #include <osgEarth/MapOptions>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/MaskLayer>
 #include <osgEarth/ThreadingUtils>
@@ -40,18 +41,18 @@ namespace osgEarth
     {
         virtual void onMapProfileEstablished( const Profile* profile ) { }
 
-        virtual void onMapLayerAdded( MapLayer* layer, unsigned int index ) { }
+        virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
+        virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }
+        virtual void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
-        virtual void onMapLayerRemoved( MapLayer* layer, unsigned int index ) { }
-
-        virtual void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        virtual void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) { }
+        virtual void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) { }
+        virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
         virtual void onModelLayerAdded( ModelLayer* layer ) { }
-
         virtual void onModelLayerRemoved( ModelLayer* layer ) { }
 
         virtual void onMaskLayerAdded( MaskLayer* mask ) { }
-
         virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
     };
 
@@ -94,34 +95,40 @@ namespace osgEarth
         /**
          * Gets the ordered list of image layers in this map. Be sure to use
          * getMapDataMutex() when iterating the list.
+         *
+         * TO BE DEPRECATED
          */
-        const MapLayerList& getImageMapLayers() const;
+        const ImageLayerVector& getImageLayers() const { return _imageLayers; }
 
         /**
          * Copies references of the map image layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        int getImageMapLayers( MapLayerList& out_list, bool validLayersOnly =false ) const;
+        int getImageLayers( ImageLayerVector& out_layers, bool validLayersOnly =false ) const;
 
         /**
          * Gets the ordered list of heightfield layers in this map. Be sure to use
          * getMapDataMutex() when iterating the list.
+         *
+         * TO BE DEPRECATED
          */
-        const MapLayerList& getHeightFieldMapLayers() const;
+        const ElevationLayerVector& getElevationLayers() const { return _elevationLayers; }
 
         /**
-         * Copies references of the heightfield layers into the output list.
+         * Copies references of the elevation layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        int getHeightFieldMapLayers( MapLayerList& out_list, bool validLayersOnly =false ) const;
+        int getElevationLayers( ElevationLayerVector& out_layers, bool validLayersOnly =false ) const;
 
         /** 
-         * Gets the unordered list of model layer in this map. Be sure to use
-         * getMapDataMutex() when iterating the list.
+         * Copies references of the model layers into the output list.
+         * This method is thread safe. It returns the map revision that was
+         * in effect when the data was copied.
          */
-        const ModelLayerList& getModelLayers() const;
+        int getModelLayers( ModelLayerVector& out_layers, bool validLayersOnly =false ) const;
+        //const ModelLayerList& getModelLayers() const;
 
         /**
          * Gets the model layer to draw as a terrain mask.
@@ -135,19 +142,40 @@ namespace osgEarth
         void addMapCallback( MapCallback* callback );
 
         /**
-         * Adds a new map layer to the map.
+         * Adds an image layer to the map.
          */
-        void addMapLayer( MapLayer* layer );
+        void addImageLayer( ImageLayer* layer );
+        //void addMapLayer( MapLayer* layer );
 
         /**
-         * Removes a map layer from the map.
+         * Removes an image layer from the map.
          */
-        void removeMapLayer( MapLayer* layer );
+        void removeImageLayer( ImageLayer* layer );
+        //void removeMapLayer( MapLayer* layer );
 
         /**
-         * Moves a map layer to another index position in its list.
+         * Moves (re-orders) an image layer to another index position in its list.
          */
-        void moveMapLayer( MapLayer* layer, unsigned int newIndex );
+        void moveImageLayer( ImageLayer* layer, unsigned int newIndex );
+        //void moveMapLayer( MapLayer* layer, unsigned int newIndex );
+
+        /**
+         * Adds an elevation layer to the map.
+         */
+        void addElevationLayer( ElevationLayer* layer );
+        //void addMapLayer( MapLayer* layer );
+
+        /**
+         * Removes an elevation layer from the map.
+         */
+        void removeElevationLayer( ElevationLayer* layer );
+        //void removeMapLayer( MapLayer* layer );
+
+        /**
+         * Moves (re-orders) an elevation layer to another index position in its list.
+         */
+        void moveElevationLayer( ElevationLayer* layer, unsigned int newIndex );
+        //void moveMapLayer( MapLayer* layer, unsigned int newIndex );
 
         /**
          * Adds a new model layer to the map.
@@ -171,6 +199,9 @@ namespace osgEarth
         void removeTerrainMaskLayer();
 
     public:
+
+        //TODO: move this elsewhere!
+
         /**
          * Gets the transfer function that is used to automatically determine the elevation based contour texture.
          */
@@ -211,23 +242,14 @@ namespace osgEarth
         /** 
          * Gets the readable name of this map.
          */
-        const std::string& getName() const;
+        const std::string& getName() const { return _name; }
 
         /**
          * Gets the mutex that protects access to the Map layer lists.
+         * TODO: re-evaluate whether exposing this is really necessary or wise; alteratives
+         * would include const access to the Map from the engine
          */
         Threading::ReadWriteMutex& getMapDataMutex();
-
-        /**
-         * Sets/Gets the caching setup for the entire map. By default, Map Layers added to
-         * the map will inherit this setup unless they override or customize it with
-         * their own settings.
-         *
-         * Note: Set this before adding any layers to the map.
-         */
-        //NOTE: moved to MapOptions
-        //optional<CacheConfig>& cacheConfig();
-        //const optional<CacheConfig>& cacheConfig() const;
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
@@ -276,27 +298,46 @@ namespace osgEarth
 
         MapOptions _mapOptions;
         std::string _name;
-        MapLayerList _imageMapLayers;
-        MapLayerList _heightFieldMapLayers;
-        ModelLayerList _modelLayers;
+        ImageLayerVector _imageLayers;
+        ElevationLayerVector _elevationLayers;
+        ModelLayerVector _modelLayers;
         osg::ref_ptr<MaskLayer> _terrainMaskLayer;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
-        //std::string _referenceURI;
         osg::ref_ptr<const Profile> _profile;
-        //unsigned int _id;
-        //CoordinateSystemType _cstype;
 		osg::ref_ptr<Cache> _cache;
-		bool _use_mercator_locator;
         int _dataModelRevision;
-        
-        //optional<CacheConfig> _cacheConf;
 
         osg::ref_ptr<osg::TransferFunction1D> _contourTransferFunction; ///< Storing the colour data for elevation levels
 
     private:
         void calculateProfile();
+
+        friend class MapWorkingSet;
+    };
+
+
+    class OSGEARTH_EXPORT MapWorkingSet
+    {
+    public:
+        MapWorkingSet( Map* map );
+
+        const Profile* getProfile() const { return _map->getProfile(); }
+        const ImageLayerVector& imageLayers() const { return _imageLayers; }
+        const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
+
+        osg::HeightField* createHeightField(
+            const TileKey& key,
+            bool fallback,
+            ElevationInterpolation interpolation =INTERP_AVERAGE,
+            Map::SamplePolicy samplePolicy =Map::FIRST_VALID,
+            ProgressCallback* progress = 0);    
+
+    private:
+        Map* _map;
+        ImageLayerVector _imageLayers;
+        ElevationLayerVector _elevationLayers;
     };
 }
 

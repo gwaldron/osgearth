@@ -20,6 +20,8 @@
 #include "CompositingTerrainTechnique"
 #include "CustomTerrain"
 #include "MultiPassTerrainTechnique"
+#include "TransparentLayer"
+
 #include <osgEarth/ImageUtils>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -39,29 +41,24 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
     void onMapProfileEstablished( const Profile* profile ) {
         _node->onMapProfileEstablished(profile);
     }
-    void onMapLayerAdded( MapLayer* layer, unsigned int index ) {
-        _node->onMapLayerAdded(layer, index);
+    void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
+        _node->onImageLayerAdded(layer, index);
     }
-    void onMapLayerRemoved( MapLayer* layer, unsigned int index ) {
-        _node->onMapLayerRemoved(layer, index);
+    void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
+        _node->onImageLayerRemoved(layer, index);
     }
-    void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-        _node->onMapLayerMoved(layer,oldIndex,newIndex);
+    void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+        _node->onImageLayerMoved(layer,oldIndex,newIndex);
     }
-#if 0
-    void onModelLayerAdded( ModelLayer* layer ) {
-        _node->onModelLayerAdded( layer );
+    void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
+        _node->onElevationLayerAdded(layer, index);
     }
-    void onModelLayerRemoved( ModelLayer* layer ) {
-        _node->onModelLayerRemoved( layer );
+    void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
+        _node->onElevationLayerRemoved(layer, index);
     }
-    void onMaskLayerAdded( MaskLayer* layer ) {
-        _node->onMaskLayerAdded( layer );
+    void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+        _node->onElevationLayerMoved(layer,oldIndex,newIndex);
     }
-    void onMaskLayerRemoved( MaskLayer* layer ) {
-        _node->onMaskLayerRemoved( layer );
-    }
-#endif
 };
 
 //---------------------------------------------------------------------------
@@ -152,27 +149,22 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
     if ( _terrain )
     {
         // go through the map and process any already-installed layers:
+
+        ElevationLayerVector elevLayers;
+        _map->getElevationLayers( elevLayers );
         unsigned int index = 0;
-        for( MapLayerList::const_iterator i = _map->getHeightFieldMapLayers().begin(); i != _map->getHeightFieldMapLayers().end(); i++ )
+        for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
-            onMapLayerAdded( i->get(), index++ );
+            onElevationLayerAdded( i->get(), index++ );
         }
 
+        ImageLayerVector imageLayers;
+        _map->getImageLayers( imageLayers );
         index = 0;
-        for( MapLayerList::const_iterator j = _map->getImageMapLayers().begin(); j != _map->getImageMapLayers().end(); j++ )
+        for( ImageLayerVector::const_iterator j = imageLayers.begin(); j != imageLayers.end(); j++ )
         {
-            onMapLayerAdded( j->get(), index++ );
+            onImageLayerAdded( j->get(), index++ );
         }
-#if 0
-        for( ModelLayerList::const_iterator k = _map->getModelLayers().begin(); k != _map->getModelLayers().end(); k++ )
-        {
-            onModelLayerAdded( k->get() );
-        }
-        if ( _map->getTerrainMaskLayer() )
-        {
-            onMaskLayerAdded( _map->getTerrainMaskLayer() );
-        }
-#endif
     }
 
     // install a layer callback for processing further map actions:
@@ -268,42 +260,46 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 }
 
 void
-OSGTerrainEngineNode::onMapLayerAdded( MapLayer* layer, unsigned int index )
+OSGTerrainEngineNode::onTerrainLayerAdded( TerrainLayer* layer )
 {
-    if ( layer )
+    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
     {
-        if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
-        {
-            if ( layer->getTileSource() )
-            {
-                getTerrain()->incrementRevision();
-                getTerrain()->updateTaskServiceThreads();
-            }
-        }
-
         if ( layer->getTileSource() )
-        {        
-            if ( layer->getType() == MapLayer::TYPE_IMAGE )
-            {
-                addImageLayer( layer );
-            }
-            else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
-            {
-                addHeightFieldLayer( layer );
-            }
+        {
+            getTerrain()->incrementRevision();
+            getTerrain()->updateTaskServiceThreads();
         }
     }
 }
 
 void
-OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
+OSGTerrainEngineNode::onImageLayerAdded( ImageLayer* layer, unsigned int index )
+{
+    if ( layer )
+    {
+        onTerrainLayerAdded( layer );
+        if ( layer->getTileSource() )
+            addImageLayer( layer );
+    }
+}
+
+void
+OSGTerrainEngineNode::onElevationLayerAdded( ElevationLayer* layer, unsigned int index )
+{
+    if ( layer )
+    {
+        onTerrainLayerAdded( layer );
+        if ( layer->getTileSource() )
+            addElevationLayer( layer );
+    }
+}
+
+void
+OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
 {
     //TODO: review the scope of this mapdata mutex lock within this method. We can 
     // probably optimize it some
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
-
-    // apply a controller to the layer so we can process runtime property updates:
-    //layer->setController( _mapLayerController.get() );
 
     // visit all existing terrain tiles and inform each one of the new image layer:
     TerrainTileList tiles;
@@ -359,13 +355,13 @@ OSGTerrainEngineNode::addImageLayer( MapLayer* layer )
 
             // Create a layer wrapper that supports opacity.
             // TODO: review this; the Transparent layer holds a back-reference to the actual MapLayer
-            TransparentLayer* img_layer = new TransparentLayer( geoImage.getImage(), _map->getImageMapLayers()[_map->getImageMapLayers().size()-1] );
+            TransparentLayer* img_layer = new TransparentLayer( geoImage.getImage(), _map->getImageLayers()[_map->getImageLayers().size()-1] );
             img_layer->setLevelOfDetail(imageLOD);
             img_layer->setLocator( img_locator.get());
-            img_layer->setMinFilter( layer->getMinFilter().value());
-            img_layer->setMagFilter( layer->getMagFilter().value());
+            img_layer->setMinFilter( layer->getImageLayerOptions().minFilter().value() );
+            img_layer->setMagFilter( layer->getImageLayerOptions().magFilter().value() );
 
-            unsigned int newLayer = _map->getImageMapLayers().size() - 1;
+            unsigned int newLayer = _map->getImageLayers().size() - 1;
             tile->setColorLayer( newLayer, img_layer );
 
             if (needToUpdateImagery)
@@ -402,7 +398,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
     bool hasElevation;
     {
         Threading::ScopedReadLock mapDataLock(_map->getMapDataMutex());
-        hasElevation = _map->getHeightFieldMapLayers().size() > 0;
+        hasElevation = _map->getElevationLayers().size() > 0;
     }    
 
     //Update the elevation hint
@@ -463,8 +459,9 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
 
 
 void
-OSGTerrainEngineNode::addHeightFieldLayer( MapLayer* layer )
+OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
+    //TODO: review the use of this read-mutex here. do we need it??
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
@@ -480,24 +477,23 @@ OSGTerrainEngineNode::addHeightFieldLayer( MapLayer* layer )
 }
 
 void
-OSGTerrainEngineNode::onMapLayerRemoved( MapLayer* layer, unsigned int index )
+OSGTerrainEngineNode::onImageLayerRemoved( ImageLayer* layer, unsigned int index )
 {
     if ( layer )
-    {
-        if ( layer->getType() == MapLayer::TYPE_IMAGE )
-        {
-            removeImageLayer( index );
-        }
-        else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
-        {
-            removeHeightFieldLayer( index );
-        }
-    }
+        removeImageLayer( index );
+}
+
+void
+OSGTerrainEngineNode::onElevationLayerRemoved( ElevationLayer* layer, unsigned int index )
+{
+    if ( layer )
+        removeElevationLayer( index );
 }
 
 void
 OSGTerrainEngineNode::removeImageLayer( unsigned int index )
 {
+    //TODO: need this mutex??
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
@@ -532,7 +528,6 @@ OSGTerrainEngineNode::removeImageLayer( unsigned int index )
             itr->get()->setColorLayer( i, layers[i].get() );
         }
 
-
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
@@ -545,8 +540,9 @@ OSGTerrainEngineNode::removeImageLayer( unsigned int index )
 }
 
 void
-OSGTerrainEngineNode::removeHeightFieldLayer( unsigned int index )
+OSGTerrainEngineNode::removeElevationLayer( unsigned int index )
 {
+    //TODO: need this mutex??
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
@@ -560,24 +556,23 @@ OSGTerrainEngineNode::removeHeightFieldLayer( unsigned int index )
 }
 
 void
-OSGTerrainEngineNode::onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex )
+OSGTerrainEngineNode::onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex )
 {
     if ( layer )
-    {
-        if ( layer->getType() == MapLayer::TYPE_IMAGE )
-        {
-            moveImageLayer( oldIndex, newIndex );
-        }
-        else if ( layer->getType() == MapLayer::TYPE_HEIGHTFIELD )
-        {
-            moveHeightFieldLayer( oldIndex, newIndex );
-        }
-    }
+        moveImageLayer( oldIndex, newIndex );
+}
+
+void 
+OSGTerrainEngineNode::onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex )
+{
+    if ( layer )
+        moveElevationLayer( oldIndex, newIndex );
 }
 
 void
 OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
+    //TODO: need thi mutex???
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
@@ -616,8 +611,9 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
 }
 
 void
-OSGTerrainEngineNode::moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex )
+OSGTerrainEngineNode::moveElevationLayer( unsigned int oldIndex, unsigned int newIndex )
 {
+    //TODO: need this mutex??
     Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
 
     TerrainTileList tiles;
@@ -711,95 +707,10 @@ OSGTerrainEngineNode::updateTextureCombining()
     if ( _texCompositor.valid() )
     {
         // ASSUMPTION: map data mutex is held
-        _texCompositor->updateGlobalStateSet( getOrCreateStateSet(), _map->getImageMapLayers().size() );
+        _texCompositor->updateGlobalStateSet( getOrCreateStateSet(), _map->getImageLayers().size() );
     }
 
     //TODO: reintroduce support for _terrainOptions.combineLayers() ????
 }
 
-#if 0
-    if ( _texCompositor.valid() )
-    {
-        if ( 
-    //if (_terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE &&
-    //    _terrainOptions.combineLayers() == true )
-    {
-        int numLayers = _map->getImageMapLayers().size();
-
-        osg::StateSet* stateset = getOrCreateStateSet();
-
-        if (numLayers == 1)
-        {
-            osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
-            stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
-        }
-        else if (numLayers >= 2)
-        {
-            //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
-            {
-                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
-
-                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+1);
-                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+1);
-                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
-
-                texenv->setSource1_RGB(osg::TexEnvCombine::TEXTURE0+0);
-                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource1_Alpha(osg::TexEnvCombine::TEXTURE0+0);
-                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
-
-                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+1);
-                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-
-                stateset->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
-            }
-
-
-            //For textures 2 and beyond, blend them together with the previous
-            //Add the alpha values of this unit and the previous unit
-            for (int unit = 1; unit < numLayers-1; ++unit)
-            {
-                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-                texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
-                texenv->setCombine_Alpha(osg::TexEnvCombine::ADD);
-
-                texenv->setSource0_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
-                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource0_Alpha(osg::TexEnvCombine::TEXTURE0+unit+1);
-                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
-
-                texenv->setSource1_RGB(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource1_Alpha(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand1_Alpha(osg::TexEnvCombine::SRC_ALPHA);
-
-                texenv->setSource2_RGB(osg::TexEnvCombine::TEXTURE0+unit+1);
-                texenv->setOperand2_RGB(osg::TexEnvCombine::SRC_ALPHA);
-
-                stateset->setTextureAttributeAndModes(unit, texenv, osg::StateAttribute::ON);
-            }
-
-            //Modulate the colors to get proper lighting on the last unit
-            //Keep the alpha results from the previous stage
-            {
-                osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
-                texenv->setCombine_RGB(osg::TexEnvCombine::MODULATE);
-                texenv->setCombine_Alpha(osg::TexEnvCombine::REPLACE);
-
-                texenv->setSource0_RGB(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand0_RGB(osg::TexEnvCombine::SRC_COLOR);
-                texenv->setSource0_Alpha(osg::TexEnvCombine::PREVIOUS);
-                texenv->setOperand0_Alpha(osg::TexEnvCombine::SRC_ALPHA);
-
-                texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
-                texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                stateset->setTextureAttributeAndModes(numLayers-1, texenv, osg::StateAttribute::ON);
-            }
-        }
-    }
-}
-#endif
 

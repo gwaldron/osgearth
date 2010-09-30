@@ -49,9 +49,9 @@ TerrainLayerOptions(name, driverOpt)
 void
 ImageLayerOptions::setDefaults()
 {
-    _opacity.defaultValue() = 1.0f;
-    _gamma.defaultValue() = 1.0f;
-    _transparentColor.defaultValue() = osg::Vec4ub(0,0,0,0);
+    _opacity.init( 1.0f );
+    _gamma.init( 1.0f );
+    _transparentColor.init( osg::Vec4ub(0,0,0,0) );
 }
 
 void
@@ -140,7 +140,7 @@ _options( options )
 void
 ImageLayer::init()
 {
-    _prevGamma = -1.0f;
+    _prevGamma = 1.0f;
 
     // intialize the runtime actuals from the initialization options:
     _actualOpacity = _options.opacity().value();
@@ -225,6 +225,7 @@ ImageLayer::postProcess( GeoImage& input )
     //TODO: this is not thread-safe; more than one thread might initialize the gamma LUT at the
     //      same time
 
+#if 0
     if ( input.valid() && _actualGamma != 1.0f )
     {
         double g = _actualGamma;
@@ -263,6 +264,7 @@ ImageLayer::postProcess( GeoImage& input )
             OE_DEBUG << LC << "Gamma not applied (image not RGB or RGBA)" << std::endl;
         }
     }
+#endif
 }
 
 GeoImage

@@ -59,15 +59,14 @@ ConfigOptions()
 void
 TerrainLayerOptions::setDefaults()
 {
-    _enabled.defaultValue() = true;
-    _exactCropping.defaultValue() = false;
-    _reprojectedTileSize.defaultValue() = 256;
-    _cacheEnabled.defaultValue() = true;
-    _cacheOnly.defaultValue() = false;
-    _loadingWeight.defaultValue() = 1.0f;
-    _minLevel.defaultValue() = 0;
-    _maxLevel.defaultValue() = 99;
-
+    _enabled.init( true );
+    _exactCropping.init( false );
+    _reprojectedTileSize.init( 256 );
+    _cacheEnabled.init( true );
+    _cacheOnly.init( false );
+    _loadingWeight.init( 1.0f );
+    _minLevel.init( 0 );
+    _maxLevel.init( 99 );
 }
 
 Config

@@ -145,19 +145,21 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
         if ( _map->getProfile() )
             onMapProfileEstablished( map->getProfile() );
 
-        onMapLayerStackChanged();
-
-        // then register the callback
-        _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
-
-        // create a layer controller, and register it with all pre-existing image layers:
+        // create a layer controller. This object affects the uniforms that control layer appearance properties
         _imageLayerController = new ImageLayerController( map );
+
+        // register the layer Controller it with all pre-existing image layers:
         ImageLayerVector imageLayers;
         _map->getImageLayers( imageLayers, true );
         for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
         {
             i->get()->addCallback( _imageLayerController.get() );
         }
+
+        onMapLayerStackChanged();
+
+        // then register the callback
+        _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
     }
 
     // apply visual options.

@@ -2136,19 +2136,25 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         worldRot.makeRotate(worldStartDrag, worldEndDrag);
         // Move the camera by the inverse rotation
         Quat cameraRot = worldRot.conj();
+        Vec3d center = cameraRot * _center;
+        Quat centerRotation = _centerRotation * cameraRot;
+        Matrixd Me = Matrixd::rotate(centerRotation);
+        Me.setTrans(center);
+        // In order for the Viewpoint settings to make sense, the
+        // inverse camera matrix must have an x axis parallel to the
+        // z = 0 plane. The strategy for doing that is different if
+        // the azimuth is locked.
         if (_settings->getLockAzimuthWhilePanning())
         {
-            // The camera now needs to be rotated around worldEndDrag
-            // so that _centerRotation is a rotation only around the
-            // global Z axis and the camera frame X axis. We don't
-            // change _rotation, so the azimuth and pitch will stay
-            // constant.
-            Vec3d center = cameraRot * _center;
-            Quat centerRotation = _centerRotation * cameraRot;
-            Matrixd Me = Matrixd::rotate(centerRotation);
-            Me.setTrans(center);
-            // Now, rotate Me so that its x axis is parallel to the
-            // z=0 plane.
+            // The camera now needs to be rotated that _centerRotation
+            // is a rotation only around the global Z axis and the
+            // camera frame X axis. We don't change _rotation, so that
+            // azimuth and pitch will stay constant, but the drag must
+            // still look correct, so the rotation must be around the
+            // point that was dragged i.e., worldEndDrag.
+            //
+            // Rotate Me so that its x axis is parallel to the z=0
+            // plane. 
             // Find cone with worldEndDrag->center axis and x
             // axis of coordinate frame as generator of the conical
             // surface.
@@ -2205,6 +2211,31 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         }
         else
         {
+            // The camera matrix must be rotated around the local Z axis so
+            // that the X axis is parallel to the global z = 0
+            // plane. Then, _rotation is rotated by the inverse
+            // rotation to preserve the total transformation.
+            double theta = atan2(-Me(0, 2), Me(1, 2));
+            double s = sin(theta), c = cos(theta);
+            if (c * Me(1, 2) - s * Me(0, 2) < 0.0)
+            {
+                s = -s;
+                c = -c;
+            }
+            Matrixd m(c, s, 0, 0,
+                      -s, c, 0, 0,
+                      0, 0, 1, 0,
+                      0, 0, 0, 1);
+            Matrixd CameraMat = m * Me;
+            _center = CameraMat.getTrans();
+            _centerRotation = CameraMat.getRotate();
+            // It's not necessary to include the translation
+            // component, but it's useful for debugging.
+            Matrixd headMat
+                = (Matrixd::translate(-_offset_x, -_offset_y, _distance)
+		   * Matrixd::rotate(_rotation));
+            headMat = headMat * Matrixd::inverse(m);
+            _rotation = headMat.getRotate();
         }
         CoordinateFrame local_frame = getMyCoordinateFrame(_center);
         _previousUp = getUpVector(local_frame);

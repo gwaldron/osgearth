@@ -42,7 +42,6 @@ SET(LIB_PUBLIC_HEADERS
     JsonUtils
     Locators
     Map
-    MapLayer
     MapNode
     MapNodeOptions
     MapOptions
@@ -101,7 +100,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     JsonUtils.cpp
     Locators.cpp
     Map.cpp
-    MapLayer.cpp
     MapNode.cpp
     MapNodeOptions.cpp
     MapOptions.cpp

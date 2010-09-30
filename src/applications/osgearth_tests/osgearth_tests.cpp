@@ -24,7 +24,6 @@
 #include <osgDB/WriteFile>
 
 #include <osgEarth/Map>
-#include <osgEarth/MapLayer>
 #include <osgEarth/Registry>
 
 #include <osgEarthDrivers/gdal/GDALOptions>

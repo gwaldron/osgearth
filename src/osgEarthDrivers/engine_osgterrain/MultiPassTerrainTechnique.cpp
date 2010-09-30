@@ -21,7 +21,6 @@
 
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
-#include <osgEarth/MapLayer>
 
 #include <osgUtil/SmoothingVisitor>
 #include <osgDB/FileUtils>

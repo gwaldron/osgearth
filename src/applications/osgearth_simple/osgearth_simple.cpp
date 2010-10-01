@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <string>
 
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
@@ -72,7 +73,8 @@ struct FlyToViewpointHandler : public osgGA::GUIEventHandler
 // a simple handler that toggles a node mask on/off
 struct NodeToggleHandler : public osgGA::GUIEventHandler 
 {
-    NodeToggleHandler( osg::Node* node, char key ) : _node(node), _key(key) { }
+    NodeToggleHandler( osg::Node* node, char key, const char* nodeName )
+        : _node(node), _key(key), _nodeName(nodeName) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
     {
@@ -83,10 +85,48 @@ struct NodeToggleHandler : public osgGA::GUIEventHandler
         return false;
     }
 
+    void getUsage(osg::ApplicationUsage& usage) const
+    {
+        using namespace std;
+        usage.addKeyboardMouseBinding(string(1, _key),
+                                      string("Toggle ") + _nodeName);
+    }
+    
     osg::observer_ptr<osg::Node> _node;
     char _key;
+    std::string _nodeName;
 };
 
+struct LockAzimuthHandler : public osgGA::GUIEventHandler
+{
+    LockAzimuthHandler(char key, osgEarthUtil::EarthManipulator* manip)
+        : _key(key), _manip(manip)
+    {
+    }
+
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+    {
+        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+        {
+            bool lockAzimuth
+                = _manip->getSettings()->getLockAzimuthWhilePanning();
+            _manip->getSettings()->setLockAzimuthWhilePanning(!lockAzimuth);
+            return true;
+        }
+        return false;
+    }
+
+    void getUsage(osg::ApplicationUsage& usage) const
+    {
+        using namespace std;
+        usage.addKeyboardMouseBinding(string(1, _key),
+                                      string("Toggle azimuth locking"));
+    }
+
+    char _key;
+    osg::ref_ptr<osgEarthUtil::EarthManipulator> _manip;
+    
+};
 
 int main(int argc, char** argv)
 {
@@ -139,19 +179,24 @@ int main(int argc, char** argv)
         osgEarthUtil::EarthManipulator::ACTION_GOTO,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
 
+    manip->getSettings()->bindMouse(
+        osgEarthUtil::EarthManipulator::ACTION_EARTH_DRAG,
+        osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
+        osgGA::GUIEventAdapter::MODKEY_SHIFT );
+    
     // add our fly-to handler
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
 
     // add a handler to toggle the graticle
     if ( graticule )
-        viewer.addEventHandler(new NodeToggleHandler( graticule, 'g' ));
-
+        viewer.addEventHandler(new NodeToggleHandler( graticule, 'g', "graticule"));
+    viewer.addEventHandler(new LockAzimuthHandler('u', manip));
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-
+    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
     viewer.realize();
 
     return viewer.run();

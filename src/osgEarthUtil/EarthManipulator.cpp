@@ -2144,6 +2144,11 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         // inverse camera matrix must have an x axis parallel to the
         // z = 0 plane. The strategy for doing that is different if
         // the azimuth is locked.
+        // Actually, the part of the camera rotation defined by
+        // _centerRotation must be oriented with the local frame of
+        // _center on the ellipsoid. For the purposes of the drag
+        // motion this is nearly identical to the frame obtained by
+        // the trackball motion, so we just fix it up at the end.
         if (_settings->getLockAzimuthWhilePanning())
         {
             // The camera now needs to be rotated that _centerRotation
@@ -2207,7 +2212,6 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
             else
                 return;
             _center = CameraMat->getTrans();
-            _centerRotation = CameraMat->getRotate();
         }
         else
         {
@@ -2228,7 +2232,6 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
                       0, 0, 0, 1);
             Matrixd CameraMat = m * Me;
             _center = CameraMat.getTrans();
-            _centerRotation = CameraMat.getRotate();
             // It's not necessary to include the translation
             // component, but it's useful for debugging.
             Matrixd headMat
@@ -2236,7 +2239,9 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
 		   * Matrixd::rotate(_rotation));
             headMat = headMat * Matrixd::inverse(m);
             _rotation = headMat.getRotate();
+            recalculateLocalPitchAndAzimuth();
         }
+        _centerRotation = getRotation( _center ).getRotate().inverse();
         CoordinateFrame local_frame = getMyCoordinateFrame(_center);
         _previousUp = getUpVector(local_frame);
     }

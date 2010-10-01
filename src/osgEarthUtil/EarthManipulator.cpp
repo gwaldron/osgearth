@@ -1100,11 +1100,14 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;
 
         case osgGA::GUIEventAdapter::KEYDOWN:
-            resetMouse( aa );
-            action = _settings->getAction( ea.getEventType(), ea.getKey(), ea.getModKeyMask() );
-            if ( handleKeyboardAction( action ) )
-                aa.requestRedraw();
-            handled = true;
+            if ( ea.getKey() < osgGA::GUIEventAdapter::KEY_Shift_L )
+            {
+                resetMouse( aa );
+                action = _settings->getAction( ea.getEventType(), ea.getKey(), ea.getModKeyMask() );
+                if ( handleKeyboardAction( action ) )
+                    aa.requestRedraw();
+                handled = true;
+            }
             break;
             
         case osgGA::GUIEventAdapter::KEYUP:

@@ -28,6 +28,7 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/MaskLayer>
+#include <osgEarth/Revisioning>
 #include <osgEarth/ThreadingUtils>
 #include <osgDB/ReaderWriter>
 #include <osg/TransferFunction>
@@ -57,7 +58,6 @@ namespace osgEarth
     };
 
     typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
-
 
     /**
      * A Map is a container that holds a number of ordered MapLayer objects. This is the data model
@@ -145,37 +145,31 @@ namespace osgEarth
          * Adds an image layer to the map.
          */
         void addImageLayer( ImageLayer* layer );
-        //void addMapLayer( MapLayer* layer );
 
         /**
          * Removes an image layer from the map.
          */
         void removeImageLayer( ImageLayer* layer );
-        //void removeMapLayer( MapLayer* layer );
 
         /**
          * Moves (re-orders) an image layer to another index position in its list.
          */
         void moveImageLayer( ImageLayer* layer, unsigned int newIndex );
-        //void moveMapLayer( MapLayer* layer, unsigned int newIndex );
 
         /**
          * Adds an elevation layer to the map.
          */
         void addElevationLayer( ElevationLayer* layer );
-        //void addMapLayer( MapLayer* layer );
 
         /**
          * Removes an elevation layer from the map.
          */
         void removeElevationLayer( ElevationLayer* layer );
-        //void removeMapLayer( MapLayer* layer );
 
         /**
          * Moves (re-orders) an elevation layer to another index position in its list.
          */
         void moveElevationLayer( ElevationLayer* layer, unsigned int newIndex );
-        //void moveMapLayer( MapLayer* layer, unsigned int newIndex );
 
         /**
          * Adds a new model layer to the map.
@@ -277,13 +271,18 @@ namespace osgEarth
          * you add, remove, or move layers. You can use this to track changes
          * in the map model (as a alternative to installing a MapCallback).
          */
-        int getDataModelRevision() const;
+        Revision getDataModelRevision() const;
 
         /**
          * Convenience function that returns TRUE if the map cs type is
          * geocentric.
          */
         bool isGeocentric() const;
+
+        /**
+         * Synronizes a map frame to the current revision of the map's data model.
+         */
+        void sync( class MapFrame& frame ) const;
 
     protected:
 
@@ -307,23 +306,24 @@ namespace osgEarth
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
 		osg::ref_ptr<Cache> _cache;
-        int _dataModelRevision;
+        Revision _dataModelRevision;
 
         osg::ref_ptr<osg::TransferFunction1D> _contourTransferFunction; ///< Storing the colour data for elevation levels
 
     private:
         void calculateProfile();
-
-        friend class MapWorkingSet;
     };
 
 
-    class OSGEARTH_EXPORT MapWorkingSet
+    /**
+     * A "snapshot in time" of a Map model revision.
+     */
+    class OSGEARTH_EXPORT MapFrame
     {
     public:
-        MapWorkingSet( Map* map );
+        MapFrame( Map* map );
 
-        const Profile* getProfile() const { return _map->getProfile(); }
+        const Profile* getProfile() const { return _profile.get(); }
         const ImageLayerVector& imageLayers() const { return _imageLayers; }
         const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
 
@@ -335,10 +335,13 @@ namespace osgEarth
             ProgressCallback* progress = 0);    
 
     private:
-        Map* _map;
+        Revision _mapDataModelRevision;
+        osg::ref_ptr<const Profile> _profile;
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
+        friend class Map;
     };
+
 }
 
 #endif // OSGEARTH_MAP_H

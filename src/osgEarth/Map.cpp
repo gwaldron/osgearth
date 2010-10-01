@@ -121,7 +121,7 @@ Map::setName( const std::string& name ) {
     _name = name;
 }
 
-int
+Revision
 Map::getDataModelRevision() const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
@@ -263,7 +263,7 @@ Map::removeImageLayer( ImageLayer* layer )
             if ( i->get() == layerToRemove.get() )
             {
                 _imageLayers.erase( i );
-                _dataModelRevision++;
+                ++_dataModelRevision;
                 break;
             }
         }
@@ -295,7 +295,7 @@ Map::removeElevationLayer( ElevationLayer* layer )
             if ( i->get() == layerToRemove.get() )
             {
                 _elevationLayers.erase( i );
-                _dataModelRevision++;
+                ++_dataModelRevision;
                 break;
             }
         }
@@ -343,7 +343,7 @@ Map::moveImageLayer( ImageLayer* layer, unsigned int newIndex )
         _imageLayers.erase( i_oldIndex );
         _imageLayers.insert( _imageLayers.begin() + newIndex, layerToMove.get() );
 
-        _dataModelRevision++;
+        ++_dataModelRevision;
     }
 
     // a separate block b/c we don't need the mutex
@@ -388,7 +388,7 @@ Map::moveElevationLayer( ElevationLayer* layer, unsigned int newIndex )
         _elevationLayers.erase( i_oldIndex );
         _elevationLayers.insert( _elevationLayers.begin() + newIndex, layerToMove.get() );
 
-        _dataModelRevision++;
+        ++_dataModelRevision;
     }
 
     // a separate block b/c we don't need the mutex
@@ -409,7 +409,7 @@ Map::addModelLayer( ModelLayer* layer )
         {
             Threading::ScopedWriteLock lock( getMapDataMutex() );
             _modelLayers.push_back( layer );
-            _dataModelRevision++;
+            ++_dataModelRevision;
         }
 
         layer->initialize( _mapOptions.referenceURI().get(), this ); //getReferenceURI(), this );        
@@ -434,7 +434,7 @@ Map::removeModelLayer( ModelLayer* layer )
                 if ( i->get() == layer )
                 {
                     _modelLayers.erase( i );
-                    _dataModelRevision++;
+                    ++_dataModelRevision;
                     break;
                 }
             }
@@ -1020,26 +1020,58 @@ Map::createHeightField( const TileKey& key,
 }
 #endif
 
+void
+Map::sync( MapFrame& frame ) const
+{
+    bool first = false;
+    if ( !frame._profile.valid() ) // i.e., first sync
+    {
+        first = true;
+        frame._profile = getProfile();
+        if ( frame._profile.valid() )
+        {
+            frame._imageLayers.reserve( _imageLayers.size() );
+            frame._elevationLayers.reserve( _elevationLayers.size() );
+        }
+    }
+
+    if ( frame._mapDataModelRevision != _dataModelRevision || first )
+    {
+        // hold the read lock while copying the layer lists.
+        Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
+
+        // copy the image layer stack:
+        if ( first )
+        {
+            frame._imageLayers.reserve( _imageLayers.size() );
+            frame._elevationLayers.reserve( _elevationLayers.size() );
+            frame._profile = getProfile();
+        }
+
+        frame._imageLayers.clear();
+        std::copy( _imageLayers.begin(), _imageLayers.end(), std::back_inserter(frame._imageLayers) );
+
+        frame._elevationLayers.clear();
+        std::copy( _elevationLayers.begin(), _elevationLayers.end(), std::back_inserter(frame._elevationLayers) );
+
+        // sync the revision numbers.
+        frame._mapDataModelRevision = _dataModelRevision;
+    }    
+}
+
 //------------------------------------------------------------------------
 
-MapWorkingSet::MapWorkingSet( Map* map ) :
-_map( map )
+MapFrame::MapFrame( Map* map )
 {
-    Threading::ScopedReadLock lock( map->_mapDataMutex );
-
-    _imageLayers.reserve( map->_imageLayers.size() );
-    std::copy( map->_imageLayers.begin(), map->_imageLayers.end(), _imageLayers.begin() );
-
-    _elevationLayers.reserve( map->_elevationLayers.size() );
-    std::copy( map->_elevationLayers.begin(), map->_elevationLayers.end(), _elevationLayers.begin() );
+    map->sync( *this );
 }
 
 osg::HeightField*
-MapWorkingSet::createHeightField(const TileKey& key,
-                                 bool fallback,
-                                 ElevationInterpolation interpolation,
-                                 Map::SamplePolicy samplePolicy,
-                                 ProgressCallback* progress)
+MapFrame::createHeightField(const TileKey& key,
+                            bool fallback,
+                            ElevationInterpolation interpolation,
+                            Map::SamplePolicy samplePolicy,
+                            ProgressCallback* progress)
 {
-    return s_createHeightField( key, _elevationLayers, _map->getProfile(), fallback, interpolation, samplePolicy, progress );
+    return s_createHeightField( key, _elevationLayers, _profile.get(), fallback, interpolation, samplePolicy, progress );
 }

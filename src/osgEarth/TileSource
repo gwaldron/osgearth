@@ -27,7 +27,6 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
 #include <osgEarth/Progress>
-#include <osgEarth/DriverOptions>
 #include <osgEarth/ThreadingUtils>
 //#include <osgEarth/RTree>
 

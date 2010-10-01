@@ -25,7 +25,6 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Config
     Cube
-    DriverOptions
     EarthFile
     ElevationLayer
     Export
@@ -85,7 +84,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	Capabilities.cpp
     Config.cpp
     Cube.cpp
-    DriverOptions.cpp
     EarthFile.cpp
     EGM.cpp
     ElevationLayer.cpp

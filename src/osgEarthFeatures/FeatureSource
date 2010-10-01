@@ -29,7 +29,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
-#include <osgEarth/DriverOptions>
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/Mutex>
 #include <list>

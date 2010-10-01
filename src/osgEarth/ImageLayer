@@ -143,7 +143,7 @@ namespace osgEarth
         /** Removes a property notification callback from this layer */
         void removeCallback( ImageLayerCallback* cb );
 
-    public: // properties
+    public: // runtime properties
 
         void setOpacity( float opacity );
         float getOpacity() const { return _actualOpacity; }

@@ -524,7 +524,7 @@ TileMapReaderWriter::read(std::istream &in)
             unsigned int minLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MIN_LEVEL ), 0);
             unsigned int maxLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MAX_LEVEL ), 0);            
 
-            OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
+            //OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
             tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
         }
     }

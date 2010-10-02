@@ -276,7 +276,6 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     return success;
 }
 
-
 static Config
 getConfig( Map* map, const MapNodeOptions& ep )
 {
@@ -290,42 +289,23 @@ getConfig( Map* map, const MapNodeOptions& ep )
     optionsConf.merge( ep.getConfig() );
     conf.add( optionsConf );
 
-    ////Write the coordinate system
-    //std::string cs;
-    //if (map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC) cs = "geocentric";
-    //else if (map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED) cs = "projected";
-    //else if ( map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE) cs = "cube";
-    //else
-    //{
-    //    OE_NOTICE << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
-    //    return Config();
-    //}
-    //conf.attr( ATTR_CSTYPE ) = cs;
+    //get access to the map's data model:
+    MapFrame mapf( map, Map::ENTIRE_MODEL, "EarthFile writer" );
 
     //Write all the image sources
-    ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
-    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
         conf.add( i->get()->getImageLayerOptions().getConfig() );
-        //conf.add( i->get()->getConfig() );
-        //conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the heightfield sources
-    ElevationLayerVector elevLayers;
-    map->getElevationLayers( elevLayers );
-    for ( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
+    for ( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); i++ )
     {
         conf.add( i->get()->getElevationLayerOptions().getConfig() );
-        //conf.add( i->get()->getConfig() );
-        //conf.add( writeLayer( i->get() ) );
     }
 
     //Write all the model layers
-    ModelLayerVector modelLayers;
-    map->getModelLayers( modelLayers );
-    for(ModelLayerVector::const_iterator i = modelLayers.begin(); i != modelLayers.end(); i++ )
+    for(ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); i++ )
     {
         conf.add( writeLayer( i->get() ) );
     }
@@ -335,19 +315,6 @@ getConfig( Map* map, const MapNodeOptions& ep )
     {
         conf.add( writeLayer( map->getTerrainMaskLayer() ) );
     }
-
-    //NOTE: this is now in MapOptions
-	//TODO:  Get this from the getCache call itself, not a CacheConfig.
-    //if ( map->cacheConfig().isSet() )
-    //{
-    //    conf.add( map->cacheConfig()->getConfig( ELEM_CACHE ) );
-    //}
-
-    //NOTE: moved to MapNodeOptions
-    //if ( map->profileOptions().isSet() )
-    //{
-    //    conf.add( map->profileOptions()->getConfig() ); // ELEM_PROFILE ) );
-    //}
 
     return conf;
 }

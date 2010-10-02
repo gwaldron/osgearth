@@ -99,8 +99,11 @@ public:
                 bool populateLayers = engineNode->getTileFactory()->getTerrainOptions().loadingPolicy()->mode() 
                     == LoadingPolicy::MODE_STANDARD;
 
+                // create a map frame so we can safely create tiles from this dbpager thread
+                MapFrame mapf( engineNode->getMap(), Map::TERRAIN_LAYERS, "dbpager::earth plugin" );
+
                 node = engineNode->getTileFactory()->createSubTiles(
-                    engineNode->getMap(),
+                    mapf,
                     engineNode->getTerrain(),
                     key,
                     populateLayers );

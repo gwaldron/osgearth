@@ -58,7 +58,7 @@ namespace osgEarth
         //TODO
     };
 
-    typedef void (ElevationLayerCallback::*ElevationLayerCallbackMethodPtr)(class ElevationLayer* layer) const;
+    typedef void (ElevationLayerCallback::*ElevationLayerCallbackMethodPtr)(class ElevationLayer* layer);
 
     typedef std::list< osg::ref_ptr<ElevationLayerCallback> > ElevationLayerCallbackList;
 

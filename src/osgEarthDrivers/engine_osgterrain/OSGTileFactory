@@ -21,6 +21,8 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_TILE_FACTORY_H 1
 
 #include "OSGTerrainOptions"
+
+#include <osgEarth/Map>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
@@ -35,7 +37,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-class osgEarth::Map;
+//class osgEarth::Map;
+//class osgEarth::MapFrame;
 class CustomTerrain;
 class CustomTile;
 
@@ -47,6 +50,7 @@ class OSGTileFactory : public osg::Referenced
 public:
     OSGTileFactory(
         unsigned int engineId,
+        const MapFrame& cull_thread_mapf,
         const OSGTerrainOptions& props =OSGTerrainOptions() );
 
 public:
@@ -55,7 +59,7 @@ public:
     * subkeys of the provided TileKey.
     */
     osg::Node* createSubTiles(
-        Map* map,
+        const MapFrame& mapf,
         CustomTerrain* terrain,
         const TileKey& key,
         bool populateLayers );
@@ -64,7 +68,7 @@ public:
     * Creates a single terrain tile corresponding to the provided TileKey.
     */
     osg::Node* createTile(
-        Map* map,
+        const MapFrame& mapf,
         CustomTerrain* terrain,
         const TileKey& key,
         bool populateLayers,
@@ -74,13 +78,13 @@ public:
 
 
     osgTerrain::ImageLayer* createImageLayer(
-        Map* map,
+        const MapInfo& mapInfo,
         ImageLayer* layer,
         const TileKey& key,
         ProgressCallback* progress);
 
     osgTerrain::HeightFieldLayer* createHeightFieldLayer(
-        Map* map,
+        const MapFrame& mapf,
         const TileKey& key,
         bool exactOnly );
 
@@ -130,12 +134,12 @@ protected:
 
 
     osg::Node* createPlaceholderTile(
-        Map* map,
+        const MapFrame& mapf,
         CustomTerrain* terrain,
         const TileKey& key );
 
     osg::Node* createPopulatedTile(
-        Map* map, 
+        const MapFrame& mapf,
         CustomTerrain* terrain,
         const TileKey& key,
         bool wrapInPagedLOD,
@@ -160,18 +164,13 @@ protected:
         osgTerrain::TerrainTile* tile,
         osg::EllipsoidModel* et );
 
-    //osg::HeightField* subSampleHeightField(
-    //    osg::HeightField* source,
-    //    const TileKey& sourceKey,
-    //    const TileKey& destKey );
-
     void init();
 
 protected:
 
     unsigned int _engineId;
+    const MapFrame& _cull_thread_mapf;
     OSGTerrainOptions _terrainOptions;
-//    L2Cache* _L2cache;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_TILE_FACTORY_H

@@ -79,49 +79,45 @@ public:
 
 /*****************************************************************************/
 
+// NOTE: Task requests run in background threads. So we pass in a map frame and
+// make a clone of it to use in that thread. Each Task must have its own MapFrame
+// so it's operating in its own sandbox.
+
 struct TileLayerRequest : public TaskRequest
 {
-    TileLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory )
-        : _key( key ), _map(map), _tileFactory(tileFactory), _numTries(0), _maxTries(3) { }
+    TileLayerRequest( const TileKey& key, const MapFrame& mapf, OSGTileFactory* tileFactory )
+        : _key( key ), 
+          _mapf(mapf, "osgterrain.TileLayerRequest"), 
+          _tileFactory(tileFactory), 
+          _numTries(0), 
+          _maxTries(3) { }
 
     TileKey _key;
-    osg::ref_ptr<Map>           _map;
-    osg::ref_ptr<OSGTileFactory>   _tileFactory;
+    MapFrame _mapf;
+    //osg::ref_ptr<Map> _map;
+    osg::ref_ptr<OSGTileFactory> _tileFactory;
 	unsigned int _numTries;
 	unsigned int _maxTries;
 };
 
 struct TileColorLayerRequest : public TileLayerRequest
 {
-    TileColorLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory, unsigned int layerId )
-        : TileLayerRequest( key, map, tileFactory ), _layerId(layerId) { }
+    TileColorLayerRequest( const TileKey& key, const MapFrame& mapf, OSGTileFactory* tileFactory, unsigned int layerId )
+        : TileLayerRequest( key, mapf, tileFactory ), _layerId(layerId) { }
 
     void operator()( ProgressCallback* progress )
     {
         osg::ref_ptr<ImageLayer> imageLayer = 0L;
-        {
-            ImageLayerVector imageLayers;
-            _map->getImageLayers( imageLayers );
 
-            for( unsigned int i=0; i < imageLayers.size(); ++i )
-            {
-                if ( imageLayers[i]->getId() == _layerId )
-                {
-                    imageLayer = imageLayers[i].get();
-                }
-            }
-            //Threading::ScopedReadLock lock( _map->getMapDataMutex() );
-            //for (unsigned int i = 0; i < _map->getImageLayers().size(); ++i)
-            //{
-            //    if ( _map->getImageLayers()[i]->getId() == _layerId)
-            //    {
-            //        mapLayer = _map->getImageLayers()[i].get();
-            //    }
-            //}            
+        for( ImageLayerVector::const_iterator i = _mapf.imageLayers().begin(); i != _mapf.imageLayers().end(); ++i )
+        {
+            if ( i->get()->getId() == _layerId )
+                imageLayer = i->get();
         }
+
         if ( imageLayer.valid() )
         {
-            _result = _tileFactory->createImageLayer(_map.get(), imageLayer.get(), _key, progress);
+            _result = _tileFactory->createImageLayer( _mapf.getMapInfo(), imageLayer.get(), _key, progress );
 			if (!wasCanceled())
 			{
 			  _numTries++;
@@ -133,22 +129,22 @@ struct TileColorLayerRequest : public TileLayerRequest
 
 struct TileElevationLayerRequest : public TileLayerRequest
 {
-    TileElevationLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory )
-        : TileLayerRequest( key, map, tileFactory )
+    TileElevationLayerRequest( const TileKey& key, const MapFrame& mapf, OSGTileFactory* tileFactory )
+        : TileLayerRequest( key, mapf, tileFactory )
     {
     }
 
     void operator()( ProgressCallback* progress )
     {
-        _result = _tileFactory->createHeightFieldLayer( _map.get(), _key, true ); //exactOnly=true
+        _result = _tileFactory->createHeightFieldLayer( _mapf, _key, true ); //exactOnly=true
 		_numTries++;
     }
 };
 
 struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 {
-    TileElevationPlaceholderLayerRequest( const TileKey& key, Map* map, OSGTileFactory* tileFactory, GeoLocator* keyLocator )
-        : TileLayerRequest( key, map, tileFactory ),
+    TileElevationPlaceholderLayerRequest( const TileKey& key, const MapFrame& mapf, OSGTileFactory* tileFactory, GeoLocator* keyLocator )
+        : TileLayerRequest( key, mapf, tileFactory ),
           _keyLocator(keyLocator),
           _parentKey( key.createParentKey() )
     {
@@ -571,12 +567,12 @@ CustomTile::readyForNewImagery(ImageLayer* layer, int currentLOD)
 #define PRI_LAYER_OFFSET 0.1f // priority offset of image layer(x) vs. image layer(x+1)
 
 void
-CustomTile::installRequests( int stamp )
+CustomTile::installRequests( const MapFrame& mapf, int stamp )
 {
     CustomTerrain* terrain = getCustomTerrain();
 
-    Map* map = terrain->getMap();
-    Threading::ScopedReadLock lock( map->getMapDataMutex() );
+    //Map* map = terrain->getMap();
+    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     OSGTileFactory* tileFactory = terrain->getTileFactory();
     //MapEngine* engine = terrain->getEngine();
@@ -591,31 +587,31 @@ CustomTile::installRequests( int stamp )
 
     if ( hasElevationLayer )
     {
-        resetElevationRequests();     
+        resetElevationRequests( mapf );     
     }
 
     // safely loop through the map layers and update the imagery for each:
-    ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
+    //ImageLayerVector imageLayers;
+    //map->getImageLayers( imageLayers );
 
     for( int layerIndex = 0; layerIndex < numColorLayers; layerIndex++ )
     {
-        if ( layerIndex < imageLayers.size() )
+        if ( layerIndex < mapf.imageLayers().size() )
         {
-            updateImagery( imageLayers[layerIndex]->getId(), map, tileFactory );
+            updateImagery( mapf.imageLayers()[layerIndex]->getId(), mapf, tileFactory );
         }
     }
     _requestsInstalled = true;
 }
 
 void
-CustomTile::resetElevationRequests()
+CustomTile::resetElevationRequests( const MapFrame& mapf )
 {
     if (_elevRequest.valid() && _elevRequest->isRunning()) _elevRequest->cancel();
     if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isRunning()) _elevPlaceholderRequest->cancel();
 
     // this request will load real elevation data for the tile:
-    _elevRequest = new TileElevationLayerRequest(_key, getCustomTerrain()->getMap(), getCustomTerrain()->getTileFactory());
+    _elevRequest = new TileElevationLayerRequest(_key, mapf, getCustomTerrain()->getTileFactory());
     float priority = (float)_key.getLevelOfDetail();
     _elevRequest->setPriority( priority );
     std::stringstream ss;
@@ -626,7 +622,7 @@ CustomTile::resetElevationRequests()
 
     // this request will load placeholder elevation data for the tile:
     _elevPlaceholderRequest = new TileElevationPlaceholderLayerRequest(
-        _key, getCustomTerrain()->getMap(), getCustomTerrain()->getTileFactory(), _keyLocator.get() );
+        _key, mapf, getCustomTerrain()->getTileFactory(), _keyLocator.get() );
     _elevPlaceholderRequest->setPriority( priority );
     ss.str("");
     ss << "TileElevationPlaceholderLayerRequest " << _key.str() << std::endl;
@@ -635,20 +631,22 @@ CustomTile::resetElevationRequests()
 }
 
 
+// called from installRequests (cull traversal) or terrainengine (main thread) ... so be careful!
 void
-CustomTile::updateImagery(unsigned int layerId, Map* map, OSGTileFactory* tileFactory)
+CustomTile::updateImagery(unsigned int layerId, const MapFrame& mapf, OSGTileFactory* tileFactory)
 {
+    //NOTE: the following comment is OBE -gw
     //NOTE: the map data mutex is held upon entering this method
 
     CustomTerrain* terrain = getCustomTerrain();
 
     ImageLayer* mapLayer = NULL;
     unsigned int layerIndex = -1;
-    for (unsigned int i = 0; i < map->getImageLayers().size(); ++i)
+    for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
     {
-        if (map->getImageLayers()[i]->getId() == layerId)
+        if (mapf.imageLayers()[i]->getId() == layerId)
         {
-            mapLayer = map->getImageLayers()[i];
+            mapLayer = mapf.imageLayers()[i].get();
             layerIndex = i;
             break;
         }
@@ -664,7 +662,7 @@ CustomTile::updateImagery(unsigned int layerId, Map* map, OSGTileFactory* tileFa
     {
         unsigned int layerId = mapLayer->getId();
         // imagery is slighty higher priority than elevation data
-        TaskRequest* r = new TileColorLayerRequest( _key, map, tileFactory, layerId );
+        TaskRequest* r = new TileColorLayerRequest( _key, mapf, tileFactory, layerId );
         std::stringstream ss;
         ss << "TileColorLayerRequest " << _key.str() << std::endl;
 		std::string ssStr;
@@ -701,9 +699,9 @@ CustomTile::updateImagery(unsigned int layerId, Map* map, OSGTileFactory* tileFa
     }
 }
 
-// This method is called from the CULL TRAVERSAL, from TileImageBackfillCallback in MapEngine.cpp.
+// This method is called from the CULL TRAVERSAL, from TileImageBackfillCallback in OSGTileFactory.cpp.
 void
-CustomTile::servicePendingImageRequests( int stamp )
+CustomTile::servicePendingImageRequests( const MapFrame& mapf, int stamp )
 {       
     //Don't do anything until we have been added to the scene graph
     if (!_hasBeenTraversed) return;
@@ -711,7 +709,8 @@ CustomTile::servicePendingImageRequests( int stamp )
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
-        installRequests( stamp );
+        // since we're in the CULL thread, use the cull thread map frame:
+        installRequests( mapf, stamp );
     }
 
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
@@ -738,9 +737,9 @@ CustomTile::getFamily() {
     return _family;
 }
 
-// This method is called from the CULL TRAVERSAL, from CustomTerrain::traverse.
+// This method is called from the UPDATE TRAVERSAL, from CustomTerrain::traverse.
 void
-CustomTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
+CustomTile::servicePendingElevationRequests( const MapFrame& mapf, int stamp, bool tileTableLocked )
 {
     //Don't do anything until we have been added to the scene graph
     if (!_hasBeenTraversed) return;
@@ -749,7 +748,7 @@ CustomTile::servicePendingElevationRequests( int stamp, bool tileTableLocked )
     // install our requests if they are not already installed:
     if ( !_requestsInstalled )
     {
-        installRequests( stamp );
+        installRequests( mapf, stamp );
     }
 
     if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
@@ -844,14 +843,14 @@ CustomTile::markTileForRegeneration()
 // called from the UPDATE TRAVERSAL, because this method can potentially alter
 // the scene graph.
 bool
-CustomTile::serviceCompletedRequests( bool tileTableLocked )
+CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked )
 {
     //Don't do anything until we have been added to the scene graph
     if (!_hasBeenTraversed) return false;
 
     bool tileModified = false;
 
-    Map* map = this->getCustomTerrain()->getMap();
+    //Map* map = this->getCustomTerrain()->getMap();
     if ( !_requestsInstalled )
         return false;
 
@@ -870,13 +869,11 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
     // now deal with imagery.
     const LoadingPolicy& lp = getCustomTerrain()->getLoadingPolicy();
 
-    //Get the image map layers
-    ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
-
     //Check each layer independently.
-    for (unsigned int i = 0; i < imageLayers.size(); ++i)
+    for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
     {
+        ImageLayer* imageLayer = mapf.imageLayers()[i].get();
+
         bool checkForFinalImagery = false;
 
         //if (imageMapLayers[i]->isKeyValid(_key.get()) && (i < getNumColorLayers()))
@@ -891,7 +888,10 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
                     // placeholders.
                     checkForFinalImagery = true;
                 }
-                else if ( lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && layer && readyForNewImagery(imageLayers[i].get(), layer->getLevelOfDetail()) )
+                else if (
+                    lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && 
+                    layer && 
+                    readyForNewImagery(imageLayer, layer->getLevelOfDetail()) )
                 {
                     // in sequential mode, we have to incrementally increase imagery resolution by
                     // creating placeholders based of parent tiles, one LOD at a time.
@@ -941,7 +941,7 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
                 bool increment = true;
                 TileColorLayerRequest* r = static_cast<TileColorLayerRequest*>( itr->get() );
                 //We only care about the current layer we are checking
-                if (r->_layerId == imageLayers[i]->getId())
+                if (r->_layerId == imageLayer->getId())
                 {
                     if ( itr->get()->isCompleted() )
                     {
@@ -958,12 +958,13 @@ CustomTile::serviceCompletedRequests( bool tileTableLocked )
                             int index = -1;
                             {
                                 // Lock the map data mutex, since we are querying the map model:
-                                Threading::ScopedReadLock mapDataLock( map->getMapDataMutex() );
+                                //NO need for this due to MapFrame
+                                //Threading::ScopedReadLock mapDataLock( map->getMapDataMutex() );
 
                                 //See if we even care about the request
-                                for (unsigned int j = 0; j < map->getImageLayers().size(); ++j)
+                                for (unsigned int j = 0; j < mapf.imageLayers().size(); ++j)
                                 {
-                                    if (map->getImageLayers()[j]->getId() == r->_layerId)
+                                    if (mapf.imageLayers()[j]->getId() == r->_layerId)
                                     {
                                         index = j;
                                         break;
@@ -1302,8 +1303,9 @@ CustomTerrain::releaseGLObjectsForTiles(osg::State* state)
     }
 }
 
-CustomTerrain::CustomTerrain( Map* map, OSGTileFactory* tileFactory ) :
-_map( map ),
+CustomTerrain::CustomTerrain( const MapFrame& update_mapf, const MapFrame& cull_mapf, OSGTileFactory* tileFactory ) :
+_update_mapf( update_mapf ),
+_cull_mapf( cull_mapf ),
 _tileFactory( tileFactory ),
 _revision(0),
 _numAsyncThreads( 0 ),
@@ -1399,16 +1401,19 @@ CustomTerrain::getLoadingPolicy() const
     return _loadingPolicy;
 }
 
-// This method is called by CustomTerrain::traverse().
+// This method is called by CustomTerrain::traverse() in the UPDATE TRAVERSAL.
 void
-CustomTerrain::refreshFamily(const osgTerrain::TileID& tileId,
-                                Relative* family,
-                                bool tileTableLocked )
+CustomTerrain::refreshFamily(const MapInfo& mapInfo,
+                             const osgTerrain::TileID& tileId,
+                             Relative* family,
+                             bool tileTableLocked )
 {
     // geocentric maps wrap around in the X dimension.
-    bool wrapX = _map->isGeocentric();
+    //bool wrapX = _map->isGeocentric();
+    bool wrapX = mapInfo.isGeocentric();
     unsigned int tilesX, tilesY;
-    _map->getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
+    //_map->getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
+    mapInfo.getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
 
     // parent
     {
@@ -1525,10 +1530,10 @@ CustomTerrain::refreshFamily(const osgTerrain::TileID& tileId,
     }
 }
 
-Map*
-CustomTerrain::getMap() {
-    return _map.get();
-}
+//Map*
+//CustomTerrain::getMap() {
+//    return _map.get();
+//}
 
 OSGTileFactory*
 CustomTerrain::getTileFactory() {
@@ -1677,13 +1682,13 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
             {
                 if ( i->second.valid() )
                 {
-                    refreshFamily( i->first, i->second->getFamily(), true );
+                    refreshFamily( _update_mapf.getMapInfo(), i->first, i->second->getFamily(), true );
 
                     if ( i->second->getUseLayerRequests() )
                     {                        
-                        i->second->servicePendingElevationRequests( stamp, true );
+                        i->second->servicePendingElevationRequests( _update_mapf, stamp, true );
 
-                        bool tileModified = i->second->serviceCompletedRequests( true );
+                        bool tileModified = i->second->serviceCompletedRequests( _update_mapf, true );
                         if ( tileModified && _terrainCallbacks.size() > 0 )
                         {
                             _updatedTiles.push_back( i->second.get() );
@@ -1780,13 +1785,14 @@ CustomTerrain::getTileGenerationTaskSerivce()
 }
 
 void
-CustomTerrain::updateTaskServiceThreads()
+CustomTerrain::updateTaskServiceThreads( const MapFrame& mapf )
 {
-    Threading::ScopedReadLock lock(_map->getMapDataMutex());    
+    //Removed this since we're using a mapframe now
+    //Threading::ScopedReadLock lock(_map->getMapDataMutex());    
 
     //Get the maximum elevation weight
     float elevationWeight = 0.0f;
-    for (ElevationLayerVector::const_iterator itr = _map->getElevationLayers().begin(); itr != _map->getElevationLayers().end(); ++itr)
+    for (ElevationLayerVector::const_iterator itr = mapf.elevationLayers().begin(); itr != mapf.elevationLayers().end(); ++itr)
     {
         ElevationLayer* layer = itr->get();
         float w = layer->getTerrainLayerOptions().loadingWeight().value();
@@ -1794,7 +1800,7 @@ CustomTerrain::updateTaskServiceThreads()
     }
 
     float totalImageWeight = 0.0f;
-    for (ImageLayerVector::const_iterator itr = _map->getImageLayers().begin(); itr != _map->getImageLayers().end(); ++itr)
+    for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); ++itr)
     {
         totalImageWeight += itr->get()->getTerrainLayerOptions().loadingWeight().value();
     }
@@ -1809,7 +1815,7 @@ CustomTerrain::updateTaskServiceThreads()
         getElevationTaskService()->setNumThreads( numElevationThreads );
     }
 
-    for (ImageLayerVector::const_iterator itr = _map->getImageLayers().begin(); itr != _map->getImageLayers().end(); ++itr)
+    for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); ++itr)
     {
         const TerrainLayerOptions& opt = itr->get()->getTerrainLayerOptions();
         int imageThreads = (int)osg::round((float)_numAsyncThreads * (opt.loadingWeight().value() / totalWeight ));

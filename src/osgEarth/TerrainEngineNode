@@ -73,9 +73,6 @@ namespace osgEarth
         virtual void initialize( Map* map, const TerrainOptions& options );
         virtual void validateTerrainOptions( TerrainOptions& options );
 
-    protected:
-        osg::ref_ptr< Map > _map;
-
     private:
         friend struct TerrainEngineNodeCallbackProxy;
 
@@ -99,9 +96,9 @@ namespace osgEarth
         {
             ImageLayerController( Map* map );
 
-            void onEnabledChanged( TerrainLayer* layer ) const;
-            void onOpacityChanged( ImageLayer* layer ) const;
-            void onGammaChanged( ImageLayer* layer ) const;
+            void onEnabledChanged( TerrainLayer* layer );
+            void onOpacityChanged( ImageLayer* layer );
+            void onGammaChanged( ImageLayer* layer );
 
             // a uniform array marking the opacity of each image layer
             osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
@@ -110,10 +107,12 @@ namespace osgEarth
             osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
 
         private:
-            Map* _map; // dont' need a ref here
+            MapFrame _mapf;
+            //Map* _map; // dont' need a ref here
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
+        osg::ref_ptr<Map> _map;
     };
 
     /**

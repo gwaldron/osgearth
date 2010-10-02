@@ -365,7 +365,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 
 
 			osg::ref_ptr<ImageMosaic> mi = new ImageMosaic;
-			std::vector< const TileKey > missingTiles;
+			std::vector<TileKey> missingTiles;
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
 				double minX, minY, maxX, maxY;

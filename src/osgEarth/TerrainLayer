@@ -165,10 +165,10 @@ namespace osgEarth
      */
     struct TerrainLayerCallback : public osg::Referenced
     {
-        virtual void onEnabledChanged( class TerrainLayer* layer ) const { }
+        virtual void onEnabledChanged( class TerrainLayer* layer ) { }
     };
 
-    typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer) const;
+    typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer);
 
 
     class OSGEARTH_EXPORT TerrainLayer : public osg::Referenced

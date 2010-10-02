@@ -161,12 +161,14 @@ struct BlankTileSource : public osgEarth::TileSource
 
                 }
 
+                MapFrame mapf(_map);
+
                 if (_nbLog % 15 == 7 && !_layerActive) {
                     _map->addImageLayer( _layer.get() );
                     _layerActive = true;
                 }
                 if (_nbLog % 15 == 14 && _layerActive) {
-                    _map->removeImageLayer( _map->getImageLayers()[0] );
+                    _map->removeImageLayer( mapf.imageLayers()[0] );
                     _layerActive = false;
                 }
             }
@@ -285,11 +287,12 @@ int main(int argc, char** argv)
         group->addUpdateCallback(new LogUpdateCallback(fadeLayerNode->getMap()));
         viewer.addEventHandler(new PrintObjectReference());
 
+        MapFrame mapf(mapNode->getMap());
 
-        for (unsigned int i = 0; i < mapNode->getMap()->getImageLayers().size(); ++i)
+        for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
         {
-            mapNode->getMap()->getImageLayers()[i]->setOpacity( 1.0f );
-            mapNode->getMap()->getImageLayers()[i]->setEnabled( true );
+            mapf.imageLayers()[i]->setOpacity( 1.0f );
+            mapf.imageLayers()[i]->setEnabled( true );
         }
 
         //Setup the osgWidget interface

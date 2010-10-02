@@ -98,7 +98,7 @@ namespace osgEarth
          *
          * TO BE DEPRECATED
          */
-        const ImageLayerVector& getImageLayers() const { return _imageLayers; }
+        //const ImageLayerVector& getImageLayers() const { return _imageLayers; }
 
         /**
          * Copies references of the map image layers into the output list.
@@ -108,12 +108,17 @@ namespace osgEarth
         int getImageLayers( ImageLayerVector& out_layers, bool validLayersOnly =false ) const;
 
         /**
+         * Gets the number of image layers in the map.
+         */
+        int getNumImageLayers() const;
+
+        /**
          * Gets the ordered list of heightfield layers in this map. Be sure to use
          * getMapDataMutex() when iterating the list.
          *
          * TO BE DEPRECATED
          */
-        const ElevationLayerVector& getElevationLayers() const { return _elevationLayers; }
+        //const ElevationLayerVector& getElevationLayers() const { return _elevationLayers; }
 
         /**
          * Copies references of the elevation layers into the output list.
@@ -122,13 +127,22 @@ namespace osgEarth
          */
         int getElevationLayers( ElevationLayerVector& out_layers, bool validLayersOnly =false ) const;
 
+        /**
+         * Gets the number of elevation layers in the map.
+         */
+        int getNumElevationLayers() const;
+
         /** 
          * Copies references of the model layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
         int getModelLayers( ModelLayerVector& out_layers, bool validLayersOnly =false ) const;
-        //const ModelLayerList& getModelLayers() const;
+
+        /**
+         * Gets the number of model layers in the map.
+         */
+        int getNumModelLayers() const;
 
         /**
          * Gets the model layer to draw as a terrain mask.
@@ -259,7 +273,7 @@ namespace osgEarth
             bool fallback,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             SamplePolicy samplePolicy =FIRST_VALID,
-            ProgressCallback* progress = 0);
+            ProgressCallback* progress = 0) const;
 
 		/**
 		 * Sets the Cache for this Map
@@ -281,7 +295,15 @@ namespace osgEarth
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
-         */
+         */        
+        enum ModelParts {
+            IMAGE_LAYERS     = 1 << 0,
+            ELEVATION_LAYERS = 1 << 1,
+            MODEL_LAYERS     = 1 << 2,
+            TERRAIN_LAYERS   = IMAGE_LAYERS | ELEVATION_LAYERS,
+            ENTIRE_MODEL     = 0xff
+        };
+
         void sync( class MapFrame& frame ) const;
 
     protected:
@@ -316,29 +338,92 @@ namespace osgEarth
 
 
     /**
-     * A "snapshot in time" of a Map model revision.
+     * A convenience class that combines a general geospatial profile and additional 
+     * information about the map itself.
+     */
+    class MapInfo
+    {
+    public:
+        MapInfo( Map* map )
+            : _profile( map->getProfile() ),
+              _isGeocentric( map->isGeocentric() ),
+              _isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ) { }
+        
+        const Profile* getProfile() const { return _profile; }
+
+        bool isGeocentric() const { return _isGeocentric; }
+        bool isCube() const { return _isCube; }
+        bool isPlateCarre() const { return !_isGeocentric && isGeographicSRS(); }
+
+        bool isProjectedSRS() const { return !isProjectedSRS(); }
+        bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        
+
+    private:
+        osg::ref_ptr<const Profile> _profile;
+        bool _isGeocentric, _isCube;
+    };
+
+
+    /**
+     * A "snapshot in time" of a Map model revision. Use this class to get a safe "copy" of
+     * the map model lists that you can use without worrying about the model changing underneath
+     * you from another thread.
      */
     class OSGEARTH_EXPORT MapFrame
     {
     public:
-        MapFrame( Map* map );
+        MapFrame( Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
 
-        const Profile* getProfile() const { return _profile.get(); }
+        /**
+         * Constructs a map frame that only makes a copy of "valid" data items.
+         * Warning: if you ask to copyValidDataOnly, the indexOf() methods may not return
+         * values that correspond to the source data model!
+         */
+        MapFrame( Map* map, bool copyValidDataOnly, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
+
+        /**
+         * A copy constructor with a new name (no sync happens)
+         */
+        MapFrame( const MapFrame& frame, const std::string& name ="" );
+
+        void sync();
+
+        const MapInfo& getMapInfo() const { return _mapInfo; }
+        const Profile* getProfile() const { return _mapInfo.getProfile(); }
+
+        ImageLayerVector& imageLayers() { return _imageLayers; }
         const ImageLayerVector& imageLayers() const { return _imageLayers; }
+
+        ElevationLayerVector& elevationLayers() { return _elevationLayers; }
         const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
+
+        ModelLayerVector& modelLayers() { return _modelLayers; }
+        const ModelLayerVector& modelLayers() const { return _modelLayers; }
+
+        int indexOf( ImageLayer* layer ) const;
+        int indexOf( ElevationLayer* layer ) const;
+        int indexOf( ModelLayer* layer ) const;
+
+        bool isGeocentric() const { return _map->isGeocentric(); }
 
         osg::HeightField* createHeightField(
             const TileKey& key,
             bool fallback,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             Map::SamplePolicy samplePolicy =Map::FIRST_VALID,
-            ProgressCallback* progress = 0);    
+            ProgressCallback* progress = 0) const; 
 
     private:
+        bool _initialized;
+        osg::ref_ptr<Map> _map;
+        std::string _name;
+        MapInfo _mapInfo;
+        Map::ModelParts _parts;
+        bool _copyValidDataOnly;
         Revision _mapDataModelRevision;
-        osg::ref_ptr<const Profile> _profile;
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
+        ModelLayerVector _modelLayers;
         friend class Map;
     };
 

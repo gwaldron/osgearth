@@ -102,11 +102,11 @@ namespace osgEarth
      */
     struct ImageLayerCallback : public TerrainLayerCallback
     {
-        virtual void onOpacityChanged( class ImageLayer* layer ) const { }
-        virtual void onGammaChanged( class ImageLayer* layer ) const { }
+        virtual void onOpacityChanged( class ImageLayer* layer ) { }
+        virtual void onGammaChanged( class ImageLayer* layer ) { }
     };
 
-    typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(ImageLayer* layer) const;
+    typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(ImageLayer* layer);
 
     typedef std::list< osg::ref_ptr<ImageLayerCallback> > ImageLayerCallbackList;
 

@@ -209,19 +209,6 @@ MapNode::init()
     else
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
 
-#if 0
-    unsigned int index = 0;
-    for( MapLayerList::const_iterator i = _map->getElevationLayers().begin(); i != _map->getElevationLayers().end(); i++ )
-    {
-        onMapLayerAdded( i->get(), index++ );
-    }
-    index = 0;
-    for( MapLayerList::const_iterator j = _map->getImageLayers().begin(); j != _map->getImageLayers().end(); j++ )
-    {
-        onMapLayerAdded( j->get(), index++ );
-    }
-#endif
-
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
     _map->getModelLayers( modelLayers );

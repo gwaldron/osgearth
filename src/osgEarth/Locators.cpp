@@ -64,11 +64,9 @@ _inverseCalculated(false)
 }
 
 GeoLocator*
-GeoLocator::createForKey( const TileKey& key, Map* map )
+GeoLocator::createForKey( const TileKey& key, const MapInfo& map )
 {
-    bool isGeocentric = map->isGeocentric();
-    //bool isProjected = !isGeocentric;
-    bool isPlateCarre = !isGeocentric && map->getProfile()->getSRS()->isGeographic();
+    //bool isPlateCarre =  !map.isGeocentric() && map.isGeographicSRS(); //map->getProfile()->getSRS()->isGeographic();
 
     const GeoExtent& ex = key.getExtent();
     double xmin, ymin, xmax, ymax;
@@ -77,9 +75,9 @@ GeoLocator::createForKey( const TileKey& key, Map* map )
     // A locator will place the tile on the globe:
     GeoLocator* locator = key.getProfile()->getSRS()->createLocator(
         ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax(),
-        isPlateCarre );
+        map.isPlateCarre() );
 
-    if ( isGeocentric )
+    if ( map.isGeocentric() )
         locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
     return locator;

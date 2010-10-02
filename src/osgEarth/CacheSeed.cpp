@@ -54,14 +54,10 @@ void CacheSeed::seed( Map* map )
     int src_min_level = INT_MAX;
     int src_max_level = 0;
 
-    ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
-
-    ElevationLayerVector elevLayers;
-    map->getElevationLayers( elevLayers );
+    MapFrame mapf( map, Map::TERRAIN_LAYERS, "CacheSeed::seed" );
 
     //Assumes the the TileSource will perform the caching for us when we call createImage
-    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
 		ImageLayer* layer = i->get();
         TileSource* src = i->get()->getTileSource();
@@ -95,7 +91,7 @@ void CacheSeed::seed( Map* map )
         }
     }
 
-    for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
+    for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); i++ )
     {
 		ElevationLayer* layer = i->get();
         TileSource* src = i->get()->getTileSource();
@@ -144,16 +140,13 @@ void CacheSeed::seed( Map* map )
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
-        processKey( map, keys[i], imageLayers, elevLayers );
+        processKey( mapf, keys[i] );
     }
 }
 
 
 void
-CacheSeed::processKey(Map* map,
-                      const TileKey& key,
-                      const ImageLayerVector& imageLayers,
-                      const ElevationLayerVector& elevLayers ) const
+CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
 {
     unsigned int x, y, lod;
     key.getTileXY(x, y);
@@ -164,7 +157,7 @@ CacheSeed::processKey(Map* map,
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
         OE_NOTICE << "Caching tile = " << key.str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
-        cacheTile( map, key, imageLayers, elevLayers); 
+        cacheTile( mapf, key );
   //      bool validData;
 		//osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, false, validData );        
     }
@@ -181,21 +174,18 @@ CacheSeed::processKey(Map* map,
         if (_bounds.intersects( k0.getExtent().bounds() ) || _bounds.intersects(k1.getExtent().bounds()) ||
             _bounds.intersects( k2.getExtent().bounds() ) || _bounds.intersects(k3.getExtent().bounds()) )
         {
-            processKey(map, k0, imageLayers, elevLayers); 
-            processKey(map, k1, imageLayers, elevLayers); 
-            processKey(map, k2, imageLayers, elevLayers); 
-            processKey(map, k3, imageLayers, elevLayers); 
+            processKey(mapf, k0);
+            processKey(mapf, k1);
+            processKey(mapf, k2);
+            processKey(mapf, k3);
         }
     }
 }
 
 void
-CacheSeed::cacheTile(Map* map,
-                     const TileKey& key,
-                     const ImageLayerVector& imageLayers,
-                     const ElevationLayerVector& elevLayers ) const
+CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
 {
-    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
         ImageLayer* layer = i->get();
         if ( layer->isKeyValid( key ) )
@@ -204,9 +194,9 @@ CacheSeed::cacheTile(Map* map,
         }
     }
 
-    if ( elevLayers.size() > 0 )
+    if ( mapf.elevationLayers().size() > 0 )
     {
-        osg::ref_ptr<osg::HeightField> hf = map->createHeightField( key, false );
+        osg::ref_ptr<osg::HeightField> hf = mapf.createHeightField( key, false );
     }
 }
 

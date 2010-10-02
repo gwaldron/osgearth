@@ -63,55 +63,41 @@ namespace osgEarth
 //------------------------------------------------------------------------
 
 TerrainEngineNode::ImageLayerController::ImageLayerController( Map* map ) :
-_map( map )
+_mapf( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" )
 {
     //NOP
 }
 
 void
-TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer ) const
+TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer )
 {
     if ( !Registry::instance()->getCapabilities().supportsGLSL() )
         return;
 
-    ImageLayerVector imageLayers;
-    _map->getImageLayers( imageLayers );
-
-    ImageLayerVector::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
-    if ( i != imageLayers.end() )
-    {
-        int layerNum = i - imageLayers.begin();
+    _mapf.sync();
+    int layerNum = _mapf.indexOf( static_cast<ImageLayer*>(layer) );
+    if ( layerNum >= 0 )
         _layerEnabledUniform->setElement( layerNum, layer->getEnabled() );
-    }
     else
-    {
         OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
-    }
 }
 
 void
-TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer ) const
+TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
 {
     if ( !Registry::instance()->getCapabilities().supportsGLSL() )
         return;
 
-    ImageLayerVector imageLayers;
-    _map->getImageLayers( imageLayers );
-
-    ImageLayerVector::const_iterator i = std::find( imageLayers.begin(), imageLayers.end(), layer );
-    if ( i != imageLayers.end() )
-    {
-        int layerNum = i - imageLayers.begin();
+    _mapf.sync();
+    int layerNum = _mapf.indexOf( layer );
+    if ( layerNum >= 0 )
         _layerOpacityUniform->setElement( layerNum, layer->getOpacity() );
-    }
     else
-    {
         OE_WARN << LC << "Odd, onOpacityChanged did not find layer" << std::endl;
-    }
 }
 
 void
-TerrainEngineNode::ImageLayerController::onGammaChanged( ImageLayer* layer ) const
+TerrainEngineNode::ImageLayerController::onGammaChanged( ImageLayer* layer )
 {
     //TODO
 }
@@ -149,9 +135,8 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
         _imageLayerController = new ImageLayerController( map );
 
         // register the layer Controller it with all pre-existing image layers:
-        ImageLayerVector imageLayers;
-        _map->getImageLayers( imageLayers, true );
-        for( ImageLayerVector::iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::initialize" );
+        for( ImageLayerVector::iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
             i->get()->addCallback( _imageLayerController.get() );
         }
@@ -236,6 +221,7 @@ TerrainEngineNode::updateUniforms()
     // update the layer uniform arrays:
     osg::StateSet* stateSet = this->getOrCreateStateSet();
 
+    // get a copy of the image laye stack:
     ImageLayerVector imageLayers;
     _map->getImageLayers( imageLayers );
 

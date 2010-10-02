@@ -158,8 +158,9 @@ struct ToggleVisiblityCallback: public osgWidget::Callback {
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-			_fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->setEnabled(
-                _fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->getEnabled() == false);
+            MapFrame mapf(_fadeLayerNode->getMap());
+			mapf.imageLayers()[_layerIndex]->setEnabled(
+                mapf.imageLayers()[_layerIndex]->getEnabled() == false);
         }
         return true;
     }
@@ -180,8 +181,9 @@ struct OpacityCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            float oldOpacity = _fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->getOpacity();
-            _fadeLayerNode->getMap()->getImageLayers()[_layerIndex]->setOpacity( oldOpacity + _opacityDelta );
+            MapFrame mapf( _fadeLayerNode->getMap() );
+            float oldOpacity = mapf.imageLayers()[_layerIndex]->getOpacity();
+            mapf.imageLayers()[_layerIndex]->setOpacity( oldOpacity + _opacityDelta );
         }
         return true;
     }
@@ -204,7 +206,8 @@ struct RemoveLayerCallback: public osgWidget::Callback
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
             //_view->getDatabasePager()->clear();
-            _map->removeImageLayer( _map->getImageLayers()[_layerIndex] );
+            MapFrame mapf( _map );
+            _map->removeImageLayer( mapf.imageLayers()[_layerIndex] );
             //_mapNode->removeImageSource( _layerIndex );
             hudDirty = true;
         }
@@ -229,11 +232,12 @@ struct MoveLayerCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
+            MapFrame mapf(_map);
             //_view->getDatabasePager()->clear();
             int dir = _up ? 1 : -1;
-            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)_map->getImageLayers().size()-1u);
+            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)mapf.imageLayers().size()-1u);
             //_map->moveImageSource( _layerIndex, newPosition );
-            ImageLayer* layer = _map->getImageLayers()[_layerIndex];
+            ImageLayer* layer = mapf.imageLayers()[_layerIndex];
             _map->moveImageLayer( layer, newPosition );
             hudDirty = true;
         }
@@ -397,11 +401,12 @@ public:
 
     void updateText()
     {
-        if ( _layerIndex < _map->getImageLayers().size() )
+        MapFrame mapf( _map );
+        if ( _layerIndex < mapf.imageLayers().size() )
         {
-            std::string name = _map->getImageLayers()[_layerIndex]->getName(); //Node->getImageSource( _layerIndex );
+            std::string name = mapf.imageLayers()[_layerIndex]->getName(); //Node->getImageSource( _layerIndex );
             std::stringstream ss;
-            unsigned int index = (_map->getImageLayers().size() - _layerIndex);
+            unsigned int index = (mapf.imageLayers().size() - _layerIndex);
             ss << index << ") ";
 			std::string ssStr;
 			ssStr = ss.str();
@@ -458,13 +463,15 @@ public:
 
       void update()
       {
+          MapFrame mapf(_map);
+
           //Remove the existing lines
           for (unsigned int i = 0; i < _lines.size(); ++i)
           {
               _wm->removeChild(_lines[i].get());
           }
 
-          for (unsigned int i = 0; i < _map->getImageLayers().size(); ++i)
+          for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
           {
               Line* line = i < _lines.size() ? _lines[i] : NULL;
               if (line)
@@ -586,11 +593,12 @@ int main(int argc, char** argv)
     group->addChild(fadeLayerNode);
 	//group->addChild( loadedModel.get() );
 
+    MapFrame mapf( mapNode->getMap() );
 
-    for (unsigned int i = 0; i < mapNode->getMap()->getImageLayers().size(); ++i)
+    for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
     {
-		mapNode->getMap()->getImageLayers()[i]->setOpacity( 1.0f ); //opacity() = 1.0f;
-		mapNode->getMap()->getImageLayers()[i]->setEnabled(true);
+		mapf.imageLayers()[i]->setOpacity( 1.0f ); //opacity() = 1.0f;
+		mapf.imageLayers()[i]->setEnabled(true);
     }
 
     //Setup the osgWidget interface

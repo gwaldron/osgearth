@@ -3,7 +3,7 @@ osgEarth Sample
 Tests the use of an oceanmask, use with the osgearth_ocean example
 -->
 
-<map name="Ocean" type="geocentric">
+<map name="Ocean" type="geocentric" version="2">
     
     <image name="arcgisonline esri imagery" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>

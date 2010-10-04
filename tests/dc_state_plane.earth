@@ -23,7 +23,7 @@ Please note that use of ESRI's free maps is subject to certain restrictions:
 http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
 -->
 
-<map name="DC State Plane" type="projected">
+<map name="DC State Plane" type="projected" version="2">
 
     <options>
         <profile name="NAD83 Maryland State Plane (meters)">

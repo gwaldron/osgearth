@@ -5,7 +5,7 @@ This example demonstrates a floating cloud layer. Use this together with another
 e.g.: osgviewer tiff.earth clouds.earth
 -->
 
-<map name="Clouds" type="geocentric">     
+<map name="Clouds" type="geocentric" version="2">     
     
     
     <options>

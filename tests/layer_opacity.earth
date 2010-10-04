@@ -8,7 +8,7 @@ The opacity will only take affect when using a technique that can blend layers t
 Look for hi-res insets over the cities of Boston and New York.
 -->
 
-<map name="hi-res inset" type="geocentric">
+<map name="hi-res inset" type="geocentric" version="2">
 
     <options>
         <lighting>false</lighting>

@@ -4,7 +4,7 @@ osgEarth Sample
 This one demonstrates how to use the OGR feature driver to define inline feature geometry.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric">
+<map name="Feature Geometry Demo" type="geocentric" version="2">
 
     <options>
         <lighting>false</lighting>

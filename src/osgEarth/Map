@@ -313,7 +313,7 @@ namespace osgEarth
 		/**
 		 * Gets the Cache for this Map
 		 */
-		Cache* getCache();
+		Cache* getCache() const;
 
     private:
 

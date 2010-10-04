@@ -3,7 +3,7 @@ Demonstrates how to take a spherical mercator data source and display it as
 Plate Carre (y=lat, x=lon) by applying the <profile> tag.
 -->
 
-<map name="OpenStreetMap" type="projected">
+<map name="OpenStreetMap" type="projected" version="2">
 
     <options>
         <profile>global-geodetic</profile>    

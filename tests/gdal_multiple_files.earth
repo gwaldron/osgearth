@@ -6,7 +6,7 @@ This example displays how to use the GDAL driver to load files in a directory as
 Note:  There are tons of NoData areas in the sample terrain files, so expect see some holes :)
 -->
 
-<map type="geocentric">
+<map type="geocentric" version="2">
     
     <options>
         <terrain vertical_scale="3"/>

@@ -7,7 +7,7 @@ resolution imagery inset from a local GeoTIFF file.
 Look for hi-res insets over the cities of Boston and New York.
 -->
 
-<map name="hi-res inset" type="geocentric">
+<map name="hi-res inset" type="geocentric" version="2">
 
     <options lighting="false"/>
      

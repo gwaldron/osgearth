@@ -3,7 +3,7 @@ osgEarth Sample
 Demonstrates use of the "agglite" feature rasterization driver.
 -->
 
-<map name="Geometry Rasterizer Demo" type="round">
+<map name="Geometry Rasterizer Demo" type="round" version="2">
   
     <options>
         <lighting>false</lighting>

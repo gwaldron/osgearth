@@ -5,7 +5,7 @@ heightfield layer, you will see the raw EGM96 geoid. We apply a large vertical
 exaggeration in order to make the geoid's shape stand out.
 -->
 
-<map>   
+<map version="2">   
     
     <image driver="gdal">
         <url>../data/world.tif</url>

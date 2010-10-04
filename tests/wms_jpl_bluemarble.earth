@@ -2,7 +2,7 @@
 osgEarth Sample - NASA BlueMarble NG Imagery from JPL WMS
 -->
 
-<map name="nasa bluemarble imagery" type="globe">
+<map name="nasa bluemarble imagery" type="globe" version="2">
 
   <image name="jpl nasa blue marble" driver="wms">
     <url>http://onearth.jpl.nasa.gov/wms.cgi</url>

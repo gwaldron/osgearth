@@ -9,6 +9,13 @@ IF(WIN32)
     ENDIF(CURL_IS_STATIC)
 ENDIF(WIN32)
 
-SET(TARGET_SRC ReaderWriterOsgEarth.cpp )
+SET(TARGET_H
+    EarthFileSerializer)
+
+SET(TARGET_SRC
+    ReaderWriterOsgEarth.cpp
+    EarthFileSerializer1.cpp
+    EarthFileSerializer2.cpp)
+
 #### end var setup  ###
 SETUP_PLUGIN(earth)

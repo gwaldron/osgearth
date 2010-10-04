@@ -76,6 +76,7 @@ namespace osgEarth
         optional<CacheOptions>& cache() { return _cacheOptions; }
         const optional<CacheOptions>& cache() const { return _cacheOptions; }
 
+    public:
         /**
          * A reference location that drivers can use to load data from relative locations.
          * NOTE: this is a runtime-only property and is NOT serialized in the ConfigOptions.

@@ -34,11 +34,6 @@ _dataModelRevision(0)
     //NOP
 }
 
-//Threading::ReadWriteMutex&
-//Map::getMapDataMutex() {
-//    return _mapDataMutex;
-//}
-
 bool
 Map::isGeocentric() const
 {
@@ -143,12 +138,26 @@ Map::getProfile() const
 }
 
 Cache*
-Map::getCache()
+Map::getCache() const
 {
-    if ( !_cache.valid() && _mapOptions.cache().isSet() ) //_cacheConf.isSet() )
+    if ( !_cache.valid() && _mapOptions.cache().isSet() )
     {
-        Cache* cache = CacheFactory::create( _mapOptions.cache().get() );
-        if ( cache ) {
+        Cache* cache = 0L;
+
+        // if there's a cache override in the registry, install it now.
+	    if ( osgEarth::Registry::instance()->getCacheOverride() )
+	    {
+		    OE_INFO << LC << "Overriding map cache with global cache override" << std::endl;
+		    cache = osgEarth::Registry::instance()->getCacheOverride();
+	    }
+
+        if ( !cache )
+        {
+            cache = CacheFactory::create( _mapOptions.cache().get() );
+        }
+
+        if ( cache )
+        {
             const_cast<Map*>(this)->setCache( cache );
         }
     }
@@ -156,12 +165,12 @@ Map::getCache()
 }
 
 void
-Map::setCache( Cache* cache)
+Map::setCache( Cache* cache )
 {
     if (_cache.get() != cache)
     {
         _cache = cache;
-        _cache->setReferenceURI( _mapOptions.referenceURI().value() ); //_referenceURI );
+        _cache->setReferenceURI( _mapOptions.referenceURI().value() );
 
         //Propagate the cache to any of our layers
         for (ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i)

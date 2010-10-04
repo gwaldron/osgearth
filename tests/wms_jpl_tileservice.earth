@@ -5,7 +5,7 @@
   how to use this capability in osgEarth. 
 -->
 
-<map name="JPL" type="geocentric">
+<map name="JPL" type="geocentric" version="2">
   
    <!--Decrease the min_tile_range_factor so tiles don't come in so early-->
    <min_tile_range_factor>5</min_tile_range_factor>

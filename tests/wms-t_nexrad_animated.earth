@@ -4,7 +4,7 @@ osgEarth Sample
 US NEXRAD 45 minute radar returns overlaid on imagery.
 -->
 
-<map name="WMS Radar returns" type="geocentric">   
+<map name="WMS Radar returns" type="geocentric" version="2">   
      
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>

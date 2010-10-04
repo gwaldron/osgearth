@@ -1,4 +1,4 @@
-<map name="map">
+<map name="map" version="2">
 
     <options>
         <cache type="sqlite3">

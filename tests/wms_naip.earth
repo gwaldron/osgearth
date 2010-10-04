@@ -3,7 +3,7 @@ osgEarth Sample.
 Access to the USGS Seamless WMS Server - NAIP Dataset
 -->
 <map>  
-  <image name="naip" driver="wms">
+  <image name="naip" driver="wms" version="2">
     <url>http://isse.cr.usgs.gov/arcgis/services/Combined/USGS_EDC_Ortho_NAIP/MapServer/WMSServer?transparent=true</url>
     <srs>EPSG:4326</srs>
 	<tile_size>256</tile_size>

@@ -16,22 +16,19 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#include <osgEarth/MapNode>
+#include "EarthFileSerializer"
 #include <osgEarth/Map>
-#include <osgEarth/EarthFile>
+#include <osgEarth/MapNode>
 #include <osgEarth/Registry>
+#include <osgEarth/XmlUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <string>
-#include <stdlib.h>
-#include <algorithm>
-#include <map>
 
 using namespace osgEarth;
 
-#define TO_LOWER( S ) std::transform( S.begin(), S.end(), S.begin(), ::tolower )
+#define LC "[ReaderWriterEarth] "
 
 class ReaderWriterEarth : public osgDB::ReaderWriter
 {
@@ -45,8 +42,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         
         virtual bool acceptsExtension(const std::string& extension) const
         {
-            return (osgDB::equalCaseInsensitive( extension, "earth" ) ||
-                    osgDB::equalCaseInsensitive( extension, "earth_tile" ));
+            return osgDB::equalCaseInsensitive( extension, "earth" );
         }
 
         virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -62,10 +58,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 return ReadResult::FILE_NOT_HANDLED;
             }
 
-            //See if the filename starts with server: and strip it off.  This will trick OSG into passing in the filename to our plugin
-            //instead of using the CURL plugin if the filename contains a URL.  So, if you want to read a URL, you can use the following format
-            //osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be necessary for the first level as the other files will have
-            //a tilekey prepended to them.
+            // See if the filename starts with server: and strip it off.  This will trick OSG into
+            // passing in the filename to our plugin instead of using the CURL plugin if the filename
+            // contains a URL.  So, if you want to read a URL, you can use the following format
+            // osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be
+            // necessary for the first level as the other files will have a tilekey prepended to them.
             if ((file_name.length() > 7) && (file_name.substr(0, 7) == "server:"))
             {
                 return readNode(file_name.substr(7), options);
@@ -73,112 +70,54 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             osg::Node* node = 0;
 
-            //Reading a earth file defintion
-            if (ext == "earth")
+            if ( file_name == "__globe.earth" )
             {
-                EarthFile earthFile;
-
-                bool success = true;
-                
-                if ( file_name == "__globe.earth" )
-                {
-                    MapOptions options;
-                    options.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC;
-                    earthFile.setMap( new Map(options) );
-                }
-                else if ( file_name == "__flat.earth" )
-                {
-                    MapOptions options;
-                    options.coordSysType() = MapOptions::CSTYPE_PROJECTED;
-                    earthFile.setMap( new Map(options) );
-                }
-                else if ( file_name == "__cube.earth" )
-                {
-                    MapOptions options;
-                    options.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC_CUBE;
-                    earthFile.setMap( new Map(options) );
-                }
-                else
-                {
-                    success = earthFile.readXML( file_name );
-                }
-
-                if ( success )
-                {
-                    MapNodeOptions mapOptions = earthFile.getMapNodeOptions();
-
-                    // check is an engine properties object was supplied in the Options structure. If so,
-                    // merge it in. Note that the properties will override those in the earth file.
-                    if ( options )
-                    {
-                        const MapNodeOptions* userOptions = static_cast<const MapNodeOptions*>( options->getPluginData( MapNodeOptions::OPTIONS_TAG ) );
-                        if ( userOptions )
-                        {
-                            mapOptions.merge( *userOptions );
-                        }
-                    }
-
-                    osg::ref_ptr<MapNode> mapNode = new MapNode( earthFile.getMap(), mapOptions );
-
-                    //Create the root node for the scene
-                    node = mapNode.release();
-                }
-                else
-                {
-                    return ReadResult::FILE_NOT_FOUND;
-                }                
+                return ReadResult( new MapNode() );
             }
 
-#if 0
-            // Reading a specific tile from an existing TileBuilder
-            else if (ext == "earth_tile")
+            else if ( file_name == "__cube.earth" )
             {
-                std::string tileDef = osgDB::getNameLessExtension(file_name);
-                //OE_NOTICE << "Reading Tile " << tileDef << std::endl;
+                MapOptions options;
+                options.coordSysType() = MapOptions::CSTYPE_GEOCENTRIC_CUBE;
+                return ReadResult( new MapNode( new Map(options) ) );
+            }
 
-                //The tile definition is formatted FACE_LOD_X_Y.MAPENGINE_ID
-
-                unsigned int lod, x, y, id;
-                sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &id);
-
-                //Get the Map from the cache.  It is important that we use a ref_ptr here
-                //to prevent the Map from being deleted while it is is still in use.
-                //osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
-                osg::ref_ptr<MapNode> mapNode = MapNode::getMapNodeById( id );
-
-                if ( mapNode.valid() )
+            else
+            {
+                std::ifstream in( file_name.c_str() );
+                osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
+                if ( doc.valid() )
                 {
-                    const Profile* profile = mapNode->getMap()->getProfile();
-                    osg::ref_ptr<TileKey> key = new TileKey( lod, x, y, profile );
+                    Config docConf = doc->getConfig();
 
-                    if ( ext == "earth_tile" )
+                    // support both "map" and "earth" tag names at the top level
+                    Config conf;
+                    if ( docConf.hasChild( "map" ) )
+                        conf = docConf.child( "map" );
+                    else if ( docConf.hasChild( "earth" ) )
+                        conf = docConf.child( "earth" );
+
+                    MapNode* mapNode =0L;
+                    if ( !conf.empty() )
                     {
-                        bool populateLayers = mapNode->getEngine()->getEngineProperties().loadingPolicy()->mode() 
-                            == LoadingPolicy::MODE_STANDARD;
-
-                        node = mapNode->getEngine()->createSubTiles(
-                            mapNode->getMap(),
-                            mapNode->getTerrain(),
-                            key.get(),
-                            populateLayers );
-
-                        //Blacklist the tile if we couldn't load it
-                        if (!node)
+                        if ( conf.value("version") == "2" )
                         {
-                            OE_DEBUG << "Blacklisting " << file_name << std::endl;
-                            osgEarth::Registry::instance()->blacklist(file_name);
+                            OE_INFO << LC << "Detected a version 2.x earth file" << std::endl;
+                            EarthFileSerializer2 ser;
+                            mapNode = ser.deserialize( conf, file_name );
                         }
-
+                        else
+                        {
+                            OE_INFO << LC << "Detected a version 1.x earth file" << std::endl;
+                            EarthFileSerializer1 ser;
+                            mapNode = ser.deserialize( conf, file_name );
+                        }
                     }
-                }
-                else
-                {
-                    OE_NOTICE << "Error:  Could not find Map with id=" << id << std::endl;
+                    return ReadResult(mapNode);
                 }
             }
-#endif
 
-            return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;                     
+            return ReadResult::FILE_NOT_FOUND;
         }
 };
 

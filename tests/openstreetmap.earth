@@ -11,7 +11,7 @@ In this case, we also specify the "google" tms_type, which will
 invert the Y tile index.
 -->
 
-<map name="OpenStreetMap" type="geocentric">
+<map name="OpenStreetMap" type="geocentric" version="2">
  
     <image name="OSM on Mapnik Slippy Map" driver="tms">
         <url>http://tile.openstreetmap.org/</url>

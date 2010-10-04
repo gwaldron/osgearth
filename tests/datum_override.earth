@@ -12,7 +12,7 @@ See this site for SRS codes and PROJ4 initialization strings:
 http://spatialreference.org
 -->
 
-<map name="datum override example" type="geocentric">
+<map name="datum override example" type="geocentric" version="2">
     
     <options>
         <lighting>false</lighting>

@@ -15,7 +15,7 @@ A couple notes:
  
 -->
 
-<map name="imagery and dem sample" type="geocentric">
+<map name="imagery and dem sample" type="geocentric" version="2">
 
     <image name="BMNG with Bathymetry" driver="tileservice">
         <url>http://s0.tileservice.worldwindcentral.com/getTile?</url>

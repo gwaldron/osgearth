@@ -1,4 +1,4 @@
-<map name="JPL" type="geocentric">   
+<map name="JPL" type="geocentric" version="2">   
    <image name="daily_planet" driver="wms">
        <url>http://onearth.jpl.nasa.gov/wms.cgi</url>
        <layers>global_mosaic</layers>

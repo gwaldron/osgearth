@@ -4,7 +4,7 @@ osgEarth Sample
 This shows how to mix data from a Mercator and a Geodetic source on the same
 geodetic globe.
 -->
-<map name="mercator data on a geodetic globe" type="round">
+<map name="mercator data on a geodetic globe" type="round" version="2">
    
     <image name="mercator-imagery" driver="yahoo">
         <dataset>satellite</dataset>

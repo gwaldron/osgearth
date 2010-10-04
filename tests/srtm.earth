@@ -5,7 +5,7 @@ This sample demonstrates the use of a global SRTM TMS data source for world-wide
 The heightfield is draped with the NASA Blue Marble imagery.
 -->
 
-<map name="srtm sample" type="globe">
+<map name="srtm sample" type="globe" version="2">
 
   <image name="pelican nasa blue marble" driver="tms">
     <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>

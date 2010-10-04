@@ -11,7 +11,7 @@ In this case, we also specify the "google" tms_type, which will
 invert the Y tile index.
 -->
 
-<map name="OpenStreetMap" type="projected">
+<map name="OpenStreetMap" type="projected" version="2">
 
     <options>
         <profile>global-mercator</profile>

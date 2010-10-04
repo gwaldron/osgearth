@@ -70,6 +70,8 @@ EarthFile::getMapNodeOptions() {
 }
 
 #define ELEM_MAP                      "map"
+#define ELEM_EARTH                    "earth"
+#define ELEM_VERSION                  "version"
 #define ATTR_NAME                     "name"
 #define ATTR_CSTYPE                   "type"
 #define ELEM_MAP_OPTIONS              "options"

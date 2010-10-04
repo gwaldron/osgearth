@@ -15,7 +15,7 @@ and greater-than symbols). CDATA "escapes out" of XML parsing within the CDATA
 block.
 -->
 
-<map name="Feature Stencil Demo" type="geocentric">
+<map name="Feature Stencil Demo" type="geocentric" version="2">
     
     <options lighting="false"/>
 

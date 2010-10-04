@@ -3,7 +3,7 @@ osgEarth Sample
 This shows how to label point features with an attribute.
 -->
 
-<map name="Feature Geometry Demo" type="geocentric">
+<map name="Feature Geometry Demo" type="geocentric" version="2">
     
     <options lighting="false"/>
     

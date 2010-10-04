@@ -384,7 +384,7 @@ EarthFile::writeXML( std::ostream& output )
     if ( !_map.valid() )
         return false;
 
-    Threading::ScopedReadLock lock( _map->getMapDataMutex() );
+    //Threading::ScopedReadLock lock( _map->getMapDataMutex() );
 
     Config conf = getConfig( _map.get(), _mapNodeOptions );
     osg::ref_ptr<XmlDocument> doc = new XmlDocument( conf );

@@ -257,7 +257,7 @@ namespace osgEarth
          * TODO: re-evaluate whether exposing this is really necessary or wise; alteratives
          * would include const access to the Map from the engine
          */
-        Threading::ReadWriteMutex& getMapDataMutex();
+        //Threading::ReadWriteMutex& getMapDataMutex();
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
@@ -372,6 +372,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapFrame
     {
     public:
+        /**
+         * Constructs a new map frame.
+         */
         MapFrame( Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
 
         /**
@@ -386,26 +389,35 @@ namespace osgEarth
          */
         MapFrame( const MapFrame& frame, const std::string& name ="" );
 
+        /**
+         * Synchronizes this frame with the source map model (only if necessary).
+         */
         void sync();
 
+        /** Accesses the profile/rendering info about the source map. */
         const MapInfo& getMapInfo() const { return _mapInfo; }
+
+        /** Convenience method to access the map's profile */
         const Profile* getProfile() const { return _mapInfo.getProfile(); }
 
-        ImageLayerVector& imageLayers() { return _imageLayers; }
+        /** The image layer stack snapshot */
         const ImageLayerVector& imageLayers() const { return _imageLayers; }
 
-        ElevationLayerVector& elevationLayers() { return _elevationLayers; }
+        /** The elevation layer stack snapshot */
         const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
 
-        ModelLayerVector& modelLayers() { return _modelLayers; }
+        /** The model layer set snapshot */
         const ModelLayerVector& modelLayers() const { return _modelLayers; }
 
+        /** Gets the index of the layer in the layer stack snapshot. */
         int indexOf( ImageLayer* layer ) const;
         int indexOf( ElevationLayer* layer ) const;
         int indexOf( ModelLayer* layer ) const;
 
-        bool isGeocentric() const { return _map->isGeocentric(); }
-
+        /**
+         * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
+         * snapshot in this MapFrame.
+         */
         osg::HeightField* createHeightField(
             const TileKey& key,
             bool fallback,

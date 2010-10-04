@@ -136,7 +136,7 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
 
         // register the layer Controller it with all pre-existing image layers:
         MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::initialize" );
-        for( ImageLayerVector::iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
             i->get()->addCallback( _imageLayerController.get() );
         }

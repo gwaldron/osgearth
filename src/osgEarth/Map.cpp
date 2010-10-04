@@ -34,10 +34,10 @@ _dataModelRevision(0)
     //NOP
 }
 
-Threading::ReadWriteMutex&
-Map::getMapDataMutex() {
-    return _mapDataMutex;
-}
+//Threading::ReadWriteMutex&
+//Map::getMapDataMutex() {
+//    return _mapDataMutex;
+//}
 
 bool
 Map::isGeocentric() const
@@ -62,7 +62,7 @@ Map::getImageLayers( ImageLayerVector& out_list, bool validLayersOnly ) const
 {
     out_list.reserve( _imageLayers.size() );
 
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
     for( ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
         if ( !validLayersOnly || i->get()->getProfile() )
             out_list.push_back( i->get() );
@@ -73,7 +73,7 @@ Map::getImageLayers( ImageLayerVector& out_list, bool validLayersOnly ) const
 int
 Map::getNumImageLayers() const
 {
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
     return _imageLayers.size();
 }
 
@@ -102,7 +102,7 @@ Map::getModelLayers( ModelLayerVector& out_list, bool validLayersOnly ) const
 {
     out_list.reserve( _modelLayers.size() );
 
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
     for( ModelLayerVector::const_iterator i = _modelLayers.begin(); i != _modelLayers.end(); ++i )
         //if ( !validLayersOnly || i->get()->i->get()->getProfile() )
             out_list.push_back( i->get() );
@@ -130,7 +130,7 @@ Map::setName( const std::string& name ) {
 Revision
 Map::getDataModelRevision() const
 {
-    Threading::ScopedReadLock lock( const_cast<Map*>(this)->getMapDataMutex() );
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
     return _dataModelRevision;
 }
 
@@ -203,7 +203,7 @@ Map::addImageLayer( ImageLayer* layer )
 
         // Add the layer to our stack.
         {
-            Threading::ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( _mapDataMutex );
 
             _imageLayers.push_back( layer );
             index = _imageLayers.size() - 1;
@@ -238,7 +238,7 @@ Map::addElevationLayer( ElevationLayer* layer )
 
         // Add the layer to our stack.
         {
-            Threading::ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( _mapDataMutex );
 
             _elevationLayers.push_back( layer );
             index = _elevationLayers.size() - 1;
@@ -262,7 +262,7 @@ Map::removeImageLayer( ImageLayer* layer )
 
     if ( layerToRemove.get() )
     {
-        Threading::ScopedWriteLock lock( getMapDataMutex() );
+        Threading::ScopedWriteLock lock( _mapDataMutex );
         index = 0;
         for( ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); i++, index++ )
         {
@@ -294,7 +294,7 @@ Map::removeElevationLayer( ElevationLayer* layer )
 
     if ( layerToRemove.get() )
     {
-        Threading::ScopedWriteLock lock( getMapDataMutex() );
+        Threading::ScopedWriteLock lock( _mapDataMutex );
         index = 0;
         for( ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); i++, index++ )
         {
@@ -325,7 +325,7 @@ Map::moveImageLayer( ImageLayer* layer, unsigned int newIndex )
 
     if ( layer )
     {
-        Threading::ScopedWriteLock lock( getMapDataMutex() );
+        Threading::ScopedWriteLock lock( _mapDataMutex );
 
         // preserve the layer with a ref:
         osg::ref_ptr<ImageLayer> layerToMove = layer;
@@ -370,7 +370,7 @@ Map::moveElevationLayer( ElevationLayer* layer, unsigned int newIndex )
 
     if ( layer )
     {
-        Threading::ScopedWriteLock lock( getMapDataMutex() );
+        Threading::ScopedWriteLock lock( _mapDataMutex );
 
         // preserve the layer with a ref:
         osg::ref_ptr<ElevationLayer> layerToMove = layer;
@@ -413,7 +413,7 @@ Map::addModelLayer( ModelLayer* layer )
     if ( layer )
     {
         {
-            Threading::ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( _mapDataMutex );
             _modelLayers.push_back( layer );
             ++_dataModelRevision;
         }
@@ -434,7 +434,7 @@ Map::removeModelLayer( ModelLayer* layer )
     if ( layer )
     {
         {
-            Threading::ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( _mapDataMutex );
             for( ModelLayerVector::iterator i = _modelLayers.begin(); i != _modelLayers.end(); ++i )
             {
                 if ( i->get() == layer )
@@ -459,7 +459,7 @@ Map::setTerrainMaskLayer( MaskLayer* layer )
     if ( layer )
     {
         {
-            Threading::ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( _mapDataMutex );
             _terrainMaskLayer = layer;
         }
 
@@ -484,7 +484,7 @@ Map::removeTerrainMaskLayer()
     {
         osg::ref_ptr<MaskLayer> layer = _terrainMaskLayer.get();
         {
-            Threading::ScopedWriteLock lock( getMapDataMutex() );
+            Threading::ScopedWriteLock lock( _mapDataMutex );
             _terrainMaskLayer = 0L;
         }
         
@@ -559,7 +559,7 @@ Map::calculateProfile()
     // At this point, if we don't have a profile we need to search tile sources until we find one.
     if ( !_profile.valid() )
     {
-        Threading::ScopedReadLock lock( getMapDataMutex() );
+        Threading::ScopedReadLock lock( _mapDataMutex );
 
         for( ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end() && !_profile.valid(); i++ )
         {

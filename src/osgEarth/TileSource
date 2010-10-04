@@ -20,6 +20,8 @@
 #ifndef OSGEARTH_TILE_SOURCE_H
 #define OSGEARTH_TILE_SOURCE_H 1
 
+#include <limits.h>
+
 #include <osg/Version>
 
 #include <osgEarth/Common>

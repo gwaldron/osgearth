@@ -22,7 +22,11 @@
 
 using namespace osgEarth;
 
-static Config emptyConfig;
+Config& emptyConfig()
+{
+    static Config _emptyConfig;
+    return _emptyConfig;
+}
 
 bool
 Config::loadXML( std::istream& in )
@@ -40,7 +44,7 @@ Config::child( const std::string& childName ) const
         if ( i->key() == childName )
             return *i;
     }
-    return emptyConfig;
+    return emptyConfig();
 }
 
 void

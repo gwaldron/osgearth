@@ -30,19 +30,25 @@ Geographic::Geographic(Map* map)
       _eModel(new EllipsoidModel)
 {
     setPrecisionFactor(8);
-    const MapLayerList& heightList = _map->getHeightFieldMapLayers();
     {
         int maxLevel = 0;
         Threading::ScopedReadLock lock(_map->getMapDataMutex());
-        for (MapLayerList::const_iterator itr = heightList.begin(),
-                 end = heightList.end();
+        ElevationLayerVector elevations;
+        _map->getElevationLayers(elevations, true);
+        for (ElevationLayerVector::const_iterator itr = elevations.begin(),
+                 end = elevations.end();
              itr != end;
              ++itr)
-            if ((*itr)->maxLevel().isSet()
-                && (*itr)->maxLevel().get() > maxLevel)
-                maxLevel = (*itr)->maxLevel().get();
+        {
+            const TerrainLayerOptions& options
+                = (*itr)->getTerrainLayerOptions();
+            if (options.maxLevel().isSet()
+                && options.maxLevel().get() > maxLevel)
+                maxLevel = options.maxLevel().get();
+        }
         if (maxLevel > 0)
             setMaxLevel(maxLevel);
+
     }
     _hfService = new TaskService("Height Field Service");
     _imageService = new TaskService("Image Service");
@@ -377,23 +383,26 @@ struct ImageRequest : public TaskRequest
         GeoImage gimage;
         Map* map = _gpatchset->getMap();
         Threading::ScopedReadLock lock(map->getMapDataMutex());
+        ImageLayerVector layers;
+        map->getImageLayers(layers, true);
         if (crossesDateLine(_key))
         {
             GeoImageVector gis;
-            for (int child = 0; child < 4; ++child)
+            if (!layers.empty())
             {
-                TileKey subCubeKey = _key.createChildKey(child);
-                if (!map->getImageMapLayers().empty())
-                    gis.push_back(map->getImageMapLayers()[0]
-                                  ->createImage(subCubeKey));
+                for (int child = 0; child < 4; ++child)
+                {
+                    TileKey subCubeKey = _key.createChildKey(child);
+                    gis.push_back(layers[0]->createImage(subCubeKey));
+                }
             }
             if (!gis.empty())
                 gimage = mergeImages(_key.getExtent(), gis);
         }
         else
         {
-            if (!map->getImageMapLayers().empty())
-                gimage = map->getImageMapLayers()[0]->createImage(_key);
+            if (!layers.empty())
+                gimage = layers[0]->createImage(_key);
         }
         _result = gimage.getImage();
     }

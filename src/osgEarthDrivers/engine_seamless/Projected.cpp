@@ -108,17 +108,22 @@ Projected::Projected(Map* map)
     : PatchSet(64), _map(map)
 {
     setPrecisionFactor(8);
-    const MapLayerList& heightList = _map->getHeightFieldMapLayers();
     {
         int maxLevel = 0;
         Threading::ScopedReadLock lock(_map->getMapDataMutex());
-        for (MapLayerList::const_iterator itr = heightList.begin(),
-                 end = heightList.end();
+        ElevationLayerVector elevations;
+        _map->getElevationLayers(elevations, true);
+        for (ElevationLayerVector::const_iterator itr = elevations.begin(),
+                 end = elevations.end();
              itr != end;
              ++itr)
-            if ((*itr)->maxLevel().isSet()
-                && (*itr)->maxLevel().get() > maxLevel)
-                maxLevel = (*itr)->maxLevel().get();
+        {
+            const TerrainLayerOptions& options
+                = (*itr)->getTerrainLayerOptions();
+            if (options.maxLevel().isSet()
+                && options.maxLevel().get() > maxLevel)
+                maxLevel = options.maxLevel().get();
+        }
         if (maxLevel > 0)
             setMaxLevel(maxLevel);
     }
@@ -140,11 +145,16 @@ Transform* Projected::createPatch(const std::string& filename,
     Matrixd mat = Matrixd::translate(centerX, centerY, 0.0);
     transform->setMatrix(mat);
     transform->addChild(patch);
-    ref_ptr<HeightField> hf = _map->createHeightField(key, true,
-                                                      INTERP_BILINEAR);
+    ref_ptr<HeightField> hf;
     GeoImage gimage;
-    if (!_map->getImageMapLayers().empty())
-        gimage = _map->getImageMapLayers()[0]->createImage(key);
+    {
+        Threading::ScopedReadLock lock(_map->getMapDataMutex());
+        hf = _map->createHeightField(key, true, INTERP_BILINEAR);
+        ImageLayerVector layers;
+        _map->getImageLayers(layers, true);
+        if (!layers.empty())
+            gimage = layers[0]->createImage(key);
+    }
     ref_ptr<Patch::Data> data = new Patch::Data;
     int patchDim = _resolution + 1;
     hf = resampleHeightField(hf, patchDim);

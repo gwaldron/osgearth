@@ -31,8 +31,6 @@
 
 #include <osgEarth/Export>
 
-using namespace osgTerrain;
-
 class MultiPassTerrainTechnique : public osgTerrain::TerrainTechnique
 {
 public:
@@ -49,15 +47,15 @@ public:
     virtual void init();
 #endif
     
-    virtual Locator* computeMasterLocator();
+    virtual osgTerrain::Locator* computeMasterLocator();
     
-    virtual osg::Vec3d computeCenterModel(Locator* masterLocator);
+    virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
     
-    virtual void generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel);     
+    virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);     
 
-	virtual osg::Geometry* createGeometryPrototype(Locator* masterLocator, const osg::Vec3d& centerModel);
+	virtual osg::Geometry* createGeometryPrototype(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
 
-	osg::Geode* createPass(unsigned int layerNum, Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
+	osg::Geode* createPass(unsigned int layerNum, osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
 
     virtual void update(osgUtil::UpdateVisitor* nv);
 

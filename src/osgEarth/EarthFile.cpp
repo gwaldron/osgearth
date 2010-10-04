@@ -76,8 +76,6 @@ EarthFile::getMapNodeOptions() {
 #define ELEM_TERRAIN_OPTIONS          "terrain"
 #define ELEM_IMAGE                    "image"
 #define ELEM_HEIGHTFIELD              "heightfield"
-#define ELEM_USE_MERCATOR_LOCATOR     "use_mercator_locator"
-#define ELEM_USE_MERCATOR_FAST_PATH   "use_mercator_fast_path"
 #define ATTR_MIN_LEVEL                "min_level"
 #define ATTR_MAX_LEVEL                "max_level"
 #define ELEM_CACHE                    "cache"
@@ -119,22 +117,35 @@ readMaskLayer( const Config& conf )
     return layer;
 }
 
-static MapLayer*
-readMapLayer( const Config& conf, const Config& additional )
+static ImageLayer*
+readImageLayer( const Config& conf, const Config& additional )
 {
-    // divine layer type
-    MapLayer::Type layerType =
-        conf.key() == ELEM_HEIGHTFIELD ? MapLayer::TYPE_HEIGHTFIELD :
-        MapLayer::TYPE_IMAGE;
-
     Config driverConf = conf;
     driverConf.add( additional.children() );
 
-    MapLayer* layer = new MapLayer( conf.value("name"), layerType, TileSourceOptions(driverConf) );
+    ImageLayerOptions layerOpt( conf );
+    layerOpt.name() = conf.value("name");
+    layerOpt.driver() = TileSourceOptions( conf );
 
-    return layer;
+    return new ImageLayer( layerOpt );
+    //ImageLayer* layer = new ImageLayer( layerOpt ); //conf.value("name"), layerType, TileSourceOptions(driverConf) );
+    //return layer;
 }
 
+static ElevationLayer*
+readElevationLayer( const Config& conf, const Config& additional )
+{
+    Config driverConf = conf;
+    driverConf.add( additional.children() );
+
+    ElevationLayerOptions layerOpt( conf );
+    layerOpt.name() = conf.value("name");
+    layerOpt.driver() = TileSourceOptions( conf );
+
+    return new ElevationLayer( layerOpt );
+    //ImageLayer* layer = new ImageLayer( layerOpt ); //conf.value("name"), layerType, TileSourceOptions(driverConf) );
+    //return layer;
+}
 
 static Config
 writeLayer( ModelLayer* layer, const std::string& typeName ="" )
@@ -222,10 +233,12 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     {
         Config additional;
         additional.add( "default_tile_size", "256" );
-
-        MapLayer* layer = readMapLayer( *i, additional );
+        ImageLayer* layer = readImageLayer( *i, additional );
         if ( layer )
-            map->addMapLayer( layer );
+            map->addImageLayer( layer );
+        //MapLayer* layer = readMapLayer( *i, additional );
+        //if ( layer )
+        //    map->addMapLayer( layer );
     }
 
     ConfigSet heightfields = conf.children( ELEM_HEIGHTFIELD );
@@ -233,10 +246,12 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     {
         Config additional;
         additional.add( "default_tile_size", "16" );
-
-        MapLayer* layer = readMapLayer( *i, additional );
+        ElevationLayer* layer = readElevationLayer( *i, additional );
         if ( layer )
-            map->addMapLayer( layer );
+            map->addElevationLayer( layer );
+        //MapLayer* layer = readMapLayer( *i, additional );
+        //if ( layer )
+        //    map->addMapLayer( layer );
     }
 
     ConfigSet models = conf.children( ELEM_MODEL );
@@ -261,7 +276,6 @@ readMap( const Config& conf, const std::string& referenceURI, EarthFile* earth )
     return success;
 }
 
-
 static Config
 getConfig( Map* map, const MapNodeOptions& ep )
 {
@@ -275,34 +289,23 @@ getConfig( Map* map, const MapNodeOptions& ep )
     optionsConf.merge( ep.getConfig() );
     conf.add( optionsConf );
 
-    ////Write the coordinate system
-    //std::string cs;
-    //if (map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC) cs = "geocentric";
-    //else if (map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED) cs = "projected";
-    //else if ( map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC_CUBE) cs = "cube";
-    //else
-    //{
-    //    OE_NOTICE << "[osgEarth::EarthFile] Unhandled CoordinateSystemType " << std::endl;
-    //    return Config();
-    //}
-    //conf.attr( ATTR_CSTYPE ) = cs;
+    //get access to the map's data model:
+    MapFrame mapf( map, Map::ENTIRE_MODEL, "EarthFile writer" );
 
     //Write all the image sources
-    for( MapLayerList::const_iterator i = map->getImageMapLayers().begin(); i != map->getImageMapLayers().end(); i++ )
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
-        conf.add( i->get()->getConfig() );
-        //conf.add( writeLayer( i->get() ) );
+        conf.add( i->get()->getImageLayerOptions().getConfig() );
     }
 
     //Write all the heightfield sources
-    for (MapLayerList::const_iterator i = map->getHeightFieldMapLayers().begin(); i != map->getHeightFieldMapLayers().end(); i++ )
+    for ( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); i++ )
     {
-        conf.add( i->get()->getConfig() );
-        //conf.add( writeLayer( i->get() ) );
+        conf.add( i->get()->getElevationLayerOptions().getConfig() );
     }
 
     //Write all the model layers
-    for(ModelLayerList::const_iterator i = map->getModelLayers().begin(); i != map->getModelLayers().end(); i++ )
+    for(ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); i++ )
     {
         conf.add( writeLayer( i->get() ) );
     }
@@ -312,19 +315,6 @@ getConfig( Map* map, const MapNodeOptions& ep )
     {
         conf.add( writeLayer( map->getTerrainMaskLayer() ) );
     }
-
-    //NOTE: this is now in MapOptions
-	//TODO:  Get this from the getCache call itself, not a CacheConfig.
-    //if ( map->cacheConfig().isSet() )
-    //{
-    //    conf.add( map->cacheConfig()->getConfig( ELEM_CACHE ) );
-    //}
-
-    //NOTE: moved to MapNodeOptions
-    //if ( map->profileOptions().isSet() )
-    //{
-    //    conf.add( map->profileOptions()->getConfig() ); // ELEM_PROFILE ) );
-    //}
 
     return conf;
 }

@@ -63,8 +63,8 @@ int main(int argc, char** argv)
   MapNode* mapNode = findTopMostNodeOfType<MapNode>(root.get());
   if (mapNode)
   {
-      MapLayerList imageLayers;
-      mapNode->getMap()->getImageMapLayers( imageLayers );
+      ImageLayerVector imageLayers;
+      mapNode->getMap()->getImageLayers( imageLayers );
 
 	  //Setup the ElevationFadeCallback
 	  ElevationFadeCallback* callback = new ElevationFadeCallback();

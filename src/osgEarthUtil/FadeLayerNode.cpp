@@ -151,7 +151,7 @@ FadeLayerNode::FadeLayerNode( Map* map, const MapNodeOptions& mapOptions) :
 _map( map ),
 _mapNodeOptions(mapOptions)
 {
-    if (_mapNodeOptions.getTerrainOptions().layeringTechnique() == TerrainOptions::LAYERING_MULTITEXTURE)
+    if (_mapNodeOptions.getTerrainOptions().layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE)
 	{
 		osg::Program* program = new osg::Program;
 		_vertShader = new osg::Shader( osg::Shader::VERTEX, vert_source );

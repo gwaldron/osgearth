@@ -22,7 +22,6 @@
 #include <osgTerrain/GeometryTechnique>
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
-#include <osgEarth/MapLayer>
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>
 
@@ -64,8 +63,9 @@ using namespace OpenThreads;
 
 // --------------------------------------------------------------------------
 
-CompositingTerrainTechnique::CompositingTerrainTechnique( Locator* masterLocator ) :
-_masterLocator( masterLocator ),
+CompositingTerrainTechnique::CompositingTerrainTechnique( TextureCompositor* compositor ) :
+_texCompositor( compositor ),
+//_masterLocator( masterLocator ),
 _currentReadOnlyBuffer(1),
 _currentWriteBuffer(0),
 _verticalScaleOverride(1.0f),
@@ -77,7 +77,8 @@ _attachedProgram(false)
     this->setThreadSafeRefUnref(true);
 
     // create a texture compositor.
-    _texCompositor = new TextureCompositor();
+    if ( !_texCompositor.valid() )
+        _texCompositor = new TextureCompositor();
 
     // do this here so that we can use the program in the prototype
     _compositeProgram = _texCompositor->getProgram();
@@ -508,9 +509,47 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
     surface->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
     // allocate and assign texture coordinates
-    osg::Vec2Array* surfaceTexCoords = new osg::Vec2Array();
-    surfaceTexCoords->reserve( numVerticesInSurface );
-    surface->setTexCoordArray( 0, surfaceTexCoords );
+    osg::Vec2Array* unifiedSurfaceTexCoords = 0L;
+
+    // used for per-layer texture coordinates:
+    std::vector< osg::ref_ptr<osg::Vec2Array> > layerTexCoords;
+    std::vector< osg::ref_ptr<osgTerrain::Locator> > layerLocators;
+    
+    if ( _texCompositor->requiresUnitTextureSpace() )
+    {
+        // for a unified unit texture space, just make a single texture coordinate array.
+        unifiedSurfaceTexCoords = new osg::Vec2Array();
+        unifiedSurfaceTexCoords->reserve( numVerticesInSurface );
+        surface->setTexCoordArray( 0, unifiedSurfaceTexCoords );
+    }
+    else
+    {
+        // for a multitexture space, make a tex coord array per layer, each with its own locator.
+        int numColorLayers = _terrainTile->getNumColorLayers();
+
+        layerTexCoords.reserve( numColorLayers );
+        layerLocators.reserve( numColorLayers );
+
+        for( int i=0; i<numColorLayers; ++i )
+        {
+            osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer( i );
+            if (colorLayer)
+            {
+                osgTerrain::Locator* locator = colorLayer->getLocator();
+                if ( !isCube && locator && locator->getCoordinateSystemType() == Locator::GEOCENTRIC )
+                {
+                    GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
+                    if ( geo )
+                        locator = geo->getGeographicFromGeocentric();
+                }
+                layerLocators.push_back( locator ? locator : masterTextureLocator.get() );
+                osg::Vec2Array* texCoords = new osg::Vec2Array();
+                texCoords->reserve( numVerticesInSurface );
+                layerTexCoords.push_back( texCoords );
+                surface->setTexCoordArray( layerTexCoords.size()-1, texCoords );
+            }
+        }
+    }
 
     // skirt texture coordinates, if applicable:
     osg::Vec2Array* skirtTexCoords = 0L;
@@ -575,7 +614,30 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
 
                 (*surfaceVerts).push_back(model - centerModel);
 
-                (*surfaceTexCoords).push_back( osg::Vec2( ndc.x(), ndc.y() ) );
+                if ( _texCompositor->requiresUnitTextureSpace() )
+                {
+                    // the unified unit texture space requires a single, untransformed unit coord [0..1]
+                    (*unifiedSurfaceTexCoords).push_back( osg::Vec2( ndc.x(), ndc.y() ) );
+                }
+                else
+                {
+                    // the separate texture space requires separate transformed texcoords for each layer.
+                    for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
+                    {
+                        osg::Vec2Array* texCoords = layerTexCoords[layerNum].get();
+                        osgTerrain::Locator* layerLocator = layerLocators[layerNum].get();
+                        if ( layerLocator != masterLocator )
+                        {
+                            osg::Vec3d color_ndc;
+                            osgTerrain::Locator::convertLocalCoordBetween( *masterTextureLocator.get(), ndc, *layerLocator, color_ndc );
+                            texCoords->push_back( osg::Vec2(color_ndc.x(), color_ndc.y()) );
+                        }
+                        else
+                        {
+                            texCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
+                        }
+                    }
+                }
 
                 if (elevations.valid())
                 {
@@ -632,8 +694,20 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             int orig_i = indices[c];
             skirtVerts->push_back( (*surfaceVerts)[orig_i] );
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
+
+            if ( _texCompositor->requiresUnitTextureSpace() )
+            {
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+            }
+            else
+            {
+                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
+                {
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                }
+            }
         }
 
         // right:
@@ -642,8 +716,20 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             int orig_i = indices[r*numColumns+(numColumns-1)];
             skirtVerts->push_back( (*surfaceVerts)[orig_i] );
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
+
+            if ( _texCompositor->requiresUnitTextureSpace() )
+            {
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+            }
+            else
+            {
+                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
+                {
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                }
+            }
         }
 
         // top:
@@ -652,8 +738,20 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             int orig_i = indices[(numRows-1)*numColumns+c];
             skirtVerts->push_back( (*surfaceVerts)[orig_i] );
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
+
+            if ( _texCompositor->requiresUnitTextureSpace() )
+            {
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+            }
+            else
+            {
+                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
+                {
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                }
+            }
         }
 
         // left:
@@ -662,8 +760,20 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             int orig_i = indices[r*numColumns];
             skirtVerts->push_back( (*surfaceVerts)[orig_i] );
             skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
-            skirtTexCoords->push_back( (*surfaceTexCoords)[orig_i] );
+
+            if ( _texCompositor->requiresUnitTextureSpace() )
+            {
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+            }
+            else
+            {
+                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
+                {
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
+                }
+            }
         }
 
         skirt->setVertexArray( skirtVerts );

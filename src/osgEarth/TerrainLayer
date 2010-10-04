@@ -1,0 +1,281 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TERRAIN_LAYER_H
+#define OSGEARTH_TERRAIN_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/TileSource>
+#include <osgEarth/Profile>
+#include <osgEarth/Caching>
+#include <osgEarth/ThreadingUtils>
+
+namespace osgEarth
+{
+    /**
+     * Initialization (and serializable) options for a terrain layer.
+     */
+    class OSGEARTH_EXPORT TerrainLayerOptions : public ConfigOptions
+    {
+    public:
+        //TerrainLayerOptions( const ConfigOptions& options =ConfigOptions() ) :
+        //  ConfigOptions( options ),
+        //  _enabled( true ),
+        //  _exactCropping( false ),
+        //  _reprojectedTileSize( 256 ),
+        //  _cacheEnabled( true ),
+        //  _cacheOnly( false ),
+        //  _loadingWeight( 1.0f ),
+        //  _minLevel( 0 ),
+        //  _maxLevel( 99 )
+        //{
+        //    fromConfig( _conf ); 
+        //}
+
+        TerrainLayerOptions( const ConfigOptions& options =ConfigOptions() );
+        TerrainLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
+
+        /**
+         * The readable name of the layer.
+         */
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
+
+        /**
+         * Gets the explicit profile setup for this map layer. By default, the layer will 
+         * try to automatically determine the Profile from the tile source. This property
+         * sets it explicitly instead.
+         */
+        optional<ProfileOptions>& profile() { return _profile; }
+        const optional<ProfileOptions>& profile() const { return _profile; }
+
+        /**
+         * Options for the underlyint tile source driver.
+         */
+        //optional<TileSourceOptions>& tileSource() { return _tileSource; }
+        //const optional<TileSourceOptions>& tileSource() const { return _tileSource; }
+        optional<TileSourceOptions>& driver() { return _driver; }
+        const optional<TileSourceOptions>& driver() const { return _driver; }
+
+        /**
+         * Gets or sets the minimum level of detail for which this layer should generate data.
+         */
+        optional<int>& minLevel() { return _minLevel; }
+        const optional<int>& minLevel() const { return _minLevel; }
+
+        /**
+         * The maximum level of detail for which this layer should generate data.
+         */
+        optional<int>& maxLevel() { return _maxLevel; }
+        const optional<int>& maxLevel() const { return _maxLevel; }
+
+		/**
+		 * Whether to render this layer with the map.
+		 */        
+        const optional<bool>& enabled() const { return _enabled; }
+        void setEnabled( bool enabled );
+
+		/**
+		 * Whether to use exact cropping if image cropping is necessary
+		 */
+        optional<bool>& exactCropping() { return _exactCropping; }
+        const optional<bool>& exactCropping() const { return _exactCropping; }
+
+		/**
+		 * The desired tile size to reproject imagery to if necessary.
+		 */
+        optional<unsigned int> reprojectedTileSize() { return _reprojectedTileSize; }
+        const optional<unsigned int> reprojectedTileSize() const { return _reprojectedTileSize; }
+
+		/**
+		 * The format that this MapLayer should use when caching.
+		 */
+        optional<std::string>& cacheFormat() { return _cacheFormat; }
+        const optional<std::string>& cacheFormat() const { return _cacheFormat; }
+
+        /**
+         * Whether to cache this layer or not.
+         */
+        optional<bool>& cacheEnabled() { return _cacheEnabled; }
+        const optional<bool>& cacheEnabled() const { return _cacheEnabled; }
+
+		/**
+		 * Whether to try to run this MapLayer strictly from the cache only.
+		 */
+        optional<bool>& cacheOnly() { return _cacheOnly; }
+        const optional<bool>& cacheOnly() const { return _cacheOnly; }
+        
+        /**
+         * The loading weight of this MapLayer (for threaded loading policies).
+         */
+        optional<float>& loadingWeight() { return _loadingWeight; }
+        const optional<float>& loadingWeight() const { return _loadingWeight; }
+
+        /**
+         * The ratio used to expand the extent of a tile when the layer
+         * needs to be mosaiced to projected.  This can be used to increase the
+         * number of tiles grabbed to ensure that enough data is grabbed to
+         * overlap the incoming tile.
+         */
+        optional<double>& edgeBufferRatio() { return _edgeBufferRatio;}
+        const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio;}
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    private:
+        void fromConfig( const Config& conf );
+        void setDefaults();
+       
+        std::string _name;
+        optional<ProfileOptions> _profile;
+        optional<TileSourceOptions> _driver;
+        optional<int> _minLevel;
+        optional<int> _maxLevel;
+		optional<std::string> _cacheFormat;
+        optional<bool> _cacheEnabled;
+		optional<bool> _cacheOnly;
+        optional<float> _loadingWeight;
+        optional<bool> _exactCropping;
+		optional<bool> _enabled;
+		optional<unsigned int> _reprojectedTileSize;
+        optional<double> _edgeBufferRatio;
+    };
+
+    /**
+     * Runtime property notification callback for TerrainLayers.
+     */
+    struct TerrainLayerCallback : public osg::Referenced
+    {
+        virtual void onEnabledChanged( class TerrainLayer* layer ) { }
+    };
+
+    typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer);
+
+
+    class OSGEARTH_EXPORT TerrainLayer : public osg::Referenced
+    {
+    protected:
+        TerrainLayer();
+        
+        TerrainLayer( TileSource* tileSource );
+
+    public:
+
+        virtual const TerrainLayerOptions& getTerrainLayerOptions() const =0;
+
+        void setEnabled( bool value );
+        bool getEnabled() const { return _actualEnabled; }
+
+        /**
+         * Gets the unique ID of this map layer
+         */
+        unsigned int getId() const { return _id; }
+
+        /**
+         * Gets the readable name of the map layer.
+         */
+        const std::string& getName() const { 
+            return getTerrainLayerOptions().name(); }
+
+		/**
+		 * Gets the profile of this MapLayer
+		 */
+		const Profile* getProfile() const;
+
+        /**
+         * Gets the underlying TileSource engine that serves this map layer. Use with caution.
+         */
+        TileSource* getTileSource() const;
+
+		/**
+		 * Gets the tile size of the this MapLayer
+		 */
+        unsigned int getTileSize() const { return _tileSize; }
+
+		/**
+		 * Gets the maximum data level of this MapLayer
+		 */
+		unsigned int getMaxDataLevel() const;
+
+        const std::string& getCacheFormat() const {
+            return _actualCacheFormat; }
+
+    public: // methods
+
+		/**
+		 * Whether the given key is valid for this layer
+		 */
+		bool isKeyValid(const TileKey& key) const;
+
+		/**
+		 * Gets the Cache to be used on this MapLayer.
+		 */
+        Cache* getCache() const { return _cache.get(); }
+
+		/**
+		 * Sets the cache to be used on this MapLayer
+         * TODO: is it legal to set this at any time?
+		 */
+		void setCache( Cache* cache );
+
+    protected:
+
+		virtual void initTileSource();
+
+        virtual std::string suggestCacheFormat() const;
+
+    protected:
+
+        // these are called "actual" because they override the corresponding
+        // init settings found in the TerrainLayerOptions.
+        bool         _actualEnabled;
+        std::string  _actualCacheFormat;
+        bool         _actualCacheOnly;
+        
+        osg::ref_ptr<TileSource> _tileSource;
+		osg::ref_ptr<Cache>      _cache;
+
+		osg::ref_ptr< const Profile > _profile;
+        osg::ref_ptr< const Profile > _cacheProfile;
+
+        optional<bool> _overrideCacheOnly;
+
+    private:
+        unsigned int _id;
+        std::string _name;
+        bool _cacheOnlyEnv;
+		unsigned int _tileSize;        
+        std::string _referenceURI;
+        OpenThreads::Mutex _initTileSourceMutex;
+
+        void init();
+        virtual void fireCallback( TerrainLayerCallbackMethodPtr method ) =0;
+
+        // methods accesible by Map:
+        friend class Map;
+        void setReferenceURI( const std::string& uri );
+        void setCacheOnly( bool value );
+    };
+
+} // namespace TerrainLayer
+
+#endif // OSGEARTH_TERRAIN_LAYER_H

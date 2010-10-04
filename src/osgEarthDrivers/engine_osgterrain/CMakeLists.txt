@@ -5,7 +5,6 @@ SET(TARGET_SRC
     CompositingTerrainTechnique.cpp
     CustomTerrain.cpp
     MultiPassTerrainTechnique.cpp
-    MultiTextureTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
     Plugin.cpp
@@ -19,11 +18,11 @@ SET(TARGET_H
     CustomTerrainTechnique
     FileLocationCallback
     MultiPassTerrainTechnique
-    MultiTextureTerrainTechnique
     OSGTerrainEngineNode
     OSGTerrainOptions
     OSGTileFactory
     TerrainTileEdgeNormalizerUpdateCallback
+    TransparentLayer
 )
 
 SETUP_PLUGIN(osgearth_engine_osgterrain)

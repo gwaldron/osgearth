@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     // to load a local GeoTIFF file:
     GDALOptions basemapOpt;
     basemapOpt.url() = "../data/world.tif";
-    map->addMapLayer( new ImageMapLayer( "basemap", basemapOpt ) );
+    map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
     // Next we add a feature layer. First configure a feature driver to 
     // load the vectors from a shapefile:
@@ -79,7 +79,7 @@ int main(int argc, char** argv)
     worldOpt.featureOptions() = featureOpt;
     worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
     worldOpt.styles()->addStyle( style );
-    map->addMapLayer( new ImageMapLayer("world", worldOpt) );
+    map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNode* mapNode = new MapNode( map );

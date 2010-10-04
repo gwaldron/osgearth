@@ -70,7 +70,7 @@ _minTileRangeFactor( 6.0 ),
 _normalizeEdges( false ),
 _combineLayers( true ),
 _maxLOD( 23 ),
-_layeringTechnique( LAYERING_MULTITEXTURE ),
+_layeringTechnique( LAYERING_COMPOSITE ),
 _enableLighting( false ),
 _elevationInterpolation( INTERP_BILINEAR )
 {
@@ -93,7 +93,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "lighting", _enableLighting );
 
     conf.updateIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
-    conf.updateIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
+    //conf.updateIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
     conf.updateIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
 
     conf.updateIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
@@ -117,7 +117,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "lighting", _enableLighting );
 
     conf.getIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
-    conf.getIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
+    //conf.getIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
     conf.getIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
 
     conf.getIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);

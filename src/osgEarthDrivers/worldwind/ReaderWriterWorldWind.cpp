@@ -52,10 +52,10 @@ class WorldWindSource : public TileSource
     int _maxLOD;
     std::string _worldwind_cache;
 public:
-    WorldWindSource( const PluginOptions* options ) : TileSource( options )
+    WorldWindSource( const TileSourceOptions& options ) : TileSource( options )
     {
-        const Config& conf = options->config();
-        _maxLOD = options->config().value( "max_lod", 11 );
+        const Config& conf = options.getConfig();
+        _maxLOD = options.getConfig().value( "max_lod", 11 );
 
         _worldwind_cache = conf.value<std::string>( "worldwind_cache", "" );
 
@@ -93,7 +93,7 @@ public:
     }
 
 public:
-    osg::Image* createImage( const TileKey* key ,
+    osg::Image* createImage( const TileKey& key ,
         ProgressCallback* progress)
     {
         //NOP
@@ -101,10 +101,10 @@ public:
     }
 
 
-    osg::HeightField* createHeightField( const TileKey* key,
+    osg::HeightField* createHeightField( const TileKey& key,
         ProgressCallback* progress)
     {
-        if ( _maxLOD <= key->getLevelOfDetail()) return NULL;
+        if ( _maxLOD <= key.getLevelOfDetail()) return NULL;
 
         osg::HeightField *hf = NULL;
         std::string cachefilepath = _worldwind_cache + "/" + createCachePath(key);
@@ -140,7 +140,7 @@ public:
             std::string URI = createURI(key);
 
             OE_DEBUG << "Requesting " << URI << std::endl;
-            out_response = HTTPClient::get( URI, getOptions(), progress );
+            out_response = HTTPClient::get( URI, 0L, progress );
 
             if ( !out_response.isOK() )
             {
@@ -243,12 +243,12 @@ public:
         return hf;
     }
 
-    std::string createCachePath( const TileKey* key ) const
+    std::string createCachePath( const TileKey& key ) const
     {
         unsigned int x, y;
-        key->getTileXY(x, y);
+        key.getTileXY(x, y);
 
-        unsigned int lod = key->getLevelOfDetail();
+        unsigned int lod = key.getLevelOfDetail();
 
         std::stringstream buf;
         buf << "" << lod
@@ -258,12 +258,12 @@ public:
         return bufStr;
     }
 
-    std::string createCacheName( const TileKey* key ) const
+    std::string createCacheName( const TileKey& key ) const
     {
         unsigned int x, y;
-        key->getTileXY(x, y);
+        key.getTileXY(x, y);
 
-        unsigned int lod = key->getLevelOfDetail();
+        unsigned int lod = key.getLevelOfDetail();
 
         // flip the y based on level
         int flippedy = ((9 * powf((int)2,(int)lod)) - 1) - y;
@@ -277,12 +277,12 @@ public:
         return bufStr;
     }
 
-    std::string createURI( const TileKey* key ) const
+    std::string createURI( const TileKey& key ) const
     {
         unsigned int x, y;
-        key->getTileXY(x, y);
+        key.getTileXY(x, y);
 
-        unsigned int lod = key->getLevelOfDetail();
+        unsigned int lod = key.getLevelOfDetail();
 
         // flip the y based on level
         int flippedy = ((9 * powf((int)2,(int)lod)) - 1) - y;
@@ -311,7 +311,7 @@ private:
 };
 
 
-class ReaderWriterWorldWind : public osgDB::ReaderWriter
+class ReaderWriterWorldWind : public TileSourceDriver
 {
 public:
     ReaderWriterWorldWind() {}
@@ -334,7 +334,7 @@ public:
             return ReadResult::FILE_NOT_HANDLED;
         }
 
-        return new WorldWindSource( static_cast<const PluginOptions*>(opt) );
+        return new WorldWindSource( getTileSourceOptions(opt) );
     }
 };
 

@@ -1,0 +1,117 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_ELEVATION_TERRAIN_LAYER_H
+#define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/Caching>
+#include <osgEarth/Profile>
+#include <osgEarth/TileSource>
+#include <osgEarth/TerrainLayer>
+
+namespace osgEarth
+{
+    /**
+     * Initialization and serialization options for an elevation layer.
+     */
+    class OSGEARTH_EXPORT ElevationLayerOptions : public TerrainLayerOptions
+    {
+    public:
+        ElevationLayerOptions( const ConfigOptions& options =ConfigOptions() );
+
+        ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+        
+    private:
+        void fromConfig( const Config& conf );            
+        void setDefaults();
+    };
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Callback for receiving notification of property changes on an ElevationLayer.
+     */
+    struct ElevationLayerCallback : public TerrainLayerCallback
+    {
+        //TODO
+    };
+
+    typedef void (ElevationLayerCallback::*ElevationLayerCallbackMethodPtr)(class ElevationLayer* layer);
+
+    typedef std::list< osg::ref_ptr<ElevationLayerCallback> > ElevationLayerCallbackList;
+
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
+    {
+    public:
+        ElevationLayer( const ElevationLayerOptions& options );
+
+        ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions );
+
+        ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
+
+        const ElevationLayerOptions& getElevationLayerOptions() const { return _options; }
+        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
+
+        /** Adds a property notification callback to this layer */
+        void addCallback( ElevationLayerCallback* cb );
+
+        /** Removes a property notification callback from this layer */
+        void removeCallback( ElevationLayerCallback* cb );
+
+    public: // properties
+
+
+    public: // methods
+
+        /**
+         * Creates a GeoHeightField for this MapLayer.
+         * The returned HeightField will always match the geospatial extents of the incoming TileKey.
+         */
+        osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress = 0);
+
+    protected:
+        
+		virtual GeoHeightField createGeoHeightField( const TileKey& key, ProgressCallback* progress);
+        
+        virtual std::string suggestCacheFormat() const;
+
+    private:
+        ElevationLayerOptions _options;
+
+        ElevationLayerCallbackList _callbacks;
+        virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
+        virtual void fireCallback( ElevationLayerCallbackMethodPtr method );
+
+        void init();
+    };
+
+    typedef std::vector< osg::ref_ptr<ElevationLayer> > ElevationLayerVector;
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_ELEVATION_TERRAIN_LAYER_H

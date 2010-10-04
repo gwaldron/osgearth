@@ -25,8 +25,8 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Config
     Cube
-    DriverOptions
     EarthFile
+    ElevationLayer
     Export
     EGM
     FileUtils
@@ -35,12 +35,12 @@ SET(LIB_PUBLIC_HEADERS
     HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
+    ImageLayer
     ImageMosaic
     ImageUtils
     JsonUtils
     Locators
     Map
-    MapLayer
     MapNode
     MapNodeOptions
     MapOptions
@@ -56,6 +56,7 @@ SET(LIB_PUBLIC_HEADERS
     SpatialReference
     StringUtils
     TaskService
+    TerrainLayer
     TerrainOptions
     TerrainEngineNode
     TextureCompositor
@@ -83,20 +84,20 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	Capabilities.cpp
     Config.cpp
     Cube.cpp
-    DriverOptions.cpp
     EarthFile.cpp
     EGM.cpp
+    ElevationLayer.cpp
     FileUtils.cpp
     GeoData.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
-    ImageToHeightFieldConverter.cpp
+    ImageLayer.cpp
     ImageMosaic.cpp
+    ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     JsonUtils.cpp
     Locators.cpp
     Map.cpp
-    MapLayer.cpp
     MapNode.cpp
     MapNodeOptions.cpp
     MapOptions.cpp
@@ -111,6 +112,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Registry.cpp
     SpatialReference.cpp
     TaskService.cpp
+    TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
     TextureCompositor.cpp

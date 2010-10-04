@@ -20,6 +20,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H 1
 
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/TextureCompositor>
 #include "OSGTerrainOptions"
 #include "OSGTileFactory"
 #include <osg/Geode>
@@ -45,15 +46,12 @@ public: // TerrainEngineNode overrides
 
 public: // MapCallback adapter functions
     void onMapProfileEstablished( const Profile* profile );
-    void onMapLayerAdded( MapLayer*, unsigned int index );
-    void onMapLayerRemoved( MapLayer* layer, unsigned int index );
-    void onMapLayerMoved( MapLayer* layer, unsigned int oldIndex, unsigned int newIndex );
-#if 0
-    void onModelLayerAdded( ModelLayer* layer );
-    void onModelLayerRemoved( ModelLayer* layer );
-    void onMaskLayerAdded( MaskLayer* layer );
-    void onMaskLayerRemoved( MaskLayer* layer );
-#endif
+    void onImageLayerAdded( ImageLayer*, unsigned int index );
+    void onImageLayerRemoved( ImageLayer* layer, unsigned int index );
+    void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex );
+    void onElevationLayerAdded( ElevationLayer*, unsigned int index );
+    void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index );
+    void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex );
 
     unsigned int getId() const;
     OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
@@ -68,24 +66,30 @@ public: // statics
 private:
     void init();
 
-    void addImageLayer( MapLayer* layer );
-    void addHeightFieldLayer( MapLayer* layer );
+    void onTerrainLayerAdded( TerrainLayer* layer );
+
+    void addImageLayer( ImageLayer* layer );
+    void addElevationLayer( ElevationLayer* layer );
 
     void removeImageLayer( unsigned int index );
-    void removeHeightFieldLayer( unsigned int index );
+    void removeElevationLayer( unsigned int index );
 
     void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
-    void moveHeightFieldLayer( unsigned int oldIndex, unsigned int newIndex );
+    void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
     
     void updateElevation(CustomTile* tile);
     void updateTextureCombining();
     
 private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;
-    osg::ref_ptr<MapLayerController> _mapLayerController;
+    osg::ref_ptr<TextureCompositor> _texCompositor;
     class CustomTerrain* _terrain;
     unsigned int _id;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
+
+    // store a separate map frame for each of the traversal threads
+    MapFrame* _update_mapf; // map frame for the main/update traversal thread
+    MapFrame* _cull_mapf;   // map frame for the cull traversal thread
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

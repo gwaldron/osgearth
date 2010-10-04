@@ -82,7 +82,6 @@
 
 using namespace osg;
 using namespace osgDB;
-using namespace osgTerrain;
 using namespace osgEarth;
 using namespace osgEarthUtil;
 using namespace osgEarth::Drivers;
@@ -159,8 +158,9 @@ struct ToggleVisiblityCallback: public osgWidget::Callback {
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-			_fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setEnabled(
-                _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->enabled() == false);
+            MapFrame mapf(_fadeLayerNode->getMap());
+			mapf.imageLayers()[_layerIndex]->setEnabled(
+                mapf.imageLayers()[_layerIndex]->getEnabled() == false);
         }
         return true;
     }
@@ -181,8 +181,9 @@ struct OpacityCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
-            float oldOpacity = _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->opacity().value();
-            _fadeLayerNode->getMap()->getImageMapLayers()[_layerIndex]->setOpacity( oldOpacity + _opacityDelta );
+            MapFrame mapf( _fadeLayerNode->getMap() );
+            float oldOpacity = mapf.imageLayers()[_layerIndex]->getOpacity();
+            mapf.imageLayers()[_layerIndex]->setOpacity( oldOpacity + _opacityDelta );
         }
         return true;
     }
@@ -205,7 +206,8 @@ struct RemoveLayerCallback: public osgWidget::Callback
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
             //_view->getDatabasePager()->clear();
-            _map->removeMapLayer( _map->getImageMapLayers()[_layerIndex] );
+            MapFrame mapf( _map );
+            _map->removeImageLayer( mapf.imageLayers()[_layerIndex] );
             //_mapNode->removeImageSource( _layerIndex );
             hudDirty = true;
         }
@@ -230,12 +232,13 @@ struct MoveLayerCallback: public osgWidget::Callback
     virtual bool operator()(osgWidget::Event& ev) {
         if (ev.type == osgWidget::EVENT_MOUSE_PUSH)
         {
+            MapFrame mapf(_map);
             //_view->getDatabasePager()->clear();
             int dir = _up ? 1 : -1;
-            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)_map->getImageMapLayers().size()-1u);
+            unsigned int newPosition = osg::clampBetween(_layerIndex + dir, 0u, (unsigned int)mapf.imageLayers().size()-1u);
             //_map->moveImageSource( _layerIndex, newPosition );
-            MapLayer* layer = _map->getImageMapLayers()[_layerIndex];
-            _map->moveMapLayer( layer, newPosition );
+            ImageLayer* layer = mapf.imageLayers()[_layerIndex];
+            _map->moveImageLayer( layer, newPosition );
             hudDirty = true;
         }
         return true;
@@ -250,7 +253,7 @@ struct MoveLayerCallback: public osgWidget::Callback
 class AddLayerButton : public osgWidget::Label
 {
 public:
-    AddLayerButton(Map* map, osgViewer::View* view, MapLayer* layer) :
+    AddLayerButton(Map* map, osgViewer::View* view, ImageLayer* layer) :
       osgWidget::Label("",""),
           _map(map),
           _view(view),
@@ -273,14 +276,14 @@ public:
       virtual bool mousePush(double, double, osgWidget::WindowManager*) {
 #endif
          //_view->getDatabasePager()->clear();
-         _map->addMapLayer( _layer );
+         _map->addImageLayer( _layer );
          //_mapNode->addImageSource( _sourceConfig );
           hudDirty = true;
          return true;
      }
 
      osg::ref_ptr<Map> _map;
-     osg::ref_ptr<MapLayer> _layer;
+     osg::ref_ptr<ImageLayer> _layer;
      osgViewer::View* _view;
      osg::ref_ptr<FadeLayerNode> _fadeLayerNode;
 };
@@ -293,7 +296,9 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
 		BlankTileSource* tileSource = new BlankTileSource();
 		tileSource->initialize( "" );
-        MapLayer* layer = new MapLayer( "Green", MapLayer::TYPE_IMAGE,tileSource );
+        ImageLayerOptions layerOpt;
+        layerOpt.name() = "Green";
+        ImageLayer* layer = new ImageLayer( layerOpt, tileSource );
         addLayersBox->addWidget( new AddLayerButton(map, view, layer) );
     }
 
@@ -301,26 +306,29 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
         ArcGISOptions opt;
         opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Boundaries_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Boundaries", opt ) ) );
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageLayer( "ESRI Boundaries", opt ) ) );
     }
 
     // ArcGIS transportation layer:
     {
         ArcGISOptions opt;
         opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Transportation", opt ) ) );
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageLayer( "ESRI Transportation", opt ) ) );
     }
 
     // OpenStreetMap:
     {
-        TMSOptions opt;
-        opt.url() = "http://tile.openstreetmap.org";
-        opt.format() = "png";
-        opt.tileSize() = 256;
-        opt.tmsType() = "google";
-        MapLayer* layer = new ImageMapLayer( "OpenStreetMap", opt );
+        TMSOptions driverOpt;
+        driverOpt.url() = "http://tile.openstreetmap.org";
+        driverOpt.format() = "png";
+        driverOpt.tileSize() = 256;
+        driverOpt.tmsType() = "google";
 
-        layer->profileOptions() = ProfileOptions( "global-mercator" );
+        ImageLayerOptions layerOpt;
+        layerOpt.driver() = driverOpt;
+        layerOpt.profile() = ProfileOptions( "global-mercator" );
+
+        ImageLayer* layer = new ImageLayer( "OpenStreetMap", layerOpt );
         addLayersBox->addWidget( new AddLayerButton( map, view, layer ) );
     }
 
@@ -328,7 +336,7 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
     {
         ArcGISOptions opt;
         opt.url() = "http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer";
-        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageMapLayer( "ESRI Imagery", opt ) ) );
+        addLayersBox->addWidget( new AddLayerButton( map, view, new ImageLayer( "ESRI Imagery", opt ) ) );
     }
 
     addLayersBox->getBackground()->setColor(1,0,0,0.3);
@@ -393,11 +401,12 @@ public:
 
     void updateText()
     {
-        if ( _layerIndex < _map->getImageMapLayers().size() )
+        MapFrame mapf( _map );
+        if ( _layerIndex < mapf.imageLayers().size() )
         {
-            std::string name = _map->getImageMapLayers()[_layerIndex]->getName(); //Node->getImageSource( _layerIndex );
+            std::string name = mapf.imageLayers()[_layerIndex]->getName(); //Node->getImageSource( _layerIndex );
             std::stringstream ss;
-            unsigned int index = (_map->getImageMapLayers().size() - _layerIndex);
+            unsigned int index = (mapf.imageLayers().size() - _layerIndex);
             ss << index << ") ";
 			std::string ssStr;
 			ssStr = ss.str();
@@ -454,13 +463,15 @@ public:
 
       void update()
       {
+          MapFrame mapf(_map);
+
           //Remove the existing lines
           for (unsigned int i = 0; i < _lines.size(); ++i)
           {
               _wm->removeChild(_lines[i].get());
           }
 
-          for (unsigned int i = 0; i < _map->getImageMapLayers().size(); ++i)
+          for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
           {
               Line* line = i < _lines.size() ? _lines[i] : NULL;
               if (line)
@@ -524,19 +535,13 @@ int main(int argc, char** argv)
     }
 
 
-    terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_MULTITEXTURE;
+    terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_COMPOSITE;
 	if (arguments.read( "--multipass") )
 	{
 		terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_MULTIPASS;
         //Multipass mode is currently only available in STANDARD mode.
         terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
 	}
-    else if (arguments.read("--compositing"))
-    {
-        terrainOptions.layeringTechnique() = TerrainOptions::LAYERING_COMPOSITE;
-        //Compositing mode is currently only available in STANDARD mode.
-        terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
-    }
 
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
@@ -588,11 +593,12 @@ int main(int argc, char** argv)
     group->addChild(fadeLayerNode);
 	//group->addChild( loadedModel.get() );
 
+    MapFrame mapf( mapNode->getMap() );
 
-    for (unsigned int i = 0; i < mapNode->getMap()->getImageMapLayers().size(); ++i)
+    for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
     {
-		mapNode->getMap()->getImageMapLayers()[i]->setOpacity( 1.0f ); //opacity() = 1.0f;
-		mapNode->getMap()->getImageMapLayers()[i]->setEnabled(true);
+		mapf.imageLayers()[i]->setOpacity( 1.0f ); //opacity() = 1.0f;
+		mapf.imageLayers()[i]->setEnabled(true);
     }
 
     //Setup the osgWidget interface

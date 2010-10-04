@@ -35,6 +35,10 @@ namespace osgEarth
 
         osg::Program* createProgram() const;
 
+        bool requiresUnitTextureSpace() const { return _useGPU; }
+
+        void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
+
     private:
         bool _useGPU;
     };

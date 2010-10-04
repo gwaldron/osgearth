@@ -158,7 +158,7 @@ int main(int argc, char** argv)
             TMSOptions tms;
             tms.tileSize() = 256;
             tms.url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
-            map->addMapLayer( new HeightFieldMapLayer( "SRTM", tms ) );
+            map->addElevationLayer( new ElevationLayer("SRTM", tms) );
         }
 
         // The MapNode will render the Map object in the scene graph.

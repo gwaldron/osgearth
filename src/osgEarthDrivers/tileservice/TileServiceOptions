@@ -20,7 +20,6 @@
 #define OSGEARTH_DRIVER_TILESERVICE_DRIVEROPTIONS 1
 
 #include <osgEarth/Common>
-#include <osgEarth/DriverOptions>
 #include <osgEarth/TileSource>
 
 using namespace osgEarth;

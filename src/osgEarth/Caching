@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/DriverOptions>
 #include <osgEarth/TMS>
 #include <osgEarth/TileKey>
 

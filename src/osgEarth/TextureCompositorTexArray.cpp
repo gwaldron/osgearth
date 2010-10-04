@@ -182,7 +182,7 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     if ( powerOfTwo )
         texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
     else
-        texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
 
     // configure the wrapping
     texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);

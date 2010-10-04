@@ -17,10 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "MultiPassTerrainTechnique"
+#include "TransparentLayer"
 
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
-#include <osgEarth/MapLayer>
 
 #include <osgUtil/SmoothingVisitor>
 #include <osgDB/FileUtils>

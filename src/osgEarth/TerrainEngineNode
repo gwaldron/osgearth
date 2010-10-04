@@ -19,10 +19,10 @@
 #ifndef OSGEARTH_MAP_ENGINE_NODE_H
 #define OSGEARTH_MAP_ENGINE_NODE_H 1
 
+#include <osgEarth/Map>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
-#include <osgEarth/Map>
 
 namespace osgEarth
 {
@@ -41,7 +41,7 @@ namespace osgEarth
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
-    public: // Runtime configuration
+    public: // Runtime properties
 
         /** Sets the scale factor to apply to elevation height values. Default is 1.0 */
         void setVerticalScale( float value );
@@ -73,32 +73,46 @@ namespace osgEarth
         virtual void initialize( Map* map, const TerrainOptions& options );
         virtual void validateTerrainOptions( TerrainOptions& options );
 
-    protected:
-        osg::ref_ptr< Map > _map;
-
     private:
         friend struct TerrainEngineNodeCallbackProxy;
 
         void onMapProfileEstablished( const Profile* profile );
         void onMapLayerStackChanged();
+        void onImageLayerAdded( ImageLayer* layer );
+        void onImageLayerRemoved( ImageLayer* layer );
 
     private:
         friend struct MapNodeMapLayerController;
 
-        virtual void updateLayerOpacity( MapLayer* layer );
-        virtual void updateLayerEnabled( MapLayer* layer );
+        //virtual void updateLayerOpacity( MapLayer* layer );
+        //virtual void updateLayerEnabled( MapLayer* layer );
         virtual void updateUniforms();
 
     private:
         float _verticalScale;
         float _elevationSamplingRatio;
-        //TerrainOptions _terrainOptions;
         
-        // a uniform array marking the opacity of each image layer
-        osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
+        struct ImageLayerController : public ImageLayerCallback
+        {
+            ImageLayerController( Map* map );
 
-        // a uniform array marking the enabled state of each image layer
-        osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
+            void onEnabledChanged( TerrainLayer* layer );
+            void onOpacityChanged( ImageLayer* layer );
+            void onGammaChanged( ImageLayer* layer );
+
+            // a uniform array marking the opacity of each image layer
+            osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
+
+            // a uniform array marking the enabled state of each image layer
+            osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
+
+        private:
+            MapFrame _mapf;
+            //Map* _map; // dont' need a ref here
+        };
+
+        osg::ref_ptr<ImageLayerController> _imageLayerController;
+        osg::ref_ptr<Map> _map;
     };
 
     /**

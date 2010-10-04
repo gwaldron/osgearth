@@ -34,7 +34,7 @@
 class TileFactory; //MapEngine;
 class CustomTerrain;
 class CustomTile;
-class osgEarth::MapLayer;
+class osgEarth::ImageLayer;
 
 
 typedef std::list< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
@@ -130,11 +130,12 @@ public:
     int getTileRevision() const;
 
     /** Updates and services this tile's service pending requests. */
-    void servicePendingImageRequests( int stamp );
-    void servicePendingElevationRequests( int stamp, bool tileTableLocked );
+    void servicePendingImageRequests( const MapFrame& mapf, int stamp );
+
+    void servicePendingElevationRequests( const MapFrame& mapf, int stamp, bool tileTableLocked );
 
     // returns TRUE if the tile was modified as a result of a completed request.
-    bool serviceCompletedRequests( bool tileTableLocked );
+    bool serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked );
 
     /** Setting this hint tells the tile whether it should bother trying to load elevation data. */
     void setHasElevationHint( bool hasElevation );
@@ -156,7 +157,7 @@ public:
 
     bool cancelRequests();
 
-    void updateImagery( unsigned int layerId, Map* map, OSGTileFactory* factory );
+    void updateImagery( unsigned int layerId, const MapFrame& mapf, OSGTileFactory* factory );
 
     bool getUseTileGenRequest() const;
 
@@ -164,7 +165,7 @@ public:
 
     void markTileForRegeneration();
 
-    void resetElevationRequests();
+    void resetElevationRequests( const MapFrame& mapf );
 
     float getVerticalScale() const;
     void setVerticalScale(float verticalScale);
@@ -216,9 +217,9 @@ private:
     Threading::ReadWriteMutex _tileLayersMutex;
 
     /** Deals with completed requests during the UPDATE traversal. */
-    void installRequests( int stamp );
+    void installRequests( const MapFrame& mapf, int stamp );
     bool readyForNewElevation();
-    bool readyForNewImagery(osgEarth::MapLayer* layer, int currentLOD);
+    bool readyForNewImagery(osgEarth::ImageLayer* layer, int currentLOD);
 
     float _verticalScale;
 
@@ -239,7 +240,10 @@ public:
 class CustomTerrain : public osgTerrain::Terrain
 {
 public:
-    CustomTerrain( Map* map, OSGTileFactory* factory );
+    CustomTerrain(
+        const MapFrame& update_mapf,
+        const MapFrame& cull_mapf,
+        OSGTileFactory* factory );
 
     virtual const char* libraryName() const { return "osgEarth"; }
     virtual const char* className() const { return "CustomTerrain"; }
@@ -257,13 +261,16 @@ public:
     int getRevision() const;
 
 
-    Map* getMap();
+    //Map* getMap();
     OSGTileFactory* getTileFactory();
     //MapEngine* getEngine();
 
     TaskService* getImageryTaskService(int layerId);
     TaskService* getElevationTaskService();
     TaskService* getTileGenerationTaskSerivce();
+
+    const MapFrame& getUpdateThreadMapFrame() { return _update_mapf; }
+    const MapFrame& getCullThreadMapFrame() { return _cull_mapf; }
 
     /**
      * Gets the total number of tasks remaining in all of the TaskServices this CustomTerrain is managing
@@ -272,7 +279,12 @@ public:
 
     virtual void traverse( osg::NodeVisitor &nv );
 
-    void updateTaskServiceThreads();
+    /**
+     * Updates the catalog of task service threads - this gets called by the OSGTerrainEngine
+     * in response to a change in the Map's data model. The map frame is that of the terrain
+     * engine.
+     */
+    void updateTaskServiceThreads( const MapFrame& mapf );
 
     bool updateBudgetRemaining() const;
 
@@ -311,12 +323,14 @@ private:
     TaskService* createTaskService( const std::string& name, int id, int numThreads );
     TaskService* getTaskService( int id );
 
-    void refreshFamily( const osgTerrain::TileID& tileId, Relative* family, bool tileTableLocked );
+    void refreshFamily( 
+        const MapInfo& info, const osgTerrain::TileID& tileId, Relative* family, bool tileTableLocked );
 
     int _revision; 
     OpenThreads::Mutex _revisionMutex;
 
-    osg::ref_ptr<Map> _map;
+    //osg::ref_ptr<Map> _map;
+
     osg::ref_ptr<OSGTileFactory> _tileFactory; // _engine;
     typedef std::map< int, osg::ref_ptr< TaskService > > TaskServiceMap;
     TaskServiceMap _taskServices;
@@ -330,6 +344,10 @@ private:
     TerrainCallbackList _terrainCallbacks;
 
     LoadingPolicy _loadingPolicy;
+
+    // store a separate map frame for each of the traversal threads
+    const MapFrame& _update_mapf; // map frame for the main/update traversal thread
+    const MapFrame& _cull_mapf;   // map frame for the cull traversal thread
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_VERSIONED_TERRAIN

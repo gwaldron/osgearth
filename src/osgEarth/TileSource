@@ -20,6 +20,8 @@
 #ifndef OSGEARTH_TILE_SOURCE_H
 #define OSGEARTH_TILE_SOURCE_H 1
 
+#include <limits.h>
+
 #include <osg/Version>
 
 #include <osgEarth/Common>
@@ -27,7 +29,6 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Caching>
 #include <osgEarth/Progress>
-#include <osgEarth/DriverOptions>
 #include <osgEarth/ThreadingUtils>
 //#include <osgEarth/RTree>
 

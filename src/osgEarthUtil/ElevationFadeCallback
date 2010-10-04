@@ -49,7 +49,7 @@ namespace osgEarthUtil
          * Sets the fade elevation range for a layer
          */
         void setElevationRange(
-            osgEarth::MapLayer* layer, 
+            osgEarth::ImageLayer* layer, 
             float maxElevation, 
             float minElevation,
             float maxBuffer = -1.0f,
@@ -62,7 +62,7 @@ namespace osgEarthUtil
         struct ElevationRange {
             float min, max, minBuffer, maxBuffer;
         };
-        typedef std::map< osg::observer_ptr<osgEarth::MapLayer>, ElevationRange> LayerElevationRanges;
+        typedef std::map< osg::observer_ptr<osgEarth::ImageLayer>, ElevationRange> LayerElevationRanges;
         LayerElevationRanges _ranges;
 
 		bool _firstFrame;

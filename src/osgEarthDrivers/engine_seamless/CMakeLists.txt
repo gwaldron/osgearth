@@ -9,6 +9,7 @@ SET(TARGET_SRC
         Projected.cpp
         Geographic.cpp
         GeoPatch.cpp
+        SeamlessEngineNode.cpp
         SeamlessPlugin.cpp
 )
 
@@ -21,6 +22,7 @@ SET(TARGET_H
         Projected
         Geographic
         GeoPatch
+        SeamlessEngineNode
 )
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR})

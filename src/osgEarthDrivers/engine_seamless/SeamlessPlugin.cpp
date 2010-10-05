@@ -23,8 +23,7 @@
 #include <osgEarth/EarthFile>
 #include <osgEarth/Profile>
 
-#include "Geographic"
-#include "Projected"
+#include "SeamlessEngineNode"
 
 #include <string>
 #include <iostream>
@@ -45,52 +44,31 @@ public:
 
     virtual bool acceptsExtension(const std::string& extension) const
     {
-        return osgDB::equalCaseInsensitive( extension, "engine_seamless" );
+        return osgDB::equalCaseInsensitive( extension, "osgearth_engine_seamless" );
     }
 
+    virtual ReadResult readObject(const std::string& uri, const Options* options) const
+    {
+        if ("osgearth_engine_seamless" == osgDB::getFileExtension(uri))
+        {
+            if ("earth"
+                == osgDB::getNameLessExtension(osgDB::getFileExtension(uri)))
+                return readNode(uri, options);
+            else
+                return ReadResult(new SeamlessEngineNode);
+        }
+    }
+    
     virtual ReadResult readNode(const std::string& uri, const Options* options) const
     {
         std::string earthFile = osgDB::getNameLessExtension( uri );
         osgEarth::EarthFile ef;
         if (ef.readXML(earthFile))
         {
-            Map* map = ef.getMap();
-            const Profile* profile = map->getProfile();
-            if (!profile)
-            {
-                OSG_WARN << "no map profile\n";
-                return ReadResult::FILE_NOT_FOUND;
-            }
-            unsigned xTiles, yTiles;
-            profile->getNumTiles(0, xTiles, yTiles);
-            std::cout << "x tiles: " << xTiles << " y tiles: " << yTiles
-                      << "\n";
-            std::cout << "LOD for 10m resolution: "
-                      << profile->getLevelOfDetailForHorizResolution(10, 128)
-                      << "\n";
-            PatchSet* patchSet;
-            if (map->getMapOptions().coordSysType()
-                == MapOptions::CSTYPE_GEOCENTRIC)
-            {
-                patchSet = new Geographic(map);
-            }
-            else if (map->getMapOptions().coordSysType()
-                     == MapOptions::CSTYPE_PROJECTED)
-            {
-                patchSet = new Projected(map);
-            }
-            else
-            {
-                OSG_WARN << "map is not projected\n";
-                return ReadResult::FILE_NOT_FOUND;
-
-            }
-            const MapNodeOptions& mapOptions = ef.getMapNodeOptions();
-            const TerrainOptions& terrainOptions
-                = mapOptions.getTerrainOptions();
-            patchSet->setVerticalScale(terrainOptions.verticalScale().value());
-            return patchSet->createPatchSetGraph("bar.tengpatch");
-
+            SeamlessEngineNode* node = new SeamlessEngineNode;
+            node->initialize(ef.getMap(),
+                              ef.getMapNodeOptions().getTerrainOptions());
+                return ReadResult(node);
         }
         else
         {
@@ -99,5 +77,5 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(engine_seamless, SeamlessPlugin)
+REGISTER_OSGPLUGIN(osgearth_engine_seamless, SeamlessPlugin)
 }

@@ -42,7 +42,9 @@ _halign( ALIGN_NONE ),
 _valign( ALIGN_NONE ),
 _backColor( osg::Vec4f(0,0,0,0) ),
 _foreColor( osg::Vec4f(1,1,1,1) ),
-_visible( true )
+_activeColor( osg::Vec4f(.4,.4,.4,1) ),
+_visible( true ),
+_active( false )
 {
     //nop
 }
@@ -135,11 +137,34 @@ Control::setBackColor( const osg::Vec4f& value ) {
     }
 }
 
+void
+Control::setActiveColor( const osg::Vec4f& value ) {
+    if ( value != _activeColor.value() ) {
+        _activeColor = value;
+        if ( _active )
+            dirty();
+    }
+}
+
+void
+Control::addEventHandler( ControlEventHandler* handler )
+{
+    _eventHandlers.push_back( handler );
+}
+
 bool
 Control::getParent( osg::ref_ptr<Control>& out ) const
 {
     out = _parent.get();
     return out.valid();
+}
+
+void
+Control::setActive( bool value ) {
+    if ( value != _active ) {
+        _active = value;
+        dirty();
+    }
 }
 
 void
@@ -211,6 +236,14 @@ Control::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::
         }
     }
 }
+        
+bool
+Control::intersects( float x, float y ) const
+{
+    return
+        x >= _renderPos.x() && x <= _renderPos.x() + _renderSize.x() &&
+        y >= _renderPos.y() && y <= _renderPos.y() + _renderSize.y();
+}
 
 void
 Control::draw(const ControlContext& cx, DrawableList& out )
@@ -232,12 +265,43 @@ Control::draw(const ControlContext& cx, DrawableList& out )
         geom->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
 
         osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = _backColor.value();
+        (*colors)[0] = _active ? _activeColor.value() : _backColor.value();
         geom->setColorArray( colors );
         geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         out.push_back( geom );
     }
+}
+
+bool
+Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
+{
+    bool handled = false;
+
+    if ( _eventHandlers.size() > 0 )
+    {    
+        handled = true;
+
+        if ( !_active )
+        {
+            if ( ea.getEventType() == osgGA::GUIEventAdapter::MOVE )
+            {
+                cx._active.push( this );
+            }
+        }
+        else 
+        {
+            if ( ea.getEventType() == osgGA::GUIEventAdapter::RELEASE )
+            {
+                for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+                {
+                    i->get()->onClick( this, ea.getButtonMask() );
+                }
+            }
+        }
+    }
+
+    return handled;
 }
 
 // ---------------------------------------------------------------------------
@@ -603,6 +667,22 @@ Container::draw( const ControlContext& cx, DrawableList& out )
     }
 }
 
+bool
+Container::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
+{
+    bool handled = false;
+    for( ControlList::const_reverse_iterator i = children().rbegin(); i != children().rend(); ++i )
+    {
+        Control* child = i->get();
+        if ( child->intersects( ea.getX(), cx._vp->height() - ea.getY() ) )
+            handled = child->handle( ea, aa, cx );
+        if ( handled )
+            break;
+    }
+
+    return handled ? handled : Control::handle( ea, aa, cx );
+}
+
 // ---------------------------------------------------------------------------
 
 VBox::VBox()
@@ -614,6 +694,7 @@ void
 VBox::addControl( Control* control )
 {
     _controls.push_back( control );
+    control->setParent( this );
     dirty();
 }
 
@@ -692,6 +773,7 @@ void
 HBox::addControl( Control* control )
 {
     _controls.push_back( control );
+    control->setParent( this );
     dirty();
 }
 
@@ -755,53 +837,68 @@ HBox::draw( const ControlContext& cx, DrawableList& out )
 
 // ---------------------------------------------------------------------------
 
-// binds the update traversal to the update() method
-struct ControlUpdater : public osg::NodeCallback
+namespace osgEarthUtil { namespace Controls
 {
-    void operator()( osg::Node* node, osg::NodeVisitor* nv )
+    // binds the update traversal to the update() method
+    struct ControlUpdater : public osg::NodeCallback
     {
-        static_cast<ControlCanvas*>(node)->update();
-    }
-};
-
-// This handler keeps an eye on the viewport and informs the control surface when it changes.
-// We need this info since controls position from the upper-left corner.
-struct ViewportHandler : public osgGA::GUIEventHandler
-{
-    ViewportHandler( ControlCanvas* cs ) : _cs(cs), _width(0), _height(0), _first(true) { }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        if ( ea.getEventType() == osgGA::GUIEventAdapter::RESIZE || _first )
+        void operator()( osg::Node* node, osg::NodeVisitor* nv )
         {
-            osg::Camera* cam = aa.asView()->getCamera();
-            if ( cam && cam->getViewport() )
+            static_cast<ControlCanvas*>(node)->update();
+        }
+    };
+
+    // This handler keeps an eye on the viewport and informs the control surface when it changes.
+    // We need this info since controls position from the upper-left corner.
+    struct ViewportHandler : public osgGA::GUIEventHandler
+    {
+        ViewportHandler( ControlCanvas* cs ) : _cs(cs), _width(0), _height(0), _first(true) { }
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        {
+            if ( ea.getEventType() == osgGA::GUIEventAdapter::RESIZE || _first )
             {
-                const osg::Viewport* vp = cam->getViewport();
-                if ( _first || vp->width() != _width || vp->height() != _height )
+                osg::Camera* cam = aa.asView()->getCamera();
+                if ( cam && cam->getViewport() )
                 {
-                    _cs->setProjectionMatrix(osg::Matrix::ortho2D( 0, vp->width()-1, 0, vp->height()-1 ) );
+                    const osg::Viewport* vp = cam->getViewport();
+                    if ( _first || vp->width() != _width || vp->height() != _height )
+                    {
+                        _cs->setProjectionMatrix(osg::Matrix::ortho2D( 0, vp->width()-1, 0, vp->height()-1 ) );
 
-                    ControlContext cx;
-                    cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
-                    cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
-                    _cs->setControlContext( cx );
+                        ControlContext cx;
+                        cx._vp = new osg::Viewport( 0, 0, vp->width(), vp->height() );
+                        cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
+                        _cs->setControlContext( cx );
 
-                    _width = vp->width();
-                    _height = vp->height();
-                }
-                if ( vp->width() != 0 && vp->height() != 0 )
-                {
-                    _first = false;
+                        _width = vp->width();
+                        _height = vp->height();
+                    }
+                    if ( vp->width() != 0 && vp->height() != 0 )
+                    {
+                        _first = false;
+                    }
                 }
             }
+            return false;
         }
-        return false;
-    }
-    ControlCanvas* _cs;
-    int _width, _height;
-    bool _first;
-};
+        ControlCanvas* _cs;
+        int _width, _height;
+        bool _first;
+    };
+
+    struct ControlCanvasEventHandler : public osgGA::GUIEventHandler
+    {
+        ControlCanvasEventHandler( ControlCanvas* cs ) : _cs(cs) { }
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        {
+            return _cs->handle( ea, aa );
+        }
+
+        ControlCanvas* _cs;
+    };
+} }
 
 // ---------------------------------------------------------------------------
 
@@ -809,6 +906,7 @@ ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
 {
     view->addEventHandler( new ViewportHandler(this) );
+    view->addEventHandler( new ControlCanvasEventHandler(this) );
 
     setReferenceFrame(osg::Transform::ABSOLUTE_RF);
     setViewMatrix(osg::Matrix::identity());
@@ -846,6 +944,48 @@ ControlCanvas::removeControl( Control* control )
     ControlList::iterator j = std::find( _controls.begin(), _controls.end(), control );
     if ( j != _controls.end() )
         _controls.erase( j );
+}
+
+Control*
+ControlCanvas::getControlAtMouse( float x, float y ) const
+{
+    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    {
+        Control* control = i->get();
+        if ( control->intersects( x, _context._vp->height() - y ) )
+            return control;
+    }
+    return 0L;
+}
+
+bool
+ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+{
+    float invY = _context._vp->height() - ea.getY();
+
+    for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+    {
+        Control* control = i->get();
+        if ( control->intersects( ea.getX(), invY ) )
+            if ( control->handle( ea, aa, _context ) )
+                break;
+    }
+
+    if ( _context._active.size() > 1 )
+    {
+        _context._active.front()->setActive( false );
+        _context._active.pop();
+    }
+
+    if ( _context._active.size() > 0 )
+    {
+        bool hit = _context._active.front()->intersects( ea.getX(), invY );
+        _context._active.front()->setActive( hit );
+        if ( !hit )
+            _context._active.pop();
+    }
+
+    return _context._active.size() > 0;
 }
 
 void

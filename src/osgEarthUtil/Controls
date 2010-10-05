@@ -23,10 +23,12 @@
 #include <osgEarth/Common>
 #include <osg/Drawable>
 #include <osg/Geode>
+#include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgText/Font>
 #include <osgText/Text>
 #include <vector>
+#include <queue>
 
 /**
  * Controls - A simple 2D UI toolkit.
@@ -77,11 +79,22 @@ namespace osgEarthUtil { namespace Controls
     };
 
     // internal state class
-    struct ControlContext {
+    struct ControlContext
+    {
         ControlContext() : _viewContextID(~0) { }
         osg::ref_ptr<const osg::Viewport> _vp;
         unsigned int _viewContextID;
+        std::queue< osg::ref_ptr<class Control> > _active;
     };
+
+    // base class for control events
+    class ControlEventHandler : public osg::Referenced
+    {
+    public:
+        virtual void onClick( class Control* control, int mouseButtonMask ) { }
+    };
+
+    typedef std::list< osg::ref_ptr<ControlEventHandler> > ControlEventHandlerList;
 
     /**
      * Base class for all controls. You can actually use a Control directly and it
@@ -126,7 +139,16 @@ namespace osgEarthUtil { namespace Controls
         void setBackColor( float r, float g, float b, float a ) { setBackColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f>& backColor() const { return _backColor; }
 
+        void setActiveColor( const osg::Vec4f& value );
+        void setActiveColor( float r, float g, float b, float a ) { setActiveColor( osg::Vec4f(r,g,b,a) ); }
+        const osgEarth::optional<osg::Vec4f>& activeColor() const { return _activeColor; }
+
         bool getParent( osg::ref_ptr<Control>& out ) const;
+
+        void setActive( bool value );
+        bool getActive() const { return _active; }
+
+        void addEventHandler( ControlEventHandler* handler );
 
     public:
         
@@ -142,6 +164,11 @@ namespace osgEarthUtil { namespace Controls
         const osg::Vec2f& renderPos() const { return _renderPos; }
         const osg::Vec2f& renderSize() const { return _renderSize; }
 
+        // does the control contain the point?
+        bool intersects( float x, float y ) const;
+
+        void setParent( class Control* c ) { _parent = c; }
+
     protected:
         bool _dirty;
         osg::Vec2f _renderPos;
@@ -150,13 +177,21 @@ namespace osgEarthUtil { namespace Controls
         // adjusts renderpos for alignment.
         void align();
 
+        // event handler
+        friend class ControlCanvas;
+        friend class Container;
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        ControlEventHandlerList _eventHandlers;
+
     private:
         osgEarth::optional<float> _x, _y, _width, _height;
         Gutter _margin;
         bool _visible;
         Alignment _valign, _halign;
-        osgEarth::optional<osg::Vec4f> _backColor, _foreColor;
+        osgEarth::optional<osg::Vec4f> _backColor, _foreColor, _activeColor;
         osg::observer_ptr<Control> _parent;
+        bool _active;
     };
 
     /**
@@ -262,10 +297,16 @@ namespace osgEarthUtil { namespace Controls
         // default add function.
         virtual void addControl( Control* control ) =0;
 
+        // access to the child list.
+        virtual const ControlList& children() const =0;
+
     public:
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
+
+    protected:
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
 
     private:
         osg::ref_ptr<Frame> _frame;
@@ -283,6 +324,7 @@ namespace osgEarthUtil { namespace Controls
 
     public: // Container
         virtual void addControl( Control* control );
+        virtual const ControlList& children() const { return _controls; }
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
@@ -303,6 +345,7 @@ namespace osgEarthUtil { namespace Controls
 
     public: // Container
         virtual void addControl( Control* control );
+        virtual const ControlList& children() const { return _controls; }
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
@@ -327,6 +370,9 @@ namespace osgEarthUtil { namespace Controls
         // removes a top-level control.
         void removeControl( Control* control );
 
+        // gets the top-most control that intersects the specified position.
+        Control* getControlAtMouse( float x, float y ) const;
+
     public:
         // internal- no need to call directly
         void update();
@@ -339,6 +385,10 @@ namespace osgEarthUtil { namespace Controls
         GeodeTable  _geodeTable;
         ControlContext _context;
         bool _contextDirty;
+
+    private:
+        friend struct ControlCanvasEventHandler;
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
     };
 
 

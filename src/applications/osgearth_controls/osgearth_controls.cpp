@@ -19,6 +19,7 @@
 
 
 #include <osg/Notify>
+#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
@@ -50,6 +51,14 @@ int main(int argc, char** argv)
 
     return viewer.run();
 }
+
+struct MyClickHandler : public ControlEventHandler
+{
+    void onClick( Control* control, int mouseButtonMask )
+    {
+        OE_NOTICE << "Thank you for clicking on " << (int)control << std::endl;
+    }
+};
 
 void
 createControls( ControlCanvas* cs )
@@ -95,6 +104,8 @@ createControls( ControlCanvas* cs )
         ul->addControl( content );
 
         cs->addControl( ul );
+
+        ul->addEventHandler( new MyClickHandler );
     }
 
     // a centered hbox container along the bottom on the screen.
@@ -116,6 +127,9 @@ createControls( ControlCanvas* cs )
             label->setMargin( 10 );
             label->setBackColor( 1,1,1,0.4 );
             bottom->addControl( label );
+
+            label->setActiveColor(1,.3,.3,1);
+            label->addEventHandler( new MyClickHandler );
         }
 
         cs->addControl( bottom );

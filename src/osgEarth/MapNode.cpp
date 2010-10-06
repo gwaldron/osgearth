@@ -468,6 +468,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
         }
     }
 
-    osg::CoordinateSystemNode::traverse(nv);
+    osg::Group::traverse( nv );
+    //osg::CoordinateSystemNode::traverse(nv);
 }
 

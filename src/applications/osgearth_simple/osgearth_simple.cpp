@@ -29,7 +29,6 @@
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Graticule>
-#include <osgEarth/EarthFile>
 
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>

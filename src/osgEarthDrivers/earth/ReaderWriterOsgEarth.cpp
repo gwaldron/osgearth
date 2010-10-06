@@ -21,10 +21,12 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/HTTPClient>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <string>
+#include <sstream>
 
 using namespace osgEarth;
 
@@ -84,7 +86,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             else
             {
-                std::ifstream in( file_name.c_str() );
+                std::string buf;
+                if ( HTTPClient::readString( file_name, buf ) != HTTPClient::RESULT_OK )
+                {
+                    return ReadResult::ERROR_IN_READING_FILE;
+                }
+
+                std::stringstream in( buf );
                 osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
                 if ( doc.valid() )
                 {

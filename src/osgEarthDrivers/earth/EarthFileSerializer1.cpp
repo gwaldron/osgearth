@@ -80,7 +80,7 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
         layerDriverConf.add( "default_tile_size", "256" );
 
         ImageLayerOptions layerOpt( layerDriverConf );
-        layerOpt.name() = conf.value("name");
+        layerOpt.name() = layerDriverConf.value("name");
         layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
         map->addImageLayer( new ImageLayer(layerOpt) );
@@ -98,7 +98,7 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
             layerDriverConf.add( "default_tile_size", "16" );
 
             ElevationLayerOptions layerOpt( layerDriverConf );
-            layerOpt.name() = conf.value( "name" );
+            layerOpt.name() = layerDriverConf.value( "name" );
             layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
             map->addElevationLayer( new ElevationLayer(layerOpt) );

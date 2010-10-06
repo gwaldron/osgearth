@@ -651,7 +651,6 @@ SpatialReference* createEulerSRS()
 }
 }
 
-#ifdef SEAMLESS_TILE_CACHE
 // Hack to get euler-cube into the spatial reference cache
 class CacheInitializer
 {
@@ -667,7 +666,6 @@ namespace
 {
 CacheInitializer s_cacheInitializer;
 }
-#endif
 
 EulerProfile::EulerProfile()
     : Profile(createEulerSRS(),

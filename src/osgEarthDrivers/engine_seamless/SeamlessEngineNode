@@ -59,6 +59,7 @@ private:
     osg::ref_ptr<PatchSet> _patchSet;
     double _verticalScale;
     osgEarth::TerrainOptions _terrainOptions;
+    osgEarth::MapFrame* _mapf;
 };
 }
 #endif

@@ -25,14 +25,45 @@ namespace seamless
 {
 using namespace osgEarth;
 
+// adapter that lets SeamlessEngineNode listen to Map events
+// This should be a template or something.
+struct SeamlessMapProxy : public MapCallback
+{
+    SeamlessMapProxy(SeamlessEngineNode* node) : _node(node) { }
+    osg::observer_ptr<SeamlessEngineNode> _node;
+
+    void onMapProfileEstablished( const Profile* profile ) {
+        _node->onMapProfileEstablished(profile);
+    }
+    void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
+        _node->onImageLayerAdded(layer, index);
+    }
+    void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
+        _node->onImageLayerRemoved(layer, index);
+    }
+    void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+        _node->onImageLayerMoved(layer,oldIndex,newIndex);
+    }
+    void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
+        _node->onElevationLayerAdded(layer, index);
+    }
+    void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
+        _node->onElevationLayerRemoved(layer, index);
+    }
+    void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+        _node->onElevationLayerMoved(layer,oldIndex,newIndex);
+    }
+};
+
 SeamlessEngineNode::SeamlessEngineNode()
-  : _verticalScale(1.0)
+    : _verticalScale(1.0), _mapf(0)
 {
 }
+
 SeamlessEngineNode::SeamlessEngineNode(const SeamlessEngineNode& rhs,
                        const osg::CopyOp& op)
     : TerrainEngineNode(rhs, op), _verticalScale(rhs._verticalScale),
-      _terrainOptions(rhs._terrainOptions)
+      _terrainOptions(rhs._terrainOptions), _mapf(0)
 {
     _patchSet = static_cast<PatchSet*>(op(rhs._patchSet.get()));
     
@@ -40,6 +71,7 @@ SeamlessEngineNode::SeamlessEngineNode(const SeamlessEngineNode& rhs,
 
 SeamlessEngineNode::~SeamlessEngineNode()
 {
+    delete _mapf;
 }
 
 void SeamlessEngineNode::initialize(Map* map, const TerrainOptions& options)
@@ -47,8 +79,10 @@ void SeamlessEngineNode::initialize(Map* map, const TerrainOptions& options)
     TerrainEngineNode::initialize(map, options);
     _terrainOptions = options;
     _verticalScale = options.verticalScale().value();
+    _mapf = new MapFrame(map, Map::TERRAIN_LAYERS, "seamless");
     if (map->getProfile())
         onMapProfileEstablished(map->getProfile());
+    map->addMapCallback(new SeamlessMapProxy(this));
 }
 
 void SeamlessEngineNode::validateTerrainOptions(TerrainOptions& options)

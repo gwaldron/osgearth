@@ -29,11 +29,12 @@
 namespace seamless
 {
 using namespace osg;
+using namespace osgEarth;
 
 PatchSet::PatchSet(int resolution, PatchOptions* poptionsPrototype)
     : _resolution(resolution), _maxLevel(16), _verticalScale(1.0f),
       _patchOptionsPrototype(poptionsPrototype ? poptionsPrototype
-                             : new PatchOptions)
+                             : new PatchOptions), _mapf(0)
 {
     setPrecisionFactor(4);
     initPrimitiveSets();
@@ -42,7 +43,8 @@ PatchSet::PatchSet(int resolution, PatchOptions* poptionsPrototype)
 PatchSet::PatchSet(const PatchSet& rhs, const CopyOp& copyop)
     : _precisionFactor(rhs._precisionFactor), _resolution(rhs._resolution),
       _maxLevel(rhs._maxLevel), _verticalScale(rhs._verticalScale),
-      _patchOptionsPrototype(static_cast<PatchOptions*>(copyop(_patchOptionsPrototype.get())))
+      _patchOptionsPrototype(static_cast<PatchOptions*>(copyop(rhs._patchOptionsPrototype.get()))),
+      _map(static_cast<Map*>(copyop(rhs._map.get())))
 {
     _patchOptionsPrototype
         = static_cast<PatchOptions*>(copyop(_patchOptionsPrototype.get()));
@@ -54,11 +56,23 @@ PatchSet::PatchSet(const PatchSet& rhs, const CopyOp& copyop)
         for (int i = 0; j < 4; ++i)
             stripPset[j][i]
                 = static_cast<DrawElementsUShort*>(copyop(rhs.stripPset[j][i].get()));
-
+    if (rhs._mapf)
+        _mapf = new MapFrame(*_mapf);
 }
 
 PatchSet::~PatchSet()
 {
+    delete _mapf;
+}
+
+void PatchSet::setMap(Map* map)
+{
+    _map = map;
+    if (map)
+    {
+        delete _mapf;
+        _mapf = new MapFrame(map, Map::TERRAIN_LAYERS, "seamless");
+    }
 }
 
 Node* PatchSet::createPatchGroup(const std::string& filename,

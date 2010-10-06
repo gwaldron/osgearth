@@ -105,9 +105,10 @@ HeightField* resampleHeightField(HeightField* hf, unsigned newDim)
 
 // Hard-wire the patch resolution and screen-space polygon size.
 Projected::Projected(Map* map)
-    : PatchSet(64), _map(map)
+    : PatchSet(64)
 {
     setPrecisionFactor(8);
+    setMap(map);
     {
         int maxLevel = 0;
         Threading::ScopedReadLock lock(_map->getMapDataMutex());

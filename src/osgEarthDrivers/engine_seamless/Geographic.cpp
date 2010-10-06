@@ -26,10 +26,11 @@ using namespace osgEarth;
 
 // Hard-wire the patch resolution and screen-space polygon size.
 Geographic::Geographic(Map* map)
-    : PatchSet(64, new GeographicOptions), _map(map), _profile(new EulerProfile),
+    : PatchSet(64, new GeographicOptions), _profile(new EulerProfile),
       _eModel(new EllipsoidModel)
 {
     setPrecisionFactor(8);
+    setMap(map);
     {
         int maxLevel = 0;
         Threading::ScopedReadLock lock(_map->getMapDataMutex());
@@ -55,7 +56,7 @@ Geographic::Geographic(Map* map)
 }
 
 Geographic::Geographic(const Geographic& rhs, const osg::CopyOp& copyop)
-    : PatchSet(rhs, copyop), _map(static_cast<Map*>(copyop(rhs._map.get()))),
+    : PatchSet(rhs, copyop),
       _profile(static_cast<EulerProfile*>(copyop(rhs._profile.get()))),
       _eModel(static_cast<EllipsoidModel*>(copyop(rhs._eModel.get()))),
       _hfService(rhs._hfService), _imageService(rhs._imageService)
@@ -305,13 +306,11 @@ namespace
 {
 // Get a height field from the map, or an empty one if there is no
 // data for this tile.
-GeoHeightField getGeoHeightField(Map* map, const TileKey& key, int resolution)
+GeoHeightField getGeoHeightField(MapFrame& mapf, const TileKey& key,
+                                 int resolution)
 {
     HeightField* hf = 0;
-    {
-        Threading::ScopedReadLock lock(map->getMapDataMutex());
-        hf = map->createHeightField(key, true, INTERP_BILINEAR);
-    }
+    hf = mapf.createHeightField(key, true, INTERP_BILINEAR);
     if  (!hf)
         hf = key.getProfile()->getVerticalSRS()
             ->createReferenceHeightField(key.getExtent(),
@@ -336,7 +335,7 @@ struct HeightFieldRequest : public TaskRequest
 {
     HeightFieldRequest(Geographic* gpatchset, const TileKey& key)
 
-        : _gpatchset(gpatchset), _key(key)
+        : _gpatchset(gpatchset), _key(key), _mapf(gpatchset->getMapFrame())
     {
     }
     void operator()(ProgressCallback* progress)
@@ -350,13 +349,13 @@ struct HeightFieldRequest : public TaskRequest
             for (int child = 0; child < 4; ++child)
             {
                 TileKey subCubeKey = _key.createChildKey(child);
-                hfs.push_back(getGeoHeightField(map, subCubeKey, resolution));
+                hfs.push_back(getGeoHeightField(_mapf, subCubeKey, resolution));
             }
             hf = mergeHeightFields(_key.getExtent(), hfs);
         }
         else
         {
-            hf = getGeoHeightField(map, _key, resolution);
+            hf = getGeoHeightField(_mapf, _key, resolution);
         }
         int patchDim = resolution + 1;
         Vec3Array* verts = new Vec3Array(patchDim * patchDim);
@@ -369,22 +368,20 @@ struct HeightFieldRequest : public TaskRequest
     TileKey _key;
     // vertices are in _result;
     ref_ptr<Vec3Array> _normalResult;
+    MapFrame _mapf;
 };
 
 struct ImageRequest : public TaskRequest
 {
     ImageRequest(Geographic* gpatchset, const TileKey& key)
-        : _gpatchset(gpatchset), _key(key)
+        : _gpatchset(gpatchset), _key(key), _mapf(gpatchset->getMapFrame())
     {
     }
 
     void operator()(ProgressCallback* progress)
     {
         GeoImage gimage;
-        Map* map = _gpatchset->getMap();
-        Threading::ScopedReadLock lock(map->getMapDataMutex());
-        ImageLayerVector layers;
-        map->getImageLayers(layers, true);
+        ImageLayerVector& layers(_mapf.imageLayers());
         if (crossesDateLine(_key))
         {
             GeoImageVector gis;
@@ -408,6 +405,7 @@ struct ImageRequest : public TaskRequest
     }
     ref_ptr<Geographic> _gpatchset;
     const TileKey _key;
+    MapFrame _mapf;
 };
 
 // Update a patch node once map data is available

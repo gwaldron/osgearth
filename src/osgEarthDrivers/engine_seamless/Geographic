@@ -49,7 +49,6 @@ public:
                                         PatchOptions* poptions);
     virtual osg::Node* createPatchSetGraph(const std::string& filename);
     virtual osg::Node* createChild(const PatchOptions* parentOptions, int childNum);
-    osgEarth::Map* getMap() const { return _map.get(); }
     osgEarth::Profile* getProfile() const { return _profile.get(); }
     void setEllipsoidModel(osg::EllipsoidModel* eModel) { _eModel = eModel; }
     osg::EllipsoidModel* getEllipsoidModel() const { return _eModel.get(); }
@@ -58,7 +57,6 @@ public:
     osgEarth::TaskService* getHeightFieldService() { return _hfService; }
     osgEarth::TaskService* getImageService() { return _imageService; }
 protected:
-    osg::ref_ptr<osgEarth::Map> _map;
     osg::ref_ptr<EulerProfile> _profile;
     osg::ref_ptr<osg::EllipsoidModel> _eModel;
     osg::ref_ptr<osgEarth::TaskService> _hfService;

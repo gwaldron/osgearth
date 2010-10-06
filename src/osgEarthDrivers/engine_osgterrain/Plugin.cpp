@@ -18,7 +18,6 @@
  */
 #include "OSGTerrainEngineNode"
 #include "OSGTerrainOptions"
-#include <osgEarth/EarthFile>
 #include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -121,19 +120,6 @@ public:
             }
 
             return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;
-        }
-
-        else if ( "osgearth_engine_osgterrain" == osgDB::getFileExtension( uri ) )
-        {
-            std::string earthFile = osgDB::getNameLessExtension( uri );
-            OE_NOTICE << "Loading " << earthFile << " into osgTerrain engine test" << std::endl;
-            EarthFile ef;
-            if ( ef.readXML( earthFile ) )
-            {
-                OSGTerrainEngineNode* node = new OSGTerrainEngineNode();
-                node->initialize( ef.getMap(), ef.getMapNodeOptions().getTerrainOptions() );
-                return ReadResult(node);
-            }
         }
 
         return ReadResult::FILE_NOT_HANDLED;

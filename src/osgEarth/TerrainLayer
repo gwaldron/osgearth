@@ -35,20 +35,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayerOptions : public ConfigOptions
     {
     public:
-        //TerrainLayerOptions( const ConfigOptions& options =ConfigOptions() ) :
-        //  ConfigOptions( options ),
-        //  _enabled( true ),
-        //  _exactCropping( false ),
-        //  _reprojectedTileSize( 256 ),
-        //  _cacheEnabled( true ),
-        //  _cacheOnly( false ),
-        //  _loadingWeight( 1.0f ),
-        //  _minLevel( 0 ),
-        //  _maxLevel( 99 )
-        //{
-        //    fromConfig( _conf ); 
-        //}
-
         TerrainLayerOptions( const ConfigOptions& options =ConfigOptions() );
         TerrainLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
@@ -69,8 +55,6 @@ namespace osgEarth
         /**
          * Options for the underlyint tile source driver.
          */
-        //optional<TileSourceOptions>& tileSource() { return _tileSource; }
-        //const optional<TileSourceOptions>& tileSource() const { return _tileSource; }
         optional<TileSourceOptions>& driver() { return _driver; }
         const optional<TileSourceOptions>& driver() const { return _driver; }
 

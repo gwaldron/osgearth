@@ -59,7 +59,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         layerDriverConf.add( "default_tile_size", "256" );
 
         ImageLayerOptions layerOpt( layerDriverConf );
-        layerOpt.name() = conf.value("name");
+        layerOpt.name() = layerDriverConf.value("name");
         layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
         map->addImageLayer( new ImageLayer(layerOpt) );
@@ -77,7 +77,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
             layerDriverConf.add( "default_tile_size", "16" );
 
             ElevationLayerOptions layerOpt( layerDriverConf );
-            layerOpt.name() = conf.value( "name" );
+            layerOpt.name() = layerDriverConf.value( "name" );
             layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
             map->addElevationLayer( new ElevationLayer(layerOpt) );
@@ -88,7 +88,8 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     ConfigSet models = conf.children( "model" );
     for( ConfigSet::const_iterator i = models.begin(); i != models.end(); i++ )
     {
-        map->addModelLayer( new ModelLayer( i->value("name"), ModelSourceOptions(*i) ) );
+        const Config& layerDriverConf = *i;
+        map->addModelLayer( new ModelLayer( layerDriverConf.value("name"), ModelSourceOptions(*i) ) );
     }
 
     // Mask layer:
@@ -125,7 +126,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         ImageLayer* layer = i->get();
         Config layerConf = layer->getImageLayerOptions().getConfig();
         layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getImageLayerOptions().driver()->getName();
+        layerConf.attr("driver") = layer->getImageLayerOptions().driver()->getDriver();
         mapConf.add( "image", layerConf );
     }
 
@@ -134,7 +135,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         ElevationLayer* layer = i->get();
         Config layerConf = layer->getElevationLayerOptions().getConfig();
         layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getElevationLayerOptions().driver()->getName();
+        layerConf.attr("driver") = layer->getElevationLayerOptions().driver()->getDriver();
         mapConf.add( "image", layerConf );
     }
 
@@ -143,7 +144,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         ModelLayer* layer = i->get();
         Config layerConf = layer->getDriverConfig();
         layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getDriverConfig().value("name");
+        layerConf.attr("driver") = layer->getDriverConfig().value("driver");
         mapConf.add( "image", layerConf );
     }
 

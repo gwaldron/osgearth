@@ -25,7 +25,6 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Config
     Cube
-    EarthFile
     ElevationLayer
     Export
     EGM
@@ -84,7 +83,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	Capabilities.cpp
     Config.cpp
     Cube.cpp
-    EarthFile.cpp
     EGM.cpp
     ElevationLayer.cpp
     FileUtils.cpp

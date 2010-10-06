@@ -13,7 +13,7 @@ Demonstrates use of the "agglite" feature rasterization driver.
         <url>../data/world.tif</url>
     </image>
     
-    <image name="world" driver="agglite">
+    <image name="world_boundaries" driver="agglite">
 
         <!-- Configure the OGR feature driver to read the shapefile. -->             
         <features name="world" driver="ogr">

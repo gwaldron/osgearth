@@ -49,7 +49,6 @@
 
 #include <osg/ImageSequence>
 
-using namespace osgTerrain;
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -154,11 +153,11 @@ CompositingTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
 CompositingTerrainTechnique::init()
 #endif
 {
-    init( true, 0L );
+    init( TileUpdate(TileUpdate::UPDATE_ALL), true, 0L );
 }
 
 void
-CompositingTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
+CompositingTerrainTechnique::init( const TileUpdate& update, bool swapNow, ProgressCallback* progress )
 {
     // lock changes to the layers while we're rendering them
     Threading::ScopedReadLock lock( getMutex() );
@@ -179,15 +178,12 @@ CompositingTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
         OE_INFO << "illegal; cannot init() with a pending swap!" << std::endl;
         return;
     }
-
-    //OE_INFO<<"Doing GeometryTechnique::init()"<<std::endl;
     
-    if (!_terrainTile) return;
+    // safety check
+    if (!_terrainTile) 
+        return;
 
-    //GW: this does not appear to do anything, since 2 threads should not be calling init()
-    // at the same time. 2010-06-28
-    //OpenThreads::ScopedLock<OpenThreads::Mutex> wbLock(_writeBufferMutex);
-
+    // attach the shader program required by the active texture compositor, if applicable
     if ( !_attachedProgram && _compositeProgram.valid() )
     {
         _terrainTile->getOrCreateStateSet()->setAttributeAndModes( _compositeProgram.get(), osg::StateAttribute::ON );
@@ -196,7 +192,7 @@ CompositingTerrainTechnique::init( bool swapNow, ProgressCallback* progress )
 
     BufferData& buffer = getWriteBuffer();
     
-    Locator* masterLocator = computeMasterLocator();
+    osgTerrain::Locator* masterLocator = computeMasterLocator();
     
     osg::Vec3d centerModel = computeCenterModel(masterLocator);
 
@@ -249,7 +245,7 @@ CompositingTerrainTechnique::swapIfNecessary()
     return swapped;
 }
 
-Locator*
+osgTerrain::Locator*
 CompositingTerrainTechnique::computeMasterLocator()
 {
     if ( _masterLocator.valid() )
@@ -258,10 +254,10 @@ CompositingTerrainTechnique::computeMasterLocator()
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
     osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(0);
 
-    Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
-    Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
+    osgTerrain::Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
+    osgTerrain::Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
     
-    Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
+    osgTerrain::Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
     if (!masterLocator)
     {
         OE_NOTICE<<"[osgEarth::CompositingTerrainTechnique] Problem, no locator found in any of the terrain layers"<<std::endl;
@@ -278,7 +274,7 @@ CompositingTerrainTechnique::getMutex()
 }
 
 osg::Vec3d
-CompositingTerrainTechnique::computeCenterModel(Locator* masterLocator)
+CompositingTerrainTechnique::computeCenterModel(osgTerrain::Locator* masterLocator)
 {
     if (!masterLocator) return osg::Vec3d(0.0,0.0,0.0);
 
@@ -287,8 +283,8 @@ CompositingTerrainTechnique::computeCenterModel(Locator* masterLocator)
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
     osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(0);
 
-    Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
-    Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
+    osgTerrain::Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
+    osgTerrain::Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
     
     if (!elevationLocator) elevationLocator = masterLocator;
     if (!colorLocator) colorLocator = masterLocator;
@@ -427,9 +423,9 @@ CompositingTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, do
 }
 
 void
-CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg::Vec3d& centerModel)
+CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
 {
-    osg::ref_ptr< Locator > masterTextureLocator = masterLocator;
+    osg::ref_ptr< osgTerrain::Locator > masterTextureLocator = masterLocator;
     GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(masterLocator);
 
 	bool isCube = dynamic_cast<CubeFaceLocator*>(masterLocator) != NULL;
@@ -485,7 +481,7 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
 //    OE_INFO<<"[osgEarth::CompositingTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
-    HeightFieldLayer* hfl = dynamic_cast<HeightFieldLayer*>(elevationLayer);
+    osgTerrain::HeightFieldLayer* hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(elevationLayer);
     if (hfl && hfl->getHeightField()) 
     {
         skirtHeight = hfl->getHeightField()->getSkirtHeight();
@@ -536,7 +532,7 @@ CompositingTerrainTechnique::generateGeometry(Locator* masterLocator, const osg:
             if (colorLayer)
             {
                 osgTerrain::Locator* locator = colorLayer->getLocator();
-                if ( !isCube && locator && locator->getCoordinateSystemType() == Locator::GEOCENTRIC )
+                if ( !isCube && locator && locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
                 {
                     GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
                     if ( geo )

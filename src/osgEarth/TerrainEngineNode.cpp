@@ -34,34 +34,19 @@ namespace osgEarth
         TerrainEngineNodeCallbackProxy(TerrainEngineNode* node) : _node(node) { }
         osg::observer_ptr<TerrainEngineNode> _node;
 
-        void onMapProfileEstablished( const Profile* profile ) {
-            _node->onMapProfileEstablished( profile );
+        void onMapProfileEstablished( const Profile* profile )
+        {
+            osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
+            if ( safeNode.valid() )
+                safeNode->onMapProfileEstablished( profile );
         }
 
-        void onMapModelChanged( const MapModelChange& change ) {
-            _node->onMapModelChanged( change );
+        void onMapModelChanged( const MapModelChange& change )
+        {
+            osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
+            if ( safeNode.valid() )
+                safeNode->onMapModelChanged( change );
         }
-
-        //void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
-        //    _node->onImageLayerAdded( layer );
-        //    _node->onMapLayerStackChanged();
-        //}
-        //void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
-        //    _node->onImageLayerRemoved( layer );
-        //    _node->onMapLayerStackChanged();
-        //}
-        //void onImageLayerMoved( ImageLayer* layer, unsigned int from, unsigned int to ) {
-        //    _node->onMapLayerStackChanged();
-        //}
-        //void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
-        //    _node->onMapLayerStackChanged();
-        //}
-        //void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
-        //    _node->onMapLayerStackChanged();
-        //}
-        //void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-        //    _node->onMapLayerStackChanged();
-        //}
     };
 }
 
@@ -146,7 +131,6 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
             i->get()->addCallback( _imageLayerController.get() );
         }
 
-        //onMapLayerStackChanged();
         updateImageUniforms();
 
         // then register the callback
@@ -222,24 +206,6 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     }
 }
 
-//void
-//TerrainEngineNode::onMapLayerStackChanged()
-//{
-//    updateUniforms();
-//}
-//
-//void
-//TerrainEngineNode::onImageLayerAdded( ImageLayer* layer )
-//{
-//    layer->addCallback( _imageLayerController.get() );
-//}
-//
-//void
-//TerrainEngineNode::onImageLayerRemoved( ImageLayer* layer )
-//{
-//    layer->removeCallback( _imageLayerController.get() );
-//}
-
 void
 TerrainEngineNode::updateImageUniforms()
 {
@@ -250,30 +216,29 @@ TerrainEngineNode::updateImageUniforms()
     // update the layer uniform arrays:
     osg::StateSet* stateSet = this->getOrCreateStateSet();
 
-    // get a copy of the image laye stack:
-    ImageLayerVector imageLayers;
-    _map->getImageLayers( imageLayers );
+    // get a copy of the image layer stack:
+    MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
 
     stateSet->removeUniform( "osgearth_imagelayer_opacity" );
     stateSet->removeUniform( "osgearth_imagelayer_enabled" );
     
-    if ( imageLayers.size() > 0 )
+    if ( mapf.imageLayers().size() > 0 )
     {
         //Update the layer opacity uniform
-        _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", imageLayers.size() );
-        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
-            _imageLayerController->_layerOpacityUniform->setElement( (int)(i-imageLayers.begin()), i->get()->getOpacity() );
+        _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", mapf.imageLayers().size() );
+        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+            _imageLayerController->_layerOpacityUniform->setElement( (int)(i-mapf.imageLayers().begin()), i->get()->getOpacity() );
         stateSet->addUniform( _imageLayerController->_layerOpacityUniform.get() );
 
         //Update the layer enabled uniform
-        _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", imageLayers.size() );
-        for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+        _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", mapf.imageLayers().size() );
+        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
-            _imageLayerController->_layerEnabledUniform->setElement( (int)(i-imageLayers.begin()), i->get()->getEnabled() );
+            _imageLayerController->_layerEnabledUniform->setElement( (int)(i-mapf.imageLayers().begin()), i->get()->getEnabled() );
         }
         stateSet->addUniform( _imageLayerController->_layerEnabledUniform.get() );
     }
-    stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)imageLayers.size() );
+    stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)mapf.imageLayers().size() );
 }
 
 void

@@ -78,9 +78,6 @@ namespace osgEarth
 
         void onMapProfileEstablished( const Profile* profile );
         void onMapModelChanged( const MapModelChange& change );
-        //void onMapLayerStackChanged();
-        //void onImageLayerAdded( ImageLayer* layer );
-        //void onImageLayerRemoved( ImageLayer* layer );
 
     private:
         friend struct MapNodeMapLayerController;

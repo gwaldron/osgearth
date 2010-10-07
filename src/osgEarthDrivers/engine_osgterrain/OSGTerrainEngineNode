@@ -46,12 +46,7 @@ public: // TerrainEngineNode overrides
 
 public: // MapCallback adapter functions
     void onMapProfileEstablished( const Profile* profile );
-    void onImageLayerAdded( ImageLayer*, unsigned int index );
-    void onImageLayerRemoved( ImageLayer* layer, unsigned int index );
-    void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex );
-    void onElevationLayerAdded( ElevationLayer*, unsigned int index );
-    void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index );
-    void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex );
+    void onMapModelChanged( const MapModelChange& change );
 
     unsigned int getId() const;
     OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
@@ -65,8 +60,7 @@ public: // statics
 
 private:
     void init();
-
-    void onTerrainLayerAdded( TerrainLayer* layer );
+    void syncMapModel();
 
     void addImageLayer( ImageLayer* layer );
     void addElevationLayer( ElevationLayer* layer );

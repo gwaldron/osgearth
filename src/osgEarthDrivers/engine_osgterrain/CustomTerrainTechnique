@@ -21,6 +21,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_EXTENDED_TERRAIN_TECHNIQUE 1
 
 #include "Common"
+#include "CustomTerrain"
 #include <osgTerrain/TerrainTechnique>
 #include <osgEarth/Progress>
 
@@ -29,7 +30,7 @@ using namespace osgEarth;
 class CustomTerrainTechnique : public osgTerrain::TerrainTechnique
 {
 public:
-    virtual void init( bool swapNow, ProgressCallback* progress ) =0;
+    virtual void init( const TileUpdate& updateSpec, bool swapNow, ProgressCallback* progress ) =0;
 
     virtual bool swapIfNecessary() =0;
 

@@ -41,24 +41,29 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
     void onMapProfileEstablished( const Profile* profile ) {
         _node->onMapProfileEstablished(profile);
     }
-    void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
-        _node->onImageLayerAdded(layer, index);
+
+    void onMapModelChanged( const MapModelChange& change ) {
+        _node->onMapModelChanged( change );
     }
-    void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
-        _node->onImageLayerRemoved(layer, index);
-    }
-    void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-        _node->onImageLayerMoved(layer,oldIndex,newIndex);
-    }
-    void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
-        _node->onElevationLayerAdded(layer, index);
-    }
-    void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
-        _node->onElevationLayerRemoved(layer, index);
-    }
-    void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-        _node->onElevationLayerMoved(layer,oldIndex,newIndex);
-    }
+
+    //void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
+    //    _node->onImageLayerAdded(layer, index);
+    //}
+    //void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
+    //    _node->onImageLayerRemoved(layer, index);
+    //}
+    //void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+    //    _node->onImageLayerMoved(layer,oldIndex,newIndex);
+    //}
+    //void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
+    //    _node->onElevationLayerAdded(layer, index);
+    //}
+    //void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
+    //    _node->onElevationLayerRemoved(layer, index);
+    //}
+    //void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+    //    _node->onElevationLayerMoved(layer,oldIndex,newIndex);
+    //}
 };
 
 //---------------------------------------------------------------------------
@@ -162,16 +167,18 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
 
     if ( _terrain )
     {
+        syncMapModel();
+
         unsigned int index = 0;
         for( ElevationLayerVector::const_iterator i = _update_mapf->elevationLayers().begin(); i != _update_mapf->elevationLayers().end(); i++ )
         {
-            onElevationLayerAdded( i->get(), index++ );
+            addElevationLayer( i->get() );
         }
 
         index = 0;
         for( ImageLayerVector::const_iterator j = _update_mapf->imageLayers().begin(); j != _update_mapf->imageLayers().end(); j++ )
         {
-            onImageLayerAdded( j->get(), index++ );
+            addImageLayer( j->get() );
         }
     }
 
@@ -268,49 +275,50 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 }
 
 void
-OSGTerrainEngineNode::onTerrainLayerAdded( TerrainLayer* layer )
+OSGTerrainEngineNode::syncMapModel()
 {
     // update the local map data model copy 
     _update_mapf->sync();
 
+    // update the terrain revision in threaded mode
     if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
     {
-        if ( layer->getTileSource() )
+        getTerrain()->incrementRevision();
+        getTerrain()->updateTaskServiceThreads( *_update_mapf );
+    }
+}
+
+void
+OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
+{
+    syncMapModel();
+
+    // dispatch the change handler
+    if ( change.getLayer() )
+    {
+        switch( change.getAction() )
         {
-            getTerrain()->incrementRevision();
-            getTerrain()->updateTaskServiceThreads( *_update_mapf );
+        case MapModelChange::ADD_IMAGE_LAYER:
+            addImageLayer( change.getImageLayer() ); break;
+        case MapModelChange::REMOVE_IMAGE_LAYER:
+            removeImageLayer( change.getFirstIndex() ); break;
+        case MapModelChange::ADD_ELEVATION_LAYER:
+            addElevationLayer( change.getElevationLayer() ); break;
+        case MapModelChange::REMOVE_ELEVATION_LAYER:
+            removeElevationLayer( change.getFirstIndex() ); break;
+        case MapModelChange::MOVE_IMAGE_LAYER:
+            moveImageLayer( change.getFirstIndex(), change.getSecondIndex() ); break;
+        case MapModelChange::MOVE_ELEVATION_LAYER:
+            moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() ); break;
         }
-    }
-}
-
-void
-OSGTerrainEngineNode::onImageLayerAdded( ImageLayer* layer, unsigned int index )
-{
-    if ( layer )
-    {
-        onTerrainLayerAdded( layer );
-        if ( layer->getTileSource() )
-            addImageLayer( layer );
-    }
-}
-
-void
-OSGTerrainEngineNode::onElevationLayerAdded( ElevationLayer* layer, unsigned int index )
-{
-    if ( layer )
-    {
-        onTerrainLayerAdded( layer );
-        if ( layer->getTileSource() )
-            addElevationLayer( layer );
     }
 }
 
 void
 OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
 {
-    //TODO: review the scope of this mapdata mutex lock within this method. We can 
-    // probably optimize it some
-    //Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    if ( !layer || !layer->getTileSource() )
+        return;
 
     // visit all existing terrain tiles and inform each one of the new image layer:
     TerrainTileList tiles;
@@ -398,7 +406,7 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty(true);
         else
-            tile->markTileForRegeneration();
+            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
     }
 
     updateTextureCombining();
@@ -413,8 +421,6 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
 
     bool hasElevation;
     {
-        //NOTE: removed since we're using a mapframe
-        //Threading::ScopedReadLock mapDataLock(_map->getMapDataMutex());
         hasElevation = _update_mapf->elevationLayers().size() > 0;
     }    
 
@@ -427,7 +433,6 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
         //In standard mode, just load the elevation data and dirty the tile.
 
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-            //if (!_options.getPreemptiveLOD())
         {
             osg::ref_ptr<osg::HeightField> hf;
             if (hasElevation)
@@ -449,7 +454,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
                 hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
                 tile->setElevationLOD( key.getLevelOfDetail() );
                 tile->resetElevationRequests( *_update_mapf );
-                tile->markTileForRegeneration();
+                tile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
             }
             else
             {
@@ -461,7 +466,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
                     heightFieldLayer->setHeightField( hf.get() );
                     hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
                     tile->setElevationLOD(tile->getKey().getLevelOfDetail());
-                    tile->markTileForRegeneration();
+                    tile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                 }
                 else
                 {
@@ -478,9 +483,8 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
 void
 OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
-    //TODO: review the use of this read-mutex here. do we need it??
-    //NOTE: don't need this anymore.
-    //Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
+    if ( !layer || !layer->getTileSource() )
+        return;
 
     TerrainTileList tiles;
     _terrain->getTerrainTiles( tiles );
@@ -495,26 +499,8 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 }
 
 void
-OSGTerrainEngineNode::onImageLayerRemoved( ImageLayer* layer, unsigned int index )
-{
-    if ( layer )
-        removeImageLayer( index );
-}
-
-void
-OSGTerrainEngineNode::onElevationLayerRemoved( ElevationLayer* layer, unsigned int index )
-{
-    if ( layer )
-        removeElevationLayer( index );
-}
-
-void
 OSGTerrainEngineNode::removeImageLayer( unsigned int index )
 {
-    //TODO: need this mutex??
-    //NOPE gw
-    //Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
-
     TerrainTileList tiles;
     _terrain->getTerrainTiles( tiles );
 
@@ -523,7 +509,6 @@ OSGTerrainEngineNode::removeImageLayer( unsigned int index )
         CustomTile* tile = static_cast< CustomTile* >( itr->get() );
         Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
-        //OpenThreads::ScopedLock< OpenThreads::Mutex > tileLock(((EarthTerrainTechnique*)itr->get()->getTerrainTechnique())->getMutex());
         //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
         std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
         for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
@@ -550,7 +535,7 @@ OSGTerrainEngineNode::removeImageLayer( unsigned int index )
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
-            tile->markTileForRegeneration();
+            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
     }
     
     updateTextureCombining();
@@ -561,10 +546,6 @@ OSGTerrainEngineNode::removeImageLayer( unsigned int index )
 void
 OSGTerrainEngineNode::removeElevationLayer( unsigned int index )
 {
-    //TODO: need this mutex??
-    //Nope -gw
-    //Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
-
     TerrainTileList tiles;
     _terrain->getTerrainTiles( tiles );
 
@@ -576,25 +557,8 @@ OSGTerrainEngineNode::removeElevationLayer( unsigned int index )
 }
 
 void
-OSGTerrainEngineNode::onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex )
-{
-    if ( layer )
-        moveImageLayer( oldIndex, newIndex );
-}
-
-void 
-OSGTerrainEngineNode::onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex )
-{
-    if ( layer )
-        moveElevationLayer( oldIndex, newIndex );
-}
-
-void
 OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    //TODO: need thi mutex??? NO
-    //Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
-
     TerrainTileList tiles;
     _terrain->getTerrainTiles( tiles );
 
@@ -624,7 +588,7 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
-            tile->markTileForRegeneration();
+            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
     }     
 
     updateTextureCombining();
@@ -633,10 +597,6 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
 void
 OSGTerrainEngineNode::moveElevationLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    //TODO: need this mutex??
-    //no
-    //Threading::ScopedReadLock mapDataLock( _map->getMapDataMutex() );
-
     TerrainTileList tiles;
     _terrain->getTerrainTiles( tiles );
     OE_DEBUG << "Found " << tiles.size() << std::endl;
@@ -739,7 +699,6 @@ OSGTerrainEngineNode::updateTextureCombining()
 {
     if ( _texCompositor.valid() )
     {
-        // ASSUMPTION: map data mutex is held
         _texCompositor->updateGlobalStateSet( getOrCreateStateSet(), _update_mapf->imageLayers().size() );
     }
 

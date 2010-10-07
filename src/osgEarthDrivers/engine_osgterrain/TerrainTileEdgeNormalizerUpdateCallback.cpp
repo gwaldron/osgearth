@@ -238,22 +238,22 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                           if (normalized)
                           {
                               if (ll_tile->getUseLayerRequests())
-                                  ll_tile->markTileForRegeneration();
+                                  ll_tile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                               else
                                   ll_tile->setDirty(true);
 
                               if (lr_tile->getUseLayerRequests())
-                                  lr_tile->markTileForRegeneration();
+                                  lr_tile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                               else
                                   lr_tile->setDirty(true);
 
                               if (ul_tile->getUseLayerRequests())
-                                  ul_tile->markTileForRegeneration();
+                                  ul_tile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                               else
                                   ul_tile->setDirty(true);
 
                               if (ur_tile->getUseLayerRequests())
-                                  ur_tile->markTileForRegeneration();
+                                  ur_tile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                               else
                                   ur_tile->setDirty(true);
                           }
@@ -300,12 +300,12 @@ TerrainTileEdgeNormalizerUpdateCallback::TerrainTileEdgeNormalizerUpdateCallback
                               if (normalized)
                               {
                                   if (tile->getUseLayerRequests())
-                                      tile->markTileForRegeneration();
+                                      tile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                                   else
                                       tile->setDirty(true);
 
                                   if (tile2->getUseLayerRequests())
-                                      tile2->markTileForRegeneration();
+                                      tile2->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                                   else
                                       tile2->setDirty(true);
                               }

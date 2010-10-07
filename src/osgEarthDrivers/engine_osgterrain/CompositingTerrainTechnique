@@ -65,7 +65,7 @@ public: /* overrides */
     virtual void init();
 #endif
 
-    virtual void init( bool swapNow, ProgressCallback* progress );
+    virtual void init( const TileUpdate& updateSpec, bool swapNow, ProgressCallback* progress );
 
     // returns TRUE if a swap occurred and a new subgraph is now in place.
     bool swapIfNecessary();

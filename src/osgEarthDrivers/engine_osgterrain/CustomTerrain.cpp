@@ -186,8 +186,8 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 // NOTE! this doesn't work for multipass technique!
 struct TileGenRequest : public TaskRequest
 {
-    TileGenRequest( CustomTile* tile ) :
-        _tile( tile ) { }
+    TileGenRequest( CustomTile* tile, const TileUpdate& update ) :
+        _tile( tile ), _update(update) { }
 
     void operator()( ProgressCallback* progress )
     {
@@ -196,13 +196,16 @@ struct TileGenRequest : public TaskRequest
             CustomTerrainTechnique* et = dynamic_cast<CustomTerrainTechnique*>( _tile->getTerrainTechnique() );
             if (et)
             {
-                et->init(false, progress);
+                et->init(_update, false, progress);
+                //et->init(false, progress);
             }
         }
         //We don't need the tile anymore
         _tile = NULL;
     }
+
     osg::ref_ptr< CustomTile > _tile;
+    TileUpdate _update;
 };
 
 
@@ -230,7 +233,7 @@ _elevationLayerUpToDate( true ),
 _elevationLOD( key.getLevelOfDetail() ),
 _hasBeenTraversed(false),
 _useTileGenRequest( true ),
-_tileGenNeeded( false ),
+//_tileGenNeeded( false ),
 _verticalScale(1.0f)
 {
     this->setThreadSafeRefUnref( true );
@@ -828,16 +831,24 @@ CustomTile::servicePendingElevationRequests( const MapFrame& mapf, int stamp, bo
 }
 
 void
-CustomTile::markTileForRegeneration()
+CustomTile::queueTileUpdate( TileUpdate::Action action, int index )
 {
     if ( _useTileGenRequest )
     {
-        _tileGenNeeded = true;
+        _tileUpdates.push( TileUpdate(action, index) );
     }
     else
     {
         this->setDirty( true );
     }
+    //if ( _useTileGenRequest )
+    //{
+    //    _tileGenNeeded = true;
+    //}
+    //else
+    //{
+    //    this->setDirty( true );
+    //}
 }
 
 // called from the UPDATE TRAVERSAL, because this method can potentially alter
@@ -920,7 +931,9 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                     setColorLayer(i, parentColorLayer.get());
                                 }
                             }
-                            markTileForRegeneration();
+
+                            queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, i );
+                            //markTileForRegeneration();
                         }
                     }
                     else
@@ -972,9 +985,9 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                 }
                             }
 
-                            //The maplayer was probably deleted
                             if (index < 0)
                             {
+                                //The maplayer was probably deleted
                                 OE_DEBUG << "Layer " << r->_layerId << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
                                 itr = _requests.erase(itr);
                                 increment = false;
@@ -990,7 +1003,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                         this->setColorLayer( index, newImgLayer.get() );
                                     }
 
-                                    markTileForRegeneration();
+                                    queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, index );
 
                                     //OE_NOTICE << "Complete IR (" << _key.str() << ") layer=" << r->_layerId << std::endl;
 
@@ -1074,7 +1087,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                     }
 
                     // the tile needs rebuilding. This will kick off a TileGenRequest.
-                    markTileForRegeneration();
+                    queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                     
                     // finalize the LOD marker for this tile, so other tiles can see where we are.
                     //setElevationLOD( _key.getLevelOfDetail() );
@@ -1123,7 +1136,8 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                     }
 
                     // tile needs to be recompiled.
-                    markTileForRegeneration();
+                    queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
+                    //markTileForRegeneration();
 
                     // update the elevation LOD for this tile, now that the new HF data is installed. This will
                     // allow other tiles to see where this tile's HF data is.
@@ -1141,12 +1155,13 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
     }
 
     // if we have a new TileGenRequest, queue it up now.
-    if ( _tileGenNeeded && !_tileGenRequest.valid())
+    if ( _tileUpdates.size() > 0 && !_tileGenRequest.valid() ) // _tileGenNeeded && !_tileGenRequest.valid())
     {
-        _tileGenRequest = new TileGenRequest(this);
+        _tileGenRequest = new TileGenRequest( this, _tileUpdates.front() );
+        _tileUpdates.pop();
         //OE_NOTICE << "tile (" << _key.str() << ") queuing new tile gen" << std::endl;
         getCustomTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
-        _tileGenNeeded = false;
+        //_tileGenNeeded = false;
     }
 
     return tileModified;
@@ -1787,9 +1802,6 @@ CustomTerrain::getTileGenerationTaskSerivce()
 void
 CustomTerrain::updateTaskServiceThreads( const MapFrame& mapf )
 {
-    //Removed this since we're using a mapframe now
-    //Threading::ScopedReadLock lock(_map->getMapDataMutex());    
-
     //Get the maximum elevation weight
     float elevationWeight = 0.0f;
     for (ElevationLayerVector::const_iterator itr = mapf.elevationLayers().begin(); itr != mapf.elevationLayers().end(); ++itr)
@@ -1811,7 +1823,7 @@ CustomTerrain::updateTaskServiceThreads( const MapFrame& mapf )
     {
         //Determine how many threads each layer gets
         int numElevationThreads = (int)osg::round((float)_numAsyncThreads * (elevationWeight / totalWeight ));
-        OE_INFO << "HtFld Threads = " << numElevationThreads << std::endl;
+        OE_INFO << LC << "Elevation Threads = " << numElevationThreads << std::endl;
         getElevationTaskService()->setNumThreads( numElevationThreads );
     }
 
@@ -1819,8 +1831,7 @@ CustomTerrain::updateTaskServiceThreads( const MapFrame& mapf )
     {
         const TerrainLayerOptions& opt = itr->get()->getTerrainLayerOptions();
         int imageThreads = (int)osg::round((float)_numAsyncThreads * (opt.loadingWeight().value() / totalWeight ));
-        OE_INFO << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
+        OE_INFO << LC << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
     }
-
 }

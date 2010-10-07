@@ -30,6 +30,7 @@
 #include <osgTerrain/Terrain>
 #include <osgTerrain/TerrainTile>
 #include <list>
+#include <queue>
 
 class TileFactory; //MapEngine;
 class CustomTerrain;
@@ -69,7 +70,27 @@ struct Relative {
     osgTerrain::TileID tileID;
 };
 
-//typedef std::vector<Relative> Relatives;
+// Records a tile change request so that we can update tiles piecemeal
+struct TileUpdate
+{
+    enum Action {
+        UPDATE_IMAGE_LAYER, // requires index
+        UPDATE_ALL_IMAGE_LAYERS,
+        UPDATE_ELEVATION,
+        UPDATE_ALL
+    };
+
+    TileUpdate( Action action, int index =-1 )
+        : _action(action), _index(index) { }
+
+    Action getAction() const { return _action; }
+    int getIndex() const { return _index; }
+
+private:
+    Action _action;
+    int _index;
+};
+
 
 /**
  * An OSG terrain tile that supports change detection.
@@ -163,7 +184,8 @@ public:
 
     Relative* getFamily();
 
-    void markTileForRegeneration();
+    // marks a request to regenerate the tile based on the specified change(s).
+    void queueTileUpdate( TileUpdate::Action action, int index =-1 );
 
     void resetElevationRequests( const MapFrame& mapf );
 
@@ -201,8 +223,12 @@ private:
     int  _elevationLOD;
     bool _hasBeenTraversed;
     bool _useTileGenRequest;
-    bool _tileGenNeeded;
     bool _sequentialImagery;
+
+    //bool _tileGenNeeded;
+
+    typedef std::queue<TileUpdate> TileUpdateQueue;
+    TileUpdateQueue _tileUpdates;
 
     TileKey _key;
     osg::ref_ptr<GeoLocator> _keyLocator;

@@ -37,26 +37,31 @@ namespace osgEarth
         void onMapProfileEstablished( const Profile* profile ) {
             _node->onMapProfileEstablished( profile );
         }
-        void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
-            _node->onImageLayerAdded( layer );
-            _node->onMapLayerStackChanged();
+
+        void onMapModelChanged( const MapModelChange& change ) {
+            _node->onMapModelChanged( change );
         }
-        void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
-            _node->onImageLayerRemoved( layer );
-            _node->onMapLayerStackChanged();
-        }
-        void onImageLayerMoved( ImageLayer* layer, unsigned int from, unsigned int to ) {
-            _node->onMapLayerStackChanged();
-        }
-        void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
-            _node->onMapLayerStackChanged();
-        }
-        void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
-            _node->onMapLayerStackChanged();
-        }
-        void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-            _node->onMapLayerStackChanged();
-        }
+
+        //void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
+        //    _node->onImageLayerAdded( layer );
+        //    _node->onMapLayerStackChanged();
+        //}
+        //void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
+        //    _node->onImageLayerRemoved( layer );
+        //    _node->onMapLayerStackChanged();
+        //}
+        //void onImageLayerMoved( ImageLayer* layer, unsigned int from, unsigned int to ) {
+        //    _node->onMapLayerStackChanged();
+        //}
+        //void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
+        //    _node->onMapLayerStackChanged();
+        //}
+        //void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
+        //    _node->onMapLayerStackChanged();
+        //}
+        //void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+        //    _node->onMapLayerStackChanged();
+        //}
     };
 }
 
@@ -141,7 +146,8 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
             i->get()->addCallback( _imageLayerController.get() );
         }
 
-        onMapLayerStackChanged();
+        //onMapLayerStackChanged();
+        updateImageUniforms();
 
         // then register the callback
         _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
@@ -194,25 +200,48 @@ TerrainEngineNode::onMapProfileEstablished( const Profile* profile )
 }
 
 void
-TerrainEngineNode::onMapLayerStackChanged()
+TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
-    updateUniforms();
+    if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
+    {
+        change.getImageLayer()->addCallback( _imageLayerController.get() );
+    }
+    else if ( change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER )
+    {
+        change.getImageLayer()->removeCallback( _imageLayerController.get() );
+    }
+
+    if (change.getAction() == MapModelChange::ADD_IMAGE_LAYER ||
+        change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER ||
+        change.getAction() == MapModelChange::MOVE_IMAGE_LAYER )
+        //change.getAction() == MapModelChange::ADD_ELEVATION_LAYER ||
+        //change.getAction() == MapModelChange::REMOVE_ELEVATION_LAYER ||
+        //change.getAction() == MapModelChange::MOVE_ELEVATION_LAYER )
+    {
+        updateImageUniforms();
+    }
 }
 
-void
-TerrainEngineNode::onImageLayerAdded( ImageLayer* layer )
-{
-    layer->addCallback( _imageLayerController.get() );
-}
+//void
+//TerrainEngineNode::onMapLayerStackChanged()
+//{
+//    updateUniforms();
+//}
+//
+//void
+//TerrainEngineNode::onImageLayerAdded( ImageLayer* layer )
+//{
+//    layer->addCallback( _imageLayerController.get() );
+//}
+//
+//void
+//TerrainEngineNode::onImageLayerRemoved( ImageLayer* layer )
+//{
+//    layer->removeCallback( _imageLayerController.get() );
+//}
 
 void
-TerrainEngineNode::onImageLayerRemoved( ImageLayer* layer )
-{
-    layer->removeCallback( _imageLayerController.get() );
-}
-
-void
-TerrainEngineNode::updateUniforms()
+TerrainEngineNode::updateImageUniforms()
 {
     // don't bother if this is a hurting old card
     if ( !Registry::instance()->getCapabilities().supportsGLSL() )

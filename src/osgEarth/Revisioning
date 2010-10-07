@@ -30,8 +30,8 @@ namespace osgEarth
         Revision(int init) : _value(init) { }
         void reset() { _value = -1; }
         operator int() const { return _value; }
-        void operator ++() { _value++; }
-        void operator --() { _value--; }
+        int operator ++() { return ++_value; }
+        int operator --() { return --_value; }
     private:
         int _value;
     };

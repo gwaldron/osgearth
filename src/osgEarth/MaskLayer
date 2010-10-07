@@ -21,6 +21,7 @@
 #define OSGEARTH_MASK_LAYER_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
 #include <osg/Node>
@@ -35,7 +36,7 @@ namespace osgEarth
      *
      * TODO: move this to osgEarth::Util and give it a reasonable API.
      */
-    class OSGEARTH_EXPORT MaskLayer : public osg::Referenced
+    class OSGEARTH_EXPORT MaskLayer : public Layer
     {
     public:
         /**

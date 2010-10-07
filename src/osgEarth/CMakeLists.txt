@@ -38,6 +38,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageMosaic
     ImageUtils
     JsonUtils
+    Layer
     Locators
     Map
     MapNode

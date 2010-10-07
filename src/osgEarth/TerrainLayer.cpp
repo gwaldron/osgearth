@@ -115,14 +115,12 @@ TerrainLayerOptions::mergeConfig( const Config& conf )
 static unsigned int s_mapLayerID = 0;
 static Mutex        s_initMutex;
 
-TerrainLayer::TerrainLayer() :
-osg::Referenced( true )
+TerrainLayer::TerrainLayer()
 {
     init();
 }
 
 TerrainLayer::TerrainLayer( TileSource* tileSource ) :
-osg::Referenced( true ),
 _tileSource( tileSource )
 {
     init();

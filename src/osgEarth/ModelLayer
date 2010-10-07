@@ -21,6 +21,7 @@
 #define OSGEARTH_MODEL_LAYER_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/ModelSource>
 #include <osg/Node>
@@ -30,7 +31,7 @@ namespace osgEarth
 {
     class Map;
 
-    class OSGEARTH_EXPORT ModelLayer : public osg::Referenced
+    class OSGEARTH_EXPORT ModelLayer : public Layer
     {
     public:
         /**

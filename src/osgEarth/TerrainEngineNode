@@ -77,16 +77,15 @@ namespace osgEarth
         friend struct TerrainEngineNodeCallbackProxy;
 
         void onMapProfileEstablished( const Profile* profile );
-        void onMapLayerStackChanged();
-        void onImageLayerAdded( ImageLayer* layer );
-        void onImageLayerRemoved( ImageLayer* layer );
+        void onMapModelChanged( const MapModelChange& change );
+        //void onMapLayerStackChanged();
+        //void onImageLayerAdded( ImageLayer* layer );
+        //void onImageLayerRemoved( ImageLayer* layer );
 
     private:
         friend struct MapNodeMapLayerController;
 
-        //virtual void updateLayerOpacity( MapLayer* layer );
-        //virtual void updateLayerEnabled( MapLayer* layer );
-        virtual void updateUniforms();
+        virtual void updateImageUniforms();
 
     private:
         float _verticalScale;
@@ -108,7 +107,6 @@ namespace osgEarth
 
         private:
             MapFrame _mapf;
-            //Map* _map; // dont' need a ref here
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;

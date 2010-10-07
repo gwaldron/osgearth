@@ -23,8 +23,7 @@ using namespace osgEarth;
 
 #define MASK_MODEL_DRIVER "feature_stencil"
 
-MaskLayer::MaskLayer( const ConfigOptions& options ) :
-osg::Referenced( true ) //TODO: necessary?
+MaskLayer::MaskLayer( const ConfigOptions& options )
 {
     // just in case the caller did not ref the parameter:
     //osg::ref_ptr<const DriverOptions> tempHold = options;

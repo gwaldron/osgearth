@@ -35,12 +35,50 @@
 
 namespace osgEarth
 {    
+    struct MapModelChange
+    {
+        enum ActionType {
+            ADD_IMAGE_LAYER,
+            REMOVE_IMAGE_LAYER,
+            MOVE_IMAGE_LAYER,
+            ADD_ELEVATION_LAYER,
+            REMOVE_ELEVATION_LAYER,
+            MOVE_ELEVATION_LAYER,
+            ADD_MODEL_LAYER,
+            REMOVE_MODEL_LAYER,
+            ADD_MASK_LAYER,
+            REMOVE_MASK_LAYER,
+            UNSPECIFIED
+        };
+
+        MapModelChange( ActionType action, Revision mapModeRev, Layer* layer, int firstIndex =-1, int secondIndex =-1 ) 
+            : _action(action), _modelRevision(mapModeRev), _layer(layer), _firstIndex(firstIndex), _secondIndex(secondIndex) { }
+
+        const ActionType& getAction() const { return _action; }
+        const Revision& getRevision() const { return _modelRevision; }
+        int getFirstIndex() const { return _firstIndex; }
+        int getSecondIndex() const { return _secondIndex; }
+        Layer* getLayer() const { return _layer; }
+        ImageLayer* getImageLayer() const { return static_cast<ImageLayer*>(_layer.get()); }
+        ElevationLayer* getElevationLayer() const { return static_cast<ElevationLayer*>(_layer.get()); }
+        ModelLayer* getModelLayer() const { return static_cast<ModelLayer*>(_layer.get()); }
+        MaskLayer* getMaskLayer() const { return static_cast<MaskLayer*>(_layer.get()); }
+
+    private:
+        ActionType _action;
+        osg::ref_ptr<Layer> _layer;
+        Revision _modelRevision;
+        int _firstIndex, _secondIndex;
+    };
+
     /**
      * Callback that the Map object uses to notify listeners of map source changes.
      */
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
         virtual void onMapProfileEstablished( const Profile* profile ) { }
+
+        virtual void onMapModelChanged( const MapModelChange& change );
 
         virtual void onImageLayerAdded( ImageLayer* layer, unsigned int index ) { }
         virtual void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) { }
@@ -93,14 +131,6 @@ namespace osgEarth
         const Profile* getProfile() const;
 
         /**
-         * Gets the ordered list of image layers in this map. Be sure to use
-         * getMapDataMutex() when iterating the list.
-         *
-         * TO BE DEPRECATED
-         */
-        //const ImageLayerVector& getImageLayers() const { return _imageLayers; }
-
-        /**
          * Copies references of the map image layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
@@ -111,14 +141,6 @@ namespace osgEarth
          * Gets the number of image layers in the map.
          */
         int getNumImageLayers() const;
-
-        /**
-         * Gets the ordered list of heightfield layers in this map. Be sure to use
-         * getMapDataMutex() when iterating the list.
-         *
-         * TO BE DEPRECATED
-         */
-        //const ElevationLayerVector& getElevationLayers() const { return _elevationLayers; }
 
         /**
          * Copies references of the elevation layers into the output list.
@@ -253,13 +275,6 @@ namespace osgEarth
         const std::string& getName() const { return _name; }
 
         /**
-         * Gets the mutex that protects access to the Map layer lists.
-         * TODO: re-evaluate whether exposing this is really necessary or wise; alteratives
-         * would include const access to the Map from the engine
-         */
-        //Threading::ReadWriteMutex& getMapDataMutex();
-
-        /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
          * lower resolutions if necessary. 
          *
@@ -295,7 +310,9 @@ namespace osgEarth
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
-         */        
+         */    
+        void sync( class MapFrame& frame ) const;    
+
         enum ModelParts {
             IMAGE_LAYERS     = 1 << 0,
             ELEVATION_LAYERS = 1 << 1,
@@ -303,8 +320,6 @@ namespace osgEarth
             TERRAIN_LAYERS   = IMAGE_LAYERS | ELEVATION_LAYERS,
             ENTIRE_MODEL     = 0xff
         };
-
-        void sync( class MapFrame& frame ) const;
 
     protected:
 

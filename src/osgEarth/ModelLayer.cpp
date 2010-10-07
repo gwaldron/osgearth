@@ -23,7 +23,6 @@
 using namespace osgEarth;
 
 ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& options ) :
-osg::Referenced( true ), //TODO: necessary??
 _name( name ),
 _driverOptions( options ),
 _enabled(true)
@@ -32,7 +31,6 @@ _enabled(true)
 }
 
 ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
-osg::Referenced( true ), //TODO: necessary??
 _name( name ),
 _modelSource( source ),
 _enabled(true)

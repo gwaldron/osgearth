@@ -21,6 +21,7 @@
 #define OSGEARTH_TERRAIN_LAYER_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Layer>
 #include <osgEarth/Config>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
@@ -155,7 +156,7 @@ namespace osgEarth
     typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer);
 
 
-    class OSGEARTH_EXPORT TerrainLayer : public osg::Referenced
+    class OSGEARTH_EXPORT TerrainLayer : public Layer
     {
     protected:
         TerrainLayer();

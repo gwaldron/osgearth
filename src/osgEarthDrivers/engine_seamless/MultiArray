@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2009 Pelican Ventures, Inc.
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+// Poor man's multi array adapter.
+
+namespace seamless
+{
+
+template<typename ElementType, typename Store, unsigned N> class Reference;
+
+template<typename ElementType, typename Store, unsigned N>
+class SubArray : public Reference<ElementType, Store, N>
+{
+    typedef Reference<ElementType, Store, N> super_type;
+    typedef typename super_type::reference reference;
+public:
+    SubArray(int base, Store& store,
+             const int* indexBase, const int* strides)
+        : super_type(base), _store(store),
+          _indexBase(indexBase), _strides(strides)
+    {
+        
+    }
+
+    reference operator[](int index)
+    {
+        return super_type::access(index, _store, _indexBase, _strides);
+    }
+    Store& _store;
+    const int* _indexBase;
+    const int* _strides;
+};
+
+template<typename ElementType, typename Store, unsigned N>
+class Reference
+{
+public:
+    typedef SubArray<ElementType, Store, N - 1> reference;
+    Reference(int base) : _base(base) {}
+
+    reference access(int index, Store& store, const int* indexBase,
+                     const int* strides) const
+    {
+        int newbase = _base + (index - indexBase[0]) * strides[0];
+        return reference(
+            newbase, store, indexBase + 1, strides + 1);
+    }
+    const int _base;
+};
+
+template<typename ElementType, typename Store>
+class Reference<ElementType, Store, 1>
+{
+public:
+    Reference(int base) : _base(base) {}
+    typedef ElementType& reference;
+
+    reference access(int index, Store& store, const int* indexBase,
+                     const int* strides)
+    {
+        return store[_base + (index - indexBase[0]) * strides[0]];
+    }
+    const int _base;
+};
+
+template<typename ElementType, typename Store, unsigned N>
+class multi_array_ref : public Reference<ElementType, Store, N>
+{
+public:
+    typedef Reference<ElementType, Store, N> super_type;
+    typedef typename super_type::reference reference;
+    multi_array_ref(Store& store, unsigned dimension)
+        : _store(store), super_type(0)
+    {
+        _strides[N - 1] = 1;
+        for (int i = N - 2; i >= 0; --i)
+        {
+            _strides[i] = dimension * _strides[i + 1];
+        }
+        for (int i = 0; i < N; ++i)
+        {
+            _shape[i] = dimension;
+            _indexBase[i] = 0;
+
+        }
+    }
+    
+    reference operator[](int index)
+    {
+        return super_type::access(index, _store, _indexBase, _strides);
+    }
+protected:
+    Store& _store;
+    int _shape[N];
+    int _indexBase[N];
+    int _strides[N];
+};
+
+
+}

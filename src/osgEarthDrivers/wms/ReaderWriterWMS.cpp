@@ -155,7 +155,7 @@ public:
         {
             //TODO: "layers" mights be a comma-separated list. need to loop through and
             //combine the extents?? yes
-            WMSLayer* layer = capabilities->getLayerByName( _settings->layers().value() );
+            WMSLayer* layer = capabilities->getLayerByName( _options.layers().value() );
             if ( layer )
             {
                 double minx, miny, maxx, maxy;                

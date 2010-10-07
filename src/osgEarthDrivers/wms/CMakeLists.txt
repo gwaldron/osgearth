@@ -1,14 +1,14 @@
 
 SET(TARGET_SRC
-    Capabilities.cpp
     ReaderWriterWMS.cpp
     TileService.cpp)
 
 SET(TARGET_H
-    Capabilities
     TileService
     WMSOptions
 )
+
+SET(TARGET_COMMON_LIBRARIES osgEarthUtil)
 
 SETUP_PLUGIN(osgearth_wms)
 

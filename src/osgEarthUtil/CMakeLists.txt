@@ -24,6 +24,7 @@ SET(LIB_PUBLIC_HEADERS
     OceanSurfaceNode
     Popups
     Viewpoint
+    WMS
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
@@ -42,6 +43,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     OceanSurfaceNode.cpp
     Popups.cpp
     Viewpoint.cpp
+    WMS.cpp
 )
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})

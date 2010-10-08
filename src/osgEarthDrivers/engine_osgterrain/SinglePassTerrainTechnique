@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef OSGEARTH_ENGINE_OSGTERRAIN_COMPOSITING_TERRAIN_TECHNIQUE
-#define OSGEARTH_ENGINE_OSGTERRAIN_COMPOSITING_TERRAIN_TECHNIQUE 1
+#ifndef OSGEARTH_ENGINE_OSGTERRAIN_SINGLE_PASS_TERRAIN_TECHNIQUE
+#define OSGEARTH_ENGINE_OSGTERRAIN_SINGLE_PASS_TERRAIN_TECHNIQUE 1
 
 #include "CustomTerrainTechnique"
 
@@ -49,13 +49,13 @@
  * creates a single mosaic texture. For example, if your GPU's max texture size is 2048,
  * this technique can support 64 256-pixel layers.
  */
-class CompositingTerrainTechnique : public CustomTerrainTechnique
+class SinglePassTerrainTechnique : public CustomTerrainTechnique
 {
 public:
-    CompositingTerrainTechnique( TextureCompositor* compositor =0L ); //osgTerrain::Locator* locator =0L );
+    SinglePassTerrainTechnique( TextureCompositor* compositor =0L ); //osgTerrain::Locator* locator =0L );
 
-    CompositingTerrainTechnique(const CompositingTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
-    META_Object(osgEarth, CompositingTerrainTechnique);
+    SinglePassTerrainTechnique(const SinglePassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+    META_Object(osgEarth, SinglePassTerrainTechnique);
 
 
 public: /* overrides */
@@ -65,29 +65,15 @@ public: /* overrides */
     virtual void init();
 #endif
 
-    virtual void init( const TileUpdate& updateSpec, bool swapNow, ProgressCallback* progress );
+    void compile( const TileUpdate& updateSpec, ProgressCallback* progress );
 
     // returns TRUE if a swap occurred and a new subgraph is now in place.
-    bool swapIfNecessary();
-
-    virtual osgTerrain::Locator* computeMasterLocator();
-
-    virtual osg::Vec3d computeCenterModel(osgTerrain::Locator* masterLocator);
-
-    virtual void generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
-
-    virtual void update(osgUtil::UpdateVisitor* nv);
-
-    virtual void cull(osgUtil::CullVisitor* nv);
+    bool applyTileUpdates();
 
     /** Traverse the terrain subgraph.*/
     virtual void traverse(osg::NodeVisitor& nv);
 
-    virtual void cleanSceneGraph();
-
 public:
-
-    inline Threading::ReadWriteMutex& getMutex();
 
     /**
     * Sets a factor by which to scale elevation height values. By default, this object
@@ -119,49 +105,63 @@ protected:
 
 private:
 
-    virtual ~CompositingTerrainTechnique();
+    virtual ~SinglePassTerrainTechnique();
 
-    struct BufferData
-    {
-        osg::ref_ptr<osg::MatrixTransform>  _transform;
-        osg::ref_ptr<osg::Geode>            _geode;
-        osg::ref_ptr<osg::Geometry>         _surface;
-        osg::ref_ptr<osg::Geometry>         _skirt;
-    };
+    //struct BufferData
+    //{
+    //    //osg::ref_ptr<osg::MatrixTransform>  _transform;
+    //    osg::ref_ptr<osg::Geode>            _geode;
+    //    osg::ref_ptr<osg::Geometry>         _surface;
+    //    osg::ref_ptr<osg::Geometry>         _skirt;
+    //};
 
     OpenThreads::Mutex                  _writeBufferMutex;
 
-    unsigned int _currentReadOnlyBuffer;
-    unsigned int _currentWriteBuffer;
-    BufferData _bufferData[2];
+    osg::ref_ptr<osg::MatrixTransform> _transform;
 
-    void swapBuffers();
+    osg::ref_ptr<osg::Geode> _backGeode;
 
-    inline BufferData& getReadOnlyBuffer() { return _bufferData[_currentReadOnlyBuffer]; }
-    inline BufferData& getWriteBuffer() { return _bufferData[_currentWriteBuffer]; }
+    //unsigned int _currentFrontBuffer;
+    //unsigned int _currentBackBuffer;
+    //BufferData _bufferData[2];
 
-    void clearBuffer( int which );
+    //void swapBuffers();
 
-    osg::Vec3d _lastCenterModel;
+    //inline BufferData& getFrontBuffer() { return _bufferData[_currentFrontBuffer]; }
+    //inline BufferData& getBackBuffer() { return _bufferData[_currentBackBuffer]; }
+
+    //void clearBuffer( int which );
+
+    osg::Vec3d _centerModel;
     float _verticalScaleOverride;
 
     osg::ref_ptr<osgTerrain::Locator> _masterLocator;
 
-    bool _swapPending;
+    //bool _swapPending;
     int _initCount;
+
+    bool     _fullUpdatePending;
+    GeoImage _pendingImageLayerUpdate;
+    int      _pendingImageLayerUpdateIndex;
+    bool     _pendingGeometryUpdate;
+
+    GeoExtent _tileExtent;
 
     bool _optimizeTriangleOrientation;
 
 private:
 
-    //void initShaders();
-
     osg::ref_ptr<const TextureCompositor> _texCompositor;
-
     osg::ref_ptr<osg::Program> _compositeProgram;
-    bool                       _attachedProgram;
+    bool _attachedProgram;
 
-    bool generateCompositeTexture();
+    GeoImage createGeoImage( osgTerrain::Layer* imageLayer ) const;
+    void createGeometry();
+    osg::StateSet* createStateSet();
+    GeoImage prepareImageLayerUpdate( int layerIndex );
+    Threading::ReadWriteMutex& getMutex();
+    inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
+
 };
 
-#endif // OSGEARTH_ENGINE_OSGTERRAIN_COMPOSITING_TERRAIN_TECHNIQUE
+#endif // OSGEARTH_ENGINE_OSGTERRAIN_SINGLE_PASS_TERRAIN_TECHNIQUE

@@ -33,13 +33,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT TextureCompositorTechnique : public osg::Referenced
     {
     public:
-        virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const =0;
+        virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const =0;
 
         virtual osg::Program* createProgram() const =0;
 
         virtual bool requiresUnitTextureSpace() const =0;
 
         virtual void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const { }
+
+        virtual bool supportsLayerUpdate() const { return false; }
+
+        virtual GeoImage prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
+
+        virtual void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const { }
     };
 
     /**
@@ -71,7 +77,30 @@ namespace osgEarth
          * composite the list of layer images such that they result in the specified
          * output extent.
          */
-        osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const;
+        osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const;
+
+        /**
+         * Returns true if the compositor implementation supports the ability to update an individual
+         * image layer (via prepareLayerUpdate and applyLayerUpdate).
+         */
+        bool supportsLayerUpdate() const;
+
+        /**
+         * Prepares a new image for incorporation into the texture composite. Usually you will call this 
+         * method when you are updating a single layer AFTER having originally created the stateset
+         * (via createStateSet). It is safe to call this method from any thread. You can thereafter take
+         * the result and pass it to updateLayer. These two methods are separated so that you can call
+         * this one from any thread (it is guaranteed to be thread-safe) and then use updateLayer to 
+         * updaet a live scene graph if necessary.
+         */
+        GeoImage prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const;
+
+        /**
+         * Updates a stateset's texture composition with an image. Typically this will be the image
+         * returned from prepareImage(), but it doesn't have to be. Note: if the stateset is live in
+         * the scene graph, be sure to only call this method from UPDATE trav.
+         */
+        void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
 
         /**
          * Some composition techniques require a shader program. This method returns the shader program

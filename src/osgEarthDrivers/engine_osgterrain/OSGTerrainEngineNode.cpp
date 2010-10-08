@@ -17,7 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "OSGTerrainEngineNode"
-#include "CompositingTerrainTechnique"
+//#include "CompositingTerrainTechnique"
+#include "SinglePassTerrainTechnique"
 #include "CustomTerrain"
 #include "MultiPassTerrainTechnique"
 #include "TransparentLayer"
@@ -45,25 +46,6 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
     void onMapModelChanged( const MapModelChange& change ) {
         _node->onMapModelChanged( change );
     }
-
-    //void onImageLayerAdded( ImageLayer* layer, unsigned int index ) {
-    //    _node->onImageLayerAdded(layer, index);
-    //}
-    //void onImageLayerRemoved( ImageLayer* layer, unsigned int index ) {
-    //    _node->onImageLayerRemoved(layer, index);
-    //}
-    //void onImageLayerMoved( ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-    //    _node->onImageLayerMoved(layer,oldIndex,newIndex);
-    //}
-    //void onElevationLayerAdded( ElevationLayer* layer, unsigned int index ) {
-    //    _node->onElevationLayerAdded(layer, index);
-    //}
-    //void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) {
-    //    _node->onElevationLayerRemoved(layer, index);
-    //}
-    //void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-    //    _node->onElevationLayerMoved(layer,oldIndex,newIndex);
-    //}
 };
 
 //---------------------------------------------------------------------------
@@ -224,7 +206,7 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
     {
         _texCompositor = new TextureCompositor();
-        CustomTerrainTechnique* tech = new CompositingTerrainTechnique( _texCompositor.get() );
+        CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
         // prepare the interpolation technique for generating triangles:
         if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
@@ -234,7 +216,7 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 
         OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
     }
-    else // MULTIPASS ... probably to be deprecated
+    else // MULTIPASS
     {
         _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique() );
         OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;

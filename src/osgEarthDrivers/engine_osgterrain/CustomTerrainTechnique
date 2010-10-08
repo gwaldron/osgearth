@@ -30,9 +30,9 @@ using namespace osgEarth;
 class CustomTerrainTechnique : public osgTerrain::TerrainTechnique
 {
 public:
-    virtual void init( const TileUpdate& updateSpec, bool swapNow, ProgressCallback* progress ) =0;
+    virtual void compile( const TileUpdate& updateSpec, ProgressCallback* progress ) =0;
 
-    virtual bool swapIfNecessary() =0;
+    virtual bool applyTileUpdates() =0;
 
     virtual void setOptimizeTriangleOrientation( bool optimizeTriangleOrientation ) =0;
 

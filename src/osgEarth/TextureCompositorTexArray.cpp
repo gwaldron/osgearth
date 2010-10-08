@@ -106,6 +106,54 @@ static char s_source_fragMain[] =
 
 //------------------------------------------------------------------------
 
+GeoImage
+TextureCompositorTexArray::prepareLayerUpdate( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
+{
+    osg::ref_ptr<osg::Image> image = layerImage.getImage();
+
+    // Because all tex2darray layers must be identical in format, let's use RGBA.
+    if ( image->getPixelFormat() != GL_RGBA )
+        image = ImageUtils::convertToRGBA( image );
+
+    // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
+    if ( image->s() != 256 || image->t() != 256 )
+        image = ImageUtils::resizeImage( image, 256, 256 );
+
+    return GeoImage( image.get(), layerImage.getExtent() );
+}
+
+void
+TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
+                                            int layerNum,
+                                            const GeoImage& preparedImage,
+                                            const GeoExtent& tileExtent) const
+{
+    // here we are going to assume everything's kosher based - i.e. that the state set came
+    // from createStateSet() in this class, and that the prepared image came from prepareImage()
+    // in this same class.
+
+    //TODO: un-hard-code the texture unit, perhaps
+    osg::Texture2DArray* texture = static_cast<osg::Texture2DArray*>(
+        stateSet->getTextureAttribute( 0, osg::StateAttribute::TEXTURE ) );
+
+    // assign the new image at the proper position in the texture array:
+    texture->setImage( layerNum, preparedImage.getImage() );
+    
+    // update the region uniform to reflect the geo extent of the image:
+    const GeoExtent& layerExtent = preparedImage.getExtent();
+    float xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
+    float yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
+    float xscale  = tileExtent.width() / layerExtent.width();
+    float yscale  = tileExtent.height() / layerExtent.height();
+
+    osg::Uniform* texInfoArray = stateSet->getUniform( "osgearth_region" );
+    int layerOffset = (layerNum * 8) + 4; // skip the pixel data, it won't change..
+    texInfoArray->setElement( layerOffset++, xoffset );
+    texInfoArray->setElement( layerOffset++, yoffset );
+    texInfoArray->setElement( layerOffset++, xscale );
+    texInfoArray->setElement( layerOffset++, yscale );
+}
+
 osg::StateSet*
 TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
 {
@@ -133,18 +181,11 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
     {
         const GeoImage& geoImage = *i;
-        osg::ref_ptr<osg::Image> image = geoImage.getImage();
-
-        // Because all tex2darray layers must be identical in format:
-        if ( image->getPixelFormat() != GL_RGBA )
-            image = ImageUtils::convertToRGBA( image );
-
-        // TODO: reconsider.. perhaps grow the tex to the max layer size instead?
-        if ( image->s() != 256 || image->t() != 256 )
-            image = ImageUtils::resizeImage( image, 256, 256 );
+        GeoImage preparedImage = prepareLayerUpdate( geoImage, tileExtent );
+        osg::Image* image = preparedImage.getImage();
 
         // add the layer image to the composite.
-        texture->setImage( layerNum, image.get() );
+        texture->setImage( layerNum,image );
 
         // TODO: optimize this away
         LayerTexRegion region;
@@ -154,6 +195,7 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
         region._ph = image->t();
 
         // track the maximum texture size
+        // TODO: currently pointless since we are resizing all layers to 256 anyway...
         if ( image->s() > texWidth )
             texWidth = image->s();
 
@@ -224,7 +266,8 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     }
 
     // (note: do NOT call setTextureAttributeAndModes -- opengl error since TEXTURE_2D_ARRAY is not a valid mode)
-    stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON ); //TODO: un-hard-code the texture unit, perhaps
+    //TODO: un-hard-code the texture unit, perhaps
+    stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON ); 
     stateSet->addUniform( texInfoArray );
     stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( (int)regions.size() );
 

@@ -193,13 +193,13 @@ struct TileGenRequest : public TaskRequest
     {
         if (_tile.valid())
         {
-            CustomTerrainTechnique* et = dynamic_cast<CustomTerrainTechnique*>( _tile->getTerrainTechnique() );
-            if (et)
+            CustomTerrainTechnique* tech = dynamic_cast<CustomTerrainTechnique*>( _tile->getTerrainTechnique() );
+            if (tech)
             {
-                et->init(_update, false, progress);
-                //et->init(false, progress);
+                tech->compile( _update, progress );
             }
         }
+
         //We don't need the tile anymore
         _tile = NULL;
     }
@@ -871,7 +871,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
         CustomTerrainTechnique* tech = dynamic_cast<CustomTerrainTechnique*>( getTerrainTechnique() );
         if ( tech )
         {
-            tileModified = tech->swapIfNecessary();
+            tileModified = tech->applyTileUpdates();
         }
         _tileGenRequest = 0;
     }
@@ -1187,33 +1187,6 @@ CustomTile::traverse( osg::NodeVisitor& nv )
         }
     }
     osgTerrain::TerrainTile::traverse( nv );
-
-    //bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
-    //bool isUpdate = nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
-
-    //// double-check pattern for simultaneous cull traversals
-    //if ( !_hasBeenTraversed )
-    //{
-    //    ScopedWriteLock lock( this->_tileLayersMutex );
-    //    {
-    //        if ( !_hasBeenTraversed && getCustomTerrain() && (isCull || isUpdate) ) 
-    //        {
-    //            // register this tile with its terrain if we've not already done it.
-    //            // we want to be sure that the tile is already in the scene graph at the
-    //            // time of registration (otherwise CustomTerrain will see its refcount
-    //            // at 1 and schedule it for removal as soon as it's added. Therefore, we
-    //            // make sure this is either a CULL or UPDATE traversal.
-    //            getCustomTerrain()->registerTile( this );
-    //            _hasBeenTraversed = true;
-
-    //            // we constructed this tile with an update traversal count of 1 so it would get
-    //            // here and we could register the tile. Now we can decrement it back to normal.
-    //            adjustUpdateTraversalCount( -1 );
-    //        }
-    //    }
-    //}
-
-    //osgTerrain::TerrainTile::traverse( nv );
 }
 
 void
@@ -1226,7 +1199,6 @@ CustomTile::releaseGLObjects(osg::State* state) const
     {
         //NOTE: crashes sometimes if OSG_RELEASE_DELAY is set -gw
         _terrainTechnique->releaseGLObjects( state );
-        //OE_NOTICE << "VT releasing GL objects" << std::endl;
     }
     else
     {

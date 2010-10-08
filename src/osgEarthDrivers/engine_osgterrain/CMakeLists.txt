@@ -2,18 +2,17 @@
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
 
 SET(TARGET_SRC
-    CompositingTerrainTechnique.cpp
     CustomTerrain.cpp
     MultiPassTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
     Plugin.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
+    SinglePassTerrainTechnique.cpp
 )
 
 SET(TARGET_H
     Common
-    CompositingTerrainTechnique
     CustomTerrain
     CustomTerrainTechnique
     FileLocationCallback
@@ -23,6 +22,7 @@ SET(TARGET_H
     OSGTileFactory
     TerrainTileEdgeNormalizerUpdateCallback
     TransparentLayer
+    SinglePassTerrainTechnique
 )
 
 SETUP_PLUGIN(osgearth_engine_osgterrain)

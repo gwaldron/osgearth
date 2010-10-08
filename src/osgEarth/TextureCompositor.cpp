@@ -57,14 +57,45 @@ _forceTech( false )
 }
 
 osg::StateSet*
-TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent& outputExtent ) const
+TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent& tileExtent ) const
 {
     // first time through, poll the system capabilities to figure out
     // which technique to use.
     if ( !_impl.valid() )
         const_cast<TextureCompositor*>(this)->init();
 
-    return _impl ? _impl->createStateSet( stack, outputExtent ) : 0L;
+    return _impl ? _impl->createStateSet( stack, tileExtent ) : 0L;
+}
+
+bool
+TextureCompositor::supportsLayerUpdate() const
+{
+    if ( !_impl.valid() )
+        const_cast<TextureCompositor*>(this)->init();
+
+    return _impl ? _impl->supportsLayerUpdate() : false;
+}
+
+GeoImage
+TextureCompositor::prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const
+{
+    if ( !_impl.valid() )
+        const_cast<TextureCompositor*>(this)->init();
+
+    return _impl ? _impl->prepareLayerUpdate( image, tileExtent ) : GeoImage::INVALID;
+}
+
+void
+TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
+                                    int layerNum,
+                                    const GeoImage& preparedImage,
+                                    const GeoExtent& tileExtent ) const
+{
+    if ( !_impl.valid() )
+        const_cast<TextureCompositor*>(this)->init();
+
+    if ( _impl )
+        _impl->applyLayerUpdate( stateSet, layerNum, preparedImage, tileExtent );
 }
 
 osg::Program*

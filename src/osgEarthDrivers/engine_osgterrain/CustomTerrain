@@ -117,6 +117,8 @@ public:
     /** Gets the tilekey associated with this tile. */
     const TileKey& getKey() const;
 
+    /** Gets the locator associated with this tile. */
+
     /** Sets whether to use the TaskService to schedule per-layer background data loading. */
     void setUseLayerRequests( bool );
     bool getUseLayerRequests() const { return _useLayerRequests; }

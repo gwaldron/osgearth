@@ -16,44 +16,27 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "CompositingTerrainTechnique"
+#include "SinglePassTerrainTechnique"
 #include "CustomTerrain"
 
-#include <osgTerrain/GeometryTechnique>
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/Terrain>
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>
 
 #include <osg/Program>
-#include <osg/Shader>
-#include <osg/Uniform>
-
-#include <osgUtil/SmoothingVisitor>
-#include <osgDB/FileUtils>
 #include <osg/io_utils>
 #include <osg/StateSet>
-#include <osg/Texture2DArray>
-#include <osg/Texture3D>
-#include <osg/Texture2D>
-#include <osg/Texture1D>
-#include <osg/TexEnvCombine>
 #include <osg/Program>
 #include <osg/Math>
 #include <osg/Timer>
 #include <osg/Version>
 
-#include <osgText/Text>
 #include <sstream>
-#include <osg/Depth>
-
-#include <osg/ImageSequence>
 
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[CompositingTechnique] "
-#define EXPLICIT_RELEASE_GL_OBJECTS 1
+
+#define LC "[SinglePassTechnique] "
 
 // OSG 2.9.8 changed the osgTerrain API...
 #if OSG_VERSION_GREATER_OR_EQUAL(2,9,8)
@@ -62,16 +45,15 @@ using namespace OpenThreads;
 
 // --------------------------------------------------------------------------
 
-CompositingTerrainTechnique::CompositingTerrainTechnique( TextureCompositor* compositor ) :
+SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
 _texCompositor( compositor ),
-//_masterLocator( masterLocator ),
-_currentReadOnlyBuffer(1),
-_currentWriteBuffer(0),
 _verticalScaleOverride(1.0f),
-_swapPending( false ),
+_fullUpdatePending( false ),
 _initCount(0),
 _optimizeTriangleOrientation(true),
-_attachedProgram(false)
+_attachedProgram(false),
+_pendingImageLayerUpdateIndex(-1),
+_pendingGeometryUpdate(false)
 {
     this->setThreadSafeRefUnref(true);
 
@@ -83,105 +65,94 @@ _attachedProgram(false)
     _compositeProgram = _texCompositor->getProgram();
 }
 
-CompositingTerrainTechnique::CompositingTerrainTechnique(const CompositingTerrainTechnique& gt,const osg::CopyOp& copyop):
+SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& gt,const osg::CopyOp& copyop):
 CustomTerrainTechnique(gt,copyop),
 _masterLocator( gt._masterLocator ),
-_lastCenterModel( gt._lastCenterModel ),
-_currentReadOnlyBuffer( gt._currentReadOnlyBuffer ),
-_currentWriteBuffer( gt._currentWriteBuffer ),
+_centerModel( gt._centerModel ),
 _verticalScaleOverride( gt._verticalScaleOverride ),
-_swapPending( gt._swapPending ),
+_fullUpdatePending( gt._fullUpdatePending ),
 _initCount( gt._initCount ),
 _optimizeTriangleOrientation(gt._optimizeTriangleOrientation),
 _compositeProgram(gt._compositeProgram),
-_texCompositor(gt._texCompositor)
+_texCompositor(gt._texCompositor),
+_pendingImageLayerUpdateIndex(gt._pendingImageLayerUpdateIndex),
+_pendingGeometryUpdate(gt._pendingGeometryUpdate)
 {
     _attachedProgram = false;
-    _bufferData[0] = gt._bufferData[0];
-    _bufferData[1] = gt._bufferData[1];
 }
 
-CompositingTerrainTechnique::~CompositingTerrainTechnique()
+SinglePassTerrainTechnique::~SinglePassTerrainTechnique()
 {
     //nop
 }
 
 void
-CompositingTerrainTechnique::setVerticalScaleOverride( float value )
+SinglePassTerrainTechnique::setVerticalScaleOverride( float value )
 {
     _verticalScaleOverride = value;
 }
 
 float
-CompositingTerrainTechnique::getVerticalScaleOverride() const 
+SinglePassTerrainTechnique::getVerticalScaleOverride() const 
 {
     return _verticalScaleOverride;
 }
 
 void
-CompositingTerrainTechnique::setOptimizeTriangleOrientation(bool optimizeTriangleOrientation)
+SinglePassTerrainTechnique::setOptimizeTriangleOrientation(bool optimizeTriangleOrientation)
 {
     _optimizeTriangleOrientation = optimizeTriangleOrientation;
 }
 
 bool
-CompositingTerrainTechnique::getOptimizeTriangleOrientation() const
+SinglePassTerrainTechnique::getOptimizeTriangleOrientation() const
 {
     return _optimizeTriangleOrientation;
 }
 
-
-void
-CompositingTerrainTechnique::clearBuffer( int b )
-{
-    _bufferData[b]._transform = 0L;
-    _bufferData[b]._geode = 0L;
-    _bufferData[b]._surface = 0L;
-    _bufferData[b]._skirt = 0L;
-}
-
-void CompositingTerrainTechnique::swapBuffers()
-{
-    std::swap(_currentReadOnlyBuffer,_currentWriteBuffer);
-    clearBuffer( _currentWriteBuffer );
-}
-
 void
 #ifdef USE_NEW_OSGTERRAIN_298_API
-CompositingTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
+SinglePassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
 #else
-CompositingTerrainTechnique::init()
+SinglePassTerrainTechnique::init()
 #endif
 {
-    init( TileUpdate(TileUpdate::UPDATE_ALL), true, 0L );
+    compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
+
+    _fullUpdatePending = true;
+    applyTileUpdates();
 }
 
 void
-CompositingTerrainTechnique::init( const TileUpdate& update, bool swapNow, ProgressCallback* progress )
+SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback* progress )
 {
-    // lock changes to the layers while we're rendering them
+    // lock changes to the layers while we're compiling them
     Threading::ScopedReadLock lock( getMutex() );
 
-    _initCount++;
-    //if ( _initCount > 1 ) 
-    //{
-    //    OE_INFO << "tile init = " << _initCount << std::endl;
-    //}
-
     // we cannot run this method is there is a swap currently pending!
-    if ( _swapPending )
+    if ( _fullUpdatePending )
     {
-        //TODO: figure out WHY this is happening in sequential mode after
-        // the osgTerrain edge-normal calculation update.
-        // http://www.osgearth.org/ticket/140
-
-        OE_INFO << "illegal; cannot init() with a pending swap!" << std::endl;
+        OE_INFO << "illegal; cannot init() with a pending update!" << std::endl;
         return;
     }
     
     // safety check
     if (!_terrainTile) 
         return;
+
+    // establish the master tile locator from the customtile key
+    if ( !_masterLocator.valid() || !_transform.valid() )
+    {
+        CustomTile* tile = static_cast<CustomTile*>( _terrainTile );
+        _masterLocator = tile->getLocator();
+        
+        osg::Vec3d centerNDC( 0.5, 0.5, 0 );
+        _masterLocator->convertLocalToModel( osg::Vec3(.5,.5,0), _centerModel );
+        _transform = new osg::MatrixTransform( osg::Matrix::translate(_centerModel) );
+
+        // this is a placeholder so that we can always just call setChild(0) later.
+        _transform->addChild( new osg::Group );
+    }
 
     // attach the shader program required by the active texture compositor, if applicable
     if ( !_attachedProgram && _compositeProgram.valid() )
@@ -190,37 +161,55 @@ CompositingTerrainTechnique::init( const TileUpdate& update, bool swapNow, Progr
         _attachedProgram = true;
     }
 
-    BufferData& buffer = getWriteBuffer();
-    
-    osgTerrain::Locator* masterLocator = computeMasterLocator();
-    
-    osg::Vec3d centerModel = computeCenterModel(masterLocator);
-
-    if ( progress && progress->isCanceled() )
+    if ( update.getAction() == TileUpdate::UPDATE_IMAGE_LAYER && _texCompositor->supportsLayerUpdate() )
     {
-        clearBuffer( _currentWriteBuffer );
-        return;
-    }
-    
-    // create the geometry and texture coordinates for this tile.
-    generateGeometry( masterLocator, centerModel );
-
-    // create the texture for this tile.
-    generateCompositeTexture();
-
-    if (buffer._transform.valid())
-        buffer._transform->setThreadSafeRefUnref(true);
-
-    if ( progress && progress->isCanceled() )
-    {
-        clearBuffer( _currentWriteBuffer );
-        return;
+        _pendingImageLayerUpdate = prepareImageLayerUpdate( update.getIndex() );
+        _pendingImageLayerUpdateIndex = _pendingImageLayerUpdate.valid() ? update.getIndex() : -1;
     }
 
-    if ( swapNow )
-        swapBuffers();
+    else if ( update.getAction() == TileUpdate::UPDATE_ELEVATION )
+    {
+        createGeometry();
+        _pendingGeometryUpdate = true;
+    }
 
-    _swapPending = !swapNow;
+    else // all other update types
+    {
+        // give the engine a chance to bail out before generating geometry
+        if ( progress && progress->isCanceled() )
+        {
+            _backGeode = 0L;
+            return;
+        }
+    
+        // create the geometry and texture coordinates for this tile in a new buffer
+        createGeometry();
+
+        // give the engine a chance to bail out before building the texture stateset:
+        if ( progress && progress->isCanceled() )
+        {
+            _backGeode = 0L;
+            return;
+        }
+
+        // create the stateset for this tile, which contains all the texture information.
+        osg::StateSet* stateSet = createStateSet();
+        if ( stateSet )
+        {            
+            _backGeode->setStateSet( stateSet );
+        }
+
+        // give the engine a chance to bail out before swapping buffers
+        if ( progress && progress->isCanceled() )
+        {
+            _backGeode = 0L;
+            return;
+        }
+       
+        _initCount++;
+        //if ( _initCount > 1 )
+        //    OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
+    }
     
 #ifdef USE_NEW_OSGTERRAIN_298_API
     // In the updated API, the technique is now responsible for clearing the dirty flag.
@@ -230,138 +219,108 @@ CompositingTerrainTechnique::init( const TileUpdate& update, bool swapNow, Progr
 }
 
 bool
-CompositingTerrainTechnique::swapIfNecessary()
+SinglePassTerrainTechnique::applyTileUpdates()
 {
     bool swapped = false;
 
     Threading::ScopedReadLock lock( getMutex() );
-    if ( _swapPending )
-    {        
-        swapBuffers();
+
+    // process a pending buffer swap:
+    if ( _fullUpdatePending )
+    {
+        _transform->setChild( 0, _backGeode.get() );
+        _backGeode = 0L;
         swapped = true;
     }
-    _swapPending = false;
+    _fullUpdatePending = false;
+
+    // process any pending LIVE per-layer updates:
+    if ( _pendingImageLayerUpdate.valid() && _pendingImageLayerUpdateIndex >= 0 )
+    {
+        _texCompositor->applyLayerUpdate(
+            getFrontGeode()->getStateSet(),
+            _pendingImageLayerUpdateIndex,
+            _pendingImageLayerUpdate,
+            _tileExtent );
+
+        _pendingImageLayerUpdate = GeoImage::INVALID;
+        _pendingImageLayerUpdateIndex = -1;
+    }
+
+    // process any pending LIVE geometry updates:
+    if ( _pendingGeometryUpdate )
+    {
+        osg::Geode* frontGeode = getFrontGeode();
+
+        // copy the drawables from the back buffer to the front buffer. By doing this,
+        // we don't touch the front geode's stateset (which contains the textures) and
+        // therefore they don't get re-applied.
+        for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+        {
+            frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+        }
+        
+        _pendingGeometryUpdate = false;
+        _backGeode = 0L;
+    }
 
     return swapped;
 }
 
-osgTerrain::Locator*
-CompositingTerrainTechnique::computeMasterLocator()
-{
-    if ( _masterLocator.valid() )
-        return _masterLocator.get();
-
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-    osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(0);
-
-    osgTerrain::Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
-    osgTerrain::Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
-    
-    osgTerrain::Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
-    if (!masterLocator)
-    {
-        OE_NOTICE<<"[osgEarth::CompositingTerrainTechnique] Problem, no locator found in any of the terrain layers"<<std::endl;
-        return 0;
-    }
-    
-    return masterLocator;
-}
-
 Threading::ReadWriteMutex&
-CompositingTerrainTechnique::getMutex()
+SinglePassTerrainTechnique::getMutex()
 {
     return static_cast<CustomTile*>(_terrainTile)->getTileLayersMutex();
 }
 
-osg::Vec3d
-CompositingTerrainTechnique::computeCenterModel(osgTerrain::Locator* masterLocator)
+GeoImage
+SinglePassTerrainTechnique::prepareImageLayerUpdate( int layerNum )
 {
-    if (!masterLocator) return osg::Vec3d(0.0,0.0,0.0);
-
-    BufferData& buffer = getWriteBuffer();
-    
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-    osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(0);
-
-    osgTerrain::Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
-    osgTerrain::Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
-    
-    if (!elevationLocator) elevationLocator = masterLocator;
-    if (!colorLocator) colorLocator = masterLocator;
-
-    osg::Vec3d bottomLeftNDC(DBL_MAX, DBL_MAX, 0.0);
-    osg::Vec3d topRightNDC(-DBL_MAX, -DBL_MAX, 0.0);
-    
-    if (elevationLayer)
+    GeoImage geoImage = createGeoImage( _terrainTile->getColorLayer(layerNum) );
+    if ( geoImage.valid() )
     {
-        if (elevationLocator!= masterLocator)
-        {
-            masterLocator->computeLocalBounds(*elevationLocator, bottomLeftNDC, topRightNDC);
-        }
-        else
-        {
-            bottomLeftNDC.x() = osg::minimum(bottomLeftNDC.x(), 0.0);
-            bottomLeftNDC.y() = osg::minimum(bottomLeftNDC.y(), 0.0);
-            topRightNDC.x() = osg::maximum(topRightNDC.x(), 1.0);
-            topRightNDC.y() = osg::maximum(topRightNDC.y(), 1.0);
-        }
+        return _texCompositor->prepareLayerUpdate( geoImage, _tileExtent );
     }
-
-    if (colorLayer)
-    {
-        if (colorLocator!= masterLocator)
-        {
-            masterLocator->computeLocalBounds(*colorLocator, bottomLeftNDC, topRightNDC);
-        }
-        else
-        {
-            bottomLeftNDC.x() = osg::minimum(bottomLeftNDC.x(), 0.0);
-            bottomLeftNDC.y() = osg::minimum(bottomLeftNDC.y(), 0.0);
-            topRightNDC.x() = osg::maximum(topRightNDC.x(), 1.0);
-            topRightNDC.y() = osg::maximum(topRightNDC.y(), 1.0);
-        }
-    }
-
-//    OE_INFO<<"[osgEarth::CompositingTerrainTechnique] bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
-//    OE_INFO<<"[osgEarth::CompositingTerrainTechnique] topRightNDC = "<<topRightNDC<<std::endl;
-
-    buffer._transform = new osg::MatrixTransform;
-
-    osg::Vec3d centerNDC = (bottomLeftNDC + topRightNDC)*0.5;
-    osg::Vec3d centerModel = (bottomLeftNDC + topRightNDC)*0.5;
-    masterLocator->convertLocalToModel(centerNDC, centerModel);
-    
-    buffer._transform->setMatrix(osg::Matrix::translate(centerModel));
-    
-    _lastCenterModel = centerModel;
-    return centerModel;
+    return GeoImage::INVALID;
 }
 
-bool
-CompositingTerrainTechnique::generateCompositeTexture()
+GeoImage
+SinglePassTerrainTechnique::createGeoImage( osgTerrain::Layer* colorLayer ) const
 {
-    BufferData& buffer = getWriteBuffer();
-    osg::StateSet* stateSet = buffer._geode->getOrCreateStateSet();
+    osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>( colorLayer );
+    if ( imageLayer )
+    {            
+        // record the proper texture offset/scale for this layer. this accounts for subregions that
+        // are used when referencing lower LODs.
+        osg::ref_ptr<GeoLocator> layerLocator = dynamic_cast<GeoLocator*>( imageLayer->getLocator() );
+        if ( layerLocator )
+        {
+            if ( layerLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
+                layerLocator = layerLocator->getGeographicFromGeocentric();
 
-    // Composite all the image layer images into a single composite image.
-    //
-    // NOTE!
-    // This should work if images are different sizes, BUT it will NOT work if they use
-    // different locators. In other words, this will only work if the texture coordinate
-    // pair (u,v) is the SAME across all image layers for a given vertex. That's because
-    // GLSL will only support one tex-coord pair per texture unit, and we are doing the
-    // compositing so we only need to use one texture unit.
+            const GeoExtent& layerExtent = layerLocator->getDataExtent();
+            return GeoImage( imageLayer->getImage(), layerExtent );
+        }
+    }
+    return GeoImage::INVALID;
+}
+
+osg::StateSet*
+SinglePassTerrainTechnique::createStateSet()
+{
+    // Composite all the image layer images into a single 2D texture array.
 
     // establish the tile extent. we will calculate texture coordinate offset/scale based on this
-    GeoExtent tileExtent;
-
-    osg::ref_ptr<GeoLocator> tileLocator = dynamic_cast<GeoLocator*>( _terrainTile->getLocator() );
-    if ( tileLocator.valid() )
+    if ( !_tileExtent.isValid() )
     {
-        if ( tileLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
-            tileLocator = tileLocator->getGeographicFromGeocentric();
+        osg::ref_ptr<GeoLocator> tileLocator = dynamic_cast<GeoLocator*>( _terrainTile->getLocator() );
+        if ( tileLocator.valid() )
+        {
+            if ( tileLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
+                tileLocator = tileLocator->getGeographicFromGeocentric();
 
-        tileExtent = tileLocator->getDataExtent();
+            _tileExtent = tileLocator->getDataExtent();
+        }
     }
 
     // find each image layer and create a region entry for it
@@ -370,36 +329,19 @@ CompositingTerrainTechnique::generateCompositeTexture()
 
     for( unsigned int layerNum=0; layerNum < numColorLayers; ++layerNum )
     {
-        // TODO: consider contour layers..
-        osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>( _terrainTile->getColorLayer( layerNum ) );
-        if ( imageLayer )
-        {            
-            // record the proper texture offset/scale for this layer. this accounts for subregions that
-            // are used when referencing lower LODs.
-            osg::ref_ptr<GeoLocator> layerLocator = dynamic_cast<GeoLocator*>( imageLayer->getLocator() );
-            if ( layerLocator )
-            {
-                if ( layerLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
-                    layerLocator = layerLocator->getGeographicFromGeocentric();
-
-                const GeoExtent& layerExtent = layerLocator->getDataExtent();
-
-                imageStack.push_back( GeoImage( imageLayer->getImage(), layerExtent ) );
-            }
+        GeoImage geoImage = createGeoImage( _terrainTile->getColorLayer( layerNum ) );
+        if ( geoImage.valid() )
+        {
+            imageStack.push_back( geoImage );
         }
     }
 
-    osg::StateSet* texStateSet = _texCompositor->createStateSet( imageStack, tileExtent );
-    if ( texStateSet )
-    {
-        buffer._geode->setStateSet( texStateSet );
-    }
-
-    return true;
+    osg::StateSet* texStateSet = _texCompositor->createStateSet( imageStack, _tileExtent );
+    return texStateSet;
 }
 
 void
-CompositingTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j )
+SinglePassTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j )
 {            
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
@@ -423,48 +365,39 @@ CompositingTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, do
 }
 
 void
-CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
+SinglePassTerrainTechnique::createGeometry()
 {
-    osg::ref_ptr< osgTerrain::Locator > masterTextureLocator = masterLocator;
-    GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(masterLocator);
+    osg::ref_ptr< osgTerrain::Locator > masterTextureLocator = _masterLocator.get();
+    GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(_masterLocator.get());
 
-	bool isCube = dynamic_cast<CubeFaceLocator*>(masterLocator) != NULL;
+	bool isCube = dynamic_cast<CubeFaceLocator*>(_masterLocator.get()) != NULL;
 
-    //If we have a geocentric locator, get a geographic version of it to avoid converting
-    //to/from geocentric when computing texture coordinats
-    if (!isCube && geoMasterLocator && masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
+    // If we have a geocentric locator, get a geographic version of it to avoid converting
+    // to/from geocentric when computing texture coordinats
+    if (!isCube && geoMasterLocator && _masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
     {
         masterTextureLocator = geoMasterLocator->getGeographicFromGeocentric();
     }
-
-    //osg::Timer_t before = osg::Timer::instance()->tick();
-    BufferData& buffer = getWriteBuffer();
     
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
-    buffer._geode = new osg::Geode();
-    buffer._geode->setThreadSafeRefUnref(true);
-
-    buffer._transform->addChild( buffer._geode.get() );
-    buffer._transform->setThreadSafeRefUnref(true);
+    // fire up a brand new geode.
+    _backGeode = new osg::Geode();
+    _backGeode->setThreadSafeRefUnref(true);
     
-    buffer._surface = new osg::Geometry;
-    buffer._skirt = new osg::Geometry;
-
     // setting the geometry to DYNAMIC means its draw will not overlap the next frame's update/cull
     // traversal - which could access the buffer without a mutex
-    buffer._surface->setDataVariance( osg::Object::DYNAMIC );
-    buffer._skirt->setDataVariance( osg::Object::DYNAMIC );
 
-    buffer._geode->addDrawable(buffer._surface.get());
-    buffer._geode->addDrawable(buffer._skirt.get());
+    osg::Geometry* surface = new osg::Geometry();
+    surface->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
+    surface->setDataVariance( osg::Object::DYNAMIC );
+    _backGeode->addDrawable( surface );
+
+    osg::Geometry* skirt = new osg::Geometry();
+    skirt->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
+    skirt->setDataVariance( osg::Object::DYNAMIC );
+    _backGeode->addDrawable( skirt );
         
-    osg::Geometry* surface = buffer._surface.get();
-    surface->setThreadSafeRefUnref(true);
-
-    osg::Geometry* skirt = buffer._skirt.get();
-    skirt->setThreadSafeRefUnref(true);
-
     int numRows = 20;
     int numColumns = 20;
     
@@ -476,9 +409,6 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
     
     double i_sampleFactor, j_sampleFactor;
     calculateSampling( numColumns, numRows, i_sampleFactor, j_sampleFactor );
-
-//    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-//    OE_INFO<<"[osgEarth::CompositingTerrainTechnique] TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     osgTerrain::HeightFieldLayer* hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(elevationLayer);
@@ -496,10 +426,11 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
     // allocate and assign vertices
     osg::ref_ptr<osg::Vec3Array> surfaceVerts = new osg::Vec3Array;
     surfaceVerts->reserve( numVerticesInSurface );
+    //osg::ref_ptr<osg::Vec3Array> surfaceVerts = new osg::Vec3Array( numVerticesInSurface );
     surface->setVertexArray( surfaceVerts.get() );
 
     // allocate and assign normals
-    osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array;
+    osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array(); // numVerticesInSurface );
     if (normals.valid()) normals->reserve(numVerticesInSurface);
     surface->setNormalArray(normals.get());
     surface->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
@@ -556,7 +487,6 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
         skirt->setTexCoordArray( 0, skirtTexCoords );
     }
 
-    //float minHeight = 0.0;
     float scaleHeight = 
         _verticalScaleOverride != 1.0? _verticalScaleOverride :
         _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
@@ -576,12 +506,11 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
     Indices indices(numVerticesInSurface, -1);    
 
     // populate vertex and tex coord arrays    
-    unsigned int i, j;
+    unsigned int i, j; //, k=0;
 
-    //osg::Timer_t populateBefore = osg::Timer::instance()->tick();
     for(j=0; j<numRows; ++j)
     {
-        for(i=0; i<numColumns; ++i)
+        for(i=0; i<numColumns; ++i) // ++k)
         {
             unsigned int iv = j*numColumns + i;
             osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
@@ -603,12 +532,14 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
             
             if (validValue)
             {
+                //indices[iv] = k;
                 indices[iv] = surfaceVerts->size();
             
                 osg::Vec3d model;
-                masterLocator->convertLocalToModel(ndc, model);
+                _masterLocator->convertLocalToModel(ndc, model);
 
-                (*surfaceVerts).push_back(model - centerModel);
+                //(*surfaceVerts)[k] = model - centerModel;
+                (*surfaceVerts).push_back(model - _centerModel);
 
                 if ( _texCompositor->requiresUnitTextureSpace() )
                 {
@@ -622,7 +553,7 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
                     {
                         osg::Vec2Array* texCoords = layerTexCoords[layerNum].get();
                         osgTerrain::Locator* layerLocator = layerLocators[layerNum].get();
-                        if ( layerLocator != masterLocator )
+                        if ( layerLocator != _masterLocator )
                         {
                             osg::Vec3d color_ndc;
                             osgTerrain::Locator::convertLocalCoordBetween( *masterTextureLocator.get(), ndc, *layerLocator, color_ndc );
@@ -643,9 +574,11 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
                 // compute the local normal
                 osg::Vec3d ndc_one = ndc; ndc_one.z() += 1.0;
                 osg::Vec3d model_one;
-                masterLocator->convertLocalToModel(ndc_one, model_one);
+                _masterLocator->convertLocalToModel(ndc_one, model_one);
                 model_one = model_one - model;
-                model_one.normalize();            
+                model_one.normalize();    
+
+                //(*normals)[k] = model_one;
                 (*normals).push_back(model_one);
             }
             else
@@ -654,29 +587,20 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
             }
         }
     }
-    //osg::Timer_t populateAfter = osg::Timer::instance()->tick();
-
-    //OE_NOTICE << "  PopulateTime " << osg::Timer::instance()->delta_m(populateBefore, populateAfter) << std::endl;
     
     // populate primitive sets
-//    bool optimizeOrientations = elevations!=0;
-    bool swapOrientation = !(masterLocator->orientationOpenGL());
-    
+    bool swapOrientation = !(_masterLocator->orientationOpenGL());
 
-    //osg::Timer_t genPrimBefore = osg::Timer::instance()->tick();
     osg::ref_ptr<osg::DrawElementsUInt> elements = new osg::DrawElementsUInt(GL_TRIANGLES);
     elements->reserve((numRows-1) * (numColumns-1) * 6);
 
     surface->addPrimitiveSet(elements.get());
-
-    //osg::Timer_t genPrimAfter = osg::Timer::instance()->tick();
-    //OE_NOTICE << "  genPrimTime " << osg::Timer::instance()->delta_m(genPrimBefore, genPrimAfter) << std::endl;
     
-    osg::ref_ptr<osg::Vec3Array> skirtVectors = new osg::Vec3Array((*normals));
+    osg::ref_ptr<osg::Vec3Array> skirtVectors = new osg::Vec3Array( *normals );
     
-    if (!normals) createSkirt = false;
-
-
+    if (!normals)
+        createSkirt = false;
+    
     // New separated skirts.
     if ( createSkirt )
     {        
@@ -936,9 +860,6 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
         }
     }
 
-    //osg::Timer_t skirtAfter = osg::Timer::instance()->tick();
-    //OE_NOTICE << "  skirtTime " << osg::Timer::instance()->delta_m(skirtBefore, skirtAfter) << std::endl;
-
     surface->setUseDisplayList(false);
     surface->setUseVertexBufferObjects(true);
 
@@ -952,42 +873,20 @@ CompositingTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLocator
         //osg::Timer_t before = osg::Timer::instance()->tick();
         //OE_NOTICE<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
-        buffer._geode->accept(*builder);
+        _backGeode->accept(*builder);
         //osg::Timer_t after = osg::Timer::instance()->tick();
         //OE_NOTICE<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 }
 
 void
-CompositingTerrainTechnique::update(osgUtil::UpdateVisitor* uv)
+SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)
 {
-    if (_terrainTile) _terrainTile->osg::Group::traverse(*uv);
-}
-
-
-void
-CompositingTerrainTechnique::cull(osgUtil::CullVisitor* cv)
-{
-    BufferData& buffer = getReadOnlyBuffer();
-
-#if 0
-    if (buffer._terrainTile) buffer._terrainTile->osg::Group::traverse(*cv);
-#else
-    if (buffer._transform.valid())
-    {
-        buffer._transform->accept(*cv);
-    }
-#endif    
-}
-
-
-void
-CompositingTerrainTechnique::traverse(osg::NodeVisitor& nv)
-{
-    if (!_terrainTile) return;
+    if ( !_terrainTile )
+        return;
 
     // if app traversal update the frame count.
-    if (nv.getVisitorType()==osg::NodeVisitor::UPDATE_VISITOR)
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)
         if (_terrainTile->getDirty()) _terrainTile->init(~0x0,true);
@@ -995,32 +894,21 @@ CompositingTerrainTechnique::traverse(osg::NodeVisitor& nv)
         if (_terrainTile->getDirty()) _terrainTile->init();
 #endif
 
-        osgUtil::UpdateVisitor* uv = dynamic_cast<osgUtil::UpdateVisitor*>(&nv);
-        if (uv)
-        {
-            update(uv);
-            //return;
-        }        
-        
+        if ( _terrainTile )
+            _terrainTile->osg::Group::traverse( nv );        
     }
-    else if (nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR)
+
+    else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
     {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
-        {
-            cull(cv);
-            return;
-        }
-        else
-        {
-            OE_WARN << "[ETT] CULL_VISITOR not a osgUtil::CullVisitor" << std::endl;
-        }
+        if ( _transform.valid() )
+            _transform->accept( nv );
+
+        return;
     }
 
     // the code from here on accounts for user traversals (intersections, etc)
-    if (_terrainTile->getDirty()) 
+    if ( _terrainTile->getDirty() ) 
     {
-        //OE_INFO<<"******* Doing init ***********"<<std::endl;
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)
         _terrainTile->init(~0x0, true);
 #else
@@ -1028,28 +916,23 @@ CompositingTerrainTechnique::traverse(osg::NodeVisitor& nv)
 #endif
     }
 
-    BufferData& buffer = getReadOnlyBuffer();
-    if (buffer._transform.valid()) buffer._transform->accept(nv);
-}
-
-
-void CompositingTerrainTechnique::cleanSceneGraph()
-{
+    if ( _transform.valid() )
+        _transform->accept( nv );
 }
 
 void
-CompositingTerrainTechnique::releaseGLObjects(osg::State* state) const
+SinglePassTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
-    CompositingTerrainTechnique* ncThis = const_cast<CompositingTerrainTechnique*>(this);
+    SinglePassTerrainTechnique* ncThis = const_cast<SinglePassTerrainTechnique*>(this);
 
     Threading::ScopedWriteLock lock( ncThis->getMutex() );
 
-    if (_bufferData[0]._transform.valid())
+    if ( _transform.valid() )
+        _transform->releaseGLObjects( state );
+
+    if ( _backGeode.valid() )
     {
-        _bufferData[0]._transform->releaseGLObjects(state);
-    }
-    if (_bufferData[1]._transform.valid())
-    {
-        _bufferData[1]._transform->releaseGLObjects(state);   
+        _backGeode->releaseGLObjects(state);
+        ncThis->_backGeode = 0L;
     }
 }

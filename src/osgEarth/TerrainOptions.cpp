@@ -71,6 +71,7 @@ _normalizeEdges( false ),
 _combineLayers( true ),
 _maxLOD( 23 ),
 _layeringTechnique( LAYERING_COMPOSITE ),
+_texCompTech( TextureCompositor::TECH_AUTO ),
 _enableLighting( false ),
 _elevationInterpolation( INTERP_BILINEAR )
 {
@@ -96,6 +97,14 @@ TerrainOptions::getConfig() const
     //conf.updateIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
     conf.updateIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
 
+    conf.updateIfSet( "compositor", "auto",             _texCompTech, TextureCompositor::TECH_AUTO );
+    conf.updateIfSet( "compositor", "texture_array",    _texCompTech, TextureCompositor::TECH_TEXTURE_ARRAY );
+    conf.updateIfSet( "compositor", "texture_2d",       _texCompTech, TextureCompositor::TECH_TEXTURE_3D );
+    conf.updateIfSet( "compositor", "texture_atlas",    _texCompTech, TextureCompositor::TECH_TEXTURE_ATLAS );
+    conf.updateIfSet( "compositor", "multitexture_ffp", _texCompTech, TextureCompositor::TECH_MULTITEXTURE_FFP );
+    conf.updateIfSet( "compositor", "multitexture_gpu", _texCompTech, TextureCompositor::TECH_MULTITEXTURE_GPU );
+    conf.updateIfSet( "compositor", "software",         _texCompTech, TextureCompositor::TECH_SOFTWARE );
+
     conf.updateIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
     conf.updateIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
     conf.updateIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
@@ -119,6 +128,14 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
     //conf.getIfSet( "layering_technique", "multitexture", _layeringTechnique, LAYERING_MULTITEXTURE );
     conf.getIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
+
+    conf.getIfSet( "compositor", "auto",             _texCompTech, TextureCompositor::TECH_AUTO );
+    conf.getIfSet( "compositor", "texture_array",    _texCompTech, TextureCompositor::TECH_TEXTURE_ARRAY );
+    conf.getIfSet( "compositor", "texture_2d",       _texCompTech, TextureCompositor::TECH_TEXTURE_3D );
+    conf.getIfSet( "compositor", "texture_atlas",    _texCompTech, TextureCompositor::TECH_TEXTURE_ATLAS );
+    conf.getIfSet( "compositor", "multitexture_ffp", _texCompTech, TextureCompositor::TECH_MULTITEXTURE_FFP );
+    conf.getIfSet( "compositor", "multitexture_gpu", _texCompTech, TextureCompositor::TECH_MULTITEXTURE_GPU );
+    conf.getIfSet( "compositor", "software",         _texCompTech, TextureCompositor::TECH_SOFTWARE );
 
     conf.getIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
     conf.getIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);

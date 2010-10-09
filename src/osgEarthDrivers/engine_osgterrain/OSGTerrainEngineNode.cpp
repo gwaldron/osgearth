@@ -202,10 +202,12 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
     _terrain->setSampleRatio( _terrainOptions.heightFieldSampleRatio().value() );
 
+    OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
+
     // install the proper layering technique:
     if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
     {
-        _texCompositor = new TextureCompositor();
+        _texCompositor = new TextureCompositor( _terrainOptions.compositorTechnique().value() );
         CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
         // prepare the interpolation technique for generating triangles:

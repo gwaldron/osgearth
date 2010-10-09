@@ -67,16 +67,14 @@ _pendingGeometryUpdate(false)
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& gt,const osg::CopyOp& copyop):
 CustomTerrainTechnique(gt,copyop),
-_masterLocator( gt._masterLocator ),
-_centerModel( gt._centerModel ),
 _verticalScaleOverride( gt._verticalScaleOverride ),
-_fullUpdatePending( gt._fullUpdatePending ),
-_initCount( gt._initCount ),
 _optimizeTriangleOrientation(gt._optimizeTriangleOrientation),
+_fullUpdatePending( false ),
+_pendingImageLayerUpdateIndex(-1),
+_pendingGeometryUpdate( false ),
+_initCount( 0 ),
 _compositeProgram(gt._compositeProgram),
-_texCompositor(gt._texCompositor),
-_pendingImageLayerUpdateIndex(gt._pendingImageLayerUpdateIndex),
-_pendingGeometryUpdate(gt._pendingGeometryUpdate)
+_texCompositor(gt._texCompositor)
 {
     _attachedProgram = false;
 }
@@ -126,30 +124,28 @@ SinglePassTerrainTechnique::init()
 void
 SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback* progress )
 {
-    // lock changes to the layers while we're compiling them
-    Threading::ScopedReadLock lock( getMutex() );
-
-    // we cannot run this method is there is a swap currently pending!
-    if ( _fullUpdatePending )
+    // safety check
+    if ( !_terrainTile ) 
     {
-        OE_INFO << "illegal; cannot init() with a pending update!" << std::endl;
+        OE_WARN << LC << "Illegal; terrain tile is null" << std::endl;
         return;
     }
     
-    // safety check
-    if (!_terrainTile) 
-        return;
+    // lock changes to the layers while we're compiling them
+    Threading::ScopedReadLock lock( getMutex() );
 
-    // establish the master tile locator from the customtile key
+    
     if ( !_masterLocator.valid() || !_transform.valid() )
     {
+        // establish the master tile locator from the customtile key
         CustomTile* tile = static_cast<CustomTile*>( _terrainTile );
-        _masterLocator = tile->getLocator();
-        
-        osg::Vec3d centerNDC( 0.5, 0.5, 0 );
-        _masterLocator->convertLocalToModel( osg::Vec3(.5,.5,0), _centerModel );
-        _transform = new osg::MatrixTransform( osg::Matrix::translate(_centerModel) );
+        //_masterLocator = tile->getLocator();
+        osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+        _masterLocator = elevationLayer->getLocator();
 
+        _masterLocator->convertLocalToModel( osg::Vec3(.5,.5,0), _centerModel );
+
+        _transform = new osg::MatrixTransform( osg::Matrix::translate(_centerModel) );
         // this is a placeholder so that we can always just call setChild(0) later.
         _transform->addChild( new osg::Group );
     }
@@ -167,7 +163,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         _pendingImageLayerUpdateIndex = _pendingImageLayerUpdate.valid() ? update.getIndex() : -1;
     }
 
-    else if ( update.getAction() == TileUpdate::UPDATE_ELEVATION )
+    else if ( update.getAction() == TileUpdate::UPDATE_ELEVATION && _texCompositor->supportsLayerUpdate() )
     {
         createGeometry();
         _pendingGeometryUpdate = true;
@@ -209,6 +205,8 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         _initCount++;
         //if ( _initCount > 1 )
         //    OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
+
+        _fullUpdatePending = true;
     }
     
 #ifdef USE_NEW_OSGTERRAIN_298_API
@@ -221,7 +219,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
 bool
 SinglePassTerrainTechnique::applyTileUpdates()
 {
-    bool swapped = false;
+    bool applied = false;
 
     Threading::ScopedReadLock lock( getMutex() );
 
@@ -230,41 +228,46 @@ SinglePassTerrainTechnique::applyTileUpdates()
     {
         _transform->setChild( 0, _backGeode.get() );
         _backGeode = 0L;
-        swapped = true;
-    }
-    _fullUpdatePending = false;
-
-    // process any pending LIVE per-layer updates:
-    if ( _pendingImageLayerUpdate.valid() && _pendingImageLayerUpdateIndex >= 0 )
-    {
-        _texCompositor->applyLayerUpdate(
-            getFrontGeode()->getStateSet(),
-            _pendingImageLayerUpdateIndex,
-            _pendingImageLayerUpdate,
-            _tileExtent );
-
-        _pendingImageLayerUpdate = GeoImage::INVALID;
-        _pendingImageLayerUpdateIndex = -1;
+        _fullUpdatePending = false;
+        applied = true;
     }
 
-    // process any pending LIVE geometry updates:
-    if ( _pendingGeometryUpdate )
+    else
     {
-        osg::Geode* frontGeode = getFrontGeode();
-
-        // copy the drawables from the back buffer to the front buffer. By doing this,
-        // we don't touch the front geode's stateset (which contains the textures) and
-        // therefore they don't get re-applied.
-        for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+        // process any pending LIVE per-layer updates:
+        if ( _pendingImageLayerUpdate.valid() && _pendingImageLayerUpdateIndex >= 0 )
         {
-            frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+            _texCompositor->applyLayerUpdate(
+                getFrontGeode()->getStateSet(),
+                _pendingImageLayerUpdateIndex,
+                _pendingImageLayerUpdate,
+                _tileExtent );
+
+            _pendingImageLayerUpdate = GeoImage::INVALID;
+            _pendingImageLayerUpdateIndex = -1;
+            applied = true;
         }
-        
-        _pendingGeometryUpdate = false;
-        _backGeode = 0L;
+
+        // process any pending LIVE geometry updates:
+        if ( _pendingGeometryUpdate )
+        {
+            osg::Geode* frontGeode = getFrontGeode();
+
+            // copy the drawables from the back buffer to the front buffer. By doing this,
+            // we don't touch the front geode's stateset (which contains the textures) and
+            // therefore they don't get re-applied.
+            for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+            {
+                frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+            }
+
+            _pendingGeometryUpdate = false;
+            _backGeode = 0L;
+            applied = true;
+        }
     }
 
-    return swapped;
+    return applied;
 }
 
 Threading::ReadWriteMutex&
@@ -324,8 +327,10 @@ SinglePassTerrainTechnique::createStateSet()
     }
 
     // find each image layer and create a region entry for it
-    GeoImageVector imageStack;
     unsigned int numColorLayers = _terrainTile->getNumColorLayers();
+
+    GeoImageVector imageStack;
+    imageStack.reserve( numColorLayers );
 
     for( unsigned int layerNum=0; layerNum < numColorLayers; ++layerNum )
     {
@@ -431,7 +436,7 @@ SinglePassTerrainTechnique::createGeometry()
 
     // allocate and assign normals
     osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array(); // numVerticesInSurface );
-    if (normals.valid()) normals->reserve(numVerticesInSurface);
+    normals->reserve(numVerticesInSurface);
     surface->setNormalArray(normals.get());
     surface->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
@@ -553,7 +558,7 @@ SinglePassTerrainTechnique::createGeometry()
                     {
                         osg::Vec2Array* texCoords = layerTexCoords[layerNum].get();
                         osgTerrain::Locator* layerLocator = layerLocators[layerNum].get();
-                        if ( layerLocator != _masterLocator )
+                        if ( layerLocator != _masterLocator.get() )
                         {
                             osg::Vec3d color_ndc;
                             osgTerrain::Locator::convertLocalCoordBetween( *masterTextureLocator.get(), ndc, *layerLocator, color_ndc );

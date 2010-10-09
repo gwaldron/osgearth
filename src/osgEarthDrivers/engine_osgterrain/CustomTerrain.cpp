@@ -68,7 +68,6 @@ public:
         if (_canceled) return _canceled;
 
         _canceled = (_service->getStamp() - _request->getStamp() > 2);
-
         return _canceled;
     }
 
@@ -180,10 +179,8 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 };
 
 // A task request that rebuilds a tile's terrain technique in the background. It
-// re-init's the geometry but does NOT swap the buffers (since this constitutes
+// re-compiles the geometry but does NOT apply the updates (since this constitutes
 // altering the scene graph and must therefore be done in the update traversal).
-//
-// NOTE! this doesn't work for multipass technique!
 struct TileGenRequest : public TaskRequest
 {
     TileGenRequest( CustomTile* tile, const TileUpdate& update ) :
@@ -861,7 +858,6 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
 
     bool tileModified = false;
 
-    //Map* map = this->getCustomTerrain()->getMap();
     if ( !_requestsInstalled )
         return false;
 
@@ -871,9 +867,11 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
         CustomTerrainTechnique* tech = dynamic_cast<CustomTerrainTechnique*>( getTerrainTechnique() );
         if ( tech )
         {
-            tileModified = tech->applyTileUpdates();
+            //TODO: consider waiting to apply if there are still more tile updates in the queue.
+            if ( _tileUpdates.size() == 0 )
+                tileModified = tech->applyTileUpdates();
         }
-        _tileGenRequest = 0;
+        _tileGenRequest = 0L;
     }
 
 
@@ -887,7 +885,6 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
 
         bool checkForFinalImagery = false;
 
-        //if (imageMapLayers[i]->isKeyValid(_key.get()) && (i < getNumColorLayers()))
         if (i < getNumColorLayers())
         {
             TransparentLayer* layer = dynamic_cast<TransparentLayer*>(getColorLayer( i ));
@@ -1161,7 +1158,6 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
         _tileUpdates.pop();
         //OE_NOTICE << "tile (" << _key.str() << ") queuing new tile gen" << std::endl;
         getCustomTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
-        //_tileGenNeeded = false;
     }
 
     return tileModified;
@@ -1662,9 +1658,6 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
         {
             Threading::ScopedReadLock lock( _tilesMutex );
 
-            // grow the vector if necessary:
-            //_tilesToServiceElevation.reserve( _tiles.size() );
-
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
                 if ( i->second.valid() )
@@ -1675,10 +1668,13 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                     {                        
                         i->second->servicePendingElevationRequests( _update_mapf, stamp, true );
 
-                        bool tileModified = i->second->serviceCompletedRequests( _update_mapf, true );
-                        if ( tileModified && _terrainCallbacks.size() > 0 )
+                        //if ( _updatedTiles.size() < 1 && stamp % 10 == 0 )
                         {
-                            _updatedTiles.push_back( i->second.get() );
+                            bool tileModified = i->second->serviceCompletedRequests( _update_mapf, true );
+                            if ( tileModified && _terrainCallbacks.size() > 0 )
+                            {
+                                _updatedTiles.push_back( i->second.get() );
+                            }
                         }
                     }
                 }

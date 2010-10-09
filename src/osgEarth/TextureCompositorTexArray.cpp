@@ -72,7 +72,7 @@ static char s_source_fragMain[] =
 
     "varying vec3 normal, lightDir, halfVector; \n"
 
-    "uniform float osgearth_region[256]; \n"
+    "uniform float osgearth_region[32]; \n"
     "uniform int   osgearth_region_count; \n"
     "uniform sampler2DArray tex0; \n"
 
@@ -220,6 +220,7 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     // configure the mipmapping 
     texture->setMaxAnisotropy(16.0f);
     texture->setResizeNonPowerOfTwoHint(false);
+    texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
     if ( powerOfTwo )
         texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
@@ -229,7 +230,7 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     // configure the wrapping
     texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
     texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
-    texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
+    //texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
 
     // build the uniforms.
     //    

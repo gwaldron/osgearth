@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/HeightFieldUtils>
+#include <osgEarth/TextureCompositor>
 
 namespace osgEarth
 {
@@ -171,6 +172,12 @@ namespace osgEarth
             return _layeringTechnique; }
 
         /**
+         * The texture composition technique
+         */
+        optional<TextureCompositor::TechniqueType>& compositorTechnique() { return _texCompTech; }
+        const optional<TextureCompositor::TechniqueType>& compositorTechnique() const { return _texCompTech; }
+
+        /**
          * The maximum level of detail to which the terrain should subdivide.
          */
         optional<int>& maxLOD() { return _maxLOD; }
@@ -226,6 +233,7 @@ namespace osgEarth
         optional<bool> _combineLayers;
         optional<LoadingPolicy> _loadingPolicy;
         optional<LayeringTechnique> _layeringTechnique;
+        optional<TextureCompositor::TechniqueType> _texCompTech;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
 #if 0

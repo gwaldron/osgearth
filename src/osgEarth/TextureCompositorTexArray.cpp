@@ -58,8 +58,6 @@ typedef std::vector<LayerTexRegion> LayerTexRegionList;
 
 static char s_source_vertMain[] =
 
-    "varying vec3 normal, lightDir, halfVector; \n"
-
     "void main(void) \n"
     "{ \n"
     "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
@@ -68,9 +66,8 @@ static char s_source_vertMain[] =
 
 //------------------------------------------------------------------------
 
+#if 0
 static char s_source_fragMain[] =
-
-    "varying vec3 normal, lightDir, halfVector; \n"
 
     "uniform float osgearth_region[256]; \n"
     "uniform int   osgearth_region_count; \n"
@@ -103,6 +100,38 @@ static char s_source_fragMain[] =
     "    } \n"
     "    gl_FragColor = vec4(color, 1); \n"
     "} \n";
+#endif
+
+static std::string
+s_createFragShader( int numImageLayers )
+{
+    std::stringstream buf;
+
+    buf << "uniform float osgearth_region[" << numImageLayers*8 << "]; \n"
+        << "uniform sampler2DArray tex0; \n"
+        << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n"
+
+        << "void main(void) \n"
+        << "{ \n"
+        <<     "vec3 color = vec3(1,1,1); \n"
+        <<     "float u, v; \n"
+        <<     "vec4 texel; \n";
+
+    for(int i=0; i<numImageLayers; ++i)
+    {
+        int j = i*8;
+        buf << "u = osgearth_region["<< j <<"] + (osgearth_region["<< j+4 <<"] + osgearth_region["<< j+6 <<"] * gl_TexCoord[0].s) * osgearth_region["<< j+2 << "]; \n"
+            << "v = osgearth_region["<< j+1 <<"] + (osgearth_region["<< j+5 <<"] + osgearth_region["<< j+7 <<"] * gl_TexCoord[0].t) * osgearth_region["<< j+3 << "]; \n"
+            << "texel = texture2DArray( tex0, vec3(u,v,"<< i <<") ); \n"
+            << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i << "]); \n";
+    }
+
+    buf <<     "gl_FragColor = vec4(color,1); \n"
+        << "} \n";
+
+    std::string str = buf.str();
+    return str;
+}
 
 //------------------------------------------------------------------------
 
@@ -282,7 +311,7 @@ TextureCompositorTexArray::updateGlobalStateSet( osg::StateSet* stateSet, int nu
     {
         program = new osg::Program();
         program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
-        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_source_fragMain ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
         stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
     }
 }

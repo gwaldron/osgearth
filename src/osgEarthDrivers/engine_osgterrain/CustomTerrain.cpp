@@ -1291,7 +1291,7 @@ _update_mapf( update_mapf ),
 _cull_mapf( cull_mapf ),
 _tileFactory( tileFactory ),
 _revision(0),
-_numAsyncThreads( 0 ),
+_numLoadingThreads( 0 ),
 _registeredWithReleaseGLCallback( false )
 {
     this->setThreadSafeRefUnref( true );
@@ -1304,19 +1304,19 @@ _registeredWithReleaseGLCallback( false )
         const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
         if ( env_numTaskServiceThreads )
         {
-            _numAsyncThreads = ::atoi( env_numTaskServiceThreads );
+            _numLoadingThreads = ::atoi( env_numTaskServiceThreads );
         }
         else
-        if ( _loadingPolicy.numThreads().isSet() )
+        if ( _loadingPolicy.numLoadingThreads().isSet() )
         {
-            _numAsyncThreads = _loadingPolicy.numThreads().get();
+            _numLoadingThreads = osg::maximum( 1, _loadingPolicy.numLoadingThreads().get() );
         }
         else
         {
-            _numAsyncThreads = _loadingPolicy.numThreadsPerCore().get() * OpenThreads::GetNumberOfProcessors();
+            _numLoadingThreads = (int)osg::maximum( 1.0f, _loadingPolicy.numLoadingThreadsPerCore().get() * (float)GetNumberOfProcessors() );
         }
 
-        OE_INFO << LC << "Using a total of " << _numAsyncThreads << " loading threads " << std::endl;
+        OE_INFO << LC << "Using a total of " << _numLoadingThreads << " loading threads " << std::endl;
     }
 }
 
@@ -1757,12 +1757,11 @@ CustomTerrain::getTileGenerationTaskSerivce()
     TaskService* service = getTaskService( TILE_GENERATION_TASK_SERVICE_ID );
     if (!service)
     {
-        int numThreads = _loadingPolicy.numTileGeneratorThreads().value();
+        int numCompileThreads = 
+            _loadingPolicy.numCompileThreads().isSet() ? osg::maximum( 1, _loadingPolicy.numCompileThreads().value() ) :
+            (int)osg::maximum( 1.0f, _loadingPolicy.numCompileThreadsPerCore().value() * (float)GetNumberOfProcessors() );
 
-        if ( numThreads < 1 )
-            numThreads = 1;
-
-        service = createTaskService( "tilegen", TILE_GENERATION_TASK_SERVICE_ID, numThreads );
+        service = createTaskService( "tilegen", TILE_GENERATION_TASK_SERVICE_ID, numCompileThreads );
     }
     return service;
 }
@@ -1790,7 +1789,7 @@ CustomTerrain::updateTaskServiceThreads( const MapFrame& mapf )
     if (elevationWeight > 0.0f)
     {
         //Determine how many threads each layer gets
-        int numElevationThreads = (int)osg::round((float)_numAsyncThreads * (elevationWeight / totalWeight ));
+        int numElevationThreads = (int)osg::round((float)_numLoadingThreads * (elevationWeight / totalWeight ));
         OE_INFO << LC << "Elevation Threads = " << numElevationThreads << std::endl;
         getElevationTaskService()->setNumThreads( numElevationThreads );
     }
@@ -1798,7 +1797,7 @@ CustomTerrain::updateTaskServiceThreads( const MapFrame& mapf )
     for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); ++itr)
     {
         const TerrainLayerOptions& opt = itr->get()->getTerrainLayerOptions();
-        int imageThreads = (int)osg::round((float)_numAsyncThreads * (opt.loadingWeight().value() / totalWeight ));
+        int imageThreads = (int)osg::round((float)_numLoadingThreads * (opt.loadingWeight().value() / totalWeight ));
         OE_INFO << LC << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getId() )->setNumThreads( imageThreads );
     }

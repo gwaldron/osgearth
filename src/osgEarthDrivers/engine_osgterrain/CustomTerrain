@@ -366,7 +366,7 @@ private:
     osg::ref_ptr<const Profile> _profile;
     OpenThreads::Mutex _taskServiceMutex;
 
-    int _numAsyncThreads;
+    int _numLoadingThreads;
 
 	bool _registeredWithReleaseGLCallback;
     TerrainCallbackList _terrainCallbacks;

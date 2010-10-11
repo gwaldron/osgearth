@@ -68,8 +68,8 @@ namespace osgEarth
          * in SEQUENTIAL or PREEMPTIVE mode, this sets the number of task thread
          * pool threads.
          */
-        optional<int>& numThreadsPerCore() { return _numThreadsPerCore; }
-        const optional<int>& numThreadsPerCore() const { return _numThreadsPerCore; }
+        optional<float>& numLoadingThreadsPerCore() { return _numLoadingThreadsPerCore; }
+        const optional<float>& numLoadingThreadsPerCore() const { return _numLoadingThreadsPerCore; }
 
         /**
          * Gets or sets the total number of loading threads to use.
@@ -78,22 +78,31 @@ namespace osgEarth
          * in SEQUENTIAL or PREEMPTIVE mode, this sets the number of task thread
          * pool threads.
          */
-        const optional<int>& numThreads() const { return _numThreads; }
-        optional<int>& numThreads() { return _numThreads; }
+        const optional<int>& numLoadingThreads() const { return _numLoadingThreads; }
+        optional<int>& numLoadingThreads() { return _numLoadingThreads; }
 
         /**
          * Gets or sets the number of threads to allocate for regenerating terrain
          * tiles in the background. This only applies in SEQUENTIAL or PREEMPTIVE
          * mode.
          */
-        const optional<int>& numTileGeneratorThreads() const { return _numTileGenThreads; }
-        optional<int>& numTileGeneratorThreads() { return _numTileGenThreads; }
+        const optional<int>& numCompileThreads() const { return _numCompileThreads; }
+        optional<int>& numCompileThreads() { return _numCompileThreads; }
+
+        /**
+         * Gets or sets the number of threads to allocate for regenerating terrain
+         * tiles in the background. This only applies in SEQUENTIAL or PREEMPTIVE
+         * mode.
+         */
+        const optional<float>& numCompileThreadsPerCore() const { return _numCompileThreadsPerCore; }
+        optional<float>& numCompileThreadsPerCore() { return _numCompileThreadsPerCore; }
 
     protected:
         optional<Mode> _mode;
-        optional<int> _numThreads;
-        optional<int> _numThreadsPerCore;
-        optional<int> _numTileGenThreads;
+        optional<int>   _numLoadingThreads;
+        optional<float> _numLoadingThreadsPerCore;
+        optional<int>   _numCompileThreads;
+        optional<float> _numCompileThreadsPerCore;
     };
 
     /**

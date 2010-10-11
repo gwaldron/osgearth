@@ -128,15 +128,14 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     
     // lock changes to the layers while we're compiling them
     Threading::ScopedReadLock lock( getMutex() );
-
     
     if ( !_masterLocator.valid() || !_transform.valid() )
     {
         // establish the master tile locator from the customtile key
         CustomTile* tile = static_cast<CustomTile*>( _terrainTile );
-        //_masterLocator = tile->getLocator();
-        osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-        _masterLocator = elevationLayer->getLocator();
+        _masterLocator = tile->getLocator();
+        //osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+        //_masterLocator = elevationLayer->getLocator();
 
         _masterLocator->convertLocalToModel( osg::Vec3(.5,.5,0), _centerModel );
 
@@ -151,6 +150,8 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         _pendingImageLayerUpdateIndex = _pendingImageLayerUpdate.valid() ? update.getIndex() : -1;
     }
 
+    //TODO: we should not need to check supportsLayerUpdate here, but it is not working properly in
+    // multitexture mode (white tiles show up). Need to investigate and fix.
     else if ( update.getAction() == TileUpdate::UPDATE_ELEVATION && _texCompositor->supportsLayerUpdate() )
     {
         createGeometry();
@@ -240,13 +241,51 @@ SinglePassTerrainTechnique::applyTileUpdates()
         if ( _pendingGeometryUpdate )
         {
             osg::Geode* frontGeode = getFrontGeode();
-
-            // copy the drawables from the back buffer to the front buffer. By doing this,
-            // we don't touch the front geode's stateset (which contains the textures) and
-            // therefore they don't get re-applied.
-            for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+            
+            if ( _texCompositor->requiresUnitTextureSpace() )
             {
-                frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+                // in "unit-texture-space" mode, we can take the shortcut of just updating
+                // the geometry VBOs. The texture coordinates never change.
+                for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+                {
+                    osg::Geometry* backGeom = static_cast<osg::Geometry*>( _backGeode->getDrawable(i) );
+                    osg::Vec3Array* backVerts = static_cast<osg::Vec3Array*>( backGeom->getVertexArray() );
+
+                    osg::Geometry* frontGeom = static_cast<osg::Geometry*>( frontGeode->getDrawable(i) );
+                    osg::Vec3Array* frontVerts = static_cast<osg::Vec3Array*>( frontGeom->getVertexArray() );
+
+                    if ( backVerts->size() == frontVerts->size() )
+                    {
+                        // simple VBO update:
+                        std::copy( backVerts->begin(), backVerts->end(), frontVerts->begin() );
+                        frontVerts->dirty();
+
+                        osg::Vec3Array* backNormals = static_cast<osg::Vec3Array*>( backGeom->getNormalArray() );
+                        if ( backNormals )
+                        {
+                            osg::Vec3Array* frontNormals = static_cast<osg::Vec3Array*>( frontGeom->getNormalArray() );
+                            std::copy( backNormals->begin(), backNormals->end(), frontNormals->begin() );
+                            frontNormals->dirty();
+                        }
+                    }
+                    else
+                    {
+                        frontGeom->setVertexArray( backVerts );
+                        frontGeom->setTexCoordArray( 0, backGeom->getTexCoordArray( 0 ) ); // TODO: un-hard-code
+                        if ( backGeom->getNormalArray() )
+                            frontGeom->setNormalArray( backGeom->getNormalArray() );
+                    }
+                }
+            }
+            else
+            {
+                // copy the drawables from the back buffer to the front buffer. By doing this,
+                // we don't touch the front geode's stateset (which contains the textures) and
+                // therefore they don't get re-applied.
+                for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+                {
+                    frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+                }
             }
 
             _pendingGeometryUpdate = false;
@@ -419,11 +458,10 @@ SinglePassTerrainTechnique::createGeometry()
     // allocate and assign vertices
     osg::ref_ptr<osg::Vec3Array> surfaceVerts = new osg::Vec3Array;
     surfaceVerts->reserve( numVerticesInSurface );
-    //osg::ref_ptr<osg::Vec3Array> surfaceVerts = new osg::Vec3Array( numVerticesInSurface );
     surface->setVertexArray( surfaceVerts.get() );
 
     // allocate and assign normals
-    osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array(); // numVerticesInSurface );
+    osg::ref_ptr<osg::Vec3Array> normals = new osg::Vec3Array();
     normals->reserve(numVerticesInSurface);
     surface->setNormalArray(normals.get());
     surface->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);

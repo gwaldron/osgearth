@@ -27,9 +27,10 @@ using namespace osgEarth;
 
 LoadingPolicy::LoadingPolicy( const Config& conf ) :
 _mode( MODE_STANDARD ),
-_numThreads( 2 ),
-_numThreadsPerCore( 4 ),
-_numTileGenThreads( OpenThreads::GetNumberOfProcessors() )
+_numLoadingThreads( 4 ),
+_numLoadingThreadsPerCore( 4 ),
+_numCompileThreads( 2 ),
+_numCompileThreadsPerCore( 0.5 )
 {
     fromConfig( conf );
 }
@@ -40,10 +41,11 @@ LoadingPolicy::fromConfig( const Config& conf )
     conf.getIfSet( "mode", "standard", _mode, MODE_STANDARD );
     conf.getIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.getIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
-    conf.getIfSet( "loading_threads", _numThreads );
-    conf.getIfSet( "loading_threads_per_logical_processor", _numThreadsPerCore );
-    conf.getIfSet( "loading_threads_per_core", _numThreadsPerCore );
-    conf.getIfSet( "tile_generation_threads", _numTileGenThreads );
+    conf.getIfSet( "loading_threads", _numLoadingThreads );
+    conf.getIfSet( "loading_threads_per_logical_processor", _numLoadingThreadsPerCore );
+    conf.getIfSet( "loading_threads_per_core", _numLoadingThreadsPerCore );
+    conf.getIfSet( "compile_threads", _numCompileThreads );
+    conf.getIfSet( "compile_threads_per_core", _numCompileThreadsPerCore );
 }
 
 Config
@@ -53,9 +55,10 @@ LoadingPolicy::getConfig() const
     conf.addIfSet( "mode", "standard", _mode, MODE_STANDARD );
     conf.addIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.addIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
-    conf.addIfSet( "loading_threads", _numThreads );
-    conf.addIfSet( "loading_threads_per_core", _numThreadsPerCore );
-    conf.addIfSet( "tile_generation_threads", _numTileGenThreads );
+    conf.addIfSet( "loading_threads", _numLoadingThreads );
+    conf.addIfSet( "loading_threads_per_core", _numLoadingThreadsPerCore );
+    conf.addIfSet( "compile_threads", _numCompileThreads );
+    conf.addIfSet( "compile_threads_per_core", _numCompileThreadsPerCore );
     return conf;
 }
 

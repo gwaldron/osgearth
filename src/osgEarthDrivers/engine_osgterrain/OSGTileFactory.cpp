@@ -97,7 +97,6 @@ _terrainOptions( props )
         ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "PREEMPTIVE" :
         mode == LoadingPolicy::MODE_SEQUENTIAL ? "SEQUENTIAL" :
         "STANDARD" )
-        << ", threads per core = " << _terrainOptions.loadingPolicy()->numThreadsPerCore().value()
         << std::endl;
 }
 

@@ -152,8 +152,6 @@ private:
 private:
 
     osg::ref_ptr<const TextureCompositor> _texCompositor;
-    osg::ref_ptr<osg::Program> _compositeProgram;
-    bool _attachedProgram;
 
     osg::Vec3d computeCenterModel();
     GeoImage createGeoImage( osgTerrain::Layer* imageLayer ) const;

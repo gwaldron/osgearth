@@ -72,7 +72,7 @@ static char s_source_fragMain[] =
 
     "varying vec3 normal, lightDir, halfVector; \n"
 
-    "uniform float osgearth_region[32]; \n"
+    "uniform float osgearth_region[256]; \n"
     "uniform int   osgearth_region_count; \n"
     "uniform sampler2DArray tex0; \n"
 
@@ -271,7 +271,6 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON ); 
     stateSet->addUniform( texInfoArray );
     stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( (int)regions.size() );
-
     return stateSet;
 }
 

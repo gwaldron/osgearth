@@ -51,7 +51,6 @@ _verticalScaleOverride(1.0f),
 _fullUpdatePending( false ),
 _initCount(0),
 _optimizeTriangleOrientation(true),
-_attachedProgram(false),
 _pendingImageLayerUpdateIndex(-1),
 _pendingGeometryUpdate(false)
 {
@@ -60,9 +59,6 @@ _pendingGeometryUpdate(false)
     // create a texture compositor.
     if ( !_texCompositor.valid() )
         _texCompositor = new TextureCompositor();
-
-    // do this here so that we can use the program in the prototype
-    _compositeProgram = _texCompositor->getProgram();
 }
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& gt,const osg::CopyOp& copyop):
@@ -73,10 +69,9 @@ _fullUpdatePending( false ),
 _pendingImageLayerUpdateIndex(-1),
 _pendingGeometryUpdate( false ),
 _initCount( 0 ),
-_compositeProgram(gt._compositeProgram),
 _texCompositor(gt._texCompositor)
 {
-    _attachedProgram = false;
+    //NOP
 }
 
 SinglePassTerrainTechnique::~SinglePassTerrainTechnique()
@@ -148,13 +143,6 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         _transform = new osg::MatrixTransform( osg::Matrix::translate(_centerModel) );
         // this is a placeholder so that we can always just call setChild(0) later.
         _transform->addChild( new osg::Group );
-    }
-
-    // attach the shader program required by the active texture compositor, if applicable
-    if ( !_attachedProgram && _compositeProgram.valid() )
-    {
-        _terrainTile->getOrCreateStateSet()->setAttributeAndModes( _compositeProgram.get(), osg::StateAttribute::ON );
-        _attachedProgram = true;
     }
 
     if ( update.getAction() == TileUpdate::UPDATE_IMAGE_LAYER && _texCompositor->supportsLayerUpdate() )

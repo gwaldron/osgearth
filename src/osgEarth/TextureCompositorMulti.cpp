@@ -31,6 +31,58 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
+static std::string
+s_createVertShader( int numImageLayers )
+{
+    std::stringstream buf;
+
+    buf << "void main(void) \n"
+        << "{ \n";
+
+    for( int i=0; i<numImageLayers; ++i )
+        buf << "gl_TexCoord[" << i << "] = gl_MultiTexCoord" << i << "; \n";
+
+    buf <<     "gl_Position = ftransform(); \n"
+        << "} \n";
+
+    std::string str = buf.str();
+    return str;
+}
+
+//------------------------------------------------------------------------
+
+static std::string
+s_createFragShader( int numImageLayers ) 
+{
+    std::stringstream buf;
+
+    buf << "uniform int osgearth_region_count; \n"
+        << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n"
+        << "uniform sampler2D ";
+
+    for( int i=0; i<numImageLayers; ++i )
+        buf << "tex" << i << ( i+1 < numImageLayers? "," : ";") << " \n";
+
+    buf << "void main(void) \n"
+        << "{ \n"
+        <<     "vec3 color = vec3(1,1,1); \n"
+        <<     "vec4 texel; \n";
+
+    for( int i=0; i<numImageLayers; ++i )
+    {
+        buf << "texel = texture2D(tex" << i << ", gl_TexCoord[" << i << "].st); \n"
+            << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n";
+    }
+
+    buf <<     "gl_FragColor = vec4(color,1); \n"
+        << "} \n";
+
+    std::string str = buf.str();
+    return str;
+}
+
+//------------------------------------------------------------------------
+
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU ) :
 _useGPU( useGPU )
 {
@@ -69,16 +121,18 @@ TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages
     return stateSet;
 }
 
-osg::Program*
-TextureCompositorMultiTexture::createProgram() const
-{
-    return 0L;
-}
-
 void 
 TextureCompositorMultiTexture::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
-    if ( !_useGPU )
+    if ( _useGPU )
+    {
+        osg::Program* program = new osg::Program();
+        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_createVertShader(numImageLayers) ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
+        stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
+    }
+
+    else
     {
         // FFP multitexturing requires that we set up a series of TexCombine attributes:
 

@@ -35,7 +35,7 @@ namespace osgEarth
     public:
         virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const =0;
 
-        virtual osg::Program* createProgram() const =0;
+        //virtual osg::Program* createProgram( int numImageLayers ) const =0;
 
         virtual bool requiresUnitTextureSpace() const =0;
 
@@ -107,7 +107,7 @@ namespace osgEarth
          * necessary to support the compositing, or NULL if no shaders are required. You should attach
          * the program to whatever node is rendering the terrain tile.
          */
-        osg::Program* getProgram() const;
+        //osg::Program* getProgram() const;
 
         /**
          * Whether the texture composition technique uses a single, unit (0..1) texture coordinate

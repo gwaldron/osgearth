@@ -210,11 +210,6 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
         _texCompositor = new TextureCompositor( _terrainOptions.compositorTechnique().value() );
         CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
-        // if there's a shader program, apply it here:
-        osg::Program* program = _texCompositor->getProgram();
-        if ( program )
-            this->getOrCreateStateSet()->setAttributeAndModes( program );
-
         // prepare the interpolation technique for generating triangles:
         if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
             tech->setOptimizeTriangleOrientation( false );

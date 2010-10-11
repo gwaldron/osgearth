@@ -274,11 +274,15 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     return stateSet;
 }
 
-osg::Program*
-TextureCompositorTexArray::createProgram() const
+void
+TextureCompositorTexArray::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
-    osg::Program* program = new osg::Program();
-    program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_source_fragMain ) );
-    return program;
+    osg::Program* program = dynamic_cast<osg::Program*>( stateSet->getAttribute( osg::StateAttribute::PROGRAM ) );
+    if ( !program )
+    {
+        program = new osg::Program();
+        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_source_fragMain ) );
+        stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
+    }
 }

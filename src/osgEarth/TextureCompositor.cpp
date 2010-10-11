@@ -98,14 +98,14 @@ TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
         _impl->applyLayerUpdate( stateSet, layerNum, preparedImage, tileExtent );
 }
 
-osg::Program*
-TextureCompositor::getProgram() const
-{
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
-
-    return _program.get();
-}
+//osg::Program*
+//TextureCompositor::getProgram() const
+//{
+//    if ( !_impl.valid() )
+//        const_cast<TextureCompositor*>(this)->init();
+//
+//    return _program.get();
+//}
 
 bool
 TextureCompositor::requiresUnitTextureSpace() const
@@ -162,7 +162,7 @@ TextureCompositor::init()
     }
 
     // commented out because it's NYI:
-    else if ( _forceTech && ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) ) )
+    else if ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) )
     {
         _tech = TECH_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true );
@@ -185,6 +185,6 @@ TextureCompositor::init()
     //    OE_INFO << LC << "technique = software" << std::endl;
     //}
 
-    if ( _impl.valid() )
-        _program = _impl->createProgram();
+    //if ( _impl.valid() )
+    //    _program = _impl->createProgram();
 }

@@ -69,7 +69,7 @@ static char s_source_vertMain[] =
 #if 0
 static char s_source_fragMain[] =
 
-    "uniform float osgearth_region[256]; \n"
+    "uniform float region[256]; \n"
     "uniform int   osgearth_region_count; \n"
     "uniform sampler2DArray tex0; \n"
 
@@ -81,14 +81,14 @@ static char s_source_fragMain[] =
     "    for(int i=0; i<osgearth_region_count; i++) \n"
     "    { \n"
     "        int j = 8*i; \n"
-    "        float tx   = osgearth_region[j];   \n"
-    "        float ty   = osgearth_region[j+1]; \n"
-    "        float tw   = osgearth_region[j+2]; \n"
-    "        float th   = osgearth_region[j+3]; \n"
-    "        float xoff = osgearth_region[j+4]; \n"
-    "        float yoff = osgearth_region[j+5]; \n"
-    "        float xsca = osgearth_region[j+6]; \n"
-    "        float ysca = osgearth_region[j+7]; \n"
+    "        float tx   = region[j];   \n"
+    "        float ty   = region[j+1]; \n"
+    "        float tw   = region[j+2]; \n"
+    "        float th   = region[j+3]; \n"
+    "        float xoff = region[j+4]; \n"
+    "        float yoff = region[j+5]; \n"
+    "        float xsca = region[j+6]; \n"
+    "        float ysca = region[j+7]; \n"
 
     "        float opac = osgearth_imagelayer_opacity[i]; \n"
 
@@ -105,9 +105,11 @@ static char s_source_fragMain[] =
 static std::string
 s_createFragShader( int numImageLayers )
 {
+    //return s_source_fragMain;
+
     std::stringstream buf;
 
-    buf << "uniform float osgearth_region[" << numImageLayers*8 << "]; \n"
+    buf << "uniform float region[" << numImageLayers*8 << "]; \n"
         << "uniform sampler2DArray tex0; \n"
         << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n"
 
@@ -120,10 +122,10 @@ s_createFragShader( int numImageLayers )
     for(int i=0; i<numImageLayers; ++i)
     {
         int j = i*8;
-        buf << "u = osgearth_region["<< j <<"] + (osgearth_region["<< j+4 <<"] + osgearth_region["<< j+6 <<"] * gl_TexCoord[0].s) * osgearth_region["<< j+2 << "]; \n"
-            << "v = osgearth_region["<< j+1 <<"] + (osgearth_region["<< j+5 <<"] + osgearth_region["<< j+7 <<"] * gl_TexCoord[0].t) * osgearth_region["<< j+3 << "]; \n"
+        buf << "u = region["<< j <<"] + (region["<< j+4 <<"] + region["<< j+6 <<"] * gl_TexCoord[0].s) * region["<< j+2 << "]; \n"
+            << "v = region["<< j+1 <<"] + (region["<< j+5 <<"] + region["<< j+7 <<"] * gl_TexCoord[0].t) * region["<< j+3 << "]; \n"
             << "texel = texture2DArray( tex0, vec3(u,v,"<< i <<") ); \n"
-            << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i << "]); \n";
+            << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"]); \n";
     }
 
     buf <<     "gl_FragColor = vec4(color,1); \n"
@@ -175,12 +177,16 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     float xscale  = tileExtent.width() / layerExtent.width();
     float yscale  = tileExtent.height() / layerExtent.height();
 
-    osg::Uniform* texInfoArray = stateSet->getUniform( "osgearth_region" );
-    int layerOffset = (layerNum * 8) + 4; // skip the pixel data, it won't change..
-    texInfoArray->setElement( layerOffset++, xoffset );
-    texInfoArray->setElement( layerOffset++, yoffset );
-    texInfoArray->setElement( layerOffset++, xscale );
-    texInfoArray->setElement( layerOffset++, yscale );
+    osg::Uniform* texInfoArray = stateSet->getUniform( "region" );
+    if ( texInfoArray )
+    {
+        int layerOffset = (layerNum * 8) + 4; // skip the pixel data, it won't change..
+        texInfoArray->setElement( layerOffset++, xoffset );
+        texInfoArray->setElement( layerOffset++, yoffset );
+        texInfoArray->setElement( layerOffset++, xscale );
+        texInfoArray->setElement( layerOffset++, yscale );
+        texInfoArray->dirty();
+    }
 }
 
 osg::StateSet*
@@ -269,7 +275,7 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     //   xoff, yoff : x- and y- offsets within texture space
     //   xsca, ysca : x- and y- scale factors within texture space
 
-    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_region", regions.size() * 8 );
+    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "region", regions.size() * 8 );
     int p=0;
     for( unsigned int i=0; i<regions.size(); ++i )
     {
@@ -299,19 +305,18 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     //TODO: un-hard-code the texture unit, perhaps
     stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON ); 
     stateSet->addUniform( texInfoArray );
-    stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( (int)regions.size() );
+    stateSet->addUniform( new osg::Uniform("tex0", 0) );
+
     return stateSet;
 }
 
 void
 TextureCompositorTexArray::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
-    osg::Program* program = dynamic_cast<osg::Program*>( stateSet->getAttribute( osg::StateAttribute::PROGRAM ) );
-    if ( !program )
-    {
-        program = new osg::Program();
-        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
-        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
-        stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
-    }
+    osg::Program* program = new osg::Program();
+    program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
+    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
+    stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
+    
+    //stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( numImageLayers ); //(int)regions.size() );
 }

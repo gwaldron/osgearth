@@ -162,7 +162,7 @@ TextureCompositor::init()
     }
 
     // commented out because it's NYI:
-    else if ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) )
+    else if ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) ) 
     {
         _tech = TECH_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true );

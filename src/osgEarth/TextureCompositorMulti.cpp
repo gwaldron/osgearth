@@ -40,12 +40,13 @@ s_createVertShader( int numImageLayers )
         << "{ \n";
 
     for( int i=0; i<numImageLayers; ++i )
-        buf << "gl_TexCoord[" << i << "] = gl_MultiTexCoord" << i << "; \n";
+        buf << "gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i <<"; \n";
 
     buf <<     "gl_Position = ftransform(); \n"
         << "} \n";
 
     std::string str = buf.str();
+    //OE_INFO << std::endl << str;
     return str;
 }
 
@@ -56,12 +57,12 @@ s_createFragShader( int numImageLayers )
 {
     std::stringstream buf;
 
-    buf << "uniform int osgearth_region_count; \n"
-        << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n"
-        << "uniform sampler2D ";
+    buf << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n";
 
+    buf << "uniform sampler2D ";
     for( int i=0; i<numImageLayers; ++i )
-        buf << "tex" << i << ( i+1 < numImageLayers? "," : ";") << " \n";
+        buf << "tex"<< i << ( i+1 < numImageLayers? "," : ";");
+    buf << "\n";
 
     buf << "void main(void) \n"
         << "{ \n"
@@ -70,7 +71,7 @@ s_createFragShader( int numImageLayers )
 
     for( int i=0; i<numImageLayers; ++i )
     {
-        buf << "texel = texture2D(tex" << i << ", gl_TexCoord[" << i << "].st); \n"
+        buf << "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
             << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n";
     }
 
@@ -78,6 +79,7 @@ s_createFragShader( int numImageLayers )
         << "} \n";
 
     std::string str = buf.str();
+    //OE_INFO << std::endl << str;
     return str;
 }
 
@@ -86,6 +88,7 @@ s_createFragShader( int numImageLayers )
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU ) :
 _useGPU( useGPU )
 {
+    //nop
 }
 
 osg::StateSet*
@@ -93,8 +96,7 @@ TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages
 {
     osg::StateSet* stateSet = new osg::StateSet();
 
-    int texUnit =0;
-    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++texUnit )
+    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i )
     {
         osg::Texture2D* texture = new osg::Texture2D( i->getImage() );
         int texWidth = i->getImage()->s();
@@ -115,10 +117,39 @@ TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages
         texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
 
         // populate the stateset
+        int texUnit = i - layerImages.begin();
         stateSet->setTextureAttributeAndModes( texUnit, texture, osg::StateAttribute::ON );
+
+        if ( _useGPU )
+        {
+            std::stringstream buf;
+            buf << "tex" << texUnit;
+            std::string name = buf.str();
+            stateSet->addUniform( new osg::Uniform( name.c_str(), texUnit ) );
+            // NOTE: "tex"+texUnit doesn't work.
+        }
     }
 
     return stateSet;
+}
+
+void
+TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet, int layerNum,
+                                                const GeoImage& preparedImage, const GeoExtent& tileExtent ) const
+{
+    osg::Texture2D* texture = static_cast<osg::Texture2D*>(
+        stateSet->getTextureAttribute( layerNum, osg::StateAttribute::TEXTURE ) );
+
+    texture->setImage( preparedImage.getImage() );
+
+    // recalculate mipmapping:
+    int texWidth  = texture->getImage()->s();
+    int texHeight = texture->getImage()->t();
+    bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
+    if ( powerOfTwo )
+        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+    else
+        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
 }
 
 void 

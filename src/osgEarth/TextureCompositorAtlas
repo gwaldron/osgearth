@@ -31,7 +31,7 @@ namespace osgEarth
     public:
         osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const;
 
-        osg::Program* createProgram() const;
+        void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
 
         bool requiresUnitTextureSpace() const { return true; }
     };

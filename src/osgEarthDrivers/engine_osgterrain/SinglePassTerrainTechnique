@@ -34,6 +34,8 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ThreadingUtils>
 
+#include <queue>
+
 /**
  * A terrain technique that uses a single texture unit by compositing image layer textures
  * on the GPU.
@@ -121,17 +123,6 @@ private:
 
     osg::ref_ptr<osg::Geode> _backGeode;
 
-    //unsigned int _currentFrontBuffer;
-    //unsigned int _currentBackBuffer;
-    //BufferData _bufferData[2];
-
-    //void swapBuffers();
-
-    //inline BufferData& getFrontBuffer() { return _bufferData[_currentFrontBuffer]; }
-    //inline BufferData& getBackBuffer() { return _bufferData[_currentBackBuffer]; }
-
-    //void clearBuffer( int which );
-
     osg::Vec3d _centerModel;
     float _verticalScaleOverride;
 
@@ -140,10 +131,15 @@ private:
     //bool _swapPending;
     int _initCount;
 
-    bool     _fullUpdatePending;
-    GeoImage _pendingImageLayerUpdate;
-    int      _pendingImageLayerUpdateIndex;
+    bool     _pendingFullUpdate;    
     bool     _pendingGeometryUpdate;
+
+    struct ImageLayerUpdate {
+        GeoImage _image;
+        int      _layerIndex;
+    };
+    typedef std::queue<ImageLayerUpdate> ImageLayerUpdates;
+    ImageLayerUpdates _pendingImageLayerUpdates;
 
     GeoExtent _tileExtent;
 
@@ -157,7 +153,7 @@ private:
     GeoImage createGeoImage( osgTerrain::Layer* imageLayer ) const;
     void createGeometry();
     osg::StateSet* createStateSet();
-    GeoImage prepareImageLayerUpdate( int layerIndex );
+    void prepareImageLayerUpdate( int layerIndex );
     Threading::ReadWriteMutex& getMutex();
     inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
 

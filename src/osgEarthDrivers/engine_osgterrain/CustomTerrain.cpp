@@ -838,14 +838,6 @@ CustomTile::queueTileUpdate( TileUpdate::Action action, int index )
     {
         this->setDirty( true );
     }
-    //if ( _useTileGenRequest )
-    //{
-    //    _tileGenNeeded = true;
-    //}
-    //else
-    //{
-    //    this->setDirty( true );
-    //}
 }
 
 // called from the UPDATE TRAVERSAL, because this method can potentially alter

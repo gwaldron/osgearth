@@ -189,11 +189,11 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     texture->setImage( layerNum, preparedImage.getImage() );
     
     // update the region uniform to reflect the geo extent of the image:
-    const GeoExtent& layerExtent = preparedImage.getExtent();
-    float xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
-    float yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
-    float xscale  = tileExtent.width() / layerExtent.width();
-    float yscale  = tileExtent.height() / layerExtent.height();
+    const GeoExtent& imageExtent = preparedImage.getExtent();
+    float xoffset = (tileExtent.xMin() - imageExtent.xMin()) / imageExtent.width();
+    float yoffset = (tileExtent.yMin() - imageExtent.yMin()) / imageExtent.height();
+    float xscale  = tileExtent.width() / imageExtent.width();
+    float yscale  = tileExtent.height() / imageExtent.height();
 
     osg::Uniform* texInfoArray = stateSet->getUniform( "region" );
     if ( texInfoArray )
@@ -211,15 +211,6 @@ osg::StateSet*
 TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
 {
     osg::StateSet* stateSet = new osg::StateSet();
-
-    // Composite all the image layer images into a single composite image.
-    //
-    // NOTE!
-    // This should work if images are different sizes, BUT it will NOT work if they use
-    // different locators. In other words, this will only work if the texture coordinate
-    // pair (u,v) is the SAME across all image layers for a given vertex. That's because
-    // GLSL will only support one tex-coord pair per texture unit, and we are doing the
-    // compositing so we only need to use one texture unit.
 
     osg::Texture2DArray* texture = new osg::Texture2DArray();
 

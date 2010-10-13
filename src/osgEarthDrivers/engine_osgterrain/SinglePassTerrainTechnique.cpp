@@ -318,14 +318,14 @@ SinglePassTerrainTechnique::getMutex()
 }
 
 void
-SinglePassTerrainTechnique::prepareImageLayerUpdate( int layerNum )
+SinglePassTerrainTechnique::prepareImageLayerUpdate( int layerIndex )
 {
-    GeoImage geoImage = createGeoImage( _terrainTile->getColorLayer(layerNum) );
+    GeoImage geoImage = createGeoImage( _terrainTile->getColorLayer(layerIndex) );
     if ( geoImage.valid() )
     {
         ImageLayerUpdate update;
         update._image = _texCompositor->prepareLayerUpdate( geoImage, _tileExtent );
-        update._layerIndex = layerNum;
+        update._layerIndex = layerIndex;
 
         if ( update._image.valid() )
             _pendingImageLayerUpdates.push( update );
@@ -346,8 +346,8 @@ SinglePassTerrainTechnique::createGeoImage( osgTerrain::Layer* colorLayer ) cons
             if ( layerLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
                 layerLocator = layerLocator->getGeographicFromGeocentric();
 
-            const GeoExtent& layerExtent = layerLocator->getDataExtent();
-            return GeoImage( imageLayer->getImage(), layerExtent );
+            const GeoExtent& imageExtent = layerLocator->getDataExtent();
+            return GeoImage( imageLayer->getImage(), imageExtent );
         }
     }
     return GeoImage::INVALID;

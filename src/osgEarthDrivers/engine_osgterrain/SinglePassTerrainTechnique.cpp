@@ -49,9 +49,9 @@ SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compo
 _texCompositor( compositor ),
 _verticalScaleOverride(1.0f),
 _pendingFullUpdate( false ),
+_pendingGeometryUpdate(false),
 _initCount(0),
-_optimizeTriangleOrientation(true),
-_pendingGeometryUpdate(false)
+_optimizeTriangleOrientation(true)
 {
     this->setThreadSafeRefUnref(true);
 
@@ -60,14 +60,14 @@ _pendingGeometryUpdate(false)
         _texCompositor = new TextureCompositor();
 }
 
-SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& gt,const osg::CopyOp& copyop):
-CustomTerrainTechnique(gt,copyop),
-_verticalScaleOverride( gt._verticalScaleOverride ),
-_optimizeTriangleOrientation(gt._optimizeTriangleOrientation),
+SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):
+CustomTerrainTechnique( rhs, copyop ),
+_texCompositor( rhs._texCompositor.get() ),
+_verticalScaleOverride( rhs._verticalScaleOverride ),
+_optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate( false ),
-_initCount( 0 ),
-_texCompositor(gt._texCompositor)
+_initCount( 0 )
 {
     //NOP
 }
@@ -951,19 +951,19 @@ SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)
         if (_terrainTile->getDirty()) _terrainTile->init();
 #endif
 
-        if ( _terrainTile )
-            _terrainTile->osg::Group::traverse( nv );        
+        _terrainTile->osg::Group::traverse( nv );        
+        return;
     }
 
     else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
     {
         if ( _transform.valid() )
             _transform->accept( nv );
-
         return;
     }
 
     // the code from here on accounts for user traversals (intersections, etc)
+
     if ( _terrainTile->getDirty() ) 
     {
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)

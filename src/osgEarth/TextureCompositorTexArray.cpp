@@ -29,35 +29,8 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-// Records the information about a layer's texture space
-struct LayerTexRegion
-{
-    LayerTexRegion() :
-        _px(0), _py(0),
-        _pw(256), _ph(256),
-        _tx(0.0f), _ty(0.0f),
-        _tw(1.0f), _th(1.0f),
-        _xoffset(0.0f), _yoffset(0.0f),
-        _xscale(1.0f), _yscale(1.0f)
-    {
-        //nop
-    }
-
-    // pixel coordinates of layer in the composite image:
-    int _px, _py, _pw, _ph;
-
-    // texture coordinates of layer in the composite image:
-    float _tx, _ty, _tw, _th;
-
-    // texture scale and offset for this region:
-    float _xoffset, _yoffset, _xscale, _yscale;
-};
-typedef std::vector<LayerTexRegion> LayerTexRegionList;
-
-//------------------------------------------------------------------------
-
 static char s_source_vertMain[] =
-
+    
     "void main(void) \n"
     "{ \n"
     "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
@@ -102,16 +75,60 @@ static char s_source_fragMain[] =
     "} \n";
 #endif
 
+#if 0
 static std::string
 s_createFragShader( int numImageLayers )
 {
-    //return s_source_fragMain;
-
     std::stringstream buf;
 
-    buf << "uniform float region[" << numImageLayers*8 << "]; \n"
+    buf << "#version 130 \n"
+        << "#extension GL_EXT_gpu_shader4 : enable \n"
+
+        << "uniform float region[" << numImageLayers*8 << "]; \n"
         << "uniform sampler2DArray tex0; \n"
         << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n"
+
+        << "void main(void) \n"
+        << "{ \n"
+        <<     "vec3 color = vec3(1,1,1); \n"
+        <<     "float u, v; \n"
+        <<     "vec4 texel; \n"
+        <<     "for(int i=0; i<"<< numImageLayers <<"; i++) { \n"
+        <<         "int j = 8*i; \n"
+        <<         "float tx = region[j]; \n"
+        <<         "float ty = region[j+1]; \n"
+        <<         "float tw = region[j+2]; \n"
+        <<         "float th = region[j+3]; \n"
+        <<         "float xoff = region[j+4]; \n"
+        <<         "float yoff = region[j+5]; \n"
+        <<         "float xsca = region[j+6]; \n"
+        <<         "float ysca = region[j+7]; \n"
+        <<         "float opac = osgearth_imagelayer_opacity[i]; \n"
+        <<         "float u = tx + (xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
+        <<         "float v = ty + (yoff + ysca * gl_TexCoord[0].t ) * th; \n"
+        <<         "vec4 texel = texture2DArray( tex0, vec3(u,v,i) ); \n"
+        <<         "color = mix(color, texel.rgb, texel.a * opac); \n"
+        <<    "} \n"
+        <<    "gl_FragColor = vec4(color,1); \n"
+        << "} \n";
+
+    std::string str = buf.str();
+    OE_NOTICE << std::endl << str;
+    return str;
+}
+#endif
+
+static std::string
+s_createFragShader( int numImageLayers )
+{
+    std::stringstream buf;
+
+    buf << "#version 130 \n"
+        << "#extension GL_EXT_gpu_shader4 : enable \n"
+
+        << "uniform sampler2DArray tex0; \n"
+        << "uniform float[] region; \n"
+        << "uniform float[] osgearth_imagelayer_opacity; \n"
 
         << "void main(void) \n"
         << "{ \n"
@@ -121,9 +138,9 @@ s_createFragShader( int numImageLayers )
 
     for(int i=0; i<numImageLayers; ++i)
     {
-        int j = i*8;
-        buf << "u = region["<< j <<"] + (region["<< j+4 <<"] + region["<< j+6 <<"] * gl_TexCoord[0].s) * region["<< j+2 << "]; \n"
-            << "v = region["<< j+1 <<"] + (region["<< j+5 <<"] + region["<< j+7 <<"] * gl_TexCoord[0].t) * region["<< j+3 << "]; \n"
+        int j = i*4;
+        buf << "u = region["<< j <<"] + (region["<< j+2 <<"] * gl_TexCoord[0].s); \n"
+            << "v = region["<< j+1 <<"] + (region["<< j+3 <<"] * gl_TexCoord[0].t); \n"
             << "texel = texture2DArray( tex0, vec3(u,v,"<< i <<") ); \n"
             << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"]); \n";
     }
@@ -132,6 +149,7 @@ s_createFragShader( int numImageLayers )
         << "} \n";
 
     std::string str = buf.str();
+    OE_NOTICE << std::endl << str;
     return str;
 }
 
@@ -144,11 +162,11 @@ TextureCompositorTexArray::prepareLayerUpdate( const GeoImage& layerImage, const
 
     // Because all tex2darray layers must be identical in format, let's use RGBA.
     if ( image->getPixelFormat() != GL_RGBA )
-        image = ImageUtils::convertToRGBA( image );
+        image = ImageUtils::convertToRGBA( image.get() );
 
     // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
     if ( image->s() != 256 || image->t() != 256 )
-        image = ImageUtils::resizeImage( image, 256, 256 );
+        image = ImageUtils::resizeImage( image.get(), 256, 256 );
 
     return GeoImage( image.get(), layerImage.getExtent() );
 }
@@ -159,7 +177,7 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
                                             const GeoImage& preparedImage,
                                             const GeoExtent& tileExtent) const
 {
-    // here we are going to assume everything's kosher based - i.e. that the state set came
+    // here we are going to assume everything's kosher - i.e. that the state set came
     // from createStateSet() in this class, and that the prepared image came from prepareImage()
     // in this same class.
 
@@ -180,11 +198,11 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     osg::Uniform* texInfoArray = stateSet->getUniform( "region" );
     if ( texInfoArray )
     {
-        int layerOffset = (layerNum * 8) + 4; // skip the pixel data, it won't change..
-        texInfoArray->setElement( layerOffset++, xoffset );
-        texInfoArray->setElement( layerOffset++, yoffset );
-        texInfoArray->setElement( layerOffset++, xscale );
-        texInfoArray->setElement( layerOffset++, yscale );
+        int layerOffset = layerNum * 4;
+        texInfoArray->setElement( layerOffset,     xoffset );
+        texInfoArray->setElement( layerOffset + 1, yoffset );
+        texInfoArray->setElement( layerOffset + 2, xscale );
+        texInfoArray->setElement( layerOffset + 3, yscale );
         texInfoArray->dirty();
     }
 }
@@ -204,7 +222,6 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     // compositing so we only need to use one texture unit.
 
     osg::Texture2DArray* texture = new osg::Texture2DArray();
-    LayerTexRegionList regions;
 
     int texWidth = 0, texHeight = 0;
 
@@ -212,7 +229,11 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     texture->setTextureDepth( layerImages.size() );
     texture->setInternalFormat( GL_RGBA );
 
-    int layerNum = 0;
+    // this uniform will properly position the image within the tile (kind of like
+    // texture coordinate generation parameters).
+    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "region", layerImages.size() * 4 );
+
+    int layerNum = 0, u = 0;
     for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
     {
         const GeoImage& geoImage = *i;
@@ -220,14 +241,7 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
         osg::Image* image = preparedImage.getImage();
 
         // add the layer image to the composite.
-        texture->setImage( layerNum,image );
-
-        // TODO: optimize this away
-        LayerTexRegion region;
-        region._px = 0;
-        region._py = 0;
-        region._pw = image->s();
-        region._ph = image->t();
+        texture->setImage( layerNum, image );
 
         // track the maximum texture size
         // TODO: currently pointless since we are resizing all layers to 256 anyway...
@@ -239,15 +253,17 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
             
         // record the proper texture offset/scale for this layer. this accounts for subregions that
         // are used when referencing lower LODs.
-        const GeoExtent& layerExtent = geoImage.getExtent();
+        const GeoExtent& layerExtent = preparedImage.getExtent();
 
-        region._xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
-        region._yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
+        float xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
+        float yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
+        float xscale  = tileExtent.width() / layerExtent.width();
+        float yscale  = tileExtent.height() / layerExtent.height();
 
-        region._xscale = tileExtent.width() / layerExtent.width();
-        region._yscale = tileExtent.height() / layerExtent.height();
-            
-        regions.push_back( region );
+        texInfoArray->setElement( u++, xoffset );
+        texInfoArray->setElement( u++, yoffset );
+        texInfoArray->setElement( u++, xscale );
+        texInfoArray->setElement( u++, yscale );
     }
 
     texture->setTextureSize( texWidth, texHeight, layerImages.size() );
@@ -267,40 +283,6 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
     texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
     //texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
 
-    // build the uniforms.
-    //    
-    // The uniform array contains 8 floats for each region:
-    //   tx, ty : origin texture coordinates in the composite-image space
-    //   tw, th : width and height in composite-image space
-    //   xoff, yoff : x- and y- offsets within texture space
-    //   xsca, ysca : x- and y- scale factors within texture space
-
-    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "region", regions.size() * 8 );
-    int p=0;
-    for( unsigned int i=0; i<regions.size(); ++i )
-    {
-        LayerTexRegion& region = regions[i];
-
-        // next calculate the texture space extents and store those in uniforms.
-        // (GW: there is no actual reason to store these in the region structure)
-        region._tx = (float)region._px/(float)texWidth;
-        region._ty = (float)region._py/(float)texHeight;
-        region._tw = (float)region._pw/(float)texWidth;
-        region._th = (float)region._ph/(float)texHeight;
-
-        texInfoArray->setElement( p++, region._tx );
-        texInfoArray->setElement( p++, region._ty );
-        texInfoArray->setElement( p++, region._tw );
-        texInfoArray->setElement( p++, region._th );
-        texInfoArray->setElement( p++, region._xoffset );
-        texInfoArray->setElement( p++, region._yoffset );
-        texInfoArray->setElement( p++, region._xscale );
-        texInfoArray->setElement( p++, region._yscale );
-
-        //OE_NOTICE << LC
-        //    << "Region " << i << ": size=(" << region._pw << ", " << region._ph << ")" << std::endl;
-    }
-
     // (note: do NOT call setTextureAttributeAndModes -- opengl error since TEXTURE_2D_ARRAY is not a valid mode)
     //TODO: un-hard-code the texture unit, perhaps
     stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON ); 
@@ -317,6 +299,4 @@ TextureCompositorTexArray::updateGlobalStateSet( osg::StateSet* stateSet, int nu
     program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
     program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
     stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
-    
-    //stateSet->getOrCreateUniform( "osgearth_region_count", osg::Uniform::INT )->set( numImageLayers ); //(int)regions.size() );
 }

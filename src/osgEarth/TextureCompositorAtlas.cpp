@@ -29,30 +29,33 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-// Records the information about a layer's texture space
-struct LayerTexRegion
+namespace
 {
-    LayerTexRegion() :
-        _px(0), _py(0),
-        _pw(256), _ph(256),
-        _tx(0.0f), _ty(0.0f),
-        _tw(1.0f), _th(1.0f),
-        _xoffset(0.0f), _yoffset(0.0f),
-        _xscale(1.0f), _yscale(1.0f)
+    // Records the information about a layer's texture space
+    struct LayerTexRegion
     {
-        //nop
-    }
+        LayerTexRegion() :
+            _px(0), _py(0),
+            _pw(256), _ph(256),
+            _tx(0.0f), _ty(0.0f),
+            _tw(1.0f), _th(1.0f),
+            _xoffset(0.0f), _yoffset(0.0f),
+            _xscale(1.0f), _yscale(1.0f)
+        {
+            //nop
+        }
 
-    // pixel coordinates of layer in the composite image:
-    int _px, _py, _pw, _ph;
+        // pixel coordinates of layer in the composite image:
+        int _px, _py, _pw, _ph;
 
-    // texture coordinates of layer in the composite image:
-    float _tx, _ty, _tw, _th;
+        // texture coordinates of layer in the composite image:
+        float _tx, _ty, _tw, _th;
 
-    // texture scale and offset for this region:
-    float _xoffset, _yoffset, _xscale, _yscale;
-};
-typedef std::vector<LayerTexRegion> LayerTexRegionList;
+        // texture scale and offset for this region:
+        float _xoffset, _yoffset, _xscale, _yscale;
+    };
+    typedef std::vector<LayerTexRegion> LayerTexRegionList;
+}
 
 //------------------------------------------------------------------------
 

@@ -109,30 +109,16 @@ private:
 
     virtual ~SinglePassTerrainTechnique();
 
-    //struct BufferData
-    //{
-    //    //osg::ref_ptr<osg::MatrixTransform>  _transform;
-    //    osg::ref_ptr<osg::Geode>            _geode;
-    //    osg::ref_ptr<osg::Geometry>         _surface;
-    //    osg::ref_ptr<osg::Geometry>         _skirt;
-    //};
-
     OpenThreads::Mutex                  _writeBufferMutex;
-
     osg::ref_ptr<osg::MatrixTransform> _transform;
-
     osg::ref_ptr<osg::Geode> _backGeode;
-
     osg::Vec3d _centerModel;
     float _verticalScaleOverride;
-
     osg::ref_ptr<osgTerrain::Locator> _masterLocator;
 
-    //bool _swapPending;
-    int _initCount;
-
-    bool     _pendingFullUpdate;    
-    bool     _pendingGeometryUpdate;
+    int  _initCount;
+    bool _pendingFullUpdate;    
+    bool _pendingGeometryUpdate;
 
     struct ImageLayerUpdate {
         GeoImage _image;
@@ -145,9 +131,9 @@ private:
 
     bool _optimizeTriangleOrientation;
 
-private:
-
     osg::ref_ptr<const TextureCompositor> _texCompositor;
+
+private:
 
     osg::Vec3d computeCenterModel();
     GeoImage createGeoImage( osgTerrain::Layer* imageLayer ) const;

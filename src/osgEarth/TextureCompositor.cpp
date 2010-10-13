@@ -37,6 +37,7 @@ using namespace OpenThreads;
 #define LC "[TextureCompositor] "
 
 TextureCompositor::TextureCompositor( TextureCompositor::TechniqueType tech ) :
+osg::Referenced( true ),
 _tech( tech ),
 _forceTech( false )
 {

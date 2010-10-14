@@ -31,6 +31,8 @@
 
 namespace seamless
 {
+class Geographic;
+
 class GeoPatch : public Patch
 {
 public:
@@ -42,6 +44,8 @@ public:
     META_Node(seamless, GeoPatch);
 
     virtual float getEdgeError(const osg::Vec3& eye, int edge);
+    void setGeographic(Geographic*);
+    Geographic* getGeographic() const;
 protected:
     int _face;
     double _edgeLengths[4];

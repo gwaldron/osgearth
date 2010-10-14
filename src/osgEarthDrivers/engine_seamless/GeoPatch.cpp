@@ -84,4 +84,13 @@ float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
     return _patchSet->getPrecisionFactor() * _edgeLengths[edge] / d;
 }
 
+void GeoPatch::setGeographic(Geographic* geo)
+{
+    _patchSet = geo;
+}
+
+Geographic* GeoPatch::getGeographic() const
+{
+    return static_cast<Geographic*>(_patchSet.get());
+}
 }

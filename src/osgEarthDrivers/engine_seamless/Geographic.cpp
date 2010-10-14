@@ -9,6 +9,7 @@
 #include <osg/CoordinateSystemNode>
 #include <osg/Math>
 #include <osg/NodeCallback>
+#include <osg/NodeVisitor>
 #include <osg/Texture2D>
 
 #include <osgEarth/ImageUtils>
@@ -17,12 +18,15 @@
 #include <osgEarth/TaskService>
 
 #include "GeoPatch"
+#include "MultiArray"
 
 namespace seamless
 {
 using namespace std;
 using namespace osg;
 using namespace osgEarth;
+
+typedef multi_array_ref<Vec3f, Vec3Array, 2> PatchArray;
 
 // Hard-wire the patch resolution and screen-space polygon size.
 Geographic::Geographic(Map* map)
@@ -80,7 +84,7 @@ Node* Geographic::createPatchSetGraph(const std::string& filename)
         euler::faceToCube(x, y, face);
         GeographicOptions* goptions = static_cast<GeographicOptions*>(
             osg::clone(getPatchOptionsPrototype()));
-        goptions->setPatchSet(this);
+        goptions->setGeographic(this);
         goptions->setTileKey(_profile->createTileKey(x, y, 2));
         Node* node = createPatchGroup("foobar.tengpatch", goptions);
         csn->addChild(node);
@@ -178,6 +182,7 @@ void expandHeights(Geographic* gpatchset, const TileKey& key,
     double yInc = (patchExtent.yMax() - patchExtent.yMin()) / resolution;
     const EllipsoidModel* eModel = gpatchset->getEllipsoidModel();
     const float verticalScale = gpatchset->getVerticalScale();
+    PatchArray mverts(*verts, patchDim);
     for (int j = 0; j < patchDim; ++j)
     {
         for (int i = 0; i < patchDim; i++)
@@ -203,11 +208,9 @@ void expandHeights(Geographic* gpatchset, const TileKey& key,
             eModel->convertLatLongHeightToXYZ(
                 DegreesToRadians(lat), DegreesToRadians(lon), elevation,
                 coord.x(), coord.y(), coord.z());
-            (*verts)[j * patchDim + i] = coord - patchCenter;
-            if (fabs((*verts)[j * patchDim + i].z()) > 6000000)
-            {
+            mverts[j][i] = coord - patchCenter;
+            if (fabs(mverts[j][i].z()) > 6000000)
                 OE_WARN << "found huge coordinate.\n";
-            }
         }
     }
     // Normals. Average the normals of the triangles around the sample
@@ -248,7 +251,7 @@ void expandHeights(Geographic* gpatchset, const TileKey& key,
 void installHeightField(GeoPatch* patch, const TileKey& key,
                         const GeoHeightField& hf)
 {
-    Geographic* gpatchset = static_cast<Geographic*>(patch->getPatchSet());
+    Geographic* gpatchset = patch->getGeographic();
     int resolution = gpatchset->getResolution();
     // Populate cell
     int patchDim = resolution + 1;
@@ -288,7 +291,7 @@ MatrixTransform* createPatchAux(Geographic* gpatchset,
                                 const GeoHeightField& hf)
 {
     GeoPatch* patch = new GeoPatch(key);
-    patch->setPatchSet(gpatchset);
+    patch->setGeographic(gpatchset);
     const GeoExtent& patchExtent = key.getExtent();
     double centx, centy;
     patchExtent.getCentroid(centx, centy);
@@ -428,48 +431,8 @@ public:
 
     META_Object(seamless, GeoPatchUpdateCallback);
 
-    virtual void operator()(Node* node, NodeVisitor* nv)
-    {
-        GeoPatch* patch = dynamic_cast<GeoPatch*>(node);
-        if (!patch)
-            return;
-        if (_hfRequest.valid() && _hfRequest->isCompleted())
-        {
-            Vec3Array* verts = dynamic_cast<Vec3Array*>(_hfRequest->getResult());
-            Vec3Array* norms = _hfRequest->_normalResult.get();
-            if (verts && norms)
-            {
-                Vec3Array* patchVerts = static_cast<Vec3Array*>(
-                    patch->getData()->vertexData.array.get());
-                Vec3Array* patchNorms = static_cast<Vec3Array*>(
-                    patch->getData()->normalData.array.get());
-                copy(verts->begin(), verts->end(), patchVerts->begin());
-                patchVerts->dirty();
-                copy(norms->begin(), norms->end(), patchNorms->begin());
-                patchNorms->dirty();
-            }
-            _hfRequest = 0;
-        }
-        if (_imageRequest.valid() && _imageRequest->isCompleted())
-        {
-            Image* image = dynamic_cast<Image*>(_imageRequest->getResult());
-            if (image)
-            {
-                Texture2D* tex = new Texture2D();
-                tex->setImage(image);
-                tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
-                tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
-                tex->setFilter(Texture::MIN_FILTER,
-                               Texture::LINEAR_MIPMAP_LINEAR);
-                tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
-                StateSet* ss = patch->getOrCreateStateSet();
-                ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
-            }
-            _imageRequest = 0;
-        }
-        if (!_hfRequest.valid() && !_imageRequest.valid())
-            node->setUpdateCallback(0);
-    }
+    virtual void operator()(Node* node, NodeVisitor* nv);
+    
     ref_ptr<HeightFieldRequest> _hfRequest;
     ref_ptr<ImageRequest> _imageRequest;
 };
@@ -627,4 +590,403 @@ GeographicOptions::~GeographicOptions()
 {
 }
 
+// A tile can be thought of lying between edges with integer
+// coordinates at its LOD. With x going to the right and y going down,
+// a tile between (tile_x, tile_y) and (tile_x + 1, tile_y + 1).
+//
+// edge order should be counter clockwise
+
+struct GridEdge
+{
+    unsigned v[2][2];
+    unsigned lod;
+};
+
+struct KeyIndex
+{
+    KeyIndex() : lod(0), x(0), y(0) {}
+    KeyIndex(unsigned lod_, unsigned x_, unsigned y_)
+        : lod(lod_), x(x_), y(y_)
+    {
+    }
+    KeyIndex(const TileKey& key)
+        : lod(key.getLevelOfDetail()), x(key.getTileX()), y(key.getTileY())
+    {
+    }
+    bool operator==(const KeyIndex& rhs) const
+    {
+        return lod == rhs.lod && x == rhs.x && y == rhs.y;
+    }
+    unsigned lod;
+    unsigned x;
+    unsigned y;
+};
+
+bool containsTile(const KeyIndex& parent, const KeyIndex& child)
+{
+    if (parent.lod > child.lod)
+        return false;
+    if (parent.lod == child.lod)
+        return parent.x == child.x && parent.y == child.y;
+    int lodDiff = child.lod - parent.lod;
+    if (child.x >> lodDiff == parent.x && child.y >> lodDiff == parent.y)
+        return true;
+    else
+        return false;
+}
+
+// assume that tile is at a lower or equal LOD than neighbor
+bool isNeighborTile(const KeyIndex& tile, const KeyIndex& neighbor)
+{
+    int lodDiff = neighbor.lod - tile.lod;
+    int lodMult = 1 << lodDiff;
+    unsigned tx = tile.x << lodDiff;
+    unsigned ty = tile.y << lodDiff;
+    if (tx == neighbor.x + 1 || tx + lodMult == neighbor.x)
+        return neighbor.y >= ty && neighbor.y + 1 <= ty + lodMult;
+    else if (ty == neighbor.y + 1 || ty + lodMult == neighbor.y)
+        return neighbor.x >= tx && neighbor.x + 1 <= tx + lodMult;
+    return false;
+        
+}
+
+// Do tiles share a corner?
+bool adjoinsTile(const KeyIndex& tile, const KeyIndex& neighbor)
+{
+    int lodDiff = neighbor.lod - tile.lod;
+    int lodMult = 1 << lodDiff;
+    unsigned tx = tile.x << lodDiff;
+    unsigned ty = tile.y << lodDiff;
+    if (tx == neighbor.x + 1 || tx + lodMult == neighbor.x)
+        return ty == neighbor.y + 1 || ty + lodMult == neighbor.y;
+    else
+        return false;
+}
+
+PatchGroup* findFaceRoot(GeoPatch* patch, NodePath& pathList)
+{
+    // Get the patch's key
+    Group* parent = patch->getParent(0);
+    PatchGroup* parentPatch = dynamic_cast<PatchGroup*>(parent->getParent(0));
+    if (!parentPatch)
+        return 0;
+    GeographicOptions* parentOptions
+        = static_cast<GeographicOptions*>(parentPatch->getDatabaseOptions());
+    TileKey patchKey = parentOptions->getTileKey();
+    int x = patchKey.getTileX() >> (patchKey.getLevelOfDetail() - 2);
+    int y = patchKey.getTileY() >> (patchKey.getLevelOfDetail() - 2);
+    
+    for (NodePath::iterator itr = pathList.begin(), end = pathList.end();
+         itr != end;
+         ++itr)
+    {
+        PatchGroup* pg = dynamic_cast<PatchGroup*>(*itr);
+        if (pg)
+        {
+            GeographicOptions* goptions
+                = static_cast<GeographicOptions*>(pg->getDatabaseOptions());
+            if (goptions)
+            {
+                TileKey key = goptions->getTileKey();
+                if (key.getLevelOfDetail() == 2 && x == key.getTileX()
+                    && y == key.getTileY())
+                return pg;
+            }
+        }
+    }
+    return 0;
+}
+
+typedef vector_ref<Vec3f, Vec3Array> EdgeRef;
+
+EdgeRef makeEdgeRef(GeoPatch* gpatch, int edgeno, int mult)
+{
+    Vec3Array* verts
+        = static_cast<Vec3Array*>(gpatch->getData()->vertexData.array.get());
+    int patchDim = gpatch->getPatchSet()->getResolution() + 1;
+    int shape = (patchDim - 1) / mult + 1;
+    switch(edgeno)
+    {
+    case 0:
+        return EdgeRef(*verts, mult, shape, 0);
+    case 1:
+        return EdgeRef(*verts, patchDim * mult, shape, patchDim - 1);
+    case 2:
+        return EdgeRef(*verts, mult, shape, (patchDim - 1) * patchDim);
+    case 3:
+        return EdgeRef(*verts, patchDim * mult, shape, 0);
+    default:
+        return EdgeRef(*verts, 0, 0, 0); // shouldn't happen
+    }
+}
+
+struct ShareResult
+{
+    ShareResult()
+        : numEdges(0)
+    {
+        for (int i = 0; i < 2; ++i)
+            tile1[i] = tile2[i] = -1;
+    }
+    int numEdges;
+    int tile1[2];
+    int tile2[2];
+};
+
+// tile2 is at a higher LOD than tile1
+ShareResult tilesShareEdges(const KeyIndex& tile1, const KeyIndex& tile2)
+{
+    ShareResult result;
+    int lodDiff = tile2.lod - tile1.lod;
+    int x = tile1.x << lodDiff;
+    int xleft = (tile1.x + 1) << lodDiff;
+    int y = tile1.y << lodDiff;
+    int ybottom = (tile1.y + 1) << lodDiff;
+    if (tile2.x >= x && tile2.x + 1 <= xleft
+        && tile2.y >= y && tile2.y + 1 <= ybottom)
+    {
+        // tile1 contains tile2; do they share edges?
+        if (x == tile2.x)
+        {
+            result.tile1[0] = 3;
+            result.tile2[0] = 3;
+            result.numEdges = 1;
+        }
+        else if (xleft == tile2.x + 1)
+        {
+            result.tile1[0] = 1;
+            result.tile2[0] = 1;
+            result.numEdges = 1;
+        }
+        if (y == tile2.y)
+        {
+            result.tile1[result.numEdges] = 2;
+            result.tile2[result.numEdges] = 2;
+            result.numEdges++;
+        }
+        else if (ybottom == tile2.y + 1)
+        {
+            result.tile1[result.numEdges] = 0;
+            result.tile2[result.numEdges] = 0;
+            result.numEdges++;
+        }
+    }
+    else
+    {
+        // Tiles can share 1 edge.
+        if (x == tile2.x + 1)
+        {
+            result.tile1[0] = 3;
+            result.tile2[0] = 1;
+            result.numEdges = 1;
+        }
+        else if (xleft == tile2.x)
+        {
+            result.tile1[0] = 1;
+            result.tile2[0] = 3;
+            result.numEdges = 1;
+        }
+        else if (y == tile2.y + 1)
+        {
+            result.tile1[0] = 2;
+            result.tile2[0] = 0;
+            result.numEdges = 1;
+        }
+        else if (ybottom == tile2.y)
+        {
+            result.tile1[0] = 0;
+            result.tile2[0] = 2;
+            result.numEdges = 1;
+        }
+    }
+    return result;
+}
+
+void transferEdges(
+    GeoPatch* toPatch, const Matrixd& toMat, const KeyIndex& toIdx,
+    GeoPatch* fromPatch, const Matrixd& fromMat, const KeyIndex& fromIdx,
+    const ShareResult& shared);
+
+void safeCopy(Vec3f& dest, const Vec3f& src, const Matrixd& mat)
+{
+    Vec3f tmp = src * mat;
+    if ((tmp - dest).length2() > 100000000)
+        OE_WARN << "whoops!\n";
+    dest = tmp;
+}
+
+class TileUpdater : public NodeVisitor
+{
+public:
+    TileUpdater(GeoPatch* gpatch)
+        : NodeVisitor(NodeVisitor::TRAVERSE_ALL_CHILDREN), _gpatch(gpatch)
+    {
+        const MatrixTransform* trans
+            = static_cast<const MatrixTransform*>(_gpatch->getParent(0));
+        _tileMat = trans->getMatrix();
+        const PatchGroup* pg
+            = static_cast<const PatchGroup*>(trans->getParent(0));
+        const GeographicOptions* gopt
+            = static_cast<const GeographicOptions*>(pg->getDatabaseOptions());
+        _tileIndex = gopt->getTileKey();
+    }
+
+    void apply(PagedLOD& node)
+    {
+        PatchGroup* pgrp = dynamic_cast<PatchGroup*>(&node);
+        if (!pgrp)
+            return;
+        const GeographicOptions* gopt
+            = static_cast<GeographicOptions*>(pgrp->getDatabaseOptions());
+        if (!gopt)
+            return;
+        KeyIndex idx = gopt->getTileKey();
+        if (idx == _tileIndex)
+            return;
+
+        if (containsTile(idx, _tileIndex) || isNeighborTile(idx, _tileIndex))
+            copyTileEdges(pgrp, gopt);
+        else if (adjoinsTile(idx, _tileIndex))
+            copyCorner(pgrp, gopt);
+        else
+            return;
+        if (node.getNumChildren() > 1)
+            traverse(*node.getChild(1));
+    }
+protected:
+    void copyTileEdges(PatchGroup* node, const GeographicOptions* gopt)
+    {
+        // The tile to update
+        MatrixTransform* trans
+            = static_cast<MatrixTransform*>(node->getChild(0));
+        GeoPatch* tpatch = static_cast<GeoPatch*>(trans->getChild(0));
+        KeyIndex idx(gopt->getTileKey());
+        ShareResult shared = tilesShareEdges(idx, _tileIndex);
+        if (shared.numEdges != 0)
+            transferEdges(tpatch, trans->getMatrix(), idx,
+                          _gpatch, _tileMat, _tileIndex, shared);
+    }
+    void copyCorner(PatchGroup* node, const GeographicOptions* gopt)
+    {
+        // The tile to update
+        MatrixTransform* trans
+            = static_cast<MatrixTransform*>(node->getChild(0));
+        Matrixd toMat = trans->getMatrix();
+        Matrixd transferMat =  _tileMat * Matrixd::inverse(toMat);
+        GeoPatch* tpatch = static_cast<GeoPatch*>(trans->getChild(0));
+        KeyIndex tidx(gopt->getTileKey());
+        Geographic* gset = _gpatch->getGeographic();
+        int patchDim = gset->getResolution() + 1;
+        Vec3Array* verts = static_cast<Vec3Array*>(_gpatch->getData()
+                                                   ->vertexData.array.get());
+        PatchArray varray(*verts, patchDim);
+        Vec3Array* tverts = static_cast<Vec3Array*>(tpatch->getData()
+                                                    ->vertexData.array.get());
+        PatchArray tarray(*tverts, patchDim);
+        int lodDiff = _tileIndex.lod - tidx.lod;
+        int lodMult = 1 << lodDiff;
+        unsigned tx = tidx.x << lodDiff;
+        unsigned ty = tidx.y << lodDiff;
+        
+        if (_tileIndex.x < tx)
+        {
+            if (_tileIndex.y == ty + lodMult)
+                //tarray[0][0] = varray[patchDim - 1][patchDim - 1] * transferMat;
+                safeCopy(tarray[0][0], varray[patchDim - 1][patchDim - 1], transferMat);
+            else
+                //tarray[patchDim - 1][0] = varray[0][patchDim - 1] * transferMat;
+                safeCopy(tarray[patchDim - 1][0], varray[0][patchDim - 1], transferMat);
+        }
+        else
+        {
+            if (_tileIndex.y == ty + lodMult)
+                // tarray[0][patchDim - 1] = varray[patchDim - 1][0] * transferMat;
+                safeCopy(tarray[0][patchDim - 1], varray[patchDim - 1][0], transferMat);
+            else
+                // tarray[patchDim - 1][patchDim - 1] = varray[0][0] * transferMat;
+                safeCopy(tarray[patchDim - 1][patchDim - 1], varray[0][0], transferMat);
+        }
+    }
+    GeoPatch* _gpatch;
+    KeyIndex _tileIndex;
+    Matrixd _tileMat;
+};
+
+void transferEdges(
+    GeoPatch* toPatch, const Matrixd& toMat, const KeyIndex& toIdx,
+    GeoPatch* fromPatch, const Matrixd& fromMat, const KeyIndex& fromIdx,
+    const ShareResult& shared)
+{
+    int resolution = toPatch->getPatchSet()->getResolution();
+    int patchDim = resolution + 1;
+    int lodDiff = fromIdx.lod - toIdx.lod;
+    int detailMult = 1 << lodDiff;
+    Matrixd transferMat = fromMat * Matrixd::inverse(toMat);
+    for (int i = 0; i < shared.numEdges; ++i)
+    {
+        EdgeRef toEdge = makeEdgeRef(toPatch, shared.tile1[i], 1);
+        EdgeRef fromEdge = makeEdgeRef(fromPatch, shared.tile2[i], detailMult);
+        int toStart;
+        if (shared.tile1[i] == 0 || shared.tile1[i] == 2)
+            toStart = (fromIdx.x - (toIdx.x * detailMult)) * resolution / detailMult;
+        else
+            toStart = (detailMult - 1 - (fromIdx.y - (toIdx.y * detailMult)))
+                * resolution / detailMult;
+        for (int jt = toStart, jf = 0; jf < fromEdge.shape(); ++jt, ++jf)
+        {
+            Vec3d vtx = Vec3d(fromEdge[jf]);
+            vtx = vtx * transferMat;
+            toEdge[jt] = Vec3f(vtx);
+        }
+    }
+}
+
+void GeoPatchUpdateCallback::operator()(Node* node, NodeVisitor* nv)
+{
+    GeoPatch* patch = dynamic_cast<GeoPatch*>(node);
+    if (!patch)
+        return;
+    if (_hfRequest.valid() && _hfRequest->isCompleted())
+    {
+        Vec3Array* verts = dynamic_cast<Vec3Array*>(_hfRequest->getResult());
+        Vec3Array* norms = _hfRequest->_normalResult.get();
+        if (verts && norms)
+        {
+            Vec3Array* patchVerts = static_cast<Vec3Array*>(
+                patch->getData()->vertexData.array.get());
+            Vec3Array* patchNorms = static_cast<Vec3Array*>(
+                patch->getData()->normalData.array.get());
+            copy(verts->begin(), verts->end(), patchVerts->begin());
+            patchVerts->dirty();
+            copy(norms->begin(), norms->end(), patchNorms->begin());
+            patchNorms->dirty();
+        }
+        _hfRequest = 0;
+        PatchGroup* faceRoot = findFaceRoot(patch, nv->getNodePath());
+        if (faceRoot)
+        {
+            TileUpdater tileUpdater(patch);
+            faceRoot->accept(tileUpdater);
+        }
+    }
+    if (_imageRequest.valid() && _imageRequest->isCompleted())
+    {
+        Image* image = dynamic_cast<Image*>(_imageRequest->getResult());
+        if (image)
+        {
+            Texture2D* tex = new Texture2D();
+            tex->setImage(image);
+            tex->setWrap(Texture::WRAP_S, Texture::CLAMP_TO_EDGE);
+            tex->setWrap(Texture::WRAP_T, Texture::CLAMP_TO_EDGE);
+            tex->setFilter(Texture::MIN_FILTER,
+                           Texture::LINEAR_MIPMAP_LINEAR);
+            tex->setFilter(Texture::MAG_FILTER, Texture::LINEAR);
+            StateSet* ss = patch->getOrCreateStateSet();
+            ss->setTextureAttributeAndModes(0, tex, StateAttribute::ON);
+        }
+        _imageRequest = 0;
+    }
+    if (!_hfRequest.valid() && !_imageRequest.valid())
+        node->setUpdateCallback(0);
+}
 }

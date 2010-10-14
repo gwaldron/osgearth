@@ -52,6 +52,8 @@ namespace osgEarth
         virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
 
         virtual GeoLocator* getGeographicFromGeocentric( );
+
+        virtual bool isEquivalentTo( const GeoLocator& rhs ) const;
         
     public: // Locator
         virtual bool convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local) const;

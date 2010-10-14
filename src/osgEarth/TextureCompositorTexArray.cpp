@@ -167,6 +167,11 @@ TextureCompositorTexArray::prepareLayerUpdate( const GeoImage& layerImage, const
     // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
     if ( image->s() != 256 || image->t() != 256 )
         image = ImageUtils::resizeImage( image.get(), 256, 256 );
+    
+    // Failure to do this with a Texture2DArray will result in texture corruption if we are 
+    // updating layers (like in sequential mode). It would be nice to test whether this is
+    // required before setting it.
+    image->setDataVariance( osg::Object::DYNAMIC );
 
     return GeoImage( image.get(), layerImage.getExtent() );
 }

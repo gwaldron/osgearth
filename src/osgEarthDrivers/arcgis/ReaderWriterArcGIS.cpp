@@ -170,7 +170,18 @@ public:
                 << "&" << "." << f;
         }
 
-        //OE_NOTICE << "Key = " << key.str() << ", URL = " << buf.str() << std::endl;
+        //Add the token if necessary
+        if (_settings->token().isSet())
+        {
+            std::string token = _settings->token().value();
+            if (!token.empty())
+            {
+                std::string sep = buf.str().find( "?" ) == std::string::npos ? "?" : "&";
+                buf << sep << "token=" << token;
+            }
+        }
+
+        //OE_NOTICE << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
         //return osgDB::readImageFile( buf.str(), getOptions() );
         //return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
         

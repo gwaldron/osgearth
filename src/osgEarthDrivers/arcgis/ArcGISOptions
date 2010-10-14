@@ -40,7 +40,6 @@ namespace osgEarth { namespace Drivers
         {
             setDriver( "arcgis" );
             fromConfig( _conf );
-            config().getIfSet( "token", _token );
         }
 
     public:

@@ -171,9 +171,9 @@ public:
         }
 
         //Add the token if necessary
-        if (_settings->token().isSet())
+        if (_options.token().isSet())
         {
-            std::string token = _settings->token().value();
+            std::string token = _options.token().value();
             if (!token.empty())
             {
                 std::string sep = buf.str().find( "?" ) == std::string::npos ? "?" : "&";

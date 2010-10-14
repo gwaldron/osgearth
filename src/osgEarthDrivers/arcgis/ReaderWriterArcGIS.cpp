@@ -184,7 +184,7 @@ public:
             }
         }
 
-        OE_NOTICE << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
+        //OE_NOTICE << "Key = " << key->str() << ", URL = " << buf.str() << std::endl;
         //return osgDB::readImageFile( buf.str(), getOptions() );
         //return HTTPClient::readImageFile( buf.str(), getOptions(), progress );
         

@@ -54,25 +54,18 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT TextureCompositor : public osg::Referenced
     {
-    //public:
-    //    enum TechniqueType
-    //    {
-    //        TECH_AUTO,              // automatically select a technique based on platform capabilities
-    //        TECH_TEXTURE_ARRAY,     // 2D texture array, GPU compositing, single tex unit
-    //        TECH_TEXTURE_3D,        // 3D texture, GPU compositing, single tex unit
-    //        TECH_TEXTURE_ATLAS,     // texture atlas, GPU compositing, single tex unit
-    //        TECH_MULTITEXTURE_GPU,  // multiple textures, GPU compositing, one tex unit per image
-    //        TECH_MULTITEXTURE_FFP,  // multiple textures, fixed-function multitexturing, one tex unit per image
-    //        TECH_SOFTWARE,          // software compositing, one texture/tex unit
-    //        TECH_MULTIPASS,         // 
-    //        TECH_USER               // user-supplied technique
-    //    };
-
     public:
         /**
          * Constructs a new compositor.
          */
         TextureCompositor( const TerrainOptions::CompositingTechnique& tech =TerrainOptions::COMPOSITING_AUTO );
+
+        /**
+         * Gets the actual technique selected by the compositor. This might not be the same
+         * as the requested technique, since it will validate against system capabilities and
+         * automatically "fall back" on lesser techniques if necessary.
+         */
+        const TerrainOptions::CompositingTechnique& getTechnique() const { return _tech; }
 
         /**
          * Creates a stateset that contains all the texture attributes necessary to 
@@ -103,13 +96,6 @@ namespace osgEarth
          * the scene graph, be sure to only call this method from UPDATE trav.
          */
         void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
-
-        /**
-         * Some composition techniques require a shader program. This method returns the shader program
-         * necessary to support the compositing, or NULL if no shaders are required. You should attach
-         * the program to whatever node is rendering the terrain tile.
-         */
-        //osg::Program* getProgram() const;
 
         /**
          * Whether the texture composition technique uses a single, unit (0..1) texture coordinate

@@ -56,6 +56,8 @@ _forceTech( false )
         if ( oldTech != _tech )
             _forceTech = true;
     }
+
+    init();
 }
 
 osg::StateSet*
@@ -63,8 +65,8 @@ TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent&
 {
     // first time through, poll the system capabilities to figure out
     // which technique to use.
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl ? _impl->createStateSet( stack, tileExtent ) : 0L;
 }
@@ -72,8 +74,8 @@ TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent&
 bool
 TextureCompositor::supportsLayerUpdate() const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl ? _impl->supportsLayerUpdate() : false;
 }
@@ -81,8 +83,8 @@ TextureCompositor::supportsLayerUpdate() const
 GeoImage
 TextureCompositor::prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl ? _impl->prepareLayerUpdate( image, tileExtent ) : GeoImage::INVALID;
 }
@@ -93,27 +95,18 @@ TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     const GeoImage& preparedImage,
                                     const GeoExtent& tileExtent ) const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     if ( _impl )
         _impl->applyLayerUpdate( stateSet, layerNum, preparedImage, tileExtent );
 }
 
-//osg::Program*
-//TextureCompositor::getProgram() const
-//{
-//    if ( !_impl.valid() )
-//        const_cast<TextureCompositor*>(this)->init();
-//
-//    return _program.get();
-//}
-
 bool
 TextureCompositor::requiresUnitTextureSpace() const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl->requiresUnitTextureSpace();
 }
@@ -121,8 +114,8 @@ TextureCompositor::requiresUnitTextureSpace() const
 void
 TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     _impl->updateGlobalStateSet( stateSet, numImageLayers );
 }
@@ -130,7 +123,7 @@ TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLa
 void
 TextureCompositor::init()
 {        
-    ScopedLock<Mutex> initLock( _initMutex );
+//    ScopedLock<Mutex> initLock( _initMutex );
     if ( _impl.valid() ) // double-check pattern
     {
         return; // already initialized
@@ -174,21 +167,18 @@ TextureCompositor::init()
     }
 
     // NOTE: uncomment this to "else if" when Software mode is ready
-    else // if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
+    else if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false );
         OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
     }
 
-    // commented out because it's NYI:
-    //else
-    //{
-    //    _tech = TECH_SOFTWARE;
-    //    _impl = new TextureCompositorSoftware();
-    //    OE_INFO << LC << "Compositing technique = software" << std::endl;
-    //}
-
-    //if ( _impl.valid() )
-    //    _program = _impl->createProgram();
+    // Fallback of last resort. The Compositor does not actually support multipass.
+    else
+    {
+        _tech = TerrainOptions::COMPOSITING_MULTIPASS;
+        _impl = 0L;
+        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
+    }
 }

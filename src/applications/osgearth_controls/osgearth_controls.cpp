@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <typeinfo>
 
 #include <osg/Notify>
 #include <osgGA/GUIEventHandler>
@@ -56,7 +57,8 @@ struct MyClickHandler : public ControlEventHandler
 {
     void onClick( Control* control, int mouseButtonMask )
     {
-        OE_NOTICE << "Thank you for clicking on " << (int)control << std::endl;
+        OE_NOTICE << "Thank you for clicking on " << typeid(control).name()
+                  << std::endl;
     }
 };
 

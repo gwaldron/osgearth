@@ -32,20 +32,26 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& url() { return _url; }
         const optional<std::string>& url() const { return _url; }
 
+        optional<std::string>& token() { return _token; }
+        const optional<std::string>& token() const { return _token; }
+
     public:
         ArcGISOptions( const PluginOptions* opt =0L ) : TileSourceOptions( opt ) {
             driver() = "arcgis";
             config().getIfSet( "url", _url );
+            config().getIfSet( "token", _token );
         }
 
     protected:
         Config toConfig() const {
             Config conf = TileSourceOptions::toConfig();
             conf.updateIfSet("url", _url);
+            conf.updateIfSet("token", _token );
             return conf;
         }
 
         optional<std::string> _url;
+        optional<std::string> _token;
     };
 
 } } // namespace osgEarth::Drivers

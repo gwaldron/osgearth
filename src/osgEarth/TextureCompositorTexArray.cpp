@@ -149,7 +149,7 @@ s_createFragShader( int numImageLayers )
         << "} \n";
 
     std::string str = buf.str();
-    OE_NOTICE << std::endl << str;
+    OE_INFO << std::endl << str;
     return str;
 }
 

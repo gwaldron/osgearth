@@ -123,7 +123,7 @@ TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLa
 void
 TextureCompositor::init()
 {        
-//    ScopedLock<Mutex> initLock( _initMutex );
+    //ScopedLock<Mutex> initLock( _initMutex );
     if ( _impl.valid() ) // double-check pattern
     {
         return; // already initialized

@@ -133,8 +133,6 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         // establish the master tile locator from the customtile key
         CustomTile* tile = static_cast<CustomTile*>( _terrainTile );
         _masterLocator = static_cast<GeoLocator*>( tile->getLocator() );
-        //osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-        //_masterLocator = elevationLayer->getLocator();
 
         _masterLocator->convertLocalToModel( osg::Vec3(.5,.5,0), _centerModel );
 

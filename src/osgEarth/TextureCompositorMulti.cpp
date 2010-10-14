@@ -133,6 +133,14 @@ TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages
     return stateSet;
 }
 
+//GeoImage
+//TextureCompositorMultiTexture::prepareLayerUpdate( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
+//{
+//    GeoImage result = layerImage;
+//    result.getImage()->setDataVariance( osg::Object::DYNAMIC );
+//    return result;
+//}
+
 void
 TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet, int layerNum,
                                                 const GeoImage& preparedImage, const GeoExtent& tileExtent ) const

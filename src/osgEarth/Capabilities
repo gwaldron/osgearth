@@ -30,6 +30,12 @@ namespace osgEarth
         // the maximum # of texture units exposed in the fixed-function pipeline
         int getMaxFFPTextureUnits() const { return _maxFFPTextureUnits; }
 
+        // the maximum # of texture units exposed in a GPU fragment shader
+        int getMaxGPUTextureUnits() const { return _maxGPUTextureUnits; }
+
+        // the maximum # of texture coordinate sets available in a GPU fragment shader
+        int getMaxGPUTextureCoordSets() const { return _maxGPUTextureCoordSets; }
+
         // the maximum supported size (in pixels) of a texture
         int getMaxTextureSize() const { return _maxTextureSize; }
 
@@ -52,6 +58,8 @@ namespace osgEarth
 
     private:
         int  _maxFFPTextureUnits;
+        int  _maxGPUTextureUnits;
+        int  _maxGPUTextureCoordSets;
         int  _maxTextureSize;
         bool _supportsGLSL;
         bool _supportsTextureArrays;

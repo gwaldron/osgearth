@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/TerrainOptions>
 #include <osg/StateSet>
 #include <osg/Program>
 
@@ -53,24 +54,25 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT TextureCompositor : public osg::Referenced
     {
-    public:
-        enum TechniqueType
-        {
-            TECH_AUTO,              // automatically select a technique based on platform capabilities
-            TECH_TEXTURE_ARRAY,     // 2D texture array, GPU compositing, single tex unit
-            TECH_TEXTURE_3D,        // 3D texture, GPU compositing, single tex unit
-            TECH_TEXTURE_ATLAS,     // texture atlas, GPU compositing, single tex unit
-            TECH_MULTITEXTURE_GPU,  // multiple textures, GPU compositing, one tex unit per image
-            TECH_MULTITEXTURE_FFP,  // multiple textures, fixed-function multitexturing, one tex unit per image
-            TECH_SOFTWARE,          // software compositing, one texture/tex unit
-            TECH_USER               // user-supplied technique
-        };
+    //public:
+    //    enum TechniqueType
+    //    {
+    //        TECH_AUTO,              // automatically select a technique based on platform capabilities
+    //        TECH_TEXTURE_ARRAY,     // 2D texture array, GPU compositing, single tex unit
+    //        TECH_TEXTURE_3D,        // 3D texture, GPU compositing, single tex unit
+    //        TECH_TEXTURE_ATLAS,     // texture atlas, GPU compositing, single tex unit
+    //        TECH_MULTITEXTURE_GPU,  // multiple textures, GPU compositing, one tex unit per image
+    //        TECH_MULTITEXTURE_FFP,  // multiple textures, fixed-function multitexturing, one tex unit per image
+    //        TECH_SOFTWARE,          // software compositing, one texture/tex unit
+    //        TECH_MULTIPASS,         // 
+    //        TECH_USER               // user-supplied technique
+    //    };
 
     public:
         /**
          * Constructs a new compositor.
          */
-        TextureCompositor( TechniqueType tech =TECH_AUTO );
+        TextureCompositor( const TerrainOptions::CompositingTechnique& tech =TerrainOptions::COMPOSITING_AUTO );
 
         /**
          * Creates a stateset that contains all the texture attributes necessary to 
@@ -128,7 +130,7 @@ namespace osgEarth
         void init();
 
         OpenThreads::Mutex                       _initMutex;
-        TechniqueType                            _tech;
+        TerrainOptions::CompositingTechnique     _tech;
         bool                                     _forceTech;
         osg::ref_ptr<osg::Program>               _program;
         osg::ref_ptr<TextureCompositorTechnique> _impl;

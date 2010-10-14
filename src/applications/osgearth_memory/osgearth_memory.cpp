@@ -236,7 +236,7 @@ int main(int argc, char** argv)
 
     if (arguments.read( "--multipass") )
     {
-        terrainOptions.layeringTechnique() = OSGTerrainOptions::LAYERING_MULTIPASS;
+        terrainOptions.compositingTechnique() = TerrainOptions::COMPOSITING_MULTIPASS;
         //Multipass mode is currently only available in STANDARD mode.
         terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }

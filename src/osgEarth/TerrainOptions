@@ -22,7 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/HeightFieldUtils>
-#include <osgEarth/TextureCompositor>
 
 namespace osgEarth
 {
@@ -157,6 +156,7 @@ namespace osgEarth
         optional<LoadingPolicy>& loadingPolicy() { return _loadingPolicy; }
         const optional<LoadingPolicy>& loadingPolicy() const { return _loadingPolicy; }
 
+#if 0
         /**
          * Available techniques for compositing multiple image layers at runtime.
          */
@@ -179,12 +179,25 @@ namespace osgEarth
             return _layeringTechnique; }
         const optional<LayeringTechnique>& layeringTechnique() const { 
             return _layeringTechnique; }
+#endif
+
+        /**
+         * Available techniques for compositing image layers at runtime.
+         */
+        enum CompositingTechnique
+        {
+            COMPOSITING_AUTO,
+            COMPOSITING_TEXTURE_ARRAY,
+            COMPOSITING_MULTITEXTURE_GPU,
+            COMPOSITING_MULTITEXTURE_FFP,
+            COMPOSITING_MULTIPASS
+        };
 
         /**
          * The texture composition technique
          */
-        optional<TextureCompositor::TechniqueType>& compositorTechnique() { return _texCompTech; }
-        const optional<TextureCompositor::TechniqueType>& compositorTechnique() const { return _texCompTech; }
+        optional<CompositingTechnique>& compositingTechnique() { return _compositingTech; }
+        const optional<CompositingTechnique>& compositingTechnique() const { return _compositingTech; }
 
         /**
          * The maximum level of detail to which the terrain should subdivide.
@@ -235,14 +248,13 @@ namespace osgEarth
         void fromConfig( const Config& conf );
             
         optional<float> _verticalScale;
-        //optional<float> _heightFieldSkirtRatio;
         optional<float> _heightFieldSampleRatio;
         optional<float> _minTileRangeFactor;
         optional<bool> _normalizeEdges;
         optional<bool> _combineLayers;
         optional<LoadingPolicy> _loadingPolicy;
-        optional<LayeringTechnique> _layeringTechnique;
-        optional<TextureCompositor::TechniqueType> _texCompTech;
+        //optional<LayeringTechnique> _layeringTechnique;
+        optional<CompositingTechnique> _compositingTech;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
 #if 0

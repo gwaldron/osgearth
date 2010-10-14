@@ -169,8 +169,7 @@ TextureCompositorTexArray::prepareLayerUpdate( const GeoImage& layerImage, const
         image = ImageUtils::resizeImage( image.get(), 256, 256 );
     
     // Failure to do this with a Texture2DArray will result in texture corruption if we are 
-    // updating layers (like in sequential mode). It would be nice to test whether this is
-    // required before setting it.
+    // updating layers (like in sequential mode).
     image->setDataVariance( osg::Object::DYNAMIC );
 
     return GeoImage( image.get(), layerImage.getExtent() );

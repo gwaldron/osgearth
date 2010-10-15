@@ -1324,13 +1324,13 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
     osg::Vec3d lookVector(- matrix(2,0),-matrix(2,1),-matrix(2,2));
     osg::Vec3d eye(matrix(3,0),matrix(3,1),matrix(3,2));
 
-	_centerRotation = getRotation( _center ).getRotate().inverse();
+    _centerRotation = makeCenterRotation(_center);
 
     if (!_node)
     {
         _center = eye+ lookVector;
-		setDistance( lookVector.length() );
-		_rotation = matrix.getRotate().inverse() * _centerRotation.inverse();	
+        setDistance( lookVector.length() );
+        _rotation = matrix.getRotate().inverse() * _centerRotation.inverse();	
         return;
     }
 
@@ -1345,6 +1345,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
     if (intersect(start_segment, end_segment, ip))
     {
         _center = ip;
+        _centerRotation = makeCenterRotation(_center);
         setDistance( (eye-ip).length());
 
         osg::Matrixd rotation_matrix = osg::Matrixd::translate(0.0,0.0,-_distance)*
@@ -1363,6 +1364,7 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
                       ip))
         {
             _center = ip;
+            _centerRotation = makeCenterRotation(_center);
             setDistance((eye-ip).length());
 			_rotation.set(0,0,0,1);
             hitFound = true;
@@ -2302,7 +2304,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
             _rotation = headMat.getRotate();
             recalculateLocalPitchAndAzimuth();
         }
-        _centerRotation = getRotation( _center ).getRotate().inverse();
+        _centerRotation = makeCenterRotation(_center);
         CoordinateFrame local_frame = getMyCoordinateFrame(_center);
         _previousUp = getUpVector(local_frame);
     }

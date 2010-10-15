@@ -693,6 +693,10 @@ namespace osgEarthUtil
         void recalculateCenter( const osg::CoordinateFrame& frame );
 
         osg::Matrixd getRotation(const osg::Vec3d& center) const;
+        osg::Quat makeCenterRotation(const osg::Vec3d& center) const
+        {
+            return getRotation(center).getRotate().inverse();
+        }
 
         void updateTether();
 

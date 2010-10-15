@@ -186,6 +186,7 @@ namespace osgEarth
      * Access to the configuration object for the cache driver.
      */
     Config& getDriverConf() { return _driverConf; }
+    const Config& getDriverConf() const { return _driverConf; }
 
     /**
     * Sets whether the map engine should only pull tiles from the cache and not from

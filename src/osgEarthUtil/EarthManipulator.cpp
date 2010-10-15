@@ -595,7 +595,7 @@ EarthManipulator::getSRS() const
     {
         EarthManipulator* nonconst_this = const_cast<EarthManipulator*>(this);
 
-        nonconst_this->_is_geocentric = true;
+        nonconst_this->_is_geocentric = false;
 
         // first try to find a map node:
         osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( _node.get() );
@@ -2002,7 +2002,7 @@ EarthManipulator::setHomeViewpoint( const Viewpoint& vp, double duration_s )
     _homeViewpointDuration = duration_s;
 }
 
-// Find the point on a line closest to another point. Returns that
+// Find the point on a line, specified by p1 and v, closest to another
 // point.
 osg::Vec3d closestPtOnLine(const osg::Vec3d& p1, const osg::Vec3d& v,
                            const osg::Vec3d& p)
@@ -2011,27 +2011,7 @@ osg::Vec3d closestPtOnLine(const osg::Vec3d& p1, const osg::Vec3d& v,
     return p1 + v * u;
 }
 
-bool findPointOnLineWithD2(const osg::Vec3d& origin, double d2,
-                           const osg::Vec3d& p1, const osg::Vec3d& v,
-                           osg::Vec3d& result)
-{
-    osg::Vec3d perp = closestPtOnLine(p1, v, origin);
-    // d2 is length of hypotenuse. Length of perp - origin is adjacent
-    // side of right triangle.
-    double adj2 = (perp - origin).length2();
-    // Use Pythagorian theorem to find the length of the "opposite"
-    // side, and from that the point that gives us a vector from
-    // origin with length d that lies on the line.
-    double op2 = d2 - adj2;
-    if (op2 < 0)
-        return false;
-    double op = sqrt(op2);
-    osg::Vec3d norm = v;
-    norm.normalize();
-    result = perp - norm * op;
-    return true;
-}
-
+// Intersection of line and plane
 bool findIntersectionWithPlane(const osg::Vec3d& normal, const osg::Vec3d& pt,
                                const osg::Vec3d& p1, const osg::Vec3d& v,
                                osg::Vec3d& result)
@@ -2044,6 +2024,38 @@ bool findIntersectionWithPlane(const osg::Vec3d& normal, const osg::Vec3d& pt,
     return true;
 }
 
+// Intersection of circles in the plane
+int circleIntersections(const osg::Vec2d& p0, double r0,
+                        const osg::Vec2d& p1, double r1,
+                        osg::Vec2d* results)
+{
+    using namespace osg;
+    const Vec2d ptvec = (p1 - p0);
+    double d = ptvec.length();
+    if (d > r0 + r1)
+        return 0;               // circles are too far apart
+    else if (d < fabs(r0 - r1))
+        return 0;               // One circle is contained in the other
+    else if (equivalent(0, d) && equivalent(r0, r1))
+        return -1;              // circles are coincident.
+    // distance from p0 to the line through the interection points
+    double a = (r0 * r0 - r1 * r1 + d * d) / (2 * d);
+    // distance from bisection of that line to the intersections
+    double h = sqrt(r0 * r0 - a * a);
+    const Vec2d p2 = p0 + ptvec * (a / d);
+    if (equivalent(a, d))
+    {
+        results[0] = p2;
+        return 1;
+    }
+    // Intersections are on perpendicular to ptvec going through p2.
+    const Vec2d scaledVec = ptvec * (h / d);
+    results[0].set(p2[0] + scaledVec[1], p2[1] - scaledVec[0]);
+    results[1].set(p2[0] - scaledVec[1], p2[1] + scaledVec[0]);
+    return 2;
+}
+
+// Calculate a pointer click in eye coordinates
 osg::Vec3d getWindowPoint(osgViewer::View* view, float x, float y)
 {
     float local_x, local_y;
@@ -2064,9 +2076,53 @@ osg::Vec3d getWindowPoint(osgViewer::View* view, float x, float y)
     return osg::Vec3d(winpt4.x(), winpt4.y(), winpt4.z());
 }
 
+// Decompose  _center and _centerRotation into a longitude rotation
+// and a latitude rotation + translation in the longitudinal plane.
+
+void decomposeCenter(const osg::Vec3d& center, const osg::Quat& centerRotation,
+                     osg::Matrix& Me, osg::Matrix& Mlon)
+{
+    using namespace osg;
+    Mlon.makeIdentity();
+    Matrix Mtotal(centerRotation);
+    Mtotal.setTrans(center);
+    // Use the X axis to determine longitude rotation. Due to the
+    // OpenGL camera rotation, this axis will be the Y axis of the
+    // longitude matrix.
+    Mlon(1, 0) = Mtotal(0, 0);  Mlon(1, 1) = Mtotal(0, 1);
+    // X axis is rotated 90 degrees, obviously
+    Mlon(0, 0) = Mlon(1, 1);  Mlon(0, 1) = -Mlon(1, 0);
+    Matrix MlonInv = Matrixd::inverse(Mlon);
+    Me = Mtotal * MlonInv;
+}
+
+osg::Matrixd rotateAroundPoint(const osg::Vec3d& pt, double theta,
+                               const osg::Vec3d& axis)
+{
+    return (osg::Matrixd::translate(pt)
+            * osg::Matrixd::rotate(theta, axis)
+            * osg::Matrixd::translate(pt * -1.0));
+}
+
+// Theory of operation for the manipulator drag motion
+//
+// The mouse drag is transformed to a vector on the surface of the
+// earth i.e., in the surface plane at the start of the drag. This is
+// treated as a displacement along the arc of a great circle. The
+// earth will be rotated by the equivalent rotation around the axis of
+// the circle. However, the manipulator controls the camera, not the
+// earth, so the camera's placement matrix (inverse view matrix)
+// should be rotated by the inverse of the calculated
+// rotation. EarthManipulator represents the placement matrix as the
+// concatenation of 4 transformations: distance from focal point,
+// local heading and pitch, rotation to frame of focal point, focal
+// point. To change the camera placement we rotate the frame rotation
+// (_centerRotation) and focal point (_center).
+
 void
 EarthManipulator::drag(double dx, double dy, osg::View* theView)
 {
+    using namespace osg;
     osgViewer::View* view = dynamic_cast<osgViewer::View*>(theView);
     float x = _ga_t0->getX(), y = _ga_t0->getY();
     float local_x, local_y;
@@ -2084,21 +2140,29 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     osg::Vec3d worldNormal(1.0, 0.0, 0.0);
     const osg::Vec3d zero(0.0, 0.0, 0.0);
     bool onEarth;
-    if ((onEarth = screenToWorld( _ga_t1->getX(), _ga_t1->getY(),
+    if ((onEarth = screenToWorld(_ga_t1->getX(), _ga_t1->getY(),
                                   view, worldStartDrag)))
     {
         startDrag = worldStartDrag * viewMat;
         double startLat, startLon, startH;
-        _csn->getEllipsoidModel()->convertXYZToLatLongHeight(
-            worldStartDrag.x(), worldStartDrag.y(), worldStartDrag.z(),
-            startLat, startLon, startH);
-        // Find the normal plane on the earth at the start drag point        
-        // NB order imposed by parentheses!
-        worldNormal = (osg::Quat(startLon, osg::Vec3d(0.0, 0.0, 1.0))
-                       * (osg::Quat(startLat, osg::Vec3d(0.0, -1.0, 0.0))
-                          * worldNormal));
+        if (_is_geocentric)
+        {
+            _csn->getEllipsoidModel()->convertXYZToLatLongHeight(
+                worldStartDrag.x(), worldStartDrag.y(), worldStartDrag.z(),
+                startLat, startLon, startH);
+            // Find the normal plane on the earth at the start drag point        
+            // NB order imposed by parentheses!
+            worldNormal = (osg::Quat(startLon, osg::Vec3d(0.0, 0.0, 1.0))
+                           * (osg::Quat(startLat, osg::Vec3d(0.0, -1.0, 0.0))
+                              * worldNormal));
+        }
+        else
+        {
+            osg::CoordinateFrame cf = getMyCoordinateFrame(worldStartDrag);
+            worldNormal = getUpVector(cf);
+        }
     }
-    else
+    else if (_is_geocentric)
     {
         const osg::Vec3d startWinPt = getWindowPoint(view, _ga_t1->getX(),
                                                      _ga_t1->getY());
@@ -2106,6 +2170,8 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         worldStartDrag = startDrag * viewMatInv;
         worldNormal = worldStartDrag;
     }
+    else
+        return;
     // Normal gets multiplied by inverse transpose.
     osg::Vec3d normal = osg::Matrixd::transform3x3(viewMatInv, worldNormal);
     normal.normalize();
@@ -2126,11 +2192,122 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         endDrag = closestPtOnLine(zero, winpt, zero * viewMat);
     }
     worldEndDrag = endDrag * viewMatInv;
-    worldRot.makeRotate(worldStartDrag, worldEndDrag);
-    // Move the camera by the inverse rotation
-    osg::Quat cameraRot = worldRot.conj();
-    _center = cameraRot * _center;
-    _centerRotation = _centerRotation * cameraRot;
-    osg::CoordinateFrame local_frame = getMyCoordinateFrame(_center);
-    _previousUp = getUpVector(local_frame);
+    if (_is_geocentric)
+    {
+        worldRot.makeRotate(worldStartDrag, worldEndDrag);
+        // Move the camera by the inverse rotation
+        Quat cameraRot = worldRot.conj();
+        Vec3d center = cameraRot * _center;
+        Quat centerRotation = _centerRotation * cameraRot;
+        Matrixd Me = Matrixd::rotate(centerRotation);
+        Me.setTrans(center);
+        // In order for the Viewpoint settings to make sense, the
+        // inverse camera matrix must have an x axis parallel to the
+        // z = 0 plane. The strategy for doing that is different if
+        // the azimuth is locked.
+        // Actually, the part of the camera rotation defined by
+        // _centerRotation must be oriented with the local frame of
+        // _center on the ellipsoid. For the purposes of the drag
+        // motion this is nearly identical to the frame obtained by
+        // the trackball motion, so we just fix it up at the end.
+        if (_settings->getLockAzimuthWhilePanning())
+        {
+            // The camera now needs to be rotated that _centerRotation
+            // is a rotation only around the global Z axis and the
+            // camera frame X axis. We don't change _rotation, so that
+            // azimuth and pitch will stay constant, but the drag must
+            // still look correct, so the rotation must be around the
+            // point that was dragged i.e., worldEndDrag.
+            //
+            // Rotate Me so that its x axis is parallel to the z=0
+            // plane. 
+            // Find cone with worldEndDrag->center axis and x
+            // axis of coordinate frame as generator of the conical
+            // surface.
+            Vec3d coneAxis = worldEndDrag * -1;
+            coneAxis.normalize();
+            Vec3d xAxis(Me(0, 0), Me(0, 1), Me(0, 2));
+            // Center of disk: project xAxis onto coneAxis
+            double diskDist = xAxis * coneAxis;
+            Vec3d P1 = coneAxis * diskDist;
+            // Basis of disk equation:
+            // p = P1 + R * r * cos(theta) + S * r * sin(theta)
+            Vec3d R = xAxis - P1;
+            Vec3d S = R ^ coneAxis;
+            double r = R.normalize();
+            S.normalize();
+            // Solve for angle that rotates xAxis into z = 0 plane.
+            // soln to 0 = P1.z + r cos(theta) R.z + r sin(theta) S.z
+            double temp1 = r * (square(S.z()) + square(R.z()));
+            if (equivalent(temp1, 0.0))
+                return;
+            double radical = r * temp1 - square(P1.z());
+            if (radical < 0)
+                return;
+            double temp2 = R.z() * sqrt(radical) / temp1;
+            double temp3 = S.z() * P1.z() / temp1;
+            double sin1 = temp2 + temp3;
+            double sin2 = temp2 - temp3;
+            double theta1 = DBL_MAX;
+            double theta2 = DBL_MAX;
+            Matrixd cm1, cm2;
+            if (fabs(sin1) <= 1.0)
+            {
+                theta1 = -asin(sin1);
+                Matrixd m = rotateAroundPoint(worldEndDrag, -theta1, coneAxis);
+                cm1 = Me * m;
+            }
+            if (fabs(sin2) <= 1.0)
+            {
+                theta2 = asin(sin2);
+                Matrix m = rotateAroundPoint(worldEndDrag, -theta2, coneAxis);
+                cm2 = Me * m;
+            }
+            if (theta1 == DBL_MAX && theta2 == DBL_MAX)
+                return;
+            Matrixd* CameraMat = 0;
+            if (theta1 != DBL_MAX && cm1(1, 2) >= 0.0)
+                CameraMat = &cm1;
+            else if (theta2 != DBL_MAX && cm2(1, 2) >= 0.0)
+                CameraMat = &cm2;
+            else
+                return;
+            _center = CameraMat->getTrans();
+        }
+        else
+        {
+            // The camera matrix must be rotated around the local Z axis so
+            // that the X axis is parallel to the global z = 0
+            // plane. Then, _rotation is rotated by the inverse
+            // rotation to preserve the total transformation.
+            double theta = atan2(-Me(0, 2), Me(1, 2));
+            double s = sin(theta), c = cos(theta);
+            if (c * Me(1, 2) - s * Me(0, 2) < 0.0)
+            {
+                s = -s;
+                c = -c;
+            }
+            Matrixd m(c, s, 0, 0,
+                      -s, c, 0, 0,
+                      0, 0, 1, 0,
+                      0, 0, 0, 1);
+            Matrixd CameraMat = m * Me;
+            _center = CameraMat.getTrans();
+            // It's not necessary to include the translation
+            // component, but it's useful for debugging.
+            Matrixd headMat
+                = (Matrixd::translate(-_offset_x, -_offset_y, _distance)
+		   * Matrixd::rotate(_rotation));
+            headMat = headMat * Matrixd::inverse(m);
+            _rotation = headMat.getRotate();
+            recalculateLocalPitchAndAzimuth();
+        }
+        _centerRotation = getRotation( _center ).getRotate().inverse();
+        CoordinateFrame local_frame = getMyCoordinateFrame(_center);
+        _previousUp = getUpVector(local_frame);
+    }
+    else
+    {
+        _center = _center + (worldStartDrag - worldEndDrag);
+    }
 }

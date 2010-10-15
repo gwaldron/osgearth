@@ -63,6 +63,15 @@ _inverseCalculated(false)
     _y1 = osg::clampBetween( (displayExtent.yMax()-dataExtent.yMin())/dataExtent.height(), 0.0, 1.0 );
 }
 
+bool
+GeoLocator::isEquivalentTo( const GeoLocator& rhs ) const
+{
+    return
+        _transform == rhs._transform &&
+        _coordinateSystemType == rhs._coordinateSystemType &&
+        _cs == rhs._cs;
+}
+
 GeoLocator*
 GeoLocator::createForKey( const TileKey& key, const MapInfo& map )
 {

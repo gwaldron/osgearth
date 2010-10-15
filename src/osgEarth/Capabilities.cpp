@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Capabilities>
+#include <osg/FragmentProgram>
 #include <osg/GraphicsContext>
 #include <osg/GL>
 #include <osg/GLExtensions>
@@ -93,6 +94,8 @@ struct MyGraphicsContext
 
 Capabilities::Capabilities() :
 _maxFFPTextureUnits     ( 1 ),
+_maxGPUTextureUnits     ( 1 ),
+_maxGPUTextureCoordSets ( 1 ),
 _maxTextureSize         ( 256 ),
 _supportsGLSL           ( false ),
 _supportsTextureArrays  ( false ),
@@ -114,6 +117,12 @@ _supportsTwoSidedStencil( false )
 
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
         OE_INFO << LC << "  Max FFP texture units = " << _maxFFPTextureUnits << std::endl;
+
+        glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &_maxGPUTextureUnits );
+        OE_INFO << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
+
+        glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
+        OE_INFO << LC << "  Max GPU texture coordinate sets = " << _maxGPUTextureCoordSets << std::endl;
 
         // Use the texture-proxy method to determine the maximum texture size 
         for( int s = 16; s < 65536; s *= 2 )

@@ -133,6 +133,14 @@ TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages
     return stateSet;
 }
 
+//GeoImage
+//TextureCompositorMultiTexture::prepareLayerUpdate( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
+//{
+//    GeoImage result = layerImage;
+//    result.getImage()->setDataVariance( osg::Object::DYNAMIC );
+//    return result;
+//}
+
 void
 TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet, int layerNum,
                                                 const GeoImage& preparedImage, const GeoExtent& tileExtent ) const
@@ -155,8 +163,20 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet, int lay
 void 
 TextureCompositorMultiTexture::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
+    int numImageLayersToRender = numImageLayers;
+
     if ( _useGPU )
     {
+        // Validate against the max number of GPU texture units:
+        if ( numImageLayers > Registry::instance()->getCapabilities().getMaxGPUTextureUnits() )
+        {
+            numImageLayersToRender = Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+            OE_WARN << LC
+                << "Warning! You have exceeded the number of texture units available on your GPU ("
+                << numImageLayersToRender << "). Consider using another compositing mode."
+                << std::endl;
+        }
+        
         osg::Program* program = new osg::Program();
         program->addShader( new osg::Shader( osg::Shader::VERTEX, s_createVertShader(numImageLayers) ) );
         program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
@@ -165,14 +185,23 @@ TextureCompositorMultiTexture::updateGlobalStateSet( osg::StateSet* stateSet, in
 
     else
     {
-        // FFP multitexturing requires that we set up a series of TexCombine attributes:
+        // Validate against the maximum number of textures available in FFP mode.
+        if ( numImageLayers > Registry::instance()->getCapabilities().getMaxFFPTextureUnits() )
+        {
+            numImageLayersToRender = Registry::instance()->getCapabilities().getMaxFFPTextureUnits();
+            OE_WARN << LC << 
+                "Warning! You have exceeded the number of texture units available in fixed-function pipeline "
+                "mode on your graphics hardware (" << numImageLayersToRender << "). Consider using another "
+                "compositing mode." << std::endl;
+        }
 
-        if (numImageLayers == 1)
+        // FFP multitexturing requires that we set up a series of TexCombine attributes:
+        if (numImageLayersToRender == 1)
         {
             osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
             stateSet->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
         }
-        else if (numImageLayers >= 2)
+        else if (numImageLayersToRender >= 2)
         {
             //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
             {
@@ -199,7 +228,7 @@ TextureCompositorMultiTexture::updateGlobalStateSet( osg::StateSet* stateSet, in
 
             //For textures 2 and beyond, blend them together with the previous
             //Add the alpha values of this unit and the previous unit
-            for (int unit = 1; unit < numImageLayers-1; ++unit)
+            for (int unit = 1; unit < numImageLayersToRender-1; ++unit)
             {
                 osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
                 texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
@@ -235,7 +264,7 @@ TextureCompositorMultiTexture::updateGlobalStateSet( osg::StateSet* stateSet, in
 
                 texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
                 texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                stateSet->setTextureAttributeAndModes(numImageLayers-1, texenv, osg::StateAttribute::ON);
+                stateSet->setTextureAttributeAndModes(numImageLayersToRender-1, texenv, osg::StateAttribute::ON);
             }
         }
     }

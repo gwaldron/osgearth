@@ -19,6 +19,7 @@
 
 #include <osgEarthUtil/FadeLayerNode>
 #include <osgEarthUtil/Common>
+#include <osgEarth/Registry>
 #include <osg/Program>
 #include <osgUtil/CullVisitor>
 #include <OpenThreads/ScopedLock>
@@ -151,7 +152,8 @@ FadeLayerNode::FadeLayerNode( Map* map, const MapNodeOptions& mapOptions) :
 _map( map ),
 _mapNodeOptions(mapOptions)
 {
-    if (_mapNodeOptions.getTerrainOptions().layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE)
+    if (_mapNodeOptions.getTerrainOptions().compositingTechnique() != TerrainOptions::COMPOSITING_MULTIPASS &&
+        osgEarth::Registry::instance()->getCapabilities().supportsGLSL() )
 	{
 		osg::Program* program = new osg::Program;
 		_vertShader = new osg::Shader( osg::Shader::VERTEX, vert_source );

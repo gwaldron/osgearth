@@ -36,25 +36,28 @@ using namespace OpenThreads;
 
 #define LC "[TextureCompositor] "
 
-TextureCompositor::TextureCompositor( TextureCompositor::TechniqueType tech ) :
+TextureCompositor::TextureCompositor( const TerrainOptions::CompositingTechnique& tech ) :
 osg::Referenced( true ),
 _tech( tech ),
 _forceTech( false )
 {
     // for debugging:
-    if ( _tech == TECH_AUTO && ::getenv( "OSGEARTH_COMPOSITOR_TECH" ) )
+    if ( _tech == TerrainOptions::COMPOSITING_AUTO && ::getenv( "OSGEARTH_COMPOSITOR_TECH" ) )
     {
-        TechniqueType oldTech = _tech;
+        TerrainOptions::CompositingTechnique oldTech = _tech;
         std::string t( ::getenv( "OSGEARTH_COMPOSITOR_TECH" ) );
-        if      ( t == "TEXTURE_ARRAY" )    _tech = TECH_TEXTURE_ARRAY;
-        else if ( t == "TEXTURE_3D" )       _tech = TECH_TEXTURE_3D;
-        else if ( t == "TEXTURE_ATLAS" )    _tech = TECH_TEXTURE_ATLAS;
-        else if ( t == "MULTITEXTURE_GPU" ) _tech = TECH_MULTITEXTURE_GPU;
-        else if ( t == "MULTITEXTURE_FFP" ) _tech = TECH_MULTITEXTURE_FFP;
-        else if ( t == "SOFTWARE" )         _tech = TECH_SOFTWARE;
+        if      ( t == "TEXTURE_ARRAY" )    _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
+        //else if ( t == "TEXTURE_3D" )       _tech = TECH_TEXTURE_3D;
+        //else if ( t == "TEXTURE_ATLAS" )    _tech = TerrainOptions::COMPOSITING_TEXTURE_ATLAS;
+        else if ( t == "MULTITEXTURE_GPU" ) _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
+        else if ( t == "MULTITEXTURE_FFP" ) _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
+        else if ( t == "MULTIPASS" )        _tech = TerrainOptions::COMPOSITING_MULTIPASS;
+        //else if ( t == "SOFTWARE" )         _tech = TECH_SOFTWARE;
         if ( oldTech != _tech )
             _forceTech = true;
     }
+
+    init();
 }
 
 osg::StateSet*
@@ -62,8 +65,8 @@ TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent&
 {
     // first time through, poll the system capabilities to figure out
     // which technique to use.
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl ? _impl->createStateSet( stack, tileExtent ) : 0L;
 }
@@ -71,8 +74,8 @@ TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent&
 bool
 TextureCompositor::supportsLayerUpdate() const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl ? _impl->supportsLayerUpdate() : false;
 }
@@ -80,8 +83,8 @@ TextureCompositor::supportsLayerUpdate() const
 GeoImage
 TextureCompositor::prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl ? _impl->prepareLayerUpdate( image, tileExtent ) : GeoImage::INVALID;
 }
@@ -92,27 +95,18 @@ TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     const GeoImage& preparedImage,
                                     const GeoExtent& tileExtent ) const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     if ( _impl )
         _impl->applyLayerUpdate( stateSet, layerNum, preparedImage, tileExtent );
 }
 
-//osg::Program*
-//TextureCompositor::getProgram() const
-//{
-//    if ( !_impl.valid() )
-//        const_cast<TextureCompositor*>(this)->init();
-//
-//    return _program.get();
-//}
-
 bool
 TextureCompositor::requiresUnitTextureSpace() const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     return _impl->requiresUnitTextureSpace();
 }
@@ -120,8 +114,8 @@ TextureCompositor::requiresUnitTextureSpace() const
 void
 TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
-    if ( !_impl.valid() )
-        const_cast<TextureCompositor*>(this)->init();
+    //if ( !_impl.valid() )
+    //    const_cast<TextureCompositor*>(this)->init();
 
     _impl->updateGlobalStateSet( stateSet, numImageLayers );
 }
@@ -129,63 +123,62 @@ TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLa
 void
 TextureCompositor::init()
 {        
-    ScopedLock<Mutex> initLock( _initMutex );
+    //ScopedLock<Mutex> initLock( _initMutex );
     if ( _impl.valid() ) // double-check pattern
     {
         return; // already initialized
     }
 
-    bool isAuto = _tech == TECH_AUTO;
+    bool isAuto = _tech == TerrainOptions::COMPOSITING_AUTO;
 
     const Capabilities& caps = Registry::instance()->getCapabilities();
 
-    if ( _tech == TECH_TEXTURE_ARRAY || (isAuto && caps.supportsTextureArrays()) )
+    if ( _tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || (isAuto && caps.supportsTextureArrays()) )
     {
-        _tech = TECH_TEXTURE_ARRAY;
+        _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
         _impl = new TextureCompositorTexArray();
-        OE_INFO << LC << "technique = TEXTURE ARRAY" << std::endl;
+        OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
     }
 
+#if 0
     // check "forceTech" because it doesn't work yet:
-    else if ( _forceTech && ( _tech == TECH_TEXTURE_3D || (isAuto && caps.supportsTexture3D()) ) )
+    else if ( _forceTech && ( _tech == TerrainOptions::COMPOSITING_TEXTURE_3D || (isAuto && caps.supportsTexture3D()) ) )
     {
-        _tech = TECH_TEXTURE_3D;
+        _tech = TerrainOptions::COMPOSITING_TEXTURE_3D;
         _impl = new TextureCompositorTex3D();
-        OE_INFO << LC << "technique = TEXTURE 3D" << std::endl;
+        OE_INFO << LC << "Compositing technique = TEXTURE 3D" << std::endl;
     }
 
     // check "forceTech" because the tile boundaries show
-    else if ( _forceTech && ( _tech == TECH_TEXTURE_ATLAS || (isAuto && caps.supportsGLSL()) ) )
+    else if ( _forceTech && ( _tech == TerrainOptions::COMPOSITING_TEXTURE_ATLAS || (isAuto && caps.supportsGLSL()) ) )
     {
-        _tech = TECH_TEXTURE_ATLAS;
+        _tech = TerrainOptions::COMPOSITING_TEXTURE_ATLAS;
         _impl = new TextureCompositorAtlas();
-        OE_INFO << LC << "technique = TEXTURE ATLAS" << std::endl;
+        OE_INFO << LC << "Compositing technique = TEXTURE ATLAS" << std::endl;
     }
+#endif
 
     // commented out because it's NYI:
-    else if ( _tech == TECH_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) ) 
+    else if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) ) 
     {
-        _tech = TECH_MULTITEXTURE_GPU;
+        _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true );
-        OE_INFO << LC << "technique = MULTITEXTURE/GPU" << std::endl;
+        OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
     }
 
     // NOTE: uncomment this to "else if" when Software mode is ready
-    else // if ( _tech == TECH_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
+    else if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
     {
-        _tech = TECH_MULTITEXTURE_FFP;
+        _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false );
-        OE_INFO << LC << "technique = MULTITEXTURE/FFP" << std::endl;
+        OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
     }
 
-    // commented out because it's NYI:
-    //else
-    //{
-    //    _tech = TECH_SOFTWARE;
-    //    _impl = new TextureCompositorSoftware();
-    //    OE_INFO << LC << "technique = software" << std::endl;
-    //}
-
-    //if ( _impl.valid() )
-    //    _program = _impl->createProgram();
+    // Fallback of last resort. The Compositor does not actually support multipass.
+    else
+    {
+        _tech = TerrainOptions::COMPOSITING_MULTIPASS;
+        _impl = 0L;
+        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
+    }
 }

@@ -204,10 +204,19 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
-    // install the proper layering technique:
-    if ( _terrainOptions.layeringTechnique() == TerrainOptions::LAYERING_COMPOSITE )
+    // install the proper layer composition technique:
+    _texCompositor = new TextureCompositor( _terrainOptions.compositingTechnique().value() );
+
+    if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
     {
-        _texCompositor = new TextureCompositor( _terrainOptions.compositorTechnique().value() );
+        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique() );
+        // not going to use it:
+        _texCompositor = 0L;
+        OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
+    }
+
+    else 
+    {
         CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
         // prepare the interpolation technique for generating triangles:
@@ -215,13 +224,6 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
             tech->setOptimizeTriangleOrientation( false );
 
         _terrain->setTerrainTechniquePrototype( tech );
-
-        OE_INFO << LC << "Layering technique = COMPOSITE" << std::endl;
-    }
-    else // MULTIPASS
-    {
-        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique() );
-        OE_INFO << LC << "Layering technique = MULTIPASS" << std::endl;
     }
 
     // apply any pending callbacks:

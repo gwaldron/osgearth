@@ -39,6 +39,8 @@ namespace osgEarth
 
         bool supportsLayerUpdate() const { return true; }
 
+        //GeoImage prepareLayerUpdate( const GeoImage& layerImage, const GeoExtent& tileExtent ) const;
+
         void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
 
     private:

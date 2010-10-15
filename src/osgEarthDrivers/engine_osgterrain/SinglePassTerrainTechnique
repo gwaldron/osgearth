@@ -114,7 +114,8 @@ private:
     osg::ref_ptr<osg::Geode> _backGeode;
     osg::Vec3d _centerModel;
     float _verticalScaleOverride;
-    osg::ref_ptr<osgTerrain::Locator> _masterLocator;
+    osg::ref_ptr<GeoLocator> _masterLocator;
+    //osg::ref_ptr<osgTerrain::Locator> _masterLocator;
 
     int  _initCount;
     bool _pendingFullUpdate;    

@@ -36,10 +36,17 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
     {
         const Config& child = *i;
+
         if (child.key() == "profile" || 
             child.key() == "cache" )
         {
             mapOptionsConf.add( child );
+        }
+        else if (
+            child.key() == "proxy" ||
+            child.key() == "cache_only" )
+        {
+            mapNodeOptionsConf.add( child );
         }
         else if (
             child.key() == "vertical_scale" ||
@@ -48,17 +55,15 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
             child.key() == "normalize_edges" ||
             child.key() == "combine_layers" ||
             child.key() == "loading_policy" || 
-            child.key() == "layering_technique" ||
             child.key() == "max_lod" ||
             child.key() == "lighting" )
         {
             terrainOptionsConf.add( child );
         }
-        else if (
-            child.key() == "proxy" ||
-            child.key() == "cache_only" )
+        else if ( child.key() == "layering_technique" )
         {
-            mapNodeOptionsConf.add( child );
+            if ( child.value() == "multipass" )
+                terrainOptionsConf.value( "compositor" ) = "multipass";
         }
     }
     MapOptions mapOptions( mapOptionsConf );

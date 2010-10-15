@@ -248,10 +248,10 @@ TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     const Capabilities& caps = Registry::instance()->getCapabilities();
 
     // warn against mixing multipass technique with preemptive/sequential mode:
-    if (options.layeringTechnique() == TerrainOptions::LAYERING_MULTIPASS &&
+    if (options.compositingTechnique() == TerrainOptions::COMPOSITING_MULTIPASS &&
         options.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
     {
-        OE_WARN << LC << "MULTIPASS layering is incompatible with preemptive/sequential loading policy; "
+        OE_WARN << LC << "MULTIPASS compositor is incompatible with preemptive/sequential loading policy; "
             << "falling back on STANDARD mode" << std::endl;
         options.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }

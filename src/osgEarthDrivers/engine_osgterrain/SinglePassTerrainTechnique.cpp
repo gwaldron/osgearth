@@ -31,6 +31,7 @@
 #include <osg/Version>
 
 #include <sstream>
+#include <hash_map>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -131,9 +132,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     {
         // establish the master tile locator from the customtile key
         CustomTile* tile = static_cast<CustomTile*>( _terrainTile );
-        _masterLocator = tile->getLocator();
-        //osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-        //_masterLocator = elevationLayer->getLocator();
+        _masterLocator = static_cast<GeoLocator*>( tile->getLocator() );
 
         _masterLocator->convertLocalToModel( osg::Vec3(.5,.5,0), _centerModel );
 
@@ -414,19 +413,57 @@ SinglePassTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, dou
     }
 }
 
+namespace
+{
+    //typedef std::pair< osg::Vec2Array*, osgTerrain::Locator* >   TexCoordLocatorPair;
+    //typedef std::map<  osgTerrain::Layer*, TexCoordLocatorPair > LayerToTexCoordMap;
+
+    struct GeoLocatorComp
+    {
+        bool operator()( GeoLocator* lhs, GeoLocator* rhs ) const
+        {
+            return rhs && lhs && lhs->isEquivalentTo( *rhs );
+        }
+    };
+
+    typedef std::pair< GeoLocator*, osg::Vec2Array* > LocatorTexCoordPair;
+
+    struct LocatorToTexCoordTable : public std::list<LocatorTexCoordPair> {
+        osg::Vec2Array* find( GeoLocator* key ) const {
+            for( const_iterator i = begin(); i != end(); ++i ) {
+                if ( i->first->isEquivalentTo( *key ) )
+                    return i->second;
+            }
+            return 0L;
+        }
+    };
+
+    //typedef std::hash_map< GeoLocator*, osg::Vec2Array*, GeoLocatorComp > LocatorToTexCoordMap;
+    
+    struct RenderLayer {
+        osgTerrain::Layer* _layer;
+        osg::ref_ptr<GeoLocator> _locator;
+        osg::Vec2Array* _texCoords;
+        bool _ownsTexCoords;
+        RenderLayer() : _layer(0L), _locator(0L), _texCoords(0L), _ownsTexCoords(false) { }
+    };
+
+    typedef std::vector< RenderLayer > RenderLayerVector;
+}
+
 void
 SinglePassTerrainTechnique::createGeometry()
 {
-    osg::ref_ptr< osgTerrain::Locator > masterTextureLocator = _masterLocator.get();
-    GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(_masterLocator.get());
+    osg::ref_ptr<GeoLocator> masterTextureLocator = _masterLocator.get();
+    //GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(_masterLocator.get());
 
 	bool isCube = dynamic_cast<CubeFaceLocator*>(_masterLocator.get()) != NULL;
 
     // If we have a geocentric locator, get a geographic version of it to avoid converting
     // to/from geocentric when computing texture coordinats
-    if (!isCube && geoMasterLocator && _masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
+    if (!isCube && /*geoMasterLocator && */ _masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
     {
-        masterTextureLocator = geoMasterLocator->getGeographicFromGeocentric();
+        masterTextureLocator = masterTextureLocator->getGeographicFromGeocentric();
     }
     
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
@@ -487,12 +524,9 @@ SinglePassTerrainTechnique::createGeometry()
     // allocate and assign texture coordinates
     osg::Vec2Array* unifiedSurfaceTexCoords = 0L;
 
-    // used for per-layer texture coordinates:
-    std::vector< osg::ref_ptr<osg::Vec2Array> > layerTexCoords;
-    std::vector< osg::ref_ptr<osgTerrain::Locator> > layerLocators;
-
     int numColorLayers = _terrainTile->getNumColorLayers();
-    
+    RenderLayerVector renderLayers;
+
     if ( _texCompositor->requiresUnitTextureSpace() )
     {
         // for a unified unit texture space, just make a single texture coordinate array.
@@ -500,37 +534,106 @@ SinglePassTerrainTechnique::createGeometry()
         unifiedSurfaceTexCoords->reserve( numVerticesInSurface );
         surface->setTexCoordArray( 0, unifiedSurfaceTexCoords );
     }
+
+    else // if ( !_texCompositor->requiresUnitTextureSpace() )
+    {
+        LocatorToTexCoordTable locatorToTexCoordTable;
+        renderLayers.reserve( numColorLayers );
+
+        // build a list of "render layers", sharing texture coordinate arrays wherever possible.
+        for( int i=0; i<numColorLayers; ++i )
+        {
+            RenderLayer r;
+            r._layer = _terrainTile->getColorLayer( i );
+            if ( r._layer )
+            {
+                GeoLocator* locator = dynamic_cast<GeoLocator*>( r._layer->getLocator() );
+                if ( locator )
+                {
+                    r._texCoords = locatorToTexCoordTable.find( locator );
+                    if ( !r._texCoords )
+                    {
+                        r._texCoords = new osg::Vec2Array();
+                        r._texCoords->reserve( numVerticesInSurface );
+                        r._ownsTexCoords = true;
+                        locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords) );
+                    }
+
+                    r._locator = locator;
+                    if ( locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
+                    {
+                        GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
+                        if ( geo )
+                            r._locator = geo->getGeographicFromGeocentric();
+                    }
+
+                    surface->setTexCoordArray( renderLayers.size(), r._texCoords );
+                    renderLayers.push_back( r );
+                }
+                else
+                {
+                    OE_WARN << LC << "Found a Locator, but it wasn't a GeoLocator." << std::endl;
+                }
+            }
+        }
+    }
+#if 0
     else
     {
         // for a multitexture space, make a tex coord array per layer, each with its own locator.
         layerTexCoords.reserve( numColorLayers );
         layerLocators.reserve( numColorLayers );
 
+        int k=0;
         for( int i=0; i<numColorLayers; ++i )
         {
             osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer( i );
             if (colorLayer)
             {
-                osgTerrain::Locator* locator = colorLayer->getLocator();
-                if ( !isCube && locator && locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
+                GeoLocator* locator = dynamic_cast<GeoLocator*>( colorLayer->getLocator() );
+                if ( locator )
                 {
-                    GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
-                    if ( geo )
-                        locator = geo->getGeographicFromGeocentric();
+                    osg::Vec2Array* texCoords = 0L;
+
+                    LocatorToTexCoordMap::iterator n = locatorToTexCoordMap::find( locator );
+                    if ( n == locatorToTexCoordMap.end() )
+                    {
+                        texCoords = new osg::Vec2Array();
+                        texCoords->reserve( numVerticesInSurface );
+                        locatorToTexCoordMap[locator] = texCoords;
+                    }
+                    else
+                    {
+                        texCoords = *n;
+                    }
+
+                    surface->setTexCoordArray( k++, texCoords );
                 }
-                layerLocators.push_back( locator ? locator : masterTextureLocator.get() );
-                osg::Vec2Array* texCoords = new osg::Vec2Array();
-                texCoords->reserve( numVerticesInSurface );
-                layerTexCoords.push_back( texCoords );
-                surface->setTexCoordArray( i, texCoords ); //layerTexCoords.size()-1, texCoords );
-            }
-            else
-            {
-                layerLocators.push_back( 0L );
-                layerTexCoords.push_back( 0L );
             }
         }
     }
+#endif
+
+    //            if ( !isCube && locator && locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
+    //            {
+    //                GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
+    //                if ( geo )
+    //                    locator = geo->getGeographicFromGeocentric();
+    //            }
+
+    //            layerLocators.push_back( locator ? locator : masterTextureLocator.get() );
+    //            osg::Vec2Array* texCoords = new osg::Vec2Array();
+    //            texCoords->reserve( numVerticesInSurface );
+    //            layerTexCoords.push_back( texCoords );
+    //            surface->setTexCoordArray( i, texCoords ); //layerTexCoords.size()-1, texCoords );
+    //        }
+    //        else
+    //        {
+    //            layerLocators.push_back( 0L );
+    //            layerTexCoords.push_back( 0L );
+    //        }
+    //    }
+    //}
 
     // skirt texture coordinates, if applicable:
     osg::Vec2Array* skirtTexCoords = 0L;
@@ -580,7 +683,6 @@ SinglePassTerrainTechnique::createGeometry()
             {
                 float value = 0.0f;
                 validValue = elevationLayer->getValidValue(i_equiv,j_equiv, value);
-                // OE_INFO<<"i="<<i<<" j="<<j<<" z="<<value<<std::endl;
                 ndc.z() = value*scaleHeight;
             }
             
@@ -603,6 +705,27 @@ SinglePassTerrainTechnique::createGeometry()
                 else
                 {
                     // the separate texture space requires separate transformed texcoords for each layer.
+                    for( RenderLayerVector::const_iterator r = renderLayers.begin(); r != renderLayers.end(); ++r )
+                    {
+                        if ( r->_ownsTexCoords )
+                        {
+                            //if ( r->_locator.get() != _masterLocator.get() )
+                            //if ( r->_locator->isEr->_locator != masterTextureLocator _masterLocator.get() )
+                            if ( !r->_locator->isEquivalentTo( *masterTextureLocator.get() ) )
+                            {
+                                osg::Vec3d color_ndc;
+                                osgTerrain::Locator::convertLocalCoordBetween( *masterTextureLocator.get(), ndc, *r->_locator.get(), color_ndc );
+                                r->_texCoords->push_back( osg::Vec2( color_ndc.x(), color_ndc.y() ) );
+                            }
+                            else
+                            {
+                                r->_texCoords->push_back( osg::Vec2( ndc.x(), ndc.y() ) );
+                            }
+                        }
+                    }
+
+#if 0
+                    // the separate texture space requires separate transformed texcoords for each layer.
                     for( int layerNum = 0; layerNum < numColorLayers; ++layerNum )
                     {
                         osg::Vec2Array* texCoords = layerTexCoords[layerNum].get();
@@ -621,6 +744,7 @@ SinglePassTerrainTechnique::createGeometry()
                             }
                         }
                     }
+#endif
                 }
 
                 if (elevations.valid())
@@ -659,6 +783,7 @@ SinglePassTerrainTechnique::createGeometry()
         createSkirt = false;
     
     // New separated skirts.
+    // TODO: this only generates texture coordinates based on the first texture layer.
     if ( createSkirt )
     {        
         // build the verts first:
@@ -679,11 +804,9 @@ SinglePassTerrainTechnique::createGeometry()
             }
             else
             {
-                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
-                {
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                }
+                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
+                skirtTexCoords->push_back( tc );
+                skirtTexCoords->push_back( tc );
             }
         }
 
@@ -701,11 +824,9 @@ SinglePassTerrainTechnique::createGeometry()
             }
             else
             {
-                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
-                {
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                }
+                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
+                skirtTexCoords->push_back( tc );
+                skirtTexCoords->push_back( tc );
             }
         }
 
@@ -723,11 +844,9 @@ SinglePassTerrainTechnique::createGeometry()
             }
             else
             {
-                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
-                {
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                }
+                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
+                skirtTexCoords->push_back( tc );
+                skirtTexCoords->push_back( tc );
             }
         }
 
@@ -745,18 +864,15 @@ SinglePassTerrainTechnique::createGeometry()
             }
             else
             {
-                for( int layerNum = 0; layerNum < layerTexCoords.size(); ++layerNum )
-                {
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                    skirtTexCoords->push_back( (*layerTexCoords[layerNum].get())[orig_i] );
-                }
+                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
+                skirtTexCoords->push_back( tc );
+                skirtTexCoords->push_back( tc );
             }
         }
 
         skirt->setVertexArray( skirtVerts );
         skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, 0, skirtVerts->size() ) );
     }
-
 
     bool recalcNormals = elevationLayer != NULL;
 

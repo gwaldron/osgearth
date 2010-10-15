@@ -50,31 +50,6 @@ struct MapNodeMapCallbackProxy : public MapCallback
 
 //---------------------------------------------------------------------------
 
-#if 0
-namespace osgEarth
-{
-    struct MapNodeMapLayerController : public MapLayerController
-    {
-        MapNodeMapLayerController( MapNode* mapNode ) : _node(mapNode) { }
-
-        void updateOpacity( MapLayer* layer ) 
-        {
-            _node->getTerrainEngine()->updateLayerOpacity( layer );
-        }
-
-        void updateEnabled( MapLayer* layer)
-        {
-            _node->getTerrainEngine()->updateLayerEnabled( layer );
-        }
-
-    private:
-        MapNode* _node;
-    };
-}
-#endif
-
-//---------------------------------------------------------------------------
-
 class RemoveBlacklistedFilenamesVisitor : public osg::NodeVisitor
 {
 public:

@@ -88,8 +88,11 @@ namespace osgEarth
       return value ? "true" : "false";
     }
 
-    // A template for defining "optional" class members. An optional member has a default value
-    // and a flag indicating whether the member is "set".
+    /**
+     * A template for defining "optional" class members. An optional member has a default value
+     * and a flag indicating whether the member is "set".
+     * This is used extensively in osgEarth's ConfigOptions subsystem.
+     */
     template<typename T> struct optional {
         optional() : _set(false), _value(T()), _defaultValue(T()) { }
         optional(T defaultValue) : _set(false), _value(defaultValue), _defaultValue(defaultValue) { }
@@ -126,7 +129,7 @@ namespace osgEarth
         typedef T* optional::*unspecified_bool_type;
 
     public:
-        operator unspecified_bool_type() const { return 0; } //return valid()? &ref_ptr::_ptr : 0; }
+        operator unspecified_bool_type() const { return 0; }
     };
 
 }

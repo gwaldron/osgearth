@@ -32,6 +32,9 @@ namespace osgEarth
 {
     class TileKey;
 
+    /**
+     * Configuration options for initializing a Profile.
+     */
     class OSGEARTH_EXPORT ProfileOptions : public ConfigOptions
     {
     public:
@@ -67,15 +70,6 @@ namespace osgEarth
         optional<int>& numTilesHighAtLod0() { return _numTilesHighAtLod0; }
         const optional<int>& numTilesHighAtLod0() const { return _numTilesHighAtLod0; }
 
-        /////** Gets the spatial extents of the profile */
-        //double xMin() const { return _bounds->xMin(); }
-        //double yMin() const { return _bounds->yMin(); }
-        //double xMax() const { return _bounds->xMax(); }
-        //double yMax() const { return _bounds->yMax(); }
-
-        /** Serialize to configuration object */
-        //Config getConfig( const std::string& name ="profile" ) const;
-
     public:
         Config getConfig() const;
 
@@ -95,69 +89,6 @@ namespace osgEarth
         optional<int>         _numTilesWideAtLod0;
         optional<int>         _numTilesHighAtLod0;
     };
-
-#if 0
-    /**
-     * Configures a geospatial profile, defining the spatial reference and tile layout
-     * structure of map content.
-     */
-    class OSGEARTH_EXPORT ProfileOptions
-    {
-    public:
-        /** Constructs an empty (undefined) profile configuration */
-        ProfileOptions();
-
-        /** Materialize from configuration object */
-        ProfileOptions( const Config& conf );
-
-        /** Constructs a profile configuration and sets the named profile. */
-        ProfileOptions( const std::string& named_profile );
-
-        /** Returns true if this configuration is well-defined and usable */
-        bool defined() const;
-
-        /** Gets the optional Well-Known Profile string. */
-        optional<std::string>& namedProfile() { return _namedProfile; }
-        const optional<std::string>& namedProfile() const { return _namedProfile; }
-
-        /** Gets the spatial reference system initialization string to use for the profile. */
-        optional<std::string>& srsString() { return _srsInitString; }
-        const optional<std::string>& srsString() const { return _srsInitString; }
-
-        /** Gets the vertical spatial reference init string for this profile. */
-        optional<std::string>& vsrsString() { return _vsrsInitString; }
-        const optional<std::string>& vsrsString() const { return _vsrsInitString; }
-
-        /** Geospatial bounds for this profile's extent */
-        optional<Bounds>& bounds() { return _bounds; }
-        const optional<Bounds>& bounds() const { return _bounds; }
-
-        /** Number of tiles in the X axis at LOD 0 */
-        optional<int>& numTilesWideAtLod0() { return _numTilesWideAtLod0; }
-        const optional<int>& numTilesWideAtLod0() const { return _numTilesWideAtLod0; }
-
-        /** Number of tiles on the Y axis at LOD 0 */
-        optional<int>& numTilesHighAtLod0() { return _numTilesHighAtLod0; }
-        const optional<int>& numTilesHighAtLod0() const { return _numTilesHighAtLod0; }
-
-        ///** Gets the spatial extents of the profile */
-        double xMin() const { return _bounds->xMin(); }
-        double yMin() const { return _bounds->yMin(); }
-        double xMax() const { return _bounds->xMax(); }
-        double yMax() const { return _bounds->yMax(); }
-
-        /** Serialize to configuration object */
-        Config getConfig( const std::string& name ="profile" ) const;
-
-    private:
-        optional<std::string> _namedProfile;
-        optional<std::string> _srsInitString;
-        optional<std::string> _vsrsInitString;
-        optional<Bounds>      _bounds;
-        optional<int>         _numTilesWideAtLod0;
-        optional<int>         _numTilesHighAtLod0;
-    };
-#endif
 
     /**
      * A "profile" defines the layout of a data source. The profile conveys the

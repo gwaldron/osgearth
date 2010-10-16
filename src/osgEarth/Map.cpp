@@ -672,7 +672,7 @@ s_createHeightField(const TileKey& key,
                     const Profile* mapProfile,
                     bool fallback,
                     ElevationInterpolation interpolation,
-                    Map::SamplePolicy samplePolicy,
+                    ElevationSamplePolicy samplePolicy,
                     ProgressCallback* progress) 
 {
 	osg::HeightField *result = NULL;
@@ -814,11 +814,11 @@ s_createHeightField(const TileKey& key,
                 //The list of elevations only contains valid values
                 if (elevations.size() > 0)
                 {
-                    if (samplePolicy == Map::FIRST_VALID)
+                    if (samplePolicy == SAMPLE_FIRST_VALID)
                     {
                         elevation = elevations[0];
                     }
-                    else if (samplePolicy == Map::HIGHEST)
+                    else if (samplePolicy == SAMPLE_HIGHEST)
                     {
                         elevation = -FLT_MAX;
                         for (unsigned int i = 0; i < elevations.size(); ++i)
@@ -826,7 +826,7 @@ s_createHeightField(const TileKey& key,
                             if (elevation < elevations[i]) elevation = elevations[i];
                         }
                     }
-                    else if (samplePolicy == Map::LOWEST)
+                    else if (samplePolicy == SAMPLE_LOWEST)
                     {
                         elevation = FLT_MAX;
                         for (unsigned i = 0; i < elevations.size(); ++i)
@@ -834,7 +834,7 @@ s_createHeightField(const TileKey& key,
                             if (elevation > elevations[i]) elevation = elevations[i];
                         }
                     }
-                    else if (samplePolicy == Map::AVERAGE)
+                    else if (samplePolicy == SAMPLE_AVERAGE)
                     {
                         elevation = 0.0;
                         for (unsigned i = 0; i < elevations.size(); ++i)
@@ -879,7 +879,7 @@ osg::HeightField*
 Map::createHeightField( const TileKey& key,
                         bool fallback,
                         ElevationInterpolation interpolation,
-                        SamplePolicy samplePolicy,
+                        ElevationSamplePolicy samplePolicy,
                         ProgressCallback* progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
@@ -989,7 +989,7 @@ osg::HeightField*
 MapFrame::createHeightField(const TileKey& key,
                             bool fallback,
                             ElevationInterpolation interpolation,
-                            Map::SamplePolicy samplePolicy,
+                            ElevationSamplePolicy samplePolicy,
                             ProgressCallback* progress) const
 {
     return s_createHeightField( key, _elevationLayers, _mapInfo.getProfile(), fallback, interpolation, samplePolicy, progress );

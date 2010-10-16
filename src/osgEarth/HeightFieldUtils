@@ -16,7 +16,6 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
 #ifndef OSGEARTH_HEIGHTFIELDUTILS_H
 #define OSGEARTH_HEIGHTFIELDUTILS_H
 
@@ -28,7 +27,9 @@ namespace osgEarth
 {
 #define NO_DATA_VALUE -FLT_MAX
 
-
+    /**
+     * Heightfield interpolation methods.
+     */
     enum OSGEARTH_EXPORT ElevationInterpolation
     {
         INTERP_AVERAGE,
@@ -37,14 +38,31 @@ namespace osgEarth
         INTERP_TRIANGULATE
     };
 
+    /**
+     * Heightfield stack sampling policy
+     */
+    enum OSGEARTH_EXPORT ElevationSamplePolicy
+    {
+        SAMPLE_FIRST_VALID,
+        SAMPLE_HIGHEST,
+        SAMPLE_LOWEST,
+        SAMPLE_AVERAGE
+    };
+
     class OSGEARTH_EXPORT HeightFieldUtils
     {
     public:
+        /**
+         * Gets the interpolated height value at the specified fractional pixel position.
+         */
         static float getHeightAtPixel(
             const osg::HeightField* hf, 
             double c, double r, 
             ElevationInterpolation interpoltion = INTERP_BILINEAR);
         
+        /**
+         * Gets the interpolated height value at the specific geolocation.
+         */
         static float getHeightAtLocation(
             const osg::HeightField* hf, 
             double x, double y, 
@@ -62,9 +80,16 @@ namespace osgEarth
             double nx, double ny,
             ElevationInterpolation interp = INTERP_BILINEAR);
 
-
+        /**
+         * Scales all the height values in a heightfield from scalar units to "linear degrees".
+         * The only purpose of this is to show reasonable height values in a projected
+         * Plate Carre map (in which vertical units are not well defined).
+         */
         static void scaleHeightFieldToDegrees( osg::HeightField* hf );
 
+        /**
+         * Subsamples a heightfield to the specified extent.
+         */
         static osg::HeightField* createSubSample(
             osg::HeightField* input, const class GeoExtent& inputEx,
             const class GeoExtent& outputEx,
@@ -82,7 +107,7 @@ namespace osgEarth
     };
 
     /**
-    *A collection of ValidDataOperators.  All operators must pass to be considered valid.
+    * A collection of ValidDataOperators.  All operators must pass to be considered valid.
     */
     struct OSGEARTH_EXPORT CompositeValidValueOperator : public osgTerrain::ValidDataOperator
     {

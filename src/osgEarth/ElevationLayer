@@ -65,15 +65,31 @@ namespace osgEarth
 
     //--------------------------------------------------------------------
 
+    /**
+     * A map terrain layer containing elevation grid heightfields.
+     */
     class OSGEARTH_EXPORT ElevationLayer : public TerrainLayer
     {
     public:
+        /**
+         * Constructs a new elevation layer with the specified options. It expects
+         * the layer options to contain a reference to the neccesary driver options.
+         */
         ElevationLayer( const ElevationLayerOptions& options );
 
+        /**
+         * Constructs a new elevation layer with the specific name and driver options.
+         * The layer will load its driver by using the tilesource options.
+         */
         ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions );
 
+        /**
+         * Constructs a new elevation layer with the specified layer options and with a custom
+         * TileSource instance created by the user.
+         */
         ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
 
+        /** Gets the initialization options with which the layer was created. */
         const ElevationLayerOptions& getElevationLayerOptions() const { return _options; }
         virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
 
@@ -83,14 +99,12 @@ namespace osgEarth
         /** Removes a property notification callback from this layer */
         void removeCallback( ElevationLayerCallback* cb );
 
-    public: // properties
-
-
     public: // methods
 
         /**
-         * Creates a GeoHeightField for this MapLayer.
-         * The returned HeightField will always match the geospatial extents of the incoming TileKey.
+         * Creates a GeoHeightField for this layer that corresponds to the extents and LOD 
+         * in the specified TileKey. The returned HeightField will always match the geospatial
+         * extents of that TileKey.
          */
         osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress = 0);
 

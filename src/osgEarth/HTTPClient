@@ -34,6 +34,9 @@
 
 namespace osgEarth
 {
+    /**
+     * Proxy server configuration.
+     */
     class OSGEARTH_EXPORT ProxySettings
     {
     public:
@@ -70,25 +73,29 @@ namespace osgEarth
     class OSGEARTH_EXPORT HTTPRequest
     {
     public:
+        /** Constructs a new HTTP request that will acces the specified base URL. */
         HTTPRequest( const std::string& url );
 
+        /** copy constructor. */
         HTTPRequest( const HTTPRequest& rhs );
 
+        /** Adds an HTTP parameter to the request query string. */
         void addParameter( const std::string& name, const std::string& value );
         void addParameter( const std::string& name, int value );
         void addParameter( const std::string& name, double value );
         
         typedef std::map<std::string,std::string> Parameters;
 
+        /** Ready-only access to the parameter list (as built with addParameter) */
         const Parameters& getParameters() const;
 
+        /** Gets a copy of the complete URL (base URL + query string) for this request */
         std::string getURL() const;
         
     private:
         Parameters _parameters;
         std::string _url;
     };
-
 
     /**
      * An HTTP response object for use with the HTTPClient class - supports
@@ -105,26 +112,37 @@ namespace osgEarth
         };
 
     public:
+        /** Constructs a response with the specified HTTP response code */
         HTTPResponse( long code =0L );
 
+        /** Copy constructor */
         HTTPResponse( const HTTPResponse& rhs );
 
+        /** Gets the HTTP response code (Code) in this response */
         long getCode() const;
 
+        /** True is the HTTP response code is OK (200) */
         bool isOK() const;
 
+        /** True if the request associated with this response was cancelled before it completed */
         bool isCancelled() const;
 
+        /** Gets the number of parts in a (possibly multipart mime) response */
         unsigned int getNumParts() const;
 
+        /** Gets the input stream for the nth part in the response */
         std::istream& getPartStream( unsigned int n ) const;
 
+        /** Gets the nth response part as a string */
         std::string getPartAsString( unsigned int n ) const;
 
+        /** Gets the length of the nth response part */
         unsigned int getPartSize( unsigned int n ) const;
         
+        /** Gets the HTTP header associated with the nth multipart/mime response part */
         const std::string& getPartHeader( unsigned int n, const std::string& name ) const;
 
+        /** Gets the master mime-type returned by the request */
         const std::string& getMimeType() const;
 
     private:
@@ -145,7 +163,13 @@ namespace osgEarth
         friend class HTTPClient;
     };
 
-
+    /**
+     * Utility class for making HTTP requests.
+     *
+     * TODO: This class will actually read data from disk as well, and therefore should
+     * probably be renamed. It analyzes the URI and decides whether to make an  HTTP request
+     * or to read from disk.
+     */
     class OSGEARTH_EXPORT HTTPClient : public osg::Referenced
     {
     public:
@@ -160,8 +184,10 @@ namespace osgEarth
             RESULT_UNKNOWN_ERROR
         };
 
-        // returns true is the result code represents a recoverable
-        // situation, i.e. one in which retrying might work.
+        /**
+         * Returns true is the result code represents a recoverable situation,
+         * i.e. one in which retrying might work.
+         */
         static bool isRecoverable( ResultCode code )
         {
             return
@@ -184,24 +210,44 @@ namespace osgEarth
                 "Unknown error";
         }
 
+        /** Gest the user-agent string that all HTTP requests will use.
+            TODO: This should probably move into the Registry */
 		static const std::string& getUserAgent();
+
+        /** Sets a user-agent string to use in all HTTP requests.
+            TODO: This should probably move into the Registry */
 		static void setUserAgent(const std::string& userAgent);
+
+        /** Sets up proxy info to use in all HTTP requests.
+            TODO: This should probably move into the Registry */
 		static void setProxySettings( const ProxySettings &proxySettings );
 
 
     public:
+        /**
+         * Reads an image. Based on the structure of the URI, it will either try to fetch the
+         * data using HTTP or simply read the file from disk.
+         */
         static ResultCode readImageFile(
             const std::string& uri,
             osg::ref_ptr<osg::Image>& output,
             const osgDB::ReaderWriter::Options* options = 0,
             ProgressCallback* callback = 0 );
 
+        /**
+         * Reads an osg::Node. Based on the structure of the URI, it will either try to fetch the
+         * data using HTTP or simply read the file from disk.
+         */
         static ResultCode readNodeFile(
             const std::string& uri,
             osg::ref_ptr<osg::Node>& output,
             const osgDB::ReaderWriter::Options* options = 0,
             ProgressCallback* callback = 0 );
 
+        /**
+         * Reads a string. Based on the structure of the URI, it will either try to fetch the
+         * data using HTTP or simply read the file from disk.
+         */
         static ResultCode readString(
             const std::string& uri,
             std::string& output,

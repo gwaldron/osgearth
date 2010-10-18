@@ -23,10 +23,10 @@
 #include <osgEarth/Map>
 #include <vector>
 
-using namespace osgEarth;
-
 namespace osgEarthUtil
 {
+    using namespace osgEarth;
+
     /**
      * Implements a map graticule. 
      * 

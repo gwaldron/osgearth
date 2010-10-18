@@ -25,10 +25,10 @@
 #include <osg/Matrix>
 #include <list>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+
     /**
      * Context within which a chain of filters is executed.
      */

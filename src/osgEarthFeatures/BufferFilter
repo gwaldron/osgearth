@@ -27,11 +27,11 @@
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osg/Geode>
 
-using namespace osgEarth;
-using namespace osgEarth::Symbology;
-
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
     /**
      * The buffer geometry operation takes each input vector shape and applies
      * morphological dilation or erosion to it.

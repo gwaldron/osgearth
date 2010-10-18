@@ -24,10 +24,10 @@
 #include <osg/ref_ptr>
 #include <map>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Symbology 
 {
+    using namespace osgEarth;
+
     /**
      * A stylesheet is a catalog of available Styles.
      */

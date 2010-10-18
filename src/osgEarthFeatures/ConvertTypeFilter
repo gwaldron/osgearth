@@ -25,10 +25,10 @@
 #include <osgEarthFeatures/Filter>
 #include <osg/Geode>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+
     /**
      * This filter will change geometry from one type to another.
      */

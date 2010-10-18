@@ -29,10 +29,10 @@
 #include <osgDB/ReaderWriter>
 #include <list>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+
     class OSGEARTHFEATURES_EXPORT FeatureTileSourceOptions : public TileSourceOptions
     {
     public: // serializable properties

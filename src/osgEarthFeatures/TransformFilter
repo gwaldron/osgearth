@@ -25,10 +25,10 @@
 #include <osgEarthFeatures/Filter>
 #include <osg/BoundingBox>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+
     /**
      * Feature filter that transforms features from one FeatureProfile to 
      * another.

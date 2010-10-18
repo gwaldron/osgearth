@@ -93,11 +93,6 @@ namespace osgEarth
         bool isGeocentric() const;
 
         /**
-         * Gets the underlying map engine that produces geometry for this MapNode.
-         */
-        TerrainEngineNode* getEngineNode() const;
-
-        /**
          * Accesses the group node that contains all the ModelLayers.
          */
         osg::Group* getModelLayerGroup();

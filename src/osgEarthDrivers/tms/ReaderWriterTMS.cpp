@@ -56,6 +56,11 @@ public:
         const Profile* result = NULL;
 
         std::string tmsPath = _options.url().value();
+        if ( tmsPath.empty() )
+        {
+            OE_WARN << LC << "Fail: TMS driver requires a valid \"url\" property" << std::endl;
+            return;
+        }
 
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the url together
@@ -94,7 +99,7 @@ public:
 			}
 			else
 			{
-		      OE_WARN << LC << "Error reading TileMap and no overrides set" << std::endl;		
+		      OE_WARN << LC << "Error reading TMS TileMap, and no overrides set (url=" << tmsPath << ")" << std::endl;		
 			  return;
 			}
 		}

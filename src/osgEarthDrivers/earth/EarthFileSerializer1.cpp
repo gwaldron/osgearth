@@ -26,9 +26,9 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     // piece together a MapOptions, TerrainOptions, and MapNodeOptions:
     Config mapOptionsConf;
     if ( conf.hasValue("name") )
-        mapOptionsConf.value("name") = conf.value("name");
+        mapOptionsConf.update("name", conf.value("name"));
     if ( conf.hasValue("type") )
-        mapOptionsConf.value("type") = conf.value("type");
+        mapOptionsConf.update("type", conf.value("type"));
 
     Config terrainOptionsConf;
     Config mapNodeOptionsConf;
@@ -63,7 +63,7 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
         else if ( child.key() == "layering_technique" )
         {
             if ( child.value() == "multipass" )
-                terrainOptionsConf.value( "compositor" ) = "multipass";
+                terrainOptionsConf.update( "compositor", "multipass");
         }
     }
     MapOptions mapOptions( mapOptionsConf );

@@ -237,7 +237,7 @@ namespace osgEarth
             return !value(key).empty();
         }
 
-        std::string value( const std::string& key ) const {
+        const std::string value( const std::string& key ) const {
             std::string r = trim(child(key).value());
             if ( r.empty() )
                 r = attr(key);
@@ -392,8 +392,8 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.value( "name" ) = _name;
-            conf.value( "driver" ) = _driver;
+            conf.attr("name") = _name;
+            conf.attr("driver") = _driver;
             return conf;
         }
         virtual void mergeConfig( const Config& conf ) {

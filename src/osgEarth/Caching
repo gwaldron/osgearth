@@ -99,7 +99,7 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = CacheOptions::getConfig();
-            conf.value("path") = _path;
+            conf.update("path", _path);
             conf.updateIfSet("write_world_files", _writeWorldFiles);
             return conf;
         }

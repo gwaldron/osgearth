@@ -22,11 +22,11 @@
 #include <osgEarth/Common>
 #include <osgEarthFeatures/FeatureTileSource>
 
-using namespace osgEarth;
-using namespace osgEarth::Features;
-
 namespace osgEarth { namespace Drivers
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
     class AGGLiteOptions : public FeatureTileSourceOptions // NO EXPORT; header only
     {
     public:

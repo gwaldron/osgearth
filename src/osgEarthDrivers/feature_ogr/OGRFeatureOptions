@@ -22,11 +22,11 @@
 #include <osgEarth/Common>
 #include <osgEarthFeatures/FeatureSource>
 
-using namespace osgEarth;
-using namespace osgEarth::Features;
-
 namespace osgEarth { namespace Drivers
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
     class OGRFeatureOptions : public FeatureSourceOptions // NO EXPORT; header only
     {
     public:

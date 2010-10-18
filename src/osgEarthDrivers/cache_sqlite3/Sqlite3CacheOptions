@@ -23,13 +23,13 @@
 #include <osgEarth/Caching>
 #include <osgEarth/TileSource>
 
-using namespace osgEarth;
-
 // there is leak using the cache if compressed. It's resolved in
 // rev 11609 of osg svn
 
 namespace osgEarth { namespace Drivers
 {
+    using namespace osgEarth;
+
     class Sqlite3CacheOptions : public CacheOptions // NO EXPORT; header only
     {
     public:

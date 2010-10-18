@@ -22,10 +22,11 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
 
-using namespace osgEarth;
 
 namespace osgEarth { namespace Drivers
 {
+    using namespace osgEarth;
+
     class WMSOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:

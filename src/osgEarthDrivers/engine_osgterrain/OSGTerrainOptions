@@ -22,10 +22,10 @@
 #include <osgEarth/Common>
 #include <osgEarth/TerrainOptions>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Drivers
 {
+    using namespace osgEarth;
+
     class OSGTerrainOptions : public TerrainOptions // NO EXPORT (header-only)
     {
     public:

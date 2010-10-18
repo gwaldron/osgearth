@@ -22,11 +22,11 @@
 #include <osgEarth/Common>
 #include <osgEarthFeatures/FeatureModelSource>
 
-using namespace osgEarth;
-using namespace osgEarth::Features;
-
 namespace osgEarth { namespace Drivers
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
     class FeatureStencilModelOptions : public FeatureModelSourceOptions // NO EXPORT; header only
     {
     public: // properties

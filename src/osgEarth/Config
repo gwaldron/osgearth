@@ -351,7 +351,7 @@ namespace osgEarth
         ConfigOptions( const ConfigOptions& rhs )
             : _conf( rhs.getConfig() ) { }
 
-        ConfigOptions& ConfigOptions::operator = ( const ConfigOptions& rhs ) {
+        ConfigOptions& operator = ( const ConfigOptions& rhs ) {
             if ( this != &rhs ) {
                 _conf = rhs.getConfig();
                 mergeConfig( _conf );

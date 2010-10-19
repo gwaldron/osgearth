@@ -28,6 +28,33 @@ using namespace osgEarth;
 
 #define LC "[VirtualProgram] "
 
+//------------------------------------------------------------------------
+
+namespace
+{
+    /** A hack for OSG 2.8.x to get access to the state attribute vector. */
+    class StateHack : public osg::State 
+    {
+    public:        
+        typedef std::pair<const osg::StateAttribute*,osg::StateAttribute::OverrideValue> AttributePair;
+        typedef std::vector<AttributePair> AttributeVec;
+
+        AttributeVec& getAttributeVec( const osg::StateAttribute* attribute ) 
+        {
+            AttributeStack& as = _attributeMap[ attribute->getTypeMemberPair() ];
+            return as.attributeVec; 
+        }
+
+        static AttributeVec& GetAttributeVec( osg::State& state, const osg::StateAttribute* attribute ) 
+        {
+            StateHack* sh = reinterpret_cast< StateHack* >( &state );
+            return sh->getAttributeVec( attribute );
+        }
+    };
+}
+
+//------------------------------------------------------------------------
+
 // If graphics board has program linking problems set MERGE_SHADERS to 1
 // Merge shaders can be used to merge shaders strings into one shader. 
 #define MERGE_SHADERS 0
@@ -90,7 +117,8 @@ VirtualProgram::apply( osg::State & state ) const
     if( _shaderMap.empty() ) // Virtual Program works as normal Program
         return Program::apply( state );
 
-    osg::State::AttributeVec* av = &state.getAttributeVec(this);
+    StateHack::AttributeVec* av = &StateHack::GetAttributeVec( state, this );
+    //osg::State::AttributeVec* av = &state.getAttributeVec(this);
 
 #if NOTIFICATION_MESSAGES
     std::ostream &os  = osg::notify( osg::NOTICE );
@@ -98,7 +126,7 @@ VirtualProgram::apply( osg::State & state ) const
 #endif
 
     ShaderMap shaderMap;
-    for( osg::State::AttributeVec::iterator i = av->begin(); i != av->end(); ++i )
+    for( StateHack::AttributeVec::iterator i = av->begin(); i != av->end(); ++i )
     {
         const osg::StateAttribute* sa = i->first;
         const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );

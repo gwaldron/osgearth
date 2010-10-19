@@ -35,6 +35,8 @@ namespace osgEarth
 
         bool requiresUnitTextureSpace() const { return false; }
 
+        bool usesShaderComposition() const { return _useGPU; }
+
         void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
 
         bool supportsLayerUpdate() const { return true; }

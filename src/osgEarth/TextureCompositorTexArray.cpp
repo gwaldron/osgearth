@@ -20,6 +20,7 @@
 #include <osgEarth/TextureCompositorTexArray>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderComposition>
 #include <osg/Texture2DArray>
 #include <vector>
 
@@ -29,97 +30,8 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-static char s_source_vertMain[] =
-    
-    "void main(void) \n"
-    "{ \n"
-    "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
-    "    gl_Position = ftransform(); \n"
-    "} \n";
-
-//------------------------------------------------------------------------
-
-#if 0
-static char s_source_fragMain[] =
-
-    "uniform float region[256]; \n"
-    "uniform int   osgearth_region_count; \n"
-    "uniform sampler2DArray tex0; \n"
-
-    "uniform float osgearth_imagelayer_opacity[128]; \n"
-
-    "void main(void) \n"
-    "{ \n"
-    "    vec3 color = vec3(1,1,1); \n"
-    "    for(int i=0; i<osgearth_region_count; i++) \n"
-    "    { \n"
-    "        int j = 8*i; \n"
-    "        float tx   = region[j];   \n"
-    "        float ty   = region[j+1]; \n"
-    "        float tw   = region[j+2]; \n"
-    "        float th   = region[j+3]; \n"
-    "        float xoff = region[j+4]; \n"
-    "        float yoff = region[j+5]; \n"
-    "        float xsca = region[j+6]; \n"
-    "        float ysca = region[j+7]; \n"
-
-    "        float opac = osgearth_imagelayer_opacity[i]; \n"
-
-    "        float u = tx + ( xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
-    "        float v = ty + ( yoff + ysca * gl_TexCoord[0].t ) * th; \n"
-
-    "        vec4 texel = texture2DArray( tex0, vec3(u,v,i) ); \n"
-    "        color = mix(color, texel.rgb, texel.a * opac); \n"
-    "    } \n"
-    "    gl_FragColor = vec4(color, 1); \n"
-    "} \n";
-#endif
-
-#if 0
-static std::string
-s_createFragShader( int numImageLayers )
-{
-    std::stringstream buf;
-
-    buf << "#version 130 \n"
-        << "#extension GL_EXT_gpu_shader4 : enable \n"
-
-        << "uniform float region[" << numImageLayers*8 << "]; \n"
-        << "uniform sampler2DArray tex0; \n"
-        << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n"
-
-        << "void main(void) \n"
-        << "{ \n"
-        <<     "vec3 color = vec3(1,1,1); \n"
-        <<     "float u, v; \n"
-        <<     "vec4 texel; \n"
-        <<     "for(int i=0; i<"<< numImageLayers <<"; i++) { \n"
-        <<         "int j = 8*i; \n"
-        <<         "float tx = region[j]; \n"
-        <<         "float ty = region[j+1]; \n"
-        <<         "float tw = region[j+2]; \n"
-        <<         "float th = region[j+3]; \n"
-        <<         "float xoff = region[j+4]; \n"
-        <<         "float yoff = region[j+5]; \n"
-        <<         "float xsca = region[j+6]; \n"
-        <<         "float ysca = region[j+7]; \n"
-        <<         "float opac = osgearth_imagelayer_opacity[i]; \n"
-        <<         "float u = tx + (xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
-        <<         "float v = ty + (yoff + ysca * gl_TexCoord[0].t ) * th; \n"
-        <<         "vec4 texel = texture2DArray( tex0, vec3(u,v,i) ); \n"
-        <<         "color = mix(color, texel.rgb, texel.a * opac); \n"
-        <<    "} \n"
-        <<    "gl_FragColor = vec4(color,1); \n"
-        << "} \n";
-
-    std::string str = buf.str();
-    OE_NOTICE << std::endl << str;
-    return str;
-}
-#endif
-
-static std::string
-s_createFragShader( int numImageLayers )
+static osg::Shader*
+s_createTextureFragShaderFunction( int numImageLayers )
 {
     std::stringstream buf;
 
@@ -130,7 +42,7 @@ s_createFragShader( int numImageLayers )
         << "uniform float[] region; \n"
         << "uniform float[] osgearth_imagelayer_opacity; \n"
 
-        << "void main(void) \n"
+        << "vec4 osgearth_frag_texture(void) \n"
         << "{ \n"
         <<     "vec3 color = vec3(1,1,1); \n"
         <<     "float u, v; \n"
@@ -145,12 +57,12 @@ s_createFragShader( int numImageLayers )
             << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"]); \n";
     }
 
-    buf <<     "gl_FragColor = vec4(color,1); \n"
+    buf <<     "return vec4(color,1); \n"
         << "} \n";
 
     std::string str = buf.str();
     //OE_INFO << std::endl << str;
-    return str;
+    return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 
 //------------------------------------------------------------------------
@@ -290,8 +202,6 @@ TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, co
 void
 TextureCompositorTexArray::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
-    osg::Program* program = new osg::Program();
-    program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
-    stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
+    VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
+    vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(numImageLayers) );
 }

@@ -1,0 +1,96 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_SHADER_COMPOSITION_H
+#define OSGEARTH_SHADER_COMPOSITION_H 1
+
+#include <osgEarth/Common>
+#include <string>
+#include <map>
+#include <osg/Shader>
+#include <osg/Program>
+
+namespace osgEarth
+{
+    /**
+     * Library of shaders to use in the terrain engine. Stored in the registry.
+     */
+    class OSGEARTH_EXPORT ShaderLibrary : public osg::Referenced
+    {
+    public:
+        virtual osg::Shader* createVertexShaderMain( bool hasPreprocess =false, bool hasPostprocess =false ) const;
+        virtual osg::Shader* createFragmentShaderMain( bool hasPreprocess =false, bool hasPostprocess =false ) const;
+        
+        virtual osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
+
+        virtual osg::Shader* createDefaultLightingVertexShader() const;
+        virtual osg::Shader* createDefaultLightingFragmentShader() const;
+    };
+
+    /**
+     * VirtualProgram enables basic GLSL shader composition within OSG.
+     *
+     * VirtualProgram has been adapted from the VirtualProgram shader composition work
+     * originally done by Wojciech Lewandowski and found in OSG's osgvirtualprogram
+     * example, and is used by permission.
+     */
+    class OSGEARTH_EXPORT VirtualProgram : public osg::Program
+    {
+    public: 
+        VirtualProgram( unsigned int mask = 0xFFFFFFFFUL );
+
+        VirtualProgram( const VirtualProgram& VirtualProgram, 
+                        const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
+
+        META_StateAttribute( osgCandidate, VirtualProgram, Type( PROGRAM ) )
+
+        /** return -1 if *this < *rhs, 0 if *this==*rhs, 1 if *this>*rhs.*/
+        virtual int compare(const StateAttribute& sa) const
+        {
+           // check the types are equal and then create the rhs variable
+           // used by the COMPARE_StateAttribute_Parameter macros below.
+           COMPARE_StateAttribute_Types(VirtualProgram,sa)
+
+           // compare each parameter in turn against the rhs.
+           COMPARE_StateAttribute_Parameter(_mask)
+           COMPARE_StateAttribute_Parameter(_shaderMap)
+           return 0; // passed all the above comparison macros, must be equal.
+        }
+
+        /** If enabled, activate our program in the GL pipeline,
+         * performing any rebuild operations that might be pending. */
+        virtual void apply(osg::State& state) const;
+
+        osg::Shader* getShader( const std::string& shaderSemantic, osg::Shader::Type type );   
+
+        osg::Shader* setShader( const std::string& shaderSemantic, osg::Shader* shader );
+
+    protected:
+        typedef std::vector< osg::ref_ptr< osg::Shader > >            ShaderList;
+        typedef std::pair< std::string, osg::Shader::Type >           ShaderSemantic;
+        typedef std::map< ShaderSemantic, osg::ref_ptr<osg::Shader> > ShaderMap;
+        typedef std::map< ShaderList, osg::ref_ptr<osg::Program> >    ProgramMap;
+
+        mutable ProgramMap                   _programMap;
+        ShaderMap                            _shaderMap;
+        unsigned int                         _mask;
+    };
+} // namespace osgEarth
+
+#endif // OSGEARTH_SHADER_COMPOSITION_H

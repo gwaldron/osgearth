@@ -20,6 +20,7 @@
 #include <osgEarth/MaskNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderComposition>
 
 using namespace osgEarth;
 

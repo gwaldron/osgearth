@@ -36,9 +36,9 @@ namespace osgEarth
     public:
         virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const =0;
 
-        //virtual osg::Program* createProgram( int numImageLayers ) const =0;
-
         virtual bool requiresUnitTextureSpace() const =0;
+
+        virtual bool usesShaderComposition() const =0;
 
         virtual void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const { }
 
@@ -104,6 +104,11 @@ namespace osgEarth
          * support the current technique.
          */
         bool requiresUnitTextureSpace() const;
+
+        /**
+         * Whether the composition technique uses GLSL shader composition.
+         */
+        bool usesShaderComposition() const;
 
         /**
          * Updates a state set with attributes required to support the technique.

@@ -104,8 +104,8 @@ namespace osgEarth
         /**
          * Gets or sets the default shader library.
          */
-        const ShaderLibrary* getShaderLibrary() const;
-        void setShaderLibrary( ShaderLibrary* lib );
+        const ShaderFactory* getShaderFactory() const;
+        void setShaderFactory( ShaderFactory* lib );
 
     protected:
         virtual ~Registry();
@@ -136,7 +136,7 @@ namespace osgEarth
 
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
-        osg::ref_ptr<ShaderLibrary> _shaderLib;
+        osg::ref_ptr<ShaderFactory> _shaderLib;
 
         Capabilities* _caps;
         void initCapabilities();

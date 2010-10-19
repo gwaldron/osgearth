@@ -30,7 +30,7 @@ namespace osgEarth
     /**
      * Library of shaders to use in the terrain engine. Stored in the registry.
      */
-    class OSGEARTH_EXPORT ShaderLibrary : public osg::Referenced
+    class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
     {
     public:
         virtual osg::Shader* createVertexShaderMain( bool hasPreprocess =false, bool hasPostprocess =false ) const;

@@ -633,6 +633,16 @@ getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mod
 void
 OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
+    // Note: no need to sync _update_mapf here, since it gets sync'd whenever there's a 
+    // map callback.
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        _cull_mapf->sync();
+    }
+    TerrainEngineNode::traverse( nv );
+}
+
+#if 0
     if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
         // refresh the update-thread map frame:
@@ -682,6 +692,7 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 
     TerrainEngineNode::traverse( nv );
 }
+#endif
 
 void
 OSGTerrainEngineNode::installShaders()
@@ -693,7 +704,7 @@ OSGTerrainEngineNode::installShaders()
 
     if ( _texCompositor->usesShaderComposition() )
     {
-        const ShaderLibrary* lib = Registry::instance()->getShaderLibrary();
+        const ShaderFactory* lib = Registry::instance()->getShaderFactory();
 
         VirtualProgram* vp = new VirtualProgram();        
 
@@ -733,7 +744,7 @@ OSGTerrainEngineNode::updateTextureCombining()
             }
 
             // first, update the default shader components based on the new layer count:
-            const ShaderLibrary* lib = Registry::instance()->getShaderLibrary();
+            const ShaderFactory* lib = Registry::instance()->getShaderFactory();
             vp->setShader( "osgearth_vert_texture",  lib->createDefaultTextureVertexShader( numImageLayers ) );
 
             // not this one, because the compositor always generates a new one.

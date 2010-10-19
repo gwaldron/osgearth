@@ -197,37 +197,6 @@ VirtualProgram::apply( osg::State & state ) const
 
 //----------------------------------------------------------------------------
 
-#if 0
-static char s_Main_NoPrePost_VertexShaderSource[] =
-"vec4 osgearth_vert_texture( in vec3 position, in vec3 normal );                          \n" //1
-"void osgearth_vert_lighting( in vec3 position, in vec3 normal );                         \n" //2
-"                                                                           \n" //3
-"void main ()                                                               \n" //4
-"{                                                                          \n" //5
-"    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;                \n" //6
-"    vec4 position4 = gl_ModelViewMatrix * gl_Vertex;                       \n" //7
-"    vec3 position = position4.xyz / position4.w;                           \n" //8
-"    vec3 normal = normalize( gl_NormalMatrix * gl_Normal );                \n" //9
-"    gl_TexCoord[0] = osgearth_vert_texture( position, normal );                          \n" //10
-"    osgearth_vert_lighting( position, normal );                                          \n" //11
-"}                                                                          \n";//12
-
-static char s_TexCoordTexture_VertexShaderSource[] =
-"vec4 osgearth_vert_texture( in vec3 position, in vec3 normal )                           \n" //1
-"{                                                                          \n" //2
-"    return gl_TextureMatrix[0] * gl_MultiTexCoord0;                        \n" //3
-"}                                                                          \n";//4
-
-static char s_SphereMapTexture_VertexShaderSource[] =
-"vec4 osgearth_vert_texture( in vec3 position, in vec3 normal )                           \n" //1
-"{                                                                          \n" //2
-"    vec3 u = normalize( position );                                        \n" //3
-"    vec3 r = reflect(u, normal);                                           \n" //4
-"    float m = 2.0 * sqrt(r.x * r.x + r.y * r.y + (r.z+1.0) * (r.z+1.0));   \n" //5
-"    return vec4(r.x / m + 0.5, r.y / m + 0.5, 1.0, 1.0 );                  \n" //6
-"}                                                                          \n";//7
-#endif
-
 static char s_PerVertexLighting_VertexShaderSource[] = 
 "void osgearth_vert_lighting( in vec3 position, in vec3 normal )                 \n" //1
 "{                                                                          \n" //2
@@ -259,26 +228,28 @@ static char s_PerVertexLighting_FragmentShaderSource[] =
 static char s_Main_FragmentShaderSource[] =
 "vec4 osgearth_frag_texture( void );                                                      \n" //1
 "void osgearth_frag_lighting( inout vec4 color );                                         \n" //2
+"uniform bool osgearth_lighting_enabled; \n"
 "                                                                           \n" //3
 "void main ()                                                               \n" //4
 "{                                                                          \n" //5
 "    vec4 color = osgearth_frag_texture();                                                \n" //6
-"    osgearth_frag_lighting( color );                                                     \n" //7
+"    if ( osgearth_lighting_enabled ) \n"
+"        osgearth_frag_lighting( color );                                                     \n" //7
 "    gl_FragColor = color;                                                  \n" //8
 "}                                                                          \n";//9
 
 static char s_SimpleTexture_FragmentShaderSource[] =
-"uniform sampler2D tex0;                                             \n" //1
-"vec4 osgearth_frag_texture( void )                                                       \n" //2
+"uniform sampler2D tex0;                                                    \n" //1
+"vec4 osgearth_frag_texture( void )                                         \n" //2
 "{                                                                          \n" //3
-"    return texture2D( tex0, gl_TexCoord[0].xy );                    \n" //4
-"}                                                                           \n";//4
+"    return texture2D( tex0, gl_TexCoord[0].xy );                           \n" //4
+"}                                                                          \n";//4
 
 static char s_PerFragmentLighting_VertexShaderSource[] =
 "varying vec3 Normal;                                                       \n" //1
 "varying vec3 Position;                                                     \n" //2
 "                                                                           \n" //3
-"void osgearth_vert_lighting( in vec3 position, in vec3 normal )                          \n" //4
+"void osgearth_vert_lighting( in vec3 position, in vec3 normal )            \n" //4
 "{                                                                          \n" //5
 "    Normal = normal;                                                       \n" //6
 "    Position = position;                                                   \n" //7
@@ -288,7 +259,7 @@ static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
 "varying vec3 Normal;                                                       \n" //1
 "varying vec3 Position; // not used for directional lighting                \n" //2
 "                                                                           \n" //3
-"void osgearth_frag_lighting( inout vec4 color )                                          \n" //4
+"void osgearth_frag_lighting( inout vec4 color )                            \n" //4
 "{                                                                          \n" //5
 "    vec3 n = normalize( Normal );                                          \n" //5
 "    float NdotL = dot( n, normalize(gl_LightSource[0].position.xyz) );     \n" //6
@@ -309,11 +280,12 @@ static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
 //------------------------------------------------------------------------
 
 osg::Shader*
-ShaderLibrary::createVertexShaderMain( bool hasPreprocess, bool hasPostprocess ) const
+ShaderFactory::createVertexShaderMain( bool hasPreprocess, bool hasPostprocess ) const
 {
     std::stringstream buf;
     buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ); \n"
-        << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n";
+        << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n"
+        << "uniform bool osgearth_lighting_enabled; \n";
 
     if ( hasPreprocess )
         buf << "void preprocess( in vec3 position, in vec3 normal ); \n";
@@ -331,7 +303,8 @@ ShaderLibrary::createVertexShaderMain( bool hasPreprocess, bool hasPostprocess )
         buf << "preprocess( position, normal ); \n";
 
     buf <<    "osgearth_vert_texture( position, normal ); \n"
-        <<    "osgearth_vert_lighting( position, normal ); \n";
+        <<    "if ( osgearth_lighting_enabled ) \n"
+        <<    "    osgearth_vert_lighting( position, normal ); \n";
     
     if ( hasPostprocess )
         buf << "postprocess( position, normal ); \n";
@@ -343,13 +316,13 @@ ShaderLibrary::createVertexShaderMain( bool hasPreprocess, bool hasPostprocess )
 }
 
 osg::Shader*
-ShaderLibrary::createFragmentShaderMain( bool hasPreprocess, bool hasPostprocess ) const
+ShaderFactory::createFragmentShaderMain( bool hasPreprocess, bool hasPostprocess ) const
 {
     return new osg::Shader( osg::Shader::FRAGMENT, s_Main_FragmentShaderSource );
 }
 
 osg::Shader*
-ShaderLibrary::createDefaultTextureVertexShader( int numTexCoordSets ) const
+ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
 {
     std::stringstream buf;
 
@@ -368,7 +341,7 @@ ShaderLibrary::createDefaultTextureVertexShader( int numTexCoordSets ) const
 }
 
 osg::Shader*
-ShaderLibrary::createDefaultTextureFragmentShader( int numTexImageUnits ) const
+ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 {
     std::stringstream buf;
 
@@ -395,13 +368,13 @@ ShaderLibrary::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 }
 
 osg::Shader*
-ShaderLibrary::createDefaultLightingVertexShader() const
+ShaderFactory::createDefaultLightingVertexShader() const
 {
     return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
 }
 
 osg::Shader*
-ShaderLibrary::createDefaultLightingFragmentShader() const
+ShaderFactory::createDefaultLightingFragmentShader() const
 {
     return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
 }

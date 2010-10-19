@@ -97,6 +97,7 @@ _maxFFPTextureUnits     ( 1 ),
 _maxGPUTextureUnits     ( 1 ),
 _maxGPUTextureCoordSets ( 1 ),
 _maxTextureSize         ( 256 ),
+_maxLights              ( 1 ),
 _supportsGLSL           ( false ),
 _supportsTextureArrays  ( false ),
 _supportsMultiTexture   ( false ),
@@ -137,6 +138,9 @@ _supportsTwoSidedStencil( false )
             }
         }
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
+
+        glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );
+        OE_INFO << LC << "  Max lights = " << _maxLights << std::endl;
 
         _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;

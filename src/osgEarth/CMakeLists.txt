@@ -54,6 +54,7 @@ SET(LIB_PUBLIC_HEADERS
     Registry
     Revisioning
     ShaderComposition
+    ShaderUtils
     SpatialReference
     StringUtils
     TaskService
@@ -113,6 +114,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	Progress.cpp
     Registry.cpp
     ShaderComposition.cpp
+    ShaderUtils.cpp
     SpatialReference.cpp
     TaskService.cpp
     TerrainLayer.cpp

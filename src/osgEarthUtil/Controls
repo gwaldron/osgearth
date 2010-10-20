@@ -92,6 +92,7 @@ namespace osgEarthUtil { namespace Controls
     {
     public:
         virtual void onClick( class Control* control, int mouseButtonMask ) { }
+        virtual void onValueChanged( class Control* control, float value ) { }
     };
 
     typedef std::list< osg::ref_ptr<ControlEventHandler> > ControlEventHandlerList;
@@ -244,6 +245,25 @@ namespace osgEarthUtil { namespace Controls
         osg::ref_ptr<osg::Image> _image;
     };
 
+    class OSGEARTHUTIL_EXPORT SliderControl : public Control
+    {
+    public:
+        SliderControl( float min, float max );
+
+        void setValue( float value );
+        float getValue() const { return _value; }
+
+    public: // Control
+        //virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw( const ControlContext& cx, DrawableList& out );
+
+    protected:
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+    private:
+        float _min, _max, _value;
+    };
+
     typedef std::vector< osg::ref_ptr<Control> > ControlList;
 
     /**
@@ -295,7 +315,7 @@ namespace osgEarthUtil { namespace Controls
         float spacing() const { return _spacing; }
 
         // default add function.
-        virtual void addControl( Control* control ) =0;
+        virtual void addControl( Control* control, int index =-1 ) =0;
 
         // access to the child list.
         virtual const ControlList& children() const =0;
@@ -323,7 +343,7 @@ namespace osgEarthUtil { namespace Controls
         VBox();
 
     public: // Container
-        virtual void addControl( Control* control );
+        virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
 
     public: // Control        
@@ -344,7 +364,7 @@ namespace osgEarthUtil { namespace Controls
         HBox();
 
     public: // Container
-        virtual void addControl( Control* control );
+        virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
 
     public: // Control        

@@ -505,6 +505,79 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
 // ---------------------------------------------------------------------------
 
+SliderControl::SliderControl( float min, float max ) :
+_min(min),
+_max(max),
+_value(0.5f*(min+max))
+{
+    //nop
+}
+
+void
+SliderControl::setValue( float value )
+{
+    //TODO
+}
+
+void
+SliderControl::draw( const ControlContext& cx, DrawableList& out )
+{
+    if ( visible() == true )
+    {
+        osg::Geometry* g = new osg::Geometry();
+
+        float rx = osg::round( _renderPos.x() );
+        float ry = osg::round( _renderPos.y() );
+        float vph = cx._vp->height();
+        float hy = vph - (_renderPos.y() + 0.5 * _renderSize.y());
+
+        osg::Vec3Array* verts = new osg::Vec3Array(8);
+        g->setVertexArray( verts );
+
+        (*verts)[0].set( rx, hy, 0 );
+        (*verts)[1].set( rx + _renderSize.x(), hy, 0 );
+        g->addPrimitiveSet( new osg::DrawArrays( GL_LINES, 0, 2 ) );
+
+        float hx = _renderPos.x() + _renderSize.x() * ( (_value-_min)/(_max-_min) );
+
+        (*verts)[2].set( hx-3, hy-6, 0 );
+        (*verts)[3].set( hx+3, hy-6, 0 );
+        (*verts)[4].set( hx+3, hy+6, 0 );
+        (*verts)[5].set( hx-3, hy+6, 0 );
+        g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 2, 4 ) );
+
+        osg::Vec4Array* c = new osg::Vec4Array(1);
+        (*c)[0] = osg::Vec4f(.75,.75,.75,1);
+        g->setColorArray( c );
+        g->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        out.push_back( g );
+    }
+}
+
+bool
+SliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
+{
+    if ( ea.getEventType() == osgGA::GUIEventAdapter::DRAG )
+    {
+        float relX = ea.getX() - _renderPos.x();
+        float relY = ea.getY() - _renderPos.y();
+
+        _value = _min + (_max-_min) * ( relX/_renderSize.x() );
+
+        for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+        {
+            i->get()->onValueChanged( this, _value );
+        }
+        dirty();
+
+        return true;
+    }
+    return Control::handle( ea, aa, cx );
+}
+
+// ---------------------------------------------------------------------------
+
 Frame::Frame()
 {
     //nop
@@ -691,9 +764,12 @@ VBox::VBox()
 }
 
 void
-VBox::addControl( Control* control )
+VBox::addControl( Control* control, int index )
 {
-    _controls.push_back( control );
+    if ( index < 0 )
+        _controls.push_back( control );
+    else
+        _controls.insert( _controls.begin() + osg::minimum(index,(int)_controls.size()-1), control );
     control->setParent( this );
     dirty();
 }
@@ -770,9 +846,12 @@ HBox::HBox()
 }
 
 void
-HBox::addControl( Control* control )
+HBox::addControl( Control* control, int index )
 {
-    _controls.push_back( control );
+    if ( index < 0 )
+        _controls.push_back( control );
+    else
+        _controls.insert( _controls.begin() + osg::minimum(index,(int)_controls.size()-1), control );
     control->setParent( this );
     dirty();
 }

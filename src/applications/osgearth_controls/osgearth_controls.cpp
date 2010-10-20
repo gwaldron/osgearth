@@ -62,6 +62,19 @@ struct MyClickHandler : public ControlEventHandler
     }
 };
 
+static LabelControl* s_sliderLabel;
+
+struct MySliderHandler : public ControlEventHandler
+{
+    void onValueChanged( Control* control, float value )
+    {
+        std::stringstream buf;
+        buf << (int)value;
+        std::string str = buf.str();
+        s_sliderLabel->setText( str );
+    }
+};
+
 void
 createControls( ControlCanvas* cs )
 {
@@ -104,6 +117,21 @@ createControls( ControlCanvas* cs )
 
         LabelControl* content = new LabelControl( "Here is some text in the upper left control" );
         ul->addControl( content );
+
+        HBox* c2 = new HBox();
+        c2->setPadding( 5 );
+
+        SliderControl* slider = new SliderControl( 0, 100 );
+        slider->setBackColor( .6,0,0,1 );
+        slider->setHeight( 25 );
+        slider->setWidth( 300 );
+        slider->addEventHandler( new MySliderHandler() );
+        c2->addControl( slider );
+
+        s_sliderLabel = new LabelControl();
+        c2->addControl( s_sliderLabel );        
+
+        ul->addControl( c2 );
 
         cs->addControl( ul );
 

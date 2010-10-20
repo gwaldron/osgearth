@@ -127,6 +127,8 @@ osg::StateSet*
 TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
 {
     osg::StateSet* stateSet = new osg::StateSet();
+    if ( layerImages.size() < 1 )
+        return stateSet;
 
     osg::Texture2DArray* texture = new osg::Texture2DArray();
 

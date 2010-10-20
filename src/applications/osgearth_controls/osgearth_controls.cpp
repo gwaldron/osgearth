@@ -111,28 +111,51 @@ createControls( ControlCanvas* cs )
         ul->setFrame( new Frame() );
         ul->setPosition( 20, 20 );
         ul->setPadding( 10 );
-        
-        LabelControl* title = new LabelControl( "Upper left control", 22, osg::Vec4f(1,1,0,1) );
-        ul->addControl( title );
+        {
+            LabelControl* title = new LabelControl( "Upper left control", 22, osg::Vec4f(1,1,0,1) );
+            ul->addControl( title );
 
-        LabelControl* content = new LabelControl( "Here is some text in the upper left control" );
-        ul->addControl( content );
+            LabelControl* content = new LabelControl( "Here is some text in the upper left control" );
+            ul->addControl( content );
 
-        HBox* c2 = new HBox();
-        c2->setPadding( 5 );
+            HBox* c2 = new HBox();
+            c2->setSpacing( 10 );
+            {
+                HSliderControl* slider = new HSliderControl( 0, 100 );
+                slider->setBackColor( .6,0,0,1 );
+                slider->setHeight( 25 );
+                slider->setWidth( 300 );
+                slider->addEventHandler( new MySliderHandler() );
+                c2->addControl( slider );
 
-        SliderControl* slider = new SliderControl( 0, 100 );
-        slider->setBackColor( .6,0,0,1 );
-        slider->setHeight( 25 );
-        slider->setWidth( 300 );
-        slider->addEventHandler( new MySliderHandler() );
-        c2->addControl( slider );
+                s_sliderLabel = new LabelControl();
+                s_sliderLabel->setVertAlign( ALIGN_CENTER );
+                c2->addControl( s_sliderLabel );        
+            }
+            ul->addControl( c2 );
 
-        s_sliderLabel = new LabelControl();
-        c2->addControl( s_sliderLabel );        
+            HBox* c3 = new HBox();
+            c3->setHorizAlign( ALIGN_CENTER );
+            c3->setSpacing( 10 );
+            {
+                HBox* c4 = new HBox();
+                c4->setSpacing( 5 );
+                {
+                    c4->addControl( new CheckBoxControl( true ) );
+                    c4->addControl( new LabelControl( "Checkbox 1" ) );
+                }
+                c3->addControl( c4 );
 
-        ul->addControl( c2 );
-
+                HBox* c5 = new HBox();
+                c5->setSpacing( 5 );
+                {
+                    c5->addControl( new CheckBoxControl( false ) );
+                    c5->addControl( new LabelControl( "Checkbox 2" ) );
+                }
+                c3->addControl( c5 );
+            }
+            ul->addControl( c3 );
+        }
         cs->addControl( ul );
 
         ul->addEventHandler( new MyClickHandler );

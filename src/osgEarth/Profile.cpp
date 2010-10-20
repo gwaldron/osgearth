@@ -45,14 +45,13 @@ _numTilesHighAtLod0( 1 )
 }
 
 ProfileOptions::ProfileOptions( const std::string& namedProfile ) :
-_namedProfile( namedProfile ),
 _srsInitString( "" ),
 _vsrsInitString( "" ),
 _bounds( Bounds() ),
 _numTilesWideAtLod0( 1 ),
 _numTilesHighAtLod0( 1 )
 {
-    //nop
+    _namedProfile = namedProfile; // don't set above
 }
 
 void

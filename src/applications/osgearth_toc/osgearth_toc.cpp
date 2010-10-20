@@ -324,11 +324,10 @@ void createAddLayersMenu(osgWidget::WindowManager* wm, FadeLayerNode* fadeLayerN
         driverOpt.tileSize() = 256;
         driverOpt.tmsType() = "google";
 
-        ImageLayerOptions layerOpt;
-        layerOpt.driver() = driverOpt;
+        ImageLayerOptions layerOpt( "OpenStreetMap", driverOpt );
         layerOpt.profile() = ProfileOptions( "global-mercator" );
 
-        ImageLayer* layer = new ImageLayer( "OpenStreetMap", layerOpt );
+        ImageLayer* layer = new ImageLayer( layerOpt );
         addLayersBox->addWidget( new AddLayerButton( map, view, layer ) );
     }
 

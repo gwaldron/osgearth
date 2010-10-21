@@ -31,6 +31,7 @@ SET(LIB_PUBLIC_HEADERS
     FileUtils
 	FindNode
     GeoData
+    GeoMath
     HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
@@ -92,6 +93,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ElevationLayer.cpp
     FileUtils.cpp
     GeoData.cpp
+    GeoMath.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageLayer.cpp

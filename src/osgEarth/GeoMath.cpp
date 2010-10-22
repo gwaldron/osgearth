@@ -79,3 +79,57 @@ GeoMath::destination(double lat1Rad, double lon1Rad,
     out_lonRad = lon1Rad + atan2(sin(bearingRad)*sin(dR)*cos(lat1Rad), 
                                  cos(dR)-sin(lat1Rad)*sin(out_latRad));
 }
+
+
+double
+GeoMath::rhumbDistance(double lat1Rad, double lon1Rad,
+                       double lat2Rad, double lon2Rad,
+                       double radius)
+{
+    double dLat = (lat2Rad - lat1Rad);
+    double dLon = osg::absolute(lon2Rad - lon1Rad);
+
+    double dPhi = log(tan(lat2Rad/2.0+osg::PI/4.0)/tan(lat1Rad/2.0+osg::PI/4.0));
+    double q = (!osg::isNaN(dLat/dPhi)) ? dLat/dPhi : cos(lat1Rad);  // E-W line gives dPhi=0
+    // if dLon over 180° take shorter rhumb across 180° meridian:
+    if (dLon > osg::PI) dLon = 2.0*osg::PI - dLon;
+    double dist = sqrt(dLat*dLat + q*q*dLon*dLon) * radius; 
+    return dist;
+}
+
+double
+GeoMath::rhumbBearing(double lat1Rad, double lon1Rad,
+                      double lat2Rad, double lon2Rad)
+{
+  double dLon = lon2Rad - lon1Rad;
+  
+  double dPhi = log(tan(lat2Rad/2.0+osg::PI/4.0)/tan(lat1Rad/2.0+osg::PI/4.0));
+  if (osg::absolute(dLon) > osg::PI) dLon = dLon > 0.0 ? -(2.0*osg::PI-dLon) : (2.0*osg::PI+dLon);
+  double brng = atan2(dLon, dPhi);
+  return fmod(brng + 2.0 * osg::PI, 2.0 * osg::PI);
+
+}
+
+void
+GeoMath::rhumbDestination(double lat1Rad, double lon1Rad,
+                          double bearing, double distance,
+                          double &out_latRad, double &out_lonRad,
+                          double radius)
+{ 
+  double R = radius;
+  double d = distance / R;
+
+  double lat2Rad = lat1Rad + d*cos(bearing);
+  double dLat = lat2Rad-lat1Rad;
+  double dPhi = log(tan(lat2Rad/2.0+osg::PI/4.0)/tan(lat1Rad/2.0+osg::PI/4.0));
+  double q = (!osg::isNaN(dLat/dPhi)) ? dLat/dPhi : cos(lat1Rad);  // E-W line gives dPhi=0
+  double dLon = d*sin(bearing)/q;
+  // check for some daft bugger going past the pole
+  if (osg::absolute(lat2Rad) > osg::PI/2.0) lat2Rad = lat2Rad > 0.0 ? osg::PI-lat2Rad : -(osg::PI-lat2Rad);
+  //double lon2Rad = (lon1Rad+dLon+3.0*Math.PI)%(2.0*osg::PI) - osg::PI;
+  double lon2Rad = fmod((lon1Rad+dLon+3.0*osg::PI),(2.0*osg::PI)) - osg::PI;
+
+  out_latRad = lat2Rad;
+  out_lonRad = lon2Rad;
+}
+

@@ -357,7 +357,7 @@ removeDocType(std::string &xmlStr)
     }
 
     //Now, replace the <!DOCTYPE> element with whitespace
-    xmlStr.erase(startIndex, endIndex);
+    xmlStr.erase(startIndex, endIndex - startIndex + 1);
 }
 
 
@@ -377,9 +377,11 @@ XmlDocument::load( std::istream& in )
     buffer[length] = '\0';    
 
     std::string xmlStr(buffer);
+
     //Delete the buffer
     delete[] buffer;    
     removeDocType( xmlStr );
+    //OE_NOTICE << xmlStr;
 
     XmlDocument* doc = NULL;
     xmlDoc.Parse(xmlStr.c_str());    

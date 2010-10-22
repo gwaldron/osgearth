@@ -37,7 +37,8 @@ s_createTextureFragShaderFunction( int numImageLayers )
 {
     std::stringstream buf;
 
-    buf << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n";
+    buf << "uniform float[] osgearth_imagelayer_opacity; \n"
+        << "uniform bool[]  osgearth_imagelayer_enabled; \n";
 
     buf << "uniform sampler2D ";
     for( int i=0; i<numImageLayers; ++i )
@@ -51,8 +52,10 @@ s_createTextureFragShaderFunction( int numImageLayers )
 
         for( int i=0; i<numImageLayers; ++i )
         {
-            buf << "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-                << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n";
+            buf << "if (osgearth_imagelayer_enabled["<< i << "]) { \n"
+                <<     "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
+                <<     "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n"
+                << "} \n";
         }
 
     buf << "return vec4(color,1); \n"

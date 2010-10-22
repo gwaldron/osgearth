@@ -41,6 +41,7 @@ s_createTextureFragShaderFunction( int numImageLayers )
         << "uniform sampler2DArray tex0; \n"
         << "uniform float[] region; \n"
         << "uniform float[] osgearth_imagelayer_opacity; \n"
+        << "uniform bool[]  osgearth_imagelayer_enabled; \n"
 
         << "vec4 osgearth_frag_texture(void) \n"
         << "{ \n"
@@ -51,10 +52,12 @@ s_createTextureFragShaderFunction( int numImageLayers )
     for(int i=0; i<numImageLayers; ++i)
     {
         int j = i*4;
-        buf << "u = region["<< j <<"] + (region["<< j+2 <<"] * gl_TexCoord[0].s); \n"
-            << "v = region["<< j+1 <<"] + (region["<< j+3 <<"] * gl_TexCoord[0].t); \n"
-            << "texel = texture2DArray( tex0, vec3(u,v,"<< i <<") ); \n"
-            << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"]); \n";
+        buf << "if (osgearth_imagelayer_enabled["<< i << "]) { \n"
+            <<     "u = region["<< j <<"] + (region["<< j+2 <<"] * gl_TexCoord[0].s); \n"
+            <<     "v = region["<< j+1 <<"] + (region["<< j+3 <<"] * gl_TexCoord[0].t); \n"
+            <<     "texel = texture2DArray( tex0, vec3(u,v,"<< i <<") ); \n"
+            <<     "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"]); \n"
+            << "} \n";
     }
 
     buf <<     "return vec4(color,1); \n"

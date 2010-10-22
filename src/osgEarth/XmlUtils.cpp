@@ -347,7 +347,6 @@ removeDocType(std::string &xmlStr)
         {
             if (numChildElements == 0)
             {
-                OE_NOTICE << "Found last index " << std::endl;
                 break;
             }
             else

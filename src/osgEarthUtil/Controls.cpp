@@ -1015,9 +1015,9 @@ VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 {
     Container::calcPos( cx, cursor, parentSize );
 
-    osg::Vec2f childCursor( 
-        _renderPos.x() + padding().left(),
-        _renderPos.y() + padding().top() );
+    osg::Vec2f childCursor = _renderPos;
+        //_renderPos.x() + padding().left(),
+        //_renderPos.y() + padding().top() );
 
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
@@ -1100,9 +1100,9 @@ HBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 {
     Container::calcPos( cx, cursor, parentSize );
 
-    osg::Vec2f childCursor( 
-        _renderPos.x() + padding().left(),
-        _renderPos.y() + padding().top() );
+    osg::Vec2f childCursor = _renderPos;
+        //_renderPos.x() + padding().left(),
+        //_renderPos.y() + padding().top() );
 
     // collect all the members
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
@@ -1227,12 +1227,12 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
         }
         
         _renderSize.set(
-            _renderSize.x() + padding().left() + padding().right(),
-            _renderSize.y() + padding().top() + padding().bottom() );
+            _renderSize.x() + padding().x(),
+            _renderSize.y() + padding().y() );
 
         out_size.set(
-            _renderSize.x() + margin().left() + margin().right(),
-            _renderSize.y() + margin().top() + margin().bottom() );
+            _renderSize.x() + margin().x(),
+            _renderSize.y() + margin().y() );
 
         Container::calcSize( cx, out_size );
     }
@@ -1246,9 +1246,9 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
     int numRows = _rows.size();
     int numCols = numRows > 0 ? _rows[0].size() : 0;
 
-    osg::Vec2f childCursor(
-        _renderPos.x() + padding().left(),
-        _renderPos.y() + padding().top() );
+    osg::Vec2f childCursor = _renderPos;
+        //_renderPos.x() + padding().left(),
+        //_renderPos.y() + padding().top() );
 
     for( int r=0; r<numRows; ++r )
     {
@@ -1262,7 +1262,7 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
             }
             childCursor.x() += _colWidths[c] + spacing();
         }
-        childCursor.x() = _renderPos.x() + padding().left();
+        childCursor.x() = _renderPos.x(); // + padding().left();
         childCursor.y() += _rowHeights[r] + spacing();
     }
 }

@@ -2026,37 +2026,68 @@ bool findIntersectionWithPlane(const osg::Vec3d& normal, const osg::Vec3d& pt,
     return true;
 }
 
-// Intersection of circles in the plane
-int circleIntersections(const osg::Vec2d& p0, double r0,
-                        const osg::Vec2d& p1, double r1,
-                        osg::Vec2d* results)
+// Circle of intersection of two spheres. The circle is in the plane
+// normal to the line between the centers.
+bool sphereInterection(const osg::Vec3d& p0, double r0,
+                       const osg::Vec3d& p1, double r1,
+                       osg::Vec3d& resultCenter, double& r)
 {
     using namespace osg;
-    const Vec2d ptvec = (p1 - p0);
-    double d = ptvec.length();
+    Vec3d ptvec = (p1 - p0);
+    double d = ptvec.normalize();
     if (d > r0 + r1)
-        return 0;               // circles are too far apart
+        return false;               // spheres are too far apart
     else if (d < fabs(r0 - r1))
-        return 0;               // One circle is contained in the other
+        return false;               // One sphere is contained in the other
     else if (equivalent(0, d) && equivalent(r0, r1))
-        return -1;              // circles are coincident.
+    {
+        resultCenter = p0;
+        r = r0;
+        return true;              // circles are coincident.
+    }
     // distance from p0 to the line through the interection points
     double a = (r0 * r0 - r1 * r1 + d * d) / (2 * d);
     // distance from bisection of that line to the intersections
-    double h = sqrt(r0 * r0 - a * a);
-    const Vec2d p2 = p0 + ptvec * (a / d);
-    if (equivalent(a, d))
-    {
-        results[0] = p2;
-        return 1;
-    }
-    // Intersections are on perpendicular to ptvec going through p2.
-    const Vec2d scaledVec = ptvec * (h / d);
-    results[0].set(p2[0] + scaledVec[1], p2[1] - scaledVec[0]);
-    results[1].set(p2[0] - scaledVec[1], p2[1] + scaledVec[0]);
-    return 2;
+    resultCenter = p0 + ptvec * a;
+    r = sqrt(r0 * r0 - a * a);
+    return true;
 }
 
+// Find a point on the sphere (center, radius) through which the tangent
+// through pt passes. The point lies in the plane defined by
+//the line pt->center and ray.
+osg::Vec3d calcTangentPoint(const osg::Vec3d& pt, const osg::Vec3d& center,
+                            double radius, const osg::Vec3d& ray)
+{
+    using namespace osg;
+    // new sphere with center at midpoint between pt and input sphere
+    Vec3d center2 = (pt + center) / 2.0;
+    double rad2 = (pt - center2).length();
+    Vec3d resCtr;
+    double resRad;
+    // Use Thales' theorem, which states that a triangle inscribed in
+    // a circle, with two points on a diameter of the circle and the
+    // third on the circle, is a right triangle. Since one endpoint is
+    // the center of the original sphere (the earth) and the other is
+    // pt, we can get our tangent from that.
+    bool valid = sphereInterection(center, radius, center2, rad2, resCtr,
+                                   resRad);
+    if (!valid)
+        return Vec3d(0.0, 0.0, 0.0);
+    // Get the tangent point that lies in the plane of the ray and the
+    // center line. The sequence of cross products gives us the point
+    // that is closest to the ray, rather than the one on the other
+    // side of the sphere.
+    Vec3d toCenter = center - pt;
+    toCenter.normalize();
+    Vec3d normal = ray ^ toCenter;
+    normal.normalize();
+    Vec3d radial = toCenter ^ normal;
+    radial = radial * resRad;
+    Vec3d result = resCtr + radial;
+    return result;
+    
+}
 // Calculate a pointer click in eye coordinates
 osg::Vec3d getWindowPoint(osgViewer::View* view, float x, float y)
 {
@@ -2120,6 +2151,10 @@ osg::Matrixd rotateAroundPoint(const osg::Vec3d& pt, double theta,
 // local heading and pitch, rotation to frame of focal point, focal
 // point. To change the camera placement we rotate the frame rotation
 // (_centerRotation) and focal point (_center).
+//
+// When the start or end drag click is not on the earth, we choose the
+// nearest tangent point on the earth to the ray from the eye and
+// proceed.
 
 void
 EarthManipulator::drag(double dx, double dy, osg::View* theView)
@@ -2139,44 +2174,24 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     osg::Vec3d worldStartDrag;
     // drag start in camera coordinate system.
     osg::Vec3d startDrag;
-    osg::Vec3d worldNormal(1.0, 0.0, 0.0);
     const osg::Vec3d zero(0.0, 0.0, 0.0);
     bool onEarth;
     if ((onEarth = screenToWorld(_ga_t1->getX(), _ga_t1->getY(),
                                   view, worldStartDrag)))
     {
         startDrag = worldStartDrag * viewMat;
-        double startLat, startLon, startH;
-        if (_is_geocentric)
-        {
-            _csn->getEllipsoidModel()->convertXYZToLatLongHeight(
-                worldStartDrag.x(), worldStartDrag.y(), worldStartDrag.z(),
-                startLat, startLon, startH);
-            // Find the normal plane on the earth at the start drag point        
-            // NB order imposed by parentheses!
-            worldNormal = (osg::Quat(startLon, osg::Vec3d(0.0, 0.0, 1.0))
-                           * (osg::Quat(startLat, osg::Vec3d(0.0, -1.0, 0.0))
-                              * worldNormal));
-        }
-        else
-        {
-            osg::CoordinateFrame cf = getMyCoordinateFrame(worldStartDrag);
-            worldNormal = getUpVector(cf);
-        }
     }
     else if (_is_geocentric)
     {
         const osg::Vec3d startWinPt = getWindowPoint(view, _ga_t1->getX(),
                                                      _ga_t1->getY());
-        startDrag = closestPtOnLine(zero, startWinPt, zero * viewMat);
+        startDrag = calcTangentPoint(
+            zero, zero * viewMat, _csn->getEllipsoidModel()->getRadiusEquator(),
+            startWinPt);
         worldStartDrag = startDrag * viewMatInv;
-        worldNormal = worldStartDrag;
     }
     else
         return;
-    // Normal gets multiplied by inverse transpose.
-    osg::Vec3d normal = osg::Matrixd::transform3x3(viewMatInv, worldNormal);
-    normal.normalize();
     // ray from eye through pointer in camera coordinate system goes
     // from origin through transformed pointer coordinates
     const osg::Vec3d winpt = getWindowPoint(view, x, y);
@@ -2184,16 +2199,16 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     osg::Vec3d endDrag;
     osg::Vec3d worldEndDrag;
     osg::Quat worldRot;
-    if (onEarth)
+    bool endOnEarth = screenToWorld(x, y, view, worldEndDrag);
+    if (! endOnEarth)
     {
-        if (!findIntersectionWithPlane(normal, startDrag, zero, winpt, endDrag))
-            return;
+        Vec3d earthOrigin = zero * viewMat;
+        //endDrag = closestPtOnLine(zero, winpt, earthOrigin);
+        endDrag = calcTangentPoint(
+            zero, earthOrigin, _csn->getEllipsoidModel()->getRadiusEquator(),
+            winpt);
+        worldEndDrag = endDrag * viewMatInv;
     }
-    else
-    {
-        endDrag = closestPtOnLine(zero, winpt, zero * viewMat);
-    }
-    worldEndDrag = endDrag * viewMatInv;
     if (_is_geocentric)
     {
         worldRot.makeRotate(worldStartDrag, worldEndDrag);
@@ -2310,6 +2325,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     }
     else
     {
+        // This is obviously not correct.
         _center = _center + (worldStartDrag - worldEndDrag);
     }
 }

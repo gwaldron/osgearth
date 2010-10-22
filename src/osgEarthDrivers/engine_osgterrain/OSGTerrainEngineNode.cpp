@@ -702,7 +702,7 @@ OSGTerrainEngineNode::installShaders()
     // it this way so that the developer has the option of removing this top-level shader program,
     // replacing it, or migrating it higher up the scene graph if necessary.
 
-    if ( _texCompositor->usesShaderComposition() )
+    if ( _texCompositor.valid() && _texCompositor->usesShaderComposition() )
     {
         const ShaderFactory* lib = Registry::instance()->getShaderFactory();
 

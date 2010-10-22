@@ -104,5 +104,59 @@ namespace osgEarth
                                 double bearingRad, double distance,
                                 double &out_latRad, double &out_lonRad,
                                 double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+        /**
+         * Computes the distance between two points in meters following a rhumb line
+         * @param lat1Rad
+         *   The start latitude in radians
+         * @param lon1Rad
+         *   The start longitude in radians
+         * @param lat2Rad
+         *   The end latitude in radians
+         * @param lon2Rad
+         *   The end longitude in radians
+         * @param radius
+         *    The radius of the earth in meters
+         * @returns
+         *   The distance between the two points in meters following a rhumb line
+         */
+        static double rhumbDistance(double lat1Rad, double lon1Rad,
+                                    double lat2Rad, double lon2Rad,
+                                    double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+        /**
+         *Computes the bearing of the rhumb line between two points in radians
+         * @param lat1Rad
+         *    The start latitude in radians
+         * @param lon1Rad
+         *    The start longitude in radians
+         * @param lat2Rad
+         *    The end latitude in radians
+         * @param lon2Rad
+         *    The end longitude in radians
+         */
+        static double rhumbBearing(double lat1Rad, double lon1Rad,
+                                   double lat2Rad, double lon2Rad);
+
+         /** Computes the destination point given a start point, a bearing and a distance along a rhumb line
+         * @param lat1Rad
+         *    The latitude in radians
+         * @param lon1Rad
+         *    The longitude in radians
+         * @param bearingRad
+         *    The bearing in radians
+         * @param distance
+         *    The distance in meters
+         * @param out_latRad
+         *    The destination point's latitude in radians
+         * @param out_lonRad
+         *    The destination points' longitude in radians
+         * @param radius
+         *    The radius of the earth in meters
+         */
+        static void rhumbDestination(double lat1Rad, double lon1Rad,
+                                       double bearing, double distance,
+                                       double &out_latRad, double &out_lonRad,
+                                       double radius = osg::WGS_84_RADIUS_EQUATOR);
     };
 };

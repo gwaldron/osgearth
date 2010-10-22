@@ -112,6 +112,12 @@ VirtualProgram::setShader( const std::string& shaderSemantic, osg::Shader * shad
 }
 
 void
+VirtualProgram::removeShader( const std::string& shaderSemantic, osg::Shader::Type type )
+{
+    _shaderMap.erase( ShaderMap::key_type( shaderSemantic, type ) );
+}
+
+void
 VirtualProgram::apply( osg::State & state ) const
 {
     if( _shaderMap.empty() ) // Virtual Program works as normal Program

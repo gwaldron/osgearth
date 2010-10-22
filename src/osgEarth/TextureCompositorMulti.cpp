@@ -32,29 +32,6 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-#if 0
-static std::string
-s_createVertShader( int numImageLayers )
-{
-    std::stringstream buf;
-
-    buf << "void main(void) \n"
-        << "{ \n";
-
-    for( int i=0; i<numImageLayers; ++i )
-        buf << "gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i <<"; \n";
-
-    buf <<     "gl_Position = ftransform(); \n"
-        << "} \n";
-
-    std::string str = buf.str();
-    //OE_INFO << std::endl << str;
-    return str;
-}
-#endif
-
-//------------------------------------------------------------------------
-
 static osg::Shader*
 s_createTextureFragShaderFunction( int numImageLayers )
 {
@@ -72,52 +49,19 @@ s_createTextureFragShaderFunction( int numImageLayers )
         <<     "vec3 color = vec3(1,1,1); \n"
         <<     "vec4 texel; \n";
 
-    for( int i=0; i<numImageLayers; ++i )
-    {
-        buf << "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n";
-    }
+        for( int i=0; i<numImageLayers; ++i )
+        {
+            buf << "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
+                << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n";
+        }
 
-    buf <<     "return vec4(color,1); \n" //gl_FragColor = vec4(color,1); \n"
+    buf << "return vec4(color,1); \n"
         << "} \n";
 
     std::string str = buf.str();
     //OE_INFO << std::endl << str;
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
-
-#if 0
-static std::string
-s_createFragShader( int numImageLayers ) 
-{
-    std::stringstream buf;
-
-    buf << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n";
-
-    buf << "uniform sampler2D ";
-    for( int i=0; i<numImageLayers; ++i )
-        buf << "tex"<< i << ( i+1 < numImageLayers? "," : ";");
-    buf << "\n";
-
-    buf << "void main(void) \n"
-        << "{ \n"
-        <<     "vec3 color = vec3(1,1,1); \n"
-        <<     "vec4 texel; \n";
-
-    for( int i=0; i<numImageLayers; ++i )
-    {
-        buf << "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n";
-    }
-
-    buf <<     "gl_FragColor = vec4(color,1); \n"
-        << "} \n";
-
-    std::string str = buf.str();
-    //OE_INFO << std::endl << str;
-    return str;
-}
-#endif
 
 //------------------------------------------------------------------------
 
@@ -224,7 +168,10 @@ TextureCompositorMultiTexture::updateGlobalStateSet( osg::StateSet* stateSet, in
         }
 
         VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-        vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(numImageLayers) );
+        if ( numImageLayers > 0 )
+            vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(numImageLayers) );
+        else
+            vp->removeShader( "osgearth_frag_texture", osg::Shader::FRAGMENT );
     }
 
     else

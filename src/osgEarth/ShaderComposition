@@ -81,6 +81,8 @@ namespace osgEarth
 
         osg::Shader* setShader( const std::string& shaderSemantic, osg::Shader* shader );
 
+        void removeShader( const std::string& shaderSemantic, osg::Shader::Type type );
+
     protected:
         typedef std::vector< osg::ref_ptr< osg::Shader > >            ShaderList;
         typedef std::pair< std::string, osg::Shader::Type >           ShaderSemantic;

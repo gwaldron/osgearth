@@ -79,6 +79,9 @@ TextureCompositorTexArray::prepareLayerUpdate( const GeoImage& layerImage, const
     // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
     if ( image->s() != 256 || image->t() != 256 )
         image = ImageUtils::resizeImage( image.get(), 256, 256 );
+
+    //Make sure that the internal texture format is always set to GL_RGBA
+    image->setInternalTextureFormat( GL_RGBA );
     
     // Failure to do this with a Texture2DArray will result in texture corruption if we are 
     // updating layers (like in sequential mode).

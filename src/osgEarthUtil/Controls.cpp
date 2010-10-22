@@ -756,14 +756,20 @@ CheckBoxControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
 Frame::Frame()
 {
-    //nop
+    setPadding( 0 );
+}
+
+void
+Frame::calcPos(const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize)
+{
+    _renderPos = cursor;
 }
 
 void
 Frame::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( !getImage() || getImage()->s() != _renderSize.x() || getImage()->t() != _renderSize.y() )
-    {        
+    {
         // a simple colored border frame
         osg::ref_ptr<Geometry> geom = new Ring();
         geom->push_back( osg::Vec3d( 0, 0, 0 ) );
@@ -912,7 +918,7 @@ Container::calcPos(const ControlContext& context, const osg::Vec2f& cursor, cons
     // process the frame.. it's not a child of the container
     if ( visible() == true && _frame.valid() )
     {
-        _frame->calcPos( context, _renderPos, parentSize );
+        _frame->calcPos( context, _renderPos - padding().offset(), parentSize );
     }
 }
 

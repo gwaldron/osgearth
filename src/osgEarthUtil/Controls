@@ -69,6 +69,8 @@ namespace osgEarthUtil { namespace Controls
         float x() const { return _left + _right; }
         float y() const { return _top + _bottom; }
 
+        osg::Vec2f offset() const { return osg::Vec2f( _left, _top ); }
+
     private:
         float _top, _right, _left, _bottom;
     };
@@ -330,6 +332,7 @@ namespace osgEarthUtil { namespace Controls
         Frame();
 
     public: // Control
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
     };
 

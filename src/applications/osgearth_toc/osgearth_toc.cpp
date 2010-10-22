@@ -148,10 +148,11 @@ createControlPanel( osgViewer::View* view )
     s_layerBox->setFrame( new RoundedFrame() );
     s_layerBox->getFrame()->setBackColor( 0,0,0,0.5 );
     s_layerBox->setMargin( 10 );
-    s_layerBox->setPadding( 15 );
+    s_layerBox->setPadding( 10 );
     s_layerBox->setSpacing( 15 );
     s_layerBox->setChildVertAlign( ALIGN_CENTER );
     s_layerBox->setAbsorbEvents( true );
+    s_layerBox->setVertAlign( ALIGN_BOTTOM );
 
     canvas->addControl( s_layerBox );
     return canvas;
@@ -178,25 +179,25 @@ createLayerItem( int gridRow, int layerIndex, int numLayers, ImageLayer* layer, 
     s_layerBox->setControl( 2, gridRow, opacity );
 
     // move buttons
-    if ( layerIndex > 0 && isActive )
+    if ( layerIndex < numLayers-1 && isActive )
     {
-        LabelControl* upButton = new LabelControl( "up", 14 );
-        upButton->setBackColor( .4,.4,.4,1 );
-        upButton->setActiveColor( .8,0,0,1 );
-        upButton->addEventHandler( new MoveLayerHandler( layer, layerIndex-1 ) );
-        s_layerBox->setControl( 3, gridRow, upButton );
-    }
-    if ( layerIndex < numLayers-1 && isActive)
-    {
-        LabelControl* upButton = new LabelControl( "down", 14 );
+        LabelControl* upButton = new LabelControl( "UP", 14 );
         upButton->setBackColor( .4,.4,.4,1 );
         upButton->setActiveColor( .8,0,0,1 );
         upButton->addEventHandler( new MoveLayerHandler( layer, layerIndex+1 ) );
+        s_layerBox->setControl( 3, gridRow, upButton );
+    }
+    if ( layerIndex > 0 && isActive)
+    {
+        LabelControl* upButton = new LabelControl( "DOWN", 14 );
+        upButton->setBackColor( .4,.4,.4,1 );
+        upButton->setActiveColor( .8,0,0,1 );
+        upButton->addEventHandler( new MoveLayerHandler( layer, layerIndex-1 ) );
         s_layerBox->setControl( 4, gridRow, upButton );
     }
 
     // add/remove button:
-    LabelControl* addRemove = new LabelControl( isActive? "remove" : "add", 14 );
+    LabelControl* addRemove = new LabelControl( isActive? "REMOVE" : "ADD", 14 );
     addRemove->setHorizAlign( ALIGN_CENTER );
     addRemove->setBackColor( .4,.4,.4,1 );
     addRemove->setActiveColor( .8,0,0,1 );
@@ -220,9 +221,9 @@ updateControlPanel()
 
     // the active map layers:
     MapFrame mapf( s_activeMap.get(), Map::IMAGE_LAYERS );
-    int layerNum = 0;
+    int layerNum = mapf.imageLayers().size()-1;
     for( ImageLayerVector::const_reverse_iterator i = mapf.imageLayers().rbegin(); i != mapf.imageLayers().rend(); ++i )
-        createLayerItem( row++, layerNum++, mapf.imageLayers().size(), i->get(), true );
+        createLayerItem( row++, layerNum--, mapf.imageLayers().size(), i->get(), true );
 
     MapFrame mapf2( s_inactiveMap.get(), Map::IMAGE_LAYERS );
     if ( mapf2.imageLayers().size() > 0 )

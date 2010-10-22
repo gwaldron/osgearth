@@ -115,7 +115,7 @@ private:
     osg::Vec3d _centerModel;
     float _verticalScaleOverride;
     osg::ref_ptr<GeoLocator> _masterLocator;
-    //osg::ref_ptr<osgTerrain::Locator> _masterLocator;
+    int _numColorLayers;
 
     int  _initCount;
     bool _pendingFullUpdate;    
@@ -138,7 +138,7 @@ private:
 
     osg::Vec3d computeCenterModel();
     GeoImage createGeoImage( osgTerrain::Layer* imageLayer ) const;
-    void createGeometry();
+    osg::Geode* createGeometry();
     osg::StateSet* createStateSet();
     void prepareImageLayerUpdate( int layerIndex );
     Threading::ReadWriteMutex& getMutex();

@@ -52,7 +52,8 @@ _verticalScaleOverride(1.0f),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
 _initCount(0),
-_optimizeTriangleOrientation(true)
+_optimizeTriangleOrientation(true),
+_numColorLayers(0)
 {
     this->setThreadSafeRefUnref(true);
 
@@ -68,7 +69,8 @@ _verticalScaleOverride( rhs._verticalScaleOverride ),
 _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate( false ),
-_initCount( 0 )
+_initCount( 0 ),
+_numColorLayers(rhs._numColorLayers)
 {
     //NOP
 }
@@ -111,7 +113,7 @@ SinglePassTerrainTechnique::init()
 {
     compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
 
-    _pendingFullUpdate = true;
+    //_pendingFullUpdate = true;
     applyTileUpdates();
 }
 
@@ -127,10 +129,10 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     
     // lock changes to the layers while we're compiling them
     Threading::ScopedReadLock lock( getMutex() );
-    
+
+    // establish the master tile locator if this is the first compilation:
     if ( !_masterLocator.valid() || !_transform.valid() )
     {
-        // establish the master tile locator from the customtile key
         CustomTile* tile = static_cast<CustomTile*>( _terrainTile );
         _masterLocator = static_cast<GeoLocator*>( tile->getLocator() );
 
@@ -141,7 +143,12 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         _transform->addChild( new osg::Group );
     }
 
-    if ( update.getAction() == TileUpdate::UPDATE_IMAGE_LAYER && _texCompositor->supportsLayerUpdate() )
+    // check whether the layer count has changed:
+    bool layerCountChanged = _numColorLayers != _terrainTile->getNumColorLayers();
+    _numColorLayers = _terrainTile->getNumColorLayers();
+
+
+    if ( !layerCountChanged && update.getAction() == TileUpdate::UPDATE_IMAGE_LAYER && _texCompositor->supportsLayerUpdate() )
     {
         prepareImageLayerUpdate( update.getIndex() );
 
@@ -149,16 +156,22 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         // TODO: optimize this with a method that ONLY regenerates the texture coordinates.
         if ( !_texCompositor->requiresUnitTextureSpace() )
         {
-            createGeometry();
+            osg::ref_ptr<osg::StateSet> stateSet = _backGeode.valid() ? _backGeode->getStateSet() : 0L;
+            _backGeode = createGeometry();
+            _backGeode->setStateSet( stateSet.get() );
+
             _pendingGeometryUpdate = true;
         }
     }
 
     //TODO: we should not need to check supportsLayerUpdate here, but it is not working properly in
     // multitexture mode (white tiles show up). Need to investigate and fix.
-    else if ( update.getAction() == TileUpdate::UPDATE_ELEVATION && _texCompositor->supportsLayerUpdate() )
+    else if ( !layerCountChanged && update.getAction() == TileUpdate::UPDATE_ELEVATION && _texCompositor->supportsLayerUpdate() )
     {
-        createGeometry();
+        osg::ref_ptr<osg::StateSet> stateSet = _backGeode.valid() ? _backGeode->getStateSet() : 0L;
+        _backGeode = createGeometry();
+        _backGeode->setStateSet( stateSet.get() );
+
         _pendingGeometryUpdate = true;
     }
 
@@ -172,7 +185,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         }
     
         // create the geometry and texture coordinates for this tile in a new buffer
-        createGeometry();
+        _backGeode = createGeometry();
 
         // give the engine a chance to bail out before building the texture stateset:
         if ( progress && progress->isCanceled() )
@@ -184,7 +197,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         // create the stateset for this tile, which contains all the texture information.
         osg::StateSet* stateSet = createStateSet();
         if ( stateSet )
-        {            
+        {
             _backGeode->setStateSet( stateSet );
         }
 
@@ -198,6 +211,9 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         _initCount++;
         //if ( _initCount > 1 )
         //    OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
+
+        if ( _backGeode.valid() && !_backGeode->getStateSet() )
+            OE_WARN << LC << "ILLEGAL! no stateset in BackGeode!!" << std::endl;
 
         _pendingFullUpdate = true;
     }
@@ -219,6 +235,9 @@ SinglePassTerrainTechnique::applyTileUpdates()
     // process a pending buffer swap:
     if ( _pendingFullUpdate )
     {
+        if ( _backGeode->getStateSet() == 0L )
+            OE_WARN << LC << "ILLEGAL: backGeode has no stateset" << std::endl;
+
         _transform->setChild( 0, _backGeode.get() );
         _backGeode = 0L;
         _pendingFullUpdate = false;
@@ -355,8 +374,6 @@ SinglePassTerrainTechnique::createGeoImage( osgTerrain::Layer* colorLayer ) cons
 osg::StateSet*
 SinglePassTerrainTechnique::createStateSet()
 {
-    // Composite all the image layer images into a single 2D texture array.
-
     // establish the tile extent. we will calculate texture coordinate offset/scale based on this
     if ( !_tileExtent.isValid() )
     {
@@ -415,9 +432,6 @@ SinglePassTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, dou
 
 namespace
 {
-    //typedef std::pair< osg::Vec2Array*, osgTerrain::Locator* >   TexCoordLocatorPair;
-    //typedef std::map<  osgTerrain::Layer*, TexCoordLocatorPair > LayerToTexCoordMap;
-
     struct GeoLocatorComp
     {
         bool operator()( GeoLocator* lhs, GeoLocator* rhs ) const
@@ -437,8 +451,6 @@ namespace
             return 0L;
         }
     };
-
-    //typedef std::hash_map< GeoLocator*, osg::Vec2Array*, GeoLocatorComp > LocatorToTexCoordMap;
     
     struct RenderLayer {
         osgTerrain::Layer* _layer;
@@ -451,7 +463,7 @@ namespace
     typedef std::vector< RenderLayer > RenderLayerVector;
 }
 
-void
+osg::Geode*
 SinglePassTerrainTechnique::createGeometry()
 {
     osg::ref_ptr<GeoLocator> masterTextureLocator = _masterLocator.get();
@@ -469,8 +481,8 @@ SinglePassTerrainTechnique::createGeometry()
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
     // fire up a brand new geode.
-    _backGeode = new osg::Geode();
-    _backGeode->setThreadSafeRefUnref(true);
+    osg::Geode* geode = new osg::Geode();
+    geode->setThreadSafeRefUnref(true);
     
     // setting the geometry to DYNAMIC means its draw will not overlap the next frame's update/cull
     // traversal - which could access the buffer without a mutex
@@ -478,12 +490,12 @@ SinglePassTerrainTechnique::createGeometry()
     osg::Geometry* surface = new osg::Geometry();
     surface->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     surface->setDataVariance( osg::Object::DYNAMIC );
-    _backGeode->addDrawable( surface );
+    geode->addDrawable( surface );
 
     osg::Geometry* skirt = new osg::Geometry();
     skirt->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     skirt->setDataVariance( osg::Object::DYNAMIC );
-    _backGeode->addDrawable( skirt );
+    geode->addDrawable( skirt );
         
     int numRows = 20;
     int numColumns = 20;
@@ -802,7 +814,7 @@ SinglePassTerrainTechnique::createGeometry()
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
-            else
+            else if ( renderLayers.size() > 0 )
             {
                 const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
                 skirtTexCoords->push_back( tc );
@@ -822,7 +834,7 @@ SinglePassTerrainTechnique::createGeometry()
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
-            else
+            else if ( renderLayers.size() > 0 )
             {
                 const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
                 skirtTexCoords->push_back( tc );
@@ -842,7 +854,7 @@ SinglePassTerrainTechnique::createGeometry()
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
-            else
+            else if ( renderLayers.size() > 0 )
             {
                 const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
                 skirtTexCoords->push_back( tc );
@@ -862,7 +874,7 @@ SinglePassTerrainTechnique::createGeometry()
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
                 skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
-            else
+            else if ( renderLayers.size() > 0 )
             {
                 const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
                 skirtTexCoords->push_back( tc );
@@ -1046,10 +1058,12 @@ SinglePassTerrainTechnique::createGeometry()
         //osg::Timer_t before = osg::Timer::instance()->tick();
         //OE_NOTICE<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
-        _backGeode->accept(*builder);
+        geode->accept(*builder);
         //osg::Timer_t after = osg::Timer::instance()->tick();
         //OE_NOTICE<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
+
+    return geode;
 }
 
 void

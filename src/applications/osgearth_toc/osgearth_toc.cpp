@@ -517,7 +517,7 @@ int main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
 
     OSGTerrainOptions terrainOptions;
-
+    terrainOptions.compositingTechnique() = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
     terrainOptions.loadingPolicy()->mode() = LoadingPolicy::MODE_SEQUENTIAL;
 
     if ( arguments.read( "--preemptive" ) || arguments.read( "--preemptive=ON" ) )

@@ -121,24 +121,13 @@ s_createFragShader( int numImageLayers )
 
 //------------------------------------------------------------------------
 
-TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU ) :
-_useGPU( useGPU )
+namespace
 {
-    //nop
-}
-
-osg::StateSet*
-TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
-{
-    osg::StateSet* stateSet = new osg::StateSet();
-    if ( layerImages.size() < 1 )
-        return stateSet;
-
-    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i )
+    static void s_setTexture( const GeoImage& i, int texUnit, bool addUniform, osg::StateSet* stateSet )
     {
-        osg::Texture2D* texture = new osg::Texture2D( i->getImage() );
-        int texWidth = i->getImage()->s();
-        int texHeight = i->getImage()->t();
+        osg::Texture2D* texture = new osg::Texture2D( i.getImage() );
+        int texWidth = i.getImage()->s();
+        int texHeight = i.getImage()->t();
 
         // configure the mipmapping 
         texture->setMaxAnisotropy(16.0f);
@@ -155,10 +144,9 @@ TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages
         texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
 
         // populate the stateset
-        int texUnit = i - layerImages.begin();
         stateSet->setTextureAttributeAndModes( texUnit, texture, osg::StateAttribute::ON );
 
-        if ( _useGPU )
+        if ( addUniform )
         {
             std::stringstream buf;
             buf << "tex" << texUnit;
@@ -166,6 +154,27 @@ TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages
             stateSet->addUniform( new osg::Uniform( name.c_str(), texUnit ) );
             // NOTE: "tex"+texUnit doesn't work.
         }
+    }
+}
+
+//------------------------------------------------------------------------
+
+TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU ) :
+_useGPU( useGPU )
+{
+    //nop
+}
+
+osg::StateSet*
+TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
+{
+    osg::StateSet* stateSet = new osg::StateSet();
+    if ( layerImages.size() < 1 )
+        return stateSet;
+
+    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i )
+    {
+        s_setTexture( *i, i-layerImages.begin(), _useGPU, stateSet );
     }
 
     return stateSet;
@@ -175,19 +184,26 @@ void
 TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet, int layerNum,
                                                 const GeoImage& preparedImage, const GeoExtent& tileExtent ) const
 {
-    osg::Texture2D* texture = static_cast<osg::Texture2D*>(
+    osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(
         stateSet->getTextureAttribute( layerNum, osg::StateAttribute::TEXTURE ) );
 
-    texture->setImage( preparedImage.getImage() );
+    if ( texture )
+    {
+        texture->setImage( preparedImage.getImage() );
 
-    // recalculate mipmapping:
-    int texWidth  = texture->getImage()->s();
-    int texHeight = texture->getImage()->t();
-    bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
-    if ( powerOfTwo )
-        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        // recalculate mipmapping:
+        int texWidth  = texture->getImage()->s();
+        int texHeight = texture->getImage()->t();
+        bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
+        if ( powerOfTwo )
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        else
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    }
     else
-        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    {
+        s_setTexture( preparedImage, layerNum, _useGPU, stateSet );
+    }
 }
 
 void 

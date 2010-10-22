@@ -209,12 +209,12 @@ Control::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     if ( visible() == true )
     {
         _renderSize.set( 
-            padding().left() + width().value()  + padding().right(),
-            padding().top()  + height().value() + padding().bottom() );
+            width().value()  + padding().x(),
+            height().value() + padding().y() );
 
         out_size.set(
-            _renderSize.x() + margin().left() + margin().right(),
-            _renderSize.y() + margin().top() + margin().bottom() );            
+            _renderSize.x() + margin().x(),
+            _renderSize.y() + margin().y() );
     }
     else
     {
@@ -237,7 +237,7 @@ Control::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::
         }
         else if ( _halign == ALIGN_RIGHT )
         {
-            _renderPos.x() = cursor.x() + parentSize.x() - margin().right() - _renderSize.x();
+            _renderPos.x() = cursor.x() + parentSize.x() - margin().right() - _renderSize.x() + padding().left();
         }
         else
         {
@@ -257,11 +257,11 @@ Control::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::
         }
         else if ( _valign == ALIGN_BOTTOM )
         {
-            _renderPos.y() = cursor.y() + parentSize.y() - margin().bottom() - _renderSize.y();
+            _renderPos.y() = cursor.y() + parentSize.y() - margin().bottom() - _renderSize.y() + padding().top();
         }
         else
         {
-            _renderPos.y() = cursor.y() + margin().top();
+            _renderPos.y() = cursor.y() + margin().top() + padding().top();
         }
     }
 }
@@ -270,8 +270,8 @@ bool
 Control::intersects( float x, float y ) const
 {
     return
-        x >= _renderPos.x()-padding().left() && x <= _renderPos.x() + _renderSize.x() + padding().right() &&
-        y >= _renderPos.y()-padding().top() && y <= _renderPos.y() + _renderSize.y() + padding().bottom();
+        x >= _renderPos.x() - padding().left() && x <= _renderPos.x() - padding().left() + _renderSize.x() &&
+        y >= _renderPos.y() - padding().top() && y <= _renderPos.y() - padding().top() + _renderSize.y();
 }
 
 void
@@ -281,7 +281,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
     // you will not render a Control directly, but rather one of its subclasses.
     if ( visible() == true && !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
     {
-        float vph = cx._vp->height();
+        float vph = cx._vp->height(); // - padding().bottom();
 
         osg::Geometry* geom = new osg::Geometry();
 
@@ -443,7 +443,7 @@ LabelControl::draw( const ControlContext& cx, DrawableList& out )
     {
         Control::draw( cx, out );
 
-        float vph = cx._vp->height();
+        float vph = cx._vp->height(); // - padding().bottom();
 
         LabelText* t = static_cast<LabelText*>( _drawable.get() );
         osg::BoundingBox bbox = t->getTextBB();
@@ -499,14 +499,14 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 ImageControl::draw( const ControlContext& cx, DrawableList& out )
 {
-    if ( visible() == true )
+    if ( visible() == true && _image.valid() )
     {
         //TODO: this is not precisely correct..images get deformed slightly..
         osg::Geometry* g = new osg::Geometry();
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
-        float vph = cx._vp->height();
+        float vph = cx._vp->height(); // - padding().bottom();
 
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         g->setVertexArray( verts );
@@ -623,10 +623,10 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
-        float rw = _renderSize.x() - padding().x();
-        float rh = _renderSize.y() - padding().y();
+        float rw = osg::round( _renderSize.x() - padding().x() );
+        float rh = osg::round( _renderSize.y() - padding().y() );
 
-        float vph = cx._vp->height();
+        float vph = cx._vp->height(); // - padding().bottom();
         float hy = vph - (_renderPos.y() + 0.5 * _renderSize.y());
 
         osg::Vec3Array* verts = new osg::Vec3Array(8);
@@ -710,7 +710,7 @@ CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
         float ry = osg::round( _renderPos.y() );
         float rw = _renderSize.x() - padding().x();
         float rh = _renderSize.y() - padding().y();
-        float vph = cx._vp->height();
+        float vph = cx._vp->height(); // - padding().bottom();
 
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         g->setVertexArray( verts );
@@ -781,8 +781,7 @@ Frame::draw( const ControlContext& cx, DrawableList& out )
         ras.draw( geom.get() );
 
         osg::Image* image = ras.finalize();
-        if ( image )
-            const_cast<Frame*>(this)->setImage( image );
+        const_cast<Frame*>(this)->setImage( image );
     }
 
     Control::draw( cx, out );       // draws the background
@@ -821,8 +820,7 @@ RoundedFrame::draw( const ControlContext& cx, DrawableList& out )
             ras.draw( geom.get(), backColor().value() );
 
             osg::Image* image = ras.finalize();
-            if ( image )
-                const_cast<RoundedFrame*>(this)->setImage( image );
+            const_cast<RoundedFrame*>(this)->setImage( image );
         }
 
         ImageControl::draw( cx, out );
@@ -1016,8 +1014,6 @@ VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
     Container::calcPos( cx, cursor, parentSize );
 
     osg::Vec2f childCursor = _renderPos;
-        //_renderPos.x() + padding().left(),
-        //_renderPos.y() + padding().top() );
 
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
@@ -1181,6 +1177,8 @@ Grid::clearControls()
 {
     _rows.clear();
     _children.clear();
+    _rowHeights.clear();
+    _colWidths.clear();
     dirty();
 }
 
@@ -1247,8 +1245,6 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
     int numCols = numRows > 0 ? _rows[0].size() : 0;
 
     osg::Vec2f childCursor = _renderPos;
-        //_renderPos.x() + padding().left(),
-        //_renderPos.y() + padding().top() );
 
     for( int r=0; r<numRows; ++r )
     {
@@ -1262,7 +1258,7 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
             }
             childCursor.x() += _colWidths[c] + spacing();
         }
-        childCursor.x() = _renderPos.x(); // + padding().left();
+        childCursor.x() = _renderPos.x();
         childCursor.y() += _rowHeights[r] + spacing();
     }
 }

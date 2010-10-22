@@ -32,13 +32,14 @@ void updateControlPanel();
 static osg::ref_ptr<Map> s_activeMap;
 static osg::ref_ptr<Map> s_inactiveMap;
 static Grid* s_layerBox;
+static bool s_updateRequired = false;
 
 //------------------------------------------------------------------------
 
 struct MyMapListener : public MapCallback
 {
     void onMapModelChanged( const MapModelChange& change ) {
-        updateControlPanel();
+        s_updateRequired = true;
     }
 };
 
@@ -82,7 +83,17 @@ main( int argc, char** argv )
     updateControlPanel();
 
     viewer.setSceneData( root );
-    viewer.run();
+
+    while( !viewer.done() )
+    {
+        viewer.frame();
+
+        if ( s_updateRequired )
+        {
+            updateControlPanel();
+            s_updateRequired = false;
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -109,20 +120,20 @@ struct AddLayerHandler : public ControlEventHandler
 {
     AddLayerHandler( ImageLayer* layer ) : _layer(layer) { }
     void onClick( Control* control, int mouseButtonMask ) {
-        s_activeMap->addImageLayer( _layer );
-        s_inactiveMap->removeImageLayer( _layer );
+        s_inactiveMap->removeImageLayer( _layer.get() );
+        s_activeMap->addImageLayer( _layer.get() );
     }
-    ImageLayer* _layer;
+    osg::ref_ptr<ImageLayer> _layer;
 };
 
 struct RemoveLayerHandler : public ControlEventHandler
 {
     RemoveLayerHandler( ImageLayer* layer ) : _layer(layer) { }
     void onClick( Control* control, int mouseButtonMask ) {
-        s_inactiveMap->addImageLayer( _layer );
-        s_activeMap->removeImageLayer( _layer );
+        s_inactiveMap->addImageLayer( _layer.get() );
+        s_activeMap->removeImageLayer( _layer.get() );
     }
-    ImageLayer* _layer;
+    osg::ref_ptr<ImageLayer> _layer;
 };
 
 struct MoveLayerHandler : public ControlEventHandler
@@ -145,11 +156,12 @@ createControlPanel( osgViewer::View* view )
 
     // the outer container:
     s_layerBox = new Grid();
-    s_layerBox->setFrame( new RoundedFrame() );
-    s_layerBox->getFrame()->setBackColor( 0,0,0,0.5 );
+    //s_layerBox->setFrame( new RoundedFrame() );
+    //s_layerBox->getFrame()->setBackColor( 0,0,0,0.5 );
+    s_layerBox->setBackColor(0,0,0,0.5);
     s_layerBox->setMargin( 10 );
     s_layerBox->setPadding( 10 );
-    s_layerBox->setSpacing( 15 );
+    s_layerBox->setSpacing( 10 );
     s_layerBox->setChildVertAlign( ALIGN_CENTER );
     s_layerBox->setAbsorbEvents( true );
     s_layerBox->setVertAlign( ALIGN_BOTTOM );

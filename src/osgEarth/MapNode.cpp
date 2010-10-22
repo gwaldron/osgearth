@@ -125,7 +125,7 @@ MapNode::init()
     setName( "osgEarth::MapNode" );
 
     // so that our custom traverse() is called with an update visitor each frame
-    setNumChildrenRequiringUpdateTraversal( 1 );
+    //setNumChildrenRequiringUpdateTraversal( 1 );
 
     // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
     // multi-threaded overlap

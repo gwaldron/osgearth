@@ -41,6 +41,8 @@
  */
 namespace osgEarthUtil { namespace Controls
 {
+    using namespace osgEarth;
+
     typedef std::vector< osg::ref_ptr<osg::Drawable> > DrawableList;
 
     typedef std::map< class Control*, osg::Geode* > GeodeTable;
@@ -63,6 +65,9 @@ namespace osgEarthUtil { namespace Controls
         float left() const { return _left; }
         float right() const { return _right; }
         float bottom() const { return _bottom; }
+
+        float x() const { return _left + _right; }
+        float y() const { return _top + _bottom; }
 
     private:
         float _top, _right, _left, _bottom;
@@ -126,11 +131,16 @@ namespace osgEarthUtil { namespace Controls
         void setMargin( const Gutter& value );
         const Gutter& margin() const { return _margin; }
 
+        // space between container and its content
+        void setPadding( const Gutter& value );
+        void setPadding( float globalValue );
+        const Gutter& padding() const { return _padding; }
+
         void setVertAlign( const Alignment& value );
-        const Alignment& getVertAlign() const { return _valign; }
+        const optional<Alignment>& vertAlign() const { return _valign; }
 
         void setHorizAlign( const Alignment& value );
-        const Alignment& getHorizAlign() const { return _halign; }
+        const optional<Alignment>& horizAlign() const { return _halign; }
 
         void setVisible( bool value );
         const bool visible() const { return _visible; }
@@ -151,6 +161,9 @@ namespace osgEarthUtil { namespace Controls
 
         void setActive( bool value );
         bool getActive() const { return _active; }
+
+        void setAbsorbEvents( bool value ) { _absorbEvents = value; }
+        bool getAbsorbEvents() const { return _absorbEvents; }
 
         void addEventHandler( ControlEventHandler* handler );
 
@@ -175,8 +188,8 @@ namespace osgEarthUtil { namespace Controls
 
     protected:
         bool _dirty;
-        osg::Vec2f _renderPos;
-        osg::Vec2f _renderSize;
+        osg::Vec2f _renderPos; // rendering position (includes padding offset)
+        osg::Vec2f _renderSize; // rendering size (includes padding)
 
         // adjusts renderpos for alignment.
         void align();
@@ -191,11 +204,13 @@ namespace osgEarthUtil { namespace Controls
     private:
         osgEarth::optional<float> _x, _y, _width, _height;
         Gutter _margin;
+        Gutter _padding;
         bool _visible;
-        Alignment _valign, _halign;
-        osgEarth::optional<osg::Vec4f> _backColor, _foreColor, _activeColor;
+        optional<Alignment> _valign, _halign;
+        optional<osg::Vec4f> _backColor, _foreColor, _activeColor;
         osg::observer_ptr<Control> _parent;
         bool _active;
+        bool _absorbEvents;
     };
 
     /**
@@ -256,7 +271,7 @@ namespace osgEarthUtil { namespace Controls
     class OSGEARTHUTIL_EXPORT HSliderControl : public Control
     {
     public:
-        HSliderControl( float min = 0.0f, float max = 100.0f );
+        HSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f );
 
         void setMin( float min );
         float getMin() const { return _min; }
@@ -343,21 +358,27 @@ namespace osgEarthUtil { namespace Controls
         // the Frame connected to this container. can be NULL for no frame.
         void setFrame( Frame* frame );
         Frame* getFrame() const { return _frame.get(); }
-
-        // space between container and its children
-        void setPadding( const Gutter& value );
-        void setPadding( float globalValue );
-        const Gutter& padding() const { return _padding; }
         
         // space between children
         void setSpacing( float value );
         float spacing() const { return _spacing; }
+
+        // horiz alignment to set on children (that do not already have alignment explicity set)
+        void setChildHorizAlign( Alignment align );
+        const optional<Alignment>& childHorizAlign() const { return _childhalign; }
+
+        // vert alignment to set on children (that do not already have alignment explicity set)
+        void setChildVertAlign( Alignment align );
+        const optional<Alignment>& childVertAlign() const { return _childvalign; }
 
         // default add function.
         virtual void addControl( Control* control, int index =-1 ) =0;
 
         // access to the child list.
         virtual const ControlList& children() const =0;
+
+        // clear the controls list.
+        virtual void clearControls() =0;
 
     public:
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
@@ -369,8 +390,9 @@ namespace osgEarthUtil { namespace Controls
 
     private:
         osg::ref_ptr<Frame> _frame;
-        Gutter _padding;
         float _spacing;
+        optional<Alignment> _childhalign;
+        optional<Alignment> _childvalign;
     };
 
     /**
@@ -384,6 +406,7 @@ namespace osgEarthUtil { namespace Controls
     public: // Container
         virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
+        virtual void clearControls();
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
@@ -405,6 +428,7 @@ namespace osgEarthUtil { namespace Controls
     public: // Container
         virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
+        virtual void clearControls();
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
@@ -413,6 +437,38 @@ namespace osgEarthUtil { namespace Controls
 
     private:
         ControlList _controls;
+    };
+
+    /**
+     * Container that organizes its children in a grid.
+     */
+    class OSGEARTHUTIL_EXPORT Grid : public Container
+    {
+    public:
+        Grid();
+
+        void setControl( int col, int row, Control* control );
+
+    public: // Container
+        virtual void addControl( Control* control, int index =-1 );
+        virtual const ControlList& children() const { return _children; }
+        virtual void clearControls();
+
+    public: // Control        
+        virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
+        virtual void draw( const ControlContext& context, DrawableList& drawables );
+
+    private:
+        typedef std::vector< osg::ref_ptr<Control> > Row;
+        typedef std::vector< Row > RowVector;
+        RowVector _rows;
+        ControlList _children;
+        
+        osg::ref_ptr<Control>& cell(int col, int row);
+        void expandToInclude(int cols, int rows);
+        
+        std::vector<float> _rowHeights, _colWidths;
     };
 
     /**

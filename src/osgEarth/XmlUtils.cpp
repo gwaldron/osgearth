@@ -325,6 +325,41 @@ void processNode(XmlElement* parent, TiXmlNode* node)
     }
 }
 
+void
+removeDocType(std::string &xmlStr)
+{
+    //TinyXML has an issue with parsing DTDs.  See http://www.grinninglizard.com/tinyxmldocs/index.html
+    //We need to remove any !DOCTYPE block that appears in the XML before parsing to avoid errors.
+    std::string::size_type startIndex = xmlStr.find("<!DOCTYPE");
+    if (startIndex == xmlStr.npos) return;
+
+    std::string::size_type endIndex = startIndex;
+    int numChildElements = 0;
+    //We've found the first index of the <!DOCTYPE, now find the index of the closing >
+    while (endIndex < xmlStr.size())
+    {
+        endIndex+=1;
+        if (xmlStr[endIndex] == '<')
+        {
+            numChildElements++;
+        }
+        else if (xmlStr[endIndex] == '>')
+        {
+            if (numChildElements == 0)
+            {
+                break;
+            }
+            else
+            {
+                numChildElements--;
+            }
+        }
+    }
+
+    //Now, replace the <!DOCTYPE> element with whitespace
+    xmlStr.erase(startIndex, endIndex);
+}
+
 
 
 XmlDocument*
@@ -341,15 +376,18 @@ XmlDocument::load( std::istream& in )
     //Null terminate the string
     buffer[length] = '\0';    
 
+    std::string xmlStr(buffer);
+    //Delete the buffer
+    delete[] buffer;    
+    removeDocType( xmlStr );
+
     XmlDocument* doc = NULL;
-    xmlDoc.Parse(buffer);    
-    if (!xmlDoc.Error())
+    xmlDoc.Parse(xmlStr.c_str());    
+    if (!xmlDoc.Error() && xmlDoc.RootElement())
     {
         doc = new XmlDocument();
         processNode( doc,  xmlDoc.RootElement() );
     }
-    //Delete the buffer
-    delete[] buffer;    
     return doc;    
 }
 

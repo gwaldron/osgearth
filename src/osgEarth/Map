@@ -35,6 +35,9 @@
 
 namespace osgEarth
 {    
+    /**
+     * Conveys atomic change actions to the map data model.
+     */
     struct MapModelChange
     {
         enum ActionType {
@@ -72,7 +75,7 @@ namespace osgEarth
     };
 
     /**
-     * Callback that the Map object uses to notify listeners of map source changes.
+     * Callback that the Map object uses to notify listeners of map data model changes.
      */
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
@@ -98,20 +101,12 @@ namespace osgEarth
     typedef std::list< osg::ref_ptr<MapCallback> > MapCallbackList;
 
     /**
-     * A Map is a container that holds a number of ordered MapLayer objects. This is the data model
-     * that a MapNode will render.
+     * Map is the main data model that the MapNode will render. It is a
+     * container for all Layer objects (that contain the actual data) and
+     * the rendering options.
      */
     class OSGEARTH_EXPORT Map : public osg::Referenced
     {
-    public:
-        enum SamplePolicy
-        {
-            FIRST_VALID,
-            HIGHEST,
-            LOWEST,
-            AVERAGE
-        };
-
     public:
         /**
          * Constructs a new, empty map.
@@ -287,7 +282,7 @@ namespace osgEarth
             const TileKey& key,
             bool fallback,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
-            SamplePolicy samplePolicy =FIRST_VALID,
+            ElevationSamplePolicy samplePolicy =SAMPLE_FIRST_VALID,
             ProgressCallback* progress = 0) const;
 
 		/**
@@ -437,7 +432,7 @@ namespace osgEarth
             const TileKey& key,
             bool fallback,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
-            Map::SamplePolicy samplePolicy =Map::FIRST_VALID,
+            ElevationSamplePolicy samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback* progress = 0) const; 
 
     private:

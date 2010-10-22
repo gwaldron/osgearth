@@ -31,6 +31,7 @@ SET(LIB_PUBLIC_HEADERS
     FileUtils
 	FindNode
     GeoData
+    GeoMath
     HeightFieldUtils
     HTTPClient
     ImageToHeightFieldConverter
@@ -53,6 +54,8 @@ SET(LIB_PUBLIC_HEADERS
 	Progress
     Registry
     Revisioning
+    ShaderComposition
+    ShaderUtils
     SpatialReference
     StringUtils
     TaskService
@@ -90,6 +93,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ElevationLayer.cpp
     FileUtils.cpp
     GeoData.cpp
+    GeoMath.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
     ImageLayer.cpp
@@ -111,6 +115,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Profile.cpp
 	Progress.cpp
     Registry.cpp
+    ShaderComposition.cpp
+    ShaderUtils.cpp
     SpatialReference.cpp
     TaskService.cpp
     TerrainLayer.cpp

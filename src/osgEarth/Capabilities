@@ -24,33 +24,45 @@
 
 namespace osgEarth
 {
+    /**
+     * Stores information about the hardware and graphics system capbilities.
+     * The osgEarth::Registry stores a singleton Capabilities object that you can 
+     * use to determine what your system supports.
+     */
     class OSGEARTH_EXPORT Capabilities
     {
     public:
-        // the maximum # of texture units exposed in the fixed-function pipeline
+        /** maximum # of texture units exposed in the fixed-function pipeline */
         int getMaxFFPTextureUnits() const { return _maxFFPTextureUnits; }
 
-        // the maximum # of texture units exposed in a GPU fragment shader
+        /** maximum # of texture image units exposed in a GPU fragment shader */
         int getMaxGPUTextureUnits() const { return _maxGPUTextureUnits; }
 
-        // the maximum # of texture coordinate sets available in a GPU fragment shader
+        /** maximum # of texture coordinate sets available in a GPU fragment shader */
         int getMaxGPUTextureCoordSets() const { return _maxGPUTextureCoordSets; }
 
-        // the maximum supported size (in pixels) of a texture
+        /** maximum supported size (in pixels) of a texture */
         int getMaxTextureSize() const { return _maxTextureSize; }
 
-        // whether the card supports shaders
+        /** maximum number of openGL lights */
+        int getMaxLights() const { return _maxLights; }
+
+        /** whether the GPU supports shaders */
         bool supportsGLSL() const { return _supportsGLSL; }
 
-        // whether the card supports the TEXTURE_2D_ARRAY and similar extensions
+        /** whether the GPU supports texture arrays */
         bool supportsTextureArrays() const { return _supportsTextureArrays; }
 
+        /** whether the GPU supports OpenGL 3D textures */
         bool supportsTexture3D() const { return _supportsTexture3D; }
 
+        /** whether the GPU supports OpenGL multi-texturing */
         bool supportsMultiTexture() const { return _supportsMultiTexture; }
 
+        /** whether the GPU supports OpenGL stencil wrapping extensions */
         bool supportsStencilWrap() const { return _supportsStencilWrap; }
 
+        /** whether the GPU supports OpenGL the two-sided stenciling extension */
         bool supportsTwoSidedStencil() const { return _supportsTwoSidedStencil; }
 
     private:
@@ -61,6 +73,7 @@ namespace osgEarth
         int  _maxGPUTextureUnits;
         int  _maxGPUTextureCoordSets;
         int  _maxTextureSize;
+        int  _maxLights;
         bool _supportsGLSL;
         bool _supportsTextureArrays;
         bool _supportsTexture3D;

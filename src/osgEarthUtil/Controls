@@ -92,6 +92,8 @@ namespace osgEarthUtil { namespace Controls
     {
     public:
         virtual void onClick( class Control* control, int mouseButtonMask ) { }
+        virtual void onValueChanged( class Control* control, float value ) { }
+        virtual void onValueChanged( class Control* control, bool value ) { }
     };
 
     typedef std::list< osg::ref_ptr<ControlEventHandler> > ControlEventHandlerList;
@@ -118,6 +120,8 @@ namespace osgEarthUtil { namespace Controls
 
         void setHeight( float value );
         const osgEarth::optional<float>& height() const { return _height; }
+
+        void setSize( float w, float h );
 
         void setMargin( const Gutter& value );
         const Gutter& margin() const { return _margin; }
@@ -216,6 +220,7 @@ namespace osgEarthUtil { namespace Controls
 
     public: // Control
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        //virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw    ( const ControlContext& context, DrawableList& out_drawables );
 
     private:
@@ -223,6 +228,7 @@ namespace osgEarthUtil { namespace Controls
         osg::ref_ptr<osgText::Font> _font;
         float _fontSize;
         osg::ref_ptr<osgText::Text> _drawable;
+        osg::Vec3 _bmin, _bmax;
     };
 
     /**
@@ -242,6 +248,59 @@ namespace osgEarthUtil { namespace Controls
 
     private:
         osg::ref_ptr<osg::Image> _image;
+    };
+
+    /**
+     * A control that provides a horizontal sliding value controller.
+     */
+    class OSGEARTHUTIL_EXPORT HSliderControl : public Control
+    {
+    public:
+        HSliderControl( float min = 0.0f, float max = 100.0f );
+
+        void setMin( float min );
+        float getMin() const { return _min; }
+
+        void setMax( float max );
+        float getMax() const { return _max; }
+
+        void setValue( float value );
+        float getValue() const { return _value; }
+
+    public: // Control
+        //virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void draw( const ControlContext& cx, DrawableList& out );
+
+    protected:
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        void fireValueChanged();
+
+    private:
+        float _min, _max, _value;
+    };
+
+    /**
+     * A check box toggle.
+     */
+    class OSGEARTHUTIL_EXPORT CheckBoxControl : public Control
+    {
+    public:
+        CheckBoxControl( bool checked =false );
+
+        void setValue( bool value );
+        bool getValue() const { return _value; }
+
+    public:
+        virtual void draw( const ControlContext& cx, DrawableList& out );
+
+    protected:
+        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
+
+        void fireValueChanged();
+
+    private:
+        bool _value;
     };
 
     typedef std::vector< osg::ref_ptr<Control> > ControlList;
@@ -295,7 +354,7 @@ namespace osgEarthUtil { namespace Controls
         float spacing() const { return _spacing; }
 
         // default add function.
-        virtual void addControl( Control* control ) =0;
+        virtual void addControl( Control* control, int index =-1 ) =0;
 
         // access to the child list.
         virtual const ControlList& children() const =0;
@@ -323,7 +382,7 @@ namespace osgEarthUtil { namespace Controls
         VBox();
 
     public: // Container
-        virtual void addControl( Control* control );
+        virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
 
     public: // Control        
@@ -344,7 +403,7 @@ namespace osgEarthUtil { namespace Controls
         HBox();
 
     public: // Container
-        virtual void addControl( Control* control );
+        virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
 
     public: // Control        

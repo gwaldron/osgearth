@@ -111,6 +111,12 @@ TextureCompositor::requiresUnitTextureSpace() const
     return _impl->requiresUnitTextureSpace();
 }
 
+bool
+TextureCompositor::usesShaderComposition() const
+{
+    return _impl->usesShaderComposition();
+}
+
 void
 TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {

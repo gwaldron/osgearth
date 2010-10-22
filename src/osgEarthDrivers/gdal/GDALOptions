@@ -23,10 +23,10 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/HeightFieldUtils>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Drivers
 {
+    using namespace osgEarth;
+
     class GDALOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public: // properties

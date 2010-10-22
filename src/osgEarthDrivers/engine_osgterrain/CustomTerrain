@@ -35,8 +35,6 @@
 class TileFactory; //MapEngine;
 class CustomTerrain;
 class CustomTile;
-class osgEarth::ImageLayer;
-
 
 typedef std::list< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
 

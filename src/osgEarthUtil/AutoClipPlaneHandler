@@ -23,10 +23,10 @@
 #include <osgEarth/MapNode>
 #include <osgGA/GUIEventHandler>
 
-using namespace osgEarth;
-
 namespace osgEarthUtil
 {
+    using namespace osgEarth;
+
     /**
      * An event handler that automatically calculates optimal near and
      * far clip planes for a geocentric map node. Just add this to your

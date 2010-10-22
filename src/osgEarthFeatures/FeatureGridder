@@ -24,10 +24,11 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/GeoData>
 
-using namespace osgEarth;
 
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+
     /**
      * Defines how to grid and crop feature data when creating a model.
      */

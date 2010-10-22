@@ -19,6 +19,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
+#include <osgEarth/ShaderUtils>
 #include <osgDB/ReadFile>
 
 #define LC "[TerrainEngineNode] "
@@ -98,7 +99,12 @@ TerrainEngineNode::TerrainEngineNode() :
 _verticalScale( 1.0f ),
 _elevationSamplingRatio( 1.0f )
 {
-    //nop
+    if ( Registry::instance()->getCapabilities().supportsGLSL() )
+    {
+        osg::NodeCallback* cb = new UpdateLightingUniformsCallback();
+        this->addCullCallback( cb );
+        this->addUpdateCallback( cb );
+    }
 }
 
 TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :

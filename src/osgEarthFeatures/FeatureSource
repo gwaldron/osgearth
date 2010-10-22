@@ -33,10 +33,10 @@
 #include <OpenThreads/Mutex>
 #include <list>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Features
 {   
+    using namespace osgEarth;
+
     /**
      * A cursor that lets you iterate over a collection of features returned 
      * from a feature query performed on a FeatureStore.

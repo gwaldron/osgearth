@@ -27,10 +27,10 @@
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Features 
 {
+    using namespace osgEarth;
+
     /**
      * Builds geometry from a stream of input features.
      */

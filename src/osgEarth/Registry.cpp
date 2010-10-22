@@ -51,6 +51,8 @@ _caps( 0L )
             break;
         addMimeTypeExtensionMapping( mimeType, builtinMimeTypeExtMappings[i+1] );
     }
+
+    _shaderLib = new ShaderFactory();
 }
 
 Registry::~Registry()
@@ -226,6 +228,19 @@ Registry::initCapabilities()
     ScopedLock<Mutex> lock( s_initCapsMutex ); // double-check pattern (see getCapabilities)
     if ( !_caps )
         _caps = new Capabilities();
+}
+
+const ShaderFactory*
+Registry::getShaderFactory() const
+{
+    return _shaderLib.get();
+}
+
+void
+Registry::setShaderFactory( ShaderFactory* lib )
+{
+    if ( lib != 0L && lib != _shaderLib.get() )
+        _shaderLib = lib;
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

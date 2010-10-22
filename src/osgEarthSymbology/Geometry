@@ -25,10 +25,10 @@
 #include <vector>
 #include <stack>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Symbology 
 {
+    using namespace osgEarth;
+
     /** Options for the Geometry::buffer() operation. */
     class BufferParameters
     {

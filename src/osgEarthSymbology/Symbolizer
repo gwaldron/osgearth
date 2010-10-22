@@ -45,12 +45,12 @@ namespace osgEarth { namespace Symbology
      * Symbolizer will render, and it tracks whether each SymbolicNode is up to date with the
      * latest revisions of the Style and Content.
      *
-     * The State object gets passed to Symbolizer::update. You can customize it by supplying you
-     * own Content type (which much inherit from Symbology::Content) and you can extend it to
+     * The State object gets passed to Symbolizer::update. You can customize it by supplying your
+     * own Content type (which must inherit from Symbology::Content) and you can extend it to
      * store custom stateful variables and objects.
      *
      * For now, the State also includes the SymbolizerContext object, primarily because there 
-     * was not other obvious place to house it. We'll see if this sticks.
+     * was no other obvious place to house it. We'll see if this sticks.
      */
     template<typename CONTENT_TYPE>
     class State : public osg::Object // header-only; no export

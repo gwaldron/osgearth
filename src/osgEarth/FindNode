@@ -47,6 +47,10 @@ namespace osgEarth
           T* _foundNode;
     };
 
+    /**
+     * Searchs the scene graph downward starting at [node] and returns the first node found
+     * that matches the template parameter type.
+     */
     template<typename T>
     T* findTopMostNodeOfType(osg::Node* node)
     {
@@ -59,6 +63,10 @@ namespace osgEarth
         return fnotv._foundNode;
     }    
 
+    /**
+     * Searchs the scene graph upward starting at [node] and returns the first node found
+     * that matches the template parameter type.
+     */
     template<typename T>
     T* findFirstParentOfType(osg::Node* node)
     {
@@ -71,6 +79,10 @@ namespace osgEarth
         return fnotv._foundNode;
     }
 
+    /**
+     * Searchs the scene graph starting at [node] and returns the first node found
+     * that matches the template parameter type. First searched upward, then downward.
+     */
     template<typename T>
     T* findRelativeNodeOfType(osg::Node* node)
     {

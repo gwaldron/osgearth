@@ -25,6 +25,9 @@
 
 namespace osgEarth
 {
+    /**
+     * Base class for all Map layers. 
+     */
     class OSGEARTH_EXPORT Layer : public osg::Referenced
     {
     public:

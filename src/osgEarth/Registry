@@ -25,6 +25,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
+#include <osgEarth/ShaderComposition>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 
@@ -100,6 +101,12 @@ namespace osgEarth
          */
         const Capabilities& getCapabilities() const;
 
+        /**
+         * Gets or sets the default shader library.
+         */
+        const ShaderFactory* getShaderFactory() const;
+        void setShaderFactory( ShaderFactory* lib );
+
     protected:
         virtual ~Registry();
         Registry();
@@ -128,6 +135,8 @@ namespace osgEarth
         OpenThreads::Mutex _blacklistMutex;
 
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
+
+        osg::ref_ptr<ShaderFactory> _shaderLib;
 
         Capabilities* _caps;
         void initCapabilities();

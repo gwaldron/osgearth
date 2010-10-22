@@ -27,16 +27,15 @@
 #include <osgEarthSymbology/Geometry>
 #include <geos/geom/Geometry.h>
 
-using namespace osgEarth;
-
 namespace osgEarth { namespace Symbology
 {
+    using namespace osgEarth;
+
     class GEOSUtils // not exported
     {
     public:
 
         static Symbology::Geometry* exportGeometry( const geos::geom::Geometry* input );
-
 
         static geos::geom::Geometry* importGeometry( const Symbology::Geometry* input );
 

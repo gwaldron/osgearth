@@ -15,7 +15,8 @@ the provider's terms of service when using their data.
     
     <options>
         <terrain>
-            <loading_policy mode="preemptive"/>
+            <loading_policy mode="sequential"/>
+            <compositor>multitexture_gpu</compositor>
         </terrain>
         <lighting>false</lighting>
     </options>

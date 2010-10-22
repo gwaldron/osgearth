@@ -30,10 +30,10 @@
 namespace osgEarth
 {
     /**
-     * OSG Node that forms the root of an osgEarth terrain. This node is a "view" component
+     * OSG Node that forms the root of an osgEarth map. This node is a "view" component
      * that renders data from a "Map" data model.
      */
-    class OSGEARTH_EXPORT MapNode : public osg::Group // : public osg::CoordinateSystemNode
+    class OSGEARTH_EXPORT MapNode : public osg::Group
     {
     public:
         /**
@@ -93,11 +93,6 @@ namespace osgEarth
         bool isGeocentric() const;
 
         /**
-         * Gets the underlying map engine that produces geometry for this MapNode.
-         */
-        TerrainEngineNode* getEngineNode() const;
-
-        /**
          * Accesses the group node that contains all the ModelLayers.
          */
         osg::Group* getModelLayerGroup();
@@ -150,8 +145,6 @@ namespace osgEarth
         osg::ref_ptr< osg::Group > _models;
         MapNodeOptions _mapNodeOptions;
 
-        //osg::ref_ptr< MapLayerController > _mapLayerController;
-
         // keep track of nodes created by model layers
         typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;
         ModelLayerNodeMap _modelLayerNodes;
@@ -174,9 +167,6 @@ namespace osgEarth
     private:
     
         void init();
-        
-        //TileSource* installTileSource( MapLayer* layer );
-        //void updateStateSet();
     };
 
 } // namespace osgEarth

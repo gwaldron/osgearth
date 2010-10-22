@@ -24,6 +24,10 @@
 
 namespace osgEarth
 {
+    /**
+     * The EGM96 geoid 
+     * http://cddis.nasa.gov/926/egm96/egm96.html
+     */
     struct EGM96Geoid : public Geoid
     {
         EGM96Geoid();

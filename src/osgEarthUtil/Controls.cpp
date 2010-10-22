@@ -96,6 +96,12 @@ Control::setHeight( float value ) {
 }
 
 void
+Control::setSize( float w, float h ) {
+    setWidth( w );
+    setHeight( h );
+}
+
+void
 Control::setMargin( const Gutter& value ) {
     if ( value != _margin ) {
         _margin = value;
@@ -163,7 +169,8 @@ void
 Control::setActive( bool value ) {
     if ( value != _active ) {
         _active = value;
-        dirty();
+        if ( _activeColor.isSet() )
+            dirty();
     }
 }
 
@@ -265,7 +272,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
         geom->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
 
         osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = _active ? _activeColor.value() : _backColor.value();
+        (*colors)[0] = _active && _activeColor.isSet() ? _activeColor.value() : _backColor.value();
         geom->setColorArray( colors );
         geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
@@ -375,14 +382,17 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         {
             //the Text's autoTransformCache matrix puts some mojo on the bounding box
             osg::Matrix m = t->getATMatrix( cx._viewContextID );
-            osg::Vec3 bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
-            osg::Vec3 bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
-            _renderSize.set( bmax.x() - bmin.x(), bmax.y() - bmin.y() );
+            _bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
+            _bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
+            //_renderSize.set( _bmax.x() - _bmin.x(), _bmax.y() - _bmin.y() );
         }
         else
         {
-            _renderSize.set( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() );
+            _bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() );
+            _bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() );
+            //_renderSize.set( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() );
         }
+        _renderSize.set( _bmax.x() - _bmin.x(), _bmax.y() - _bmin.y() );
 
         _drawable = t;
 
@@ -403,7 +413,6 @@ LabelControl::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( _drawable.valid() && visible() == true )
     {
-        //TODO: support alignment here
         float vph = cx._vp->height();
 
         LabelText* t = static_cast<LabelText*>( _drawable.get() );
@@ -501,6 +510,207 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
         out.push_back( g );
     }
+}
+
+// ---------------------------------------------------------------------------
+
+HSliderControl::HSliderControl( float min, float max ) :
+_min(min),
+_max(max)
+{
+   if ( _max <= _min )
+       _max = _min+1.0f;
+   _value = 0.5f*(_min+_max);
+}
+
+void
+HSliderControl::fireValueChanged()
+{
+    for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+    {
+        i->get()->onValueChanged( this, _value );
+    }
+}
+
+void
+HSliderControl::setValue( float value )
+{
+    value = osg::clampBetween( value, _min, _max );
+    if ( value != _value )
+    {
+        _value = value;
+        fireValueChanged();
+        dirty();
+    }
+}
+
+void
+HSliderControl::setMin( float min )
+{
+    if ( min != _min )
+    {
+        _min = min;
+        if ( _min >= _max )
+            _max = _min+1.0f;
+
+        if ( _value < _min || _value > _max ) 
+        {
+            _value = _min;
+            fireValueChanged();
+        }
+        dirty();
+    }
+}
+
+void
+HSliderControl::setMax( float max )
+{
+    if ( max != _max )
+    {
+        _max = max;
+        if ( _max <= _min )
+            _max = _min+1.0f;
+
+        if ( _value < _min || _value > _max )
+        {
+            _value = _max;
+            fireValueChanged();
+        }
+        dirty();
+    }
+}
+
+void
+HSliderControl::draw( const ControlContext& cx, DrawableList& out )
+{
+    Control::draw( cx, out );
+
+    if ( visible() == true )
+    {
+        osg::Geometry* g = new osg::Geometry();
+
+        float rx = osg::round( _renderPos.x() );
+        float ry = osg::round( _renderPos.y() );
+        float vph = cx._vp->height();
+        float hy = vph - (_renderPos.y() + 0.5 * _renderSize.y());
+
+        osg::Vec3Array* verts = new osg::Vec3Array(8);
+        g->setVertexArray( verts );
+
+        (*verts)[0].set( rx, hy, 0 );
+        (*verts)[1].set( rx + _renderSize.x(), hy, 0 );
+        g->addPrimitiveSet( new osg::DrawArrays( GL_LINES, 0, 2 ) );
+
+        float hx = _renderPos.x() + _renderSize.x() * ( (_value-_min)/(_max-_min) );
+
+        (*verts)[2].set( hx-3, hy-6, 0 );
+        (*verts)[3].set( hx+3, hy-6, 0 );
+        (*verts)[4].set( hx+3, hy+6, 0 );
+        (*verts)[5].set( hx-3, hy+6, 0 );
+        g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 2, 4 ) );
+
+        osg::Vec4Array* c = new osg::Vec4Array(1);
+        (*c)[0] = *foreColor();
+        g->setColorArray( c );
+        g->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        out.push_back( g );
+    }
+}
+
+bool
+HSliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
+{
+    if ( ea.getEventType() == osgGA::GUIEventAdapter::DRAG )
+    {
+        float relX = ea.getX() - _renderPos.x();
+
+        setValue( _min + (_max-_min) * ( relX/_renderSize.x() ) );
+        return true;
+    }
+    return Control::handle( ea, aa, cx );
+}
+
+// ---------------------------------------------------------------------------
+
+CheckBoxControl::CheckBoxControl( bool value ) :
+_value( value )
+{
+    setWidth( 15 );
+    setHeight( 15 );
+}
+
+void
+CheckBoxControl::fireValueChanged()
+{
+    for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+    {
+        i->get()->onValueChanged( this, _value );
+    }
+}
+
+void
+CheckBoxControl::setValue( bool value )
+{
+    if ( value != _value )
+    {
+        _value = value;
+        fireValueChanged();
+        dirty();
+    }
+}
+
+void
+CheckBoxControl::draw( const ControlContext& cx, DrawableList& out )
+{
+    Control::draw( cx, out );
+
+    if ( visible() == true )
+    {
+        osg::Geometry* g = new osg::Geometry();
+
+        float rx = osg::round( _renderPos.x() );
+        float ry = osg::round( _renderPos.y() );
+        float vph = cx._vp->height();
+
+        osg::Vec3Array* verts = new osg::Vec3Array(4);
+        g->setVertexArray( verts );
+
+        (*verts)[0].set( rx, vph - ry, 0 );
+        (*verts)[1].set( rx + _renderSize.x(), vph - ry, 0 );
+        (*verts)[2].set( rx + _renderSize.x(), vph - (ry + _renderSize.y()), 0 );
+        (*verts)[3].set( rx, vph - (ry + _renderSize.y()), 0 );
+
+        g->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, 4 ) );
+
+        if ( _value )
+        {
+            osg::DrawElementsUByte* e = new osg::DrawElementsUByte( GL_LINES );
+            e->push_back( 0 );
+            e->push_back( 2 );
+            e->push_back( 1 );
+            e->push_back( 3 );
+            g->addPrimitiveSet( e );
+        }
+
+        osg::Vec4Array* c = new osg::Vec4Array(1);
+        (*c)[0] = *foreColor();
+        g->setColorArray( c );
+        g->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        out.push_back( g );
+    }
+}
+
+bool
+CheckBoxControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
+{
+    if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
+    {
+        setValue( !_value );
+        return true;
+    }
+    return Control::handle( ea, aa, cx );
 }
 
 // ---------------------------------------------------------------------------
@@ -691,9 +901,12 @@ VBox::VBox()
 }
 
 void
-VBox::addControl( Control* control )
+VBox::addControl( Control* control, int index )
 {
-    _controls.push_back( control );
+    if ( index < 0 )
+        _controls.push_back( control );
+    else
+        _controls.insert( _controls.begin() + osg::minimum(index,(int)_controls.size()-1), control );
     control->setParent( this );
     dirty();
 }
@@ -770,9 +983,12 @@ HBox::HBox()
 }
 
 void
-HBox::addControl( Control* control )
+HBox::addControl( Control* control, int index )
 {
-    _controls.push_back( control );
+    if ( index < 0 )
+        _controls.push_back( control );
+    else
+        _controls.insert( _controls.begin() + osg::minimum(index,(int)_controls.size()-1), control );
     control->setParent( this );
     dirty();
 }

@@ -516,7 +516,7 @@ EarthManipulator::established()
         // track the local angles.
         recalculateLocalPitchAndAzimuth();
 
-        OE_INFO << "[EarthManip] new CSN established." << std::endl;
+        OE_DEBUG << "[EarthManip] new CSN established." << std::endl;
     }
 
     return _csn.valid() && _node.valid();

@@ -70,7 +70,7 @@ int main(int argc, char** argv)
 	  ElevationFadeCallback* callback = new ElevationFadeCallback();
 
 	  //Set the up elevation fade points
-      callback->setElevationRange( imageLayers[0].get(), FLT_MAX, elevationInterval, fadeBuffer );
+      callback->setElevationRange( imageLayers[0].get(), FLT_MAX, 0, fadeBuffer ); //elevationInterval, fadeBuffer );
 	  for (unsigned int i = 1; i < imageLayers.size(); ++i )
 	  {
           callback->setElevationRange( imageLayers[i].get(), elevationInterval, 0.0f, elevationInterval/4.0f );
@@ -81,17 +81,6 @@ int main(int argc, char** argv)
 	  //Attach the callback as both an update and a cull callback
 	  mapNode->addUpdateCallback( callback );
 	  mapNode->addCullCallback( callback );
-
-#if 0
-      // multitexture mode currently requires some help
-      if ( mapNode->getEngine()->getEngineProperties().layeringTechnique() == MapEngineProperties::LAYERING_MULTITEXTURE )
-      {
-          FadeLayerNode* fadeLayerNode = new FadeLayerNode( mapNode->getMap(), mapNode->getEngine()->getEngineProperties() );
-          fadeLayerNode->addChild( root.get() );
-          root = fadeLayerNode;
-      }
-#endif
-
   }
   else
   {

@@ -31,7 +31,9 @@
 
 namespace osgEarth
 {
-    /** A non-georeferenced extent. */
+    /**
+     * An "anonymous" bounding extent (i.e., no geo reference information)
+     */
     class OSGEARTH_EXPORT Bounds : public osg::BoundingBoxImpl<osg::Vec3d>
     {
     public:
@@ -77,6 +79,7 @@ namespace osgEarth
         bool operator == ( const GeoExtent& rhs ) const;
         bool operator != ( const GeoExtent& rhs ) const;
 
+        /** Gets the spatial reference system underlying this extent. */
         const SpatialReference* getSRS() const;
 
         double xMin() const { return _xmin; }
@@ -99,8 +102,12 @@ namespace osgEarth
          */
         bool crossesDateLine() const;
 
+        /**
+         * Returns the raw bounds in a single function call
+         */
         void getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const;
 
+        /** True if this object defines a real, valid extent with positive area */
         bool isValid() const;
         bool defined() const { return isValid(); }
 
@@ -132,7 +139,7 @@ namespace osgEarth
          */
         bool intersects( const GeoExtent& rhs ) const;
 
-
+        /** Direct access to the anonymous bounding box */
         Bounds bounds() const;
 
         /**
@@ -182,7 +189,7 @@ namespace osgEarth
     };
 
     /**
-     * A geospatial area with tile data
+     * A geospatial area with tile data LOD extents
      */
     class OSGEARTH_EXPORT DataExtent : public GeoExtent
     {
@@ -196,15 +203,11 @@ namespace osgEarth
         unsigned int _maxLevel;
     };
 
-    /**
-    * A list of DataExtent
-    */
     typedef std::vector< DataExtent > DataExtentList;
 
 
     /**
-     * A georeferenced image; i.e. an osg::Image and an associated
-     * GeoExtent with SRS.
+     * A georeferenced image; i.e. an osg::Image and an associated GeoExtent with SRS.
      */
     class OSGEARTH_EXPORT GeoImage
     {

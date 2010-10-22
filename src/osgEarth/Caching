@@ -73,6 +73,11 @@ namespace osgEarth
         optional<bool> _cacheOnly;
     };
 
+    //----------------------------------------------------------------------
+
+    /**
+     * Options class for any cache that caches tiles as individual files on disk.
+     */
     class DiskCacheOptions : public CacheOptions
     {
     public:
@@ -94,7 +99,7 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = CacheOptions::getConfig();
-            conf.value("path") = _path;
+            conf.update("path", _path);
             conf.updateIfSet("write_world_files", _writeWorldFiles);
             return conf;
         }
@@ -113,8 +118,12 @@ namespace osgEarth
         optional<bool> _writeWorldFiles;
     };
 
+    //----------------------------------------------------------------------
+
     /**
-     * TMS-style disk cache options.
+     * Options for a TMS-style disk cache. The cache is stored on disk in a file hierarchy
+     * identical to that in the TMS specification:
+     * http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
      */
     class TMSCacheOptions : public DiskCacheOptions // no export (header only)
     {
@@ -149,68 +158,11 @@ namespace osgEarth
         optional<bool> _invertY;
     };
 
-#if 0
-  /**
-  * Defines the properties for a cache.
-  * TO BE DEPRECATED, probably in version 2.0, and replaced by a DriverOptions-compatible structure.
-  */
-  class OSGEARTH_EXPORT CacheConfig
-  {
-  public:
-      typedef std::string CacheType;
-
-      static const CacheType TYPE_DEFAULT;   // = "";
-      static const CacheType TYPE_TMS;       // = "tms";
-      static const CacheType TYPE_TILECACHE; // = "tilecache";
-
-  public:
-    /**
-    * Constructs a new cache configuration
-    */
-    CacheConfig();
-
-    /** materialize from a configuration object */
-    CacheConfig( const Config& conf );
-
-    /**
-    * Gets the cache type identifier.
-    */
-    const CacheType& getType() const;
-
-    /**
-    * Sets the cache type identifier
-    */
-    void setType(const CacheType& type);
-
-    /**
-     * Access to the configuration object for the cache driver.
-     */
-    Config& getDriverConf() { return _driverConf; }
-    const Config& getDriverConf() const { return _driverConf; }
-
-    /**
-    * Sets whether the map engine should only pull tiles from the cache and not from
-    * an end tile source. Forces a sort of "offline" mode.
-    */
-    optional<bool>& runOffCacheOnly();
-    const optional<bool>& runOffCacheOnly() const;
-
-    std::string toString() const;
-
-    /** Serializes this object's settings. */
-    void mergeConfig( const Config& conf );
-    Config getConfig( const std::string& name ="cache" ) const;
-
-  private:
-    CacheType       _type;
-    //Properties      _properties;
-    Config          _driverConf;
-    optional<bool>  _runOffCacheOnly;
-  };
-#endif
+  //----------------------------------------------------------------------
 
   /**
-   * Base class for a Cache that stores image tiles
+   * A Cache is an object that stores and retrieves image or heightfield rasters.
+   * This is the base class for all such implementations.
    */
   class OSGEARTH_EXPORT Cache : public osg::Object
   {
@@ -308,8 +260,10 @@ namespace osgEarth
       std::string _refURI;
   };
 
+  //----------------------------------------------------------------------
+
   /**
-   * In-memory image tile cache.
+   * In-memory tile cache.
    */
   class OSGEARTH_EXPORT MemCache : public Cache
   {
@@ -405,7 +359,7 @@ namespace osgEarth
   };
 
   /**
-   * Base class for any cache that stores image tile files to disk
+   * Base class for any cache that stores tile files to disk
    */
   class OSGEARTH_EXPORT DiskCache : public Cache
   {
@@ -420,21 +374,6 @@ namespace osgEarth
     * Gets the path of this DiskCache
     */
     std::string getPath() const;
-
-    ///**
-    //*Sets the path of this DiskCache
-    //*/
-    //const void setPath(const std::string& path) { _path = path; }
-
-    ///**
-    //* Gets weather or not to write a world file along with the cached image
-    //*/
-    //bool getWriteWorldFiles() const { return _writeWorldFiles; }
-
-    ///**
-    //* Sets weather or not to write a world file along with the cached image
-    //*/
-    //void setWriteWorldFiles(bool writeWorldFiles) { _writeWorldFiles = writeWorldFiles; }
 
     /**
     * Gets whether the given TileKey is cached or not
@@ -502,6 +441,7 @@ namespace osgEarth
 
   /**
    * Disk-based cache that stores image tiles according the the OSGeo TMS specification.
+   * TODO: move this imlpementation into a proper driver plugin
    */
   class OSGEARTH_EXPORT TMSCache : public DiskCache
   {
@@ -535,6 +475,9 @@ namespace osgEarth
 
   //----------------------------------------------------------------------
 
+  /**
+   * Base class for a cache driver plugin.
+   */
   class OSGEARTH_EXPORT CacheDriver : public osgDB::ReaderWriter
   {
   public:
@@ -543,6 +486,10 @@ namespace osgEarth
 
   //----------------------------------------------------------------------
 
+  /** 
+   * Factory class that can load and instantiate a Cache implementation based on the
+   * information in the CacheOptions settings.
+   */
   class OSGEARTH_EXPORT CacheFactory
   {
   public:

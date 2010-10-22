@@ -22,6 +22,8 @@
  * developed by Baptiste Lepilleur and put in the publi domain. Since the json-cpp
  * project is relatively compact, and has not been updated in 3 years, we decided 
  * to simply incorporate it here instead of introducing another dependency.
+ *
+ * TODO: probably move this into the osgEarth::Util namespace.
  */
 
 #ifndef OSGEARTH_JSONUTILS_H

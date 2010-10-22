@@ -1,0 +1,108 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#include <osgEarth/Common>
+#include <osg/CoordinateSystemNode>
+
+namespace osgEarth
+{
+    /**
+     * Useful calculations for lat/long points.
+     * Converted from http://www.movable-type.co.uk/scripts/latlong.html
+     */
+    class OSGEARTH_EXPORT GeoMath
+    {
+    public:
+        /**
+         *Computes the distance between the given points in meters using the Haversine formula
+         * @param lat1Rad
+         *    The start latitude in radians
+         * @param lon1Rad
+         *    The start longitude in radians
+         * @param lat2Rad
+         *    The end latitude in radians
+         * @param lon2Rad
+         *    The end longitude in radians
+         * @param radius
+         *    The radius of the earth in meters
+         * @returns
+         *    The distance between the two points in meters
+         */
+        static double distance(double lat1Rad, double lon1Rad,
+                               double lat2Rad, double lon2Rad,
+                               double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+        /**
+         * Computes the initial bearing from one point to the next in radians
+         * @param lat1Rad
+         *    The start latitude in radians
+         * @param lon1Rad
+         *    The start longitude in radians
+         * @param lat2Rad
+         *    The end latitude in radians
+         * @param lon2Rad
+         *    The end longitude in radians
+         * @returns
+         *    The initial bearing in radians
+         */
+        static double bearing(double lat1Rad, double lon1Rad,
+                              double lat2Rad, double lon2Rad);
+
+        /**
+         *Computes the midpoint between two points
+         * @param lat1Rad
+         *    The start latitude in radians
+         * @param lon1Rad
+         *    The start longitude in radians
+         * @param lat2Rad
+         *    The end latitude in radians
+         * @param lon2Rad
+         *    The end longitude in radians
+         * @param out_latRad
+         *    The latitude of the midpoint in radians
+         * @param out_lonRad
+         *    The longitude of the midpoint in radians
+         */
+        static void midpoint(double lat1Rad, double lon1Rad,
+            double lat2Rad, double lon2Rad,
+            double &out_latRad, double &out_lonRad);
+
+        /**
+         * Computes the destination point given a start point, a bearing and a distance
+         * @param lat1Rad
+         *    The latitude in radians
+         * @param lon1Rad
+         *    The longitude in radians
+         * @param bearingRad
+         *    The bearing in radians
+         * @param distance
+         *    The distance in meters
+         * @param out_latRad
+         *    The destination point's latitude in radians
+         * @param out_lonRad
+         *    The destination points' longitude in radians
+         * @param radius
+         *    The radius of the earth in meters
+         */
+        static void destination(double lat1Rad, double lon1Rad,
+                                double bearingRad, double distance,
+                                double &out_latRad, double &out_lonRad,
+                                double radius = osg::WGS_84_RADIUS_EQUATOR);
+    };
+};

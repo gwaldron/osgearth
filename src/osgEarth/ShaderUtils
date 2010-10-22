@@ -16,27 +16,36 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TEXTURE_COMPOSITOR_SOFTWARE_H
-#define OSGEARTH_TEXTURE_COMPOSITOR_SOFTWARE_H 1
+#ifndef OSGEARTH_SHADER_UTILS_H
+#define OSGEARTH_SHADER_UTILS_H 1
 
-#include <osgEarth/TextureCompositor>
+#include <osgEarth/Common>
+#include <osg/NodeCallback>
 
 namespace osgEarth
 {
     /**
-     * TODO: document
+     * A callback that will update the osgEarth lighting uniforms (based on the
+     * FFP lighting state) if necessary.
      */
-    class TextureCompositorSoftware : public TextureCompositorTechnique
+    class OSGEARTH_EXPORT UpdateLightingUniformsCallback : public osg::NodeCallback
     {
     public:
-        osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const;
+        UpdateLightingUniformsCallback();
+        ~UpdateLightingUniformsCallback();
 
-        osg::Program* createProgram() const;
+        void operator()( osg::Node* node, osg::NodeVisitor* nv );
 
-        bool requiresUnitTextureSpace() const { return true; }
+    protected:
+        int   _maxLights;
+        bool* _lightEnabled;
+        bool  _lightingEnabled;
+        bool  _dirty;
+        bool  _applied;
 
-        bool usesShaderComposition() const { return false; }
+        osg::ref_ptr<osg::Uniform> _lightingEnabledUniform;
+        osg::ref_ptr<osg::Uniform> _lightEnabledUniform;
     };
 }
 
-#endif // OSGEARTH_TEXTURE_COMPOSITOR_SOFTWARE_H
+#endif // OSGEARTH_SHADER_UTILS_H

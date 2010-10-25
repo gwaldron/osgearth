@@ -52,34 +52,34 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
 //---------------------------------------------------------------------------
 
 //static
-static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
-static unsigned int s_mapNodeID = 0;
+static OpenThreads::ReentrantMutex s_engineNodeCacheMutex;
+static unsigned int s_engineNodeID = 0;
 //Caches the MapNodes that have been created
-typedef std::map<unsigned int, osg::observer_ptr<OSGTerrainEngineNode> > MapNodeCache;
+typedef std::map<unsigned int, osg::observer_ptr<OSGTerrainEngineNode> > EngineNodeCache;
 
 static
-MapNodeCache& getMapNodeCache()
+EngineNodeCache& getEngineNodeCache()
 {
-    static MapNodeCache s_cache;
+    static EngineNodeCache s_cache;
     return s_cache;
 }
 
 void
-OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* mapNode)
+OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* engineNode)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
-    getMapNodeCache()[mapNode->_id] = mapNode;
-    OE_INFO << LC << "Registered engine " << mapNode->_id << std::endl;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    getEngineNodeCache()[engineNode->_id] = engineNode;
+    OE_INFO << LC << "Registered engine " << engineNode->_id << std::endl;
 }
 
 void
 OSGTerrainEngineNode::unregisterEngine(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
-    MapNodeCache::iterator k = getMapNodeCache().find( id);
-    if (k != getMapNodeCache().end())
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    EngineNodeCache::iterator k = getEngineNodeCache().find( id);
+    if (k != getEngineNodeCache().end())
     {
-        getMapNodeCache().erase(k);
+        getEngineNodeCache().erase(k);
         OE_INFO << LC << "Unregistered engine " << id << std::endl;
     }
 }
@@ -87,9 +87,9 @@ OSGTerrainEngineNode::unregisterEngine(unsigned int id)
 OSGTerrainEngineNode*
 OSGTerrainEngineNode::getEngineById(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
-    MapNodeCache::const_iterator k = getMapNodeCache().find( id);
-    if (k != getMapNodeCache().end()) return k->second.get();
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    EngineNodeCache::const_iterator k = getEngineNodeCache().find( id);
+    if (k != getEngineNodeCache().end()) return k->second.get();
     return 0;
 }
 
@@ -137,8 +137,8 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
 
     // genearte a new unique mapnode ID
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
-        _id = s_mapNodeID++;
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_engineNodeCacheMutex );
+        _id = s_engineNodeID++;
     }
     //_map->setId( _id );
 

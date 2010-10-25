@@ -75,16 +75,6 @@ namespace osgEarthUtil { namespace Controls
         float _top, _right, _left, _bottom;
     };
 
-    enum Alignment
-    {
-        ALIGN_NONE, ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT, ALIGN_TOP, ALIGN_BOTTOM
-    };
-
-    enum Dock
-    {
-        DOCK_NONE, DOCK_LEFT, DOCK_RIGHT, DOCK_TOP, DOCK_BOTTOM, DOCK_FILL
-    };
-
     // internal state class
     struct ControlContext
     {
@@ -111,6 +101,17 @@ namespace osgEarthUtil { namespace Controls
      */
     class OSGEARTHUTIL_EXPORT Control : public osg::Referenced
     {
+    public:
+        enum Alignment
+        {
+            ALIGN_NONE, ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT, ALIGN_TOP, ALIGN_BOTTOM
+        };
+
+        enum Dock
+        {
+            DOCK_NONE, DOCK_LEFT, DOCK_RIGHT, DOCK_TOP, DOCK_BOTTOM, DOCK_FILL
+        };
+
     public:
         Control();
 

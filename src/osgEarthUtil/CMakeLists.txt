@@ -17,11 +17,9 @@ SET(LIB_PUBLIC_HEADERS
     #ElevationManager
     Export
     Graticule
-    Labeling
     ObjectPlacer
     ObjectLocator
     OceanSurfaceNode
-    Popups
     Viewpoint
     WMS
 )
@@ -35,11 +33,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ElevationFadeCallback.cpp
     #ElevationManager.cpp
     Graticule.cpp
-    Labeling.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     OceanSurfaceNode.cpp
-    Popups.cpp
     Viewpoint.cpp
     WMS.cpp
 )

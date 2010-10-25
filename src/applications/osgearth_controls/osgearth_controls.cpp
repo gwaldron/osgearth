@@ -84,22 +84,22 @@ createControls( ControlCanvas* cs )
         center->setFrame( new RoundedFrame() );
         center->getFrame()->setBackColor( 1,1,1,0.5 );
         center->setPadding( 10 );
-        center->setHorizAlign( ALIGN_CENTER );
-        center->setVertAlign( ALIGN_CENTER );
+        center->setHorizAlign( Control::ALIGN_CENTER );
+        center->setVertAlign( Control::ALIGN_CENTER );
 
         // Add an image:
         osg::Image* image = osgDB::readImageFile( "http://pelicanmapping.com/pelican.png" );
         if ( image ) {
             ImageControl* imageCon = new ImageControl( image );
             center->addControl( imageCon );
-            center->setHorizAlign( ALIGN_CENTER );
+            center->setHorizAlign( Control::ALIGN_CENTER );
         }
 
         // Add a text label:
         LabelControl* label = new LabelControl( "osgEarth Controls Toolkit - new in osgEarth 1.4" );
         label->setFont( osgText::readFontFile( "arialbd.ttf" ) );
         label->setFontSize( 24.0f );
-        label->setHorizAlign( ALIGN_CENTER );
+        label->setHorizAlign( Control::ALIGN_CENTER );
         center->addControl( label );
 
         cs->addControl( center );
@@ -129,13 +129,13 @@ createControls( ControlCanvas* cs )
                 c2->addControl( slider );
 
                 s_sliderLabel = new LabelControl();
-                s_sliderLabel->setVertAlign( ALIGN_CENTER );
+                s_sliderLabel->setVertAlign( Control::ALIGN_CENTER );
                 c2->addControl( s_sliderLabel );        
             }
             ul->addControl( c2 );
 
             HBox* c3 = new HBox();
-            c3->setHorizAlign( ALIGN_CENTER );
+            c3->setHorizAlign( Control::ALIGN_CENTER );
             c3->setSpacing( 10 );
             {
                 HBox* c4 = new HBox();
@@ -168,8 +168,8 @@ createControls( ControlCanvas* cs )
         bottom->getFrame()->setBackColor(0,0,0,0.5);
         bottom->setMargin( 10 );
         bottom->setSpacing( 145 );
-        bottom->setVertAlign( ALIGN_BOTTOM );
-        bottom->setHorizAlign( ALIGN_CENTER );
+        bottom->setVertAlign( Control::ALIGN_BOTTOM );
+        bottom->setHorizAlign( Control::ALIGN_CENTER );
 
         for( int i=0; i<4; ++i )
         {

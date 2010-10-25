@@ -191,6 +191,11 @@ Profile::create(const std::string& srsInitString,
         srs->getGeographicSRS()->transform( 180.0, 0.0, srs.get(), e, dummy );
         return Profile::create( srs.get(), -e, -e, e, e, vsrs.get(), numTilesWideAtLod0, numTilesHighAtLod0 );
     }
+    else
+    {
+        OE_WARN << LC << "Failed to create profile; SRS spec requires addition information: \"" << srsInitString << 
+            std::endl;
+    }
 
     return NULL;
 }

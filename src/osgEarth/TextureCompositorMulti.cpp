@@ -37,7 +37,8 @@ s_createTextureFragShaderFunction( int numImageLayers )
 {
     std::stringstream buf;
 
-    buf << "uniform float[] osgearth_imagelayer_opacity; \n"
+    buf << "#version 120 \n"
+        << "uniform float[] osgearth_imagelayer_opacity; \n"
         << "uniform bool[]  osgearth_imagelayer_enabled; \n";
 
     buf << "uniform sampler2D ";

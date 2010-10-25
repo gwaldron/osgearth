@@ -379,7 +379,8 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 {
     std::stringstream buf;
 
-    buf << "uniform sampler2D ";
+    buf << "#version 120 \n"
+        << "uniform sampler2D ";
     for( int i=0; i<numTexImageUnits; ++i )
         buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
 

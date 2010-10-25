@@ -63,29 +63,18 @@ _forceTech( false )
 osg::StateSet*
 TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent& tileExtent ) const
 {
-    // first time through, poll the system capabilities to figure out
-    // which technique to use.
-    //if ( !_impl.valid() )
-    //    const_cast<TextureCompositor*>(this)->init();
-
     return _impl ? _impl->createStateSet( stack, tileExtent ) : 0L;
 }
 
 bool
 TextureCompositor::supportsLayerUpdate() const
 {
-    //if ( !_impl.valid() )
-    //    const_cast<TextureCompositor*>(this)->init();
-
     return _impl ? _impl->supportsLayerUpdate() : false;
 }
 
 GeoImage
 TextureCompositor::prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const
 {
-    //if ( !_impl.valid() )
-    //    const_cast<TextureCompositor*>(this)->init();
-
     return _impl ? _impl->prepareLayerUpdate( image, tileExtent ) : GeoImage::INVALID;
 }
 
@@ -95,9 +84,6 @@ TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     const GeoImage& preparedImage,
                                     const GeoExtent& tileExtent ) const
 {
-    //if ( !_impl.valid() )
-    //    const_cast<TextureCompositor*>(this)->init();
-
     if ( _impl )
         _impl->applyLayerUpdate( stateSet, layerNum, preparedImage, tileExtent );
 }
@@ -105,9 +91,6 @@ TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
 bool
 TextureCompositor::requiresUnitTextureSpace() const
 {
-    //if ( !_impl.valid() )
-    //    const_cast<TextureCompositor*>(this)->init();
-
     return _impl->requiresUnitTextureSpace();
 }
 
@@ -120,16 +103,12 @@ TextureCompositor::usesShaderComposition() const
 void
 TextureCompositor::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
-    //if ( !_impl.valid() )
-    //    const_cast<TextureCompositor*>(this)->init();
-
     _impl->updateGlobalStateSet( stateSet, numImageLayers );
 }
 
 void
 TextureCompositor::init()
 {        
-    //ScopedLock<Mutex> initLock( _initMutex );
     if ( _impl.valid() ) // double-check pattern
     {
         return; // already initialized
@@ -139,7 +118,8 @@ TextureCompositor::init()
 
     const Capabilities& caps = Registry::instance()->getCapabilities();
 
-    if ( _tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || (isAuto && caps.supportsTextureArrays()) )
+    if (_tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || 
+        (isAuto && caps.supportsGLSL(1.30f) && caps.supportsTextureArrays()) )
     {
         _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
         _impl = new TextureCompositorTexArray();
@@ -165,7 +145,9 @@ TextureCompositor::init()
 #endif
 
     // commented out because it's NYI:
-    else if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU || (isAuto && caps.supportsGLSL() && caps.supportsMultiTexture()) ) 
+    else if (
+        _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU ||
+        (isAuto && caps.supportsGLSL(1.20f) && caps.supportsMultiTexture()) ) 
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true );

@@ -48,7 +48,11 @@ namespace osgEarth
         int getMaxLights() const { return _maxLights; }
 
         /** whether the GPU supports shaders */
-        bool supportsGLSL() const { return _supportsGLSL; }
+        bool supportsGLSL(float minimumVersion =1.0f) const { 
+            return _supportsGLSL && _GLSLversion >= minimumVersion; }
+
+        /** the GLSL version */
+        float getGLSLVersion() const { return _GLSLversion; }
 
         /** whether the GPU supports texture arrays */
         bool supportsTextureArrays() const { return _supportsTextureArrays; }
@@ -75,6 +79,7 @@ namespace osgEarth
         int  _maxTextureSize;
         int  _maxLights;
         bool _supportsGLSL;
+        float _GLSLversion;
         bool _supportsTextureArrays;
         bool _supportsTexture3D;
         bool _supportsMultiTexture;

@@ -71,50 +71,15 @@ static char s_source_vertMain[] =
 
 //------------------------------------------------------------------------
 
-#if 0
-static char s_source_fragMain[] =
-
-    "uniform float osgearth_region[256]; \n"
-    "uniform int   osgearth_region_count; \n"
-    "uniform sampler2D tex0; \n"
-
-    "uniform float osgearth_imagelayer_opacity[128]; \n"
-
-    "void main(void) \n"
-    "{ \n"
-    "    vec3 color = vec3(1,1,1); \n"
-    "    for(int i=0; i<osgearth_region_count; i++) \n"
-    "    { \n"
-    "        int r = 8*i; \n"
-    "        float tx   = osgearth_region[r];   \n"
-    "        float ty   = osgearth_region[r+1]; \n"
-    "        float tw   = osgearth_region[r+2]; \n"
-    "        float th   = osgearth_region[r+3]; \n"
-    "        float xoff = osgearth_region[r+4]; \n"
-    "        float yoff = osgearth_region[r+5]; \n"
-    "        float xsca = osgearth_region[r+6]; \n"
-    "        float ysca = osgearth_region[r+7]; \n"
-
-    "        float opac = osgearth_imagelayer_opacity[i]; \n"
-
-    "        float u = tx + ( xoff + xsca * gl_TexCoord[0].s ) * tw; \n"
-    "        float v = ty + ( yoff + ysca * gl_TexCoord[0].t ) * th; \n"
-
-    "        vec4 texel = texture2D( tex0, vec2(u,v) ); \n"
-    "        color = mix(color, texel.rgb, texel.a * opac); \n"
-    "    } \n"
-    "    gl_FragColor = vec4(color, 1); \n"
-    "} \n";
-#endif
-
 static std::string
 s_createFragShader( int numImageLayers )
 {
     std::stringstream buf;
 
-    buf << "uniform float osgearth_region[" << numImageLayers*8 << "]; \n"
+    buf << "#version 120 \n"
+        << "uniform float[] osgearth_region; \n"
+        << "uniform float[] osgearth_imagelayer_opacity; \n"
         << "uniform sampler2D tex0; \n"
-        << "uniform float osgearth_imagelayer_opacity[" << numImageLayers << "]; \n"
 
         << "void main(void) \n"
         << "{ \n"

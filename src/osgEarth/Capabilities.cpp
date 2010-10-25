@@ -99,6 +99,7 @@ _maxGPUTextureCoordSets ( 1 ),
 _maxTextureSize         ( 256 ),
 _maxLights              ( 1 ),
 _supportsGLSL           ( false ),
+_GLSLversion            ( 1.0f ),
 _supportsTextureArrays  ( false ),
 _supportsMultiTexture   ( false ),
 _supportsStencilWrap    ( true ),
@@ -144,6 +145,12 @@ _supportsTwoSidedStencil( false )
 
         _supportsGLSL = GL2->isGlslSupported();
         OE_INFO << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
+
+        if ( _supportsGLSL )
+        {
+            _GLSLversion = GL2->getLanguageVersion();
+            OE_INFO << LC << "  GLSL Version = " << _GLSLversion << std::endl;
+        }
 
         _supportsTextureArrays = 
             _supportsGLSL &&

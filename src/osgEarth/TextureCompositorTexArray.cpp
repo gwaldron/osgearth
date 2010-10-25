@@ -42,25 +42,35 @@ s_createTextureFragShaderFunction( int numImageLayers )
         << "uniform float[] region; \n"
         << "uniform float[] osgearth_imagelayer_opacity; \n"
         << "uniform bool[]  osgearth_imagelayer_enabled; \n"
+        << "uniform float[] osgearth_imagelayer_range; \n"
+        << "uniform float   osgearth_imagelayer_attenuation; \n"
+        << "varying float osgearth_range; \n"
 
         << "vec4 osgearth_frag_texture(void) \n"
         << "{ \n"
-        <<     "vec3 color = vec3(1,1,1); \n"
-        <<     "float u, v; \n"
-        <<     "vec4 texel; \n";
+        << "    vec3 color = vec3(1,1,1); \n"
+        << "    float u, v, dmin, dmax, atten_min, atten_max; \n"
+        << "    vec4 texel; \n";
 
     for(int i=0; i<numImageLayers; ++i)
     {
         int j = i*4;
-        buf << "if (osgearth_imagelayer_enabled["<< i << "]) { \n"
-            <<     "u = region["<< j <<"] + (region["<< j+2 <<"] * gl_TexCoord[0].s); \n"
-            <<     "v = region["<< j+1 <<"] + (region["<< j+3 <<"] * gl_TexCoord[0].t); \n"
-            <<     "texel = texture2DArray( tex0, vec3(u,v,"<< i <<") ); \n"
-            <<     "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"]); \n"
-            << "} \n";
+        int k = i*2;
+        buf << "    if (osgearth_imagelayer_enabled["<< i << "]) { \n"
+            << "        u = region["<< j <<"] + (region["<< j+2 <<"] * gl_TexCoord[0].s); \n"
+            << "        v = region["<< j+1 <<"] + (region["<< j+3 <<"] * gl_TexCoord[0].t); \n"
+            << "        dmin = osgearth_range - osgearth_imagelayer_range["<< k << "]; \n"
+            << "        dmax = osgearth_range - osgearth_imagelayer_range["<< k+1 <<"]; \n"
+            << "        if (dmin >= 0 && dmax <= 0.0) { \n"
+            << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
+            << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
+            << "            texel = texture2DArray( tex0, vec3(u,v,"<< i <<") ); \n"
+            << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"] * atten_max * atten_min); \n"
+            << "        } \n"
+            << "    } \n";
     }
 
-    buf <<     "return vec4(color,1); \n"
+    buf << "    return vec4(color,1); \n"
         << "} \n";
 
     std::string str = buf.str();

@@ -335,7 +335,8 @@ ShaderFactory::createVertexShaderMain() const
     std::stringstream buf;
     buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ); \n"
         << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n"
-        << "uniform bool osgearth_lighting_enabled; \n";
+        << "uniform bool osgearth_lighting_enabled; \n"
+        << "varying float osgearth_range; \n";
 
     if ( _useInjectionPoint[INJECT_PRE_VERTEX] )
         buf << "void osgearth_vert_preprocess( in vec3 position, in vec3 normal ); \n";
@@ -347,7 +348,8 @@ ShaderFactory::createVertexShaderMain() const
         <<     "gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         <<     "vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
         <<     "vec3 position = position4.xyz / position4.w; \n"
-        <<     "vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";
+        <<     "vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        <<     "osgearth_range = length(position4.xyz); \n";
 
     if ( _useInjectionPoint[INJECT_PRE_VERTEX] )
         buf << "osgearth_vert_preprocess( position, normal ); \n";

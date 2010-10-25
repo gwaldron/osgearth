@@ -16,7 +16,6 @@ SET(LIB_PUBLIC_HEADERS
     ElevationFadeCallback
     #ElevationManager
     Export
-    FadeLayerNode
     Graticule
     Labeling
     ObjectPlacer
@@ -35,7 +34,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     EarthManipulator.cpp	
     ElevationFadeCallback.cpp
     #ElevationManager.cpp
-    FadeLayerNode.cpp
     Graticule.cpp
     Labeling.cpp
     ObjectPlacer.cpp

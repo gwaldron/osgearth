@@ -39,6 +39,8 @@
 
 #include "GDALOptions"
 
+#define LC "[GDAL driver] "
+
 // From easyrgb.com
 float Hue_2_RGB( float v1, float v2, float vH )
 {
@@ -722,7 +724,23 @@ public:
         }
 
         //Create a spatial reference for the source.
-        osg::ref_ptr<SpatialReference> src_srs = SpatialReference::create( _srcDS->GetProjectionRef() );
+        const char* srcProj = _srcDS->GetProjectionRef();
+        if ( srcProj != 0L && overrideProfile != 0L )
+        {
+            OE_WARN << LC << "WARNING, overriding profile of a source that already defines its own SRS (" 
+                << this->getName() << ")" << std::endl;
+        }
+
+        osg::ref_ptr<const SpatialReference> src_srs;
+        if ( overrideProfile )
+        {
+            src_srs = overrideProfile->getSRS();
+            _srcDS->SetProjection( src_srs->getWKT().c_str() ); // will this work?
+        }
+        else if ( srcProj )
+        {
+            src_srs = SpatialReference::create( srcProj );
+        }
         
         // assert SRS is present
         if ( !src_srs.valid() )
@@ -744,11 +762,10 @@ public:
 
         const Profile* profile = NULL;
 
-        // If the map already defines a profile, simply take it on.
-        /*if ( mapProfile )
+        if ( overrideProfile )
         {
-            profile = mapProfile;
-        }*/
+            profile = overrideProfile;
+        }
 
         if ( !profile && src_srs->isGeographic() )
         {

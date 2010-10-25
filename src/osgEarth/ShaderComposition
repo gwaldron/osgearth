@@ -20,6 +20,7 @@
 #define OSGEARTH_SHADER_COMPOSITION_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Revisioning>
 #include <string>
 #include <map>
 #include <osg/Shader>
@@ -30,17 +31,33 @@ namespace osgEarth
     /**
      * Library of shaders to use in the terrain engine. Stored in the registry.
      */
-    class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
+    class OSGEARTH_EXPORT ShaderFactory : public Revisioned<osg::Referenced>
     {
     public:
-        virtual osg::Shader* createVertexShaderMain( bool hasPreprocess =false, bool hasPostprocess =false ) const;
-        virtual osg::Shader* createFragmentShaderMain( bool hasPreprocess =false, bool hasPostprocess =false ) const;
+        ShaderFactory();
+
+    public:
+        enum InjectionPoint {
+            INJECT_PRE_VERTEX     =0,
+            INJECT_POST_VERTEX    =1,
+            INJECT_PRE_FRAGMENT   =2,
+            INJECT_POST_FRAGMENT  =3
+        };
+
+        void setUseInjectionPoint( InjectionPoint ip, bool value =true );
+
+    public:
+        virtual osg::Shader* createVertexShaderMain() const;
+        virtual osg::Shader* createFragmentShaderMain() const;
         
         virtual osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
         virtual osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
 
         virtual osg::Shader* createDefaultLightingVertexShader() const;
         virtual osg::Shader* createDefaultLightingFragmentShader() const;
+
+    protected:
+        bool _useInjectionPoint[4];
     };
 
     /**

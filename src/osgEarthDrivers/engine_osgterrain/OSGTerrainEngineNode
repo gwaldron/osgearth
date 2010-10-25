@@ -21,11 +21,12 @@
 
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/Map>
+#include <osgEarth/Revisioning>
 #include "OSGTerrainOptions"
 #include "OSGTileFactory"
 #include <osg/Geode>
 #include <osg/NodeCallback>
-#include <osgEarth/Map>
 
 using namespace osgEarth;
 
@@ -81,6 +82,7 @@ private:
     class CustomTerrain* _terrain;
     unsigned int _id;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
+    Revision _shaderLibRev;
 
     // store a separate map frame for each of the traversal threads
     MapFrame* _update_mapf; // map frame for the main/update traversal thread

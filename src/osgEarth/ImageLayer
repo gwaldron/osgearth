@@ -60,6 +60,18 @@ namespace osgEarth
         optional<double>& gamma() { return _gamma; }
         const optional<double>& gamma() const { return _gamma; }
 
+        /**
+         * The initial minimum camera range at which this layer is visible.
+         */
+        optional<float>& minVisibleRange() { return _minRange; }
+        const optional<float>& minVisibleRange() const { return _minRange; }
+
+        /**
+         * The initial maximum camera range at which this layer is visible.
+         */
+        optional<float>& maxVisibleRange() { return _maxRange; }
+        const optional<float>& maxVisibleRange() const { return _maxRange; }
+
 		/**
 		 * Gets or sets the nodata image for this MapLayer
 		 */
@@ -92,8 +104,10 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
 
-		optional<float> _opacity;
+		optional<float>  _opacity;
         optional<double> _gamma;
+        optional<float>  _minRange;
+        optional<float>  _maxRange;
 		optional<osg::Vec4ub> _transparentColor;
 	    optional<std::string> _noDataImageFilename;
 		optional<osg::Texture::FilterMode> _magFilter;

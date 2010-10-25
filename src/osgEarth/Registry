@@ -104,7 +104,7 @@ namespace osgEarth
         /**
          * Gets or sets the default shader library.
          */
-        const ShaderFactory* getShaderFactory() const;
+        ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
 
     protected:

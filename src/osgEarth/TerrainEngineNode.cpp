@@ -59,6 +59,7 @@ _mapf( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" )
     //NOP
 }
 
+// this handler adjusts the uniform set when a terrain layer's "enabed" state changes
 void
 TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer )
 {
@@ -73,6 +74,7 @@ TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer )
         OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
 }
 
+// this handler adjusts the uniform set when a terrain layer's "opacity" value changes
 void
 TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
 {
@@ -87,6 +89,7 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
         OE_WARN << LC << "Odd, onOpacityChanged did not find layer" << std::endl;
 }
 
+// this handler adjusts the uniform set when an image layer's "gamma" value changes
 void
 TerrainEngineNode::ImageLayerController::onGammaChanged( ImageLayer* layer )
 {
@@ -227,23 +230,30 @@ TerrainEngineNode::updateImageUniforms()
 
     stateSet->removeUniform( "osgearth_imagelayer_opacity" );
     stateSet->removeUniform( "osgearth_imagelayer_enabled" );
+    stateSet->removeUniform( "osgearth_imagelayer_range" );
     
     if ( mapf.imageLayers().size() > 0 )
     {
-        //Update the layer opacity uniform
-        _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", mapf.imageLayers().size() );
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
-            _imageLayerController->_layerOpacityUniform->setElement( (int)(i-mapf.imageLayers().begin()), i->get()->getOpacity() );
-        stateSet->addUniform( _imageLayerController->_layerOpacityUniform.get() );
-
-        //Update the layer enabled uniform
         _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", mapf.imageLayers().size() );
+        _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", mapf.imageLayers().size() );
+        _imageLayerController->_layerRangeUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_range", 2 * mapf.imageLayers().size() );
+
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
-            _imageLayerController->_layerEnabledUniform->setElement( (int)(i-mapf.imageLayers().begin()), i->get()->getEnabled() );
+            ImageLayer* layer = i->get();
+            int index = (int)(i - mapf.imageLayers().begin());
+
+            _imageLayerController->_layerOpacityUniform->setElement( index, layer->getOpacity() );
+            _imageLayerController->_layerEnabledUniform->setElement( index, layer->getEnabled() );
+            _imageLayerController->_layerRangeUniform->setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
+            _imageLayerController->_layerRangeUniform->setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
         }
+
+        stateSet->addUniform( _imageLayerController->_layerOpacityUniform.get() );
         stateSet->addUniform( _imageLayerController->_layerEnabledUniform.get() );
+        stateSet->addUniform( _imageLayerController->_layerRangeUniform.get() );
     }
+
     stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)mapf.imageLayers().size() );
 }
 

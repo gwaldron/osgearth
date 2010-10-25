@@ -639,6 +639,19 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
     {
         _cull_mapf->sync();
     }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        // detect and respond to changes in the system shader library:
+        ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
+        if ( sf->outOfSyncWith( _shaderLibRev ) )
+        {
+            OE_INFO << LC << "Detected shader factory change; updating." << std::endl;
+            this->installShaders();
+            sf->sync( _shaderLibRev );
+        }
+    }
+
     TerrainEngineNode::traverse( nv );
 }
 
@@ -706,15 +719,17 @@ OSGTerrainEngineNode::installShaders()
     {
         const ShaderFactory* lib = Registry::instance()->getShaderFactory();
 
+        int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
+
         VirtualProgram* vp = new VirtualProgram();        
 
         vp->setShader( "osgearth_vert_main",     lib->createVertexShaderMain() );
         vp->setShader( "osgearth_vert_lighting", lib->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_texture",  lib->createDefaultTextureVertexShader( 1 ) );
+        vp->setShader( "osgearth_vert_texture",  lib->createDefaultTextureVertexShader( numLayers ) );
 
         vp->setShader( "osgearth_frag_main",     lib->createFragmentShaderMain() );
         vp->setShader( "osgearth_frag_lighting", lib->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_texture",  lib->createDefaultTextureFragmentShader( 1 ) );
+        vp->setShader( "osgearth_frag_texture",  lib->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }

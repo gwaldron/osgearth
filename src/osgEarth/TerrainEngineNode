@@ -102,6 +102,9 @@ namespace osgEarth
             // a uniform array marking the enabled state of each image layer
             osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
 
+            // a uniform array holding the min and max visible range of each image layer
+            osg::ref_ptr< osg::Uniform > _layerRangeUniform;
+
         private:
             MapFrame _mapf;
         };

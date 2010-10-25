@@ -230,7 +230,7 @@ Registry::initCapabilities()
         _caps = new Capabilities();
 }
 
-const ShaderFactory*
+ShaderFactory*
 Registry::getShaderFactory() const
 {
     return _shaderLib.get();

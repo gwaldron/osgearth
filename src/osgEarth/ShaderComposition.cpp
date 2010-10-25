@@ -259,18 +259,18 @@ static char s_PerVertexLighting_FragmentShaderSource[] =
 "    color = color * gl_Color + gl_SecondaryColor;                          \n" //3
 "}                                                                         \n";//20
 
-static char s_Main_FragmentShaderSource[] =
-"vec4 osgearth_frag_texture( void );                                                      \n" //1
-"void osgearth_frag_lighting( inout vec4 color );                                         \n" //2
-"uniform bool osgearth_lighting_enabled; \n"
-"                                                                           \n" //3
-"void main ()                                                               \n" //4
-"{                                                                          \n" //5
-"    vec4 color = osgearth_frag_texture();                                                \n" //6
-"    if ( osgearth_lighting_enabled ) \n"
-"        osgearth_frag_lighting( color );                                                     \n" //7
-"    gl_FragColor = color;                                                  \n" //8
-"}                                                                          \n";//9
+//static char s_Main_FragmentShaderSource[] =
+//"vec4 osgearth_frag_texture( void );                                                      \n" //1
+//"void osgearth_frag_lighting( inout vec4 color );                                         \n" //2
+//"uniform bool osgearth_lighting_enabled; \n"
+//"                                                                           \n" //3
+//"void main ()                                                               \n" //4
+//"{                                                                          \n" //5
+//"    vec4 color = osgearth_frag_texture();                                                \n" //6
+//"    if ( osgearth_lighting_enabled ) \n"
+//"        osgearth_frag_lighting( color );                                                     \n" //7
+//"    gl_FragColor = color;                                                  \n" //8
+//"}                                                                          \n";//9
 
 static char s_SimpleTexture_FragmentShaderSource[] =
 "uniform sampler2D tex0;                                                    \n" //1
@@ -313,18 +313,34 @@ static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
 
 //------------------------------------------------------------------------
 
+ShaderFactory::ShaderFactory()
+{
+    for(int i=0; i<4; ++i)
+        _useInjectionPoint[i] = false;
+}
+
+void
+ShaderFactory::setUseInjectionPoint( ShaderFactory::InjectionPoint ip, bool value )
+{
+    if ( (int)ip >= 0 && (int)ip <= 3 )
+    {
+        _useInjectionPoint[(int)ip] = value;
+        dirty();
+    }
+}
+
 osg::Shader*
-ShaderFactory::createVertexShaderMain( bool hasPreprocess, bool hasPostprocess ) const
+ShaderFactory::createVertexShaderMain() const
 {
     std::stringstream buf;
     buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ); \n"
         << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n"
         << "uniform bool osgearth_lighting_enabled; \n";
 
-    if ( hasPreprocess )
-        buf << "void preprocess( in vec3 position, in vec3 normal ); \n";
-    if ( hasPostprocess )
-        buf << "void postprocess( in vec3 position, in vec3 normal ); \n";
+    if ( _useInjectionPoint[INJECT_PRE_VERTEX] )
+        buf << "void osgearth_vert_preprocess( in vec3 position, in vec3 normal ); \n";
+    if ( _useInjectionPoint[INJECT_POST_VERTEX] )
+        buf << "void osgearth_vert_postprocess( in vec3 position, in vec3 normal ); \n";
 
     buf << "void main(void) \n"
         << "{ \n"
@@ -333,15 +349,15 @@ ShaderFactory::createVertexShaderMain( bool hasPreprocess, bool hasPostprocess )
         <<     "vec3 position = position4.xyz / position4.w; \n"
         <<     "vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";
 
-    if ( hasPreprocess )
-        buf << "preprocess( position, normal ); \n";
+    if ( _useInjectionPoint[INJECT_PRE_VERTEX] )
+        buf << "osgearth_vert_preprocess( position, normal ); \n";
 
     buf <<    "osgearth_vert_texture( position, normal ); \n"
         <<    "if ( osgearth_lighting_enabled ) \n"
         <<    "    osgearth_vert_lighting( position, normal ); \n";
     
-    if ( hasPostprocess )
-        buf << "postprocess( position, normal ); \n";
+    if ( _useInjectionPoint[INJECT_POST_VERTEX] )
+        buf << "osgearth_vert_postprocess( position, normal ); \n";
 
     buf << "} \n";
 
@@ -350,9 +366,37 @@ ShaderFactory::createVertexShaderMain( bool hasPreprocess, bool hasPostprocess )
 }
 
 osg::Shader*
-ShaderFactory::createFragmentShaderMain( bool hasPreprocess, bool hasPostprocess ) const
+ShaderFactory::createFragmentShaderMain() const
 {
-    return new osg::Shader( osg::Shader::FRAGMENT, s_Main_FragmentShaderSource );
+    std::stringstream buf;
+    buf << "vec4 osgearth_frag_texture( void ); \n"
+        << "void osgearth_frag_lighting( inout vec4 color ); \n";
+
+    if ( _useInjectionPoint[INJECT_PRE_FRAGMENT] )
+        buf << "vec4 osgearth_frag_preprocess(); \n";
+    if ( _useInjectionPoint[INJECT_POST_FRAGMENT] )
+        buf << "void osgearth_frag_postprocess( inout vec4 color ); \n";
+
+    buf << "uniform bool osgearth_lighting_enabled; \n"
+        << "void main(void) \n"
+        << "{ \n"
+        << "    vec4 color; \n";
+
+    if ( _useInjectionPoint[INJECT_PRE_FRAGMENT] )
+        buf << "    color = osgearth_frag_preprocess(); \n";
+
+    buf << "    color = osgearth_frag_texture(); \n"
+        << "    if (osgearth_lighting_enabled) \n"
+        << "        osgearth_frag_lighting( color ); \n";
+
+    if ( _useInjectionPoint[INJECT_POST_FRAGMENT] )
+        buf << "    osgearth_frag_postprocess( color ); \n";
+
+    buf << "    gl_FragColor = color; \n"
+        << "} \n";  
+
+    std::string str = buf.str();
+    return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 
 osg::Shader*

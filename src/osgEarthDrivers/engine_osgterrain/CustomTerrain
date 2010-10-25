@@ -106,7 +106,7 @@ private:
 class CustomTile : public osgTerrain::TerrainTile
 {
 public:
-    CustomTile( const TileKey& key, GeoLocator* keyLocator );
+    CustomTile( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects );
 
     virtual const char* libraryName() const { return "osgEarth"; }
     virtual const char* className() const { return "CustomTile"; }
@@ -224,8 +224,7 @@ private:
     bool _hasBeenTraversed;
     bool _useTileGenRequest;
     bool _sequentialImagery;
-
-    //bool _tileGenNeeded;
+    bool _quickReleaseGLObjects;
 
     typedef std::queue<TileUpdate> TileUpdateQueue;
     TileUpdateQueue _tileUpdates;
@@ -269,7 +268,8 @@ public:
     CustomTerrain(
         const MapFrame& update_mapf,
         const MapFrame& cull_mapf,
-        OSGTileFactory* factory );
+        OSGTileFactory* factory,
+        bool quickReleaseGLObjects );
 
     virtual const char* libraryName() const { return "osgEarth"; }
     virtual const char* className() const { return "CustomTerrain"; }
@@ -286,10 +286,8 @@ public:
      */
     int getRevision() const;
 
-
-    //Map* getMap();
     OSGTileFactory* getTileFactory();
-    //MapEngine* getEngine();
+    bool getQuickReleaseGLObjects() const { return _quickReleaseGLObjects; }
 
     TaskService* getImageryTaskService(int layerId);
     TaskService* getElevationTaskService();
@@ -374,6 +372,9 @@ private:
     // store a separate map frame for each of the traversal threads
     const MapFrame& _update_mapf; // map frame for the main/update traversal thread
     const MapFrame& _cull_mapf;   // map frame for the cull traversal thread
+
+    bool _quickReleaseGLObjects;
+    bool _quickReleaseCallbackInstalled;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_VERSIONED_TERRAIN

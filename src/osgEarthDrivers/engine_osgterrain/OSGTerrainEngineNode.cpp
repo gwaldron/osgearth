@@ -196,7 +196,9 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     _tileFactory = new OSGTileFactory( _id, *_cull_mapf, _terrainOptions );
 
     // go through and build the root nodesets.
-    _terrain = new CustomTerrain( *_update_mapf, *_cull_mapf, _tileFactory.get() );
+    _terrain = new CustomTerrain(
+        *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
+
     this->addChild( _terrain );
 
     // set the initial properties from the options structure:

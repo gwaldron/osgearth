@@ -506,7 +506,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
     osg::ref_ptr<GeoLocator> locator = GeoLocator::createForKey( key, mapInfo );
 
     // The empty tile:
-    CustomTile* tile = new CustomTile( key, locator.get() );
+    CustomTile* tile = new CustomTile( key, locator.get(), terrain->getQuickReleaseGLObjects() );
     tile->setTerrainTechnique( osg::clone(terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
     tile->setVerticalScale( _terrainOptions.verticalScale().value() );
     tile->setRequiresNormals( true );
@@ -608,29 +608,10 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
                                     const TileKey& key, bool wrapInPagedLOD, 
                                     bool fallback, bool& validData )
 {
-    //NOTE: dont' need this since we're using a mapframe now
-//    Threading::ScopedReadLock lock( map->getMapDataMutex() );
-
-    //bool isGeocentric = map->isGeocentric();
-    //bool isProjected = !isGeocentric;
-    //bool isPlateCarre = isProjected && map->getProfile()->getSRS()->isGeographic();
-
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 
-    //double xmin, ymin, xmax, ymax;
-    //key.getExtent().getBounds( xmin, ymin, xmax, ymax );
-
     GeoImageVector image_tiles;
-
-    //MapLayerList imageMapLayers;
-    //map->getImageLayers( imageMapLayers, true );
-
-    //MapLayerList hfMapLayers;
-    //map->getElevationLayers( hfMapLayers, true );
-
-    //const ImageLayerVector& imageLayers = map->getImageLayers();
-    //const ElevationLayerVector& elevLayers = map->getElevationLayers();
 
     // Collect the image layers
     bool empty_map = mapf.imageLayers().size() == 0 && mapf.elevationLayers().size() == 0;
@@ -751,7 +732,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     hf_layer->setLocator( locator.get() );
     hf_layer->setHeightField( hf.get() );
 
-    CustomTile* tile = new CustomTile( key, locator.get() );
+    CustomTile* tile = new CustomTile( key, locator.get(), terrain->getQuickReleaseGLObjects() );
     tile->setTerrainTechnique( osg::clone(terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
     tile->setVerticalScale( _terrainOptions.verticalScale().value() );
     tile->setLocator( locator.get() );

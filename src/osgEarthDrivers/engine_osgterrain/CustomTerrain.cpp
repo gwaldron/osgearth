@@ -37,15 +37,16 @@ using namespace OpenThreads;
 
 #define LC "[CustomTerrain] "
 
-#define EXPLICIT_RELEASE_GL_OBJECTS 1
-
-//#if OSG_MIN_VERSION_REQUIRED(2,9,5)
-//#  undef EXPLICIT_RELEASE_GL_OBJECTS
-//#else
-//#  define EXPLICIT_RELEASE_GL_OBJECTS
-//#endif
+// setting this will enable "fast GL object release" - the engine will activity
+// track tiles that expire from the scene graph, and will explicity force them
+// to deallocate their GL objects (instead of waiting for OSG to "lazily" 
+// release them). This is helpful for freeing up memory more quickly when 
+// aggresively navigating a map.
+#define QUICK_RELEASE_GL_OBJECTS 1
 
 //#define PREEMPTIVE_DEBUG 1
+
+//----------------------------------------------------------------------------
 
 // this progress callback checks to see whether the request being serviced is 
 // out of date with respect to the task service that is running it. It checks
@@ -75,8 +76,7 @@ public:
     TaskService* _service;
 };
 
-
-/*****************************************************************************/
+//----------------------------------------------------------------------------
 
 // NOTE: Task requests run in background threads. So we pass in a map frame and
 // make a clone of it to use in that thread. Each Task must have its own MapFrame
@@ -216,7 +216,7 @@ struct TileGenRequest : public TaskRequest
 #define SOUTH  4
 
 
-CustomTile::CustomTile( const TileKey& key, GeoLocator* keyLocator ) :
+CustomTile::CustomTile( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects ) :
 _key( key ),
 _keyLocator( keyLocator ),
 _useLayerRequests( false ),       // always set this to false here; use setUseLayerRequests() to enable
@@ -231,7 +231,8 @@ _elevationLOD( key.getLevelOfDetail() ),
 _hasBeenTraversed(false),
 _useTileGenRequest( true ),
 //_tileGenNeeded( false ),
-_verticalScale(1.0f)
+_verticalScale(1.0f),
+_quickReleaseGLObjects( quickReleaseGLObjects )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -1182,82 +1183,61 @@ CustomTile::releaseGLObjects(osg::State* state) const
 {
     Group::releaseGLObjects(state);
 
-#ifdef EXPLICIT_RELEASE_GL_OBJECTS
-    if (_terrainTechnique.valid())
+    if ( _quickReleaseGLObjects && _terrainTechnique.valid() )
     {
         //NOTE: crashes sometimes if OSG_RELEASE_DELAY is set -gw
         _terrainTechnique->releaseGLObjects( state );
     }
-    else
-    {
-        //OE_NOTICE << "Tried but failed to VT releasing GL objects" << std::endl;
-    }
-#endif
 }
 
-/****************************************************************************/
+//----------------------------------------------------------------------------
 
-// a simple draw callback, to be installed on a Camera, that tells all CustomTerrains to
-// release GL memory on any expired tiles.
-struct ReleaseGLCallback : public osg::Camera::DrawCallback
+namespace
 {
-	typedef std::vector< osg::observer_ptr< CustomTerrain > > ObserverTerrainList;
-
-    ReleaseGLCallback()
-	{
-        //nop
-	}
-
-    void operator()( osg::RenderInfo& renderInfo ) const
+    /**
+     * A draw callback to calls another, nested draw callback.
+     */
+    struct NestingDrawCallback : public osg::Camera::DrawCallback
     {
-        // first release GL objects as necessary
+        NestingDrawCallback( osg::Camera::DrawCallback* next ) : _next(next) { }
+
+        virtual void operator()( osg::RenderInfo& renderInfo ) const
         {
-		    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(const_cast<ReleaseGLCallback*>(this)->_terrainMutex);
-		    for (ObserverTerrainList::const_iterator itr = _terrains.begin(); itr != _terrains.end(); ++itr)
-		    { 
-			    osg::ref_ptr< CustomTerrain > vt = itr->get();
-			    if (vt.valid())
-			    {
-				    (*itr)->releaseGLObjectsForTiles(renderInfo.getState());
-			    }
-		    }
+            dispatch( renderInfo );
         }
 
-        // then call the previous CB if there is one
-        if ( _previousCB.valid() )
-            _previousCB->operator ()( renderInfo );
-    }
+        void dispatch( osg::RenderInfo& renderInfo ) const
+        {
+            if ( _next )
+                _next->operator ()( renderInfo );
+        }
 
-	void registerTerrain(CustomTerrain *terrain)
-	{
-		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_terrainMutex);
-		ObserverTerrainList::iterator itr = find(_terrains.begin(), _terrains.end(), terrain);
-		//Avoid double registration
-		if (itr == _terrains.end())
-		{
-			//OE_NOTICE << "ReleaseGLCallback::registerTerrain " << std::endl;
-			_terrains.push_back( terrain );
-		}
-	}
+        osg::ref_ptr<osg::Camera::DrawCallback> _next;
+    };
 
-	void unregisterTerrain(CustomTerrain* terrain)
-	{
-		OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_terrainMutex);
-		ObserverTerrainList::iterator itr = find(_terrains.begin(), _terrains.end(), terrain);
-		if (itr != _terrains.end())
-		{
-			//OE_NOTICE << "ReleaseGLCallback::unregisterTerrain " << std::endl;
-			_terrains.erase(itr);
-		}
-	}
 
-	OpenThreads::Mutex _terrainMutex;
-	ObserverTerrainList _terrains;    
-    osg::ref_ptr<osg::Camera::DrawCallback> _previousCB;
-};
+    // a simple draw callback, to be installed on a Camera, that tells all CustomTerrains to
+    // release GL memory on any expired tiles.
+    struct QuickReleaseGLCallback : public NestingDrawCallback
+    {
+	    typedef std::vector< osg::observer_ptr< CustomTerrain > > ObserverTerrainList;
 
-static bool s_releaseCBInstalled = false;
-static osg::ref_ptr< ReleaseGLCallback > s_releaseCB = new ReleaseGLCallback();
+        QuickReleaseGLCallback( CustomTerrain* terrain, osg::Camera::DrawCallback* next )
+            : NestingDrawCallback(next), _terrain(terrain) { }
+
+        virtual void operator()( osg::RenderInfo& renderInfo ) const
+        {
+            osg::ref_ptr<CustomTerrain> terrainSafe = _terrain.get();
+            if ( terrainSafe.valid() )
+            {
+                terrainSafe->releaseGLObjectsForTiles( renderInfo.getState() );
+            }
+            dispatch( renderInfo );
+        }
+
+        osg::observer_ptr<CustomTerrain> _terrain;
+    };
+}
 
 #undef  LC
 #define LC "[CustomTerrain] "
@@ -1272,19 +1252,23 @@ CustomTerrain::releaseGLObjectsForTiles(osg::State* state)
 
     while( _tilesToRelease.size() > 0 )
     {
-        //OE_NOTICE << "("<<_tilesToRelease.front()->getKey()->str()<<") release GL " << std::endl;
         _tilesToRelease.front()->releaseGLObjects( state );
         _tilesToRelease.pop();
     }
 }
 
-CustomTerrain::CustomTerrain( const MapFrame& update_mapf, const MapFrame& cull_mapf, OSGTileFactory* tileFactory ) :
+CustomTerrain::CustomTerrain(const MapFrame& update_mapf, 
+                             const MapFrame& cull_mapf, 
+                             OSGTileFactory* tileFactory,
+                             bool            quickReleaseGLObjects ) :
 _update_mapf( update_mapf ),
 _cull_mapf( cull_mapf ),
 _tileFactory( tileFactory ),
 _revision(0),
 _numLoadingThreads( 0 ),
-_registeredWithReleaseGLCallback( false )
+_registeredWithReleaseGLCallback( false ),
+_quickReleaseGLObjects( quickReleaseGLObjects ),
+_quickReleaseCallbackInstalled( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -1314,10 +1298,7 @@ _registeredWithReleaseGLCallback( false )
 
 CustomTerrain::~CustomTerrain()
 {
-	if (s_releaseCBInstalled)
-	{
-		s_releaseCB->unregisterTerrain(this);
-	}
+    //nop
 }
 
 void
@@ -1505,11 +1486,6 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
     }
 }
 
-//Map*
-//CustomTerrain::getMap() {
-//    return _map.get();
-//}
-
 OSGTileFactory*
 CustomTerrain::getTileFactory() {
     return _tileFactory.get();
@@ -1546,29 +1522,22 @@ CustomTerrain::getNumTasksRemaining() const
 void
 CustomTerrain::traverse( osg::NodeVisitor &nv )
 {
-#ifdef EXPLICIT_RELEASE_GL_OBJECTS
-    if ( !s_releaseCBInstalled )
-    {
-        osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
-        if ( cam )
-        {
-            OE_INFO << LC << "Explicit releaseGLObjects() enabled" << std::endl;
-            osg::ref_ptr<osg::Camera::DrawCallback> previousCB = cam->getPostDrawCallback();
-			cam->setPostDrawCallback( s_releaseCB.get() );
-            s_releaseCB->_previousCB = previousCB.get();
-            s_releaseCBInstalled = true;
-        }
-    }
-
-	if (s_releaseCBInstalled && !_registeredWithReleaseGLCallback) 
-	{
-		s_releaseCB->registerTerrain(this);
-		_registeredWithReleaseGLCallback = true;
-	}
-#endif // EXPLICIT_RELEASE_GL_OBJECTS
-
     if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
+        // if the terrain engine requested "quick release", install the quick release
+        // draw callback now.
+        if ( _quickReleaseGLObjects && !_quickReleaseCallbackInstalled )
+        {
+            osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
+            if ( cam )
+            {
+                cam->setPostDrawCallback( new QuickReleaseGLCallback( this, cam->getPostDrawCallback() ) );
+                _quickReleaseCallbackInstalled = true;
+            }
+        }
+
+        // this stamp keeps track of when requests are dispatched. If a request's stamp gets too
+        // old, it is considered "expired" and subject to cancelation
         int stamp = nv.getFrameStamp()->getFrameNumber();
         
         TerrainTileList _updatedTiles;
@@ -1602,18 +1571,12 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
             {
                 if ( i->get()->cancelRequests() )
                 {
-#ifdef EXPLICIT_RELEASE_GL_OBJECTS
-                    //Only add the tile to be released if we could actually install the callback.
-                    if (s_releaseCBInstalled)
+                    // if quick release is activated, queue up the tile for release.
+                    if ( _quickReleaseGLObjects && _quickReleaseCallbackInstalled )
                     {
-                        //OE_NOTICE << "Tile (" << i->get()->getKey()->str() << ") shut down." << std::endl;
                         _tilesToRelease.push( i->get() );
                     }
-                    else
-                    {
-                        OE_WARN << "Warning:  Could not install ReleaseGLCallback" << std::endl;
-                    }
-#endif // EXPLICIT_RELEASE_GL_OBJECTS
+
                     i = _tilesToShutDown.erase( i );
                 }
                 else

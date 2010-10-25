@@ -1294,6 +1294,8 @@ _quickReleaseCallbackInstalled( false )
 
         OE_INFO << LC << "Using a total of " << _numLoadingThreads << " loading threads " << std::endl;
     }
+    
+    setNumChildrenRequiringUpdateTraversal( 0 );
 }
 
 CustomTerrain::~CustomTerrain()

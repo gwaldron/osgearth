@@ -657,58 +657,6 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
     TerrainEngineNode::traverse( nv );
 }
 
-#if 0
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-        // refresh the update-thread map frame:
-        // actuall don't need to do this here since we have callbacks registered and we do the
-        // sync in the callbacks.
-        //_update_mapf->sync();
-    }
-
-    else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-	{
-        // refresh the cull-thread map frame. doing this here will cause all the children who
-        // reference this same map frame to be in sync with the map model
-        _cull_mapf->sync();
-
-        //Update the lighting uniforms
-        //TODO: this should not change the uniforms during the cull traversal...
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
-        {
-            StateSetStack statesetStack;
-
-            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
-            while(sg)
-            {
-                const osg::StateSet* stateset = sg->getStateSet();
-                if (stateset)
-                {
-                    statesetStack.push_front(stateset);
-                }                
-                sg = sg->_parent;
-            }
-
-            //Update the lighting uniforms
-            osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
-            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightingEnabled", osg::Uniform::BOOL);
-            lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
-
-            const unsigned int numLights = 8;
-            osg::Uniform* lightsEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightsEnabled", osg::Uniform::BOOL, numLights);
-            for (unsigned int i = 0; i < numLights; ++i)
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0 + i);     
-                lightsEnabledUniform->setElement(i, (lightEnabled & osg::StateAttribute::ON)!=0);
-            }				
-        }
-    }
-
-    TerrainEngineNode::traverse( nv );
-}
-#endif
-
 void
 OSGTerrainEngineNode::installShaders()
 {

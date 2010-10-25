@@ -29,6 +29,8 @@
 #include <osg/NodeVisitor>
 #include <osg/Node>
 #include <osg/Texture2D>
+#include <osgGA/EventVisitor>
+
 #include <OpenThreads/ScopedLock>
 
 
@@ -1159,8 +1161,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
 void
 CustomTile::traverse( osg::NodeVisitor& nv )
 {
-    bool isUpdate = nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR;
-    if ( !_hasBeenTraversed && isUpdate )
+    if ( !_hasBeenTraversed && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
         Threading::ScopedWriteLock lock( this->_tileLayersMutex );
         {
@@ -1175,6 +1176,7 @@ CustomTile::traverse( osg::NodeVisitor& nv )
             }
         }
     }
+   
     osgTerrain::TerrainTile::traverse( nv );
 }
 
@@ -1268,7 +1270,8 @@ _revision(0),
 _numLoadingThreads( 0 ),
 _registeredWithReleaseGLCallback( false ),
 _quickReleaseGLObjects( quickReleaseGLObjects ),
-_quickReleaseCallbackInstalled( false )
+_quickReleaseCallbackInstalled( false ),
+_onDemandDelay( 2 )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -1295,7 +1298,11 @@ _quickReleaseCallbackInstalled( false )
         OE_INFO << LC << "Using a total of " << _numLoadingThreads << " loading threads " << std::endl;
     }
     
+    // undo the setting in osgTerrain::Terrain
     setNumChildrenRequiringUpdateTraversal( 0 );
+
+    // register for events in order to support ON_DEMAND frame scheme
+    setNumChildrenRequiringEventTraversal( 1 );
 }
 
 CustomTerrain::~CustomTerrain()
@@ -1645,6 +1652,30 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                     n->get()->onTerrainTilesUpdated( _updatedTiles );
                 }
             }
+        }
+    }
+    
+    else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    {
+        // in OSG's "ON_DEMAND" frame scheme, OSG runs the event visitor as part of the
+        // test to see if a frame is needed. In sequential/preemptive mode, we need to 
+        // check whether there are any pending tasks running. 
+
+        // In addition, once the tasks run out, we continue to delay on-demand rendering
+        // for another full frame so that the event dispatchers can catch up.
+
+        int numTasks = getNumTasksRemaining();
+
+        if ( numTasks > 0 )
+            _onDemandDelay = 2;
+
+        //OE_INFO << "Tasks = " << numTasks << std::endl;
+
+        if ( _onDemandDelay > 0 )
+        {
+            osgGA::EventVisitor* ev = dynamic_cast<osgGA::EventVisitor*>( &nv );
+            ev->getActionAdapter()->requestRedraw();
+            _onDemandDelay--;
         }
     }
 

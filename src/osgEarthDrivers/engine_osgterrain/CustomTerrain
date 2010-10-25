@@ -363,6 +363,7 @@ private:
     OpenThreads::Mutex _taskServiceMutex;
 
     int _numLoadingThreads;
+    int _onDemandDelay; // #frames
 
 	bool _registeredWithReleaseGLCallback;
     TerrainCallbackList _terrainCallbacks;

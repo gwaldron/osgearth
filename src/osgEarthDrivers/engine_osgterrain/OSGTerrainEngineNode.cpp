@@ -150,7 +150,7 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
 
     if ( _terrain )
     {
-        syncMapModel();
+        _update_mapf->sync();
 
         unsigned int index = 0;
         for( ElevationLayerVector::const_iterator i = _update_mapf->elevationLayers().begin(); i != _update_mapf->elevationLayers().end(); i++ )
@@ -266,23 +266,9 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
 }
 
 void
-OSGTerrainEngineNode::syncMapModel()
-{
-    // update the local map data model copy 
-    _update_mapf->sync();
-
-    // update the terrain revision in threaded mode
-    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
-    {
-        getTerrain()->incrementRevision();
-        getTerrain()->updateTaskServiceThreads( *_update_mapf );
-    }
-}
-
-void
 OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
-    syncMapModel();
+    _update_mapf->sync();
 
     // dispatch the change handler
     if ( change.getLayer() )
@@ -302,6 +288,13 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         case MapModelChange::MOVE_ELEVATION_LAYER:
             moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() ); break;
         }
+    }
+
+    // update the terrain revision in threaded mode
+    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    {
+        getTerrain()->incrementRevision();
+        getTerrain()->updateTaskServiceThreads( *_update_mapf );
     }
 }
 
@@ -608,28 +601,6 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     //note: to validate plugin-specific features, we would create an OSGTerrainOptions
     // and do the validation on that. You would then re-integrate it by calling
     // options.mergeConfig( osgTerrainOptions ).
-}
-
-typedef std::list<const osg::StateSet*> StateSetStack;
-static osg::StateAttribute::GLModeValue 
-getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
-{
-    osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
-    for(StateSetStack::const_iterator itr = statesetStack.begin();
-        itr != statesetStack.end();
-        ++itr)
-    {
-        osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
-        if ((val & ~osg::StateAttribute::INHERIT)!=0)
-        {
-            if ((val & osg::StateAttribute::PROTECTED)!=0 ||
-                (base_val & osg::StateAttribute::OVERRIDE)==0)
-            {
-                base_val = val;
-            }
-        }
-    }
-    return base_val;
 }
 
 void

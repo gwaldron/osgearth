@@ -53,9 +53,9 @@ using namespace osgEarth::Drivers;
 
 /*****************************************************************************/
 
-struct TileImageBackfillCallback : public osg::NodeCallback
+struct PopulateTileDataCallback : public osg::NodeCallback
 {
-    TileImageBackfillCallback( const MapFrame& mapf ) : _mapf(mapf) { }
+    PopulateTileDataCallback( const MapFrame& mapf ) : _mapf(mapf) { }
 
     void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
@@ -68,11 +68,6 @@ struct TileImageBackfillCallback : public osg::NodeCallback
                 {
                     tile->servicePendingImageRequests( _mapf, nv->getFrameStamp()->getFrameNumber() );
                 }
-                //osg::ref_ptr<CustomTile> tile = static_cast<CustomTile*>( node->asGroup()->getChild(0) );
-                //if ( tile.valid() && tile->getUseLayerRequests() )
-                //{
-                //    tile->servicePendingImageRequests( _mapf, nv->getFrameStamp()->getFrameNumber() );
-                //}
             }
         }
         traverse( node, nv );
@@ -587,7 +582,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
     result = plod;
 
     // Install a callback that will load the actual tile data via the pager.
-    result->addCullCallback( new TileImageBackfillCallback( _cull_thread_mapf ) );
+    result->addCullCallback( new PopulateTileDataCallback( _cull_thread_mapf ) );
 
     // Install a cluster culler (FIXME for cube mode)
     //bool isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
@@ -596,9 +591,6 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
         osg::ClusterCullingCallback* ccc = createClusterCullingCallback( tile, locator->getEllipsoidModel() );
         result->addCullCallback( ccc );
     }     
-
-
-    //result = plod;
 
     return result;
 }
@@ -886,7 +878,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
         result = plod;
 
         if ( tile->getUseLayerRequests() )
-            result->addCullCallback( new TileImageBackfillCallback( _cull_thread_mapf ) );
+            result->addCullCallback( new PopulateTileDataCallback( _cull_thread_mapf ) );
     }
     else
     {

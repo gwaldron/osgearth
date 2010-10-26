@@ -1374,10 +1374,8 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
                              bool tileTableLocked )
 {
     // geocentric maps wrap around in the X dimension.
-    //bool wrapX = _map->isGeocentric();
     bool wrapX = mapInfo.isGeocentric();
     unsigned int tilesX, tilesY;
-    //_map->getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
     mapInfo.getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
 
     // parent

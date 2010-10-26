@@ -120,12 +120,17 @@ namespace osgEarth
         volatile bool _done;
     };
 
+    /** 
+     * Manages a priority task queue and associated thread pool.
+     */
     class OSGEARTH_EXPORT TaskService : public osg::Referenced
     {
     public:
         TaskService( const std::string& name ="", int numThreads =4 );
 
         void add( TaskRequest* request );
+
+        const std::string& getName() const { return _name; }
 
         int getStamp() const;
         void setStamp( int stamp );
@@ -150,6 +155,69 @@ namespace osgEarth
         int _lastRemoveFinishedThreadsStamp;
         std::string _name;
         virtual ~TaskService();
+    };
+
+    /**
+     * Managed a pool of TaskService objects, automatically allocating
+     * threads among them based on a weighting metric.
+     */
+    class OSGEARTH_EXPORT TaskServiceManager
+    {
+    public:
+        /**
+         * Creates a new manager, and sets the target number of threads to 
+         * allocate across all managed task services.
+         */
+        TaskServiceManager( int numThreads =4 );
+
+        /**
+         * Sets a new total target thread count to allocate across all task
+         * services under management. (The actual thread count may be higher since
+         * each service is guaranteed at least one thread.)
+         */
+        void setNumThreads( int numThreads );
+
+        /**
+         * Gets the total number of threads allocated across all managed
+         * task services.
+         */
+        int getNumThreads() const { return _numThreads; }
+
+        /**
+         * Adds a new task service to the manager and reallocates the thread pool
+         * across the remaining services.
+         */
+        TaskService* create( const std::string& name, float weight =1.0f );
+
+        /**
+         * Gets the names task service.
+         */
+        TaskService* get( const std::string& name ) const;
+
+        /**
+         * Gets a task service by name, creating it if it does not yet exist
+         */
+        TaskService* getOrCreate( const std::string& name, float weight =1.0f );
+
+        /**
+         * Removes a task service from management, and reallocates the thread pool
+         * across the remaining services.
+         */
+        void remove( TaskService* service );
+
+        /**
+         * Assigned a weight value to a particular task service. The manager will
+         * re-distribute available threads for all registered task services.
+         */
+        void setWeight( TaskService* service, float weight );
+
+    private:
+        typedef std::pair< osg::ref_ptr<TaskService>, float > WeightedTaskService;
+        typedef std::map< std::string, WeightedTaskService > TaskServiceMap;
+        TaskServiceMap _services;
+        int _numThreads, _targetNumThreads;
+
+        void reallocate( int targetNumThreads );
     };
 }
 

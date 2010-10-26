@@ -107,6 +107,12 @@ namespace osgEarth
         ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
 
+        /**
+         * Gets a reference to the global task service manager.
+         */
+        TaskServiceManager& getTaskServiceManager() {
+            return _taskServiceMgr; }
+
     protected:
         virtual ~Registry();
         Registry();
@@ -137,6 +143,8 @@ namespace osgEarth
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
         osg::ref_ptr<ShaderFactory> _shaderLib;
+
+        TaskServiceManager _taskServiceMgr;
 
         Capabilities* _caps;
         void initCapabilities();

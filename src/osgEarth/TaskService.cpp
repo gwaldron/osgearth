@@ -39,7 +39,8 @@ TaskRequest::run()
 {
     if ( _state == STATE_IN_PROGRESS )
     {
-        (*this)( _progress.get() );
+        (*this)( _progress.get() );        
+        //OE_INFO << LC << "TR [" << getName() << "] finished" << std::endl;
     }
     else
     {
@@ -50,6 +51,7 @@ TaskRequest::run()
 void 
 TaskRequest::cancel()
 {
+    //OE_INFO << LC << "TR [" << getName() << "] canceled" << std::endl;
     _progress->cancel();
 }
 
@@ -235,7 +237,8 @@ TaskService::getNumRequests() const
 
 void
 TaskService::add( TaskRequest* request )
-{
+{   
+    //OE_INFO << LC << "TS [" << _name << "] adding request [" << request->getName() << "]" << std::endl;
     _queue->add( request );
 }
 
@@ -282,8 +285,11 @@ TaskService::getNumThreads() const
 void
 TaskService::setNumThreads(int numThreads )
 {
-    _numThreads = osg::maximum(1, numThreads);
-    adjustThreadCount();
+    if ( _numThreads != numThreads )
+    {
+        _numThreads = osg::maximum(1, numThreads);
+        adjustThreadCount();
+    }
 }
 
 void
@@ -353,3 +359,106 @@ TaskService::removeFinishedThreads()
     }
 }
 
+//------------------------------------------------------------------------
+
+namespace {
+    static OpenThreads::Mutex s_taskServiceMgrMutex;
+}
+
+TaskServiceManager::TaskServiceManager( int numThreads ) :
+_targetNumThreads( numThreads ),
+_numThreads( 0 )
+{
+    //nop
+}
+
+void
+TaskServiceManager::setNumThreads( int numThreads )
+{
+    reallocate( numThreads );
+}
+
+TaskService*
+TaskServiceManager::create( const std::string& name, float weight )
+{
+    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+
+    if ( weight <= 0.0f )
+        weight = 0.001;
+
+    TaskServiceMap::iterator i = _services.find( name );
+    if ( i != _services.end() )
+    {
+        i->second.second = weight;
+        reallocate( _targetNumThreads );
+        return i->second.first.get();
+    }
+    else
+    {
+        TaskService* newService = new TaskService( name, 1 );
+        _services[name] = WeightedTaskService( newService, weight );
+        reallocate( _targetNumThreads );
+        return newService;
+    }
+}
+
+TaskService*
+TaskServiceManager::get( const std::string& name ) const
+{
+    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+    TaskServiceMap::const_iterator i = _services.find(name);
+    return i != _services.end() ? i->second.first.get() : 0L;
+}
+
+TaskService*
+TaskServiceManager::getOrCreate( const std::string& name, float weight ) 
+{
+    TaskService* service = get( name );
+    if ( !service )
+        return create( name, weight );
+}
+
+void
+TaskServiceManager::remove( TaskService* service )
+{
+    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+    _services.erase( service->getName() );
+    reallocate( _targetNumThreads );
+}
+
+void
+TaskServiceManager::setWeight( TaskService* service, float weight )
+{
+    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+
+    if ( weight <= 0.0f )
+        weight = 0.001;
+
+    if ( !service )
+        return;
+
+    TaskServiceMap::iterator i = _services.find( service->getName() );
+    if ( i != _services.end() )
+    {
+        i->second.second = weight;
+        reallocate( _targetNumThreads );
+    }    
+}
+
+void
+TaskServiceManager::reallocate( int numThreads )
+{
+    // first, total up all the weights.
+    float totalWeight = 0.0f;
+    for( TaskServiceMap::const_iterator i = _services.begin(); i != _services.end(); ++i )
+        totalWeight += i->second.second;
+
+    // next divide the total thread pool size by the relative weight of each service.
+    _numThreads = 0;
+    for( TaskServiceMap::const_iterator i = _services.begin(); i != _services.end(); ++i )
+    {
+        int threads = osg::maximum( 1, (int)( (float)_targetNumThreads * (i->second.second / totalWeight) ) );
+        i->second.first->setNumThreads( threads );
+        _numThreads += threads;
+    }
+}

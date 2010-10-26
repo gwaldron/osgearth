@@ -28,9 +28,8 @@ using namespace osgEarth;
 
 typedef multi_array_ref<Vec3f, Vec3Array, 2> PatchArray;
 
-// Hard-wire the patch resolution and screen-space polygon size.
-Geographic::Geographic(Map* map)
-    : PatchSet(64, new GeographicOptions), _profile(new EulerProfile),
+Geographic::Geographic(Map* map, int resolution)
+    : PatchSet(resolution, new GeographicOptions), _profile(new EulerProfile),
       _eModel(new EllipsoidModel)
 {
     setPrecisionFactor(8);

@@ -23,6 +23,7 @@ SET(TARGET_H
         Geographic
         GeoPatch
         SeamlessEngineNode
+        SeamlessOptions
 )
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR})

@@ -39,7 +39,7 @@ namespace seamless
 class Projected : public PatchSet
 {
 public:
-    Projected(osgEarth::Map* map);
+    Projected(osgEarth::Map* map, int resolution = 64);
     virtual osg::Transform* createPatch(const std::string& filename,
                                         PatchOptions* poptions);
 };

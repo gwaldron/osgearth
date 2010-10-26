@@ -22,6 +22,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TextureCompositor>
 
+#include "SeamlessOptions"
 #include "PatchSet"
 
 namespace seamless
@@ -58,7 +59,7 @@ public:
 private:
     osg::ref_ptr<PatchSet> _patchSet;
     double _verticalScale;
-    osgEarth::TerrainOptions _terrainOptions;
+    osgEarth::Drivers::SeamlessOptions _terrainOptions;
     osgEarth::MapFrame* _mapf;
 };
 }

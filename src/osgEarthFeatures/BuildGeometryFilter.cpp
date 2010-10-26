@@ -120,32 +120,58 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         //    << Geometry::toString( part->getType() ) << ", renderType = "
         //    << Geometry::toString( renderType ) << std::endl;
 
+        osg::Vec4f color = osg::Vec4(1,0,1,1);
+
         switch( renderType )
         {
         case Geometry::TYPE_POINTSET:
-            _hasPoints = true;
-            primMode = osg::PrimitiveSet::POINTS;
+            {
+                _hasPoints = true;
+                primMode = osg::PrimitiveSet::POINTS;
+                const PointSymbol* point = _style->getSymbol<PointSymbol>();
+                if (point)
+                {
+                    color = point->fill()->color();
+                }
+            }
             break;
 
         case Geometry::TYPE_LINESTRING:
-            _hasLines = true;
-            primMode = osg::PrimitiveSet::LINE_STRIP;
+            {
+                _hasLines = true;
+                primMode = osg::PrimitiveSet::LINE_STRIP;
+                const LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+                if (lineSymbol)
+                {
+                    color = lineSymbol->stroke()->color();
+                }
+            }
             break;
 
         case Geometry::TYPE_RING:
-            _hasLines = true;
-            primMode = osg::PrimitiveSet::LINE_LOOP;
+            {
+                _hasLines = true;
+                primMode = osg::PrimitiveSet::LINE_LOOP;
+                const LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+                if (lineSymbol)
+                {
+                    color = lineSymbol->stroke()->color();
+                }
+            }
             break;
 
         case Geometry::TYPE_POLYGON:
-            primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
+            {
+                primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
+                const PolygonSymbol* poly = _style->getSymbol<PolygonSymbol>();
+                if (poly)
+                {
+                    color = poly->fill()->color();
+                }
+            }
             break;
         }
-
-        // Cedric Pinson : how we should fix that ????
-        //osg::Vec4f color = _style->getColor( renderType );
-        osg::Vec4f color = osg::Vec4(1,0,1,1);
-    
+        
         osg::Geometry* osgGeom = new osg::Geometry();
 
         osg::Vec4Array* colors = new osg::Vec4Array(1);

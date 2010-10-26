@@ -34,6 +34,9 @@ namespace osgEarthUtil
     /**
      * A callback that sets layers' opacity based of the elevation of the camera.
      * Helpful for fading layers in and out as your altitude changes.
+     *
+     * NOTE: This class is somewhat obseleted by osgEarth's internal support for
+     * ImageLayerOptions::minVisibleRange/maxVisibleRange() and TerrainOptions::attenuationDistance().
      */
 	class OSGEARTHUTIL_EXPORT ElevationFadeCallback : public osg::NodeCallback
 	{

@@ -52,34 +52,34 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
 //---------------------------------------------------------------------------
 
 //static
-static OpenThreads::ReentrantMutex s_mapNodeCacheMutex;
-static unsigned int s_mapNodeID = 0;
+static OpenThreads::ReentrantMutex s_engineNodeCacheMutex;
+static unsigned int s_engineNodeID = 0;
 //Caches the MapNodes that have been created
-typedef std::map<unsigned int, osg::observer_ptr<OSGTerrainEngineNode> > MapNodeCache;
+typedef std::map<unsigned int, osg::observer_ptr<OSGTerrainEngineNode> > EngineNodeCache;
 
 static
-MapNodeCache& getMapNodeCache()
+EngineNodeCache& getEngineNodeCache()
 {
-    static MapNodeCache s_cache;
+    static EngineNodeCache s_cache;
     return s_cache;
 }
 
 void
-OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* mapNode)
+OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* engineNode)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
-    getMapNodeCache()[mapNode->_id] = mapNode;
-    OE_INFO << LC << "Registered engine " << mapNode->_id << std::endl;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    getEngineNodeCache()[engineNode->_id] = engineNode;
+    OE_INFO << LC << "Registered engine " << engineNode->_id << std::endl;
 }
 
 void
 OSGTerrainEngineNode::unregisterEngine(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
-    MapNodeCache::iterator k = getMapNodeCache().find( id);
-    if (k != getMapNodeCache().end())
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    EngineNodeCache::iterator k = getEngineNodeCache().find( id);
+    if (k != getEngineNodeCache().end())
     {
-        getMapNodeCache().erase(k);
+        getEngineNodeCache().erase(k);
         OE_INFO << LC << "Unregistered engine " << id << std::endl;
     }
 }
@@ -87,9 +87,9 @@ OSGTerrainEngineNode::unregisterEngine(unsigned int id)
 OSGTerrainEngineNode*
 OSGTerrainEngineNode::getEngineById(unsigned int id)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_mapNodeCacheMutex);
-    MapNodeCache::const_iterator k = getMapNodeCache().find( id);
-    if (k != getMapNodeCache().end()) return k->second.get();
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    EngineNodeCache::const_iterator k = getEngineNodeCache().find( id);
+    if (k != getEngineNodeCache().end()) return k->second.get();
     return 0;
 }
 
@@ -137,8 +137,8 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
 
     // genearte a new unique mapnode ID
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_mapNodeCacheMutex );
-        _id = s_mapNodeID++;
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_engineNodeCacheMutex );
+        _id = s_engineNodeID++;
     }
     //_map->setId( _id );
 
@@ -196,7 +196,9 @@ OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
     _tileFactory = new OSGTileFactory( _id, *_cull_mapf, _terrainOptions );
 
     // go through and build the root nodesets.
-    _terrain = new CustomTerrain( *_update_mapf, *_cull_mapf, _tileFactory.get() );
+    _terrain = new CustomTerrain(
+        *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
+
     this->addChild( _terrain );
 
     // set the initial properties from the options structure:
@@ -654,58 +656,6 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 
     TerrainEngineNode::traverse( nv );
 }
-
-#if 0
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-        // refresh the update-thread map frame:
-        // actuall don't need to do this here since we have callbacks registered and we do the
-        // sync in the callbacks.
-        //_update_mapf->sync();
-    }
-
-    else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-	{
-        // refresh the cull-thread map frame. doing this here will cause all the children who
-        // reference this same map frame to be in sync with the map model
-        _cull_mapf->sync();
-
-        //Update the lighting uniforms
-        //TODO: this should not change the uniforms during the cull traversal...
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
-        {
-            StateSetStack statesetStack;
-
-            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
-            while(sg)
-            {
-                const osg::StateSet* stateset = sg->getStateSet();
-                if (stateset)
-                {
-                    statesetStack.push_front(stateset);
-                }                
-                sg = sg->_parent;
-            }
-
-            //Update the lighting uniforms
-            osg::StateAttribute::GLModeValue lightingEnabled = getModeValue(statesetStack, GL_LIGHTING);     
-            osg::Uniform* lightingEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightingEnabled", osg::Uniform::BOOL);
-            lightingEnabledUniform->set((lightingEnabled & osg::StateAttribute::ON)!=0);
-
-            const unsigned int numLights = 8;
-            osg::Uniform* lightsEnabledUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_lightsEnabled", osg::Uniform::BOOL, numLights);
-            for (unsigned int i = 0; i < numLights; ++i)
-            {
-                osg::StateAttribute::GLModeValue lightEnabled = getModeValue(statesetStack, GL_LIGHT0 + i);     
-                lightsEnabledUniform->setElement(i, (lightEnabled & osg::StateAttribute::ON)!=0);
-            }				
-        }
-    }
-
-    TerrainEngineNode::traverse( nv );
-}
-#endif
 
 void
 OSGTerrainEngineNode::installShaders()

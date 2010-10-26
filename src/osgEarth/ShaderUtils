@@ -28,13 +28,14 @@ namespace osgEarth
      * A callback that will update the osgEarth lighting uniforms (based on the
      * FFP lighting state) if necessary.
      */
-    class OSGEARTH_EXPORT UpdateLightingUniformsCallback : public osg::NodeCallback
+    class OSGEARTH_EXPORT UpdateLightingUniformsHelper
     {
     public:
-        UpdateLightingUniformsCallback();
-        ~UpdateLightingUniformsCallback();
+        UpdateLightingUniformsHelper();
+        ~UpdateLightingUniformsHelper();
 
-        void operator()( osg::Node* node, osg::NodeVisitor* nv );
+        void cullTraverse( osg::NodeVisitor* nv );
+        void updateTraverse( osg::Node* node );
 
     protected:
         int   _maxLights;

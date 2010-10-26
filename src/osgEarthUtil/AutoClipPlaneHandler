@@ -25,8 +25,6 @@
 
 namespace osgEarthUtil
 {
-    using namespace osgEarth;
-
     /**
      * An event handler that automatically calculates optimal near and
      * far clip planes for a geocentric map node. Just add this to your
@@ -55,7 +53,7 @@ namespace osgEarthUtil
 
     private:
 
-        osg::observer_ptr<MapNode> _mapNode;
+        osg::observer_ptr<osgEarth::MapNode> _mapNode;
         bool _geocentric;
         int _frame;
         double _nfrAtRadius, _nfrAtDoubleRadius, _rp;

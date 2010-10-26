@@ -102,12 +102,12 @@ TerrainEngineNode::TerrainEngineNode() :
 _verticalScale( 1.0f ),
 _elevationSamplingRatio( 1.0f )
 {
-    if ( Registry::instance()->getCapabilities().supportsGLSL() )
-    {
-        osg::NodeCallback* cb = new UpdateLightingUniformsCallback();
-        this->addCullCallback( cb );
-        this->addUpdateCallback( cb );
-    }
+    //if ( Registry::instance()->getCapabilities().supportsGLSL() )
+    //{
+    //    osg::NodeCallback* cb = new UpdateLightingUniformsCallback();
+    //    this->addCullCallback( cb );
+    //    this->addUpdateCallback( cb );
+    //}
 }
 
 TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :
@@ -230,7 +230,8 @@ TerrainEngineNode::updateImageUniforms()
 
     stateSet->removeUniform( "osgearth_imagelayer_opacity" );
     stateSet->removeUniform( "osgearth_imagelayer_enabled" );
-    stateSet->removeUniform( "osgearth_imagelayer_range" );
+    stateSet->removeUniform( "osgearth_imagelayer_range" );    
+    stateSet->removeUniform( "osgearth_imagelayer_attenuation" );
     
     if ( mapf.imageLayers().size() > 0 )
     {
@@ -254,7 +255,11 @@ TerrainEngineNode::updateImageUniforms()
         stateSet->addUniform( _imageLayerController->_layerRangeUniform.get() );
     }
 
-    stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set( (int)mapf.imageLayers().size() );
+    stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set(
+        (int)mapf.imageLayers().size() );
+
+    stateSet->getOrCreateUniform( "osgearth_imagelayer_attenuation", osg::Uniform::FLOAT )->set(
+        *getTerrainOptions().attentuationDistance() );
 }
 
 void
@@ -271,6 +276,24 @@ TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
             << "falling back on STANDARD mode" << std::endl;
         options.loadingPolicy()->mode() = LoadingPolicy::MODE_STANDARD;
     }
+}
+
+void
+TerrainEngineNode::traverse( osg::NodeVisitor& nv )
+{
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        if ( Registry::instance()->getCapabilities().supportsGLSL() )
+            _updateLightingUniformsHelper.cullTraverse( &nv );
+    }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        if ( Registry::instance()->getCapabilities().supportsGLSL() )
+            _updateLightingUniformsHelper.updateTraverse( this );
+    }
+
+    osg::CoordinateSystemNode::traverse( nv );
 }
 
 //------------------------------------------------------------------------

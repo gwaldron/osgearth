@@ -76,7 +76,8 @@ _maxLOD( 23 ),
 //_layeringTechnique( LAYERING_COMPOSITE ),
 _compositingTech( COMPOSITING_AUTO ),
 _enableLighting( false ),
-_elevationInterpolation( INTERP_BILINEAR )
+_elevationInterpolation( INTERP_BILINEAR ),
+_attenuationDistance( 1000000 )
 {
     fromConfig( _conf );
 }
@@ -95,9 +96,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "combine_layers", _combineLayers );
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "lighting", _enableLighting );
-
-    //conf.updateIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
-    //conf.updateIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
+    conf.updateIfSet( "attenuation_distance", _attenuationDistance );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -124,9 +123,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "combine_layers", _combineLayers );
     conf.getIfSet( "max_lod", _maxLOD );
     conf.getIfSet( "lighting", _enableLighting );
-
-    //conf.getIfSet( "layering_technique", "multipass", _layeringTechnique, LAYERING_MULTIPASS );
-    //conf.getIfSet( "layering_technique", "composite", _layeringTechnique, LAYERING_COMPOSITE );
+    conf.getIfSet( "attenuation_distance", _attenuationDistance );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

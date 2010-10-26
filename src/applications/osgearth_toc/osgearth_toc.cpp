@@ -162,9 +162,9 @@ createControlPanel( osgViewer::View* view )
     s_layerBox->setMargin( 10 );
     s_layerBox->setPadding( 10 );
     s_layerBox->setSpacing( 10 );
-    s_layerBox->setChildVertAlign( ALIGN_CENTER );
+    s_layerBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_layerBox->setAbsorbEvents( true );
-    s_layerBox->setVertAlign( ALIGN_BOTTOM );
+    s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );
 
     canvas->addControl( s_layerBox );
     return canvas;
@@ -186,7 +186,6 @@ createLayerItem( int gridRow, int layerIndex, int numLayers, ImageLayer* layer, 
     HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, layer->getOpacity() );
     opacity->setWidth( 125 );
     opacity->setHeight( 12 );
-    opacity->setVertAlign( ALIGN_CENTER );
     opacity->addEventHandler( new LayerOpacityHandler(layer) );
     s_layerBox->setControl( 2, gridRow, opacity );
 
@@ -210,7 +209,7 @@ createLayerItem( int gridRow, int layerIndex, int numLayers, ImageLayer* layer, 
 
     // add/remove button:
     LabelControl* addRemove = new LabelControl( isActive? "REMOVE" : "ADD", 14 );
-    addRemove->setHorizAlign( ALIGN_CENTER );
+    addRemove->setHorizAlign( Control::ALIGN_CENTER );
     addRemove->setBackColor( .4,.4,.4,1 );
     addRemove->setActiveColor( .8,0,0,1 );
     if ( isActive )

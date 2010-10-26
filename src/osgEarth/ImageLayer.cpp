@@ -24,6 +24,7 @@
 #include <osgEarth/StringUtils>
 #include <osg/Version>
 #include <memory.h>
+#include <limits.h>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -52,6 +53,8 @@ ImageLayerOptions::setDefaults()
     _opacity.init( 1.0f );
     _gamma.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
+    _minRange.init( -FLT_MAX );
+    _maxRange.init( FLT_MAX );
 }
 
 void

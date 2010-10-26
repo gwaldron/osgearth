@@ -16,13 +16,10 @@ SET(LIB_PUBLIC_HEADERS
     ElevationFadeCallback
     #ElevationManager
     Export
-    FadeLayerNode
     Graticule
-    Labeling
     ObjectPlacer
     ObjectLocator
     OceanSurfaceNode
-    Popups
     Viewpoint
     WMS
 )
@@ -35,13 +32,10 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     EarthManipulator.cpp	
     ElevationFadeCallback.cpp
     #ElevationManager.cpp
-    FadeLayerNode.cpp
     Graticule.cpp
-    Labeling.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     OceanSurfaceNode.cpp
-    Popups.cpp
     Viewpoint.cpp
     WMS.cpp
 )

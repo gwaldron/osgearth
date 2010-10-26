@@ -52,7 +52,7 @@ namespace
 
 //------------------------------------------------------------------------
 
-UpdateLightingUniformsCallback::UpdateLightingUniformsCallback() :
+UpdateLightingUniformsHelper::UpdateLightingUniformsHelper() :
 _applied( false ),
 _dirty( true ),
 _lightingEnabled( true )
@@ -70,75 +70,72 @@ _lightingEnabled( true )
     //_numLightsUniform       = new osg::Uniform( osg::Uniform::INT,  "osgearth_num_lights" );
 }
 
-UpdateLightingUniformsCallback::~UpdateLightingUniformsCallback()
+UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 {
     delete [] _lightEnabled;
 }
 
 void
-UpdateLightingUniformsCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
+UpdateLightingUniformsHelper::cullTraverse( osg::NodeVisitor* nv )
 {
-    if ( nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
+    if ( cv )
     {
-        if ( _dirty )
+        StateSetStack stateSetStack;
+
+        osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
+        while( sg )
         {
-            _lightingEnabledUniform->set( _lightingEnabled );
-
-            for( int i=0; i < _maxLights; ++i )
-                _lightEnabledUniform->setElement( i, _lightEnabled[i] );
-
-            _dirty = false;
-
-            if ( !_applied )
+            const osg::StateSet* stateset = sg->getStateSet();
+            if (stateset)
             {
-                osg::StateSet* stateSet = node->getOrCreateStateSet();
-                stateSet->addUniform( _lightingEnabledUniform.get() );
-                stateSet->addUniform( _lightEnabledUniform.get() );
-            }
+                stateSetStack.push_front(stateset);
+            }                
+            sg = sg->_parent;
         }
-    }
-    else
-    {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
-        if ( cv )
+
+        // Update the overall lighting-enabled value:
+        bool lightingEnabled = 
+            ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
+
+        if ( lightingEnabled != _lightingEnabled )
         {
-            StateSetStack stateSetStack;
+            _lightingEnabled = lightingEnabled;
+            _dirty = true;
+        }
 
-            osgUtil::StateGraph* sg = cv->getCurrentStateGraph();
-            while( sg )
+        // Update the list of enabled lights:
+        for( int i=0; i < _maxLights; ++i )
+        {
+            bool enabled =
+                ( getModeValue( stateSetStack, GL_LIGHT0 + i ) & osg::StateAttribute::ON ) != 0;
+
+            if ( _lightEnabled[i] != enabled )
             {
-                const osg::StateSet* stateset = sg->getStateSet();
-                if (stateset)
-                {
-                    stateSetStack.push_front(stateset);
-                }                
-                sg = sg->_parent;
-            }
-
-            // Update the overall lighting-enabled value:
-            bool lightingEnabled = 
-                ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
-
-            if ( lightingEnabled != _lightingEnabled )
-            {
-                _lightingEnabled = lightingEnabled;
+                _lightEnabled[i] = enabled;
                 _dirty = true;
             }
+        }			
+    }        
+}
 
-            // Update the list of enabled lights:
-            for( int i=0; i < _maxLights; ++i )
-            {
-                bool enabled =
-                    ( getModeValue( stateSetStack, GL_LIGHT0 + i ) & osg::StateAttribute::ON ) != 0;
+void
+UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
+{
+    if ( _dirty )
+    {
+        _lightingEnabledUniform->set( _lightingEnabled );
 
-                if ( _lightEnabled[i] != enabled )
-                {
-                    _lightEnabled[i] = enabled;
-                    _dirty = true;
-                }
-            }			
-        }        
+        for( int i=0; i < _maxLights; ++i )
+            _lightEnabledUniform->setElement( i, _lightEnabled[i] );
+
+        _dirty = false;
+
+        if ( !_applied )
+        {
+            osg::StateSet* stateSet = node->getOrCreateStateSet();
+            stateSet->addUniform( _lightingEnabledUniform.get() );
+            stateSet->addUniform( _lightEnabledUniform.get() );
+        }
     }
-
-    traverse( node, nv );
 }

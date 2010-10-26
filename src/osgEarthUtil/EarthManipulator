@@ -790,6 +790,7 @@ namespace osgEarthUtil
 
         // to support updating the camera after the update traversal (e.g., for tethering)
         osg::observer_ptr<osg::Camera> _viewCamera;
+        
         struct CameraPostUpdateCallback : public osg::NodeCallback {
             CameraPostUpdateCallback(EarthManipulator* m) : _m(m) { }
             virtual void operator()(osg::Node* node, osg::NodeVisitor* nv) { _m->postUpdate(); traverse(node,nv); }
@@ -798,7 +799,9 @@ namespace osgEarthUtil
         void postUpdate();
         friend struct CameraUpdateCallback;
 
+        osg::observer_ptr<CameraPostUpdateCallback> _cameraUpdateCB;
+
+        void updateCamera( osg::Camera* eventCamera );
     };
 }
-
 #endif // OSGEARTHUTIL_EARTHMANIPULATOR

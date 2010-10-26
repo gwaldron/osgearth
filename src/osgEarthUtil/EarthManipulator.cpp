@@ -981,6 +981,44 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa )
     _single_axis_y = 1.0;
 }
 
+// this method will automatically install or uninstall the camera post-update callback 
+// depending on whether there's a tether node.
+//
+// Camera updates get called AFTER the scene gets its update traversal. So, if you have
+// tethering enabled (or some other feature that tracks scene graph nodes), this will
+// update the camera after the scene graph. This is important in order to maintain
+// frame coherency and prevent "jitter".
+//
+// The reason we install/uninstall instead of just leaving it there is so we can
+// support OSG's "ON_DEMAND" frame scheme, which disables itself is there are any
+// update callbacks in the scene graph.
+void
+EarthManipulator::updateCamera( osg::Camera* eventCamera )
+{
+    // check to see if the camera has changed, and update the callback if necessary
+    if ( _viewCamera.get() != eventCamera )
+    {
+        if ( _cameraUpdateCB.valid() )
+            _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
+
+        _viewCamera = eventCamera;
+        if ( _cameraUpdateCB.valid() )
+            _viewCamera->addUpdateCallback( _cameraUpdateCB.get() );
+    }
+
+    // check to see if we need to install a new camera callback:
+    if ( _tether_node.valid() && !_cameraUpdateCB.valid() )
+    {
+        _cameraUpdateCB = new CameraPostUpdateCallback(this);
+        _viewCamera->addUpdateCallback( _cameraUpdateCB.get() );
+    }
+    else if ( !_tether_node.valid() && _cameraUpdateCB.valid() )
+    {
+        _viewCamera->removeUpdateCallback( _cameraUpdateCB.get() );
+        _cameraUpdateCB = 0L;
+    }
+}
+
 bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
@@ -993,15 +1031,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( !established() )
         return false;
 
-    if ( !_viewCamera.valid() )
-    {
-        // installs a camera update callback. Camera updates get called AFTER the scene
-        // gets its update traversal. So, if you have tethering enabled (or some other
-        // feature that tracks scene graph nodes), this will update the camera after
-        // the scene graph.
-        _viewCamera = aa.asView()->getCamera();
-        _viewCamera->addUpdateCallback( new CameraPostUpdateCallback(this) );
-    }
+    // make sure the camera callback is up to date:
+    updateCamera( aa.asView()->getCamera() );
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
@@ -1022,11 +1053,13 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         {
             _has_pending_viewpoint = false;
             setViewpoint( _pending_viewpoint, _pending_viewpoint_duration_s );
+            aa.requestRedraw();
         }
 
         if ( _setting_viewpoint )
         {
             updateSetViewpoint();
+            aa.requestRedraw();
         }
 
         if ( _thrown || _continuous )
@@ -1068,6 +1101,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             resetMouse( aa );
             addMouseEvent( ea );
             _mouse_down_event = &ea;
+            aa.requestRedraw();
             handled = true;
             break;       
         

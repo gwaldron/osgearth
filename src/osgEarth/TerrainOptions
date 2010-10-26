@@ -156,30 +156,11 @@ namespace osgEarth
         optional<LoadingPolicy>& loadingPolicy() { return _loadingPolicy; }
         const optional<LoadingPolicy>& loadingPolicy() const { return _loadingPolicy; }
 
-#if 0
         /**
-         * Available techniques for compositing multiple image layers at runtime.
+         * The image-layer fading attenuation distance
          */
-		enum LayeringTechnique
-		{
-            /** Use multiple rendering passes to blend image layers together */
-			LAYERING_MULTIPASS,
-
-            /** Use a multitexture control to blend image layers together (DEFAULT) */
-			//LAYERING_MULTITEXTURE,
-
-            /** Use the TextureCompositor to composite image layers (DEFAULT) */
-            LAYERING_COMPOSITE
-		};
-
-		/**
-		 * The technique that should be used when rendering Terrain Tiles.
-		 */
-        optional<LayeringTechnique>& layeringTechnique() {
-            return _layeringTechnique; }
-        const optional<LayeringTechnique>& layeringTechnique() const { 
-            return _layeringTechnique; }
-#endif
+        optional<float>& attenuationDistance() { return _attenuationDistance; }
+        const optional<float>& attentuationDistance() const { return _attenuationDistance; }
 
         /**
          * Available techniques for compositing image layers at runtime.
@@ -257,6 +238,7 @@ namespace osgEarth
         optional<CompositingTechnique> _compositingTech;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
+        optional<float> _attenuationDistance;
 #if 0
         optional<osg::Texture::FilterMode> _contourMagFilter;
         optional<osg::Texture::FilterMode> _contourMinFilter;

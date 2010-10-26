@@ -39,7 +39,10 @@ s_createTextureFragShaderFunction( int numImageLayers )
 
     buf << "#version 120 \n"
         << "uniform float[] osgearth_imagelayer_opacity; \n"
-        << "uniform bool[]  osgearth_imagelayer_enabled; \n";
+        << "uniform bool[]  osgearth_imagelayer_enabled; \n"
+        << "uniform float[] osgearth_imagelayer_range; \n"
+        << "uniform float   osgearth_imagelayer_attenuation; \n"
+        << "varying float   osgearth_range; \n";
 
     buf << "uniform sampler2D ";
     for( int i=0; i<numImageLayers; ++i )
@@ -48,18 +51,26 @@ s_createTextureFragShaderFunction( int numImageLayers )
 
     buf << "vec4 osgearth_frag_texture(void) \n"
         << "{ \n"
-        <<     "vec3 color = vec3(1,1,1); \n"
-        <<     "vec4 texel; \n";
+        << "    vec3 color = vec3(1,1,1); \n"
+        << "    vec4 texel; \n"
+        << "    float dmin, dmax, atten_min, atten_max; \n";
 
         for( int i=0; i<numImageLayers; ++i )
         {
-            buf << "if (osgearth_imagelayer_enabled["<< i << "]) { \n"
-                <<     "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-                <<     "color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "]); \n"
-                << "} \n";
+            int k = 2*i;
+            buf << "    if (osgearth_imagelayer_enabled["<< i << "]) { \n"
+                << "        dmin = osgearth_range - osgearth_imagelayer_range["<< k << "]; \n"
+                << "        dmax = osgearth_range - osgearth_imagelayer_range["<< k+1 <<"]; \n"
+                << "        if (dmin >= 0 && dmax <= 0.0) { \n"
+                << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
+                << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
+                << "            texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
+                << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "] * atten_max * atten_min); \n"
+                << "        } \n"
+                << "    } \n";
         }
 
-    buf << "return vec4(color,1); \n"
+    buf << "    return vec4(color,1); \n"
         << "} \n";
 
     std::string str = buf.str();

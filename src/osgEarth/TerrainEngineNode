@@ -20,6 +20,7 @@
 #define OSGEARTH_MAP_ENGINE_NODE_H 1
 
 #include <osgEarth/Map>
+#include <osgEarth/ShaderUtils>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -62,6 +63,7 @@ namespace osgEarth
 
     public: // osg::Node overrides
         virtual osg::BoundingSphere computeBound() const;
+        virtual void traverse( osg::NodeVisitor& );
 
     protected: // implementation events
         virtual void onVerticalScaleChanged() { }
@@ -85,6 +87,7 @@ namespace osgEarth
         virtual void updateImageUniforms();
 
     private:
+        UpdateLightingUniformsHelper _updateLightingUniformsHelper;
         float _verticalScale;
         float _elevationSamplingRatio;
         

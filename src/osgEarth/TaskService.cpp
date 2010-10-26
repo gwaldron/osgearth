@@ -379,14 +379,14 @@ TaskServiceManager::setNumThreads( int numThreads )
 }
 
 TaskService*
-TaskServiceManager::create( const std::string& name, float weight )
+TaskServiceManager::create( UID uid, float weight )
 {
     ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
 
     if ( weight <= 0.0f )
         weight = 0.001;
 
-    TaskServiceMap::iterator i = _services.find( name );
+    TaskServiceMap::iterator i = _services.find( uid );
     if ( i != _services.end() )
     {
         i->second.second = weight;
@@ -395,35 +395,42 @@ TaskServiceManager::create( const std::string& name, float weight )
     }
     else
     {
-        TaskService* newService = new TaskService( name, 1 );
-        _services[name] = WeightedTaskService( newService, weight );
+        TaskService* newService = new TaskService( "", 1 );
+        _services[uid] = WeightedTaskService( newService, weight );
         reallocate( _targetNumThreads );
         return newService;
     }
 }
 
 TaskService*
-TaskServiceManager::get( const std::string& name ) const
+TaskServiceManager::get( UID uid ) const
 {
     ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
-    TaskServiceMap::const_iterator i = _services.find(name);
+    TaskServiceMap::const_iterator i = _services.find(uid);
     return i != _services.end() ? i->second.first.get() : 0L;
 }
 
 TaskService*
-TaskServiceManager::getOrCreate( const std::string& name, float weight ) 
+TaskServiceManager::getOrCreate( UID uid, float weight ) 
 {
-    TaskService* service = get( name );
+    TaskService* service = get( uid );
     if ( !service )
-        return create( name, weight );
+        return create( uid, weight );
 }
 
 void
 TaskServiceManager::remove( TaskService* service )
 {
     ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
-    _services.erase( service->getName() );
-    reallocate( _targetNumThreads );
+    for( TaskServiceMap::iterator i = _services.begin(); i != _services.end(); ++i )
+    {
+        if ( i->second.first.get() == service ) 
+        {
+            i = _services.erase( i );
+            reallocate( _targetNumThreads );
+            break;
+        }
+    }
 }
 
 void
@@ -437,11 +444,14 @@ TaskServiceManager::setWeight( TaskService* service, float weight )
     if ( !service )
         return;
 
-    TaskServiceMap::iterator i = _services.find( service->getName() );
-    if ( i != _services.end() )
+    for( TaskServiceMap::iterator i = _services.begin(); i != _services.end(); ++i )
     {
-        i->second.second = weight;
-        reallocate( _targetNumThreads );
+        if ( i->second.first.get() == service )
+        {
+            i->second.second = weight;
+            reallocate( _targetNumThreads );
+            break;
+        }
     }    
 }
 

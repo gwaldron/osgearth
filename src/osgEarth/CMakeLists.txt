@@ -101,6 +101,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     JsonUtils.cpp
+    Layer.cpp
     Locators.cpp
     Map.cpp
     MapNode.cpp

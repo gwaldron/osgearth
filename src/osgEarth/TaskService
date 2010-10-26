@@ -187,17 +187,17 @@ namespace osgEarth
          * Adds a new task service to the manager and reallocates the thread pool
          * across the remaining services.
          */
-        TaskService* create( const std::string& name, float weight =1.0f );
+        TaskService* create( UID uid, float weight =1.0f );
 
         /**
          * Gets the names task service.
          */
-        TaskService* get( const std::string& name ) const;
+        TaskService* get( UID uid ) const;
 
         /**
          * Gets a task service by name, creating it if it does not yet exist
          */
-        TaskService* getOrCreate( const std::string& name, float weight =1.0f );
+        TaskService* getOrCreate( UID uid, float weight =1.0f );
 
         /**
          * Removes a task service from management, and reallocates the thread pool
@@ -213,7 +213,7 @@ namespace osgEarth
 
     private:
         typedef std::pair< osg::ref_ptr<TaskService>, float > WeightedTaskService;
-        typedef std::map< std::string, WeightedTaskService > TaskServiceMap;
+        typedef std::map< UID, WeightedTaskService > TaskServiceMap;
         TaskServiceMap _services;
         int _numThreads, _targetNumThreads;
 

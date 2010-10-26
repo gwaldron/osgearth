@@ -16,31 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include <osgEarth/Layer>
+#include <osgEarth/Registry>
 
-#ifndef OSGEARTH_LAYER_H
-#define OSGEARTH_LAYER_H 1
+using namespace osgEarth;
 
-#include <osgEarth/Common>
-
-namespace osgEarth
+Layer::Layer()
 {
-    /**
-     * Base class for all Map layers. 
-     */
-    class OSGEARTH_EXPORT Layer : public osg::Referenced
-    {
-    public:
-        Layer();
+    _uid = Registry::instance()->createUID();
+}
 
-        /**
-         * Gets this layer's unique ID.
-         */
-        const UID getUID() const { return _uid; }
-
-    private:
-        UID _uid;
-    };
-
-} // namespace osgEarth
-
-#endif // OSGEARTH_IMAGE_TERRAIN_LAYER_H

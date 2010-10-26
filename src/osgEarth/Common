@@ -32,6 +32,9 @@
 
 namespace osgEarth
 {
+    // application-wide unique ID.
+    typedef int UID;
+
     // general-purpose name/value pair set.
     struct Properties : public std::map<std::string,std::string> {
         std::string get( const std::string& key ) const {

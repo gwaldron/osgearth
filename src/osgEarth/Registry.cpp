@@ -38,7 +38,8 @@ Registry::Registry() :
 osg::Referenced(true),
 _gdal_registered( false ),
 _numGdalMutexGets( 0 ),
-_caps( 0L )
+_caps( 0L ),
+_uidGen( 0 )
 {
     OGRRegisterAll();
     GDALAllRegister();
@@ -241,6 +242,14 @@ Registry::setShaderFactory( ShaderFactory* lib )
 {
     if ( lib != 0L && lib != _shaderLib.get() )
         _shaderLib = lib;
+}
+
+UID
+Registry::createUID()
+{
+    static Mutex s_uidGenMutex;
+    ScopedLock<Mutex> lock( s_uidGenMutex );
+    return (UID)( _uidGen++ );
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

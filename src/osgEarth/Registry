@@ -45,6 +45,8 @@
 
 namespace osgEarth
 {
+    typedef int GUID;
+
     /**
      * Application-wide global repository.
      */
@@ -113,6 +115,11 @@ namespace osgEarth
         TaskServiceManager& getTaskServiceManager() {
             return _taskServiceMgr; }
 
+        /**
+         * Generates a GUID unique to this instance. 
+         */
+        UID createUID();
+
     protected:
         virtual ~Registry();
         Registry();
@@ -145,6 +152,8 @@ namespace osgEarth
         osg::ref_ptr<ShaderFactory> _shaderLib;
 
         TaskServiceManager _taskServiceMgr;
+
+        int _uidGen;
 
         Capabilities* _caps;
         void initCapabilities();

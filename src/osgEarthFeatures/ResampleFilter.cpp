@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ResampleFilter>
+#include <osgEarth/GeoMath>
 #include <list>
 #include <deque>
 #include <cstdlib>
@@ -34,7 +35,8 @@ ResampleFilter::isSupported()
 ResampleFilter::ResampleFilter() :
 _minLen( 0 ),
 _maxLen( DBL_MAX ),
-_perturbThresh( 0 )
+_perturbThresh( 0 ),
+_resampleMode(RESAMPLE_LINEAR)
 {
     //NOP
 }
@@ -42,7 +44,8 @@ _perturbThresh( 0 )
 ResampleFilter::ResampleFilter( double minLen, double maxLen ) :
 _minLen( minLen ),
 _maxLen( maxLen ),
-_perturbThresh( 0 )
+_perturbThresh( 0 ),
+_resampleMode(RESAMPLE_LINEAR)
 {
     // NOP
 }
@@ -60,7 +63,7 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
     {
         Geometry* part = i.next();
 
-        if ( part->size() < 3 ) continue;
+        if ( part->size() < 2 ) continue;
         int partSize0 = part->size();
 
         // copy the original part to a linked list. use a std::list since insert/erase
@@ -80,26 +83,74 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
             osg::Vec3d& p1 = *v1;
             bool lastSeg = v1 == last;
             osg::Vec3d seg = p1 - p0;
-            double segLen = seg.length();
 
-            if ( segLen < _minLen.value() && !lastSeg && plist.size() > 3 )
+            osg::Vec3d p0Rad, p1Rad;
+
+            if (_resampleMode.value() == RESAMPLE_GREATCIRCLE || _resampleMode.value() == RESAMPLE_RHUMB)
+            {
+                p0Rad = osg::Vec3d(osg::DegreesToRadians(p0.x()), osg::DegreesToRadians(p0.y()), p0.z());
+                p1Rad = osg::Vec3d(osg::DegreesToRadians(p1.x()), osg::DegreesToRadians(p1.y()), p1.z());
+            }
+                       
+            //Compute the length of the segment
+            double segLen = 0.0;
+            switch (_resampleMode.value())
+            {
+            case RESAMPLE_LINEAR:
+                segLen = seg.length();
+                break;
+            case RESAMPLE_GREATCIRCLE:
+                segLen = GeoMath::distance(p0Rad.y(), p0Rad.x(), p1Rad.y(), p1Rad.x());
+                break;
+            case RESAMPLE_RHUMB:
+                segLen = GeoMath::rhumbDistance(p0Rad.y(), p0Rad.x(), p1Rad.y(), p1Rad.x());
+                break;
+            }
+
+            if ( segLen < _minLen.value() && !lastSeg && plist.size() > 2 )
             {
                 v1 = plist.erase( v1 );
                 increment = false;
             }
             else if ( segLen > _maxLen.value() )
             {
+                //Compute the number of divisions to make
                 int numDivs = (1 + (int)(segLen/_maxLen.value()));
                 double newSegLen = segLen/(double)numDivs;
                 seg.normalize();
-                osg::Vec3d newPt = p0 + seg * newSegLen;
+                osg::Vec3d newPt;
+                switch (_resampleMode.value())
+                {
+                case RESAMPLE_LINEAR:
+                    {
+                        newPt = p0 + seg * newSegLen;
+                    }
+                    break;
+                case RESAMPLE_GREATCIRCLE:
+                    {
+                        double bearing = GeoMath::bearing(p0Rad.y(), p0Rad.x(), p1Rad.y(), p1Rad.x());
+                        double lat,lon;
+                        GeoMath::destination(p0Rad.y(), p0Rad.x(), bearing, newSegLen, lat, lon);
+                        newPt = osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), p0Rad.z());
+                    }
+                    break;
+                case RESAMPLE_RHUMB:
+                    {
+                        double bearing = GeoMath::rhumbBearing(p0Rad.y(), p0Rad.x(), p1Rad.y(), p1Rad.x());
+                        double lat,lon;
+                        GeoMath::rhumbDestination(p0Rad.y(), p0Rad.x(), bearing, newSegLen, lat, lon);
+                        newPt = osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), p0Rad.z());
+                    }
+                    break;
+                }
+                
                 if ( _perturbThresh.value() > 0.0 && _perturbThresh.value() < newSegLen )
                 {
                     float r = 0.5 - (float)::rand()/(float)RAND_MAX;
                     newPt.x() += r;
                     newPt.y() += r;
                 }
-                v1 = plist.insert( v1, p0 + seg * newSegLen );
+                v1 = plist.insert( v1, newPt );
             }
 
             if ( increment ) { ++v0; ++v1; }

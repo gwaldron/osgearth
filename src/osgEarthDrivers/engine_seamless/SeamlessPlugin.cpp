@@ -20,7 +20,6 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
-#include <osgEarth/EarthFile>
 #include <osgEarth/Profile>
 
 #include "SeamlessEngineNode"
@@ -61,19 +60,8 @@ public:
     
     virtual ReadResult readNode(const std::string& uri, const Options* options) const
     {
-        std::string earthFile = osgDB::getNameLessExtension( uri );
-        osgEarth::EarthFile ef;
-        if (ef.readXML(earthFile))
-        {
-            SeamlessEngineNode* node = new SeamlessEngineNode;
-            node->initialize(ef.getMap(),
-                              ef.getMapNodeOptions().getTerrainOptions());
-                return ReadResult(node);
-        }
-        else
-        {
-            return ReadResult::FILE_NOT_FOUND;
-        }
+        // The pseudo-loader form for engines isn't supported anymore.
+        return ReadResult::FILE_NOT_FOUND;
     }
 };
 

@@ -9,7 +9,7 @@ downloaded from http://wscg.zcu.cz/wscg2007/Papers_2007/full/C43-full.pdf.
 The engine works for both projected terrain and geographic,
 whole-earth maps. For the whole-earth case, the faces of a cube are
 projected on the earth; the grid lines on each face are great
-circles. The file kml/euler.kml illustrates this projection.
+circles. The file euler.kml illustrates this projection.
 
 Use
 
@@ -17,9 +17,6 @@ Once installed, specify osgearth_engine_seamless as a
 pseudo-plugin. For example:
 
  osgviewer multiple_heightfields.earth.osgearth_engine_seamless
-
-There is a seamlessTest application, but it doesn't do much beyond
-osgViewer at the moment.
 
 Limitations.
 

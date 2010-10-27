@@ -124,15 +124,12 @@ MapNode::init()
 
     setName( "osgEarth::MapNode" );
 
-    // so that our custom traverse() is called with an update visitor each frame
-    //setNumChildrenRequiringUpdateTraversal( 1 );
-
     // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
     // multi-threaded overlap
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
 
     // Set the layer unit uniforms
-    // TODO: depcrecate in favor of the opacity uniform array?
+    // TODO: depcrecate
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT)->set(0);
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer1_unit", osg::Uniform::INT)->set(1);
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer2_unit", osg::Uniform::INT)->set(2);
@@ -174,12 +171,19 @@ MapNode::init()
     // overlays:
     _pendingOverlayAutoSetTextureUnit = true;
 
-    // go through the map and process any already-installed layers:
-    // TODO: non-hard-code
+    // load and attach the terrain engine, but don't initialize it until we need it
     const TerrainOptions& terrainOptions = _mapNodeOptions.getTerrainOptions();
+
     _terrainEngine = TerrainEngineNodeFactory::create( _map.get(), terrainOptions );
+    _terrainEngineInitialized = false;
+
     if ( _terrainEngine.valid() )
     {
+        // inform the terrain engine of the map information now so that it can properly
+        // initialize it's CoordinateSystemNode. This is necessary in order to support
+        // manipulators.
+        _terrainEngine->setMapInfo( MapInfo(_map.get()) );
+
         this->addChild( _terrainEngine.get() );
     }
     else
@@ -199,8 +203,6 @@ MapNode::init()
         onMaskLayerAdded( _map->getTerrainMaskLayer() );
     }
 
-    //updateStateSet();
-
     // install a layer callback for processing further map actions:
     _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
 
@@ -216,6 +218,12 @@ MapNode::init()
     }
 
     dirtyBound();
+
+    // set the node up to initialize the terrain engine on the first update traversal.
+    adjustUpdateTraversalCount( 1 );
+
+    // register for event traversals so we can deal with blacklisted filenames
+    adjustEventTraversalCount( 1 );
 }
 
 MapNode::~MapNode()
@@ -430,21 +438,50 @@ MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
 }
 
 void
+MapNode::adjustUpdateTraversalCount( int delta )
+{
+    int oldCount = this->getNumChildrenRequiringUpdateTraversal();
+    if ( oldCount + delta >= 0 )
+        this->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + delta) );
+}
+
+void
+MapNode::adjustEventTraversalCount( int delta )
+{
+    int oldCount = this->getNumChildrenRequiringEventTraversal();
+    if ( oldCount + delta >= 0 )
+        this->setNumChildrenRequiringEventTraversal( (unsigned int)(oldCount + delta) );
+}
+
+void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
     if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
     {
-        unsigned int numBlacklist = osgEarth::Registry::instance()->getNumBlacklistedFilenames();
+        // first time traversed, initialize the terrain engine. The reason we defer this until
+        // the first traversal is because there is no need for a terrain engine if you are
+        // not traversing the scene graph.
+        if ( !_terrainEngineInitialized && _terrainEngine.valid() )
+        {
+            _terrainEngine->initialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
+            _terrainEngineInitialized = true;
+            adjustUpdateTraversalCount( -1 );
+            dirtyBound();
+        }
+    }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    {
+        unsigned int numBlacklist = Registry::instance()->getNumBlacklistedFilenames();
         if (numBlacklist != _lastNumBlacklistedFilenames)
         {
             //Only remove the blacklisted filenames if new filenames have been added since last time.
             _lastNumBlacklistedFilenames = numBlacklist;
             RemoveBlacklistedFilenamesVisitor v;
-            accept(v);
+            accept( v );
         }
     }
 
     osg::Group::traverse( nv );
-    //osg::CoordinateSystemNode::traverse(nv);
 }
 

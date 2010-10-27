@@ -21,7 +21,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_EXTENDED_TERRAIN_TECHNIQUE 1
 
 #include "Common"
-#include "CustomTerrain"
+#include "CustomTile"
 #include <osgTerrain/TerrainTechnique>
 #include <osgEarth/Progress>
 

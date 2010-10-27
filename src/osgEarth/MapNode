@@ -156,6 +156,7 @@ namespace osgEarth
         unsigned _lastNumBlacklistedFilenames;
 
         osg::ref_ptr<TerrainEngineNode> _terrainEngine;
+        bool _terrainEngineInitialized;
 
     public: // MapCallback proxy
 
@@ -167,6 +168,8 @@ namespace osgEarth
     private:
     
         void init();
+        void adjustUpdateTraversalCount( int delta );
+        void adjustEventTraversalCount( int delta );
     };
 
 } // namespace osgEarth

@@ -128,6 +128,10 @@ private:
     typedef std::queue<ImageLayerUpdate> ImageLayerUpdates;
     ImageLayerUpdates _pendingImageLayerUpdates;
 
+    // associates each texture index with a layer UID.
+    typedef std::map< UID, int > LayerUIDtoIndexMap;
+    LayerUIDtoIndexMap _layerUIDtoIndexMap;
+
     GeoExtent _tileExtent;
 
     bool _optimizeTriangleOrientation;

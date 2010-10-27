@@ -3,6 +3,7 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
 
 SET(TARGET_SRC
     CustomTerrain.cpp
+    CustomTile.cpp
     MultiPassTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
@@ -14,6 +15,7 @@ SET(TARGET_SRC
 SET(TARGET_H
     Common
     CustomTerrain
+    CustomTile
     CustomTerrainTechnique
     FileLocationCallback
     MultiPassTerrainTechnique

@@ -40,9 +40,13 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
     OSGTerrainEngineNodeMapCallbackProxy(OSGTerrainEngineNode* node) : _node(node) { }
     osg::observer_ptr<OSGTerrainEngineNode> _node;
 
-    void onMapProfileEstablished( const Profile* profile ) {
-        _node->onMapProfileEstablished(profile);
+    void onMapInfoEstablished( const MapInfo& mapInfo ) {
+        _node->onMapInfoEstablished( mapInfo );
     }
+
+    //void onMapProfileEstablished( const Profile* profile ) {
+    //    _node->onMapProfileEstablished(profile);
+    //}
 
     void onMapModelChanged( const MapModelChange& change ) {
         _node->onMapModelChanged( change );
@@ -53,9 +57,8 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
 
 //static
 static OpenThreads::ReentrantMutex s_engineNodeCacheMutex;
-static unsigned int s_engineNodeID = 0;
 //Caches the MapNodes that have been created
-typedef std::map<unsigned int, osg::observer_ptr<OSGTerrainEngineNode> > EngineNodeCache;
+typedef std::map<UID, osg::observer_ptr<OSGTerrainEngineNode> > EngineNodeCache;
 
 static
 EngineNodeCache& getEngineNodeCache()
@@ -68,51 +71,59 @@ void
 OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* engineNode)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
-    getEngineNodeCache()[engineNode->_id] = engineNode;
-    OE_INFO << LC << "Registered engine " << engineNode->_id << std::endl;
+    getEngineNodeCache()[engineNode->_uid] = engineNode;
+    OE_INFO << LC << "Registered engine " << engineNode->_uid << std::endl;
 }
 
 void
-OSGTerrainEngineNode::unregisterEngine(unsigned int id)
+OSGTerrainEngineNode::unregisterEngine( UID uid )
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
-    EngineNodeCache::iterator k = getEngineNodeCache().find( id);
+    EngineNodeCache::iterator k = getEngineNodeCache().find( uid );
     if (k != getEngineNodeCache().end())
     {
         getEngineNodeCache().erase(k);
-        OE_INFO << LC << "Unregistered engine " << id << std::endl;
+        OE_INFO << LC << "Unregistered engine " << uid << std::endl;
     }
 }
 
 OSGTerrainEngineNode*
-OSGTerrainEngineNode::getEngineById(unsigned int id)
+OSGTerrainEngineNode::getEngineByUID( UID uid )
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
-    EngineNodeCache::const_iterator k = getEngineNodeCache().find( id);
+    EngineNodeCache::const_iterator k = getEngineNodeCache().find( uid );
     if (k != getEngineNodeCache().end()) return k->second.get();
     return 0;
 }
 
-unsigned int
-OSGTerrainEngineNode::getId() const
+UID
+OSGTerrainEngineNode::getUID() const
 {
-    return _id;
+    return _uid;
 }
 
 //------------------------------------------------------------------------
 
-OSGTerrainEngineNode::OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op ) :
-TerrainEngineNode( rhs, op ),
+OSGTerrainEngineNode::OSGTerrainEngineNode() :
+TerrainEngineNode(),
 _terrain( 0L ),
 _update_mapf( 0L ),
 _cull_mapf( 0L )
 {
-    //nop
+    _uid = Registry::instance()->createUID();
+    _taskServiceMgr = Registry::instance()->getTaskServiceManager();
+}
+
+OSGTerrainEngineNode::OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op ) :
+TerrainEngineNode( rhs, op )
+{
+    //nop - this copy ctor will never get called since this is a plugin instance.
+    OE_WARN << LC << "ILLEGAL STATE in OSGTerrainEngineNode Copy CTOR" << std::endl;
 }
 
 OSGTerrainEngineNode::~OSGTerrainEngineNode()
 {
-    unregisterEngine( _id );
+    unregisterEngine( _uid );
 
     if ( _update_mapf )
         delete _update_mapf;
@@ -135,19 +146,14 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
     // merge in the custom options:
     _terrainOptions.merge( terrainOptions );
 
-    // genearte a new unique mapnode ID
-    {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( s_engineNodeCacheMutex );
-        _id = s_engineNodeID++;
-    }
-    //_map->setId( _id );
-
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
     {
-        onMapProfileEstablished( _update_mapf->getProfile() );
+        onMapInfoEstablished( MapInfo(map) );
+        //onMapProfileEstablished( _update_mapf->getProfile() );
     }
 
+    // populate the terrain with whatever data is in the map to begin with:
     if ( _terrain )
     {
         _update_mapf->sync();
@@ -163,6 +169,12 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
         {
             addImageLayer( j->get() );
         }
+
+        // update the terrain revision in threaded mode
+        if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+        {
+            _terrain->updateTaskServiceThreads( *_update_mapf );
+        }
     }
 
     // install a layer callback for processing further map actions:
@@ -170,6 +182,9 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
 
     // register me.
     registerEngine( this );
+
+    // now that we have a map, set up to recompute the bounds
+    dirtyBound();
 }
 
 osg::BoundingSphere
@@ -182,18 +197,18 @@ OSGTerrainEngineNode::computeBound() const
 }
 
 void
-OSGTerrainEngineNode::onMapProfileEstablished( const Profile* mapProfile )
+OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     OE_INFO << LC << "Map profile established" << std::endl;
 
     // set up the ellipsoid
-    this->setCoordinateSystem( mapProfile->getSRS()->getInitString() );
-    this->setFormat( mapProfile->getSRS()->getInitType() );
-    if ( !mapProfile->getSRS()->isProjected() )
-        this->setEllipsoidModel( new osg::EllipsoidModel( *mapProfile->getSRS()->getEllipsoid() ) );
+    //this->setCoordinateSystem( mapProfile->getSRS()->getInitString() );
+    //this->setFormat( mapProfile->getSRS()->getInitType() );
+    //if ( !mapProfile->getSRS()->isProjected() )
+    //    this->setEllipsoidModel( new osg::EllipsoidModel( *mapProfile->getSRS()->getEllipsoid() ) );
 
     // create a factory for creating actual tile data
-    _tileFactory = new OSGTileFactory( _id, *_cull_mapf, _terrainOptions );
+    _tileFactory = new OSGTileFactory( _uid, *_cull_mapf, _terrainOptions );
 
     // go through and build the root nodesets.
     _terrain = new CustomTerrain(
@@ -276,17 +291,23 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         switch( change.getAction() )
         {
         case MapModelChange::ADD_IMAGE_LAYER:
-            addImageLayer( change.getImageLayer() ); break;
+            addImageLayer( change.getImageLayer() );
+            break;
         case MapModelChange::REMOVE_IMAGE_LAYER:
-            removeImageLayer( change.getFirstIndex() ); break;
+            removeImageLayer( change.getImageLayer(), change.getFirstIndex() );
+            break;
         case MapModelChange::ADD_ELEVATION_LAYER:
-            addElevationLayer( change.getElevationLayer() ); break;
+            addElevationLayer( change.getElevationLayer() );
+            break;
         case MapModelChange::REMOVE_ELEVATION_LAYER:
-            removeElevationLayer( change.getFirstIndex() ); break;
+            removeElevationLayer( change.getElevationLayer(), change.getFirstIndex() );
+            break;
         case MapModelChange::MOVE_IMAGE_LAYER:
-            moveImageLayer( change.getFirstIndex(), change.getSecondIndex() ); break;
+            moveImageLayer( change.getFirstIndex(), change.getSecondIndex() );
+            break;
         case MapModelChange::MOVE_ELEVATION_LAYER:
-            moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() ); break;
+            moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() );
+            break;
         }
     }
 
@@ -304,6 +325,19 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
     if ( !layer || !layer->getTileSource() )
         return;
 
+#if 0
+    // allocate a task service for this layer if necessary
+    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    {
+        TaskService* ts = _taskServiceMgr->add(
+            layer->getUID(),
+            layer->getTerrainLayerOptions().loadingWeight().value() );
+
+        if ( ts )
+            ts->setName( layer->getName() );
+    }
+#endif
+
     // visit all existing terrain tiles and inform each one of the new image layer:
     TerrainTileList tiles;
     _terrain->getTerrainTiles( tiles );
@@ -311,7 +345,6 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
     for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
         CustomTile* tile = static_cast< CustomTile* >( itr->get() );
-        Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
         //Create a TileKey from the TileID
         osgTerrain::TileID tileId = tile->getTileID();
@@ -358,23 +391,29 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
             }
 
+            int newLayerIndex = _update_mapf->imageLayers().size() - 1;
+
             // Create a layer wrapper that supports opacity.
-            // TODO: review this; the Transparent layer holds a back-reference to the actual MapLayer
+            // TODO: review this; the Transparent layer holds a back-reference to the actual ImageLayer
             TransparentLayer* img_layer = new TransparentLayer( 
                 geoImage.getImage(), 
-                _update_mapf->imageLayers()[ _update_mapf->imageLayers().size()-1 ] );
+                _update_mapf->imageLayerAt(newLayerIndex) );
 
             img_layer->setLevelOfDetail(imageLOD);
             img_layer->setLocator( img_locator.get());
             img_layer->setMinFilter( layer->getImageLayerOptions().minFilter().value() );
             img_layer->setMagFilter( layer->getImageLayerOptions().magFilter().value() );
 
-            unsigned int newLayer = _update_mapf->imageLayers().size() - 1;
-            tile->setColorLayer( newLayer, img_layer );
-
-            if (needToUpdateImagery)
+            // update the tile.
             {
-                tile->updateImagery( layer->getId(), *_update_mapf, _tileFactory.get());
+                Threading::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
+
+                tile->setColorLayer( newLayerIndex, img_layer );
+
+                if (needToUpdateImagery)
+                {
+                    tile->updateImagery( layer->getUID(), *_update_mapf, _tileFactory.get());
+                }
             }
         }
         else
@@ -390,10 +429,69 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty(true);
         else
+            //tile->applyImmediateTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
             tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
     }
 
     updateTextureCombining();
+}
+
+void
+OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int index )
+{
+#if 0
+    // remove the task service associated with this layer if necessary
+    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    {
+        _taskServiceMgr->remove( layerRemoved->getUID() );
+    }
+#endif
+
+    TerrainTileList tiles;
+    _terrain->getTerrainTiles( tiles );
+
+    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
+
+        // critical section
+        {
+            Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
+
+            //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
+            std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
+            for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
+            {   
+                //Skip the layer that is being removed
+                if (i != index)
+                {
+                    osgTerrain::Layer* imageLayer = itr->get()->getColorLayer(i);
+                    if (imageLayer)
+                    {
+                        layers.push_back(imageLayer);
+                    }
+                }
+                //Set the current value to NULL
+                itr->get()->setColorLayer( i, NULL);
+            }
+
+            //Reset the color layers to the correct order
+            for (unsigned int i = 0; i < layers.size(); ++i)
+            {
+                itr->get()->setColorLayer( i, layers[i].get() );
+            }
+        }
+
+        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+            tile->setDirty( true );
+        else
+            //tile->applyImmediateTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
+            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
+    }
+    
+    updateTextureCombining();
+
+    OE_DEBUG << "[osgEarth::Map::removeImageSource] end " << std::endl;  
 }
 
 void
@@ -483,52 +581,7 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 }
 
 void
-OSGTerrainEngineNode::removeImageLayer( unsigned int index )
-{
-    TerrainTileList tiles;
-    _terrain->getTerrainTiles( tiles );
-
-    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
-    {
-        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
-        Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
-
-        //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
-        std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
-        for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
-        {   
-            //Skip the layer that is being removed
-            if (i != index)
-            {
-                osgTerrain::Layer* imageLayer = itr->get()->getColorLayer(i);
-                if (imageLayer)
-                {
-                    layers.push_back(imageLayer);
-                }
-            }
-            //Set the current value to NULL
-            itr->get()->setColorLayer( i, NULL);
-        }
-
-        //Reset the color layers to the correct order
-        for (unsigned int i = 0; i < layers.size(); ++i)
-        {
-            itr->get()->setColorLayer( i, layers[i].get() );
-        }
-
-        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-            tile->setDirty( true );
-        else
-            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-    }
-    
-    updateTextureCombining();
-
-    OE_DEBUG << "[osgEarth::Map::removeImageSource] end " << std::endl;  
-}
-
-void
-OSGTerrainEngineNode::removeElevationLayer( unsigned int index )
+OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved, unsigned int index )
 {
     TerrainTileList tiles;
     _terrain->getTerrainTiles( tiles );
@@ -606,22 +659,25 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 void
 OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
-    // Note: no need to sync _update_mapf here, since it gets sync'd whenever there's a 
-    // map callback.
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    if ( _cull_mapf ) // ensures initialize() has been called
     {
-        _cull_mapf->sync();
-    }
-
-    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-        // detect and respond to changes in the system shader library:
-        ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-        if ( sf->outOfSyncWith( _shaderLibRev ) )
+        // Note: no need to sync _update_mapf here, since it gets sync'd whenever there's a 
+        // map callback.
+        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
-            OE_INFO << LC << "Detected shader factory change; updating." << std::endl;
-            this->installShaders();
-            sf->sync( _shaderLibRev );
+            _cull_mapf->sync();
+        }
+
+        else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+        {
+            // detect and respond to changes in the system shader library:
+            ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
+            if ( sf->outOfSyncWith( _shaderLibRev ) )
+            {
+                OE_INFO << LC << "Detected shader factory change; updating." << std::endl;
+                this->installShaders();
+                sf->sync( _shaderLibRev );
+            }
         }
     }
 

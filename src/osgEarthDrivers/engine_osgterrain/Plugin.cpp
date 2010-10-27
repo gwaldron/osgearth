@@ -88,7 +88,7 @@ public:
             //Get the Map from the cache.  It is important that we use a ref_ptr here
             //to prevent the Map from being deleted while it is is still in use.
             //osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
-            osg::ref_ptr<OSGTerrainEngineNode> engineNode = OSGTerrainEngineNode::getEngineById( id );
+            osg::ref_ptr<OSGTerrainEngineNode> engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)id );
 
             if ( engineNode.valid() )
             {

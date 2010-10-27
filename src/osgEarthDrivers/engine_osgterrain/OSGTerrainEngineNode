@@ -23,8 +23,11 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/Map>
 #include <osgEarth/Revisioning>
+#include <osgEarth/TaskService>
+
 #include "OSGTerrainOptions"
 #include "OSGTileFactory"
+
 #include <osg/Geode>
 #include <osg/NodeCallback>
 
@@ -33,7 +36,7 @@ using namespace osgEarth;
 class OSGTerrainEngineNode : public TerrainEngineNode
 {
 public:
-    OSGTerrainEngineNode() { }
+    OSGTerrainEngineNode();
     OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Node(osgEarth,OSGTerrainEngineNode);
     ~OSGTerrainEngineNode();
@@ -46,18 +49,19 @@ public: // TerrainEngineNode overrides
     virtual osg::BoundingSphere computeBound() const;
 
 public: // MapCallback adapter functions
-    void onMapProfileEstablished( const Profile* profile );
+    //void onMapProfileEstablished( const Profile* profile );
+    void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
     void onMapModelChanged( const MapModelChange& change );
 
-    unsigned int getId() const;
+    UID getUID() const;
     OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
     class CustomTerrain* getTerrain() const { return _terrain; }
 
 public: // statics
     
     static void registerEngine( OSGTerrainEngineNode* engineNode );
-    static void unregisterEngine( unsigned int id );
-    static OSGTerrainEngineNode* getEngineById(unsigned int id);
+    static void unregisterEngine( UID uid );
+    static OSGTerrainEngineNode* getEngineByUID( UID uid );
 
 private:
     void init();
@@ -66,8 +70,8 @@ private:
     void addImageLayer( ImageLayer* layer );
     void addElevationLayer( ElevationLayer* layer );
 
-    void removeImageLayer( unsigned int index );
-    void removeElevationLayer( unsigned int index );
+    void removeImageLayer( ImageLayer* layerRemoved, unsigned int index );
+    void removeElevationLayer( ElevationLayer* layerRemoved, unsigned int index );
 
     void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
     void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
@@ -80,9 +84,10 @@ private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;
     osg::ref_ptr<TextureCompositor> _texCompositor;
     class CustomTerrain* _terrain;
-    unsigned int _id;
+    UID _uid;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
     Revision _shaderLibRev;
+    osg::ref_ptr<TaskServiceManager> _taskServiceMgr;
 
     // store a separate map frame for each of the traversal threads
     MapFrame* _update_mapf; // map frame for the main/update traversal thread

@@ -36,9 +36,9 @@ public:
       {
       }
 
-      unsigned int getId() const
+      UID getId() const
       {
-          return _mapLayer->getId();
+          return _mapLayer->getUID();
       }
 
       float getOpacity() const

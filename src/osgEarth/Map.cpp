@@ -655,7 +655,8 @@ Map::calculateProfile()
 
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
-            i->get()->onMapProfileEstablished( _profile.get() );
+            i->get()->onMapInfoEstablished( MapInfo(this) );
+            //i->get()->onMapProfileEstablished( _profile.get() );
         }
     }
 
@@ -1014,4 +1015,13 @@ MapFrame::indexOf( ModelLayer* layer ) const
 {
     ModelLayerVector::const_iterator i = std::find( _modelLayers.begin(), _modelLayers.end(), layer );
     return i != _modelLayers.end() ? i - _modelLayers.begin() : -1;
+}
+
+ImageLayer*
+MapFrame::imageLayerByUID( UID uid ) const
+{
+    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
+        if ( i->get()->getUID() == uid )
+            return i->get();
+    return 0L;
 }

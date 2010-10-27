@@ -130,6 +130,7 @@ namespace osgEarth
 
         void add( TaskRequest* request );
 
+        void setName( const std::string& value ) { _name = value; }
         const std::string& getName() const { return _name; }
 
         int getStamp() const;
@@ -161,7 +162,7 @@ namespace osgEarth
      * Managed a pool of TaskService objects, automatically allocating
      * threads among them based on a weighting metric.
      */
-    class OSGEARTH_EXPORT TaskServiceManager
+    class OSGEARTH_EXPORT TaskServiceManager : public osg::Referenced
     {
     public:
         /**
@@ -187,7 +188,7 @@ namespace osgEarth
          * Adds a new task service to the manager and reallocates the thread pool
          * across the remaining services.
          */
-        TaskService* create( UID uid, float weight =1.0f );
+        TaskService* add( UID uid, float weight =1.0f );
 
         /**
          * Gets the names task service.
@@ -197,13 +198,14 @@ namespace osgEarth
         /**
          * Gets a task service by name, creating it if it does not yet exist
          */
-        TaskService* getOrCreate( UID uid, float weight =1.0f );
+        TaskService* getOrAdd( UID uid, float weight =1.0f );
 
         /**
          * Removes a task service from management, and reallocates the thread pool
          * across the remaining services.
          */
         void remove( TaskService* service );
+        void remove( UID uid );
 
         /**
          * Assigned a weight value to a particular task service. The manager will
@@ -216,6 +218,7 @@ namespace osgEarth
         typedef std::map< UID, WeightedTaskService > TaskServiceMap;
         TaskServiceMap _services;
         int _numThreads, _targetNumThreads;
+        OpenThreads::Mutex _taskServiceMgrMutex;
 
         void reallocate( int targetNumThreads );
     };

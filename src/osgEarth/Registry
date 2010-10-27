@@ -112,8 +112,8 @@ namespace osgEarth
         /**
          * Gets a reference to the global task service manager.
          */
-        TaskServiceManager& getTaskServiceManager() {
-            return _taskServiceMgr; }
+        TaskServiceManager* getTaskServiceManager() {
+            return _taskServiceManager; }
 
         /**
          * Generates a GUID unique to this instance. 
@@ -151,7 +151,7 @@ namespace osgEarth
 
         osg::ref_ptr<ShaderFactory> _shaderLib;
 
-        TaskServiceManager _taskServiceMgr;
+        osg::ref_ptr<TaskServiceManager> _taskServiceManager;
 
         int _uidGen;
 

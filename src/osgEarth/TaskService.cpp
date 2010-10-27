@@ -361,10 +361,6 @@ TaskService::removeFinishedThreads()
 
 //------------------------------------------------------------------------
 
-namespace {
-    static OpenThreads::Mutex s_taskServiceMgrMutex;
-}
-
 TaskServiceManager::TaskServiceManager( int numThreads ) :
 _targetNumThreads( numThreads ),
 _numThreads( 0 )
@@ -379,9 +375,9 @@ TaskServiceManager::setNumThreads( int numThreads )
 }
 
 TaskService*
-TaskServiceManager::create( UID uid, float weight )
+TaskServiceManager::add( UID uid, float weight )
 {
-    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+    ScopedLock<Mutex> lock( _taskServiceMgrMutex );
 
     if ( weight <= 0.0f )
         weight = 0.001;
@@ -405,23 +401,23 @@ TaskServiceManager::create( UID uid, float weight )
 TaskService*
 TaskServiceManager::get( UID uid ) const
 {
-    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+    ScopedLock<Mutex> lock( const_cast<TaskServiceManager*>(this)->_taskServiceMgrMutex );
     TaskServiceMap::const_iterator i = _services.find(uid);
     return i != _services.end() ? i->second.first.get() : 0L;
 }
 
 TaskService*
-TaskServiceManager::getOrCreate( UID uid, float weight ) 
+TaskServiceManager::getOrAdd( UID uid, float weight ) 
 {
     TaskService* service = get( uid );
     if ( !service )
-        return create( uid, weight );
+        return add( uid, weight );
 }
 
 void
 TaskServiceManager::remove( TaskService* service )
 {
-    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+    ScopedLock<Mutex> lock( _taskServiceMgrMutex );
     for( TaskServiceMap::iterator i = _services.begin(); i != _services.end(); ++i )
     {
         if ( i->second.first.get() == service ) 
@@ -434,9 +430,17 @@ TaskServiceManager::remove( TaskService* service )
 }
 
 void
+TaskServiceManager::remove( UID uid )
+{
+    ScopedLock<Mutex> lock( _taskServiceMgrMutex );
+    _services.erase( uid );
+    reallocate( _targetNumThreads );
+}
+
+void
 TaskServiceManager::setWeight( TaskService* service, float weight )
 {
-    ScopedLock<Mutex> lock( s_taskServiceMgrMutex );
+    ScopedLock<Mutex> lock( _taskServiceMgrMutex );
 
     if ( weight <= 0.0f )
         weight = 0.001;

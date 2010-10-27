@@ -54,6 +54,7 @@ _uidGen( 0 )
     }
 
     _shaderLib = new ShaderFactory();
+    _taskServiceManager = new TaskServiceManager();
 }
 
 Registry::~Registry()

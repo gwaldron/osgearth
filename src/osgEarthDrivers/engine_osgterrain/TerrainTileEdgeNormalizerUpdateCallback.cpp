@@ -18,6 +18,7 @@
  */
 
 #include "TerrainTileEdgeNormalizerUpdateCallback"
+#include "CustomTile"
 #include "CustomTerrain"
 #include <osg/Version>
 #include <osg/Timer>

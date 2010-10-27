@@ -171,11 +171,6 @@ namespace osgEarth
         bool getEnabled() const { return _actualEnabled; }
 
         /**
-         * Gets the unique ID of this map layer
-         */
-        unsigned int getId() const { return _id; }
-
-        /**
          * Gets the readable name of the map layer.
          */
         const std::string& getName() const { 
@@ -245,7 +240,6 @@ namespace osgEarth
         optional<bool> _overrideCacheOnly;
 
     private:
-        unsigned int _id;
         std::string _name;
         bool _cacheOnlyEnv;
 		unsigned int _tileSize;        

@@ -72,14 +72,20 @@ namespace osgEarth
     protected:
         friend class TerrainEngineNodeFactory;
 
-        virtual void initialize( Map* map, const TerrainOptions& options );
         virtual void validateTerrainOptions( TerrainOptions& options );
 
     private:
         friend struct TerrainEngineNodeCallbackProxy;
 
-        void onMapProfileEstablished( const Profile* profile );
+        void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
+        //void onMapProfileEstablished( const Profile* profile );
         void onMapModelChanged( const MapModelChange& change );
+
+    protected:
+        /** Attaches a map to the terrain engine and initialized it.*/
+        virtual void initialize( Map* map, const TerrainOptions& options );
+        virtual void setMapInfo( const MapInfo& mapInfo );
+        friend class MapNode;
 
     private:
         friend struct MapNodeMapLayerController;

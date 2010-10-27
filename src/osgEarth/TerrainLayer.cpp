@@ -112,9 +112,6 @@ TerrainLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
-static unsigned int s_mapLayerID = 0;
-static Mutex        s_initMutex;
-
 TerrainLayer::TerrainLayer()
 {
     init();
@@ -125,11 +122,11 @@ _tileSource( tileSource )
 {
     init();
 
-    // Try to get the profile from the TileSource immediately
-    if ( _tileSource )
-    {
-        _profile = _tileSource->getProfile();
-    }
+    //// Try to get the profile from the TileSource immediately
+    //if ( _tileSource )
+    //{
+    //    _profile = _tileSource->getProfile();
+    //}
 }
 
 void
@@ -149,12 +146,6 @@ TerrainLayer::init()
 		_actualCacheOnly = true;
         OE_INFO << "CACHE-ONLY mode enabled!!" << std::endl;
 	}
-
-    // Generate a unique ID for this layer
-    {
-        ScopedLock<Mutex> lock( s_initMutex );
-        _id = s_mapLayerID++;
-    }
 }
 
 void
@@ -211,12 +202,20 @@ TerrainLayer::getTileSource() const
 const Profile*
 TerrainLayer::getProfile() const
 {
-    const TerrainLayerOptions& opt = getTerrainLayerOptions();
-
-    if ( opt.cacheOnly() == false && !_tileSource.valid() )
+    if ( !_profile.valid() )
     {
-        // Call getTileSource to make sure the TileSource is initialized
-        getTileSource();
+        const TerrainLayerOptions& opt = getTerrainLayerOptions();
+
+        if ( opt.cacheOnly() == false && !_tileSource.valid() )
+        {
+            // Call getTileSource to make sure the TileSource is initialized
+            getTileSource();
+        }
+
+        if ( _tileSource.valid() && !_profile.valid() )
+        {
+            const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
+        }
     }
     
     return _profile.get();

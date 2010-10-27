@@ -107,9 +107,7 @@ Projected::Projected(Map* map, int resolution)
     setMap(map);
     {
         int maxLevel = 0;
-        Threading::ScopedReadLock lock(_map->getMapDataMutex());
-        ElevationLayerVector elevations;
-        _map->getElevationLayers(elevations, true);
+        const ElevationLayerVector& elevations = _mapf->elevationLayers();
         for (ElevationLayerVector::const_iterator itr = elevations.begin(),
                  end = elevations.end();
              itr != end;
@@ -145,10 +143,8 @@ Transform* Projected::createPatch(const std::string& filename,
     ref_ptr<HeightField> hf;
     GeoImage gimage;
     {
-        Threading::ScopedReadLock lock(_map->getMapDataMutex());
-        hf = _map->createHeightField(key, true, INTERP_BILINEAR);
-        ImageLayerVector layers;
-        _map->getImageLayers(layers, true);
+        hf = _mapf->createHeightField(key, true, INTERP_BILINEAR);
+        const ImageLayerVector& layers = _mapf->imageLayers();
         if (!layers.empty())
             gimage = layers[0]->createImage(key);
     }

@@ -36,9 +36,7 @@ Geographic::Geographic(Map* map, int resolution)
     setMap(map);
     {
         int maxLevel = 0;
-        Threading::ScopedReadLock lock(_map->getMapDataMutex());
-        ElevationLayerVector elevations;
-        _map->getElevationLayers(elevations, true);
+        const ElevationLayerVector& elevations = _mapf->elevationLayers();
         for (ElevationLayerVector::const_iterator itr = elevations.begin(),
                  end = elevations.end();
              itr != end;
@@ -383,7 +381,7 @@ struct ImageRequest : public TaskRequest
     void operator()(ProgressCallback* progress)
     {
         GeoImage gimage;
-        ImageLayerVector& layers(_mapf.imageLayers());
+        const ImageLayerVector& layers = _mapf.imageLayers();
         if (crossesDateLine(_key))
         {
             GeoImageVector gis;

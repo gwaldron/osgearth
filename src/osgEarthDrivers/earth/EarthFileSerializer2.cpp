@@ -136,7 +136,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         Config layerConf = layer->getElevationLayerOptions().getConfig();
         layerConf.attr("name") = layer->getName();
         layerConf.attr("driver") = layer->getElevationLayerOptions().driver()->getDriver();
-        mapConf.add( "image", layerConf );
+        mapConf.add( "elevation", layerConf );
     }
 
     for( ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); ++i )
@@ -145,7 +145,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         Config layerConf = layer->getDriverConfig();
         layerConf.attr("name") = layer->getName();
         layerConf.attr("driver") = layer->getDriverConfig().value("driver");
-        mapConf.add( "image", layerConf );
+        mapConf.add( "model", layerConf );
     }
 
     return mapConf;

@@ -723,7 +723,8 @@ namespace osgEarthUtil
 
         osg::ref_ptr<const osgGA::GUIEventAdapter> _mouse_down_event;
 
-        osg::ref_ptr<osg::Node> _node;
+        //osg::ref_ptr<osg::Node> _node;
+        osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
         //osg::ObserverNodePath _csnPath;
         osg::NodePath _csnPath;

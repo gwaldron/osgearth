@@ -458,15 +458,19 @@ EarthManipulator::established()
 {
     if ( !_csn.valid() && _node.valid() )
     {
+        osg::ref_ptr<osg::Node> safeNode = _node.get();
+        if ( !safeNode.valid() )
+            return false;
+
         // check the kids, then the parents
-        osg::ref_ptr<osg::CoordinateSystemNode> csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( _node.get() );    
+        osg::ref_ptr<osg::CoordinateSystemNode> csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( safeNode.get() );    
         if ( !csn.valid() )
-            csn = osgEarth::findFirstParentOfType<osg::CoordinateSystemNode>( _node.get() );
+            csn = osgEarth::findFirstParentOfType<osg::CoordinateSystemNode>( safeNode.get() );
 
         if ( csn.valid() )
         {
             _csn = csn.get();
-            _node = csn;
+            _node = csn.get();
 
             osg::NodePathList paths = csn->getParentalNodePaths();
             _csnPath = paths[0];
@@ -493,9 +497,9 @@ EarthManipulator::established()
                 else
                 {
                     setHomeViewpoint( Viewpoint(
-                        _node->getBound().center(),
+                        _csn->getBound().center(),
                         0, -89.9, 
-                        _node->getBound().radius()*2.0) );
+                        _csn->getBound().radius()*2.0) );
                 }
             }
 
@@ -591,14 +595,16 @@ EarthManipulator::getNode()
 const osgEarth::SpatialReference*
 EarthManipulator::getSRS() const
 {
-    if ( !_cached_srs.valid() && !_srs_lookup_failed && _node.valid() )
+    osg::ref_ptr<osg::Node> safeNode = _node.get();
+
+    if ( !_cached_srs.valid() && !_srs_lookup_failed && safeNode.valid() )
     {
         EarthManipulator* nonconst_this = const_cast<EarthManipulator*>(this);
 
         nonconst_this->_is_geocentric = false;
 
         // first try to find a map node:
-        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( _node.get() );
+        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( safeNode.get() );
         if ( mapNode )
         {
             nonconst_this->_cached_srs = mapNode->getMap()->getProfile()->getSRS();
@@ -608,7 +614,7 @@ EarthManipulator::getSRS() const
         // if that doesn't work, try gleaning info from a CSN:
         if ( !_cached_srs.valid() )
         {
-            osg::CoordinateSystemNode* csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( _node.get() );
+            osg::CoordinateSystemNode* csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( safeNode.get() );
             if ( csn )
             {
                 nonconst_this->_cached_srs = osgEarth::SpatialReference::create( csn );
@@ -915,17 +921,21 @@ EarthManipulator::getTetherNode() const
 bool
 EarthManipulator::intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection) const
 {
-    osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(start,end);
-
-    osgUtil::IntersectionVisitor iv(lsi.get());
-    iv.setTraversalMask(_intersectTraversalMask);
-    
-    _node->accept(iv);
-    
-    if (lsi->containsIntersections())
+    osg::ref_ptr<osg::Node> safeNode = _node.get();
+    if ( safeNode.valid() )
     {
-        intersection = lsi->getIntersections().begin()->getWorldIntersectPoint();
-        return true;
+        osg::ref_ptr<osgUtil::LineSegmentIntersector> lsi = new osgUtil::LineSegmentIntersector(start,end);
+
+        osgUtil::IntersectionVisitor iv(lsi.get());
+        iv.setTraversalMask(_intersectTraversalMask);
+
+        safeNode->accept(iv);
+
+        if (lsi->containsIntersections())
+        {
+            intersection = lsi->getIntersections().begin()->getWorldIntersectPoint();
+            return true;
+        }
     }
     return false;
 }
@@ -1363,17 +1373,19 @@ EarthManipulator::setByMatrix(const osg::Matrixd& matrix)
 
     _centerRotation = makeCenterRotation(_center);
 
-    if (!_node)
+    osg::ref_ptr<osg::Node> safeNode = _node.get();
+
+    if ( !safeNode.valid() )
     {
-        _center = eye+ lookVector;
+        _center = eye + lookVector;
         setDistance( lookVector.length() );
         _rotation = matrix.getRotate().inverse() * _centerRotation.inverse();	
         return;
     }
 
     // need to reintersect with the terrain
-    const osg::BoundingSphere& bs = _node->getBound();
-    float distance = (eye-bs.center()).length() + _node->getBound().radius();
+    const osg::BoundingSphere& bs = safeNode->getBound();
+    float distance = (eye-bs.center()).length() + safeNode->getBound().radius();
     osg::Vec3d start_segment = eye;
     osg::Vec3d end_segment = eye + lookVector*distance;
     
@@ -1436,7 +1448,9 @@ EarthManipulator::getInverseMatrix() const
 void
 EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,const osg::Vec3d& up)
 {
-    if (!_node) return;
+    osg::ref_ptr<osg::Node> safeNode = _node.get();
+
+    if ( !safeNode.valid() ) return;
 
     // compute rotation matrix
     osg::Vec3d lv(center-eye);
@@ -1448,7 +1462,7 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
         bool hitFound = false;
 
         double distance = lv.length();
-        double maxDistance = distance+2*(eye-_node->getBound().center()).length();
+        double maxDistance = distance+2*(eye-safeNode->getBound().center()).length();
         osg::Vec3d farPosition = eye+lv*(maxDistance/distance);
         osg::Vec3d endPoint = center;
         for(int i=0;
@@ -1487,12 +1501,13 @@ EarthManipulator::setByLookAt(const osg::Vec3d& eye,const osg::Vec3d& center,con
 void
 EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame )
 {
-    if ( _node.valid() )
+    osg::ref_ptr<osg::Node> safeNode = _node.get();
+    if ( safeNode.valid() )
     {
         bool hitFound = false;
 
         // need to reintersect with the terrain
-        double distance = _node->getBound().radius()*0.25f;
+        double distance = safeNode->getBound().radius()*0.25f;
 
         //OE_NOTICE
         //    << std::fixed
@@ -1576,7 +1591,8 @@ EarthManipulator::pan( double dx, double dy )
 
 		// need to recompute the intersection point along the look vector.
 
-		if (_node.valid())
+        osg::ref_ptr<osg::Node> safeNode = _node.get();
+		if (safeNode.valid())
 		{
 			// now reorientate the coordinate frame to the frame coords.
 			osg::CoordinateFrame coordinateFrame = old_frame; // getCoordinateFrame(_center);

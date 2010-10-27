@@ -1,0 +1,13 @@
+* Patch
+A single patch that contains data at two resolutions.
+** trile
+Geode that contains a triangle tile of data
+** strip
+connecting geometry between triangles
+* PatchGroup
+A node in the LOD scheme. Contains a patch and the 4 children at the
+next level of detail.
+* GeoPatch
+A patch that is part of the Euler projected cube scheme
+** inherits from osg::MatrixTransform
+

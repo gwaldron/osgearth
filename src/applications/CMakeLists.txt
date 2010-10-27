@@ -41,3 +41,5 @@ ADD_SUBDIRECTORY(osgearth_version)
 ADD_SUBDIRECTORY(osgearth_controls)
 
 #ADD_SUBDIRECTORY(osgearth_symbology)
+
+ADD_SUBDIRECTORY(osgearth_seamless)

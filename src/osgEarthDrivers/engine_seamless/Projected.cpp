@@ -38,23 +38,19 @@ using namespace osgEarth;
 class ProjectedOptions : public PatchOptions
 {
 public:
-    ProjectedOptions() : _tileKey(TileKey::INVALID)
+    ProjectedOptions()
     {
     }
     ProjectedOptions(string& str)
-        : PatchOptions(str), _tileKey(TileKey::INVALID)
+        : PatchOptions(str)
     {
     }
     ProjectedOptions(const ProjectedOptions& rhs,
                      const CopyOp& copyop = CopyOp::SHALLOW_COPY)
-        : PatchOptions(rhs, copyop),_tileKey(rhs._tileKey)
+        : PatchOptions(rhs, copyop)
     {
 
     }
-    void setTileKey(const TileKey& key) { _tileKey = key; }
-    TileKey getTileKey() const { return _tileKey; }
-protected:
-    TileKey _tileKey;
 };
 
 namespace

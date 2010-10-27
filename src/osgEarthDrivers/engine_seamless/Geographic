@@ -72,15 +72,11 @@ public:
                       const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
     virtual ~GeographicOptions();
     META_Object(seamless, GeographicOptions);
-    void setTileKey(const osgEarth::TileKey& key) { _tileKey = key; }
-    osgEarth::TileKey getTileKey() const { return _tileKey; }
     void setGeographic(Geographic* geo) { _patchSet = geo; }
     Geographic* getGeographic() const
     {
         return static_cast<Geographic*>(_patchSet.get());
     }
-protected:
-    osgEarth::TileKey _tileKey;
 };
 
 }

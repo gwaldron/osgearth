@@ -25,6 +25,10 @@
 
 #include <osgDB/Registry>
 
+#include <osgEarth/TileKey>
+
+#include "PatchInfo"
+
 namespace seamless
 {
 class Patch;
@@ -47,7 +51,7 @@ protected:
 
 // Database options for creating a patch
 
-class PatchOptions : public osgDB::Options
+class PatchOptions : public osgDB::Options, public PatchInfo
 {
 public:
     PatchOptions();
@@ -70,11 +74,15 @@ public:
     int getPatchLevel() const { return _level; }
     void setPatchSet(PatchSet* patchSet);
     PatchSet* getPatchSet() const;
+    void setTileKey(const osgEarth::TileKey& key) { _tileKey = key; }
+    osgEarth::TileKey getTileKey() { return _tileKey; }
+    const osgEarth::TileKey& getTileKey() const { return _tileKey; }
 protected:
     osg::Vec2d _lowerLeft;
     osg::Vec2d _upperRight;
     int _level;
     osg::ref_ptr<PatchSet> _patchSet;
+    osgEarth::TileKey _tileKey;
 };
 
 }

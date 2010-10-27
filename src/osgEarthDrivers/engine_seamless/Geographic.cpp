@@ -568,21 +568,18 @@ Node* Geographic::createChild(const PatchOptions* parentOptions, int childNum)
 }
 
 GeographicOptions::GeographicOptions()
-    : _tileKey(TileKey::INVALID)
 {
 }
 
 GeographicOptions::GeographicOptions(string& str)
-    : PatchOptions(str), _tileKey(TileKey::INVALID)
+    : PatchOptions(str)
 {
 }
 
 GeographicOptions::GeographicOptions(const GeographicOptions& rhs,
                                      const CopyOp& copyop)
-    : PatchOptions(rhs, copyop),
-      _tileKey(rhs._tileKey)
+    : PatchOptions(rhs, copyop)
 {
-
 }
 
 GeographicOptions::~GeographicOptions()
@@ -933,9 +930,12 @@ void transferEdges(
                 * resolution / detailMult;
         for (int jt = toStart, jf = 0; jf < fromEdge.shape(); ++jt, ++jf)
         {
+#if 0
             Vec3d vtx = Vec3d(fromEdge[jf]);
             vtx = vtx * transferMat;
             toEdge[jt] = Vec3f(vtx);
+#endif
+            safeCopy(toEdge[jt], fromEdge[jf], transferMat);
         }
     }
 }

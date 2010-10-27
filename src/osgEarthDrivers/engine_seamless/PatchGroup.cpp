@@ -218,19 +218,20 @@ public:
 REGISTER_OSGPLUGIN(tengpatch, ReaderWriterPatchGroup)
 
 PatchOptions::PatchOptions()
-    : _lowerLeft(0.0, 0.0), _upperRight(1.0, 1.0), _level(0)
+   : _lowerLeft(0.0, 0.0), _upperRight(1.0, 1.0), _level(0),
+    _tileKey(osgEarth::TileKey::INVALID)
 {
 }
 
 PatchOptions::PatchOptions(const std::string& str)
     : osgDB::Options(str), _lowerLeft(0.0, 0.0), _upperRight(1.0, 1.0),
-      _level(0)
+      _level(0), _tileKey(osgEarth::TileKey::INVALID)
 {
 }
 
 PatchOptions::PatchOptions(const PatchOptions& rhs, const CopyOp& copyop)
     : osgDB::Options(rhs, copyop), _lowerLeft(rhs._lowerLeft),
-      _upperRight(rhs._upperRight), _level(rhs._level)
+      _upperRight(rhs._upperRight), _level(rhs._level), _tileKey(rhs._tileKey)
 {
     _patchSet = static_cast<PatchSet*>(copyop(rhs._patchSet.get()));
 }

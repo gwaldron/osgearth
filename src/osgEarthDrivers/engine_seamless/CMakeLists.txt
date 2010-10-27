@@ -17,6 +17,7 @@ SET(TARGET_H
         QSC
         Euler
         Patch
+        PatchInfo
         PatchGroup
         PatchSet
         Projected

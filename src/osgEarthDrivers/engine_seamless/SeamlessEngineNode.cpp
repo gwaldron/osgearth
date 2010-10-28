@@ -104,7 +104,8 @@ void SeamlessEngineNode::onMapProfileEstablished(const Profile* mapProfile)
         return;
     }
     _patchSet->setVerticalScale(_verticalScale);
-    addChild(_patchSet->createPatchSetGraph("bar.tengpatch"));
+    addChild(_patchSet
+             ->createPatchSetGraph("bar.osgearth_engine_seamless_patch"));
 }
 
 void SeamlessEngineNode::onImageLayerAdded(ImageLayer*, unsigned int index)

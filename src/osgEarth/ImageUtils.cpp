@@ -24,7 +24,8 @@
 
 #define LC "[ImageUtils] "
 
-using namespace osgEarth;
+namespace osgEarth
+{
 
 static const float r10= 1.0f/1023.0f;
 static const float r8 = 1.0f/255.0f;
@@ -364,15 +365,17 @@ ImageUtils::convertToRGBA(const osg::Image* image)
             osg::Image* result = new osg::Image();
             result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
             result->setInternalTextureFormat( GL_RGBA );
-
+            ImageAccessor ia(image);
+            ImageAccessor ra(result);
             for( int r=0; r<image->r(); ++r )
             {
                 for( int s=0; s<image->s(); ++s )
                 {
                     for( int t=0; t<image->t(); ++t )
                     {
-                        osg::Vec4f color = image->getColor( s, t, r );
-                        unsigned char* data = result->data( s, t, r );
+                        osg::Vec4f color = ia( s, t, r );
+                        GLubyte* data
+                            = const_cast<GLubyte*>(ra.data( s, t, r ));
                         *data++ = (unsigned char)(color.r()*255.0f);
                         *data++ = (unsigned char)(color.g()*255.0f);
                         *data++ = (unsigned char)(color.b()*255.0f);
@@ -413,3 +416,247 @@ ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)
 	return true;
 }
 
+// The scale factors to convert from an image data type to a
+// float. This is copied from OSG; I think the factors for the signed
+// types are wrong, but need to investigate further.
+
+template<typename T> struct GLTypeTraits;
+
+template<> struct GLTypeTraits<GLbyte>
+{
+    static float scale() { return 1.0f/128.0f; } // XXX
+};
+
+template<> struct GLTypeTraits<GLubyte>
+{
+    static float scale() { return 1.0f/255.0f; }
+};
+
+template<> struct GLTypeTraits<GLshort>
+{
+    static float scale() { return 1.0f/32768.0f; } // XXX
+};
+
+template<> struct GLTypeTraits<GLushort>
+{
+    static float scale() { return 1.0f/65535.0f; }
+};
+
+template<> struct GLTypeTraits<GLint>
+{
+    static float scale() { return 1.0f/2147483648.0f; } // XXX
+};
+
+template<> struct GLTypeTraits<GLuint>
+{
+    static float scale() { return 1.0f/4294967295.0f; }
+};
+
+template<> struct GLTypeTraits<GLfloat>
+{
+    static float scale() { return 1.0f; }
+};
+
+// The accessor function that performs the read.
+template<int Format, typename T> struct Accessor;
+
+template<typename T>
+struct Accessor<GL_DEPTH_COMPONENT, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float l = float(*ptr) * GLTypeTraits<T>::scale();
+        return osg::Vec4(l, l, l, 1.0f);
+    }
+};
+
+template<typename T>
+struct Accessor<GL_LUMINANCE, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float l = float(*ptr) * GLTypeTraits<T>::scale();
+        return osg::Vec4(l, l, l, 1.0f);
+    }
+};
+
+template<typename T>
+struct Accessor<GL_ALPHA, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float a = float(*ptr) * GLTypeTraits<T>::scale();
+        return osg::Vec4(1.0f, 1.0f, 1.0f, a);
+    }
+};
+
+template<typename T>
+struct Accessor<GL_LUMINANCE_ALPHA, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float l = float(*ptr++) * GLTypeTraits<T>::scale();
+        float a = float(*ptr) * GLTypeTraits<T>::scale();
+        return osg::Vec4(l, l, l, a);
+    }
+};
+
+template<typename T>
+struct Accessor<GL_RGB, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float d = float(*ptr++) * GLTypeTraits<T>::scale();
+        float g = float(*ptr++) * GLTypeTraits<T>::scale();
+        float b = float(*ptr) * GLTypeTraits<T>::scale();
+        return osg::Vec4(d, g, b, 1.0f);
+    }
+};
+
+template<typename T>
+struct Accessor<GL_RGBA, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float d = float(*ptr++) * GLTypeTraits<T>::scale();
+        float g = float(*ptr++) * GLTypeTraits<T>::scale();
+        float b = float(*ptr++) * GLTypeTraits<T>::scale();
+        float a = float(*ptr) * GLTypeTraits<T>::scale();
+        return osg::Vec4(d, g, b, a);
+    }
+};
+
+template<typename T>
+struct Accessor<GL_BGR, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float b = float(*ptr) * GLTypeTraits<T>::scale();
+        float g = float(*ptr++) * GLTypeTraits<T>::scale();
+        float d = float(*ptr++) * GLTypeTraits<T>::scale();
+        return osg::Vec4(d, g, b, 1.0f);
+    }
+};
+
+template<typename T>
+struct Accessor<GL_BGRA, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        const T* ptr = (const T*)ia->data(s, t, r);
+        float b = float(*ptr++) * GLTypeTraits<T>::scale();
+        float g = float(*ptr++) * GLTypeTraits<T>::scale();
+        float d = float(*ptr++) * GLTypeTraits<T>::scale();
+        float a = float(*ptr) * GLTypeTraits<T>::scale();
+        return osg::Vec4(d, g, b, a);
+    }
+};
+
+template<typename T>
+struct Accessor<0, T>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        return osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+};
+
+template<>
+struct Accessor<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+        GLushort p = *(const GLushort*)ia->data( s, t, r );
+        //internal format GL_RGB5_A1 is implied
+        return osg::Vec4( r5*(float)(p>>11), r5*(float)((p&0x7c0)>>6), r5*((p&0x3e)>>1), (float)(p&0x1));
+    }
+};
+
+template<>
+struct Accessor<GL_UNSIGNED_BYTE_3_3_2, GLubyte>
+{
+    static osg::Vec4 access(const ImageAccessor* ia, int s, int t, int r)
+    {
+          GLubyte p = *(const GLubyte*)ia->data( s, t, r );
+        // internal format GL_R3_G3_B2 is implied
+        return osg::Vec4( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
+    }
+};
+    
+template<int GLFormat>
+inline ImageAccessor::AccessorFunc chooseAccessor(GLenum dataType)
+{
+    switch (dataType)
+    {
+    case GL_BYTE:
+        return &Accessor<GLFormat, GLbyte>::access;
+    case GL_UNSIGNED_BYTE:
+        return &Accessor<GLFormat, GLubyte>::access;
+    case GL_SHORT:
+        return &Accessor<GLFormat, GLshort>::access;
+    case GL_UNSIGNED_SHORT:
+        return &Accessor<GLFormat, GLushort>::access;
+    case GL_INT:
+        return &Accessor<GLFormat, GLint>::access;
+    case GL_UNSIGNED_INT:
+        return &Accessor<GLFormat, GLuint>::access;
+    case GL_FLOAT:
+        return &Accessor<GLFormat, GLfloat>::access;
+    default:
+        return &Accessor<0, GLbyte>::access;
+    }
+}
+    
+ImageAccessor::ImageAccessor(const osg::Image* image_)
+    : image(image_)
+{
+    colMult = image->getPixelSizeInBits() / 8;
+    rowMult = image->getRowSizeInBytes();
+    imageSize = image->getImageSizeInBytes();
+    GLenum dataType = image->getDataType();
+    switch(image->getPixelFormat())
+    {
+    case GL_DEPTH_COMPONENT:
+        accessor = chooseAccessor<GL_DEPTH_COMPONENT>(dataType);
+        break;
+    case GL_LUMINANCE:
+        accessor = chooseAccessor<GL_LUMINANCE>(dataType);
+        break;        
+    case GL_ALPHA:
+        accessor = chooseAccessor<GL_ALPHA>(dataType);
+        break;        
+    case GL_LUMINANCE_ALPHA:
+        accessor = chooseAccessor<GL_LUMINANCE_ALPHA>(dataType);
+        break;        
+    case GL_RGB:
+        accessor = chooseAccessor<GL_RGB>(dataType);
+        break;        
+    case GL_RGBA:
+        accessor = chooseAccessor<GL_RGBA>(dataType);
+        break;        
+    case GL_BGR:
+        accessor = chooseAccessor<GL_BGR>(dataType);
+        break;        
+    case GL_BGRA:
+        accessor = chooseAccessor<GL_BGRA>(dataType);
+        break;        
+    case GL_UNSIGNED_SHORT_5_5_5_1:
+        accessor = &Accessor<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::access;
+        break;
+    case GL_UNSIGNED_BYTE_3_3_2:
+        accessor = &Accessor<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::access;
+        break;
+    default:
+        accessor = &Accessor<0, GLbyte>::access;
+        break;
+    }
+}
+
+}

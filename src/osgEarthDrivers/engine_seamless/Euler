@@ -176,7 +176,20 @@ public:
     // pre/post transforms to move from cube to latlong and back.
     virtual bool preTransform(double& x, double& y, void* context) const;
     virtual bool postTransform(double& x, double& y, void* context) const;
+    // Optimized versions that avoid going through GDAL.
+    virtual bool transform(
+        double x, double y,
+        const SpatialReference* to_srs,
+        double& out_x, double& out_y,
+        void* context =0L) const;
 
+    virtual bool transformPoints(
+        const SpatialReference* to_srs, 
+        double* x, double *y,
+        unsigned int numPoints,
+        void* context =0L,
+        bool ignore_errors =false) const;
+    
     virtual bool transformExtent(
         const SpatialReference* to_srs,
         double& in_out_xmin,

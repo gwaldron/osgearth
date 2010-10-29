@@ -422,7 +422,7 @@ TaskServiceManager::remove( TaskService* service )
     {
         if ( i->second.first.get() == service ) 
         {
-            i = _services.erase( i );
+            _services.erase( i );
             reallocate( _targetNumThreads );
             break;
         }

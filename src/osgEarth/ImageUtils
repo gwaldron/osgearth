@@ -115,6 +115,30 @@ namespace osgEarth
          */
         static bool setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& color);
     };
+
+// An accessor for images that bypasses expensive computations and
+// runtime branching in osg::Image::getColor().
+class OSGEARTH_EXPORT ImageAccessor
+{
+ public:
+    ImageAccessor(const osg::Image* image_);
+    // The equivalent of Image::getColor().
+    osg::Vec4 operator()(int s, int t, int r = 0) const
+    {
+        return (*accessor)(this, s, t, r);
+    }
+    const osg::Image* image;
+    unsigned colMult;
+    unsigned rowMult;
+    unsigned imageSize;
+    const unsigned char* data(int s, int t, int r) const
+    {
+        return image->data() + s * colMult + t * rowMult + r * imageSize;
+    }
+    typedef osg::Vec4 (*AccessorFunc)(const ImageAccessor* ia, int s,
+                                      int t, int r);
+    AccessorFunc accessor;
+};
 }
 
 #endif //OSGEARTH_IMAGEUTILS_H

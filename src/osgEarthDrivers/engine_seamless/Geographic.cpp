@@ -83,7 +83,8 @@ Node* Geographic::createPatchSetGraph(const std::string& filename)
             osg::clone(getPatchOptionsPrototype()));
         goptions->setGeographic(this);
         goptions->setTileKey(_profile->createTileKey(x, y, 2));
-        Node* node = createPatchGroup("foobar.tengpatch", goptions);
+        Node* node = createPatchGroup("foobar.osgearth_engine_seamless_patch",
+                                      goptions);
         csn->addChild(node);
     }
     return csn;
@@ -561,7 +562,7 @@ Node* Geographic::createChild(const PatchOptions* parentOptions, int childNum)
     GeographicOptions* goptions = osg::clone(parentgopt);
     goptions->setPatchLevel(parentgopt->getPatchLevel() + 1);
     goptions->setTileKey(parentgopt->getTileKey().createChildKey(childNum));
-    return createPatchGroup("foobies.tengpatch", goptions);
+    return createPatchGroup("foobies.osgearth_engine_seamless_patch", goptions);
 
 }
 

@@ -691,7 +691,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
+    ImageAccessor ra(result);
     double dx = dest_extent.width() / (double)width;
     double dy = dest_extent.height() / (double)height;
 
@@ -703,9 +703,10 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
 
     unsigned int numPixels = width * height;
 
-    // Start by creating a sample grid over the destination extent:    
-    double *destPointsX = new double[numPixels];
-    double *destPointsY = new double[numPixels];
+    // Start by creating a sample grid over the destination
+    // extent. These will be the source coordinates.
+    double *srcPointsX = new double[numPixels * 2];
+    double *srcPointsY = srcPointsX + numPixels;
 
     unsigned int pixel = 0;
     for (unsigned int c = 0; c < width; ++c)
@@ -715,23 +716,21 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
         {
             double dest_y = dest_extent.yMin() + yoff + (double)r * dy;
 
-            destPointsX[pixel] = dest_x;
-            destPointsY[pixel] = dest_y;
+            srcPointsX[pixel] = dest_x;
+            srcPointsY[pixel] = dest_y;
             pixel++;            
         }
     }
 
     // Next, reproject the sample grid into the source coordinate system:
-    double* srcPointsX = new double[numPixels];
-    double* srcPointsY = new double[numPixels];
-    memcpy(srcPointsX, destPointsX, sizeof(double) * numPixels);
-    memcpy(srcPointsY, destPointsY, sizeof(double) * numPixels);
-
     dest_extent.getSRS()->transformPoints( src_extent.getSRS(), srcPointsX, srcPointsY, numPixels, 0L, true );
 
     // Next, go through the source-SRS sample grid, read the color at each point from the source image,
     // and write it to the corresponding pixel in the destination image.
     pixel = 0;
+    ImageAccessor ia(image);
+    double xfac = (image->s() - 1) / src_extent.width();
+    double yfac = (image->t() - 1) / src_extent.height();
     for (unsigned int c = 0; c < width; ++c)
     {
         for (unsigned int r = 0; r < height; ++r)
@@ -744,8 +743,8 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
             //    OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
             //}
 
-            double px = ((src_x - src_extent.xMin()) / src_extent.width()) * (double)(image->s()-1);
-            double py = ((src_y - src_extent.yMin()) / src_extent.height()) * (double)(image->t()-1);
+            float px = (src_x - src_extent.xMin()) * xfac;
+            float py = (src_y - src_extent.yMin()) * yfac;
 
             int px_i = osg::clampBetween( (int)osg::round(px), 0, image->s()-1 );
             int py_i = osg::clampBetween( (int)osg::round(py), 0, image->t()-1 );
@@ -754,7 +753,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
 
             if ( ! isSrcContiguous ) // non-contiguous space- use nearest neighbot
             {
-                color = ImageUtils::getColor(image, px_i, py_i);
+                color = ia(px_i, py_i);
             }
 
             else // contiguous space - use bilinear sampling
@@ -767,10 +766,10 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 if (rowMin > rowMax) rowMin = rowMax;
                 if (colMin > colMax) colMin = colMax;
 
-                osg::Vec4 urColor = ImageUtils::getColor(image, colMax, rowMax);
-                osg::Vec4 llColor = ImageUtils::getColor(image, colMin, rowMin);
-                osg::Vec4 ulColor = ImageUtils::getColor(image, colMin, rowMax);
-                osg::Vec4 lrColor = ImageUtils::getColor(image, colMax, rowMin);
+                osg::Vec4 urColor = ia(colMax, rowMax);
+                osg::Vec4 llColor = ia(colMin, rowMin);
+                osg::Vec4 ulColor = ia(colMin, rowMax);
+                osg::Vec4 lrColor = ia(colMax, rowMin);
 
                 /*Average Interpolation*/
                 /*double x_rem = px - (int)px;
@@ -805,7 +804,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 if ((colMax == colMin) && (rowMax == rowMin))
                 {
                     //OE_NOTICE << "[osgEarth::GeoData] Exact value" << std::endl;
-                    color = ImageUtils::getColor(image, px_i, py_i);
+                    color = ia(px_i, py_i);
                 }
                 else if (colMax == colMin)
                 {
@@ -829,18 +828,20 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
                 {
                     //OE_NOTICE << "[osgEarth::GeoData] Bilinear" << std::endl;
                     //Bilinear interpolate
+                    float col1 = colMax - px, col2 = px - colMin;
+                    float row1 = rowMax - py, row2 = py - rowMin;
                     for (unsigned int i = 0; i < 4; ++i)
                     {
-                        float r1 = ((float)colMax - px) * llColor[i] + (px - (float)colMin) * lrColor[i];
-                        float r2 = ((float)colMax - px) * ulColor[i] + (px - (float)colMin) * urColor[i];
+                        float r1 = col1 * llColor[i] + col2 * lrColor[i];
+                        float r2 = col1 * ulColor[i] + col2 * urColor[i];
 
                         //OE_INFO << "r1, r2 = " << r1 << " , " << r2 << std::endl;
-                        color[i] = ((float)rowMax -py) * r1 + (py - (float)rowMin) * r2;
+                        color[i] = row1 * r1 + row2 * r2;
                     }
                 }
             }
                
-            unsigned char* rgba = result->data(c,r);
+            unsigned char* rgba = const_cast<unsigned char*>(ra.data(c,r,0));
 
             rgba[0] = (unsigned char)(color.r() * 255);
             rgba[1] = (unsigned char)(color.g() * 255);
@@ -851,12 +852,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
         }
     }
 
-    
-
     delete[] srcPointsX;
-    delete[] srcPointsY;
-    delete[] destPointsX;
-    delete[] destPointsY;
     return result;
 }
 

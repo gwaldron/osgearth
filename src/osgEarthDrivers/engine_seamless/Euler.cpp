@@ -148,7 +148,7 @@ Vec3d face2qrs(const Vec2d& face)
     // "latitude"
     Vec3d ynorm(0, cy, -sy);
     Vec3d result = xnorm ^ ynorm;
-    result.normalize();
+    // Assume that result is normalized "enough."
     return result;
 }
 
@@ -183,10 +183,20 @@ Vec3d face2dc(int faceNum, const Vec2d& faceCoord)
 bool faceCoordsToLatLon(double x, double y, int face,
                         double& out_lat_deg, double& out_lon_deg)
 {
-    Vec3d geo = face2dc(face, Vec2d(x, y));
-    const double lon = atan2(geo.y(),geo.x());
-    const double lat = atan2(geo.z(),
-                             sqrt(geo.x() * geo.x() + geo.y() * geo.y()));
+    double lat, lon;
+    if (face < 4)
+    {
+        const double l = x * osg::PI_4;
+        lon = face * osg::PI_2 + l;
+        lon = fmod(lon + osg::PI, 2.0 * osg::PI) - osg::PI;
+        lat = atan(cos(l) * tan(y * osg::PI_4));
+    }
+    else
+    {
+        Vec3d geo = face2dc(face, Vec2d(x, y));
+        lon = atan2(geo.y(),geo.x());
+        lat = atan2(geo.z(), sqrt(geo.x() * geo.x() + geo.y() * geo.y()));
+    }
     out_lon_deg = RadiansToDegrees(lon);
     out_lat_deg = RadiansToDegrees(lat);
     return true;
@@ -532,6 +542,49 @@ EulerSpatialReference::postTransform(double& x, double& y, void* context) const
 }
 
 bool
+EulerSpatialReference::transform(double x, double y,
+                                 const SpatialReference* to_srs,
+                                 double& out_x, double& out_y,
+                                 void* context) const
+{
+    if ( !_initialized )
+        const_cast<EulerSpatialReference*>(this)->init();
+    if (!to_srs->isEquivalentTo(getGeographicSRS()))
+        return SpatialReference::transform(x, y, to_srs, out_x, out_y, context);
+    if (EulerSpatialReference::preTransform(x, y, context))
+    {
+        out_x = x;
+        out_y = y;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool EulerSpatialReference::transformPoints(const SpatialReference* to_srs, 
+                                            double* x, double *y,
+                                            unsigned int numPoints,
+                                            void* context,
+                                            bool ignore_errors) const
+{
+        if ( !_initialized )
+            const_cast<EulerSpatialReference*>(this)->init();
+        if (!to_srs->isEquivalentTo(getGeographicSRS()))
+            return SpatialReference::transformPoints(to_srs, x, y, numPoints,
+                                                     context, ignore_errors);
+        bool success = true;
+        for (unsigned int i = 0; i < numPoints; ++i)
+        {
+            bool result
+                = EulerSpatialReference::preTransform(x[i], y[i], context);
+            success = success && result;
+        }
+        return success;
+}
+
+bool
 EulerSpatialReference::transformExtent(const SpatialReference* to_srs,
                                      double& in_out_xmin,
                                      double& in_out_ymin,
@@ -678,8 +731,9 @@ EulerProfile::EulerProfile()
 
 int EulerProfile::getFace(const TileKey& key)
 {
-    int faceX = key.getTileX() >> key.getLevelOfDetail();
-    int faceY = key.getTileY() >> key.getLevelOfDetail();
+    int shiftVal = key.getLevelOfDetail() - 2;
+    int faceX = key.getTileX() >> shiftVal;
+    int faceY = key.getTileY() >> shiftVal;
     if (faceY == 0)
         return 5;
     else if (faceY == 2)

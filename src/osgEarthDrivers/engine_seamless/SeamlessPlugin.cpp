@@ -22,28 +22,32 @@
 #include <osgDB/Registry>
 #include <osgEarth/Profile>
 
+#include "PatchGroup"
+#include "PatchSet"
 #include "SeamlessEngineNode"
 
 #include <string>
 #include <iostream>
 
-using namespace osgEarth;
-
 namespace seamless
 {
+using namespace osg;
+using namespace osgEarth;
+
 class SeamlessPlugin : public osgDB::ReaderWriter
 {
 public:
-    SeamlessPlugin() {}
+    SeamlessPlugin()
+    {
+        supportsExtension("osgearth_engine_seamless",
+                          "osgEarth seamless engine plugin");
+        supportsExtension("osgearth_engine_seamless_patch",
+                          "seamless engine patch pseudo loader");
+    }
 
     virtual const char* className()
     {
         return "OSG Earth Seamless Engine";
-    }
-
-    virtual bool acceptsExtension(const std::string& extension) const
-    {
-        return osgDB::equalCaseInsensitive( extension, "osgearth_engine_seamless" );
     }
 
     virtual ReadResult readObject(const std::string& uri, const Options* options) const
@@ -58,10 +62,33 @@ public:
         }
     }
     
-    virtual ReadResult readNode(const std::string& uri, const Options* options) const
+    virtual ReadResult
+    readNode(const std::string& uri, const Options* options) const
     {
-        // The pseudo-loader form for engines isn't supported anymore.
-        return ReadResult::FILE_NOT_FOUND;
+        if ("osgearth_engine_seamless_patch" == osgDB::getFileExtension(uri))
+        {
+            Vec2d lowerLeft(0.0, 1.0);
+            Vec2d upperRight(1.0, 1.0);
+            const PatchOptions* poptions
+                = dynamic_cast<const PatchOptions*>(options);
+            if (!poptions)
+            {
+                OE_FATAL
+                    << "PatchGroup reader: Options object is not PatchOptions\n";
+                return osgDB::ReaderWriter::ReadResult::ERROR_IN_READING_FILE;
+            }
+            PatchSet* pset = poptions->getPatchSet();
+            Group* result = new Group;
+            for (int i = 0; i < 4; ++i)
+                result->addChild(pset->createChild(poptions, i));
+            return result;
+
+        }
+        else
+        {
+            // The pseudo-loader form for engines isn't supported anymore.
+            return ReadResult::FILE_NOT_FOUND;
+        }
     }
 };
 

@@ -175,48 +175,6 @@ void PatchGroup::traverse(NodeVisitor& nv)
     }
 }
 
-// Pseudo loader for patch group
-
-class ReaderWriterPatchGroup : public osgDB::ReaderWriter
-{
-public:
-    ReaderWriterPatchGroup()
-    {
-        supportsExtension("tengpatch", "patch pseudo loader");
-    }
-
-    virtual const char* className() const
-    {
-        return "patch pseudo loader";
-    }
-
-    virtual osgDB::ReaderWriter::ReadResult
-    readNode(const string& fileName,
-             const osgDB::ReaderWriter::Options* options) const
-    {
-        string ext = osgDB::getFileExtension(fileName);
-        if (!acceptsExtension(ext))
-            return osgDB::ReaderWriter::ReadResult::FILE_NOT_HANDLED;
-        Vec2d lowerLeft(0.0, 1.0);
-        Vec2d upperRight(1.0, 1.0);
-        const PatchOptions* poptions
-            = dynamic_cast<const PatchOptions*>(options);
-        if (!poptions)
-        {
-            OSG_FATAL
-                << "PatchGroup reader: Options object is not PatchOptions";
-            return osgDB::ReaderWriter::ReadResult::ERROR_IN_READING_FILE;
-        }
-        PatchSet* pset = poptions->getPatchSet();
-        Group* result = new Group;
-        for (int i = 0; i < 4; ++i)
-            result->addChild(pset->createChild(poptions, i));
-        return result;
-    }
-};
-
-REGISTER_OSGPLUGIN(tengpatch, ReaderWriterPatchGroup)
-
 PatchOptions::PatchOptions()
    : _lowerLeft(0.0, 0.0), _upperRight(1.0, 1.0), _level(0),
     _tileKey(osgEarth::TileKey::INVALID)

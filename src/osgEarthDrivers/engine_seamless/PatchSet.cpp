@@ -91,7 +91,7 @@ Node* PatchSet::createPatchGroup(const std::string& filename,
     {
         pgroup->addChild(patch, 0.0, 1.0);
         pgroup->setRange(1, 1.0, 1e10);
-        pgroup->setFileName(1, "foo.tengpatch");
+        pgroup->setFileName(1, "foo.osgearth_engine_seamless_patch");
     }
     return pgroup;
 }
@@ -326,7 +326,8 @@ osg::Node* PatchSet::createChild(const PatchOptions* parentOptions, int childNum
     Vec2d ll = lowerLeft + componentMultiply(Vec2d(x, y), range);
     pgroupOptions->setPatchExtents(ll, ll + newRange);
     pgroupOptions->setPatchLevel(parentOptions->getPatchLevel() + 1);
-    Node* pgroup = createPatchGroup("foobies.tengpatch", pgroupOptions);
+    Node* pgroup = createPatchGroup("foobies.osgearth_engine_seamless_patch",
+                                    pgroupOptions);
     return pgroup;
 }
 }

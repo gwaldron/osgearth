@@ -126,7 +126,7 @@ TerrainOptions::fromConfig( const Config& conf )
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
-    conf.getIfSet( "compositor", "multitexture",     _compositingTech, COMPOSITING_MULTITEXTURE_FFP );
+    conf.getIfSet( "compositor", "multitexture",     _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
     conf.getIfSet( "compositor", "multitexture_gpu", _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
     conf.getIfSet( "compositor", "multipass",        _compositingTech, COMPOSITING_MULTIPASS );
 

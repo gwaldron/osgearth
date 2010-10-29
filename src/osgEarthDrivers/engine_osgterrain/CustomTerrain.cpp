@@ -155,29 +155,6 @@ _onDemandDelay( 2 )
         // undo the setting in osgTerrain::Terrain
         setNumChildrenRequiringUpdateTraversal( 0 );
     }
-    
-#if 0
-    // set up the task service manager based on the loading policy:
-    const LoadingPolicy& lp = terrainOptions.loadingPolicy().value();
-
-    if ( lp.mode() != LoadingPolicy::MODE_STANDARD )
-    {
-        int totalThreads = 4;
-        const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
-        if ( env_numTaskServiceThreads )
-            totalThreads = ::atoi( env_numTaskServiceThreads );
-        else if ( lp.numLoadingThreads().isSet() )
-            totalThreads = osg::maximum( 1, lp.numLoadingThreads().get() );
-        else
-            totalThreads = (int)osg::maximum( 
-                1.0f, 
-                lp.numLoadingThreadsPerCore().value() * (float)OpenThreads::GetNumberOfProcessors() );
-
-        OE_INFO << LC << "Using a total of " << totalThreads << " loading threads " << std::endl;
-
-        _taskServiceMgr->setNumThreads( totalThreads );
-    }
-#endif
 
     // register for events in order to support ON_DEMAND frame scheme
     setNumChildrenRequiringEventTraversal( 1 );

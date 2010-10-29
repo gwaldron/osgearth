@@ -118,14 +118,14 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
 
     else if ( change.getAction() == MapModelChange::MOVE_IMAGE_LAYER )
     {
-        if ( change.getFirstIndex() != change.getSecondIndex() )
+        int fromIndex = getOrder( change.getLayer()->getUID() );
+        int toIndex = change.getSecondIndex();
+
+        if ( fromIndex != toIndex )
         {
-            int slot = change.getFirstIndex();
-            _order.insert( _order.begin() + change.getSecondIndex(), slot );
-            if ( change.getFirstIndex() <= change.getSecondIndex() )
-                _order.erase( _order.begin() + change.getFirstIndex() );
-            else
-                _order.erase( _order.begin() + change.getFirstIndex() + 1 );
+            int slot = _order[fromIndex];
+            _order.erase( _order.begin() + fromIndex );
+            _order.insert( _order.begin() + toIndex, slot );
         }
     }
 

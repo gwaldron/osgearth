@@ -45,6 +45,7 @@ struct TileUpdate
     enum Action {
         ADD_IMAGE_LAYER,
         REMOVE_IMAGE_LAYER,
+        MOVE_IMAGE_LAYER,
         UPDATE_IMAGE_LAYER,
         UPDATE_ALL_IMAGE_LAYERS,
         UPDATE_ELEVATION,
@@ -170,7 +171,7 @@ public:
 
     bool cancelRequests();
 
-    void updateImagery( UID layerUID, const MapFrame& mapf, OSGTileFactory* factory );
+    void updateImagery( ImageLayer* layer, const MapFrame& mapf, OSGTileFactory* factory );
 
     bool getUseTileGenRequest() const;
 
@@ -193,6 +194,7 @@ public:
     //TileImageLayer& getTileImageLayer( UID layerUID ) const;
 
     void removeColorLayer( int index );
+    void moveColorLayer( int fromIndex, int toIndex );
 
 
 public: // OVERRIDES

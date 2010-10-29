@@ -108,14 +108,7 @@ struct TileColorLayerRequest : public TileLayerRequest
 
     void operator()( ProgressCallback* progress )
     {
-        osg::ref_ptr<ImageLayer> imageLayer = 0L;
-
-        for( ImageLayerVector::const_iterator i = _mapf.imageLayers().begin(); i != _mapf.imageLayers().end(); ++i )
-        {
-            if ( i->get()->getUID() == _layerUID )
-                imageLayer = i->get();
-        }
-
+        osg::ref_ptr<ImageLayer> imageLayer = _mapf.imageLayerByUID( _layerUID );
         if ( imageLayer.valid() )
         {
             _result = _tileFactory->createImageLayer( _mapf.getMapInfo(), imageLayer.get(), _key, progress );
@@ -133,6 +126,7 @@ struct TileElevationLayerRequest : public TileLayerRequest
     TileElevationLayerRequest( const TileKey& key, const MapFrame& mapf, OSGTileFactory* tileFactory )
         : TileLayerRequest( key, mapf, tileFactory )
     {
+        //nop
     }
 
     void operator()( ProgressCallback* progress )
@@ -249,6 +243,8 @@ CustomTile::~CustomTile()
 void
 CustomTile::adjustUpdateTraversalCount( int delta )
 {
+    // NOTE: it is only safe to call this method from the UPDATE or EVENT thread.
+
     int oldCount = this->getNumChildrenRequiringUpdateTraversal();
     if ( oldCount + delta >= 0 )
     {
@@ -423,10 +419,28 @@ CustomTile::setVerticalScale(float verticalScale)
 void
 CustomTile::removeColorLayer( int index )
 {
+    Threading::ScopedWriteLock exclusiveTileLock( _tileLayersMutex );
+
     if ( index >= 0 && index < _colorLayers.size() )
         _colorLayers.erase( _colorLayers.begin() + index );
     else
         OE_WARN << LC << "Illegal: removeColorLayer index out of range" << std::endl;
+}
+
+void
+CustomTile::moveColorLayer( int fromIndex, int toIndex )
+{
+    Threading::ScopedWriteLock exclusiveTileLock( _tileLayersMutex );
+
+    if (fromIndex >= 0 && fromIndex < _colorLayers.size() &&
+        toIndex >= 0 && toIndex < _colorLayers.size() )
+    {
+        osg::ref_ptr<osgTerrain::Layer> layer = _colorLayers[fromIndex].get();
+        _colorLayers.erase( _colorLayers.begin() + fromIndex );
+        _colorLayers.insert( _colorLayers.begin() + toIndex, layer.get() );
+    }
+    else
+        OE_WARN << LC << "Illegal: moveColorLayer index out of range" << std::endl;
 }
 
 osg::BoundingSphere
@@ -579,11 +593,7 @@ CustomTile::installRequests( const MapFrame& mapf, int stamp )
 {
     CustomTerrain* terrain = getCustomTerrain();
 
-    //Map* map = terrain->getMap();
-    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
-
     OSGTileFactory* tileFactory = terrain->getTileFactory();
-    //MapEngine* engine = terrain->getEngine();
 
     bool hasElevationLayer;
     int numColorLayers;
@@ -602,14 +612,21 @@ CustomTile::installRequests( const MapFrame& mapf, int stamp )
     //ImageLayerVector imageLayers;
     //map->getImageLayers( imageLayers );
 
-    for( int layerIndex = 0; layerIndex < numColorLayers; layerIndex++ )
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
-        if ( layerIndex < mapf.imageLayers().size() )
-        {
-            updateImagery( mapf.imageLayerAt(layerIndex)->getUID(), mapf, tileFactory );
-        }
+        updateImagery( i->get(), mapf, tileFactory );
     }
+
     _requestsInstalled = true;
+
+    //for( int layerIndex = 0; layerIndex < numColorLayers; layerIndex++ )
+    //{
+    //    if ( layerIndex < mapf.imageLayers().size() )
+    //    {
+    //        updateImagery( mapf.imageLayerAt(layerIndex)->getUID(), mapf, tileFactory );
+    //    }
+    //}
+    //_requestsInstalled = true;
 }
 
 void
@@ -640,21 +657,16 @@ CustomTile::resetElevationRequests( const MapFrame& mapf )
 
 
 // called from installRequests (cull traversal) or terrainengine (main thread) ... so be careful!
+//
+// this method queues up a new tile imagery request, superceding any existing request that
+// might be in the queue.
 void
-CustomTile::updateImagery(UID layerUID, const MapFrame& mapf, OSGTileFactory* tileFactory)
+CustomTile::updateImagery( ImageLayer* imageLayer, const MapFrame& mapf, OSGTileFactory* tileFactory)
 {
     CustomTerrain* terrain = getCustomTerrain();
 
-    ImageLayer* mapLayer = mapf.imageLayerByUID( layerUID );
-
-    if (!mapLayer)
-    {
-        OE_NOTICE << "updateImagery could not find MapLayer with id=" << layerUID << std::endl;
-        return;
-    }
-
     // imagery is slighty higher priority than elevation data
-    TaskRequest* r = new TileColorLayerRequest( _key, mapf, tileFactory, layerUID );
+    TaskRequest* r = new TileColorLayerRequest( _key, mapf, tileFactory, imageLayer->getUID() );
     std::stringstream ss;
     ss << "TileColorLayerRequest " << _key.str() << std::endl;
     std::string ssStr;
@@ -676,18 +688,19 @@ CustomTile::updateImagery(UID layerUID, const MapFrame& mapf, OSGTileFactory* ti
 
     r->setProgressCallback( new StampedProgressCallback( 
         r,
-        terrain->getImageryTaskService( layerUID ) ));
+        terrain->getImageryTaskService( imageLayer->getUID() ) ) );
 
     //If we already have a request for this layer, remove it from the list and use the new one
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
     {
         TileColorLayerRequest* r2 = static_cast<TileColorLayerRequest*>( i->get() );
-        if ( r2->_layerUID == layerUID )
+        if ( r2->_layerUID == imageLayer->getUID() )
         {
             i = _requests.erase( i );
-            break;
+            //break;
         }
     }
+
     //Add the new imagery request
     _requests.push_back( r );
 }

@@ -44,10 +44,6 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
         _node->onMapInfoEstablished( mapInfo );
     }
 
-    //void onMapProfileEstablished( const Profile* profile ) {
-    //    _node->onMapProfileEstablished(profile);
-    //}
-
     void onMapModelChanged( const MapModelChange& change ) {
         _node->onMapModelChanged( change );
     }
@@ -431,7 +427,7 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 if (needToUpdateImagery)
                 {
                     //TODO: review this.
-                    tile->updateImagery( layerAdded->getUID(), *_update_mapf, _tileFactory.get());
+                    tile->updateImagery( layerAdded, *_update_mapf, _tileFactory.get());
                 }
             }
         }
@@ -461,52 +457,16 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 void
 OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int index )
 {
-#if 0
-    // remove the task service associated with this layer if necessary
-    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
-    {
-        _taskServiceMgr->remove( layerRemoved->getUID() );
-    }
-#endif
-
+    // make a thread-safe copy of the tile table
     CustomTileVector tiles;
     _terrain->getCustomTiles( tiles );
 
     for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
-        CustomTile* tile = itr->get(); //static_cast< CustomTile* >( itr->get() );
+        CustomTile* tile = itr->get();
 
         // critical section
-        {
-            Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
-
-            tile->removeColorLayer( index );
-
-#if 0
-            //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
-            std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
-            for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
-            {   
-                //Skip the layer that is being removed
-                if (i != index)
-                {
-                    osgTerrain::Layer* imageLayer = itr->get()->getColorLayer(i);
-                    if (imageLayer)
-                    {
-                        layers.push_back(imageLayer);
-                    }
-                }
-                //Set the current value to NULL
-                itr->get()->setColorLayer( i, NULL);
-            }
-
-            //Reset the color layers to the correct order
-            for (unsigned int i = 0; i < layers.size(); ++i)
-            {
-                itr->get()->setColorLayer( i, layers[i].get() );
-            }
-#endif
-        }
+        tile->removeColorLayer( index );
 
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
@@ -520,6 +480,25 @@ OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int i
     updateTextureCombining();
 
     OE_DEBUG << "[osgEarth::Map::removeImageSource] end " << std::endl;  
+}
+
+void
+OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
+{
+    // take a thread-safe copy of the tile table
+    CustomTileVector tiles;
+    _terrain->getCustomTiles( tiles );
+
+    for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    {
+        CustomTile* tile = itr->get();
+
+        tile->moveColorLayer( oldIndex, newIndex );
+
+        tile->applyImmediateTileUpdate( TileUpdate::MOVE_IMAGE_LAYER );
+    }     
+
+    updateTextureCombining();
 }
 
 void
@@ -619,45 +598,6 @@ OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved, unsign
     {
         updateElevation( itr->get() );
     }
-}
-
-void
-OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
-{
-    CustomTileVector tiles;
-    _terrain->getCustomTiles( tiles );
-
-    for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
-    {
-        CustomTile* tile = itr->get();
-        Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
-
-        //Collect the current color layers
-        std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
-
-        for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
-        {              
-            layers.push_back(itr->get()->getColorLayer(i));
-        }
-
-        //Swap the original position
-        osg::ref_ptr< osgTerrain::Layer > layer = layers[oldIndex];
-        layers.erase(layers.begin() + oldIndex);
-        layers.insert(layers.begin() + newIndex, layer.get());
-
-        for (unsigned int i = 0; i < layers.size(); ++i)
-        {
-            itr->get()->setColorLayer( i, layers[i].get() );
-        }
-
-        //todo: upgrade to use tile updates
-        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-            tile->setDirty( true );
-        else
-            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-    }     
-
-    updateTextureCombining();
 }
 
 void

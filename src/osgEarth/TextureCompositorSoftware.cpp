@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
+#if 0
 #include <osgEarth/TextureCompositorSoftware>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -70,3 +70,4 @@ TextureCompositorSoftware::createProgram() const
     // no shaders in the software implementation.
     return 0L;
 }
+#endif

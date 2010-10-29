@@ -53,6 +53,8 @@ using namespace osgEarth::Drivers;
 
 /*****************************************************************************/
 
+#if 0
+//TODO: get rid of this, and move it to the CustomTerrain CULL traversal.
 struct PopulateTileDataCallback : public osg::NodeCallback
 {
     PopulateTileDataCallback( const MapFrame& mapf ) : _mapf(mapf) { }
@@ -75,6 +77,7 @@ struct PopulateTileDataCallback : public osg::NodeCallback
 
     const MapFrame& _mapf;
 };
+#endif
 
 /*****************************************************************************/
 
@@ -477,7 +480,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
     osg::ref_ptr<CustomTile> ancestorTile;
     while( !ancestorTile.valid() && ancestorKey.valid() )
     {
-        terrain->getCustomTile( ancestorKey.getTileId(), ancestorTile );
+        terrain->getCustomTile( ancestorKey, ancestorTile );
         if ( !ancestorTile.valid() )
             ancestorKey = ancestorKey.createParentKey();
     }
@@ -509,11 +512,13 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
     tile->setLocator( locator.get() );
 
     // Attach an updatecallback to normalize the edges of TerrainTiles.
+#if 0
     if ( hasElevation && _terrainOptions.normalizeEdges().get() )
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
     }
+#endif
 
     // Generate placeholder imagery and elevation layers. These "inherit" data from an
     // ancestor tile.
@@ -582,7 +587,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
     result = plod;
 
     // Install a callback that will load the actual tile data via the pager.
-    result->addCullCallback( new PopulateTileDataCallback( _cull_thread_mapf ) );
+    //result->addCullCallback( new PopulateTileDataCallback( _cull_thread_mapf ) );
 
     // Install a cluster culler (FIXME for cube mode)
     //bool isCube = map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
@@ -732,12 +737,14 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
 
+#if 0
     //Attach an updatecallback to normalize the edges of TerrainTiles.
     if (hasElevation && _terrainOptions.normalizeEdges().get() )
     {
         tile->setUpdateCallback(new TerrainTileEdgeNormalizerUpdateCallback());
         tile->setDataVariance(osg::Object::DYNAMIC);
     }
+#endif
 
     //Assign the terrain system to the TerrainTile.
     //It is very important the terrain system is set while the MapConfig's sourceMutex is locked.
@@ -877,8 +884,8 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
 #endif
         result = plod;
 
-        if ( tile->getUseLayerRequests() )
-            result->addCullCallback( new PopulateTileDataCallback( _cull_thread_mapf ) );
+        //if ( tile->getUseLayerRequests() )
+          //  result->addCullCallback( new PopulateTileDataCallback( _cull_thread_mapf ) );
     }
     else
     {

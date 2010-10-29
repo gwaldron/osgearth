@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #ifndef OSGEARTH_TEXTURE_COMPOSITOR_TEX3D_H
 #define OSGEARTH_TEXTURE_COMPOSITOR_TEX3D_H 1
 
@@ -31,7 +32,7 @@ namespace osgEarth
     public:
         osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const;
 
-        void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
+        void updateMasterStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
 
         bool requiresUnitTextureSpace() const { return true; }
 
@@ -40,3 +41,4 @@ namespace osgEarth
 }
 
 #endif // OSGEARTH_TEXTURE_COMPOSITOR_TEX3D_H
+#endif

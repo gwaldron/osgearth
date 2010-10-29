@@ -430,6 +430,9 @@ namespace osgEarth
         int indexOf( ElevationLayer* layer ) const;
         int indexOf( ModelLayer* layer ) const;
 
+        /** Gets the map data model revision with which this frame is currently sync'd */
+        Revision getRevision() const { return _mapDataModelRevision; }
+
         /**
          * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
          * snapshot in this MapFrame.

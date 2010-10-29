@@ -32,11 +32,14 @@
 #include <osgTerrain/TerrainTile>
 #include <list>
 #include <queue>
+#include <vector>
 
-class TileFactory; //MapEngine;
+class TileFactory;
 class CustomTerrain;
 class CustomTile;
+class CustomTileVector;
 
+#if 0
 typedef std::list< osg::ref_ptr<osgTerrain::TerrainTile> > TerrainTileList;
 
 /**
@@ -47,7 +50,7 @@ struct OSGEARTH_EXPORT TerrainCallback : public osg::Referenced
     virtual void onTerrainTilesUpdated( const TerrainTileList& tiles ) { }
 };
 typedef std::list< osg::ref_ptr<TerrainCallback> > TerrainCallbackList;
-
+#endif
 
 using namespace osgEarth;
 
@@ -110,13 +113,15 @@ public:
 
     bool updateBudgetRemaining() const;
 
-    void addTerrainCallback( TerrainCallback* cb );
+    //void addTerrainCallback( TerrainCallback* cb );
 
 protected:
 
 	~CustomTerrain();
 
-    typedef std::map< osgTerrain::TileID, osg::ref_ptr<CustomTile> > TileTable;
+    //typedef std::map< osgTerrain::TileID, osg::ref_ptr<CustomTile> > TileTable;
+    typedef std::map< TileKey, osg::ref_ptr<CustomTile> > TileTable;
+
     typedef std::queue< osg::ref_ptr<CustomTile> > TileQueue;
     typedef std::list< osg::ref_ptr<CustomTile> > TileList;
     typedef std::vector< osg::ref_ptr<CustomTile> > TileVector;
@@ -134,9 +139,8 @@ public:
 
     void registerTile( CustomTile* newTile );
 
-    void getCustomTile( const osgTerrain::TileID& id, osg::ref_ptr<CustomTile>& out_tile, bool lock =true );
-    void getCustomTiles( TileList& out_tiles );
-    void getTerrainTiles( TerrainTileList& out_tiles );
+    void getCustomTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile, bool lock =true );
+    void getCustomTiles( TileVector& out_tiles );
 
     const LoadingPolicy& getLoadingPolicy() const;
 
@@ -145,8 +149,11 @@ private:
     TaskService* createTaskService( const std::string& name, int id, int numThreads );
     TaskService* getTaskService( int id );
 
+    //void refreshFamily( 
+    //    const MapInfo& info, const osgTerrain::TileID& tileId, Relative* family, bool tileTableLocked );
+
     void refreshFamily( 
-        const MapInfo& info, const osgTerrain::TileID& tileId, Relative* family, bool tileTableLocked );
+        const MapInfo& info, const TileKey& key, Relative* family, bool tileTableLocked );
 
     int _revision; 
     OpenThreads::Mutex _revisionMutex;
@@ -164,7 +171,7 @@ private:
     int _onDemandDelay; // #frames
 
 	bool _registeredWithReleaseGLCallback;
-    TerrainCallbackList _terrainCallbacks;
+    //TerrainCallbackList _terrainCallbacks;
 
     LoadingPolicy _loadingPolicy;
 

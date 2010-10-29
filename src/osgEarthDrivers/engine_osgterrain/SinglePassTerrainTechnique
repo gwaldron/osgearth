@@ -21,6 +21,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_SINGLE_PASS_TERRAIN_TECHNIQUE 1
 
 #include "CustomTerrainTechnique"
+#include "TransparentLayer"
 
 #include <osg/MatrixTransform>
 #include <osg/Geode>
@@ -121,9 +122,12 @@ private:
     bool _pendingFullUpdate;    
     bool _pendingGeometryUpdate;
 
+    TileUpdate _lastUpdate;
+
     struct ImageLayerUpdate {
         GeoImage _image;
-        int      _layerIndex;
+        UID      _layerUID;
+        //int      _layerIndex;
     };
     typedef std::queue<ImageLayerUpdate> ImageLayerUpdates;
     ImageLayerUpdates _pendingImageLayerUpdates;
@@ -147,6 +151,8 @@ private:
     void prepareImageLayerUpdate( int layerIndex );
     Threading::ReadWriteMutex& getMutex();
     inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
+    TransparentLayer* getLayerByUID( UID uid ) const;
+    int getIndexOfColorLayerWithUID( UID uid ) const;
 
 };
 

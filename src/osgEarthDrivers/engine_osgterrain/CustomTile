@@ -39,40 +39,28 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-#if 0
-struct TileImageLayer
-{
-    osg::ref_ptr<osg::Image>          _image;
-    osg::ref_ptr<osgTerrain::Locator> _locator;
-    osg::ref_ptr<ImageLayer>          _layer;
-};
-
-typedef std::vector<TileImageLayer> TileImageLayerVector;
-TileImageLayerVector _tileImageLayers;
-#endif
-
-//------------------------------------------------------------------------
-
 // Records a tile change request so that we can update tiles piecemeal
 struct TileUpdate
 {
     enum Action {
-        UPDATE_IMAGE_LAYER, // requires index
+        ADD_IMAGE_LAYER,
+        REMOVE_IMAGE_LAYER,
+        UPDATE_IMAGE_LAYER,
         UPDATE_ALL_IMAGE_LAYERS,
         UPDATE_ELEVATION,
         UPDATE_ALL
     };
 
-    TileUpdate( Action action, int index =-1 )
-        : _action(action), _index(index) { }
+    TileUpdate( Action action, UID layerUID =(UID)-1 ) 
+        : _action(action), _layerUID(layerUID) { }
 
     Action getAction() const { return _action; }
-    int getIndex() const { return _index; }
+
+    UID getLayerUID() const { return _layerUID; }
 
 private:
     Action _action;
-    //UID _layerUID;
-    int _index;
+    UID _layerUID;
 };
 
 //------------------------------------------------------------------------
@@ -89,10 +77,10 @@ struct Relative
 
     bool expected;
     int elevLOD;
-    //int imageryLOD;
     typedef std::map<unsigned int, int> LayerIDtoLODMap;
     LayerIDtoLODMap imageLODs;
-    osgTerrain::TileID tileID;
+    //osgTerrain::TileID tileID;
+    TileKey key;
 
     enum Direction {
         PARENT =0,
@@ -101,6 +89,8 @@ struct Relative
         EAST   =3,
         SOUTH  =4
     };
+
+    Relative() : key(0,0,0,0L) { }
 };
 
 //------------------------------------------------------------------------
@@ -184,7 +174,7 @@ public:
 
     bool getUseTileGenRequest() const;
 
-    Relative* getFamily();
+    Relative* getFamily() { return _family; }
 
     // marks a request to regenerate the tile based on the specified change(s).
     void queueTileUpdate( TileUpdate::Action action, int index =-1 );
@@ -195,6 +185,14 @@ public:
 
     float getVerticalScale() const;
     void setVerticalScale(float verticalScale);
+
+
+    //// we use our own tile image layer set so that we can track the UIDs.
+    //void addTileImageLayer( const TileImageLayer& layer );
+    //void removeTileImageLayer( UID layerUID );
+    //TileImageLayer& getTileImageLayer( UID layerUID ) const;
+
+    void removeColorLayer( int index );
 
 
 public: // OVERRIDES
@@ -214,6 +212,9 @@ protected:
 
 
 private:
+    // the actual data that this tile will render.
+    //TileImageLayerVector _imageStack;
+
     int  _terrainRevision;
     int  _tileRevision;
     bool _useLayerRequests;
@@ -255,5 +256,8 @@ private:
 public:
     void adjustUpdateTraversalCount( int delta );
 };
+
+class CustomTileVector : public std::vector< osg::ref_ptr<CustomTile> > { };
+
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TILE

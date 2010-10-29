@@ -420,6 +420,15 @@ CustomTile::setVerticalScale(float verticalScale)
     }
 }
 
+void
+CustomTile::removeColorLayer( int index )
+{
+    if ( index >= 0 && index < _colorLayers.size() )
+        _colorLayers.erase( _colorLayers.begin() + index );
+    else
+        OE_WARN << LC << "Illegal: removeColorLayer index out of range" << std::endl;
+}
+
 osg::BoundingSphere
 CustomTile::computeBound() const
 {
@@ -683,7 +692,7 @@ CustomTile::updateImagery(UID layerUID, const MapFrame& mapf, OSGTileFactory* ti
     _requests.push_back( r );
 }
 
-// This method is called from the CULL TRAVERSAL, from TileImageBackfillCallback in OSGTileFactory.cpp.
+// This method is called from the CULL TRAVERSAL, from CustomTerrain. //from TileImageBackfillCallback in OSGTileFactory.cpp.
 void
 CustomTile::servicePendingImageRequests( const MapFrame& mapf, int stamp )
 {       
@@ -714,11 +723,6 @@ CustomTile::servicePendingImageRequests( const MapFrame& mapf, int stamp )
             r->setStamp( stamp );
         }
     }    
-}
-
-Relative*
-CustomTile::getFamily() {
-    return _family;
 }
 
 // This method is called from the UPDATE TRAVERSAL, from CustomTerrain::traverse.
@@ -780,7 +784,7 @@ CustomTile::servicePendingElevationRequests( const MapFrame& mapf, int stamp, bo
             else if ( _family[Relative::PARENT].elevLOD > _elevationLOD )
             {
                 osg::ref_ptr<CustomTile> parentTile;
-                terrain->getCustomTile( _family[Relative::PARENT].tileID, parentTile, !tileTableLocked );
+                terrain->getCustomTile( _family[Relative::PARENT].key, parentTile, !tileTableLocked );
 
                 if ( _elevationLOD < _family[Relative::PARENT].elevLOD && parentTile.valid() )
                 {
@@ -812,11 +816,11 @@ CustomTile::servicePendingElevationRequests( const MapFrame& mapf, int stamp, bo
 }
 
 void
-CustomTile::queueTileUpdate( TileUpdate::Action action, int index )
+CustomTile::queueTileUpdate( TileUpdate::Action action, int value )
 {
     if ( _useTileGenRequest )
     {
-        _tileUpdates.push( TileUpdate(action, index) );
+        _tileUpdates.push( TileUpdate(action, value) );
     }
     else
     {
@@ -825,11 +829,18 @@ CustomTile::queueTileUpdate( TileUpdate::Action action, int index )
 }
 
 void
-CustomTile::applyImmediateTileUpdate( TileUpdate::Action action, int index )
+CustomTile::applyImmediateTileUpdate( TileUpdate::Action action, int value )
 {
     CustomTerrainTechnique* tech = dynamic_cast<CustomTerrainTechnique*>( getTerrainTechnique() );
-    tech->compile( TileUpdate( action, index ), 0L );
-    tech->applyTileUpdates();
+    if ( tech )
+    {
+        tech->compile( TileUpdate(action, value), 0L );
+        tech->applyTileUpdates();
+    }
+    else
+    {
+        queueTileUpdate( action, value );
+    }
 }
 
 // called from the UPDATE TRAVERSAL, because this method can potentially alter
@@ -865,7 +876,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
     //Check each layer independently.
     for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
     {
-        ImageLayer* imageLayer = mapf.imageLayers()[i].get();
+        ImageLayer* imageLayer = mapf.imageLayerAt(i);
 
         bool checkForFinalImagery = false;
 
@@ -889,10 +900,10 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                     // creating placeholders based of parent tiles, one LOD at a time.
                     if ( layer->getLevelOfDetail()+1 < _key.getLevelOfDetail() )
                     {
-                        if ( _family[Relative::PARENT].getImageLOD(layer->getId()) > layer->getLevelOfDetail() )
+                        if ( _family[Relative::PARENT].getImageLOD(layer->getUID()) > layer->getLevelOfDetail() )
                         {
                             osg::ref_ptr<CustomTile> parentTile;
-                            getCustomTerrain()->getCustomTile( _family[Relative::PARENT].tileID, parentTile, !tileTableLocked );
+                            getCustomTerrain()->getCustomTile( _family[Relative::PARENT].key, parentTile, !tileTableLocked );
 
                             //Get the parent color layer
                             osg::ref_ptr<osgTerrain::Layer> parentColorLayer;

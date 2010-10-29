@@ -265,7 +265,10 @@ TerrainEngineNode::updateImageUniforms()
     
     if ( mapf.imageLayers().size() > 0 )
     {
-        _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", mapf.imageLayers().size() );
+        // the "enabled" uniform is fixed size. this is handy to account for layers that are in flux...i.e., their source
+        // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
+        // "ghost" layers that used to exist at a given index, but no longer do.
+        _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", 128 ); //mapf.imageLayers().size() );
         _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_range", 2 * mapf.imageLayers().size() );
 
@@ -279,6 +282,10 @@ TerrainEngineNode::updateImageUniforms()
             _imageLayerController->_layerRangeUniform->setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
             _imageLayerController->_layerRangeUniform->setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
         }
+
+        // set the remainder of the layers to disabled 
+        for( int j=mapf.imageLayers().size(); j<128; ++j )
+            _imageLayerController->_layerEnabledUniform->setElement( j, false );
 
         stateSet->addUniform( _imageLayerController->_layerOpacityUniform.get() );
         stateSet->addUniform( _imageLayerController->_layerEnabledUniform.get() );

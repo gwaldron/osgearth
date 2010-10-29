@@ -24,26 +24,27 @@
 namespace osgEarth
 {
     /**
-     * TODO: document
+     * Texture compositor that implements multitexturing. It supports either GPU multitexturing
+     * (using shaders and taking advantage of all the hardware's resources) or FFP (fixed-function
+     * pipeline) multitexturing, which limits you to the old ARB texture unit limit (usually 4).
      */
     class TextureCompositorMultiTexture : public TextureCompositorTechnique
     {
     public:
-        TextureCompositorMultiTexture( bool useGPU );
-
-        osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& outputExtent ) const;
+        TextureCompositorMultiTexture( bool useGPU =true );
 
         bool requiresUnitTextureSpace() const { return false; }
 
         bool usesShaderComposition() const { return _useGPU; }
 
-        void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
+        void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
 
         bool supportsLayerUpdate() const { return true; }
 
-        //GeoImage prepareLayerUpdate( const GeoImage& layerImage, const GeoExtent& tileExtent ) const;
-
-        void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
+        void applyLayerUpdate( 
+            osg::StateSet* stateSet, UID layerUID,
+            const GeoImage& preparedImage, const GeoExtent& tileExtent,
+            const TextureLayout& layout ) const;
 
     private:
         bool _useGPU;

@@ -53,7 +53,8 @@ _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
 _initCount(0),
 _optimizeTriangleOrientation(true),
-_numColorLayers(0)
+_numColorLayers(0),
+_lastUpdate( TileUpdate::UPDATE_ALL )
 {
     this->setThreadSafeRefUnref(true);
 
@@ -70,7 +71,8 @@ _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate( false ),
 _initCount( 0 ),
-_numColorLayers(rhs._numColorLayers)
+_numColorLayers(rhs._numColorLayers),
+_lastUpdate( rhs._lastUpdate )
 {
     //NOP
 }
@@ -130,6 +132,8 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     // lock changes to the layers while we're compiling them
     Threading::ScopedReadLock lock( getMutex() );
 
+    _lastUpdate = update;
+
     // establish the master tile locator if this is the first compilation:
     if ( !_masterLocator.valid() || !_transform.valid() )
     {
@@ -150,7 +154,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
 
     if ( !layerCountChanged && update.getAction() == TileUpdate::UPDATE_IMAGE_LAYER && _texCompositor->supportsLayerUpdate() )
     {
-        prepareImageLayerUpdate( update.getIndex() );
+        prepareImageLayerUpdate( update.getLayerUID() );
 
         // conditionally regenerate the texture coordinates for this layer.
         // TODO: optimize this with a method that ONLY regenerates the texture coordinates.
@@ -241,6 +245,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
         _transform->setChild( 0, _backGeode.get() );
         _backGeode = 0L;
         _pendingFullUpdate = false;
+        _pendingGeometryUpdate = false;
         applied = true;
     }
 
@@ -315,11 +320,16 @@ SinglePassTerrainTechnique::applyTileUpdates()
         {
             const ImageLayerUpdate& update = _pendingImageLayerUpdates.front();
 
-            _texCompositor->applyLayerUpdate(
-                getFrontGeode()->getStateSet(),
-                update._layerIndex,
-                update._image,
-                _tileExtent );
+            // if this search fails, it means the layer was removed after the update was scheduled.
+            int layerIndex = getIndexOfColorLayerWithUID( update._layerUID );
+            if ( layerIndex >= 0 )
+            {
+                _texCompositor->applyLayerUpdate(
+                    getFrontGeode()->getStateSet(),
+                    layerIndex,
+                    update._image,
+                    _tileExtent );
+            }            
 
             _pendingImageLayerUpdates.pop();
             applied = true;
@@ -335,18 +345,47 @@ SinglePassTerrainTechnique::getMutex()
     return static_cast<CustomTile*>(_terrainTile)->getTileLayersMutex();
 }
 
-void
-SinglePassTerrainTechnique::prepareImageLayerUpdate( int layerIndex )
+int
+SinglePassTerrainTechnique::getIndexOfColorLayerWithUID( UID uid ) const
 {
-    GeoImage geoImage = createGeoImage( _terrainTile->getColorLayer(layerIndex) );
-    if ( geoImage.valid() )
-    {
-        ImageLayerUpdate update;
-        update._image = _texCompositor->prepareLayerUpdate( geoImage, _tileExtent );
-        update._layerIndex = layerIndex;
+    int numColorLayers = _terrainTile->getNumColorLayers();
+    for( int i=0; i<numColorLayers; ++i ) {
+        TransparentLayer* layer = static_cast<TransparentLayer*>( _terrainTile->getColorLayer(i) );
+        if ( layer->getUID() == uid )
+            return i;
+    }
+    return -1;
+}
 
-        if ( update._image.valid() )
-            _pendingImageLayerUpdates.push( update );
+TransparentLayer*
+SinglePassTerrainTechnique::getLayerByUID( UID uid ) const
+{
+    int numColorLayers = _terrainTile->getNumColorLayers();
+    for( int i=0; i<numColorLayers; ++i ) {
+        TransparentLayer* layer = static_cast<TransparentLayer*>( _terrainTile->getColorLayer(i) );
+        if ( layer->getUID() == uid )
+            return layer;
+    }
+    return 0L;
+}
+
+void
+SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID )
+{
+    TransparentLayer* layer = getLayerByUID( layerUID );
+    if ( layer )
+    {
+        GeoImage geoImage = createGeoImage( layer );
+        if ( geoImage.valid() )
+        {
+            ImageLayerUpdate update;
+            update._image = _texCompositor->prepareImage( geoImage, _tileExtent );
+            update._layerUID = layerUID;
+            //update._layerIndex = layerIndex;
+
+            if ( update._image.valid() )
+                _pendingImageLayerUpdates.push( update );
+        }
     }
 }
 
@@ -387,6 +426,26 @@ SinglePassTerrainTechnique::createStateSet()
         }
     }
 
+    osg::StateSet* stateSet = new osg::StateSet();
+
+    // populate the new stateset with all the existing color layers.
+    for( int i=0; i<_terrainTile->getNumColorLayers(); ++i )
+    {
+        TransparentLayer* layer = static_cast<TransparentLayer*>( _terrainTile->getColorLayer(i) );
+        if ( layer )
+        {
+            GeoImage image = createGeoImage( layer );
+            if ( image.valid() )
+            {
+                image = _texCompositor->prepareImage( image, _tileExtent );
+                _texCompositor->applyLayerUpdate( stateSet, layer->getUID(), image, _tileExtent );
+            }
+        }
+    }
+
+    return stateSet;
+
+#if 0
     // find each image layer and create a region entry for it
     unsigned int numColorLayers = _terrainTile->getNumColorLayers();
 
@@ -404,6 +463,7 @@ SinglePassTerrainTechnique::createStateSet()
 
     osg::StateSet* texStateSet = _texCompositor->createStateSet( imageStack, _tileExtent );
     return texStateSet;
+#endif
 }
 
 void
@@ -1093,6 +1153,8 @@ SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)
     }
 
     // the code from here on accounts for user traversals (intersections, etc)
+
+    //TODO: evaluate this and see if we can get rid of it.
 
     if ( _terrainTile->getDirty() ) 
     {

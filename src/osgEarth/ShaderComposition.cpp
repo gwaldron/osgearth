@@ -92,7 +92,7 @@ VirtualProgram::setShader( const std::string& shaderSemantic, osg::Shader * shad
     osg::ref_ptr< osg::Shader >  shaderNew     = shader;
     osg::ref_ptr< osg::Shader >& shaderCurrent = _shaderMap[ key ];
 
-#if 0 // Good for debugging of shader linking problems. 
+#if 1 // Good for debugging of shader linking problems. 
       // Don't do it - User could use the name for its own purposes 
     shaderNew->setName( shaderSemantic );
 #endif
@@ -179,7 +179,12 @@ VirtualProgram::apply( osg::State & state ) const
             program = new osg::Program;
 #if !MERGE_SHADERS
             for( ShaderList::iterator i = sl.begin(); i != sl.end(); ++i )
+            {
                 program->addShader( i->get() );
+
+                //OE_INFO << "Shader \"" << i->get()->getName() << "\"" << std::endl
+                //    << i->get()->getShaderSource() << std::endl << std::endl;
+            }
 #else
             std::string strFragment;
             std::string strVertex;
@@ -345,21 +350,21 @@ ShaderFactory::createVertexShaderMain() const
 
     buf << "void main(void) \n"
         << "{ \n"
-        <<     "gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        <<     "vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
-        <<     "vec3 position = position4.xyz / position4.w; \n"
-        <<     "vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
-        <<     "osgearth_range = length(position4.xyz); \n";
+        << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    vec3 position = position4.xyz / position4.w; \n"
+        << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        << "    osgearth_range = length(position4.xyz); \n";
 
     if ( _useInjectionPoint[INJECT_PRE_VERTEX] )
-        buf << "osgearth_vert_preprocess( position, normal ); \n";
+        buf << "    osgearth_vert_preprocess( position, normal ); \n";
 
-    buf <<    "osgearth_vert_texture( position, normal ); \n"
-        <<    "if ( osgearth_lighting_enabled ) \n"
-        <<    "    osgearth_vert_lighting( position, normal ); \n";
+    buf << "    osgearth_vert_texture( position, normal ); \n"
+        << "    if ( osgearth_lighting_enabled ) \n"
+        << "        osgearth_vert_lighting( position, normal ); \n";
     
     if ( _useInjectionPoint[INJECT_POST_VERTEX] )
-        buf << "osgearth_vert_postprocess( position, normal ); \n";
+        buf << "    osgearth_vert_postprocess( position, normal ); \n";
 
     buf << "} \n";
 
@@ -411,7 +416,7 @@ ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
 
     for(int i=0; i<numTexCoordSets; ++i )
     {
-        buf << "gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
+        buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
     }
         
     buf << "} \n";
@@ -437,8 +442,8 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 
     for(int i=0; i<numTexImageUnits; ++i )
     {
-        buf << "texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "color = mix( color, texel.rgb, texel.a ); \n";
+        buf << "    texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
+            << "    color = mix( color, texel.rgb, texel.a ); \n";
     }
         
     buf << "    return vec4(color,1); \n"

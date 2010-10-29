@@ -242,6 +242,16 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
             tech->setOptimizeTriangleOrientation( false );
 
         _terrain->setTerrainTechniquePrototype( tech );
+
+        // prime the texture compositor with any existing layers:
+        for( int i=0; i<_update_mapf->imageLayers().size(); ++i )
+        {
+            _texCompositor->applyMapModelChange( MapModelChange(
+                MapModelChange::ADD_IMAGE_LAYER,
+                _update_mapf->getRevision(),
+                _update_mapf->imageLayerAt(i),
+                i ) );
+        }
     }
 
     // install the shader program, if applicable:
@@ -288,6 +298,11 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     // dispatch the change handler
     if ( change.getLayer() )
     {
+        // first inform the texture compositor with the new model changes:
+        if ( _texCompositor.valid() )
+            _texCompositor->applyMapModelChange( change );
+
+        // then apply the actual change:
         switch( change.getAction() )
         {
         case MapModelChange::ADD_IMAGE_LAYER:
@@ -320,9 +335,9 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 }
 
 void
-OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
+OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 {
-    if ( !layer || !layer->getTileSource() )
+    if ( !layerAdded || !layerAdded->getTileSource() )
         return;
 
 #if 0
@@ -339,12 +354,14 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
 #endif
 
     // visit all existing terrain tiles and inform each one of the new image layer:
-    TerrainTileList tiles;
-    _terrain->getTerrainTiles( tiles );
+    CustomTileVector tiles;
+    _terrain->getCustomTiles( tiles );
+    //TerrainTileList tiles;
+    //_terrain->getTerrainTiles( tiles );
 
-    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    for( CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr )
     {
-        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
+        CustomTile* tile = itr->get(); // static_cast< CustomTile* >( itr->get() );
 
         //Create a TileKey from the TileID
         osgTerrain::TileID tileId = tile->getTileID();
@@ -363,7 +380,7 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
             key.getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
-            geoImage = _tileFactory->createValidGeoImage( layer, key );
+            geoImage = _tileFactory->createValidGeoImage( layerAdded, key );
             imageLOD = key.getLevelOfDetail();
         }
         else
@@ -396,13 +413,14 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
             // Create a layer wrapper that supports opacity.
             // TODO: review this; the Transparent layer holds a back-reference to the actual ImageLayer
             TransparentLayer* img_layer = new TransparentLayer( 
-                geoImage.getImage(), 
-                _update_mapf->imageLayerAt(newLayerIndex) );
+                geoImage.getImage(),
+                layerAdded );
+                //_update_mapf->imageLayerAt(newLayerIndex) );
 
             img_layer->setLevelOfDetail(imageLOD);
             img_layer->setLocator( img_locator.get());
-            img_layer->setMinFilter( layer->getImageLayerOptions().minFilter().value() );
-            img_layer->setMagFilter( layer->getImageLayerOptions().magFilter().value() );
+            img_layer->setMinFilter( layerAdded->getImageLayerOptions().minFilter().value() );
+            img_layer->setMagFilter( layerAdded->getImageLayerOptions().magFilter().value() );
 
             // update the tile.
             {
@@ -412,7 +430,8 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
 
                 if (needToUpdateImagery)
                 {
-                    tile->updateImagery( layer->getUID(), *_update_mapf, _tileFactory.get());
+                    //TODO: review this.
+                    tile->updateImagery( layerAdded->getUID(), *_update_mapf, _tileFactory.get());
                 }
             }
         }
@@ -427,10 +446,13 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layer )
         }
 
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-            tile->setDirty(true);
+            //tile->setDirty(true);
+            tile->applyImmediateTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getUID() );
         else
             //tile->applyImmediateTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
+            //tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
+            //tile->queueTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getLayerUID() );
+            tile->applyImmediateTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getUID() );
     }
 
     updateTextureCombining();
@@ -447,17 +469,20 @@ OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int i
     }
 #endif
 
-    TerrainTileList tiles;
-    _terrain->getTerrainTiles( tiles );
+    CustomTileVector tiles;
+    _terrain->getCustomTiles( tiles );
 
-    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
-        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
+        CustomTile* tile = itr->get(); //static_cast< CustomTile* >( itr->get() );
 
         // critical section
         {
             Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
+            tile->removeColorLayer( index );
+
+#if 0
             //An image layer was removed, so reorganize the color layers in the tiles to account for it's removal
             std::vector< osg::ref_ptr< osgTerrain::Layer > > layers;
             for (unsigned int i = 0; i < itr->get()->getNumColorLayers(); ++i)
@@ -480,13 +505,16 @@ OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int i
             {
                 itr->get()->setColorLayer( i, layers[i].get() );
             }
+#endif
         }
 
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-            tile->setDirty( true );
+            tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
+            //tile->setDirty( true );
         else
             //tile->applyImmediateTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-            tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
+            //tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
+            tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
     }
     
     updateTextureCombining();
@@ -524,6 +552,8 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
             if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key );
             heightFieldLayer->setHeightField( hf.get() );
             hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
+
+            //TODO: review this in favor of a tile update...
             tile->setDirty(true);
         }
         else
@@ -567,41 +597,39 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
     if ( !layer || !layer->getTileSource() )
         return;
-
-    TerrainTileList tiles;
-    _terrain->getTerrainTiles( tiles );
+    
+    CustomTileVector tiles;
+    _terrain->getCustomTiles( tiles );
 
     OE_DEBUG << LC << "Found " << tiles.size() << std::endl;
 
-    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
-        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
-        updateElevation( tile );
+        updateElevation( itr->get() );
     }
 }
 
 void
 OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved, unsigned int index )
 {
-    TerrainTileList tiles;
-    _terrain->getTerrainTiles( tiles );
+    CustomTileVector tiles;
+    _terrain->getCustomTiles( tiles );
 
-    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
-        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
-        updateElevation( tile );
+        updateElevation( itr->get() );
     }
 }
 
 void
 OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    TerrainTileList tiles;
-    _terrain->getTerrainTiles( tiles );
+    CustomTileVector tiles;
+    _terrain->getCustomTiles( tiles );
 
-    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
-        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
+        CustomTile* tile = itr->get();
         Threading::ScopedWriteLock tileLock(tile->getTileLayersMutex());
 
         //Collect the current color layers
@@ -622,6 +650,7 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
             itr->get()->setColorLayer( i, layers[i].get() );
         }
 
+        //todo: upgrade to use tile updates
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
             tile->setDirty( true );
         else
@@ -634,14 +663,14 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
 void
 OSGTerrainEngineNode::moveElevationLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    TerrainTileList tiles;
-    _terrain->getTerrainTiles( tiles );
+    CustomTileVector tiles;
+    _terrain->getCustomTiles( tiles );
+
     OE_DEBUG << "Found " << tiles.size() << std::endl;
 
-    for (TerrainTileList::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    for (CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
-        CustomTile* tile = static_cast< CustomTile* >( itr->get() );
-        updateElevation(tile);
+        updateElevation( itr->get() );
     }
 }
 
@@ -661,16 +690,10 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
     if ( _cull_mapf ) // ensures initialize() has been called
     {
-        // Note: no need to sync _update_mapf here, since it gets sync'd whenever there's a 
-        // map callback.
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
         {
-            _cull_mapf->sync();
-        }
-
-        else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-        {
-            // detect and respond to changes in the system shader library:
+            // detect and respond to changes in the system shader library.
+            // TODO: perhaps this should happen in the event traversal instead...
             ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
             if ( sf->outOfSyncWith( _shaderLibRev ) )
             {
@@ -678,6 +701,13 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
                 this->installShaders();
                 sf->sync( _shaderLibRev );
             }
+        }
+
+        else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        {
+            // update the cull-thread map frame if necessary. (We don't need to sync the
+            // update_mapf becuase that happens in response to a map callback.)
+            _cull_mapf->sync();
         }
     }
 
@@ -744,6 +774,6 @@ OSGTerrainEngineNode::updateTextureCombining()
         }
 
         // next, inform the compositor that it needs to update based on a new layer count:
-        _texCompositor->updateGlobalStateSet( terrainStateSet, numImageLayers );
+        _texCompositor->updateMasterStateSet( terrainStateSet ); //, numImageLayers );
     }
 }

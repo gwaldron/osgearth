@@ -158,6 +158,25 @@ TileKey::createAncestorKey( int ancestorLod ) const
     return TileKey( ancestorLod, x, y, _profile.get() );
 }
 
+TileKey
+TileKey::createNeighborKey( TileKey::Direction dir ) const
+{
+    unsigned int tx, ty;
+    getProfile()->getNumTiles( _lod, tx, ty );
+
+    unsigned int x =
+        dir == WEST ? _x > 0 ? _x-1 : tx-1 :
+        dir == EAST ? _x+1 < tx ? _x+1 : 0 :
+        _x;
+
+    unsigned int y = 
+        dir == SOUTH ? _y > 0 ? _y-1 : ty-1 :
+        dir == NORTH ? _y+1 < ty ? _y+1 : 0 :
+        _y;        
+
+    return TileKey( _lod, _x, _y, _profile.get() );
+}
+
 bool TileKey::isGeodetic() const
 {
     return _profile->getProfileType() == Profile::TYPE_GEODETIC; //GLOBAL_GEODETIC;

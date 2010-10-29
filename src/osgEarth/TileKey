@@ -58,6 +58,20 @@ namespace osgEarth
 
         TileKey( const TileKey& rhs );
 
+        bool operator == (const TileKey& rhs) const {
+            return valid() && rhs.valid() && _lod==rhs._lod && _x==rhs._x && _y==rhs._y;
+        }
+        bool operator != (const TileKey& rhs) const {
+            return !(*this == rhs);
+        }
+        bool operator < (const TileKey& rhs) const {
+            if (_lod < rhs._lod) return true;
+            if (_lod > rhs._lod) return false;
+            if (_x < rhs._x) return true;
+            if (_x > rhs._x) return false;
+            return _y < rhs._y;
+        }
+
         /**
          * Canonical invalid tile key.
          */
@@ -92,22 +106,23 @@ namespace osgEarth
         TileKey createChildKey( unsigned int quadrant ) const;
 
         /**
-         * Creates and returns a key that represents the parent tile of this key. The
-         * caller is responsible for deleting the returned object.
+         * Creates and returns a key that represents the parent tile of this key.
          */
         TileKey createParentKey() const;
 
         /**
          * Creates and returns a key that represents an ancestor tile corresponding to
-         * the specified LOD. The caller is responsible for deleting the returned object.
+         * the specified LOD.
          */
         TileKey createAncestorKey( int ancestorLod ) const;
 
+
         /**
-         * Gets the face index of the tile represented by this key.
-         * DEPRECATED
+         * Creates a key that represents this tile's neighbor at the same LOD. Wraps
+         * around in X and Y automatically.
          */
-        //unsigned int getFace() const { return 0; }
+        enum Direction { NORTH, SOUTH, EAST, WEST };
+        TileKey createNeighborKey( Direction dir ) const;
 
         /**
          * Gets the level of detail of the tile represented by this key.

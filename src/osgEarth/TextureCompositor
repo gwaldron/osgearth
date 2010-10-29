@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
+#include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TerrainOptions>
 #include <osg/StateSet>
@@ -28,25 +29,62 @@
 
 namespace osgEarth
 {
+    // vector of texture slots, each slot containing the UID of the image layer in that slot
+    // or -1 if the slot is empty.
+    typedef std::vector<UID> TextureSlotVector;
+
+    // rendering order of texture slots- each element is an index into the TextureSlotVector.
+    typedef std::vector<int> RenderOrderVector;
+
+    /**
+     * Tracks the usage of texture slots and their rendering order for a map.
+     */
+    class OSGEARTH_EXPORT TextureLayout
+    {        
+    public:
+        TextureLayout();
+
+        /** Gets the texture slot corresponding to the layer UID */
+        int getSlot( UID layerUID ) const;
+
+        /** Gets the render order index of the layer with the given UID */
+        int getOrder( UID layerUID ) const;
+
+        /** Gets the index of the highest populated slot. */
+        int getMaxUsedSlot() const;
+
+        const TextureSlotVector& getTextureSlots() const { return _slots; }
+
+        const RenderOrderVector& getRenderOrder() const { return _order; }
+
+    public:
+        void applyMapModelChange( const MapModelChange& change );
+
+    protected:
+        TextureSlotVector _slots;
+        RenderOrderVector _order;
+        int _firstTextureSlot;
+    };
+
     /**
      * Base interface for a particular texture composition implementation
      */
     class OSGEARTH_EXPORT TextureCompositorTechnique : public osg::Referenced
     {
     public:
-        virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const =0;
+//        virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const =0;
 
         virtual bool requiresUnitTextureSpace() const =0;
 
         virtual bool usesShaderComposition() const =0;
 
-        virtual void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const { }
+        virtual void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const { }
 
         virtual bool supportsLayerUpdate() const { return false; }
 
-        virtual GeoImage prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
+        virtual GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
 
-        virtual void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const { }
+        virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const GeoExtent& tileExtent, const TextureLayout& layout ) const { }
     };
 
     /**
@@ -68,11 +106,17 @@ namespace osgEarth
         const TerrainOptions::CompositingTechnique& getTechnique() const { return _tech; }
 
         /**
+         * Applies a map model change action to the texture layout contained within this compositor.
+         * You should call this any time the map model change happens.
+         */
+        void applyMapModelChange( const MapModelChange& change );
+
+        /**
          * Creates a stateset that contains all the texture attributes necessary to 
          * composite the list of layer images such that they result in the specified
          * output extent.
          */
-        osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const;
+        //osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const;
 
         /**
          * Returns true if the compositor implementation supports the ability to update an individual
@@ -88,14 +132,18 @@ namespace osgEarth
          * this one from any thread (it is guaranteed to be thread-safe) and then use updateLayer to 
          * updaet a live scene graph if necessary.
          */
-        GeoImage prepareLayerUpdate( const GeoImage& image, const GeoExtent& tileExtent ) const;
+        GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const;
 
         /**
          * Updates a stateset's texture composition with an image. Typically this will be the image
          * returned from prepareImage(), but it doesn't have to be. Note: if the stateset is live in
          * the scene graph, be sure to only call this method from UPDATE trav.
          */
-        void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
+        void applyLayerUpdate(
+            osg::StateSet* stateSet,
+            UID layerUID,
+            const GeoImage& preparedImage,
+            const GeoExtent& tileExtent ) const;
 
         /**
          * Whether the texture composition technique uses a single, unit (0..1) texture coordinate
@@ -115,7 +163,8 @@ namespace osgEarth
          * Call this whenever the composition of the image layer stack changes in order to update
          * applicable global uniforms, texture attributes, and so forth.
          */
-        void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
+        void updateMasterStateSet(
+            osg::StateSet* stateSet ) const; //int numImageLayers ) const;
 
     private:
         void init();
@@ -125,6 +174,8 @@ namespace osgEarth
         bool                                     _forceTech;
         osg::ref_ptr<osg::Program>               _program;
         osg::ref_ptr<TextureCompositorTechnique> _impl;
+
+        TextureLayout _layout;
     };
 }
 

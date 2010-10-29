@@ -30,9 +30,9 @@ namespace osgEarth
     {
     public:
         
-        osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const;
+        //osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const;
 
-        void updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const;
+        void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
 
         bool requiresUnitTextureSpace() const { return true; }
 
@@ -40,9 +40,15 @@ namespace osgEarth
 
         bool supportsLayerUpdate() const { return true; }
 
-        GeoImage prepareLayerUpdate( const GeoImage& layerImage, const GeoExtent& tileExtent ) const;
+        GeoImage prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const;
 
-        void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
+//        void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
+        void applyLayerUpdate( 
+            osg::StateSet* stateSet,
+            UID layerUID, 
+            const GeoImage& preparedImage,
+            const GeoExtent& tileExtent,
+            const TextureLayout& layout ) const;
     };
 }
 

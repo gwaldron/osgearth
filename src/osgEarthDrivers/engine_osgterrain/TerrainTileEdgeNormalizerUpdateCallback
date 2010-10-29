@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
+#if 0
 #ifndef OSGEARTH_TERRAIN_TILE_EDGE_NORMALIZATION_CALLBACK
 #define OSGEARTH_TERRAIN_TILE_EDGE_NORMALIZATION_CALLBACK 1
 
@@ -67,3 +67,4 @@ protected:
 
 
 #endif //OSGEARTH_TERRAIN_TILE_EDGE_NORMALIZATION_CALLBACK
+#endif

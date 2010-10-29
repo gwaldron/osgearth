@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
+#if 0
 #include <osgEarth/TextureCompositorTex3D>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -267,10 +267,11 @@ TextureCompositorTex3D::createStateSet( const GeoImageVector& layerImages, const
 }
 
 void
-TextureCompositorTex3D::updateGlobalStateSet( osg::StateSet* stateSet, int numImageLayers ) const
+TextureCompositorTex3D::updateMasterStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 {
     osg::Program* program = new osg::Program();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, s_source_vertMain ) );
     program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_createFragShader(numImageLayers) ) );
     stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
 }
+#endif
